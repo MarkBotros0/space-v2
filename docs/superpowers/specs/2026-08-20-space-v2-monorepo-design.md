@@ -97,6 +97,12 @@ src/
 `app.ts` is separate from `server.ts` so tests can mount the app without
 binding a port.
 
+Auth is the exception to the `services/` rule: it lives in `lib/auth/` as a
+direct port of v1's `src/lib/auth/`, and touches Prisma there. Keeping the port
+structurally identical to its source is worth more than layer purity, because
+it makes divergence easy to spot. `services/` appears when the non-auth
+endpoints land.
+
 Supporting middleware matches v1's posture: `helmet`, `cors`, `morgan` request
 logging into `winston`, and `express-rate-limit` on the auth routes.
 
@@ -106,22 +112,50 @@ Prisma 7 no longer generates into `node_modules`. The client is generated to
 `src/generated/prisma` and imported from there — the same convention v1 uses.
 Importing from `@prisma/client` will not work.
 
+### Relationship to v1's `/api/v1`
+
+v1 already exposes a mobile-facing REST API — `auth/login`, `auth/refresh`,
+`auth/logout`, `me`, `seasons`, `groups`, `sessions`, `assignments`,
+`attendance`, `check-in` — whose access tokens carry the audience
+`"jpc-mobile"`. The `RefreshToken` model exists for that flow; v1's web UI
+keeps using Auth.js session cookies.
+
+`apps/backend` **ports that API into Express** and becomes the mobile API of
+record. v1's `/api/v1` is retired once the mobile app is live.
+
+Because both surfaces run against one database during the transition, the
+ported auth must stay **token-compatible** with v1 — same secret, same
+audience, same hashing. This is a hard constraint, not a preference.
+
 ### Auth
 
-Ported from v1, which already models everything needed — `RefreshToken` and
-`PasswordResetToken` are existing tables, so no schema change is required.
+Ported near-verbatim from v1's `src/lib/auth/`. No schema change is required;
+`RefreshToken` and `PasswordResetToken` already exist.
 
-- Email/password login, passwords hashed with argon2.
-- Login returns a short-lived access JWT plus a refresh token; refresh tokens
-  rotate on use and the previous token is revoked.
-- Invite tokens (`InviteToken`) drive onboarding.
+- **Passwords: bcryptjs.** Every existing `passwordHash` in the shared database
+  is bcrypt. Using any other algorithm locks out every existing user.
+- **Access token:** `jose`, HS256, signed with the same `AUTH_SECRET` as v1,
+  audience `"jpc-mobile"`, subject `String(userId)`, 15-minute TTL. Claims
+  carry `role`, `seasonAdminIds`, `groupLeaderIds`, `activeSeasonId`,
+  `graduationYear`.
+- **Refresh token:** 32 random bytes, base64url. Stored only as a sha256 hex
+  digest in `RefreshToken.tokenHash`, 30-day TTL. Rotated on use — the
+  presented token is revoked and a fresh session issued.
+- **Invite tokens** (`InviteToken`) drive onboarding.
 - Authorization middleware resolves the global `UserRole` **and** the scoped
   `SeasonAdmin` / `GroupLeader` join rows, mirroring v1's `lib/rbac.ts`. A user
   can be a Leader of one group and a Student of an earlier season at once, so
   role checks are always scope-aware.
 
-Token signing uses its own secret, distinct from v1's `AUTH_SECRET`: the two
-apps issue different token formats and must not validate each other's.
+### Response envelope
+
+Ported from v1's `lib/api/response.ts` so clients need no changes:
+
+- Success: `{ "data": ... }`
+- Failure: `{ "error": { "code": "...", "message": "..." } }`
+
+Error codes in the login path: `bad_request` (400), `invalid_credentials`
+(401), `invalid_token` (401).
 
 ## apps/mobile
 
@@ -157,11 +191,14 @@ Consequences that follow from sharing one database:
 The scaffold ships with one working path through every layer:
 
 1. `GET /health` — liveness plus a database round-trip.
-2. `POST /auth/login` — validates against the shared Zod schema, verifies the
-   password, returns access and refresh tokens.
-3. `POST /auth/refresh` — rotates the refresh token.
+2. `POST /api/v1/auth/login` — validates against the shared Zod schema,
+   verifies the password with bcryptjs, returns access and refresh tokens.
+3. `POST /api/v1/auth/refresh` — rotates the refresh token.
 4. A mobile login screen that calls the API, stores tokens securely, and
    navigates to a placeholder home screen showing the authenticated user.
+
+Paths keep v1's `/api/v1` prefix so the two surfaces are drop-in
+interchangeable for the client.
 
 Everything else is stubbed. On completion, `pnpm dev`, `pnpm typecheck`,
 `pnpm lint`, and `pnpm test` all pass from the repo root.
@@ -187,3 +224,7 @@ Everything else is stubbed. On completion, `pnpm dev`, `pnpm typecheck`,
 - **No-build shared package.** The backend's `tsc` build must be configured to
   compile shared sources; a misconfigured `rootDir` shows up only at build
   time, not in dev.
+- **Token compatibility drift.** If the ported auth diverges from v1 on secret,
+  audience, hash algorithm, or claim names, tokens silently stop validating
+  across the two surfaces. Covered by tests asserting the exact claim shape and
+  by verifying a v1-issued token against the ported verifier.
