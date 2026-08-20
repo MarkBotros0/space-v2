@@ -5,6 +5,7 @@ import morgan from "morgan";
 
 import { config } from "./lib/config";
 import { healthRouter } from "./routes/health";
+import { authRouter } from "./routes/auth";
 
 export function createApp(): Express {
   const app = express();
@@ -17,6 +18,7 @@ export function createApp(): Express {
   }
 
   app.use(healthRouter);
+  app.use("/api/v1/auth", authRouter);
 
   return app;
 }
