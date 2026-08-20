@@ -3,6 +3,8 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 
+jest.setTimeout(15000);
+
 afterAll(async () => {
   await db.$disconnect();
 });

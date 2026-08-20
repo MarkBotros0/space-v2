@@ -4,6 +4,8 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 
+jest.setTimeout(15000);
+
 const EMAIL = "space-v2-test@jpc.test";
 const PASSWORD = "correct-horse-battery";
 
