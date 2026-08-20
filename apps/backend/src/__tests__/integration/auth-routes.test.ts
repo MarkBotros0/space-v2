@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import bcrypt from "bcryptjs";
 import request from "supertest";
 
@@ -6,12 +8,27 @@ import { db } from "../../db/client";
 
 jest.setTimeout(15000);
 
-const EMAIL = "space-v2-test@jpc.test";
+// This suite runs against the shared live staging database (see README), so
+// two things matter: never collide with a concurrent/previous run, and never
+// leave a known-password account behind if afterAll doesn't get to run (CI
+// timeout, interrupt, etc). A unique email per run handles the first; a
+// startsWith/endsWith-scoped cleanup — both before creating and after —
+// handles the second without ever touching a row outside this pattern.
+const EMAIL_PREFIX = "space-v2-test-";
+const EMAIL_SUFFIX = "@jpc.test";
+const EMAIL = `${EMAIL_PREFIX}${randomUUID()}${EMAIL_SUFFIX}`;
 const PASSWORD = "correct-horse-battery";
+
+const testAccountFilter = { email: { startsWith: EMAIL_PREFIX, endsWith: EMAIL_SUFFIX } } as const;
 
 let userId: number;
 
 beforeAll(async () => {
+  // Self-heal: remove any stragglers from an interrupted previous run before
+  // creating this run's account. RefreshToken has onDelete: Cascade on its
+  // user relation, so this also clears any orphaned refresh tokens.
+  await db.user.deleteMany({ where: testAccountFilter });
+
   const user = await db.user.create({
     data: {
       email: EMAIL,
@@ -25,7 +42,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db.refreshToken.deleteMany({ where: { userId } });
-  await db.user.delete({ where: { id: userId } });
+  await db.user.deleteMany({ where: { id: userId } });
   await db.$disconnect();
 });
 
