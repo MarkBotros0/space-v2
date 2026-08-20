@@ -4,6 +4,7 @@ import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import { listGroupsForSeason } from "../lib/queries/groups";
+import { listSessionsForSeason } from "../lib/queries/sessions";
 import { canAccessSeason } from "../lib/permissions";
 import { isMentor, isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
@@ -119,4 +120,19 @@ seasonsRouter.get("/:id/groups", async (req, res) => {
     onlyStudentUserId: user.role === "STUDENT" ? user.userId : undefined,
   });
   return apiOk(res, { groups });
+});
+
+seasonsRouter.get("/:id/sessions", async (req, res) => {
+  const user = requireUser(req);
+  const seasonId = parseId(req.params.id);
+  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+
+  if (!(await canAccessSeason(user, seasonId))) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const sessions = await listSessionsForSeason(seasonId, {
+    includeCheckInToken: user.role !== "STUDENT",
+  });
+  return apiOk(res, { sessions });
 });
