@@ -1,0 +1,22 @@
+{
+  "name": "@space/config",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./eslint": "./eslint/index.js",
+    "./eslint-native": "./eslint/native.js",
+    "./prettier": "./prettier/index.js",
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/node.json": "./tsconfig/node.json",
+    "./tsconfig/react-native.json": "./tsconfig/react-native.json"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.34.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-native": "^4.1.0"
+  }
+}
