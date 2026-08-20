@@ -1,1 +1,1 @@
-module.exports = require("@space/config/eslint");
+module.exports = [...require("@space/config/eslint"), { ignores: ["src/generated/**"] }];
