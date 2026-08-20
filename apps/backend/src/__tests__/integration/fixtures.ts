@@ -112,6 +112,16 @@ export async function cleanupTestData(): Promise<void> {
     await db.season.deleteMany({ where: { id: { in: seasonIds } } });
   }
 
+  // EngagementNote and InviteToken are the only onDelete: Restrict relations
+  // targeting User that the season graph above does not already reach —
+  // EngagementNote.season is SetNull and InviteToken has no season link. Left
+  // in place, either one makes the user delete below throw and strands test
+  // rows in a database jpc-space is live against.
+  await db.engagementNote.deleteMany({
+    where: { OR: [{ studentUser: testUserFilter }, { authorUser: testUserFilter }] },
+  });
+  await db.inviteToken.deleteMany({ where: { invitedBy: testUserFilter } });
+
   await db.refreshToken.deleteMany({ where: { user: testUserFilter } });
   await db.studentProfile.deleteMany({ where: { user: testUserFilter } });
   await db.user.deleteMany({ where: testUserFilter });
