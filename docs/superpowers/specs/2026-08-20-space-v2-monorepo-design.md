@@ -178,9 +178,10 @@ Everything else is stubbed. On completion, `pnpm dev`, `pnpm typecheck`,
 
 ## Risks
 
-- **Shared database.** v2 writing to live v1 data is the main hazard. Mitigated
-  by copying migrations verbatim and creating none in this pass, but any
-  destructive operation needs to be treated as production work.
+- **Shared database.** The shared database is a staging environment, not
+  production, so v2 writing to it is low risk. Migrations are still copied
+  verbatim and none are created in this pass, to keep `_prisma_migrations`
+  consistent between the two repos.
 - **pnpm + React Native.** Hoisting problems surface as opaque Metro resolution
   errors. `shamefully-hoist=true` is the known fix and matches nanny-app.
 - **No-build shared package.** The backend's `tsc` build must be configured to
