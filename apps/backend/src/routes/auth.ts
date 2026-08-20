@@ -9,7 +9,7 @@ import rateLimit, { type Options as RateLimitOptions } from "express-rate-limit"
 import { loginRequestSchema, refreshRequestSchema } from "../../../../packages/shared/src/index";
 
 import { verifyCredentials } from "../lib/auth/credentials";
-import { issueSession, rotateRefreshToken } from "../lib/auth/tokens";
+import { issueSession, rotateRefreshToken, revokeRefreshToken } from "../lib/auth/tokens";
 import { apiOk, apiError } from "../lib/api-response";
 
 const rateLimitHandler: RateLimitOptions["handler"] = (_req, res) => {
@@ -60,4 +60,25 @@ authRouter.post("/refresh", refreshLimiter, async (req, res) => {
   }
 
   return apiOk(res, session);
+});
+
+// v1's logout takes the refresh token in the body and is not access-token
+// protected (jpc-space/src/app/api/v1/auth/logout/route.ts). Its body schema is
+// identical to refresh's, so the same shared schema validates it.
+//
+// Intentional divergence from v1: the refresh limiter is applied. This endpoint
+// performs an unauthenticated database write, and a legitimate client calls it
+// once per session, so rate limiting costs nothing and closes a cheap
+// write-amplification vector v1 left open.
+authRouter.post("/logout", refreshLimiter, async (req, res) => {
+  const parsed = refreshRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return apiError(res, "bad_request", "refreshToken is required.", 400);
+  }
+
+  // revokeRefreshToken uses updateMany, so an unknown or already-revoked token
+  // is a no-op. Returning 200 either way means logout is idempotent and never
+  // discloses whether a token existed.
+  await revokeRefreshToken(parsed.data.refreshToken);
+  return apiOk(res, { ok: true });
 });

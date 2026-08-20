@@ -6,6 +6,7 @@ import morgan from "morgan";
 import { config } from "./lib/config";
 import { healthRouter } from "./routes/health";
 import { authRouter } from "./routes/auth";
+import { meRouter } from "./routes/me";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -26,6 +27,7 @@ export function createApp(): Express {
 
   app.use(healthRouter);
   app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/me", meRouter);
 
   // Must be last: 404 catches anything unmatched above, the error handler
   // catches anything thrown (including JSON parse failures from express.json()).

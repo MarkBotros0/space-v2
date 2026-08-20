@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler } from "express";
 
 import { apiError } from "../lib/api-response";
+import { ForbiddenError, UnauthorizedError } from "../lib/auth/errors";
 
 /** body-parser (express.json()) rejects malformed bodies with a SyntaxError
  * carrying this `type`. Detecting it here lets us return the envelope shape
@@ -21,6 +22,18 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
 
   if (isBodyParseError(err)) {
     apiError(res, "bad_request", "Invalid JSON body.", 400);
+    return;
+  }
+
+  // v1 mapped these inside withApiAuth; Express 5 forwards async rejections
+  // here instead, so the mapping lives in one place for every route.
+  if (err instanceof ForbiddenError) {
+    apiError(res, "forbidden", "You don't have access to this.", 403);
+    return;
+  }
+
+  if (err instanceof UnauthorizedError) {
+    apiError(res, "unauthorized", "Not authenticated.", 401);
     return;
   }
 
