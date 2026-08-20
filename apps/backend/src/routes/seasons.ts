@@ -3,6 +3,7 @@ import { Router } from "express";
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
+import { listGroupsForSeason } from "../lib/queries/groups";
 import { canAccessSeason } from "../lib/permissions";
 import { isMentor, isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
@@ -103,4 +104,19 @@ seasonsRouter.get("/:id", async (req, res) => {
       leaderNames: g.leaders.map((l) => l.user.name).filter((n): n is string => Boolean(n)),
     })),
   });
+});
+
+seasonsRouter.get("/:id/groups", async (req, res) => {
+  const user = requireUser(req);
+  const seasonId = parseId(req.params.id);
+  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+
+  if (!(await canAccessSeason(user, seasonId))) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const groups = await listGroupsForSeason(seasonId, {
+    onlyStudentUserId: user.role === "STUDENT" ? user.userId : undefined,
+  });
+  return apiOk(res, { groups });
 });

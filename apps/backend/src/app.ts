@@ -6,6 +6,7 @@ import morgan from "morgan";
 import { config } from "./lib/config";
 import { healthRouter } from "./routes/health";
 import { authRouter } from "./routes/auth";
+import { groupsRouter } from "./routes/groups";
 import { meRouter } from "./routes/me";
 import { seasonsRouter } from "./routes/seasons";
 import { notFoundHandler } from "./middleware/not-found";
@@ -30,6 +31,7 @@ export function createApp(): Express {
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/me", meRouter);
   app.use("/api/v1/seasons", seasonsRouter);
+  app.use("/api/v1/groups", groupsRouter);
 
   // Must be last: 404 catches anything unmatched above, the error handler
   // catches anything thrown (including JSON parse failures from express.json()).
