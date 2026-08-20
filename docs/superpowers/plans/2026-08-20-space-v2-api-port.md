@@ -531,7 +531,6 @@ The authorization layer the spec called for and the login slice never needed. Sp
   - `isMentor(u: SessionUser): boolean`
   - `isAdminOfSeason(u: SessionUser, seasonId: number): boolean`
   - `isLeaderOfGroup(u: SessionUser, groupId: number): boolean`
-  - `isLeaderInSeason(u: SessionUser, seasonId: number): Promise<boolean>`
   - `canReadAllStudents(u: SessionUser): boolean`
   - `canManageUsers(u: SessionUser): boolean`
 - Produces, from `lib/permissions.ts` (all async):
@@ -544,7 +543,7 @@ The authorization layer the spec called for and the login slice never needed. Sp
 
 **Divergences from v1, both intentional:**
 1. v1's `rbac.ts` declares its own `SessionUser` interface. v2 already has an identical one in `lib/auth/tokens.ts` (it is what `verifyAccessToken` returns). `rbac.ts` imports that type instead of redeclaring it — two copies would drift, and the token's shape is the authoritative one.
-2. v1's `isLeaderInSeason` uses a dynamic `await import("@/lib/db")` to dodge a Next.js module cycle. v2 has no such cycle; use a normal top-level import.
+2. **`isLeaderInSeason` is not ported** (controller Ruling F1). It is the only async, database-touching function in v1's `rbac.ts`, and nothing in the 16 endpoints reaches it — it existed to serve `canGradeQuiz`, which this port excludes. Porting it would drag a `db` import into a module whose entire design point is that it is pure and unit-testable without a database. `rbac.ts` therefore imports **no** database client at all. If a later feature needs season-wide leader checks, re-add it then.
 
 - [ ] **Step 1: Write the failing unit tests**
 
@@ -706,11 +705,9 @@ export function parseId(raw: string | undefined): number | null {
 
 - [ ] **Step 4: Port the RBAC predicates**
 
-Create `apps/backend/src/lib/rbac.ts` — port of `jpc-space/src/lib/rbac.ts`:
+Create `apps/backend/src/lib/rbac.ts` — port of `jpc-space/src/lib/rbac.ts`, minus `isLeaderInSeason` (Ruling F1). Note there is deliberately **no** `db` import here: every predicate in this file answers from the token's claims alone.
 
 ```ts
-import { db } from "../db/client";
-
 import type { SessionUser } from "./auth/tokens";
 
 export function isSuper(u: SessionUser): boolean {
@@ -735,19 +732,6 @@ export function isAdminOfSeason(u: SessionUser, seasonId: number): boolean {
 
 export function isLeaderOfGroup(u: SessionUser, groupId: number): boolean {
   return u.groupLeaderIds.includes(groupId);
-}
-
-export async function isLeaderInSeason(u: SessionUser, seasonId: number): Promise<boolean> {
-  if (u.role === "SUPER") return true;
-  if (u.seasonAdminIds.includes(seasonId)) return true;
-  if (u.groupLeaderIds.length === 0) return false;
-  const count = await db.group.count({
-    where: {
-      seasonId,
-      id: { in: u.groupLeaderIds },
-    },
-  });
-  return count > 0;
 }
 
 export function canReadAllStudents(u: SessionUser): boolean {
@@ -3172,6 +3156,8 @@ describe("sendNotificationEmail", () => {
 
 Note: `jest.setup.ts` fills placeholders for `DATABASE_URL`/`AUTH_SECRET`, so `config` loads without a real `.env` — but if a real `.env` is present it wins and may already define `GMAIL_USER`. Set every key this test cares about explicitly (including to `undefined`) so the result does not depend on the developer's `.env`.
 
+**On `process.env` here (controller Ruling F3):** `CLAUDE.md` forbids reading `process.env` outside `src/lib/config.ts`. That rule binds `src/`, not `__tests__/`. `config.ts` snapshots the environment at module load, so a test that needs to vary configuration has no other lever short of inventing a dependency-injection seam for the test's sake alone. Setting `process.env` in this file is sanctioned; if lint objects, add an `eslint-disable-next-line` with a one-line reason rather than restructuring `config.ts`.
+
 - [ ] **Step 4: Run it to verify it fails**
 
 ```bash
@@ -4448,6 +4434,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(30000);
@@ -4503,7 +4490,9 @@ beforeAll(async () => {
   });
   assignmentId = assignment.id;
 
-  publicId = `spacev2te${Math.floor(Math.random() * 9) + 1}`;
+  // Same generator production uses — publicId is a @unique column, and a
+  // hand-rolled short id collides with a previous interrupted run (Ruling F2).
+  publicId = newPublicId();
   await db.submission.create({
     data: { assignmentId, studentUserId: owner.id, publicId, status: "DRAFT", text: "first draft" },
   });
@@ -5090,6 +5079,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { config } from "../../lib/config";
 import { db } from "../../db/client";
+import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(30000);
@@ -5125,7 +5115,8 @@ beforeAll(async () => {
     select: { id: true },
   });
 
-  publicId = `spacev2fi${Math.floor(Math.random() * 9) + 1}`;
+  // See Ruling F2 — production's generator, not a hand-rolled short id.
+  publicId = newPublicId();
   await db.submission.create({
     data: { assignmentId: assignment.id, studentUserId: owner.id, publicId, status: "DRAFT" },
   });
@@ -5452,12 +5443,56 @@ Expected: the listening line, no `ERR_MODULE_NOT_FOUND`. Leave it running for St
 
 - [ ] **Step 3: Curl every endpoint against the running server**
 
-With the server from Step 2 still up, log in as a real staging account and walk the surface. Write the script to `apps/backend/scripts/smoke.sh` so it is repeatable, and have it read credentials from the environment rather than embedding them:
+With the server from Step 2 still up, walk the whole surface over HTTP. Write the script to `apps/backend/scripts/smoke.sh` so it is repeatable.
+
+**Controller Ruling F4 — the script provisions its own account.** Do not ask anyone for a real staging password, and do not embed one. Before the curl walk, create a throwaway user via the same fixture path the integration suites use, and delete it at the end:
+
+```bash
+# Provision a disposable account (deleted in the trap below). Uses the same
+# space-v2-test- prefix the integration fixtures use, so the existing
+# prefix-scoped cleanup would also reclaim it if this script dies hard.
+SMOKE_EMAIL="${SMOKE_EMAIL:-}"
+SMOKE_PASSWORD="${SMOKE_PASSWORD:-}"
+PROVISIONED=0
+if [ -z "$SMOKE_EMAIL" ]; then
+  SMOKE_EMAIL="space-v2-test-smoke-$(node -e 'process.stdout.write(require("crypto").randomUUID())')@jpc.test"
+  SMOKE_PASSWORD="correct-horse-battery"
+  PROVISIONED=1
+  node -e "
+    require('ts-node').register({transpileOnly:true});
+    const {db}=require('../src/db/client');
+    const bcrypt=require('bcryptjs');
+    (async()=>{
+      await db.user.create({data:{email:process.argv[1],name:'Smoke Test',role:'STUDENT',
+        passwordHash:await bcrypt.hash(process.argv[2],10)}});
+      await db.\$disconnect();
+    })()
+  " "$SMOKE_EMAIL" "$SMOKE_PASSWORD"
+fi
+
+cleanup() {
+  [ "$PROVISIONED" = 1 ] || return 0
+  node -e "
+    require('ts-node').register({transpileOnly:true});
+    const {db}=require('../src/db/client');
+    (async()=>{
+      const u=await db.user.findUnique({where:{email:process.argv[1]},select:{id:true}});
+      if (u) { await db.refreshToken.deleteMany({where:{userId:u.id}});
+               await db.user.delete({where:{id:u.id}}); }
+      await db.\$disconnect();
+    })()
+  " "$SMOKE_EMAIL"
+}
+trap cleanup EXIT
+```
+
+An operator who *does* want to smoke as a real user can still pass `SMOKE_EMAIL=... SMOKE_PASSWORD=...` and the provisioning block is skipped. The rest of the script:
 
 ```bash
 #!/usr/bin/env bash
 # Smoke-test every /api/v1 endpoint against a running server.
-# Usage: SMOKE_EMAIL=... SMOKE_PASSWORD=... ./scripts/smoke.sh
+# Usage: ./scripts/smoke.sh            (provisions a throwaway account)
+#        SMOKE_EMAIL=... SMOKE_PASSWORD=... ./scripts/smoke.sh
 set -euo pipefail
 BASE="${BASE:-http://localhost:4000}"
 
@@ -5501,7 +5536,7 @@ echo "logged out"
 
 Run it and paste the real output. Expected: `200` for `/health`, `/me`, `/seasons`, and each season-scoped path the account can see; `400`, `401`, `404` for the three negative checks. **Never paste the token values or the credentials** — the script prints status codes only, keep it that way.
 
-If any season-scoped path is skipped because the account sees no seasons, say so explicitly in the report rather than presenting the run as full coverage.
+**Report the coverage honestly.** A freshly provisioned account is enrolled in nothing, so `/seasons` returns an empty list and the four season-scoped paths do not execute. That is the expected default outcome, and the report must say "season-scoped paths not exercised — throwaway account has no enrolments" rather than presenting the run as full coverage. The endpoints' behaviour with real data is what the integration suites cover; this step exists to prove the compiled server routes, authenticates, and returns the envelope over real HTTP.
 
 - [ ] **Step 4: Stop the server and confirm the database is clean**
 
