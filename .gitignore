@@ -4,6 +4,6 @@ node_modules/
 dist/
 .turbo/
 .expo/
-src/generated/
+**/src/generated/
 coverage/
 *.log
