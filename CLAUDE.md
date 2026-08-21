@@ -35,6 +35,17 @@ Mobile-first rebuild of JPC Space (`D:\Projects\JPC\jpc-space` is v1 and still r
   compile `packages/shared`). The mobile app never had one: an alias that
   Jest resolves but Metro doesn't would pass tests while breaking the running
   app. Both apps use relative imports — keep it that way.
+- **Always `gh auth switch --user MarkBotros0` before pushing.** `origin` is
+  `MarkBotros0/space-v2`, but this machine has five GitHub accounts in the
+  `gh` keyring and the active one drifts on its own between sessions
+  (`mbotros_effv`, `mark-aigorithm`, ... have all been active at various
+  points). Pushing as the wrong account fails with a misleading
+  `Repository not found` — the repo exists, the active token just can't see
+  it. Put the switch in the **same command** as the push so nothing can
+  change the active account in between:
+  ```
+  gh auth switch --user MarkBotros0 && git push -u origin <branch>
+  ```
 - **`apps/backend/src/routes/auth.ts` imports `@space/shared` by relative
   path, not the package name.** Because of the same `rootDir: "../.."` setup,
   `tsc` emits this file to `dist/apps/backend/src/routes/auth.js` without
