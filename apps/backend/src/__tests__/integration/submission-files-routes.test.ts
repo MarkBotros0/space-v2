@@ -1,12 +1,9 @@
-import { rm } from "node:fs/promises";
-import { resolve } from "node:path";
-
 import request from "supertest";
 
 import { createApp } from "../../app";
-import { config } from "../../lib/config";
 import { db } from "../../db/client";
 import { newPublicId } from "../../lib/public-id";
+import { getStorage } from "../../lib/storage";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 // Brief specifies 30000, but the shared Neon staging Postgres autosuspends —
@@ -82,10 +79,27 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Collect exactly the storage paths this run's uploads wrote, before the
+  // rows are cleaned up. Every SubmissionFile row here hangs off publicId or
+  // otherPublicId — the two submissions this suite created in beforeAll — so
+  // this query cannot see a file any other run or any real user wrote. The
+  // storagePath itself also embeds the submission's newPublicId() (see
+  // buildStorageKey), so even the filename on disk is unique to this run.
+  const files = await db.submissionFile.findMany({
+    where: { submission: { publicId: { in: [publicId, otherPublicId] } } },
+    select: { storagePath: true },
+  });
+
   await cleanupTestData();
   await db.$disconnect();
-  // Remove whatever the local driver actually wrote during this run.
-  await rm(resolve(config.localUploadsDir, "submissions"), { recursive: true, force: true });
+
+  // Unlink exactly those paths — never a directory, never anything derived
+  // from a shared/static name. LocalFsStorage#delete treats an already-gone
+  // file as a no-op, so this is safe even if a test above already deleted it.
+  const storage = getStorage();
+  for (const file of files) {
+    await storage.delete(file.storagePath);
+  }
 });
 
 describe("POST /api/v1/submissions/:publicId/files", () => {

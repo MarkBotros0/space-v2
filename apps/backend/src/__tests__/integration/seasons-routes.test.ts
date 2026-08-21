@@ -19,7 +19,6 @@ let superToken: string;
 let adminToken: string;
 let studentToken: string;
 let outsiderToken: string;
-let studentUserId: number;
 
 beforeAll(async () => {
   await cleanupTestData();
@@ -33,7 +32,6 @@ beforeAll(async () => {
   const adminUser = await createTestUser("admin", "ADMIN");
   const student = await createTestUser("student", "STUDENT");
   const outsider = await createTestUser("outsider", "STUDENT");
-  studentUserId = student.id;
 
   // Admin is scoped to `seasonId` only — the token must not open otherSeasonId.
   await db.seasonAdmin.create({ data: { seasonId, userId: adminUser.id } });
@@ -160,6 +158,5 @@ describe("GET /api/v1/seasons/:id", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.groups).toHaveLength(1);
     expect(res.body.data.groups[0].name).toBe("Test Group A");
-    expect(studentUserId).toEqual(expect.any(Number));
   });
 });

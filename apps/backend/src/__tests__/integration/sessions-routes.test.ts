@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(30000);
@@ -15,6 +16,10 @@ let adminToken: string;
 let studentToken: string;
 let outsiderToken: string;
 let studentUserId: number;
+// checkInToken is @unique on Session; generating it rather than hard-coding
+// a literal avoids a collision with a leftover row from an interrupted
+// previous run.
+let checkInToken: string;
 
 beforeAll(async () => {
   await cleanupTestData();
@@ -33,6 +38,7 @@ beforeAll(async () => {
     data: { seasonId, studentUserId: student.id, status: "ACTIVE" },
   });
 
+  checkInToken = newPublicId();
   const session = await db.session.create({
     data: {
       seasonId,
@@ -41,7 +47,7 @@ beforeAll(async () => {
       startsAt: new Date("2099-03-01T18:00:00.000Z"),
       durationMinutes: 90,
       location: "Hall",
-      checkInToken: "test-check-in-token",
+      checkInToken,
     },
     select: { id: true },
   });
@@ -73,7 +79,7 @@ describe("GET /api/v1/seasons/:id/sessions", () => {
       location: "Hall",
       attendanceMarked: false,
       seasonId,
-      checkInToken: "test-check-in-token",
+      checkInToken,
     });
   });
 
@@ -86,7 +92,7 @@ describe("GET /api/v1/seasons/:id/sessions", () => {
     expect(res.body.data.sessions).toHaveLength(1);
     expect(res.body.data.sessions[0].checkInToken).toBeNull();
     // Belt and braces: the value must not appear anywhere in the payload.
-    expect(JSON.stringify(res.body)).not.toContain("test-check-in-token");
+    expect(JSON.stringify(res.body)).not.toContain(checkInToken);
   });
 
   it("returns 403 for a user with no access to the season", async () => {
@@ -116,7 +122,7 @@ describe("GET /api/v1/sessions/:id", () => {
       canMarkAttendance: true,
     });
     expect(res.body.data).not.toHaveProperty("checkInToken");
-    expect(JSON.stringify(res.body)).not.toContain("test-check-in-token");
+    expect(JSON.stringify(res.body)).not.toContain(checkInToken);
   });
 
   it("returns canMarkAttendance false and myAttendance for a student", async () => {

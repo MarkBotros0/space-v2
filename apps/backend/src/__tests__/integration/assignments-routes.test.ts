@@ -197,7 +197,6 @@ describe("GET /api/v1/assignments/:id", () => {
       .set("authorization", `Bearer ${studentToken}`);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("forbidden");
-    expect(groupAId).toEqual(expect.any(Number));
   });
 
   it("allows the targeted group's student through", async () => {

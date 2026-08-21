@@ -11,10 +11,22 @@ jest.mock("nodemailer", () => ({
 function loadEmail(env: Record<string, string | undefined>) {
   jest.resetModules();
   const saved = { ...process.env };
-  Object.assign(process.env, env);
+  for (const [k, v] of Object.entries(env)) {
+    // Object.assign(process.env, { KEY: undefined }) does NOT delete the key —
+    // Node's env setter coerces it to the string "undefined", which is truthy
+    // and would pass z.string().optional() in config.ts. Deleting explicitly
+    // is the only way to simulate an unset env var.
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- inline import() type needed here so require() re-runs against a fresh module registry per call
   const mod = require("../lib/email") as typeof import("../lib/email");
-  process.env = saved;
+  // Restore by mutating the existing process.env object rather than
+  // reassigning it — reassignment (`process.env = saved`) would swap in a
+  // plain object that stores real `undefined`s, masking the coercion bug
+  // above for every test after the first.
+  for (const k of Object.keys(process.env)) delete process.env[k];
+  Object.assign(process.env, saved);
   return mod;
 }
 

@@ -223,6 +223,5 @@ describe("POST /api/v1/sessions/:id/check-in-close", () => {
       .post(`/api/v1/sessions/${sessionId}/check-in-close`)
       .set("authorization", `Bearer ${studentToken}`);
     expect(res.status).toBe(403);
-    expect(seasonId).toEqual(expect.any(Number));
   });
 });

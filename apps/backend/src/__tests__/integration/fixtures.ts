@@ -84,6 +84,16 @@ export async function login(app: Express, email: string): Promise<string> {
  *
  * Seasons are discovered by prefix, not by ids captured in this process, so an
  * interrupted previous run self-heals on the next run's beforeAll.
+ *
+ * SERIAL EXECUTION IS REQUIRED. This function is prefix-global: it deletes
+ * every "space-v2-test-" row in the database, not just the ones the calling
+ * suite created. Every integration suite calls it from both beforeAll and
+ * afterAll, so if two suites' lifecycles ever interleave, one suite's cleanup
+ * can delete another suite's in-flight fixtures mid-test. This is only safe
+ * because integration suites always run one at a time — enforced by
+ * `apps/backend/jest.integration.config.js` (`maxWorkers: 1`), which
+ * `test:integration` in package.json points at. Do not run this suite set
+ * with a config or invocation that allows parallel workers.
  */
 export async function cleanupTestData(): Promise<void> {
   const seasons = await db.season.findMany({

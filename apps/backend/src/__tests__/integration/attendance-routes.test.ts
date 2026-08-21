@@ -181,6 +181,5 @@ describe("POST /api/v1/sessions/:id/attendance", () => {
       .send({ entries: [] });
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ saved: 0 });
-    expect(seasonId).toEqual(expect.any(Number));
   });
 });
