@@ -2,7 +2,10 @@ import { db } from "../../db/client";
 import { flagLowAttendance } from "../../lib/attendance-notifications";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 
-jest.setTimeout(30000);
+// 60s, not the 30s the other integration suites use: this beforeAll performs
+// ~9 sequential writes, and the shared Neon staging database autosuspends —
+// a cold first query measured ~18s, which puts a cold run near 34s.
+jest.setTimeout(60000);
 
 let seasonId: number;
 let groupId: number;
