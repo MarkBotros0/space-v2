@@ -2,9 +2,39 @@
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": ["**/.env.*", ".env", "**/.env"],
   "tasks": {
+    // The Prisma client is generated code, gitignored, and therefore absent on
+    // a clean clone — which is exactly what CI and Vercel get. Modelling it as
+    // a task (rather than shelling `prisma generate &&` into each script) means
+    // it runs once, is cached on the schema alone, and can be depended on by
+    // build, typecheck and the test tasks alike. Packages without a
+    // `db:generate` script simply skip it.
+    "db:generate": {
+      "inputs": ["prisma/schema.prisma"],
+      "outputs": ["src/generated/**"]
+    },
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**"]
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": ["dist/**", "build/**"],
+      // Declared so Vercel does not strip them from the build environment and
+      // so a changed value correctly busts the cache. The build itself reads
+      // none of them today — `prisma generate` needs no DATABASE_URL because
+      // the datasource carries no `url` (Prisma 7 driver adapters supply it at
+      // runtime) — but the app reads them when it boots.
+      "env": [
+        "DATABASE_URL",
+        "AUTH_SECRET",
+        "PORT",
+        "NODE_ENV",
+        "TRUST_PROXY",
+        "MOBILE_APP_ORIGIN",
+        "GMAIL_USER",
+        "GMAIL_APP_PASSWORD",
+        "AUTH_URL",
+        "STORAGE_DRIVER",
+        "LOCAL_UPLOADS_DIR",
+        "MAX_UPLOAD_BYTES",
+        "ENABLE_API_DOCS"
+      ]
     },
     "dev": {
       "cache": false,
@@ -14,18 +44,20 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "db:generate"],
       "outputs": []
     },
+    // No `coverage/**` output: no package runs jest with --coverage, so
+    // declaring it made turbo warn "no output files found" on every run.
     "test:unit": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "dependsOn": ["^build", "db:generate"],
+      "outputs": []
     },
     // Never cached: these tests hit the shared staging database, which Turborepo
     // cannot see. A cache hit would report success for a database that may be
     // unreachable or changed since the run that populated the cache.
     "test:integration": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "db:generate"],
       "cache": false,
       "outputs": []
     },
