@@ -11,6 +11,16 @@ Mobile-first rebuild of JPC Space (`D:\Projects\JPC\jpc-space` is v1 and still r
 
 ## Hard constraints
 
+- **`D:\Projects\JPC\jpc-space` is READ-ONLY.** It is the reference
+  implementation and the source of truth for behaviour — read it constantly,
+  never write to it. No edits, no refactors, no "small fixes", no new files,
+  no `git` operations in that repo. If something there looks wrong, report it;
+  do not touch it.
+- **The whole product is being migrated into this monorepo** — `apps/mobile`
+  and `apps/backend` together replace jpc-space entirely, including the admin
+  and super surfaces. jpc-space is retired once that is done, not before.
+- **Everything goes in the mobile app.** All 104 of v1's pages, admin and
+  super included, become React Native screens. There is no `apps/admin`.
 - **Shared staging database with v1.** No migrations are created here.
   `prisma/migrations/` is a verbatim copy of v1's.
 - **Passwords are bcryptjs.** Existing hashes are bcrypt; any other algorithm
