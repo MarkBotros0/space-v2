@@ -78,7 +78,7 @@ integration before a single report screen exists is speculative.
 | File | Responsibility |
 |---|---|
 | `theme/tokens.ts` | Brand colours, spacing, radii, typography scale — from v1's `globals.css` |
-| `theme/index.ts` | `useTheme()` and the provider |
+| `theme/index.tsx` | `useTheme()` and the provider |
 | `ui/Text.tsx` | Typography component bound to the scale |
 | `ui/Button.tsx` | Primary/secondary/ghost, loading and disabled states |
 | `ui/Input.tsx` | Text field with label and error slot |
@@ -396,7 +396,7 @@ the two apps look like one product during the transition.
 
 **Files:**
 - Create: `apps/mobile/src/theme/tokens.ts`
-- Create: `apps/mobile/src/theme/index.ts`
+- Create: `apps/mobile/src/theme/index.tsx`
 - Test: `apps/mobile/src/__tests__/theme.test.ts`
 
 **Interfaces:**
@@ -435,6 +435,23 @@ describe("theme tokens", () => {
     }
   });
 
+  it("gives every role the badge colour v1 gives it", () => {
+    // v1's globals.css defines a background/foreground pair per role and uses
+    // them for badges on nearly every page. Porting them here rather than in
+    // Phase 1 stops 104 screens each inventing their own.
+    for (const role of ["SUPER", "ADMIN", "LEADER", "STUDENT", "MENTOR"] as const) {
+      expect(colors.role[role].background).toMatch(/^#[0-9A-F]{6}$/i);
+      expect(colors.role[role].foreground).toMatch(/^#[0-9A-F]{6}$/i);
+    }
+    // Pinned by reference, not by hex: v1 aliases these with var(), so the
+    // badge must stay equal to the ramp it points at even if the ramp changes.
+    expect(colors.role.SUPER.background).toBe(colors.brand.navy[900]);
+    expect(colors.role.ADMIN.background).toBe(colors.brand.teal[500]);
+    expect(colors.role.LEADER.background).toBe(colors.purple[500]);
+    expect(colors.role.STUDENT.background).toBe(colors.warning[500]);
+    expect(colors.role.MENTOR.background).toBe(colors.success[500]);
+  });
+
   it("uses a 4pt spacing scale", () => {
     expect(spacing.xs).toBe(4);
     expect(spacing.sm).toBe(8);
@@ -468,7 +485,7 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Write the tokens**
 
 Create `apps/mobile/src/theme/tokens.ts`. Copy the navy, teal, neutral,
-success, warning and danger ramps verbatim from v1's `globals.css`. Shape:
+success, warning, error, info and purple ramps verbatim from v1's `globals.css`. Shape:
 
 ```ts
 /**
@@ -491,6 +508,20 @@ export const colors = {
   error: { 50: "#FEF2F2", /* … */ 500: "#EF4444", /* … */ },
   info: { /* from globals.css */ },
   purple: { /* from globals.css — used by charts and accents */ },
+  /**
+   * Role badge colours, from globals.css's --color-role-* block. v1 aliases
+   * each to a ramp with var() rather than hardcoding a hex — do the same by
+   * referencing the ramp, so editing a ramp cannot desync the badge.
+   */
+  role: {
+    SUPER: { background: /* navy 900 */, foreground: "#FFFFFF" },
+    // ADMIN's foreground is navy 900, not white — teal 500 is too light for
+    // white text. Copy the pairing from globals.css; do not assume white.
+    ADMIN: { background: /* teal 500 */, foreground: /* navy 900 */ },
+    LEADER: { background: /* purple 500 */, foreground: "#FFFFFF" },
+    STUDENT: { background: /* warning 500 */, foreground: "#FFFFFF" },
+    MENTOR: { background: /* success 500 */, foreground: "#FFFFFF" },
+  },
   white: "#FFFFFF",
   black: "#000000",
 } as const;
@@ -515,7 +546,7 @@ to `danger` or invent ramps it does not have.
 
 - [ ] **Step 4: Write the provider**
 
-Create `apps/mobile/src/theme/index.ts` exporting a `Theme` type, a
+Create `apps/mobile/src/theme/index.tsx` exporting a `Theme` type, a
 `ThemeProvider`, and `useTheme()`. Keep it a single light theme for now — dark
 mode is not in Phase 0 and a provider with one value is enough to make adding
 it later a change in one file rather than everywhere.
