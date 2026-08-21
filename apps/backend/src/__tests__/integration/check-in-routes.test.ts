@@ -165,6 +165,26 @@ describe("POST /api/v1/sessions/check-in", () => {
     expect(res.body.error.code).toBe("invalid_token");
   });
 
+  it("rejects a check-in more than three hours after opening", async () => {
+    const token = await openCheckIn();
+
+    // Backdate the open time past the 3h hard stop. This is the only control
+    // that stops a forgotten-open session accepting check-ins indefinitely,
+    // so it needs coverage independent of the explicit close path.
+    await db.session.update({
+      where: { id: sessionId },
+      data: { checkInOpenAt: new Date(Date.now() - 4 * 60 * 60 * 1000), checkInClosedAt: null },
+    });
+
+    const res = await request(app)
+      .post("/api/v1/sessions/check-in")
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ token });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("closed");
+  });
+
   it("returns 400 when the token is missing", async () => {
     const res = await request(app)
       .post("/api/v1/sessions/check-in")
