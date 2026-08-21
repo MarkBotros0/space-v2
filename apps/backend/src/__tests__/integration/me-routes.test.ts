@@ -6,7 +6,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 
-jest.setTimeout(15000);
+jest.setTimeout(60000);
 
 // Runs against the shared live staging database. Same discipline as
 // auth-routes.test.ts: a unique email per run, and every cleanup scoped to the

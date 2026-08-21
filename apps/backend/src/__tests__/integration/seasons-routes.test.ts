@@ -9,7 +9,10 @@ import {
   login,
 } from "./fixtures";
 
-jest.setTimeout(30000);
+// 60s, not the Jest default: the shared Neon staging database autosuspends, so
+// the first query after idle costs ~18s and this suite's beforeAll performs
+// several sequential writes.
+jest.setTimeout(60000);
 
 const app = createApp();
 

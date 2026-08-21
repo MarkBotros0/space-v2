@@ -6,7 +6,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 
-jest.setTimeout(15000);
+jest.setTimeout(60000);
 
 // This suite runs against the shared live staging database (see README), so
 // two things matter: never collide with a concurrent/previous run, and never

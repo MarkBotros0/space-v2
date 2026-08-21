@@ -3,7 +3,10 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 
-jest.setTimeout(15000);
+// 60s, not the Jest default: the shared Neon staging database autosuspends, so
+// the first query after idle costs ~18s and this suite's beforeAll performs
+// several sequential writes.
+jest.setTimeout(60000);
 
 afterAll(async () => {
   await db.$disconnect();
