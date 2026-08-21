@@ -30,8 +30,11 @@ function fromAddress(): string {
   return `JPC Space <${config.gmailUser}>`;
 }
 
-// renderShell and buttonHtml are copied from jpc-space/src/lib/email.ts so the
-// mail is visually identical across the two backends during the transition.
+// renderShell is copied verbatim from jpc-space/src/lib/email.ts so the
+// outer mail shell is visually identical across the two backends during the
+// transition. buttonHtml is NOT a copy: v1 renders a centered teal button
+// plus a raw-URL fallback paragraph; this renders a single inline navy link
+// with no fallback. The simplification is deliberate — not a parity bug.
 function renderShell(title: string, subtitle: string, bodyHtml: string): string {
   return `
 <!DOCTYPE html>
