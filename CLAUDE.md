@@ -91,7 +91,29 @@ client together under the proxy's IP. `MOBILE_APP_ORIGIN` — CORS origin
 allowed to call the API; default `"*"` (matches the app this backend was
 ported from).
 
+## API surface
+
+`apps/backend` now serves all of v1's `/api/v1` — every route file v1 had
+under that prefix has a ported counterpart here. `src/routes/` mirrors v1's
+route tree file-for-file (`auth.ts`, `me.ts`, `seasons.ts`, `groups.ts`,
+`sessions.ts`, `assignments.ts`, `submissions.ts`, plus `health.ts`).
+Authorization runs through two layers: `lib/rbac.ts` holds pure predicates
+over a decoded token's claims (role, `seasonAdminIds`, `groupLeaderIds`), and
+`lib/permissions.ts` holds the database-backed gates that check a specific
+row's ownership/scope before a handler proceeds. `lib/public-id.ts`
+deliberately does **not** use `nanoid` — v1's generator is nanoid v5, which is
+ESM-only, and this backend compiles to CommonJS, so requiring it would throw
+`ERR_REQUIRE_ESM` at runtime. `newPublicId()` reimplements the same alphabet
+and length using `node:crypto` instead; ids from the two backends are
+indistinguishable. Do not "restore" `nanoid` here.
+
+Still outstanding: the mobile screens for the newly-ported endpoints, and
+the file-download route (submission files can be uploaded and deleted but
+not read back — v1's `/api/uploads/[...path]` still owns that). See
+`apps/backend/README.md` for the full endpoint and environment reference.
+
 ## Docs
 
 - Design: `docs/superpowers/specs/2026-08-20-space-v2-monorepo-design.md`
 - Plan: `docs/superpowers/plans/2026-08-20-space-v2-scaffold.md`
+- API port plan: `docs/superpowers/plans/2026-08-20-space-v2-api-port.md`

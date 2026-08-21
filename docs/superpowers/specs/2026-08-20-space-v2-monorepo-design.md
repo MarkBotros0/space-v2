@@ -26,6 +26,16 @@ Out of scope: an admin web app (the workspace stays open to adding
 `apps/admin` later), and porting the rest of v1's feature surface. Endpoints
 and screens land feature by feature after this pass.
 
+> **Update, 2026-08-21:** the remaining `/api/v1` endpoints landed in a second
+> pass (`docs/superpowers/plans/2026-08-20-space-v2-api-port.md`) — every v1
+> route file under `/api/v1` now has a ported counterpart in
+> `apps/backend/src/routes/`. The scope statement above describes what this
+> first pass covered and is left as written. What remains outstanding after
+> the second pass: the mobile screens for the newly-ported endpoints, and the
+> file-download route (submission files can be uploaded and deleted but not
+> read back — v1's `/api/uploads/[...path]` still owns that). See
+> `apps/backend/README.md` for the endpoint and environment reference.
+
 ## Workspace layout
 
 ```
