@@ -17,4 +17,11 @@ const base = require("./jest.config.js");
 module.exports = {
   ...base,
   maxWorkers: 1,
+  // Warms the shared Neon staging connection before any suite runs. Neon
+  // autosuspends when idle; a cold first query commonly ETIMEDOUTs before
+  // Neon finishes waking, which otherwise takes down whichever suite happens
+  // to run first. See jest.integration.global-setup.js for the retry logic.
+  // Not wired into jest.config.js (unit tests) — those must keep running
+  // with no database.
+  globalSetup: "<rootDir>/jest.integration.global-setup.js",
 };
