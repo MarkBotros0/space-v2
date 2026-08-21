@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import multer from "multer";
 
 import { db } from "../db/client";
@@ -40,7 +40,13 @@ async function loadSubmissionForApi(publicId: string) {
       },
       studentUser: { select: { name: true, email: true } },
       files: {
-        select: { id: true, originalName: true, storagePath: true, mimeType: true, sizeBytes: true },
+        select: {
+          id: true,
+          originalName: true,
+          storagePath: true,
+          mimeType: true,
+          sizeBytes: true,
+        },
         orderBy: { uploadedAt: "asc" },
       },
     },
@@ -135,63 +141,89 @@ function mimeAllowed(mime: string, categories: string[]): boolean {
   return categories.some((c) => MIME_CATEGORY_MAP[c]?.test(mime) ?? false);
 }
 
-submissionsRouter.post("/:publicId/files", upload.single("file"), async (req, res) => {
-  const user = requireUser(req);
-  // Adding upload.single() as a second handler changes which IRouterMatcher
-  // overload TS picks, widening req.params to the default ParamsDictionary
-  // (string | string[]) instead of the route-literal-derived { publicId:
-  // string }. Narrow it the same way the fileId query param is narrowed below.
-  const publicId = typeof req.params.publicId === "string" ? req.params.publicId : undefined;
-
-  const sub = await db.submission.findUnique({
-    where: { publicId: publicId ?? "" },
-    select: {
-      id: true,
-      studentUserId: true,
-      assignment: { select: { maxFileSizeMb: true, allowedMimeCategories: true } },
-    },
-  });
-  if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
-  if (sub.studentUserId !== user.userId) throw new ForbiddenError();
-
-  const file = req.file;
-  if (!file) return apiError(res, "bad_request", "No file provided.", 400);
-
-  const maxMb = sub.assignment.maxFileSizeMb;
-  if (maxMb && file.size > maxMb * 1024 * 1024) {
-    return apiError(res, "file_too_large", `File exceeds ${maxMb} MB.`, 400);
+/**
+ * Refuse uploads before multer reads the body.
+ *
+ * Placement is the whole point. multer buffers the entire file into memory so
+ * the per-assignment `maxFileSizeMb` check has something to measure, which
+ * means a guard sitting *after* it would still pay the full
+ * `MAX_UPLOAD_BYTES` memory cost for a request it was always going to refuse.
+ * In front, this answers without reading a byte.
+ *
+ * 503 rather than 403 or 404: the endpoint exists and the caller is entitled
+ * to it — the capability is switched off. A client can reasonably surface
+ * "file uploads aren't available yet" and retry later.
+ */
+const requireUploadsEnabled: RequestHandler = (_req, res, next) => {
+  if (!config.enableUploads) {
+    apiError(res, "uploads_disabled", "File uploads are temporarily unavailable.", 503);
+    return;
   }
-  if (!mimeAllowed(file.mimetype, sub.assignment.allowedMimeCategories)) {
-    return apiError(res, "mime_not_allowed", `File type ${file.mimetype} not allowed.`, 400);
-  }
+  next();
+};
 
-  // busboy (under multer) decodes multipart filenames as latin1, so a UTF-8
-  // name like "تقرير.txt" arrives mojibake'd and would be stored that way.
-  // v1 read the body with the web formData() API, which decodes UTF-8
-  // correctly — recovering the raw bytes and re-decoding restores parity.
-  // Pure-ASCII names round-trip unchanged.
-  const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
+submissionsRouter.post(
+  "/:publicId/files",
+  requireUploadsEnabled,
+  upload.single("file"),
+  async (req, res) => {
+    const user = requireUser(req);
+    // Adding upload.single() as a second handler changes which IRouterMatcher
+    // overload TS picks, widening req.params to the default ParamsDictionary
+    // (string | string[]) instead of the route-literal-derived { publicId:
+    // string }. Narrow it the same way the fileId query param is narrowed below.
+    const publicId = typeof req.params.publicId === "string" ? req.params.publicId : undefined;
 
-  const key = buildStorageKey({
-    bucket: "submissions",
-    publicId: newPublicId(),
-    originalName,
-  });
-  const put = await getStorage().put(key, file.buffer, { mime: file.mimetype });
+    const sub = await db.submission.findUnique({
+      where: { publicId: publicId ?? "" },
+      select: {
+        id: true,
+        studentUserId: true,
+        assignment: { select: { maxFileSizeMb: true, allowedMimeCategories: true } },
+      },
+    });
+    if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
+    if (sub.studentUserId !== user.userId) throw new ForbiddenError();
 
-  const created = await db.submissionFile.create({
-    data: {
-      submissionId: sub.id,
+    const file = req.file;
+    if (!file) return apiError(res, "bad_request", "No file provided.", 400);
+
+    const maxMb = sub.assignment.maxFileSizeMb;
+    if (maxMb && file.size > maxMb * 1024 * 1024) {
+      return apiError(res, "file_too_large", `File exceeds ${maxMb} MB.`, 400);
+    }
+    if (!mimeAllowed(file.mimetype, sub.assignment.allowedMimeCategories)) {
+      return apiError(res, "mime_not_allowed", `File type ${file.mimetype} not allowed.`, 400);
+    }
+
+    // busboy (under multer) decodes multipart filenames as latin1, so a UTF-8
+    // name like "تقرير.txt" arrives mojibake'd and would be stored that way.
+    // v1 read the body with the web formData() API, which decodes UTF-8
+    // correctly — recovering the raw bytes and re-decoding restores parity.
+    // Pure-ASCII names round-trip unchanged.
+    const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
+
+    const key = buildStorageKey({
+      bucket: "submissions",
+      publicId: newPublicId(),
       originalName,
-      storagePath: put.path,
-      mimeType: file.mimetype || "application/octet-stream",
-      sizeBytes: file.size,
-    },
-    select: { id: true, originalName: true, mimeType: true, sizeBytes: true },
-  });
+    });
+    const put = await getStorage().put(key, file.buffer, { mime: file.mimetype });
 
-  return apiOk(res, { file: created }, 201);
-});
+    const created = await db.submissionFile.create({
+      data: {
+        submissionId: sub.id,
+        originalName,
+        storagePath: put.path,
+        mimeType: file.mimetype || "application/octet-stream",
+        sizeBytes: file.size,
+      },
+      select: { id: true, originalName: true, mimeType: true, sizeBytes: true },
+    });
+
+    return apiOk(res, { file: created }, 201);
+  },
+);
 
 submissionsRouter.delete("/:publicId/files", async (req, res) => {
   const user = requireUser(req);

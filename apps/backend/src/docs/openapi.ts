@@ -885,8 +885,16 @@ export const openApiDocument = {
       post: {
         tags: ["Submissions"],
         summary: "Attach a file",
-        description:
-          "Author only. The assignment's own `maxFileSizeMb` and `allowedMimeCategories` are enforced after upload; a process-level ceiling (`MAX_UPLOAD_BYTES`, 25 MB by default) rejects anything larger before the handler runs.",
+        description: [
+          "**Currently disabled.** `ENABLE_UPLOADS` defaults to `false` while file and image",
+          "handling moves to a CMS, so this returns `503 uploads_disabled` — refused before the",
+          "request body is read, so a large upload costs the server nothing. Reading and deleting",
+          "files already recorded are unaffected.",
+          "",
+          "When enabled: author only. The assignment's own `maxFileSizeMb` and",
+          "`allowedMimeCategories` are enforced after upload; a process-level ceiling",
+          "(`MAX_UPLOAD_BYTES`, 25 MB by default) rejects anything larger before the handler runs.",
+        ].join("\n"),
         parameters: [publicIdParam],
         requestBody: {
           required: true,
@@ -925,6 +933,11 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+          503: {
+            description:
+              "`uploads_disabled` — `ENABLE_UPLOADS` is off. The current default; retry once uploads are re-enabled.",
+            content: { "application/json": { schema: errorResponse } },
+          },
         },
       },
       delete: {

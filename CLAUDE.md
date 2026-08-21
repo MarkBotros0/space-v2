@@ -120,6 +120,16 @@ Two endpoints here are **not** ports and deliberately diverge from v1:
   `formData()` API, which decodes UTF-8. Without this, a non-ASCII filename is
   stored mojibake'd. Do not "simplify" it back to `file.originalname`.
 
+**Uploads are switched off.** `ENABLE_UPLOADS` defaults to `false`, so
+`POST /api/v1/submissions/:publicId/files` returns `503 uploads_disabled`
+while file/image handling moves to a CMS. The guard is mounted **in front of**
+`upload.single("file")` on purpose: multer buffers the whole body to make the
+per-assignment size check possible, so a guard behind it would still pay the
+full `MAX_UPLOAD_BYTES` memory cost for a request it was always going to
+refuse. Do not reorder it. Only uploading is gated — reading and deleting
+recorded files still work. A CMS becomes a third `Storage` driver beside
+`LocalFsStorage` and `S3Storage`; no route changes.
+
 Swagger UI is at `/api/docs`, the raw OpenAPI 3.1 document at `/api/docs.json`
 (`ENABLE_API_DOCS=false` withholds both). It is hand-authored in
 `src/docs/openapi.ts` — responses are TS interfaces rather than Zod, so there

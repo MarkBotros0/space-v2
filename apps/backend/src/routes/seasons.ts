@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
+import type { Prisma } from "../generated/prisma/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import {
@@ -22,7 +23,13 @@ seasonsRouter.get("/", async (req, res) => {
 
   // The visibility rule is expressed as a Prisma filter rather than a
   // post-fetch filter so a season a user cannot see is never read at all.
-  const where =
+  //
+  // Explicitly typed, not inferred: without a contextual type these object
+  // literals infer `deletedAt: any` under any compiler that has
+  // strictNullChecks off (TS7018), which is how this broke a deploy whose
+  // toolchain did not use tsconfig.build.json. The annotation also catches a
+  // mistyped filter key here rather than at runtime.
+  const where: Prisma.SeasonWhereInput =
     isSuper(user) || isMentor(user)
       ? { deletedAt: null }
       : user.role === "ADMIN"

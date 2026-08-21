@@ -30,6 +30,18 @@ const envSchema = z.object({
   // before the per-assignment maxFileSizeMb check can run, so this bounds what
   // one request can allocate. 25 MB.
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(25 * 1024 * 1024),
+  // Accept file uploads on POST /api/v1/submissions/:publicId/files.
+  //
+  // Defaults OFF. Uploads currently land on the local filesystem, which costs
+  // the server disk and memory (multer buffers each file whole) and does not
+  // survive a redeploy on an ephemeral host. File and image handling is moving
+  // to a CMS; until that driver exists, the endpoint rejects with 503
+  // `uploads_disabled` before reading the body. Reads and deletes of files
+  // already recorded are unaffected.
+  ENABLE_UPLOADS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
   // Serve the OpenAPI document and Swagger UI at /api/docs. Defaults on: the
   // surface is not secret and the docs are how the mobile app is built against
   // it. Set to "false" in a deployment that would rather not publish it.
@@ -57,5 +69,6 @@ export const config = {
   storageDriver: parsed.data.STORAGE_DRIVER,
   localUploadsDir: parsed.data.LOCAL_UPLOADS_DIR,
   maxUploadBytes: parsed.data.MAX_UPLOAD_BYTES,
+  enableUploads: parsed.data.ENABLE_UPLOADS,
   enableApiDocs: parsed.data.ENABLE_API_DOCS,
 } as const;

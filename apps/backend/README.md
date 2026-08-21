@@ -30,7 +30,7 @@ All paths below are relative to the server root. Everything except
 | GET | `/api/v1/assignments/:id` | |
 | GET | `/api/v1/submissions/:publicId` | |
 | PATCH | `/api/v1/submissions/:publicId` | Draft save / submit. |
-| POST | `/api/v1/submissions/:publicId/files` | Upload (multer, `MAX_UPLOAD_BYTES` ceiling). |
+| POST | `/api/v1/submissions/:publicId/files` | **Disabled by default** — `503 uploads_disabled` unless `ENABLE_UPLOADS=true`. |
 | DELETE | `/api/v1/submissions/:publicId/files` | `?fileId=` — author only. |
 | GET | `/api/v1/submissions/:publicId/files/:fileId` | Streams the file. Not a port of v1 — see below. |
 
@@ -57,6 +57,7 @@ read outside that file). See `.env.example` for the full list.
 | `STORAGE_DRIVER` | No | `local` | `"local"` writes to `LOCAL_UPLOADS_DIR`; `"s3"` is a throwing stub, as in v1. |
 | `LOCAL_UPLOADS_DIR` | No | `./uploads` | Only used when `STORAGE_DRIVER=local`. |
 | `MAX_UPLOAD_BYTES` | No | `26214400` (25 MB) | Hard ceiling multer enforces before the per-assignment `maxFileSizeMb` check runs. |
+| `ENABLE_UPLOADS` | No | **`false`** | Accept file uploads. Off while file handling moves to a CMS — see below. |
 | `ENABLE_API_DOCS` | No | `true` | Serves Swagger UI at `/api/docs` and the OpenAPI document at `/api/docs.json`. Set `false` to withhold them. |
 
 **When `GMAIL_USER`/`GMAIL_APP_PASSWORD` are unset:** `sendNotificationEmail`
@@ -81,6 +82,36 @@ clickable button/link.
   ~2s). Several integration suites carry an explicit `jest.setTimeout` above
   Jest's 5s default for this reason — see the comment beside each
   `jest.setTimeout` call for the suite's specific budget.
+
+## Uploads are switched off
+
+`ENABLE_UPLOADS` defaults to `false`. `POST /api/v1/submissions/:publicId/files`
+returns `503 uploads_disabled` until it is set to `true`.
+
+Why: uploads currently land on the local filesystem. multer buffers each file
+whole in memory, the bytes cost server disk, and nothing survives a redeploy on
+an ephemeral host. File and image handling is moving to a CMS; the switch stays
+off until that driver exists, so no one uploads work that later evaporates.
+
+**The guard sits in front of multer, not behind it.** That placement is the
+point — multer buffers the entire body to make the per-assignment size check
+possible, so a guard placed after it would still pay the full
+`MAX_UPLOAD_BYTES` memory cost for a request it was always going to refuse.
+In front, the server answers without reading a byte. If you move it, you lose
+the protection this flag exists to provide.
+
+Only uploading is gated. Reading and deleting files already recorded still
+work, so nothing already attached becomes unreachable.
+
+Re-enabling is one environment variable. `src/__tests__/upload-guard.test.ts`
+covers the disabled path; the integration suite forces `ENABLE_UPLOADS=true`
+(see `jest.setup.ts`) so the feature keeps its coverage either way.
+
+### When the CMS lands
+
+`getStorage()` switches on `STORAGE_DRIVER` and returns a `Storage`
+(`put` / `get` / `delete`). A CMS is a third driver beside `LocalFsStorage`
+and the `S3Storage` stub — one new file, no route changes.
 
 ## File download deliberately diverges from v1
 
