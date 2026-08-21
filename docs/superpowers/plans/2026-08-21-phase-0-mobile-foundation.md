@@ -426,8 +426,11 @@ describe("theme tokens", () => {
     }
   });
 
-  it("provides semantic colours for status", () => {
-    for (const key of ["success", "warning", "danger"] as const) {
+  it("provides semantic colours for status, named as v1 names them", () => {
+    // v1's globals.css calls the destructive ramp `error`, not `danger`, and
+    // also ships `info` and `purple`. Matching its vocabulary means a
+    // developer reading both codebases sees one set of names.
+    for (const key of ["success", "warning", "error", "info"] as const) {
       expect(colors[key][500]).toMatch(/^#[0-9A-F]{6}$/i);
     }
   });
@@ -481,9 +484,13 @@ export const colors = {
     teal: { 50: "#F2FAFA", /* … */ 950: "#103436" },
   },
   neutral: { 50: "#FAFAFB", /* … */ 950: "#0B0F19" },
+  // v1's semantic ramp names, kept verbatim: success, warning, error, info,
+  // purple. Note it is `error`, not `danger`.
   success: { /* emerald ramp from globals.css */ },
   warning: { /* amber ramp */ },
-  danger: { /* red ramp */ },
+  error: { 50: "#FEF2F2", /* … */ 500: "#EF4444", /* … */ },
+  info: { /* from globals.css */ },
+  purple: { /* from globals.css — used by charts and accents */ },
   white: "#FFFFFF",
   black: "#000000",
 } as const;
@@ -503,8 +510,8 @@ export const typography = {
 } as const;
 ```
 
-If `globals.css` has no `danger` ramp under that name, use whatever it calls
-the destructive colour and note the mapping in a comment — do not invent one.
+Copy every ramp `globals.css` defines, using its names. Do not rename `error`
+to `danger` or invent ramps it does not have.
 
 - [ ] **Step 4: Write the provider**
 
@@ -908,6 +915,13 @@ cd apps/mobile && pnpm jest src/__tests__/use-session.test.tsx
 `<LoadingState />` instead of the `Stack` — that is the whole point of the
 gate. Wrap in `ThemeProvider` and `QueryClientProvider`.
 
+**Known gap between Task 6 and Task 7 (controller ruling P2).** The redirect
+target below, `/dashboard`, is created by Task 7. Between these two tasks the
+app is not runnable on a device for an authenticated user — the redirect points
+at a route that does not exist yet. Tests and typecheck still pass, and Task 7
+performs the device check. Do not "fix" this by pointing at `/home`; that file
+is deleted in Task 7.
+
 `app/index.tsx` becomes:
 
 ```tsx
@@ -964,6 +978,12 @@ and so Phase 1 replaces content rather than creating files.
 **Guard.** `(app)/_layout.tsx` redirects to `/login` when `status` is
 `anonymous`. The boot gate in Task 6 has already run by the time this mounts,
 so it never sees `idle`.
+
+**Delete `apps/mobile/app/home.tsx` (controller ruling P3).** It is the
+scaffold's placeholder home screen, replaced by `(app)/dashboard`. Left in
+place it is an unreachable route that a future reader will mistake for the
+real one. Its only consumer was `app/index.tsx`, which Task 6 has already
+repointed at `/dashboard`.
 
 - [ ] **Step 1: Write the failing test**
 
