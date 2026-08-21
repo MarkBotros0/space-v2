@@ -1,0 +1,11 @@
+This directory exists only to satisfy Vercel.
+
+Vercel builds this project as a static site with serverless functions attached,
+so it requires a static output directory and fails the deploy with "No Output
+Directory named 'public' found" when one is missing. This API serves everything
+through api/index.js — there is no static output — so the directory is empty on
+purpose.
+
+Do not put anything routable here. Vercel checks the filesystem before applying
+the rewrite in vercel.json, so a file placed here would shadow the matching API
+route rather than reaching Express.

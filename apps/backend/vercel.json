@@ -3,6 +3,7 @@
   "framework": null,
   "buildCommand": "cd ../.. && pnpm turbo build --filter=@space/backend",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "outputDirectory": "public",
   "functions": {
     "api/index.js": {
       "includeFiles": "dist/**"
