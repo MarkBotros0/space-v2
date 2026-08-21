@@ -11,6 +11,7 @@ import { groupsRouter } from "./routes/groups";
 import { meRouter } from "./routes/me";
 import { seasonsRouter } from "./routes/seasons";
 import { sessionsRouter } from "./routes/sessions";
+import { submissionsRouter } from "./routes/submissions";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -36,6 +37,7 @@ export function createApp(): Express {
   app.use("/api/v1/groups", groupsRouter);
   app.use("/api/v1/sessions", sessionsRouter);
   app.use("/api/v1/assignments", assignmentsRouter);
+  app.use("/api/v1/submissions", submissionsRouter);
 
   // Must be last: 404 catches anything unmatched above, the error handler
   // catches anything thrown (including JSON parse failures from express.json()).

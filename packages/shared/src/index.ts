@@ -5,3 +5,4 @@ export * from "./group";
 export * from "./session";
 export * from "./assignment";
 export * from "./attendance";
+export * from "./submission";
