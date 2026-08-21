@@ -33,3 +33,24 @@ export const loginResponseSchema = sessionSchema.extend({
   user: authUserSchema,
 });
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
+
+export const meScopesSchema = z.object({
+  seasonAdminIds: z.array(z.number().int()),
+  groupLeaderIds: z.array(z.number().int()),
+  activeSeasonId: z.number().int().nullable(),
+  /** Set when a student has graduated. Non-null means alumnus. */
+  graduationYear: z.number().int().nullable(),
+});
+export type MeScopes = z.infer<typeof meScopesSchema>;
+
+export const meUserSchema = authUserSchema.extend({
+  avatarPath: z.string().nullable(),
+});
+export type MeUser = z.infer<typeof meUserSchema>;
+
+export const meResponseSchema = z.object({
+  // Null when the row was deleted inside the access token's 15-minute window.
+  user: meUserSchema.nullable(),
+  scopes: meScopesSchema,
+});
+export type MeResponse = z.infer<typeof meResponseSchema>;

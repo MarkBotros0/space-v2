@@ -552,6 +552,10 @@ export const openApiDocument = {
                     seasonAdminIds: { type: "array", items: { type: "integer" } },
                     groupLeaderIds: { type: "array", items: { type: "integer" } },
                     activeSeasonId: { type: ["integer", "null"] },
+                    graduationYear: {
+                      type: ["integer", "null"],
+                      description: "Set when a student has graduated; non-null means alumnus.",
+                    },
                   },
                 },
               },

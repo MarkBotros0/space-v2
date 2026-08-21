@@ -23,6 +23,10 @@ meRouter.get("/", requireAuth, async (req, res) => {
       seasonAdminIds: user.seasonAdminIds,
       groupLeaderIds: user.groupLeaderIds,
       activeSeasonId: user.activeSeasonId,
+      // The client distinguishes an alumnus from an active student by
+      // role === "STUDENT" && graduationYear != null. Without this field it
+      // would have to decode the JWT itself to find out.
+      graduationYear: user.graduationYear,
     },
   });
 });

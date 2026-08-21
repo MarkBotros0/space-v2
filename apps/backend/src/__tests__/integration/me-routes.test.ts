@@ -64,6 +64,22 @@ describe("GET /api/v1/me", () => {
       seasonAdminIds: [],
       groupLeaderIds: [],
       activeSeasonId: null,
+      graduationYear: null,
+    });
+  });
+
+  it("returns graduationYear in scopes", async () => {
+    const res = await request(app).get("/api/v1/me").set("authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    // Null for an active student — the field must be present and explicit,
+    // not absent, so the client can distinguish "not graduated" from
+    // "the server did not tell me".
+    expect(res.body.data.scopes).toEqual({
+      seasonAdminIds: [],
+      groupLeaderIds: [],
+      activeSeasonId: null,
+      graduationYear: null,
     });
   });
 
