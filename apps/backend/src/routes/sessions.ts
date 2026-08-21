@@ -1,10 +1,14 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
+import { AttendanceStatus } from "../generated/prisma/enums";
 import { apiOk, apiError } from "../lib/api-response";
+import { flagLowAttendance } from "../lib/attendance-notifications";
 import { parseId } from "../lib/parse-id";
 import { canAccessSeason, canMarkAttendance } from "../lib/permissions";
+import { loadAttendanceRoster } from "../lib/queries/sessions";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { saveAttendanceRequestSchema } from "../../../../packages/shared/src/index";
 
 export const sessionsRouter = Router();
 
@@ -65,4 +69,65 @@ sessionsRouter.get("/:id", async (req, res) => {
     myAttendance,
     canMarkAttendance: await canMarkAttendance(user, id),
   });
+});
+
+sessionsRouter.get("/:id/attendance", async (req, res) => {
+  const user = requireUser(req);
+  const sessionId = parseId(req.params.id);
+  if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+
+  // canMarkAttendance, not canAccessSeason: the roster carries every enrolled
+  // student's name and email, so reading it is staff-only.
+  if (!(await canMarkAttendance(user, sessionId))) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const roster = await loadAttendanceRoster(sessionId);
+  if (roster === null) return apiError(res, "not_found", "Session not found.", 404);
+
+  return apiOk(res, { roster });
+});
+
+sessionsRouter.post("/:id/attendance", async (req, res) => {
+  const user = requireUser(req);
+  const sessionId = parseId(req.params.id);
+  if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+
+  if (!(await canMarkAttendance(user, sessionId))) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const parsed = saveAttendanceRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid attendance entries.", 400);
+
+  // One transaction so a partially-saved roster is impossible: either every
+  // student in this batch is marked, or none is.
+  await db.$transaction(
+    parsed.data.entries.map((e) =>
+      db.attendance.upsert({
+        where: { sessionId_studentUserId: { sessionId, studentUserId: e.studentUserId } },
+        update: {
+          status: e.status,
+          notes: e.notes ?? null,
+          // Lateness is meaningless unless the status is LATE, and leaving a
+          // stale value behind would corrupt attendance reporting.
+          lateMinutes: e.status === AttendanceStatus.LATE ? (e.lateMinutes ?? null) : null,
+          markedById: user.userId,
+          markedAt: new Date(),
+        },
+        create: {
+          sessionId,
+          studentUserId: e.studentUserId,
+          status: e.status,
+          notes: e.notes ?? null,
+          lateMinutes: e.status === AttendanceStatus.LATE ? (e.lateMinutes ?? null) : null,
+          markedById: user.userId,
+        },
+      }),
+    ),
+  );
+
+  await flagLowAttendance(sessionId, parsed.data.entries);
+
+  return apiOk(res, { saved: parsed.data.entries.length });
 });
