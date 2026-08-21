@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type { AttendanceStatus } from "./enums";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
@@ -56,3 +58,6 @@ export interface AttendanceRosterRow {
   notes: string | null;
   lateMinutes: number | null;
 }
+
+export const checkInRequestSchema = z.object({ token: z.string().min(1) });
+export type CheckInRequest = z.infer<typeof checkInRequestSchema>;

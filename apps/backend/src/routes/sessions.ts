@@ -7,12 +7,84 @@ import { flagLowAttendance } from "../lib/attendance-notifications";
 import { parseId } from "../lib/parse-id";
 import { canAccessSeason, canMarkAttendance } from "../lib/permissions";
 import { loadAttendanceRoster } from "../lib/queries/sessions";
+import { newPublicId } from "../lib/public-id";
+import { isAdminOfSeason } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
-import { saveAttendanceRequestSchema } from "../../../../packages/shared/src/index";
+import {
+  checkInRequestSchema,
+  saveAttendanceRequestSchema,
+} from "../../../../packages/shared/src/index";
 
 export const sessionsRouter = Router();
 
 sessionsRouter.use(requireAuth);
+
+// Registered first: "/check-in" is a single-segment literal and would be
+// shadowed by any single-segment parameter route (a future POST "/:id") that
+// was registered ahead of it. Keep it at the top.
+sessionsRouter.post("/check-in", async (req, res) => {
+  const user = requireUser(req);
+
+  const parsed = checkInRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Missing check-in token.", 400);
+
+  const session = await db.session.findUnique({
+    where: { checkInToken: parsed.data.token },
+    select: { id: true, seasonId: true, checkInOpenAt: true, checkInClosedAt: true },
+  });
+  if (!session) return apiError(res, "invalid_token", "Check-in token is invalid.", 404);
+  if (!session.checkInOpenAt) return apiError(res, "not_open", "Check-in is not open yet.", 409);
+  if (session.checkInClosedAt) return apiError(res, "closed", "Check-in has closed.", 409);
+
+  const now = new Date();
+  // Hard stop three hours after opening, so an admin who forgets to close a
+  // session cannot leave a working code live indefinitely.
+  if (now.getTime() - session.checkInOpenAt.getTime() > 3 * 60 * 60 * 1000) {
+    return apiError(res, "closed", "Check-in has closed.", 409);
+  }
+
+  const enrollment = await db.seasonEnrollment.findUnique({
+    where: { studentUserId_seasonId: { studentUserId: user.userId, seasonId: session.seasonId } },
+    select: { status: true },
+  });
+  if (!enrollment || enrollment.status !== "ACTIVE") {
+    return apiError(res, "not_enrolled", "You're not enrolled in this season.", 403);
+  }
+
+  const existing = await db.attendance.findUnique({
+    where: { sessionId_studentUserId: { sessionId: session.id, studentUserId: user.userId } },
+    select: { checkedInAt: true, status: true },
+  });
+  if (existing?.checkedInAt) {
+    return apiError(res, "already_checked_in", "Already checked in.", 409);
+  }
+
+  const minutesLate = Math.max(
+    0,
+    Math.floor((now.getTime() - session.checkInOpenAt.getTime()) / 60_000),
+  );
+  const status: "PRESENT" | "LATE" = minutesLate > 0 ? "LATE" : "PRESENT";
+
+  await db.attendance.upsert({
+    where: { sessionId_studentUserId: { sessionId: session.id, studentUserId: user.userId } },
+    create: {
+      sessionId: session.id,
+      studentUserId: user.userId,
+      status,
+      checkedInAt: now,
+      lateMinutes: status === "LATE" ? minutesLate : null,
+      markedById: user.userId,
+      markedAt: now,
+    },
+    update: {
+      status,
+      checkedInAt: now,
+      lateMinutes: status === "LATE" ? minutesLate : null,
+    },
+  });
+
+  return apiOk(res, { status, minutesLate });
+});
 
 sessionsRouter.get("/:id", async (req, res) => {
   const user = requireUser(req);
@@ -130,4 +202,53 @@ sessionsRouter.post("/:id/attendance", async (req, res) => {
   await flagLowAttendance(sessionId, parsed.data.entries);
 
   return apiOk(res, { saved: parsed.data.entries.length });
+});
+
+sessionsRouter.post("/:id/check-in-open", async (req, res) => {
+  const user = requireUser(req);
+  const sessionId = parseId(req.params.id);
+  if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    select: { seasonId: true, checkInToken: true },
+  });
+  if (!session) return apiError(res, "not_found", "Session not found.", 404);
+  // Season admins only — not group leaders. Opening check-in is what makes
+  // self-marking possible for a whole season's roster.
+  if (!isAdminOfSeason(user, session.seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  // Reuse an existing token so reopening does not invalidate a code already
+  // displayed to a room.
+  const checkInToken = session.checkInToken ?? newPublicId();
+  await db.session.update({
+    where: { id: sessionId },
+    data: { checkInToken, checkInOpenAt: new Date(), checkInClosedAt: null },
+  });
+
+  return apiOk(res, { checkInToken });
+});
+
+sessionsRouter.post("/:id/check-in-close", async (req, res) => {
+  const user = requireUser(req);
+  const sessionId = parseId(req.params.id);
+  if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    select: { seasonId: true },
+  });
+  if (!session) return apiError(res, "not_found", "Session not found.", 404);
+  if (!isAdminOfSeason(user, session.seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  await db.session.update({
+    where: { id: sessionId },
+    data: { checkInClosedAt: new Date() },
+  });
+
+  return apiOk(res, { closed: true });
 });
