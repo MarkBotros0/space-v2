@@ -3,8 +3,11 @@ import { Text as RNText } from "react-native";
 import type { TextProps as RNTextProps, TextStyle } from "react-native";
 
 import { useTheme } from "../theme";
+import type { typography } from "../theme/tokens";
 
-export type TextVariant = "display" | "title" | "heading" | "body" | "label" | "caption";
+// Derived from the type scale itself rather than hand-written, so adding a
+// step to `typography` in tokens.ts can't leave that step unreachable here.
+export type TextVariant = keyof typeof typography;
 
 export interface TextProps extends Omit<RNTextProps, "children"> {
   variant?: TextVariant;

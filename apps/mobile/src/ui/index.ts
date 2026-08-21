@@ -8,7 +8,7 @@ export { Input } from "./Input";
 export type { InputProps } from "./Input";
 
 export { Screen } from "./Screen";
-export type { ScreenProps } from "./Screen";
+export type { ScreenEdge, ScreenProps } from "./Screen";
 
 export { Text } from "./Text";
 export type { TextProps, TextVariant } from "./Text";

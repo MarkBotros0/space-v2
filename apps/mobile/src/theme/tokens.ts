@@ -148,12 +148,19 @@ export const colors = {
   role,
   white: "#FFFFFF",
   black: "#000000",
+  transparent: "transparent",
 } as const;
 
 /** 4pt scale. Every margin and padding in the app comes from here. */
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 } as const;
 
 export const radii = { sm: 6, md: 10, lg: 16, full: 9999 } as const;
+
+/** Border stroke widths. Inputs and outlined buttons share this scale rather than hardcoding `1`. */
+export const borderWidths = { none: 0, thin: 1 } as const;
+
+/** Opacity levels for interactive states, e.g. a disabled or busy control. */
+export const opacity = { disabled: 0.6, full: 1 } as const;
 
 export const typography = {
   display: { fontSize: 32, lineHeight: 38, fontWeight: "700" },

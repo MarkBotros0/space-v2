@@ -10,6 +10,10 @@ export function LoadingState() {
 
   return (
     <View
+      // On iOS, `isAccessibilityElement` follows `accessible`, which
+      // defaults to false on a View — without it, `accessibilityRole` and
+      // `accessibilityLabel` below are never surfaced to VoiceOver at all.
+      accessible
       accessibilityLabel="Loading"
       accessibilityRole="progressbar"
       style={{
@@ -62,6 +66,14 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
 
   return (
     <View
+      // Deliberately not `accessible`: unlike LoadingState, this container
+      // has an interactive child (the retry Button). Making the View a
+      // single accessibility element would absorb that Button and make it
+      // unreachable by swipe navigation. `accessibilityRole="alert"` plus
+      // `accessibilityLiveRegion` announce the error without needing the
+      // container itself to become one opaque element.
+      accessibilityRole="alert"
+      accessibilityLiveRegion="assertive"
       style={{
         flex: 1,
         alignItems: "center",

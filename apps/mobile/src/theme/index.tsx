@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import type { UserRole } from "@space/shared";
 
-import { colors, radii, spacing, typography } from "./tokens";
+import { borderWidths, colors, opacity, radii, spacing, typography } from "./tokens";
 
 // Re-export the raw tokens so `../theme` is one entry point: screens use
 // useTheme() from here, but StyleSheet.create blocks can't call a hook and
@@ -41,6 +41,7 @@ export interface ThemeColors {
   role: Record<UserRole, RoleColors>;
   white: string;
   black: string;
+  transparent: string;
 }
 
 export type Theme = {
@@ -53,6 +54,8 @@ export type Theme = {
   spacing: typeof spacing;
   radii: typeof radii;
   typography: typeof typography;
+  borderWidths: typeof borderWidths;
+  opacity: typeof opacity;
 };
 
 /**
@@ -60,7 +63,7 @@ export type Theme = {
  * provider with one value now means adding a second theme later is a change
  * in this file, not a rewrite of every screen that reads useTheme().
  */
-const theme: Theme = { colors, spacing, radii, typography };
+const theme: Theme = { colors, spacing, radii, typography, borderWidths, opacity };
 
 const ThemeContext = createContext<Theme>(theme);
 
