@@ -17,6 +17,7 @@ jest.setTimeout(60000);
 const app = createApp();
 
 let publicId: string;
+let otherPublicId: string;
 let ownerToken: string;
 let peerToken: string;
 
@@ -49,6 +50,31 @@ beforeAll(async () => {
   publicId = newPublicId();
   await db.submission.create({
     data: { assignmentId: assignment.id, studentUserId: owner.id, publicId, status: "DRAFT" },
+  });
+
+  // A second submission on a different assignment (the same owner, since
+  // @@unique([assignmentId, studentUserId]) forbids two on the same
+  // assignment). Exists only so the fileId<->publicId cross-submission guard
+  // has a real "different submission" to point at, without depending on any
+  // row outside this fixture's own season.
+  const otherAssignment = await db.assignment.create({
+    data: {
+      seasonId: season.id,
+      title: "Upload another file",
+      isAllGroups: true,
+      maxFileSizeMb: 1,
+      allowedMimeCategories: ["text", "image"],
+    },
+    select: { id: true },
+  });
+  otherPublicId = newPublicId();
+  await db.submission.create({
+    data: {
+      assignmentId: otherAssignment.id,
+      studentUserId: owner.id,
+      publicId: otherPublicId,
+      status: "DRAFT",
+    },
   });
 
   ownerToken = await login(app, owner.email);
@@ -174,5 +200,46 @@ describe("DELETE /api/v1/submissions/:publicId/files", () => {
       .delete(`/api/v1/submissions/${publicId}/files?fileId=2147483000`)
       .set("authorization", `Bearer ${ownerToken}`);
     expect(res.status).toBe(404);
+  });
+
+  it("refuses a non-owner deleting the owner's file", async () => {
+    const upload = await request(app)
+      .post(`/api/v1/submissions/${publicId}/files`)
+      .set("authorization", `Bearer ${ownerToken}`)
+      .attach("file", Buffer.from("peer test"), {
+        filename: "peer.txt",
+        contentType: "text/plain",
+      });
+    const fileId = upload.body.data.file.id;
+
+    const res = await request(app)
+      .delete(`/api/v1/submissions/${publicId}/files?fileId=${fileId}`)
+      .set("authorization", `Bearer ${peerToken}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("forbidden");
+    // The row must survive a refused delete.
+    expect(await db.submissionFile.count({ where: { id: fileId } })).toBe(1);
+  });
+
+  it("refuses a fileId that belongs to a different submission", async () => {
+    // A bare fileId must not let a caller reach across submissions — the
+    // handler ties the file to the :publicId in the path. otherPublicId is a
+    // second submission owned by the same user, created in beforeAll.
+    const upload = await request(app)
+      .post(`/api/v1/submissions/${publicId}/files`)
+      .set("authorization", `Bearer ${ownerToken}`)
+      .attach("file", Buffer.from("cross test"), {
+        filename: "cross.txt",
+        contentType: "text/plain",
+      });
+    const fileId = upload.body.data.file.id;
+
+    const res = await request(app)
+      .delete(`/api/v1/submissions/${otherPublicId}/files?fileId=${fileId}`)
+      .set("authorization", `Bearer ${ownerToken}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
   });
 });
