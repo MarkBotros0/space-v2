@@ -3,6 +3,10 @@ import { Router } from "express";
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
+import {
+  listAssignmentsForSeason,
+  listAssignmentsForStudent,
+} from "../lib/queries/assignments";
 import { listGroupsForSeason } from "../lib/queries/groups";
 import { listSessionsForSeason } from "../lib/queries/sessions";
 import { canAccessSeason } from "../lib/permissions";
@@ -135,4 +139,23 @@ seasonsRouter.get("/:id/sessions", async (req, res) => {
     includeCheckInToken: user.role !== "STUDENT",
   });
   return apiOk(res, { sessions });
+});
+
+seasonsRouter.get("/:id/assignments", async (req, res) => {
+  const user = requireUser(req);
+  const seasonId = parseId(req.params.id);
+  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+
+  if (!(await canAccessSeason(user, seasonId))) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  // Students get a different row shape — their own status per assignment,
+  // rather than the season-wide submission/expected counts staff see.
+  const assignments =
+    user.role === "STUDENT"
+      ? await listAssignmentsForStudent(user.userId, seasonId)
+      : await listAssignmentsForSeason(seasonId);
+
+  return apiOk(res, { assignments });
 });
