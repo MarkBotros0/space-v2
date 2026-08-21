@@ -248,7 +248,7 @@ submissionsRouter.delete("/:publicId/files", async (req, res) => {
   // an orphaned blob is recoverable, an orphaned row is not.
   await getStorage()
     .delete(file.storagePath)
-    .catch(() => undefined);
+    .catch((): void => undefined);
   await db.submissionFile.delete({ where: { id: fileId } });
 
   return apiOk(res, { deleted: true });

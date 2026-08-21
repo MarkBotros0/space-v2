@@ -1,4 +1,5 @@
 import { createReadStream } from "node:fs";
+import type { Stats } from "node:fs";
 import { mkdir, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Readable } from "node:stream";
@@ -48,7 +49,7 @@ export class LocalFsStorage implements Storage {
    */
   async get(storagePath: string): Promise<Readable> {
     const fullPath = this.resolveWithinRoot(storagePath);
-    const stats = await stat(fullPath).catch((err: NodeJS.ErrnoException) => {
+    const stats = await stat(fullPath).catch((err: NodeJS.ErrnoException): Stats | null => {
       if (err.code === "ENOENT" || err.code === "ENOTDIR") return null;
       throw err;
     });

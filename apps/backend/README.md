@@ -151,6 +151,44 @@ UTF-8 correctly. The upload handler recovers the raw bytes and re-decodes them
 names round-trip unchanged. Covered by a test that uploads an Arabic filename
 and asserts it survives the download's `Content-Disposition`.
 
+## Deployment
+
+There are two entrypoints, sharing one `createApp()`:
+
+| Entrypoint | For | Notes |
+|---|---|---|
+| `src/server.ts` → `dist/apps/backend/src/server.js` | Container hosts, local dev | Calls `app.listen()`. `pnpm start`. |
+| `api/index.js` | Vercel | Exports the app; a serverless runtime never calls `listen()`. |
+
+**`api/index.js` is JavaScript on purpose.** Vercel type-checks `.ts` functions
+with its own compiler settings rather than `tsconfig.build.json`, and does so
+with `strictNullChecks` **off**. Zod decides field optionality via
+`undefined extends T`, which is true for *every* type once `strictNullChecks`
+is off — so every field of every schema infers as optional and the build fails
+on type errors that do not exist under this project's real settings. Zod
+documents strict mode as a requirement. Requiring the already-compiled output
+sidesteps it: type checking happened during `turbo build` with the correct
+tsconfig, and there is no TypeScript left for Vercel to re-check with the wrong
+one. **Do not convert this file to TypeScript.**
+
+### Known limits on serverless
+
+Two things do not survive a serverless runtime, and neither is fixed by the
+entrypoint above:
+
+- **Rate limiting is per-instance.** `express-rate-limit` uses its default
+  in-memory store, so each cold start gets its own counter and the
+  20-attempts-per-15-minutes login protection weakens to "20 per instance".
+  Needs a shared store (Redis, or Vercel KV) to mean anything.
+- **Prisma needs a pooled connection.** Point `DATABASE_URL` at Neon's *pooled*
+  endpoint, or concurrent cold starts exhaust the connection limit.
+
+Local file storage is a third — but uploads are switched off (see above), so it
+is moot until the CMS driver lands.
+
+A container host (Railway, Render, Fly, a VM) has none of these problems and
+runs `dist/apps/backend/src/server.js` as-is.
+
 ## API documentation
 
 Swagger UI is served at **`/api/docs`**, and the raw OpenAPI 3.1 document at
