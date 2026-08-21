@@ -43,8 +43,10 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db.refreshToken.deleteMany({ where: { userId } });
-  await db.user.deleteMany({ where: { id: userId } });
+  // Widened to the shared prefix filter (rather than just `userId`) so it
+  // also reaches the alumnus user created inside the graduationYear test.
+  await db.refreshToken.deleteMany({ where: { user: testAccountFilter } });
+  await db.user.deleteMany({ where: testAccountFilter });
   await db.$disconnect();
 });
 
@@ -81,6 +83,33 @@ describe("GET /api/v1/me", () => {
       activeSeasonId: null,
       graduationYear: null,
     });
+  });
+
+  it("carries a non-null graduationYear through to scopes", async () => {
+    // Proves the value flows from the column through the JWT claims rather
+    // than being a constant — every other case asserts null, which a
+    // hardcoded null would also satisfy.
+    const graduate = await db.user.create({
+      data: {
+        email: `${EMAIL_PREFIX}${randomUUID()}${EMAIL_SUFFIX}`,
+        name: "Graduated Student",
+        role: "STUDENT",
+        graduationYear: 2024,
+        passwordHash: await bcrypt.hash(PASSWORD, 10),
+      },
+    });
+
+    const login = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: graduate.email, password: PASSWORD });
+    expect(login.status).toBe(200);
+
+    const res = await request(app)
+      .get("/api/v1/me")
+      .set("authorization", `Bearer ${login.body.data.accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.scopes.graduationYear).toBe(2024);
   });
 
   it("returns 401 when the Authorization header is missing", async () => {
