@@ -12,6 +12,7 @@ import { meRouter } from "./routes/me";
 import { seasonsRouter } from "./routes/seasons";
 import { sessionsRouter } from "./routes/sessions";
 import { submissionsRouter } from "./routes/submissions";
+import { docsRouter } from "./routes/docs";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -31,6 +32,14 @@ export function createApp(): Express {
   }
 
   app.use(healthRouter);
+
+  // Mounted before the API routers so /api/docs cannot be shadowed, and behind
+  // a flag so a production deploy can withhold the surface description without
+  // a code change. Serves no user data and needs no auth.
+  if (config.enableApiDocs) {
+    app.use("/api", docsRouter);
+  }
+
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/me", meRouter);
   app.use("/api/v1/seasons", seasonsRouter);

@@ -257,3 +257,121 @@ describe("DELETE /api/v1/submissions/:publicId/files", () => {
     expect(res.body.error.code).toBe("not_found");
   });
 });
+
+describe("GET /api/v1/submissions/:publicId/files/:fileId", () => {
+  /** Upload a file as the owner and return its id. Each test makes its own so
+   *  no test depends on a file a neighbour may have deleted. */
+  async function uploadOwned(
+    filename: string,
+    contents: string,
+  ): Promise<{ fileId: number }> {
+    const upload = await request(app)
+      .post(`/api/v1/submissions/${publicId}/files`)
+      .set("authorization", `Bearer ${ownerToken}`)
+      .attach("file", Buffer.from(contents), { filename, contentType: "text/plain" });
+    expect(upload.status).toBe(201);
+    return { fileId: upload.body.data.file.id as number };
+  }
+
+  it("streams the file back to its owner with the recorded metadata", async () => {
+    const { fileId } = await uploadOwned("download.txt", "downloaded bytes");
+
+    const res = await request(app)
+      .get(`/api/v1/submissions/${publicId}/files/${fileId}`)
+      .set("authorization", `Bearer ${ownerToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.text).toBe("downloaded bytes");
+    // Content-Type comes from the stored mimeType, never sniffed from the
+    // extension.
+    expect(res.headers["content-type"]).toContain("text/plain");
+    expect(res.headers["content-length"]).toBe("16");
+    // attachment, not inline: uploads are arbitrary user content and may be
+    // HTML or SVG, which would be an XSS vector served inline from this origin.
+    expect(res.headers["content-disposition"]).toContain("attachment");
+    expect(res.headers["content-disposition"]).toContain('filename="download.txt"');
+    expect(res.headers["cache-control"]).toBe("private, max-age=3600");
+  });
+
+  it("encodes a non-ASCII filename without breaking the header", async () => {
+    const { fileId } = await uploadOwned("تقرير final.txt", "arabic name");
+
+    const res = await request(app)
+      .get(`/api/v1/submissions/${publicId}/files/${fileId}`)
+      .set("authorization", `Bearer ${ownerToken}`);
+
+    expect(res.status).toBe(200);
+    const disposition = res.headers["content-disposition"];
+    // The ASCII fallback stays quotable, and the real name rides in filename*.
+    expect(disposition).toMatch(/filename="[\x20-\x7E]*"/);
+    expect(disposition).toContain("filename*=UTF-8''");
+    expect(disposition).toContain(encodeURIComponent("تقرير final.txt"));
+  });
+
+  it("refuses a peer student in the same season", async () => {
+    const { fileId } = await uploadOwned("private.txt", "not for peers");
+
+    const res = await request(app)
+      .get(`/api/v1/submissions/${publicId}/files/${fileId}`)
+      .set("authorization", `Bearer ${peerToken}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("forbidden");
+  });
+
+  it("refuses a fileId that belongs to a different submission", async () => {
+    const { fileId } = await uploadOwned("cross-read.txt", "cross read");
+
+    const res = await request(app)
+      .get(`/api/v1/submissions/${otherPublicId}/files/${fileId}`)
+      .set("authorization", `Bearer ${ownerToken}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+
+  it("returns 400 for a non-numeric fileId", async () => {
+    const res = await request(app)
+      .get(`/api/v1/submissions/${publicId}/files/abc`)
+      .set("authorization", `Bearer ${ownerToken}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("bad_request");
+  });
+
+  it("returns 404 for a fileId that does not exist", async () => {
+    const res = await request(app)
+      .get(`/api/v1/submissions/${publicId}/files/2147483000`)
+      .set("authorization", `Bearer ${ownerToken}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+
+  it("requires authentication", async () => {
+    const { fileId } = await uploadOwned("needs-auth.txt", "needs auth");
+
+    const res = await request(app).get(`/api/v1/submissions/${publicId}/files/${fileId}`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("unauthorized");
+  });
+
+  it("returns 404 when the row survives but the blob is gone", async () => {
+    // A dangling SubmissionFile row must 404, not 500 — the storage delete in
+    // the DELETE handler is deliberately swallowed, so this state is reachable.
+    const { fileId } = await uploadOwned("vanished.txt", "about to vanish");
+    const row = await db.submissionFile.findUniqueOrThrow({
+      where: { id: fileId },
+      select: { storagePath: true },
+    });
+    await getStorage().delete(row.storagePath);
+
+    const res = await request(app)
+      .get(`/api/v1/submissions/${publicId}/files/${fileId}`)
+      .set("authorization", `Bearer ${ownerToken}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+});

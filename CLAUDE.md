@@ -107,9 +107,25 @@ ESM-only, and this backend compiles to CommonJS, so requiring it would throw
 and length using `node:crypto` instead; ids from the two backends are
 indistinguishable. Do not "restore" `nanoid` here.
 
-Still outstanding: the mobile screens for the newly-ported endpoints, and
-the file-download route (submission files can be uploaded and deleted but
-not read back — v1's `/api/uploads/[...path]` still owns that). See
+Two endpoints here are **not** ports and deliberately diverge from v1:
+
+- `GET /api/v1/submissions/:publicId/files/:fileId` streams an attached file.
+  v1's equivalent (`/api/uploads/[...path]`) takes an arbitrary storage path
+  and gates it on nothing but "is logged in", so any authenticated user who
+  guesses a path can read any student's private submission. This one addresses
+  the file by id scoped to its submission and gates on `canViewSubmission`.
+  It lives outside `/api/v1` in v1, so no client contract required parity.
+- The upload handler re-decodes `file.originalname` from latin1 to UTF-8.
+  `multer`/`busboy` decode multipart filenames as latin1; v1 used the web
+  `formData()` API, which decodes UTF-8. Without this, a non-ASCII filename is
+  stored mojibake'd. Do not "simplify" it back to `file.originalname`.
+
+Swagger UI is at `/api/docs`, the raw OpenAPI 3.1 document at `/api/docs.json`
+(`ENABLE_API_DOCS=false` withholds both). It is hand-authored in
+`src/docs/openapi.ts` — responses are TS interfaces rather than Zod, so there
+is nothing to generate from. Change it in the same commit as the route.
+
+Still outstanding: the mobile screens for the newly-ported endpoints. See
 `apps/backend/README.md` for the full endpoint and environment reference.
 
 ## Docs

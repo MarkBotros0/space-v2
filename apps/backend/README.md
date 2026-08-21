@@ -31,7 +31,8 @@ All paths below are relative to the server root. Everything except
 | GET | `/api/v1/submissions/:publicId` | |
 | PATCH | `/api/v1/submissions/:publicId` | Draft save / submit. |
 | POST | `/api/v1/submissions/:publicId/files` | Upload (multer, `MAX_UPLOAD_BYTES` ceiling). |
-| DELETE | `/api/v1/submissions/:publicId/files` | |
+| DELETE | `/api/v1/submissions/:publicId/files` | `?fileId=` — author only. |
+| GET | `/api/v1/submissions/:publicId/files/:fileId` | Streams the file. Not a port of v1 — see below. |
 
 Every response is `{ "data": ... }` on success or
 `{ "error": { "code", "message" } }` on failure, including 400/401/404/429/500
@@ -56,6 +57,7 @@ read outside that file). See `.env.example` for the full list.
 | `STORAGE_DRIVER` | No | `local` | `"local"` writes to `LOCAL_UPLOADS_DIR`; `"s3"` is a throwing stub, as in v1. |
 | `LOCAL_UPLOADS_DIR` | No | `./uploads` | Only used when `STORAGE_DRIVER=local`. |
 | `MAX_UPLOAD_BYTES` | No | `26214400` (25 MB) | Hard ceiling multer enforces before the per-assignment `maxFileSizeMb` check runs. |
+| `ENABLE_API_DOCS` | No | `true` | Serves Swagger UI at `/api/docs` and the OpenAPI document at `/api/docs.json`. Set `false` to withhold them. |
 
 **When `GMAIL_USER`/`GMAIL_APP_PASSWORD` are unset:** `sendNotificationEmail`
 becomes a no-op (it logs a one-time warning and returns) — in-app
@@ -80,10 +82,52 @@ clickable button/link.
   Jest's 5s default for this reason — see the comment beside each
   `jest.setTimeout` call for the suite's specific budget.
 
-## Known gap: no file-download route
+## File download deliberately diverges from v1
 
-Submission files can be **uploaded** (`POST /api/v1/submissions/:publicId/files`)
-and **deleted** (`DELETE /api/v1/submissions/:publicId/files`), but there is
-no route to **read one back**. v1's `/api/uploads/[...path]` still owns file
-serving; this backend has not ported it yet. Until it does, a client that
-needs to display or download an uploaded file has to go through v1.
+`GET /api/v1/submissions/:publicId/files/:fileId` is **not** a port of v1's
+`GET /api/uploads/[...path]`, and the exact-parity rule that governs the rest
+of this service does not apply to it — that route lives outside `/api/v1`, so
+no mobile client contract depends on its behaviour.
+
+v1's route takes an arbitrary caller-supplied storage path and gates it on
+nothing but "is logged in", so any authenticated user who knows or guesses a
+path can read any file in the system — including another student's private
+submission. It also infers `Content-Type` from the file extension.
+
+This one instead:
+
+- addresses a file by its **id, scoped to a submission**, and refuses a `fileId`
+  belonging to a different submission — a bare id can never reach across;
+- gates on **`canViewSubmission`**, the same right as reading the submission
+  itself, so a season admin or the student's group leader can open submitted
+  work while a peer student cannot;
+- sends the **recorded `mimeType`**, never a sniffed one;
+- sends `Content-Disposition: attachment` (uploads are arbitrary user content
+  and may be HTML or SVG — serving those inline from the API origin would be an
+  XSS vector), with an RFC 5987 `filename*` for non-ASCII names;
+- returns `404` rather than `500` when the row exists but the stored blob does
+  not.
+
+The success path is the one place in this API that does **not** return the
+`{ data }` envelope — it streams raw bytes. Every error path still does.
+
+### Filename encoding
+
+`multer`/`busboy` decode multipart filenames as latin1, so a UTF-8 name arrives
+mojibake'd. v1 read request bodies with the web `formData()` API, which decodes
+UTF-8 correctly. The upload handler recovers the raw bytes and re-decodes them
+(`Buffer.from(name, "latin1").toString("utf8")`) to restore parity; pure-ASCII
+names round-trip unchanged. Covered by a test that uploads an Arabic filename
+and asserts it survives the download's `Content-Disposition`.
+
+## API documentation
+
+Swagger UI is served at **`/api/docs`**, and the raw OpenAPI 3.1 document at
+**`/api/docs.json`** (23 operations across 20 paths). Set `ENABLE_API_DOCS=false`
+to withhold both.
+
+The document is hand-authored in `src/docs/openapi.ts` rather than generated:
+request bodies have Zod schemas in `packages/shared`, but responses are plain
+TypeScript interfaces (the backend does not validate its own output), so there
+is no single source to generate from. **Change it in the same commit as the
+route** — it is the contract the mobile client is written against.

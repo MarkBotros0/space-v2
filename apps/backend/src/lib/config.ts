@@ -30,6 +30,13 @@ const envSchema = z.object({
   // before the per-assignment maxFileSizeMb check can run, so this bounds what
   // one request can allocate. 25 MB.
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(25 * 1024 * 1024),
+  // Serve the OpenAPI document and Swagger UI at /api/docs. Defaults on: the
+  // surface is not secret and the docs are how the mobile app is built against
+  // it. Set to "false" in a deployment that would rather not publish it.
+  ENABLE_API_DOCS: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -50,4 +57,5 @@ export const config = {
   storageDriver: parsed.data.STORAGE_DRIVER,
   localUploadsDir: parsed.data.LOCAL_UPLOADS_DIR,
   maxUploadBytes: parsed.data.MAX_UPLOAD_BYTES,
+  enableApiDocs: parsed.data.ENABLE_API_DOCS,
 } as const;

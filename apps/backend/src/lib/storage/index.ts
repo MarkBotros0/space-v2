@@ -1,3 +1,5 @@
+import type { Readable } from "node:stream";
+
 import { config } from "../config";
 
 import { LocalFsStorage } from "./local";
@@ -12,13 +14,26 @@ export interface PutResult {
 }
 
 /**
- * Trimmed from v1's interface: get() and url() are omitted because nothing in
- * the /api/v1 surface reads a file back — that is /api/uploads/[...path], which
- * this port does not cover. They land with the download route.
+ * Trimmed from v1's interface: url() is omitted because nothing serves a
+ * redirect or a signed link — callers stream bytes through
+ * GET /api/v1/submissions/:publicId/files/:fileId instead. Add it if and when
+ * an S3 deployment wants presigned URLs.
+ *
+ * get() rejects with FileNotFoundError when the blob is absent, so a dangling
+ * database row surfaces as a 404 rather than an unhandled stream error.
  */
 export interface Storage {
   put(key: string, data: Buffer, meta: PutMeta): Promise<PutResult>;
+  get(path: string): Promise<Readable>;
   delete(path: string): Promise<void>;
+}
+
+/** Thrown by Storage.get() when the blob is missing or escapes the root. */
+export class FileNotFoundError extends Error {
+  constructor(message = "File not found in storage") {
+    super(message);
+    this.name = "FileNotFoundError";
+  }
 }
 
 let cached: Storage | undefined;
