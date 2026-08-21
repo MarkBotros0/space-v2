@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from "express";
+import { MulterError } from "multer";
 
 import { apiError } from "../lib/api-response";
 import { ForbiddenError, UnauthorizedError } from "../lib/auth/errors";
@@ -34,6 +35,17 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
 
   if (err instanceof UnauthorizedError) {
     apiError(res, "unauthorized", "Not authenticated.", 401);
+    return;
+  }
+
+  // multer rejects an oversized or malformed upload before the route runs.
+  // Without this it would fall through to a generic 500 and the client could
+  // not tell a too-large file from a server fault.
+  if (err instanceof MulterError) {
+    const code = err.code === "LIMIT_FILE_SIZE" ? "file_too_large" : "bad_request";
+    const message =
+      err.code === "LIMIT_FILE_SIZE" ? "File exceeds the upload limit." : "Invalid upload.";
+    apiError(res, code, message, 400);
     return;
   }
 

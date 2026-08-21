@@ -23,6 +23,13 @@ const envSchema = z.object({
   // Base URL used to turn a notification's relative link into one a recipient
   // can click in an email. Unset means the email omits the button.
   AUTH_URL: z.string().optional(),
+  // "local" writes to LOCAL_UPLOADS_DIR; "s3" is stubbed and throws on use.
+  STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+  LOCAL_UPLOADS_DIR: z.string().default("./uploads"),
+  // Hard ceiling on a single upload. multer buffers the whole file in memory
+  // before the per-assignment maxFileSizeMb check can run, so this bounds what
+  // one request can allocate. 25 MB.
+  MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(25 * 1024 * 1024),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -40,4 +47,7 @@ export const config = {
   gmailUser: parsed.data.GMAIL_USER,
   gmailAppPassword: parsed.data.GMAIL_APP_PASSWORD,
   authUrl: parsed.data.AUTH_URL,
+  storageDriver: parsed.data.STORAGE_DRIVER,
+  localUploadsDir: parsed.data.LOCAL_UPLOADS_DIR,
+  maxUploadBytes: parsed.data.MAX_UPLOAD_BYTES,
 } as const;
