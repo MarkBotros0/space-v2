@@ -51,7 +51,25 @@ const envSchema = z.object({
     .transform((v) => v === "true"),
 });
 
-const parsed = envSchema.safeParse(process.env);
+/**
+ * An environment variable set to the empty string means "not configured", not
+ * "configured as empty".
+ *
+ * Hosting platforms materialise a declared-but-unset variable as `""` rather
+ * than omitting it. Zod's `.default()` and `.optional()` only fire on
+ * `undefined`, so without this every key with a perfectly good default —
+ * PORT, STORAGE_DRIVER, MAX_UPLOAD_BYTES, ENABLE_API_DOCS — fails validation
+ * on a host that does that, and the resulting error buries the two keys that
+ * genuinely have to be set (DATABASE_URL, AUTH_SECRET) among five that do not.
+ *
+ * Stripping empties first means the error names only what a human must
+ * actually go and fix.
+ */
+const presentEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([, value]) => value !== ""),
+);
+
+const parsed = envSchema.safeParse(presentEnv);
 if (!parsed.success) {
   throw new Error(`Invalid environment: ${parsed.error.message}`);
 }
