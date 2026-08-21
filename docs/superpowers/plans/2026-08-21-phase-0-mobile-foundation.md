@@ -944,7 +944,11 @@ cd apps/mobile && pnpm jest src/__tests__/use-session.test.tsx
 
 `app/_layout.tsx` calls it, and while `status` is `idle` or `restoring` renders
 `<LoadingState />` instead of the `Stack` — that is the whole point of the
-gate. Wrap in `ThemeProvider` and `QueryClientProvider`.
+gate. Wrap in `ThemeProvider`, `QueryClientProvider` **and `SafeAreaProvider`**
+(ruling P7 — `Screen` calls `useSafeAreaInsets()`, which throws outside a
+provider; the root layout is the only place that provider can live, and
+nothing renders `Screen` before Task 7, so mounting it here rather than in
+Task 4 keeps `_layout.tsx` down to the two tasks P4 already tracks).
 
 **Known gap between Task 6 and Task 7 (controller ruling P2).** The redirect
 target below, `/dashboard`, is created by Task 7. Between these two tasks the
