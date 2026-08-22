@@ -46,5 +46,11 @@ describe("LoginScreen", () => {
       expect(screen.getByText("Incorrect email or password.")).toBeTruthy(),
     );
     expect(mockReplace).not.toHaveBeenCalled();
+
+    // The error renders inline above the form now, not as a full-screen
+    // takeover — the fields must still be there, still holding what the
+    // user typed, so a wrong password is a one-tap retry, not a re-fill.
+    expect(screen.getByLabelText("Email").props.value).toBe("sara@jpc.test");
+    expect(screen.getByLabelText("Password").props.value).toBe("wrong");
   });
 });

@@ -10,11 +10,13 @@ it("shows the schema's error and blocks submit", async () => {
   fireEvent.press(screen.getByText("Sign in"));
   // `Input` hides its error caption from the accessibility tree (it's already
   // surfaced via `accessibilityHint` on the field itself, so screen readers
-  // don't get it twice) — RNTL's `getByText` excludes hidden elements by
-  // default, so this needs `includeHiddenElements` the same way R2 calls out
-  // for the visible label.
+  // don't get it twice). Asserting through the hint — the actual
+  // screen-reader-visible surface — proves the error reaches users; a
+  // `getByText(..., { includeHiddenElements: true })` assertion here would
+  // also match the field's always-present visible label ("Email"), so it'd
+  // pass even if `FormField` never surfaced the validation error at all.
   await waitFor(() =>
-    expect(screen.getByText(/email/i, { includeHiddenElements: true })).toBeTruthy(),
+    expect(screen.getByLabelText("Email").props.accessibilityHint).toMatch(/email/i),
   );
   expect(onSubmit).not.toHaveBeenCalled();
 });

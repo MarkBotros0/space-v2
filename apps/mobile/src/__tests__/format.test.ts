@@ -23,4 +23,19 @@ describe("format", () => {
   it("returns a placeholder for a null due date rather than throwing", () => {
     expect(formatDueDate(null)).toBe("—");
   });
+
+  // `formatIso` documents this as placeholder behaviour for a string that
+  // fails to parse, but nothing previously exercised the branch — it could
+  // be deleted without a test failing.
+  it("returns a placeholder for an empty string rather than throwing", () => {
+    expect(formatDate("")).toBe("—");
+  });
+
+  it("returns a placeholder for a string that isn't a date at all", () => {
+    expect(formatDate("not-a-date")).toBe("—");
+  });
+
+  it("returns a placeholder for a string shaped like a date but with out-of-range fields", () => {
+    expect(formatDate("2026-13-45")).toBe("—");
+  });
 });

@@ -1,13 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { View } from "react-native";
+import { AccessibilityInfo, View } from "react-native";
 import { loginRequestSchema, type LoginRequest } from "@space/shared";
 
 import { useLogin } from "../src/hooks/use-session";
 import { useTheme } from "../src/theme";
-import { Button, ErrorState, FormField, Screen, Text } from "../src/ui";
+import { Button, FormField, Screen, Text } from "../src/ui";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -24,6 +24,15 @@ export default function LoginScreen() {
     defaultValues: { email: "", password: "" },
   });
 
+  // Mirrors `ErrorState`'s accessibility treatment (see states.tsx):
+  // `accessibilityRole="alert"` and `accessibilityLiveRegion="assertive"`
+  // help on Android and cost nothing on iOS, but iOS only reliably announces
+  // through an imperative `announceForAccessibility` call, so fire one
+  // whenever a failed attempt produces a new error message.
+  useEffect(() => {
+    if (error) AccessibilityInfo.announceForAccessibility(error);
+  }, [error]);
+
   async function onSubmit(values: LoginRequest) {
     setError(null);
     try {
@@ -34,20 +43,28 @@ export default function LoginScreen() {
     }
   }
 
-  if (error) {
-    return (
-      <Screen>
-        <ErrorState message={error} onRetry={() => setError(null)} />
-      </Screen>
-    );
-  }
-
   return (
     <Screen>
       <View style={{ flex: 1, justifyContent: "center", gap: theme.spacing.md }}>
         <Text variant="heading" style={{ marginBottom: theme.spacing.sm }}>
           JPC Space
         </Text>
+
+        {error ? (
+          // Inline, above the form — a wrong password is a field-level
+          // problem, not a reason to take over the whole screen. The fields
+          // below stay mounted with their values intact (RHF's
+          // `shouldUnregister: false`), so there's no extra tap to get back
+          // to a fillable form.
+          <Text
+            variant="body"
+            color={theme.colors.error[600]}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="assertive"
+          >
+            {error}
+          </Text>
+        ) : null}
 
         <FormField
           control={control}

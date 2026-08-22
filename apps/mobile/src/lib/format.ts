@@ -9,7 +9,7 @@ import { format, isValid, parseISO } from "date-fns";
 const PLACEHOLDER = "—";
 
 function formatIso(iso: string | null, pattern: string): string {
-  if (iso === null) return PLACEHOLDER;
+  if (iso == null) return PLACEHOLDER;
 
   const date = parseISO(iso);
   if (!isValid(date)) return PLACEHOLDER;
