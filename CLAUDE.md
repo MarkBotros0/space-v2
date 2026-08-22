@@ -159,6 +159,60 @@ is nothing to generate from. Change it in the same commit as the route.
 Still outstanding: the mobile screens for the newly-ported endpoints. See
 `apps/backend/README.md` for the full endpoint and environment reference.
 
+## Mobile conventions (Phase 0 established these — follow them)
+
+**Screens are flat and role-driven.** One route per *destination*
+(`/calendar`, `/students`), not per role. The tab bar renders
+`navFor(user).tabs` from `packages/shared/src/navigation.ts`, so a student and
+an admin see different tabs pointing at the same route files. `(app)/_layout.tsx`
+hides non-tab routes with `href: null` — reachable by navigation, absent from
+the bar — and derives the route universe from `ALL_NAV_HREFS`. Never re-derive
+that set from `navByRole`: `ALUMNI` is not in it, only reachable via `navFor`.
+
+**Typed routes are on.** Every `href` is compile-checked against the real route
+tree. The types are generated, not written — `turbo.json`'s `routes:generate`
+task runs `expo customize tsconfig.json` and `typecheck` depends on it, so a
+clean checkout gets correct types. Without them the `Href` type silently
+degrades to `string` and checks nothing. Never silence a route error with
+`as Href`/`as any`.
+
+**Data fetching follows `app/(app)/dashboard.tsx`** — the worked example. Query
+keys are hierarchical factories in `src/lib/query-keys.ts`; hooks live in
+`src/hooks/` and **parse responses with a Zod schema from `packages/shared`**
+rather than casting, so a backend drift fails at the boundary. Queries
+depending on `scopes.activeSeasonId` (or any nullable id) must pass `enabled`
+— and guard manual `refetch()` too, since `enabled` only gates the automatic
+run. Map states to the primitives: `LoadingState`, `ErrorState` with `onRetry`
+wired to `refetch`, `EmptyState`.
+
+**Domain contracts are Zod, not bare interfaces.** `session.ts`'s
+`sessionListItemSchema` is the source of truth and its type is `z.infer` of it.
+The remaining interfaces in `packages/shared` predate this and should convert
+as each domain lands.
+
+**Tab screens pass `edges={["top","left","right"]}` to `Screen`** — the tab bar
+already consumes the bottom inset, so the default double-pads. `Screen` sums
+insets into per-edge padding; never split that back into a `padding` shorthand
+plus per-edge overrides, because Yoga resolves the specific edge first and the
+shorthand is silently ignored.
+
+**Testing.** Anything rendering `Screen` must use `renderWithProviders`
+(`src/__tests__/helpers/render.tsx`) — it supplies `SafeAreaProvider` with
+explicit `initialMetrics` and a `QueryClientProvider`. A *bare*
+`SafeAreaProvider` renders no children at all while `render()` still returns a
+truthy tree, so assertions pass against nothing. `Input` hides its visual label
+and error caption from the accessibility tree, so query fields with
+`getByLabelText` and assert errors via `accessibilityHint` — `getByText` finds
+neither. `jest.mock` factories may only close over out-of-scope consts named
+`mock*`.
+
+## Git
+
+`origin` is `MarkBotros0/space-v2`, but this machine has five accounts in the
+`gh` keyring and the active one drifts between sessions. **Always**
+`gh auth switch --user MarkBotros0` in the same command as a push or fetch —
+the wrong account fails with a misleading `Repository not found`.
+
 ## Docs
 
 - Design: `docs/superpowers/specs/2026-08-20-space-v2-monorepo-design.md`
