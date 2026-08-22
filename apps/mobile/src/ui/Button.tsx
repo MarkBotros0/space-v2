@@ -52,9 +52,17 @@ export function Button({
   return (
     <Pressable
       {...rest}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      // Default via `??` rather than unconditionally overwriting: a caller
+      // passing their own `accessibilityRole`/`accessibilityLabel` (now
+      // advertised, since `ButtonProps` extends `PressableProps`) must win,
+      // not be silently discarded. `accessibilityState.disabled`/`busy` are
+      // the exception — those must always reflect the control's real state,
+      // so they're forced last rather than deferred to the caller; any other
+      // caller-supplied `accessibilityState` keys (e.g. `selected`) still
+      // pass through.
+      accessibilityRole={rest.accessibilityRole ?? "button"}
+      accessibilityLabel={rest.accessibilityLabel ?? title}
+      accessibilityState={{ ...rest.accessibilityState, disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       onPress={() => {
         if (isDisabled) return;

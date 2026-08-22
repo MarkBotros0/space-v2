@@ -53,7 +53,18 @@ export function Input({ label, value, onChangeText, error, style, ...rest }: Inp
         style={mergedStyle}
       />
       {error ? (
-        <Text variant="caption" color={theme.colors.error[600]}>
+        // The field itself carries `accessibilityHint={error}` above, so
+        // this caption is a duplicate for screen readers too — without
+        // hiding it, focusing the field reads "Email, Required" and then
+        // swiping past reads "Required" again. Hidden the same way the
+        // visual label above is; `getByLabelText(label)` still resolves to
+        // just the field.
+        <Text
+          variant="caption"
+          color={theme.colors.error[600]}
+          importantForAccessibility="no"
+          accessibilityElementsHidden
+        >
           {error}
         </Text>
       ) : null}

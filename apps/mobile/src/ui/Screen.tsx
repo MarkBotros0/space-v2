@@ -7,7 +7,9 @@ import { useTheme } from "../theme";
 
 export type ScreenEdge = "top" | "bottom" | "left" | "right";
 
-const ALL_EDGES: ScreenEdge[] = ["top", "bottom", "left", "right"];
+// `readonly` so the default value below can't be mutated by a caller and
+// leak that mutation to every other consumer of the default.
+const ALL_EDGES: readonly ScreenEdge[] = ["top", "bottom", "left", "right"] as const;
 
 export interface ScreenProps {
   children: ReactNode;
@@ -21,10 +23,22 @@ export interface ScreenProps {
    * tab bar already consumes the bottom inset, so tab screens pass
    * `edges={["top", "left", "right"]}` to avoid double padding.
    */
-  edges?: ScreenEdge[];
-  /** Merged with (not replacing) the outer container's own style. */
+  edges?: readonly ScreenEdge[];
+  /**
+   * Merged with (not replacing) the container's own style. In the scroll
+   * branch this lands on the `ScrollView` itself (a different node than
+   * `contentContainerStyle`, so there's no overlap to resolve). In the
+   * non-scroll branch both `style` and `contentContainerStyle` land on the
+   * same `View`; `style` is applied last there and wins on any overlapping
+   * key.
+   */
   style?: StyleProp<ViewStyle>;
-  /** Merged with (not replacing) the content container's own style — the scrollable inner style when `scroll`/`onRefresh` is set. */
+  /**
+   * Merged with (not replacing) the content container's own style — the
+   * scrollable inner style when `scroll`/`onRefresh` is set. In the
+   * non-scroll branch, where this and `style` apply to the same node,
+   * `style` wins on overlapping keys.
+   */
   contentContainerStyle?: StyleProp<ViewStyle>;
 }
 
@@ -50,11 +64,22 @@ export function Screen({
   const insets = useSafeAreaInsets();
   const theme = useTheme();
 
-  const insetStyle: ViewStyle = {
-    paddingTop: edges.includes("top") ? insets.top : 0,
-    paddingBottom: edges.includes("bottom") ? insets.bottom : 0,
-    paddingLeft: edges.includes("left") ? insets.left : 0,
-    paddingRight: edges.includes("right") ? insets.right : 0,
+  // One padding value per edge — the standard `spacing.md` padding (when
+  // `padded`) plus that edge's safe-area inset (when the edge is included in
+  // `edges`) — summed onto a single edge-specific key. This must NOT be
+  // split into a `padding` shorthand plus separate per-edge overrides on the
+  // same style node: React Native/Yoga resolves a specific edge (Edge::Left)
+  // before the shorthand (Edge::All) regardless of array order, so a
+  // `padding` shorthand sharing a style object with explicit
+  // paddingLeft/paddingRight is silently ignored for those edges. That was
+  // the bug — `padded` had no effect and every scrolling screen lost its
+  // horizontal gutter.
+  const pad = padded ? theme.spacing.md : 0;
+  const paddingStyle: ViewStyle = {
+    paddingTop: pad + (edges.includes("top") ? insets.top : 0),
+    paddingBottom: pad + (edges.includes("bottom") ? insets.bottom : 0),
+    paddingLeft: pad + (edges.includes("left") ? insets.left : 0),
+    paddingRight: pad + (edges.includes("right") ? insets.right : 0),
   };
 
   const baseStyle: ViewStyle = {
@@ -62,19 +87,18 @@ export function Screen({
     backgroundColor: theme.colors.neutral[50],
   };
 
-  const paddingStyle: ViewStyle | undefined = padded ? { padding: theme.spacing.md } : undefined;
-
   if (scroll || onRefresh) {
     return (
       <ScrollView
         style={[baseStyle, style]}
-        // Insets live here, not on `style`, on purpose: putting them on the
-        // ScrollView's own `style` clips content at the inset instead of
-        // letting it scroll under the notch. `flexGrow: 1` is what stops a
-        // `flex: 1` child (e.g. EmptyState/ErrorState) from collapsing to
-        // zero height — a plain `{ padding }` contentContainerStyle gives
-        // the content no flex basis to grow into.
-        contentContainerStyle={[insetStyle, { flexGrow: 1 }, paddingStyle, contentContainerStyle]}
+        // Padding (standard + insets) lives here, not on the ScrollView's
+        // own `style`, on purpose: putting it on `style` clips content at
+        // the inset instead of letting it scroll under the notch.
+        // `flexGrow: 1` is what stops a `flex: 1` child (e.g.
+        // EmptyState/ErrorState) from collapsing to zero height — a plain
+        // `{ padding }` contentContainerStyle gives the content no flex
+        // basis to grow into.
+        contentContainerStyle={[paddingStyle, { flexGrow: 1 }, contentContainerStyle]}
         refreshControl={
           onRefresh ? (
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -87,7 +111,7 @@ export function Screen({
   }
 
   return (
-    <View style={[baseStyle, insetStyle, paddingStyle, style, contentContainerStyle]}>
+    <View style={[baseStyle, paddingStyle, contentContainerStyle, style]}>
       {children}
     </View>
   );

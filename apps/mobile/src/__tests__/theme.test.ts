@@ -1,4 +1,4 @@
-import { colors, radii, spacing, typography } from "../theme/tokens";
+import { borderWidths, colors, opacity, radii, spacing, typography } from "../theme/tokens";
 import type { Theme } from "../theme/index";
 
 describe("theme tokens", () => {
@@ -97,5 +97,23 @@ describe("theme tokens", () => {
   it("defines radii", () => {
     expect(radii.sm).toBeGreaterThan(0);
     expect(radii.full).toBeGreaterThanOrEqual(999);
+  });
+
+  // Fix H: borderWidths, opacity, and colors.transparent were added for
+  // Input's error border and Button's disabled/ghost states but never
+  // asserted on.
+  it("defines border stroke widths", () => {
+    expect(borderWidths.none).toBe(0);
+    expect(borderWidths.thin).toBe(1);
+  });
+
+  it("defines opacity levels for interactive states", () => {
+    expect(opacity.full).toBe(1);
+    expect(opacity.disabled).toBeGreaterThan(0);
+    expect(opacity.disabled).toBeLessThan(opacity.full);
+  });
+
+  it("exposes a transparent colour token", () => {
+    expect(colors.transparent).toBe("transparent");
   });
 });

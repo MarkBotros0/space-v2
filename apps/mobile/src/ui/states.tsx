@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { useEffect } from "react";
+import { AccessibilityInfo, ActivityIndicator, View } from "react-native";
 
 import { useTheme } from "../theme";
 import { Button } from "./Button";
@@ -64,14 +65,24 @@ export interface ErrorStateProps {
 export function ErrorState({ message, onRetry }: ErrorStateProps) {
   const theme = useTheme();
 
+  // `accessibilityRole="alert"` does nothing on iOS unless the node is an
+  // accessibility element (see the `accessible` note below — we deliberately
+  // don't make it one), and `accessibilityLiveRegion` only does anything on
+  // Android. An imperative announcement is the only mechanism that reliably
+  // reaches VoiceOver, so fire one whenever the message appears or changes.
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility(message);
+  }, [message]);
+
   return (
     <View
       // Deliberately not `accessible`: unlike LoadingState, this container
       // has an interactive child (the retry Button). Making the View a
       // single accessibility element would absorb that Button and make it
       // unreachable by swipe navigation. `accessibilityRole="alert"` plus
-      // `accessibilityLiveRegion` announce the error without needing the
-      // container itself to become one opaque element.
+      // `accessibilityLiveRegion` still help on Android (and cost nothing on
+      // iOS) without needing the container itself to become one opaque
+      // element; the `announceForAccessibility` call above covers iOS.
       accessibilityRole="alert"
       accessibilityLiveRegion="assertive"
       style={{
