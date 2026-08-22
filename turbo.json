@@ -12,6 +12,23 @@
       "inputs": ["prisma/schema.prisma"],
       "outputs": ["src/generated/**"]
     },
+    // Expo Router's typed routes (`experiments.typedRoutes` in app.json) work
+    // the same way: `.expo/types/router.d.ts` and `expo-env.d.ts` are
+    // generated code, gitignored, and therefore absent on a clean clone. They
+    // are normally written by the dev server on first bundle, but `tsc` never
+    // starts the dev server — so without this task a clean checkout's
+    // `typecheck` doesn't fail on a stale/renamed href, it just silently
+    // stops checking hrefs at all (the augmented `Href` type is simply
+    // missing, so `expo-router` falls back to its unaugmented, unchecked
+    // type). `expo customize tsconfig.json` is the documented way to run
+    // Expo CLI's type generation without a running Metro/dev-server instance;
+    // tsconfig.json's `include` and the `expo-env.d.ts` gitignore entry are
+    // already committed, so repeat runs only rewrite the two generated files
+    // declared as outputs below.
+    "routes:generate": {
+      "inputs": ["app.json", "app/**/*.ts", "app/**/*.tsx"],
+      "outputs": [".expo/types/**", "expo-env.d.ts"]
+    },
     "build": {
       "dependsOn": ["^build", "db:generate"],
       "outputs": ["dist/**", "build/**"],
@@ -44,7 +61,7 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build", "db:generate"],
+      "dependsOn": ["^build", "db:generate", "routes:generate"],
       "outputs": []
     },
     // No `coverage/**` output: no package runs jest with --coverage, so

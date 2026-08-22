@@ -8,6 +8,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "lint": "eslint app src",
+    "routes:generate": "expo customize tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test:unit": "jest"
   },
