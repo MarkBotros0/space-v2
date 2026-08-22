@@ -3,6 +3,12 @@ import Constants from "expo-constants";
 import { loginResponseSchema, sessionSchema, type LoginResponse, type Session } from "@space/shared";
 
 import { clearSession, loadAccessToken, loadRefreshToken, saveSession } from "./token-storage";
+// Only referenced lazily (via `useSessionStore.getState()` inside functions,
+// never destructured at module scope) so a real import cycle would still
+// surface at call time instead of silently deadlocking module init. There is
+// no cycle in practice: ../store/session imports only "@space/shared", never
+// this module or anything that transitively reaches back to it.
+import { useSessionStore } from "../store/session";
 
 const baseURL =
   process.env.EXPO_PUBLIC_API_BASE_URL ??
@@ -82,7 +88,16 @@ export async function refreshAccessToken(rotate: RotateFn = rotateViaApi): Promi
       return null;
     }
     if (!session) {
+      // A definitive rejection: the server actually answered and said the
+      // refresh token is dead. Tokens are already gone from SecureStore
+      // above — if the store still says "authenticated" here, every screen
+      // behind an auth guard renders a permanent error with no way back
+      // short of force-quitting. Flip it to "anonymous" so the guards send
+      // the user to login instead. An indeterminate result (network error,
+      // timeout, 5xx) never reaches this branch, so a mere blip does not
+      // sign the user out from under them.
       await clearSession();
+      useSessionStore.getState().clear();
       return null;
     }
 
@@ -140,4 +155,25 @@ export async function login(email: string, password: string): Promise<LoginRespo
   const data = loginResponseSchema.parse(res.data.data);
   await saveSession(data);
   return data;
+}
+
+/**
+ * Revoke the stored refresh token server-side (`POST /api/v1/auth/logout`).
+ * Deliberately uses the bare `axios` instance, not `apiClient`: that endpoint
+ * is not access-token protected and is idempotent (an unknown or
+ * already-revoked token is a no-op, always 200), so there is nothing for the
+ * response interceptor's refresh-on-401 dance to do here — routing through
+ * `apiClient` would only risk it spending the very token being revoked on a
+ * spurious rotation. Mirrors `rotateViaApi`'s use of raw `axios.post` above.
+ *
+ * This function does not catch its own errors and does not touch local
+ * storage or the session store — it is the network call only. Callers (see
+ * `useLogout`) decide how to treat a failure; making the call itself throw
+ * keeps that failure observable in tests instead of being swallowed here
+ * where nothing could assert on it.
+ */
+export async function logout(): Promise<void> {
+  const refreshToken = await loadRefreshToken();
+  if (!refreshToken) return;
+  await axios.post(`${baseURL}/api/v1/auth/logout`, { refreshToken });
 }

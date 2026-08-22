@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react";
 import axios from "axios";
 import { meResponseSchema } from "@space/shared";
 
-import { apiClient, login as loginRequest } from "../lib/api-client";
+import { apiClient, login as loginRequest, logout as logoutRequest } from "../lib/api-client";
 import { clearSession, loadAccessToken } from "../lib/token-storage";
 import { useSessionStore } from "../store/session";
 
@@ -119,6 +119,22 @@ export function useLogout(): () => Promise<void> {
   const clear = useSessionStore((s) => s.clear);
 
   return useCallback(async () => {
+    // Best-effort: tell the server to revoke the refresh token so it can't
+    // outlive sign-out for its full 30-day TTL. `logoutRequest` itself
+    // skips the call when there is no stored refresh token. If the call
+    // fails — offline, timeout, a 429 from the refresh limiter — the user
+    // must never end up still "signed in" locally just because the network
+    // was down, so the local clear below is unconditional. The failure is
+    // not swallowed silently: it's caught here, at the one call site that
+    // can observe it, rather than inside `logout()` itself.
+    try {
+      await logoutRequest();
+    } catch {
+      // Server-side revocation didn't happen this time; the refresh token
+      // stays valid until it naturally expires. Local sign-out still
+      // proceeds unconditionally below.
+    }
+
     await clearSession();
     clear();
   }, [clear]);

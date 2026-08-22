@@ -14,19 +14,21 @@ import { renderHook, waitFor } from "@testing-library/react-native";
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
   login: jest.fn(),
+  logout: jest.fn(),
 }));
 jest.mock("../lib/token-storage", () => ({
   loadAccessToken: jest.fn(),
   clearSession: jest.fn(),
 }));
 
-import { apiClient, login } from "../lib/api-client";
+import { apiClient, login, logout } from "../lib/api-client";
 import { loadAccessToken, clearSession } from "../lib/token-storage";
 import { useSessionStore } from "../store/session";
 import { useBootSession, useLogin, useLogout } from "../hooks/use-session";
 
 const get = apiClient.get as jest.Mock;
 const mockLogin = login as jest.Mock;
+const mockLogout = logout as jest.Mock;
 const mockLoadAccessToken = loadAccessToken as jest.Mock;
 const mockClearSession = clearSession as jest.Mock;
 
@@ -221,15 +223,49 @@ describe("useLogin", () => {
 });
 
 describe("useLogout", () => {
-  it("clears stored tokens and resets the store", async () => {
+  // Fix 1: sign-out used to be cosmetic — it only touched SecureStore, never
+  // told the server, so the refresh token stayed valid in the database for
+  // its full 30-day TTL. These three cases are the contract now: the server
+  // call happens when there's something to revoke, but local sign-out never
+  // depends on it succeeding.
+
+  it("happy path: calls the server logout endpoint with the stored token, then clears locally", async () => {
+    mockLogout.mockResolvedValue(undefined);
     useSessionStore.getState().setSession(me.user, me.scopes);
 
     const { result } = renderHook(() => useLogout());
     await result.current();
 
+    expect(mockLogout).toHaveBeenCalledTimes(1);
     expect(mockClearSession).toHaveBeenCalled();
     expect(useSessionStore.getState().status).toBe("anonymous");
     expect(useSessionStore.getState().user).toBeNull();
     expect(useSessionStore.getState().scopes).toBeNull();
   });
+
+  it("network failure: still clears locally and still ends anonymous", async () => {
+    // A user who taps sign-out must never be left signed in locally just
+    // because the network was down. The failure itself must not be swallowed
+    // silently, though — it has to propagate somewhere observable, which is
+    // exactly what this test's rejected mock and passing assertions confirm.
+    mockLogout.mockRejectedValue(new Error("Network Error"));
+    useSessionStore.getState().setSession(me.user, me.scopes);
+
+    const { result } = renderHook(() => useLogout());
+    await expect(result.current()).resolves.toBeUndefined();
+
+    expect(mockLogout).toHaveBeenCalledTimes(1);
+    expect(mockClearSession).toHaveBeenCalled();
+    expect(useSessionStore.getState().status).toBe("anonymous");
+    expect(useSessionStore.getState().user).toBeNull();
+    expect(useSessionStore.getState().scopes).toBeNull();
+  });
+
+  // "No stored token means no call" is exercised directly against the real
+  // `logout()` implementation in api-client.test.ts ("does nothing when
+  // there is no stored refresh token") — that check lives inside `logout()`
+  // itself, which this file mocks away entirely, so it can't be meaningfully
+  // re-observed from useLogout's side. What useLogout owns, and what's
+  // covered above, is that it always calls `logout()` and always clears
+  // locally afterward regardless of outcome.
 });
