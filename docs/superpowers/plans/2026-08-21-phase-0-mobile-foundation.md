@@ -727,7 +727,10 @@ const scopes = {
 };
 
 beforeEach(() => {
-  useSessionStore.getState().clear();
+  // Reset to the real initial state, not via clear() — clear() sets
+  // "anonymous", and "starts idle" is precisely the case that must not be
+  // pre-satisfied by the fixture.
+  useSessionStore.setState({ status: "idle", user: null, scopes: null });
 });
 
 describe("session store", () => {
@@ -848,6 +851,14 @@ point at which the app can decide where to send someone.
 
 **Interfaces:**
 - Produces: `useBootSession()` — runs once, restores or clears; `useLogin()`, `useLogout()`
+
+**`useLogin` must fetch `/me` after authenticating (ruling P9).** The login
+response is `sessionSchema.extend({ user: authUserSchema })` — an `AuthUser`
+with no `avatarPath` and **no scopes at all**. The store needs `MeUser` +
+`MeScopes`, and scopes exist only on `/me`. So the flow is: POST login → store
+tokens → `GET /api/v1/me` → parse with `meResponseSchema` → `setSession`. This
+is also what repairs `app/login.tsx`, which Task 5 leaves compiling but unable
+to populate the session.
 - Consumes: `loadAccessToken`, `clearSession` from `../lib/token-storage`; `apiClient` from `../lib/api-client`; `meResponseSchema` from `@space/shared`
 
 **The flow:**
