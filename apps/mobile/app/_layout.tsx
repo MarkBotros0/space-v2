@@ -1,13 +1,14 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useBootSession } from "../src/hooks/use-session";
+import { createQueryClient } from "../src/lib/query-client";
 import { useSessionStore } from "../src/store/session";
 import { ThemeProvider } from "../src/theme";
 import { LoadingState } from "../src/ui";
 
-const queryClient = new QueryClient();
+const queryClient = createQueryClient();
 
 export default function RootLayout() {
   return (

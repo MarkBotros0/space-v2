@@ -1,10 +1,12 @@
 import {
+  apiClient,
   refreshAccessToken,
   __resetRefreshState,
   __handleResponseError,
+  login,
   ROTATE_INDETERMINATE,
 } from "../lib/api-client";
-import { clearSession } from "../lib/token-storage";
+import { saveSession, clearSession } from "../lib/token-storage";
 
 jest.mock("../lib/token-storage", () => ({
   loadAccessToken: jest.fn(async () => "old-access"),
@@ -47,6 +49,37 @@ describe("refreshAccessToken", () => {
     const rotate = jest.fn(async (): Promise<typeof ROTATE_INDETERMINATE> => ROTATE_INDETERMINATE);
     await expect(refreshAccessToken(rotate)).resolves.toBeNull();
     expect(clearSession).not.toHaveBeenCalled();
+  });
+});
+
+describe("login", () => {
+  beforeEach(() => {
+    __resetRefreshState();
+    jest.clearAllMocks();
+  });
+
+  it("persists the returned tokens via saveSession (R4)", async () => {
+    // Task 5 removed the store write from the login screen — since then
+    // this internal call is the *only* thing that persists tokens from the
+    // login path. Nothing was asserting it before this test.
+    const loginResponse = {
+      accessToken: "access-1",
+      expiresIn: 900,
+      refreshToken: "refresh-1",
+      user: { id: 1, name: "Sara", email: "sara@jpc.test", role: "STUDENT" },
+    };
+    jest.spyOn(apiClient, "post").mockResolvedValue({ data: { data: loginResponse } });
+
+    const result = await login("sara@jpc.test", "hunter2");
+
+    expect(saveSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessToken: "access-1",
+        expiresIn: 900,
+        refreshToken: "refresh-1",
+      }),
+    );
+    expect(result).toEqual(loginResponse);
   });
 });
 

@@ -15,3 +15,6 @@ export type { TextProps, TextVariant } from "./Text";
 
 export { EmptyState, ErrorState, LoadingState } from "./states";
 export type { EmptyStateProps, ErrorStateProps } from "./states";
+
+export { FormField } from "./Form";
+export type { FormFieldProps } from "./Form";

@@ -1,60 +1,69 @@
-import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { View } from "react-native";
+import { loginRequestSchema, type LoginRequest } from "@space/shared";
 
 import { useLogin } from "../src/hooks/use-session";
+import { useTheme } from "../src/theme";
+import { Button, ErrorState, FormField, Screen, Text } from "../src/ui";
 
 export default function LoginScreen() {
   const router = useRouter();
   const login = useLogin();
+  const theme = useTheme();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // `useLogin` already does login -> /me -> setSession (Task 6); this screen
+  // just drives the form and reacts to success/failure. It does not persist
+  // tokens itself — that happens inside `login()` in `lib/api-client.ts`.
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
-  async function onSubmit() {
-    setBusy(true);
+  const { control, handleSubmit, formState } = useForm<LoginRequest>({
+    resolver: zodResolver(loginRequestSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  async function onSubmit(values: LoginRequest) {
     setError(null);
     try {
-      await login(email, password);
+      await login(values.email, values.password);
       router.replace("/dashboard");
     } catch {
       setError("Incorrect email or password.");
-    } finally {
-      setBusy(false);
     }
   }
 
+  if (error) {
+    return (
+      <Screen>
+        <ErrorState message={error} onRetry={() => setError(null)} />
+      </Screen>
+    );
+  }
+
   return (
-    <View style={{ flex: 1, justifyContent: "center", padding: 24, gap: 12 }}>
-      <Text style={{ fontSize: 28, fontWeight: "600", marginBottom: 12 }}>JPC Space</Text>
+    <Screen>
+      <View style={{ flex: 1, justifyContent: "center", gap: theme.spacing.md }}>
+        <Text variant="heading" style={{ marginBottom: theme.spacing.sm }}>
+          JPC Space
+        </Text>
 
-      <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        style={{ borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12 }}
-      />
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={{ borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12 }}
-      />
+        <FormField
+          control={control}
+          name="email"
+          label="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <FormField control={control} name="password" label="Password" secureTextEntry />
 
-      {error ? <Text style={{ color: "#b00020" }}>{error}</Text> : null}
-
-      <Pressable
-        onPress={onSubmit}
-        disabled={busy}
-        style={{ backgroundColor: "#1f2937", borderRadius: 8, padding: 14, alignItems: "center" }}
-      >
-        <Text style={{ color: "white", fontWeight: "600" }}>Sign in</Text>
-      </Pressable>
-    </View>
+        <Button
+          title="Sign in"
+          onPress={handleSubmit(onSubmit)}
+          loading={formState.isSubmitting}
+        />
+      </View>
+    </Screen>
   );
 }

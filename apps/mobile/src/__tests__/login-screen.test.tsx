@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 import LoginScreen from "../../app/login";
+import { renderWithProviders } from "./helpers/render";
 
 // The screen now drives auth through useLogin (Task 6, ruling P9), which
 // internally calls login() and then GET /api/v1/me before it resolves.
@@ -22,9 +23,11 @@ describe("LoginScreen", () => {
   it("navigates to /dashboard on a successful login", async () => {
     mockLogin.mockResolvedValue(undefined);
 
-    render(<LoginScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText("Email"), "sara@jpc.test");
-    fireEvent.changeText(screen.getByPlaceholderText("Password"), "hunter2");
+    renderWithProviders(<LoginScreen />);
+    // `Input` exposes a label, not a placeholder — `getByPlaceholderText`
+    // stopped matching once the screen was rebuilt on the `Input` primitive.
+    fireEvent.changeText(screen.getByLabelText("Email"), "sara@jpc.test");
+    fireEvent.changeText(screen.getByLabelText("Password"), "hunter2");
     fireEvent.press(screen.getByText("Sign in"));
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard"));
@@ -34,9 +37,9 @@ describe("LoginScreen", () => {
   it("shows an error message when login fails", async () => {
     mockLogin.mockRejectedValue(new Error("nope"));
 
-    render(<LoginScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText("Email"), "sara@jpc.test");
-    fireEvent.changeText(screen.getByPlaceholderText("Password"), "wrong");
+    renderWithProviders(<LoginScreen />);
+    fireEvent.changeText(screen.getByLabelText("Email"), "sara@jpc.test");
+    fireEvent.changeText(screen.getByLabelText("Password"), "wrong");
     fireEvent.press(screen.getByText("Sign in"));
 
     await waitFor(() =>

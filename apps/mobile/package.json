@@ -12,10 +12,12 @@
     "test:unit": "jest"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@space/shared": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.7.2",
+    "date-fns": "^4.4.0",
     "expo": "~54.0.35",
     "expo-constants": "~18.0.13",
     "expo-linking": "~8.0.12",
@@ -23,9 +25,11 @@
     "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
+    "react-hook-form": "^7.86.0",
     "react-native": "0.81.5",
     "react-native-safe-area-context": "5.6.2",
     "react-native-screens": "~4.16.0",
+    "zod": "^3.23.8",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
