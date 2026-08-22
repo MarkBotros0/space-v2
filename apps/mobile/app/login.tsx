@@ -3,11 +3,9 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { login } from "../src/lib/api-client";
-import { useSessionStore } from "../src/store/session";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const setUser = useSessionStore((s) => s.setUser);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,8 +16,11 @@ export default function LoginScreen() {
     setBusy(true);
     setError(null);
     try {
-      const result = await login(email, password);
-      setUser(result.user);
+      // login() already stores the token pair. The session store write moves
+      // to useLogin in Task 6, which follows up with /me to get the scopes
+      // (seasonAdminIds, groupLeaderIds, graduationYear) this response
+      // doesn't carry.
+      await login(email, password);
       router.replace("/home");
     } catch {
       setError("Incorrect email or password.");
