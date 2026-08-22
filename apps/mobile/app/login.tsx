@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { login } from "../src/lib/api-client";
+import { useLogin } from "../src/hooks/use-session";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const login = useLogin();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,11 +17,9 @@ export default function LoginScreen() {
     setBusy(true);
     setError(null);
     try {
-      // login() already stores the token pair. The session store write moves
-      // to useLogin in Task 6, which follows up with /me to get the scopes
-      // (seasonAdminIds, groupLeaderIds, graduationYear) this response
-      // doesn't carry.
       await login(email, password);
+      // Task 7 repoints this at /dashboard in the same commit that deletes
+      // app/home.tsx — do not "fix" it here ahead of that.
       router.replace("/home");
     } catch {
       setError("Incorrect email or password.");

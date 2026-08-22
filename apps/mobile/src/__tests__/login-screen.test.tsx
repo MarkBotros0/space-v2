@@ -1,9 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import LoginScreen from "../../app/login";
-import { login } from "../lib/api-client";
 
-jest.mock("../lib/api-client", () => ({ login: jest.fn() }));
+// The screen now drives auth through useLogin (Task 6, ruling P9), which
+// internally calls login() and then GET /api/v1/me before it resolves.
+// use-session.test.tsx already covers that internal flow in isolation, so
+// this suite mocks the hook itself and stays focused on the screen's own
+// behavior: does it call the login function it's given, and does it react
+// correctly to success/failure.
+const mockLogin = jest.fn();
+jest.mock("../hooks/use-session", () => ({ useLogin: () => mockLogin }));
 
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ replace: mockReplace }) }));
@@ -14,12 +20,7 @@ describe("LoginScreen", () => {
   });
 
   it("navigates home on a successful login", async () => {
-    (login as jest.Mock).mockResolvedValue({
-      accessToken: "a",
-      expiresIn: 900,
-      refreshToken: "r",
-      user: { id: 1, name: "Sara", email: "sara@jpc.test", role: "STUDENT" },
-    });
+    mockLogin.mockResolvedValue(undefined);
 
     render(<LoginScreen />);
     fireEvent.changeText(screen.getByPlaceholderText("Email"), "sara@jpc.test");
@@ -27,10 +28,11 @@ describe("LoginScreen", () => {
     fireEvent.press(screen.getByText("Sign in"));
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/home"));
+    expect(mockLogin).toHaveBeenCalledWith("sara@jpc.test", "hunter2");
   });
 
   it("shows an error message when login fails", async () => {
-    (login as jest.Mock).mockRejectedValue(new Error("nope"));
+    mockLogin.mockRejectedValue(new Error("nope"));
 
     render(<LoginScreen />);
     fireEvent.changeText(screen.getByPlaceholderText("Email"), "sara@jpc.test");
