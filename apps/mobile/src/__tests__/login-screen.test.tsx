@@ -19,7 +19,7 @@ describe("LoginScreen", () => {
     jest.clearAllMocks();
   });
 
-  it("navigates home on a successful login", async () => {
+  it("navigates to /dashboard on a successful login", async () => {
     mockLogin.mockResolvedValue(undefined);
 
     render(<LoginScreen />);

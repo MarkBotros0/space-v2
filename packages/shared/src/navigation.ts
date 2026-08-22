@@ -177,3 +177,31 @@ export function navFor(user: NavAudience): RoleNav {
   if (user.role === "STUDENT" && user.graduationYear != null) return ALUMNI;
   return navByRole[user.role];
 }
+
+/**
+ * Every href across every nav's `tabs` + `sidebar`, deduped. Exported so
+ * callers can build it once from the given navs — used below to build
+ * `ALL_NAV_HREFS`, and reusable in tests against synthetic nav data.
+ */
+export function hrefUnion(navs: readonly RoleNav[]): string[] {
+  return Array.from(
+    new Set(navs.flatMap((nav) => [...nav.tabs, ...nav.sidebar]).map((item) => item.href)),
+  );
+}
+
+/**
+ * The complete href union across all six navs, ALUMNI included.
+ * `Object.values(navByRole)` alone omits ALUMNI — it's reachable only
+ * through `navFor`, not through `navByRole` — so anything that needs the
+ * full route universe (the mobile app's tab-bar shell derives its route
+ * list from this) must consume this export rather than re-deriving the
+ * union from `navByRole` and silently dropping every ALUMNI-only href.
+ */
+export const ALL_NAV_HREFS: readonly string[] = hrefUnion([
+  SUPER,
+  ADMIN,
+  LEADER,
+  MENTOR,
+  STUDENT,
+  ALUMNI,
+]);
