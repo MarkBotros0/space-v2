@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { renderHook, waitFor } from "@testing-library/react-native";
 
 // R2: the plan's snippet mocks only `apiClient`, which replaces the whole
@@ -61,12 +62,46 @@ describe("useBootSession", () => {
     expect(useSessionStore.getState().scopes).toEqual(me.scopes);
   });
 
-  it("clears stored tokens when /me rejects", async () => {
+  it("clears stored tokens when /me rejects with a definitive 4xx", async () => {
+    // A real axios rejection shape: the server actually answered and said
+    // no. Only this case should cost the user their stored refresh token —
+    // see the network-error case below for the contrast.
     mockLoadAccessToken.mockResolvedValue("stale");
-    get.mockRejectedValue(new Error("401"));
+    get.mockRejectedValue(
+      Object.assign(new Error("401"), { isAxiosError: true, response: { status: 401 } }),
+    );
     renderHook(() => useBootSession());
     await waitFor(() => expect(useSessionStore.getState().status).toBe("anonymous"));
     expect(mockClearSession).toHaveBeenCalled();
+  });
+
+  it("leaves stored tokens intact when /me fails with a network error", async () => {
+    // No response at all (offline cold start, timeout, DNS failure, ...) is
+    // not proof the refresh token is bad. The app should still become
+    // usable (anonymous), but the tokens must survive so the next launch,
+    // once connectivity returns, can retry instead of forcing a re-login.
+    mockLoadAccessToken.mockResolvedValue("stale");
+    get.mockRejectedValue(
+      Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined }),
+    );
+    renderHook(() => useBootSession());
+    await waitFor(() => expect(useSessionStore.getState().status).toBe("anonymous"));
+    expect(mockClearSession).not.toHaveBeenCalled();
+  });
+
+  it("leaves stored tokens intact and goes anonymous on a malformed /me response", async () => {
+    // A response that fails meResponseSchema.parse (unknown role, missing
+    // scopes, ...) isn't proof the token is bad either — same indeterminate
+    // treatment as a network error, and the malformed object must never
+    // reach the store.
+    mockLoadAccessToken.mockResolvedValue("tok");
+    get.mockResolvedValue({
+      data: { data: { user: { ...me.user, role: "WIZARD" }, scopes: me.scopes } },
+    });
+    renderHook(() => useBootSession());
+    await waitFor(() => expect(useSessionStore.getState().status).toBe("anonymous"));
+    expect(useSessionStore.getState().user).toBeNull();
+    expect(mockClearSession).not.toHaveBeenCalled();
   });
 
   it("treats a null user as signed out", async () => {
@@ -80,15 +115,53 @@ describe("useBootSession", () => {
     expect(mockClearSession).toHaveBeenCalled();
   });
 
-  it("does not re-run once a status has been settled", async () => {
-    // Guards on status === "idle"; a second mount (e.g. StrictMode's double
-    // effect, or a parent re-render) must not fire a second /me call.
+  it("skips the boot fetch entirely when status is already settled on mount", async () => {
+    // Drives the `status !== "idle"` guard directly, rather than relying on
+    // the effect's deps being stable Zustand action refs (rerender({}) never
+    // re-runs the effect either way, so that alone doesn't exercise the
+    // guard). Simulates a fresh mount landing after boot has already been
+    // resolved elsewhere in the store.
+    useSessionStore.setState({ status: "authenticated" });
     mockLoadAccessToken.mockResolvedValue("tok");
     get.mockResolvedValue({ data: { data: me } });
-    const { rerender } = renderHook(() => useBootSession());
+
+    renderHook(() => useBootSession());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockLoadAccessToken).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("reaches authenticated under StrictMode's mount/cleanup/mount double effect", async () => {
+    // Regression test for the `cancelled` flag that used to live here: it
+    // set `cancelled = true` on the first effect's cleanup (which StrictMode
+    // runs synchronously before the in-flight boot resolves), so the
+    // resolution became a no-op and the gate deadlocked at "restoring"
+    // forever. With `cancelled` removed, the in-flight boot completes and
+    // writes to the store normally.
+    mockLoadAccessToken.mockResolvedValue("tok");
+    get.mockResolvedValue({ data: { data: me } });
+
+    renderHook(() => useBootSession(), { wrapper: StrictMode });
+
     await waitFor(() => expect(useSessionStore.getState().status).toBe("authenticated"));
-    rerender({});
-    expect(get).toHaveBeenCalledTimes(1);
+    expect(useSessionStore.getState().user).toEqual(me.user);
+  });
+
+  it("still reaches authenticated when unmounted and remounted mid-flight", async () => {
+    // Same regression as above, via an explicit unmount instead of
+    // StrictMode: the boot started by the first instance must be allowed to
+    // finish and write to the store even though its component is gone.
+    mockLoadAccessToken.mockResolvedValue("tok");
+    get.mockResolvedValue({ data: { data: me } });
+
+    const { unmount } = renderHook(() => useBootSession());
+    unmount();
+
+    renderHook(() => useBootSession());
+
+    await waitFor(() => expect(useSessionStore.getState().status).toBe("authenticated"));
+    expect(useSessionStore.getState().user).toEqual(me.user);
   });
 });
 
@@ -113,6 +186,23 @@ describe("useLogin", () => {
 
     const { result } = renderHook(() => useLogin());
     await expect(result.current("a@b.test", "hunter2")).rejects.toThrow();
+
+    expect(mockClearSession).toHaveBeenCalled();
+    expect(useSessionStore.getState().status).toBe("anonymous");
+    expect(useSessionStore.getState().user).toBeNull();
+  });
+
+  it("throws and clears stored tokens when /me returns a null user right after login", async () => {
+    // The row was deleted inside the window between login and this follow-up
+    // fetch — there's no one to sign in as, so the half-finished login must
+    // not leave a session or stored tokens behind.
+    mockLogin.mockResolvedValue({ accessToken: "a", expiresIn: 900, refreshToken: "r", user: me.user });
+    get.mockResolvedValue({ data: { data: { ...me, user: null } } });
+
+    const { result } = renderHook(() => useLogin());
+    await expect(result.current("a@b.test", "hunter2")).rejects.toThrow(
+      "me returned no user after login",
+    );
 
     expect(mockClearSession).toHaveBeenCalled();
     expect(useSessionStore.getState().status).toBe("anonymous");
