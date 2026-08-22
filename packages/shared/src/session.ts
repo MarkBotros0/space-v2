@@ -4,25 +4,26 @@ import type { AttendanceStatus } from "./enums";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 
-export interface SessionListItem {
-  id: number;
-  title: string;
-  startsAt: string;
-  durationMinutes: number;
-  location: string | null;
-  recurrenceGroupId: string | null;
-  attendanceMarked: boolean;
-  seasonId: number;
-  seasonCode: string;
-  seasonTitle: string;
+export const sessionListItemSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  startsAt: z.string(),
+  durationMinutes: z.number(),
+  location: z.string().nullable(),
+  recurrenceGroupId: z.string().nullable(),
+  attendanceMarked: z.boolean(),
+  seasonId: z.number(),
+  seasonCode: z.string(),
+  seasonTitle: z.string(),
   /**
    * Null for students. Possession of this value authorises a check-in, so the
    * API withholds it from the role that could abuse it.
    */
-  checkInToken: string | null;
-  checkInOpenAt: string | null;
-  checkInClosedAt: string | null;
-}
+  checkInToken: z.string().nullable(),
+  checkInOpenAt: z.string().nullable(),
+  checkInClosedAt: z.string().nullable(),
+});
+export type SessionListItem = z.infer<typeof sessionListItemSchema>;
 
 export interface MyAttendance {
   status: AttendanceStatus;

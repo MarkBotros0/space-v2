@@ -9,11 +9,14 @@ import { screen } from "@testing-library/react-native";
 // renderer (see the note in `helpers/render.tsx`). This is also the worked
 // example of `renderWithProviders`, so the first Phase 1 author to build a
 // real screen has something to copy instead of hitting that error cold.
+//
+// `dashboard` used to be in this list — it's now the one real `useQuery`
+// screen (see `dashboard.test.tsx`) and dropped out of the placeholder
+// count below, from 19 to 18.
 import { renderWithProviders } from "./helpers/render";
 
 import AssignmentsScreen from "../../app/(app)/assignments";
 import CalendarScreen from "../../app/(app)/calendar";
-import DashboardScreen from "../../app/(app)/dashboard";
 import EventsScreen from "../../app/(app)/events";
 import GroupsScreen from "../../app/(app)/groups";
 import HistoryScreen from "../../app/(app)/history";
@@ -34,7 +37,6 @@ import UsersScreen from "../../app/(app)/users";
 const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
   ["assignments", AssignmentsScreen, "Assignments"],
   ["calendar", CalendarScreen, "Calendar"],
-  ["dashboard", DashboardScreen, "Dashboard"],
   ["events", EventsScreen, "JPC Events"],
   ["groups", GroupsScreen, "Groups"],
   ["history", HistoryScreen, "History"],
@@ -54,8 +56,8 @@ const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
 ];
 
 describe("placeholder screens", () => {
-  it("covers all 19 route files under app/(app)", () => {
-    expect(PLACEHOLDER_SCREENS).toHaveLength(19);
+  it("covers all remaining placeholder route files under app/(app)", () => {
+    expect(PLACEHOLDER_SCREENS).toHaveLength(18);
   });
 
   it.each(PLACEHOLDER_SCREENS)("renders %s with its title and placeholder message", (_route, Component, title) => {
