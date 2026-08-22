@@ -15,6 +15,7 @@ const app = createApp();
 let seasonId: number;
 let sessionId: number;
 let studentUserId: number;
+let otherStudentUserId: number;
 let adminUserId: number;
 let adminToken: string;
 let leaderToken: string;
@@ -29,8 +30,12 @@ beforeAll(async () => {
   const admin = await createTestUser("admin", "ADMIN");
   const leader = await createTestUser("leader", "LEADER");
   const student = await createTestUser("student", "STUDENT");
+  // Enrolled in the same season and the same session, but in a group this
+  // leader does not lead. Every scoping assertion below turns on this student.
+  const otherStudent = await createTestUser("other-student", "STUDENT");
   adminUserId = admin.id;
   studentUserId = student.id;
+  otherStudentUserId = otherStudent.id;
 
   const group = await db.group.create({
     data: {
@@ -42,9 +47,26 @@ beforeAll(async () => {
     select: { id: true },
   });
 
+  const otherGroup = await db.group.create({
+    data: {
+      seasonId,
+      name: "Group B",
+      students: { create: { studentUserId: otherStudent.id } },
+    },
+    select: { id: true },
+  });
+
   await db.seasonAdmin.create({ data: { seasonId, userId: admin.id } });
   await db.seasonEnrollment.create({
     data: { seasonId, studentUserId: student.id, groupId: group.id, status: "ACTIVE" },
+  });
+  await db.seasonEnrollment.create({
+    data: {
+      seasonId,
+      studentUserId: otherStudent.id,
+      groupId: otherGroup.id,
+      status: "ACTIVE",
+    },
   });
 
   const session = await db.session.create({
@@ -75,6 +97,39 @@ describe("GET /api/v1/sessions/:id/attendance", () => {
       .set("authorization", `Bearer ${adminToken}`);
 
     expect(res.status).toBe(200);
+    // Ordered group name asc, then student name asc — the whole season, because
+    // a season admin's scope is not narrowed to any group.
+    expect(res.body.data.roster).toEqual([
+      {
+        studentUserId,
+        name: "Test student",
+        email: expect.any(String),
+        groupName: "Group A",
+        status: null,
+        notes: null,
+        lateMinutes: null,
+      },
+      {
+        studentUserId: otherStudentUserId,
+        name: "Test other-student",
+        email: expect.any(String),
+        groupName: "Group B",
+        status: null,
+        notes: null,
+        lateMinutes: null,
+      },
+    ]);
+  });
+
+  it("gives a leader only their own group's students", async () => {
+    // The roster carries names and email addresses. v1 narrowed it by passing
+    // the leader's groupLeaderIds from the page, and its own /api/v1 route
+    // dropped that argument — so the API handed a leader the whole season.
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}/attendance`)
+      .set("authorization", `Bearer ${leaderToken}`);
+
+    expect(res.status).toBe(200);
     expect(res.body.data.roster).toEqual([
       {
         studentUserId,
@@ -86,13 +141,6 @@ describe("GET /api/v1/sessions/:id/attendance", () => {
         lateMinutes: null,
       },
     ]);
-  });
-
-  it("allows a leader in the season", async () => {
-    const res = await request(app)
-      .get(`/api/v1/sessions/${sessionId}/attendance`)
-      .set("authorization", `Bearer ${leaderToken}`);
-    expect(res.status).toBe(200);
   });
 
   it("refuses a student — the roster exposes every peer's contact details", async () => {
@@ -155,6 +203,54 @@ describe("POST /api/v1/sessions/:id/attendance", () => {
       .set("authorization", `Bearer ${studentToken}`)
       .send({ entries: [{ studentUserId, status: "PRESENT" }] });
     expect(res.status).toBe(403);
+  });
+
+  it("lets a leader mark a student in their own group", async () => {
+    const res = await request(app)
+      .post(`/api/v1/sessions/${sessionId}/attendance`)
+      .set("authorization", `Bearer ${leaderToken}`)
+      .send({ entries: [{ studentUserId, status: "PRESENT" }] });
+    expect(res.status).toBe(200);
+  });
+
+  it("refuses a leader a student from a group they do not lead", async () => {
+    // Narrowing the roster on the read only hides this student. Without a
+    // check here, a leader who knows the id still writes the row.
+    const res = await request(app)
+      .post(`/api/v1/sessions/${sessionId}/attendance`)
+      .set("authorization", `Bearer ${leaderToken}`)
+      .send({ entries: [{ studentUserId: otherStudentUserId, status: "ABSENT" }] });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("forbidden");
+    const row = await db.attendance.findUnique({
+      where: {
+        sessionId_studentUserId: { sessionId, studentUserId: otherStudentUserId },
+      },
+      select: { status: true },
+    });
+    expect(row).toBeNull();
+  });
+
+  it("refuses the whole batch when one entry is out of the leader's scope", async () => {
+    const res = await request(app)
+      .post(`/api/v1/sessions/${sessionId}/attendance`)
+      .set("authorization", `Bearer ${leaderToken}`)
+      .send({
+        entries: [
+          { studentUserId, status: "ABSENT" },
+          { studentUserId: otherStudentUserId, status: "ABSENT" },
+        ],
+      });
+
+    expect(res.status).toBe(403);
+    // The in-scope half must not have been written either — the check runs
+    // before the transaction, so a mixed batch is refused whole.
+    const row = await db.attendance.findUnique({
+      where: { sessionId_studentUserId: { sessionId, studentUserId } },
+      select: { status: true },
+    });
+    expect(row?.status).toBe("PRESENT");
   });
 
   it("returns 400 for an invalid status", async () => {

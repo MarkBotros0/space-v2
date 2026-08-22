@@ -52,21 +52,53 @@ export async function canAccessGroup(user: SessionUser, groupId: number): Promis
   return false;
 }
 
-export async function canMarkAttendance(user: SessionUser, sessionId: number): Promise<boolean> {
-  if (isSuper(user)) return true;
+/**
+ * Which students a caller may see and mark on a session.
+ *
+ * "Who may touch attendance at all" and "whose attendance may they touch" are
+ * different questions, and v1 only ever answered the first one in code. Its
+ * leader restriction lived entirely in the page: the leader's attendance page
+ * passed `user.groupLeaderIds` into the roster query
+ * (`src/app/leader/sessions/[id]/attendance/page.tsx:23`) while the action
+ * underneath accepted any student in the season
+ * (`src/lib/attendance-actions.ts:35-71`). v1's own `/api/v1` roster route had
+ * already dropped the argument, and this backend ported that route — so the
+ * restriction vanished at exactly the point an API made the other students
+ * reachable.
+ *
+ * Returns null when the caller may not mark this session at all.
+ */
+export type AttendanceScope =
+  | { kind: "season" }
+  | { kind: "groups"; seasonId: number; groupIds: number[] };
+
+export async function attendanceScopeFor(
+  user: SessionUser,
+  sessionId: number,
+): Promise<AttendanceScope | null> {
+  if (isSuper(user)) return { kind: "season" };
   const session = await db.session.findUnique({
     where: { id: sessionId },
     select: { seasonId: true },
   });
-  if (!session) return false;
-  if (isAdminOfSeason(user, session.seasonId)) return true;
-  if (user.role !== "LEADER") return false;
-  if (user.groupLeaderIds.length === 0) return false;
-  const groupInSeason = await db.group.findFirst({
+  if (!session) return null;
+  if (isAdminOfSeason(user, session.seasonId)) return { kind: "season" };
+  if (user.role !== "LEADER") return null;
+  if (user.groupLeaderIds.length === 0) return null;
+  const groupsInSeason = await db.group.findMany({
     where: { seasonId: session.seasonId, id: { in: user.groupLeaderIds } },
     select: { id: true },
   });
-  return groupInSeason !== null;
+  if (groupsInSeason.length === 0) return null;
+  return {
+    kind: "groups",
+    seasonId: session.seasonId,
+    groupIds: groupsInSeason.map((g) => g.id),
+  };
+}
+
+export async function canMarkAttendance(user: SessionUser, sessionId: number): Promise<boolean> {
+  return (await attendanceScopeFor(user, sessionId)) !== null;
 }
 
 export async function canViewSubmission(user: SessionUser, submissionId: number): Promise<boolean> {

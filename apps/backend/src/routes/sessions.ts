@@ -5,7 +5,7 @@ import { AttendanceStatus } from "../generated/prisma/enums";
 import { apiOk, apiError } from "../lib/api-response";
 import { flagLowAttendance } from "../lib/attendance-notifications";
 import { parseId } from "../lib/parse-id";
-import { canAccessSeason, canMarkAttendance } from "../lib/permissions";
+import { attendanceScopeFor, canAccessSeason, canMarkAttendance } from "../lib/permissions";
 import { loadAttendanceRoster } from "../lib/queries/sessions";
 import { newPublicId } from "../lib/public-id";
 import { isAdminOfSeason } from "../lib/rbac";
@@ -148,13 +148,18 @@ sessionsRouter.get("/:id/attendance", async (req, res) => {
   const sessionId = parseId(req.params.id);
   if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
 
-  // canMarkAttendance, not canAccessSeason: the roster carries every enrolled
-  // student's name and email, so reading it is staff-only.
-  if (!(await canMarkAttendance(user, sessionId))) {
+  // attendanceScopeFor, not canAccessSeason: the roster carries every enrolled
+  // student's name and email, so reading it is staff-only — and a leader sees
+  // only their own groups, which is what the scope narrows.
+  const scope = await attendanceScopeFor(user, sessionId);
+  if (scope === null) {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
-  const roster = await loadAttendanceRoster(sessionId);
+  const roster = await loadAttendanceRoster(
+    sessionId,
+    scope.kind === "groups" ? scope.groupIds : undefined,
+  );
   if (roster === null) return apiError(res, "not_found", "Session not found.", 404);
 
   return apiOk(res, { roster });
@@ -165,12 +170,33 @@ sessionsRouter.post("/:id/attendance", async (req, res) => {
   const sessionId = parseId(req.params.id);
   if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
 
-  if (!(await canMarkAttendance(user, sessionId))) {
+  const scope = await attendanceScopeFor(user, sessionId);
+  if (scope === null) {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
   const parsed = saveAttendanceRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid attendance entries.", 400);
+
+  // Narrowing the roster on the read only hides the other students; without
+  // this, a leader who knows a studentUserId can still write that student's
+  // attendance. Membership resolves through SeasonEnrollment.groupId, not
+  // GroupStudent — the latter is unique on studentUserId across all seasons,
+  // so it cannot answer a season-scoped question.
+  if (scope.kind === "groups") {
+    const submittedIds = [...new Set(parsed.data.entries.map((e) => e.studentUserId))];
+    const inScope = await db.seasonEnrollment.findMany({
+      where: {
+        seasonId: scope.seasonId,
+        groupId: { in: scope.groupIds },
+        studentUserId: { in: submittedIds },
+      },
+      select: { studentUserId: true },
+    });
+    if (inScope.length !== submittedIds.length) {
+      return apiError(res, "forbidden", "You don't lead all of those students.", 403);
+    }
+  }
 
   // One transaction so a partially-saved roster is impossible: either every
   // student in this batch is marked, or none is.
