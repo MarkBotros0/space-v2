@@ -18,9 +18,7 @@ export default function LoginScreen() {
     setError(null);
     try {
       await login(email, password);
-      // Task 7 repoints this at /dashboard in the same commit that deletes
-      // app/home.tsx — do not "fix" it here ahead of that.
-      router.replace("/home");
+      router.replace("/dashboard");
     } catch {
       setError("Incorrect email or password.");
     } finally {

@@ -27,7 +27,7 @@ describe("LoginScreen", () => {
     fireEvent.changeText(screen.getByPlaceholderText("Password"), "hunter2");
     fireEvent.press(screen.getByText("Sign in"));
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/home"));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard"));
     expect(mockLogin).toHaveBeenCalledWith("sara@jpc.test", "hunter2");
   });
 
