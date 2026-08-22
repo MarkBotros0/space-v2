@@ -11,10 +11,14 @@ const scopes = {
 };
 
 beforeEach(() => {
-  // Reset to the real initial state, not via clear() — clear() sets
-  // "anonymous", and "starts idle" is precisely the case that must not be
-  // pre-satisfied by the fixture.
-  useSessionStore.setState({ status: "idle", user: null, scopes: null });
+  // Reset to the store's OWN initial state rather than to a literal. Two
+  // wrong ways to write this, both of which make "starts idle" useless:
+  // calling clear() sets "anonymous", so the assertion contradicts the
+  // fixture; spelling out `{ status: "idle", ... }` sets the very value the
+  // assertion checks, so it passes even if the store's initial status is
+  // wrong. getInitialState() asserts nothing of its own, so the idle
+  // cold-start value stays genuinely pinned by the first case below.
+  useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
 describe("session store", () => {
