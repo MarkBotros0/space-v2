@@ -1028,8 +1028,17 @@ so it never sees `idle`.
 **Delete `apps/mobile/app/home.tsx` (controller ruling P3).** It is the
 scaffold's placeholder home screen, replaced by `(app)/dashboard`. Left in
 place it is an unreachable route that a future reader will mistake for the
-real one. Its only consumer was `app/index.tsx`, which Task 6 has already
-repointed at `/dashboard`.
+real one.
+
+It has **two** consumers, not one (ruling P10). `app/index.tsx` is repointed
+at `/dashboard` by Task 6, but `app/login.tsx:24` also does
+`router.replace("/home")`. Repair it **in this same commit** — change it to
+`/dashboard` and update `src/__tests__/login-screen.test.tsx`'s
+`toHaveBeenCalledWith("/home")` to match. Nothing will fail if you forget:
+that suite mocks `expo-router`, so it will keep asserting navigation to a
+route that no longer exists.
+
+Add both files to this task's Files list.
 
 - [ ] **Step 1: Write the failing test**
 
