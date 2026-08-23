@@ -468,10 +468,11 @@ export const openApiDocument = {
         properties: {
           id: { type: "integer" },
           originalName: { type: "string" },
-          storagePath: { type: "string" },
           mimeType: { type: "string" },
           sizeBytes: { type: "integer" },
         },
+        description:
+          "`storagePath` is deliberately absent. v1's client needed it to build a URL into the endpoint that served any stored file to any logged-in user; here a file is addressed by id scoped to its submission, so the path is the one field that made the old hole exploitable by anyone who saw a response.",
       },
       SubmissionDetail: {
         type: "object",
@@ -483,6 +484,11 @@ export const openApiDocument = {
           feedback: { type: ["string", "null"] },
           submittedAt: { type: ["string", "null"], format: "date-time" },
           reviewedAt: { type: ["string", "null"], format: "date-time" },
+          isLate: {
+            type: "boolean",
+            description:
+              "submittedAt is after the assignment's dueAt. Derived server-side once; v1 recomputed this comparison at five separate render sites.",
+          },
           assignmentId: { type: "integer" },
           assignmentTitle: { type: "string" },
           assignmentDueAt: { type: ["string", "null"], format: "date-time" },
@@ -492,6 +498,44 @@ export const openApiDocument = {
           studentName: { type: ["string", "null"] },
           studentEmail: { type: "string", format: "email" },
           files: { type: "array", items: { $ref: "#/components/schemas/SubmissionFile" } },
+          canUploadFiles: {
+            type: "boolean",
+            description:
+              "Whether an upload would currently succeed. False while ENABLE_UPLOADS is off, so a screen can explain the gap rather than offering a control that returns 503. Reading and deleting recorded files are unaffected.",
+          },
+          canReview: {
+            type: "boolean",
+            description:
+              "Whether this caller may review. Drives what the UI offers, never the gate. False for the author and for a MENTOR, both of whom can read.",
+          },
+        },
+      },
+      SubmissionQueueItem: {
+        type: "object",
+        description: "A reviewer's queue row. Deliberately narrower than the detail.",
+        properties: {
+          publicId: { type: "string" },
+          status: { $ref: "#/components/schemas/SubmissionStatus" },
+          submittedAt: { type: ["string", "null"], format: "date-time" },
+          isLate: { type: "boolean" },
+          assignmentId: { type: "integer" },
+          assignmentTitle: { type: "string" },
+          assignmentDueAt: { type: ["string", "null"], format: "date-time" },
+          seasonCode: { type: "string" },
+          studentUserId: { type: "integer" },
+          studentName: { type: ["string", "null"] },
+          groupId: { type: ["integer", "null"] },
+          groupName: { type: ["string", "null"] },
+        },
+      },
+      SubmissionQueue: {
+        type: "object",
+        properties: {
+          items: { type: "array", items: { $ref: "#/components/schemas/SubmissionQueueItem" } },
+          nextCursor: {
+            type: ["string", "null"],
+            description: "Pass as `cursor` for the next page. Null on the last page.",
+          },
         },
       },
     },
@@ -930,6 +974,115 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+    },
+
+    "/api/v1/submissions": {
+      get: {
+        tags: ["Submissions"],
+        summary: "A reviewer's queue",
+        description:
+          "Staff only. Scoped to the caller: a LEADER sees submissions from students enrolled in a group they lead **in that assignment's own season**; an ADMIN sees their seasons; SUPER and MENTOR see everything.\n\nv1's equivalent was unscoped and unpaginated — every submission the reader could reach, in one response. Cursor-paged here, ordered newest first.",
+        parameters: [
+          {
+            name: "pendingOnly",
+            in: "query",
+            schema: { type: "string", enum: ["true", "false"], default: "true" },
+            description: "Only submissions awaiting a verdict. Defaults true — it is a queue.",
+          },
+          { name: "seasonId", in: "query", schema: { type: "integer" } },
+          {
+            name: "cursor",
+            in: "query",
+            schema: { type: "string" },
+            description: "`nextCursor` from the previous page.",
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 25 },
+          },
+        ],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/SubmissionQueue" }, "A page of the queue."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+
+    "/api/v1/submissions/by-assignment/{assignmentId}": {
+      put: {
+        tags: ["Submissions"],
+        summary: "Start (or fetch) this student's submission for an assignment",
+        description:
+          "Idempotent: the first call creates a DRAFT, later calls return the same row untouched. Never overwrites saved work.\n\nThis exists because v1 created the row as a side effect of *rendering* the assignment page. A read that writes is wrong on its own terms, and React Query would make it far worse — it refetches on mount, on focus and on reconnect, so the write would fire every time the app is tabbed back to.\n\nSTUDENT only, and only for an assignment actually targeted at them.",
+        parameters: [
+          { name: "assignmentId", in: "path", required: true, schema: { type: "integer" } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                publicId: { type: "string" },
+                status: { $ref: "#/components/schemas/SubmissionStatus" },
+              },
+            },
+            "The student's submission for this assignment.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+
+    "/api/v1/submissions/{publicId}/review": {
+      post: {
+        tags: ["Submissions"],
+        summary: "Record a verdict",
+        description:
+          "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort — a mail failure does not report the review as failed.",
+        parameters: [{ name: "publicId", in: "path", required: true, schema: { type: "string" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["feedback"],
+                properties: {
+                  feedback: { type: "string", maxLength: 20000 },
+                  returnForRevision: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                reviewed: { type: "boolean" },
+                returnedForRevision: { type: "boolean" },
+              },
+            },
+            "Recorded.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: {
+            description:
+              "`not_submitted` — a DRAFT that was never submitted cannot be marked REVIEWED. It can still be returned for revision.",
+            content: { "application/json": { schema: errorResponse } },
+          },
         },
       },
     },

@@ -2,15 +2,23 @@ import { Router, type RequestHandler } from "express";
 import multer from "multer";
 
 import { db } from "../db/client";
+import type { Prisma } from "../generated/prisma/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { ForbiddenError } from "../lib/auth/errors";
 import { config } from "../lib/config";
+import { createNotificationsBulk } from "../lib/notifications";
 import { parseId } from "../lib/parse-id";
-import { canViewSubmission } from "../lib/permissions";
+import { canAccessSeason, canReviewSubmission, canViewSubmission } from "../lib/permissions";
 import { newPublicId } from "../lib/public-id";
+import { isLate, studentCanSeeAssignment } from "../lib/queries/assignments";
+import { isMentor, isSuper } from "../lib/rbac";
 import { FileNotFoundError, buildStorageKey, getStorage } from "../lib/storage";
 import { requireAuth, requireUser } from "../middleware/require-auth";
-import { updateSubmissionRequestSchema } from "../../../../packages/shared/src/index";
+import {
+  reviewSubmissionRequestSchema,
+  submissionQueueQuerySchema,
+  updateSubmissionRequestSchema,
+} from "../../../../packages/shared/src/index";
 
 export const submissionsRouter = Router();
 
@@ -39,11 +47,16 @@ async function loadSubmissionForApi(publicId: string) {
         },
       },
       studentUser: { select: { name: true, email: true } },
+      // storagePath is deliberately absent. v1's client needed it to build a
+      // URL into /api/uploads/[...path] — the endpoint that served any stored
+      // file to any logged-in user. v2 addresses a file by id scoped to its
+      // submission, so the path is not just unnecessary on the wire, it is the
+      // one field that made the old hole exploitable by anyone who saw a
+      // response.
       files: {
         select: {
           id: true,
           originalName: true,
-          storagePath: true,
           mimeType: true,
           sizeBytes: true,
         },
@@ -52,6 +65,133 @@ async function loadSubmissionForApi(publicId: string) {
     },
   });
 }
+
+/**
+ * A reviewer's queue.
+ *
+ * v1's returned every submission the reader could reach, in every season, in
+ * one unpaginated response. Scoped and paged here — on a phone the old shape is
+ * both a privacy problem and a payload problem.
+ *
+ * A LEADER's scope cannot be written as a single Prisma filter: the constraint
+ * is "the student's enrolment *in this assignment's season* names a group I
+ * lead", which relates two branches of the query to each other. So the pairs
+ * are resolved first and expanded into an OR. That is bounded by the leader's
+ * own roster, not by the season.
+ */
+submissionsRouter.get("/", async (req, res) => {
+  const user = requireUser(req);
+
+  if (user.role === "STUDENT") {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const parsed = submissionQueueQuerySchema.safeParse(req.query);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
+  const { pendingOnly, seasonId, cursor, limit } = parsed.data;
+
+  let scope: Prisma.SubmissionWhereInput | null = null;
+  if (isSuper(user) || isMentor(user)) {
+    scope = {};
+  } else if (user.role === "ADMIN") {
+    scope = { assignment: { seasonId: { in: user.seasonAdminIds } } };
+  } else if (user.role === "LEADER") {
+    const groups = await db.group.findMany({
+      where: { id: { in: user.groupLeaderIds } },
+      select: { id: true, seasonId: true },
+    });
+    const enrollments = await db.seasonEnrollment.findMany({
+      where: { groupId: { in: groups.map((g) => g.id) } },
+      select: { studentUserId: true, seasonId: true },
+    });
+    scope =
+      enrollments.length === 0
+        ? null
+        : {
+            OR: enrollments.map((e) => ({
+              studentUserId: e.studentUserId,
+              assignment: { seasonId: e.seasonId },
+            })),
+          };
+  }
+  if (scope === null) return apiOk(res, { items: [], nextCursor: null });
+
+  // AND rather than spreading, so the scope's own `assignment` constraint (the
+  // ADMIN case) cannot be silently overwritten by the filters below it. A
+  // scope clause that disappears here is a data leak, not a lost filter.
+  const where: Prisma.SubmissionWhereInput = {
+    AND: [
+      scope,
+      { assignment: { deletedAt: null } },
+      ...(pendingOnly ? [{ status: "SUBMITTED" as const }] : []),
+      ...(seasonId ? [{ assignment: { seasonId } }] : []),
+    ],
+  };
+
+  // One extra row tells us whether another page exists without a second count
+  // query. Ordered by id so the cursor is stable even when two submissions
+  // share a submittedAt.
+  const rows = await db.submission.findMany({
+    where,
+    orderBy: { id: "desc" },
+    take: limit + 1,
+    ...(cursor ? { cursor: { publicId: cursor }, skip: 1 } : {}),
+    select: {
+      publicId: true,
+      status: true,
+      submittedAt: true,
+      studentUserId: true,
+      assignmentId: true,
+      assignment: {
+        select: { title: true, dueAt: true, seasonId: true, season: { select: { code: true } } },
+      },
+      studentUser: { select: { name: true } },
+    },
+  });
+
+  const page = rows.slice(0, limit);
+
+  // Group membership is per season, so it is resolved per (student, season)
+  // pair rather than from GroupStudent — ruling C9.
+  const enrollments = await db.seasonEnrollment.findMany({
+    where: {
+      OR: page.map((r) => ({
+        studentUserId: r.studentUserId,
+        seasonId: r.assignment.seasonId,
+      })),
+    },
+    select: {
+      studentUserId: true,
+      seasonId: true,
+      groupId: true,
+      group: { select: { name: true } },
+    },
+  });
+  const groupBy = new Map(
+    enrollments.map((e) => [`${e.studentUserId}:${e.seasonId}`, e] as const),
+  );
+
+  return apiOk(res, {
+    items: page.map((r) => {
+      const enrollment = groupBy.get(`${r.studentUserId}:${r.assignment.seasonId}`);
+      return {
+        publicId: r.publicId,
+        status: r.status,
+        submittedAt: r.submittedAt,
+        isLate: isLate(r.submittedAt, r.assignment.dueAt),
+        assignmentId: r.assignmentId,
+        assignmentTitle: r.assignment.title,
+        assignmentDueAt: r.assignment.dueAt,
+        seasonCode: r.assignment.season.code,
+        studentUserId: r.studentUserId,
+        studentName: r.studentUser.name,
+        groupId: enrollment?.groupId ?? null,
+        groupName: enrollment?.group?.name ?? null,
+      };
+    }),
+    nextCursor: rows.length > limit ? (page[page.length - 1]?.publicId ?? null) : null,
+  });
+});
 
 submissionsRouter.get("/:publicId", async (req, res) => {
   const user = requireUser(req);
@@ -73,6 +213,7 @@ submissionsRouter.get("/:publicId", async (req, res) => {
     feedback: sub.feedback,
     submittedAt: sub.submittedAt,
     reviewedAt: sub.reviewedAt,
+    isLate: isLate(sub.submittedAt, sub.assignment.dueAt),
     assignmentId: sub.assignmentId,
     assignmentTitle: sub.assignment.title,
     assignmentDueAt: sub.assignment.dueAt,
@@ -82,6 +223,11 @@ submissionsRouter.get("/:publicId", async (req, res) => {
     studentName: sub.studentUser.name,
     studentEmail: sub.studentUser.email,
     files: sub.files,
+    // Told to the client rather than left for it to discover by receiving a
+    // 503: an assignment declaring maxFileSizeMb is telling the student a file
+    // is expected, so the screen needs to explain why it cannot offer one.
+    canUploadFiles: config.enableUploads,
+    canReview: await canReviewSubmission(user, sub.id),
   });
 });
 
@@ -108,13 +254,141 @@ submissionsRouter.patch("/:publicId", async (req, res) => {
       data: { text: parsed.data.text, status: "SUBMITTED", submittedAt: now },
     });
   } else {
+    // Save the text; do NOT touch the status.
+    //
+    // v1 set status: "DRAFT" unconditionally here, so autosaving after a review
+    // demoted a REVIEWED submission back to DRAFT — it vanished from the
+    // reviewer's queue while `feedback` and `reviewedAt` survived, leaving the
+    // student reading a verdict on text they had since replaced. A save is not
+    // a state transition. Getting back to editable is what
+    // POST /:publicId/review with returnForRevision is for.
     await db.submission.update({
       where: { id: sub.id },
-      data: { text: parsed.data.text, status: "DRAFT" },
+      data: { text: parsed.data.text },
     });
   }
 
   return apiOk(res, { saved: true, submitted: Boolean(parsed.data.submit) });
+});
+
+/**
+ * Create-or-fetch this caller's submission for an assignment.
+ *
+ * v1 created the row as a side effect of *rendering* the assignment page
+ * (`student/assignments/[id]/page.tsx:40`). Ruling C6 forbids that, and React
+ * Query would make it far worse than it was in v1: it refetches on mount, on
+ * window focus and on reconnect, so a read-time write becomes a write every
+ * time the app is tabbed back to.
+ *
+ * A real upsert on the natural unique key, not v1's read-then-create-then-catch
+ * — that pattern leaned entirely on the unique constraint to paper over its own
+ * race, and there is no reason to reproduce it when the constraint can do the
+ * work directly. PUT because it is idempotent: calling it twice yields the same
+ * row, which is what makes it safe on a screen that mounts repeatedly.
+ */
+submissionsRouter.put("/by-assignment/:assignmentId", async (req, res) => {
+  const user = requireUser(req);
+  const assignmentId = parseId(req.params.assignmentId);
+  if (assignmentId === null) return apiError(res, "bad_request", "Invalid assignment id.", 400);
+
+  // Only a student has a submission of their own; staff have nothing to create.
+  if (user.role !== "STUDENT") {
+    return apiError(res, "forbidden", "Only a student can start a submission.", 403);
+  }
+
+  const assignment = await db.assignment.findFirst({
+    where: { id: assignmentId, deletedAt: null },
+    select: {
+      seasonId: true,
+      isAllGroups: true,
+      targets: { select: { groupId: true } },
+    },
+  });
+  if (!assignment) return apiError(res, "not_found", "Assignment not found.", 404);
+
+  if (!(await canAccessSeason(user, assignment.seasonId))) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+  // The same targeting rule the assignment reads use, from the same helper —
+  // a student must not be able to start a submission on work never set them.
+  const targeted = await studentCanSeeAssignment(
+    user.userId,
+    assignment.seasonId,
+    assignment.isAllGroups,
+    assignment.targets.map((t) => t.groupId),
+  );
+  if (!targeted) return apiError(res, "forbidden", "You don't have access to this.", 403);
+
+  const submission = await db.submission.upsert({
+    where: { assignmentId_studentUserId: { assignmentId, studentUserId: user.userId } },
+    // Empty update: the point is to return the existing row untouched. Writing
+    // anything here — even a status — would let a remount overwrite work.
+    update: {},
+    create: { assignmentId, studentUserId: user.userId, publicId: newPublicId(), status: "DRAFT" },
+    select: { publicId: true, status: true },
+  });
+
+  return apiOk(res, { publicId: submission.publicId, status: submission.status });
+});
+
+/**
+ * Record a verdict.
+ *
+ * v1's reviewSubmissionAction has no ported counterpart, so Phase 2's whole
+ * leader surface has been unbuildable. Gated on canReviewSubmission, which is
+ * strictly narrower than the read gate rather than derived from it.
+ */
+submissionsRouter.post("/:publicId/review", async (req, res) => {
+  const user = requireUser(req);
+  const { publicId } = req.params;
+
+  const sub = await db.submission.findUnique({
+    where: { publicId: publicId ?? "" },
+    select: { id: true, status: true, studentUserId: true, assignment: { select: { title: true } } },
+  });
+  if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
+
+  if (!(await canReviewSubmission(user, sub.id))) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const parsed = reviewSubmissionRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid review body.", 400);
+
+  // Reviewing something the student never submitted is legal in v1 and stays
+  // legal — a reviewer may return an untouched draft for revision — but a
+  // DRAFT that has never been submitted cannot be marked REVIEWED, because
+  // there is nothing to have reviewed.
+  if (sub.status === "DRAFT" && !parsed.data.returnForRevision) {
+    return apiError(res, "not_submitted", "That submission has not been submitted yet.", 409);
+  }
+
+  const now = new Date();
+  await db.submission.update({
+    where: { id: sub.id },
+    data: {
+      feedback: parsed.data.feedback,
+      status: parsed.data.returnForRevision ? "RETURNED" : "REVIEWED",
+      reviewedAt: now,
+    },
+  });
+
+  // Best-effort: the student is told, but a mail or notification failure must
+  // not report the review itself as failed. Ruling from the notifications
+  // spec's D6 — v1 lets a transport error roll back a business write.
+  try {
+    await createNotificationsBulk([sub.studentUserId], {
+      type: "SUBMISSION_REVIEWED",
+      title: parsed.data.returnForRevision
+        ? `${sub.assignment.title} was returned for revision`
+        : `${sub.assignment.title} was reviewed`,
+      link: `/student/assignments`,
+    });
+  } catch {
+    // Swallowed deliberately; see above.
+  }
+
+  return apiOk(res, { reviewed: true, returnedForRevision: Boolean(parsed.data.returnForRevision) });
 });
 
 // memoryStorage: the per-assignment size and MIME rules live in the database,
