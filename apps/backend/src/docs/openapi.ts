@@ -335,9 +335,26 @@ export const openApiDocument = {
           id: { type: "integer" },
           title: { type: "string" },
           dueAt: { type: ["string", "null"], format: "date-time" },
+          isOverdue: {
+            type: "boolean",
+            description:
+              "Derived server-side. Do not recompute from `dueAt` on the client — a device in another timezone would disagree with the badge its leader is looking at.",
+          },
           isAllGroups: { type: "boolean" },
-          submissionCount: { type: "integer" },
-          expectedCount: { type: "integer" },
+          targetGroupIds: {
+            type: "array",
+            items: { type: "integer" },
+            description: "Empty when `isAllGroups`.",
+          },
+          submissionCount: {
+            type: "integer",
+            description: "Submissions that are not DRAFT. The one definition of 'submitted'.",
+          },
+          expectedCount: {
+            type: "integer",
+            description:
+              "ACTIVE season enrolments in the targeted groups — not GroupStudent rows, which are unique per student across all seasons and so cannot answer a per-season question.",
+          },
           seasonCode: { type: "string" },
         },
       },
@@ -354,6 +371,7 @@ export const openApiDocument = {
               { type: "string", enum: ["PENDING"] },
             ],
           },
+          isOverdue: { type: "boolean", description: "Derived server-side." },
           reviewedAt: { type: ["string", "null"], format: "date-time" },
         },
       },
@@ -379,7 +397,18 @@ export const openApiDocument = {
             items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
             description: "Empty means any MIME type is accepted.",
           },
-          groupIds: { type: "array", items: { type: "integer" } },
+          isOverdue: { type: "boolean", description: "Derived server-side." },
+          groupIds: {
+            type: ["array", "null"],
+            items: { type: "integer" },
+            description:
+              "**Null for a STUDENT.** v1 sent the authoring shape so its own page could re-check targeting; that check now runs server-side, so the ids need not travel to the one role that should not enumerate them.",
+          },
+          canManage: {
+            type: "boolean",
+            description:
+              "Whether this caller may edit or delete the assignment. Drives what the UI offers; never the gate itself.",
+          },
           mySubmission: {
             type: ["object", "null"],
             description: "Populated only for a STUDENT.",
@@ -389,8 +418,48 @@ export const openApiDocument = {
               submittedAt: { type: ["string", "null"], format: "date-time" },
               reviewedAt: { type: ["string", "null"], format: "date-time" },
               feedback: { type: ["string", "null"] },
+              isLate: {
+                type: "boolean",
+                description:
+                  "submittedAt is after dueAt. Derived server-side once; v1 recomputed this comparison at five separate render sites.",
+              },
             },
           },
+        },
+      },
+      AssignmentTrackerRow: {
+        type: "object",
+        properties: {
+          studentUserId: { type: "integer" },
+          name: { type: ["string", "null"] },
+          email: { type: "string", format: "email" },
+          groupId: { type: ["integer", "null"] },
+          groupName: { type: ["string", "null"] },
+          status: {
+            oneOf: [
+              { $ref: "#/components/schemas/SubmissionStatus" },
+              { type: "string", enum: ["PENDING"] },
+            ],
+            description: "PENDING means no Submission row exists.",
+          },
+          isLate: { type: "boolean" },
+          submittedAt: { type: ["string", "null"], format: "date-time" },
+          reviewedAt: { type: ["string", "null"], format: "date-time" },
+          submissionPublicId: {
+            type: ["string", "null"],
+            description: "The handle into the review screen; null when nothing was started.",
+          },
+        },
+      },
+      AssignmentTracker: {
+        type: "object",
+        properties: {
+          assignmentId: { type: "integer" },
+          dueAt: { type: ["string", "null"], format: "date-time" },
+          isOverdue: { type: "boolean" },
+          submittedCount: { type: "integer" },
+          expectedCount: { type: "integer" },
+          rows: { type: "array", items: { $ref: "#/components/schemas/AssignmentTrackerRow" } },
         },
       },
 
@@ -836,10 +905,27 @@ export const openApiDocument = {
         tags: ["Assignments"],
         summary: "Assignment detail",
         description:
-          "Season access alone is not enough: for a targeted assignment (`isAllGroups: false`), a STUDENT must also be in one of the targeted groups.",
+          "Season access alone is not enough: for a targeted assignment (`isAllGroups: false`), a STUDENT must also be in one of the targeted groups — resolved from their enrolment in *this* season, not from their current group membership.",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "The assignment."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+
+    "/api/v1/assignments/{id}/tracker": {
+      get: {
+        tags: ["Assignments"],
+        summary: "Who was given this assignment, and what they have done about it",
+        description:
+          "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/AssignmentTracker" }, "The tracker."),
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),

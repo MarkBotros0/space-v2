@@ -72,6 +72,31 @@ export type AttendanceScope =
   | { kind: "season" }
   | { kind: "groups"; seasonId: number; groupIds: number[] };
 
+/**
+ * The same question at season granularity: may this caller act on staff-only
+ * data in this season, and if so over which students?
+ *
+ * Extracted so every roster-shaped read — attendance, the assignment tracker,
+ * anything later that lists students by name and email — narrows identically.
+ * Two hand-written copies of this would drift, and the first one already
+ * shipped a leak by being written once and then not applied.
+ */
+export async function staffScopeForSeason(
+  user: SessionUser,
+  seasonId: number,
+): Promise<AttendanceScope | null> {
+  if (isSuper(user)) return { kind: "season" };
+  if (isAdminOfSeason(user, seasonId)) return { kind: "season" };
+  if (user.role !== "LEADER") return null;
+  if (user.groupLeaderIds.length === 0) return null;
+  const groupsInSeason = await db.group.findMany({
+    where: { seasonId, id: { in: user.groupLeaderIds } },
+    select: { id: true },
+  });
+  if (groupsInSeason.length === 0) return null;
+  return { kind: "groups", seasonId, groupIds: groupsInSeason.map((g) => g.id) };
+}
+
 export async function attendanceScopeFor(
   user: SessionUser,
   sessionId: number,
@@ -82,19 +107,12 @@ export async function attendanceScopeFor(
     select: { seasonId: true },
   });
   if (!session) return null;
-  if (isAdminOfSeason(user, session.seasonId)) return { kind: "season" };
-  if (user.role !== "LEADER") return null;
-  if (user.groupLeaderIds.length === 0) return null;
-  const groupsInSeason = await db.group.findMany({
-    where: { seasonId: session.seasonId, id: { in: user.groupLeaderIds } },
-    select: { id: true },
-  });
-  if (groupsInSeason.length === 0) return null;
-  return {
-    kind: "groups",
-    seasonId: session.seasonId,
-    groupIds: groupsInSeason.map((g) => g.id),
-  };
+  return staffScopeForSeason(user, session.seasonId);
+}
+
+/** Editing an assignment is a season-admin power; leading a group is not enough. */
+export function canManageAssignment(user: SessionUser, seasonId: number): boolean {
+  return isAdminOfSeason(user, seasonId);
 }
 
 export async function canMarkAttendance(user: SessionUser, sessionId: number): Promise<boolean> {

@@ -20,7 +20,10 @@ let superToken: string;
 let studentToken: string;
 let otherStudentToken: string;
 let outsiderToken: string;
+let leaderToken: string;
+let movedToken: string;
 let studentUserId: number;
+let movedUserId: number;
 
 beforeAll(async () => {
   await cleanupTestData();
@@ -75,10 +78,36 @@ beforeAll(async () => {
   });
   targetedAssignmentId = targeted.id;
 
+  // A leader of Group B only, for the tracker's scoping.
+  const leader = await createTestUser("leader", "LEADER");
+  await db.groupLeader.create({ data: { groupId: groupBId, userId: leader.id } });
+
+  // A student who has since moved on. Their SeasonEnrollment for *this* season
+  // still records Group B — the historic, per-season fact — while their single
+  // GroupStudent row points at a group in a later season, because that table is
+  // unique on studentUserId across the whole database.
+  //
+  // This is the divergence ruling C9 exists for, and the fixtures above cannot
+  // expose it: they keep both tables in agreement, so a GroupStudent-based
+  // lookup and a SeasonEnrollment-based one give the same answer.
+  const laterSeason = await createTestSeason({ year: 2100 });
+  const laterGroup = await db.group.create({
+    data: { seasonId: laterSeason.id, name: "Later Group" },
+    select: { id: true },
+  });
+  const moved = await createTestUser("moved", "STUDENT");
+  movedUserId = moved.id;
+  await db.groupStudent.create({ data: { groupId: laterGroup.id, studentUserId: moved.id } });
+  await db.seasonEnrollment.create({
+    data: { seasonId, studentUserId: moved.id, groupId: groupBId, status: "ACTIVE" },
+  });
+
   superToken = await login(app, superUser.email);
   studentToken = await login(app, student.email);
   otherStudentToken = await login(app, otherStudent.email);
   outsiderToken = await login(app, outsider.email);
+  leaderToken = await login(app, leader.email);
+  movedToken = await login(app, moved.email);
 });
 
 afterAll(async () => {
@@ -101,18 +130,23 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
       id: allGroupsAssignmentId,
       title: "Open To All",
       dueAt: expect.any(String),
+      // Due 2099 — derived server-side, never by the reader (ruling C4).
+      isOverdue: false,
       isAllGroups: true,
+      targetGroupIds: [],
       submissionCount: 0,
-      // Both enrolled students.
-      expectedCount: 2,
+      // All three ACTIVE enrolments in the season.
+      expectedCount: 3,
       seasonCode: expect.any(String),
     });
 
     const targeted = res.body.data.assignments.find(
       (a: { id: number }) => a.id === targetedAssignmentId,
     );
-    // Only Group B's single member.
-    expect(targeted.expectedCount).toBe(1);
+    // Group B's two enrolments: the other student, and the moved student whose
+    // GroupStudent row points elsewhere. Counting GroupStudent would find one.
+    expect(targeted.expectedCount).toBe(2);
+    expect(targeted.targetGroupIds).toEqual([groupBId]);
   });
 
   it("returns the student shape, filtered to assignments that apply to them", async () => {
@@ -127,6 +161,7 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
         id: allGroupsAssignmentId,
         title: "Open To All",
         dueAt: expect.any(String),
+        isOverdue: false,
         status: "PENDING",
         reviewedAt: null,
       },
@@ -207,7 +242,39 @@ describe("GET /api/v1/assignments/:id", () => {
       .get(`/api/v1/assignments/${targetedAssignmentId}`)
       .set("authorization", `Bearer ${otherStudentToken}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.groupIds).toEqual([groupBId]);
+    expect(res.body.data.id).toBe(targetedAssignmentId);
+    // groupIds is null here by design — the targeting check that used to need
+    // it on the client now runs server-side. See the payload-narrowing test
+    // below, which pins both halves of that.
+    expect(res.body.data.groupIds).toBeNull();
+  });
+
+  it("resolves targeting from the season's enrolment, not the student's current group", async () => {
+    // This student's GroupStudent row points at a group in a later season; their
+    // enrolment in *this* season records Group B, which the assignment targets.
+    // Reading membership from GroupStudent denies them an assignment they were
+    // genuinely given — the failure ruling C9 describes.
+    const res = await request(app)
+      .get(`/api/v1/assignments/${targetedAssignmentId}`)
+      .set("authorization", `Bearer ${movedToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(targetedAssignmentId);
+  });
+
+  it("withholds the target group ids from a student and sends them to staff", async () => {
+    const student = await request(app)
+      .get(`/api/v1/assignments/${targetedAssignmentId}`)
+      .set("authorization", `Bearer ${otherStudentToken}`);
+    expect(student.status).toBe(200);
+    expect(student.body.data.groupIds).toBeNull();
+    expect(student.body.data.canManage).toBe(false);
+
+    const staff = await request(app)
+      .get(`/api/v1/assignments/${targetedAssignmentId}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(staff.body.data.groupIds).toEqual([groupBId]);
+    expect(staff.body.data.canManage).toBe(true);
   });
 
   it("returns 400 for a non-numeric id and 404 for a missing one", async () => {
@@ -220,5 +287,44 @@ describe("GET /api/v1/assignments/:id", () => {
       .get("/api/v1/assignments/2147483000")
       .set("authorization", `Bearer ${superToken}`);
     expect(missing.status).toBe(404);
+  });
+});
+
+describe("GET /api/v1/assignments/:id/tracker", () => {
+  it("lists every targeted student, including those who have done nothing", async () => {
+    const res = await request(app)
+      .get(`/api/v1/assignments/${targetedAssignmentId}/tracker`)
+      .set("authorization", `Bearer ${superToken}`);
+
+    expect(res.status).toBe(200);
+    // Group B holds the other student and the moved student. Neither has a
+    // Submission row, and both must still appear — a tracker built from
+    // submissions rather than enrolments shows nobody at all.
+    expect(res.body.data.rows).toHaveLength(2);
+    const ids = res.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId);
+    expect(ids).toContain(movedUserId);
+    expect(ids).not.toContain(studentUserId);
+    expect(res.body.data.rows.every((r: { status: string }) => r.status === "PENDING")).toBe(true);
+    expect(res.body.data.expectedCount).toBe(res.body.data.rows.length);
+    expect(res.body.data.submittedCount).toBe(0);
+  });
+
+  it("narrows the roster to a leader's own groups", async () => {
+    // The leader leads Group B. The all-groups assignment covers the whole
+    // season, but they may only see their own students' names and addresses.
+    const res = await request(app)
+      .get(`/api/v1/assignments/${allGroupsAssignmentId}/tracker`)
+      .set("authorization", `Bearer ${leaderToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.rows.every((r: { groupId: number }) => r.groupId === groupBId)).toBe(true);
+    expect(JSON.stringify(res.body)).not.toContain("space-v2-test-student");
+  });
+
+  it("refuses a student outright", async () => {
+    const res = await request(app)
+      .get(`/api/v1/assignments/${allGroupsAssignmentId}/tracker`)
+      .set("authorization", `Bearer ${studentToken}`);
+    expect(res.status).toBe(403);
   });
 });
