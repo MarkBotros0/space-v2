@@ -120,6 +120,29 @@ describe("GET /api/v1/seasons/:id/groups", () => {
     expect(res.status).toBe(400);
   });
 
+  it("counts only active enrolments, not students who withdrew", async () => {
+    // The seasons spec flags this as D7: v1's headcount includes withdrawn
+    // students, so a group reads as full of people who left. Counting the
+    // enrolment rather than the GroupStudent row is what makes the status
+    // available to filter on at all.
+    const quitter = await createTestUser("quitter", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: {
+        seasonId,
+        studentUserId: quitter.id,
+        groupId: groupAId,
+        status: "WITHDRAWN",
+      },
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`);
+
+    const a = res.body.data.groups.find((g: { id: number }) => g.id === groupAId);
+    expect(a.studentCount).toBe(1);
+  });
+
   it("narrows the list to the groups a leader actually leads", async () => {
     // v1 handed a leader every group in the season — a roster of other
     // people's students with a headcount attached.
