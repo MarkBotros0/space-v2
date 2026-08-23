@@ -127,10 +127,12 @@ seasonsRouter.get("/:id/groups", async (req, res) => {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
-  const groups = await listGroupsForSeason(seasonId, {
-    onlyStudentUserId: user.role === "STUDENT" ? user.userId : undefined,
-  });
-  return apiOk(res, { groups });
+  // The scope lives in the query, so a group the caller may not see is never
+  // read at all. A leader now sees only the groups they lead: v1 handed them
+  // every group in the season, which is a roster of other people's students
+  // with a headcount attached.
+  const groups = await listGroupsForSeason(user, seasonId);
+  return apiOk(res, { groups: groups ?? [] });
 });
 
 seasonsRouter.get("/:id/sessions", async (req, res) => {

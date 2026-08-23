@@ -208,8 +208,13 @@ export const openApiDocument = {
           id: { type: "integer" },
           name: { type: "string" },
           description: { type: ["string", "null"] },
-          studentCount: { type: "integer" },
+          studentCount: {
+            type: "integer",
+            description:
+              "ACTIVE season enrolments naming this group — not GroupStudent rows, which are unique per student across the whole database and so report the current roster whichever season is asked about.",
+          },
           leaderNames: { type: "array", items: { type: "string" } },
+          seasonId: { type: "integer" },
           seasonCode: { type: "string" },
           seasonTitle: { type: "string" },
         },
@@ -728,7 +733,8 @@ export const openApiDocument = {
       get: {
         tags: ["Seasons"],
         summary: "Groups in a season",
-        description: "A STUDENT receives only their own group.",
+        description:
+          "Scoped to the caller: SUPER, MENTOR and the season's ADMIN see every group; a LEADER sees only the ones they lead (v1 showed them all of them); a STUDENT sees their own, resolved from their enrolment in *this* season rather than from their current group membership.",
         parameters: [idParam],
         responses: {
           200: ok(
@@ -786,6 +792,30 @@ export const openApiDocument = {
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
+        },
+      },
+    },
+
+    "/api/v1/groups": {
+      get: {
+        tags: ["Groups"],
+        summary: "The groups this caller is personally in",
+        description:
+          "What the `/groups` tab needs — `navigation.ts` gives LEADER this as their first tab, and until now nothing served it: v1 answered the question with a query written inside the page, one of five group reads that never reached its REST layer.\n\nA LEADER gets the groups they lead; a STUDENT gets their own, across every season they were enrolled in. Staff above leader are not *in* groups, so they get an empty list and browse by season instead — returning everything they could administer would make \"my groups\" mean something different per role.",
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                groups: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/GroupListItem" },
+                },
+              },
+            },
+            "Newest season first.",
+          ),
+          401: errRef("Unauthorized"),
         },
       },
     },

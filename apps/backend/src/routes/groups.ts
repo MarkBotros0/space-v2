@@ -4,11 +4,27 @@ import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import { canAccessGroup } from "../lib/permissions";
+import { listMyGroups } from "../lib/queries/groups";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 
 export const groupsRouter = Router();
 
 groupsRouter.use(requireAuth);
+
+/**
+ * The groups this caller is personally in, across every season.
+ *
+ * `packages/shared/src/navigation.ts` gives LEADER a `/groups` tab as their
+ * first tab, and until now nothing could serve it: v1 answered this with a
+ * query written inside the page, one of five group reads that never reached its
+ * REST layer. Registered before "/:id" — a single-segment literal would
+ * otherwise be shadowed by the parameter route.
+ */
+groupsRouter.get("/", async (req, res) => {
+  const user = requireUser(req);
+  const groups = await listMyGroups(user);
+  return apiOk(res, { groups });
+});
 
 groupsRouter.get("/:id", async (req, res) => {
   const user = requireUser(req);

@@ -1,18 +1,32 @@
+import { z } from "zod";
+
 // Wire shapes — see the note in season.ts on why timestamps are strings.
+//
+// Zod rather than bare interfaces, per the convention in CLAUDE.md: the mobile
+// client parses every response against these instead of casting, so a backend
+// drift fails at the client boundary rather than downstream.
 
-export interface GroupListItem {
-  id: number;
-  name: string;
-  description: string | null;
-  studentCount: number;
-  leaderNames: string[];
-  seasonCode: string;
-  seasonTitle: string;
-}
+export const groupListItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  /**
+   * ACTIVE enrolments in this group **for this group's season** — not
+   * GroupStudent rows, which are unique per student across the whole database
+   * and so report the current roster no matter which season is being asked
+   * about (ruling C9).
+   */
+  studentCount: z.number(),
+  leaderNames: z.array(z.string()),
+  seasonId: z.number(),
+  seasonCode: z.string(),
+  seasonTitle: z.string(),
+});
+export type GroupListItem = z.infer<typeof groupListItemSchema>;
 
-export interface GroupMember {
-  id: number;
-  name: string | null;
+export const groupMemberSchema = z.object({
+  id: z.number(),
+  name: z.string().nullable(),
   /**
    * Absent for student callers. A student may read their own group so the app
    * can show who is in it, but v1 only ever put this payload on staff pages —
@@ -21,16 +35,18 @@ export interface GroupMember {
    * email is a change v1 never made, so the API withholds it by role rather
    * than inheriting it from the staff shape.
    */
-  email?: string;
-}
+  email: z.string().optional(),
+});
+export type GroupMember = z.infer<typeof groupMemberSchema>;
 
-export interface GroupDetail {
-  id: number;
-  name: string;
-  description: string | null;
-  seasonId: number;
-  seasonCode: string;
-  seasonTitle: string;
-  leaders: GroupMember[];
-  students: GroupMember[];
-}
+export const groupDetailSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  seasonId: z.number(),
+  seasonCode: z.string(),
+  seasonTitle: z.string(),
+  leaders: z.array(groupMemberSchema),
+  students: z.array(groupMemberSchema),
+});
+export type GroupDetail = z.infer<typeof groupDetailSchema>;

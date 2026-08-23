@@ -87,8 +87,10 @@ describe("GET /api/v1/seasons/:id/groups", () => {
       id: groupAId,
       name: "Group A",
       description: "First group",
+      // ACTIVE season enrolments naming this group, not GroupStudent rows.
       studentCount: 1,
       leaderNames: ["Test leader"],
+      seasonId,
       seasonCode: expect.any(String),
       seasonTitle: "Test Season",
     });
@@ -116,6 +118,63 @@ describe("GET /api/v1/seasons/:id/groups", () => {
       .get("/api/v1/seasons/abc/groups")
       .set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(400);
+  });
+
+  it("narrows the list to the groups a leader actually leads", async () => {
+    // v1 handed a leader every group in the season — a roster of other
+    // people's students with a headcount attached.
+    const res = await request(app)
+      .get(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${leaderToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.groups).toHaveLength(1);
+    expect(res.body.data.groups[0].id).toBe(groupAId);
+  });
+});
+
+describe("GET /api/v1/groups", () => {
+  it("returns a leader's own groups — the tab that had no endpoint", async () => {
+    const res = await request(app)
+      .get("/api/v1/groups")
+      .set("authorization", `Bearer ${leaderToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.groups).toHaveLength(1);
+    expect(res.body.data.groups[0]).toMatchObject({
+      id: groupAId,
+      name: "Group A",
+      seasonId,
+    });
+  });
+
+  it("returns a student's own group", async () => {
+    const res = await request(app)
+      .get("/api/v1/groups")
+      .set("authorization", `Bearer ${studentToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.groups.map((g: { id: number }) => g.id)).toEqual([groupAId]);
+  });
+
+  it("is empty for a student in no group, rather than an error", async () => {
+    const res = await request(app)
+      .get("/api/v1/groups")
+      .set("authorization", `Bearer ${outsiderToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.groups).toEqual([]);
+  });
+
+  it("is empty for a SUPER, who is in no group", async () => {
+    // Returning every group they could administer would make "my groups" mean
+    // something different per role. They browse by season instead.
+    const res = await request(app)
+      .get("/api/v1/groups")
+      .set("authorization", `Bearer ${superToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.groups).toEqual([]);
   });
 });
 

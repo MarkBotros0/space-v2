@@ -40,13 +40,17 @@ export async function canAccessGroup(user: SessionUser, groupId: number): Promis
   if (isAdminOfSeason(user, group.seasonId)) return true;
 
   if (user.role === "STUDENT") {
-    // GroupStudent is keyed by studentUserId alone — a student belongs to at
-    // most one group at a time, across all seasons.
-    const membership = await db.groupStudent.findUnique({
-      where: { studentUserId: user.userId },
+    // The student's group *in this group's season*, from the enrolment.
+    // GroupStudent is keyed by studentUserId alone, so it holds one row per
+    // student across every season — asking it here denies a student their own
+    // group in any season but the current one (ruling C9).
+    const enrollment = await db.seasonEnrollment.findUnique({
+      where: {
+        studentUserId_seasonId: { studentUserId: user.userId, seasonId: group.seasonId },
+      },
       select: { groupId: true },
     });
-    return membership?.groupId === groupId;
+    return enrollment?.groupId === groupId;
   }
 
   return false;
