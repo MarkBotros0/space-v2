@@ -216,10 +216,16 @@ export const openApiDocument = {
       },
       GroupMember: {
         type: "object",
+        required: ["id", "name"],
         properties: {
           id: { type: "integer" },
           name: { type: ["string", "null"] },
-          email: { type: "string", format: "email" },
+          email: {
+            type: "string",
+            format: "email",
+            description:
+              "Omitted entirely for a STUDENT caller. A student may read their own group, but v1 only ever put this payload on staff pages — showing every member of a group each other's address is not a change this API makes.",
+          },
         },
       },
       GroupDetail: {
@@ -273,7 +279,11 @@ export const openApiDocument = {
           seasonId: { type: "integer" },
           seasonCode: { type: "string" },
           seasonTitle: { type: "string" },
-          checkInOpen: { type: "boolean" },
+          checkInOpen: {
+            type: "boolean",
+            description:
+              "True only while `POST /sessions/check-in` would actually accept a scan: opened, not explicitly closed, and within three hours of opening. Both endpoints derive this from the same predicate, so the read cannot advertise a window the write refuses.",
+          },
           myAttendance: {
             type: ["object", "null"],
             description: "Populated only for a STUDENT.",

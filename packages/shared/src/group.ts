@@ -13,7 +13,15 @@ export interface GroupListItem {
 export interface GroupMember {
   id: number;
   name: string | null;
-  email: string;
+  /**
+   * Absent for student callers. A student may read their own group so the app
+   * can show who is in it, but v1 only ever put this payload on staff pages —
+   * a student's own view of their group was a separate, narrower query that
+   * never selected addresses. Handing every member of a group each other's
+   * email is a change v1 never made, so the API withholds it by role rather
+   * than inheriting it from the staff shape.
+   */
+  email?: string;
 }
 
 export interface GroupDetail {

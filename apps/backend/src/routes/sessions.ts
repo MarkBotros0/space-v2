@@ -4,6 +4,7 @@ import { db } from "../db/client";
 import { AttendanceStatus } from "../generated/prisma/enums";
 import { apiOk, apiError } from "../lib/api-response";
 import { flagLowAttendance } from "../lib/attendance-notifications";
+import { isCheckInOpen } from "../lib/check-in";
 import { parseId } from "../lib/parse-id";
 import { attendanceScopeFor, canAccessSeason, canMarkAttendance } from "../lib/permissions";
 import { loadAttendanceRoster } from "../lib/queries/sessions";
@@ -33,15 +34,13 @@ sessionsRouter.post("/check-in", async (req, res) => {
     select: { id: true, seasonId: true, checkInOpenAt: true, checkInClosedAt: true },
   });
   if (!session) return apiError(res, "invalid_token", "Check-in token is invalid.", 404);
-  if (!session.checkInOpenAt) return apiError(res, "not_open", "Check-in is not open yet.", 409);
-  if (session.checkInClosedAt) return apiError(res, "closed", "Check-in has closed.", 409);
 
   const now = new Date();
-  // Hard stop three hours after opening, so an admin who forgets to close a
-  // session cannot leave a working code live indefinitely.
-  if (now.getTime() - session.checkInOpenAt.getTime() > 3 * 60 * 60 * 1000) {
-    return apiError(res, "closed", "Check-in has closed.", 409);
-  }
+  // Checked separately from isCheckInOpen so `checkInOpenAt` narrows to non-null
+  // for the lateness computation below, and so "never opened" stays
+  // distinguishable from "opened and since expired".
+  if (!session.checkInOpenAt) return apiError(res, "not_open", "Check-in is not open yet.", 409);
+  if (!isCheckInOpen(session, now)) return apiError(res, "closed", "Check-in has closed.", 409);
 
   const enrollment = await db.seasonEnrollment.findUnique({
     where: { studentUserId_seasonId: { studentUserId: user.userId, seasonId: session.seasonId } },
@@ -137,7 +136,7 @@ sessionsRouter.get("/:id", async (req, res) => {
     seasonId: session.seasonId,
     seasonCode: session.season.code,
     seasonTitle: session.season.title,
-    checkInOpen: Boolean(session.checkInOpenAt) && !session.checkInClosedAt,
+    checkInOpen: isCheckInOpen(session),
     myAttendance,
     canMarkAttendance: await canMarkAttendance(user, id),
   });

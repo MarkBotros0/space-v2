@@ -185,6 +185,31 @@ describe("POST /api/v1/sessions/check-in", () => {
     expect(res.body.error.code).toBe("closed");
   });
 
+  it("reports the same open state on the read as the write enforces", async () => {
+    await openCheckIn();
+
+    const live = await request(app)
+      .get(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${studentToken}`);
+    expect(live.status).toBe(200);
+    expect(live.body.data.checkInOpen).toBe(true);
+
+    // Same backdating as the expiry test above. The two endpoints derived this
+    // independently once — the write applied the 3h stop, the read did not —
+    // so a session opened days ago advertised itself as open and then refused
+    // the scan. Both now go through checkInState.
+    await db.session.update({
+      where: { id: sessionId },
+      data: { checkInOpenAt: new Date(Date.now() - 4 * 60 * 60 * 1000), checkInClosedAt: null },
+    });
+
+    const expired = await request(app)
+      .get(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${studentToken}`);
+    expect(expired.status).toBe(200);
+    expect(expired.body.data.checkInOpen).toBe(false);
+  });
+
   it("returns 400 when the token is missing", async () => {
     const res = await request(app)
       .post("/api/v1/sessions/check-in")
