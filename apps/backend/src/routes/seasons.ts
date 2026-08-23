@@ -8,11 +8,16 @@ import {
   listAssignmentsForSeason,
   listAssignmentsForStudent,
 } from "../lib/queries/assignments";
-import { listGroupsForSeason } from "../lib/queries/groups";
+import {
+  listGroupsForSeason,
+  setGroupStudents,
+  validateGroupWrite,
+} from "../lib/queries/groups";
 import { listSessionsForSeason } from "../lib/queries/sessions";
 import { canAccessSeason } from "../lib/permissions";
-import { isMentor, isSuper } from "../lib/rbac";
+import { isAdminOfSeason, isMentor, isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { groupWriteRequestSchema } from "../../../../packages/shared/src/index";
 
 export const seasonsRouter = Router();
 
@@ -133,6 +138,46 @@ seasonsRouter.get("/:id/groups", async (req, res) => {
   // with a headcount attached.
   const groups = await listGroupsForSeason(user, seasonId);
   return apiOk(res, { groups: groups ?? [] });
+});
+
+seasonsRouter.post("/:id/groups", async (req, res) => {
+  const user = requireUser(req);
+  const seasonId = parseId(req.params.id);
+  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+
+  if (!isAdminOfSeason(user, seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const season = await db.season.findUnique({ where: { id: seasonId }, select: { id: true } });
+  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+
+  const parsed = groupWriteRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid group body.", 400);
+
+  const refusal = await validateGroupWrite(seasonId, parsed.data);
+  if (refusal) return apiError(res, refusal.code, refusal.message, 409);
+
+  const group = await db.$transaction(async (tx) => {
+    const created = await tx.group.create({
+      data: {
+        seasonId,
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+      },
+      select: { id: true },
+    });
+    if (parsed.data.leaderIds.length > 0) {
+      await tx.groupLeader.createMany({
+        data: parsed.data.leaderIds.map((userId) => ({ groupId: created.id, userId })),
+        skipDuplicates: true,
+      });
+    }
+    await setGroupStudents(tx, seasonId, created.id, parsed.data.studentIds);
+    return created;
+  });
+
+  return apiOk(res, { id: group.id }, 201);
 });
 
 seasonsRouter.get("/:id/sessions", async (req, res) => {

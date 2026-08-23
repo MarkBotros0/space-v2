@@ -156,6 +156,144 @@ describe("GET /api/v1/seasons/:id/groups", () => {
   });
 });
 
+describe("POST /api/v1/seasons/:id/groups and PATCH /api/v1/groups/:id", () => {
+  async function newStudentEnrolled(label: string) {
+    const u = await createTestUser(label, "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { seasonId, studentUserId: u.id, status: "ACTIVE" },
+    });
+    return u;
+  }
+
+  it("creates a group with leaders and students", async () => {
+    const leader2 = await createTestUser("leader2", "LEADER");
+    const s1 = await newStudentEnrolled("new-s1");
+
+    const res = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Wednesday", leaderIds: [leader2.id], studentIds: [s1.id] });
+
+    expect(res.status).toBe(201);
+    const enrollment = await db.seasonEnrollment.findUnique({
+      where: { studentUserId_seasonId: { studentUserId: s1.id, seasonId } },
+      select: { groupId: true },
+    });
+    expect(enrollment?.groupId).toBe(res.body.data.id);
+    // GroupStudent is mirrored because v1 still reads it against this database.
+    const mirror = await db.groupStudent.findUnique({
+      where: { studentUserId: s1.id },
+      select: { groupId: true },
+    });
+    expect(mirror?.groupId).toBe(res.body.data.id);
+  });
+
+  it("refuses a leader who is not a leader", async () => {
+    // v1 read leaderIds off the raw body. A GroupLeader row is a token claim,
+    // so an unvalidated list here is a privilege path, not a typo.
+    const student = await newStudentEnrolled("not-a-leader");
+    const res = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Bad leaders", leaderIds: [student.id] });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("invalid_leader");
+  });
+
+  it("refuses a student who is not enrolled in the season", async () => {
+    const stranger = await createTestUser("stranger", "STUDENT");
+    const res = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Bad students", studentIds: [stranger.id] });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("not_enrolled");
+  });
+
+  it("refuses a duplicate name within the season", async () => {
+    // No database constraint exists and the CSV importer matches groups by
+    // name, so two groups sharing one silently misroute an import.
+    const res = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Group A" });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("name_taken");
+  });
+
+  it("preserves enrolment history when the roster changes", async () => {
+    // v1's group form deleted and recreated the enrolment, resetting status,
+    // droppedAt and dropReason — a withdrawn student silently came back as
+    // ACTIVE with their reason for leaving erased, on a model the schema calls
+    // append-only.
+    const quitter = await createTestUser("history", "STUDENT");
+    const droppedAt = new Date("2099-02-01T00:00:00.000Z");
+    await db.seasonEnrollment.create({
+      data: {
+        seasonId,
+        studentUserId: quitter.id,
+        status: "WITHDRAWN",
+        droppedAt,
+        dropReason: "moved away",
+      },
+    });
+
+    const created = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "History group", studentIds: [quitter.id] });
+    expect(created.status).toBe(201);
+
+    const after = await db.seasonEnrollment.findUnique({
+      where: { studentUserId_seasonId: { studentUserId: quitter.id, seasonId } },
+      select: { status: true, dropReason: true, groupId: true },
+    });
+    expect(after).toMatchObject({
+      status: "WITHDRAWN",
+      dropReason: "moved away",
+      groupId: created.body.data.id,
+    });
+  });
+
+  it("clears the group pointer of a removed student without dropping their enrolment", async () => {
+    const s = await newStudentEnrolled("removed");
+    const created = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Shrinking", studentIds: [s.id] });
+
+    await request(app)
+      .patch(`/api/v1/groups/${created.body.data.id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Shrinking", studentIds: [] });
+
+    const after = await db.seasonEnrollment.findUnique({
+      where: { studentUserId_seasonId: { studentUserId: s.id, seasonId } },
+      select: { groupId: true, status: true },
+    });
+    expect(after).toMatchObject({ groupId: null, status: "ACTIVE" });
+  });
+
+  it("refuses a leader of the group, who may not change its leadership", async () => {
+    const res = await request(app)
+      .patch(`/api/v1/groups/${groupAId}`)
+      .set("authorization", `Bearer ${leaderToken}`)
+      .send({ name: "Hijacked" });
+    expect(res.status).toBe(403);
+  });
+
+  it("refuses a name under two characters", async () => {
+    const res = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "x" });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("GET /api/v1/groups", () => {
   it("returns a leader's own groups — the tab that had no endpoint", async () => {
     const res = await request(app)

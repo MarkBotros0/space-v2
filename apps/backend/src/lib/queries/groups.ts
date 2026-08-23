@@ -1,4 +1,5 @@
 import { db } from "../../db/client";
+import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { isMentor, isSuper } from "../rbac";
 
@@ -106,6 +107,111 @@ export async function listGroupsForSeason(
     select: LIST_SELECT,
   });
   return toListRows(groups);
+}
+
+export interface GroupWriteInput {
+  name: string;
+  description?: string | null;
+  leaderIds: number[];
+  studentIds: number[];
+}
+
+/** A refusal a caller can act on, or null when the input is acceptable. */
+export async function validateGroupWrite(
+  seasonId: number,
+  input: GroupWriteInput,
+  excludeGroupId?: number,
+): Promise<{ code: string; message: string } | null> {
+  // v1 has no uniqueness on group name within a season, and the CSV importer
+  // matches groups *by name* — so two groups called "Tuesday" silently make the
+  // import assign everyone to whichever one it found last. A real constraint
+  // needs a migration (ruling C1); this is the check that can be made now.
+  const clash = await db.group.findFirst({
+    where: {
+      seasonId,
+      name: input.name,
+      ...(excludeGroupId ? { id: { not: excludeGroupId } } : {}),
+    },
+    select: { id: true },
+  });
+  if (clash) {
+    return { code: "name_taken", message: "A group in this season already has that name." };
+  }
+
+  if (input.leaderIds.length > 0) {
+    // A GroupLeader row populates the groupLeaderIds claim, and isLeaderOfGroup
+    // now pairs that claim with the LEADER role — so naming a student here
+    // would produce a grant that grants nothing, which is a confusing dead row
+    // rather than a hole. Refusing it outright keeps the two consistent.
+    const eligible = await db.user.findMany({
+      where: { id: { in: input.leaderIds }, role: "LEADER" },
+      select: { id: true },
+    });
+    if (eligible.length !== new Set(input.leaderIds).size) {
+      return { code: "invalid_leader", message: "Every leader must be a user with the leader role." };
+    }
+  }
+
+  if (input.studentIds.length > 0) {
+    // Enrolled in *this* season. v1's group form checked nothing here, so it
+    // could enrol a student in a season they were never admitted to.
+    const enrolled = await db.seasonEnrollment.findMany({
+      where: { seasonId, studentUserId: { in: input.studentIds } },
+      select: { studentUserId: true },
+    });
+    if (enrolled.length !== new Set(input.studentIds).size) {
+      return {
+        code: "not_enrolled",
+        message: "Every student must already be enrolled in this season.",
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Point a set of students at a group, preserving their enrolment history.
+ *
+ * v1 has two write paths with opposite semantics. The group form deletes and
+ * recreates the SeasonEnrollment, which resets status, enrolledAt, droppedAt
+ * and dropReason — so a WITHDRAWN student silently becomes ACTIVE with their
+ * reason for leaving erased, on a model the schema itself calls "Append-only
+ * history". The roster grid upserts only groupId and preserves all of it. This
+ * is the roster grid's semantics; the form's are not reproduced.
+ *
+ * GroupStudent is still maintained alongside, because v1 reads it and both
+ * systems are live against one database — dropping it here would break v1's
+ * pages, not just v2's. It is written as a mirror of the enrolment, never as
+ * the source of truth (ruling C9).
+ */
+export async function setGroupStudents(
+  tx: Prisma.TransactionClient,
+  seasonId: number,
+  groupId: number,
+  studentIds: number[],
+): Promise<void> {
+  // Students previously in this group who are not in the new list keep their
+  // enrolment and lose only the group pointer. Removing the enrolment would
+  // discard the fact that they were ever in the season.
+  await tx.seasonEnrollment.updateMany({
+    where: { seasonId, groupId, studentUserId: { notIn: studentIds } },
+    data: { groupId: null },
+  });
+  await tx.groupStudent.deleteMany({
+    where: { groupId, studentUserId: { notIn: studentIds } },
+  });
+
+  for (const studentUserId of studentIds) {
+    // GroupStudent.studentUserId is unique across the whole database, so an
+    // existing row anywhere has to go before this one can be written.
+    await tx.groupStudent.deleteMany({ where: { studentUserId } });
+    await tx.groupStudent.create({ data: { groupId, studentUserId } });
+    await tx.seasonEnrollment.update({
+      where: { studentUserId_seasonId: { studentUserId, seasonId } },
+      data: { groupId },
+    });
+  }
 }
 
 /**

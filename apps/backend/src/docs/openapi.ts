@@ -219,6 +219,29 @@ export const openApiDocument = {
           seasonTitle: { type: "string" },
         },
       },
+      GroupWriteRequest: {
+        type: "object",
+        required: ["name"],
+        description:
+          "v1's schema covered name and description only — leaderIds and studentIds were read straight off the raw body with no eligibility check. Since a GroupLeader row populates the groupLeaderIds claim, an unvalidated leader list is a privilege path rather than a data-quality problem.",
+        properties: {
+          name: { type: "string", minLength: 2, maxLength: 80 },
+          description: { type: ["string", "null"], maxLength: 2000 },
+          leaderIds: {
+            type: "array",
+            maxItems: 20,
+            items: { type: "integer" },
+            description: "Must all be users with the LEADER role. Replaces the current set.",
+          },
+          studentIds: {
+            type: "array",
+            maxItems: 500,
+            items: { type: "integer" },
+            description:
+              "Must all already be enrolled in the season. Replaces the current roster; a student dropped from the list keeps their enrolment and loses only the group pointer.",
+          },
+        },
+      },
       GroupMember: {
         type: "object",
         required: ["id", "name"],
@@ -730,6 +753,33 @@ export const openApiDocument = {
       },
     },
     "/api/v1/seasons/{id}/groups": {
+      post: {
+        tags: ["Groups"],
+        summary: "Create a group in a season",
+        description:
+          "Season-admin power. Refuses a duplicate name within the season — v1 has no such constraint and its CSV importer matches groups *by name*, so two groups sharing one silently misroute an import. A real constraint needs a migration; this is the check available now.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/GroupWriteRequest" },
+            },
+          },
+        },
+        responses: {
+          201: ok({ type: "object", properties: { id: { type: "integer" } } }, "Created."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: {
+            description:
+              "`name_taken`, `invalid_leader` (a named leader lacks the LEADER role) or `not_enrolled` (a named student is not in this season).",
+            content: { "application/json": { schema: errorResponse } },
+          },
+        },
+      },
       get: {
         tags: ["Seasons"],
         summary: "Groups in a season",
@@ -821,6 +871,32 @@ export const openApiDocument = {
     },
 
     "/api/v1/groups/{id}": {
+      patch: {
+        tags: ["Groups"],
+        summary: "Edit a group's name, description, leaders and roster",
+        description:
+          "Season-admin power. A group's own leader is deliberately refused: leading a group does not confer the right to change who else leads it, and a GroupLeader row is a claim in the token.\n\nThe roster write preserves enrolment history. v1's group form deleted and recreated the SeasonEnrollment, resetting status, enrolledAt, droppedAt and dropReason — a WITHDRAWN student silently returned as ACTIVE with their reason for leaving erased, on a model the schema itself calls append-only. A student removed from the list keeps their enrolment and loses only the group pointer.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/GroupWriteRequest" },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { id: { type: "integer" } } }, "Updated."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: {
+            description: "`name_taken`, `invalid_leader` or `not_enrolled`.",
+            content: { "application/json": { schema: errorResponse } },
+          },
+        },
+      },
       get: {
         tags: ["Groups"],
         summary: "Group detail with leaders and students",

@@ -24,6 +24,24 @@ export const groupListItemSchema = z.object({
 });
 export type GroupListItem = z.infer<typeof groupListItemSchema>;
 
+/**
+ * Creating or editing a group.
+ *
+ * v1's schema covered `name` and `description` only — `leaderIds` and
+ * `studentIds` were read straight off the raw request body, with no check that
+ * the named users could legitimately hold those roles. Since a GroupLeader row
+ * populates the `groupLeaderIds` claim, an unvalidated leader list is a
+ * privilege path, not just a data-quality problem. Both arrays are validated
+ * here and their members checked for eligibility server-side.
+ */
+export const groupWriteRequestSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters.").max(80),
+  description: z.string().max(2000).nullish(),
+  leaderIds: z.array(z.number().int().positive()).max(20).default([]),
+  studentIds: z.array(z.number().int().positive()).max(500).default([]),
+});
+export type GroupWriteRequest = z.infer<typeof groupWriteRequestSchema>;
+
 export const groupMemberSchema = z.object({
   id: z.number(),
   name: z.string().nullable(),
