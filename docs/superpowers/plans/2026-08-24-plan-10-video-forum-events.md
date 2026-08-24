@@ -24,8 +24,9 @@ expo-router 6, React Query 5, RNTL 13, and
 `PUT /submissions/by-assignment/:assignmentId`, the hooks/test patterns),
 Plan 3 (`lib/org-time.ts`, session writes), Plan 4 (`app/(app)/calendar.tsx`,
 `app/(app)/session/[id].tsx`, `useCurrentSeasonId`, `useSessionDetail`).
-Plan 6 (domain 12, text quizzes) **does not exist yet** — see D-13.6 below for
-the contract rule this plan defines and Plan 6 must adopt by name.
+Plan 6 (domain 12, text quizzes) now exists and has adopted the "answer-key
+split" by name — see D-13.3 below for the one place the two plans enforce it
+differently on the client.
 
 ## Global Constraints
 
@@ -100,11 +101,27 @@ shape.** Two endpoints, two gates, two Zod schemas:
 mobile boundary rather than rendering. `correctIndex` reaches a student on
 exactly one path: the submit response for the question they just answered
 (R60), which is safe because R54 makes the first answer final.
-**Name this rule the "answer-key split" and reuse it by name.** Plan 6 (domain
-12) does not exist yet; when it lands, its `quizQuestionSchema` pair must follow
-this same split — one admin schema carrying `correctIndex`, one student schema
-that is `.strict()` and cannot carry it. Flag in the Plan 6 report that this
-plan defined the pattern first.
+**This rule is named the "answer-key split" and is used by that name in both
+quiz plans.** Plan 6 (domain 12) has adopted it: `quizQuestionAuthoringSchema`
+carries `correctIndex`, `quizQuestionStudentSchema` has no such field, and its
+own integration test asserts the raw student response JSON never contains the
+string.
+
+The load-bearing enforcement is the same in both plans and lives on the server:
+the typed split (a handler serving the authoring shape where the student shape
+is declared fails typecheck) plus an integration test asserting
+`JSON.stringify(res.body)` does not match `/correctIndex/` — this plan's is in
+the video-quiz read task, and both are mutation-tested by adding
+`correctIndex: true` to the student select and confirming the test goes red.
+
+The two plans differ in **one** client-side detail, deliberately: this plan's
+`studentVideoQuestionSchema` is `.strict()`, so a leaking backend fails the
+parse; Plan 6's `quizQuestionStudentSchema` uses Zod's default strip, so a
+leaking backend has the field dropped and the screen still renders. Neither is
+wrong — `.strict()` trades a working screen for a louder signal. Do not
+"harmonise" them by adding `.strict()` to Plan 6 without deciding that trade
+again: a regression CI missed would take every student's quiz screen down
+rather than silently dropping a field they were never shown.
 
 **D-13.4 — Completion is derived, not asserted** (spec 13 D3). `completed` is
 absent from the request contract. The server sets `completedAt` when the last
