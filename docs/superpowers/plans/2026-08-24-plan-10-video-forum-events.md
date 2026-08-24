@@ -2488,6 +2488,10 @@ In `apps/backend/src/routes/video-quiz.ts`:
 import type { Request, Response } from "express";
 
 import { db } from "../db/client";
+// A VALUE import, not `import type` — the P2002 branch below needs the
+// PrismaClientKnownRequestError class at runtime. `routes/submissions.ts`
+// imports the same symbol as a type; check how `db/client.ts` re-exports it and
+// match the codebase's existing value-import pattern rather than inventing one.
 import { Prisma } from "../generated/prisma/client";
 import { apiError, apiOk } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
@@ -4402,7 +4406,7 @@ forumRouter.get("/assignments/:id/forum", async (req, res) => {
       status: "SUBMITTED",
       submittedAt: now,
     },
-    select: { publicId: true, status: true },
+    select: { publicId: true, status: true, feedback: true, reviewedAt: true },
   });
 
   return apiOk(res, {
@@ -4411,6 +4415,10 @@ forumRouter.get("/assignments/:id/forum", async (req, res) => {
     status: submission.status,
     wordCount: words,
     posted: true,
+    // Carried so the response parses against forumOwnResponseSchema, and so an
+    // update after a review does not blank the feedback the screen is showing.
+    feedback: submission.feedback ? htmlToPlainText(submission.feedback) : null,
+    reviewedAt: submission.reviewedAt,
   });
 ```
 
@@ -4847,9 +4855,11 @@ const unlockedView = {
   own: {
     submissionPublicId: "abc123defg",
     text: "space-v2-test my response one two three",
-    status: "SUBMITTED" as const,
+    status: "REVIEWED" as const,
     wordCount: 7,
     posted: true,
+    feedback: "space-v2-test leader feedback",
+    reviewedAt: "2099-03-03T09:00:00.000Z",
   },
   locked: false,
   posts: [
@@ -4958,6 +4968,9 @@ describe("forum branch of the assignment screen", () => {
     // canDelete comes from the server; the client never re-derives it.
     expect(screen.getByLabelText("Delete comment")).toBeTruthy();
     expect(screen.queryByText("Update response")).toBeTruthy();
+    // v1 never renders feedback on a forum assignment, so a leader's verdict is
+    // invisible to the student who wrote the post (spec 14 R34 / D9).
+    expect(screen.getByText("space-v2-test leader feedback")).toBeTruthy();
   });
 
   it("posts a comment against the post's publicId", async () => {
@@ -5120,7 +5133,10 @@ Structure:
    `view.own.posted ? "Update response" : "Post response"`. The button is
    disabled while `countWords(draft) < Math.max(1, view.minWords ?? 0)`; the
    `Math.max(1, …)` is decision D-14.5 on the client side. Surface the
-   mutation's `error.response.data.error.message` verbatim beneath it.
+   mutation's `error.response.data.error.message` verbatim beneath it. When
+   `view.own.feedback` is non-null, render it above the compose box as a
+   "Feedback from your leader" card with `formatDate(view.own.reviewedAt)` —
+   decision D-14.8.
    **Plain text, one `Input`, no rich-text editor.** The post body is HTML in
    storage but the server converts in both directions (Task 1's helpers), so the
    editor domain 8 wants is not needed here and must not be bolted on — the
