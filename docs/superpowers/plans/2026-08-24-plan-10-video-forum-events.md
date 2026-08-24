@@ -193,6 +193,18 @@ post action selects `assignment.dueAt` and never reads it (R12). Kept — a
 discussion that closes at a deadline stops being a discussion — but recorded
 here rather than left as an unused select (spec 14 D5).
 
+**D-14.8 — A forum post stays reviewable, and its author can finally read the
+feedback.** Spec 14 §10 D9: posting sets `SUBMITTED`, so a forum post enters the
+leader queue as ordinary work (R55) and `reviewSubmissionAction` has no type
+precondition (R56) — a reviewer can write feedback that the forum screen then
+never renders, because `loadForumView` does not select the column (R34). Of D9's
+two options, this plan takes "forum posts are reviewable work": leaving them in
+the queue matches what leaders already do, and the missing half is one field.
+`forumOwnResponseSchema` carries `feedback` and `reviewedAt`, and the screen
+renders them. The other half of D9 — showing the reviewer that they are looking
+at a discussion post, with its thread — is domain 8's screen and is **out of
+scope here**.
+
 **D-15.1 — Events and sessions stay two models. Only the feed is unified —
 and not in this plan.** Spec 15 §10 item 1's recommendation, confirmed against
 the schema: `Session.seasonId` is required/`Cascade` and carries attendance,
@@ -1074,6 +1086,17 @@ export type ForumPost = z.infer<typeof forumPostSchema>;
 
 export const forumOwnResponseSchema = z.object({
   /**
+   * Spec 14 §10 D9: posting sets SUBMITTED, which puts a forum post in the
+   * leader review queue as ordinary work, and `reviewSubmissionAction` has no
+   * type precondition — so a reviewer can write feedback on a discussion post
+   * and v1's forum screen renders none of it, because `loadForumView` never
+   * selects the column. Forum posts stay reviewable (that is the cheaper half
+   * of the decision and matches what leaders already do); the fix is that the
+   * student can now read the verdict.
+   */
+  feedback: z.string().nullable(),
+  reviewedAt: z.string().nullable(),
+  /**
    * Nullable, and that is the whole point: nothing creates the row up front any
    * more (ruling C6), so the screen must render the compose box, the counter and
    * the locked feed with no submission in existence.
@@ -1301,19 +1324,14 @@ Append to `apps/backend/src/__tests__/app.test.ts`:
 
 ```ts
 describe("plan 10 router mounts", () => {
-  // requireAuth answers before any handler or database call, so an unauthorised
-  // request proves the router is mounted without needing a database.
-  it.each([
-    ["get", "/api/v1/sessions/1/video-quiz"],
-    ["get", "/api/v1/sessions/1/video-questions"],
-    ["get", "/api/v1/assignments/1/forum"],
-    ["delete", "/api/v1/forum/comments/1"],
-    ["get", "/api/v1/events"],
-  ])("%s %s is mounted and requires a token", async (method, path) => {
-    const res = await (request(createApp()) as never as Record<string, (p: string) => never>)
-      [method as string](path);
-    const status = (res as unknown as { status: number }).status;
-    expect(status).toBe(401);
+  it("mounts the three plan-10 routers", async () => {
+    // A router with no routes yet falls through to notFound exactly as an
+    // unmounted path does, so until the stream tasks add routes the only
+    // structural claim available is that the mounts exist. Each stream's own
+    // integration suite proves its routes answer.
+    const app = createApp();
+    const stack = (app as unknown as { _router: { stack: { name: string }[] } })._router.stack;
+    expect(stack.filter((l) => l.name === "router").length).toBeGreaterThanOrEqual(10);
   });
 
   it("allows PUT through CORS", async () => {
@@ -1329,7 +1347,8 @@ describe("plan 10 router mounts", () => {
 });
 ```
 
-Run: `cd apps/backend && npx jest src/__tests__/app.test.ts` → FAIL (404s, no PUT).
+Run: `cd apps/backend && npx jest src/__tests__/app.test.ts` → FAIL (seven
+routers mounted, and no `PUT` in the allow-methods header).
 
 - [ ] **Step 2: Create the three routers and mount them**
 
@@ -1408,26 +1427,10 @@ and, immediately **above** `app.use("/api/v1/seasons", seasonsRouter);`:
   app.use("/api/v1/events", eventsRouter);
 ```
 
-Run the app test → the CORS case passes; the mount cases still 404 because the
-routers declare no routes yet. **Add one throwaway assertion-satisfying route
-per router? No.** Instead, temporarily accept that the five mount cases stay red
-until Steps 3–5 of the stream tasks land, and gate them behind the routes they
-belong to: move each `it.each` row into the stream's own suite. Simpler and
-honest — replace the `it.each` block with this single case, which passes now:
-
-```ts
-  it("mounts the three plan-10 routers", async () => {
-    // A mounted router with no routes falls through to notFound; an unmounted
-    // path does too. What distinguishes them is that requireAuth runs first, so
-    // a mounted router answers 401 rather than 404 once it has any route. Until
-    // the streams add routes, assert the mounts exist structurally instead.
-    const app = createApp();
-    const stack = (app as unknown as { _router: { stack: { name: string }[] } })._router.stack;
-    expect(stack.filter((l) => l.name === "router").length).toBeGreaterThanOrEqual(10);
-  });
-```
-
-Keep the CORS case as written. Run → PASS.
+Run the app test → PASS. (If Express 5's internal `_router` shape makes the
+count assertion brittle, replace it with a check that
+`app.options("/api/v1/events")` returns a non-404 status — but do not weaken it
+to a test that would pass with the mounts removed.)
 
 - [ ] **Step 3: Export `groupIdInSeason`**
 
@@ -2482,10 +2485,13 @@ export async function loadStudentVideoQuiz(
 In `apps/backend/src/routes/video-quiz.ts`:
 
 ```ts
+import type { Request, Response } from "express";
+
 import { db } from "../db/client";
 import { Prisma } from "../generated/prisma/client";
 import { apiError, apiOk } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
+// Task 4 adds canManageSessionVideo and staffScopeForSeason to this import.
 import { hasActiveEnrollment } from "../lib/permissions";
 import { loadStudentVideoQuiz } from "../lib/queries/video-quiz";
 import { requireUser } from "../middleware/require-auth";
@@ -2500,8 +2506,8 @@ import {
  * having already answered the request.
  */
 async function requireStudentOnSession(
-  req: Parameters<typeof requireUser>[0],
-  res: Parameters<typeof apiError>[0],
+  req: Request,
+  res: Response,
   sessionId: number,
 ): Promise<{ seasonId: number } | null> {
   const user = requireUser(req);
@@ -2687,3 +2693,3642 @@ git add apps/backend && git commit -m "feat(backend): student video quiz with a 
 ```
 
 ---
+
+### Task 4: Video quiz — authoring, re-grading, and the results nobody could see
+
+**Files:**
+- Modify: `apps/backend/src/routes/video-quiz.ts`
+- Modify: `apps/backend/src/lib/queries/video-quiz.ts` (add `loadVideoQuizResults`)
+- Modify: `apps/backend/src/docs/openapi.ts`
+- Test: extend `apps/backend/src/__tests__/integration/video-quiz-routes.test.ts`
+
+**Interfaces:**
+- Consumes: `canManageSessionVideo`, `staffScopeForSeason` (Task 2); `videoQuestionInputSchema` (Task 1); `loadStudentVideoQuiz` (Task 3).
+- Produces:
+  - `loadVideoQuizResults(sessionId, restrictToGroupIds?): Promise<VideoQuizResultsData | null>`
+  - `GET /api/v1/sessions/:id/video-questions`
+  - `POST /api/v1/sessions/:id/video-questions`
+  - `PATCH /api/v1/video-questions/:questionId`
+  - `DELETE /api/v1/video-questions/:questionId`
+  - `GET /api/v1/sessions/:id/video-quiz/results`
+
+- [ ] **Step 1: Write the failing tests** (append to the same suite; the
+`beforeEach(resetAnswers)` already isolates them)
+
+```ts
+describe("video question authoring", () => {
+  it("lists questions WITH the answer key for a season admin", async () => {
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}/video-questions`)
+      .set("authorization", `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.questions).toHaveLength(3);
+    expect(res.body.data.questions[0]).toMatchObject({ correctIndex: 0, responseCount: 0 });
+  });
+
+  it("refuses the authoring list to a student, a leader and a mentor", async () => {
+    // This is the read that carries correctIndex for every question. In v1 the
+    // query authorizes nothing at all and the admin page is the only gate
+    // (spec 13 R68/R73) — the exact protection that evaporates behind an API.
+    for (const token of [studentToken, leaderToken]) {
+      const res = await request(app)
+        .get(`/api/v1/sessions/${sessionId}/video-questions`)
+        .set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+    }
+  });
+
+  it("creates a question and refuses one whose correct index is out of range", async () => {
+    const ok = await request(app)
+      .post(`/api/v1/sessions/${sessionId}/video-questions`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({
+        atSeconds: 120,
+        prompt: "space-v2-test new question",
+        options: ["a", "b"],
+        correctIndex: 1,
+        points: 4,
+      });
+    expect(ok.status).toBe(201);
+    expect(ok.body.data.question).toMatchObject({ atSeconds: 120, points: 4, responseCount: 0 });
+
+    const bad = await request(app)
+      .post(`/api/v1/sessions/${sessionId}/video-questions`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({
+        atSeconds: 120,
+        prompt: "space-v2-test bad question",
+        options: ["a", "b"],
+        correctIndex: 2,
+      });
+    expect(bad.status).toBe(400);
+
+    await db.sessionVideoQuestion.deleteMany({ where: { id: ok.body.data.question.id } });
+  });
+
+  it("refuses creation by a leader — authoring is ADMIN/SUPER only (v1 R1)", async () => {
+    const res = await request(app)
+      .post(`/api/v1/sessions/${sessionId}/video-questions`)
+      .set("authorization", `Bearer ${leaderToken}`)
+      .send({
+        atSeconds: 10,
+        prompt: "space-v2-test nope",
+        options: ["a", "b"],
+        correctIndex: 0,
+      });
+    expect(res.status).toBe(403);
+  });
+
+  it("RE-GRADES existing answers when the key changes (spec 13 D5)", async () => {
+    // v1 freezes isCorrect at answer time and the update touches only the
+    // question row, so fixing a wrong answer key leaves every prior grade
+    // wrong — silently, with responseCount displayed two lines away.
+    await request(app)
+      .post(`/api/v1/sessions/${sessionId}/video-quiz/answers`)
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ questionId: q1, selectedIndex: 1 }); // wrong under correctIndex 0
+
+    const patched = await request(app)
+      .patch(`/api/v1/video-questions/${q1}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({
+        atSeconds: 30,
+        prompt: "space-v2-test q1",
+        options: ["a", "b"],
+        correctIndex: 1, // the key was wrong; fix it
+        points: 2,
+      });
+
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.regradedCount).toBe(1);
+
+    const response = await db.sessionVideoQuestionResponse.findUnique({
+      where: { questionId_studentUserId: { questionId: q1, studentUserId: studentId } },
+      select: { isCorrect: true },
+    });
+    expect(response?.isCorrect).toBe(true);
+
+    // Restore the fixture's key for the suite's other cases.
+    await db.sessionVideoQuestion.update({ where: { id: q1 }, data: { correctIndex: 0 } });
+  });
+
+  it("reports zero re-grades when only the points change", async () => {
+    await request(app)
+      .post(`/api/v1/sessions/${sessionId}/video-quiz/answers`)
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ questionId: q1, selectedIndex: 0 });
+
+    const res = await request(app)
+      .patch(`/api/v1/video-questions/${q1}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({
+        atSeconds: 30,
+        prompt: "space-v2-test q1",
+        options: ["a", "b"],
+        correctIndex: 0,
+        points: 7,
+      });
+    expect(res.body.data.regradedCount).toBe(0);
+    // Points are not stored on a response, so every earned score moved anyway.
+    expect(res.body.data.pointsChanged).toBe(true);
+
+    await db.sessionVideoQuestion.update({ where: { id: q1 }, data: { points: 2 } });
+  });
+
+  it("reports how many recorded answers a delete destroys (spec 13 D6)", async () => {
+    const doomed = await db.sessionVideoQuestion.create({
+      data: {
+        sessionId,
+        atSeconds: 200,
+        prompt: "space-v2-test doomed",
+        options: ["a", "b"],
+        correctIndex: 0,
+      },
+      select: { id: true },
+    });
+    await db.sessionVideoQuestionResponse.create({
+      data: { questionId: doomed.id, studentUserId: studentId, selectedIndex: 0, isCorrect: true },
+    });
+
+    const res = await request(app)
+      .delete(`/api/v1/video-questions/${doomed.id}`)
+      .set("authorization", `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    // v1 destroys student work behind a static confirm string with no count.
+    expect(res.body.data).toEqual({ deleted: true, responsesRemoved: 1 });
+    expect(await db.sessionVideoQuestion.count({ where: { id: doomed.id } })).toBe(0);
+  });
+
+  it("404s an unknown question on PATCH and DELETE", async () => {
+    for (const call of [
+      request(app).patch("/api/v1/video-questions/987654321").send({
+        atSeconds: 1,
+        prompt: "space-v2-test",
+        options: ["a", "b"],
+        correctIndex: 0,
+      }),
+      request(app).delete("/api/v1/video-questions/987654321"),
+    ]) {
+      const res = await call.set("authorization", `Bearer ${adminToken}`);
+      expect(res.status).toBe(404);
+    }
+  });
+});
+
+describe("GET /api/v1/sessions/:id/video-quiz/results", () => {
+  it("gives an admin every student's score — a capability v1 has for nobody", async () => {
+    await request(app)
+      .post(`/api/v1/sessions/${sessionId}/video-quiz/answers`)
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ questionId: q1, selectedIndex: 0 });
+
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}/video-quiz/results`)
+      .set("authorization", `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.questionCount).toBe(3);
+    expect(res.body.data.totalPoints).toBe(6);
+    const row = res.body.data.rows.find(
+      (r: { studentUserId: number }) => r.studentUserId === studentId,
+    );
+    // Every ACTIVE student appears, including those who have answered nothing.
+    expect(row).toMatchObject({ answeredCount: 1, earnedPoints: 2, completedAt: null });
+  });
+
+  it("gives a leader only their own group's members", async () => {
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}/video-quiz/results`)
+      .set("authorization", `Bearer ${leaderToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.rows.every((r: { groupId: number | null }) => r.groupId !== null)).toBe(
+      true,
+    );
+  });
+
+  it("refuses a student outright", async () => {
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}/video-quiz/results`)
+      .set("authorization", `Bearer ${studentToken}`);
+    expect(res.status).toBe(403);
+  });
+});
+```
+
+Run the suite → the new cases FAIL.
+
+- [ ] **Step 2: `loadVideoQuizResults`**
+
+Append to `apps/backend/src/lib/queries/video-quiz.ts`:
+
+```ts
+export interface VideoQuizResultRowData {
+  studentUserId: number;
+  studentName: string | null;
+  groupId: number | null;
+  groupName: string | null;
+  answeredCount: number;
+  questionCount: number;
+  earnedPoints: number;
+  totalPoints: number;
+  completedAt: Date | null;
+}
+
+export interface VideoQuizResultsData {
+  questionCount: number;
+  totalPoints: number;
+  rows: VideoQuizResultRowData[];
+}
+
+/**
+ * Who answered what on a session's video quiz.
+ *
+ * A new capability: v1 renders no student's video-quiz result anywhere, for any
+ * role. The only aggregate it shows is `responseCount` per question, which
+ * counts answers rather than correct ones and is not broken down by student
+ * (spec 13 R74/R76). The data has always been there, one grouped query away.
+ *
+ * The population is `SeasonEnrollment`, not "whoever has a response row", so a
+ * student who has answered nothing still appears — the same rule the assignment
+ * tracker uses, and the reason a leader can see who has not started.
+ * `restrictToGroupIds` narrows the roster for a leader; the rows carry names.
+ */
+export async function loadVideoQuizResults(
+  sessionId: number,
+  restrictToGroupIds?: number[],
+): Promise<VideoQuizResultsData | null> {
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    select: { seasonId: true },
+  });
+  if (!session) return null;
+
+  const questions = await db.sessionVideoQuestion.findMany({
+    where: { sessionId },
+    select: { id: true, points: true },
+  });
+  const pointsByQuestion = new Map(questions.map((q) => [q.id, q.points]));
+  const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
+
+  const enrollments = await db.seasonEnrollment.findMany({
+    where: {
+      seasonId: session.seasonId,
+      status: "ACTIVE",
+      ...(restrictToGroupIds ? { groupId: { in: restrictToGroupIds } } : {}),
+    },
+    select: {
+      studentUserId: true,
+      groupId: true,
+      group: { select: { name: true } },
+      studentUser: { select: { name: true } },
+    },
+  });
+  const studentIds = enrollments.map((e) => e.studentUserId);
+
+  const [responses, progress] = await Promise.all([
+    db.sessionVideoQuestionResponse.findMany({
+      where: { question: { sessionId }, studentUserId: { in: studentIds } },
+      select: { studentUserId: true, questionId: true, isCorrect: true },
+    }),
+    db.sessionVideoProgress.findMany({
+      where: { sessionId, studentUserId: { in: studentIds } },
+      select: { studentUserId: true, completedAt: true },
+    }),
+  ]);
+
+  const tally = new Map<number, { answered: number; earned: number }>();
+  for (const r of responses) {
+    const entry = tally.get(r.studentUserId) ?? { answered: 0, earned: 0 };
+    entry.answered += 1;
+    if (r.isCorrect) entry.earned += pointsByQuestion.get(r.questionId) ?? 0;
+    tally.set(r.studentUserId, entry);
+  }
+  const completedBy = new Map(progress.map((p) => [p.studentUserId, p.completedAt]));
+
+  return {
+    questionCount: questions.length,
+    totalPoints,
+    rows: enrollments
+      .map((e) => {
+        const entry = tally.get(e.studentUserId) ?? { answered: 0, earned: 0 };
+        return {
+          studentUserId: e.studentUserId,
+          studentName: e.studentUser.name,
+          groupId: e.groupId,
+          groupName: e.group?.name ?? null,
+          answeredCount: entry.answered,
+          questionCount: questions.length,
+          earnedPoints: entry.earned,
+          totalPoints,
+          completedAt: completedBy.get(e.studentUserId) ?? null,
+        };
+      })
+      .sort((a, b) => (a.studentName ?? "").localeCompare(b.studentName ?? "")),
+  };
+}
+```
+
+- [ ] **Step 3: The authoring routes**
+
+All four authoring handlers begin the same way: resolve the session (for the two
+session-scoped paths) or the question's `sessionId` (for the two question-scoped
+ones), then `canManageSessionVideo`. A shared local helper above the routes:
+
+```ts
+/** The admin row shape — the only place `correctIndex` may be selected. */
+const ADMIN_SELECT = {
+  id: true,
+  atSeconds: true,
+  prompt: true,
+  options: true,
+  correctIndex: true,
+  points: true,
+  _count: { select: { responses: true } },
+} as const;
+
+function toAdminRow(q: {
+  id: number;
+  atSeconds: number;
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  points: number;
+  _count: { responses: number };
+}) {
+  return {
+    id: q.id,
+    atSeconds: q.atSeconds,
+    prompt: q.prompt,
+    options: q.options,
+    correctIndex: q.correctIndex,
+    points: q.points,
+    responseCount: q._count.responses,
+  };
+}
+```
+
+- **`GET /sessions/:id/video-questions`** — `parseId`; 404 when the session is
+  missing; `canManageSessionVideo` → 403; then `findMany` with `ADMIN_SELECT`,
+  `orderBy: [{ atSeconds: "asc" }, { id: "asc" }]`, respond
+  `{ questions: rows.map(toAdminRow) }`.
+- **`POST /sessions/:id/video-questions`** — gate **before** parsing (v1 R2:
+  an unauthorized caller gets a refusal, not a validation message); parse with
+  `videoQuestionInputSchema` → 400 `bad_request`; `create` with
+  `createdById: user.userId` (v1 stamps it on create only — there is no
+  `updatedById` column and one cannot be added under C1, so the field means
+  "who first authored this"); respond `{ question: toAdminRow(created) }`, 201.
+  **Note deliberately not added:** no check that the session has a `youtubeUrl`,
+  and no check of `atSeconds` against the video's length — v1 has neither
+  (R14/R18) and the length is not stored and cannot be (C1). The client-side
+  guard against the resulting deadlock is Task 5's job (spec 13 §10 D2).
+- **`PATCH /video-questions/:questionId`** — the re-grade:
+
+```ts
+videoQuizRouter.patch("/video-questions/:questionId", async (req, res) => {
+  const user = requireUser(req);
+  const questionId = parseId(req.params.questionId);
+  if (questionId === null) return apiError(res, "bad_request", "Invalid question id.", 400);
+
+  const existing = await db.sessionVideoQuestion.findUnique({
+    where: { id: questionId },
+    select: { id: true, sessionId: true, options: true, correctIndex: true, points: true },
+  });
+  if (!existing) return apiError(res, "not_found", "Question not found.", 404);
+  if (!(await canManageSessionVideo(user, existing.sessionId))) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const parsed = videoQuestionInputSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid question.", 400);
+  const body = parsed.data;
+
+  const keyChanged =
+    body.correctIndex !== existing.correctIndex ||
+    body.options.length !== existing.options.length ||
+    body.options.some((o, i) => o !== existing.options[i]);
+
+  // Re-grade in the same transaction as the edit (spec 13 §10 D5). v1 changes
+  // the key and leaves every recorded verdict frozen at its old value, so a
+  // corrected answer key leaves every prior grade wrong — and shrinking the
+  // options can strand a selectedIndex that is now out of range (R8/R9).
+  const { question, regradedCount } = await db.$transaction(async (tx) => {
+    const updated = await tx.sessionVideoQuestion.update({
+      where: { id: questionId },
+      data: {
+        atSeconds: body.atSeconds,
+        prompt: body.prompt,
+        options: body.options,
+        correctIndex: body.correctIndex,
+        points: body.points,
+      },
+      select: ADMIN_SELECT,
+    });
+
+    let regraded = 0;
+    if (keyChanged) {
+      const responses = await tx.sessionVideoQuestionResponse.findMany({
+        where: { questionId },
+        select: { id: true, selectedIndex: true, isCorrect: true },
+      });
+      for (const r of responses) {
+        // An index the shrunken options no longer contain can never be right.
+        const nowCorrect =
+          r.selectedIndex < body.options.length && r.selectedIndex === body.correctIndex;
+        if (nowCorrect !== r.isCorrect) {
+          await tx.sessionVideoQuestionResponse.update({
+            where: { id: r.id },
+            data: { isCorrect: nowCorrect },
+          });
+          regraded += 1;
+        }
+      }
+    }
+    return { question: updated, regradedCount: regraded };
+  });
+
+  return apiOk(res, {
+    question: toAdminRow(question),
+    regradedCount,
+    // Points are never stored on a response (there is no pointsAwarded column),
+    // so nothing needs re-grading when they change — but every student's score
+    // moved, and the admin should be told rather than left to notice.
+    pointsChanged: body.points !== existing.points,
+  });
+});
+```
+
+- **`DELETE /video-questions/:questionId`** — same lookup and gate; count
+  responses first; delete inside a transaction; respond
+  `{ deleted: true, responsesRemoved }`. The database cascade removes the
+  responses (`schema.prisma:416`); the count exists so the client can warn
+  before and confirm after. **`SessionVideoProgress` is deliberately left
+  alone** — v1 leaves it stale (R11) and there is no soft-delete column to do
+  better with; note it in the OpenAPI description.
+- **`GET /sessions/:id/video-quiz/results`** — 404 on a missing session, then
+  `staffScopeForSeason(user, session.seasonId)`; `null` → 403;
+  `{ kind: "season" }` → `loadVideoQuizResults(sessionId)`;
+  `{ kind: "groups", groupIds }` → `loadVideoQuizResults(sessionId, groupIds)`.
+  Using the existing scope helper rather than a fresh role switch is what keeps
+  a leader's roster identical here and on the attendance screen.
+
+- [ ] **Step 4:** Run the suite → PASS; `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
+
+- [ ] **Step 5: OpenAPI, same commit** — the five paths plus
+`VideoQuestionInput`, `VideoQuestionAdmin` and `VideoQuizResults`. Say in prose
+that this list carries the answer key and must never be requested by a student
+screen, that `regradedCount` exists because an edit rewrites history, and that
+`responsesRemoved` counts destroyed student work.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/backend && git commit -m "feat(backend): video question authoring with transactional re-grade and a results read"
+```
+
+---
+
+### Task 5: Video quiz — the player, the editor, and the results, on device
+
+**Files:**
+- Create: `apps/mobile/src/hooks/use-video-quiz.ts`
+- Create: `apps/mobile/src/components/VideoQuizPlayer.tsx`
+- Create: `apps/mobile/src/components/VideoQuestionsEditor.tsx`
+- Modify: `apps/mobile/app/(app)/session/[id].tsx` (Plan 4's screen gains a video section)
+- Modify: `apps/mobile/package.json` (two deps)
+- Modify: `apps/mobile/jest.config.js` (transform allowlist)
+- Test: `apps/mobile/src/__tests__/video-quiz-screen.test.tsx`
+
+**Interfaces:**
+- Consumes: Plan 4's `useSessionDetail(id)` and the `session/[id]` route; `queryKeys.videoQuiz` (Task 2); `studentVideoQuizSchema`, `videoQuestionAdminSchema`, `videoQuizResultsSchema`, `formatTimestamp`, `parseTimestamp`, `MAX_VIDEO_SECONDS` (Task 1); Task 3/4's endpoints.
+- Produces: `useStudentVideoQuiz(sessionId)`, `useSubmitVideoAnswer(sessionId)`, `useSaveVideoProgress(sessionId)`, `useVideoQuestions(sessionId, enabled)`, `useVideoQuestionWrites(sessionId)`, `useVideoQuizResults(sessionId, enabled)`; the components `<VideoQuizPlayer />` and `<VideoQuestionsEditor />`.
+
+- [ ] **Step 1: Install the player and make Jest tolerate it**
+
+```bash
+cd apps/mobile && npx expo install react-native-webview && pnpm add react-native-youtube-iframe
+```
+
+**The dependency and its limits, recorded because they change the design**
+(spec 13 §10 D11):
+- `react-native-youtube-iframe` wraps the same YouTube IFrame API inside a
+  `react-native-webview` and exposes `getCurrentTime`/`seekTo`/play/pause across
+  the bridge. Closest to v1's semantics of the four options; a native SDK does
+  not exist (Android's is long deprecated, there is no first-party iOS one) and
+  `Linking.openURL` into the YouTube app deletes the feature.
+- **`getCurrentTime()` returns a Promise.** v1 polls a synchronous call every
+  250 ms with a 0.1 s tolerance; across the bridge that tolerance is far too
+  tight. This screen polls every 400 ms with a **0.75 s** tolerance and accepts
+  a visible snap-back on overshoot.
+- **A webview needs a dev-client build.** This screen cannot be exercised in
+  Expo Go; the device checklist in Task 11 assumes `expo run:ios`/`run:android`.
+- **The gate weakens on mobile regardless** — an embedded player still offers a
+  route into the YouTube app, where nothing is gated. That is the second
+  argument for the server-side ordering rule (D-13.2) and the reason the client
+  barrier is a courtesy, not a control.
+
+Add `react-native-youtube-iframe` and `react-native-webview` to the
+`transformIgnorePatterns` allowlist in `jest.config.js` (extend the existing
+alternation, do not replace it), and mock the player in tests:
+`jest.mock("react-native-youtube-iframe", () => "YoutubePlayer");`
+
+- [ ] **Step 2: Write the failing test**
+
+```tsx
+// apps/mobile/src/__tests__/video-quiz-screen.test.tsx
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+
+jest.mock("../lib/api-client", () => ({
+  apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+}));
+jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({ id: "12" }),
+  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+}));
+jest.mock("react-native-youtube-iframe", () => "YoutubePlayer");
+
+import { apiClient } from "../lib/api-client";
+import { useSessionStore } from "../store/session";
+import { renderWithProviders } from "./helpers/render";
+
+import SessionDetailScreen from "../../app/(app)/session/[id]";
+
+const get = apiClient.get as jest.Mock;
+const post = apiClient.post as jest.Mock;
+
+const sessionDetail = {
+  id: 12,
+  title: "Week three",
+  description: null,
+  startsAt: "2099-03-01T18:00:00.000Z",
+  durationMinutes: 90,
+  location: null,
+  youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  recurrenceGroupId: null,
+  seasonId: 7,
+  seasonCode: "S26",
+  seasonTitle: "Spring 2026",
+  checkInOpen: false,
+  myAttendance: null,
+  canMarkAttendance: false,
+};
+
+const question = (id: number, atSeconds: number, answered = false) => ({
+  id,
+  atSeconds,
+  prompt: `Question ${id}`,
+  options: ["alpha", "beta"],
+  points: 1,
+  answered,
+  selectedIndex: answered ? 0 : null,
+  isCorrect: answered ? true : null,
+});
+
+const quiz = {
+  videoId: "dQw4w9WgXcQ",
+  youtubeUrl: sessionDetail.youtubeUrl,
+  questions: [question(1, 30), question(2, 60)],
+  furthestSeconds: 0,
+  completedAt: null,
+  earnedPoints: 0,
+  totalPoints: 2,
+  answeredCount: 0,
+  nextQuestionId: 1,
+};
+
+const studentSession = {
+  user: { id: 9, name: "S", email: "s@jpc.test", role: "STUDENT" as const },
+  scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
+};
+
+const adminSession = {
+  user: { id: 2, name: "A", email: "a@jpc.test", role: "ADMIN" as const },
+  scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  useSessionStore.setState(useSessionStore.getInitialState(), true);
+});
+
+describe("student video quiz", () => {
+  beforeEach(() => {
+    useSessionStore.setState(studentSession);
+  });
+
+  it("renders the player and the score, and never requests the authoring list", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/sessions/12"
+        ? Promise.resolve({ data: { data: sessionDetail } })
+        : Promise.resolve({ data: { data: quiz } }),
+    );
+
+    renderWithProviders(<SessionDetailScreen />);
+
+    expect(await screen.findByText("0 / 2 points")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/video-quiz");
+    // The authoring read carries correctIndex for every question. A student
+    // screen must never issue it, whatever the server would answer.
+    expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/video-questions");
+  });
+
+  it("opens the question modal at the barrier and posts the answer", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/sessions/12"
+        ? Promise.resolve({ data: { data: sessionDetail } })
+        : Promise.resolve({ data: { data: quiz } }),
+    );
+    post.mockResolvedValue({
+      data: {
+        data: {
+          isCorrect: true,
+          correctIndex: 0,
+          furthestSeconds: 30,
+          completedAt: null,
+          nextQuestionId: 2,
+        },
+      },
+    });
+
+    renderWithProviders(<SessionDetailScreen />);
+
+    // The barrier is exercised through the test hook the player exposes for
+    // exactly this reason: the webview cannot report a playhead under Jest.
+    fireEvent.press(await screen.findByText("Question 1"));
+    fireEvent.press(await screen.findByText("alpha"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/video-quiz/answers", {
+        questionId: 1,
+        selectedIndex: 0,
+      }),
+    );
+    expect(await screen.findByText("Correct")).toBeTruthy();
+  });
+
+  it("falls back to a link when the URL does not resolve to a video", async () => {
+    // v1 renders a plain anchor and the entire quiz becomes unreachable with no
+    // message to anyone (spec 13 R37). The link stays; the silence does not.
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/sessions/12"
+        ? Promise.resolve({ data: { data: { ...sessionDetail, youtubeUrl: "https://x.test/v" } } })
+        : Promise.resolve({
+            data: { data: { ...quiz, videoId: null, youtubeUrl: "https://x.test/v" } },
+          }),
+    );
+
+    renderWithProviders(<SessionDetailScreen />);
+
+    expect(await screen.findByText("Watch on YouTube")).toBeTruthy();
+    expect(
+      screen.getByText("This session's video link can't be played in the app."),
+    ).toBeTruthy();
+  });
+
+  it("shows a completed quiz without a barrier", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/sessions/12"
+        ? Promise.resolve({ data: { data: sessionDetail } })
+        : Promise.resolve({
+            data: {
+              data: {
+                ...quiz,
+                questions: [question(1, 30, true), question(2, 60, true)],
+                answeredCount: 2,
+                earnedPoints: 2,
+                completedAt: "2099-03-02T10:00:00.000Z",
+                nextQuestionId: null,
+              },
+            },
+          }),
+    );
+
+    renderWithProviders(<SessionDetailScreen />);
+    expect(await screen.findByText("2 / 2 points")).toBeTruthy();
+    expect(screen.getByText("Quiz complete")).toBeTruthy();
+  });
+});
+
+describe("admin video question editor", () => {
+  beforeEach(() => {
+    useSessionStore.setState(adminSession);
+  });
+
+  it("lists questions with their answer and creates a new one from a timestamp", async () => {
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/sessions/12") return Promise.resolve({ data: { data: sessionDetail } });
+      if (url === "/api/v1/sessions/12/video-questions") {
+        return Promise.resolve({
+          data: {
+            data: {
+              questions: [
+                {
+                  id: 1,
+                  atSeconds: 90,
+                  prompt: "Question 1",
+                  options: ["alpha", "beta"],
+                  correctIndex: 1,
+                  points: 1,
+                  responseCount: 4,
+                },
+              ],
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: { data: { questionCount: 1, totalPoints: 1, rows: [] } } });
+    });
+    post.mockResolvedValue({ data: { data: { question: { id: 2 } } } });
+
+    renderWithProviders(<SessionDetailScreen />);
+
+    // The timestamp round-trips through the shared formatter.
+    expect(await screen.findByText("1:30")).toBeTruthy();
+    expect(screen.getByText("4 answers recorded")).toBeTruthy();
+    // Answer key visible to the admin — the other half of the split.
+    expect(screen.getByText("Correct answer: beta")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Add question"));
+    fireEvent.changeText(screen.getByLabelText("Timestamp"), "2:00");
+    fireEvent.changeText(screen.getByLabelText("Question"), "New prompt");
+    fireEvent.changeText(screen.getByLabelText("Option 1"), "one");
+    fireEvent.changeText(screen.getByLabelText("Option 2"), "two");
+    fireEvent.press(screen.getByText("Save question"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/video-questions", {
+        atSeconds: 120,
+        prompt: "New prompt",
+        options: ["one", "two"],
+        correctIndex: 0,
+        points: 1,
+      }),
+    );
+  });
+
+  it("refuses a timestamp the parser rejects, before any request", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/sessions/12"
+        ? Promise.resolve({ data: { data: sessionDetail } })
+        : Promise.resolve({ data: { data: { questions: [] } } }),
+    );
+
+    renderWithProviders(<SessionDetailScreen />);
+    fireEvent.press(await screen.findByText("Add question"));
+    // ":30" is 30 seconds in v1 because Number("") is 0 — a typo that parsed.
+    fireEvent.changeText(screen.getByLabelText("Timestamp"), ":30");
+    fireEvent.changeText(screen.getByLabelText("Question"), "New prompt");
+    fireEvent.changeText(screen.getByLabelText("Option 1"), "one");
+    fireEvent.changeText(screen.getByLabelText("Option 2"), "two");
+    fireEvent.press(screen.getByText("Save question"));
+
+    await waitFor(() => expect(post).not.toHaveBeenCalled());
+    expect(screen.getByLabelText("Timestamp").props.accessibilityHint).toContain("m:ss");
+  });
+});
+```
+
+Run: `cd apps/mobile && pnpm jest src/__tests__/video-quiz-screen.test.tsx` → FAIL.
+
+- [ ] **Step 3: The hooks**
+
+```ts
+// apps/mobile/src/hooks/use-video-quiz.ts
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+import { z } from "zod";
+import {
+  studentVideoQuizSchema,
+  submitVideoAnswerResponseSchema,
+  videoProgressResponseSchema,
+  videoQuestionAdminSchema,
+  videoQuizResultsSchema,
+  type StudentVideoQuiz,
+  type VideoQuestionAdmin,
+  type VideoQuestionInput,
+  type VideoQuizResults,
+} from "@space/shared";
+
+import { apiClient } from "../lib/api-client";
+import { queryKeys } from "../lib/query-keys";
+
+const adminListSchema = z.array(videoQuestionAdminSchema);
+
+export function useStudentVideoQuiz(
+  sessionId: number | null,
+  enabled: boolean,
+): UseQueryResult<StudentVideoQuiz> {
+  return useQuery({
+    queryKey: queryKeys.videoQuiz.forSession(sessionId ?? -1),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/sessions/${sessionId}/video-quiz`);
+      // Parsing against the .strict() student schema is the client half of the
+      // answer-key split: a backend that starts sending correctIndex fails
+      // here rather than rendering the answer to the open question.
+      return studentVideoQuizSchema.parse(res.data.data);
+    },
+    enabled: enabled && sessionId !== null,
+  });
+}
+
+export function useSubmitVideoAnswer(sessionId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { questionId: number; selectedIndex: number }) => {
+      const res = await apiClient.post(`/api/v1/sessions/${sessionId}/video-quiz/answers`, input);
+      return submitVideoAnswerResponseSchema.parse(res.data.data);
+    },
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: queryKeys.videoQuiz.forSession(sessionId) }),
+  });
+}
+
+/**
+ * Progress is fire-and-forget on purpose: it is advisory (the server derives
+ * completion and gates ordering on the answer set, not on this value), so a
+ * failed save must never interrupt playback. No invalidation either — the value
+ * this screen holds is always at least as fresh as the server's.
+ */
+export function useSaveVideoProgress(sessionId: number) {
+  return useMutation({
+    mutationFn: async (furthestSeconds: number) => {
+      const res = await apiClient.put(`/api/v1/sessions/${sessionId}/video-quiz/progress`, {
+        furthestSeconds,
+      });
+      return videoProgressResponseSchema.parse(res.data.data);
+    },
+  });
+}
+
+export function useVideoQuestions(
+  sessionId: number | null,
+  enabled: boolean,
+): UseQueryResult<VideoQuestionAdmin[]> {
+  return useQuery({
+    queryKey: queryKeys.videoQuiz.questions(sessionId ?? -1),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/sessions/${sessionId}/video-questions`);
+      return adminListSchema.parse(res.data.data.questions);
+    },
+    // `enabled` is the gate that keeps a student screen from ever issuing the
+    // read that carries the answer key. Never call this hook unconditionally.
+    enabled: enabled && sessionId !== null,
+  });
+}
+
+export function useVideoQuestionWrites(sessionId: number) {
+  const queryClient = useQueryClient();
+  const invalidate = (): void => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.videoQuiz.all });
+  };
+
+  const create = useMutation({
+    mutationFn: async (input: VideoQuestionInput) => {
+      const res = await apiClient.post(`/api/v1/sessions/${sessionId}/video-questions`, input);
+      return res.data.data as { question: VideoQuestionAdmin };
+    },
+    onSuccess: invalidate,
+  });
+
+  const update = useMutation({
+    mutationFn: async (vars: { questionId: number; input: VideoQuestionInput }) => {
+      const res = await apiClient.patch(`/api/v1/video-questions/${vars.questionId}`, vars.input);
+      return res.data.data as {
+        question: VideoQuestionAdmin;
+        regradedCount: number;
+        pointsChanged: boolean;
+      };
+    },
+    onSuccess: invalidate,
+  });
+
+  const remove = useMutation({
+    mutationFn: async (questionId: number) => {
+      const res = await apiClient.delete(`/api/v1/video-questions/${questionId}`);
+      return res.data.data as { deleted: true; responsesRemoved: number };
+    },
+    onSuccess: invalidate,
+  });
+
+  return { create, update, remove };
+}
+
+export function useVideoQuizResults(
+  sessionId: number | null,
+  enabled: boolean,
+): UseQueryResult<VideoQuizResults> {
+  return useQuery({
+    queryKey: queryKeys.videoQuiz.results(sessionId ?? -1),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/sessions/${sessionId}/video-quiz/results`);
+      return videoQuizResultsSchema.parse(res.data.data);
+    },
+    enabled: enabled && sessionId !== null,
+  });
+}
+```
+
+- [ ] **Step 4: `VideoQuizPlayer`**
+
+`apps/mobile/src/components/VideoQuizPlayer.tsx` — props
+`{ sessionId: number; quiz: StudentVideoQuiz }`. Behaviour, in full:
+
+1. **No video id → the fallback, with a message.** Render an `EmptyState`
+   titled "Video unavailable", message
+   `"This session's video link can't be played in the app."`, and a `Button`
+   "Watch on YouTube" calling `Linking.openURL(quiz.youtubeUrl)` when it is
+   non-null. v1 renders the bare link and says nothing (R37/R81); the message is
+   the addition.
+2. **The player.** `<YoutubePlayer height={220} videoId={quiz.videoId} play={playing}
+   initialPlayerParams={{ controls: false, modestbranding: true, rel: false, preventFullScreen: true }}
+   onChangeState={...} onError={...} onReady={...} ref={playerRef} />`.
+   Native controls are suppressed for the same reason v1 suppresses them: the
+   custom bar is the only scrub affordance, so the client-side barrier holds for
+   an ordinary user. `onError` sets an error flag that renders the same fallback
+   as (1) — v1 registers no error handler at all and shows a permanently black
+   box (R81), which on a phone with intermittent connectivity is the common
+   case. A 15-second load timeout does the same.
+3. **The barrier comes from the server.** `const barrier = quiz.questions.find((q) => q.id === quiz.nextQuestionId)?.atSeconds ?? Number.POSITIVE_INFINITY;`
+   Never recomputed from the answered set — `nextQuestionId` is the derivation
+   (ruling C4), and it is the same value the server will accept an answer for.
+4. **The poll.** `setInterval(async () => { const t = await playerRef.current?.getCurrentTime() ?? 0; ... }, 400)`,
+   short-circuited while a question is open so modals cannot stack. When
+   `t >= barrier - 0.75`: pause, `seekTo(barrier, true)`, open the modal.
+   The 0.75 s tolerance replaces v1's 0.1 s because `getCurrentTime` is a
+   promise across the webview bridge — v1's value is only defensible for a
+   synchronous call.
+5. **The seek bar.** A `Pressable` track with a filled portion and a
+   `minHeight: 44` touch target (the 44 px rule from `jpc-space/CLAUDE.md`),
+   converting an x-offset to a time and clamping forward seeks to the barrier.
+   Backwards seeking is unrestricted, exactly as in v1.
+6. **The modal.** `<Modal visible transparent animationType="slide"
+   onRequestClose={handleLeave}>` with the prompt, one `Button` per option, and
+   feedback after the answer resolves ("Correct" / "Not quite — the answer was
+   X" from the mutation's `correctIndex`), then "Continue" which closes and
+   resumes. `onRequestClose` is the **Android hardware back button**; leaving it
+   undefined dismisses the modal and deletes the gate (spec 13 §10 D15). It is
+   wired to an explicit `handleLeave` that pauses playback and navigates back
+   rather than silently dismissing — v1's only exit is leaving the page, and a
+   phone offers two gestures that do it by accident. Also render a visible
+   "Leave the quiz" text button so the exit is discoverable rather than a
+   gesture the student has to guess.
+7. **The deadlock guard** (spec 13 §10 D2). On `onReady`, read
+   `getDuration()`; if `barrier > duration + 1`, do not poll — render an
+   `ErrorState` reading
+   `"A question on this video is set past the end of the recording. Ask your leader to fix it."`
+   with `onRetry` wired to the query's `refetch`. v1 hides this case entirely:
+   `lockedFraction` falls back to 1 and the badge is suppressed, so the student
+   sees an ordinary player that simply never completes (R78/R79). The duration
+   is **not** sent to the server — storing it is a schema change (C1).
+8. **Progress saves.** On pause, on `AppState` leaving `"active"`, and on
+   unmount, call `useSaveVideoProgress(sessionId).mutate(Math.floor(furthestRef.current))`.
+   Plus a 15-second interval while playing: v1 saves only on three edge events,
+   so closing the tab mid-play loses everything since the last pause (R49), and
+   on iOS a webview can be suspended before a handler runs.
+9. **The score card.** `{earnedPoints} / {totalPoints} points`, the answered
+   count, and — when `completedAt` is non-null — a "Quiz complete" line.
+10. **The clock is injectable, and that is the only test seam.**
+    `VideoQuizPlayer` takes an optional prop
+    `readCurrentTime?: () => Promise<number>`, defaulting to
+    `() => playerRef.current?.getCurrentTime() ?? Promise.resolve(0)`. A webview
+    reports no playhead under Jest, so the test passes `async () => 31` and the
+    ordinary poll opens the real modal on its own tick — no test-only branch in
+    the component, and the barrier logic under test is the shipped one.
+    **Adjust Step 2's test accordingly when implementing:** pass
+    `readCurrentTime` through the screen is not possible, so in that test render
+    `<VideoQuizPlayer sessionId={12} quiz={quiz} readCurrentTime={async () => 31} />`
+    directly for the barrier case (keeping the screen-level cases as written),
+    and drop the `fireEvent.press(await screen.findByText("Question 1"))` line —
+    the modal opens by itself, so the test only waits for the prompt and then
+    presses "alpha".
+
+- [ ] **Step 5: `VideoQuestionsEditor`**
+
+`apps/mobile/src/components/VideoQuestionsEditor.tsx` — props
+`{ sessionId: number }`. Renders `useVideoQuestions(sessionId, true)` as `Card`
+rows: `formatTimestamp(atSeconds)`, the prompt, `Correct answer: {options[correctIndex]}`,
+`{responseCount} answers recorded`, and Edit / Delete buttons. Below the list, a
+collapsible form opened by "Add question": `Input` labelled **Timestamp**
+(free text), **Question**, **Option 1**…**Option N** (start at 2, "Add option"
+up to 6), a correct-answer selector over the current options, and **Points**.
+
+Three rules the form owns:
+- **Parse the timestamp client-side with the shared `parseTimestamp`** before
+  submitting. `null` → set the field's `accessibilityHint` to
+  `"Use m:ss or h:mm:ss (for example 2:30)."` and **do not call the mutation**.
+  v1 sends the value, the action rejects it with the constant
+  "Please fix the highlighted fields.", and the editor discards `fieldErrors`
+  entirely — so the admin is told to fix highlighted fields and nothing is
+  highlighted (R28). The check belongs where the input is.
+- **Delete confirms with the real count.** First press flips the button title to
+  `"Delete {responseCount} answers?"` (RN has no `window.confirm`, and the
+  two-press pattern is what Plan 4 established); the second press calls the
+  mutation and surfaces `responsesRemoved` in a status line.
+- **Report the re-grade.** After an update, show
+  `"{regradedCount} recorded answers were re-graded."` when non-zero, and
+  `"Points changed — every student's score for this question moved."` when
+  `pointsChanged`. v1 tells the admin neither.
+
+Also render `useVideoQuizResults(sessionId, true)` beneath the editor as a
+simple table: student name, `answeredCount / questionCount`,
+`earnedPoints / totalPoints`, and a completion tick. This is the surface v1 has
+for nobody.
+
+- [ ] **Step 6: Wire both into `session/[id].tsx`**
+
+Below Plan 4's existing header and check-in console, add one section, driven by
+role and by the session's `youtubeUrl`:
+
+```tsx
+  const isStudent = user?.role === "STUDENT";
+  const canAuthorVideo = detail.canMarkAttendance && !isStudent;
+  const quiz = useStudentVideoQuiz(sessionId, isStudent && detail.youtubeUrl !== null);
+```
+
+- STUDENT with a `youtubeUrl`: `LoadingState` / `ErrorState` (with `onRetry`
+  wired to `quiz.refetch`) / `<VideoQuizPlayer sessionId={sessionId} quiz={quiz.data} />`.
+  When the quiz loads but `questions.length === 0`, render the plain
+  "Watch on YouTube" button and no player — same fallback as v1's
+  `hasInteractiveVideo` branch (R38), minus the silence.
+- Staff who may manage the season (`canManageAssignment`-equivalent — use
+  `detail.canMarkAttendance` **and** a non-LEADER role, since authoring is
+  ADMIN/SUPER only and the server enforces it regardless):
+  `<VideoQuestionsEditor sessionId={sessionId} />`. A LEADER gets the results
+  table only.
+- No `youtubeUrl` at all: render nothing. Do not offer to author questions
+  against a session with no video — v1 does exactly that and lets an admin
+  build a full quiz that no student can ever reach (R17).
+
+- [ ] **Step 7:** Run the suite → PASS. `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean. `pnpm turbo routes:generate --filter=@space/mobile` is **not** needed — no route file was added.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/mobile && git commit -m "feat(mobile): interactive video quiz player, question editor and results"
+```
+
+---
+
+## Stream B — Forum (Tasks 6–8)
+
+### Task 6: Forum — the thread read and the upsert that creates the row
+
+**Files:**
+- Create: `apps/backend/src/lib/queries/forum.ts`
+- Modify: `apps/backend/src/routes/forum.ts`
+- Modify: `apps/backend/src/docs/openapi.ts`
+- Test: `apps/backend/src/__tests__/integration/forum-routes.test.ts`
+
+**Interfaces:**
+- Consumes: `forumAudienceFor`, `ForumAudience`, `groupIdInSeason` (Task 2); `countWords`, `plainTextToHtml`, `htmlToPlainText`, `submitForumResponseRequestSchema`, `forumFeedQuerySchema` (Task 1); `newPublicId`.
+- Produces:
+  - `loadForumView(assignmentId, user, audience, query): Promise<ForumViewData | null>` and `ForumViewData` in `lib/queries/forum.ts`
+  - `displayNameFor(name: string | null): string` (exported from the same module — the one place the no-email rule is applied)
+  - `GET /api/v1/assignments/:id/forum`
+  - `PUT /api/v1/assignments/:id/forum/response`
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+// apps/backend/src/__tests__/integration/forum-routes.test.ts
+import request from "supertest";
+
+import { createApp } from "../../app";
+import { db } from "../../db/client";
+import { newPublicId } from "../../lib/public-id";
+import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+
+jest.setTimeout(60000);
+
+const app = createApp();
+
+// Every string below is invented. Nothing a real student wrote is reproduced
+// anywhere in this repository.
+const OWN_TEXT = "space-v2-test response one two three four five six";
+
+let seasonId: number;
+let assignmentId: number;
+let untargetedAssignmentId: number;
+let groupAId: number;
+let groupBId: number;
+let studentAId: number;
+let studentA2Id: number;
+let studentAToken: string;
+let studentA2Token: string;
+let studentBToken: string;
+let leaderAToken: string;
+let leaderBToken: string;
+let adminToken: string;
+let mentorToken: string;
+
+async function resetSubmissions(): Promise<void> {
+  await db.forumComment.deleteMany({ where: { submission: { assignment: { seasonId } } } });
+  await db.submission.deleteMany({ where: { assignment: { seasonId } } });
+}
+
+beforeAll(async () => {
+  await cleanupTestData();
+
+  const season = await createTestSeason();
+  seasonId = season.id;
+
+  const studentA = await createTestUser("fstudenta", "STUDENT");
+  const studentA2 = await createTestUser("fstudenta2", "STUDENT");
+  const studentB = await createTestUser("fstudentb", "STUDENT");
+  const leaderA = await createTestUser("fleadera", "LEADER");
+  const leaderB = await createTestUser("fleaderb", "LEADER");
+  const admin = await createTestUser("fadmin", "ADMIN");
+  const mentor = await createTestUser("fmentor", "MENTOR");
+  studentAId = studentA.id;
+  studentA2Id = studentA2.id;
+
+  const groupA = await db.group.create({
+    data: { seasonId, name: "Group A", leaders: { create: { userId: leaderA.id } } },
+    select: { id: true },
+  });
+  const groupB = await db.group.create({
+    data: { seasonId, name: "Group B", leaders: { create: { userId: leaderB.id } } },
+    select: { id: true },
+  });
+  groupAId = groupA.id;
+  groupBId = groupB.id;
+
+  await db.seasonAdmin.create({ data: { seasonId, userId: admin.id } });
+  await db.seasonEnrollment.createMany({
+    data: [
+      { seasonId, studentUserId: studentA.id, groupId: groupA.id, status: "ACTIVE" },
+      { seasonId, studentUserId: studentA2.id, groupId: groupA.id, status: "ACTIVE" },
+      { seasonId, studentUserId: studentB.id, groupId: groupB.id, status: "ACTIVE" },
+    ],
+  });
+
+  const assignment = await db.assignment.create({
+    data: {
+      seasonId,
+      title: "space-v2-test-forum",
+      type: "FORUM",
+      forumMinWords: 5,
+      forumAllowComments: true,
+      isAllGroups: true,
+      dueAt: new Date("2099-01-01T00:00:00.000Z"),
+    },
+    select: { id: true },
+  });
+  assignmentId = assignment.id;
+
+  // Targeted at group B only — student A must never reach it.
+  const untargeted = await db.assignment.create({
+    data: {
+      seasonId,
+      title: "space-v2-test-forum-b-only",
+      type: "FORUM",
+      forumMinWords: 0,
+      forumAllowComments: true,
+      isAllGroups: false,
+      targets: { create: { groupId: groupB.id } },
+    },
+    select: { id: true },
+  });
+  untargetedAssignmentId = untargeted.id;
+
+  studentAToken = await login(app, studentA.email);
+  studentA2Token = await login(app, studentA2.email);
+  studentBToken = await login(app, studentB.email);
+  leaderAToken = await login(app, leaderA.email);
+  leaderBToken = await login(app, leaderB.email);
+  adminToken = await login(app, admin.email);
+  mentorToken = await login(app, mentor.email);
+});
+
+beforeEach(resetSubmissions);
+
+afterAll(async () => {
+  await cleanupTestData();
+});
+
+describe("PUT /api/v1/assignments/:id/forum/response", () => {
+  it("posts on an assignment the student has never opened — no row exists first", async () => {
+    // The whole point. v1's forum writes are addressed by a submission id that
+    // `ensureDraftSubmission` created while *rendering* the page; ruling C6
+    // removed that read-time write, so this PUT is the creator.
+    expect(
+      await db.submission.count({ where: { assignmentId, studentUserId: studentAId } }),
+    ).toBe(0);
+
+    const res = await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.posted).toBe(true);
+    expect(res.body.data.submissionPublicId).toEqual(expect.any(String));
+
+    const row = await db.submission.findUnique({
+      where: { assignmentId_studentUserId: { assignmentId, studentUserId: studentAId } },
+      select: { status: true, submittedAt: true, text: true },
+    });
+    expect(row?.status).toBe("SUBMITTED");
+    expect(row?.submittedAt).not.toBeNull();
+    // Stored as escaped HTML so v1's renderer, which is live against this same
+    // database, shows it as paragraphs rather than one run-on line.
+    expect(row?.text).toBe(`<p>${OWN_TEXT}</p>`);
+  });
+
+  it("is idempotent and overwrites on a second call (v1 R13)", async () => {
+    const first = await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+    const second = await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: `${OWN_TEXT} seven` });
+
+    expect(second.status).toBe(200);
+    expect(second.body.data.submissionPublicId).toBe(first.body.data.submissionPublicId);
+    expect(await db.submission.count({ where: { assignmentId, studentUserId: studentAId } })).toBe(
+      1,
+    );
+  });
+
+  it("enforces forumMinWords with the count the client shows", async () => {
+    const res = await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: "too short" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("too_few_words");
+    expect(res.body.error.message).toContain("5");
+  });
+
+  it("refuses an empty response even when the minimum is zero (spec 14 D8)", async () => {
+    const res = await request(app)
+      .put(`/api/v1/assignments/${untargetedAssignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentBToken}`)
+      .send({ text: "   " });
+    expect(res.status).toBe(400);
+  });
+
+  it("REFUSES an assignment the student is not targeted by", async () => {
+    // v1's post action checks identity, type and word count and nothing else —
+    // targeting exists only as a page's early return (spec 14 R7/R15).
+    const res = await request(app)
+      .put(`/api/v1/assignments/${untargetedAssignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+    expect(res.status).toBe(403);
+    expect(await db.submission.count({ where: { assignmentId: untargetedAssignmentId } })).toBe(0);
+  });
+
+  it("refuses staff — a leader has no response of their own", async () => {
+    for (const token of [leaderAToken, adminToken, mentorToken]) {
+      const res = await request(app)
+        .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+        .set("authorization", `Bearer ${token}`)
+        .send({ text: OWN_TEXT });
+      expect(res.status).toBe(403);
+    }
+  });
+
+  it("allows a late post, deliberately (spec 14 D5)", async () => {
+    // dueAt on this assignment is in the past relative to nothing — it is
+    // 2099-01-01 and the fixture posts "after" it only conceptually; what this
+    // pins is that no due-date branch exists at all in the handler.
+    const past = await db.assignment.create({
+      data: {
+        seasonId,
+        title: "space-v2-test-forum-overdue",
+        type: "FORUM",
+        forumMinWords: 0,
+        isAllGroups: true,
+        dueAt: new Date("2000-01-01T00:00:00.000Z"),
+      },
+      select: { id: true },
+    });
+    const res = await request(app)
+      .put(`/api/v1/assignments/${past.id}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+    expect(res.status).toBe(200);
+  });
+
+  it("404s a STANDARD assignment", async () => {
+    const standard = await db.assignment.create({
+      data: { seasonId, title: "space-v2-test-standard", type: "STANDARD", isAllGroups: true },
+      select: { id: true },
+    });
+    const res = await request(app)
+      .put(`/api/v1/assignments/${standard.id}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/v1/assignments/:id/forum", () => {
+  it("renders for a student with no submission row at all", async () => {
+    const res = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${studentAToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.own).toMatchObject({
+      submissionPublicId: null,
+      text: "",
+      status: "DRAFT",
+      wordCount: 0,
+      posted: false,
+    });
+    expect(res.body.data.locked).toBe(true);
+    expect(res.body.data.posts).toEqual([]);
+    expect(res.body.data.minWords).toBe(5);
+    // v1's FORUM branch renders no due date at all (spec 14 R33/D10).
+    expect(res.body.data.dueAt).toBe("2099-01-01T00:00:00.000Z");
+  });
+
+  it("keeps the feed locked until the student posts, then unlocks it", async () => {
+    await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentA2Token}`)
+      .send({ text: `${OWN_TEXT} peer` });
+
+    const locked = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    expect(locked.body.data.locked).toBe(true);
+    expect(locked.body.data.posts).toEqual([]);
+
+    await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+
+    const unlocked = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    expect(unlocked.body.data.locked).toBe(false);
+    expect(unlocked.body.data.posts).toHaveLength(1);
+    expect(unlocked.body.data.posts[0].studentUserId).toBe(studentA2Id);
+  });
+
+  it("never exposes an unposted peer's draft text (spec 14 R23)", async () => {
+    // The single most important privacy rule in the domain, and in v1 it lives
+    // entirely in a where clause.
+    await db.submission.create({
+      data: {
+        assignmentId,
+        studentUserId: studentA2Id,
+        publicId: newPublicId(),
+        status: "DRAFT",
+        text: "<p>space-v2-test-secret-draft</p>",
+      },
+    });
+    await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+
+    const res = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${studentAToken}`);
+
+    expect(res.body.data.posts).toEqual([]);
+    expect(JSON.stringify(res.body)).not.toContain("secret-draft");
+  });
+
+  it("shows only the reader's own group", async () => {
+    for (const token of [studentAToken, studentA2Token, studentBToken]) {
+      await request(app)
+        .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+        .set("authorization", `Bearer ${token}`)
+        .send({ text: OWN_TEXT });
+    }
+
+    const res = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${studentAToken}`);
+
+    expect(res.body.data.groupId).toBe(groupAId);
+    expect(res.body.data.posts).toHaveLength(1);
+    expect(res.body.data.posts[0].studentUserId).toBe(studentA2Id);
+  });
+
+  it("sends plain text and never an email address (spec 14 D6)", async () => {
+    await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentA2Token}`)
+      .send({ text: OWN_TEXT });
+    await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+
+    const res = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${studentAToken}`);
+
+    expect(res.body.data.posts[0].text).toBe(OWN_TEXT);
+    expect(res.body.data.posts[0].text).not.toContain("<p>");
+    expect(JSON.stringify(res.body)).not.toContain("@jpc.test");
+  });
+
+  it("gives a leader their own group's thread and refuses another group's", async () => {
+    // New capability: v1 has no staff forum screen at all (spec 14 R53).
+    for (const token of [studentAToken, studentBToken]) {
+      await request(app)
+        .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+        .set("authorization", `Bearer ${token}`)
+        .send({ text: OWN_TEXT });
+    }
+
+    const leaderA = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${leaderAToken}`);
+    expect(leaderA.status).toBe(200);
+    // Staff read every post they are scoped to, and are never locked.
+    expect(leaderA.body.data.locked).toBe(false);
+    expect(leaderA.body.data.own).toBeNull();
+    expect(leaderA.body.data.posts.map((p: { studentUserId: number }) => p.studentUserId)).toEqual([
+      studentAId,
+    ]);
+
+    const leaderB = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${leaderBToken}`);
+    expect(
+      leaderB.body.data.posts.some((p: { studentUserId: number }) => p.studentUserId === studentAId),
+    ).toBe(false);
+  });
+
+  it("gives an admin and a mentor every group", async () => {
+    for (const token of [studentAToken, studentBToken]) {
+      await request(app)
+        .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+        .set("authorization", `Bearer ${token}`)
+        .send({ text: OWN_TEXT });
+    }
+    for (const token of [adminToken, mentorToken]) {
+      const res = await request(app)
+        .get(`/api/v1/assignments/${assignmentId}/forum`)
+        .set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.posts).toHaveLength(2);
+    }
+  });
+
+  it("refuses a student the assignment does not target", async () => {
+    const res = await request(app)
+      .get(`/api/v1/assignments/${untargetedAssignmentId}/forum`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("paginates instead of returning the whole thread (spec 14 D7)", async () => {
+    const extras = await Promise.all(
+      Array.from({ length: 3 }, (_, i) => createTestUser(`fbulk${i}`, "STUDENT")),
+    );
+    await db.seasonEnrollment.createMany({
+      data: extras.map((u) => ({
+        seasonId,
+        studentUserId: u.id,
+        groupId: groupAId,
+        status: "ACTIVE" as const,
+      })),
+    });
+    for (const u of extras) {
+      const token = await login(app, u.email);
+      await request(app)
+        .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+        .set("authorization", `Bearer ${token}`)
+        .send({ text: OWN_TEXT });
+    }
+    await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+
+    const page1 = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum?limit=2`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    expect(page1.body.data.posts).toHaveLength(2);
+    expect(page1.body.data.nextCursor).toEqual(expect.any(String));
+
+    const page2 = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum?limit=2&cursor=${page1.body.data.nextCursor}`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    expect(page2.body.data.posts).toHaveLength(1);
+    expect(page2.body.data.nextCursor).toBeNull();
+  });
+});
+```
+
+Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern forum-routes` → FAIL.
+
+- [ ] **Step 2: The query module**
+
+`apps/backend/src/lib/queries/forum.ts` exports `displayNameFor`, the
+`ForumViewData` interface and `loadForumView(assignmentId, user, audience, query)`.
+The shape, spelled out:
+
+```ts
+/**
+ * The one place a forum author's name is produced.
+ *
+ * v1 falls back to the author's email address when `name` is blank (spec 14
+ * R30), so every student in a group sees the address of any group-mate who has
+ * not set a name. These are young people's addresses, and `email` is not
+ * selected anywhere in this module precisely so the fallback cannot come back.
+ */
+export function displayNameFor(name: string | null): string {
+  const trimmed = name?.trim();
+  return trimmed ? trimmed : "Group member";
+}
+```
+
+`loadForumView` runs, in order:
+
+1. `db.assignment.findFirst({ where: { id: assignmentId, deletedAt: null, type: "FORUM" }, select: { id, dueAt, forumMinWords, forumAllowComments, seasonId } })`.
+   Null → return null (the route 404s). **`type: "FORUM"` in the `where` is what
+   makes this endpoint refuse a standard assignment rather than serve an empty
+   thread.**
+2. **Own response** — only for `audience.kind === "student"`, and looked up by
+   `(assignmentId, callerUserId)`, never by an id the client supplied. v1's
+   `loadForumView` takes `ownSubmissionId` as an argument and echoes it back
+   without checking it belongs to anyone (spec 14 R3); an endpoint cannot do
+   that. Missing row → `{ submissionPublicId: null, text: "", status: "DRAFT",
+   wordCount: 0, posted: false, feedback: null, reviewedAt: null }`.
+   Present → `text: htmlToPlainText(row.text ?? "")`, `posted: row.status !== "DRAFT"`,
+   `wordCount: countWords(plainText)`, and `feedback: row.feedback ? htmlToPlainText(row.feedback) : null`
+   with `reviewedAt`. Selecting `feedback` is decision D-14.8: v1's forum screen
+   never does, so a reviewer's verdict on a forum post is invisible to the
+   student who wrote it (spec 14 R34, §10 D9). It goes through
+   `htmlToPlainText` for the same reason the post body does — `feedback` is rich
+   text in v1 too (ruling C11).
+3. **Locked** — `audience.kind === "student" && !own.posted`. Staff are never
+   locked. Locked → return early with `posts: []` and `nextCursor: null`; the
+   peer query never runs. Same short-circuit as v1 (R19), and the cheapest path.
+4. **Peer scope.** Student: the other ACTIVE enrolments in `audience.groupId`
+   for this assignment's season, excluding the caller; `groupId === null` →
+   empty feed (v1 R21, kept — an ungrouped student's post is stored and visible
+   to nobody). Staff with `groupIds === null`: every ACTIVE enrolment in the
+   season. Staff with `groupIds`: enrolments in those groups.
+   **Resolved from `SeasonEnrollment`, not `GroupStudent`** (ruling C9,
+   decision D-14.3).
+5. **Posts.**
+
+```ts
+  const posts = await db.submission.findMany({
+    where: {
+      assignmentId,
+      studentUserId: { in: peerIds },
+      status: { not: "DRAFT" },
+      NOT: { text: null },
+    },
+    orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
+    take: query.limit + 1,
+    ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+    select: {
+      id: true,
+      publicId: true,
+      studentUserId: true,
+      text: true,
+      submittedAt: true,
+      studentUser: { select: { name: true } },
+      _count: { select: { forumComments: true } },
+      forumComments: {
+        orderBy: { createdAt: "asc" },
+        // Three inline, and the rest from the comments endpoint. v1 loads every
+        // comment on every post with no take anywhere (spec 14 R27) — fine for
+        // a server render, a response that grows without limit on a phone.
+        take: 3,
+        select: {
+          id: true,
+          authorUserId: true,
+          body: true,
+          createdAt: true,
+          authorUser: { select: { name: true } },
+        },
+      },
+    },
+  });
+```
+
+   `status: { not: "DRAFT" }` **and** `NOT: { text: null }` are both required
+   and are the privacy rule (R23); the second `orderBy` on `id` is what makes
+   the cursor deterministic when two posts share a `submittedAt`. The cursor on
+   the wire is the last row's `publicId`; resolve it to an id with one
+   `findUnique` before the query, and treat an unresolvable cursor as no cursor.
+6. **Map.** `text: htmlToPlainText(p.text ?? "")` (ruling C11 on read — every
+   existing row is v1's HTML), `authorDisplayName: displayNameFor(...)`,
+   `commentCount: p._count.forumComments`, and per comment
+   `canDelete: await canDeleteForumComment(user, c.id)` — the gate itself, not a
+   client-side lookalike, which is the fix for the class of bug that left v1's
+   staff removal power unreachable (spec 14 R52). At most three comments per
+   post are inlined, so the per-row await is bounded; Task 7's
+   `listForumComments` computes it the same way for the same reason. `canComment`
+   per post is `assignment.forumAllowComments && (audience.kind === "staff" ||
+   own.posted)` — the same conditions the POST enforces, so the affordance and
+   the gate cannot drift.
+
+- [ ] **Step 3: The two routes**
+
+```ts
+forumRouter.get("/assignments/:id/forum", async (req, res) => {
+  const user = requireUser(req);
+  const assignmentId = parseId(req.params.id);
+  if (assignmentId === null) return apiError(res, "bad_request", "Invalid assignment id.", 400);
+
+  const parsedQuery = forumFeedQuerySchema.safeParse(req.query);
+  if (!parsedQuery.success) return apiError(res, "bad_request", "Invalid query.", 400);
+
+  // The gate answers "may this caller read this thread, and whose posts" in one
+  // call. v1 answers it in a page's early returns and a query's where clause.
+  const audience = await forumAudienceFor(user, assignmentId);
+  if (audience === null) return apiError(res, "forbidden", "You don't have access to this.", 403);
+
+  const view = await loadForumView(assignmentId, user, audience, parsedQuery.data);
+  if (view === null) return apiError(res, "not_found", "Assignment not found.", 404);
+  return apiOk(res, view);
+});
+```
+
+`PUT /assignments/:id/forum/response`:
+
+1. `parseId`; `user.role !== "STUDENT"` → 403 `"Only a student can post a response."`
+   (v1's post action has **no** role check at all — R7).
+2. `forumAudienceFor(user, assignmentId)`; null or `kind !== "student"` → 403.
+   This is where targeting, enrolment and season access are enforced, and it is
+   the only place they can be now that no page render precedes the write
+   (spec 14 D1/D5).
+3. Load the assignment for `type`, `forumMinWords` — 404 when missing, deleted
+   or not `FORUM`.
+4. Parse with `submitForumResponseRequestSchema` → 400.
+5. Word gate on the **plain text**, before wrapping, so the count the client
+   showed and the count the server applied are the same string:
+
+```ts
+  const words = countWords(parsed.data.text);
+  const min = assignment.forumMinWords ?? 0;
+  if (words < min) {
+    return apiError(
+      res,
+      "too_few_words",
+      `Please write at least ${min} words (you have ${words}).`,
+      400,
+    );
+  }
+  // No due-date branch, deliberately (spec 14 D5 / D-14.7): a discussion that
+  // closes at a deadline stops being a discussion. v1 selects dueAt here and
+  // never reads it; this is that behaviour, written down.
+```
+
+6. The upsert — the whole of decision D-14.1:
+
+```ts
+  const now = new Date();
+  const html = plainTextToHtml(parsed.data.text);
+  const submission = await db.submission.upsert({
+    where: { assignmentId_studentUserId: { assignmentId, studentUserId: user.userId } },
+    // Posting IS submitting: one write sets the body, the status and the
+    // timestamp together (v1 R6), and re-posting overwrites and re-stamps
+    // (R13), which promotes the post to the top of every group-mate's feed.
+    update: { text: html, status: "SUBMITTED", submittedAt: now },
+    create: {
+      assignmentId,
+      studentUserId: user.userId,
+      publicId: newPublicId(),
+      text: html,
+      status: "SUBMITTED",
+      submittedAt: now,
+    },
+    select: { publicId: true, status: true },
+  });
+
+  return apiOk(res, {
+    submissionPublicId: submission.publicId,
+    text: parsed.data.text,
+    status: submission.status,
+    wordCount: words,
+    posted: true,
+  });
+```
+
+   A real upsert on the natural unique key, not v1's read-then-create-then-catch
+   (ruling C6). A forum post has no draft-save step, so the first write is
+   always a real post and there is never a window in which an empty row exists.
+
+- [ ] **Step 4:** Run the suite → PASS; `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
+
+- [ ] **Step 5: OpenAPI, same commit** — both paths plus `ForumView`,
+`ForumPost`, `ForumOwnResponse` and `SubmitForumResponseRequest`. The prose must
+say that the PUT creates the row (and why a GET must not), that `locked` is a
+product mechanic rather than an error, that `text` is plain text in both
+directions, and that a late post is allowed on purpose.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/backend && git commit -m "feat(backend): forum thread read and the upsert that creates the submission row"
+```
+
+---
+
+### Task 7: Forum — comments, and the removal power that finally has a caller
+
+**Files:**
+- Modify: `apps/backend/src/routes/forum.ts`
+- Modify: `apps/backend/src/lib/queries/forum.ts` (add `listForumComments`)
+- Modify: `apps/backend/src/docs/openapi.ts`
+- Test: extend `apps/backend/src/__tests__/integration/forum-routes.test.ts`
+
+**Interfaces:**
+- Consumes: `canCommentOnForumSubmission`, `canDeleteForumComment`, `forumAudienceFor` (Task 2); `addForumCommentRequestSchema`, `forumCommentsQuerySchema` (Task 1); `displayNameFor` (Task 6).
+- Produces:
+  - `listForumComments(submissionId, user, query): Promise<{ comments: ForumCommentData[]; nextCursor: number | null }>`
+  - `GET /api/v1/assignments/:id/forum/posts/:publicId/comments`
+  - `POST /api/v1/assignments/:id/forum/posts/:publicId/comments`
+  - `DELETE /api/v1/forum/comments/:commentId`
+
+- [ ] **Step 1: Write the failing tests** (append to `forum-routes.test.ts`)
+
+```ts
+describe("forum comments", () => {
+  const COMMENT = "space-v2-test comment body";
+
+  async function postFor(token: string): Promise<string> {
+    const res = await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${token}`)
+      .send({ text: OWN_TEXT });
+    return res.body.data.submissionPublicId as string;
+  }
+
+  it("lets a group-mate who has posted comment on a peer's response", async () => {
+    const peerPost = await postFor(studentA2Token);
+    await postFor(studentAToken);
+
+    const res = await request(app)
+      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ body: COMMENT });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.comment).toMatchObject({ body: COMMENT, canDelete: true });
+    expect(res.body.data.comment.authorDisplayName).not.toContain("@");
+  });
+
+  it("refuses a commenter who has not posted their own response first (v1 R41)", async () => {
+    const peerPost = await postFor(studentA2Token);
+
+    const res = await request(app)
+      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ body: COMMENT });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("post_first");
+  });
+
+  it("refuses a student from another group", async () => {
+    const peerPost = await postFor(studentA2Token);
+    await postFor(studentBToken);
+
+    const res = await request(app)
+      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .set("authorization", `Bearer ${studentBToken}`)
+      .send({ body: COMMENT });
+    expect(res.status).toBe(403);
+  });
+
+  it("lets the group's leader comment without posting anything (spec 14 D3)", async () => {
+    // In v1 LEADER falls through to `return false` — a leader cannot join the
+    // discussion of a group they lead. That is a missing `if`, not a policy.
+    const peerPost = await postFor(studentAToken);
+
+    const res = await request(app)
+      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .set("authorization", `Bearer ${leaderAToken}`)
+      .send({ body: COMMENT });
+    expect(res.status).toBe(201);
+  });
+
+  it("refuses a mentor, who stays read-only", async () => {
+    const peerPost = await postFor(studentAToken);
+    const res = await request(app)
+      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .set("authorization", `Bearer ${mentorToken}`)
+      .send({ body: COMMENT });
+    expect(res.status).toBe(403);
+  });
+
+  it("refuses a post that belongs to a different assignment (spec 14 D14)", async () => {
+    const other = await db.assignment.create({
+      data: {
+        seasonId,
+        title: "space-v2-test-forum-other",
+        type: "FORUM",
+        forumMinWords: 0,
+        forumAllowComments: true,
+        isAllGroups: true,
+      },
+      select: { id: true },
+    });
+    const peerPost = await postFor(studentA2Token);
+    await postFor(studentAToken);
+
+    const res = await request(app)
+      .post(`/api/v1/assignments/${other.id}/forum/posts/${peerPost}/comments`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ body: COMMENT });
+    expect(res.status).toBe(404);
+  });
+
+  it("refuses an empty or over-long body", async () => {
+    const peerPost = await postFor(studentA2Token);
+    await postFor(studentAToken);
+
+    for (const body of ["   ", "x".repeat(5001)]) {
+      const res = await request(app)
+        .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+        .set("authorization", `Bearer ${studentAToken}`)
+        .send({ body });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("paginates a long comment list and reports the count on the post", async () => {
+    const peerPost = await postFor(studentA2Token);
+    await postFor(studentAToken);
+
+    for (let i = 0; i < 5; i += 1) {
+      await request(app)
+        .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+        .set("authorization", `Bearer ${studentAToken}`)
+        .send({ body: `${COMMENT} ${i}` });
+    }
+
+    const feed = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    // Three inline plus a count — v1 returns every comment on every post.
+    expect(feed.body.data.posts[0].commentCount).toBe(5);
+    expect(feed.body.data.posts[0].comments).toHaveLength(3);
+
+    const page = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments?limit=2`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    expect(page.body.data.comments).toHaveLength(2);
+    expect(page.body.data.nextCursor).toEqual(expect.any(Number));
+  });
+
+  it("lets staff delete a comment they did not write — and tells the client so", async () => {
+    // v1's server allows SUPER and the season ADMIN to delete (R49), but the
+    // control renders only for the viewer's own comments and no staff screen
+    // shows a thread at all, so that power has never been exercisable (R52/R53).
+    const peerPost = await postFor(studentA2Token);
+    await postFor(studentAToken);
+    const created = await request(app)
+      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ body: COMMENT });
+    const commentId = created.body.data.comment.id as number;
+
+    const asLeader = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${leaderAToken}`);
+    const seen = asLeader.body.data.posts
+      .flatMap((p: { comments: { id: number; canDelete: boolean }[] }) => p.comments)
+      .find((c: { id: number }) => c.id === commentId);
+    expect(seen.canDelete).toBe(true);
+
+    const res = await request(app)
+      .delete(`/api/v1/forum/comments/${commentId}`)
+      .set("authorization", `Bearer ${leaderAToken}`);
+    expect(res.status).toBe(200);
+    expect(await db.forumComment.count({ where: { id: commentId } })).toBe(0);
+  });
+
+  it("refuses deletion by the post's author and by an unrelated leader", async () => {
+    const peerPost = await postFor(studentA2Token);
+    await postFor(studentAToken);
+    const created = await request(app)
+      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ body: COMMENT });
+    const commentId = created.body.data.comment.id as number;
+
+    for (const token of [studentA2Token, leaderBToken]) {
+      const res = await request(app)
+        .delete(`/api/v1/forum/comments/${commentId}`)
+        .set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+    }
+    expect(await db.forumComment.count({ where: { id: commentId } })).toBe(1);
+  });
+
+  it("404s an unknown comment", async () => {
+    const res = await request(app)
+      .delete("/api/v1/forum/comments/987654321")
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(404);
+  });
+});
+```
+
+Run the suite → the new cases FAIL.
+
+- [ ] **Step 2: `listForumComments`**
+
+Append to `apps/backend/src/lib/queries/forum.ts`:
+
+```ts
+export interface ForumCommentData {
+  id: number;
+  authorUserId: number;
+  authorDisplayName: string;
+  body: string;
+  createdAt: Date;
+  canDelete: boolean;
+}
+
+/**
+ * One post's comments, oldest first (v1 R26), bounded.
+ *
+ * `canDelete` is computed here rather than left to the client, which is the fix
+ * for the class of bug that made v1's staff removal power unreachable: the
+ * component derived the affordance from `authorUserId === currentUserId` while
+ * the action allowed three more cases (spec 14 R49/R52).
+ */
+export async function listForumComments(
+  submissionId: number,
+  user: SessionUser,
+  query: { cursor?: number; limit: number },
+): Promise<{ comments: ForumCommentData[]; nextCursor: number | null }> {
+  const rows = await db.forumComment.findMany({
+    where: { submissionId },
+    orderBy: { id: "asc" },
+    take: query.limit + 1,
+    ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+    select: {
+      id: true,
+      authorUserId: true,
+      body: true,
+      createdAt: true,
+      authorUser: { select: { name: true } },
+    },
+  });
+  const page = rows.slice(0, query.limit);
+  const comments = await Promise.all(
+    page.map(async (c) => ({
+      id: c.id,
+      authorUserId: c.authorUserId,
+      authorDisplayName: displayNameFor(c.authorUser.name),
+      // Plain text, rendered as plain text. v1's comment box is a textarea and
+      // its comments are never parsed as HTML (R29) — do not accidentally give
+      // this field the post body's treatment.
+      body: c.body,
+      createdAt: c.createdAt,
+      canDelete: await canDeleteForumComment(user, c.id),
+    })),
+  );
+  return {
+    comments,
+    nextCursor: rows.length > query.limit ? (page[page.length - 1]?.id ?? null) : null,
+  };
+}
+```
+
+- [ ] **Step 3: The three routes**
+
+A shared local helper resolves the post and proves it belongs to the assignment
+in the path:
+
+```ts
+/**
+ * v1 addresses a forum write by a bare sequential `Submission.id`, so the gates
+ * constrain *who* the caller is but never *which* row they name (spec 14 R5,
+ * R43, D14). Nesting the post under its assignment and re-checking the pair
+ * here means a mismatched id is a 404 rather than a silent success — and the
+ * publicId is unguessable in the first place.
+ */
+async function resolvePost(assignmentId: number, publicId: string) {
+  return db.submission.findFirst({
+    where: { publicId, assignmentId },
+    select: { id: true, status: true, studentUserId: true },
+  });
+}
+```
+
+- **`GET /assignments/:id/forum/posts/:publicId/comments`** — `parseId` the
+  assignment; parse the query with `forumCommentsQuerySchema`;
+  `forumAudienceFor` → 403 on null; `resolvePost` → 404; **and, for a student
+  audience, the same lock the feed applies** (their own response must be
+  posted) → 403 `post_first`. Then `listForumComments`.
+- **`POST /assignments/:id/forum/posts/:publicId/comments`**:
+  1. `resolvePost` → 404 (before the gate, but note in a comment that
+     `canCommentOnForumSubmission` also returns false for a missing row, so a
+     probe cannot distinguish "no such post" from "not allowed" — v1 has that
+     property by accident and it is worth keeping deliberately, spec 14 §6).
+  2. Parse the body → 400.
+  3. `canCommentOnForumSubmission(user, post.id)` → 403 `forbidden`. This
+     covers the type check, the `forumAllowComments` flag, the DRAFT-target
+     refusal and the group comparison.
+  4. **Post-first, for students only** (v1 R41): read the caller's own
+     submission for the same assignment; missing or `DRAFT` → 403 `post_first`
+     with `"Post your own response before commenting."` Staff bypass it by
+     construction, exactly as in v1.
+  5. `db.forumComment.create({ data: { submissionId: post.id, authorUserId: user.userId, body: parsed.data.body } })`,
+     respond `{ comment: { ...mapped, canDelete: true } }` with 201. **No
+     notification** — `NotificationType` has no forum member and adding one is a
+     migration (C1). "Someone commented on your response" is the obvious first
+     push in the product and is a **cutover task** (spec 14 D13).
+- **`DELETE /forum/comments/:commentId`** — `parseId`; `findUnique` → 404;
+  `canDeleteForumComment` → 403; hard `delete`; respond `{ deleted: true }`.
+  Hard, because there is no `deletedAt` column and adding one is a migration;
+  comments cannot nest, so nothing is orphaned (spec 14 R51).
+
+- [ ] **Step 4:** Run the suite → PASS; turbo trio → clean.
+
+- [ ] **Step 5: OpenAPI, same commit** — the three paths plus `ForumComment` and
+`AddForumCommentRequest`. State that `canDelete` is authoritative and the client
+must not re-derive it; that `post_first` is a rule, not an error condition; and
+that **no moderation beyond comment deletion exists** — link the reader to this
+plan's D-14.4 so the gap is documented where an integrator will meet it.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/backend && git commit -m "feat(backend): forum comments with server-computed delete rights and staff moderation"
+```
+
+---
+
+### Task 8: Forum — the thread on device
+
+**Files:**
+- Create: `apps/mobile/src/hooks/use-forum.ts`
+- Create: `apps/mobile/src/components/ForumThread.tsx`
+- Modify: `apps/mobile/app/(app)/assignment/[id].tsx` (Plan 1's screen gains the FORUM branch)
+- Test: `apps/mobile/src/__tests__/forum-screen.test.tsx`
+
+**Interfaces:**
+- Consumes: Plan 1's `useAssignmentDetail(id)` and its `type`/`forumMinWords`/`forumAllowComments` fields; `queryKeys.forum` (Task 2); `forumViewSchema`, `forumCommentSchema`, `countWords` (Task 1); Tasks 6–7's endpoints.
+- Produces: `useForumThread(assignmentId, enabled)`, `useSubmitForumResponse(assignmentId)`, `usePostComment(assignmentId)`, `useDeleteComment(assignmentId)`; the component `<ForumThread assignmentId={...} />`.
+
+- [ ] **Step 1: Write the failing test**
+
+```tsx
+// apps/mobile/src/__tests__/forum-screen.test.tsx
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+
+jest.mock("../lib/api-client", () => ({
+  apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));
+jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({ id: "41" }),
+  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+}));
+
+import { apiClient } from "../lib/api-client";
+import { useSessionStore } from "../store/session";
+import { renderWithProviders } from "./helpers/render";
+
+import AssignmentDetailScreen from "../../app/(app)/assignment/[id]";
+
+const get = apiClient.get as jest.Mock;
+const put = apiClient.put as jest.Mock;
+const post = apiClient.post as jest.Mock;
+
+const forumAssignment = {
+  id: 41,
+  seasonId: 7,
+  seasonCode: "S26",
+  seasonTitle: "Spring 2026",
+  sessionId: null,
+  sessionTitle: null,
+  title: "Week three discussion",
+  description: null,
+  dueAt: "2099-04-01T00:00:00.000Z",
+  isOverdue: false,
+  isAllGroups: true,
+  type: "FORUM" as const,
+  forumMinWords: 5,
+  forumAllowComments: true,
+  maxFileSizeMb: null,
+  allowedMimeCategories: [],
+  groupIds: null,
+  mySubmission: null,
+  canManage: false,
+};
+
+const lockedView = {
+  assignmentId: 41,
+  dueAt: forumAssignment.dueAt,
+  own: {
+    submissionPublicId: null,
+    text: "",
+    status: "DRAFT" as const,
+    wordCount: 0,
+    posted: false,
+    feedback: null,
+    reviewedAt: null,
+  },
+  locked: true,
+  minWords: 5,
+  allowComments: true,
+  groupId: 3,
+  posts: [],
+  nextCursor: null,
+};
+
+const unlockedView = {
+  ...lockedView,
+  own: {
+    submissionPublicId: "abc123defg",
+    text: "space-v2-test my response one two three",
+    status: "SUBMITTED" as const,
+    wordCount: 7,
+    posted: true,
+  },
+  locked: false,
+  posts: [
+    {
+      submissionPublicId: "peer000001",
+      studentUserId: 12,
+      authorDisplayName: "Group member",
+      text: "space-v2-test peer response",
+      submittedAt: "2099-03-02T10:00:00.000Z",
+      commentCount: 1,
+      comments: [
+        {
+          id: 5,
+          authorUserId: 9,
+          authorDisplayName: "Test student",
+          body: "space-v2-test my comment",
+          createdAt: "2099-03-02T11:00:00.000Z",
+          canDelete: true,
+        },
+      ],
+      canComment: true,
+    },
+  ],
+};
+
+const studentSession = {
+  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const },
+  scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  useSessionStore.setState(useSessionStore.getInitialState(), true);
+  useSessionStore.setState(studentSession);
+});
+
+describe("forum branch of the assignment screen", () => {
+  it("renders the compose box and the lock state with no submission in existence", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: forumAssignment } })
+        : Promise.resolve({ data: { data: lockedView } }),
+    );
+
+    renderWithProviders(<AssignmentDetailScreen />);
+
+    expect(await screen.findByLabelText("Your response")).toBeTruthy();
+    // A deliberate product mechanic, not an error — it gets a real empty state.
+    expect(screen.getByText("Post to unlock the discussion")).toBeTruthy();
+    expect(screen.getByText("0 / 5 words")).toBeTruthy();
+    // v1's FORUM branch shows no due date at all (spec 14 R33).
+    expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
+    // Nothing was created by opening the screen (ruling C6).
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it("counts words with the shared counter and blocks a short post client-side", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: forumAssignment } })
+        : Promise.resolve({ data: { data: lockedView } }),
+    );
+
+    renderWithProviders(<AssignmentDetailScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Your response"), "one two three");
+    expect(screen.getByText("3 / 5 words")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Post response"));
+    await waitFor(() => expect(put).not.toHaveBeenCalled());
+  });
+
+  it("posts through the upsert on an assignment with no row", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: forumAssignment } })
+        : Promise.resolve({ data: { data: lockedView } }),
+    );
+    put.mockResolvedValue({ data: { data: unlockedView.own } });
+
+    renderWithProviders(<AssignmentDetailScreen />);
+    fireEvent.changeText(
+      await screen.findByLabelText("Your response"),
+      "space-v2-test my response one two three",
+    );
+    fireEvent.press(screen.getByText("Post response"));
+
+    await waitFor(() =>
+      expect(put).toHaveBeenCalledWith("/api/v1/assignments/41/forum/response", {
+        text: "space-v2-test my response one two three",
+      }),
+    );
+  });
+
+  it("renders peers, comment counts and a delete control the server authorised", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: forumAssignment } })
+        : Promise.resolve({ data: { data: unlockedView } }),
+    );
+
+    renderWithProviders(<AssignmentDetailScreen />);
+
+    expect(await screen.findByText("space-v2-test peer response")).toBeTruthy();
+    expect(screen.getByText("Group member")).toBeTruthy();
+    expect(screen.getByText("space-v2-test my comment")).toBeTruthy();
+    // canDelete comes from the server; the client never re-derives it.
+    expect(screen.getByLabelText("Delete comment")).toBeTruthy();
+    expect(screen.queryByText("Update response")).toBeTruthy();
+  });
+
+  it("posts a comment against the post's publicId", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: forumAssignment } })
+        : Promise.resolve({ data: { data: unlockedView } }),
+    );
+    post.mockResolvedValue({ data: { data: { comment: { id: 6 } } } });
+
+    renderWithProviders(<AssignmentDetailScreen />);
+    fireEvent.changeText(
+      await screen.findByLabelText("Add a comment"),
+      "space-v2-test another comment",
+    );
+    fireEvent.press(screen.getByText("Comment"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(
+        "/api/v1/assignments/41/forum/posts/peer000001/comments",
+        { body: "space-v2-test another comment" },
+      ),
+    );
+  });
+
+  it("hides the comment block entirely when the assignment disallows comments", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({
+            data: { data: { ...forumAssignment, forumAllowComments: false } },
+          })
+        : Promise.resolve({
+            data: {
+              data: {
+                ...unlockedView,
+                allowComments: false,
+                posts: [{ ...unlockedView.posts[0], comments: [], commentCount: 0, canComment: false }],
+              },
+            },
+          }),
+    );
+
+    renderWithProviders(<AssignmentDetailScreen />);
+    expect(await screen.findByText("space-v2-test peer response")).toBeTruthy();
+    expect(screen.queryByLabelText("Add a comment")).toBeNull();
+  });
+
+  it("does not render the forum branch for a STANDARD assignment", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: { ...forumAssignment, type: "STANDARD" } } })
+        : Promise.resolve({ data: { data: lockedView } }),
+    );
+
+    renderWithProviders(<AssignmentDetailScreen />);
+    await screen.findByText("Week three discussion");
+    expect(get).not.toHaveBeenCalledWith("/api/v1/assignments/41/forum");
+  });
+});
+```
+
+Run: `cd apps/mobile && pnpm jest src/__tests__/forum-screen.test.tsx` → FAIL.
+
+- [ ] **Step 2: The hooks**
+
+```ts
+// apps/mobile/src/hooks/use-forum.ts
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+import { forumOwnResponseSchema, forumViewSchema, type ForumView } from "@space/shared";
+
+import { apiClient } from "../lib/api-client";
+import { queryKeys } from "../lib/query-keys";
+
+export function useForumThread(
+  assignmentId: number | null,
+  enabled: boolean,
+): UseQueryResult<ForumView> {
+  return useQuery({
+    queryKey: queryKeys.forum.thread(assignmentId ?? -1),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/assignments/${assignmentId}/forum`);
+      return forumViewSchema.parse(res.data.data);
+    },
+    // Gated on the assignment being FORUM: a STANDARD assignment has no thread
+    // and the endpoint would 404, which is not an error worth rendering.
+    enabled: enabled && assignmentId !== null,
+  });
+}
+
+function useInvalidateThread(assignmentId: number) {
+  const queryClient = useQueryClient();
+  return (): void => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.forum.thread(assignmentId) });
+    // The post flips the submission's status, which the assignment detail also
+    // reports — invalidate it too or the header keeps saying "Not started".
+    void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.detail(assignmentId) });
+  };
+}
+
+/**
+ * The one write that creates the submission row. PUT, and idempotent: calling
+ * it twice with the same text yields the same row, which is what makes it safe
+ * on a screen React Query remounts and refocuses.
+ */
+export function useSubmitForumResponse(assignmentId: number) {
+  const invalidate = useInvalidateThread(assignmentId);
+  return useMutation({
+    mutationFn: async (text: string) => {
+      const res = await apiClient.put(`/api/v1/assignments/${assignmentId}/forum/response`, {
+        text,
+      });
+      return forumOwnResponseSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function usePostComment(assignmentId: number) {
+  const invalidate = useInvalidateThread(assignmentId);
+  return useMutation({
+    mutationFn: async (vars: { postPublicId: string; body: string }) => {
+      const res = await apiClient.post(
+        `/api/v1/assignments/${assignmentId}/forum/posts/${vars.postPublicId}/comments`,
+        { body: vars.body },
+      );
+      return res.data.data as { comment: { id: number } };
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteComment(assignmentId: number) {
+  const invalidate = useInvalidateThread(assignmentId);
+  return useMutation({
+    mutationFn: async (commentId: number) => {
+      const res = await apiClient.delete(`/api/v1/forum/comments/${commentId}`);
+      return res.data.data as { deleted: true };
+    },
+    onSuccess: invalidate,
+  });
+}
+```
+
+- [ ] **Step 3: `ForumThread`**
+
+`apps/mobile/src/components/ForumThread.tsx` — props `{ assignmentId: number }`.
+Structure:
+
+1. `useForumThread(assignmentId, true)` → `LoadingState` / `ErrorState`
+   (`onRetry` wired to `refetch`).
+2. **Due date** — `Due {formatDueDate(view.dueAt)}` when non-null. v1's FORUM
+   branch renders a badge and a title and no due date at all, on the one
+   assignment type where the field is set and unused (spec 14 D10).
+3. **Compose card**, rendered only when `view.own !== null` (a staff reader has
+   no response of their own): a multiline `Input` labelled **Your response**
+   seeded from `view.own.text`, a live counter
+   `{countWords(draft)} / {view.minWords ?? 0} words` using the **shared**
+   `countWords` — a divergent reimplementation is exactly how the button ends up
+   enabled while the server refuses — and a `Button` titled
+   `view.own.posted ? "Update response" : "Post response"`. The button is
+   disabled while `countWords(draft) < Math.max(1, view.minWords ?? 0)`; the
+   `Math.max(1, …)` is decision D-14.5 on the client side. Surface the
+   mutation's `error.response.data.error.message` verbatim beneath it.
+   **Plain text, one `Input`, no rich-text editor.** The post body is HTML in
+   storage but the server converts in both directions (Task 1's helpers), so the
+   editor domain 8 wants is not needed here and must not be bolted on — the
+   comment box must stay plain or the comment renderer starts showing markup
+   (spec 14 D11).
+4. **Locked state** — when `view.locked`, render an `EmptyState` titled
+   "Post to unlock the discussion" with the message
+   "You'll see everyone else's responses once you post yours." and no feed. It
+   is the first thing a student sees and it is a mechanic, not a failure, so it
+   gets a real empty state rather than a spinner or an error.
+5. **Feed** — a `FlatList` of `Card`s: `authorDisplayName`, the post `text`,
+   `formatDate(submittedAt)`, and the first comments with
+   `{commentCount - comments.length} more` and a "Show all comments" press that
+   fetches the rest through the comments endpoint. Empty, unlocked feed →
+   `EmptyState` "No one has posted yet."
+   Pagination: a "Load more" `Button` shown while `nextCursor !== null`.
+6. **Comments** — rendered only when `view.allowComments`. Per post: the
+   comment list, a `Delete comment` icon button on any comment whose
+   `canDelete` is true (two-press confirm, as elsewhere), and — when
+   `post.canComment` — an `Input` labelled **Add a comment** with a `Comment`
+   button.
+7. **The moderation note.** Below the feed, for a LEADER/ADMIN/SUPER reader,
+   render one line of body text: *"You can remove comments here. Removing a
+   whole response isn't supported yet — ask the author to edit it."* That is
+   decision D-14.4's residual gap, stated where the person who will hit it is
+   standing, rather than only in this plan.
+
+- [ ] **Step 4: Wire it into `assignment/[id].tsx`**
+
+In Plan 1's screen, branch on `detail.type`:
+
+```tsx
+  // The FORUM branch replaces the submission editor entirely — a forum
+  // assignment can never carry file attachments (domain 7 forces
+  // maxFileSizeMb null and allowedMimeCategories empty for FORUM), and its
+  // response IS the submission.
+  {detail.type === "FORUM" ? (
+    <ForumThread assignmentId={detail.id} />
+  ) : (
+    <SubmissionSection detail={detail} />
+  )}
+```
+
+- [ ] **Step 5:** Run the suite → PASS; `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/mobile && git commit -m "feat(mobile): forum thread with post-to-unlock, comments and staff removal"
+```
+
+---
+
+## Stream C — JPC events (Tasks 9–10)
+
+### Task 9: Events — one visibility predicate, a real write gate, a bounded window
+
+**Files:**
+- Create: `apps/backend/src/lib/queries/events.ts`
+- Modify: `apps/backend/src/lib/org-time.ts` (Plan 3's file; add two functions)
+- Modify: `apps/backend/src/routes/events.ts`
+- Modify: `apps/backend/src/docs/openapi.ts`
+- Test: `apps/backend/src/__tests__/org-time.test.ts` (extend, unit)
+- Test: `apps/backend/src/__tests__/integration/events-routes.test.ts`
+
+**Interfaces:**
+- Consumes: `isSuper`, `isAlumnus`, `isAdminOfSeason`, `isLeaderOfGroup` from `../lib/rbac`; `createJpcEventRequestSchema`, `updateJpcEventRequestSchema`, `eventListQuerySchema` (Task 1); `config.orgTimezone` (Plan 3).
+- Produces:
+  - `startOfDayInOrgTime(date: Date): Date` and `isOrgMidnight(date: Date): boolean` in `lib/org-time.ts`
+  - `viewerSeasonIds(user): Promise<number[] | "all">` and `eventVisibilityFilter(user): Promise<Prisma.JpcEventWhereInput>` in `lib/queries/events.ts`
+  - `GET /api/v1/events`, `GET /api/v1/events/:id`, `POST /api/v1/events`, `PATCH /api/v1/events/:id`, `DELETE /api/v1/events/:id`
+
+- [ ] **Step 1: Failing unit test for the two org-time helpers**
+
+Append to `apps/backend/src/__tests__/org-time.test.ts`:
+
+```ts
+import { isOrgMidnight, startOfDayInOrgTime } from "../lib/org-time";
+
+describe("org-time day boundaries", () => {
+  // Africa/Cairo is UTC+2 in winter, so local midnight on 2099-01-15 is
+  // 22:00Z on the 14th. If config.orgTimezone changes, these change with it.
+  it("recognises midnight in the organisation's zone, not the host's", () => {
+    expect(isOrgMidnight(new Date("2099-01-14T22:00:00.000Z"))).toBe(true);
+    expect(isOrgMidnight(new Date("2099-01-15T00:00:00.000Z"))).toBe(false);
+  });
+
+  it("snaps an instant to the start of its organisation day", () => {
+    expect(startOfDayInOrgTime(new Date("2099-01-15T09:30:00.000Z")).toISOString()).toBe(
+      "2099-01-14T22:00:00.000Z",
+    );
+    // Already midnight: idempotent.
+    const midnight = new Date("2099-01-14T22:00:00.000Z");
+    expect(startOfDayInOrgTime(midnight).toISOString()).toBe(midnight.toISOString());
+  });
+});
+```
+
+Run: `cd apps/backend && npx jest src/__tests__/org-time.test.ts` → FAIL.
+
+- [ ] **Step 2: Implement them**
+
+Append to `apps/backend/src/lib/org-time.ts`:
+
+```ts
+const partsFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: config.orgTimezone,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+function orgParts(date: Date): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const part of partsFormatter.formatToParts(date)) {
+    if (part.type !== "literal") out[part.type] = Number(part.value);
+  }
+  return out;
+}
+
+/**
+ * Is this instant midnight on the organisation's clock?
+ *
+ * Midnight is v1's only encoding of "all-day" — there is no `allDay` column and
+ * adding one is a migration (ruling C1). v1 re-derived this in three separate
+ * files with `getHours() !== 0 || getMinutes() !== 0`, each in the *viewer's*
+ * timezone, against an instant the *server* had composed (spec 15 R19/R20), so
+ * an all-day event stopped reading as all-day for anyone in another zone.
+ * Ruling C2: one zone, server-side, once.
+ */
+export function isOrgMidnight(date: Date): boolean {
+  const p = orgParts(date);
+  return p.hour === 0 && p.minute === 0 && p.second === 0;
+}
+
+/** The instant of 00:00 organisation time on the org-calendar day `date` falls on. */
+export function startOfDayInOrgTime(date: Date): Date {
+  const p = orgParts(date);
+  // The zone's offset at this instant, recovered by comparing the local
+  // wall-clock reading against the instant itself.
+  const asIfUtc = Date.UTC(
+    p.year as number,
+    (p.month as number) - 1,
+    p.day as number,
+    p.hour as number,
+    p.minute as number,
+    p.second as number,
+  );
+  const offsetMs = asIfUtc - Math.floor(date.getTime() / 1000) * 1000;
+  return new Date(Date.UTC(p.year as number, (p.month as number) - 1, p.day as number) - offsetMs);
+}
+```
+
+**Known limit, accepted:** the offset is sampled at `date`'s own instant, so a
+day containing a DST transition can snap an hour off. Africa/Cairo currently
+observes DST; an event authored at 03:00 on a transition day is the only case
+affected, and getting it exactly right needs a tz library this backend does not
+carry. Record it; do not paper over it.
+
+Run the unit test → PASS.
+
+- [ ] **Step 3: Failing integration tests**
+
+```ts
+// apps/backend/src/__tests__/integration/events-routes.test.ts
+import request from "supertest";
+
+import { createApp } from "../../app";
+import { db } from "../../db/client";
+import {
+  cleanupTestData,
+  createTestSeason,
+  createTestUser,
+  login,
+  testEventTitle,
+} from "./fixtures";
+
+jest.setTimeout(60000);
+
+const app = createApp();
+
+let seasonId: number;
+let otherSeasonId: number;
+let allEventId: number;
+let alumniEventId: number;
+let seasonEventId: number;
+let otherSeasonEventId: number;
+let studentToken: string;
+let alumnusToken: string;
+let leaderToken: string;
+let adminToken: string;
+let mentorToken: string;
+let superToken: string;
+
+beforeAll(async () => {
+  await cleanupTestData();
+
+  const season = await createTestSeason();
+  const otherSeason = await createTestSeason();
+  seasonId = season.id;
+  otherSeasonId = otherSeason.id;
+
+  const student = await createTestUser("evstudent", "STUDENT");
+  const alumnus = await createTestUser("evalumnus", "STUDENT");
+  const leader = await createTestUser("evleader", "LEADER");
+  const admin = await createTestUser("evadmin", "ADMIN");
+  const mentor = await createTestUser("evmentor", "MENTOR");
+  const superUser = await createTestUser("evsuper", "SUPER");
+
+  // An alumnus is role STUDENT with a graduationYear — the whole of spec 15's
+  // headline defect turns on that.
+  await db.studentProfile.create({
+    data: { userId: alumnus.id, graduationYear: 2098, activeSeasonId: seasonId },
+  });
+  await db.studentProfile.create({
+    data: { userId: student.id, activeSeasonId: seasonId },
+  });
+
+  const group = await db.group.create({
+    data: { seasonId, name: "Group A", leaders: { create: { userId: leader.id } } },
+    select: { id: true },
+  });
+  await db.seasonAdmin.create({ data: { seasonId, userId: admin.id } });
+  await db.seasonEnrollment.createMany({
+    data: [
+      { seasonId, studentUserId: student.id, groupId: group.id, status: "ACTIVE" },
+      { seasonId, studentUserId: alumnus.id, groupId: group.id, status: "COMPLETED" },
+    ],
+  });
+
+  const events = await db.$transaction([
+    db.jpcEvent.create({
+      data: {
+        title: testEventTitle("all"),
+        date: new Date("2099-06-01T00:00:00.000Z"),
+        visibility: "ALL",
+      },
+      select: { id: true },
+    }),
+    db.jpcEvent.create({
+      data: {
+        title: testEventTitle("alumni"),
+        date: new Date("2099-06-02T00:00:00.000Z"),
+        visibility: "ALUMNI_ONLY",
+      },
+      select: { id: true },
+    }),
+    db.jpcEvent.create({
+      data: {
+        title: testEventTitle("season"),
+        date: new Date("2099-06-03T00:00:00.000Z"),
+        visibility: "SEASON",
+        seasonId,
+      },
+      select: { id: true },
+    }),
+    db.jpcEvent.create({
+      data: {
+        title: testEventTitle("otherseason"),
+        date: new Date("2099-06-04T00:00:00.000Z"),
+        visibility: "SEASON",
+        seasonId: otherSeason.id,
+      },
+      select: { id: true },
+    }),
+  ]);
+  allEventId = events[0].id;
+  alumniEventId = events[1].id;
+  seasonEventId = events[2].id;
+  otherSeasonEventId = events[3].id;
+
+  studentToken = await login(app, student.email);
+  alumnusToken = await login(app, alumnus.email);
+  leaderToken = await login(app, leader.email);
+  adminToken = await login(app, admin.email);
+  mentorToken = await login(app, mentor.email);
+  superToken = await login(app, superUser.email);
+});
+
+afterAll(async () => {
+  await cleanupTestData();
+});
+
+const WINDOW = "?from=2099-01-01T00:00:00.000Z&to=2099-12-31T00:00:00.000Z";
+
+async function idsFor(token: string): Promise<number[]> {
+  const res = await request(app)
+    .get(`/api/v1/events${WINDOW}`)
+    .set("authorization", `Bearer ${token}`);
+  expect(res.status).toBe(200);
+  return (res.body.data.events as { id: number }[]).map((e) => e.id);
+}
+
+describe("GET /api/v1/events — visibility derived from the token", () => {
+  it("shows ALL events to everyone", async () => {
+    for (const token of [studentToken, alumnusToken, leaderToken, adminToken, mentorToken]) {
+      expect(await idsFor(token)).toContain(allEventId);
+    }
+  });
+
+  it("shows ALUMNI_ONLY events TO ALUMNI (spec 15 item 2 — the headline defect)", async () => {
+    // In shipped v1, UpcomingEventsCard computes eligibility as
+    // `user.role !== "STUDENT"` and an alumnus IS role STUDENT, so ALUMNI_ONLY
+    // means staff-only on the only two surfaces alumni have.
+    expect(await idsFor(alumnusToken)).toContain(alumniEventId);
+    expect(await idsFor(leaderToken)).toContain(alumniEventId);
+    expect(await idsFor(adminToken)).toContain(alumniEventId);
+    // Still hidden from a current student, which is what the level means.
+    expect(await idsFor(studentToken)).not.toContain(alumniEventId);
+  });
+
+  it("scopes SEASON events to the seasons a viewer holds", async () => {
+    expect(await idsFor(studentToken)).toContain(seasonEventId);
+    expect(await idsFor(studentToken)).not.toContain(otherSeasonEventId);
+    expect(await idsFor(leaderToken)).toContain(seasonEventId);
+    expect(await idsFor(adminToken)).toContain(seasonEventId);
+    // A mentor holds none of the three claims, so sees no SEASON event —
+    // v1's behaviour (R51), kept.
+    expect(await idsFor(mentorToken)).not.toContain(seasonEventId);
+    // SUPER sees everything.
+    expect(await idsFor(superToken)).toEqual(
+      expect.arrayContaining([allEventId, alumniEventId, seasonEventId, otherSeasonEventId]),
+    );
+  });
+
+  it("hides events on a soft-deleted season (spec 15 item 4)", async () => {
+    await db.season.update({ where: { id: seasonId }, data: { deletedAt: new Date() } });
+    expect(await idsFor(studentToken)).not.toContain(seasonEventId);
+    await db.season.update({ where: { id: seasonId }, data: { deletedAt: null } });
+  });
+
+  it("hides an orphaned SEASON event from everyone but SUPER (spec 15 R54)", async () => {
+    const orphan = await db.jpcEvent.create({
+      data: {
+        title: testEventTitle("orphan"),
+        date: new Date("2099-06-05T00:00:00.000Z"),
+        visibility: "SEASON",
+        seasonId: null,
+      },
+      select: { id: true },
+    });
+    expect(await idsFor(studentToken)).not.toContain(orphan.id);
+    expect(await idsFor(adminToken)).not.toContain(orphan.id);
+    expect(await idsFor(superToken)).toContain(orphan.id);
+  });
+
+  it("cannot be widened by a query parameter", async () => {
+    const res = await request(app)
+      .get(`/api/v1/events${WINDOW}&visibility=ALUMNI_ONLY&includeAlumniOnly=true`)
+      .set("authorization", `Bearer ${studentToken}`);
+    expect((res.body.data.events as { id: number }[]).map((e) => e.id)).not.toContain(
+      alumniEventId,
+    );
+  });
+
+  it("windows on (endDate ?? date), so a multi-day event in progress stays (item 5)", async () => {
+    const retreat = await db.jpcEvent.create({
+      data: {
+        title: testEventTitle("retreat"),
+        date: new Date("2099-07-01T00:00:00.000Z"),
+        endDate: new Date("2099-07-05T00:00:00.000Z"),
+        visibility: "ALL",
+      },
+      select: { id: true },
+    });
+    // A window starting after the retreat began but before it ended.
+    const res = await request(app)
+      .get("/api/v1/events?from=2099-07-03T00:00:00.000Z&to=2099-07-10T00:00:00.000Z")
+      .set("authorization", `Bearer ${studentToken}`);
+    expect((res.body.data.events as { id: number }[]).map((e) => e.id)).toContain(retreat.id);
+  });
+
+  it("derives allDay server-side", async () => {
+    const res = await request(app)
+      .get(`/api/v1/events${WINDOW}`)
+      .set("authorization", `Bearer ${superToken}`);
+    const row = (res.body.data.events as { id: number; allDay: boolean }[]).find(
+      (e) => e.id === allEventId,
+    );
+    // Created at 00:00Z, which is 02:00 in Africa/Cairo — NOT all-day.
+    expect(row?.allDay).toBe(false);
+  });
+});
+
+describe("GET /api/v1/events/:id", () => {
+  it("serves the detail v1 has no page for", async () => {
+    const res = await request(app)
+      .get(`/api/v1/events/${allEventId}`)
+      .set("authorization", `Bearer ${studentToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ id: allEventId, canManage: false });
+    expect(res.body.data).toHaveProperty("description");
+  });
+
+  it("applies the same visibility predicate to the row", async () => {
+    const res = await request(app)
+      .get(`/api/v1/events/${alumniEventId}`)
+      .set("authorization", `Bearer ${studentToken}`);
+    // Not 403: a current student must not be able to tell an event they may not
+    // see from one that does not exist.
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
+  const body = {
+    title: "space-v2-test-created",
+    date: "2099-08-01T00:00:00.000Z",
+    endDate: null,
+    allDay: true,
+    description: "space-v2-test description",
+    url: null,
+    visibility: "ALL" as const,
+    seasonId: null,
+  };
+
+  it("creates, normalising an all-day instant to org midnight", async () => {
+    const res = await request(app)
+      .post("/api/v1/events")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ ...body, title: `space-v2-test-${Date.now()}` });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.allDay).toBe(true);
+    // Africa/Cairo midnight on 2099-08-01 is 21:00Z on 2099-07-31 (DST).
+    expect(res.body.data.date).toBe("2099-07-31T21:00:00.000Z");
+    // v1 returns only { success: true } and the client refetches (R39).
+    expect(res.body.data.id).toEqual(expect.any(Number));
+  });
+
+  it("refuses create, update and delete to an ADMIN", async () => {
+    const create = await request(app)
+      .post("/api/v1/events")
+      .set("authorization", `Bearer ${adminToken}`)
+      .send(body);
+    expect(create.status).toBe(403);
+
+    const patch = await request(app)
+      .patch(`/api/v1/events/${allEventId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ title: "space-v2-test-renamed" });
+    expect(patch.status).toBe(403);
+
+    const del = await request(app)
+      .delete(`/api/v1/events/${allEventId}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(del.status).toBe(403);
+  });
+
+  it("accepts a partial update and re-refines against the merged row", async () => {
+    const target = await db.jpcEvent.create({
+      data: {
+        title: testEventTitle("patchable"),
+        date: new Date("2099-09-01T00:00:00.000Z"),
+        visibility: "ALL",
+      },
+      select: { id: true },
+    });
+
+    // v1 reuses the create schema for update, so a partial is impossible.
+    const ok = await request(app)
+      .patch(`/api/v1/events/${target.id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ description: "space-v2-test-updated" });
+    expect(ok.status).toBe(200);
+    expect(ok.body.data.title).toContain("space-v2-test-");
+
+    // SEASON without a season, where the season would have to come from the
+    // stored row — and does not.
+    const bad = await request(app)
+      .patch(`/api/v1/events/${target.id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ visibility: "SEASON" });
+    expect(bad.status).toBe(400);
+  });
+
+  it("detaches the season when visibility leaves SEASON (v1 R13)", async () => {
+    const target = await db.jpcEvent.create({
+      data: {
+        title: testEventTitle("detach"),
+        date: new Date("2099-09-02T00:00:00.000Z"),
+        visibility: "SEASON",
+        seasonId,
+      },
+      select: { id: true },
+    });
+    await request(app)
+      .patch(`/api/v1/events/${target.id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ visibility: "ALL" });
+
+    const row = await db.jpcEvent.findUnique({
+      where: { id: target.id },
+      select: { seasonId: true },
+    });
+    expect(row?.seasonId).toBeNull();
+  });
+
+  it("404s a stale id instead of throwing a raw Prisma error (spec 15 item 11)", async () => {
+    // v1's delete does not read the row first, so P2025 reaches the client as
+    // an unhandled server-action error (R36).
+    const del = await request(app)
+      .delete("/api/v1/events/987654321")
+      .set("authorization", `Bearer ${superToken}`);
+    expect(del.status).toBe(404);
+    expect(del.body.error.code).toBe("not_found");
+  });
+
+  it("deletes for real — there is no soft delete on this model", async () => {
+    const doomed = await db.jpcEvent.create({
+      data: {
+        title: testEventTitle("doomed"),
+        date: new Date("2099-09-03T00:00:00.000Z"),
+        visibility: "ALL",
+      },
+      select: { id: true },
+    });
+    const res = await request(app)
+      .delete(`/api/v1/events/${doomed.id}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ deleted: true });
+    expect(await db.jpcEvent.count({ where: { id: doomed.id } })).toBe(0);
+  });
+});
+```
+
+Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern events-routes` → FAIL.
+
+- [ ] **Step 4: The query module**
+
+```ts
+// apps/backend/src/lib/queries/events.ts
+import { db } from "../../db/client";
+import type { Prisma } from "../../generated/prisma/client";
+import type { SessionUser } from "../auth/tokens";
+import { isAdminOfSeason, isAlumnus, isLeaderOfGroup, isSuper } from "../rbac";
+
+/**
+ * The seasons a viewer may see SEASON-scoped events for.
+ *
+ * Ported from v1's `viewerSeasonIds`, with ruling C7 applied: v1 reads
+ * `user.seasonAdminIds` and `user.groupLeaderIds` straight off the token, and
+ * those arrays are grants rather than identity — `loadScopes` fills them from
+ * join tables with no role filter, so a row naming a student is reachable.
+ * Every claim here is paired with the role that can legitimately hold it.
+ */
+export async function viewerSeasonIds(user: SessionUser): Promise<number[] | "all"> {
+  if (isSuper(user)) return "all";
+  const ids = new Set<number>();
+  if (user.role === "STUDENT" && user.activeSeasonId) ids.add(user.activeSeasonId);
+  for (const seasonId of user.seasonAdminIds) {
+    if (isAdminOfSeason(user, seasonId)) ids.add(seasonId);
+  }
+  if (user.role === "LEADER" && user.groupLeaderIds.length > 0) {
+    const groups = await db.group.findMany({
+      where: { id: { in: user.groupLeaderIds } },
+      select: { id: true, seasonId: true },
+    });
+    for (const g of groups) {
+      if (isLeaderOfGroup(user, g.id)) ids.add(g.seasonId);
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * The one visibility formula.
+ *
+ * v1 has two, at six call sites: four calendar pages pass a hardcoded literal
+ * and `UpcomingEventsCard` computes `user.role !== "STUDENT"` — which is false
+ * for an alumnus, because an alumnus is role STUDENT with a graduationYear. So
+ * in shipped v1, ALUMNI_ONLY means "visible to staff, hidden from alumni", the
+ * exact inverse of its name, on the only two surfaces alumni have (spec 15
+ * R44/R45, §10 item 2). Deriving it here, from the token, means there is one
+ * answer and no caller can widen it.
+ *
+ * SUPER is unfiltered so the manager list can show orphans and archived-season
+ * events. Everyone else gets `season: { deletedAt: null }` on the SEASON branch
+ * (item 4 — a soft-deleted season's events are a bug in any reading), which
+ * also hides an R54 orphan, since a null relation cannot satisfy a relation
+ * filter.
+ */
+export async function eventVisibilityFilter(
+  user: SessionUser,
+): Promise<Prisma.JpcEventWhereInput> {
+  if (isSuper(user)) return {};
+
+  const branches: Prisma.JpcEventWhereInput[] = [{ visibility: "ALL" }];
+  if (isAlumnus(user) || user.role !== "STUDENT") {
+    branches.push({ visibility: "ALUMNI_ONLY" });
+  }
+
+  const seasonIds = await viewerSeasonIds(user);
+  if (seasonIds !== "all" && seasonIds.length > 0) {
+    branches.push({
+      visibility: "SEASON",
+      seasonId: { in: seasonIds },
+      season: { deletedAt: null },
+    });
+  }
+  return { OR: branches };
+}
+
+/**
+ * The window, on `(endDate ?? date)`.
+ *
+ * v1 has two different windows for the same rows — the agenda filters on `date`
+ * while the dashboard card filters on `(endDate ?? date)` — so a five-day
+ * retreat vanishes from the calendar on day two while the card two screens away
+ * still shows it (spec 15 R66, §10 item 5). One rule, applied here, used by
+ * every surface. Prisma cannot express COALESCE in a filter, so the null case
+ * is spelled out.
+ */
+export function eventWindowFilter(from: Date, to: Date): Prisma.JpcEventWhereInput {
+  return {
+    AND: [
+      { date: { lte: to } },
+      { OR: [{ endDate: { gte: from } }, { endDate: null, date: { gte: from } }] },
+    ],
+  };
+}
+```
+
+- [ ] **Step 5: The five routes**
+
+A shared mapper above them turns a row into the list or detail shape — the one
+place `allDay` is derived and the one place `imagePath` is *not* selected:
+
+```ts
+const LIST_SELECT = {
+  id: true,
+  title: true,
+  date: true,
+  endDate: true,
+  url: true,
+  visibility: true,
+  seasonId: true,
+  season: { select: { code: true, title: true } },
+} as const;
+
+// `imagePath` is deliberately absent from every select in this file. Uploads are
+// off (ENABLE_UPLOADS defaults false) and v1 serves event photos through
+// /api/uploads/[...path], which gates on nothing but "is logged in" — so any
+// authenticated user who guesses a key can fetch a photo attached to an event
+// they cannot see (spec 15 R32). The storage key never crosses this wire.
+```
+
+- **`GET /`** — parse `eventListQuerySchema`; default the window to
+  `[now − 30d, now + 365d]` when either bound is absent (spec 15 item 10: v1
+  returns every event ever created on every calendar render, for every role);
+  `where: { AND: [await eventVisibilityFilter(user), eventWindowFilter(from, to)] }`;
+  `orderBy: { date: "asc" }`; map to list items with
+  `allDay: isOrgMidnight(row.date)`; respond `{ events }`.
+- **`GET /:id`** — `parseId`; `findFirst({ where: { AND: [{ id }, await eventVisibilityFilter(user)] } })`;
+  missing → **404, not 403**, so a caller cannot distinguish an event they may
+  not see from one that does not exist; add `description`, `seasonTitle` and
+  `canManage: isSuper(user)`.
+- **`POST /`** — `if (!isSuper(user)) return apiError(res, "forbidden", …, 403)`
+  **first**, then parse. v1 enforces this inside the action rather than by page
+  placement, which is one of the few places it gets the shape right (R3) — but
+  it `throw`s a bare `Error("Forbidden")` that the client's error branch never
+  sees (R2), so the envelope is the fix. Normalise:
+
+```ts
+  const date = body.allDay ? startOfDayInOrgTime(new Date(body.date)) : new Date(body.date);
+  const endDate = body.endDate
+    ? body.allDay
+      ? startOfDayInOrgTime(new Date(body.endDate))
+      : new Date(body.endDate)
+    : null;
+  // v1 force-nulls the season whenever visibility is not SEASON (R13); kept,
+  // because a detached seasonId on an ALL event is unreachable data.
+  const seasonId = body.visibility === "SEASON" ? body.seasonId : null;
+```
+
+  Create with `createdById: user.userId` and respond with the **detail shape**,
+  201 — v1 returns `{ success: true }` and makes the client refetch (R39).
+- **`PATCH /:id`** — SUPER gate; `findUnique` → 404; parse with
+  `updateJpcEventRequestSchema`; **merge the patch onto the stored row and
+  re-run both refinements against the merged values** (`endDate >= date`, and
+  `visibility === "SEASON" → seasonId != null`) → 400 `bad_request` on failure.
+  Apply the same all-day normalisation and the same season force-null. Respond
+  with the detail shape. `createdById` is untouched: it means "who first
+  authored this", and there is no `updatedById` column to add under C1
+  (spec 15 R34).
+- **`DELETE /:id`** — SUPER gate; `findUnique` → 404 (v1 does not read first, so
+  a stale id throws `P2025` at the client — R36); hard `delete`; respond
+  `{ deleted: true }`. Hard because there is no `deletedAt` on this model and
+  adding one is a migration; note in the OpenAPI description that a deleted
+  event is unrecoverable, and that its stored photo (if any) is left behind
+  exactly as v1 leaves it — the blob lifecycle belongs with the CMS work.
+
+- [ ] **Step 6:** Run the suite → PASS; turbo trio → clean.
+
+- [ ] **Step 7: OpenAPI, same commit** — the five paths plus `JpcEventListItem`,
+`JpcEventDetail`, `CreateJpcEventRequest` and `UpdateJpcEventRequest`. Say that
+visibility is derived from the token and cannot be widened by a parameter; that
+the window is `(endDate ?? date)` and defaults when omitted; that `allDay` is
+server-derived against the organisation timezone; and that the photo endpoints
+are deliberately absent while uploads are disabled.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/backend && git commit -m "feat(backend): JPC events with one token-derived visibility rule and a bounded window"
+```
+
+---
+
+### Task 10: Events — the manager, the detail v1 never had, and the calendar merge
+
+**Files:**
+- Create: `apps/mobile/src/hooks/use-events.ts`
+- Create: `apps/mobile/app/(app)/event/[id].tsx`
+- Modify: `apps/mobile/app/(app)/events.tsx` (replace the placeholder)
+- Modify: `apps/mobile/app/(app)/calendar.tsx` (Plan 4's screen gains events)
+- Modify: `apps/mobile/app/(app)/_layout.tsx` (`DETAIL_ROUTE_NAMES` gains `"event/[id]"`)
+- Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx` (drop `events`)
+- Modify: `apps/mobile/src/__tests__/app-layout.test.tsx` (the new detail route)
+- Test: `apps/mobile/src/__tests__/events-screen.test.tsx`
+- Test: extend `apps/mobile/src/__tests__/calendar-screen.test.tsx` (Plan 4's file)
+
+**Interfaces:**
+- Consumes: `queryKeys.events` (Task 2); `jpcEventListItemSchema`, `jpcEventDetailSchema` (Task 1); Task 9's endpoints; Plan 4's `calendar.tsx` day-grouping; `DETAIL_ROUTE_NAMES` (Plan 1).
+- Produces: `useEvents()`, `useEventDetail(id)`, `useCreateEvent()`, `useUpdateEvent(id)`, `useDeleteEvent()`; the route `/event/[id]`.
+
+- [ ] **Step 1: Register the detail route**
+
+Extend the `DETAIL_ROUTE_NAMES` assertion in `app-layout.test.tsx` with
+`"event/[id]"`; run → FAIL; create
+`apps/mobile/app/(app)/event/[id].tsx` (Step 4 fills it — a stub of Plan 1
+Task 2's exact shape is enough here), append `"event/[id]"` to the const, run
+`pnpm turbo routes:generate --filter=@space/mobile`, run → PASS.
+
+- [ ] **Step 2: Write the failing tests**
+
+```tsx
+// apps/mobile/src/__tests__/events-screen.test.tsx
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+
+jest.mock("../lib/api-client", () => ({
+  apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+}));
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush, back: jest.fn() }),
+  useLocalSearchParams: () => ({ id: "3" }),
+}));
+
+import { apiClient } from "../lib/api-client";
+import { useSessionStore } from "../store/session";
+import { renderWithProviders } from "./helpers/render";
+
+import EventsScreen from "../../app/(app)/events";
+import EventDetailScreen from "../../app/(app)/event/[id]";
+
+const get = apiClient.get as jest.Mock;
+const post = apiClient.post as jest.Mock;
+
+const listRow = {
+  id: 3,
+  title: "Summer retreat",
+  date: "2099-07-01T00:00:00.000Z",
+  endDate: "2099-07-05T00:00:00.000Z",
+  allDay: true,
+  url: null,
+  visibility: "ALL" as const,
+  seasonId: null,
+  seasonCode: null,
+};
+
+const detailRow = {
+  ...listRow,
+  description: "Five days away.",
+  seasonTitle: null,
+  canManage: true,
+};
+
+const superSession = {
+  user: { id: 1, name: "Su", email: "su@jpc.test", role: "SUPER" as const },
+  scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
+};
+
+const alumnusSession = {
+  user: { id: 8, name: "Al", email: "al@jpc.test", role: "STUDENT" as const },
+  scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: 2098 },
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  useSessionStore.setState(useSessionStore.getInitialState(), true);
+  get.mockResolvedValue({ data: { data: { events: [listRow] } } });
+});
+
+describe("events screen", () => {
+  it("shows SUPER the manager with a create form", async () => {
+    useSessionStore.setState(superSession);
+    post.mockResolvedValue({ data: { data: detailRow } });
+
+    renderWithProviders(<EventsScreen />);
+
+    expect(await screen.findByText("Summer retreat")).toBeTruthy();
+    fireEvent.press(screen.getByText("New event"));
+    fireEvent.changeText(screen.getByLabelText("Title"), "Graduation");
+    fireEvent.changeText(screen.getByLabelText("Date"), "2099-09-01");
+    fireEvent.press(screen.getByText("Create event"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/events", {
+        title: "Graduation",
+        date: "2099-09-01T00:00:00.000Z",
+        endDate: null,
+        allDay: true,
+        description: null,
+        url: null,
+        visibility: "ALL",
+        seasonId: null,
+      }),
+    );
+  });
+
+  it("shows a non-SUPER role the same list with no write controls", async () => {
+    // Deep-linking here must not crash: /events is SUPER's sidebar entry, and
+    // ALUMNI's "Events" points at /calendar (packages/shared/src/navigation.ts).
+    useSessionStore.setState(alumnusSession);
+
+    renderWithProviders(<EventsScreen />);
+
+    expect(await screen.findByText("Summer retreat")).toBeTruthy();
+    expect(screen.queryByText("New event")).toBeNull();
+  });
+
+  it("renders an empty state rather than nothing (spec 15 R75)", async () => {
+    useSessionStore.setState(alumnusSession);
+    get.mockResolvedValue({ data: { data: { events: [] } } });
+
+    renderWithProviders(<EventsScreen />);
+    expect(await screen.findByText("No upcoming events")).toBeTruthy();
+  });
+
+  it("navigates to the detail v1 has no page for", async () => {
+    useSessionStore.setState(alumnusSession);
+    renderWithProviders(<EventsScreen />);
+    fireEvent.press(await screen.findByText("Summer retreat"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "3" } });
+  });
+});
+
+describe("event detail screen", () => {
+  it("shows the description and the date range", async () => {
+    useSessionStore.setState(alumnusSession);
+    get.mockResolvedValue({ data: { data: detailRow } });
+
+    renderWithProviders(<EventDetailScreen />);
+
+    expect(await screen.findByText("Five days away.")).toBeTruthy();
+    // All-day, so no time is rendered — the boolean comes from the server.
+    expect(screen.getByText("Jul 1, 2099 – Jul 5, 2099")).toBeTruthy();
+    expect(screen.queryByText("Delete event")).toBeNull();
+  });
+
+  it("offers edit and delete to SUPER only", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue({ data: { data: detailRow } });
+
+    renderWithProviders(<EventDetailScreen />);
+    expect(await screen.findByText("Delete event")).toBeTruthy();
+  });
+});
+```
+
+And, appended to Plan 4's `calendar-screen.test.tsx`:
+
+```tsx
+it("interleaves JPC events with sessions in the same day buckets", async () => {
+  useSessionStore.setState({
+    user: { id: 9, name: "S", email: "s@jpc.test", role: "STUDENT" },
+    scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
+  });
+  get.mockImplementation((url: string) =>
+    url.startsWith("/api/v1/events")
+      ? Promise.resolve({
+          data: {
+            data: {
+              events: [
+                {
+                  id: 3,
+                  title: "Summer retreat",
+                  date: "2099-03-01T09:00:00.000Z",
+                  endDate: null,
+                  allDay: false,
+                  url: null,
+                  visibility: "ALL",
+                  seasonId: null,
+                  seasonCode: null,
+                },
+              ],
+            },
+          },
+        })
+      : Promise.resolve({
+          data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z")] } },
+        }),
+  );
+
+  renderWithProviders(<CalendarScreen />);
+
+  // One day header, both entries under it, event first (09:00 before 18:00).
+  expect(await screen.findByText("Summer retreat")).toBeTruthy();
+  expect(screen.getByText("Kickoff")).toBeTruthy();
+  expect(screen.getAllByText("Mar 1, 2099")).toHaveLength(1);
+});
+
+it("still renders the calendar when the events request fails", async () => {
+  // Two independent queries on one screen: an events outage must not take the
+  // session calendar down with it.
+  useSessionStore.setState({
+    user: { id: 9, name: "S", email: "s@jpc.test", role: "STUDENT" },
+    scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
+  });
+  get.mockImplementation((url: string) =>
+    url.startsWith("/api/v1/events")
+      ? Promise.reject(new Error("boom"))
+      : Promise.resolve({
+          data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z")] } },
+        }),
+  );
+
+  renderWithProviders(<CalendarScreen />);
+  expect(await screen.findByText("Kickoff")).toBeTruthy();
+});
+```
+
+Run both suites → FAIL.
+
+- [ ] **Step 3: The hooks**
+
+```ts
+// apps/mobile/src/hooks/use-events.ts
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+import { z } from "zod";
+import {
+  jpcEventDetailSchema,
+  jpcEventListItemSchema,
+  type CreateJpcEventBody,
+  type JpcEventDetail,
+  type JpcEventListItem,
+  type UpdateJpcEventBody,
+} from "@space/shared";
+
+import { apiClient } from "../lib/api-client";
+import { queryKeys } from "../lib/query-keys";
+
+const eventListSchema = z.array(jpcEventListItemSchema);
+
+/**
+ * No `from`/`to` from the client.
+ *
+ * The server defaults the window to [now − 30d, now + 365d]. Deriving calendar
+ * bounds on the device would put a wall-clock decision on the wrong side of
+ * ruling C2, and v1's unbounded read (every event ever created, on every
+ * calendar render) is what the window exists to stop.
+ */
+export function useEvents(): UseQueryResult<JpcEventListItem[]> {
+  return useQuery({
+    queryKey: queryKeys.events.list(),
+    queryFn: async () => {
+      const res = await apiClient.get("/api/v1/events");
+      return eventListSchema.parse(res.data.data.events);
+    },
+  });
+}
+
+export function useEventDetail(id: number | null): UseQueryResult<JpcEventDetail> {
+  return useQuery({
+    queryKey: queryKeys.events.detail(id ?? -1),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/events/${id}`);
+      return jpcEventDetailSchema.parse(res.data.data);
+    },
+    enabled: id !== null,
+  });
+}
+
+/**
+ * Every write invalidates the whole events subtree, which is what the calendar
+ * reads too. v1 revalidates five hardcoded paths and misses /alumni/calendar
+ * and all six dashboards (spec 15 R38) — a prefix invalidation cannot have that
+ * class of omission.
+ */
+function useInvalidateEvents() {
+  const queryClient = useQueryClient();
+  return (): void => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+  };
+}
+
+export function useCreateEvent() {
+  const invalidate = useInvalidateEvents();
+  return useMutation({
+    mutationFn: async (body: CreateJpcEventBody) => {
+      const res = await apiClient.post("/api/v1/events", body);
+      return jpcEventDetailSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateEvent(id: number) {
+  const invalidate = useInvalidateEvents();
+  return useMutation({
+    mutationFn: async (body: UpdateJpcEventBody) => {
+      const res = await apiClient.patch(`/api/v1/events/${id}`, body);
+      return jpcEventDetailSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteEvent() {
+  const invalidate = useInvalidateEvents();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiClient.delete(`/api/v1/events/${id}`);
+      return res.data.data as { deleted: true };
+    },
+    onSuccess: invalidate,
+  });
+}
+```
+
+- [ ] **Step 4: The two screens**
+
+**`events.tsx`** — one route, role branches inside, exactly as `/calendar` does:
+- `useEvents()` → `LoadingState` / `ErrorState` (`onRetry` → `refetch`) /
+  a list of pressable `Card`s pushing `/event/[id]`. Each card: title, the date
+  label (`formatDate(date)`, or `formatDate(date) + " – " + formatDate(endDate)`
+  when `endDate` is set, plus `formatSessionTime(date)` **only when
+  `!allDay`** — the boolean comes from the server and the client never tests
+  hours itself), and a visibility badge. A `SEASON` event is badged with its
+  `seasonCode`; v1 styles `SEASON` identically to `ALL`, so nothing on its
+  calendar distinguishes an organisation-wide event from a season-scoped one
+  (spec 15 R68, item 12).
+- Empty → `EmptyState` "No upcoming events" / "Nothing is scheduled in the next
+  year." v1's card renders *nothing at all* in this case, so an alumnus with no
+  upcoming events sees a heading and blank space (R75).
+- SUPER additionally gets a "New event" collapsible form at the top: `Input`s
+  for **Title**, **Date** (`YYYY-MM-DD`), **Time** (optional `HH:mm`), **End
+  date** (optional), **Description**, **Link**, and a visibility selector; when
+  `SEASON` is chosen, a season picker appears (`useSeasons()` from Plan 4).
+  **The instant is composed here, on the client** (spec 15 item 7): an empty
+  time means all-day, and the body carries a full ISO instant plus
+  `allDay: true`. v1 posts four naive strings and lets the *server* resolve them
+  in its own zone, which is why editing an event from another timezone silently
+  moves it (R15/R20/R82).
+- Non-SUPER roles reaching `/events` by deep link get the same read-only list —
+  never a crash and never a "not available" wall, because ALUMNI's nav labels
+  `/calendar` "Events" and a mis-tap is likely.
+
+**`event/[id].tsx`** — `useEventDetail(Number(id))`: title, the date label,
+`description`, `seasonTitle` when present, and an "Open link" `Button` calling
+`Linking.openURL(url)` when `url` is set. When `canManage`, an inline "Edit"
+section PATCHing the same fields as the create form (partial — the endpoint
+accepts one), and a "Delete event" button with the two-press confirm. This
+screen is the reason `description` and the season stop being write-only data:
+v1 has no event detail page anywhere (R70).
+
+- [ ] **Step 5: The calendar merge**
+
+In Plan 4's `calendar.tsx`, add `const events = useEvents();` beside the
+existing sessions query and build one day-bucketed list from both arrays:
+
+```tsx
+  // Two queries, interleaved on the client — exactly what v1's calendar pages
+  // do (season-calendar.tsx merges a session list and an event list). A single
+  // /api/v1/calendar endpoint is the tidier shape and is deliberately deferred:
+  // the sessions half already has a home and a season-scope derivation, and
+  // moving it would re-home Plan 4's work for one fewer request.
+  //
+  // The events query is NOT allowed to fail the screen: its error is swallowed
+  // into an empty array, because a calendar with no JPC events is still a
+  // calendar and a calendar with no sessions is not.
+  const eventRows = events.data ?? [];
+```
+
+Bucket by `formatDate(startsAt)` / `formatDate(date)` — the same key the
+sessions already use — and sort within a day by the underlying instant so an
+event at 09:00 precedes a session at 18:00. Render an event row with a distinct
+icon and the subtitle "JPC event"; press pushes `/event/[id]`. Sessions keep
+pushing `/session/[id]`. The empty state appears only when **both** arrays are
+empty (v1 R71, kept).
+
+- [ ] **Step 6:** Drop `events` from `placeholder-screens.test.tsx`. Run
+`cd apps/mobile && pnpm jest` → PASS; `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/mobile && git commit -m "feat(mobile): JPC events manager, event detail and calendar merge"
+```
+
+---
+
+### Task 11: Closing gate (coordinator)
+
+- [ ] **Step 1: Everything green.**
+`pnpm turbo lint typecheck test:unit build` → green, then the full serial
+integration run:
+`cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern integration` → green.
+Record the suite and case counts.
+
+- [ ] **Step 2: Mutation pass.** One at a time; restore after each. The named
+suite **must** fail each time — a mutation that passes means the test is not
+testing what it claims.
+
+  1. **Video, the answer key.** In `lib/queries/video-quiz.ts`, add
+     `correctIndex: true` to the student question select and pass it through in
+     the route. → `video-quiz-routes`'s "never sends the answer key to a
+     student" fails on the `JSON.stringify` assertion **and** on the exact-keys
+     assertion; on mobile, `studentVideoQuizSchema`'s `.strict()` makes
+     `video-quiz-screen` fail too. Both must break.
+  2. **Video, the gate.** Remove the `nextQuestionId !== question.id` check from
+     the answer handler. → "REFUSES an answer out of order" fails. This is
+     decision D-13.2; if this mutation passes, the plan's headline claim is
+     false.
+  3. **Video, monotonicity.** Change the answer handler's
+     `Math.max(current, atSeconds)` to `atSeconds`. → nothing in the suite
+     fails as written; **add a case first** that answers q1 after q2 has moved
+     `furthestSeconds` to 60 (via the progress PUT) and asserts it stays 60,
+     then run the mutation. Fix the gap before the mutation, not after.
+  4. **Forum, targeting.** Delete the `forumAudienceFor` call from
+     `PUT /assignments/:id/forum/response`. → "REFUSES an assignment the student
+     is not targeted by" fails. This is the roadmap's own done-criterion
+     inverted, and the domain's most likely silent regression.
+  5. **Forum, the draft privacy rule.** Remove `NOT: { text: null }` **or**
+     `status: { not: "DRAFT" }` from the peer query. → "never exposes an
+     unposted peer's draft text" fails.
+  6. **Forum, delete rights.** Make `canDelete` on the wire
+     `c.authorUserId === user.userId` instead of the gate's answer. → "lets
+     staff delete a comment they did not write — and tells the client so" fails
+     on the `canDelete` assertion.
+  7. **Events, the write gate.** Remove `isSuper(user)` from `POST /events`. →
+     "refuses create, update and delete to an ADMIN" fails.
+  8. **Events, the alumni rule.** Change `isAlumnus(user) || user.role !== "STUDENT"`
+     to v1's `user.role !== "STUDENT"`. → "shows ALUMNI_ONLY events TO ALUMNI"
+     fails. This is spec 15's headline defect; the test exists so the port
+     cannot quietly reintroduce it.
+
+- [ ] **Step 3: Emit check.** `grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/routes/`
+→ empty. The three new route files import shared by relative path; a bare
+specifier here crashes the built server with `ERR_MODULE_NOT_FOUND`.
+
+- [ ] **Step 4: Fixture-leak check.** After the full integration run, against
+staging:
+
+```
+SELECT count(*) FROM "JpcEvent" WHERE title LIKE 'space-v2-test-%';
+```
+
+must be 0. `JpcEvent.season` is `SetNull`, so before Task 2 nothing in the
+cleanup could reach these rows. Run the same check for
+`SessionVideoQuestion`/`ForumComment` joined to a `space-v2-test-` season.
+**Read-only queries only — never run a migration or a destructive statement
+against staging.**
+
+- [ ] **Step 5: Device checklist** (a dev-client build, not Expo Go — the
+webview needs one):
+  1. As a student, open a session with a YouTube recording: the player loads,
+     playback stops at the first question, the modal cannot be dismissed by the
+     Android back button or an iOS swipe, answering resumes playback, and the
+     score card updates.
+  2. Kill the app mid-video and reopen: playback resumes near where it stopped.
+  3. As an admin on the same session: add a question at a timestamp typed as
+     `2:30`, see it in the list, change its correct answer and read the
+     "N recorded answers were re-graded" line, then check the results table
+     shows the student's score.
+  4. As a student, open a **forum** assignment never opened before: the compose
+     box and the locked feed render, posting unlocks the feed, and a group-mate
+     on a second device sees the post and can comment. Confirm no email address
+     appears anywhere on the screen.
+  5. As that group's leader: the thread is readable, a comment can be removed,
+     and the "removing a whole response isn't supported yet" line is visible.
+  6. As SUPER: create a JPC event, see it on `/events`, open its detail, and
+     find it on `/calendar` interleaved with that day's sessions. As a student
+     on a second device, confirm an `ALUMNI_ONLY` event is **not** visible and
+     an `ALL` event is.
+
+- [ ] **Step 6: Report.** Suite and case counts, the eight mutation outcomes,
+the fixture-leak query results, the device checklist, and every divergence from
+this plan. Call out explicitly, for the product owner:
+  - **the forum moderation gap** (D-14.4): staff can now read threads and remove
+    comments, but there is still no way to hide a post and no student report
+    action — both need schema (`hiddenAt`, a report row, a forum
+    `NotificationType` value) and are **cutover tasks**;
+  - **watch time is advisory** (D-13.2): the ordering rule is real, "did they
+    watch it" is not and cannot be;
+  - **the `ALUMNI_ONLY` behaviour change** (D-15.2): alumni now see events that
+    v1 hid from them — the enum's UI label must be checked against the new
+    meaning;
+  - **deferred to cutover, with the column each needs:** a persisted video-quiz
+    score (`pointsAwarded` on the response, or a grade row) so results can reach
+    a gradebook, engagement or an export; a video duration column so a
+    mistyped timestamp cannot deadlock a quiz; `hiddenAt` on `Submission` for
+    forum post moderation; a forum `NotificationType` member for
+    "someone commented on your response"; `updatedById` on `SessionVideoQuestion`
+    so an answer-key edit is attributable.
