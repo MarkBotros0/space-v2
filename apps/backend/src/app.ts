@@ -25,7 +25,16 @@ export function createApp(): Express {
   app.set("trust proxy", config.trustProxy);
 
   app.use(helmet());
-  app.use(cors({ origin: config.mobileAppOrigin, methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"] }));
+  // PUT belongs here: PUT /api/v1/submissions/by-assignment/:assignmentId is
+  // the idempotent create-or-fetch a student's submission screen calls. It was
+  // added to the router without this list being updated, so a browser client
+  // would have had its preflight refused for an endpoint that exists.
+  app.use(
+    cors({
+      origin: config.mobileAppOrigin,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    }),
+  );
   app.use(express.json());
   if (config.nodeEnv !== "test") {
     app.use(morgan("dev"));

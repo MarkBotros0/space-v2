@@ -24,3 +24,23 @@ describe("error handling", () => {
     });
   });
 });
+
+describe("CORS", () => {
+  // The allowlist and the router drifted once already: PUT
+  // /submissions/by-assignment/:assignmentId shipped while the list still read
+  // GET/POST/PATCH/DELETE/OPTIONS, so a browser client's preflight was refused
+  // for an endpoint that existed. Deriving the list from the router is more
+  // machinery than it is worth; asserting every verb the API actually uses is
+  // enough to catch the next omission.
+  it.each(["GET", "POST", "PUT", "PATCH", "DELETE"])(
+    "allows %s through the preflight",
+    async (method) => {
+      const res = await request(createApp())
+        .options("/api/v1/health")
+        .set("Origin", "http://localhost:8081")
+        .set("Access-Control-Request-Method", method);
+
+      expect(res.headers["access-control-allow-methods"]).toContain(method);
+    },
+  );
+});

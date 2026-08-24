@@ -344,7 +344,13 @@ submissionsRouter.post("/:publicId/review", async (req, res) => {
 
   const sub = await db.submission.findUnique({
     where: { publicId: publicId ?? "" },
-    select: { id: true, status: true, studentUserId: true, assignment: { select: { title: true } } },
+    select: {
+      id: true,
+      status: true,
+      studentUserId: true,
+      assignmentId: true,
+      assignment: { select: { title: true } },
+    },
   });
   if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
 
@@ -382,7 +388,10 @@ submissionsRouter.post("/:publicId/review", async (req, res) => {
       title: parsed.data.returnForRevision
         ? `${sub.assignment.title} was returned for revision`
         : `${sub.assignment.title} was reviewed`,
-      link: `/student/assignments`,
+      // The assignment, not the list. A notification whose link cannot reach
+      // the thing it is about is a notification the recipient has to go and
+      // find manually.
+      link: `/student/assignments/${sub.assignmentId}`,
     });
   } catch {
     // Swallowed deliberately; see above.
