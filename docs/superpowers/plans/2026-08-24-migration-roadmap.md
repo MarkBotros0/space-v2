@@ -9,6 +9,30 @@ State when this was written (main `371404d`): 32 endpoints live (19 read,
 23 mobile route files are placeholders; no dynamic route exists; all 17 domain
 specs and the 12 cross-cutting rulings (`_DECISIONS.md`) are in place.
 
+**All thirteen plans are now written.** No execution has begun. The sections
+below are the scope statements they were written against; the files are the
+instructions.
+
+| # | Plan | File |
+|---|------|------|
+| 1 | Student path on a device | `2026-08-24-plan-01-student-path.md` |
+| 2 | Leader path on a device | `2026-08-24-plan-02-leader-path.md` |
+| 3 | Season & session writes | `2026-08-24-plan-03-season-session-writes.md` |
+| 4 | Admin core screens | `2026-08-24-plan-04-admin-core-screens.md` |
+| 5 | Students & enrollment | `2026-08-24-plan-05-students-enrollment.md` |
+| 6 | Quizzes | `2026-08-24-plan-06-quizzes.md` |
+| 7 | Invites, users & settings | `2026-08-24-plan-07-invites-users-settings.md` |
+| 8 | Notes & engagement | `2026-08-24-plan-08-notes-engagement.md` |
+| 9 | Notifications & push | `2026-08-24-plan-09-notifications-push.md` |
+| 10 | Video quizzes, forum, events | `2026-08-24-plan-10-video-forum-events.md` |
+| 11 | Reports & exports | `2026-08-24-plan-11-reports-exports.md` |
+| 12 | Imports | `2026-08-24-plan-12-imports.md` |
+| 13 | Cutover | `2026-08-24-plan-13-cutover.md` |
+
+Ordering is by dependency, and two of them are hard rather than advisory:
+Plan 11 cannot start before Plans 4 and 8, and Plan 12 cannot start before
+Plans 5 and 7. Each file states its own dependencies at the top.
+
 ## How subagents are used in every plan
 
 Constraints learned the hard way, restated once so each plan doesn't:
