@@ -1,36 +1,36 @@
-# Plan 18 — Role Dashboards Implementation Plan
+# Plan 16 — Role Dashboards Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Every role's Home tab (`/dashboard`) shows that role's v1 dashboard, rebuilt on numbers the server computes once: SUPER sees organisation tiles, ADMIN and LEADER see a season (or their groups) at a glance, MENTOR sees the at-risk list and a real activity feed, STUDENT sees progress, budget, streak and what is due, ALUMNI sees a greeting and their history link. All six show the upcoming-events card.
 
-**Architecture:** One new read, `GET /api/v1/me/dashboard`, returns a discriminated union on `variant` (`STUDENT`, `SEASON_STAFF`, `MENTOR`) for the figures no existing endpoint serves (spec 19 §7, D1). It is assembled by **calling** the server functions earlier plans define — `computeEngagementForSeasons` (Plan 8 → 11), `isAtRisk` (Plan 8), `visibleStudentIdsForQuiz` (Plan 6), the submission-queue scope (extracted here from `routes/submissions.ts`), `listAssignmentsForStudent`'s query plus `isLate`/`isOverdue` (`lib/queries/assignments.ts`), `isAssignmentOutstanding` (Plan 1), `orgDayKey`/`orgWallTime` (Plans 4/15) — never re-deriving them (ruling C4). Everything else is composed on the device from endpoints that already exist: `GET /reports/organisation` (Plan 11, SUPER tiles), `GET /reports/engagement` (Plan 11, mentor at-risk), `GET /events?upcoming=true&limit=4` (Plan 10, the card on all six), `GET /me/attendance` (Plan 14, budget and streak), `GET /notifications/unread-count` (Plan 9, the bell). On mobile, `app/(app)/dashboard.tsx` becomes a switch over six branch components in `src/components/dashboard/`; the bell (Plan 9) is kept; Plan 1's `AssignmentsSummary` is retired, because its counts now come from the server (spec D15). Mutations that move a dashboard number invalidate `queryKeys.dashboard.all` through one `MutationCache` hook keyed on a `meta` tag (spec §7 "Invalidation", D24).
+**Architecture:** One new read, `GET /api/v1/me/dashboard`, returns a discriminated union on `variant` (`STUDENT`, `SEASON_STAFF`, `MENTOR`) for the figures no existing endpoint serves (spec 19 §7, D1). It is assembled by **calling** the server functions earlier plans define — `computeEngagementForSeasons` (Plan 12 → 11), `isAtRisk` (Plan 12), `visibleStudentIdsForQuiz` (Plan 8), the submission-queue scope (extracted here from `routes/submissions.ts`), `listAssignmentsForStudent`'s query plus `isLate`/`isOverdue` (`lib/queries/assignments.ts`), `isAssignmentOutstanding` (Plan 1), `orgDayKey`/`orgWallTime` (Plans 4/5) — never re-deriving them (ruling C4). Everything else is composed on the device from endpoints that already exist: `GET /reports/organisation` (Plan 15, SUPER tiles), `GET /reports/engagement` (Plan 15, mentor at-risk), `GET /events?upcoming=true&limit=4` (Plan 14, the card on all six), `GET /me/attendance` (Plan 11, budget and streak), `GET /notifications/unread-count` (Plan 13, the bell). On mobile, `app/(app)/dashboard.tsx` becomes a switch over six branch components in `src/components/dashboard/`; the bell (Plan 13) is kept; Plan 1's `AssignmentsSummary` is retired, because its counts now come from the server (spec D15). Mutations that move a dashboard number invalidate `queryKeys.dashboard.all` through one `MutationCache` hook keyed on a `meta` tag (spec §7 "Invalidation", D24).
 
 **Tech Stack:** Express 5 + Prisma 7 (backend), Zod 3 contracts in `packages/shared`, Expo SDK 54 / expo-router 6 (typed routes), React Query 5, Zustand 5, RNTL 13 via `renderWithProviders`, Jest + supertest (integration suite against the shared staging DB, serial).
 
 **Spec:** `docs/superpowers/specs/domains/19-dashboards.md` (whole document; §7 API, §8 contracts, §9 screens, §10 D1–D25 as accepted by ruling **X17**), `docs/superpowers/specs/domains/_DECISIONS.md` (**C2, C3, C4, C5, C6, C7, C8, C9**), the coordinator's rulings X5, X8, X10, X12, X13, X16, X17. v1 reference (read-only): `jpc-space/src/app/{super,admin,leader,mentor,alumni,student}/dashboard/page.tsx`, `jpc-space/src/components/events/upcoming-events-card.tsx`.
 
-**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → 9 → 10 → 11 → **18** → 12 → 13; only plans before this one):
+**Depends on** (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → **16** → 17 → 18; only plans before this one):
 
 | Plan | What this plan consumes (exact names) |
 |---|---|
-| 1 | `isAssignmentOutstanding` (`packages/shared/src/assignment.ts`); `makeSession`/`makeUser`/`makeScopes` (`src/__tests__/helpers/session.ts`); `useSaveSubmission` (`src/hooks/use-submission.ts`); route `/assignment/[id]` (moved to `assignment/[id]/index.tsx` by Plan 15) |
+| 1 | `isAssignmentOutstanding` (`packages/shared/src/assignment.ts`); `makeSession`/`makeUser`/`makeScopes` (`src/__tests__/helpers/session.ts`); `useSaveSubmission` (`src/hooks/use-submission.ts`); route `/assignment/[id]` (moved to `assignment/[id]/index.tsx` by Plan 5) |
 | 2 | `useReviewSubmission` (`src/hooks/use-submission-queue.ts`), `useSaveAttendance` (`src/hooks/use-attendance.ts`); routes `/submission/[publicId]`, `/submissions`, `/groups` |
 | 3 | `lib/org-time.ts`, `config.orgTimezone` (`ORG_TIMEZONE`, default `Africa/Cairo`) |
 | 4 | `useCurrentSeasonId()` (`src/hooks/use-seasons.ts`, X8); `orgDayKey` (`lib/org-time.ts`); `formatDayKey` (`src/lib/format.ts`); `apiErrorMessage` (`src/lib/api-error.ts`); route `/session/[id]` (`session/[id]/index.tsx`) |
-| 5 / 17 | route `/student/[id]` (directory form after Plan 17); `useCreateStudent`, `useGraduateStudent`, `useDeleteStudent`, `useDropEnrollment` (`src/hooks/use-students.ts`) |
-| 6 | `visibleStudentIdsForQuiz(user, seasonId)` (`lib/quiz-scope.ts`), the per-kind graded counter inside `GET /quizzes` (extracted here), `useSubmitAttempt`/`useSaveQuizGrades`/`useGradeEssays`/`useReopenAttempt` (`src/hooks/use-quizzes.ts`), `useCreateQuiz`/`usePublishQuiz` (`src/hooks/use-quiz-authoring.ts`); route `/quizzes` |
-| 8 | `computeEngagementForSeason(s)`, `EngagementCohortOptions` (`lib/queries/engagement.ts`); `engagementRowSchema`, `EngagementRow`, `EngagementScore`, `isAtRisk`, `AT_RISK_PCT` (`packages/shared/src/note.ts`) |
-| 9 | `<NotificationBell />` (`src/components/NotificationBell.tsx`), `useUnreadCount` |
-| 10 | `useUpcomingEvents(limit)`, `queryKeys.events.upcoming(limit)` (`src/hooks/use-events.ts`), `jpcEventListResponseSchema` `{ events, total }`, `JpcEventListItem` (`dayKey`, `endDayKey`, `time`, `url`); route `/event/[id]`; `useSubmitForumResponse` (`src/hooks/use-forum.ts`) |
-| 11 | `computeEngagementForSeasons` (`lib/queries/engagement.ts`), `byScoreThenId` (`lib/queries/reports.ts`, exported here), `useOrganisationReport(enabled)`, `useEngagementReport(seasonId, enabled)` (`src/hooks/use-reports.ts`), `organisationReportSchema`, `engagementSummarySchema`, `EngagementReportRow`; quiz rows in `cleanupTestData` (Plan 11 Task 2) |
-| 14 | `useMyAttendance(seasonId)` (`src/hooks/use-self-service.ts`), `myAttendanceResponseSchema` (`budget.remainingPct`, `streak`); `loadMySeason` (`lib/queries/me.ts`); `useCheckIn` (`src/hooks/use-check-in.ts`); routes `/attendance`, `/history`, `/profile` |
-| 15 | `isoDaySchema`, `wallTimeSchema` (`packages/shared/src/org-time.ts`); `orgWallTime` (`lib/org-time.ts`); `useCreateAssignment`/`useUpdateAssignment`/`useDeleteAssignment` (`src/hooks/use-assignment-writes.ts`) |
-| 16 | `useCreateSession`/`useUpdateSession`/`useDeleteSession` (`src/hooks/use-session-writes.ts`), `useSaveGroupAssignments`/`useDeleteGroup` (`src/hooks/use-group-admin.ts`) |
+| 5 | `isoDaySchema`, `wallTimeSchema` (`packages/shared/src/org-time.ts`); `orgWallTime` (`lib/org-time.ts`); `useCreateAssignment`/`useUpdateAssignment`/`useDeleteAssignment` (`src/hooks/use-assignment-writes.ts`) |
+| 6 | `useCreateSession`/`useUpdateSession`/`useDeleteSession` (`src/hooks/use-session-writes.ts`), `useSaveGroupAssignments`/`useDeleteGroup` (`src/hooks/use-group-admin.ts`) |
+| 7 / 10 | route `/student/[id]` (directory form after Plan 10); `useCreateStudent`, `useGraduateStudent`, `useDeleteStudent`, `useDropEnrollment` (`src/hooks/use-students.ts`) |
+| 8 | `visibleStudentIdsForQuiz(user, seasonId)` (`lib/quiz-scope.ts`), the per-kind graded counter inside `GET /quizzes` (extracted here), `useSubmitAttempt`/`useSaveQuizGrades`/`useGradeEssays`/`useReopenAttempt` (`src/hooks/use-quizzes.ts`), `useCreateQuiz`/`usePublishQuiz` (`src/hooks/use-quiz-authoring.ts`); route `/quizzes` |
+| 11 | `useMyAttendance(seasonId)` (`src/hooks/use-self-service.ts`), `myAttendanceResponseSchema` (`budget.remainingPct`, `streak`); `loadMySeason` (`lib/queries/me.ts`); `useCheckIn` (`src/hooks/use-check-in.ts`); routes `/attendance`, `/history`, `/profile` |
+| 12 | `computeEngagementForSeason(s)`, `EngagementCohortOptions` (`lib/queries/engagement.ts`); `engagementRowSchema`, `EngagementRow`, `EngagementScore`, `isAtRisk`, `AT_RISK_PCT` (`packages/shared/src/note.ts`) |
+| 13 | `<NotificationBell />` (`src/components/NotificationBell.tsx`), `useUnreadCount` |
+| 14 | `useUpcomingEvents(limit)`, `queryKeys.events.upcoming(limit)` (`src/hooks/use-events.ts`), `jpcEventListResponseSchema` `{ events, total }`, `JpcEventListItem` (`dayKey`, `endDayKey`, `time`, `url`); route `/event/[id]`; `useSubmitForumResponse` (`src/hooks/use-forum.ts`) |
+| 15 | `computeEngagementForSeasons` (`lib/queries/engagement.ts`), `byScoreThenId` (`lib/queries/reports.ts`, exported here), `useOrganisationReport(enabled)`, `useEngagementReport(seasonId, enabled)` (`src/hooks/use-reports.ts`), `organisationReportSchema`, `engagementSummarySchema`, `EngagementReportRow`; quiz rows in `cleanupTestData` (Plan 15 Task 2) |
 
 If any of these is missing when this plan starts, **stop** — do not stub it and do not work around a missing route with `as Href` (spec §9).
 
-**Supersedes:** Plan 1 Task 5's dashboard card (`AssignmentsSummary`) and its two `dashboard.test.tsx` cases ("3 to do · 1 overdue", "pull-to-refresh refetches the assignments as well as the sessions"), plus Phase 0's five session-list cases in the same file, are **replaced** by Task 7 here. Plan 1's mutation-checklist item 6 now breaks the backend unit test in Task 2 instead of a dashboard screen test. Plan 9 Task 8's three bell cases are **kept**, re-pointed at a signed-in session (Task 7 Step 1). `isAssignmentOutstanding` itself stays exactly as Plan 1 wrote it.
+**Supersedes:** Plan 1 Task 5's dashboard card (`AssignmentsSummary`) and its two `dashboard.test.tsx` cases ("3 to do · 1 overdue", "pull-to-refresh refetches the assignments as well as the sessions"), plus Phase 0's five session-list cases in the same file, are **replaced** by Task 7 here. Plan 1's mutation-checklist item 6 now breaks the backend unit test in Task 2 instead of a dashboard screen test. Plan 13 Task 8's three bell cases are **kept**, re-pointed at a signed-in session (Task 7 Step 1). `isAssignmentOutstanding` itself stays exactly as Plan 1 wrote it.
 
 ---
 
@@ -55,13 +55,13 @@ If any of these is missing when this plan starts, **stop** — do not stub it an
 | # | v1 behaviour (spec 19 rule) | v2 | Ruling |
 |---|---|---|---|
 | 1 | Admin/leader "attendance below 70 %" callout and 70/85 colour tiers (R30, R31) | The callout is the `isAtRisk` preview (either component < `AT_RISK_PCT` = 60, zero-denominator guarded). Ring and rows render neutral; the only red is "at risk". The flagged set grows (submission-only risk now shows) | D2, X17 |
-| 2 | Per-student attendance divides by every past session, can exceed 100 (R24–R26) | `attendancePct` from Plan 8's engagement row: denominator starts at `enrolledAt`, past sessions only | D3 |
+| 2 | Per-student attendance divides by every past session, can exceed 100 (R24–R26) | `attendancePct` from Plan 12's engagement row: denominator starts at `enrolledAt`, past sessions only | D3 |
 | 3 | Per-student "pending" = season assignments − completed, untargeted (R27) | Not shown. At-risk rows show "N of M submitted" from the engagement row (C5) | D4 |
 | 4 | Mean attendance counts "no data" as 0 % (R29) | `meanAttendancePct` over students with `attendanceTotal > 0`, else `null` ("—") | D5 |
 | 5 | Full unpaged roster on Home (R35) | At-risk preview (≤ 10) + "View all" | D6, X17 |
 | 6 | Leader: `groups[0]`'s season, `GroupStudent` flattened (R37–R40) | Season from `useCurrentSeasonId`; groups from `staffScopeForSeason`; students = ACTIVE `SeasonEnrollment` in those groups; every group named | D7, C9 |
 | 7 | Admin roster = `StudentProfile.activeSeasonId` (R20) | ACTIVE `SeasonEnrollment` | D8, C9 |
-| 8 | Quiz "pending" never reads `QuizAttempt`, counts drafts (R32) | Plan 6's per-kind graded count over `visibleStudentIdsForQuiz`; unpublished ONLINE quizzes reported as `drafts` | D10 |
+| 8 | Quiz "pending" never reads `QuizAttempt`, counts drafts (R32) | Plan 8's per-kind graded count over `visibleStudentIdsForQuiz`; unpublished ONLINE quizzes reported as `drafts` | D10 |
 | 9 | Review counts = every submission in the season (R34) | The review queue's own scope, so the tile equals the queue it opens; a leader sees their students only | D11 |
 | 10 | "Week N of M" counts sessions (R22, R68) | "Session N of M", "K sessions to go" | D12 |
 | 11 | "Next session" hides the one in progress; "Watch recording" on future sessions (R21, R64, R74) | The session in progress (`isInProgress: true`) else the next; "Join stream" only while in progress | D13 |
@@ -76,9 +76,9 @@ If any of these is missing when this plan starts, **stop** — do not stub it an
 | 20 | Alumni redirect to `/login`; greetings disagree on empty names (R58, R59) | `/me/dashboard` answers an alumnus 403; one `firstName` formatter, "there" on null **and** empty | D21 |
 | 21 | Student greeting "all caught up **this week**" while counting the season (R67) | "You're all caught up" | R67 (copy fix) |
 
-**Not taken (recorded):** spec D19's suggestion that MENTOR see SEASON events — Plan 10 deliberately kept v1 parity (`jpc-space/src/lib/jpc-events-query.ts:24-37`), so the mentor's card still lacks SEASON events. Open decision, below.
+**Not taken (recorded):** spec D19's suggestion that MENTOR see SEASON events — Plan 14 deliberately kept v1 parity (`jpc-space/src/lib/jpc-events-query.ts:24-37`), so the mentor's card still lacks SEASON events. Open decision, below.
 
-**Handed to Plan 13 (deferred by C1, named per spec §10 "Deferred to cutover"):** the C3 `lateMinutes` backfill and threshold column (they move the student's "Absence budget left" tile); the materialised engagement score (spec 09 D10), needed only if the cohort call is slow at real cohort sizes.
+**Handed to Plan 18 (deferred by C1, named per spec §10 "Deferred to cutover"):** the C3 `lateMinutes` backfill and threshold column (they move the student's "Absence budget left" tile); the materialised engagement score (spec 09 D10), needed only if the cohort call is slow at real cohort sizes.
 
 ---
 
@@ -103,7 +103,7 @@ If any of these is missing when this plan starts, **stop** — do not stub it an
 - Test: `packages/shared/src/__tests__/dashboard.test.ts`
 
 **Interfaces:**
-- Consumes: `engagementRowSchema`, `EngagementScore` (`./note`, Plan 8); `studentAssignmentListItemSchema` (`./assignment`); `isoDaySchema`, `wallTimeSchema` (`./org-time`, Plan 15); `attendanceStatusSchema`, `seasonStatusSchema` (`./enums`).
+- Consumes: `engagementRowSchema`, `EngagementScore` (`./note`, Plan 12); `studentAssignmentListItemSchema` (`./assignment`); `isoDaySchema`, `wallTimeSchema` (`./org-time`, Plan 5); `attendanceStatusSchema`, `seasonStatusSchema` (`./enums`).
 - Produces (exact names later tasks import):
   - constants `DASHBOARD_AT_RISK_PREVIEW = 10`, `DUE_SOON_LIMIT = 3`, `UPCOMING_EVENTS_LIMIT = 4`, `RECENT_ACTIVITY_LIMIT = 8`
   - `meanAttendancePct(rows): number | null`
@@ -266,7 +266,7 @@ export const staffCohortSummarySchema = z
     studentCount: count,
     meanAttendancePct: z.number().int().min(0).max(100).nullable(),
     atRiskTotal: count,
-    /** `isAtRisk` rows, score asc then studentUserId (Plan 11's `byScoreThenId`). */
+    /** `isAtRisk` rows, score asc then studentUserId (Plan 15's `byScoreThenId`). */
     atRisk: z.array(engagementRowSchema).max(DASHBOARD_AT_RISK_PREVIEW),
   })
   .strict();
@@ -275,7 +275,7 @@ export type StaffCohortSummary = z.infer<typeof staffCohortSummarySchema>;
 /** The review queue's own scope (D11): SUBMITTED, and REVIEWED | RETURNED. */
 export const reviewCountsSchema = z.object({ pendingReview: count, reviewed: count }).strict();
 
-/** D10: Plan 6's per-kind graded count; unpublished ONLINE quizzes are `drafts`, not pending. */
+/** D10: Plan 8's per-kind graded count; unpublished ONLINE quizzes are `drafts`, not pending. */
 export const quizRollupSchema = z
   .object({ total: count, pending: count, fullyGraded: count, drafts: count })
   .strict();
@@ -300,7 +300,7 @@ export type StaffSeasonDashboard = z.infer<typeof staffSeasonDashboardSchema>;
 /**
  * A due-soon row: the student list row plus its org-calendar due day, so the
  * label never formats `dueAt` in the device zone (X13). The student list
- * endpoint itself is unchanged (Plan 15 note 7).
+ * endpoint itself is unchanged (Plan 5 note 7).
  */
 export const dashboardDueItemSchema = studentAssignmentListItemSchema.extend({
   dueOrgDay: isoDaySchema.nullable(),
@@ -622,7 +622,7 @@ export interface QuizRollupFigures {
 }
 
 /**
- * D10. `gradedBy` is Plan 6's per-kind graded count (`countGradedByQuiz`) over
+ * D10. `gradedBy` is Plan 8's per-kind graded count (`countGradedByQuiz`) over
  * the caller's `visibleStudentIdsForQuiz` population; `studentCount` is that
  * population's size — the same two numbers `GET /quizzes` serves per row.
  */
@@ -687,12 +687,12 @@ integration tests then pin the dashboard's use of each.
 **Files:**
 - Modify: `apps/backend/src/lib/permissions.ts` (add `submissionQueueScopeFor`)
 - Modify: `apps/backend/src/routes/submissions.ts` (queue `GET /` calls it)
-- Modify: `apps/backend/src/lib/quiz-scope.ts` (Plan 6 — add `countGradedByQuiz`)
-- Modify: `apps/backend/src/routes/quizzes.ts` (Plan 6's staff list calls it)
-- Modify: `apps/backend/src/lib/queries/reports.ts` (Plan 11 — export `byScoreThenId`)
+- Modify: `apps/backend/src/lib/quiz-scope.ts` (Plan 8 — add `countGradedByQuiz`)
+- Modify: `apps/backend/src/routes/quizzes.ts` (Plan 8's staff list calls it)
+- Modify: `apps/backend/src/lib/queries/reports.ts` (Plan 15 — export `byScoreThenId`)
 - Modify: `apps/backend/src/lib/queries/assignments.ts` (add `listAssignmentStatesForStudent`; `listAssignmentsForStudent` delegates)
 - Modify: `apps/backend/src/lib/queries/sessions.ts` (add `loadSeasonProgress`, `loadCurrentOrNextSession`)
-- Modify: `apps/backend/src/lib/queries/me.ts` (Plan 14's `loadMySeason` uses `loadSeasonProgress`)
+- Modify: `apps/backend/src/lib/queries/me.ts` (Plan 11's `loadMySeason` uses `loadSeasonProgress`)
 
 **Interfaces:**
 - Consumes: `isSuper`, `isMentor` (`lib/rbac.ts`); `isLate`, `isOverdue`, `orgDayKey`; `progressFrom`, `isSessionInProgress` (Task 2).
@@ -762,7 +762,7 @@ STUDENT 403 above it and the `if (scope === null) return apiOk(res, { items: [],
 line below it unchanged. Remove `isMentor`/`isSuper` from the `../lib/rbac`
 import only if nothing else in the file still uses them (`pnpm turbo lint` will say).
 
-- [ ] **Step 2: Plan 6's graded counter, exported (D10)**
+- [ ] **Step 2: Plan 8's graded counter, exported (D10)**
 
 Append to `apps/backend/src/lib/quiz-scope.ts` (add `import type { QuizKind } from "../generated/prisma/enums";`):
 
@@ -803,7 +803,7 @@ export async function countGradedByQuiz(
 }
 ```
 
-(Use the same `_count` shape Plan 6 settled on — Plan 6 Task 2 notes that the
+(Use the same `_count` shape Plan 8 settled on — Plan 8 Task 2 notes that the
 generated client may want `_count: true`; match whatever `routes/quizzes.ts`
 compiles with today.)
 
@@ -820,7 +820,7 @@ now-unused `const quizIds = page.map((q) => q.id);` if nothing else reads it,
 and import `countGradedByQuiz` beside `visibleStudentIdsForQuiz` from
 `../lib/quiz-scope`.
 
-- [ ] **Step 3: Plan 11's at-risk order, exported**
+- [ ] **Step 3: Plan 15's at-risk order, exported**
 
 In `apps/backend/src/lib/queries/reports.ts`, replace
 
@@ -929,7 +929,7 @@ export async function listAssignmentsForStudent(
 }
 ```
 
-`orgDayKey` is already imported in this file by Plan 15 Task 2
+`orgDayKey` is already imported in this file by Plan 5 Task 2
 (`import { orgDayKey, orgWallTime } from "../org-time";`); add it if not.
 
 - [ ] **Step 5: Season progress and the current-or-next session**
@@ -940,7 +940,7 @@ Append to `apps/backend/src/lib/queries/sessions.ts` (imports: `isSessionInProgr
 /**
  * Sessions held (`startsAt <= now`) over sessions scheduled — the ONE
  * definition of season progress (spec 19 §7; D12: sessions, never weeks).
- * Plan 14's `GET /me/season` and the dashboard both call it.
+ * Plan 11's `GET /me/season` and the dashboard both call it.
  */
 export async function loadSeasonProgress(seasonId: number, now: Date): Promise<ProgressFigures> {
   const [held, total] = await Promise.all([
@@ -997,7 +997,7 @@ export async function loadCurrentOrNextSession(
 }
 ```
 
-In Plan 14's `loadMySeason` (`apps/backend/src/lib/queries/me.ts`), in the
+In Plan 11's `loadMySeason` (`apps/backend/src/lib/queries/me.ts`), in the
 `Promise.all`, replace the two entries
 
 ```ts
@@ -1010,7 +1010,7 @@ with `loadSeasonProgress(seasonId, now),`, rename the destructuring to
 returned `progress: { … }` object with
 
 ```ts
-    // Plan 14's contract keeps its names and its 0 for an empty season; the
+    // Plan 11's contract keeps its names and its 0 for an empty season; the
     // count itself is the shared definition (spec 19 §7).
     progress: {
       completedSessions: progress.sessionsHeld,
@@ -1052,7 +1052,7 @@ git add apps/backend && git commit -m "refactor(backend): extract queue scope, g
 - Test: `apps/backend/src/__tests__/integration/dashboard-routes.test.ts` (new)
 
 **Interfaces:**
-- Consumes: Task 1 constants/schemas; Task 2 figures; Task 3 extractions; `computeEngagementForSeasons` (Plan 11), `staffScopeForSeason`/`AttendanceScope` (`lib/permissions.ts`), `visibleStudentIdsForQuiz` (Plan 6), `isAlumnus` (`lib/rbac.ts`), `orgDayKey`, `orgWallTime` (`lib/org-time.ts`), `parseId`, `apiOk`/`apiError`, `requireAuth`/`requireUser`.
+- Consumes: Task 1 constants/schemas; Task 2 figures; Task 3 extractions; `computeEngagementForSeasons` (Plan 15), `staffScopeForSeason`/`AttendanceScope` (`lib/permissions.ts`), `visibleStudentIdsForQuiz` (Plan 8), `isAlumnus` (`lib/rbac.ts`), `orgDayKey`, `orgWallTime` (`lib/org-time.ts`), `parseId`, `apiOk`/`apiError`, `requireAuth`/`requireUser`.
 - Produces: `loadStudentDashboard(user, now)`, `loadSeasonStaffDashboard(user, seasonId, scope, now)`, `loadMentorDashboard()`; `GET /api/v1/me/dashboard`.
 
 Variant rules (spec 19 §7, verbatim): STUDENT (not graduated) → `STUDENT`, season from the **token's** `activeSeasonId`, any `?seasonId=` ignored (D22). Alumnus → **403 `forbidden`**. ADMIN/SUPER/LEADER → `SEASON_STAFF`, `?seasonId=` **required** (400 `bad_request` if missing or malformed), gated by `staffScopeForSeason` (403 when null — an ADMIN outside `seasonAdminIds`, a LEADER with no group in that season), 404 `not_found` only when a season the caller may name does not exist or is soft-deleted. MENTOR → `MENTOR`, `?seasonId=` ignored.
@@ -1593,7 +1593,7 @@ export async function loadSeasonStaffDashboard(
   const gradedBy = await countGradedByQuiz(live, visible);
 
   // The one at-risk predicate (isAtRisk, already on each row) and the one
-  // order (Plan 11's byScoreThenId). No 70 % rule, no colour tiers (D2).
+  // order (Plan 15's byScoreThenId). No 70 % rule, no colour tiers (D2).
   const atRiskAll = rows.filter((r) => r.atRisk).sort(byScoreThenId);
 
   return {
@@ -1745,7 +1745,7 @@ import {
 import { isAlumnus } from "../lib/rbac";
 ```
 
-(`isAlumnus` is already imported here by Plan 14 — do not import it twice.) Append:
+(`isAlumnus` is already imported here by Plan 11 — do not import it twice.) Append:
 
 ```ts
 /**
@@ -1923,7 +1923,7 @@ git add apps/backend && git commit -m "feat(backend): GET /me/dashboard — stud
 - Test: `apps/mobile/src/__tests__/use-dashboard.test.tsx` (new), `apps/mobile/src/__tests__/format.test.ts` (append), `apps/mobile/src/__tests__/dashboard-branch.test.ts` (new), `apps/mobile/src/__tests__/query-client.test.ts` (append)
 
 **Interfaces:**
-- Consumes: Task 1 schemas; `apiClient`; `formatDayKey` (Plan 4); `JpcEventListItem` (Plan 10).
+- Consumes: Task 1 schemas; `apiClient`; `formatDayKey` (Plan 4); `JpcEventListItem` (Plan 14).
 - Produces:
   - `queryKeys.dashboard.all`, `queryKeys.dashboard.me(seasonId: number | null)`
   - `DASHBOARD_STALE_TIME = 60_000`; `useStudentDashboard(activeSeasonId)`, `useSeasonStaffDashboard(seasonId)`, `useMentorDashboard()`
@@ -2274,7 +2274,7 @@ git add apps/mobile && git commit -m "feat(mobile): dashboard hooks per variant,
 - Test: `apps/mobile/src/__tests__/upcoming-events-card.test.tsx`
 
 **Interfaces:**
-- Consumes: `useUpcomingEvents` result type (`UseQueryResult<JpcEventListResponse>`, Plan 10); `formatEventWhen` (Task 5); `NotificationBell` (Plan 9); `Screen`, `Card`, `Text`, state primitives.
+- Consumes: `useUpcomingEvents` result type (`UseQueryResult<JpcEventListResponse>`, Plan 14); `formatEventWhen` (Task 5); `NotificationBell` (Plan 13); `Screen`, `Card`, `Text`, state primitives.
 - Produces: `<UpcomingEventsCard query={…} />` — takes the query result rather than owning it, so the branch that renders it can refetch it on pull-to-refresh and (SUPER) read `total` from the same response; `<StatTile label value caption? onPress? tone? />`, `<TileRow>`; `<DashboardFrame onRefresh refreshing>` — `Screen` with tab-screen edges and the bell first, which every branch renders.
 
 - [ ] **Step 1: Failing test**
@@ -2378,7 +2378,7 @@ import { Card, EmptyState, ErrorState, LoadingState, Text } from "../../ui";
 
 /**
  * The card on all six dashboards (spec 19 R5). The window (today onwards in
- * the org zone), the cap and the visibility rule are the server's (Plan 10);
+ * the org zone), the cap and the visibility rule are the server's (Plan 14);
  * this renders rows. Unlike v1 it says so when there is nothing (R10).
  */
 export function UpcomingEventsCard({ query }: { query: UseQueryResult<JpcEventListResponse> }) {
@@ -2489,7 +2489,7 @@ import { NotificationBell } from "../NotificationBell";
 
 /**
  * Every branch's outer frame: a tab screen (the tab bar owns the bottom inset)
- * with Plan 9's bell first — the dashboard is the one href in all six navs,
+ * with Plan 13's bell first — the dashboard is the one href in all six navs,
  * which is why the bell lives here (spec 10 D3). Each branch owns its queries
  * and therefore its own pull-to-refresh.
  */
@@ -2514,7 +2514,7 @@ export function DashboardFrame({
 - [ ] **Step 3: Run**
 
 Run: `cd apps/mobile && pnpm jest src/__tests__/upcoming-events-card.test.tsx` → PASS.
-Run: `pnpm turbo lint typecheck --filter=@space/mobile` → clean (typed routes: `/event/[id]` exists from Plan 10).
+Run: `pnpm turbo lint typecheck --filter=@space/mobile` → clean (typed routes: `/event/[id]` exists from Plan 14).
 
 - [ ] **Step 4: Commit**
 
@@ -2526,7 +2526,7 @@ git add apps/mobile && git commit -m "feat(mobile): upcoming-events card with an
 
 ### Task 7: Mobile branches and the `/dashboard` switch
 
-`dashboard.tsx` today (after Plans 1 and 9) renders Plan 9's `NotificationBell`,
+`dashboard.tsx` today (after Plans 1 and 13) renders Plan 13's `NotificationBell`,
 Plan 1's `AssignmentsSummary`, and Phase 0's session list for
 `scopes.activeSeasonId`. This task replaces the whole file: the bell moves into
 `DashboardFrame` (kept, not dropped — spec D25 #3), `AssignmentsSummary` and
@@ -2544,7 +2544,7 @@ lives on `/calendar`, Plan 4; the student's next session is a card here).
 - Test (replace): `apps/mobile/src/__tests__/dashboard.test.tsx`
 
 **Interfaces:**
-- Consumes: Task 5 hooks/helpers; Task 6 cards; `useCurrentSeasonId` (Plan 4); `useOrganisationReport`, `useEngagementReport` (Plan 11); `useUpcomingEvents` (Plan 10); `useMyAttendance` (Plan 14); `apiErrorMessage` (Plan 4); `AT_RISK_PCT`, `UPCOMING_EVENTS_LIMIT` (shared); `useSessionStore`.
+- Consumes: Task 5 hooks/helpers; Task 6 cards; `useCurrentSeasonId` (Plan 4); `useOrganisationReport`, `useEngagementReport` (Plan 15); `useUpcomingEvents` (Plan 14); `useMyAttendance` (Plan 11); `apiErrorMessage` (Plan 4); `AT_RISK_PCT`, `UPCOMING_EVENTS_LIMIT` (shared); `useSessionStore`.
 - Produces: the six branch components; `/dashboard` as a role switch.
 
 **Which test cases this replaces (say so in the commit body):** Phase 0's five
@@ -2555,7 +2555,7 @@ pending and overdue assignment counts for a student" and "pull-to-refresh
 refetches the assignments as well as the sessions". Their intent survives:
 loading/error/empty mapping and pull-to-refresh are re-asserted per branch
 below; the outstanding/overdue arithmetic is now pinned server-side by Task 2's
-`summarizeStudentAssignments` test and Task 4's STUDENT case. Plan 9 Task 8's
+`summarizeStudentAssignments` test and Task 4's STUDENT case. Plan 13 Task 8's
 three bell cases are **kept**, re-pointed at an ALUMNI session (the branch
 with the fewest requests).
 
@@ -2830,7 +2830,7 @@ describe("DashboardScreen — STUDENT", () => {
     expect(screen.getByText("Welcome to JPC Space")).toBeTruthy();
     fireEvent.press(screen.getByText("Complete your profile"));
     expect(mockPush).toHaveBeenCalledWith("/profile");
-    // No season → the budget read is gated off (Plan 14's enabled guard).
+    // No season → the budget read is gated off (Plan 11's enabled guard).
     expect(requested()).not.toContain("/api/v1/me/attendance");
   });
 
@@ -3025,7 +3025,7 @@ describe("DashboardScreen — SUPER", () => {
   });
 });
 
-// Plan 9 Task 8's bell cases, kept; now on a signed-in ALUMNI session.
+// Plan 13 Task 8's bell cases, kept; now on a signed-in ALUMNI session.
 describe("NotificationBell on the dashboard", () => {
   function mockUnreadCount(unreadCount: number) {
     serve({ [UNREAD]: { unreadCount }, [EVENTS]: events });
@@ -3104,7 +3104,7 @@ export function StudentDashboard() {
 
   const dash = useStudentDashboard(activeSeasonId);
   // Domain 4's numbers through domain 4's endpoint and cache (spec 19 §7, D14).
-  // Gated on the season inside the hook (Plan 14).
+  // Gated on the season inside the hook (Plan 11).
   const attendance = useMyAttendance(activeSeasonId);
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
 
@@ -3621,7 +3621,7 @@ import { StatTile, TileRow } from "./StatTile";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
 
 /**
- * Organisation tiles from Plan 11's roll-up — the same query key as the SUPER
+ * Organisation tiles from Plan 15's roll-up — the same query key as the SUPER
  * Reports screen, so one cache entry and one definition (spec 19 §7). The
  * events tile reads `total` from the very response the card renders (D19).
  */
@@ -3692,7 +3692,7 @@ import { LoadingState } from "../../src/ui";
 /**
  * Home — one route, one branch per audience (spec 19 §9, Phase 0 D1). Each
  * branch owns its queries, its loading/error/empty states and its
- * pull-to-refresh; every branch keeps Plan 9's bell via DashboardFrame.
+ * pull-to-refresh; every branch keeps Plan 13's bell via DashboardFrame.
  * Plan 1's AssignmentsSummary is gone on purpose: its counts are now the
  * server's (spec 19 D15).
  */
@@ -3740,14 +3740,14 @@ git add apps/mobile && git commit -m "feat(mobile): role dashboards — six bran
 
 Replaces Phase 0's five session-list cases and Plan 1 Task 5's two
 assignment-count cases in dashboard.test.tsx (spec 19 D15: the counts are
-now server-side). Plan 9's three bell cases are kept."
+now server-side). Plan 13's three bell cases are kept."
 ```
 
 ---
 
 ### Task 8: Tag every dashboard-moving mutation
 
-Spec 19 §7 lists the mutations that move a Home number; D24 says Plan 18 adds
+Spec 19 §7 lists the mutations that move a Home number; D24 says Plan 16 adds
 the invalidation to their hooks in one task and lists each file. Each edit is
 one line in the hook's `useMutation({ … })` options — `meta: DASHBOARD_META,` —
 plus the import `import { DASHBOARD_META } from "../lib/dashboard-invalidation";`.
@@ -3769,7 +3769,7 @@ Nothing else in those hooks changes; their own `onSuccess` invalidations stay.
 | `use-group-admin.ts` (16) | `useSaveGroupAssignments`, `useDeleteGroup` | a leader's cohort, targeting |
 | `use-forum.ts` (10) | `useSubmitForumResponse` | a forum post completes a submission |
 
-Event writes need no tag: Plan 10's `useInvalidateEvents` already invalidates
+Event writes need no tag: Plan 14's `useInvalidateEvents` already invalidates
 `queryKeys.events.all`, which covers the card and the SUPER tile.
 
 - [ ] **Step 1: Failing guard test**
@@ -3935,12 +3935,12 @@ Report: suite counts, the twenty mutation outcomes, device checklist results, an
 
 ## Open decisions
 
-1. **MENTOR and SEASON events.** Spec 19 D19 recommends treating MENTOR like SUPER for SEASON events; Plan 10 kept v1 parity, so the mentor's card omits them. Unchanged here — needs a product call, and if taken, the change belongs in Plan 10's `eventVisibilityFilter`, not on this screen.
+1. **MENTOR and SEASON events.** Spec 19 D19 recommends treating MENTOR like SUPER for SEASON events; Plan 14 kept v1 parity, so the mentor's card omits them. Unchanged here — needs a product call, and if taken, the change belongs in Plan 14's `eventVisibilityFilter`, not on this screen.
 2. **Graduated students in the mentor feed.** Excluded per D18's recommendation (matching the at-risk cohort); the spec calls it a product question.
-3. **`use-check-in.ts` is created by both Plan 16 (`useCheckInState`, `useRegenerateCheckIn`) and Plan 14 (`useCheckIn`).** This plan only needs `useCheckIn` to live in that file; the coordinator's reconciliation should confirm Plan 14 *appends* rather than recreates it.
+3. **`use-check-in.ts` is created by both Plan 6 (`useCheckInState`, `useRegenerateCheckIn`) and Plan 11 (`useCheckIn`).** This plan only needs `useCheckIn` to live in that file; the coordinator's reconciliation should confirm Plan 11 *appends* rather than recreates it.
 4. **Due-soon labels are absolute** ("Due Jun 1, 2099"); v1's relative "Due in 3 days" is not rebuilt. Allowed by D23 if wanted later (`formatTimeAgo`-style, from the instant).
-5. **Leader whose current season has no group of theirs** sees the server's 403 message. `useCurrentSeasonId` picks from the seasons the leader can list; if Plan 16's `useStaffSeasonSelection` becomes the staff season source, swap it in here — X8 currently names `useCurrentSeasonId`.
+5. **Leader whose current season has no group of theirs** sees the server's 403 message. `useCurrentSeasonId` picks from the seasons the leader can list; if Plan 6's `useStaffSeasonSelection` becomes the staff season source, swap it in here — X8 currently names `useCurrentSeasonId`.
 
 ## Revision 2026-10-05
 
-- Written from spec 19 with ruling X17's acceptances. Composes Plans 6, 8, 10, 11 and 14's server computations (extracted, not copied, in Task 3) and replaces Plan 1 Task 5's dashboard card and tests explicitly.
+- Written from spec 19 with ruling X17's acceptances. Composes Plans 8, 11, 12, 14 and 15's server computations (extracted, not copied, in Task 3) and replaces Plan 1 Task 5's dashboard card and tests explicitly.

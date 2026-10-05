@@ -1,4 +1,4 @@
-# Plan 13 — Cutover Implementation Plan
+# Plan 18 — Cutover Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
@@ -55,33 +55,33 @@ SDK 54 / expo-router 6, React Query 5, RNTL 13.
 2026-10-05), the twelve rulings in
 `docs/superpowers/specs/domains/_DECISIONS.md` (**C1 is the subject matter of
 this plan**; C2, C3, C6, C7, C9, C11 and C12 each shape a task), `CLAUDE.md`, and
-`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 13 — which
+`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 18 — which
 fixes the scope at *parity audit, migration thaw, switchover* and nothing
 wider. Specs and plans are **cited, never restated**.
 
 **Depends on — every other plan, in the execution order**
-`1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → 9 → 10 → 11 → 18 → 12 → 13`.
-Plan 13 is always last and consumes all of Plans 1–12 and 14–18:
+`1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18`.
+Plan 18 is always last and consumes all of Plans 1–17:
 
-| Plan | What Plan 13 consumes from it |
+| Plan | What Plan 18 consumes from it |
 |---|---|
 | 1 | `/more` (Task 6), `isAssignmentOutstanding`, the route helpers (`DETAIL_ROUTE_NAMES`) the page-parity check reads |
 | 2 | `/groups`, `/submissions`, `session/[id]/attendance` (page parity) |
 | 3 | `lib/org-time.ts` (`orgWallClock`, `formatInOrgTime`); `ORG_TIMEZONE` (M7's literal); season soft delete (Plan 3 Revision: why M7's `Restrict` cannot block it) |
 | 4 | `session/[id]/index.tsx`, `/season`, `/calendar`, `/seasons`; `orgDayKey`; `canManageCheckIn` |
-| 15 | `routes/assignments.ts` writes, `lib/assignment-writes.ts` (`notifyAssignmentCreated` — an M4 producer), `assignment/[id]/index.tsx` |
-| 16 | `assignStudentsToGroups` / `unassignStudentsFromGroups` (M1 consumers), `validateGroupWrite` (M2), `seasons/[code]/…`, `group/[id]/…`, `session/new`, `session/[id]/edit` |
-| 5 | `routes/students.ts` (`email_taken`, M14), `/students*` screens |
-| 6 | quiz routes (M5 producers, M15 snapshots), `QUIZ_GRADED_LINK` |
-| 7 | `lib/invites.ts` digest-only invites (M12), `hashToken`, `lib/rate-limit.ts`, `lockActiveSuperIds` (M13 call sites), `PATCH /users/:id` (M9 role-grant writer) |
-| 17 | `lib/audit.ts` `auditLog` (M9's writer seam), `isV2InviteDigest`, `lib/auth/password-reset.ts` (M12 index/sweep), graduation/soft-delete |
-| 14 | Plan 14 Task 2b (C3 check-in lateness from `startsAt` — M3 era boundary), `/checkin/[token]`, `/history`, `/profile`, `/attendance` |
-| 8 | `packages/shared/src/html-text.ts` (M17), `DELETE /notes/:id` → `501 delete_unavailable` (M8), `noteVisibilityWhere` |
-| 9 | `NOTIFICATION_LINK_PATTERNS` and `parseNotificationLink` (`lib/notification-target.ts`, M4), `devicePlatformSchema` / `DEVICE_PLATFORM_TO_DB` (M10), `createNotificationsBulk` / `bestEffort`, `docs/superpowers/cutover/2026-08-24-notifications-push.md` |
-| 10 | `isOrgMidnight` (M7 allDay), events write/delete, forum routes (M5 `FORUM_COMMENT`, M16), video-quiz routes (M15) |
-| 11 | D-17.10 `"L"` cell (M3 restores the number), D-17.18 export log line (register: stays a log line under C6) |
-| 18 | `GET /me/dashboard` (absence-budget tile moves with M3), page parity for all six dashboards |
-| 12 | `fixture-leak.test.ts`, `enrollStudentInSeason`, the `lower(email)` lookup (M14), the group importer (M1/M2) |
+| 5 | `routes/assignments.ts` writes, `lib/assignment-writes.ts` (`notifyAssignmentCreated` — an M4 producer), `assignment/[id]/index.tsx` |
+| 6 | `assignStudentsToGroups` / `unassignStudentsFromGroups` (M1 consumers), `validateGroupWrite` (M2), `seasons/[code]/…`, `group/[id]/…`, `session/new`, `session/[id]/edit` |
+| 7 | `routes/students.ts` (`email_taken`, M14), `/students*` screens |
+| 8 | quiz routes (M5 producers, M15 snapshots), `QUIZ_GRADED_LINK` |
+| 9 | `lib/invites.ts` digest-only invites (M12), `hashToken`, `lib/rate-limit.ts`, `lockActiveSuperIds` (M13 call sites), `PATCH /users/:id` (M9 role-grant writer) |
+| 10 | `lib/audit.ts` `auditLog` (M9's writer seam), `isV2InviteDigest`, `lib/auth/password-reset.ts` (M12 index/sweep), graduation/soft-delete |
+| 11 | Plan 11 Task 2b (C3 check-in lateness from `startsAt` — M3 era boundary), `/checkin/[token]`, `/history`, `/profile`, `/attendance` |
+| 12 | `packages/shared/src/html-text.ts` (M17), `DELETE /notes/:id` → `501 delete_unavailable` (M8), `noteVisibilityWhere` |
+| 13 | `NOTIFICATION_LINK_PATTERNS` and `parseNotificationLink` (`lib/notification-target.ts`, M4), `devicePlatformSchema` / `DEVICE_PLATFORM_TO_DB` (M10), `createNotificationsBulk` / `bestEffort`, `docs/superpowers/cutover/2026-08-24-notifications-push.md` |
+| 14 | `isOrgMidnight` (M7 allDay), events write/delete, forum routes (M5 `FORUM_COMMENT`, M16), video-quiz routes (M15) |
+| 15 | D-17.10 `"L"` cell (M3 restores the number), D-17.18 export log line (register: stays a log line under C6) |
+| 16 | `GET /me/dashboard` (absence-budget tile moves with M3), page parity for all six dashboards |
+| 17 | `fixture-leak.test.ts`, `enrollStudentInSeason`, the `lower(email)` lookup (M14), the group importer (M1/M2) |
 
 ---
 
@@ -118,7 +118,7 @@ a production database that belongs to a real organisation.
   value is never expanded into a transcript; `echo $DATABASE_URL` is not.
 - **Integration tests touch only rows they created.** Every fixture row carries
   `space-v2-test-` in a unique, queryable column (`User.email`, `Season.code`,
-  and from Plan 10 onward `JpcEvent.title`). `cleanupTestData` filters on that
+  and from Plan 14 onward `JpcEvent.title`). `cleanupTestData` filters on that
   prefix and nothing else.
 - **Integration tests cannot run concurrently.** `cleanupTestData` is
   prefix-global, so a second suite deletes the first one's fixtures mid-run.
@@ -167,13 +167,13 @@ a production database that belongs to a real organisation.
 
 ## Prerequisites
 
-- [ ] **Plans 1–12 and 14–18 are executed and merged to `main`, in the
+- [ ] **Plans 1–17 are executed and merged to `main`, in the
   execution order above.** All seventeen are written (2026-10-05). Every
   migration below names the code that consumes it (Part 2b); a migration whose
   consumer does not exist on `main` is DDL for its own sake and is withdrawn,
   not applied — that is why M6 and M11 are withdrawn.
 - [ ] **`pnpm turbo lint typecheck test:unit build` is green on `main`**, and
-  the full serial integration suite is green, **including Plan 12's
+  the full serial integration suite is green, **including Plan 17's
   `fixture-leak.test.ts`** (`{ users: 0, seasons: 0 }`). Record the suite
   counts — Part 3 compares against them.
 - [ ] **The migrations directory is still v1's, verbatim** (`CLAUDE.md`). Run,
@@ -192,7 +192,7 @@ diff -r /home/mark/projects/JPC/jpc-space/prisma/migrations \
   `--exit-code` and `--config`. If any is missing, stop and re-derive every
   command in Part 2 from the printed help — do not guess a flag.
 - [ ] **`docs/superpowers/cutover/2026-08-24-notifications-push.md` is
-  reconciled.** Plan 9 instructs its implementer to write the `DeviceToken` and
+  reconciled.** Plan 13 instructs its implementer to write the `DeviceToken` and
   `Notification.entityType`/`entityId` migrations into that file. If it exists,
   **M4 and M10 below are a reconciliation of it, not a second authoring** —
   diff them, keep whichever is more correct, and delete the duplicate. If it
@@ -216,7 +216,7 @@ Stated because each of these has been mistaken for cutover work before:
   column that needs its writer) plus the smallest UI each new column needs to
   be reachable (a preference toggle, a staff "Hide post" button). If the parity
   audit finds a missing screen, that is a finding and a follow-up plan, not a
-  task appended to this one. Plans 14–18 exist precisely because the
+  task appended to this one. Plans 5, 6, 10, 11 and 16 exist precisely because the
   2026-10-05 coverage audit found 37 such gaps; Task 1.6 proves they closed.
 - It is **not** the place to relitigate a ruling. Where a domain spec's §10
   recommendation contradicts `_DECISIONS.md`, the ruling wins and this plan
@@ -266,7 +266,7 @@ The partition is by theme, not by size, so an agent holding domain 5 also holds
 domain 4 (which depends on it) and an agent holding domain 10 also holds domain
 8 (whose missing notification is domain 10's enum value). Spec 19 goes to A1
 because the dashboards are built from A1's season, session and attendance
-figures (Plan 18 composes them; spec 19 §5). Cross-domain rules do not straddle
+figures (Plan 16 composes them; spec 19 §5). Cross-domain rules do not straddle
 two agents.
 
 Before dispatching, re-count — a spec edited since 2026-10-05 changes the
@@ -550,27 +550,27 @@ awk -F'|' '/^\| REG-/ {print $2}' DROPPED.md | sort | uniq -d                   
 - Create: `docs/superpowers/audits/2026-cutover/page-parity.tsv`
 
 The rule-level ledger can pass while a whole page is missing — that is exactly
-what happened before Plans 14–18 were written: the 2026-10-05 coverage audit
+what happened before Plans 5, 6, 10, 11 and 16 were written: the 2026-10-05 coverage audit
 found 37 of v1's 104 pages with no v2 home, plus `/forbidden` and
 `dev/design-system` never formally dropped. This task proves every page now
 lands somewhere real.
 
 The matrix below is that audit's §1 page matrix (coordinator's
-`coverage-audit.md`, 2026-10-05) updated for Plans 14–18. Every former gap now
+`coverage-audit.md`, 2026-10-05) updated for Plans 5, 6, 10, 11 and 16. Every former gap now
 has an owner:
 
 | Audit gap | Owner now |
 |---|---|
-| G1 assignment writes + staff screens | Plan 15 |
-| G2 student check-in client, `/checkin/<token>` | Plan 14 Tasks 10–11 |
+| G1 assignment writes + staff screens | Plan 5 |
+| G2 student check-in client, `/checkin/<token>` | Plan 11 Tasks 10–11 |
 | G3 `/more` | Plan 1 Task 6 |
-| G4 season detail by code, SUPER edit/status; G5 session create/edit/delete; G6 admin groups; G7 roster grid; G17 multi-season calendar; G19 token regeneration; G20 program filter | Plan 16 |
-| G7 group-import screen | Plan 12 Task 6b |
-| G8 quiz authoring UI | Plan 6 Task 11 |
-| G9 role dashboards | Plan 18 (spec 19) |
-| G10 history; G11 profile; G12 student attendance; G21 student `/season` | Plan 14 |
-| G13 student create/edit/graduate/delete; G14 forgot/reset; G15 `/users/new`; G16 bulk invites | Plan 17 |
-| G18 leader session branch | Plan 4 (read-only roster, `canManageCheckIn`) + Plan 16 (quiz card) + Plan 6 Task 11b |
+| G4 season detail by code, SUPER edit/status; G5 session create/edit/delete; G6 admin groups; G7 roster grid; G17 multi-season calendar; G19 token regeneration; G20 program filter | Plan 6 |
+| G7 group-import screen | Plan 17 Task 6b |
+| G8 quiz authoring UI | Plan 8 Task 11 |
+| G9 role dashboards | Plan 16 (spec 19) |
+| G10 history; G11 profile; G12 student attendance; G21 student `/season` | Plan 11 |
+| G13 student create/edit/graduate/delete; G14 forgot/reset; G15 `/users/new`; G16 bulk invites | Plan 10 |
+| G18 leader session branch | Plan 4 (read-only roster, `canManageCheckIn`) + Plan 6 (quiz card) + Plan 8 Task 11b |
 | G22 student photos/documents | Register REG-05, REG-06 |
 | G23 `/forbidden`, `dev/design-system`, dev switch-user, NextAuth `callbackUrl` | Register REG-01 – REG-04 |
 
@@ -595,109 +595,109 @@ wc -l < /tmp/v1-pages.txt     # expect 104
 ```text
 v1_page	v2_route	status	owner
 .	index.tsx	BUILT	main (redirect to /dashboard or /login)
-login	login.tsx	BUILT	main; P7 T9 invite link; P17 T10 forgot link; P14 T11 returnTo
-forgot-password	forgot-password.tsx	PLAN	P17 T5 (backend), T10
-reset-password	reset-password.tsx	PLAN	P17 T5, T10 +REG-24
+login	login.tsx	BUILT	main; P9 T9 invite link; P10 T10 forgot link; P11 T11 returnTo
+forgot-password	forgot-password.tsx	PLAN	P10 T5 (backend), T10
+reset-password	reset-password.tsx	PLAN	P10 T5, T10 +REG-24
 forbidden	-	DROP	REG-01
 dev/design-system	-	DROP	REG-02
-checkin/[token]	checkin/[token].tsx	PLAN	P14 T11 (deep link), T10 (in-app scanner on session/[id]) +REG-04 +REG-14
-admin/dashboard	(app)/dashboard.tsx	PLAN	P18 T7 (ADMIN branch) +REG-60
-admin/calendar	(app)/calendar.tsx	PLAN	P4 T2; P16 T9; P10 T10
-admin/groups	(app)/groups.tsx	PLAN	P16 T8 (ADMIN/SUPER branch)
-admin/assignments	(app)/assignments.tsx	PLAN	P15 T7 (staff branch)
-admin/quizzes	(app)/quizzes.tsx	PLAN	P6 T8
-admin/reports	(app)/reports.tsx	PLAN	P11 T8
+checkin/[token]	checkin/[token].tsx	PLAN	P11 T11 (deep link), T10 (in-app scanner on session/[id]) +REG-04 +REG-14
+admin/dashboard	(app)/dashboard.tsx	PLAN	P16 T7 (ADMIN branch) +REG-60
+admin/calendar	(app)/calendar.tsx	PLAN	P4 T2; P6 T9; P14 T10
+admin/groups	(app)/groups.tsx	PLAN	P6 T8 (ADMIN/SUPER branch)
+admin/assignments	(app)/assignments.tsx	PLAN	P5 T7 (staff branch)
+admin/quizzes	(app)/quizzes.tsx	PLAN	P8 T8
+admin/reports	(app)/reports.tsx	PLAN	P15 T8
 admin/more	(app)/more.tsx	PLAN	P1 T6
-admin/notifications	(app)/notifications.tsx	PLAN	P9 T7
-admin/settings	(app)/settings.tsx	PLAN	P7 T6; P9 T9, T10
-admin/season	(app)/season.tsx	PLAN	P4 T3; P16 T6
-admin/season/[code]	(app)/seasons/[code]/index.tsx	PLAN	P16 T6
-admin/season/[code]/assignments	(app)/assignments.tsx	PLAN	P15 T7
-admin/season/[code]/assignments/[id]	(app)/assignment/[id]/index.tsx	PLAN	P15 T8 (staff branch + tracker)
-admin/season/[code]/assignments/[id]/edit	(app)/assignment/[id]/edit.tsx	PLAN	P15 T9
-admin/season/[code]/assignments/new	(app)/assignment/new.tsx	PLAN	P15 T9
-admin/season/[code]/calendar	(app)/calendar.tsx	PLAN	P16 T9 (season switcher)
-admin/season/[code]/calendar/new	(app)/session/new.tsx	PLAN	P16 T7
-admin/season/[code]/groups	(app)/groups.tsx	PLAN	P16 T8
-admin/season/[code]/groups/[id]	(app)/group/[id]/index.tsx	PLAN	P2 T2; P16 T5 (move), T8
-admin/season/[code]/groups/[id]/edit	(app)/group/[id]/edit.tsx	PLAN	P16 T8
-admin/season/[code]/groups/new	(app)/group/new.tsx	PLAN	P16 T8
-admin/season/[code]/quizzes/[quizId]/edit	(app)/quiz/[id]/edit.tsx	PLAN	P6 T11 (+ quiz/new.tsx)
-admin/season/[code]/quizzes/[quizId]/grade	(app)/quiz/[id]/grade.tsx	PLAN	P6 T10
-admin/season/[code]/reports	(app)/reports.tsx	PLAN	P11 T8
-admin/season/[code]/roster	(app)/seasons/[code]/roster/index.tsx	PLAN	P16 T8
-admin/season/[code]/roster/import	(app)/seasons/[code]/roster/import.tsx	PLAN	P12 T6b
-admin/season/[code]/sessions/[id]	(app)/session/[id]/index.tsx	PLAN	P4 T4; P16 T7; P10 T5; P6 T11b
+admin/notifications	(app)/notifications.tsx	PLAN	P13 T7
+admin/settings	(app)/settings.tsx	PLAN	P9 T6; P13 T9, T10
+admin/season	(app)/season.tsx	PLAN	P4 T3; P6 T6
+admin/season/[code]	(app)/seasons/[code]/index.tsx	PLAN	P6 T6
+admin/season/[code]/assignments	(app)/assignments.tsx	PLAN	P5 T7
+admin/season/[code]/assignments/[id]	(app)/assignment/[id]/index.tsx	PLAN	P5 T8 (staff branch + tracker)
+admin/season/[code]/assignments/[id]/edit	(app)/assignment/[id]/edit.tsx	PLAN	P5 T9
+admin/season/[code]/assignments/new	(app)/assignment/new.tsx	PLAN	P5 T9
+admin/season/[code]/calendar	(app)/calendar.tsx	PLAN	P6 T9 (season switcher)
+admin/season/[code]/calendar/new	(app)/session/new.tsx	PLAN	P6 T7
+admin/season/[code]/groups	(app)/groups.tsx	PLAN	P6 T8
+admin/season/[code]/groups/[id]	(app)/group/[id]/index.tsx	PLAN	P2 T2; P6 T5 (move), T8
+admin/season/[code]/groups/[id]/edit	(app)/group/[id]/edit.tsx	PLAN	P6 T8
+admin/season/[code]/groups/new	(app)/group/new.tsx	PLAN	P6 T8
+admin/season/[code]/quizzes/[quizId]/edit	(app)/quiz/[id]/edit.tsx	PLAN	P8 T11 (+ quiz/new.tsx)
+admin/season/[code]/quizzes/[quizId]/grade	(app)/quiz/[id]/grade.tsx	PLAN	P8 T10
+admin/season/[code]/reports	(app)/reports.tsx	PLAN	P15 T8
+admin/season/[code]/roster	(app)/seasons/[code]/roster/index.tsx	PLAN	P6 T8
+admin/season/[code]/roster/import	(app)/seasons/[code]/roster/import.tsx	PLAN	P17 T6b
+admin/season/[code]/sessions/[id]	(app)/session/[id]/index.tsx	PLAN	P4 T4; P6 T7; P14 T5; P8 T11b
 admin/season/[code]/sessions/[id]/attendance	(app)/session/[id]/attendance.tsx	PLAN	P2 T5
-admin/season/[code]/sessions/[id]/edit	(app)/session/[id]/edit.tsx	PLAN	P16 T7
-admin/students	(app)/students/index.tsx	PLAN	P5 T6
-admin/students/alumni	(app)/students/alumni.tsx	PLAN	P5 T6
-admin/students/dropped	(app)/students/dropped.tsx	PLAN	P5 T6
-admin/students/[id]	(app)/student/[id]/index.tsx	PLAN	P5 T7; P17 T7; P8 T6
-alumni/calendar	(app)/calendar.tsx	PLAN	P10 T10; P16 T9
-alumni/dashboard	(app)/dashboard.tsx	PLAN	P18 T7 (ALUMNI branch)
-alumni/history	(app)/history.tsx	PLAN	P14 T6
+admin/season/[code]/sessions/[id]/edit	(app)/session/[id]/edit.tsx	PLAN	P6 T7
+admin/students	(app)/students/index.tsx	PLAN	P7 T6
+admin/students/alumni	(app)/students/alumni.tsx	PLAN	P7 T6
+admin/students/dropped	(app)/students/dropped.tsx	PLAN	P7 T6
+admin/students/[id]	(app)/student/[id]/index.tsx	PLAN	P7 T7; P10 T7; P12 T6
+alumni/calendar	(app)/calendar.tsx	PLAN	P14 T10; P6 T9
+alumni/dashboard	(app)/dashboard.tsx	PLAN	P16 T7 (ALUMNI branch)
+alumni/history	(app)/history.tsx	PLAN	P11 T6
 alumni/more	(app)/more.tsx	PLAN	P1 T6
-alumni/notifications	(app)/notifications.tsx	PLAN	P9 T7
-alumni/profile	(app)/profile.tsx	PLAN	P14 T8 (read-only) +REG-07
-alumni/settings	(app)/settings.tsx	PLAN	P7 T6
-leader/calendar	(app)/calendar.tsx	PLAN	P16 T9 (all led seasons)
-leader/dashboard	(app)/dashboard.tsx	PLAN	P18 T7 (LEADER branch) +REG-60
+alumni/notifications	(app)/notifications.tsx	PLAN	P13 T7
+alumni/profile	(app)/profile.tsx	PLAN	P11 T8 (read-only) +REG-07
+alumni/settings	(app)/settings.tsx	PLAN	P9 T6
+leader/calendar	(app)/calendar.tsx	PLAN	P6 T9 (all led seasons)
+leader/dashboard	(app)/dashboard.tsx	PLAN	P16 T7 (LEADER branch) +REG-60
 leader/groups	(app)/groups.tsx	PLAN	P2 T2
 leader/more	(app)/more.tsx	PLAN	P1 T6
-leader/notifications	(app)/notifications.tsx	PLAN	P9 T7
-leader/quizzes	(app)/quizzes.tsx	PLAN	P6 T8
-leader/sessions/[id]	(app)/session/[id]/index.tsx	PLAN	P4 T4 (read-only roster); P16 T7 (quiz card); P6 T11b
+leader/notifications	(app)/notifications.tsx	PLAN	P13 T7
+leader/quizzes	(app)/quizzes.tsx	PLAN	P8 T8
+leader/sessions/[id]	(app)/session/[id]/index.tsx	PLAN	P4 T4 (read-only roster); P6 T7 (quiz card); P8 T11b
 leader/sessions/[id]/attendance	(app)/session/[id]/attendance.tsx	PLAN	P2 T5
-leader/sessions/[id]/quiz/[quizId]	(app)/quiz/[id]/grade.tsx	PLAN	P6 T10 +REG-52
-leader/settings	(app)/settings.tsx	PLAN	P7 T6
-leader/students/[id]	(app)/student/[id]/index.tsx	PLAN	P5 T7; P17 T7; P8 T6
+leader/sessions/[id]/quiz/[quizId]	(app)/quiz/[id]/grade.tsx	PLAN	P8 T10 +REG-52
+leader/settings	(app)/settings.tsx	PLAN	P9 T6
+leader/students/[id]	(app)/student/[id]/index.tsx	PLAN	P7 T7; P10 T7; P12 T6
 leader/submissions	(app)/submissions.tsx	PLAN	P2 T3
 leader/submissions/[publicId]	(app)/submission/[publicId].tsx	PLAN	P2 T4
-mentor/dashboard	(app)/dashboard.tsx	PLAN	P18 T7 (MENTOR branch) +REG-60
-mentor/notes	(app)/notes.tsx	PLAN	P8 T5
-mentor/notifications	(app)/notifications.tsx	PLAN	P9 T7
-mentor/reports	(app)/reports.tsx	PLAN	P11 T8
-mentor/settings	(app)/settings.tsx	PLAN	P7 T6
-mentor/students	(app)/students/index.tsx	PLAN	P5 T6
-mentor/students/[id]	(app)/student/[id]/index.tsx	PLAN	P5 T7; P8 T6
+mentor/dashboard	(app)/dashboard.tsx	PLAN	P16 T7 (MENTOR branch) +REG-60
+mentor/notes	(app)/notes.tsx	PLAN	P12 T5
+mentor/notifications	(app)/notifications.tsx	PLAN	P13 T7
+mentor/reports	(app)/reports.tsx	PLAN	P15 T8
+mentor/settings	(app)/settings.tsx	PLAN	P9 T6
+mentor/students	(app)/students/index.tsx	PLAN	P7 T6
+mentor/students/[id]	(app)/student/[id]/index.tsx	PLAN	P7 T7; P12 T6
 student/assignments	(app)/assignments.tsx	PLAN	P1 T1
-student/assignments/[id]	(app)/assignment/[id]/index.tsx	PLAN	P1 T2–T4; P15 T6 (move); P10 T8 (FORUM)
-student/attendance	(app)/attendance.tsx	PLAN	P14 T7
-student/calendar	(app)/calendar.tsx	PLAN	P4 T2; P16 T9; P10 T10
-student/dashboard	(app)/dashboard.tsx	PLAN	P1 T5; P18 T7 (STUDENT branch) +REG-60
-student/history	(app)/history.tsx	PLAN	P14 T6
+student/assignments/[id]	(app)/assignment/[id]/index.tsx	PLAN	P1 T2–T4; P5 T6 (move); P14 T8 (FORUM)
+student/attendance	(app)/attendance.tsx	PLAN	P11 T7
+student/calendar	(app)/calendar.tsx	PLAN	P4 T2; P6 T9; P14 T10
+student/dashboard	(app)/dashboard.tsx	PLAN	P1 T5; P16 T7 (STUDENT branch) +REG-60
+student/history	(app)/history.tsx	PLAN	P11 T6
 student/more	(app)/more.tsx	PLAN	P1 T6
-student/notifications	(app)/notifications.tsx	PLAN	P9 T7
-student/profile	(app)/profile.tsx	PLAN	P14 T8 +REG-07 +REG-11 +REG-12
-student/quizzes	(app)/quizzes.tsx	PLAN	P6 T8
-student/quizzes/[quizId]	(app)/quiz/[id]/index.tsx	PLAN	P6 T9
-student/season	(app)/season.tsx	PLAN	P4 T3; P14 T9 (student branch)
-student/sessions/[id]	(app)/session/[id]/index.tsx	PLAN	P4 T4; P14 T10 (check-in); P10 T5
-student/settings	(app)/settings.tsx	PLAN	P7 T6
-super/calendar	(app)/calendar.tsx	PLAN	P16 T9 (all ACTIVE seasons, windowed)
-super/dashboard	(app)/dashboard.tsx	PLAN	P18 T7 (SUPER branch) +REG-60
-super/events	(app)/events.tsx	PLAN	P10 T10 (+ event/[id].tsx)
+student/notifications	(app)/notifications.tsx	PLAN	P13 T7
+student/profile	(app)/profile.tsx	PLAN	P11 T8 +REG-07 +REG-11 +REG-12
+student/quizzes	(app)/quizzes.tsx	PLAN	P8 T8
+student/quizzes/[quizId]	(app)/quiz/[id]/index.tsx	PLAN	P8 T9
+student/season	(app)/season.tsx	PLAN	P4 T3; P11 T9 (student branch)
+student/sessions/[id]	(app)/session/[id]/index.tsx	PLAN	P4 T4; P11 T10 (check-in); P14 T5
+student/settings	(app)/settings.tsx	PLAN	P9 T6
+super/calendar	(app)/calendar.tsx	PLAN	P6 T9 (all ACTIVE seasons, windowed)
+super/dashboard	(app)/dashboard.tsx	PLAN	P16 T7 (SUPER branch) +REG-60
+super/events	(app)/events.tsx	PLAN	P14 T10 (+ event/[id].tsx)
 super/more	(app)/more.tsx	PLAN	P1 T6
-super/notifications	(app)/notifications.tsx	PLAN	P9 T7
-super/reports	(app)/reports.tsx	PLAN	P11 T4, T5, T8
-super/seasons	(app)/seasons/index.tsx	PLAN	P4 T3; P16 T5 (move)
-super/seasons/[code]	(app)/seasons/[code]/index.tsx	PLAN	P16 T6
-super/seasons/[code]/edit	(app)/seasons/[code]/edit.tsx	PLAN	P16 T6 (identity + status + delete)
+super/notifications	(app)/notifications.tsx	PLAN	P13 T7
+super/reports	(app)/reports.tsx	PLAN	P15 T4, T5, T8
+super/seasons	(app)/seasons/index.tsx	PLAN	P4 T3; P6 T5 (move)
+super/seasons/[code]	(app)/seasons/[code]/index.tsx	PLAN	P6 T6
+super/seasons/[code]/edit	(app)/seasons/[code]/edit.tsx	PLAN	P6 T6 (identity + status + delete)
 super/seasons/new	(app)/seasons/index.tsx	PLAN	P4 T3 (inline "New season" form)
-super/seasons/program/[program]	(app)/seasons/index.tsx	PLAN	P16 T6 (program filter) +REG-54
+super/seasons/program/[program]	(app)/seasons/index.tsx	PLAN	P6 T6 (program filter) +REG-54
 super/seasons/year/[year]	(app)/seasons/index.tsx	PLAN	P4 T3 (year grouping) +REG-54
-super/settings	(app)/settings.tsx	PLAN	P7 T6
-super/students	(app)/students/index.tsx	PLAN	P5 T6
-super/students/alumni	(app)/students/alumni.tsx	PLAN	P5 T6
-super/students/dropped	(app)/students/dropped.tsx	PLAN	P5 T6
-super/students/[id]	(app)/student/[id]/index.tsx	PLAN	P5 T7; P17 T7 (graduate/drop sheets, delete) +REG-21
-super/students/[id]/edit	(app)/student/[id]/edit.tsx	PLAN	P17 T8
-super/students/new	(app)/students/new.tsx	PLAN	P17 T8
-super/users	(app)/users/index.tsx	PLAN	P7 T7; P17 T9 (move, bulk invite card) +REG-22
-super/users/[id]/edit	(app)/user/[id].tsx	PLAN	P7 T8
-super/users/import	(app)/users/import.tsx	PLAN	P12 T6
-super/users/new	(app)/users/new.tsx	PLAN	P17 T9 +REG-25
+super/settings	(app)/settings.tsx	PLAN	P9 T6
+super/students	(app)/students/index.tsx	PLAN	P7 T6
+super/students/alumni	(app)/students/alumni.tsx	PLAN	P7 T6
+super/students/dropped	(app)/students/dropped.tsx	PLAN	P7 T6
+super/students/[id]	(app)/student/[id]/index.tsx	PLAN	P7 T7; P10 T7 (graduate/drop sheets, delete) +REG-21
+super/students/[id]/edit	(app)/student/[id]/edit.tsx	PLAN	P10 T8
+super/students/new	(app)/students/new.tsx	PLAN	P10 T8
+super/users	(app)/users/index.tsx	PLAN	P9 T7; P10 T9 (move, bulk invite card) +REG-22
+super/users/[id]/edit	(app)/user/[id].tsx	PLAN	P9 T8
+super/users/import	(app)/users/import.tsx	PLAN	P17 T6
+super/users/new	(app)/users/new.tsx	PLAN	P10 T9 +REG-25
 ```
 
   The block is 104 data rows; Step 3 counts them.
@@ -742,7 +742,7 @@ migration folders — thirteen required (M1–M5, M7–M10, M12, M13, M15, M16) 
 one optional (M14) — plus one optional data script (M17). Two are withdrawn and
 keep their numbers so every cross-reference stays valid: **M6** (season
 timezone: no consumer — C2 keeps one organisation zone, register REG-53) and
-**M11** (`ImportBatch`: Plan 12 D-16.4 holds the preview client-side and
+**M11** (`ImportBatch`: Plan 17 D-16.4 holds the preview client-side and
 re-derives every fact at commit, so there is no server store to replace —
 register REG-47; the import *audit* half is M9's `IMPORT` action). Every other
 migration names the Part 2b task that gives it a writer and a reader.
@@ -800,7 +800,7 @@ git show main:apps/backend/prisma/schema.prisma > /tmp/schema.main.prisma   # th
 ```ts
 // apps/backend/prisma.cutover.config.ts
 //
-// Prisma CLI config for the cutover ONLY (Plan 13). Never imported by the app.
+// Prisma CLI config for the cutover ONLY (Plan 18). Never imported by the app.
 // Prisma auto-loads `prisma.config.ts`, not this file, so `db:generate`, tests
 // and CI never see it; it is used only as `--config prisma.cutover.config.ts`.
 //
@@ -948,7 +948,7 @@ task that lands on `main` rather than `cutover-code`; do it first, and rebase
 ```ts
 // apps/backend/src/__tests__/read-only.test.ts
 /**
- * READ_ONLY=true — the cutover freeze (Plan 13 R5 → R15).
+ * READ_ONLY=true — the cutover freeze (Plan 18 R5 → R15).
  *
  * Unit test, no database: the guard sits in front of the body parsers and
  * every router, so a refused write never reaches Prisma. If this file ever
@@ -1035,7 +1035,7 @@ describe("read-only mode", () => {
   `ENABLE_API_DOCS`):
 
 ```ts
-  // Cutover freeze (Plan 13, R5 → R15). When "true", every non-GET/HEAD/OPTIONS
+  // Cutover freeze (Plan 18, R5 → R15). When "true", every non-GET/HEAD/OPTIONS
   // request is refused with 503 read_only before its body is read, except the
   // three auth endpoints that only write session bookkeeping. Defaults OFF.
   // Hosting applies an env change only on a new deployment — flipping it is a
@@ -1089,10 +1089,10 @@ export const readOnlyGuard: RequestHandler = (req, res, next) => {
 
   In `app.ts`, import it and mount it **immediately after the `cors(...)`
   call and before `express.json()`** (and before any router-specific JSON
-  parser Plan 12 mounted for the import routes):
+  parser Plan 17 mounted for the import routes):
 
 ```ts
-  // Cutover freeze (Plan 13). Before every body parser and router: a refused
+  // Cutover freeze (Plan 18). Before every body parser and router: a refused
   // write is never parsed, authenticated or sent to the database.
   app.use(readOnlyGuard);
 ```
@@ -1362,14 +1362,14 @@ hand-unwinding is the plan. The migration is wrapped in an explicit
 leave it half-applied.
 
 **Code that changes with it:** Task 2b.1 (every `GroupStudent` reader and
-writer; the Plan 16 test that pinned the old cross-season move flips).
+writer; the Plan 6 test that pinned the old cross-season move flips).
 
 ---
 
 ### Task 2.2 — M2: group names are unique within a season
 
-**Unfreezes:** `05-groups.md` §10 item 6 (`:804-814`, R15); Plan 12 deferral
-#5; Plan 16's deferral list ("`(seasonId, lower(name))` uniqueness on
+**Unfreezes:** `05-groups.md` §10 item 6 (`:804-814`, R15); Plan 17 deferral
+#5; Plan 6's deferral list ("`(seasonId, lower(name))` uniqueness on
 `Group`"). Two groups called "Alpha" in one season are legal in the database
 today, and v1's CSV importer matches by lowercased trimmed name into a `Map` —
 so with duplicates the last group wins silently and half a spreadsheet lands in
@@ -1380,7 +1380,7 @@ the wrong group.
 by `POST /seasons/:id/groups` and `PATCH /groups/:id`) refuses an
 **exact-match** duplicate with `409 name_taken`
 (`integration/groups-routes.test.ts:224`). It is **case-sensitive** today
-(`name: input.name`), so "Alpha" and "alpha" both pass; Plan 12's group
+(`name: input.name`), so "Alpha" and "alpha" both pass; Plan 17's group
 importer detects case-insensitive collisions in the file (D-16.19.1). There is
 no `group_name_taken` code anywhere — the earlier draft of this task invented
 it.
@@ -1494,7 +1494,7 @@ nothing would read it, so it is not added (the consumer rule in Prerequisites).
 `Season.absenceWeightMinutes` (`schema.prisma:255`) is a different thing and is
 unchanged.
 
-**The era boundary (Plan 14 Task 2b).** Since Plan 14 merged, v2's
+**The era boundary (Plan 11 Task 2b).** Since Plan 11 merged, v2's
 `POST /sessions/check-in` writes `lateMinutes` measured from `startsAt` with a
 zero threshold, while v1 kept writing minutes since `checkInOpenAt`. The
 recompute in (b) is basis-independent — it derives the value from
@@ -1575,7 +1575,7 @@ rollback path that is deleted in the same change as the thing it rolls back is
 not a rollback path.
 
 **Code that changes with it:** Task 2b.3 — writers set `lateBasis`, the budget
-applies `lateThresholdMinutes`, and Plan 11's workbook gets its numeric `LATE`
+applies `lateThresholdMinutes`, and Plan 15's workbook gets its numeric `LATE`
 cell back with a renamed header (D-17.10).
 
 ---
@@ -1583,21 +1583,21 @@ cell back with a renamed header (D-17.10).
 ### Task 2.4 — M4: notifications carry an entity, not a v1 URL
 
 **Unfreezes:** `10-notifications.md` D1 (`:542-576`), `07-assignments.md` §10
-item 11 (`:645-649`), Plan 8's deferral ("Notification `link` format … one
-cutover change across all notification types"), Plan 9's cutover doc §2.
+item 11 (`:645-649`), Plan 12's deferral ("Notification `link` format … one
+cutover change across all notification types"), Plan 13's cutover doc §2.
 `Notification.link` holds a v1 role-prefixed web path
 (`/admin/students/12`), which resolves to nothing in v2's flat route tree —
 and every v2 producer has been *deliberately writing v1's format* so v1 keeps
 working (ruling X1; `apps/backend/src/lib/attendance-notifications.ts:66,74`).
 v2 derives a route-independent `target` on read from that string
-(`parseNotificationLink`, Plan 9 `lib/notification-target.ts`).
+(`parseNotificationLink`, Plan 13 `lib/notification-target.ts`).
 
-**The closed set of shapes is Plan 9's, exactly.** `NOTIFICATION_LINK_PATTERNS`
-(Plan 9 Task 2) holds the five shapes v1 writes, enumerated from jpc-space's
-nine producers and re-audited across Plans 14–17 (only Plan 15 adds a producer,
+**The closed set of shapes is Plan 13's, exactly.** `NOTIFICATION_LINK_PATTERNS`
+(Plan 13 Task 2) holds the five shapes v1 writes, enumerated from jpc-space's
+nine producers and re-audited across Plans 5, 6, 10 and 11 (only Plan 5 adds a producer,
 writing `/student/assignments/<id>`):
 
-| # | v1 `link` | Wire `entityType` (Plan 9) | Column value (M4) | `entityId` |
+| # | v1 `link` | Wire `entityType` (Plan 13) | Column value (M4) | `entityId` |
 |---|---|---|---|---|
 | 1 | `/student/assignments/:id` | `assignment` | `ASSIGNMENT` | the id |
 | 2 | `/student/quizzes` | `quiz` | `QUIZ` | null |
@@ -1605,9 +1605,9 @@ writing `/student/assignments/<id>`):
 | 4 | `/admin/students/:id` | `student` | `STUDENT` | the id |
 | 5 | `/leader/students/:id` | `student` | `STUDENT` | the id |
 
-**Prisma model change** — the enum has exactly Plan 9's four values. The
+**Prisma model change** — the enum has exactly Plan 13's four values. The
 earlier draft also had `SUBMISSION` and `SESSION`; no v1 shape maps to them,
-no producer writes them, and Plan 9's `notificationEntityTypeSchema` could not
+no producer writes them, and Plan 13's `notificationEntityTypeSchema` could not
 represent them on the wire. An enum value cannot be removed once added (see
 M5), so it is not added speculatively.
 
@@ -1658,7 +1658,7 @@ COMMIT;
 
 **Rows that violate today:** any row whose `link` matches none of the five
 shapes. There is no constraint to violate, so they simply stay null and the
-client falls back to opening the inbox (Plan 9's `target: null`). Enumerate
+client falls back to opening the inbox (Plan 13's `target: null`). Enumerate
 them at R2 so the count is known rather than discovered:
 
 ```sql
@@ -1670,8 +1670,8 @@ SELECT "link", count(*) FROM "Notification"
  GROUP BY 1 ORDER BY 2 DESC;   -- expect zero rows
 ```
 
-A row in that list means v1 grew a sixth path since Plan 9 enumerated them.
-**That is a no-go condition at R9** unless Plan 9's
+A row in that list means v1 grew a sixth path since Plan 13 enumerated them.
+**That is a no-go condition at R9** unless Plan 13's
 `NOTIFICATION_LINK_PATTERNS`, this table, the SQL above and Task 2b.4 are all
 extended together and re-rehearsed — a notification that silently opens the
 wrong screen is worse than one that opens the inbox.
@@ -1764,7 +1764,7 @@ ALTER TABLE "NotificationPreference" ADD COLUMN "pushEnabled"        BOOLEAN NOT
 
 **Where each new type points (no new link shape, no new entity type).** The
 new producers write `entityType`/`entityId` (M4) and no `link` (Task 2b.4), and
-every target is one of Plan 9's four entity types, so `routeForTarget` on the
+every target is one of Plan 13's four entity types, so `routeForTarget` on the
 device needs no change:
 
 | Type | Recipient | `entityType` | `entityId` | Opens |
@@ -1788,21 +1788,21 @@ columns (`notificationPreferencesSchema`'s six plus the four new types plus
 
 Five specs ask for an IANA timezone column on `Season` (`02-seasons.md` D11,
 D12; `03-sessions.md` §10 item 5; `07-assignments.md` §10 item 3;
-`06-students.md` D10; `17-reports.md` D12), and Plans 11 (#4) and 16 hand it
+`06-students.md` D10; `17-reports.md` D12), and Plan 15 (#4) and 16 hand it
 here. It is **not** authored, for two reasons that the 2026-10-05 re-sync made
 concrete:
 
 - **No consumer.** C2 rules one organisation timezone held in config, applied
   server-side. Every wall-clock derivation the plans built goes through Plan
   3's `lib/org-time.ts` (`orgWallClock`, `formatInOrgTime`, `addWeeksInOrgTime`),
-  Plan 4's `orgDayKey`, Plan 15's `orgWallTime` / `orgWallClockToInstant` and
-  Plan 10's `isOrgMidnight` — all of them zone-implicit — plus direct
-  `config.orgTimezone` reads in Plan 11's workbook formatter. A column that
+  Plan 4's `orgDayKey`, Plan 5's `orgWallTime` / `orgWallClockToInstant` and
+  Plan 14's `isOrgMidnight` — all of them zone-implicit — plus direct
+  `config.orgTimezone` reads in Plan 15's workbook formatter. A column that
   every reader ignores is DDL for its own sake (Prerequisites), and making
   each of those helpers season-aware is a cross-cutting refactor of seven plans'
   code, not a cutover step.
 - **The earlier verification could not pass.** It required `resolveTimezone`
-  to be "the only place `orgTimezone` is read"; Plans 3, 10, 11, 15 and 16 read
+  to be "the only place `orgTimezone` is read"; Plans 3, 5, 6, 14 and 15 read
   it directly. That check is dropped with the migration.
 
 The folder slot `20261101000006` stays empty. If the organisation ever runs a
@@ -1815,7 +1815,7 @@ consumer.
 ### Task 2.7 — M7: `JpcEvent` stops lying about its season
 
 **Unfreezes:** `15-events.md` §10 item 6 (`:577-584`, R16/R19 — no `allDay`
-column) and item 11 (`:642-651`, R35/R36 — no soft delete), Plan 10's D-15.6,
+column) and item 11 (`:642-651`, R35/R36 — no soft delete), Plan 14's D-15.6,
 plus a defect found by reading the schema rather than a spec:
 **`JpcEvent.season` is `onDelete: SetNull`**
 (`apps/backend/prisma/schema.prisma:770`, created by v1 migration
@@ -1828,7 +1828,7 @@ nobody, or to everybody, depending on which read you ask.
 season" must not silently outlive that season. **Why `Restrict` breaks
 nothing:** every season delete v2 performs is a soft delete (`update` setting
 `deletedAt`, Plan 3 — its Revision records this), which no FK can block; the
-only hard season deletes are `cleanupTestData`'s, and Plan 10 Task 2 already
+only hard season deletes are `cleanupTestData`'s, and Plan 14 Task 2 already
 deletes prefixed test events **at the top** of that function, before any
 season. Task 2b.7 pins that order.
 
@@ -1865,7 +1865,7 @@ ALTER TABLE "JpcEvent" ADD COLUMN "deletedAt" TIMESTAMP(3);
 CREATE INDEX "JpcEvent_seasonId_idx"  ON "JpcEvent"("seasonId");
 CREATE INDEX "JpcEvent_deletedAt_idx" ON "JpcEvent"("deletedAt");
 
--- allDay from Plan 10's midnight convention (an all-day event is stored at
+-- allDay from Plan 14's midnight convention (an all-day event is stored at
 -- org-local midnight), resolved in the organisation timezone (C2). The column
 -- is timestamp-without-zone holding UTC, hence the double AT TIME ZONE.
 UPDATE "JpcEvent"
@@ -1908,7 +1908,7 @@ Record the `CHECK` in `prisma/CONSTRAINTS.md`.
 
 **Verification:** the offender query returns zero; on the rehearsal copy a
 `DELETE FROM "Season"` for a season with events raises `23503` instead of
-silently orphaning them; on a 200-row sample `allDay` equals Plan 10's
+silently orphaning them; on a 200-row sample `allDay` equals Plan 14's
 `isOrgMidnight(date)` (Task 2.18 Step 3 script); `fixture-leak.test.ts`
 (extended by Task 2b.7) reports zero prefixed events.
 
@@ -1925,14 +1925,14 @@ read filters `deletedAt: null`.
 ### Task 2.8 — M8: pastoral notes get a tombstone
 
 **Unfreezes:** `09-notes.md` D4 (`:661-686`, R29 — hard delete, no tombstone,
-and no UI caller in v1, so nobody has ever deleted a note). Plan 8 ships
-`DELETE /notes/:id` as `501 delete_unavailable` (Plan 8 divergence row 8 and
+and no UI caller in v1, so nobody has ever deleted a note). Plan 12 ships
+`DELETE /notes/:id` as `501 delete_unavailable` (Plan 12 divergence row 8 and
 "Deferred to cutover") precisely so that no note is hard-deleted in the
 interval before this lands.
 
 **Narrowed on 2026-10-05.** The earlier draft also added `resolvedAt` /
 `resolvedById` and a follow-up queue index (`09-notes.md` D11). Nothing in any
-plan writes or reads them — the queue is a screen, and Plan 13 builds no
+plan writes or reads them — the queue is a screen, and Plan 18 builds no
 screens — so they are not added (register REG-33; D-13.11 is superseded). The
 endpoint that writes `deletedAt` already exists.
 
@@ -1956,9 +1956,9 @@ CREATE INDEX "EngagementNote_deletedAt_idx" ON "EngagementNote"("deletedAt");
 **Backfill:** none. **Rows that violate today:** none — one nullable column.
 
 **Verification:** `DELETE /notes/:id` stops returning 501 and sets `deletedAt`
-(author only — Plan 8's `canEditNote`); every note read (`noteVisibilityWhere`
+(author only — Plan 12's `canEditNote`); every note read (`noteVisibilityWhere`
 in `lib/permissions.ts`) gains `deletedAt: null` and there is **no** exported
-function that returns notes without it — the same mutation Plan 8's closing
+function that returns notes without it — the same mutation Plan 12's closing
 gate already tests, extended by one clause.
 
 **Rollback:** drop the index and the column. Any note soft-deleted between
@@ -1973,17 +1973,17 @@ apply and rollback becomes visible again — the safe direction.
 **Unfreezes:** `06-students.md` D15 (`:770-779` — no record of who graduated,
 dropped or deleted a student), `11-invites-users.md` D7 item 4 (`:755-762` — no
 record of who granted a role), `16-imports.md` D15 (`:806-814` — no record of
-who imported what; Plan 12 deferral #2), `18-settings.md` R39 (`:210`); Plan 7's
-"audit columns for role grants" and Plan 17's "audit columns (spec 06 D15)"
-deferrals. Plan 17's `lib/audit.ts` `auditLog(op, actorId, subjectId)` already
+who imported what; Plan 17 deferral #2), `18-settings.md` R39 (`:210`); Plan 9's
+"audit columns for role grants" and Plan 10's "audit columns (spec 06 D15)"
+deferrals. Plan 10's `lib/audit.ts` `auditLog(op, actorId, subjectId)` already
 writes a log line for `student.graduate`, `student.delete`,
-`enrollment.drop` and `enrollment.complete` (Plan 17 Decision 4) — this
+`enrollment.drop` and `enrollment.complete` (Plan 10 Decision 4) — this
 migration gives that seam a table.
 
 **What it deliberately does not record — reads (C6).** The earlier draft also
 logged exports (`17-reports.md` D15) and note reads (`09-notes.md` D15) here.
 Both are GETs, and C6 is "No read endpoint performs a write, without
-exception". Plan 11 (D-17.18, `lib/` export log comment) and Plan 8 (divergence
+exception". Plan 15 (D-17.18, `lib/` export log comment) and Plan 12 (divergence
 row 17) already made that call and log a line instead. That stays: registered
 as REG-44 and REG-35, not silently reversed by a migration. Converting exports
 to a `POST` that creates an export record is a contract change for a follow-up.
@@ -2027,7 +2027,7 @@ model AuditLog {
 ```
 
 **No free-text column at all.** `06-students.md` D15 is explicit — log actor,
-subject and operation "**without** logging any field value", and Plan 17's
+subject and operation "**without** logging any field value", and Plan 10's
 mutation 20 fails if `formatAuditLine` ever carries one. A `summary` column is
 an invitation to put a role name, a reason or a year in it; the action enum
 says what happened and the subject says to whom.
@@ -2057,20 +2057,20 @@ ever added it must serialise `id` as a string.
 ### Task 2.10 — M10: `DeviceToken`, and push stops returning 503
 
 **Unfreezes:** `10-notifications.md` D5 item 1 (`:635-654`),
-`18-settings.md` D3 (`:459`), Plan 9 Task 5 ("BLOCKED ON CUTOVER"). Plan 9
+`18-settings.md` D3 (`:459`), Plan 13 Task 5 ("BLOCKED ON CUTOVER"). Plan 13
 ships the entire mobile permission and token lifecycle against a
 `POST /api/v1/me/devices` that validates the body and then answers
 `503 push_unavailable`, because there is nowhere to put an Expo token and
 `10-notifications.md` D5 explicitly **refuses** reusing an existing column.
 
-**Reconcile, do not re-author.** Plan 9 Task 5 Step 4 wrote
+**Reconcile, do not re-author.** Plan 13 Task 5 Step 4 wrote
 `docs/superpowers/cutover/2026-08-24-notifications-push.md`, whose §1 was
 written to match this task exactly. Diff its model and SQL against the block
 below; they must be identical. If they differ, this task's text wins only
-where Plan 9's doc contradicts `names.md`'s pins (`devicePlatformSchema`
+where Plan 13's doc contradicts `names.md`'s pins (`devicePlatformSchema`
 lowercase wire, `DEVICE_PLATFORM_TO_DB = { ios: "IOS", android: "ANDROID" }`);
 otherwise adopt the doc's and record the difference. Then the doc gains a line
-"Applied by Plan 13 M10 — see that plan" and is not used again.
+"Applied by Plan 18 M10 — see that plan" and is not used again.
 
 **Prisma model** (plus `deviceTokens DeviceToken[]` on `User`):
 
@@ -2112,7 +2112,7 @@ duplicating; a dispatch to a token Expo reports `DeviceNotRegistered` deletes
 it; **no push token is ever logged** (Task 2b.10's grep).
 
 **Rollback:** `DROP TABLE "DeviceToken"; DROP TYPE "DevicePlatform";` and the
-endpoint returns to 503, which the mobile client already handles (Plan 9 Task
+endpoint returns to 503, which the mobile client already handles (Plan 13 Task
 10 — "keep the token locally, stop retrying this session").
 
 **Code that changes with it:** Task 2b.10.
@@ -2122,16 +2122,16 @@ endpoint returns to 503, which the mobile client already handles (Plan 9 Task
 ### Task 2.11 — M11: `ImportBatch` — **WITHDRAWN** (register REG-47)
 
 The earlier draft described "an in-process TTL store … 15-minute expiry,
-per-user cap" in Plan 12 and replaced it with an `ImportBatch` table. **Plan 12
+per-user cap" in Plan 17 and replaced it with an `ImportBatch` table. **Plan 17
 builds no such store.** Its D-16.4 holds the parsed preview **in the client**
 and has the commit re-derive every fact server-side from the resubmitted
 values — that re-derivation *is* the integrity control, and it is tested
 ("never accepts a client-computed status"). There is nothing in-process to
 lose on a restart and nothing to replace.
 
-What Plan 12 did hand here (its "Deferred to cutover" table):
+What Plan 17 did hand here (its "Deferred to cutover" table):
 
-| Plan 12 # | Item | Disposition |
+| Plan 17 # | Item | Disposition |
 |---|---|---|
 | 1 | Durable import session (`ImportBatch` + `ImportBatchRow`, commit-by-id, row-edit `PATCH`) | **Deferred** — a flow redesign, not a migration with a consumer. REG-47 |
 | 2 | Import audit trail | **M9** — `IMPORT_STUDENTS` / `IMPORT_GROUPS` with actor, season, row count (Task 2b.9) |
@@ -2139,7 +2139,7 @@ What Plan 12 did hand here (its "Deferred to cutover" table):
 | 4 | Releasing a soft-deleted user's address | **M14** (optional) |
 | 5 | `Group.name` per-season uniqueness | **M2** |
 | 6 | `GroupStudent` per-season uniqueness | **M1** |
-| 7 | Index for the `lower(email)` lookup | **M14** (stored emails become lowercase; the lookup moves to an indexed `email = ANY(...)`). If M14 is declined, the sequential scan stays — Plan 12 records it as acceptable at this table size (REG-66) |
+| 7 | Index for the `lower(email)` lookup | **M14** (stored emails become lowercase; the lookup moves to an indexed `email = ANY(...)`). If M14 is declined, the sequential scan stays — Plan 17 records it as acceptable at this table size (REG-66) |
 
 **Runbook consequence:** a preview open on someone's phone during the window
 is not lost — it is client state — but its commit is refused with
@@ -2152,25 +2152,25 @@ announces it. The folder slot `20261101000011` stays empty.
 
 **Unfreezes:** `11-invites-users.md` D5 (`:696-719`) — v1's `InviteToken.token`
 stores the **raw** 32-character code (`jpc-space/src/lib/invites.ts:8-24`);
-plus the missing index on `PasswordResetToken.expiresAt` (`:719`, Plan 17
-Decision 15) and the used/expired token sweep (Plan 7 closing-gate deferral,
-Plan 17 Decision 15).
+plus the missing index on `PasswordResetToken.expiresAt` (`:719`, Plan 10
+Decision 15) and the used/expired token sweep (Plan 9 closing-gate deferral,
+Plan 10 Decision 15).
 
 **What changed since the earlier draft (verified against the written
-plans).** Plan 7 Decision 4 already stores **only** SHA-256 digests in
+plans).** Plan 9 Decision 4 already stores **only** SHA-256 digests in
 `InviteToken.token` (`token: hashToken(raw)`) and looks invites up by digest
-alone — there is no "dual-form lookup" to delete. Plan 17 adds
+alone — there is no "dual-form lookup" to delete. Plan 10 adds
 `isV2InviteDigest(token)` (`/^[0-9a-f]{64}$/`) and counts a v1 plaintext invite
 as "pending" for the bulk re-invite. So:
 
-- **No column rename.** Renaming `token` → `tokenHash` would break every Plan 7
-  and Plan 17 query (`where: { token: hashToken(raw) }`) for a cosmetic gain.
+- **No column rename.** Renaming `token` → `tokenHash` would break every Plan 9
+  and Plan 10 query (`where: { token: hashToken(raw) }`) for a cosmetic gain.
   The column keeps its name; its contents are already digests for every v2 row.
 - **No blanket expiry of invites.** v2-issued invites are digests and keep
   working through the window; expiring them would force every mid-signup
   person to be re-invited for nothing.
 - **What remains a defect:** v1's plaintext codes still sit in the shared
-  table. They can never match a v2 digest lookup (Plan 7 Decision 4) and v1's
+  table. They can never match a v2 digest lookup (Plan 9 Decision 4) and v1's
   own acceptance route never existed (spec 11 D1), but plaintext secrets at
   rest are still secrets at rest. They are overwritten.
 
@@ -2220,8 +2220,8 @@ The second number is the set R19 re-invites. They need nothing special: Plan
 invite, so they are in its pending pool today and stay there.
 
 **Verification:** `SELECT count(*) FROM "InviteToken" WHERE "token" !~ '^[0-9a-f]{64}$' AND "token" !~ '^v1-void-[0-9]+$';`
-is zero; `invites-routes.test.ts` (Plan 7) and Plan 17's bulk-invite and reset
-suites pass unchanged on the rehearsal copy; `EXPLAIN` of Plan 17's
+is zero; `invites-routes.test.ts` (Plan 9) and Plan 10's bulk-invite and reset
+suites pass unchanged on the rehearsal copy; `EXPLAIN` of Plan 10's
 reset-token expiry `updateMany` uses `PasswordResetToken_expiresAt_idx`.
 
 **Rollback:** `DROP INDEX "PasswordResetToken_expiresAt_idx";`. The overwritten
@@ -2238,7 +2238,7 @@ code changes).
 
 **Unfreezes:** C7 (`_DECISIONS.md:113-129`) — "a role change does not revoke a
 live token. No session-invalidation column exists, so under C1 the mitigation is
-TTL." Plan 7 converts that mitigation into real refresh-token revocation
+TTL." Plan 9 converts that mitigation into real refresh-token revocation
 (`revokeAllRefreshTokensForUser`), which closes the 30-day hole but leaves the
 900-second one: an access token minted a minute before a demotion still carries
 the old claims until it expires.
@@ -2287,8 +2287,8 @@ check short-circuits to the C7 TTL mitigation.
 **Unfreezes:** `16-imports.md` D2 (`:658-675`, R25/R28/R60) — `User.email` is a
 plain unique column with no `citext`, so `Foo@x.com` and `foo@x.com` create two
 accounts and a capitalised address can only be logged into with that exact
-capitalisation; Plan 5's deferral (`routes/students.ts` comment, "R19 stands")
-and Plan 12 deferrals #3, #4, #7 — a soft-deleted student's email is reserved
+capitalisation; Plan 7's deferral (`routes/students.ts` comment, "R19 stands")
+and Plan 17 deferrals #3, #4, #7 — a soft-deleted student's email is reserved
 forever because the unique is unconditional, and `lower(email)` lookups have
 no index.
 
@@ -2363,7 +2363,7 @@ and clash lookup selects `email = <normalised> AND "deletedAt" IS NULL`.
 **Verification:** `SELECT count(*) FROM "User" WHERE "email" <> lower(btrim("email"));`
 is zero; a login with a differently-cased address succeeds; creating a user
 with the email of a soft-deleted user succeeds; creating one with the email of
-a live user still returns `409 email_taken`; Plan 12's preview of a mixed-case
+a live user still returns `409 email_taken`; Plan 17's preview of a mixed-case
 paste classifies the row as `exists` using `User_email_idx` (`EXPLAIN`).
 
 **Rollback:** `DROP INDEX "User_email_lower_active_key"; DROP INDEX "User_email_idx";`
@@ -2383,17 +2383,17 @@ The copy is dropped one release after cutover (REG-69).
 **Unfreezes:** `12-quizzes.md` D3 (`:1136-1139` — answer snapshots);
 `13-video-quizzes.md` D6 (`:833-841` — question soft delete), D10
 (`:889-901` — persisted video score) and D13 (`:953-963` — `updatedById`);
-Plan 6 and Plan 10 ("deferred to cutover, with the column each needs") both
+Plan 8 and Plan 14 ("deferred to cutover, with the column each needs") both
 book this block.
 
 **Narrowed on 2026-10-05 to columns that get a writer.** Two columns from the
 earlier draft are not added:
 - `Quiz.deletedAt` (`12-quizzes.md` D9) — v2 has **no** quiz delete endpoint
-  (Plan 6, C12: v1's `deleteQuizAction` is dead code), so nothing would set
+  (Plan 8, C12: v1's `deleteQuizAction` is dead code), so nothing would set
   it. Register REG-51.
 - `Session.videoDurationSeconds` (`13-video-quizzes.md` D2) — filling it needs
   a YouTube Data API key this repository does not hold, so nothing would set
-  it; Plan 10's client-side guard stays. Register REG-40.
+  it; Plan 14's client-side guard stays. Register REG-40.
 
 **Prisma model change** (plus `videoQuestionsUpdated SessionVideoQuestion[] @relation("VideoQuestionUpdatedBy")` on `User`):
 
@@ -2459,7 +2459,7 @@ is derived and discarding it loses nothing that was not already derivable.
 ### Task 2.16 — M16: forum moderation
 
 **Unfreezes:** `14-forum.md` D2 items 3 and 4 (`:626-637`, R48/R57) and §2
-(`:87-88`), Plan 10's **D-14.4** — which names this as the residual product risk
+(`:87-88`), Plan 14's **D-14.4** — which names this as the residual product risk
 it shipped with: a leader's only remedy for an entire inappropriate forum post
 is to contact the author, and the UI says so.
 
@@ -2480,7 +2480,7 @@ model ForumComment {
 
 **Why `hiddenAt` and not reverting `status` to `DRAFT`:** `14-forum.md` D2 names
 reverting to `DRAFT` as the available lever and immediately says it overloads
-`DRAFT` further and collides with `08-submissions.md` D3. Plan 10 considered and
+`DRAFT` further and collides with `08-submissions.md` D3. Plan 14 considered and
 refused it. `hiddenAt` is the column that was blocked; it is unblocked here and
 the overload is not adopted.
 
@@ -2510,11 +2510,11 @@ structured rich text is a migration, so under C1 it is a cutover task";
 `09-notes.md` D1 (`:604-618`), `07-assignments.md` §10 item 10 (`:636-643`),
 `14-forum.md` D11 (`:739-745`).
 
-Note bodies and forum posts are HTML in the database (v1 wrote HTML; Plan 8
+Note bodies and forum posts are HTML in the database (v1 wrote HTML; Plan 12
 keeps writing it with `plainTextToHtml` so v1 can render v2's notes, and Plan
 10 does the same for forum posts). v2 converts **on read** with
-`htmlToPlainText` from **`packages/shared/src/html-text.ts`** (Plan 8 Task 1;
-ruling X3 — the one module, also used by Plan 10). Plan 15 writes assignment
+`htmlToPlainText` from **`packages/shared/src/html-text.ts`** (Plan 12 Task 1;
+ruling X3 — the one module, also used by Plan 14). Plan 5 writes assignment
 descriptions as plain text already. That works and is not urgent to change.
 What it costs is a permanent converter on a hot path and a column whose
 contents nobody can reason about.
@@ -2727,22 +2727,22 @@ long-lived `cutover-code` branch (Task 2.0 Step 1) and merged at R11.
 ### Task 2b.1 — M1 consumers: `GroupStudent` is per season
 
 **Files:**
-- Modify: `apps/backend/src/lib/queries/groups.ts` (`setGroupStudents`; Plan 16's `assignStudentsToGroups`, `unassignStudentsFromGroups`)
+- Modify: `apps/backend/src/lib/queries/groups.ts` (`setGroupStudents`; Plan 6's `assignStudentsToGroups`, `unassignStudentsFromGroups`)
 - Modify: `apps/backend/src/lib/attendance-notifications.ts` (`:36` membership lookup)
 - Modify: every test fixture that creates a `GroupStudent` row
-- Test: `apps/backend/src/__tests__/integration/roster-routes.test.ts` (Plan 16), `groups-routes.test.ts`
+- Test: `apps/backend/src/__tests__/integration/roster-routes.test.ts` (Plan 6), `groups-routes.test.ts`
 
 **Interfaces:**
 - Consumes: M1's `GroupStudent.seasonId` and compound unique `seasonId_studentUserId`.
 - Produces: unchanged signatures; changed behaviour — assigning a student in
   season A no longer touches their group in season B.
 
-- [ ] **Step 1: Flip the test that pinned the defect.** Plan 16's
-  `"assigning a student who sits in another season's group moves their GroupStudent row (R1, Plan 13 item)"`
+- [ ] **Step 1: Flip the test that pinned the defect.** Plan 6's
+  `"assigning a student who sits in another season's group moves their GroupStudent row (R1, Plan 18 item)"`
   becomes:
 
 ```ts
-  it("assigning a student who sits in another season's group KEEPS that membership (R1, Plan 13 M1)", async () => {
+  it("assigning a student who sits in another season's group KEEPS that membership (R1, Plan 18 M1)", async () => {
     const res = await request(app)
       .put(`/api/v1/seasons/${seasonId}/group-assignments`)
       .set("authorization", `Bearer ${adminToken}`)
@@ -2773,7 +2773,7 @@ grep -rn "groupStudent\.\(create\|createMany\|upsert\|deleteMany\|findUnique\|fi
 ```ts
 // setGroupStudents (lib/queries/groups.ts) — replaces the loop body
   for (const studentUserId of studentIds) {
-    // Per-season membership (Plan 13 M1): replace only THIS season's row.
+    // Per-season membership (Plan 18 M1): replace only THIS season's row.
     await tx.groupStudent.deleteMany({ where: { studentUserId, seasonId } });
     await tx.groupStudent.create({ data: { groupId, studentUserId, seasonId } });
     await tx.seasonEnrollment.update({
@@ -2783,7 +2783,7 @@ grep -rn "groupStudent\.\(create\|createMany\|upsert\|deleteMany\|findUnique\|fi
   }
 ```
 
-  The same two-line change in Plan 16's `assignStudentsToGroups` (its
+  The same two-line change in Plan 6's `assignStudentsToGroups` (its
   "`@unique` STANDALONE … has to go first" comment is deleted with the old
   line); `unassignStudentsFromGroups` already scopes by season — change its
   `where: { studentUserId, group: { seasonId } }` to the direct
@@ -2804,7 +2804,7 @@ grep -rn "groupStudent\.\(create\|createMany\|upsert\|deleteMany\|findUnique\|fi
   the rehearsal copy → PASS. **Mutation:** put back
   `deleteMany({ where: { studentUserId } })` (no season) → Step 1's case fails.
 
-- [ ] **Step 4: Commit** `feat(backend): per-season GroupStudent (Plan 13 M1)`
+- [ ] **Step 4: Commit** `feat(backend): per-season GroupStudent (Plan 18 M1)`
   with M1's folder.
 
 ### Task 2b.2 — M2 consumer: group names are case-insensitively unique
@@ -2850,11 +2850,11 @@ Test `groups-routes.test.ts`.
 
 ### Task 2b.3 — M3 consumers: lateness basis, threshold, and the workbook's number
 
-**Files:** Modify `apps/backend/src/routes/sessions.ts` (check-in, Plan 14
+**Files:** Modify `apps/backend/src/routes/sessions.ts` (check-in, Plan 11
 Task 2b; attendance save), `apps/backend/src/lib/queries/attendance-budget.ts`
-(Plan 14), Plan 11's season-export workbook builder and its Key sheet;
+(Plan 11), Plan 15's season-export workbook builder and its Key sheet;
 `apps/backend/src/docs/openapi.ts`. Tests: `check-in-routes.test.ts`,
-`attendance-routes.test.ts`, `attendance-budget.test.ts`, Plan 11's
+`attendance-routes.test.ts`, `attendance-budget.test.ts`, Plan 15's
 `season-export` unit test.
 
 - [ ] **Step 1: Failing tests.**
@@ -2870,7 +2870,7 @@ Task 2b; attendance save), `apps/backend/src/lib/queries/attendance-budget.ts`
 - [ ] **Step 2: Implement.**
 
 ```ts
-// routes/sessions.ts — POST /check-in (replaces Plan 14 Task 2b's computation;
+// routes/sessions.ts — POST /check-in (replaces Plan 11 Task 2b's computation;
 // select season.lateThresholdMinutes alongside startsAt)
   const elapsed = Math.max(0, Math.floor((now.getTime() - session.startsAt.getTime()) / 60_000));
   const isLate = elapsed > session.season.lateThresholdMinutes;
@@ -2884,10 +2884,10 @@ Task 2b; attendance save), `apps/backend/src/lib/queries/attendance-budget.ts`
   when the leader supplied `lateMinutes`, else leaves the column untouched on
   update and writes `"MANUAL"` on create. No v2 code path writes `UNKNOWN`
   (the soak alarms on it). The budget keeps summing `lateMinutes` over LATE
-  rows (Plan 14 `budgetFrom`) — the threshold acts at write time, so there is
+  rows (Plan 11 `budgetFrom`) — the threshold acts at write time, so there is
   no second definition (C4).
 
-  Plan 11's workbook: delete D-17.10's `"L"` substitution for rows whose
+  Plan 15's workbook: delete D-17.10's `"L"` substitution for rows whose
   `lateMinutes` is non-null; print the number; change the session-column
   header and the Key sheet sentence in the same change (D-17.10: "restore the
   numeric cell **and** change the column header in the same release"). The
@@ -2901,15 +2901,15 @@ Task 2b; attendance save), `apps/backend/src/lib/queries/attendance-budget.ts`
 ### Task 2b.4 — M4 consumers: producers write the entity, not a v1 path
 
 **Files:** Modify `apps/backend/src/lib/notifications.ts`
-(`CreateNotificationInput`, `createNotificationsBulk` — Plan 9's version);
+(`CreateNotificationInput`, `createNotificationsBulk` — Plan 13's version);
 every producer (enumerated below); the notifications read
-(`routes/notifications.ts`, Plan 9); `lib/email.ts` call site;
+(`routes/notifications.ts`, Plan 13); `lib/email.ts` call site;
 `apps/backend/src/docs/openapi.ts`. Tests: `notifications.test.ts`, each
 producer's suite.
 
 **Interfaces:**
 - Produces: `CreateNotificationInput` gains `target: NotificationTarget | null`
-  (Plan 9's shared type) and loses `link`. The API's `target` field is unchanged
+  (Plan 13's shared type) and loses `link`. The API's `target` field is unchanged
   on the wire.
 
 - [ ] **Step 1: Failing tests.** In `notifications.test.ts`: a bulk create with
@@ -2918,7 +2918,7 @@ producer's suite.
   returns `target: { entityType: "student", entityId: 12 }` for it; a historic
   row with `link: "/student/calendar"` and null columns still returns
   `target: { entityType: "calendar", entityId: null }` (the parser fallback).
-- [ ] **Step 2: Enumerate the producers.** Plan 9 Step 7's table (main, Plans
+- [ ] **Step 2: Enumerate the producers.** Plan 13 Step 7's table (main, Plans
   3, 15, 6, 8) plus M5's four new types (Task 2b.5):
 
 ```bash
@@ -2927,12 +2927,12 @@ grep -rn "createNotificationsBulk\|createNotification(" apps/backend/src --inclu
 
   Each call site's `link: "<v1 path>"` becomes the matching target from M4's
   table: `/student/assignments/${id}` → `{ entityType: "assignment", entityId: id }`
-  (main's submission review; Plan 15's `notifyAssignmentCreated`);
-  `QUIZ_GRADED_LINK` → `{ entityType: "quiz", entityId: null }` (Plan 6's four
+  (main's submission review; Plan 5's `notifyAssignmentCreated`);
+  `QUIZ_GRADED_LINK` → `{ entityType: "quiz", entityId: null }` (Plan 8's four
   sites; delete the constant); `/student/calendar` → `{ entityType: "calendar", entityId: null }`
   (Plan 3's reschedule); `/admin/students/${id}` and `/leader/students/${id}`
   → `{ entityType: "student", entityId: id }` (`attendance-notifications.ts:66,74`,
-  Plan 8's `MENTOR_FOLLOWUP`).
+  Plan 12's `MENTOR_FOLLOWUP`).
 - [ ] **Step 3: Implement the write and the read.**
 
 ```ts
@@ -2949,7 +2949,7 @@ const TO_COLUMN = { assignment: "ASSIGNMENT", quiz: "QUIZ", calendar: "CALENDAR"
   rows the backfill could not map). The email call passes no link:
   `sendNotificationEmail(u.email, payload.title, payload.body ?? null, null)` —
   the "Open" button pointed at v1's web host, which no longer exists
-  (register REG-38; Plan 8's `buildNotificationHtml` already omits the button
+  (register REG-38; Plan 12's `buildNotificationHtml` already omits the button
   when the link is null).
 - [ ] **Step 4: Run → PASS.** Grep that no producer writes a path any more:
   `grep -rn "link: \`/\|link: \"/" apps/backend/src --include=*.ts | grep -v __tests__` → empty.
@@ -2962,9 +2962,9 @@ const TO_COLUMN = { assignment: "ASSIGNMENT", quiz: "QUIZ", calendar: "CALENDAR"
   `notificationPreferencesSchema`, `DEFAULT_NOTIFICATION_PREFERENCES`)
 - Modify: `apps/backend/src/lib/notifications.ts` (`PREF_FIELD` — a full
   `Record<NotificationType, …>`, so it fails to compile until all four are added)
-- Modify: producers — `routes/submissions.ts` (submit), Plan 10 `routes/forum.ts`
-  (comment create), Plan 6 quiz attempt submit and reopen handlers
-- Modify: `apps/mobile/src/components/NotificationPreferences.tsx` (Plan 9
+- Modify: producers — `routes/submissions.ts` (submit), Plan 14 `routes/forum.ts`
+  (comment create), Plan 8 quiz attempt submit and reopen handlers
+- Modify: `apps/mobile/src/components/NotificationPreferences.tsx` (Plan 13
   Task 9) — four toggles and a "Push notifications" master switch
 - Tests: shared `notification.test.ts`, `notifications.test.ts`, each producer
   suite, `apps/mobile/src/__tests__/notification-preferences.test.tsx`
@@ -2976,7 +2976,7 @@ const TO_COLUMN = { assignment: "ASSIGNMENT", quiz: "QUIZ", calendar: "CALENDAR"
   new switches by label.
 - [ ] **Step 2: Implement.** `PREF_FIELD` gains
   `SUBMISSION_RECEIVED: "submissionReceived", FORUM_COMMENT: "forumComment", QUIZ_ATTEMPT_PENDING: "quizAttemptPending", QUIZ_REOPENED: "quizReopened"`.
-  Each producer is wrapped in Plan 9's `bestEffort(label, …)` after its
+  Each producer is wrapped in Plan 13's `bestEffort(label, …)` after its
   transaction commits — a notification failure never fails the write:
 
 ```ts
@@ -3000,9 +3000,9 @@ const TO_COLUMN = { assignment: "ASSIGNMENT", quiz: "QUIZ", calendar: "CALENDAR"
 
 ### Task 2b.7 — M7 consumers: `allDay`, event soft delete, cleanup order
 
-**Files:** Modify Plan 10's `apps/backend/src/routes/events.ts` and
+**Files:** Modify Plan 14's `apps/backend/src/routes/events.ts` and
 `lib/queries/events.ts`; `__tests__/integration/fixtures.ts`;
-`__tests__/integration/fixture-leak.test.ts` (Plan 12). Tests: `events-routes.test.ts`.
+`__tests__/integration/fixture-leak.test.ts` (Plan 17). Tests: `events-routes.test.ts`.
 
 - [ ] **Step 1: Failing tests.** Creating an event with `time: null` stores
   `allDay: true`; the read returns `time: null` from `allDay`, not from
@@ -3021,7 +3021,7 @@ const TO_COLUMN = { assignment: "ASSIGNMENT", quiz: "QUIZ", calendar: "CALENDAR"
   `lib/queries/events.ts` gains `deletedAt: null`; `DELETE` becomes
   `db.jpcEvent.update({ where: { id }, data: { deletedAt: new Date() } })`.
   `isOrgMidnight` stays (Task 2.18's equivalence test uses it). In
-  `fixtures.ts`, confirm Plan 10's
+  `fixtures.ts`, confirm Plan 14's
   `db.jpcEvent.deleteMany({ where: { title: { startsWith: TEST_PREFIX } } })`
   is still the **first** statement of `cleanupTestData` — under `Restrict` a
   season delete before it raises `23503` and strands fixtures.
@@ -3029,8 +3029,8 @@ const TO_COLUMN = { assignment: "ASSIGNMENT", quiz: "QUIZ", calendar: "CALENDAR"
 
 ### Task 2b.8 — M8 consumer: note delete stops returning 501
 
-**Files:** Modify Plan 8's `routes/notes.ts` (`DELETE /notes/:id`),
-`lib/permissions.ts` (`noteVisibilityWhere`), `docs/openapi.ts`; Plan 8's
+**Files:** Modify Plan 12's `routes/notes.ts` (`DELETE /notes/:id`),
+`lib/permissions.ts` (`noteVisibilityWhere`), `docs/openapi.ts`; Plan 12's
 note screens if they hide the delete control behind the 501 (they render a
 "Delete" action only when the API says the note `canEdit` — add it there).
 Tests: `notes-routes.test.ts`.
@@ -3059,9 +3059,9 @@ notesRouter.delete("/notes/:id", requireAuth, async (req, res) => {
 
 ### Task 2b.9 — M9 writers: `auditLog` gets its table
 
-**Files:** Modify Plan 17's `apps/backend/src/lib/audit.ts`; Plan 7's
-`routes/users.ts` (role change, deactivate, reactivate); Plan 12's import
-commit handlers. Tests: Plan 17's `audit.test.ts`, new
+**Files:** Modify Plan 10's `apps/backend/src/lib/audit.ts`; Plan 9's
+`routes/users.ts` (role change, deactivate, reactivate); Plan 17's import
+commit handlers. Tests: Plan 10's `audit.test.ts`, new
 `integration/audit-log.test.ts`.
 
 - [ ] **Step 1: Failing tests.** Graduate a fixture student → exactly one
@@ -3072,7 +3072,7 @@ commit handlers. Tests: Plan 17's `audit.test.ts`, new
 - [ ] **Step 2: Implement.**
 
 ```ts
-// lib/audit.ts — extend Plan 17's module (its formatAuditLine stays as is)
+// lib/audit.ts — extend Plan 10's module (its formatAuditLine stays as is)
 import { db } from "../db/client";
 import type { AuditAction } from "../generated/prisma/enums";
 import { bestEffort } from "./best-effort";
@@ -3094,7 +3094,7 @@ const AUDIT_ACTION = {
   "import.groups": "IMPORT_GROUPS",
 } as const satisfies Record<AuditOperation, AuditAction>;
 
-/** Log line (Plan 17) + an AuditLog row (Plan 13 M9). Never throws, never carries a field value. */
+/** Log line (Plan 10) + an AuditLog row (Plan 18 M9). Never throws, never carries a field value. */
 export function auditLog(
   operation: AuditOperation,
   actorId: number,
@@ -3117,11 +3117,11 @@ export function auditLog(
 ```
 
   `formatAuditLine` accepts `subjectId: number | null` (prints `subject=-`).
-  New call sites, each **after** its transaction commits: Plan 7
+  New call sites, each **after** its transaction commits: Plan 9
   `PATCH /users/:id` when `role` changed (`user.role_change`), deactivate,
-  reactivate; Plan 12 student commit (`import.students`, `{ seasonId, rowCount: created + enrolled }`)
+  reactivate; Plan 17 student commit (`import.students`, `{ seasonId, rowCount: created + enrolled }`)
   and group commit (`import.groups`, `{ seasonId, rowCount: applied }`).
-- [ ] **Step 3: Run → PASS.** Plan 17's mutation 20 (no values in the line)
+- [ ] **Step 3: Run → PASS.** Plan 10's mutation 20 (no values in the line)
   still passes. Commit with M9's folder.
 
 ### Task 2b.10 — M10 consumers: device registration and push dispatch
@@ -3129,16 +3129,16 @@ export function auditLog(
 **Files:** Modify `apps/backend/src/routes/me.ts` (`POST /devices`, new
 `DELETE /devices/:token`); Create `apps/backend/src/lib/push.ts`; Modify
 `lib/notifications.ts` (call the dispatcher); `docs/openapi.ts`. Tests:
-`me-notifications-routes.test.ts` (Plan 9), new `__tests__/push.test.ts`.
+`me-notifications-routes.test.ts` (Plan 13), new `__tests__/push.test.ts`.
 
-- [ ] **Step 1: Failing tests.** Plan 9's "answers 503 push_unavailable" case
+- [ ] **Step 1: Failing tests.** Plan 13's "answers 503 push_unavailable" case
   becomes `200 { data: { registered: true } }` with a `DeviceToken` row
   `platform: "IOS"`; a second user registering the same token moves it (one
   row, new `userId`); `DELETE /me/devices/<token>` by another user deletes
   nothing; `push.test.ts` mocks `global.fetch` and `db`, asserts one POST per
   100 tokens, no call when `shouldPush(type)` is false or the user's
   `pushEnabled` is false, and a `DeviceNotRegistered` ticket deletes that token.
-- [ ] **Step 2: Implement** the upsert and delete exactly as Plan 9's cutover
+- [ ] **Step 2: Implement** the upsert and delete exactly as Plan 13's cutover
   doc §1 gives them (`DEVICE_PLATFORM_TO_DB[parsed.data.platform]`;
   `deleteMany({ where: { token, userId: user.userId } })`), and:
 
@@ -3187,13 +3187,13 @@ export async function sendPush(
   OpenAPI: `POST /me/devices` → 200; add `DELETE /me/devices/{token}`.
 - [ ] **Step 3: Run → PASS.** Leak grep:
   `grep -rn "console\.\|logger\." apps/backend/src/lib/push.ts apps/backend/src/routes/me.ts` → no line interpolates a token.
-  Commit with M10's folder. Update Plan 9's cutover doc with "Applied by Plan 13 M10".
+  Commit with M10's folder. Update Plan 13's cutover doc with "Applied by Plan 18 M10".
 
 ### Task 2b.12 — M12: the credential sweep script
 
 **Files:** Create `apps/backend/scripts/sweep-credentials.ts`.
 
-- [ ] **Step 1: Write it** (no request-path code changes — Plan 7 and Plan 17
+- [ ] **Step 1: Write it** (no request-path code changes — Plan 9 and Plan 10
   already store and look up digests only):
 
 ```ts
@@ -3226,7 +3226,7 @@ main().finally(() => db.$disconnect());
   `scripts/` is outside `src/`, so `process.argv` here is not an X14 concern;
   the database URL still comes only from `config.ts` via `db`.
 - [ ] **Step 2: Rehearse** on the copy (`--dry-run`, then real), confirm the
-  counts, and that `invites-routes`, Plan 17's reset and bulk-invite suites
+  counts, and that `invites-routes`, Plan 10's reset and bulk-invite suites
   still pass afterwards. Commit with M12's folder.
 
 ### Task 2b.13 — M13: `sessionsValidFrom` is written and enforced
@@ -3283,7 +3283,7 @@ export async function invalidateSessions(client: Pick<typeof db, "user">, userId
   post-change refresh work. Writers: every call of
   `revokeAllRefreshTokensForUser(client, userId)` **without** an
   `exceptTokenHash` also calls `invalidateSessions(client, userId)` in the same
-  transaction — Plan 7's role change and deactivate, Plan 17's graduation,
+  transaction — Plan 9's role change and deactivate, Plan 10's graduation,
   soft delete and password-reset completion. Password change (which keeps the
   caller's session) does not. Grep to prove it:
 
@@ -3299,10 +3299,10 @@ grep -rn "revokeAllRefreshTokensForUser(" apps/backend/src --include=*.ts | grep
 
 **Files:** Create `apps/backend/src/lib/email-address.ts`; Modify every
 `User.email` reader/writer the compiler flags once `@unique` is gone —
-`lib/auth/credentials.ts:17` (login's `findUnique({ where: { email } })`), Plan 5 `routes/students.ts`, Plan 7
-`routes/users.ts` and `lib/invites.ts`, Plan 12 `lib/queries/imports` lookup,
-Plan 17 `lib/auth/password-reset.ts`. Tests: `auth-routes.test.ts`,
-`students-routes.test.ts`, `users-routes.test.ts`, Plan 12's import suite.
+`lib/auth/credentials.ts:17` (login's `findUnique({ where: { email } })`), Plan 7 `routes/students.ts`, Plan 9
+`routes/users.ts` and `lib/invites.ts`, Plan 17 `lib/queries/imports` lookup,
+Plan 10 `lib/auth/password-reset.ts`. Tests: `auth-routes.test.ts`,
+`students-routes.test.ts`, `users-routes.test.ts`, Plan 17's import suite.
 
 - [ ] **Step 1: Failing tests.** Login with `UPPER@…` for a user stored as
   `upper@…` → 200; create a student with the address of a soft-deleted user →
@@ -3322,16 +3322,16 @@ export function normaliseEmail(raw: string): string {
   `findFirst({ where: { email: normaliseEmail(x), deletedAt: null } })`. Every
   `email_taken` pre-check uses the same `where`; every create catches
   `isUniqueViolation(err)` on `User_email_lower_active_key` as `409 email_taken`.
-  Plan 12's `lower(email) = ANY(${keys})` raw query becomes
+  Plan 17's `lower(email) = ANY(${keys})` raw query becomes
   `email = ANY(${keys})` (keys are normalised), which uses `User_email_idx`.
 - [ ] **Step 3: Run → PASS.** Commit **separately**:
-  `feat(backend): case-insensitive email, release deleted addresses (Plan 13 M14, optional)`.
+  `feat(backend): case-insensitive email, release deleted addresses (Plan 18 M14, optional)`.
 
 ### Task 2b.15 — M15 consumers
 
-**Files:** Plan 6's attempt submit handler and grading read
-(`routes/quizzes.ts`, `lib/queries/quizzes.ts`); Plan 10's `routes/video-quiz.ts`
-and `lib/queries/video-quiz.ts`. Tests: Plan 6 and Plan 10 suites.
+**Files:** Plan 8's attempt submit handler and grading read
+(`routes/quizzes.ts`, `lib/queries/quizzes.ts`); Plan 14's `routes/video-quiz.ts`
+and `lib/queries/video-quiz.ts`. Tests: Plan 8 and Plan 14 suites.
 
 - [ ] **Step 1: Failing tests.** Submit an ONLINE attempt, then edit an MCQ's
   options; the grading view still shows the options as taken. Delete a video
@@ -3350,9 +3350,9 @@ and `lib/queries/video-quiz.ts`. Tests: Plan 6 and Plan 10 suites.
 
 ### Task 2b.16 — M16 consumers: hide a forum post; soft comment delete
 
-**Files:** Plan 10's `routes/forum.ts`, `lib/queries/forum.ts`,
+**Files:** Plan 14's `routes/forum.ts`, `lib/queries/forum.ts`,
 `lib/permissions.ts` (new `canHideForumPost`); `packages/shared/src/forum.ts`
-(post item gains `hidden: boolean`, `canHide: boolean`); Plan 10's mobile
+(post item gains `hidden: boolean`, `canHide: boolean`); Plan 14's mobile
 `ForumThread` (staff "Hide post" / "Unhide" action); `docs/openapi.ts`.
 Tests: forum suites, `ForumThread` test.
 
@@ -3374,7 +3374,7 @@ Tests: forum suites, `ForumThread` test.
 
 ### Task 2b.17 — M17 consumers (**separate commit, merged only if the script ran**)
 
-**Files:** Plan 8's note writers/readers, Plan 10's forum writers/readers.
+**Files:** Plan 12's note writers/readers, Plan 14's forum writers/readers.
 
 - [ ] **Step 1:** Writers store plain text (drop `plainTextToHtml` on write);
   readers return the column as stored (drop `htmlToPlainText` on read). Keep
@@ -3510,13 +3510,13 @@ DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate status --config prisma.cuto
 - [ ] The window, in the organisation's own timezone, and that the app will be
       read-only for about two hours (sign-in still works).
 - [ ] **Unaccepted invites from v1** stop being usable — they already could not
-      be accepted in v2 (Plan 7 Decision 4); the people holding them are
+      be accepted in v2 (Plan 9 Decision 4); the people holding them are
       re-invited at R19. **v1 password-reset links** stop working (they expire
-      in an hour anyway; Plan 17 Decision 10). v2 invites and resets keep
+      in an hour anyway; Plan 10 Decision 10). v2 invites and resets keep
       working.
 - [ ] **Printed check-in QR sheets** that encode v1's
       `https://…/checkin/<token>` URL no longer open a web page after R14; they
-      still work when scanned **from inside the app** (Plan 14 Decision 8).
+      still work when scanned **from inside the app** (Plan 11 Decision 8).
       Reprint if staff hand them out (register REG-10).
 - [ ] **A spreadsheet import** previewed but not committed before R5 must be
       re-sent after R15: commits are refused while read-only (Task 2.11).
@@ -3638,7 +3638,7 @@ From a checkout of `cutover-code` at the recorded SHA:
 cd apps/backend
 git mv prisma/migrations-cutover/required/* prisma/migrations/
 git mv prisma/migrations-cutover/optional/20261101000099_m14_email_case_and_release prisma/migrations/   # ONLY if M14 was approved at R9
-git commit -m "chore(db): move cutover migrations into prisma/migrations (Plan 13 R10)"
+git commit -m "chore(db): move cutover migrations into prisma/migrations (Plan 18 R10)"
 ```
 
 - [ ] Apply, **and only this command**:
@@ -3704,7 +3704,7 @@ three auth writes `READ_ONLY` admits).
       `ENABLE_API_DOCS` is on).
 - [ ] Sign in as one account of each of the six roles (accounts the user
       provides; credentials supplied out of band and never logged). Each role's
-      dashboard (Plan 18), calendar and one detail screen render.
+      dashboard (Plan 16), calendar and one detail screen render.
 - [ ] A student whose group changed under M1 sees their **current** group, and
       their previous season's assignments are visible again — M1's whole
       point, and the one thing a smoke test can actually prove.
@@ -3813,11 +3813,11 @@ operational step at cutover, and this is it.
 psql "$PROD_DATABASE_URL" -v ids="{$(paste -sd, changeme-ids.txt)}" -f null-changeme.sql
 ```
 
-- [ ] Re-invite: a SUPER uses Plan 17's **"Send all pending invites"** until
+- [ ] Re-invite: a SUPER uses Plan 10's **"Send all pending invites"** until
       `remaining` is 0. It reaches every account with a null `passwordHash`,
       no login and no live v2 invite — which now includes the `ChangeMe123!`
       accounts and the people whose v1 invites M12 voided (`M12-v1-invites.txt`).
-      Mind Gmail's daily cap (Plan 17 Decision 12): spread over days if needed.
+      Mind Gmail's daily cap (Plan 10 Decision 12): spread over days if needed.
 - [ ] Run the credential sweep (Task 2b.12), dry run first:
 
 ```bash
@@ -4097,130 +4097,130 @@ path under `jpc-space/src/` unless it names `prisma/`. Rows marked
 | REG-01 | DROP | The `/forbidden` page | One route per destination (D1): a role without access sees that screen's own "not available for your role" state; there is no page to redirect to | X15; coverage audit row 5 | `app/forbidden/page.tsx` |
 | REG-02 | DROP | `dev/design-system` showcase page | Developer-only; no user capability. The mobile primitives have their own tests | X15; coverage audit row 6 | `app/dev/design-system/page.tsx` |
 | REG-03 | DROP | Dev "switch user" impersonation action | Dev-only; an impersonation path has no place in a token-auth API and would bypass audit | X15; coverage audit G23 | `lib/dev/switch-user-action.ts` |
-| REG-04 | DROP | NextAuth `callbackUrl` redirect after login | NextAuth is replaced by `/api/v1/auth/*`; the one flow that used it (check-in) uses Plan 14's `returnTo`, accepted only as `/checkin/<token>` | X15; Plan 14 Decision 7 | `app/checkin/[token]/page.tsx:19` |
+| REG-04 | DROP | NextAuth `callbackUrl` redirect after login | NextAuth is replaced by `/api/v1/auth/*`; the one flow that used it (check-in) uses Plan 11's `returnTo`, accepted only as `/checkin/<token>` | X15; Plan 11 Decision 7 | `app/checkin/[token]/page.tsx:19` |
 
 ### Deferred with uploads / CMS
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-05 | DEFER | Student photo upload and display | Uploads are switched off (`ENABLE_UPLOADS=false`) while file handling moves to a CMS (`CLAUDE.md`); owner = the CMS storage driver | Plan 5 "Not in this plan"; Plan 17 Decision 15; G22 | `lib/student-actions.ts:164-193` |
-| REG-06 | DEFER | Student documents: upload, list, delete, and a read path for existing files | Same; v1 served them through `/api/uploads/[...path]`, which v2 deliberately did not port (any-logged-in-user read) | Plan 5; Plan 17 Decision 15; G22 | `lib/student-actions.ts:194-255`; `app/api/uploads/[...path]/route.ts` |
-| REG-07 | DEFER | Avatar image upload and read-back (`/profile`, user detail) | Same; `/profile` renders initials | Plan 7 Decision 15; Plan 14 Step 4(d) | `lib/user-actions.ts:168-194` |
+| REG-05 | DEFER | Student photo upload and display | Uploads are switched off (`ENABLE_UPLOADS=false`) while file handling moves to a CMS (`CLAUDE.md`); owner = the CMS storage driver | Plan 7 "Not in this plan"; Plan 10 Decision 15; G22 | `lib/student-actions.ts:164-193` |
+| REG-06 | DEFER | Student documents: upload, list, delete, and a read path for existing files | Same; v1 served them through `/api/uploads/[...path]`, which v2 deliberately did not port (any-logged-in-user read) | Plan 7; Plan 10 Decision 15; G22 | `lib/student-actions.ts:194-255`; `app/api/uploads/[...path]/route.ts` |
+| REG-07 | DEFER | Avatar image upload and read-back (`/profile`, user detail) | Same; `/profile` renders initials | Plan 9 Decision 15; Plan 11 Step 4(d) | `lib/user-actions.ts:168-194` |
 
-### Plan 14 (student self-service)
-
-| Id | Kind | What | Why | Source | v1 citation |
-|---|---|---|---|---|---|
-| REG-08 | DEFER | Rotating check-in code (spec 04 D3 option 1) | The static per-session token is still forwardable; a rotating code needs a design and a client refresh loop. Staff can regenerate the token (Plan 16) | Plan 14 Decision 9, Step 4(a) | `lib/session-actions.ts:225-295` (open/close/regenerate a static `checkInToken`) |
-| REG-09 | DEFER | Check-in STUDENT role gate and a **per-user** rate limit (spec 04 D4) | A per-IP limiter buckets a whole classroom behind one NAT; the five distinct error codes are kept on purpose (R59 parity) | Plan 14 Decision 9, Step 4(b) | `lib/attendance-actions.ts:95-180` |
-| REG-10 | DEFER | https universal / app links for v1's printed `https://<host>/checkin/<token>` sheets | After R14 those URLs hit a dead web host; the in-app scanner still accepts them (Plan 14 Decision 8). R3 tells staff to scan from the app or reprint | Plan 14 Step 4(c) | `app/checkin/[token]/page.tsx` |
-| REG-11 | DEFER | "Assignments completed / expected" stat on `/profile` | Plan 14 left it to Plan 8 or 18; neither added it (verified 2026-10-05: no plan edits `profile.tsx` after Plan 14). The numbers exist (Plan 8 engagement row). Owner: a follow-up | Plan 14 "Not in this plan" | `app/student/profile/page.tsx` (stats strip) |
-| REG-12 | DIVERGE | A student cannot change their own email; self-edit covers six `StudentProfile` columns, name via `PATCH /me` | Changing a login identifier with no verification is an account-takeover primitive (spec 18 D8) | Plan 14 Decision 1 (narrows Plan 5's `SELF_EDITABLE`) | `lib/student-actions.ts:103-121` (self edit writes `name` and `email`) |
-| REG-13 | DIVERGE | Soft-deleted seasons are hidden from `/history`, `/season`, `/attendance` | Spec 02 D2 recommendation | Plan 14 Decision 4 | `lib/season-history-query.ts:18` (R27/R38) |
-| REG-14 | DIVERGE | Opening a check-in link never checks in; pressing "Check in" does | C6 (a GET never writes) | Plan 14 Decision 7 | `app/checkin/[token]/page.tsx` (checks in while rendering, R69) |
-| REG-15 | DIVERGE | Check-in lateness measured from the session start, threshold 0 (then the season threshold after M3) | C3 | Plan 14 Task 2b; M3 | `lib/attendance-actions.ts:95-180` (from `checkInOpenAt`) |
-| REG-16 | DIVERGE | MENTOR's `/profile` tab is an account card (name, email, settings, sign out) | v1's mentor tab pointed at a page that never existed (spec 18 R11) | Plan 14 Decision 2 | `lib/navigation.ts:129` (links `/mentor/profile`; no `app/mentor/profile/page.tsx` exists) |
-
-### Plan 15 (assignment authoring)
+### Plan 11 (student self-service)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-17 | DIVERGE | Editing an assignment notifies students it **newly** targets (`ASSIGNMENT_CREATED`); nobody twice | Spec 07 §10 item 5 ("a bug fix rather than a divergence") | Plan 15 divergence table | `lib/assignment-actions.ts:101-140` (no notification on edit, R66/R74) |
-| REG-18 | DIVERGE | Assignment delete is a soft delete, refused while any submission exists (`409 has_submissions`) | v1's delete was unreachable and stranded submissions (C12, spec 07 §10 item 4) | Plan 15 Task 5 | `lib/assignment-actions.ts:141-183` |
-| REG-19 | DIVERGE | Due date/time composed server-side in the organisation timezone | C2, X13 | Plan 15 Task 2 | `lib/assignment-actions.ts:44-100` (browser zone, R45) |
-| REG-20 | DIVERGE | "Specific groups" with none chosen → 400; a session from another season → `400 invalid_session` | Spec 07 §10 item 6, C8 | Plan 15 divergence table | `lib/assignment-actions.ts:44-100` (R4, R11–R13) |
+| REG-08 | DEFER | Rotating check-in code (spec 04 D3 option 1) | The static per-session token is still forwardable; a rotating code needs a design and a client refresh loop. Staff can regenerate the token (Plan 6) | Plan 11 Decision 9, Step 4(a) | `lib/session-actions.ts:225-295` (open/close/regenerate a static `checkInToken`) |
+| REG-09 | DEFER | Check-in STUDENT role gate and a **per-user** rate limit (spec 04 D4) | A per-IP limiter buckets a whole classroom behind one NAT; the five distinct error codes are kept on purpose (R59 parity) | Plan 11 Decision 9, Step 4(b) | `lib/attendance-actions.ts:95-180` |
+| REG-10 | DEFER | https universal / app links for v1's printed `https://<host>/checkin/<token>` sheets | After R14 those URLs hit a dead web host; the in-app scanner still accepts them (Plan 11 Decision 8). R3 tells staff to scan from the app or reprint | Plan 11 Step 4(c) | `app/checkin/[token]/page.tsx` |
+| REG-11 | DEFER | "Assignments completed / expected" stat on `/profile` | Plan 11 left it to Plan 12 or 18; neither added it (verified 2026-10-05: no plan edits `profile.tsx` after Plan 11). The numbers exist (Plan 12 engagement row). Owner: a follow-up | Plan 11 "Not in this plan" | `app/student/profile/page.tsx` (stats strip) |
+| REG-12 | DIVERGE | A student cannot change their own email; self-edit covers six `StudentProfile` columns, name via `PATCH /me` | Changing a login identifier with no verification is an account-takeover primitive (spec 18 D8) | Plan 11 Decision 1 (narrows Plan 7's `SELF_EDITABLE`) | `lib/student-actions.ts:103-121` (self edit writes `name` and `email`) |
+| REG-13 | DIVERGE | Soft-deleted seasons are hidden from `/history`, `/season`, `/attendance` | Spec 02 D2 recommendation | Plan 11 Decision 4 | `lib/season-history-query.ts:18` (R27/R38) |
+| REG-14 | DIVERGE | Opening a check-in link never checks in; pressing "Check in" does | C6 (a GET never writes) | Plan 11 Decision 7 | `app/checkin/[token]/page.tsx` (checks in while rendering, R69) |
+| REG-15 | DIVERGE | Check-in lateness measured from the session start, threshold 0 (then the season threshold after M3) | C3 | Plan 11 Task 2b; M3 | `lib/attendance-actions.ts:95-180` (from `checkInOpenAt`) |
+| REG-16 | DIVERGE | MENTOR's `/profile` tab is an account card (name, email, settings, sign out) | v1's mentor tab pointed at a page that never existed (spec 18 R11) | Plan 11 Decision 2 | `lib/navigation.ts:129` (links `/mentor/profile`; no `app/mentor/profile/page.tsx` exists) |
 
-### Plan 17 (students & accounts)
-
-| Id | Kind | What | Why | Source | v1 citation |
-|---|---|---|---|---|---|
-| REG-21 | DIVERGE | Graduation completes **all** ACTIVE enrolments | v1 completed one and left others ACTIVE (spec 06 R48 defect) | Plan 17 Task 3 | `lib/enrollment-actions.ts:28-83` |
-| REG-22 | DIVERGE | "Send all pending invites" runs bounded synchronous batches (20/request, 30 requests/hour), "tap again for the rest" | No queue/worker exists; a durable job table is a migration nothing else needs | Plan 17 Decision 12 | `lib/invite-actions.ts:53-75` (sequential SMTP loop) |
-| REG-23 | DEFER | A durable job queue for invites (spec 11 §7) | Needs a table and a worker | Plan 17 Decision 15 | `lib/invite-actions.ts:53-75` |
-| REG-24 | DIVERGE | v1 web reset-password links die at cutover; v2 emails a deep link plus the code | v2 hosts no web page; v1 links live 1 hour | Plan 17 Decision 10 | `lib/email.ts:77-105`; `app/reset-password/page.tsx` |
-| REG-25 | DIVERGE | Creating a SUPER requires `confirmSuper: true` (`400 confirm_super_required`) | Spec 11 D7 rec 3 — creation was the mis-tap path | Plan 17 Decision 13 | `lib/user-actions.ts:60-102` |
-| REG-26 | DEFER | Per-season bulk close-out of enrolments (spec 06 D10) | A product decision with no owner yet | Plan 17 Decision 15 | `lib/enrollment-actions.ts:84` (one enrolment at a time) |
-| REG-27 | DROP | Un-graduate | v1 never had one (R61) | Plan 17 Decision 15 | `lib/enrollment-actions.ts:28-83` |
-| REG-28 | DROP | Spec 11's `{ userIds }` bulk-invite arm | Its only caller was v1's per-row button, which is Plan 7's `POST /users/:id/invite` | Plan 17 Decision 12 | `lib/invite-actions.ts:41-52` |
-
-### Plan 7 (invites, users, settings)
+### Plan 5 (assignment authoring)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-29 | DIVERGE | The invite email carries a 32-character code pasted into the app — not a link, and not spec 11 D10's short numeric code | No attempts column exists to protect a short code (C1); a link pointed at a route that never existed (D1) | Plan 7 Decision 6 | `lib/invites.ts:8-41` (link to `/accept-invite`) |
-| REG-30 | DIVERGE | v1 plaintext invite codes never work in v2 and are overwritten at cutover | Digest-only lookup (Plan 7 Decision 4); M12 voids them | Plan 7 Decision 4; M12 | `lib/invites.ts:19-24, 48-56` |
-| REG-31 | DEFER | A per-invite attempts column (would allow D10's short code) | No consumer chosen at cutover | Plan 7 Decision 6 | — (v1 has no attempt limit: `lib/invites.ts:48-56`) |
+| REG-17 | DIVERGE | Editing an assignment notifies students it **newly** targets (`ASSIGNMENT_CREATED`); nobody twice | Spec 07 §10 item 5 ("a bug fix rather than a divergence") | Plan 5 divergence table | `lib/assignment-actions.ts:101-140` (no notification on edit, R66/R74) |
+| REG-18 | DIVERGE | Assignment delete is a soft delete, refused while any submission exists (`409 has_submissions`) | v1's delete was unreachable and stranded submissions (C12, spec 07 §10 item 4) | Plan 5 Task 5 | `lib/assignment-actions.ts:141-183` |
+| REG-19 | DIVERGE | Due date/time composed server-side in the organisation timezone | C2, X13 | Plan 5 Task 2 | `lib/assignment-actions.ts:44-100` (browser zone, R45) |
+| REG-20 | DIVERGE | "Specific groups" with none chosen → 400; a session from another season → `400 invalid_session` | Spec 07 §10 item 6, C8 | Plan 5 divergence table | `lib/assignment-actions.ts:44-100` (R4, R11–R13) |
 
-### Plan 8 (notes & engagement)
-
-| Id | Kind | What | Why | Source | v1 citation |
-|---|---|---|---|---|---|
-| REG-32 | DEFER | A stored / materialised engagement score | Computed per request with a constant query count; materialise only if real cohort sizes demand it (spec 09 D10) | Plan 8 "Deferred to cutover"; Plan 11 deferral #5; Plan 18 header | `lib/engagement.ts:21-108` |
-| REG-33 | DEFER | Follow-up resolution (`resolvedAt`/`resolvedById`) and a follow-up queue (spec 09 D11) | Needs a screen; removed from M8 because nothing would write it (D-13.19). The flag stays a notification trigger and a badge | Plan 8 "Deferred to cutover"; D-13.11 superseded | `lib/note-actions.ts:31-96` (`followUpFlagged` set, never cleared) |
-| REG-34 | DEFER | Notes visibility ladder (spec 09 D3 option 1) | Retroactively widens access to pastoral records; needs the pastoral owner's decision | Plan 8 "Deferred — needs the pastoral owner's decision" | `lib/students-query.ts:486` (`filterVisibleNotes`) |
-| REG-35 | DIVERGE | Note reads are recorded as a log line, not an audit table row | C6: a GET never writes; also kept out of M9 | Plan 8 divergence row 17 | — (v1 records nothing) |
-| REG-61 | DIVERGE | Engagement: one at-risk definition (`isAtRisk`), denominator from `enrolledAt`, constant-query cohort endpoint | Spec 09 D7, D8, D10; C4 | Plan 8 divergence rows 12–14 | `lib/engagement.ts:21-108, 173-249` |
-
-### Plan 9 (notifications & push)
+### Plan 10 (students & accounts)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-36 | DEFER | Notification retention (hard-delete read notifications older than 180 days, spec 10 D10) | Needs a scheduled job; v2 has no scheduler configured | Plan 9 cutover doc §3 | `lib/notifications.ts` (nothing deletes, R53) |
-| REG-37 | DIVERGE | The in-app notification row is always written; preferences govern email/push only | Spec 10 D4 | Plan 9 Task 2 | `lib/notifications.ts:56-96` (filters before insert, R8) |
+| REG-21 | DIVERGE | Graduation completes **all** ACTIVE enrolments | v1 completed one and left others ACTIVE (spec 06 R48 defect) | Plan 10 Task 3 | `lib/enrollment-actions.ts:28-83` |
+| REG-22 | DIVERGE | "Send all pending invites" runs bounded synchronous batches (20/request, 30 requests/hour), "tap again for the rest" | No queue/worker exists; a durable job table is a migration nothing else needs | Plan 10 Decision 12 | `lib/invite-actions.ts:53-75` (sequential SMTP loop) |
+| REG-23 | DEFER | A durable job queue for invites (spec 11 §7) | Needs a table and a worker | Plan 10 Decision 15 | `lib/invite-actions.ts:53-75` |
+| REG-24 | DIVERGE | v1 web reset-password links die at cutover; v2 emails a deep link plus the code | v2 hosts no web page; v1 links live 1 hour | Plan 10 Decision 10 | `lib/email.ts:77-105`; `app/reset-password/page.tsx` |
+| REG-25 | DIVERGE | Creating a SUPER requires `confirmSuper: true` (`400 confirm_super_required`) | Spec 11 D7 rec 3 — creation was the mis-tap path | Plan 10 Decision 13 | `lib/user-actions.ts:60-102` |
+| REG-26 | DEFER | Per-season bulk close-out of enrolments (spec 06 D10) | A product decision with no owner yet | Plan 10 Decision 15 | `lib/enrollment-actions.ts:84` (one enrolment at a time) |
+| REG-27 | DROP | Un-graduate | v1 never had one (R61) | Plan 10 Decision 15 | `lib/enrollment-actions.ts:28-83` |
+| REG-28 | DROP | Spec 11's `{ userIds }` bulk-invite arm | Its only caller was v1's per-row button, which is Plan 9's `POST /users/:id/invite` | Plan 10 Decision 12 | `lib/invite-actions.ts:41-52` |
+
+### Plan 9 (invites, users, settings)
+
+| Id | Kind | What | Why | Source | v1 citation |
+|---|---|---|---|---|---|
+| REG-29 | DIVERGE | The invite email carries a 32-character code pasted into the app — not a link, and not spec 11 D10's short numeric code | No attempts column exists to protect a short code (C1); a link pointed at a route that never existed (D1) | Plan 9 Decision 6 | `lib/invites.ts:8-41` (link to `/accept-invite`) |
+| REG-30 | DIVERGE | v1 plaintext invite codes never work in v2 and are overwritten at cutover | Digest-only lookup (Plan 9 Decision 4); M12 voids them | Plan 9 Decision 4; M12 | `lib/invites.ts:19-24, 48-56` |
+| REG-31 | DEFER | A per-invite attempts column (would allow D10's short code) | No consumer chosen at cutover | Plan 9 Decision 6 | — (v1 has no attempt limit: `lib/invites.ts:48-56`) |
+
+### Plan 12 (notes & engagement)
+
+| Id | Kind | What | Why | Source | v1 citation |
+|---|---|---|---|---|---|
+| REG-32 | DEFER | A stored / materialised engagement score | Computed per request with a constant query count; materialise only if real cohort sizes demand it (spec 09 D10) | Plan 12 "Deferred to cutover"; Plan 15 deferral #5; Plan 16 header | `lib/engagement.ts:21-108` |
+| REG-33 | DEFER | Follow-up resolution (`resolvedAt`/`resolvedById`) and a follow-up queue (spec 09 D11) | Needs a screen; removed from M8 because nothing would write it (D-13.19). The flag stays a notification trigger and a badge | Plan 12 "Deferred to cutover"; D-13.11 superseded | `lib/note-actions.ts:31-96` (`followUpFlagged` set, never cleared) |
+| REG-34 | DEFER | Notes visibility ladder (spec 09 D3 option 1) | Retroactively widens access to pastoral records; needs the pastoral owner's decision | Plan 12 "Deferred — needs the pastoral owner's decision" | `lib/students-query.ts:486` (`filterVisibleNotes`) |
+| REG-35 | DIVERGE | Note reads are recorded as a log line, not an audit table row | C6: a GET never writes; also kept out of M9 | Plan 12 divergence row 17 | — (v1 records nothing) |
+| REG-61 | DIVERGE | Engagement: one at-risk definition (`isAtRisk`), denominator from `enrolledAt`, constant-query cohort endpoint | Spec 09 D7, D8, D10; C4 | Plan 12 divergence rows 12–14 | `lib/engagement.ts:21-108, 173-249` |
+
+### Plan 13 (notifications & push)
+
+| Id | Kind | What | Why | Source | v1 citation |
+|---|---|---|---|---|---|
+| REG-36 | DEFER | Notification retention (hard-delete read notifications older than 180 days, spec 10 D10) | Needs a scheduled job; v2 has no scheduler configured | Plan 13 cutover doc §3 | `lib/notifications.ts` (nothing deletes, R53) |
+| REG-37 | DIVERGE | The in-app notification row is always written; preferences govern email/push only | Spec 10 D4 | Plan 13 Task 2 | `lib/notifications.ts:56-96` (filters before insert, R8) |
 | REG-38 | DIVERGE | Notification emails lose the "Open" button after cutover | The button linked `AUTH_URL` + a v1 web path; v1's web host is gone and new rows carry no `link` (Task 2b.4) | M4; Task 2b.4 | `lib/email.ts:136` |
 
-### Plan 10 (video quizzes, forum, events)
+### Plan 14 (video quizzes, forum, events)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-39 | DEFER | Student-facing forum report/flag action (spec 14 D2 item 4) | Needs a row, a triage surface and a person who reads it | Plan 10 D-14.4; M16 | — (v1 has none) |
-| REG-40 | DEFER | `Session.videoDurationSeconds` (spec 13 D2) | Filling it needs a YouTube Data API key the repo does not hold; Plan 10's client-side guard stays. Removed from M15 (D-13.19) | Plan 10 closing report | `lib/video-quiz-actions.ts:36-91` |
-| REG-41 | DIVERGE | `ALUMNI_ONLY` events are now visible to alumni | Plan 10 D-15.2 | Plan 10 | `lib/jpc-events-query.ts:24-37` |
-| REG-42 | DEFER | MENTOR seeing `SEASON` events (spec 19 D19's widening) | Plan 10 kept v1 parity; open product decision | Plan 10 Revision; Plan 18 "Not taken" | `lib/jpc-events-query.ts:24-37` |
+| REG-39 | DEFER | Student-facing forum report/flag action (spec 14 D2 item 4) | Needs a row, a triage surface and a person who reads it | Plan 14 D-14.4; M16 | — (v1 has none) |
+| REG-40 | DEFER | `Session.videoDurationSeconds` (spec 13 D2) | Filling it needs a YouTube Data API key the repo does not hold; Plan 14's client-side guard stays. Removed from M15 (D-13.19) | Plan 14 closing report | `lib/video-quiz-actions.ts:36-91` |
+| REG-41 | DIVERGE | `ALUMNI_ONLY` events are now visible to alumni | Plan 14 D-15.2 | Plan 14 | `lib/jpc-events-query.ts:24-37` |
+| REG-42 | DEFER | MENTOR seeing `SEASON` events (spec 19 D19's widening) | Plan 14 kept v1 parity; open product decision | Plan 14 Revision; Plan 16 "Not taken" | `lib/jpc-events-query.ts:24-37` |
 
-### Plan 11 (reports & exports)
-
-| Id | Kind | What | Why | Source | v1 citation |
-|---|---|---|---|---|---|
-| REG-44 | DIVERGE | Export audit stays an application log line, not an `ExportAudit`/`AuditLog` row | C6 — an export is a GET; spec 17 D15's table would make it write. Removed from M9 | Plan 11 D-17.18 and deferral #2 | `app/api/reports/export/route.ts`, `app/api/season/export/route.ts` (no audit) |
-| REG-45 | DROP | CSV export | XLSX only | Plan 11 D-17.7 | `lib/reports-query.ts:177` (`toCsv`) |
-| REG-46 | DIVERGE | `Submitted %` uses the targeted denominator | C5, spec 17 D2 | Plan 11 | `lib/reports-query.ts:61` |
-| REG-59 | DIVERGE | Workbook `LATE` cells printed `"L"` between Plan 11 and cutover; the number returns with a renamed header (Task 2b.3) | C3: two incompatible meanings in one column until M3 | Plan 11 D-17.10 and deferral #1 | `lib/season-export.ts:42` |
-
-### Plan 12 (imports)
+### Plan 15 (reports & exports)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-47 | DEFER | A durable import session (`ImportBatch`/`ImportBatchRow`, commit by id, inline row edit) | Plan 12 D-16.4 keeps the preview client-side and re-derives at commit; M11 withdrawn. The import audit half is M9 | Plan 12 deferral #1 | `lib/student-import-actions.ts:25-120` |
-| REG-48 | DROP | Spreadsheet (`.xlsx`) upload intake | Paste-only intake | Plan 12 D-16.2 | `lib/spreadsheet.ts:6-40` |
-| REG-49 | DIVERGE | Imported accounts get no password (`passwordHash: null`); invites are separate | v1 gave every imported user `ChangeMe123!` (R55) | Plan 12 | `lib/student-actions.ts:59` |
+| REG-44 | DIVERGE | Export audit stays an application log line, not an `ExportAudit`/`AuditLog` row | C6 — an export is a GET; spec 17 D15's table would make it write. Removed from M9 | Plan 15 D-17.18 and deferral #2 | `app/api/reports/export/route.ts`, `app/api/season/export/route.ts` (no audit) |
+| REG-45 | DROP | CSV export | XLSX only | Plan 15 D-17.7 | `lib/reports-query.ts:177` (`toCsv`) |
+| REG-46 | DIVERGE | `Submitted %` uses the targeted denominator | C5, spec 17 D2 | Plan 15 | `lib/reports-query.ts:61` |
+| REG-59 | DIVERGE | Workbook `LATE` cells printed `"L"` between Plan 15 and cutover; the number returns with a renamed header (Task 2b.3) | C3: two incompatible meanings in one column until M3 | Plan 15 D-17.10 and deferral #1 | `lib/season-export.ts:42` |
 
-### Plan 6 (quizzes)
+### Plan 17 (imports)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-50 | DEFER | `QuizAttemptStatus` `ABANDONED` / `EXPIRED` | No consumer designed; adding a value is a migration and forward-only | Plan 6 "Schema facts" | `prisma/schema.prisma` `enum QuizAttemptStatus` (IN_PROGRESS, SUBMITTED, GRADED) |
-| REG-51 | DROP | Quiz delete (and therefore `Quiz.deletedAt`) | v1's `deleteQuizAction` is dead code (C12, spec 12 D9); no v2 endpoint, so the column was removed from M15 | Plan 6 Task 6; D-13.19 | `lib/quiz-actions.ts:85-103` |
-| REG-52 | DIVERGE | The leader's per-session quiz page is collapsed into `quiz/[id]/grade` | One destination per job (D1) | Plan 6 Task 10 | `app/leader/sessions/[id]/quiz/[quizId]/page.tsx` |
+| REG-47 | DEFER | A durable import session (`ImportBatch`/`ImportBatchRow`, commit by id, inline row edit) | Plan 17 D-16.4 keeps the preview client-side and re-derives at commit; M11 withdrawn. The import audit half is M9 | Plan 17 deferral #1 | `lib/student-import-actions.ts:25-120` |
+| REG-48 | DROP | Spreadsheet (`.xlsx`) upload intake | Paste-only intake | Plan 17 D-16.2 | `lib/spreadsheet.ts:6-40` |
+| REG-49 | DIVERGE | Imported accounts get no password (`passwordHash: null`); invites are separate | v1 gave every imported user `ChangeMe123!` (R55) | Plan 17 | `lib/student-actions.ts:59` |
+
+### Plan 8 (quizzes)
+
+| Id | Kind | What | Why | Source | v1 citation |
+|---|---|---|---|---|---|
+| REG-50 | DEFER | `QuizAttemptStatus` `ABANDONED` / `EXPIRED` | No consumer designed; adding a value is a migration and forward-only | Plan 8 "Schema facts" | `prisma/schema.prisma` `enum QuizAttemptStatus` (IN_PROGRESS, SUBMITTED, GRADED) |
+| REG-51 | DROP | Quiz delete (and therefore `Quiz.deletedAt`) | v1's `deleteQuizAction` is dead code (C12, spec 12 D9); no v2 endpoint, so the column was removed from M15 | Plan 8 Task 6; D-13.19 | `lib/quiz-actions.ts:85-103` |
+| REG-52 | DIVERGE | The leader's per-session quiz page is collapsed into `quiz/[id]/grade` | One destination per job (D1) | Plan 8 Task 10 | `app/leader/sessions/[id]/quiz/[quizId]/page.tsx` |
 | REG-68 | DIVERGE | Quiz answers taken before cutover have no option-text snapshot; the grading screen says so | Writing today's options into history would fabricate what a student saw | D-13.12; M15 | `lib/quiz-actions.ts:367-408` (positional `selectedIndex`) |
 
-### Plans 3, 4, 16 (seasons, sessions, groups)
+### Plans 3, 4 and 6 (seasons, sessions, groups)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-53 | DEFER | A per-season IANA timezone | C2: one organisation zone; no reader would honour it. M6 withdrawn | Plan 16 deferral list; Plan 11 deferral #4; Task 2.6 | — (v1 formats in the server's zone) |
-| REG-54 | DIVERGE | Program and year "pages" are a filter and a grouping on `/seasons`, not routes | Spec 02 §9 ("do not port as routes") | Plan 16 Task 6; Plan 4 Task 3 | `app/super/seasons/program/[program]/page.tsx`, `app/super/seasons/year/[year]/page.tsx` |
-| REG-55 | DIVERGE | The season roster is not paginated | The group form needs a group's full membership; a season is hundreds of rows at most | Plan 16 (spec 05 §7) | `lib/groups-query.ts:143-163` |
+| REG-53 | DEFER | A per-season IANA timezone | C2: one organisation zone; no reader would honour it. M6 withdrawn | Plan 6 deferral list; Plan 15 deferral #4; Task 2.6 | — (v1 formats in the server's zone) |
+| REG-54 | DIVERGE | Program and year "pages" are a filter and a grouping on `/seasons`, not routes | Spec 02 §9 ("do not port as routes") | Plan 6 Task 6; Plan 4 Task 3 | `app/super/seasons/program/[program]/page.tsx`, `app/super/seasons/year/[year]/page.tsx` |
+| REG-55 | DIVERGE | The season roster is not paginated | The group form needs a group's full membership; a season is hundreds of rows at most | Plan 6 (spec 05 §7) | `lib/groups-query.ts:143-163` |
 | REG-56 | DIVERGE | Season delete is refused while any enrolment or session exists (`season_in_use`) and clears `activeSeasonId` pointers; ADMIN cannot delete | Spec 02 D3/D4 | Plan 3 Revision | `lib/season-actions.ts:163-198` |
 | REG-57 | DIVERGE | A taken season code answers `409 code_taken`, not spec 02 D15's `conflict` | A specific code the client can act on | Plan 3 Revision | `lib/season-actions.ts:59-105` |
 | REG-58 | DIVERGE | Session delete is refused when student records exist (`has_student_records`, including video progress) | Attendance/progress must not cascade away | Plan 3 Revision | `lib/session-actions.ts:181-224` |
 | REG-64 | DIVERGE | Group names: exact-match unique in the database, case-/space-insensitive in the endpoint | D-13.10; spec 05 §10 item 6 | M2; Task 2b.2 | `lib/group-actions.ts:28-158` (no check) |
 
-### Plan 18 (role dashboards)
+### Plan 16 (role dashboards)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-60 | DIVERGE | The 21 rows of Plan 18's "Divergence ledger" (at-risk callout via `isAtRisk`; attendance denominators; no full roster on Home; ACTIVE-enrolment rosters; quiz pending counts; review counts; "Session N of M"; next/in-progress session; absence budget left; outstanding = PENDING\|DRAFT; late count; mentor at-risk and activity feed; events card; SUPER tiles; alumni handling; greeting copy) | Spec 19 §10 D2–D21, rulings C4, C5, C9, X17 | Plan 18 § "Divergence ledger" rows 1–21 | `app/{super,admin,leader,mentor,alumni,student}/dashboard/page.tsx` |
+| REG-60 | DIVERGE | The 21 rows of Plan 16's "Divergence ledger" (at-risk callout via `isAtRisk`; attendance denominators; no full roster on Home; ACTIVE-enrolment rosters; quiz pending counts; review counts; "Session N of M"; next/in-progress session; absence budget left; outstanding = PENDING\|DRAFT; late count; mentor at-risk and activity feed; events card; SUPER tiles; alumni handling; greeting copy) | Spec 19 §10 D2–D21, rulings C4, C5, C9, X17 | Plan 16 § "Divergence ledger" rows 1–21 | `app/{super,admin,leader,mentor,alumni,student}/dashboard/page.tsx` |
 
 Task 1.5 Step 2 expands REG-60 into REG-60.1 … REG-60.21, one per ledger row,
 each with the spec 19 R-number the ledger names.
@@ -4233,7 +4233,7 @@ each with the spec 19 R-number the ledger names.
 | REG-62 | DIVERGE | Historic `lateMinutes` on checked-in LATE rows are recomputed from the session start; `status` is not rewritten | C3; D-13.8 | M3 | `lib/attendance-actions.ts:95-180` |
 | REG-63 | DROP | Attribution for every role grant, graduation, drop and import before cutover | Never recorded; cannot be backfilled | M9 | — |
 | REG-65 | DEFER | Re-statusing LATE rows whose recomputed minutes are 0 | Rewriting attendance history needs the organisation's decision (R12 figure) | D-13.8; R12 | `lib/attendance-actions.ts:95-180` |
-| REG-66 | DEFER | *(conditional — only if M14 is declined)* Case-insensitive email storage, releasing soft-deleted addresses, the `lower(email)` index | Unresolved case collisions at R9 | D-13.13; Plan 12 deferrals #3, #4, #7; Plan 5 | `prisma/migrations/20260523162529_init/migration.sql:259` |
+| REG-66 | DEFER | *(conditional — only if M14 is declined)* Case-insensitive email storage, releasing soft-deleted addresses, the `lower(email)` index | Unresolved case collisions at R9 | D-13.13; Plan 17 deferrals #3, #4, #7; Plan 7 | `prisma/migrations/20260523162529_init/migration.sql:259` |
 | REG-67 | DEFER | *(conditional — only if M17 is declined)* Normalising stored HTML; the read-time conversion stays | Pastoral-policy owner declined at R12 | D-13.14 | `lib/note-actions.ts:31-96` (stores HTML) |
 | REG-69 | DEFER | One release after cutover: drop `Notification.link`, `Attendance.lateMinutesLegacy` and the `cutover_backup` schema | Each is a rollback path or a fallback until its replacement is proven | M3, M4, M14, M17 | — |
 
@@ -4241,22 +4241,22 @@ each with the spec 19 R-number the ledger names.
 
 ## Revision 2026-10-05
 
-Re-synced against the written Plans 1–12 and 14–18, spec 19, the cross-plan
-rulings (X1–X17) and `review-plans-07-13.md`'s Plan 13 findings. Every
+Re-synced against the written Plans 1–17, spec 19, the cross-plan
+rulings (X1–X17) and `review-plans-07-13.md`'s Plan 18 findings. Every
 finding was checked against the tree or the plan it cites before it was
 applied.
 
-- **Header:** depends on **all** of Plans 1–12 and 14–18 in the execution order
-  `1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → 9 → 10 → 11 → 18 → 12 → 13`,
-  with what is consumed from each. The stale "Plans 11/12 are unwritten"
+- **Header:** depends on **all** of Plans 1–17 in the execution order
+  `1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18`,
+  with what is consumed from each. The stale "Plans 15/17 are unwritten"
   prerequisite (S14) is gone; new prerequisites: migrations directory still
   v1's verbatim (`diff -r`), Prisma CLI flags verified, `fixture-leak.test.ts`
   green.
 - **B1 — post-migration code:** new **Part 2b** on a long-lived `cutover-code`
   branch (one commit per migration, merged at R11) with a tested task per
-  migration: per-season `GroupStudent` consumers (and the flipped Plan 16
+  migration: per-season `GroupStudent` consumers (and the flipped Plan 6
   test), case-insensitive group names, `lateBasis`/threshold writes and the
-  workbook's numeric `LATE` cell (Plan 11 #1), producers writing
+  workbook's numeric `LATE` cell (Plan 15 #1), producers writing
   `entityType`/`entityId` instead of v1 links, the four new notification types
   and their preferences, `allDay` + event soft delete, note delete, `auditLog`
   rows, device registration + Expo dispatch, the credential sweep,
@@ -4269,25 +4269,25 @@ applied.
 - **B3 — optional migrations are opt-in:** `migrations-cutover/required/` vs
   `optional/` (M14 sorts last); R10 moves `required/*` and moves M14 only if
   approved at R9; M17 is a data script run at R12, not a folder.
-- **S1/S6 Plan 12:** M11 withdrawn (Plan 12 has no server store; D-16.4);
-  Plan 12's seven deferrals each mapped (table in Task 2.11).
-- **S2 Plan 7:** M12 rewritten — no "dual-form lookup" exists and no
-  `token → tokenHash` rename (it would break Plan 7/17 queries); v1 plaintext
+- **S1/S6 Plan 17:** M11 withdrawn (Plan 17 has no server store; D-16.4);
+  Plan 17's seven deferrals each mapped (table in Task 2.11).
+- **S2 Plan 9:** M12 rewritten — no "dual-form lookup" exists and no
+  `token → tokenHash` rename (it would break Plan 9/17 queries); v1 plaintext
   codes are overwritten with `v1-void-<id>`; v2 invites survive the window; the
   sweep is a script (Task 2b.12), not a claim.
 - **S3 M14:** `User_email_key` is a unique **index** (init `:259`) → `DROP INDEX`;
   the new unique is on `lower(email) WHERE "deletedAt" IS NULL`; `@unique` →
   `@@index([email])` so `findUnique` stops compiling; writes normalise.
 - **S4 M7:** the psql `:'org_tz'` variable is replaced by a literal checked at
-  R9; Plan 3's Revision (season delete is soft) and Plan 10's cleanup order
+  R9; Plan 3's Revision (season delete is soft) and Plan 14's cleanup order
   explain why `Restrict` is safe.
 - **S5 Prisma 7:** `prisma.cutover.config.ts` (CLI-only, `--config`, no
   `.env`), `CLAUDE.md` note; `migrate diff --from-schema/--to-schema`
   (`--from-schema-datamodel` and `--from-url` removed); explicit
   `BEGIN; … COMMIT;`; rehearsal drift check with `--from-config-datasource
   --exit-code`.
-- **S6 M10/M4:** M10 matches Plan 9's `DEVICE_PLATFORM_TO_DB` exactly;
-  M4's enum is Plan 9's four entity types and its backfill is one `UPDATE` per
+- **S6 M10/M4:** M10 matches Plan 13's `DEVICE_PLATFORM_TO_DB` exactly;
+  M4's enum is Plan 13's four entity types and its backfill is one `UPDATE` per
   `NOTIFICATION_LINK_PATTERNS` shape (five), with an equivalence script.
 - **S7 M2:** cites the real `validateGroupWrite` / `409 name_taken` (no
   `group_name_taken` exists).
@@ -4300,9 +4300,9 @@ applied.
   cannot run on the migrated schema; R20's timing re-justified (soak metrics,
   not a v1 contingency).
 - **S13 — the five unaccounted deferrals:** stored engagement score → REG-32;
-  numeric LATE cell → Task 2b.3; `lower(email)` index → M14 / REG-66; Plan 7
-  token sweep → Task 2b.12; Plan 6 `ABANDONED`/`EXPIRED` → REG-50. `/more`,
-  `/history`, `/profile` are now built (Plan 1 Task 6, Plan 14) and checked by
+  numeric LATE cell → Task 2b.3; `lower(email)` index → M14 / REG-66; Plan 9
+  token sweep → Task 2b.12; Plan 8 `ABANDONED`/`EXPIRED` → REG-50. `/more`,
+  `/history`, `/profile` are now built (Plan 1 Task 6, Plan 11) and checked by
   Task 1.6.
 - **Nits:** M15 `optionsSnapshot` "empty = none" (lists cannot be null); M1
   multi-season count is report-only and M1 drops `GroupStudent_groupId_fkey`;
@@ -4313,16 +4313,16 @@ applied.
 - **Parity audit:** spec 19 added (A1), 1,550 rules; new Task 1.6 page parity
   — a 104-row `page-parity.tsv` mapping every v1 page to a built route file or
   a register id, with checks against the tree and the register; every former
-  coverage-audit GAP now has a home in Plans 1, 6, 12, 14, 15, 16, 17 or 18.
+  coverage-audit GAP now has a home in Plans 1, 5, 6, 8, 10, 11, 16 or 17.
 - **Register:** `DROPPED.md` becomes a register of drops, deferrals and
-  divergences, seeded with the rows above (Plan 14's five handed items, the
-  Plan 15/17/14 divergences, the X15 drops, uploads/CMS deferrals, and every
+  divergences, seeded with the rows above (Plan 11's five handed items, the
+  Plan 5/17/14 divergences, the X15 drops, uploads/CMS deferrals, and every
   divergence recorded in a plan's header ledger or Revision section).
 - **Narrowed by D-13.19 (writer-or-withdraw):** `lateWeightMinutes`,
   `resolvedAt`/`resolvedById`, `Quiz.deletedAt`, `videoDurationSeconds` and
   M9's export/read actions removed, each with a register row.
 
-**Rejected / not applied:** none of the Plan 13 findings was wrong on
+**Rejected / not applied:** none of the Plan 18 findings was wrong on
 verification. Two were resolved differently from the review's suggestion:
 M9's export audit (review: reconcile) stays a log line under C6 rather than
 becoming a POST; M6 (review: add the refactor or drop the check) is withdrawn

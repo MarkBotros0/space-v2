@@ -1,4 +1,4 @@
-# Plan 5 — Students & Enrollment Implementation Plan
+# Plan 7 — Students & Enrollment Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -26,10 +26,10 @@ paginated list), Zustand 5, RNTL 13 via `renderWithProviders`.
 field-visibility table is the read contract; §10 D1–D16),
 `docs/superpowers/specs/domains/05-groups.md` §10 item 1 (membership
 convention ratified by this domain), `_DECISIONS.md` (C1, C8, C9 bind),
-scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 5.
+scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 7.
 
 **Depends on:** Plan 1 (Task 0's derived route-count tests — ruling X9 — and
-Task 2's `DETAIL_ROUTE_NAMES`). Runs after Plans 4, 15 and 16 in the execution
+Task 2's `DETAIL_ROUTE_NAMES`). Runs after Plans 4–6 in the execution
 order; it consumes nothing from them.
 
 ## Global Constraints
@@ -69,7 +69,7 @@ order; it consumes nothing from them.
   "current group", advisorily.
 - **D7:** `POST /students` sets **no password** (`passwordHash: null`).
   v1's hard-coded `ChangeMe123!` (and its plaintext log line, R17) are NOT
-  ported. Credentials arrive with Plan 7's invites; until then a created
+  ported. Credentials arrive with Plan 9's invites; until then a created
   student has no login path — exactly like v1's CSV import
   (`src/lib/student-import.ts:260`). Never log a credential.
 - Mobile: relative imports only (no `@/`); every response parsed with a Zod
@@ -82,31 +82,31 @@ order; it consumes nothing from them.
 
 **Not in this plan** (deliberate scope cuts, each with its home):
 attendance %, submissions, engagement-note and document sub-resources of the
-detail (spec 06 §7's sub-resource split — notes/engagement land in Plan 8,
+detail (spec 06 §7's sub-resource split — notes/engagement land in Plan 12,
 documents ride with uploads/CMS); graduation (`User.graduationYear`,
-SUPER-only per R55) and soft-delete `DELETE /students/:id` — **Plan 17**
+SUPER-only per R55) and soft-delete `DELETE /students/:id` — **Plan 10**
 (ruling X15), with the student create/edit screens and the graduate and drop
 bottom-sheets that consume this plan's write endpoints (they ship API-first
 here, per the roadmap's plan split); `GET/PATCH /me/profile` and the
-`/profile` screen — **Plan 14** (ruling X15); photo/document uploads stay
-deferred with uploads (`ENABLE_UPLOADS` is off; recorded in Plan 13's
+`/profile` screen — **Plan 11** (ruling X15); photo/document uploads stay
+deferred with uploads (`ENABLE_UPLOADS` is off; recorded in Plan 18's
 register).
 
 **Later plans that change what this plan builds** (so an executor is not
 surprised when the code moves on):
-- **Plan 17** (runs after this one): adds `POST /students/:id/graduate` and
+- **Plan 10** (runs after this one): adds `POST /students/:id/graduate` and
   `DELETE /students/:id`, makes `POST /students` mint an invite, builds the
   `/students/new` and `/student/[id]/edit` forms plus the graduate/drop
   bottom sheets, and moves this plan's `student/[id].tsx` to the directory
   form `student/[id]/index.tsx` (ruling X7) — its `DETAIL_ROUTE_NAMES` entry
   becomes `"student/[id]/index"`. Build `student/[id].tsx` as the file form
   here; do not pre-empt the move.
-- **Plan 14** (runs after Plan 17): narrows this plan's `SELF_EDITABLE`
+- **Plan 11** (runs after Plan 10): narrows this plan's `SELF_EDITABLE`
   allowlist (Task 4 below) to the six `StudentProfile` columns — `name` and
   `email` are removed from the subject's self-edit (spec 18 D8: no
-  unverified login-identifier change; `User.name` is Plan 7's `PATCH /me`).
+  unverified login-identifier change; `User.name` is Plan 9's `PATCH /me`).
   Staff keep `name`/`email` through `ADMIN_EDITABLE`. Ship the allowlist as
-  written here; Plan 14 owns the narrowing and its tests.
+  written here; Plan 11 owns the narrowing and its tests.
 
 **Execution shape:** Task 1 first (both streams consume the contracts). Then
 two independent streams: **backend** Tasks 2 → 3 → 4 → 5 (sequential — they
@@ -1511,7 +1511,7 @@ describe("POST /api/v1/students", () => {
       },
     });
     expect(row).toMatchObject({
-      // D7: ChangeMe123! is NOT ported. No credentials until Plan 7's
+      // D7: ChangeMe123! is NOT ported. No credentials until Plan 9's
       // invites — the same no-login-path state v1's CSV import produces.
       passwordHash: null,
       role: "STUDENT",
@@ -1707,7 +1707,7 @@ itself uses for the generated client and keep the `../` depth correct for
  *   it follows creation to SUPER in v2.
  * - SUPER: everything (allowlist `null` = unchecked).
  */
-// Plan 14 Task 4 later removes "name" and "email" from SELF_EDITABLE (spec
+// Plan 11 Task 4 later removes "name" and "email" from SELF_EDITABLE (spec
 // 18 D8) and re-spreads ADMIN_EDITABLE so staff keep them.
 const SELF_EDITABLE = new Set([
   "name", "email", "university", "year", "phone", "dateOfBirth", "spiritualBackground", "gifts",
@@ -1716,7 +1716,7 @@ const ADMIN_EDITABLE = new Set([...SELF_EDITABLE, "notes"]);
 
 studentsRouter.post("/", async (req, res) => {
   const user = requireUser(req);
-  // v2 ruling (roadmap Plan 5): creation is SUPER-only. v1 admitted any ADMIN
+  // v2 ruling (roadmap Plan 7): creation is SUPER-only. v1 admitted any ADMIN
   // with no season scoping at all — an admin could create a student pointed
   // at any season in the system (spec 06 §4.3, D4).
   if (!isSuper(user)) {
@@ -1750,7 +1750,7 @@ studentsRouter.post("/", async (req, res) => {
           email: body.email,
           name: body.name,
           role: "STUDENT", // forced, never an input (R14)
-          // D7: no password. Credentials come from Plan 7's invites; v1's
+          // D7: no password. Credentials come from Plan 9's invites; v1's
           // hard-coded ChangeMe123! and its plaintext log line (R16/R17) are
           // deliberately not ported. Never log a credential.
           passwordHash: null,
@@ -1909,7 +1909,7 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
 
 - [ ] **Step 4: OpenAPI** — add both paths in the same commit. Document:
 SUPER-only creation and WHY there is no password field (D7 — invites are the
-only credential path, Plan 7); the optional `seasonId` transaction semantics
+only credential path, Plan 9); the optional `seasonId` transaction semantics
 (D1); the per-role PATCH allowlists and `forbidden_field`; `email_taken`; and
 `activeSeasonId`'s validation — `404 not_found` for a missing/deleted season,
 `409 not_enrolled` when the student has no ACTIVE enrollment there.
@@ -2740,7 +2740,7 @@ git add apps/mobile && git commit -m "feat(mobile): students, alumni and dropped
 - Produces: `useStudentDetail(id: number | null, role: UserRole | null): UseQueryResult<StudentDetail>` and `type StudentDetail = StudentDetailPublic | StudentDetailPrivate | StudentDetailInternal`; the route `/student/[id]` in the typed route tree (unblocks Task 6's `router.push` typecheck).
 
 Plan 1 (Tasks 0 and 2) is a hard prerequisite — it is earlier in the
-execution order (rulings, plan order 1 → … → 5). `DETAIL_ROUTE_NAMES` exists
+execution order (rulings, plan order 1 → … → 7). `DETAIL_ROUTE_NAMES` exists
 in `_layout.tsx` and the layout/placeholder tests derive their counts; this
 task only appends `"student/[id]"`. There is no fallback path. `student/[id]`
 has no child routes, so the file form `student/[id].tsx` is correct (ruling X7
@@ -3182,10 +3182,10 @@ Applied the cross-plan rulings and the 01–06 review:
 - **B5 / X9, S17:** no hardcoded route count is edited; the "Plan 1 not landed" fallback is removed (Plan 1 is earlier in the execution order); the layout assertion uses the test file's real `mockScreens` capture (`{ name, title, href }`) instead of a nonexistent helper.
 - **S5:** `queryKeys.students.detail` takes `number | null` — no `-1` sentinel; the role cast in `useStudentDetail` became a guard.
 - **X12:** the emitted-build grep covers all of `dist/`.
-- **X15:** graduation, soft-delete and the student write screens are assigned to Plan 17; `/me/profile` to Plan 14.
+- **X15:** graduation, soft-delete and the student write screens are assigned to Plan 10; `/me/profile` to Plan 11.
 - X7 checked: `student/[id]` has no children, so the file form stays.
 
 
-Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
-- New "Later plans that change what this plan builds" note: Plan 17 adds graduate/delete, the create/edit forms and sheets, and moves `student/[id].tsx` → `student/[id]/index.tsx`; Plan 14 narrows `SELF_EDITABLE` (removes `name`/`email`). A matching comment sits on `SELF_EDITABLE` in Task 4's code.
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
+- New "Later plans that change what this plan builds" note: Plan 10 adds graduate/delete, the create/edit forms and sheets, and moves `student/[id].tsx` → `student/[id]/index.tsx`; Plan 11 narrows `SELF_EDITABLE` (removes `name`/`email`). A matching comment sits on `SELF_EDITABLE` in Task 4's code.
 - Task 7's layout case uses Plan 1 Task 0's real fixtures (`makeUser("ADMIN")`, `scopes = makeScopes()`) instead of a hedged `user()`.

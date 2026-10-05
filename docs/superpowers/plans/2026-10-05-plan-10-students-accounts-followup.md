@@ -1,21 +1,21 @@
-# Plan 17 — Students & Accounts Follow-up Implementation Plan
+# Plan 10 — Students & Accounts Follow-up Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close the four gaps Plans 5 and 7 named and handed here (coverage audit G13–G16, ruling X15). First, the student lifecycle: create, edit, graduate, drop and soft-delete, each on a mobile screen or bottom sheet, with credentials coming only from Plan 7's invite path. Second, forgot/reset password, which v1 users rely on and which must exist before cutover. Third, the `/users/new` screen. Fourth, a bulk "send all pending invites" action that a single HTTP request can survive.
+**Goal:** Close the four gaps Plans 7 and 9 named and handed here (coverage audit G13–G16, ruling X15). First, the student lifecycle: create, edit, graduate, drop and soft-delete, each on a mobile screen or bottom sheet, with credentials coming only from Plan 9's invite path. Second, forgot/reset password, which v1 users rely on and which must exist before cutover. Third, the `/users/new` screen. Fourth, a bulk "send all pending invites" action that a single HTTP request can survive.
 
 **Architecture:** No new route files. All backend changes extend existing modules:
-- `routes/students.ts` (Plan 5) gains `POST /:id/graduate` and `DELETE /:id`. Its `POST /` now mints an invite in the transaction that creates the student.
-- `routes/users.ts` (Plan 7) gains `GET`/`POST /invites/pending`. Its `POST /` now requires `confirmSuper` before granting SUPER, and its reactivate also clears the student-profile stamp.
+- `routes/students.ts` (Plan 7) gains `POST /:id/graduate` and `DELETE /:id`. Its `POST /` now mints an invite in the transaction that creates the student.
+- `routes/users.ts` (Plan 9) gains `GET`/`POST /invites/pending`. Its `POST /` now requires `confirmSuper` before granting SUPER, and its reactivate also clears the student-profile stamp.
 - `routes/auth.ts` gains two anonymous routes, `forgot-password` and `reset-password`.
-- Three new library modules hold the logic: `lib/auth/password-reset.ts`, `lib/audit.ts` and `lib/concurrency.ts`. `lib/invites.ts` (Plan 7) gains the bounded batch sender.
+- Three new library modules hold the logic: `lib/auth/password-reset.ts`, `lib/audit.ts` and `lib/concurrency.ts`. `lib/invites.ts` (Plan 9) gains the bounded batch sender.
 
 Reset tokens use v1's exact format and v1's existing `PasswordResetToken` table, hashed with the same SHA-256 `hashToken` that refresh and invite tokens use. No schema is touched.
 
 On mobile:
-- Plan 5's `student/[id].tsx` moves to the directory form (`student/[id]/index.tsx`, ruling X7) so that `student/[id]/edit.tsx` can sit beside it.
+- Plan 7's `student/[id].tsx` moves to the directory form (`student/[id]/index.tsx`, ruling X7) so that `student/[id]/edit.tsx` can sit beside it.
 - `students/new.tsx` joins the existing `students/` directory.
-- `users.tsx` becomes `users/index.tsx` so that `users/new.tsx` can sit beside it. This adds `"users"` to the `DIRECTORY_ROUTE_HREFS` set Plan 16 introduced (the mechanism Plan 12 Step 0 describes), so Plan 12 finds the work done.
+- `users.tsx` becomes `users/index.tsx` so that `users/new.tsx` can sit beside it. This adds `"users"` to the `DIRECTORY_ROUTE_HREFS` set Plan 6 introduced (the mechanism Plan 17 Step 0 describes), so Plan 17 finds the work done.
 - Two anonymous screens, `forgot-password.tsx` and `reset-password.tsx`, sit beside `login.tsx`.
 - A new `Sheet` primitive carries the graduate and drop bottom sheets.
 
@@ -37,16 +37,16 @@ On mobile:
 - `docs/superpowers/specs/domains/_DECISIONS.md` C1, C7, C8 and C11
 - Coverage audit G13–G16
 
-**Depends on (all earlier in the execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → **17** → 14 → …):**
+**Depends on (all earlier in the execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → **10** → 11 → …):**
 - **Plan 1:** `DETAIL_ROUTE_NAMES` and the derived layout tests (X9), the `makeSession`/`makeUser`/`makeScopes` test helpers, and `ambiguousRouteSiblings`.
 - **Plan 3:** `formatInOrgTime` in `lib/org-time.ts`.
 - **Plan 4:**
   - `useSeasons(enabled)` in `src/hooks/use-seasons.ts`
   - `apiErrorMessage` in `src/lib/api-error.ts`
   - `formatDayKey` in `src/lib/format.ts`
-- **Plan 15:** `isoDaySchema` in `packages/shared/src/org-time.ts`, which `isDateOnly` delegates to. Plan 15's `wallTimeSchema` and `orgWallClockToInstant` are not needed, because nothing here has a wall clock.
-- **Plan 16:** the `DIRECTORY_ROUTE_HREFS` set in `app/(app)/_layout.tsx` (`["students", "seasons"]`), which Task 9 extends with `"users"`. Nothing here creates or reads sessions, so Plan 16's `startDay`/`startTime` session wire format does not touch this plan.
-- **Plan 5:**
+- **Plan 5:** `isoDaySchema` in `packages/shared/src/org-time.ts`, which `isDateOnly` delegates to. Plan 5's `wallTimeSchema` and `orgWallClockToInstant` are not needed, because nothing here has a wall clock.
+- **Plan 6:** the `DIRECTORY_ROUTE_HREFS` set in `app/(app)/_layout.tsx` (`["students", "seasons"]`), which Task 9 extends with `"users"`. Nothing here creates or reads sessions, so Plan 6's `startDay`/`startTime` session wire format does not touch this plan.
+- **Plan 7:**
   - `routes/students.ts` with `POST /`, `PATCH /:id`, `POST /:id/enrollments` and `PATCH /:id/enrollments/:seasonId`
   - `canEditStudent`
   - the `student.ts` contracts
@@ -55,7 +55,7 @@ On mobile:
   - `StudentList`
   - `student/[id].tsx`
   - `students-routes.test.ts` and its fixture block
-- **Plan 7:**
+- **Plan 9:**
   - the endpoints `POST /api/v1/users` and `POST /api/v1/users/:id/invite`
   - from `lib/invites.ts`: `issueInvite`, `IssuedInvite`, `InviteWriter`
   - from `lib/email.ts`: `sendInviteEmail`, plus its private `isConfigured`/`getTransporter`/`renderShell`/`fromAddress`
@@ -76,15 +76,15 @@ On mobile:
   - `InviteToken` (lines 166–179)
   - `PasswordResetToken { token String @unique, userId, expiresAt, usedAt, createdAt }` (lines 198–208)
   - `RefreshToken.revokedAt`
-- **Passwords are bcryptjs at cost 12** (CLAUDE.md; spec 11 D8; Plan 7's rule). Any other algorithm locks out every user.
-- **No raw credential in any HTTP response body or any log, in any environment.** This covers invite codes and reset tokens. A reset token reaches exactly one place: `sendPasswordResetEmail`. An invite code reaches exactly one place: `sendInviteEmail` (Plan 7 Decision 2).
+- **Passwords are bcryptjs at cost 12** (CLAUDE.md; spec 11 D8; Plan 9's rule). Any other algorithm locks out every user.
+- **No raw credential in any HTTP response body or any log, in any environment.** This covers invite codes and reset tokens. A reset token reaches exactly one place: `sendPasswordResetEmail`. An invite code reaches exactly one place: `sendInviteEmail` (Plan 9 Decision 2).
 - No `process.env` outside `lib/config.ts`. No `@/` alias. No `@prisma/client` import. Prisma comes from `../generated/prisma/client` (X14).
 - **Shared value imports in every backend `src` file use the relative path (ruling X12).** From `src/routes/` and `src/lib/` it is `"../../../../packages/shared/src/index"`. Add one more `../` from `src/lib/auth/`. `import type` may use `"@space/shared"`.
 - **One 429 handler (X4).** Every new limiter passes `handler: rateLimitHandler` imported from `lib/rate-limit.ts`. Nothing defines another handler.
-- **X5.** `studentsRouter` and `usersRouter` own their prefixes outright, so their existing router-level `use(requireAuth)` stays (Plans 5 and 7). Every new route in `authRouter` is anonymous by design and attaches nothing.
+- **X5.** `studentsRouter` and `usersRouter` own their prefixes outright, so their existing router-level `use(requireAuth)` stays (Plans 7 and 9). Every new route in `authRouter` is anonymous by design and attaches nothing.
 - **X10.** Every mobile mutation and query parses its response with a shared Zod schema. There is no `as T` on any API response.
 - **X13.** Any wall-clock value shown in an email goes through `formatInOrgTime`. A date of birth is a calendar date with no wall clock; Decision 8 says how it moves without the device timezone.
-- **X1.** None of this plan's writes produces a notification. v1's graduate, drop and soft-delete notify nobody (spec 06 §6 "No write in this domain sends a notification"), and neither does v2's. No link format is written, so Plan 9's `NOTIFICATION_LINK_PATTERNS` and Plan 13's M4 backfill are unaffected.
+- **X1.** None of this plan's writes produces a notification. v1's graduate, drop and soft-delete notify nobody (spec 06 §6 "No write in this domain sends a notification"), and neither does v2's. No link format is written, so Plan 13's `NOTIFICATION_LINK_PATTERNS` and Plan 18's M4 backfill are unaffected.
 - Response envelope is `{ data }` / `{ error: { code, message } }` via `apiOk`/`apiError`. `src/docs/openapi.ts` changes in the same commit as the route it documents.
 - **Integration fixtures.** Every row carries the `space-v2-test-` prefix in `User.email` or `Season.code`. Use `__tests__/integration/fixtures.ts` and set `jest.setTimeout(60000)`. **The staging DB holds real never-activated users** (spec 11 R15: v1's CSV import produces exactly that state). No test may run an unscoped bulk invite. Task 4's suite forces the fixture scope through a `jest.mock` wrapper and says so in a comment.
 - **Integration tests run serially and are run by the coordinator.** The command is `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern <suite>`. When tasks run one at a time (the default), each task runs its own suite. If backend tasks are ever split across agents, the agents write their tests without running them and the coordinator runs every suite serially.
@@ -99,9 +99,9 @@ On mobile:
 
 ## Decisions this plan locks in
 
-1. **Student creation goes through Plan 7's invite path, in the creating transaction (spec 06 D7, spec 11 §7 "creation and invitation are ONE operation").** Plan 5's `POST /students` already writes `passwordHash: null`. This plan adds `issueInvite(tx, student.id, caller)` inside the same `$transaction` and `sendInviteEmail` after commit, best-effort. That is exactly the shape of Plan 7's `POST /users`.
+1. **Student creation goes through Plan 9's invite path, in the creating transaction (spec 06 D7, spec 11 §7 "creation and invitation are ONE operation").** Plan 7's `POST /students` already writes `passwordHash: null`. This plan adds `issueInvite(tx, student.id, caller)` inside the same `$transaction` and `sendInviteEmail` after commit, best-effort. That is exactly the shape of Plan 9's `POST /users`.
    - **No shared default password exists anywhere.** v1's `ChangeMe123!` (R41/R42/R43) is not ported, and neither is its log line or its on-screen notice.
-   - The `issueInvite` call sits **after** the rows are written and **outside** the user/profile/enrollment block. Plan 12 extracts that block into `createStudentRows`, so the call stays in the route handler. Plan 12's importer therefore still sends nothing (its R55).
+   - The `issueInvite` call sits **after** the rows are written and **outside** the user/profile/enrollment block. Plan 17 extracts that block into `createStudentRows`, so the call stays in the route handler. Plan 17's importer therefore still sends nothing (its R55).
 2. **Graduation completes every `ACTIVE` enrollment, not only the one the profile points at.** This deliberately diverges from v1's R48/R60, which the spec flags as a defect: "a student enrolled in three seasons graduates with two of them left `ACTIVE`". Leftover `ACTIVE` rows keep an alumnus on rosters and in at-risk counts, and through R53 they keep season access.
    - In one transaction it sets `graduationYear`, completes every `ACTIVE` enrollment with `completedAt`, and clears `activeSeasonId` (R56).
    - Enrollments that are already `WITHDRAWN` or `COMPLETED` are untouched.
@@ -114,29 +114,29 @@ On mobile:
 3. **Soft delete is one transaction that also signs the student out.** `DELETE /students/:id` (SUPER only) does three things inside one `$transaction`: it stamps `User.deletedAt`, stamps `StudentProfile.deletedAt`, and revokes every refresh token. This fixes R86, where v1 ran two separate statements, and applies spec 11 D6's "deactivation revokes".
    - **Nothing cascades (R87 kept).** Enrollments, attendance, submissions and notes are history and survive.
    - A non-student, an unknown id and an already-deleted id all get `404 not_found`.
-   - v1 has no un-delete (R88), but v2 does: Plan 7's `POST /users/:id/reactivate`. This plan amends it to clear the profile stamp too. Without that, a reactivated student stays "deleted" to v1's readers (`jpc-space/src/app/admin/quizzes/page.tsx:31` counts profiles with `deletedAt: null`).
-4. **The audit trail is log lines, because the schema can't hold one yet (spec 06 D15).** `lib/audit.ts` `auditLog(op, actorId, subjectId)` writes `[audit] <op> actor=<id> subject=<id>` for `student.graduate`, `student.delete`, `enrollment.drop` and `enrollment.complete`. The last two are added to Plan 5's transition handler. The line never carries a field value: no year, no reason, no name. Audit columns are a post-cutover migration (spec 06 D15) and are recorded in the report.
+   - v1 has no un-delete (R88), but v2 does: Plan 9's `POST /users/:id/reactivate`. This plan amends it to clear the profile stamp too. Without that, a reactivated student stays "deleted" to v1's readers (`jpc-space/src/app/admin/quizzes/page.tsx:31` counts profiles with `deletedAt: null`).
+4. **The audit trail is log lines, because the schema can't hold one yet (spec 06 D15).** `lib/audit.ts` `auditLog(op, actorId, subjectId)` writes `[audit] <op> actor=<id> subject=<id>` for `student.graduate`, `student.delete`, `enrollment.drop` and `enrollment.complete`. The last two are added to Plan 7's transition handler. The line never carries a field value: no year, no reason, no name. Audit columns are a post-cutover migration (spec 06 D15) and are recorded in the report.
 5. **Route names follow the existing tree, with one directory conversion.**
    - `/students/new` goes in the existing `students/` directory (spec 06 §9).
-   - The edit route is `/student/[id]/edit`. It is singular because Plan 5's detail lives at `student/[id]`, and it is not the spec's `/students/[id]/edit` because a `students/[id]` would shadow `students/alumni` and `students/dropped`. Under X7 it forces `student/[id].tsx` to become `student/[id]/index.tsx`.
-   - `/users/new` follows spec 11 §9 and needs `users.tsx` to become `users/index.tsx`. Plan 1's `ambiguousRouteSiblings` test forbids `users.tsx` beside a `users/` directory. The conversion adds `"users"` to Plan 16's `DIRECTORY_ROUTE_HREFS` set (Plan 12 Step 0's mechanism, keeping Plan 16's `"seasons"`), so Plan 12's "check first, never twice" finds it done.
+   - The edit route is `/student/[id]/edit`. It is singular because Plan 7's detail lives at `student/[id]`, and it is not the spec's `/students/[id]/edit` because a `students/[id]` would shadow `students/alumni` and `students/dropped`. Under X7 it forces `student/[id].tsx` to become `student/[id]/index.tsx`.
+   - `/users/new` follows spec 11 §9 and needs `users.tsx` to become `users/index.tsx`. Plan 1's `ambiguousRouteSiblings` test forbids `users.tsx` beside a `users/` directory. The conversion adds `"users"` to Plan 6's `DIRECTORY_ROUTE_HREFS` set (Plan 17 Step 0's mechanism, keeping Plan 6's `"seasons"`), so Plan 17's "check first, never twice" finds it done.
 6. **Mobile action visibility mirrors the server gates exactly, with role and claim together (C7).**
 
    | Action | Shown when | Mirrors |
    |---|---|---|
    | Graduate | SUPER, and the student has no graduation year yet | R55, R63 |
    | Delete | SUPER | — |
-   | Edit | SUPER, or ADMIN with an ACTIVE enrollment in one of their seasons | Plan 5's enrollment-based `canEditStudent` |
+   | Edit | SUPER, or ADMIN with an ACTIVE enrollment in one of their seasons | Plan 7's enrollment-based `canEditStudent` |
    | Drop, per enrollment row | the row is ACTIVE and the viewer is SUPER, or is ADMIN with that row's season in `seasonAdminIds` | R64, fixing R68's buttons that 403 |
 
-   Only a SUPER edit form shows the active-season picker. Its options are the student's ACTIVE enrollments only, and `activeSeasonId` is sent only when it changed. Re-sending a legacy pointer that has no ACTIVE enrollment would 409 `not_enrolled` (Plan 5 S16).
-7. **Bottom sheets are a new `Sheet` primitive** (`src/ui/Sheet.tsx`, built on an RN `Modal` with `animationType="slide"`, transparent, anchored to the bottom and padded for the bottom inset). Graduate and drop use it. Delete is a destructive `Alert` confirm, the same pattern as Plan 7's deactivate. The new-user SUPER confirmation also mirrors Plan 7's PATCH confirm.
+   Only a SUPER edit form shows the active-season picker. Its options are the student's ACTIVE enrollments only, and `activeSeasonId` is sent only when it changed. Re-sending a legacy pointer that has no ACTIVE enrollment would 409 `not_enrolled` (Plan 7 S16).
+7. **Bottom sheets are a new `Sheet` primitive** (`src/ui/Sheet.tsx`, built on an RN `Modal` with `animationType="slide"`, transparent, anchored to the bottom and padded for the bottom inset). Graduate and drop use it. Delete is a destructive `Alert` confirm, the same pattern as Plan 9's deactivate. The new-user SUPER confirmation also mirrors Plan 9's PATCH confirm.
 8. **Date of birth is a calendar date and moves without the device timezone (X13).** The form takes `YYYY-MM-DD`. The client writes `YYYY-MM-DDT00:00:00.000Z` (`isoFromDateOnly`). Reads go through `dateOnlyFromIso`, which adds 12 hours and truncates to the UTC day. That maps any local-midnight instant from a zone between UTC−11 and UTC+12 to its own calendar day. That covers v1's rows, which v1's web date picker stored as browser-local midnight (Cairo: `…T22:00:00Z` the previous day), as well as v2's UTC-midnight rows. The detail screen renders the result with Plan 4's `formatDayKey`, which never converts zones. Both helpers live in `packages/shared/src/student.ts` and have unit tests.
 9. **Forgot/reset keeps v1's token format and storage byte for byte, so the two backends interoperate.** v1's format is 32 random bytes as 64 hex characters (R71), stored as its SHA-256 hex digest in `PasswordResetToken.token` (R72), with a 1-hour TTL (R73). v2's `hashToken` is the same SHA-256 hex, so a token v1 minted works at v2's endpoint and vice versa, and no schema change is needed. On top of that format, v2 adds:
    - **One live reset token per user.** Issuing a new one expires the old ones (spec 11 D5 rec 2, fixing R76).
    - **A 60 s per-account cooldown.** A request inside it mints nothing, which stops mail-bombing a victim from many IPs.
    - **A constant response, with the work done after it is sent** (`void requestPasswordReset(...)`). This closes R69's timing oracle: v1 awaited SMTP only on the known-email path.
-   - **One opaque failure code**, `400 invalid_reset_token`, for unknown, used and expired tokens and for a deleted target (spec 11 D5 rec 3, closing R77/R78). It is 400 and not 401 because the mobile interceptor spends a refresh rotation on any non-auth 401 (Plan 7 Decision 10).
+   - **One opaque failure code**, `400 invalid_reset_token`, for unknown, used and expired tokens and for a deleted target (spec 11 D5 rec 3, closing R77/R78). It is 400 and not 401 because the mobile interceptor spends a refresh rotation on any non-auth 401 (Plan 9 Decision 10).
    - **A cost-12 hash.**
    - **Completion revokes:** it consumes the token atomically with a guarded `updateMany`, expires the user's other live reset tokens and live invites, and revokes every refresh token, all in one transaction. This fixes R79 and implements spec 11 D6.
    - **A deleted account is refused at completion as well as at request.** v1 checked only at request (R70).
@@ -144,11 +144,11 @@ On mobile:
    - **With no mail transport, `requestPasswordReset` mints nothing.** A token nobody can receive is a liability, not a service.
 10. **The reset email carries a deep link and the code. v1's web reset URL is deliberately not kept alive after cutover.**
     - The email offers `spacev2://reset-password?token=<code>`. The scheme comes from the new `MOBILE_APP_SCHEME` config, default `spacev2`, which matches `app.json`. The code is printed beneath it for mail clients that don't linkify custom schemes.
-    - This diverges from Plan 7 Decision 6 (code only) on purpose. A custom-scheme link is never fetched over HTTP, so R24's exposures don't arise: proxy and CDN logs, `Referer` headers and browser history. The credential also lives 1 hour, not 7 days.
+    - This diverges from Plan 9 Decision 6 (code only) on purpose. A custom-scheme link is never fetched over HTTP, so R24's exposures don't arise: proxy and CDN logs, `Referer` headers and browser history. The credential also lives 1 hour, not 7 days.
     - The screen copies the token into component state and immediately calls `router.setParams({ token: undefined })` (R80: never re-emit it into a URL).
-    - **v1 compatibility:** a v1 email links to `${AUTH_URL}/reset-password?token=…` on v1's web host. During coexistence that link opens v1's still-running page, which writes the same table. After cutover the link is dead. That is acceptable because every such link expires 1 hour after v1 last sent one, so Plan 13 need not host a web `/reset-password` page or universal links.
+    - **v1 compatibility:** a v1 email links to `${AUTH_URL}/reset-password?token=…` on v1's web host. During coexistence that link opens v1's still-running page, which writes the same table. After cutover the link is dead. That is acceptable because every such link expires 1 hour after v1 last sent one, so Plan 18 need not host a web `/reset-password` page or universal links.
     - The mobile screen also accepts a **pasted** v1 link, through `extractResetToken`, because the token formats are identical.
-11. **Rate limits use their own buckets** (the precedent is Plan 7's `acceptInviteLimiter`):
+11. **Rate limits use their own buckets** (the precedent is Plan 9's `acceptInviteLimiter`):
     - `forgotPasswordLimiter`: 10 per 15 min per IP
     - `resetPasswordLimiter`: 20 per 15 min
     - `bulkInviteLimiter`: 30 per hour
@@ -159,16 +159,16 @@ On mobile:
     - **A mail failure expires the invite just minted**, so that person stays pending and the next tap retries them. v1 left them silently "invited" with a code nobody received (R25).
     - **The response is `{ sent, skipped, failed, remaining }`** (spec R16's missing counter, plus `remaining`). The screen says "tap again for the rest".
     - **With no mail transport the route refuses with `503 email_not_configured`.** Otherwise it would mint invites nobody receives and drain the pending pool.
-    - **"Pending" means:** not deleted, `passwordHash` null, `lastLoginAt` null, and no live **v2** invite. A live v1 plaintext invite counts as pending, because Plan 7 Decision 4 makes those dead on arrival.
+    - **"Pending" means:** not deleted, `passwordHash` null, `lastLoginAt` null, and no live **v2** invite. A live v1 plaintext invite counts as pending, because Plan 9 Decision 4 makes those dead on arrival.
     - **Throughput is capped** by the batch ceiling plus the 30-per-hour limiter at 600 per hour. That stays under Gmail's 2,000 per day Workspace cap unless driven continuously, and the report names the cap.
     - **`GET /api/v1/users/invites/pending` → `{ pending }`** feeds the button's count. R87: the button is hidden at zero.
-    - **This diverges from the spec's shape** (`POST /users/invites` with `{ userIds } | { all: true }`). The `userIds` arm has no remaining caller: v1's single-row button is Plan 7's `POST /users/:id/invite`, and v1's post-import send is dropped by Plan 12 (R55). A body whose only legal value is `{ all: true }` is ceremony.
-13. **`POST /users` requires `confirmSuper: true` to create a SUPER.** This is spec 11 D7 rec 3. Plan 7 enforced it only on PATCH, which left creation as the mis-tap path. The error code is the same as Plan 7's: `400 confirm_super_required`. The `/users/new` screen asks through an `Alert` before sending the flag.
-14. **A password change also expires outstanding reset tokens.** This is spec 18 R29 and spec 11 D6. It adds one line inside Plan 7's `POST /me/password` transaction, which already revokes the other sessions.
+    - **This diverges from the spec's shape** (`POST /users/invites` with `{ userIds } | { all: true }`). The `userIds` arm has no remaining caller: v1's single-row button is Plan 9's `POST /users/:id/invite`, and v1's post-import send is dropped by Plan 17 (R55). A body whose only legal value is `{ all: true }` is ceremony.
+13. **`POST /users` requires `confirmSuper: true` to create a SUPER.** This is spec 11 D7 rec 3. Plan 9 enforced it only on PATCH, which left creation as the mis-tap path. The error code is the same as Plan 9's: `400 confirm_super_required`. The `/users/new` screen asks through an `Alert` before sending the flag.
+14. **A password change also expires outstanding reset tokens.** This is spec 18 R29 and spec 11 D6. It adds one line inside Plan 9's `POST /me/password` transaction, which already revokes the other sessions.
 15. **Not in this plan. Each item has a named owner so nothing drops silently:**
-    - **Deferred with uploads** (CLAUDE.md "Uploads are switched off"): student photo and documents, G22. Plan 13 records them in its register.
-    - **Plan 14:** `GET/PATCH /me/profile` and `/profile`.
-    - **Plan 13's register:**
+    - **Deferred with uploads** (CLAUDE.md "Uploads are switched off"): student photo and documents, G22. Plan 18 records them in its register.
+    - **Plan 11:** `GET/PATCH /me/profile` and `/profile`.
+    - **Plan 18's register:**
       - a per-season bulk close-out of enrollments (spec 06 D10 — a product decision with no owner yet)
       - audit columns (spec 06 D15)
       - a durable job queue for invites (spec 11 §7)
@@ -176,7 +176,7 @@ On mobile:
     - **Dropped by ruling:**
       - un-graduate (R61: v1 never had one)
       - spec 11's `{ userIds }` bulk arm (Decision 12)
-      - the student self-edit branch of v1's `StudentForm`, which belongs to Plan 14
+      - the student self-edit branch of v1's `StudentForm`, which belongs to Plan 11
 
 **Execution shape:** Task 1 runs first, because everything consumes the contracts. After that there are two streams.
 
@@ -190,14 +190,14 @@ The two streams may run in parallel, because the screens mock `apiClient`. Task 
 ### Task 1: Contracts — lifecycle, bulk-invite and password-reset schemas
 
 **Files:**
-- Modify: `packages/shared/src/student.ts` (Plan 5's — append the lifecycle schemas and the date-only helpers)
-- Modify: `packages/shared/src/user.ts` (Plan 7's — `confirmSuper` on create; response schemas; batch constant)
+- Modify: `packages/shared/src/student.ts` (Plan 7's — append the lifecycle schemas and the date-only helpers)
+- Modify: `packages/shared/src/user.ts` (Plan 9's — `confirmSuper` on create; response schemas; batch constant)
 - Create: `packages/shared/src/password-reset.ts`
 - Modify: `packages/shared/src/index.ts` (add `export * from "./password-reset";`)
-- Test: `packages/shared/src/__tests__/student-lifecycle-schemas.test.ts` (new), `packages/shared/src/__tests__/password-reset-schemas.test.ts` (new), extend `packages/shared/src/__tests__/user-schemas.test.ts` (Plan 7's)
+- Test: `packages/shared/src/__tests__/student-lifecycle-schemas.test.ts` (new), `packages/shared/src/__tests__/password-reset-schemas.test.ts` (new), extend `packages/shared/src/__tests__/user-schemas.test.ts` (Plan 9's)
 
 **Interfaces:**
-- Consumes: `enrollmentStatusSchema` (already imported by `student.ts`), Plan 15's `isoDaySchema` (`packages/shared/src/org-time.ts`), Plan 7's `passwordSchema`, `createUserRequestSchema`.
+- Consumes: `enrollmentStatusSchema` (already imported by `student.ts`), Plan 5's `isoDaySchema` (`packages/shared/src/org-time.ts`), Plan 9's `passwordSchema`, `createUserRequestSchema`.
 - Produces (exact names later tasks import):
   - `graduateStudentRequestSchema` → `GraduateStudentBody`
   - `graduateStudentResponseSchema` → `GraduateStudentResponse`
@@ -358,11 +358,11 @@ describe("passwordResetAckSchema / TTL", () => {
 });
 ```
 
-Append to Plan 7's `packages/shared/src/__tests__/user-schemas.test.ts` (add the
+Append to Plan 9's `packages/shared/src/__tests__/user-schemas.test.ts` (add the
 new names to its `../index` import):
 
 ```ts
-describe("createUserRequestSchema.confirmSuper (Plan 17 Decision 13)", () => {
+describe("createUserRequestSchema.confirmSuper (Plan 10 Decision 13)", () => {
   const base = { name: "New Person", email: "p@jpc.test", role: "SUPER" as const };
 
   it("is an optional boolean — the route, not the schema, decides when it is required", () => {
@@ -372,7 +372,7 @@ describe("createUserRequestSchema.confirmSuper (Plan 17 Decision 13)", () => {
   });
 });
 
-describe("bulk invite contracts (Plan 17 Decision 12)", () => {
+describe("bulk invite contracts (Plan 10 Decision 12)", () => {
   it("carries four counters, all non-negative", () => {
     expect(
       bulkInviteResponseSchema.safeParse({ sent: 3, skipped: 1, failed: 0, remaining: 12 }).success,
@@ -397,12 +397,12 @@ Expected: FAIL — none of the new exports exist.
 
 - [ ] **Step 3: Implement**
 
-Add `import { isoDaySchema } from "./org-time";` (Plan 15's module) to the top
+Add `import { isoDaySchema } from "./org-time";` (Plan 5's module) to the top
 of `packages/shared/src/student.ts`, then append:
 
 ```ts
 // ---------------------------------------------------------------------------
-// Lifecycle (Plan 17) — graduate, delete, and the response shapes every
+// Lifecycle (Plan 10) — graduate, delete, and the response shapes every
 // student write answers with (ruling X10: the client parses, never casts).
 // ---------------------------------------------------------------------------
 
@@ -429,7 +429,7 @@ export type GraduateStudentBody = z.infer<typeof graduateStudentRequestSchema>;
 export const graduateStudentResponseSchema = z.object({
   id: z.number().int(),
   graduationYear: z.number().int(),
-  /** Every ACTIVE enrollment is completed, not only the pointed-at one (Plan 17 Decision 2). */
+  /** Every ACTIVE enrollment is completed, not only the pointed-at one (Plan 10 Decision 2). */
   enrollmentsCompleted: z.number().int().nonnegative(),
 });
 export type GraduateStudentResponse = z.infer<typeof graduateStudentResponseSchema>;
@@ -440,18 +440,18 @@ export const studentDeletedResponseSchema = z.object({
 });
 export type StudentDeletedResponse = z.infer<typeof studentDeletedResponseSchema>;
 
-/** POST /students — Plan 5's response, given a schema so the create screen parses it. */
+/** POST /students — Plan 7's response, given a schema so the create screen parses it. */
 export const createStudentResponseSchema = z.object({
   id: z.number().int(),
   email: z.string(),
 });
 export type CreateStudentResponse = z.infer<typeof createStudentResponseSchema>;
 
-/** PATCH /students/:id — Plan 5's response. */
+/** PATCH /students/:id — Plan 7's response. */
 export const updateStudentResponseSchema = z.object({ id: z.number().int() });
 export type UpdateStudentResponse = z.infer<typeof updateStudentResponseSchema>;
 
-/** PATCH /students/:id/enrollments/:seasonId — Plan 5's response. */
+/** PATCH /students/:id/enrollments/:seasonId — Plan 7's response. */
 export const enrollmentTransitionResponseSchema = z.object({
   id: z.number().int(),
   status: enrollmentStatusSchema,
@@ -459,14 +459,14 @@ export const enrollmentTransitionResponseSchema = z.object({
 export type EnrollmentTransitionResponse = z.infer<typeof enrollmentTransitionResponseSchema>;
 
 // ---------------------------------------------------------------------------
-// Date-only values (Plan 17 Decision 8). A date of birth is a calendar day,
+// Date-only values (Plan 10 Decision 8). A date of birth is a calendar day,
 // not an instant: it has no wall clock for the org timezone to apply to, and
 // the device timezone must never decide it either (ruling X13).
 // ---------------------------------------------------------------------------
 
 /**
  * True for a real calendar day written as YYYY-MM-DD ("2003-02-29" is not).
- * Delegates to Plan 15's isoDaySchema (packages/shared/src/org-time.ts) — one
+ * Delegates to Plan 5's isoDaySchema (packages/shared/src/org-time.ts) — one
  * definition of "a day on the wire", not a second regex.
  */
 export function isDateOnly(value: string): boolean {
@@ -498,8 +498,8 @@ object (between `graduationYear` and the closing brace):
 
 ```ts
     /**
-     * Must be `true` when `role` is SUPER (Plan 17 Decision 13 — spec 11 D7
-     * rec 3 applied to creation as Plan 7 applied it to PATCH). The route
+     * Must be `true` when `role` is SUPER (Plan 10 Decision 13 — spec 11 D7
+     * rec 3 applied to creation as Plan 9 applied it to PATCH). The route
      * enforces it; the schema only types it.
      */
     confirmSuper: z.boolean().optional(),
@@ -508,12 +508,12 @@ object (between `graduationYear` and the closing brace):
 and append to the end of the file:
 
 ```ts
-/** POST /users — Plan 7's response, given a schema so `/users/new` parses it. */
+/** POST /users — Plan 9's response, given a schema so `/users/new` parses it. */
 export const createUserResponseSchema = z.object({ userId: z.number().int() });
 export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
 
 /**
- * Bulk "send all pending invites" (Plan 17 Decision 12): at most this many
+ * Bulk "send all pending invites" (Plan 10 Decision 12): at most this many
  * users per request. Exported so the confirm dialog quotes the same number
  * the server enforces.
  */
@@ -574,7 +574,7 @@ export type PasswordResetAck = z.infer<typeof passwordResetAckSchema>;
 /**
  * Accepts what a person actually pastes: the bare code, v2's
  * `spacev2://reset-password?token=…` link, or a v1 web link
- * `https://…/reset-password?token=…` (same token format — Plan 17 Decision 10).
+ * `https://…/reset-password?token=…` (same token format — Plan 10 Decision 10).
  */
 export function extractResetToken(input: string): string {
   const trimmed = input.trim();
@@ -609,13 +609,13 @@ git commit -m "feat(shared): student lifecycle, bulk-invite and password-reset c
 
 **Files:**
 - Create: `apps/backend/src/lib/audit.ts`
-- Modify: `apps/backend/src/routes/students.ts` (Plan 5's `POST /` mints an invite; Plan 5's enrollment transition writes an audit line)
-- Modify: `apps/backend/src/__tests__/integration/students-routes.test.ts` (Plan 5's — mailer mock at the top; new describe)
+- Modify: `apps/backend/src/routes/students.ts` (Plan 7's `POST /` mints an invite; Plan 7's enrollment transition writes an audit line)
+- Modify: `apps/backend/src/__tests__/integration/students-routes.test.ts` (Plan 7's — mailer mock at the top; new describe)
 - Modify: `apps/backend/src/docs/openapi.ts`
 - Test: `apps/backend/src/__tests__/audit.test.ts` (new, unit)
 
 **Interfaces:**
-- Consumes: Plan 7's `issueInvite`, `type IssuedInvite` (`lib/invites.ts`), `sendInviteEmail` (`lib/email.ts`), `hashToken` (`lib/auth/tokens.ts`, in the test).
+- Consumes: Plan 9's `issueInvite`, `type IssuedInvite` (`lib/invites.ts`), `sendInviteEmail` (`lib/email.ts`), `hashToken` (`lib/auth/tokens.ts`, in the test).
 - Produces: `auditLog(operation: AuditOperation, actorId: number, subjectId: number): void` and `formatAuditLine(...)`: `string` and `type AuditOperation = "student.graduate" | "student.delete" | "enrollment.drop" | "enrollment.complete"` in `lib/audit.ts` (Task 3 consumes); `POST /api/v1/students` now also mints one hashed invite (response shape unchanged: `{ data: { id, email } }` 201).
 
 - [ ] **Step 1: The audit helper — failing unit test first**
@@ -672,15 +672,15 @@ export function auditLog(operation: AuditOperation, actorId: number, subjectId: 
 
 Run: `cd apps/backend && npx jest src/__tests__/audit.test.ts` → PASS.
 
-- [ ] **Step 2: Stub the mailer in Plan 5's suite, then write the failing tests**
+- [ ] **Step 2: Stub the mailer in Plan 7's suite, then write the failing tests**
 
 Insert at the very top of `students-routes.test.ts`, **above** its
 `import request from "supertest";` line (jest hoists `jest.mock` above imports
 anyway; placing it first makes the order obvious to a reader):
 
 ```ts
-// Plan 17: POST /students now mails an invite. Stubbed for the same two
-// reasons Plan 7's invites suite gives — a staging .env with GMAIL_* set would
+// Plan 10: POST /students now mails an invite. Stubbed for the same two
+// reasons Plan 9's invites suite gives — a staging .env with GMAIL_* set would
 // otherwise send real SMTP to @jpc.test addresses on every run, and the stub
 // is how this suite proves the raw code reaches the mailer and nothing else.
 // Lazy wrapper: jest.mock is hoisted above this const.
@@ -695,7 +695,7 @@ Add `import { hashToken } from "../../lib/auth/tokens";` beside the suite's
 other imports. Then append:
 
 ```ts
-describe("POST /api/v1/students — credentials only via Plan 7's invite (Plan 17 Decision 1)", () => {
+describe("POST /api/v1/students — credentials only via Plan 9's invite (Plan 10 Decision 1)", () => {
   it("mints one hashed invite in the creating transaction and mails the raw code — nowhere else", async () => {
     mockSendInviteEmail.mockClear();
     const email = testEmail("invited-student");
@@ -738,7 +738,7 @@ describe("POST /api/v1/students — credentials only via Plan 7's invite (Plan 1
   });
 });
 
-describe("enrollment transitions leave an audit line (spec 06 D15, Plan 17 Decision 4)", () => {
+describe("enrollment transitions leave an audit line (spec 06 D15, Plan 10 Decision 4)", () => {
   it("logs actor and subject for a drop — and never the reason", async () => {
     const s = await createTestUser("audited-drop", "STUDENT");
     await db.studentProfile.create({ data: { userId: s.id } });
@@ -774,7 +774,7 @@ import { sendInviteEmail } from "../lib/email";
 import { issueInvite, type IssuedInvite } from "../lib/invites";
 ```
 
-Replace Plan 5's `try { const created = await db.$transaction(…); return apiOk(res, created, 201); } catch (err) { … }`
+Replace Plan 7's `try { const created = await db.$transaction(…); return apiOk(res, created, 201); } catch (err) { … }`
 block at the end of `studentsRouter.post("/", …)` with:
 
 ```ts
@@ -812,12 +812,12 @@ block at the end of `studentsRouter.post("/", …)` with:
           data: { studentUserId: student.id, seasonId: body.seasonId, status: "ACTIVE" },
         });
       }
-      // Plan 17 Decision 1 — spec 06 D7 / spec 11 §7: creation and
+      // Plan 10 Decision 1 — spec 06 D7 / spec 11 §7: creation and
       // invitation are ONE operation, exactly as POST /users does it. The
       // invite is minted in this transaction (a rolled-back student can't
       // have an invite) and mailed after commit (a mail failure can't roll
       // back the student). This line stays in the ROUTE, after the row
-      // writes: Plan 12 extracts the block above into createStudentRows, and
+      // writes: Plan 17 extracts the block above into createStudentRows, and
       // its importer must keep sending nothing (its R55).
       const issued = await issueInvite(tx, student.id, user.userId);
       return { student, issued };
@@ -832,7 +832,7 @@ block at the end of `studentsRouter.post("/", …)` with:
   }
 
   // Best-effort, after commit (R25). The log names the user id and the error
-  // — never the address or the code (Plan 7 Decision 2).
+  // — never the address or the code (Plan 9 Decision 2).
   try {
     await sendInviteEmail(created.email, invite.raw, invite.expiresAt);
   } catch (err) {
@@ -845,13 +845,13 @@ block at the end of `studentsRouter.post("/", …)` with:
   return apiOk(res, created, 201);
 ```
 
-(Everything above the `try` in Plan 5's handler — the SUPER gate, the body
+(Everything above the `try` in Plan 7's handler — the SUPER gate, the body
 parse, the season check and the friendly `email_taken` pre-check — is
 unchanged.)
 
 - [ ] **Step 4: Audit the enrollment transitions**
 
-In Plan 5's `studentsRouter.patch("/:id/enrollments/:seasonId", …)`, between
+In Plan 7's `studentsRouter.patch("/:id/enrollments/:seasonId", …)`, between
 `const updated = await db.seasonEnrollment.update({ … });` and
 `return apiOk(res, updated);`, insert:
 
@@ -866,11 +866,11 @@ In Plan 5's `studentsRouter.patch("/:id/enrollments/:seasonId", …)`, between
 - [ ] **Step 5: Run the suites**
 
 Run: `cd apps/backend && npx jest src/__tests__/audit.test.ts` → PASS.
-Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern students-routes` → PASS (Plan 5's describes included — its "creates user + profile + ACTIVE enrollment … NO password" test still holds).
+Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern students-routes` → PASS (Plan 7's describes included — its "creates user + profile + ACTIVE enrollment … NO password" test still holds).
 Run: `pnpm turbo lint typecheck --filter=@space/backend` → clean.
 
-- [ ] **Step 6: OpenAPI** — on `POST /api/v1/students`, replace Plan 5's "no
-login path until Plan 7" sentence with: the account is created with no
+- [ ] **Step 6: OpenAPI** — on `POST /api/v1/students`, replace Plan 7's "no
+login path until Plan 9" sentence with: the account is created with no
 password and an invite is minted in the same transaction and emailed after
 commit (best-effort; the code never appears in any response). On
 `PATCH /api/v1/students/{id}/enrollments/{seasonId}` add: "writes a
@@ -889,12 +889,12 @@ git commit -m "feat(backend): student creation mints an invite in-transaction; a
 
 **Files:**
 - Modify: `apps/backend/src/routes/students.ts` (add `POST /:id/graduate`, `DELETE /:id`)
-- Modify: `apps/backend/src/routes/users.ts` (Plan 7's reactivate also clears the profile stamp)
+- Modify: `apps/backend/src/routes/users.ts` (Plan 9's reactivate also clears the profile stamp)
 - Modify: `apps/backend/src/docs/openapi.ts`
 - Test: extend `apps/backend/src/__tests__/integration/students-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `graduateStudentRequestSchema` (Task 1, relative shared import), `auditLog` (Task 2), Plan 7's `revokeAllRefreshTokensForUser`, Plan 5's `isSuper`/`parseId`/`requireUser`.
+- Consumes: `graduateStudentRequestSchema` (Task 1, relative shared import), `auditLog` (Task 2), Plan 9's `revokeAllRefreshTokensForUser`, Plan 7's `isSuper`/`parseId`/`requireUser`.
 - Produces: `POST /api/v1/students/:id/graduate` → `{ data: GraduateStudentResponse }` (errors `bad_request` 400, `forbidden` 403, `not_found` 404, `already_graduated` 409); `DELETE /api/v1/students/:id` → `{ data: StudentDeletedResponse }` (errors `bad_request` 400, `forbidden` 403, `not_found` 404); reactivate clearing `StudentProfile.deletedAt`.
 
 - [ ] **Step 1: Append the failing tests**
@@ -921,7 +921,7 @@ async function makeGraduand(
   return s.id;
 }
 
-describe("POST /api/v1/students/:id/graduate (Plan 17 Decision 2)", () => {
+describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
   it("records the year, completes EVERY active enrollment, clears the pointer — one transaction", async () => {
     const sid = await makeGraduand(
       "graduand",
@@ -1043,7 +1043,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 17 Decision 2)", () => {
   });
 });
 
-describe("DELETE /api/v1/students/:id (Plan 17 Decision 3)", () => {
+describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
   it("stamps User and StudentProfile together, revokes every session, keeps the history", async () => {
     const s = await createTestUser("to-delete", "STUDENT");
     await db.studentProfile.create({ data: { userId: s.id } });
@@ -1112,7 +1112,7 @@ describe("DELETE /api/v1/students/:id (Plan 17 Decision 3)", () => {
     expect(again.status).toBe(404);
   });
 
-  it("a SUPER reactivation through /users clears BOTH stamps (Plan 7's reactivate, amended)", async () => {
+  it("a SUPER reactivation through /users clears BOTH stamps (Plan 9's reactivate, amended)", async () => {
     const s = await createTestUser("delete-reactivate", "STUDENT");
     await db.studentProfile.create({ data: { userId: s.id } });
     await request(app).delete(`/api/v1/students/${s.id}`).set("authorization", `Bearer ${superToken}`);
@@ -1153,7 +1153,7 @@ shared import, and
 
 ```ts
 /**
- * Graduation (Plan 17 Decision 2). SUPER-only — the one action in this domain
+ * Graduation (Plan 10 Decision 2). SUPER-only — the one action in this domain
  * gated on isSuper alone (R55). One transaction:
  *   - set graduationYear (the alumnus marker; role stays STUDENT, R57),
  *   - complete EVERY ACTIVE enrollment — v1 completed only the one matching
@@ -1210,7 +1210,7 @@ studentsRouter.post("/:id/graduate", async (req, res) => {
 });
 
 /**
- * Soft delete (Plan 17 Decision 3; spec 06 D13 "keep soft delete as
+ * Soft delete (Plan 10 Decision 3; spec 06 D13 "keep soft delete as
  * DELETE /students/:id"). SUPER-only. One transaction — v1 stamped User and
  * StudentProfile in two separate statements (R86) — that also revokes every
  * refresh token (spec 11 D6: deactivation revokes). Nothing cascades (R87):
@@ -1247,7 +1247,7 @@ Route-order note: `DELETE /:id` is the only DELETE in the router;
 `POST /:id/graduate` (two segments) cannot collide with `POST /` or
 `POST /:id/enrollments` (different literal).
 
-- [ ] **Step 3: Amend Plan 7's reactivate**
+- [ ] **Step 3: Amend Plan 9's reactivate**
 
 In `routes/users.ts`, replace the single
 `await db.user.update({ where: { id }, data: { deletedAt: null } });` line in
@@ -1267,7 +1267,7 @@ In `routes/users.ts`, replace the single
 
 - [ ] **Step 4: Run the suites**
 
-Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "students-routes|users-routes"` → PASS (`users-routes` proves Plan 7's reactivate cases still hold).
+Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "students-routes|users-routes"` → PASS (`users-routes` proves Plan 9's reactivate cases still hold).
 Run: `pnpm turbo lint typecheck --filter=@space/backend` → clean.
 
 - [ ] **Step 5: OpenAPI** — add both paths in this commit. Graduate: SUPER-only; body `{ graduationYear }` (1990…current year, evaluated per request); completes every ACTIVE enrollment and clears the active-season pointer; irreversible; codes `already_graduated` 409, `not_found` 404, `forbidden` 403. Delete: SUPER-only soft delete; revokes all sessions; history kept; reversible only via `POST /users/{id}/reactivate`; `not_found` covers non-students and already-deleted students. On `POST /users/{id}/reactivate` add: "also clears a student profile's deletion stamp".
@@ -1285,14 +1285,14 @@ git commit -m "feat(backend): graduate completes every active enrollment; soft d
 
 **Files:**
 - Create: `apps/backend/src/lib/concurrency.ts`
-- Modify: `apps/backend/src/lib/invites.ts` (Plan 7's — gains `liveInviteWhere` (moved), `isV2InviteDigest`, `listPendingInviteUserIds`, `inviteIfStillPending`, `sendPendingInviteBatch`)
+- Modify: `apps/backend/src/lib/invites.ts` (Plan 9's — gains `liveInviteWhere` (moved), `isV2InviteDigest`, `listPendingInviteUserIds`, `inviteIfStillPending`, `sendPendingInviteBatch`)
 - Modify: `apps/backend/src/lib/email.ts` (export `isEmailConfigured`)
-- Modify: `apps/backend/src/routes/users.ts` (Plan 7's — import `liveInviteWhere` instead of defining it; `confirmSuper` on `POST /`; `GET`/`POST /invites/pending`)
+- Modify: `apps/backend/src/routes/users.ts` (Plan 9's — import `liveInviteWhere` instead of defining it; `confirmSuper` on `POST /`; `GET`/`POST /invites/pending`)
 - Modify: `apps/backend/src/docs/openapi.ts`
 - Test: `apps/backend/src/__tests__/concurrency.test.ts` (new, unit), `apps/backend/src/__tests__/integration/bulk-invites-routes.test.ts` (new)
 
 **Interfaces:**
-- Consumes: Plan 7's `issueInvite`, `IssuedInvite`, `sendInviteEmail`, `hashToken`, `requireSuper`, `rateLimitHandler`, `createUnactivatedTestUser`; Task 1's `BULK_INVITE_BATCH_SIZE` (value — relative shared import) and `type BulkInviteResponse`.
+- Consumes: Plan 9's `issueInvite`, `IssuedInvite`, `sendInviteEmail`, `hashToken`, `requireSuper`, `rateLimitHandler`, `createUnactivatedTestUser`; Task 1's `BULK_INVITE_BATCH_SIZE` (value — relative shared import) and `type BulkInviteResponse`.
 - Produces:
   - `mapWithConcurrency<T, R>(items: readonly T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]>` in `lib/concurrency.ts`
   - In `lib/invites.ts`:
@@ -1350,7 +1350,7 @@ Run: `cd apps/backend && npx jest src/__tests__/concurrency.test.ts` → FAIL (m
 
 /**
  * Run `fn` over `items` with at most `limit` calls in flight, returning
- * results in input order. Exists for the bulk invite sender (Plan 17
+ * results in input order. Exists for the bulk invite sender (Plan 10
  * Decision 12): N SMTP round trips one after another is what made v1's bulk
  * action unsurvivable inside a request (spec 11 R18); all at once would trip
  * Gmail's connection limits. A small pool is the middle.
@@ -1452,7 +1452,7 @@ afterAll(async () => {
 
 /**
  * Four pending accounts — one of them holding only a live v1-style PLAINTEXT
- * invite, which v2 can never accept (Plan 7 Decision 4) — plus three that are
+ * invite, which v2 can never accept (Plan 9 Decision 4) — plus three that are
  * not pending: one with a live v2 invite, one activated, one deleted.
  */
 async function seedPool() {
@@ -1500,7 +1500,7 @@ describe("GET /api/v1/users/invites/pending", () => {
   });
 });
 
-describe("POST /api/v1/users/invites/pending (Plan 17 Decision 12)", () => {
+describe("POST /api/v1/users/invites/pending (Plan 10 Decision 12)", () => {
   it("invites every pending account once, mails each its own code, and reports four counters", async () => {
     const { pending, invited } = await seedPool();
     const before = await db.inviteToken.findFirst({
@@ -1608,7 +1608,7 @@ describe("inviteIfStillPending — the per-user lock and re-check", () => {
   });
 });
 
-describe("POST /api/v1/users — creating a SUPER needs confirmSuper (Plan 17 Decision 13)", () => {
+describe("POST /api/v1/users — creating a SUPER needs confirmSuper (Plan 10 Decision 13)", () => {
   it("refuses role SUPER without the flag and creates nothing", async () => {
     const email = testEmail("new-super-refused");
     const res = await request(app)
@@ -1651,7 +1651,7 @@ In `lib/email.ts`, below `isConfigured`:
 ```ts
 /**
  * Public form of isConfigured, for callers that must refuse rather than mint
- * a credential nobody can receive — the bulk invite sender (Plan 17 Decision
+ * a credential nobody can receive — the bulk invite sender (Plan 10 Decision
  * 12) and the password-reset request (Decision 9).
  */
 export function isEmailConfigured(): boolean {
@@ -1676,7 +1676,7 @@ import { sendInviteEmail } from "./email";
 and append:
 
 ```ts
-/** A live, unaccepted invite — moved here from routes/users.ts (Plan 7) so
+/** A live, unaccepted invite — moved here from routes/users.ts (Plan 9) so
  *  the library and the route share one definition. */
 export function liveInviteWhere(now: Date) {
   return { usedAt: null, expiresAt: { gt: now } } as const;
@@ -1684,7 +1684,7 @@ export function liveInviteWhere(now: Date) {
 
 /**
  * v2 stores a 64-hex SHA-256 digest; v1 stored its 32-char raw code (spec 11
- * R23). A digest lookup can never match a v1 row (Plan 7 Decision 4), so for
+ * R23). A digest lookup can never match a v1 row (Plan 9 Decision 4), so for
  * "does this person hold an invite that can work?" only digests count.
  */
 export function isV2InviteDigest(token: string): boolean {
@@ -1737,11 +1737,11 @@ export async function inviteIfStillPending(userId: number, invitedById: number):
   });
 }
 
-/** Parallel SMTP sends per batch (Plan 17 Decision 12). */
+/** Parallel SMTP sends per batch (Plan 10 Decision 12). */
 export const BULK_INVITE_MAIL_CONCURRENCY = 5;
 
 /**
- * One bounded batch of "send all pending invites" (Plan 17 Decision 12).
+ * One bounded batch of "send all pending invites" (Plan 10 Decision 12).
  *
  * Spec 11 §7 asks for a queue; v2 has none and a job table is a migration
  * (C1). So: at most `batchSize` users per call, one short locked transaction
@@ -1751,7 +1751,7 @@ export const BULK_INVITE_MAIL_CONCURRENCY = 5;
  * v1 left them "invited" with a code nobody received (R25).
  *
  * Logs carry user ids and error messages only — never an address or a code
- * (Plan 7 Decision 2).
+ * (Plan 9 Decision 2).
  */
 export async function sendPendingInviteBatch(
   invitedById: number,
@@ -1803,7 +1803,7 @@ export async function sendPendingInviteBatch(
 ```
 
 (`db`, `hashToken`, `issueInvite` and `IssuedInvite` are already in scope in
-this file from Plan 7.)
+this file from Plan 9.)
 
 - [ ] **Step 5: The routes, and `confirmSuper` on create**
 
@@ -1823,12 +1823,12 @@ import { liveInviteWhere, listPendingInviteUserIds, sendPendingInviteBatch } fro
 import { rateLimitHandler } from "../lib/rate-limit";
 ```
 
-   (Merge with Plan 7's existing `../lib/invites` and `../lib/email` import lines.)
+   (Merge with Plan 9's existing `../lib/invites` and `../lib/email` import lines.)
 
 3. In `usersRouter.post("/", …)`, directly after `const body = parsed.data;`:
 
 ```ts
-  // Plan 17 Decision 13 — spec 11 D7 rec 3 on CREATE as Plan 7 has it on
+  // Plan 10 Decision 13 — spec 11 D7 rec 3 on CREATE as Plan 9 has it on
   // PATCH: a SUPER grant can never be a mis-tapped picker item.
   if (body.role === "SUPER" && body.confirmSuper !== true) {
     return apiError(res, "confirm_super_required", "Granting SUPER requires explicit confirmation.", 400);
@@ -1840,7 +1840,7 @@ import { rateLimitHandler } from "../lib/rate-limit";
    reasoning), add:
 
 ```ts
-// Own bucket (Plan 17 Decision 11). With the 20-user batch ceiling this caps
+// Own bucket (Plan 10 Decision 11). With the 20-user batch ceiling this caps
 // bulk sending at 600 invites an hour.
 const bulkInviteLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30, handler: rateLimitHandler });
 
@@ -1854,7 +1854,7 @@ usersRouter.get("/invites/pending", async (req, res) => {
 
 /**
  * "Send all pending invites" (v1 sendAllPendingInvitesAction,
- * invite-actions.ts:53-75) as ONE bounded batch per request — Plan 17
+ * invite-actions.ts:53-75) as ONE bounded batch per request — Plan 10
  * Decision 12. Refuses outright with no mail transport: minting codes nobody
  * receives would also empty the pending pool, hiding the very accounts that
  * still need an invite.
@@ -1878,7 +1878,7 @@ usersRouter.post("/invites/pending", bulkInviteLimiter, async (req, res) => {
 - [ ] **Step 6: Run the suites**
 
 Run: `cd apps/backend && npx jest src/__tests__/concurrency.test.ts` → PASS.
-Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "bulk-invites-routes|invites-routes|users-routes"` → PASS (Plan 7's suites prove the `liveInviteWhere` move and the `confirmSuper` check broke nothing).
+Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "bulk-invites-routes|invites-routes|users-routes"` → PASS (Plan 9's suites prove the `liveInviteWhere` move and the `confirmSuper` check broke nothing).
 Run: `pnpm turbo lint typecheck --filter=@space/backend` → clean.
 
 - [ ] **Step 7: OpenAPI** — in this commit:
@@ -1907,12 +1907,12 @@ git commit -m "feat(backend): bounded bulk invites for pending accounts; SUPER c
 - Modify: `apps/backend/src/lib/email.ts` (add `sendPasswordResetEmail`)
 - Create: `apps/backend/src/lib/auth/password-reset.ts`
 - Modify: `apps/backend/src/routes/auth.ts` (two limiters, two anonymous routes)
-- Modify: `apps/backend/src/routes/me.ts` (Plan 7's `POST /password` also expires live reset tokens — Decision 14)
+- Modify: `apps/backend/src/routes/me.ts` (Plan 9's `POST /password` also expires live reset tokens — Decision 14)
 - Modify: `apps/backend/src/docs/openapi.ts`
 - Test: extend `apps/backend/src/__tests__/email.test.ts`; create `apps/backend/src/__tests__/integration/password-reset-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `forgotPasswordRequestSchema`, `resetPasswordRequestSchema` (Task 1 — relative shared import in `routes/auth.ts`); `PASSWORD_RESET_TTL_MINUTES` (Task 1 — relative shared import in `lib/auth/password-reset.ts`, one more `../`); `hashToken`, `revokeAllRefreshTokensForUser` (Plan 7); `isEmailConfigured` (Task 4); `formatInOrgTime` (Plan 3); `rateLimitHandler` (Plan 7).
+- Consumes: `forgotPasswordRequestSchema`, `resetPasswordRequestSchema` (Task 1 — relative shared import in `routes/auth.ts`); `PASSWORD_RESET_TTL_MINUTES` (Task 1 — relative shared import in `lib/auth/password-reset.ts`, one more `../`); `hashToken`, `revokeAllRefreshTokensForUser` (Plan 9); `isEmailConfigured` (Task 4); `formatInOrgTime` (Plan 3); `rateLimitHandler` (Plan 9).
 - Produces:
   - `config.mobileAppScheme: string`
   - `sendPasswordResetEmail(email: string, code: string, expiresAt: Date): Promise<void>`
@@ -1932,7 +1932,7 @@ Append to `apps/backend/src/__tests__/email.test.ts` (it already has
 `loadEmail(env)` and the `sendMail` mock):
 
 ```ts
-describe("sendPasswordResetEmail (Plan 17 Decisions 9–10)", () => {
+describe("sendPasswordResetEmail (Plan 10 Decisions 9–10)", () => {
   const CODE = "ab".repeat(32);
   const configured = { GMAIL_USER: "sender@example.test", GMAIL_APP_PASSWORD: "app-password" };
 
@@ -1980,7 +1980,7 @@ In `config.ts`'s env schema add:
 
 ```ts
   // URL scheme the mobile app registers (apps/mobile/app.json "scheme").
-  // Password-reset emails link to <scheme>://reset-password?token=… (Plan 17
+  // Password-reset emails link to <scheme>://reset-password?token=… (Plan 10
   // Decision 10). A custom-scheme link is never fetched over HTTP, so the
   // token never reaches a proxy log, a CDN log or a Referer header.
   MOBILE_APP_SCHEME: z
@@ -1999,7 +1999,7 @@ MOBILE_APP_SCHEME=spacev2
 ```
 
 and in `turbo.json` add `"MOBILE_APP_SCHEME"` to `build.env` after
-`"ENABLE_API_DOCS"` (and after any keys Plans 3 and 7 appended there).
+`"ENABLE_API_DOCS"` (and after any keys Plans 3 and 9 appended there).
 
 In `email.ts`, add `import { PASSWORD_RESET_TTL_MINUTES } from "../../../../packages/shared/src/index";`
 (value import — relative, X12), `let warnedResetUnconfigured = false;` beside
@@ -2007,7 +2007,7 @@ the other `warned…` flags, and below `sendInviteEmail`:
 
 ```ts
 /**
- * The password-reset email (Plan 17 Decisions 9–10). It offers the app deep
+ * The password-reset email (Plan 10 Decisions 9–10). It offers the app deep
  * link AND prints the code, because many mail clients don't linkify custom
  * schemes; the reset screen accepts either (and a pasted v1 web link).
  *
@@ -2018,7 +2018,7 @@ the other `warned…` flags, and below `sendInviteEmail`:
  */
 export async function sendPasswordResetEmail(email: string, code: string, expiresAt: Date): Promise<void> {
   if (!isConfigured()) {
-    // Never the code, never the address (Plan 7 Decision 2's rule).
+    // Never the code, never the address (Plan 9 Decision 2's rule).
     if (!warnedResetUnconfigured) {
       warnedResetUnconfigured = true;
       console.warn("[email] GMAIL_USER/GMAIL_APP_PASSWORD are unset — password-reset emails are disabled.");
@@ -2396,7 +2396,7 @@ export async function expireLiveResetTokens(
  * Mint a reset token in v1's exact format — 32 random bytes as 64 hex chars
  * (R71), stored only as its SHA-256 hex digest (R72) via the same hashToken
  * refresh and invite tokens use. Identical format is what lets a token minted
- * by either backend complete at either backend (Plan 17 Decision 9).
+ * by either backend complete at either backend (Plan 10 Decision 9).
  * Prior live tokens are expired first: one live reset per user (spec 11 D5
  * rec 2 — v1 let every request add another live credential, R76).
  * Deliberately sends no email: callers mail after their transaction commits.
@@ -2415,7 +2415,7 @@ export async function issuePasswordReset(
 
 /**
  * Everything forgot-password does, run AFTER the route has already answered
- * (Plan 17 Decision 9) — so neither the lookup nor the SMTP round trip can be
+ * (Plan 10 Decision 9) — so neither the lookup nor the SMTP round trip can be
  * timed (v1 awaited SMTP only for real accounts, R69). Returns void on every
  * path; the caller learns nothing (R67).
  */
@@ -2500,10 +2500,10 @@ In `routes/auth.ts`, extend the existing relative shared import with
 import { completePasswordReset, requestPasswordReset } from "../lib/auth/password-reset";
 ```
 
-Below Plan 7's `accept-invite` route:
+Below Plan 9's `accept-invite` route:
 
 ```ts
-// Own buckets (Plan 17 Decision 11), like acceptInviteLimiter: sharing the
+// Own buckets (Plan 10 Decision 11), like acceptInviteLimiter: sharing the
 // login limiter would let failed sign-ins lock a person out of recovering.
 const forgotPasswordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, handler: rateLimitHandler });
 const resetPasswordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, handler: rateLimitHandler });
@@ -2527,7 +2527,7 @@ authRouter.post("/forgot-password", forgotPasswordLimiter, (req, res) => {
 /**
  * Possession of the token is the authorization. One opaque failure,
  * invalid_reset_token, as 400 — not 401, which the mobile interceptor would
- * spend a refresh rotation on (Plan 7 Decision 10). The password is validated
+ * spend a refresh rotation on (Plan 9 Decision 10). The password is validated
  * by the schema before the token is looked at (R77's order kept), so a weak
  * password never consumes a token.
  */
@@ -2552,7 +2552,7 @@ authRouter.post("/reset-password", resetPasswordLimiter, async (req, res) => {
 - [ ] **Step 5: A password change consumes reset tokens (Decision 14)**
 
 In `routes/me.ts`, add `import { expireLiveResetTokens } from "../lib/auth/password-reset";`
-and change Plan 7's `POST /password` transaction body to:
+and change Plan 9's `POST /password` transaction body to:
 
 ```ts
   const sessionsRevoked = await db.$transaction(async (tx) => {
@@ -2592,14 +2592,14 @@ git commit -m "feat(backend): forgot/reset password — v1-compatible tokens, co
 - Create: `apps/mobile/src/components/ChoiceChips.tsx`
 - Create: `apps/mobile/src/lib/student-actions.ts`
 - Create: `apps/mobile/src/lib/student-form.ts`
-- Modify: `apps/mobile/src/hooks/use-students.ts` (Plan 5's — five mutations)
-- Modify: `apps/mobile/src/hooks/use-users.ts` (Plan 7's — create, pending count, bulk send)
+- Modify: `apps/mobile/src/hooks/use-students.ts` (Plan 7's — five mutations)
+- Modify: `apps/mobile/src/hooks/use-users.ts` (Plan 9's — create, pending count, bulk send)
 - Modify: `apps/mobile/src/lib/query-keys.ts` (`users.pendingInvites()`)
 - Create: `apps/mobile/src/hooks/use-password-reset.ts`
 - Test: `apps/mobile/src/__tests__/sheet.test.tsx`, `student-actions.test.ts`, `student-form.test.ts`, `student-lifecycle-hooks.test.tsx`, `account-hooks.test.tsx` (all new)
 
 **Interfaces:**
-- Consumes: Task 1's schemas and helpers; Plan 5's student contracts and `queryKeys.students`; Plan 7's `createUserRequestSchema`, `queryKeys.users`; `apiClient`.
+- Consumes: Task 1's schemas and helpers; Plan 7's student contracts and `queryKeys.students`; Plan 9's `createUserRequestSchema`, `queryKeys.users`; `apiClient`.
 - Produces:
   - `<Sheet visible title onClose>{children}</Sheet>` from `src/ui`
   - `<ChoiceChips label options value onChange error? />` with `type ChoiceOption<T>`
@@ -2701,7 +2701,7 @@ const row = (seasonId: number, status: EnrollmentHistoryItem["status"]): Enrollm
 
 const student = { graduationYear: null, enrollments: [row(7, "ACTIVE"), row(8, "ACTIVE"), row(9, "WITHDRAWN")] };
 
-describe("studentActionsFor (Plan 17 Decision 6 — mirrors the server gates)", () => {
+describe("studentActionsFor (Plan 10 Decision 6 — mirrors the server gates)", () => {
   it("gives SUPER everything, and Drop on every ACTIVE row only", () => {
     const a = studentActionsFor(makeUser("SUPER"), makeScopes(), student);
     expect(a).toMatchObject({ canEdit: true, canEditSeasonPointer: true, canGraduate: true, canDelete: true });
@@ -2714,7 +2714,7 @@ describe("studentActionsFor (Plan 17 Decision 6 — mirrors the server gates)", 
     expect(student.enrollments.map(a.canDrop)).toEqual([true, false, false]);
   });
 
-  it("refuses ADMIN Edit when their season's enrollment is no longer ACTIVE (Plan 5's canEditStudent)", () => {
+  it("refuses ADMIN Edit when their season's enrollment is no longer ACTIVE (Plan 7's canEditStudent)", () => {
     const a = studentActionsFor(makeUser("ADMIN"), makeScopes({ seasonAdminIds: [9] }), student);
     expect(a.canEdit).toBe(false);
   });
@@ -2867,7 +2867,7 @@ describe("student lifecycle mutations (ruling X10 — parsed, never cast)", () =
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
-  it("useDeleteStudent, useDropEnrollment, useCreateStudent and useUpdateStudent hit Plan 5/17's routes", async () => {
+  it("useDeleteStudent, useDropEnrollment, useCreateStudent and useUpdateStudent hit Plan 7/17's routes", async () => {
     del.mockResolvedValue({ data: { data: { id: 21, deletedAt: "2099-01-01T00:00:00.000Z" } } });
     patch.mockResolvedValueOnce({ data: { data: { id: 507, status: "WITHDRAWN" } } });
     patch.mockResolvedValueOnce({ data: { data: { id: 21 } } });
@@ -2986,7 +2986,7 @@ export interface SheetProps {
 }
 
 /**
- * Bottom sheet (Plan 17 Decision 7) — v1's modals become sheets per the
+ * Bottom sheet (Plan 10 Decision 7) — v1's modals become sheets per the
  * mobile conventions (spec 06 §9). An RN Modal sliding up, a tappable
  * backdrop, and the bottom inset added to the sheet's own bottom padding
  * (per-edge only — never a `padding` shorthand plus overrides; Yoga resolves
@@ -3133,9 +3133,9 @@ export function isAdminOfSeasonForUi(
 }
 
 export interface StudentActions {
-  /** Plan 5's canEditStudent: SUPER, or an ADMIN with an ACTIVE enrollment in one of their seasons. */
+  /** Plan 7's canEditStudent: SUPER, or an ADMIN with an ACTIVE enrollment in one of their seasons. */
   canEdit: boolean;
-  /** Only SUPER may move activeSeasonId (Plan 5's ADMIN_EDITABLE excludes it). */
+  /** Only SUPER may move activeSeasonId (Plan 7's ADMIN_EDITABLE excludes it). */
   canEditSeasonPointer: boolean;
   /** R55 + R63: SUPER, and only while not yet graduated. */
   canGraduate: boolean;
@@ -3145,7 +3145,7 @@ export interface StudentActions {
 }
 
 /**
- * Which lifecycle controls the student detail renders (Plan 17 Decision 6).
+ * Which lifecycle controls the student detail renders (Plan 10 Decision 6).
  * Every rule mirrors a server gate, so no rendered button can 403; the server
  * still enforces each one regardless.
  */
@@ -3191,7 +3191,7 @@ export interface StudentFormValues {
   university: string;
   year: string;
   phone: string;
-  /** YYYY-MM-DD or "" (Plan 17 Decision 8). */
+  /** YYYY-MM-DD or "" (Plan 10 Decision 8). */
   dateOfBirth: string;
   spiritualBackground: string;
   gifts: string;
@@ -3238,7 +3238,7 @@ export function studentFormFromDetail(
 
 const blankToNull = (s: string): string | null => (s.trim() === "" ? null : s.trim());
 
-/** The profile fields as the API takes them: "" → null (Plan 5's R26), birthday → UTC midnight. */
+/** The profile fields as the API takes them: "" → null (Plan 7's R26), birthday → UTC midnight. */
 function profileFields(v: StudentFormValues) {
   const dob = v.dateOfBirth.trim();
   return {
@@ -3281,7 +3281,7 @@ export function validateStudentForm(v: StudentFormValues): StudentFormErrors {
   return errors;
 }
 
-/** POST /students. No password field exists to send (Plan 5 D7). */
+/** POST /students. No password field exists to send (Plan 7 D7). */
 export function toCreateStudentBody(v: StudentFormValues): CreateStudentBody {
   return {
     name: v.name.trim(),
@@ -3294,7 +3294,7 @@ export function toCreateStudentBody(v: StudentFormValues): CreateStudentBody {
 /**
  * PATCH /students/:id. `activeSeasonId` travels only when the caller may move
  * it (SUPER) AND it changed — re-sending a legacy pointer with no ACTIVE
- * enrollment behind it would 409 not_enrolled (Plan 17 Decision 6).
+ * enrollment behind it would 409 not_enrolled (Plan 10 Decision 6).
  */
 export function toUpdateStudentBody(
   v: StudentFormValues,
@@ -3312,7 +3312,7 @@ export function toUpdateStudentBody(
 
 - [ ] **Step 4: The hooks**
 
-In `src/lib/query-keys.ts`, inside Plan 7's `users` factory, add:
+In `src/lib/query-keys.ts`, inside Plan 9's `users` factory, add:
 
 ```ts
     /** GET /users/invites/pending — under `users.all`, so every users mutation refreshes it. */
@@ -3340,7 +3340,7 @@ import {
   type UpdateStudentResponse,
 } from "@space/shared";
 
-/** POST /students — the server mints and mails the invite (Plan 17 Decision 1). */
+/** POST /students — the server mints and mails the invite (Plan 10 Decision 1). */
 export function useCreateStudent(): UseMutationResult<CreateStudentResponse, Error, CreateStudentBody> {
   const queryClient = useQueryClient();
   return useMutation({
@@ -3405,7 +3405,7 @@ export function useDeleteStudent(): UseMutationResult<StudentDeletedResponse, Er
   });
 }
 
-/** PATCH /students/:id/enrollments/:seasonId → WITHDRAWN (Plan 5's endpoint). */
+/** PATCH /students/:id/enrollments/:seasonId → WITHDRAWN (Plan 7's endpoint). */
 export function useDropEnrollment(): UseMutationResult<
   EnrollmentTransitionResponse,
   Error,
@@ -3441,7 +3441,7 @@ import {
   type CreateUserResponse,
 } from "@space/shared";
 
-/** POST /users — invite-first; the response carries no credential (Plan 7). */
+/** POST /users — invite-first; the response carries no credential (Plan 9). */
 export function useCreateUser(): UseMutationResult<CreateUserResponse, Error, CreateUserBody> {
   const queryClient = useQueryClient();
   return useMutation({
@@ -3468,7 +3468,7 @@ export function usePendingInviteCount(enabled: boolean): UseQueryResult<number> 
 }
 
 /**
- * One bounded batch (Plan 17 Decision 12). The timeout is raised from the
+ * One bounded batch (Plan 10 Decision 12). The timeout is raised from the
  * client's 15 s default: a batch is up to 20 SMTP sends, 5 at a time.
  */
 export function useSendPendingInvites(): UseMutationResult<BulkInviteResponse, Error, void> {
@@ -3537,13 +3537,13 @@ git commit -m "feat(mobile): Sheet and ChoiceChips primitives, student action ga
 **Files:**
 - Move: `apps/mobile/app/(app)/student/[id].tsx` → `apps/mobile/app/(app)/student/[id]/index.tsx` (ruling X7; the file is rewritten below)
 - Modify: `apps/mobile/app/(app)/_layout.tsx` (`DETAIL_ROUTE_NAMES`: the `"student/[id]"` entry becomes `"student/[id]/index"`)
-- Modify: `apps/mobile/src/__tests__/app-layout.test.tsx` (Plan 5's "declares student/[id] hidden" case → the new name)
-- Modify: `apps/mobile/src/__tests__/student-detail.test.tsx` (Plan 5's — import path only)
+- Modify: `apps/mobile/src/__tests__/app-layout.test.tsx` (Plan 7's "declares student/[id] hidden" case → the new name)
+- Modify: `apps/mobile/src/__tests__/student-detail.test.tsx` (Plan 7's — import path only)
 - Create: `apps/mobile/src/components/GraduateStudentSheet.tsx`, `apps/mobile/src/components/DropEnrollmentSheet.tsx`
 - Test: `apps/mobile/src/__tests__/student-detail-actions.test.tsx` (new)
 
 **Interfaces:**
-- Consumes: Task 6's `Sheet`, `studentActionsFor`, `useGraduateStudent`, `useDropEnrollment` and `useDeleteStudent`; Task 1's `graduateStudentRequestSchema` and `dateOnlyFromIso`; Plan 5's `useStudentDetail` and `type StudentDetail`; Plan 4's `apiErrorMessage` and `formatDayKey`; Plan 1's `DETAIL_ROUTE_NAMES`.
+- Consumes: Task 6's `Sheet`, `studentActionsFor`, `useGraduateStudent`, `useDropEnrollment` and `useDeleteStudent`; Task 1's `graduateStudentRequestSchema` and `dateOnlyFromIso`; Plan 7's `useStudentDetail` and `type StudentDetail`; Plan 4's `apiErrorMessage` and `formatDayKey`; Plan 1's `DETAIL_ROUTE_NAMES`.
 - Produces:
   - the route `/student/[id]`, now served by `student/[id]/index.tsx`, which Task 8's `edit` sits beside
   - `<GraduateStudentSheet visible studentId studentName onClose />`
@@ -3560,7 +3560,7 @@ The file is one directory deeper, so every `"../../../src/…"` import in it bec
 
 In `_layout.tsx`, change the `"student/[id]"` entry of `DETAIL_ROUTE_NAMES` to `"student/[id]/index"`. Leave every other entry as it is.
 
-In `app-layout.test.tsx`, Plan 5's case becomes:
+In `app-layout.test.tsx`, Plan 7's case becomes:
 
 ```tsx
 it("declares student/[id]/index hidden from the tab bar (directory form, ruling X7)", () => {
@@ -3572,12 +3572,12 @@ it("declares student/[id]/index hidden from the tab bar (directory form, ruling 
 });
 ```
 
-(`makeUser` and `scopes = makeScopes()` are the file's fixtures since Plan 1 Task 0; Plan 5's case uses the same.)
+(`makeUser` and `scopes = makeScopes()` are the file's fixtures since Plan 1 Task 0; Plan 7's case uses the same.)
 
 In `student-detail.test.tsx`, change `import StudentDetailScreen from "../../app/(app)/student/[id]";` to `"../../app/(app)/student/[id]/index"`.
 
 Run: `pnpm turbo routes:generate --filter=@space/mobile`
-Run: `cd apps/mobile && pnpm jest src/__tests__/app-layout.test.tsx src/__tests__/role-tabs.test.tsx src/__tests__/student-detail.test.tsx` → PASS. `ambiguousRouteSiblings()` stays `[]`: there is no `student/[id].tsx` left beside the directory. The typed href `/student/[id]` still resolves, because a directory index serves its parent path, so Plan 5's `router.push({ pathname: "/student/[id]", … })` in `StudentList` is unchanged.
+Run: `cd apps/mobile && pnpm jest src/__tests__/app-layout.test.tsx src/__tests__/role-tabs.test.tsx src/__tests__/student-detail.test.tsx` → PASS. `ambiguousRouteSiblings()` stays `[]`: there is no `student/[id].tsx` left beside the directory. The typed href `/student/[id]` still resolves, because a directory index serves its parent path, so Plan 7's `router.push({ pathname: "/student/[id]", … })` in `StudentList` is unchanged.
 
 - [ ] **Step 2: Write the failing screen test**
 
@@ -3655,7 +3655,7 @@ beforeEach(() => {
   get.mockResolvedValue({ data: { data: internalDetail } });
 });
 
-describe("StudentDetailScreen — lifecycle actions (Plan 17)", () => {
+describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
   it("gives SUPER Edit, Graduate, Delete and a Drop per ACTIVE row; the birthday lands on its own day", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
@@ -3904,7 +3904,7 @@ export function DropEnrollmentSheet({ studentId, enrollment, onClose }: DropEnro
 
 - [ ] **Step 4: Rewrite the detail screen**
 
-Replace `apps/mobile/app/(app)/student/[id]/index.tsx` in full. Plan 5's
+Replace `apps/mobile/app/(app)/student/[id]/index.tsx` in full. Plan 7's
 content is kept and gains the action bar, the per-row Drop and the date-only
 birthday.
 
@@ -3941,7 +3941,7 @@ function ProfileCard({ detail }: { detail: StudentDetail }) {
   // (spec 06 §4.2); the client renders what its arm carries.
   if ("phone" in p && p.phone) rows.push(["Phone", p.phone]);
   if ("dateOfBirth" in p && p.dateOfBirth) {
-    // A calendar day, read without any timezone (Plan 17 Decision 8).
+    // A calendar day, read without any timezone (Plan 10 Decision 8).
     rows.push(["Date of birth", formatDayKey(dateOnlyFromIso(p.dateOfBirth))]);
   }
   if ("spiritualBackground" in p && p.spiritualBackground) {
@@ -4126,8 +4126,8 @@ The success handlers need no manual refetch. Each mutation invalidates `queryKey
 - [ ] **Step 5: Run everything**
 
 Run: `pnpm turbo routes:generate --filter=@space/mobile`
-Run: `cd apps/mobile && pnpm jest src/__tests__/student-detail-actions.test.tsx src/__tests__/student-detail.test.tsx src/__tests__/app-layout.test.tsx src/__tests__/role-tabs.test.tsx` → PASS. Plan 5's detail cases still hold. In particular, its `/Dropped/` query still matches exactly one node, because the new button reads "Drop", not "Dropped".
-Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean. Expect one exception: the typed href `/student/[id]/edit` does not exist until Task 8 creates the file. When executing in order, do Task 8 before declaring this task's typecheck green, exactly as Plan 7 did with its Tasks 7 and 8.
+Run: `cd apps/mobile && pnpm jest src/__tests__/student-detail-actions.test.tsx src/__tests__/student-detail.test.tsx src/__tests__/app-layout.test.tsx src/__tests__/role-tabs.test.tsx` → PASS. Plan 7's detail cases still hold. In particular, its `/Dropped/` query still matches exactly one node, because the new button reads "Drop", not "Dropped".
+Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean. Expect one exception: the typed href `/student/[id]/edit` does not exist until Task 8 creates the file. When executing in order, do Task 8 before declaring this task's typecheck green, exactly as Plan 9 did with its Tasks 7 and 8.
 
 - [ ] **Step 6: Commit**
 
@@ -4145,12 +4145,12 @@ git commit -m "feat(mobile): student detail in directory form with graduate and 
 - Create: `apps/mobile/app/(app)/students/new.tsx`
 - Create: `apps/mobile/app/(app)/student/[id]/edit.tsx`
 - Modify: `apps/mobile/app/(app)/_layout.tsx` (`DETAIL_ROUTE_NAMES` gains `"students/new"` and `"student/[id]/edit"`)
-- Modify: `apps/mobile/src/components/StudentList.tsx` (Plan 5's — optional `headerAction`)
+- Modify: `apps/mobile/src/components/StudentList.tsx` (Plan 7's — optional `headerAction`)
 - Modify: `apps/mobile/app/(app)/students/index.tsx` (SUPER gets "New student")
 - Test: `apps/mobile/src/__tests__/student-form-screens.test.tsx` (new); extend `apps/mobile/src/__tests__/app-layout.test.tsx` and `students-list.test.tsx`
 
 **Interfaces:**
-- Consumes: Task 6's `StudentForm` helpers, `ChoiceChips`, `useCreateStudent`, `useUpdateStudent` and `studentActionsFor`; Plan 4's `useSeasons(enabled)` and `apiErrorMessage`; Plan 5's `useStudentDetail`.
+- Consumes: Task 6's `StudentForm` helpers, `ChoiceChips`, `useCreateStudent`, `useUpdateStudent` and `studentActionsFor`; Plan 4's `useSeasons(enabled)` and `apiErrorMessage`; Plan 7's `useStudentDetail`.
 - Produces:
   - `<StudentForm initial seasonOptions seasonLabel showSeason showNotes submitTitle submitting serverError onSubmit />`
   - the routes `/students/new` and `/student/[id]/edit`
@@ -4261,7 +4261,7 @@ describe("/students/new", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it("is SUPER-only, like the endpoint (Plan 5) — an ADMIN fires no request", () => {
+  it("is SUPER-only, like the endpoint (Plan 7) — an ADMIN fires no request", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<NewStudentScreen />);
     expect(screen.getByText(/Only SUPER accounts can create students/)).toBeTruthy();
@@ -4292,7 +4292,7 @@ describe("/student/[id]/edit", () => {
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
   });
 
-  it("ADMIN edits notes but never sends activeSeasonId (Plan 5's ADMIN allowlist)", async () => {
+  it("ADMIN edits notes but never sends activeSeasonId (Plan 7's ADMIN allowlist)", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<EditStudentScreen />);
 
@@ -4323,7 +4323,7 @@ it("declares students/new and student/[id]/edit hidden from the tab bar", () => 
 });
 ```
 
-Append to Plan 5's `students-list.test.tsx`. It already mocks `useRouter` with `mockPush`; use its fixtures and its session constant if they differ from these names.
+Append to Plan 7's `students-list.test.tsx`. It already mocks `useRouter` with `mockPush`; use its fixtures and its session constant if they differ from these names.
 
 ```tsx
 it("offers SUPER — and only SUPER — a way to create a student", async () => {
@@ -4504,9 +4504,9 @@ import { useTheme } from "../../../src/theme";
 import { EmptyState, ErrorState, Screen, Text } from "../../../src/ui";
 
 /**
- * /students/new (spec 06 §9). SUPER-only, like POST /students (Plan 5). The
+ * /students/new (spec 06 §9). SUPER-only, like POST /students (Plan 7). The
  * account is created with no password and the server mails an invite in the
- * same operation (Plan 17 Decision 1) — v1's "temp password is ChangeMe123!"
+ * same operation (Plan 10 Decision 1) — v1's "temp password is ChangeMe123!"
  * notice (spec 11 R43) has nothing to say here and is not ported.
  */
 export default function NewStudentScreen() {
@@ -4578,8 +4578,8 @@ import { EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../
 
 /**
  * /student/[id]/edit — spec 06 §9's edit page, for SUPER and for an ADMIN
- * whose season the student is ACTIVE in (Plan 5's canEditStudent). Fixes v1's
- * dead ADMIN Edit link (§4.3). The student's own edit is Plan 14's /profile.
+ * whose season the student is ACTIVE in (Plan 7's canEditStudent). Fixes v1's
+ * dead ADMIN Edit link (§4.3). The student's own edit is Plan 11's /profile.
  */
 export default function EditStudentScreen() {
   const router = useRouter();
@@ -4637,7 +4637,7 @@ export default function EditStudentScreen() {
   }
 
   const initial = studentFormFromDetail(data);
-  // The pointer may only name a season the student is ACTIVE in (Plan 5 S16).
+  // The pointer may only name a season the student is ACTIVE in (Plan 7 S16).
   const seasonOptions = data.enrollments
     .filter((e) => e.status === "ACTIVE")
     .map((e) => ({ id: e.seasonId, title: e.seasonTitle }));
@@ -4710,7 +4710,7 @@ export default function StudentsScreen() {
       status="active"
       allowedRoles={["SUPER", "ADMIN", "MENTOR", "LEADER"]}
       title="Students"
-      // Creation is SUPER-only (Plan 5's POST /students).
+      // Creation is SUPER-only (Plan 7's POST /students).
       headerAction={
         isSuper ? <Button title="New student" onPress={() => router.push("/students/new")} /> : null
       }
@@ -4738,20 +4738,20 @@ git commit -m "feat(mobile): /students/new (invite-first) and /student/[id]/edit
 
 **Files:**
 - Move: `apps/mobile/app/(app)/users.tsx` → `apps/mobile/app/(app)/users/index.tsx`
-- Modify: `apps/mobile/app/(app)/_layout.tsx` (Plan 16's `DIRECTORY_ROUTE_HREFS` gains `"users"`; `DETAIL_ROUTE_NAMES` gains `"users/new"`)
+- Modify: `apps/mobile/app/(app)/_layout.tsx` (Plan 6's `DIRECTORY_ROUTE_HREFS` gains `"users"`; `DETAIL_ROUTE_NAMES` gains `"users/new"`)
 - Create: `apps/mobile/app/(app)/users/new.tsx`
-- Modify: `apps/mobile/src/__tests__/users-screen.test.tsx` (Plan 7's — import path; two new cases)
+- Modify: `apps/mobile/src/__tests__/users-screen.test.tsx` (Plan 9's — import path; two new cases)
 - Modify: `apps/mobile/src/__tests__/app-layout.test.tsx`
 - Test: `apps/mobile/src/__tests__/user-new-screen.test.tsx` (new)
 
 **Interfaces:**
-- Consumes: Task 6's `useCreateUser`, `usePendingInviteCount`, `useSendPendingInvites` and `ChoiceChips`; Task 1's `BULK_INVITE_BATCH_SIZE` and `confirmSuper`; Plan 7's `createUserRequestSchema` and `userRoleSchema`; Plan 4's `apiErrorMessage`.
+- Consumes: Task 6's `useCreateUser`, `usePendingInviteCount`, `useSendPendingInvites` and `ChoiceChips`; Task 1's `BULK_INVITE_BATCH_SIZE` and `confirmSuper`; Plan 9's `createUserRequestSchema` and `userRoleSchema`; Plan 4's `apiErrorMessage`.
 - Produces:
   - the routes `/users` (now served by `users/index.tsx`) and `/users/new`
-  - `"users"` in `DIRECTORY_ROUTE_HREFS` in `_layout.tsx` (Plan 16's set, which Plan 12 Step 0 checks for), so Plan 12 skips its own conversion
+  - `"users"` in `DIRECTORY_ROUTE_HREFS` in `_layout.tsx` (Plan 6's set, which Plan 17 Step 0 checks for), so Plan 17 skips its own conversion
   - `PendingInvitesCard`, local to `users/index.tsx`
 
-- [ ] **Step 1: The directory conversion — Plan 12 Step 0's mechanism, on Plan 16's set**
+- [ ] **Step 1: The directory conversion — Plan 17 Step 0's mechanism, on Plan 6's set**
 
 ```bash
 mkdir -p "apps/mobile/app/(app)/users"
@@ -4760,7 +4760,7 @@ git mv "apps/mobile/app/(app)/users.tsx" "apps/mobile/app/(app)/users/index.tsx"
 
 Every relative import in the moved file gains one `../`. `"../../src/…"` becomes `"../../../src/…"` for hooks, store, theme and ui. In `users-screen.test.tsx`, change `import UsersScreen from "../../app/(app)/users";` to `"../../app/(app)/users/index"`.
 
-In `_layout.tsx`, Plan 16 Task 5 already turned `routeNameForHref`'s
+In `_layout.tsx`, Plan 6 Task 5 already turned `routeNameForHref`'s
 hard-coded `students` branch into the `DIRECTORY_ROUTE_HREFS` set
 (`["students", "seasons"]`). Add `"users"` to it — **keep `"seasons"`**, or the
 SUPER Seasons tab silently disappears:
@@ -4769,7 +4769,7 @@ SUPER Seasons tab silently disappears:
 /**
  * Hrefs whose route is a directory (`x/index.tsx`) because the destination
  * has child routes (ruling X7): `students` (alumni, dropped), `seasons`
- * (Plan 16's `seasons/[code]/…`) and `users` (`users/new`, Plan 12's
+ * (Plan 6's `seasons/[code]/…`) and `users` (`users/new`, Plan 17's
  * `users/import`).
  */
 const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons", "users"]);
@@ -4780,15 +4780,15 @@ export function routeNameForHref(href: string): string {
 }
 ```
 
-(Plan 12 Task 6 Step 0 checks that `/users` maps through this set and does
+(Plan 17 Task 6 Step 0 checks that `/users` maps through this set and does
 not repeat the move.) Append `"users/new"` to `DETAIL_ROUTE_NAMES`, and to
 `app-layout.test.tsx`:
 
 ```tsx
-it("maps /users to its directory index and hides users/new (Plan 17)", () => {
+it("maps /users to its directory index and hides users/new (Plan 10)", () => {
   expect(routeNameForHref("/users")).toBe("users/index");
   expect(routeNameForHref("/students")).toBe("students/index");
-  expect(routeNameForHref("/seasons")).toBe("seasons/index"); // Plan 16's entry survives
+  expect(routeNameForHref("/seasons")).toBe("seasons/index"); // Plan 6's entry survives
   expect(DETAIL_ROUTE_NAMES).toContain("users/new");
 });
 ```
@@ -4892,12 +4892,12 @@ describe("/users/new (spec 11 §9)", () => {
 });
 ```
 
-Append to Plan 7's `users-screen.test.tsx`. Add `Alert` from `react-native`
+Append to Plan 9's `users-screen.test.tsx`. Add `Alert` from `react-native`
 to its imports. Its `superSession`, `rows`, `get`, `post` and `mockPush`
 already exist.
 
 ```tsx
-describe("UsersScreen — Plan 17 entry points", () => {
+describe("UsersScreen — Plan 10 entry points", () => {
   const routeGets = (pending: number) =>
     get.mockImplementation((url: string) =>
       url === "/api/v1/users/invites/pending"
@@ -4944,7 +4944,7 @@ describe("UsersScreen — Plan 17 entry points", () => {
 });
 ```
 
-Plan 7's earlier cases still use `get.mockResolvedValue(list)` for every GET.
+Plan 9's earlier cases still use `get.mockResolvedValue(list)` for every GET.
 The pending-count query then fails its parse, so the card stays hidden and
 none of their assertions change.
 
@@ -4971,12 +4971,12 @@ type FieldErrors = Partial<Record<"name" | "email" | "graduationYear", string>>;
 const ROLE_OPTIONS = userRoleSchema.options.map((role) => ({ value: role, label: role }));
 
 /**
- * /users/new (spec 11 §9; v1 super/users/new + user-form.tsx). Over Plan 7's
+ * /users/new (spec 11 §9; v1 super/users/new + user-form.tsx). Over Plan 9's
  * invite-first POST /users: no password is set and the server mails the
  * invite — so v1's on-screen "temp password is ChangeMe123!" notice (R43) has
  * no counterpart here. Validation runs the ONE shared schema (R55: v1's form
  * re-implemented it and drifted). A SUPER grant asks first and only then sends
- * confirmSuper (Plan 17 Decision 13).
+ * confirmSuper (Plan 10 Decision 13).
  */
 export default function NewUserScreen() {
   const theme = useTheme();
@@ -5105,7 +5105,7 @@ function bulkSummary(r: BulkInviteResponse): string {
 
 /**
  * v1's SendPendingInvitesButton (invite-buttons.tsx:40-65) — now one bounded
- * batch per tap (Plan 17 Decision 12). Mounted only inside the SUPER branch,
+ * batch per tap (Plan 10 Decision 12). Mounted only inside the SUPER branch,
  * so its count query never fires for anyone else. Hidden at zero (R87), and
  * also hidden while the count is unknown: a button whose reach we can't state
  * shouldn't offer to mail anyone.
@@ -5159,7 +5159,7 @@ the SUPER branch, directly above the search `Input`:
         <PendingInvitesCard />
 ```
 
-(Plan 12 later adds its "Import students" button at the same spot. Both can
+(Plan 17 later adds its "Import students" button at the same spot. Both can
 coexist.)
 
 - [ ] **Step 5: Run everything**
@@ -5180,12 +5180,12 @@ git commit -m "feat(mobile): /users/new with SUPER confirm, bulk pending-invite 
 ### Task 10: Forgot-password and reset-password screens
 
 **Files:**
-- Create: `apps/mobile/app/forgot-password.tsx`, `apps/mobile/app/reset-password.tsx` (outside `(app)`, beside `login.tsx` and Plan 7's `accept-invite.tsx`)
+- Create: `apps/mobile/app/forgot-password.tsx`, `apps/mobile/app/reset-password.tsx` (outside `(app)`, beside `login.tsx` and Plan 9's `accept-invite.tsx`)
 - Modify: `apps/mobile/app/login.tsx` (a "Forgot password?" link)
 - Test: `apps/mobile/src/__tests__/password-reset-screens.test.tsx` (new); run `login-screen.test.tsx`
 
 **Interfaces:**
-- Consumes: Task 6's `useForgotPassword` and `useResetPassword`; Task 1's `forgotPasswordRequestSchema`, `extractResetToken` and `PASSWORD_RESET_TTL_MINUTES`; Plan 7's `passwordSchema`; Plan 4's `apiErrorMessage`.
+- Consumes: Task 6's `useForgotPassword` and `useResetPassword`; Task 1's `forgotPasswordRequestSchema`, `extractResetToken` and `PASSWORD_RESET_TTL_MINUTES`; Plan 9's `passwordSchema`; Plan 4's `apiErrorMessage`.
 - Produces: the anonymous routes `/forgot-password` and `/reset-password`. The second opens from `spacev2://reset-password?token=…`, because expo-router maps the scheme path to the file.
 
 - [ ] **Step 1: Write the failing tests**
@@ -5340,7 +5340,7 @@ import { Button, Input, Screen, Text } from "../src/ui";
 /**
  * v1's /forgot-password (app/forgot-password/page.tsx), anonymous, outside
  * (app). The confirmation is the same whether or not the address exists
- * (R67) — the API answers before it even looks (Plan 17 Decision 9).
+ * (R67) — the API answers before it even looks (Plan 10 Decision 9).
  */
 export default function ForgotPasswordScreen() {
   const theme = useTheme();
@@ -5419,7 +5419,7 @@ import { Button, Input, Screen, Text } from "../src/ui";
 /**
  * v1's /reset-password, anonymous, outside (app). The code arrives three
  * ways: the email's spacev2:// deep link (route param), pasted from the
- * email, or as a pasted v1 web link (same token format — Plan 17 Decision
+ * email, or as a pasted v1 web link (same token format — Plan 10 Decision
  * 10). A deep-linked token is copied into state and immediately removed from
  * the route params, and nothing here ever puts it back into a URL — v1
  * re-emitted it into a second history entry on every error (R80).
@@ -5545,7 +5545,7 @@ export default function ResetPasswordScreen() {
 }
 ```
 
-In `login.tsx`, below Plan 7's "I have an invite code" button:
+In `login.tsx`, below Plan 9's "I have an invite code" button:
 
 ```tsx
         <Button
@@ -5577,7 +5577,7 @@ git commit -m "feat(mobile): forgot/reset password screens with deep-link token 
 - [ ] **Step 1: Full green run**
 
 `pnpm turbo lint typecheck test:unit build` → green. Then run every integration suite serially:
-`cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern integration` → green. Run all suites, not only this plan's. The `liveInviteWhere` move, the reactivate amendment and the `me.ts` change touch Plan 7's suites, and Plan 5's suite now carries a mailer mock.
+`cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern integration` → green. Run all suites, not only this plan's. The `liveInviteWhere` move, the reactivate amendment and the `me.ts` change touch Plan 9's suites, and Plan 7's suite now carries a mailer mock.
 
 - [ ] **Step 2: Mutation pass** — one at a time. Revert the load-bearing line, confirm the named test FAILS, restore, and confirm green:
 
@@ -5618,7 +5618,7 @@ git commit -m "feat(mobile): forgot/reset password screens with deep-link token 
 
 Point the backend at a test inbox with `GMAIL_*` set.
 
-1. As SUPER, on Students, tap New student. Create one with a season. The invite email arrives with a code. Accept it through Plan 7's screen and sign in as the student.
+1. As SUPER, on Students, tap New student. Create one with a season. The invite email arrives with a code. Accept it through Plan 9's screen and sign in as the student.
 2. As SUPER, on that student, graduate them through the sheet. The Alumni list shows them, and their Seasons all read Completed.
 3. As a season ADMIN, open a student enrolled in two seasons. Drop appears only on the admin's own season. Drop with a reason, and the Dropped list shows it.
 4. As SUPER, delete a test student. They leave the lists. Reactivate them from Users and they return.
@@ -5630,7 +5630,7 @@ Point the backend at a test inbox with `GMAIL_*` set.
 
 The report covers:
 - suite counts, the 20 mutation outcomes (state that mutation 13 needs both guards removed), and the device results
-- **deferred to Plan 13's register:**
+- **deferred to Plan 18's register:**
   - audit columns for student writes (spec 06 D15)
   - a durable job queue to replace bounded bulk batches (spec 11 §7)
   - the `PasswordResetToken.expiresAt` index and the used/expired token sweep (spec 11 D5 rec 4)
@@ -5642,7 +5642,7 @@ The report covers:
 
 ## Revision 2026-10-05
 
-Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
-- `Depends on` reordered to the execution order (Plan 4 before 15) and now names Plan 16 (`DIRECTORY_ROUTE_HREFS`; no session reads/writes here, so Plan 16's `startDay`/`startTime` format is irrelevant).
-- Task 9 no longer replaces `routeNameForHref` with a `["students", "users"]` set — that would have dropped Plan 16's `"seasons"` and hidden the SUPER Seasons tab. It adds `"users"` to Plan 16's set and the test asserts `/seasons` still maps to `seasons/index`.
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
+- `Depends on` reordered to the execution order (Plan 4 before 15) and now names Plan 6 (`DIRECTORY_ROUTE_HREFS`; no session reads/writes here, so Plan 6's `startDay`/`startTime` format is irrelevant).
+- Task 9 no longer replaces `routeNameForHref` with a `["students", "users"]` set — that would have dropped Plan 6's `"seasons"` and hidden the SUPER Seasons tab. It adds `"users"` to Plan 6's set and the test asserts `/seasons` still maps to `seasons/index`.
 - Task 7's layout case uses `makeUser("ADMIN")` / `makeScopes()` (Plan 1 Task 0's fixtures) instead of a hedged `user()`.

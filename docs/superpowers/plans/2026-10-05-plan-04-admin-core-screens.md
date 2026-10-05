@@ -39,7 +39,7 @@ here links to the screen and reuses the hook), Plan 3 (`lib/org-time.ts` +
 **Scope — what this plan does NOT build, and where it went** (ruling X15;
 the roadmap's original Plan 4 paragraph promised some of these, and they are
 reassigned, not dropped):
-- **Plan 16 (season/session/group admin screens):** the season detail route
+- **Plan 6 (season/session/group admin screens):** the season detail route
   (`seasons/[code]` for any season, not just the current one) and the SUPER
   edit screen covering identity fields and status (DRAFT→ACTIVE→ARCHIVED);
   group management (the ADMIN/SUPER branch of `/groups`, group create/edit,
@@ -48,17 +48,17 @@ reassigned, not dropped):
   across all ACTIVE seasons, LEADER across every led season, ADMIN season
   switcher — this plan's calendar shows one season, `useCurrentSeasonId()`'s);
   check-in token regeneration; the program filter on `/seasons`.
-- **Plan 14 (student self-service):** the student check-in scanner /
+- **Plan 11 (student self-service):** the student check-in scanner /
   enter-code flow and the `/checkin/<token>` deep link; the full student
   `/season` content (upcoming sessions, group card with leaders). This plan
   only guarantees `/season` renders correctly for a STUDENT.
 - **Not here, not yet assigned:** the session's quiz list on the leader's
-  session detail (v1 `leader/sessions/[id]` shows it) needs Plan 6's
+  session detail (v1 `leader/sessions/[id]` shows it) needs Plan 8's
   `GET /quizzes?sessionId=`; this plan's session detail has no quiz card.
 
 ## Global Constraints
 
-Same as Plans 1–2 (relative imports, Zod-parse everything including mutation
+Same as Plans 1 and 2 (relative imports, Zod-parse everything including mutation
 responses, `enabled` + guarded `refetch`, state primitives, tab edges,
 `renderWithProviders`, `mock*` rule, typed routes + `routes:generate`). Plus:
 
@@ -770,7 +770,7 @@ Run the three test files → PASS.
 
 **Interfaces:**
 - Consumes: `useCurrentSeasonId` (Task 2), `useSeasonSessions` (Phase 0), `formatDayKey`, `formatSessionTime`.
-- Produces: nothing downstream; this is the D1 worked example. Plan 10 merges events into this screen; Plan 16 adds the multi-season variant.
+- Produces: nothing downstream; this is the D1 worked example. Plan 14 merges events into this screen; Plan 6 adds the multi-season variant.
 
 - [ ] **Step 1: Failing test.** The load-bearing assertion: **two different
 roles render real content from the same route file**, and days are grouped by
@@ -1323,7 +1323,7 @@ import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text
 /**
  * SUPER's seasons list (v1 /super/seasons + /super/seasons/new inline).
  * Rows do not navigate: opening an arbitrary season (seasons/[code]) and the
- * SUPER identity/status edit screen are Plan 16 (ruling X15). ADMIN and
+ * SUPER identity/status edit screen are Plan 6 (ruling X15). ADMIN and
  * MENTOR may reach this route and see the list read-only.
  */
 const STAFF_ROLES = new Set(["SUPER", "ADMIN", "MENTOR"]);
@@ -1500,8 +1500,8 @@ import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text
  *
  * Renders for ADMIN (with the allowlisted edit) and for STUDENT (read-only —
  * the server already narrows `groups` to the student's own). The richer
- * student content (upcoming sessions, group card with leaders) is Plan 14; a
- * route for any season other than the current one is Plan 16 (ruling X15).
+ * student content (upcoming sessions, group card with leaders) is Plan 11; a
+ * route for any season other than the current one is Plan 6 (ruling X15).
  */
 function EditSeason({ season }: { season: SeasonDetail }) {
   const theme = useTheme();
@@ -2014,7 +2014,7 @@ function SessionDetailBody({ id }: { id: number }) {
         {data.myAttendance ? <Text variant="label">{attendanceLine(data.myAttendance)}</Text> : null}
       </Card>
 
-      {/* Student check-in (scanner / enter code) is Plan 14 (ruling X15). */}
+      {/* Student check-in (scanner / enter code) is Plan 11 (ruling X15). */}
       {data.canManageCheckIn ? (
         <CheckInConsole detail={data} />
       ) : data.canMarkAttendance ? (
@@ -2082,7 +2082,7 @@ the source (the C10 behaviour, observed for real); delete on the in-use season
 is refused with the server's message on screen. As a **leader**: the same
 session shows the read-only roster, updating within ~10s of a student check-in,
 and no open/close buttons. As a **student**: `/season` and the session detail
-render read-only. (Student scanning is Plan 14 — not on this checklist.)
+render read-only. (Student scanning is Plan 11 — not on this checklist.)
 - [ ] **Step 5:** Report suite counts, mutation outcomes, checklist results, divergences.
 
 ---
@@ -2090,7 +2090,7 @@ render read-only. (Student scanning is Plan 14 — not on this checklist.)
 ## Revision 2026-10-05
 
 Applied the cross-plan rulings and the 01–06 review:
-- **Scope (X15, review S12):** the season detail route, SUPER identity/status edit, group management, session create/edit/delete screens, the multi-season calendar, token regeneration and the program filter are now explicitly **Plan 16**; the student scanner/deep link and full student `/season` content are **Plan 14**. The device checklist no longer promises a student scan flow.
+- **Scope (X15, review S12):** the season detail route, SUPER identity/status edit, group management, session create/edit/delete screens, the multi-season calendar, token regeneration and the program filter are now explicitly **Plan 6**; the student scanner/deep link and full student `/season` content are **Plan 11**. The device checklist no longer promises a student scan flow.
 - **Leader console (G18, review S13):** new server flag `canManageCheckIn` (= `isAdminOfSeason`, the open/close gate) on `sessionDetailSchema`, with integration tests; the console keys off it, and leaders get a read-only live roster refreshed every 10s while open (v1 parity). The QR of an already-open session is read from the staff session list (`checkInToken` is served to non-students), replacing the "reopen to show the code" UX.
 - **Day grouping (X13, review S14):** new `dayKey` on `sessionListItemSchema`, computed by `orgDayKey` in Plan 3's `lib/org-time.ts`; the calendar groups by it and formats with the timezone-free `formatDayKey`. Existing mobile session fixtures gain `dayKey`.
 - **X7:** the route is `session/[id]/index.tsx` (route name `session/[id]/index`), sibling of Plan 2's `attendance.tsx`.

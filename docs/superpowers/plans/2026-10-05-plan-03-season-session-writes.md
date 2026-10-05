@@ -11,7 +11,7 @@ deviation from the `POST /seasons/:id/groups` precedent, so the two
 workstreams never touch the same file). Contracts convert `season.ts` to Zod,
 port v1's season-code slug rules verbatim, and add the write schemas. A new
 `lib/org-time.ts` is the one place wall-clock arithmetic and wall-clock text
-are produced (ruling C2); Plans 10 and 11 append to it.
+are produced (ruling C2); Plans 14 and 15 append to it.
 
 **Tech Stack:** Express 5, Prisma 7 (`src/generated/prisma`), Zod 3, jest +
 supertest integration suite against the shared staging DB.
@@ -22,13 +22,13 @@ supertest integration suite against the shared staging DB.
 `season-actions.ts`, `session-actions.ts`, `recurrence.ts`.
 
 **Depends on:** nothing beyond `main`. In the execution order
-(1 → 2 → 3 → 4 → 15 → 16 → …) it runs after Plans 1–2 but touches none of
+(1 → 2 → 3 → 4 → 5 → 6 → …) it runs after Plans 1 and 2 but touches none of
 their files (backend + `packages/shared/src/{season,session}.ts` only). Plans
 4 and 16 build the screens over these endpoints and consume the error codes
-named below. **Forward note:** Plan 16 (D-16.6) later extends
+named below. **Forward note:** Plan 6 (D-16.6) later extends
 `createSessionRequestSchema`/`updateSessionRequestSchema` to accept org
 wall-clock `startDay` + `startTime` as the alternative to `startsAt` (exactly
-one of the two), converts through Plan 15's `orgWallClockToInstant`, and makes
+one of the two), converts through Plan 5's `orgWallClockToInstant`, and makes
 mobile send the wall-clock pair. Build `startsAt` here as written; it stays
 accepted.
 
@@ -50,7 +50,7 @@ Task 2 (it creates `lib/org-time.ts`, which Task 4 needs, and the shortened
 fixture code Task 3 needs). Then Task 3 (seasons) and Tasks 4–6 (sessions)
 are independent streams. Task 7 is the closing gate.
 
-**Error codes this plan defines** (Plans 4/16 surface them): `code_taken`
+**Error codes this plan defines** (Plans 4/6 surface them): `code_taken`
 409, `invalid_code` 400, `forbidden_field` 403, `season_in_use` 409,
 `has_student_records` 409. D15 names the duplicate-code 409 `conflict`; this
 plan keeps the more specific `code_taken` (recorded divergence — the client
@@ -366,7 +366,7 @@ export type DeleteSessionBody = z.output<typeof deleteSessionRequestSchema>;
 
 **Interfaces:**
 - Consumes: `seasonWriteRequestSchema`, `seasonAdminPatchSchema`, `SEASON_ADMIN_EDITABLE_FIELDS` (Task 1); existing `isSuper`/`isAdminOfSeason` (`lib/rbac`), `parseId`.
-- Produces: `config.orgTimezone: string`; in `lib/org-time.ts`: `formatInOrgTime(date: Date): string` (Task 5), `addWeeksInOrgTime(start: Date, weeks: number): Date` (Task 4), `orgWallClock(date: Date): OrgWallClock` and `fromOrgWallClock(parts: OrgWallClock): Date` (Plans 10/11 build day boundaries on these); `isUniqueViolation(err: unknown): boolean` in `lib/prisma-errors.ts`; `testSeasonCode()` returning ≤ 26 chars; endpoints `POST /api/v1/seasons`, `PATCH /api/v1/seasons/:id`, `DELETE /api/v1/seasons/:id`.
+- Produces: `config.orgTimezone: string`; in `lib/org-time.ts`: `formatInOrgTime(date: Date): string` (Task 5), `addWeeksInOrgTime(start: Date, weeks: number): Date` (Task 4), `orgWallClock(date: Date): OrgWallClock` and `fromOrgWallClock(parts: OrgWallClock): Date` (Plans 14/15 build day boundaries on these); `isUniqueViolation(err: unknown): boolean` in `lib/prisma-errors.ts`; `testSeasonCode()` returning ≤ 26 chars; endpoints `POST /api/v1/seasons`, `PATCH /api/v1/seasons/:id`, `DELETE /api/v1/seasons/:id`.
 
 - [ ] **Step 1: Unit tests for org-time and prisma-errors**
 
@@ -988,7 +988,7 @@ and `patch` + `delete` to the existing `"/api/v1/seasons/{id}"` object:
 **What ports and what diverges** (v1 `duplicateSeasonAction`, `season-actions.ts:199-362`; spec 02 R54–R69):
 - Ported: SUPER-only (R54); copies `program`, `description`, both budget fields from the source and takes `year`, `code`, `startDate`, `endDate` from input, status forced `DRAFT` (R56, R20); title `'<program> <year>'`; groups copied **name/description only — no leaders, no students** (R57, R61); sessions copied with `startsAt` shifted by the single offset `newStart − source.startDate` (R58, R62); non-deleted assignments copied with `dueAt` shifted by the same offset (null stays null) and **`sessionId` remapped through a `sessionIdMap`** to the cloned session (R59); targets remapped through `groupIdMap`, only when not `isAllGroups`, unmappable ones dropped (R60); code default `slugify(code || '<source.program> <year>')`, validated, uniqueness-checked (R64); one transaction (R67); duplicating user as assignment `createdById`/`updatedById` (R68). The date shift stays a fixed instant offset (v1); it is not recurrence, so X13 does not apply.
 - Diverges: (1) **fresh recurrence ids** — one new id per source `recurrenceGroupId` (spec 02 D5, ruling C10); (2) the source must not be soft-deleted (D6 — v1 duplicated deleted seasons); (3) 409 on the unique-index race (D15).
-- The duplicate sheet's copy ("leaders and students are not copied", D6) is Plan 16's.
+- The duplicate sheet's copy ("leaders and students are not copied", D6) is Plan 6's.
 
 - [ ] **Step 1: Failing test.** Append to `seasons-routes.test.ts`:
 
@@ -1798,7 +1798,7 @@ sessionsRouter.patch("/:id", async (req, res) => {
       );
     } catch {
       // Best-effort: a notification failure must not fail the reschedule.
-      // Plan 9 replaces this try/catch with its bestEffort wrapper.
+      // Plan 13 replaces this try/catch with its bestEffort wrapper.
     }
   }
 
@@ -2116,9 +2116,9 @@ divergence from this plan.
 - Closing gate greps all of `dist/` (X12) and adds the X6 health check.
 - Header states dependencies per the execution order.
 
-Rejected/not applicable: the Plan 13 review note that a `JpcEvent` `Restrict`
+Rejected/not applicable: the Plan 18 review note that a `JpcEvent` `Restrict`
 relation would make season delete raise P2003 — this delete is a soft delete
 (`update`), which no FK constraint can block.
 
-Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
-- Header gains a forward note: Plan 16 adds the `startDay`/`startTime` alternative to `startsAt` on session writes; `startsAt` stays accepted, so nothing here changes.
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
+- Header gains a forward note: Plan 6 adds the `startDay`/`startTime` alternative to `startsAt` on session writes; `startsAt` stays accepted, so nothing here changes.

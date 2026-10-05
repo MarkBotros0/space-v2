@@ -1,4 +1,4 @@
-# Plan 10 — Video Quizzes, Forum & JPC Events Implementation Plan
+# Plan 14 — Video Quizzes, Forum & JPC Events Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -18,40 +18,40 @@ expo-router 6, React Query 5, RNTL 13, and
 
 **Spec:** `docs/superpowers/specs/domains/13-video-quizzes.md`,
 `14-forum.md`, `15-events.md` (all three, including each §10),
-`_DECISIONS.md` (C1, C4, C6, C8, C9, C10, C11, C12); roadmap § Plan 10.
+`_DECISIONS.md` (C1, C4, C6, C8, C9, C10, C11, C12); roadmap § Plan 14.
 
-**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 →
-14 → 8 → 9 → **10** → 11 → 18 → 12 → 13; this plan uses only plans before it):
+**Depends on** (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 →
+11 → 12 → 13 → **14** → 15 → 16 → 17 → 18; this plan uses only plans before it):
 Plan 1 (`DETAIL_ROUTE_NAMES`, `useAssignmentDetail`,
 `PUT /submissions/by-assignment/:assignmentId`, the hooks/test patterns),
 Plan 3 (`lib/org-time.ts` — `orgWallClock`, `config.orgTimezone`, session writes), Plan 4
 (`useCurrentSeasonId`, `useSessionDetail`, `sessionDetailSchema.canManageCheckIn`,
-`formatDayKey`), Plan 6 (domain 12, text quizzes; has adopted the "answer-key
+`formatDayKey`), Plan 8 (domain 12, text quizzes; has adopted the "answer-key
 split" by name — see D-13.3 below for the one place the two plans enforce it
-differently on the client), Plan 8 (`packages/shared/src/html-text.ts` —
+differently on the client), Plan 12 (`packages/shared/src/html-text.ts` —
 `htmlToPlainText` / `plainTextToHtml`, ruling X3 — which this plan imports and
 never redefines).
-**Plan 15** (assignment authoring): creates FORUM assignments; moved the
+**Plan 5** (assignment authoring): creates FORUM assignments; moved the
 assignment screen to `app/(app)/assignment/[id]/index.tsx` and role-branched it
 (Task 8 here edits that file); created `packages/shared/src/org-time.ts`
 (`isoDaySchema`, `wallTimeSchema`) and backend `orgWallTime` /
 `orgWallClockToInstant` in `lib/org-time.ts` — all **consumed** here, never
 redefined (this plan adds only `isOrgMidnight`); `formatWallTime` /
 `formatOrgDue` in mobile `src/lib/format.ts`; detail `dueOrgDay`/`dueOrgTime`.
-**Plan 16** (season/session admin screens): the restructured
+**Plan 6** (season/session admin screens): the restructured
 `app/(app)/calendar.tsx` (`PinnedSeasonCalendar` / `RangeSessions` /
 `useSessionRange`) and `groupSessionsByDay` in `src/lib/day-groups.ts`, which
 Task 10's events merge targets; its replacement of
 `app/(app)/session/[id]/index.tsx` (the directory form, ruling X7), which Task 5
 extends; `sessionDetailSchema.dayKey`/`.startTime` and session rows' `startTime`.
-**Plan 14** (student self-service): `StudentCheckInCard` on the same session
+**Plan 11** (student self-service): `StudentCheckInCard` on the same session
 screen and the `src/__tests__/helpers/expo-camera.tsx` Jest stand-in Task 5's
 suite mocks with.
 Plan 4 also supplies `orgDayKey(date)` in `lib/org-time.ts`, the sessions'
 `dayKey`, and mobile `formatDayKey(dayKey)` — the event payload reuses all
 three rather than adding a second day helper.
-**Consumed later by:** Plan 18 (role dashboards — `useEvents()` for the
-`UpcomingEventsCard`), Plan 13 (cutover register: forum `hiddenAt`, video
+**Consumed later by:** Plan 16 (role dashboards — `useEvents()` for the
+`UpcomingEventsCard`), Plan 18 (cutover register: forum `hiddenAt`, video
 duration, forum `NotificationType`).
 
 ## Global Constraints
@@ -137,7 +137,7 @@ mobile boundary rather than rendering. `correctIndex` reaches a student on
 exactly one path: the submit response for the question they just answered
 (R60), which is safe because R54 makes the first answer final.
 **This rule is named the "answer-key split" and is used by that name in both
-quiz plans.** Plan 6 (domain 12) has adopted it: `quizQuestionAuthoringSchema`
+quiz plans.** Plan 8 (domain 12) has adopted it: `quizQuestionAuthoringSchema`
 carries `correctIndex`, `quizQuestionStudentSchema` has no such field, and its
 own integration test asserts the raw student response JSON never contains the
 string.
@@ -151,10 +151,10 @@ the video-quiz read task, and both are mutation-tested by adding
 
 The two plans differ in **one** client-side detail, deliberately: this plan's
 `studentVideoQuestionSchema` is `.strict()`, so a leaking backend fails the
-parse; Plan 6's `quizQuestionStudentSchema` uses Zod's default strip, so a
+parse; Plan 8's `quizQuestionStudentSchema` uses Zod's default strip, so a
 leaking backend has the field dropped and the screen still renders. Neither is
 wrong — `.strict()` trades a working screen for a louder signal. Do not
-"harmonise" them by adding `.strict()` to Plan 6 without deciding that trade
+"harmonise" them by adding `.strict()` to Plan 8 without deciding that trade
 again: a regression CI missed would take every student's quiz screen down
 rather than silently dropping a field they were never shown.
 
@@ -316,7 +316,7 @@ against each of three viewers' devices (R19) nor the server's incidental zone
 **Both directions are server-side** (ruling X13). On write, the client sends
 wall-clock fields — `day` (`YYYY-MM-DD`), `time` (`HH:mm` or `null` for
 all-day), `endDay` — and the server composes the instant in the org zone
-(Plan 15's `orgWallClockToInstant`, consumed). On read, every row carries `dayKey`, `endDayKey` and
+(Plan 5's `orgWallClockToInstant`, consumed). On read, every row carries `dayKey`, `endDayKey` and
 `time` computed in the org zone, so the calendar buckets and labels by strings
 the server produced and a phone set to another zone shows the same day. This
 supersedes the earlier draft's "compose the ISO instant on the client".
@@ -335,7 +335,7 @@ exactly as `submissions/:publicId/files/:fileId` already is.
 - **Event photo endpoints** — see D-15.7.
 - **The `UpcomingEventsCard` on all six dashboards** (spec 15 R78). The events
   data and hook (`useEvents()`, `queryKeys.events.list()`) land here;
-  `dashboard.tsx` is left alone. The card is **Plan 18's** (role dashboards,
+  `dashboard.tsx` is left alone. The card is **Plan 16's** (role dashboards,
   ruling X15), which runs after this plan and composes `useEvents()` unchanged.
 - **Domain 3's save-time `youtubeUrl` validation** (spec 13 D7c) and the
   recurrence fan-out that copies a URL to every sibling (spec 13 D12/R16) —
@@ -354,7 +354,7 @@ exactly as `submissions/:publicId/files/:fileId` already is.
    `TEST_PREFIX` on `JpcEvent.title`.
 3. **Spec 13 §9 says the student player route is `/sessions/[id]`**; the v2 tree
    Plan 4 builds is `app/(app)/session/[id]/index.tsx` (singular, directory form per ruling X7 because `attendance` is a child route), matching
-   `assignment/[id]/index.tsx` (Plan 15's directory form). The plan follows the code, not the spec's prose.
+   `assignment/[id]/index.tsx` (Plan 5's directory form). The plan follows the code, not the spec's prose.
 4. **Spec 14 §7 addresses posts by `submissionId`**; this plan uses `publicId`
    (D-14.2). Named so it is not read as a transcription error.
 
@@ -380,14 +380,14 @@ independent streams: **video** (Tasks 3, 4, 5), **forum** (Tasks 6, 7, 8),
 - Test: `packages/shared/src/__tests__/forum-words.test.ts`
 
 **No `forum-text.ts`** (ruling X3). HTML↔plain-text conversion has exactly one
-home, `packages/shared/src/html-text.ts`, created by Plan 8 (`htmlToPlainText`,
+home, `packages/shared/src/html-text.ts`, created by Plan 12 (`htmlToPlainText`,
 `plainTextToHtml`). This plan imports it; `countWords` — the one forum-specific
 text rule — lives in `forum.ts` beside the forum contracts.
 - Test: `packages/shared/src/__tests__/plan10-schemas.test.ts`
 
 **Interfaces:**
-- Consumes: `submissionStatusSchema` from `./enums`; `isoDaySchema`, `wallTimeSchema` from `./org-time` (Plan 15 Task 1 — consumed, never redefined); `htmlToPlainText`,
-  `plainTextToHtml` from `./html-text` (Plan 8, ruling X3) — re-exported by
+- Consumes: `submissionStatusSchema` from `./enums`; `isoDaySchema`, `wallTimeSchema` from `./org-time` (Plan 5 Task 1 — consumed, never redefined); `htmlToPlainText`,
+  `plainTextToHtml` from `./html-text` (Plan 12, ruling X3) — re-exported by
   `index.ts` already, so backend and mobile import them from the shared index.
 - Produces (exact names every later task imports):
   `jpcVisibilitySchema`/`JpcVisibility`;
@@ -407,7 +407,7 @@ text rule — lives in `forum.ts` beside the forum contracts.
   `createJpcEventRequestSchema`/`CreateJpcEventBody`,
   `updateJpcEventRequestSchema`/`UpdateJpcEventBody`, `eventListQuerySchema`,
   `deleteJpcEventResponseSchema`, `jpcEventListResponseSchema`, `mergedEventSchema`, `refineEvent`
-  (`isoDaySchema` / `wallTimeSchema` are **consumed** from Plan 15's
+  (`isoDaySchema` / `wallTimeSchema` are **consumed** from Plan 5's
   `packages/shared/src/org-time.ts`, already exported by the index — not produced here);
   functions `formatTimestamp(totalSeconds: number): string`,
   `parseTimestamp(input: string, maxSeconds?: number): number | null`,
@@ -573,7 +573,7 @@ describe("countWords — v1 semantics, carried verbatim", () => {
 
   it("counts the same words before and after the stored-HTML round trip", () => {
     // The server gates on the plain text the client typed; v1 counts the stored
-    // HTML. Plan 8's converters (ruling X3) must not change the answer.
+    // HTML. Plan 12's converters (ruling X3) must not change the answer.
     // (No bare "&": the plain text counts it as a word, the stored "&amp;" is
     // stripped as an entity — the server gates on the plain text, so that is
     // the count that matters.)
@@ -586,7 +586,7 @@ describe("countWords — v1 semantics, carried verbatim", () => {
 
 Run: `pnpm --filter @space/shared jest src/__tests__/video-time.test.ts src/__tests__/youtube.test.ts src/__tests__/forum-words.test.ts`
 Expected: FAIL — `video-time`, `youtube` and `countWords` do not exist yet
-(`html-text` does — Plan 8).
+(`html-text` does — Plan 12).
 
 - [ ] **Step 2: Implement the two helper modules** (`countWords` lands with the forum contracts in Step 5)
 
@@ -1208,7 +1208,7 @@ export const deleteForumCommentResponseSchema = z.object({ deleted: z.literal(tr
  * unhandled — matching v1 exactly is the point (spec 14 R10).
  *
  * This is the only text helper the forum owns. Converting between stored HTML
- * and plain text is `html-text.ts` (Plan 8, ruling X3) — never a second copy.
+ * and plain text is `html-text.ts` (Plan 12, ruling X3) — never a second copy.
  */
 export function countWords(text: string): number {
   const stripped = text
@@ -1229,7 +1229,7 @@ export function countWords(text: string): number {
 import { z } from "zod";
 
 import { jpcVisibilitySchema } from "./enums";
-// Plan 15 created `org-time.ts` (shared wall-clock schemas, ruling C2/X13).
+// Plan 5 created `org-time.ts` (shared wall-clock schemas, ruling C2/X13).
 // Consumed here, never redefined — a second `isoDaySchema` in `event.ts` would
 // collide on `export *` in `index.ts`.
 import { isoDaySchema, wallTimeSchema } from "./org-time";
@@ -1393,9 +1393,9 @@ export * from "./video-time";
 export * from "./youtube";
 ```
 
-(`./html-text` is already exported — Plan 8.)
+(`./html-text` is already exported — Plan 12.)
 
-Run: `pnpm --filter @space/shared jest` → the four new suites PASS (and Plan 8's
+Run: `pnpm --filter @space/shared jest` → the four new suites PASS (and Plan 12's
 `html-text` suite still passes — this plan does not touch it).
 Run: `pnpm turbo lint typecheck --filter=@space/shared` → clean.
 
@@ -2119,7 +2119,7 @@ Append three factories inside `queryKeys` in
   events: {
     all: ["events"] as const,
     list: () => [...queryKeys.events.all, "list"] as const,
-    // Plan 18's UpcomingEventsCard (spec 19 §7). Under `all`, so every event
+    // Plan 16's UpcomingEventsCard (spec 19 §7). Under `all`, so every event
     // write's prefix invalidation refreshes the dashboards too.
     upcoming: (limit: number) => [...queryKeys.events.all, "upcoming", limit] as const,
     detail: (id: number) => [...queryKeys.events.all, "detail", id] as const,
@@ -2132,7 +2132,7 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend --filter=@spac
 Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern plan10-gates` → PASS.
 
 ```bash
-git add apps/backend apps/mobile && git commit -m "feat(backend): plan-10 permission gates, router mounts, event-safe fixtures"
+git add apps/backend apps/mobile && git commit -m "feat(backend): plan-14 permission gates, router mounts, event-safe fixtures"
 ```
 
 ---
@@ -3357,7 +3357,7 @@ git add apps/backend && git commit -m "feat(backend): video question authoring w
 - Create: `apps/mobile/src/hooks/use-video-quiz.ts`
 - Create: `apps/mobile/src/components/VideoQuizPlayer.tsx`
 - Create: `apps/mobile/src/components/VideoQuestionsEditor.tsx`
-- Modify: `apps/mobile/app/(app)/session/[id]/index.tsx` (Plan 4's screen as Plan 16 Task 7 replaced it — gains a video section)
+- Modify: `apps/mobile/app/(app)/session/[id]/index.tsx` (Plan 4's screen as Plan 6 Task 7 replaced it — gains a video section)
 - Modify: `apps/mobile/package.json` (two deps)
 - Test: `apps/mobile/src/__tests__/video-quiz-screen.test.tsx`
 
@@ -3408,8 +3408,8 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "12" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
-// The session screen statically imports Plan 14's StudentCheckInCard → QrScanner
-// → expo-camera (a native module). Plan 14's stand-in, as every suite that
+// The session screen statically imports Plan 11's StudentCheckInCard → QrScanner
+// → expo-camera (a native module). Plan 11's stand-in, as every suite that
 // renders session/[id] uses it.
 jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 // A component, not a string: the player calls seekTo/getDuration/getCurrentTime
@@ -3442,7 +3442,7 @@ const sessionDetail = {
   title: "Week three",
   description: null,
   startsAt: "2099-03-01T18:00:00.000Z",
-  // Plan 16's sessionDetailSchema fields (X13): the org day and wall time.
+  // Plan 6's sessionDetailSchema fields (X13): the org day and wall time.
   dayKey: "2099-03-01",
   startTime: "20:00",
   durationMinutes: 90,
@@ -3916,9 +3916,9 @@ for nobody.
 
 - [ ] **Step 6: Wire both into `session/[id]/index.tsx`**
 
-The file is **Plan 16 Task 7's** replacement of Plan 4's screen (header from
+The file is **Plan 6 Task 7's** replacement of Plan 4's screen (header from
 `dayKey`/`startTime`, check-in console with Regenerate, "Edit session", the
-session-quiz card, Plan 4's leader roster), plus **Plan 14 Task 10's** student
+session-quiz card, Plan 4's leader roster), plus **Plan 11 Task 10's** student
 `StudentCheckInCard` branch. Keep all of it. Below the
 session-quiz card, add one section, driven by role and by the session's
 `youtubeUrl`:
@@ -3975,7 +3975,7 @@ git add apps/mobile && git commit -m "feat(mobile): interactive video quiz playe
 - Test: `apps/backend/src/__tests__/integration/forum-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `forumAudienceFor`, `ForumAudience`, `groupIdInSeason` (Task 2); `countWords`, `submitForumResponseRequestSchema`, `forumFeedQuerySchema` (Task 1); `plainTextToHtml`, `htmlToPlainText` (Plan 8's `packages/shared/src/html-text.ts`, ruling X3 — imported from the shared index by relative path, X12); `newPublicId`.
+- Consumes: `forumAudienceFor`, `ForumAudience`, `groupIdInSeason` (Task 2); `countWords`, `submitForumResponseRequestSchema`, `forumFeedQuerySchema` (Task 1); `plainTextToHtml`, `htmlToPlainText` (Plan 12's `packages/shared/src/html-text.ts`, ruling X3 — imported from the shared index by relative path, X12); `newPublicId`.
 - Produces:
   - `loadForumAssignment(assignmentId): Promise<ForumAssignmentRow | null>` in `lib/queries/forum.ts` — the one "is this a live FORUM assignment" lookup; every forum route calls it **before** any audience check, so missing / deleted / non-FORUM is always 404
   - `loadForumView(assignmentId, user, audience, query): Promise<ForumViewData | null>` and `ForumViewData` in `lib/queries/forum.ts`
@@ -4748,7 +4748,7 @@ In `PUT /by-assignment/:assignmentId`, add `type: true` to the assignment
   // A forum post has exactly one writer: PUT /assignments/:id/forum/response,
   // which applies forumMinWords, refuses an empty post (it would unlock every
   // peer's work) and stores escaped HTML. Creating the row here would let a
-  // client skip all three with a follow-up PATCH {submit:true} (plan 10 D-14.1).
+  // client skip all three with a follow-up PATCH {submit:true} (plan 14 D-14.1).
   if (assignment.type === "FORUM") {
     return apiError(
       res,
@@ -5130,11 +5130,11 @@ git add apps/backend && git commit -m "feat(backend): forum comments with server
 **Files:**
 - Create: `apps/mobile/src/hooks/use-forum.ts`
 - Create: `apps/mobile/src/components/ForumThread.tsx`
-- Modify: `apps/mobile/app/(app)/assignment/[id]/index.tsx` (Plan 1's screen, moved to the directory form and role-branched by **Plan 15** — it gains the FORUM branch)
+- Modify: `apps/mobile/app/(app)/assignment/[id]/index.tsx` (Plan 1's screen, moved to the directory form and role-branched by **Plan 5** — it gains the FORUM branch)
 - Test: `apps/mobile/src/__tests__/forum-screen.test.tsx`
 
 **Interfaces:**
-- Consumes: Plan 1's `useAssignmentDetail(id)` and its `type`/`forumMinWords`/`forumAllowComments` fields; Plan 15's `assignment/[id]/index.tsx` (`isStudent` branch: `SubmissionSection` vs `AssignmentStaffPanel`) and its `dueOrgDay`/`dueOrgTime` detail fields; `queryKeys.forum` (Task 2); `forumViewSchema`, `forumOwnResponseSchema`, `forumCommentsPageSchema`, `addForumCommentResponseSchema`, `deleteForumCommentResponseSchema`, `countWords` (Task 1); Tasks 6–7's endpoints.
+- Consumes: Plan 1's `useAssignmentDetail(id)` and its `type`/`forumMinWords`/`forumAllowComments` fields; Plan 5's `assignment/[id]/index.tsx` (`isStudent` branch: `SubmissionSection` vs `AssignmentStaffPanel`) and its `dueOrgDay`/`dueOrgTime` detail fields; `queryKeys.forum` (Task 2); `forumViewSchema`, `forumOwnResponseSchema`, `forumCommentsPageSchema`, `addForumCommentResponseSchema`, `deleteForumCommentResponseSchema`, `countWords` (Task 1); Tasks 6–7's endpoints.
 - Produces: `useForumThread(assignmentId, enabled)`, `useForumComments(assignmentId, postPublicId, enabled)`, `useSubmitForumResponse(assignmentId)`, `usePostComment(assignmentId)`, `useDeleteComment(assignmentId)`; the component `<ForumThread assignmentId={...} />`.
 
 - [ ] **Step 1: Write the failing test**
@@ -5170,7 +5170,7 @@ const forumAssignment = {
   sessionTitle: null,
   title: "Week three discussion",
   description: null,
-  // Org midnight on Apr 1 (Cairo, UTC+2). Plan 15's detail carries the
+  // Org midnight on Apr 1 (Cairo, UTC+2). Plan 5's detail carries the
   // server's org day/time and the screen renders those, never dueAt.
   dueAt: "2099-03-31T22:00:00.000Z",
   dueOrgDay: "2099-04-01",
@@ -5560,7 +5560,7 @@ Structure:
    (`onRetry` wired to `refetch`).
 2. **Due date** — *not rendered here.* v1's FORUM branch renders a badge and a
    title and no due date at all, on the one assignment type where the field is
-   set and unused (spec 14 D10). Plan 15's `assignment/[id]/index.tsx` header
+   set and unused (spec 14 D10). Plan 5's `assignment/[id]/index.tsx` header
    already shows `Due {formatOrgDue(dueOrgDay, dueOrgTime)}` — the server's org
    day (X13) — for every assignment type, so that is where the forum's due date
    appears; a second, device-zone `formatDueDate(view.dueAt)` line here would
@@ -5613,7 +5613,7 @@ Structure:
 
 - [ ] **Step 4: Wire it into `assignment/[id]/index.tsx`**
 
-Plan 15 Task 8 replaced this screen's default export with a role branch —
+Plan 5 Task 8 replaced this screen's default export with a role branch —
 `{isStudent ? <SubmissionSection detail={data} /> : <AssignmentStaffPanel detail={data} />}`.
 Verify: `grep -n "AssignmentStaffPanel" "apps/mobile/app/(app)/assignment/[id]/index.tsx"` → hits.
 Add `import { ForumThread } from "../../../../src/components/ForumThread";`
@@ -5625,7 +5625,7 @@ Add `import { ForumThread } from "../../../../src/components/ForumThread";`
           {/* The FORUM branch replaces the student's submission editor entirely —
               a forum assignment can never carry file attachments (domain 7
               forces maxFileSizeMb null and allowedMimeCategories empty for
-              FORUM), and its response IS the submission. Staff keep Plan 15's
+              FORUM), and its response IS the submission. Staff keep Plan 5's
               authoring panel and read the thread below it (own === null);
               MENTOR has no forum audience (the API answers 403), so no thread. */}
           {isStudent ? (
@@ -5665,34 +5665,34 @@ git add apps/mobile && git commit -m "feat(mobile): forum thread with post-to-un
 - Test: `apps/backend/src/__tests__/integration/events-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `isSuper`, `isAlumnus`, `isAdminOfSeason`, `isLeaderOfGroup` from `../lib/rbac`; `createJpcEventRequestSchema`, `updateJpcEventRequestSchema`, `mergedEventSchema`, `eventListQuerySchema` (Task 1); `config.orgTimezone` and `orgWallClock` (Plan 3); `orgDayKey` (Plan 4); `orgWallTime(date): string` and `orgWallClockToInstant(day, time): Date` (**Plan 15 Task 2**, all in `lib/org-time.ts` — consumed, never redefined).
+- Consumes: `isSuper`, `isAlumnus`, `isAdminOfSeason`, `isLeaderOfGroup` from `../lib/rbac`; `createJpcEventRequestSchema`, `updateJpcEventRequestSchema`, `mergedEventSchema`, `eventListQuerySchema` (Task 1); `config.orgTimezone` and `orgWallClock` (Plan 3); `orgDayKey` (Plan 4); `orgWallTime(date): string` and `orgWallClockToInstant(day, time): Date` (**Plan 5 Task 2**, all in `lib/org-time.ts` — consumed, never redefined).
 - Produces:
-  - in `lib/org-time.ts`: `isOrgMidnight(date: Date): boolean` only — beside Plan 4's `orgDayKey` and Plan 15's `orgWallTime` / `orgWallClockToInstant`, which this task **consumes** and does not redefine (a second definition is a duplicate-export compile error)
+  - in `lib/org-time.ts`: `isOrgMidnight(date: Date): boolean` only — beside Plan 4's `orgDayKey` and Plan 5's `orgWallTime` / `orgWallClockToInstant`, which this task **consumes** and does not redefine (a second definition is a duplicate-export compile error)
   - `viewerSeasonIds(user): Promise<number[] | "all">` and `eventVisibilityFilter(user): Promise<Prisma.JpcEventWhereInput>` in `lib/queries/events.ts`
   - `GET /api/v1/events`, `GET /api/v1/events/:id`, `POST /api/v1/events`, `PATCH /api/v1/events/:id`, `DELETE /api/v1/events/:id`
 
 - [ ] **Step 1: Failing unit test for `isOrgMidnight`**
 
-`orgWallTime` and `orgWallClockToInstant` already exist (Plan 15 Task 2, with
+`orgWallTime` and `orgWallClockToInstant` already exist (Plan 5 Task 2, with
 their own DST tests in this file). Verify before writing anything:
 `grep -n "export function orgWallTime\|export function orgWallClockToInstant" apps/backend/src/lib/org-time.ts`
-→ two hits. If either is missing, stop: Plan 15 has not run.
+→ two hits. If either is missing, stop: Plan 5 has not run.
 
 Add `isOrgMidnight` to the file's existing `from "../lib/org-time"` import in
 `apps/backend/src/__tests__/org-time.test.ts` (`orgDayKey`, `orgWallTime` and
-`orgWallClockToInstant` are already imported by Plans 4 and 15), then append:
+`orgWallClockToInstant` are already imported by Plans 4 and 5), then append:
 
 ```ts
 // Every date below is in January, when Africa/Cairo is UTC+2 with no DST in
 // force, so the assertions do not depend on Egypt's (reinstated, revisable)
 // summer-time rule. If config.orgTimezone changes, these change with it.
-describe("isOrgMidnight (Plan 10 — all-day events)", () => {
+describe("isOrgMidnight (Plan 14 — all-day events)", () => {
   it("recognises midnight in the organisation's zone, not the host's", () => {
     expect(isOrgMidnight(new Date("2099-01-14T22:00:00.000Z"))).toBe(true);
     expect(isOrgMidnight(new Date("2099-01-15T00:00:00.000Z"))).toBe(false);
   });
 
-  it("agrees with Plan 15's composer: a null time is org midnight, a time is not", () => {
+  it("agrees with Plan 5's composer: a null time is org midnight, a time is not", () => {
     expect(isOrgMidnight(orgWallClockToInstant("2099-01-20", null))).toBe(true);
     const instant = orgWallClockToInstant("2099-01-20", "09:05");
     expect(isOrgMidnight(instant)).toBe(false);
@@ -5724,7 +5724,7 @@ Append to `apps/backend/src/lib/org-time.ts`. It reads the parts through Plan
  * files with `getHours() !== 0 || getMinutes() !== 0`, each in the *viewer's*
  * timezone, against an instant the *server* had composed (spec 15 R19/R20), so
  * an all-day event stopped reading as all-day for anyone in another zone.
- * Ruling C2/X13: one zone, server-side, once. Plan 15's
+ * Ruling C2/X13: one zone, server-side, once. Plan 5's
  * `orgWallClockToInstant(day, null)` produces exactly these instants.
  */
 export function isOrgMidnight(date: Date): boolean {
@@ -6467,17 +6467,17 @@ git add apps/backend && git commit -m "feat(backend): JPC events with one token-
 - Create: `apps/mobile/src/hooks/use-events.ts`
 - Create: `apps/mobile/app/(app)/event/[id].tsx`
 - Modify: `apps/mobile/app/(app)/events.tsx` (replace the placeholder)
-- Modify: `apps/mobile/app/(app)/calendar.tsx` (**Plan 16 Task 9's** role-branched rewrite of Plan 4's screen gains events)
-- Modify: `apps/mobile/src/lib/day-groups.ts` (Plan 16's; append `groupCalendarByDay`)
+- Modify: `apps/mobile/app/(app)/calendar.tsx` (**Plan 6 Task 9's** role-branched rewrite of Plan 4's screen gains events)
+- Modify: `apps/mobile/src/lib/day-groups.ts` (Plan 6's; append `groupCalendarByDay`)
 - Modify: `apps/mobile/app/(app)/_layout.tsx` (`DETAIL_ROUTE_NAMES` gains `"event/[id]"`)
 - Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx` (drop `events`)
 - Modify: `apps/mobile/src/__tests__/app-layout.test.tsx` (the new detail route)
 - Test: `apps/mobile/src/__tests__/events-screen.test.tsx`
-- Test: extend `apps/mobile/src/__tests__/calendar-screen.test.tsx` (Plan 4's file, as Plan 16 Task 9 left it)
+- Test: extend `apps/mobile/src/__tests__/calendar-screen.test.tsx` (Plan 4's file, as Plan 6 Task 9 left it)
 
 **Interfaces:**
-- Consumes: `queryKeys.events` (Task 2); `jpcEventListItemSchema`, `jpcEventDetailSchema` (Task 1); Task 9's endpoints; Plan 16 Task 9's `calendar.tsx` (`PinnedSeasonCalendar`, `RangeSessions`, `SessionDays`), `useSessionRange` and `groupSessionsByDay` / `DayGroup` in `src/lib/day-groups.ts`; Plan 15's `formatWallTime`; Plan 4's `formatDayKey`; `DETAIL_ROUTE_NAMES` (Plan 1).
-- Produces: `useEvents()`, `useUpcomingEvents(limit)` (for Plan 18), `useEventDetail(id)`, `useCreateEvent()`, `useUpdateEvent(id)`, `useDeleteEvent()`; `groupCalendarByDay(sessions, events): CalendarDayGroup[]` and `CalendarEntry` in `src/lib/day-groups.ts`; the route `/event/[id]`.
+- Consumes: `queryKeys.events` (Task 2); `jpcEventListItemSchema`, `jpcEventDetailSchema` (Task 1); Task 9's endpoints; Plan 6 Task 9's `calendar.tsx` (`PinnedSeasonCalendar`, `RangeSessions`, `SessionDays`), `useSessionRange` and `groupSessionsByDay` / `DayGroup` in `src/lib/day-groups.ts`; Plan 5's `formatWallTime`; Plan 4's `formatDayKey`; `DETAIL_ROUTE_NAMES` (Plan 1).
+- Produces: `useEvents()`, `useUpcomingEvents(limit)` (for Plan 16), `useEventDetail(id)`, `useCreateEvent()`, `useUpdateEvent(id)`, `useDeleteEvent()`; `groupCalendarByDay(sessions, events): CalendarDayGroup[]` and `CalendarEntry` in `src/lib/day-groups.ts`; the route `/event/[id]`.
 
 - [ ] **Step 1: Register the detail route**
 
@@ -6646,8 +6646,8 @@ describe("event detail screen", () => {
 });
 ```
 
-And, in `calendar-screen.test.tsx` (Plan 4's file as **Plan 16 Task 9** left
-it — reuse its `session(id, title, startsAt, dayKey)` helper, which Plan 16
+And, in `calendar-screen.test.tsx` (Plan 4's file as **Plan 6 Task 9** left
+it — reuse its `session(id, title, startsAt, dayKey)` helper, which Plan 6
 Task 5 gave `startTime`, its `studentSession`, its `range(...)` helper, `get`
 and `makeSession`):
 
@@ -6663,7 +6663,7 @@ line, `expect(get).not.toHaveBeenCalled();`, with:
   expect(get).toHaveBeenCalledWith("/api/v1/events");
 ```
 
-(Plan 16's LEADER-with-no-groups and MENTOR cases keep
+(Plan 6's LEADER-with-no-groups and MENTOR cases keep
 `expect(get).not.toHaveBeenCalled()`: both return before any branch component
 mounts, so no events request is made.) Then append:
 
@@ -6673,7 +6673,7 @@ const eventRow = (id: number, title: string, date: string, dayKey: string, time:
   url: null, visibility: "ALL" as const, seasonId: null, seasonCode: null,
 });
 
-describe("calendar — JPC events merged into the day buckets (Plan 10)", () => {
+describe("calendar — JPC events merged into the day buckets (Plan 14)", () => {
   it("interleaves JPC events with a student's sessions in the same day buckets", async () => {
     useSessionStore.setState(studentSession);
     get.mockImplementation((url: string) =>
@@ -6798,7 +6798,7 @@ export function useEvents(): UseQueryResult<JpcEventListItem[]> {
 /**
  * The dashboards' "upcoming events" read (spec 19 §7): today onwards in the org
  * zone, capped server-side, with `total` for the SUPER tile. Built here so
- * Plan 18 composes it unchanged; nothing in this plan renders it.
+ * Plan 16 composes it unchanged; nothing in this plan renders it.
  */
 export function useUpcomingEvents(limit: number): UseQueryResult<JpcEventListResponse> {
   return useQuery({
@@ -6913,19 +6913,19 @@ accepts one), and a "Delete event" button with the two-press confirm. This
 screen is the reason `description` and the season stop being write-only data:
 v1 has no event detail page anywhere (R70).
 
-- [ ] **Step 5: The calendar merge — on Plan 16's restructured `calendar.tsx`**
+- [ ] **Step 5: The calendar merge — on Plan 6's restructured `calendar.tsx`**
 
-Plan 16 Task 9 replaced Plan 4's screen with role branches:
+Plan 6 Task 9 replaced Plan 4's screen with role branches:
 `PinnedSeasonCalendar` (STUDENT / ALUMNI, `useSeasonSessions`), `RangeSessions`
 (the windowed `useSessionRange` view used by `MultiSeasonCalendar` and
 `AdminCalendar`), and a shared `SessionDays` renderer over
 `groupSessionsByDay`. Verify before editing:
 `grep -n "function SessionDays\|function PinnedSeasonCalendar\|function RangeSessions" "apps/mobile/app/(app)/calendar.tsx"`
 → three hits; `grep -n "export function groupSessionsByDay" apps/mobile/src/lib/day-groups.ts` → one hit.
-If not, stop — Plan 16 has not run. The merge rides on that structure; it does
+If not, stop — Plan 6 has not run. The merge rides on that structure; it does
 not reintroduce Plan 4's single-season screen.
 
-(a) Append to `apps/mobile/src/lib/day-groups.ts` (Plan 16's file —
+(a) Append to `apps/mobile/src/lib/day-groups.ts` (Plan 6's file —
 `groupSessionsByDay` stays as it is):
 
 ```ts
@@ -6941,7 +6941,7 @@ export interface CalendarDayGroup {
 }
 
 /**
- * Sessions and JPC events in one list of org-day buckets (Plan 10). Both are
+ * Sessions and JPC events in one list of org-day buckets (Plan 14). Both are
  * keyed by the **server's** `dayKey` (ruling X13) — the same `orgDayKey` on the
  * backend — so one day's sessions and events share a bucket by construction.
  * Days sort as ISO strings; entries within a day by instant (zone-independent),
@@ -7237,12 +7237,12 @@ Review pass against `review-plans-07-13.md`, the cross-plan rulings (X1–X16)
 and the coordinator's spec-19 addendum. Changes:
 
 - **Header:** dependencies restated against the execution order
-  (… 7 → 14 → 8 → 9 → **10** → 11 → 18 → 12 → 13); Plan 8 added (html-text);
-  consumers named (Plan 18 `useEvents` / `useUpcomingEvents`); Plan 4's
+  (… 9 → 10 → 11 → 12 → 13 → **14** → 15 → 16 → 17 → 18); Plan 12 added (html-text);
+  consumers named (Plan 16 `useEvents` / `useUpcomingEvents`); Plan 4's
   `orgDayKey`, sessions' `dayKey` and `formatDayKey` consumed. Session screen path is the X7 directory form
-  `session/[id]/index.tsx`. The `UpcomingEventsCard` is Plan 18's.
+  `session/[id]/index.tsx`. The `UpcomingEventsCard` is Plan 16's.
 - **X3:** `packages/shared/src/forum-text.ts` removed. Conversion comes from
-  Plan 8's `packages/shared/src/html-text.ts` (`htmlToPlainText`,
+  Plan 12's `packages/shared/src/html-text.ts` (`htmlToPlainText`,
   `plainTextToHtml`); `countWords` moved into `forum.ts`. The `&#160;` pin
   corrected to 1 word (v1's `/&[a-z]+;/` cannot match `#`).
 - **X5:** `forumRouter`/`videoQuizRouter` take `requireAuth` per route; only
@@ -7275,51 +7275,51 @@ and the coordinator's spec-19 addendum. Changes:
 - **Spec 19 addendum:** `GET /events` gains `?upcoming=true` (lower bound = today's
   org midnight on `endDate ?? date`) and `?limit=` (1–20), and returns `total`
   (counted before the cap); `useUpcomingEvents(limit)` and
-  `queryKeys.events.upcoming(limit)` added for Plan 18. MENTOR still sees no
+  `queryKeys.events.upcoming(limit)` added for Plan 16. MENTOR still sees no
   SEASON events — v1 parity, `jpc-space/src/lib/jpc-events-query.ts:24-37`;
   spec 19 D19's widening is not taken here.
 - **X11:** mobile session fixtures include `avatarPath: null`. **X12:** the emit
   check greps all of `dist/`.
 
-Rejected: none of the plan-10 findings was wrong on verification. The nit
+Rejected: none of the plan-14 findings was wrong on verification. The nit
 "export list omits `MAX_VIDEO_SECONDS`" was half-right — it was already
 exported from `video-time.ts`; `video-quiz.ts` now imports it instead of
 repeating `86_400`.
 
-**Cross-plan consistency pass (2026-10-05, against plans 14–17 and the revised
-order … 5 → 6 → 7 → 17 → 14 → 8 → 9 → 10 …):**
+**Cross-plan consistency pass (2026-10-05, against plans 5, 6, 10 and 11 and the revised
+order … 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 …):**
 
-- **Header:** execution order corrected (17 now follows 7); Plans 15 and 16
+- **Header:** execution order corrected (17 now follows 7); Plans 5 and 6
   added as real dependencies with the exact names consumed.
-- **Plan 15 owns the wall-clock helpers.** Task 1's `event.ts` no longer defines
-  `isoDaySchema` / `wallTimeSchema` — it imports them from Plan 15's
+- **Plan 5 owns the wall-clock helpers.** Task 1's `event.ts` no longer defines
+  `isoDaySchema` / `wallTimeSchema` — it imports them from Plan 5's
   `packages/shared/src/org-time.ts` (a second definition is a duplicate
   `export *` compile error). Task 9 no longer defines `orgWallTime` /
-  `orgWallClockToInstant`; it verifies Plan 15's and adds only
+  `orgWallClockToInstant`; it verifies Plan 5's and adds only
   `isOrgMidnight`, built on Plan 3's `orgWallClock` (the old private
   `partsFormatter`/`orgParts`/`orgOffsetMs` would have redeclared Plan 3's
   `partsFormatter` const). Its unit test is now `isOrgMidnight`-only.
-- **Calendar merge retargeted at Plan 16 Task 9's `calendar.tsx`.** New
-  `groupCalendarByDay` beside Plan 16's `groupSessionsByDay` in
+- **Calendar merge retargeted at Plan 6 Task 9's `calendar.tsx`.** New
+  `groupCalendarByDay` beside Plan 6's `groupSessionsByDay` in
   `src/lib/day-groups.ts`; `SessionDays` becomes `CalendarDays`;
   `PinnedSeasonCalendar` and `RangeSessions` each call `useEvents()` (the
   windowed branch filters events to its `fromDayKey`–`toDayKey`); a season-less
   alumnus now sees events. Plan 4's "no season … fetches nothing" case is edited
   to "fetches only `/api/v1/events`"; new cases cover the alumnus and the window
-  filter. Times render with Plan 15's `formatWallTime`.
-- **Forum on `assignment/[id]/index.tsx`** (Plan 15's move). Task 8 edits that
+  filter. Times render with Plan 5's `formatWallTime`.
+- **Forum on `assignment/[id]/index.tsx`** (Plan 5's move). Task 8 edits that
   file's `isStudent` branch: students get `ForumThread` in place of
   `SubmissionSection` on FORUM; staff keep `AssignmentStaffPanel` and read the
   thread below it (not MENTOR). The test import path, and the fixture's
-  `dueOrgDay`/`dueOrgTime`, follow Plan 15. `ForumThread` no longer renders its
-  own device-zone due line — Plan 15's header shows the org due day.
-- **Session screen:** Task 5 extends Plan 16 Task 7's replacement of
+  `dueOrgDay`/`dueOrgTime`, follow Plan 5. `ForumThread` no longer renders its
+  own device-zone due line — Plan 5's header shows the org due day.
+- **Session screen:** Task 5 extends Plan 6 Task 7's replacement of
   `session/[id]/index.tsx`; the `sessionDetail` fixture gains `dayKey`,
-  `startTime` (Plan 16) and `canManageCheckIn` (Plan 4), all required by
+  `startTime` (Plan 6) and `canManageCheckIn` (Plan 4), all required by
   `sessionDetailSchema`.
-- **X11:** inline session fixtures gain `hasPassword: true` (Plan 7's `MeUser`).
-- **Plan 14:** the video suite mocks `expo-camera` with Plan 14's
+- **X11:** inline session fixtures gain `hasPassword: true` (Plan 9's `MeUser`).
+- **Plan 11:** the video suite mocks `expo-camera` with Plan 11's
   `helpers/expo-camera` stand-in — the session screen now imports
-  `StudentCheckInCard` (Plan 14 Task 10), whose scanner pulls the native module.
-  Step 6 names Plan 14's branch among what to keep. Plan 14 also added to the
+  `StudentCheckInCard` (Plan 11 Task 10), whose scanner pulls the native module.
+  Step 6 names Plan 11's branch among what to keep. Plan 11 also added to the
   header's consumed plans.

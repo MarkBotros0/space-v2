@@ -1,4 +1,4 @@
-# Plan 11 — Reports & Exports Implementation Plan
+# Plan 15 — Reports & Exports Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -44,30 +44,30 @@ shared staging DB; Expo SDK 54 / expo-router 6 (typed routes), React Query 5,
 C8, C9, C11, C12** all bind here), and
 `docs/superpowers/specs/domains/09-notes.md` for the engagement arithmetic this
 domain consumes — **cited, never restated**. Scope from
-`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 11.
+`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 15.
 
-**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 →
-14 → 8 → 9 → 10 → **11** → 18 → 12 → 13; only plans before this one; **not** Plan 18):
+**Depends on** (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 →
+11 → 12 → 13 → 14 → **15** → 16 → 17 → 18; only plans before this one; **not** Plan 16):
 **Plan 4** — it installs `react-native-svg` (as the peer of
 `react-native-qrcode-svg`) *and* adds it to the Jest transform allow-list;
 without that step the chart primitives in Task 9 have no renderer and the
-component tests fail to transform. **Plan 8** — the per-student submission
+component tests fail to transform. **Plan 12** — the per-student submission
 percentage with the C5 targeted denominator is domain 9's field, consumed here
 unchanged; this plan does not compute it and must not grow a second copy.
-**Plan 7** — `lib/rate-limit.ts` / `rateLimitHandler` (ruling X4). **Plan 4** —
+**Plan 9** — `lib/rate-limit.ts` / `rateLimitHandler` (ruling X4). **Plan 4** —
 `orgDayKey` in `lib/org-time.ts` (`"YYYY-MM-DD"`, org zone; ruling X13).
-**Plan 16** — `seasonsRouter` attaches `requireAuth` per route (X5), which Task
-7's `/api/v1/seasons` 404 guard relies on. **Plan 17** — the student detail
+**Plan 6** — `seasonsRouter` attaches `requireAuth` per route (X5), which Task
+7's `/api/v1/seasons` 404 guard relies on. **Plan 10** — the student detail
 route file is `student/[id]/index.tsx` (directory form); the typed href
-`/student/[id]` Task 8 pushes is unchanged. Plans 3, 5 and 6 as listed
+`/student/[id]` Task 8 pushes is unchanged. Plans 3, 7 and 8 as listed
 under Prerequisites. Starting this plan before any of them is a wasted run, not
 a slow one.
-**Consumed later by:** Plan 18 (role dashboards — `GET /api/v1/reports/organisation`
+**Consumed later by:** Plan 16 (role dashboards — `GET /api/v1/reports/organisation`
 for the SUPER tiles, via `useOrganisationReport(enabled)` and
-`queryKeys.reports.organisation()` — Plan 18 reuses both so the dashboard and
-`/reports` share one cache entry), Plan 13 (the five cutover deferrals).
+`queryKeys.reports.organisation()` — Plan 16 reuses both so the dashboard and
+`/reports` share one cache entry), Plan 18 (the five cutover deferrals).
 
-Handed forward to **Plan 13** (`2026-08-24-plan-13-cutover.md`): the LATE-minute
+Handed forward to **Plan 18** (`2026-10-05-plan-18-cutover.md`): the LATE-minute
 number, the `ExportAudit` table, the `GroupStudent` uniqueness fix, the season
 timezone column, and the materialised score — each blocked by C1, each listed in
 the divergence ledger below with the migration that discharges it.
@@ -82,18 +82,18 @@ the divergence ledger below with the migration that discharges it.
   at-risk card. Adding a second route file widens the roadmap's "mobile:
   reports screen" to two screens for ten more rows.
 - **No link from the organisation roll-up's season rows.** The rows carry
-  `code` on the contract (fixing R62/D13 at the data layer). Plan 16 — earlier
+  `code` on the contract (fixing R62/D13 at the data layer). Plan 6 — earlier
   in the execution order — builds the season detail route (spec 02 §9's
   `/seasons/[code]`); wiring `{ pathname: "/seasons/[code]", params: { code } }`
-  onto each row is a one-line follow-up for Plan 18's SUPER dashboard, which
+  onto each row is a one-line follow-up for Plan 16's SUPER dashboard, which
   renders the same rows. It is left out here only to keep this plan's screen
-  test surface unchanged; typed routes will reject the link if Plan 16 named
+  test surface unchanged; typed routes will reject the link if Plan 6 named
   the route differently, which is the point of not hard-coding it blind.
 - **No student or leader surface.** Both are refused explicitly by the
   endpoints (R109, R110, D6 #4). A leader-scoped "my group's engagement"
   report is a reasonable future feature and must not arrive by accident.
 - **No attendance or engagement arithmetic.** `computeEngagementForSeason` is
-  domain 9's (Plan 8). This plan *generalises its signature* to take a season
+  domain 9's (Plan 12). This plan *generalises its signature* to take a season
   list and consumes it; it does not reimplement a single line of the formula.
   The absence budget is domain 4's and is not rendered here at all.
 - **No `ExportAudit` table, no `lateThresholdMinutes`, no `GroupStudent`
@@ -137,8 +137,8 @@ report; it does not open the file.
 - **No migrations, ever.** Nothing under `apps/backend/prisma/` may be edited.
   The database is shared live with v1 (C1). This domain writes **no rows at
   all** (spec §6) and adds no model — which makes C1 easy here, except for the
-  three defects whose clean fix is a column. Those go to Plan 13
-  (`docs/superpowers/plans/2026-08-24-plan-13-cutover.md`), never into this
+  three defects whose clean fix is a column. Those go to Plan 18
+  (`docs/superpowers/plans/2026-10-05-plan-18-cutover.md`), never into this
   plan's tasks.
 - **A GET never writes (C6).** Every endpoint in this plan is a read. The
   export audit trail is an **application log line**, not a row — say so in the
@@ -193,7 +193,7 @@ report; it does not open the file.
 
 ## Prerequisites
 
-This plan sits after Plans 3, 4, 5, 6, 7, 16, 17 and 8 in the execution order and consumes work
+This plan sits after Plans 3, 4, 6–10 and 12 in the execution order and consumes work
 from all of them. If any of these is missing, **stop and say so** rather than
 reimplementing it — a second copy of any of them is exactly the drift C4 and
 C8 exist to prevent.
@@ -202,20 +202,20 @@ C8 exist to prevent.
 |---|---|---|
 | Plan 3 | `config.orgTimezone` and `apps/backend/src/lib/org-time.ts` (`formatInOrgTime`) | Task 6 extends that file with `formatDayInOrgTime` for workbook column headers (C2) |
 | Plan 4 | `orgDayKey(date): string` (`YYYY-MM-DD`, org zone) in `lib/org-time.ts` — the same key sessions and events carry as `dayKey` | Task 3's `exportDay`, Task 7's filenames. Consumed, never redefined |
-| Plan 7 | `apps/backend/src/lib/rate-limit.ts` exporting `rateLimitHandler` (ruling X4) | Task 7's export limiter imports it; this plan never creates or copies it |
+| Plan 9 | `apps/backend/src/lib/rate-limit.ts` exporting `rateLimitHandler` (ruling X4) | Task 7's export limiter imports it; this plan never creates or copies it |
 | Plan 4 | `react-native-svg` in `apps/mobile/package.json` **and** in `jest.config.js`'s `transformIgnorePatterns` allow-list | Task 8's chart primitives. If absent: `cd apps/mobile && npx expo install react-native-svg` |
-| Plan 5 / 17 | `canViewStudent` in `lib/permissions.ts` (Plan 5); the `/student/[id]` route, served by `student/[id]/index.tsx` since Plan 17 Task 7 | Task 8's at-risk rows navigate to `{ pathname: "/student/[id]", params: { id } }` |
-| Plan 6 | quiz routes and, critically, whether `cleanupTestData` already deletes quiz rows | Task 2 checks and adds it if not |
-| **Plan 8** | `packages/shared/src/note.ts`: `engagementScoreSchema`, `EngagementScore`, `isAtRisk`, `AT_RISK_PCT`, `engagementRowSchema`, `EngagementRow`. And `apps/backend/src/lib/queries/engagement.ts`: `computeEngagementForSeason` | **Task 1 and Task 3 both build directly on these.** Task 3 generalises the query function's signature |
+| Plan 7 / 17 | `canViewStudent` in `lib/permissions.ts` (Plan 7); the `/student/[id]` route, served by `student/[id]/index.tsx` since Plan 10 Task 7 | Task 8's at-risk rows navigate to `{ pathname: "/student/[id]", params: { id } }` |
+| Plan 8 | quiz routes and, critically, whether `cleanupTestData` already deletes quiz rows | Task 2 checks and adds it if not |
+| **Plan 12** | `packages/shared/src/note.ts`: `engagementScoreSchema`, `EngagementScore`, `isAtRisk`, `AT_RISK_PCT`, `engagementRowSchema`, `EngagementRow`. And `apps/backend/src/lib/queries/engagement.ts`: `computeEngagementForSeason` | **Task 1 and Task 3 both build directly on these.** Task 3 generalises the query function's signature |
 
-### Plan 8's shared import in `engagement.ts`
+### Plan 12's shared import in `engagement.ts`
 
-Fixed at source: Plan 8 (revised under ruling X12) imports `isAtRisk` in
+Fixed at source: Plan 12 (revised under ruling X12) imports `isAtRisk` in
 `apps/backend/src/lib/queries/engagement.ts` from
 `"../../../../../packages/shared/src/index"`, and its own emit check greps all
 of `dist/`. Task 3 edits that file and **keeps** the relative path; it is not a
 fix this plan owns any more. If the bare `"@space/shared"` specifier is found
-there, Plan 8 has not been revised — stop and report.
+there, Plan 12 has not been revised — stop and report.
 
 ---
 
@@ -276,7 +276,7 @@ happens to the other two?
 
 1. **The per-student number is domain 9's `submissionPct`**, computed by
    `computeEngagementForSeasons` in `apps/backend/src/lib/queries/engagement.ts`
-   (Plan 8). Denominator: assignments that are `isAllGroups` **or** target the
+   (Plan 12). Denominator: assignments that are `isAllGroups` **or** target the
    student's group *for that season*, resolved through `SeasonEnrollment`
    (C9). This plan defines **no second per-student submission metric**. The
    engagement export, the at-risk list, the cohort endpoint and the workbook's
@@ -309,7 +309,7 @@ the **Key** sheet spells out the change (D-17.14).
 
 ### D-17.2 — The at-risk list and the `AT_RISK` band are the same set, by construction
 
-**Question.** Plan 8 ruled that "at risk" is one definition, component-wise:
+**Question.** Plan 12 ruled that "at risk" is one definition, component-wise:
 `attendancePct < 60 || submissionPct < 60`, with zero-denominator guards. v1's
 reports screen instead bands the *composite* into High ≥ 80 / Medium ≥ 60 /
 Low ≥ 40 / At risk < 40 (R30) and lists `score < 60` as at-risk (R33). Those
@@ -341,7 +341,7 @@ chosen, the two screens must not be able to disagree"). Under v1 a student at
 composite hides. That is the intended behaviour, not a regression.
 
 **Edge case, decided:** a student with no past sessions *and* no targeted
-assignments has both denominators zero, `isAtRisk` returns false (Plan 8's
+assignments has both denominators zero, `isAtRisk` returns false (Plan 12's
 guard, fixing R56), the composite is 0, and they band `LOW`. "Low" is a weak
 label for "no data yet", but inventing a fifth band changes the pie's category
 count and the contract; the Key sheet and the screen's method note say that a
@@ -484,7 +484,7 @@ free. One format, one MIME type, one UTI, one share flow, one code path.
 **Never fetch-then-base64.** Fetching an `arraybuffer` and base64-encoding it
 to write costs ~1.33× the file size in JS heap *on top of* the buffer itself,
 for a students × (sessions + quizzes + assignments) matrix. This is the
-roadmap's stated done-criterion for Plan 11 and Task 10 mutation-tests it.
+roadmap's stated done-criterion for Plan 15 and Task 10 mutation-tests it.
 
 **The legacy import path is pinned deliberately.** Expo SDK 54 ships a new
 `File`/`Directory` API as `expo-file-system` with the previous one at
@@ -565,7 +565,7 @@ Two things fall out for free: the session columns stop holding mixed cell types
 percentage columns are unaffected, because they pool `PRESENT` with `LATE` and
 never read `lateMinutes` (R14, R73).
 
-**Cutover task, Plan 13:** backfill `lateMinutes` against `session.startsAt`
+**Cutover task, Plan 18:** backfill `lateMinutes` against `session.startsAt`
 and add `lateThresholdMinutes`; then restore the numeric cell **and** change
 the column header in the same release. An export that changes meaning between
 releases without changing its header is worse than one that never had the
@@ -747,7 +747,7 @@ Every successful export logs one line:
 **No names, no emails, no filename.** The line answers "who exported the
 cohort, and when" (spec §6) without becoming a second copy of the data.
 
-**Cutover task, Plan 13:** the `ExportAudit` table (actor, scope, format, row
+**Cutover task, Plan 18:** the `ExportAudit` table (actor, scope, format, row
 count, timestamp). Spec D15: "Do not let 'we cannot add a table yet' become
 'we shipped bulk personal-data export with no record of it'."
 
@@ -858,7 +858,7 @@ Recorded here so a future reader does not "fix" the export instead.
 
 Each of these is blocked by the migration freeze while v1 writes to the shared
 database. They belong to
-`docs/superpowers/plans/2026-08-24-plan-13-cutover.md`, not to any task below.
+`docs/superpowers/plans/2026-10-05-plan-18-cutover.md`, not to any task below.
 
 | # | What | Column(s) needed | Why it is blocked here |
 |---|---|---|---|
@@ -885,7 +885,7 @@ explicitly refused with a reason.
 
 **Interfaces:**
 - Consumes: `seasonStatusSchema` from `./enums`; `engagementScoreSchema`,
-  `isAtRisk`, `AT_RISK_PCT`, `type EngagementScore` from `./note` (Plan 8).
+  `isAtRisk`, `AT_RISK_PCT`, `type EngagementScore` from `./note` (Plan 12).
 - Produces (exact names every later task imports): `engagementBandSchema` /
   `EngagementBand`; `BAND_ORDER`; `BAND_LABEL`; `bandFor`;
   `reportScopeQuerySchema` / `ReportScopeQuery`; `resolvedScopeSchema` /
@@ -971,7 +971,7 @@ describe("bandFor — the at-risk band IS the at-risk list (D-17.2)", () => {
 
   it("does not flag a season that has not started yet (zero denominators)", () => {
     // v1 scored a season with no past sessions at 0% attendance and banded the
-    // entire cohort "At risk" on day one (R56). Plan 8's guard covers it, and
+    // entire cohort "At risk" on day one (R56). Plan 12's guard covers it, and
     // banding must inherit the guard rather than re-testing the percentage.
     expect(
       bandFor({
@@ -1174,7 +1174,7 @@ import { z } from "zod";
 
 import { seasonStatusSchema } from "./enums";
 import { engagementScoreSchema, isAtRisk, type EngagementScore } from "./note";
-import { isoDaySchema } from "./org-time"; // Plan 15's — consumed, never redefined
+import { isoDaySchema } from "./org-time"; // Plan 5's — consumed, never redefined
 
 // ---------------------------------------------------------------------------
 // Engagement bands
@@ -1217,7 +1217,7 @@ export const BAND_LABEL: Record<EngagementBand, string> = {
  * The remaining three bands are a presentational split of the composite.
  *
  * A student with both denominators zero — a season that has not started —
- * scores 0, is not at risk (Plan 8's guard, fixing R56), and bands LOW. "Low"
+ * scores 0, is not at risk (Plan 12's guard, fixing R56), and bands LOW. "Low"
  * is a weak label for "no data yet"; the Key sheet and the screen's method
  * note say so, and a fifth band would change the pie's category count.
  */
@@ -1552,7 +1552,7 @@ In `packages/shared/src/index.ts`, append below the existing lines:
 export * from "./reports";
 ```
 
-`./note` (Plan 8) must already be exported above it; `reports.ts` imports from
+`./note` (Plan 12) must already be exported above it; `reports.ts` imports from
 it directly by path, so export order does not matter, but the missing file
 will show up as a TypeScript error rather than at runtime.
 
@@ -1600,7 +1600,7 @@ the FK action, a grade whose quiz was moved), `user.deleteMany` throws a
 foreign-key error and every subsequent suite in the run fails on stranded
 fixtures. Being explicit costs four lines.
 
-**Check first.** Plan 6 may already have added these. Run:
+**Check first.** Plan 8 may already have added these. Run:
 
 ```bash
 grep -n "quizGrade\|quizAttempt\|quizAnswer\|quiz\." apps/backend/src/__tests__/integration/fixtures.ts
@@ -1670,7 +1670,7 @@ git add apps/backend/src/__tests__/integration/fixtures.ts && \
 Hands the coordinator a `lib/permissions.ts` fragment; does not open that file.
 
 **Files:**
-- Modify: `apps/backend/src/lib/queries/engagement.ts` (generalise the signature to a season list; keep Plan 8's relative `isAtRisk` import — see Prerequisites)
+- Modify: `apps/backend/src/lib/queries/engagement.ts` (generalise the signature to a season list; keep Plan 12's relative `isAtRisk` import — see Prerequisites)
 - Create: `apps/backend/src/lib/queries/reports.ts`
 - **Fragment for the coordinator:** `apps/backend/src/lib/permissions.ts` (add `ReportScope`, `reportScopeFor`, `canExportSeasonWorkbook`)
 - Test: `apps/backend/src/__tests__/integration/reports-queries.test.ts`
@@ -1686,7 +1686,7 @@ Hands the coordinator a `lib/permissions.ts` fragment; does not open that file.
   - in `lib/queries/engagement.ts`:
     `computeEngagementForSeasons(seasonIds: number[], opts?): Promise<EngagementRow[]>`,
     with `computeEngagementForSeason(seasonId, opts?)` kept as a one-element
-    delegate so Plan 8's callers do not change.
+    delegate so Plan 12's callers do not change.
   - in `lib/queries/reports.ts`: `resolveReportScope(scope, requestedIds)`,
     `buildEngagementSummary(scope, options)`, `listEngagementRows(scope, options)`,
     `encodeCursor` / `decodeCursor`.
@@ -2156,7 +2156,7 @@ export interface EngagementCohortOptions {
  * Engagement for a whole cohort across one or more seasons, in a constant
  * number of queries.
  *
- * Plan 11 widened this from a single seasonId to a list. The reports screen's
+ * Plan 15 widened this from a single seasonId to a list. The reports screen's
  * MENTOR branch spans every season in the organisation; calling the
  * single-season version once per season would reintroduce a per-season fan-out
  * one layer up, which is the shape spec D9 exists to remove. The alternative —
@@ -2170,7 +2170,7 @@ export interface EngagementCohortOptions {
  *   a submission counts as done at SUBMITTED|REVIEWED|RETURNED (domain 9 R57)
  *   assignment due dates are ignored                           (domain 9 R60)
  *
- * Two deliberate corrections, both Plan 8's:
+ * Two deliberate corrections, both Plan 12's:
  *   - the attendance denominator starts at the student's own enrolledAt
  *     (domain 9 R55, spec D8 #1);
  *   - targeting resolves through SeasonEnrollment.groupId, not GroupStudent
@@ -2201,7 +2201,7 @@ export async function computeEngagementForSeasons(
       enrolledAt: true,
       groupId: true,
       group: { select: { name: true } },
-      // name only — NOT email. EngagementRow is domain 9's contract and Plan 8
+      // name only — NOT email. EngagementRow is domain 9's contract and Plan 12
       // serves it to LEADERs; widening it with an address would leak one to
       // every leader-facing engagement read (ruling C8). Reports derive the
       // email in their own query (loadStudentEmails in lib/queries/reports.ts).
@@ -2328,7 +2328,7 @@ export async function computeEngagementForSeasons(
   });
 }
 
-/** Plan 8's callers keep this signature; it is one season's worth of the above. */
+/** Plan 12's callers keep this signature; it is one season's worth of the above. */
 export async function computeEngagementForSeason(
   seasonId: number,
   opts: EngagementCohortOptions = {},
@@ -2337,7 +2337,7 @@ export async function computeEngagementForSeason(
 }
 ```
 
-> **Email is derived here, not added to Plan 8's contract.** Plan 8's
+> **Email is derived here, not added to Plan 12's contract.** Plan 12's
 > `engagementRowSchema` (`packages/shared/src/note.ts`) has no email field and
 > **stays unchanged** — it is the payload of a leader-readable endpoint, and an
 > address there would be a C8 widening nobody decided. The reports rows that
@@ -2746,7 +2746,7 @@ function toReportRows(rows: Awaited<ReturnType<typeof computeEngagementForSeason
     submissionsExpected: r.submissionsExpected,
     submissionsCompleted: r.submissionsCompleted,
     studentUserId: r.studentUserId,
-    // User.name is non-null in the schema; Plan 8's contract types it nullable.
+    // User.name is non-null in the schema; Plan 12's contract types it nullable.
     name: r.studentName ?? "",
     seasonId: r.seasonId,
     seasonTitle: r.seasonTitle ?? "",
@@ -2755,7 +2755,7 @@ function toReportRows(rows: Awaited<ReturnType<typeof computeEngagementForSeason
 }
 
 /**
- * The reports domain's own email lookup (Plan 8's EngagementRow has none, and
+ * The reports domain's own email lookup (Plan 12's EngagementRow has none, and
  * must not grow one — see the note under Step 3). Called with only the ids
  * about to be returned, never the whole cohort.
  */
@@ -2843,7 +2843,7 @@ cd apps/backend && npx jest --config jest.integration.config.js --runInBand --te
 cd "$(git rev-parse --show-toplevel)" && pnpm turbo lint typecheck --filter=@space/backend
 ```
 
-Expect: 17 passing, lint and typecheck clean. Then confirm Plan 8's own suite
+Expect: 17 passing, lint and typecheck clean. Then confirm Plan 12's own suite
 still passes against the generalised function — its `computeEngagementForSeason`
 delegate is the whole point of keeping the old name:
 
@@ -4620,7 +4620,7 @@ time).
   `buildEngagementWorkbook` (Task 6); `reportScopeFor`,
   `canExportSeasonWorkbook` (Task 3 fragment); `resolveReportScope`,
   `listEngagementRows` (Task 3); `orgDayKey` (Plan 4); `rateLimitHandler`
-  (Plan 7's `lib/rate-limit.ts`, ruling X4);
+  (Plan 9's `lib/rate-limit.ts`, ruling X4);
   `exportFilename`, `exportFormatSchema`, `XLSX_MIME` (Task 1 — **value**
   imports, relative, four levels up from `routes/`).
 - Produces: `logExport`; `reportExportsRouter`,
@@ -4632,7 +4632,7 @@ time).
 **Mounting note.** `seasonExportsRouter` mounts at `/api/v1/seasons`, **after**
 `seasonsRouter`. That router defines `/:id`, `/:id/groups`, `/:id/sessions` and
 `/:id/assignments` — none of which match `/:id/exports/workbook`, so the request
-falls through. Same fall-through pattern Plan 8 uses for
+falls through. Same fall-through pattern Plan 12 uses for
 `/students/:id/engagement`. Keeping this domain's routes in this domain's file
 is what stops `seasons.ts` from accumulating four unrelated concerns.
 
@@ -4956,7 +4956,7 @@ describe("shared prefixes keep the not_found envelope (ruling X5)", () => {
   });
 
   it("answers an unknown /seasons path with 404, not 401", async () => {
-    // Plan 16 removed seasonsRouter's router-level use(requireAuth) (its
+    // Plan 6 removed seasonsRouter's router-level use(requireAuth) (its
     // Task 1 grep pins that). seasonExportsRouter shares the prefix and
     // attaches requireAuth per route, so an anonymous unknown path still
     // reaches the catch-all.
@@ -4968,7 +4968,7 @@ describe("shared prefixes keep the not_found envelope (ruling X5)", () => {
 ```
 
 Both prefixes are asserted: `seasonsRouter`'s router-level `use(requireAuth)`
-(on main at `routes/seasons.ts:24`) is gone since **Plan 16** (per-route
+(on main at `routes/seasons.ts:24`) is gone since **Plan 6** (per-route
 `requireAuth`, ruling X5), so this plan's `seasonExportsRouter` is the only
 thing that could reintroduce a 401 there — and it must not.
 
@@ -4985,9 +4985,9 @@ grep -n "export const rateLimitHandler" apps/backend/src/lib/rate-limit.ts
 grep -rn "const rateLimitHandler" apps/backend/src/routes/
 ```
 
-Expect one hit for the first command and **none** for the second. Plan 7
+Expect one hit for the first command and **none** for the second. Plan 9
 extracted `lib/rate-limit.ts` (ruling X4) and every limiter imports it. This
-plan adds no copy and creates no file; if the first grep is empty, Plan 7 has
+plan adds no copy and creates no file; if the first grep is empty, Plan 9 has
 not landed — stop and report rather than recreating it.
 
 - [ ] **Step 4: The audit log**
@@ -5012,7 +5012,7 @@ export interface ExportAuditEntry {
  * shared-database freeze forbids while v1 runs (C1). Spec D15 stages it: log
  * now, table at cutover — "do not let 'we cannot add a table yet' become 'we
  * shipped bulk personal-data export with no record of it'". See
- * docs/superpowers/plans/2026-08-24-plan-13-cutover.md.
+ * docs/superpowers/plans/2026-10-05-plan-18-cutover.md.
  *
  * The line carries an actor ID and role, a scope and a row count. It carries NO
  * names, NO emails and NO filename: an audit trail that reproduces the payload
@@ -7438,7 +7438,7 @@ grep -rn 'require("@space/shared")' apps/backend/dist/ || echo "clean"
 Expect `clean` — the whole of `dist/`, not one subtree (ruling X12). This plan
 adds value imports from shared in four backend files (`lib/queries/reports.ts`,
 `lib/exports/season-workbook.ts` — via `workbook-style.ts` —,
-`lib/exports/engagement-workbook.ts`, `routes/exports.ts`), and Plan 8's
+`lib/exports/engagement-workbook.ts`, `routes/exports.ts`), and Plan 12's
 `lib/queries/engagement.ts` already uses the relative path (X12), and
 the depth differs between `routes/` (four levels) and `lib/**/` (five). A wrong
 depth is a TypeScript error; a bare specifier is not, and only shows up as
@@ -7519,7 +7519,7 @@ what it claims.
    `FileSystem.writeAsStringAsync(fileUri, base64, { encoding: "base64" })`.
    → `export-download.test.ts` **"never fetches the body into JS memory or
    base64-encodes it"** must fail. *(This is the roadmap's stated
-   done-criterion for Plan 11's mobile half.)*
+   done-criterion for Plan 15's mobile half.)*
 
 Optionally also: **collapse the band to the composite.** In
 `packages/shared/src/reports.ts`, reorder `bandFor` so the composite thresholds
@@ -7573,7 +7573,7 @@ The implementation report must state, explicitly:
    - `LATE` cells no longer carry minutes (C3);
    - CSV is gone (D7).
 5. The five **deferred-to-cutover** items, restated so they are carried forward
-   into `docs/superpowers/plans/2026-08-24-plan-13-cutover.md` rather than
+   into `docs/superpowers/plans/2026-10-05-plan-18-cutover.md` rather than
    rediscovered.
 6. Anything found while implementing that this plan got wrong.
 
@@ -7633,7 +7633,7 @@ judgement.
 - [ ] Every integration command run in this plan carried `--runInBand`.
 - [ ] The full integration set is green in one serial run.
 - [ ] All eight mutations were applied one at a time, each turned the named test red, and each was reverted.
-- [ ] The implementation report names the seven deliberate divergences and the five cutover deferrals, and the deferrals appear in `docs/superpowers/plans/2026-08-24-plan-13-cutover.md`.
+- [ ] The implementation report names the seven deliberate divergences and the five cutover deferrals, and the deferrals appear in `docs/superpowers/plans/2026-10-05-plan-18-cutover.md`.
 
 ---
 
@@ -7642,10 +7642,10 @@ judgement.
 Review pass against `review-plans-07-13.md` and the cross-plan rulings. Changes:
 
 - **Header:** dependencies restated against the execution order
-  (… 9 → 10 → **11** → 18 → 12 → 13); Plan 7 (`rateLimitHandler`) and Plan 4
-  (`orgDayKey`) added; consumers named (Plan 18 reuses
+  (… 13 → 14 → **15** → 16 → 17 → 18); Plan 9 (`rateLimitHandler`) and Plan 4
+  (`orgDayKey`) added; consumers named (Plan 16 reuses
   `useOrganisationReport` / `queryKeys.reports.organisation()`).
-- **S1 — email:** Plan 8's `engagementRowSchema` is consumed unchanged (no
+- **S1 — email:** Plan 12's `engagementRowSchema` is consumed unchanged (no
   `studentEmail`; it is leader-readable, C8). The generalised
   `computeEngagementForSeasons` selects `name` only; reports attach emails in
   their own query (`loadStudentEmails` / `withEmails` in
@@ -7665,36 +7665,36 @@ Review pass against `review-plans-07-13.md` and the cross-plan rulings. Changes:
 - **S9:** the two remaining report paths and all three export paths are written
   out in OpenAPI.
 - **X4:** no rate-limit file is created or copied; Task 7 Step 3 only verifies
-  Plan 7's `lib/rate-limit.ts`.
+  Plan 9's `lib/rate-limit.ts`.
 - **X5:** `requireAuth` per route on `reportsRouter`, `reportExportsRouter`,
   `seasonExportsRouter` (listed before `exportLimiter`); a 404 guard test for
   unknown `/api/v1/reports/*`. Not asserted for `/api/v1/seasons/*`, because
   main's `seasonsRouter` still has router-level auth (`routes/seasons.ts:24`) —
-  Plans 3/16's file.
+  Plans 3/6's file.
 - **X9/X11/X12:** no placeholder count edits; `avatarPath: null` in session
-  fixtures; emit check greps all of `dist/`; the Plan 8 "fix in passing" note
-  replaced (fixed at source by Plan 8).
+  fixtures; emit check greps all of `dist/`; the Plan 12 "fix in passing" note
+  replaced (fixed at source by Plan 12).
 
-Rejected: none outright. S8 (Plan 13 drift) is Plan 13's to reconcile; this
+Rejected: none outright. S8 (Plan 18 drift) is Plan 18's to reconcile; this
 plan's handed-forward list is unchanged. Nits on test counts were not re-audited.
 
-**Cross-plan consistency pass (2026-10-05, against plans 14–17 and the revised
-order … 5 → 6 → 7 → 17 → 14 → 8 → 9 → 10 → 11 …):**
+**Cross-plan consistency pass (2026-10-05, against plans 5, 6, 10 and 11 and the revised
+order … 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 …):**
 
 - **Header / Prerequisites:** execution order corrected (17 now follows 7);
-  explicitly no dependency on Plan 18. Plan 16 (per-route `requireAuth` on
-  `seasonsRouter`) and Plan 17 (`student/[id]/index.tsx` directory form; the
+  explicitly no dependency on Plan 16. Plan 6 (per-route `requireAuth` on
+  `seasonsRouter`) and Plan 10 (`student/[id]/index.tsx` directory form; the
   typed href `/student/[id]` is unchanged) named.
-- **X5:** Plan 16 removed `seasonsRouter`'s router-level auth, so Task 7's
+- **X5:** Plan 6 removed `seasonsRouter`'s router-level auth, so Task 7's
   guard now also asserts an unknown anonymous `/api/v1/seasons/*` path answers
   404 — the stale "not asserted, main still has router-level auth" note is gone.
 - **X13 (trend labels):** `attendancePointSchema` gains `dayKey`
-  (Plan 15's `isoDaySchema`), set server-side with Plan 4's `orgDayKey`; the
+  (Plan 5's `isoDaySchema`), set server-side with Plan 4's `orgDayKey`; the
   `/reports` chart labels and range caption use `formatDayKey(dayKey)` instead
   of device-zone `formatDate(startsAt)`. Fixtures and OpenAPI updated.
-- **Metric definitions (spec 19 reuse):** verified — at-risk is Plan 8's
+- **Metric definitions (spec 19 reuse):** verified — at-risk is Plan 12's
   `isAtRisk` via `bandFor` (no redefinition); completion counts
   `SUBMITTED|REVIEWED|RETURNED`, the exact complement of Plan 1's
   `isAssignmentOutstanding` (`PENDING|DRAFT`). Task 3's Files line now says
-  it keeps Plan 8's relative import rather than "fixing" it.
-- **X11:** the `sessionFor` fixture gains `hasPassword: true` (Plan 7's `MeUser`).
+  it keeps Plan 12's relative import rather than "fixing" it.
+- **X11:** the `sessionFor` fixture gains `hasPassword: true` (Plan 9's `MeUser`).

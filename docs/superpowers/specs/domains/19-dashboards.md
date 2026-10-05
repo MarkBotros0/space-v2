@@ -1,9 +1,9 @@
 # Domain 19 — Role dashboards
 
-> Status: draft · Phase: 5 (Plan 18, runs after Plan 11 per the cross-plan
+> Status: draft · Phase: 5 (Plan 16, runs after Plan 15 per the cross-plan
 > execution order) · v1 API status: **none** (no `/api/v1` route in v1 serves a
 > dashboard; `apps/mobile/app/(app)/dashboard.tsx` renders the active season's
-> session list, plus Plan 1's assignment-count card and Plan 9's bell once those
+> session list, plus Plan 1's assignment-count card and Plan 13's bell once those
 > land)
 
 v1 has six dashboards, one per landing role: `super`, `admin`, `leader`,
@@ -24,26 +24,26 @@ and the composition rules that say which endpoint each tile reads.
 **Does not own, and only cross-references:**
 
 - **Engagement, at-risk and the score.** These belong to domain 9 (spec
-  `09-notes.md` R53–R77, D7–D10). They are implemented by Plan 8
+  `09-notes.md` R53–R77, D7–D10). They are implemented by Plan 12
   (`computeEngagementForSeason`, `isAtRisk`, `AT_RISK_PCT`) and generalised by
-  Plan 11 (`computeEngagementForSeasons`, `bandFor`).
-- **Per-student "submission %".** Ruling C5 defines it. Plan 11 D-17.1 names
+  Plan 15 (`computeEngagementForSeasons`, `bandFor`).
+- **Per-student "submission %".** Ruling C5 defines it. Plan 15 D-17.1 names
   domain 9's `submissionPct` as the only per-student figure. This domain
   defines no new submission percentage.
 - **The absence budget and the streak.** Both belong to domain 4 (spec
   `04-attendance.md` R88–R96, D1/D2/D14). Ruling C3 explains why their values
   change in v2.
 - **The upcoming-events card.** This belongs to domain 15 (spec `15-events.md`
-  R44, R45, R74–R79) and is implemented by Plan 10 (`GET /api/v1/events`,
+  R44, R45, R74–R79) and is implemented by Plan 14 (`GET /api/v1/events`,
   `eventVisibilityFilter`, `useEvents`).
 - **Quiz grading progress.** This belongs to domain 12 (spec `12-quizzes.md`
-  R114, D10) and is implemented by Plan 6 (`quizSummarySchema.gradedCount` and
+  R114, D10) and is implemented by Plan 8 (`quizSummarySchema.gradedCount` and
   `studentCount`).
 - **The "current season" rule for staff.** This belongs to domain 2 (spec
   `02-seasons.md` R22). Plan 4 implements it as `useCurrentSeasonId`, and
   rulings X8 make that hook binding.
 - **The organisation roll-up.** This belongs to domain 17 (spec
-  `17-reports.md` D4). Plan 11 serves it as `GET /api/v1/reports/organisation`.
+  `17-reports.md` D4). Plan 15 serves it as `GET /api/v1/reports/organisation`.
 
 Citations are paths under `/home/mark/projects/JPC/jpc-space` unless prefixed
 `apps/`, `packages/` or `docs/`, which are this repository. v1 has no test
@@ -77,7 +77,7 @@ v2 files this domain touches or consumes:
 
 | File | Holds |
 |---|---|
-| `apps/mobile/app/(app)/dashboard.tsx` | The single `/dashboard` route. Today it lists sessions only. Plan 1 Task 5 adds `AssignmentsSummary`; Plan 9 Task 8 adds `NotificationBell` |
+| `apps/mobile/app/(app)/dashboard.tsx` | The single `/dashboard` route. Today it lists sessions only. Plan 1 Task 5 adds `AssignmentsSummary`; Plan 13 Task 8 adds `NotificationBell` |
 | `packages/shared/src/navigation.ts:47-157` | `/dashboard` is a tab in all six navs ("Home") |
 | `apps/backend/src/routes/me.ts:9-37` | `GET /api/v1/me`: name and `scopes.graduationYear`, which the greeting and the alumni header need |
 | `apps/backend/src/lib/queries/assignments.ts:29-35`, `:185-226` | `isOverdue` and `isLate` (module-private today) and `listAssignmentsForStudent` (already season-scoped via `groupIdInSeason`) |
@@ -263,7 +263,7 @@ dashboards are where they bite.
    filter". Mentors must not see `DRAFT` work in the feed (spec 08 D8).
 4. **Payload narrowing (C8 #2).** A student must never receive a cohort figure,
    another student's name, or the staff engagement shape, which includes
-   `score` and `atRisk`. Spec 09 D9 and Plan 8 Task 1's `.strict()`
+   `score` and `atRisk`. Spec 09 D9 and Plan 12 Task 1's `.strict()`
    `studentSelfEngagementSchema` already establish this. The dashboard's
    student branch carries **only the caller's own rows**.
 
@@ -309,16 +309,16 @@ invalidated by the mutations that move its numbers (§7, "Invalidation").
 ### Decision: compose where an endpoint already answers the question, add one summary endpoint where it does not
 
 Composition is preferred, and these tiles can be served by endpoints that
-Plans 1–17 already define, unchanged or with a small amendment:
+Plans 1–15, 17 and 18 already define, unchanged or with a small amendment:
 
 | Tile | Endpoint (plan) | Why it is sufficient |
 |---|---|---|
-| Greeting, alumni "Class of" | `GET /api/v1/me` (exists, `routes/me.ts:9`; Plan 7 extends it) | `user.name`, `scopes.graduationYear` |
-| SUPER: Students / Alumni / Seasons | `GET /api/v1/reports/organisation` (Plan 11 Task 5) | `totalStudentsNotGraduated` = R13's population, `totalAlumni` = R14, `seasons[]` = R12's non-deleted seasons. Same query, one definition, shared with the SUPER Reports screen |
-| Upcoming events card (all six) + SUPER events tile | `GET /api/v1/events` (Plan 10 Task 9), **amended** (below) | One visibility predicate (`eventVisibilityFilter`) and one window rule, plus Plan 10's prefix invalidation on every event write |
-| MENTOR at-risk list | `GET /api/v1/reports/engagement` (Plan 11 Task 5) | Returns `atRisk[]` (cap 10, `score` asc), `atRiskTotal` and the band where `AT_RISK ≡ isAtRisk`, over the mentor's permitted scope. It is **the same query key as the mentor's own Reports tab**, so Home and Reports cannot show different at-risk sets (spec 17 D5) |
-| STUDENT absence budget + streak | `GET /api/v1/me/attendance` (Plan 14, from spec 04 §7), **amended** to carry `streak` | Domain 4's number on domain 4's terms. The tile links to `/attendance`, which reads the same key |
-| Unread bell | `GET /api/v1/notifications/unread-count` (Plan 9 Task 8) | Already on `dashboard.tsx` |
+| Greeting, alumni "Class of" | `GET /api/v1/me` (exists, `routes/me.ts:9`; Plan 9 extends it) | `user.name`, `scopes.graduationYear` |
+| SUPER: Students / Alumni / Seasons | `GET /api/v1/reports/organisation` (Plan 15 Task 5) | `totalStudentsNotGraduated` = R13's population, `totalAlumni` = R14, `seasons[]` = R12's non-deleted seasons. Same query, one definition, shared with the SUPER Reports screen |
+| Upcoming events card (all six) + SUPER events tile | `GET /api/v1/events` (Plan 14 Task 9), **amended** (below) | One visibility predicate (`eventVisibilityFilter`) and one window rule, plus Plan 14's prefix invalidation on every event write |
+| MENTOR at-risk list | `GET /api/v1/reports/engagement` (Plan 15 Task 5) | Returns `atRisk[]` (cap 10, `score` asc), `atRiskTotal` and the band where `AT_RISK ≡ isAtRisk`, over the mentor's permitted scope. It is **the same query key as the mentor's own Reports tab**, so Home and Reports cannot show different at-risk sets (spec 17 D5) |
+| STUDENT absence budget + streak | `GET /api/v1/me/attendance` (Plan 11, from spec 04 §7), **amended** to carry `streak` | Domain 4's number on domain 4's terms. The tile links to `/attendance`, which reads the same key |
+| Unread bell | `GET /api/v1/notifications/unread-count` (Plan 13 Task 8) | Already on `dashboard.tsx` |
 | Staff season id | `GET /api/v1/seasons` via Plan 4's `useCurrentSeasonId` | Binding per rulings X8 |
 
 Composition **fails** for the rest. In every case the reason is either N
@@ -328,7 +328,7 @@ forbid:
 - **Review counts** (R34). `GET /api/v1/submissions` is cursor-paged with no
   total (`routes/submissions.ts:82-191`). A count would mean paging the whole
   queue.
-- **Quiz pending** (R32). `GET /api/v1/quizzes` (Plan 6) is paged. Counting
+- **Quiz pending** (R32). `GET /api/v1/quizzes` (Plan 8) is paged. Counting
   pending quizzes means walking every page, and then comparing `gradedCount`
   to `studentCount` on the client.
 - **Season progress and next session** (R21–R23, R64, R68).
@@ -336,7 +336,7 @@ forbid:
   are comparisons against now, and C2 puts those on the server ("if a screen
   needs to know whether something is overdue, the API tells it").
 - **Average attendance, at-risk preview and count for a season or a leader's
-  groups** (R29, R31). `GET /seasons/:id/engagement` (Plan 8) returns the rows,
+  groups** (R29, R31). `GET /seasons/:id/engagement` (Plan 12) returns the rows,
   but the mean and the count are cohort metrics, and computing them on the
   client is exactly what C4 forbids.
 - **Student late count** (R72). The student assignment rows carry no
@@ -352,12 +352,12 @@ forbid:
 | Method | Path | Status | Auth | Request | Response |
 |---|---|---|---|---|---|
 | GET | `/api/v1/me/dashboard` | **new** | Any authenticated role except alumnus (403). See the variant rules below | `?seasonId=` required for ADMIN and LEADER, optional for SUPER, ignored for STUDENT and MENTOR | `{ data: Dashboard }`, a discriminated union on `variant` (§8) |
-| GET | `/api/v1/events` | **partial**: exists in Plan 10 Task 9, amended | unchanged (`eventVisibilityFilter`) | adds `?upcoming=true` (server sets the lower bound to `startOfDayInOrgTime(now)` on `(endDate ?? date)`, C2) and `?limit=` (1–20) | adds `total` (the count in the window before `limit`) beside `events` |
-| GET | `/api/v1/me/attendance` | **partial**: Plan 14, from spec 04 §7 | STUDENT (own) | unchanged | adds `streak` (int ≥ 0), computed by the one server function (R70) |
-| GET | `/api/v1/reports/organisation` | **exists** (Plan 11) | SUPER | none | reused as-is |
-| GET | `/api/v1/reports/engagement` | **exists** (Plan 11) | MENTOR, SUPER, ADMIN (intersected) | none (omitted `seasonId` = permitted scope) | reused as-is. The mentor branch renders `atRisk` and `atRiskTotal` only |
+| GET | `/api/v1/events` | **partial**: exists in Plan 14 Task 9, amended | unchanged (`eventVisibilityFilter`) | adds `?upcoming=true` (server sets the lower bound to `startOfDayInOrgTime(now)` on `(endDate ?? date)`, C2) and `?limit=` (1–20) | adds `total` (the count in the window before `limit`) beside `events` |
+| GET | `/api/v1/me/attendance` | **partial**: Plan 11, from spec 04 §7 | STUDENT (own) | unchanged | adds `streak` (int ≥ 0), computed by the one server function (R70) |
+| GET | `/api/v1/reports/organisation` | **exists** (Plan 15) | SUPER | none | reused as-is |
+| GET | `/api/v1/reports/engagement` | **exists** (Plan 15) | MENTOR, SUPER, ADMIN (intersected) | none (omitted `seasonId` = permitted scope) | reused as-is. The mentor branch renders `atRisk` and `atRiskTotal` only |
 | GET | `/api/v1/me` | **exists** | any | none | reused |
-| GET | `/api/v1/notifications/unread-count` | **exists** (Plan 9) | any | none | reused |
+| GET | `/api/v1/notifications/unread-count` | **exists** (Plan 13) | any | none | reused |
 
 `GET /api/v1/me/dashboard` mounts on the existing `meRouter`
 (`app.ts:53`, which owns the `/api/v1/me` prefix exclusively) with
@@ -384,16 +384,16 @@ query is `enabled`-gated. A STUDENT with no active season receives the
 
 | Figure | Server function it must call | Never |
 |---|---|---|
-| `cohort.studentCount`, `meanAttendancePct`, `atRisk[]`, `atRiskTotal` | `computeEngagementForSeasons([seasonId], { studentUserIds? })` (Plan 8 → Plan 11) and `isAtRisk` (`packages/shared`, Plan 8 Task 1) | a second attendance formula (R24–R26) or the 70 % rule (R31) |
+| `cohort.studentCount`, `meanAttendancePct`, `atRisk[]`, `atRiskTotal` | `computeEngagementForSeasons([seasonId], { studentUserIds? })` (Plan 12 → Plan 15) and `isAtRisk` (`packages/shared`, Plan 12 Task 1) | a second attendance formula (R24–R26) or the 70 % rule (R31) |
 | `submissions.pendingReview` / `.reviewed` | the review-queue scope builder, extracted from `routes/submissions.ts:96-130` into `lib/permissions.ts` (e.g. `submissionQueueScopeFor(user)`), ANDed with `assignment.seasonId` and `assignment.deletedAt: null` | a separately written scope, which would let the count disagree with the queue it links to |
-| `quizzes.*` | Plan 6's per-kind graded counter (PAPER: `QuizGrade.score` not null; ONLINE: `QuizAttempt.status = GRADED`) over Plan 6's `visibleStudentIdsForQuiz(user, seasonId)` population. Plan 18 asks Plan 6's file to export the counter rather than copying it | R32's grade-rows-versus-roster comparison |
+| `quizzes.*` | Plan 8's per-kind graded counter (PAPER: `QuizGrade.score` not null; ONLINE: `QuizAttempt.status = GRADED`) over Plan 8's `visibleStudentIdsForQuiz(user, seasonId)` population. Plan 16 asks Plan 8's file to export the counter rather than copying it | R32's grade-rows-versus-roster comparison |
 | `progress`, `nextSession` | one helper in `lib/queries/sessions.ts`, taking `now` as an argument | client-side "is this in the past" |
 | `assignments.*` (STUDENT) | `listAssignmentsForStudent` (`lib/queries/assignments.ts:185`), plus `isOverdue` and `isLate` **exported** from that same file (`:29-35`) and the shared `isAssignmentOutstanding` predicate (§8) | a second lateness comparison (spec 07 R87) |
 | `recentActivity` (MENTOR) | two bounded `findMany` calls (`take: 8` each), merged in memory | the unscoped v1 queries (R51, R52) |
 
 **Query budget.** For `SEASON_STAFF`: the five inside
 `computeEngagementForSeasons`, plus two submission counts, plus the quiz page
-(Plan 6's count, two `groupBy`s), plus two session reads (counts and the
+(Plan 8's count, two `groupBy`s), plus two session reads (counts and the
 next/current session), plus the scope lookup. That is roughly a dozen, and the
 same dozen for 5 students or 500. For `STUDENT`: about six. For `MENTOR`: two.
 **No query count may depend on cohort size, season count or group count.**
@@ -404,14 +404,14 @@ New query key factory: `queryKeys.dashboard.all` / `.me(seasonId)`. These
 mutations must invalidate `queryKeys.dashboard.all`, in the same plan that
 introduces each mutation's screen:
 
-- attendance marking and check-in (Plan 2, Plan 4, Plan 14)
-- submission submit and review (Plans 1, 2)
-- quiz grade and attempt submit (Plan 6)
-- assignment create, edit and delete (Plan 15)
-- enrolment and drop (Plan 5)
-- session create and delete (Plans 3, 16)
+- attendance marking and check-in (Plan 2, Plan 4, Plan 11)
+- submission submit and review (Plans 1 and 2)
+- quiz grade and attempt submit (Plan 8)
+- assignment create, edit and delete (Plan 5)
+- enrolment and drop (Plan 7)
+- session create and delete (Plans 3 and 6)
 
-Plan 10's event writes already invalidate `queryKeys.events.all`, which covers
+Plan 14's event writes already invalidate `queryKeys.events.all`, which covers
 the card. Apply `staleTime: 60_000` to the dashboard key so that focus
 refetches inside a minute are served from cache. The at-risk list must not be
 cached beyond that (spec 09 §5 item 3: "a stale at-risk list is worse than a
@@ -427,15 +427,15 @@ tables only here.
 ### Reuse, do not redefine
 
 - `engagementRowSchema` / `EngagementRow`, `isAtRisk`, `AT_RISK_PCT`
-  (`packages/shared/src/note.ts`, Plan 8 Task 1). The staff at-risk preview
+  (`packages/shared/src/note.ts`, Plan 12 Task 1). The staff at-risk preview
   rows are **`engagementRowSchema` rows**, not a new shape.
 - `engagementSummarySchema`, `bandFor`, `organisationReportSchema`
-  (`packages/shared/src/reports.ts`, Plan 11 Task 1). These are consumed by
+  (`packages/shared/src/reports.ts`, Plan 15 Task 1). These are consumed by
   the MENTOR and SUPER branches through their own endpoints.
 - `studentAssignmentListItemSchema` (`packages/shared/src/assignment.ts:59-66`).
   The due-soon rows are this schema.
-- `jpcEventListItemSchema` (Plan 10 Task 1). The card's rows.
-- `attendanceBudgetSchema` / `myAttendanceResponseSchema` (spec 04 §8, Plan 14).
+- `jpcEventListItemSchema` (Plan 14 Task 1). The card's rows.
+- `attendanceBudgetSchema` / `myAttendanceResponseSchema` (spec 04 §8, Plan 11).
   The budget tile.
 - `submissionStatusSchema` and `attendanceStatusSchema` (`enums.ts`).
 - `seasonStatusSchema` / season identity fields (`season.ts`). Do not restate
@@ -448,7 +448,7 @@ tables only here.
 | `seasonProgressSchema` | `sessionsHeld` (int ≥ 0: sessions with `startsAt <= now`), `sessionsTotal` (int ≥ 0), `pct` (int 0–100, **nullable** when `sessionsTotal = 0`). Named for sessions, never weeks (D12) |
 | `dashboardSessionSchema` | `id`, `title`, `startsAt` (ISO), `durationMinutes`, `location` (nullable), `youtubeUrl` (nullable), `isInProgress` (bool, server-derived: `startsAt <= now < startsAt + durationMinutes`, D13) |
 | `dashboardSeasonSchema` | `id`, `code`, `title`, `status` |
-| `staffCohortSummarySchema` | `studentCount` (ACTIVE enrolments in scope), `meanAttendancePct` (int 0–100, **nullable** when no student in scope has `attendanceTotal > 0`, D5), `atRiskTotal` (int), `atRisk` (`EngagementRow[]`, ≤ `DASHBOARD_AT_RISK_PREVIEW`, ordered `score` asc then `studentUserId`, the same order as Plan 11's `byScoreThenId`) |
+| `staffCohortSummarySchema` | `studentCount` (ACTIVE enrolments in scope), `meanAttendancePct` (int 0–100, **nullable** when no student in scope has `attendanceTotal > 0`, D5), `atRiskTotal` (int), `atRisk` (`EngagementRow[]`, ≤ `DASHBOARD_AT_RISK_PREVIEW`, ordered `score` asc then `studentUserId`, the same order as Plan 15's `byScoreThenId`) |
 | `reviewCountsSchema` | `pendingReview` (`SUBMITTED`), `reviewed` (`REVIEWED \| RETURNED`), both under the queue scope (D11) |
 | `quizRollupSchema` | `total` (quizzes in the season, excluding unpublished ONLINE drafts), `pending` (`studentCount > 0 && gradedCount < studentCount`), `fullyGraded` (`total − pending`), `drafts` (unpublished ONLINE count, shown separately, D10) |
 | `staffSeasonDashboardSchema` | `variant: "SEASON_STAFF"`, `scope` (`"season" \| "groups"`), `season`, `groups` (`{ id, name }[]`, empty for `"season"` scope), `progress`, `nextSession` (nullable), `cohort`, `submissions`, `quizzes` |
@@ -482,26 +482,26 @@ is chosen by `navFor(user)`'s audience rule: `role` plus `graduationYear`.
 The branch components live in `apps/mobile/src/components/dashboard/`
 (`SuperDashboard`, `SeasonStaffDashboard`, `MentorDashboard`,
 `StudentDashboard`, `AlumniDashboard`, `UpcomingEventsCard`).
-`dashboard.tsx` becomes a switch and keeps Plan 9's `NotificationBell`. Plan 1's
+`dashboard.tsx` becomes a switch and keeps Plan 13's `NotificationBell`. Plan 1's
 `AssignmentsSummary` is **absorbed** into `StudentDashboard`, since its counts
 now come from the server (D15).
 
 | v1 page(s) | v2 route | Exists? | Roles | Reads | Notes |
 |---|---|---|---|---|---|
 | `super/dashboard` | `/dashboard`, SUPER branch | route exists | SUPER | `/reports/organisation`, `/events?upcoming=true&limit=4` | Tiles: Students (not graduated) → `/students`; Alumni → `/students/alumni`; Seasons (`seasons.length`) → `/seasons`; Upcoming events (`total`) → `/events`. Shares the cache with `/reports` |
-| `admin/dashboard` | `/dashboard`, ADMIN branch | route exists | ADMIN | `useCurrentSeasonId` → `/me/dashboard?seasonId`, `/events…` | Hero: season title, `progress`, `meanAttendancePct` (neutral ring, D2). Tiles: students → `/students`, progress, quizzes pending → `/quizzes`. Next session → `/session/[id]` (Plan 4). At-risk card ("N of M") → `/student/[id]` (Plan 5). Review counts → `/submissions` (Plan 2). Quiz panel when `total > 0`. **No full roster** (D6). Empty: "No season yet" when `useCurrentSeasonId` is null |
+| `admin/dashboard` | `/dashboard`, ADMIN branch | route exists | ADMIN | `useCurrentSeasonId` → `/me/dashboard?seasonId`, `/events…` | Hero: season title, `progress`, `meanAttendancePct` (neutral ring, D2). Tiles: students → `/students`, progress, quizzes pending → `/quizzes`. Next session → `/session/[id]` (Plan 4). At-risk card ("N of M") → `/student/[id]` (Plan 7). Review counts → `/submissions` (Plan 2). Quiz panel when `total > 0`. **No full roster** (D6). Empty: "No season yet" when `useCurrentSeasonId` is null |
 | `leader/dashboard` | `/dashboard`, LEADER branch | route exists | LEADER | same | Heading lists `groups[].name` (all groups in that season, D7). "Your students" at-risk card. "View all" → `/groups` |
 | `mentor/dashboard` | `/dashboard`, MENTOR branch | route exists | MENTOR | `/reports/engagement`, `/me/dashboard`, `/events…` | Card titled **"At risk"** (D17), "10 of N" with `atRiskTotal`, empty "Nobody at risk" with copy naming *either* component under 60 %. Activity feed: merged and time-ordered, rows → `/student/[id]` and `/submission/[publicId]` (Plan 2; fixes R55). **No quick links**: they are tabs in v2 |
-| `alumni/dashboard` | `/dashboard`, ALUMNI branch | route exists | alumnus | `/me`, `/events…` | Greeting from `user.name` via one `firstName` formatter in `src/lib/format.ts`; "Class of {graduationYear}" from `scopes`; "View my history" → `/history` (Plan 14) |
-| `student/dashboard` | `/dashboard`, STUDENT branch | route exists | STUDENT | `/me/dashboard`, `/me/attendance`, `/events…` | Progress ring ("Session N of M"); tiles: **"Absence budget left"** (D14) → `/attendance` (Plan 14), streak, outstanding → `/assignments`; late banner; next/current session → `/session/[id]` with "Join"/"Watch" per `isInProgress` (D13); due soon → `/assignment/[id]` (Plan 1). Not-enrolled → `EmptyState` + "Complete your profile" → `/profile` (Plan 14) |
-| `UpcomingEventsCard` (×6) | shared component | **new** | all | `/events?upcoming=true&limit=4` | Rows → `/event/[id]` (Plan 10) or the external `url`. **Renders an `EmptyState`, not nothing** (R10; spec 15 §9) |
+| `alumni/dashboard` | `/dashboard`, ALUMNI branch | route exists | alumnus | `/me`, `/events…` | Greeting from `user.name` via one `firstName` formatter in `src/lib/format.ts`; "Class of {graduationYear}" from `scopes`; "View my history" → `/history` (Plan 11) |
+| `student/dashboard` | `/dashboard`, STUDENT branch | route exists | STUDENT | `/me/dashboard`, `/me/attendance`, `/events…` | Progress ring ("Session N of M"); tiles: **"Absence budget left"** (D14) → `/attendance` (Plan 11), streak, outstanding → `/assignments`; late banner; next/current session → `/session/[id]` with "Join"/"Watch" per `isInProgress` (D13); due soon → `/assignment/[id]` (Plan 1). Not-enrolled → `EmptyState` + "Complete your profile" → `/profile` (Plan 11) |
+| `UpcomingEventsCard` (×6) | shared component | **new** | all | `/events?upcoming=true&limit=4` | Rows → `/event/[id]` (Plan 14) or the external `url`. **Renders an `EmptyState`, not nothing** (R10; spec 15 §9) |
 
 **Detail routes this domain links to.** None is created here. Each must exist
 first, because typed routes reject an `href` to a missing file:
 `session/[id]/index.tsx` (Plan 4, directory form per rulings X7),
-`student/[id].tsx` (Plan 5), `assignment/[id].tsx` (Plan 1),
-`submission/[publicId].tsx` (Plan 2), `event/[id].tsx` (Plan 10),
-`/attendance`, `/history` and `/profile` content (Plan 14). Plan 18 runs after
+`student/[id].tsx` (Plan 7), `assignment/[id].tsx` (Plan 1),
+`submission/[publicId].tsx` (Plan 2), `event/[id].tsx` (Plan 14),
+`/attendance`, `/history` and `/profile` content (Plan 11). Plan 16 runs after
 all of them in the execution order, so it can link to every one. If any is
 missing at implementation time, stop. Do not work around it with `as Href`.
 
@@ -536,8 +536,8 @@ serves, and reuse for everything that already exists (§7).**
 ### D2 — The fourth at-risk definition and the 70/85 colour tiers *(needs ruling)*
 
 R30 and R31 add a fourth at-risk rule (attendance < 70) and a second tier
-scale (70/85) to the three that spec 09 D7 already found. Plan 8 ruled one
-definition (`isAtRisk`), and Plan 11 D-17.2 made the reports band agree with
+scale (70/85) to the three that spec 09 D7 already found. Plan 12 ruled one
+definition (`isAtRisk`), and Plan 15 D-17.2 made the reports band agree with
 it.
 **Ruling: the admin and leader callout becomes the `isAtRisk` preview. The
 70/85 tiers are dropped: the ring and the rows render neutral, and the only
@@ -550,12 +550,12 @@ dashboard never showed.
 ### D3 — Admin and leader attendance % changes value
 
 v1 divides by every past session (R25) and can exceed 100 (R26). v2 takes
-`attendancePct` from Plan 8's engagement row. Its denominator starts at
-`SeasonEnrollment.enrolledAt` (Plan 8 ledger #13) and it counts only past
+`attendancePct` from Plan 12's engagement row. Its denominator starts at
+`SeasonEnrollment.enrolledAt` (Plan 12 ledger #13) and it counts only past
 sessions.
 **Ruling: adopt it. A mid-season joiner's figure rises, and no figure exceeds
-100.** Record this in the Plan 18 divergence ledger. It is the same divergence
-Plan 8 already accepted, now visible on a second screen.
+100.** Record this in the Plan 16 divergence ledger. It is the same divergence
+Plan 12 already accepted, now visible on a second screen.
 
 ### D4 — Per-student "pending" violates C5
 
@@ -563,23 +563,23 @@ R27 charges students for assignments their group was never given.
 **Ruling: the dashboard no longer shows per-student pending.** The at-risk
 preview carries `submissionsCompleted` / `submissionsExpected` from the
 engagement row, rendered as "N of M submitted", so there is no subtraction on
-the client and no fourth arithmetic. As in Plan 11 D-17.1, this keeps its
+the client and no fourth arithmetic. As in Plan 15 D-17.1, this keeps its
 denominator through to the counts: the figure is *assigned to that student*.
 
 ### D5 — Mean attendance counts "no data" as 0 %
 
 R29 shows a red 0 % on a season's first day. **Ruling: `meanAttendancePct` is
 the mean over students with `attendanceTotal > 0`, and `null` (rendered "—")
-when there are none.** This matches the guard Plan 8 put in `isAtRisk` for the
+when there are none.** This matches the guard Plan 12 put in `isAtRisk` for the
 same reason (spec 09 R56).
 
 ### D6 — No full roster on the mobile Home *(needs ruling)*
 
 v1 renders every student in the season, unpaged (R35). On a phone that buries
-the at-risk card under 150 rows, and it duplicates `/students` (Plan 5) and
+the at-risk card under 150 rows, and it duplicates `/students` (Plan 7) and
 `/groups` (Plan 2).
 **Ruling: show the at-risk preview plus a "View all" link.** If product wants
-the roster back, it is `GET /seasons/:id/engagement` (Plan 8), consumed as-is.
+the roster back, it is `GET /seasons/:id/engagement` (Plan 12), consumed as-is.
 Its rows already carry everything the v1 roster showed, so no new endpoint is
 needed.
 
@@ -596,8 +596,8 @@ one season at a time, which is consistent with every other staff screen.
 ### D8 — The admin roster population changes
 
 R20 reads `StudentProfile.activeSeasonId`. **Ruling: ACTIVE `SeasonEnrollment`
-(C9).** This also makes `studentCount` agree with Plan 6's quiz `studentCount`
-and with Plan 11's cohort. The v1 dashboard disagreed with both.
+(C9).** This also makes `studentCount` agree with Plan 8's quiz `studentCount`
+and with Plan 15's cohort. The v1 dashboard disagreed with both.
 
 ### D9 — `useCurrentSeasonId` does not implement R18's ordering *(needs ruling, affects Plan 4)*
 
@@ -611,10 +611,10 @@ latest-starting one.
 choosing.** Do not re-resolve the season inside `/me/dashboard`; rulings X8
 make the hook the single source.
 
-### D10 — Quiz "pending" uses Plan 6's definition, and drafts leave the count
+### D10 — Quiz "pending" uses Plan 8's definition, and drafts leave the count
 
 R32 never reads `QuizAttempt`, does not narrow grades to the roster, and
-counts drafts. **Ruling: Plan 6's per-kind `gradedCount` / `studentCount`
+counts drafts. **Ruling: Plan 8's per-kind `gradedCount` / `studentCount`
 over `visibleStudentIdsForQuiz`, with unpublished ONLINE quizzes reported as
 `drafts` rather than "pending".** ONLINE quizzes stop being permanently
 pending, and that is the intended behaviour, not a regression.
@@ -649,7 +649,7 @@ R69 shows *remaining* budget, under a label that reads as *used*, and inherits
 C3's `lateMinutes` correction (values change once v2 writes lateness from
 `startsAt`). **Ruling: consume `budgetPct` from `GET /me/attendance`; render
 `max(0, 100 − budgetPct)` server-side as a field (`remainingPct`, added to
-domain 4's `attendanceBudgetSchema` by Plan 14) under the label "Absence
+domain 4's `attendanceBudgetSchema` by Plan 11) under the label "Absence
 budget left".** No inversion on the client. Spec 09 R68 should be corrected to
 say that the dashboard's label already reads "Absence budget" and that only
 the inversion and the variable name are wrong.
@@ -708,17 +708,17 @@ recommendation is to exclude graduated students, matching the at-risk cohort.
 
 ### D19 — Events card: alumni, mentors, window, empty state, SUPER tile
 
-- R6 (alumni never see `ALUMNI_ONLY`) is fixed by Plan 10's
+- R6 (alumni never see `ALUMNI_ONLY`) is fixed by Plan 14's
   `eventVisibilityFilter` (`isAlumnus(user) || role !== "STUDENT"`).
-- R7: Plan 10's `viewerSeasonIds` still gives a **MENTOR no `SEASON` events**.
-  **Recommend Plan 10 treat MENTOR like SUPER for the `SEASON` branch**, which
+- R7: Plan 14's `viewerSeasonIds` still gives a **MENTOR no `SEASON` events**.
+  **Recommend Plan 14 treat MENTOR like SUPER for the `SEASON` branch**, which
   is consistent with `canReadAllStudents`. Otherwise the mentor's card is
   silently thinner than every other staff card.
 - R8/R9: the window and the cap move server-side (`?upcoming=true&limit=4`, §7).
 - R10: an empty state replaces "render nothing".
 - R15: **the SUPER tile reads `total` from the same response**, so the tile and
   the card cannot disagree. This is a small divergence: v1 counted every future
-  event with no upper bound, while Plan 10's default window ends at
+  event with no upper bound, while Plan 14's default window ends at
   now + 365 days. State the window in the tile's caption.
 
 ### D20 — SUPER tile labels
@@ -756,31 +756,31 @@ thing the device clock is good for.
 
 R44. v1 refreshed one dashboard from one action. **Ruling: the mutation list
 in §7 invalidates `queryKeys.dashboard.all`.** Each plan that owns one of
-those mutations already exists and runs earlier in the order, so Plan 18 adds
+those mutations already exists and runs earlier in the order, so Plan 16 adds
 the invalidation calls to their hooks in one task, and lists each file.
 
 ### D25 — Found while reading the plans, outside this domain's scope
 
-1. Plan 8 Task 4 mounts `studentEngagementRouter` and `seasonEngagementRouter`
+1. Plan 12 Task 4 mounts `studentEngagementRouter` and `seasonEngagementRouter`
    with a router-wide `use(requireAuth)` on the shared `/api/v1/students` and
    `/api/v1/seasons` prefixes. That violates rulings X5: unknown paths under
    those prefixes would answer 401 instead of `not_found` 404. This domain
    consumes those routers, so flag it to whoever applies the plan-fix pass to
-   Plan 8.
-2. Plan 8's `EngagementRow` carries `atRisk`, while Plan 11's report row drops
+   Plan 12.
+2. Plan 12's `EngagementRow` carries `atRisk`, while Plan 15's report row drops
    it in favour of `band`. Both evaluate `isAtRisk`, so they cannot disagree,
-   and the dashboard reads `atRisk` from Plan 8's row. No action is needed
+   and the dashboard reads `atRisk` from Plan 12's row. No action is needed
    beyond noting it.
-3. `dashboard.tsx` is edited by Plan 1 Task 5 and Plan 9 Task 8, and was
-   deliberately left alone by Plan 10 to avoid a third editor. Plan 18
+3. `dashboard.tsx` is edited by Plan 1 Task 5 and Plan 13 Task 8, and was
+   deliberately left alone by Plan 14 to avoid a third editor. Plan 16
    restructures the file, so its first task must preserve `NotificationBell`
-   and retire `AssignmentsSummary` explicitly (D15). Plan 18 must not drop
+   and retire `AssignmentsSummary` explicitly (D15). Plan 16 must not drop
    either one silently.
 
 ### Deferred to cutover (C1)
 
 None of this domain's fixes needs a column. Two inherited items show up on
-these screens and should be named in Plan 18's report:
+these screens and should be named in Plan 16's report:
 
 - The C3 `lateMinutes` backfill and threshold. These move the student's budget
   tile.

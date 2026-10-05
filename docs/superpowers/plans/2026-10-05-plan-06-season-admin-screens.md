@@ -1,4 +1,4 @@
-# Plan 16 — Season, Session & Group Admin Screens Implementation Plan
+# Plan 6 — Season, Session & Group Admin Screens Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -15,9 +15,9 @@ This plan closes coverage-audit gaps G4, G5, G6, G7, G17, G18 (the quiz card), G
 
 **Architecture:** One shared-contract task, then three backend tasks that the coordinator runs one after another, then a mobile foundation task, then four parallel mobile streams.
 
-*Backend.* Every new endpoint reuses an existing gate in `lib/rbac.ts` or `lib/permissions.ts`. Recurrence siblings resolve through Plan 3's season-fenced `resolveSeriesTargets` (ruling C10). Group membership writes go through one function, `assignStudentsToGroups`. Plan 12's importer later calls that same function and adds no second copy. Wall-clock values follow ruling X13 / C2:
+*Backend.* Every new endpoint reuses an existing gate in `lib/rbac.ts` or `lib/permissions.ts`. Recurrence siblings resolve through Plan 3's season-fenced `resolveSeriesTargets` (ruling C10). Group membership writes go through one function, `assignStudentsToGroups`. Plan 17's importer later calls that same function and adds no second copy. Wall-clock values follow ruling X13 / C2:
 - the server derives `dayKey` and `startTime` on every session row and on the session detail;
-- session writes may send org wall-clock fields `startDay` (`YYYY-MM-DD`) and `startTime` (`HH:mm`), split the same way as Plan 15's `dueDay`/`dueTime`. The server converts them to an instant in `ORG_TIMEZONE`.
+- session writes may send org wall-clock fields `startDay` (`YYYY-MM-DD`) and `startTime` (`HH:mm`), split the same way as Plan 5's `dueDay`/`dueTime`. The server converts them to an instant in `ORG_TIMEZONE`.
 
 The mobile app therefore never reads or composes a time in the device zone.
 
@@ -30,7 +30,7 @@ The mobile app therefore never reads or composes a time in the device zone.
 - `03-sessions.md` — §7 `GET /sessions`, `GET /sessions/:id/series`; §9 calendar role table; §10 items 1, 2, 3, 9, 10.
 - `04-attendance.md` — §7 `check-in-regenerate`, `GET /sessions/:id/check-in`; R40; §9 row 2.
 - `05-groups.md` — §7, §8, §9; §10 items 1, 5, 6, 7.
-- `16-imports.md` §9, only for the route Plan 12 hangs off the roster.
+- `16-imports.md` §9, only for the route Plan 17 hangs off the roster.
 - `_DECISIONS.md` — C1, C2, C4, C7, C8, C9, C10, C12.
 
 v1 sources:
@@ -45,7 +45,7 @@ v1 sources:
 - `app/{super,leader,admin}/calendar/page.tsx`
 - `app/leader/sessions/[id]/page.tsx`
 
-**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → **16** → 5 → …):
+**Depends on** (execution order 1 → 2 → 3 → 4 → 5 → **6** → 7 → …):
 - **Plan 1:** `DETAIL_ROUTE_NAMES`, `ALL_ROUTE_NAMES`, `routeNameForHref` exported from `app/(app)/_layout.tsx`; `makeSession`/`makeUser`/`makeScopes`; `listRouteNames`/`ambiguousRouteSiblings`; `/more`.
 - **Plan 2:** `groups.tsx`, `group/[id].tsx`, `use-groups.ts` (`useMyGroups`, `useGroupDetail`, `MY_GROUPS_ROLES`), `queryKeys.groups`, `session/[id]/attendance.tsx`.
 - **Plan 3:**
@@ -59,22 +59,22 @@ v1 sources:
   - `sessionDetailSchema`, `checkInOpenResponseSchema`, `checkInCloseResponseSchema`, `seasonRefResponseSchema`, `seasonDeletedResponseSchema`, `apiErrorBodySchema`;
   - `useSeasons`, `useSeasonDetail`, `useCurrentSeasonId`, `pickCurrentSeasonId`, `apiErrorMessage`, `formatDayKey`;
   - `use-season-writes.ts`, `use-session-detail.ts`, `calendar.tsx`, `seasons.tsx`, `season.tsx`, `session/[id]/index.tsx`.
-- **Plan 15** (assignment authoring):
+- **Plan 5** (assignment authoring):
   - shared `isoDaySchema` / `wallTimeSchema` (`packages/shared/src/org-time.ts`);
   - backend `orgWallTime(date)` / `orgWallClockToInstant(day, time | null)` (`lib/org-time.ts`);
   - mobile `useSeasonGroups(seasonId)` (`use-groups.ts`), `queryKeys.groups.bySeason`, `formatWallTime` (`format.ts`);
-  - Plan 15's own `POST /seasons/:id/assignments` handler in `routes/seasons.ts`, which Task 2's X5 conversion covers along with every other handler.
+  - Plan 5's own `POST /seasons/:id/assignments` handler in `routes/seasons.ts`, which Task 2's X5 conversion covers along with every other handler.
 
   This plan reuses every one of those names and redefines none. It only *reads* `Assignment` / `AssignmentTarget` rows, to warn about them before a group is deleted.
 
 **Consumed later — stable names this plan guarantees:**
-- **Plan 12:**
+- **Plan 17:**
   - backend: `assignStudentsToGroups(tx, seasonId, assignments)` and `GroupOutsideSeasonError` in `apps/backend/src/lib/queries/groups.ts`;
-  - mobile: route files `app/(app)/seasons/[code]/index.tsx` (href `/seasons/[code]`) and `app/(app)/seasons/[code]/roster/index.tsx` (href `/seasons/[code]/roster`), so Plan 12 adds `seasons/[code]/roster/import.tsx` beside the roster;
+  - mobile: route files `app/(app)/seasons/[code]/index.tsx` (href `/seasons/[code]`) and `app/(app)/seasons/[code]/roster/index.tsx` (href `/seasons/[code]/roster`), so Plan 17 adds `seasons/[code]/roster/import.tsx` beside the roster;
   - hooks and keys: `useSeasonByCode`, `useSeasonRoster`, `queryKeys.groups.roster`.
-- **Plan 10:** its calendar merge targets the restructured `calendar.tsx` (Task 9) and its `groupSessionsByDay` helper. Session rows now carry `startTime` (org `HH:mm`), so Plan 10 buckets sessions by `dayKey` and needs no device-zone formatting.
-- **Plan 6:** the session quiz card (`SessionQuizzesCard`) has no navigation; Plan 6 wires a row press to its quiz routes. Plan 6's `quizKindSchema` may replace the inline enum in `sessionQuizItemSchema`.
-- **Plan 18:** it can link a season to `/seasons/[code]` and use `useSeasonByCode`, `useStaffSeasonSelection`, `SeasonSwitcher` and `useSessionRange`.
+- **Plan 14:** its calendar merge targets the restructured `calendar.tsx` (Task 9) and its `groupSessionsByDay` helper. Session rows now carry `startTime` (org `HH:mm`), so Plan 14 buckets sessions by `dayKey` and needs no device-zone formatting.
+- **Plan 8:** the session quiz card (`SessionQuizzesCard`) has no navigation; Plan 8 wires a row press to its quiz routes. Plan 8's `quizKindSchema` may replace the inline enum in `sessionQuizItemSchema`.
+- **Plan 16:** it can link a season to `/seasons/[code]` and use `useSeasonByCode`, `useStaffSeasonSelection`, `SeasonSwitcher` and `useSessionRange`.
 
 ## Global Constraints
 
@@ -83,14 +83,14 @@ v1 sources:
 - **Envelope:** `{ data }` / `{ error: { code, message } }` via `apiOk`/`apiError`.
 - **Auth mounting (X5):**
   - Every route this plan adds attaches `requireAuth` the way its router already does.
-  - Task 2 **converts `seasonsRouter` to per-route `requireAuth`**, because `/api/v1/seasons` is a shared prefix (Plans 8, 11 and 12 mount routers on it).
+  - Task 2 **converts `seasonsRouter` to per-route `requireAuth`**, because `/api/v1/seasons` is a shared prefix (Plans 12, 15 and 17 mount routers on it).
   - `sessionsRouter` and `groupsRouter` own their prefixes and keep router-level auth.
 - **Client parsing:** every response is parsed with a shared Zod schema on the client, mutations included (X10). There is no `as T` on an API response.
 - **Org timezone (X13 / C2):**
   - The server derives every org day and wall-clock time (`dayKey`, `startTime`, `fromDayKey`, `toDayKey`, `expiresAtTime`).
   - Mobile renders these with `formatDayKey` or verbatim, and never calls `formatDate` / `formatSessionTime` on a session instant in code this plan writes.
-  - Session writes from mobile send `startDay: "YYYY-MM-DD"` and `startTime: "HH:mm"`, validated by Plan 15's `isoDaySchema` / `wallTimeSchema`.
-  - Mobile renders an org time with Plan 15's `formatWallTime`.
+  - Session writes from mobile send `startDay: "YYYY-MM-DD"` and `startTime: "HH:mm"`, validated by Plan 5's `isoDaySchema` / `wallTimeSchema`.
+  - Mobile renders an org time with Plan 5's `formatWallTime`.
 - **Membership (C9):** season membership resolves through `SeasonEnrollment`, never `GroupStudent`. `GroupStudent` is written only as a mirror.
 - **Mobile conventions:**
   - relative imports; Zod-parse everything; `enabled` plus a guarded `refetch`;
@@ -104,7 +104,7 @@ v1 sources:
 ## Decisions this plan makes (read before implementing)
 
 - **D-16.1 — Routes.**
-  - *Season routes.* Spec 02 §9 addresses seasons by code at `/seasons/[code]`. `seasons.tsx` already exists as the SUPER tab. Its new children mean it moves to `seasons/index.tsx`, the precedent `students/index.tsx` already set, and `routeNameForHref` learns `seasons` as a directory href. New season routes are `seasons/[code]/index.tsx`, `seasons/[code]/edit.tsx` and `seasons/[code]/roster/index.tsx`. The roster uses the directory form because Plan 12 adds `roster/import.tsx`.
+  - *Season routes.* Spec 02 §9 addresses seasons by code at `/seasons/[code]`. `seasons.tsx` already exists as the SUPER tab. Its new children mean it moves to `seasons/index.tsx`, the precedent `students/index.tsx` already set, and `routeNameForHref` learns `seasons` as a directory href. New season routes are `seasons/[code]/index.tsx`, `seasons/[code]/edit.tsx` and `seasons/[code]/roster/index.tsx`. The roster uses the directory form because Plan 17 adds `roster/import.tsx`.
   - *Group routes.* Plan 2's `group/[id].tsx` moves to `group/[id]/index.tsx` and gains `group/[id]/edit.tsx`. Group creation is `group/new.tsx?seasonId=`.
   - *Session routes.* Session creation is `session/new.tsx?seasonId=`, and session edit is `session/[id]/edit.tsx` (Plan 4 already uses the directory form there).
   - *Why the singular `group`/`session` prefixes stay.* They are Plan 2/4's detail namespaces. Spec 05/03's `/groups/[id]`, `/sessions/[id]` spellings would collide with the `groups.tsx` tab file.
@@ -112,9 +112,9 @@ v1 sources:
 - **D-16.3 — Season detail gains `absenceBudgetMinutes`, `absenceWeightMinutes`, `canAdminister`** (C4: the server says whether this caller administers the season). SUPER's PATCH is a full body whose budget fields *default* to 180/90 (Plan 3), so an edit form that did not carry the stored values would silently reset them. The fields are therefore required on the contract.
 - **D-16.4 — Status is a free four-way selector, v1 R17.** The SUPER edit screen shows DRAFT / ACTIVE / COMPLETED / ARCHIVED as one control, the same as v1's free `Select`. v2 adds no state machine, because v1 has none and spec 02 D11 says not to invent one here. DRAFT→ACTIVE→ARCHIVED is the expected path, and the control makes each step one tap.
 - **D-16.5 — Program filter is client-side** (G20). This diverges from spec 02 §7's `?program=`. The role-scoped list is tens of rows, and it is already loaded for the year grouping. The filter chips need the full program set anyway. A server parameter would cost a second request and add nothing. Program matching is exact string equality (v1 R44).
-- **D-16.6 — Session wall clock, using Plan 15's split.**
-  - `createSessionRequestSchema` and `updateSessionRequestSchema` accept **exactly one of** two forms. One is `startsAt`, an instant: Plan 3's original field, still accepted. The other is the pair `startDay` (`isoDaySchema`) + `startTime` (`wallTimeSchema`), which mirrors Plan 15's `dueDay`/`dueTime`.
-  - The server converts the pair with Plan 15's `orgWallClockToInstant`.
+- **D-16.6 — Session wall clock, using Plan 5's split.**
+  - `createSessionRequestSchema` and `updateSessionRequestSchema` accept **exactly one of** two forms. One is `startsAt`, an instant: Plan 3's original field, still accepted. The other is the pair `startDay` (`isoDaySchema`) + `startTime` (`wallTimeSchema`), which mirrors Plan 5's `dueDay`/`dueTime`.
+  - The server converts the pair with Plan 5's `orgWallClockToInstant`.
   - Session list rows gain `startTime` (`HH:mm` on the org clock). The session detail gains `dayKey` and `startTime`.
   - The edit form is pre-filled from those two fields. Nothing on the device converts zones.
 - **D-16.7 — `GET /api/v1/sessions` is windowed and role-scoped** (G17, spec 03 §7, §10 item 10).
@@ -134,24 +134,24 @@ v1 sources:
   - Regenerate leaves both timestamps alone (v1 R40). A code shown on screen stops working, so the console asks for a second press while check-in is open (spec 03 §10 item 9).
   - Plan 4's console now reads its token from this narrow endpoint instead of the season-wide session list.
 - **D-16.10 — Session quiz card through `GET /sessions/:id/quizzes`** (G18 rest).
-  - Plan 6's `GET /quizzes?sessionId=` runs **after** this plan, so the card cannot depend on it. This narrow read ports v1's `listQuizzesForSession` (`quiz-query.ts:141-170`): ordered `createdAt asc`, gated by `attendanceScopeFor` (season admins plus leaders in the season — v1's admin and leader session pages).
+  - Plan 8's `GET /quizzes?sessionId=` runs **after** this plan, so the card cannot depend on it. This narrow read ports v1's `listQuizzesForSession` (`quiz-query.ts:141-170`): ordered `createdAt asc`, gated by `attendanceScopeFor` (season admins plus leaders in the season — v1's admin and leader session pages).
   - The card renders only when there is at least one quiz (v1 leader page).
-  - Rows are not pressable in this plan: Plan 6 (Task 11b) adds the press, opening `/quiz/[id]`, because typed routes forbid linking a route that does not exist yet.
+  - Rows are not pressable in this plan: Plan 8 (Task 11b) adds the press, opening `/quiz/[id]`, because typed routes forbid linking a route that does not exist yet.
 - **D-16.11 — Roster.**
   - *The endpoint.* `GET /seasons/:id/roster` returns the season's **ACTIVE enrolments of live STUDENT users** (C9; v1 used `activeSeasonId`, R81). Each row carries the per-season group from `SeasonEnrollment.groupId`.
-  - *Cross-season membership.* Each row also carries `otherSeasonGroup`, the student's `GroupStudent` membership in **another** season's group (spec 05 §8's `groupSeasonCode`, fixing R82's lie). That membership is what an assignment here will remove, because `GroupStudent.studentUserId` is globally unique (a Plan 13 item).
+  - *Cross-season membership.* Each row also carries `otherSeasonGroup`, the student's `GroupStudent` membership in **another** season's group (spec 05 §8's `groupSeasonCode`, fixing R82's lie). That membership is what an assignment here will remove, because `GroupStudent.studentUserId` is globally unique (a Plan 18 item).
   - *No pagination* (divergence from spec 05 §7). The group form must know a group's full membership to send its `studentIds`, and a season is hundreds of rows at most. The screen filters client-side with a search field.
 - **D-16.12 — `PUT /seasons/:id/group-assignments`.**
   - *Request.* `{ assignments: [{ studentUserId, groupId | null }] }`: at most `GROUP_ASSIGNMENTS_MAX` (500, spec 05 §8), unique students.
-  - *Write.* Non-null entries go through **`assignStudentsToGroups(tx, seasonId, assignments)`**, with the exact signature and the two documented divergences Plan 12 relies on: (1) eligibility is an **ACTIVE** `SeasonEnrollment` of a live STUDENT, never `activeSeasonId`; (2) it returns what it **applied**. Null entries go through `unassignStudentsFromGroups`, which deletes only **this season's** `GroupStudent` row and nulls `SeasonEnrollment.groupId`.
+  - *Write.* Non-null entries go through **`assignStudentsToGroups(tx, seasonId, assignments)`**, with the exact signature and the two documented divergences Plan 17 relies on: (1) eligibility is an **ACTIVE** `SeasonEnrollment` of a live STUDENT, never `activeSeasonId`; (2) it returns what it **applied**. Null entries go through `unassignStudentsFromGroups`, which deletes only **this season's** `GroupStudent` row and nulls `SeasonEnrollment.groupId`.
   - *Failure.* Any group outside the season refuses the whole batch with `400 group_outside_season` (`GroupOutsideSeasonError`). Everything runs in one transaction.
-  - *Response.* `{ assigned, unassigned, skippedStudentIds }`. That is Plan 12's `skippedStudentIds` form, not spec 05's `skipped: [{studentUserId, reason}]`, because the two writers must report alike.
+  - *Response.* `{ assigned, unassigned, skippedStudentIds }`. That is Plan 17's `skippedStudentIds` form, not spec 05's `skipped: [{studentUserId, reason}]`, because the two writers must report alike.
 - **D-16.13 — Group delete is designed, not ported** (C12; v1's `deleteGroupAction` has no caller, R46).
   - `GET /groups/:id/impact` returns `{ studentCount, leaderCount, soleTargetAssignments }`.
   - `DELETE /groups/:id` **refuses with `409 group_has_sole_targets`** while any live, non-all-groups assignment targets only this group. That is spec 05 §10 item 5's recommendation: otherwise the assignment becomes visible to nobody (R44).
   - Otherwise it deletes the group, leaders, memberships and target rows, and nulls **every** `SeasonEnrollment.groupId` pointing at the group, in one interactive transaction that re-checks the targets.
   - It returns `{ deleted: true, orphanedStudentIds }`. Spec 05's `untargetedAssignmentIds` is omitted because blocking makes it always empty.
-- **D-16.14 — Leader picker: `GET /api/v1/groups/leader-options`.** It is an interim read: live LEADER users, `{ id, name, email }`. Gate: new `isAdminOfAnySeason` predicate in `lib/rbac.ts` (C7: claims only through predicates). Spec 05 §7 wants the domain-11 `GET /users?role=` endpoint, which arrives with Plan 7, *after* this plan. Plan 7 may repoint `useLeaderOptions` to it and delete this route.
+- **D-16.14 — Leader picker: `GET /api/v1/groups/leader-options`.** It is an interim read: live LEADER users, `{ id, name, email }`. Gate: new `isAdminOfAnySeason` predicate in `lib/rbac.ts` (C7: claims only through predicates). Spec 05 §7 wants the domain-11 `GET /users?role=` endpoint, which arrives with Plan 9, *after* this plan. Plan 9 may repoint `useLeaderOptions` to it and delete this route.
 - **D-16.15 — Group detail gains `canManage`** (`isAdminOfSeason`, C4), which drives the Edit button. Plan 2's two fixtures gain the field.
 - **D-16.16 — `/groups` admin branch and calendar ADMIN branch share one season switcher.** `useStaffSeasonSelection` defaults to `pickCurrentSeasonId` (Plan 4, spec 19 D9) and lets the user pick any season from `useSeasons`. That replaces v1's redirects (R86, R91). SUPER uses the same branch on `/groups` (v1 rejected SUPER there, R92; not ported).
 - **D-16.17 — MENTOR on `/calendar` gets "not available for your role"** (spec 03 §9: not in the mentor nav, so it needs a graceful state).
@@ -188,14 +188,14 @@ Task 10 (coordinator)           closing gate
 - Test: `packages/shared/src/__tests__/season-admin-contracts.test.ts`
 
 **Interfaces:**
-- Consumes: Plan 15's `isoDaySchema`, `wallTimeSchema` (`./org-time`) and backend `orgWallClockToInstant`; Plan 3's `sessionWriteBase`, `recurrenceScopeSchema`, `seasonDetailSchema`; Plan 4's `sessionDetailSchema`, `sessionListItemSchema.dayKey`; Plan 2's `groupDetailSchema`.
+- Consumes: Plan 5's `isoDaySchema`, `wallTimeSchema` (`./org-time`) and backend `orgWallClockToInstant`; Plan 3's `sessionWriteBase`, `recurrenceScopeSchema`, `seasonDetailSchema`; Plan 4's `sessionDetailSchema`, `sessionListItemSchema.dayKey`; Plan 2's `groupDetailSchema`.
 - Produces (exact names):
   - **Session contract changes:** `sessionListItemSchema.startTime`; `sessionDetailSchema.dayKey` and `.startTime`; `createSessionRequestSchema` / `updateSessionRequestSchema` accept `startDay` + `startTime`; `CreateSessionInput` and `UpdateSessionInput` (`z.input`).
   - **Session write responses:** `sessionCreatedResponseSchema`, `sessionUpdatedResponseSchema`, `sessionDeletedResponseSchema`.
   - **Series and calendar range:** `sessionSeriesItemSchema` / `SessionSeriesItem`, `sessionSeriesResponseSchema` / `SessionSeries`; `SESSION_RANGE_DEFAULT_WEEKS`, `SESSION_RANGE_MAX_DAYS`, `sessionRangeQuerySchema`, `sessionRangeResponseSchema` / `SessionRange`.
   - **Check-in and quizzes:** `checkInStateValueSchema`, `checkInStateSchema` / `CheckInStateResponse`; `sessionQuizItemSchema` / `SessionQuizItem`.
   - **Season and group detail fields:** `seasonDetailSchema` gains `absenceBudgetMinutes`, `absenceWeightMinutes`, `canAdminister`; `groupDetailSchema` gains `canManage`.
-  - **Backend:** module-local `sessionStartFrom(body)` in `routes/sessions.ts`. It uses Plan 15's `orgWallClockToInstant` and defines no wall-clock helper of its own.
+  - **Backend:** module-local `sessionStartFrom(body)` in `routes/sessions.ts`. It uses Plan 5's `orgWallClockToInstant` and defines no wall-clock helper of its own.
   - **Group admin:** `groupRefResponseSchema`, `leaderOptionSchema` / `LeaderOption`, `groupImpactSchema` / `GroupImpact`, `groupDeleteResponseSchema`, `seasonRosterRowSchema` / `SeasonRosterRow`, `GROUP_ASSIGNMENTS_MAX`, `groupAssignmentsRequestSchema` / `GroupAssignmentsRequest`, `groupAssignmentsResponseSchema` / `GroupAssignmentsResult`.
 
 - [ ] **Step 1: Failing test**
@@ -240,7 +240,7 @@ describe("session start — exactly one of startsAt / (startDay + startTime) (D-
     expect(updateSessionRequestSchema.safeParse({ ...base, scope: "one" }).success).toBe(false);
   });
 
-  it("refuses half a wall-clock pair, and malformed halves (Plan 15's schemas)", () => {
+  it("refuses half a wall-clock pair, and malformed halves (Plan 5's schemas)", () => {
     expect(updateSessionRequestSchema.safeParse({ ...base, scope: "one", startDay: "2099-03-01" }).success).toBe(false);
     expect(
       updateSessionRequestSchema.safeParse({ ...base, scope: "one", startDay: "2099-02-31", startTime: "20:00" }).success,
@@ -340,7 +340,7 @@ Run: `cd packages/shared && pnpm exec jest src/__tests__/season-admin-contracts.
 
 - [ ] **Step 2: `session.ts`.** Make four changes.
 
-**(a)** Change the enums import area to also import Plan 15's wire schemas:
+**(a)** Change the enums import area to also import Plan 5's wire schemas:
 
 ```ts
 import { isoDaySchema, wallTimeSchema } from "./org-time";
@@ -368,7 +368,7 @@ In `sessionDetailSchema`, after `startsAt`, add:
   /** An instant (Plan 3). Send this OR startDay + startTime, never both. */
   startsAt: z.string().datetime({ offset: true }).optional(),
   /**
-   * Org wall-clock start (Plan 16 D-16.6) — the same day/time split as Plan
+   * Org wall-clock start (Plan 6 D-16.6) — the same day/time split as Plan
    * 15's dueDay/dueTime. The server composes the instant in ORG_TIMEZONE, so
    * a phone in another zone can never shift a session by entering "20:00".
    */
@@ -494,7 +494,7 @@ export type CheckInStateResponse = z.infer<typeof checkInStateSchema>;
 
 /**
  * A quiz linked to a session (v1 listQuizzesForSession). `kind` is inlined
- * because Plan 6, which owns quiz contracts, runs after this plan; Plan 6 may
+ * because Plan 8, which owns quiz contracts, runs after this plan; Plan 8 may
  * swap in its own quizKindSchema.
  */
 export const sessionQuizItemSchema = z.object({
@@ -571,7 +571,7 @@ export const seasonRosterRowSchema = z.object({
   /**
    * The student's current GroupStudent membership in ANOTHER season's group —
    * which assigning them here removes, because GroupStudent is globally
-   * unique (spec 05 R1/R82; a Plan 13 item).
+   * unique (spec 05 R1/R82; a Plan 18 item).
    */
   otherSeasonGroup: z.object({ groupName: z.string(), seasonCode: z.string() }).nullable(),
 });
@@ -596,7 +596,7 @@ export const groupAssignmentsRequestSchema = z.object({
 });
 export type GroupAssignmentsRequest = z.infer<typeof groupAssignmentsRequestSchema>;
 
-/** Counts of what was WRITTEN (spec 05 R57) — the same shape Plan 12's group importer reports. */
+/** Counts of what was WRITTEN (spec 05 R57) — the same shape Plan 17's group importer reports. */
 export const groupAssignmentsResponseSchema = z.object({
   assigned: z.number().int().nonnegative(),
   unassigned: z.number().int().nonnegative(),
@@ -607,14 +607,14 @@ export type GroupAssignmentsResult = z.infer<typeof groupAssignmentsResponseSche
 
 - [ ] **Step 5: Run the shared tests.** `cd packages/shared && pnpm exec jest` → PASS (the new file plus Plan 3's `write-schemas.test.ts`, unchanged and green).
 
-- [ ] **Step 6: Backend compile fix — `sessionStartFrom`.** Optional `startsAt` breaks Plan 3's two `new Date(body.startsAt)` sites. The backend must compile before Task 2 starts, so the conversion lands here. It uses Plan 15's `orgWallClockToInstant`; this plan adds no wall-clock helper of its own.
+- [ ] **Step 6: Backend compile fix — `sessionStartFrom`.** Optional `startsAt` breaks Plan 3's two `new Date(body.startsAt)` sites. The backend must compile before Task 2 starts, so the conversion lands here. It uses Plan 5's `orgWallClockToInstant`; this plan adds no wall-clock helper of its own.
 
 In `apps/backend/src/routes/sessions.ts`, add `orgWallClockToInstant` to the existing `../lib/org-time` import and add this helper above the routes:
 
 ```ts
 /**
- * A session write's start as an instant. Plan 16 D-16.6: the mobile form
- * sends org wall-clock fields (startDay + startTime — Plan 15's dueDay/dueTime
+ * A session write's start as an instant. Plan 6 D-16.6: the mobile form
+ * sends org wall-clock fields (startDay + startTime — Plan 5's dueDay/dueTime
  * split) and the conversion happens HERE, in ORG_TIMEZONE; the device never
  * composes an instant. The shared schema guarantees exactly one form is present.
  */
@@ -647,14 +647,14 @@ Mobile is expected to be red at this point: fixtures lack the new fields. Task 5
 - Create: `apps/backend/src/lib/queries/seasons.ts`
 - Modify: `apps/backend/src/lib/queries/groups.ts` (append only: `listSeasonRoster`, `GroupOutsideSeasonError`, `assignStudentsToGroups`, `unassignStudentsFromGroups`)
 - Modify: `apps/backend/src/docs/openapi.ts`
-- Test: `apps/backend/src/__tests__/integration/seasons-admin-routes.test.ts` (new), `apps/backend/src/__tests__/integration/roster-routes.test.ts` (new — the suite Plan 12 runs as `--testPathPattern roster`)
+- Test: `apps/backend/src/__tests__/integration/seasons-admin-routes.test.ts` (new), `apps/backend/src/__tests__/integration/roster-routes.test.ts` (new — the suite Plan 17 runs as `--testPathPattern roster`)
 
 **Interfaces:**
 - Consumes: Task 1's `seasonDetailSchema` fields, `groupAssignmentsRequestSchema`; existing `canAccessSeason`, `isAdminOfSeason`, `parseId`, `requireAuth`/`requireUser`.
 - Produces:
   - `loadSeasonDetail(user, id): Promise<SeasonDetailRow | null>` in `lib/queries/seasons.ts`;
   - `listSeasonRoster(seasonId): Promise<SeasonRosterRow[]>`;
-  - **`GroupOutsideSeasonError`**, **`assignStudentsToGroups(tx: Prisma.TransactionClient, seasonId: number, assignments: { studentUserId: number; groupId: number }[]): Promise<{ assigned: number; skippedStudentIds: number[] }>`** (Plan 12 consumes this exact signature);
+  - **`GroupOutsideSeasonError`**, **`assignStudentsToGroups(tx: Prisma.TransactionClient, seasonId: number, assignments: { studentUserId: number; groupId: number }[]): Promise<{ assigned: number; skippedStudentIds: number[] }>`** (Plan 17 consumes this exact signature);
   - `unassignStudentsFromGroups(tx, seasonId, studentIds: number[]): Promise<{ unassigned: number; skippedStudentIds: number[] }>`;
   - endpoints `GET /api/v1/seasons/by-code/:code`, `GET /api/v1/seasons/:id/roster`, `PUT /api/v1/seasons/:id/group-assignments`;
   - error code `group_outside_season` 400.
@@ -715,7 +715,7 @@ afterAll(async () => {
 describe("seasonsRouter mounting (ruling X5)", () => {
   it("answers an unknown anonymous path under /api/v1/seasons with not_found, not 401", async () => {
     // A router-level use(requireAuth) would answer 401 before the catch-all —
-    // and would do so for every router Plans 8, 11 and 12 mount on this prefix.
+    // and would do so for every router Plans 12, 15 and 17 mount on this prefix.
     const res = await request(app).get(`/api/v1/seasons/${seasonId}/space-v2-no-such-route`);
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("not_found");
@@ -945,7 +945,7 @@ describe("PUT /api/v1/seasons/:id/group-assignments (D-16.12)", () => {
     expect(w).toEqual({ groupId: null, status: "WITHDRAWN" });
   });
 
-  it("assigning a student who sits in another season's group moves their GroupStudent row (R1, Plan 13 item)", async () => {
+  it("assigning a student who sits in another season's group moves their GroupStudent row (R1, Plan 18 item)", async () => {
     const res = await request(app)
       .put(`/api/v1/seasons/${seasonId}/group-assignments`)
       .set("authorization", `Bearer ${adminToken}`)
@@ -1034,7 +1034,7 @@ If the counts differ, a handler is declared across several lines. Add `requireAu
 
 ```ts
 // requireAuth is attached per route (ruling X5): /api/v1/seasons is a shared
-// prefix — Plans 8, 11 and 12 mount their own routers on it — so a router-level
+// prefix — Plans 12, 15 and 17 mount their own routers on it — so a router-level
 // use(requireAuth) here would answer their requests, and every unknown path,
 // with 401 instead of the not_found envelope.
 ```
@@ -1146,7 +1146,7 @@ and add `import { loadSeasonDetail } from "../lib/queries/seasons";`.
 
 ```ts
 /**
- * Resolve a season code (spec 02 §7, Plan 16 D-16.2). The mobile app is
+ * Resolve a season code (spec 02 §7, Plan 6 D-16.2). The mobile app is
  * code-addressed (/seasons/[code]); the API stays canonical on id (spec 02
  * D8). Never overload /:id with codes — a numeric code is a legal slug.
  * Registered before every /:id/* route, or /by-code/roster would match
@@ -1260,7 +1260,7 @@ async function eligibleStudentIds(
 /**
  * Move a set of students into named groups of one season, without disturbing
  * anyone the caller did not name. The roster grid (PUT
- * /seasons/:id/group-assignments) and Plan 12's group importer both write
+ * /seasons/:id/group-assignments) and Plan 17's group importer both write
  * through this — one home for bulk membership writes.
  *
  * Deliberately NOT `setGroupStudents`: that one means "this is now the
@@ -1304,7 +1304,7 @@ export async function assignStudentsToGroups(
     // GroupStudent.studentUserId is @unique STANDALONE (schema.prisma:330): a
     // student is in at most one group across the whole database, so the
     // existing row — whichever season's group it is — has to go first. The
-    // fix is a composite key, which is a migration (Plan 13). Meanwhile the
+    // fix is a composite key, which is a migration (Plan 18). Meanwhile the
     // per-season truth is SeasonEnrollment.groupId below, and every v2 read
     // uses that (C9).
     await tx.groupStudent.deleteMany({ where: { studentUserId: a.studentUserId } });
@@ -1387,8 +1387,8 @@ seasonsRouter.get("/:id/roster", requireAuth, async (req, res) => {
 });
 
 /**
- * Bulk group assignment (spec 05 §7, Plan 16 D-16.12). Non-null groupIds go
- * through assignStudentsToGroups — the same function Plan 12's importer
+ * Bulk group assignment (spec 05 §7, Plan 6 D-16.12). Non-null groupIds go
+ * through assignStudentsToGroups — the same function Plan 17's importer
  * commits through — and nulls through unassignStudentsFromGroups, in ONE
  * transaction: a group outside the season refuses everything.
  */
@@ -1527,7 +1527,7 @@ Add `Request` to the `express` type import (Plan 3 already imports `type Respons
         tags: ["Groups"],
         summary: "Bulk-assign students to this season's groups",
         description:
-          "Season-admin only; at most 500 rows, each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 12's group importer writes through the same function.",
+          "Season-admin only; at most 500 rows, each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
         parameters: [idParam],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GroupAssignmentsRequest" } } } },
         responses: {
@@ -1566,7 +1566,7 @@ Add `Request` to the `express` type import (Plan 3 already imports `type Respons
 
 **Interfaces:**
 - Consumes:
-  - Plan 15's `orgWallTime`, `orgWallClockToInstant`; Task 1's `sessionRangeQuerySchema`, `recurrenceScopeSchema`, `SESSION_RANGE_DEFAULT_WEEKS`, `SESSION_RANGE_MAX_DAYS`;
+  - Plan 5's `orgWallTime`, `orgWallClockToInstant`; Task 1's `sessionRangeQuerySchema`, `recurrenceScopeSchema`, `SESSION_RANGE_DEFAULT_WEEKS`, `SESSION_RANGE_MAX_DAYS`;
   - Plan 3's `addWeeksInOrgTime`, `resolveSeriesTargets`;
   - Plan 4's `orgDayKey`;
   - `checkInState`, `CHECK_IN_WINDOW_MS` (`lib/check-in.ts`); `attendanceScopeFor`, `isAdminOfSeason`, `isSuper`, `newPublicId`.
@@ -1930,7 +1930,7 @@ export interface SessionListRow {
   startsAt: Date;
   /** Org-calendar day of startsAt (Plan 4, X13). */
   dayKey: string;
-  /** Org wall-clock "HH:mm" of startsAt (Plan 16, X13). */
+  /** Org wall-clock "HH:mm" of startsAt (Plan 6, X13). */
   startTime: string;
   durationMinutes: number;
   location: string | null;
@@ -1999,7 +1999,7 @@ export async function listSessionsForSeason(
 }
 
 /**
- * The multi-season calendar (Plan 16 D-16.7; v1 sessions-query.ts:64-116).
+ * The multi-season calendar (Plan 6 D-16.7; v1 sessions-query.ts:64-116).
  * `active` is v1's "all ACTIVE, non-deleted seasons" (R23); `seasons` is an
  * explicit, already-authorized set. The window is half-open [from, to).
  */
@@ -2022,7 +2022,7 @@ export async function listSessionsInRange(
 - [ ] **Step 3: `calendarScopeFor`.** Append to `lib/permissions.ts`:
 
 ```ts
-/** Which seasons a calendar request may read (Plan 16 D-16.7). */
+/** Which seasons a calendar request may read (Plan 6 D-16.7). */
 export type CalendarScope = { kind: "active" } | { kind: "seasons"; seasonIds: number[] };
 
 /**
@@ -2085,7 +2085,7 @@ export async function calendarScopeFor(
 
 ```ts
 /**
- * The multi-season calendar (Plan 16 D-16.7, G17). The season set comes from
+ * The multi-season calendar (Plan 6 D-16.7, G17). The season set comes from
  * the role (calendarScopeFor); the window is required in practice — v1's
  * super calendar was every session of every ACTIVE season, unbounded (spec
  * 03 R75). Day boundaries are org midnights (C2).
@@ -2144,7 +2144,7 @@ sessionsRouter.get("/", async (req, res) => {
 
 ```ts
 /**
- * What a scoped edit/delete would touch (spec 03 §7, Plan 16 D-16.8). Uses
+ * What a scoped edit/delete would touch (spec 03 §7, Plan 6 D-16.8). Uses
  * resolveSeriesTargets — the SAME season-fenced selection PATCH and DELETE
  * use — so the preview cannot disagree with the write. A GET: writes nothing (C6).
  */
@@ -2194,7 +2194,7 @@ sessionsRouter.get("/:id/series", async (req, res) => {
 });
 
 /**
- * Read the check-in state back (spec 04 §7, Plan 16 D-16.9). The narrow,
+ * Read the check-in state back (spec 04 §7, Plan 6 D-16.9). The narrow,
  * admin-only way to recover the token after an app restart — so the console
  * no longer depends on the season-wide session list for it.
  */
@@ -2251,7 +2251,7 @@ sessionsRouter.post("/:id/check-in-regenerate", async (req, res) => {
 
 /**
  * The session's quizzes for staff (v1 listQuizzesForSession, quiz-query.ts:
- * 141-170; Plan 16 D-16.10). Gated like the attendance roster: season
+ * 141-170; Plan 6 D-16.10). Gated like the attendance roster: season
  * admins and leaders with a group in the season.
  */
 sessionsRouter.get("/:id/quizzes", async (req, res) => {
@@ -2300,7 +2300,7 @@ sessionsRouter.get("/:id/quizzes", async (req, res) => {
 
 (a) Add `startTime: { type: "string", pattern: "^\\d{2}:\\d{2}$", description: "Org wall-clock start (X13)." }` to `SessionListItem.properties`. Add the same plus `dayKey` to `SessionDetail.properties`.
 
-(b) In the `POST /api/v1/sessions` and `PATCH /api/v1/sessions/{id}` request schemas, document `startDay: { type: "string", description: "YYYY-MM-DD on the org calendar" }` and `startTime: { type: "string", description: "HH:mm on the org clock" }` with the description: "Org wall-clock start (D-16.6, Plan 15's day/time split); send exactly one of startsAt, or startDay + startTime."
+(b) In the `POST /api/v1/sessions` and `PATCH /api/v1/sessions/{id}` request schemas, document `startDay: { type: "string", description: "YYYY-MM-DD on the org calendar" }` and `startTime: { type: "string", description: "HH:mm on the org clock" }` with the description: "Org wall-clock start (D-16.6, Plan 5's day/time split); send exactly one of startsAt, or startDay + startTime."
 
 (c) Add these paths:
 
@@ -2418,7 +2418,7 @@ sessionsRouter.get("/:id/quizzes", async (req, res) => {
 - [ ] **Step 1: Failing unit test.** Append to `apps/backend/src/__tests__/rbac.test.ts`. Use that file's own user-fixture helper. If it has none, build `SessionUser` literals the same way its existing cases do.
 
 ```ts
-describe("isAdminOfAnySeason (Plan 16 D-16.14)", () => {
+describe("isAdminOfAnySeason (Plan 6 D-16.14)", () => {
   const base = { userId: 1, seasonAdminIds: [] as number[], groupLeaderIds: [] as number[], activeSeasonId: null, graduationYear: null };
   it("is true for SUPER and for an ADMIN holding a season", () => {
     expect(isAdminOfAnySeason({ ...base, role: "SUPER" })).toBe(true);
@@ -2611,7 +2611,7 @@ Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBan
 
 ```ts
 /**
- * What deleting a group would do (spec 05 §10 item 5, Plan 16 D-16.13).
+ * What deleting a group would do (spec 05 §10 item 5, Plan 6 D-16.13).
  * `soleTargetAssignments`: live assignments that are not "all groups" and
  * whose ONLY target is this group — deleting it would cascade their last
  * AssignmentTarget away and leave them visible to nobody (R44).
@@ -2646,8 +2646,8 @@ export async function loadGroupImpact(groupId: number): Promise<{
 
 ```ts
 /**
- * Leader picker for the group form (Plan 16 D-16.14). Interim: spec 05 §7
- * puts this behind domain 11's GET /users?role=, which lands in Plan 7 — it
+ * Leader picker for the group form (Plan 6 D-16.14). Interim: spec 05 §7
+ * puts this behind domain 11's GET /users?role=, which lands in Plan 9 — it
  * may replace this route and repoint useLeaderOptions.
  */
 groupsRouter.get("/leader-options", async (req, res) => {
@@ -2812,7 +2812,7 @@ Run `cd apps/mobile && pnpm jest` → green again. Every earlier suite passes; n
 - append inside the `describe`:
 
 ```tsx
-  it("registers Plan 16's detail routes, in the directory form where they have children (X7)", () => {
+  it("registers Plan 6's detail routes, in the directory form where they have children (X7)", () => {
     for (const name of [
       "seasons/[code]/index",
       "seasons/[code]/edit",
@@ -2889,7 +2889,7 @@ In `_layout.tsx`, replace `routeNameForHref` with:
 /**
  * Hrefs whose route is a directory (`x/index.tsx`) because the destination
  * has child routes (ruling X7): `students` (alumni, dropped) and `seasons`
- * (Plan 16's `seasons/[code]/…`). Without the mapping the tab bar looks for
+ * (Plan 6's `seasons/[code]/…`). Without the mapping the tab bar looks for
  * a file named "seasons" and silently omits the tab.
  */
 const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons"]);
@@ -2900,8 +2900,8 @@ export function routeNameForHref(href: string): string {
 }
 ```
 
-The set is named `DIRECTORY_ROUTE_HREFS` because Plan 17 Task 9 (adds
-`"users"`) and Plan 12 Task 6 Step 0 use that name; they extend this set and
+The set is named `DIRECTORY_ROUTE_HREFS` because Plan 10 Task 9 (adds
+`"users"`) and Plan 17 Task 6 Step 0 use that name; they extend this set and
 must keep `"seasons"` in it.
 
 In `DETAIL_ROUTE_NAMES`, replace `"group/[id]"` with `"group/[id]/index"` and append `"seasons/[code]/index"`, `"seasons/[code]/edit"`, `"seasons/[code]/roster/index"`, `"group/new"`, `"group/[id]/edit"`, `"session/new"`, `"session/[id]/edit"`. Keep every other entry. No count changes (X9).
@@ -3090,7 +3090,7 @@ export interface StaffSeasonSelection {
 }
 
 /**
- * A staff screen's chosen season (Plan 16 D-16.16): defaults to the same
+ * A staff screen's chosen season (Plan 6 D-16.16): defaults to the same
  * "current" season every staff screen uses (Plan 4's pickCurrentSeasonId,
  * ruling X8) and lets the user pick any season the role-scoped list holds.
  * Replaces v1's redirect-to-one-season pages (spec 03 R86, spec 05 R91).
@@ -3169,7 +3169,7 @@ export function SeasonSwitcher({ seasons, selectedId, onSelect }: SeasonSwitcher
     quizzes: (id: number | null) => [...queryKeys.sessions.all, "quizzes", { id }] as const,
 ```
 
-- and these three to `groups` (Plan 15 already added `groups.bySeason`; reuse it):
+- and these three to `groups` (Plan 5 already added `groups.bySeason`; reuse it):
 
 ```ts
     impact: (id: number | null) => [...queryKeys.groups.all, "impact", { id }] as const,
@@ -3202,10 +3202,10 @@ Run the foundation test → PASS. Run `pnpm turbo lint typecheck test:unit --fil
 - Consumes:
   - Task 1's `seasonDetailSchema`, `seasonWriteRequestSchema`, `seasonStatusSchema`, `slugifySeasonCode`;
   - Plan 4's `seasonRefResponseSchema`, `useDeleteSeason`, `apiErrorMessage`, `formatDayKey`;
-  - Phase 0's `useSeasonSessions`; Plan 15's `formatWallTime`;
+  - Phase 0's `useSeasonSessions`; Plan 5's `formatWallTime`;
   - Task 5's `firstErrorByField`, `queryKeys.seasons.byCode`;
   - routes `/seasons/[code]/roster`, `/group/new`, `/session/new`, `/group/[id]`, `/session/[id]`, which exist as stubs.
-- Produces: `useSeasonByCode(code: string | null): UseQueryResult<SeasonDetail>` (Plan 12 and Plan 18 use it); `useUpdateSeasonAsSuper(id)`; screens `/seasons/[code]` and `/seasons/[code]/edit`.
+- Produces: `useSeasonByCode(code: string | null): UseQueryResult<SeasonDetail>` (Plan 17 and Plan 16 use it); `useUpdateSeasonAsSuper(id)`; screens `/seasons/[code]` and `/seasons/[code]/edit`.
 
 - [ ] **Step 1: Failing tests**
 
@@ -3387,7 +3387,7 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
 Append to Plan 4's `season-screens.test.tsx`:
 
 ```tsx
-describe("SeasonsScreen — navigation and program filter (Plan 16, G20)", () => {
+describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => {
   beforeEach(() => {
     useSessionStore.setState(superSession);
     get.mockResolvedValue({
@@ -3474,7 +3474,7 @@ export function useUpdateSeasonAsSuper(id: number) {
 ```tsx
 /**
  * Program filter (G20; spec 02 §9 — "filters, not routes"). Client-side over
- * the role-scoped list already loaded (Plan 16 D-16.5). Exact string match,
+ * the role-scoped list already loaded (Plan 6 D-16.5). Exact string match,
  * v1 R44: "GBV" and "gbv" are different programs.
  */
 function ProgramFilter({
@@ -3691,7 +3691,7 @@ import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text
 
 /**
  * SUPER's season edit (v1 /super/seasons/[code]/edit; spec 02 §9; G4). Every
- * identity field AND the status — v1's free four-way select (R17, Plan 16
+ * identity field AND the status — v1's free four-way select (R17, Plan 6
  * D-16.4): DRAFT → ACTIVE → ARCHIVED is one tap each. Also hosts delete
  * (spec 02 §9). The PATCH is Plan 3's SUPER full body, so the stored budget
  * values are pre-filled and always sent (D-16.3).
@@ -3842,12 +3842,12 @@ export default function SeasonEditScreen() {
 - Consumes:
   - Task 1's `createSessionRequestSchema`, `updateSessionRequestSchema`, `CreateSessionInput`, `UpdateSessionInput`, `RecurrenceScope`, `sessionCreatedResponseSchema`, `sessionUpdatedResponseSchema`, `sessionDeletedResponseSchema`, `sessionSeriesResponseSchema`, `checkInStateSchema`, `sessionQuizItemSchema`;
   - Plan 4's `useSessionDetail`, `useOpenCheckIn`, `useCloseCheckIn`, `checkInOpenResponseSchema`, `LIVE_ROSTER_REFRESH_MS` behaviour, `apiErrorMessage`, `formatDayKey`;
-  - Plan 2's `useAttendanceRoster`; Plan 15's `formatWallTime`;
+  - Plan 2's `useAttendanceRoster`; Plan 5's `formatWallTime`;
   - Task 5's `apiErrorCode`, `firstErrorByField`, `parsePositiveInt`, `queryKeys.sessions.{series,checkIn,quizzes}`.
 - Produces:
   - Session writes: `useCreateSession()`, `useUpdateSession(id)`, `useDeleteSession(id)`, `useSessionSeries(id, scope, enabled)`.
   - Check-in: `useCheckInState(id, enabled)`, `useRegenerateCheckIn(id)`.
-  - Quizzes: `useSessionQuizzes(id, enabled)`; `SessionQuizzesCard` (Plan 6 adds its row press).
+  - Quizzes: `useSessionQuizzes(id, enabled)`; `SessionQuizzesCard` (Plan 8 adds its row press).
   - Form pieces: `SessionFields`, `ScopeSelector`, `SessionFormValues`, `emptySessionValues`, `sessionWriteFields`, `SCOPE_LABELS`.
   - Screens: `/session/new?seasonId=`, `/session/[id]/edit`.
 
@@ -4434,7 +4434,7 @@ const orNull = (v: string): string | null => (v.trim() === "" ? null : v.trim())
 
 /**
  * The write fields both create and update share. The start travels as org
- * wall-clock fields startDay + startTime (Plan 16 D-16.6 — Plan 15's
+ * wall-clock fields startDay + startTime (Plan 6 D-16.6 — Plan 5's
  * dueDay/dueTime split): the server composes the instant in ORG_TIMEZONE, so
  * the phone's own zone never enters the calculation (X13).
  */
@@ -4516,7 +4516,7 @@ import { Card, ErrorState, Text } from "../ui";
 /**
  * The session's quizzes for staff (G18; v1 leader/sessions/[id] shows the
  * card only when there are quizzes). Rows are not pressable yet: the quiz
- * routes are Plan 6's, which runs after this plan — Plan 6 adds the press
+ * routes are Plan 8's, which runs after this plan — Plan 8 adds the press
  * (D-16.10). Renders nothing while loading or when empty.
  */
 export function SessionQuizzesCard({ sessionId }: { sessionId: number }) {
@@ -4982,7 +4982,7 @@ function SessionDetailBody({ id }: { id: number }) {
         />
       ) : null}
 
-      {/* Student check-in (scanner / enter code) is Plan 14 (ruling X15). */}
+      {/* Student check-in (scanner / enter code) is Plan 11 (ruling X15). */}
       {data.canManageCheckIn ? (
         <CheckInConsole detail={data} />
       ) : data.canMarkAttendance ? (
@@ -5040,13 +5040,13 @@ If Plan 4's `Button` lacks a `style` prop, wrap each of those buttons in `<View 
 - Consumes:
   - Task 1's `groupWriteRequestSchema`, `groupRefResponseSchema`, `leaderOptionSchema`, `groupImpactSchema`, `groupDeleteResponseSchema`, `seasonRosterRowSchema`, `groupAssignmentsResponseSchema`, `GroupAssignmentsRequest`, `groupDetailSchema.canManage`;
   - Plan 2's `useMyGroups`, `useGroupDetail`, `MY_GROUPS_ROLES`;
-  - Plan 15's `useSeasonGroups`;
+  - Plan 5's `useSeasonGroups`;
   - Task 5's `useStaffSeasonSelection`, `SeasonSwitcher`, `queryKeys.groups.{impact,leaderOptions,roster}`, `parsePositiveInt`, `firstErrorByField`;
   - Task 6's `useSeasonByCode` (imported from `use-seasons.ts`, which M1 owns; M3 only imports it). If M3 runs before M1 lands, M3 adds that exact function to `use-seasons.ts` and M1 then skips its Step 2 for it. The coordinator resolves the merge.
 - Produces:
-  - Hooks: `SEASON_GROUPS_ROLES`, `useLeaderOptions(enabled)`, `useSeasonRoster(seasonId)` (Plan 12's import screen uses it), `useGroupImpact(id)`, `useCreateGroup(seasonId)`, `useUpdateGroup(id)`, `useDeleteGroup()`, `useSaveGroupAssignments(seasonId)`.
+  - Hooks: `SEASON_GROUPS_ROLES`, `useLeaderOptions(enabled)`, `useSeasonRoster(seasonId)` (Plan 17's import screen uses it), `useGroupImpact(id)`, `useCreateGroup(seasonId)`, `useUpdateGroup(id)`, `useDeleteGroup()`, `useSaveGroupAssignments(seasonId)`.
   - Components: `GroupForm`, `GroupFormValues`.
-  - Screens: `/group/new?seasonId=`, `/group/[id]/edit`, `/seasons/[code]/roster` (Plan 12 adds an "Import from a sheet" button to it).
+  - Screens: `/group/new?seasonId=`, `/group/[id]/edit`, `/seasons/[code]/roster` (Plan 17 adds an "Import from a sheet" button to it).
 
 - [ ] **Step 1: Failing tests.** In `groups-screens.test.tsx`, delete the case "does not pretend an admin has no groups: explicit not-yet state, no request". This task replaces it. Then create:
 
@@ -5339,7 +5339,7 @@ export function useLeaderOptions(enabled: boolean): UseQueryResult<LeaderOption[
   });
 }
 
-/** GET /seasons/:id/roster (D-16.11) — the grid, the group form's picker, and Plan 12's import screen. */
+/** GET /seasons/:id/roster (D-16.11) — the grid, the group form's picker, and Plan 17's import screen. */
 export function useSeasonRoster(seasonId: number | null): UseQueryResult<SeasonRosterRow[]> {
   return useQuery({
     queryKey: queryKeys.groups.roster(seasonId),
@@ -5623,7 +5623,7 @@ import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-/** The confirmation v1 never had (spec 05 R45, Plan 16 D-16.13). */
+/** The confirmation v1 never had (spec 05 R45, Plan 6 D-16.13). */
 function DeleteGroup({ groupId }: { groupId: number }) {
   const theme = useTheme();
   const router = useRouter();
@@ -5815,7 +5815,7 @@ function MyGroups() {
 }
 
 /**
- * ADMIN / SUPER — a season's groups with a season switcher (Plan 16
+ * ADMIN / SUPER — a season's groups with a season switcher (Plan 6
  * D-16.16; spec 05 §9). v1 forced one season with a redirect (R91) and
  * refused SUPER (R92); neither is ported.
  */
@@ -6038,7 +6038,7 @@ function RosterGrid({ seasonId }: { seasonId: number }) {
   );
 }
 
-/** /seasons/[code]/roster — Plan 12 adds `roster/import.tsx` beside this and a link to it here. */
+/** /seasons/[code]/roster — Plan 17 adds `roster/import.tsx` beside this and a link to it here. */
 export default function SeasonRosterScreen() {
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
@@ -6079,8 +6079,8 @@ The theme tokens `primary[600]`, `radii.sm` and `borderWidths.thin` are used by 
 - Modify: `apps/mobile/src/__tests__/calendar-screen.test.tsx` (delete Plan 4's ADMIN case, "renders an admin's calendar from their first ACTIVE season — same route file"; append the cases below)
 
 **Interfaces:**
-- Consumes: Task 1's `sessionRangeResponseSchema`; Plan 4's `useCurrentSeasonId`, `formatDayKey`; Plan 15's `formatWallTime`; Phase 0's `useSeasonSessions`; Task 5's `useStaffSeasonSelection`, `SeasonSwitcher`, `queryKeys.sessions.range`.
-- Produces: `useSessionRange(params, enabled)`; `groupSessionsByDay(sessions): DayGroup[]` (Plan 10's events merge buckets around it); the role-branched calendar (G17).
+- Consumes: Task 1's `sessionRangeResponseSchema`; Plan 4's `useCurrentSeasonId`, `formatDayKey`; Plan 5's `formatWallTime`; Phase 0's `useSeasonSessions`; Task 5's `useStaffSeasonSelection`, `SeasonSwitcher`, `queryKeys.sessions.range`.
+- Produces: `useSessionRange(params, enabled)`; `groupSessionsByDay(sessions): DayGroup[]` (Plan 14's events merge buckets around it); the role-branched calendar (G17).
 
 - [ ] **Step 1: Failing tests.** Delete Plan 4's ADMIN case, then append to `calendar-screen.test.tsx`. Reuse that file's `session(...)` helper, which Task 5 gave `startTime`; its `seasonRow`, `studentSession` and `adminSession`; and its `get` and `mockPush`. Add `import { makeSession } from "./helpers/session";`.
 
@@ -6176,7 +6176,7 @@ export interface SessionRangeParams {
 }
 
 /**
- * GET /api/v1/sessions (Plan 16 D-16.7): the role decides which seasons; the
+ * GET /api/v1/sessions (Plan 6 D-16.7): the role decides which seasons; the
  * window defaults server-side to org-midnight today + 8 calendar weeks. Pass
  * `from` (= the previous `to`) for "Later", `to` (= the previous `from`) for
  * "Earlier" — the server owns every org-day boundary (C2).
@@ -6210,7 +6210,7 @@ export interface DayGroup {
  * Groups by the server's `dayKey` (ruling X13) — never by formatting
  * `startsAt` on the device. Input is ordered by `startsAt`, so consecutive
  * rows sharing a key are one day. (Plan 4's calendar helper, moved here so
- * Plan 10's events merge can reuse it.)
+ * Plan 14's events merge can reuse it.)
  */
 export function groupSessionsByDay(sessions: SessionListItem[]): DayGroup[] {
   const groups: DayGroup[] = [];
@@ -6409,7 +6409,7 @@ export default function CalendarScreen() {
 - [ ] **Step 2: Mutation pass.** Apply one mutation at a time, run the named suite, and restore. Each must fail the named test.
   1. `routes/seasons.ts`: re-add `seasonsRouter.use(requireAuth);` → `seasons-admin-routes` "answers an unknown anonymous path … with not_found" fails (X5).
   2. Move `GET "/by-code/:code"` below `GET "/:id/roster"` → "is not shadowed by an /:id child route" fails (400, not 404).
-  3. `eligibleStudentIds`: drop `status: "ACTIVE"` → `roster-routes` "assigns, unassigns, skips non-ACTIVE" fails (the withdrawn student gets assigned). This is the contract Plan 12 relies on.
+  3. `eligibleStudentIds`: drop `status: "ACTIVE"` → `roster-routes` "assigns, unassigns, skips non-ACTIVE" fails (the withdrawn student gets assigned). This is the contract Plan 17 relies on.
   4. `unassignStudentsFromGroups`: drop `group: { seasonId }` from the `groupStudent.deleteMany` → the same test fails (the other-season membership is deleted).
   5. `assignStudentsToGroups`: skip the `GroupOutsideSeasonError` check → "refuses the WHOLE batch" fails.
   6. `calendarScopeFor`: for ADMIN with a `seasonId`, return `{ kind: "seasons", seasonIds: [seasonId] }` without `isAdminOfSeason` → `session-admin-routes` "scopes ADMIN … seasonId never widens" fails.
@@ -6471,22 +6471,22 @@ tmux kill-session -t space-v2-plan16
 - suite counts and the twenty mutation outcomes;
 - checklist results;
 - any divergence from this plan;
-- confirmation that `assignStudentsToGroups` / `GroupOutsideSeasonError` ship with the exact signature, so Plan 12 can consume them.
+- confirmation that `assignStudentsToGroups` / `GroupOutsideSeasonError` ship with the exact signature, so Plan 17 can consume them.
 
 ---
 
 ## Not in this plan (owner named)
 
-- **Group import screen** `seasons/[code]/roster/import.tsx` and its link on the roster: **Plan 12**. The backend uses this plan's `assignStudentsToGroups`; the screen uses `useSeasonByCode`, `useSeasonRoster` and `useSeasonGroups`.
-- **Quiz row navigation** on `SessionQuizzesCard`, and the quiz create form v1 shows on the admin session page: **Plan 6**.
-- **Calendar JPC events merge:** **Plan 10**, on `calendar.tsx` / `groupSessionsByDay`.
-- **Dashboard links into seasons:** **Plan 18**.
-- **Leader picker via domain 11's `GET /users?role=`:** **Plan 7** may replace `GET /groups/leader-options` (D-16.14).
-- **Video-question editor** on the admin session page (v1 `VideoQuestionsEditor`): **Plan 10**.
-- **Student check-in scanner:** **Plan 14**.
+- **Group import screen** `seasons/[code]/roster/import.tsx` and its link on the roster: **Plan 17**. The backend uses this plan's `assignStudentsToGroups`; the screen uses `useSeasonByCode`, `useSeasonRoster` and `useSeasonGroups`.
+- **Quiz row navigation** on `SessionQuizzesCard`, and the quiz create form v1 shows on the admin session page: **Plan 8**.
+- **Calendar JPC events merge:** **Plan 14**, on `calendar.tsx` / `groupSessionsByDay`.
+- **Dashboard links into seasons:** **Plan 16**.
+- **Leader picker via domain 11's `GET /users?role=`:** **Plan 9** may replace `GET /groups/leader-options` (D-16.14).
+- **Video-question editor** on the admin session page (v1 `VideoQuestionsEditor`): **Plan 14**.
+- **Student check-in scanner:** **Plan 11**.
 - **Season duplicate sheet with spec 02 D6's copy:** stays Plan 4's inline form. Plan 4's DuplicateForm should say "leaders and students are not copied"; this is a one-line copy fix, recorded as a Plan 4 follow-up, not done here.
-- **Spec 02 D11's "ended N days ago and still Active" hint:** it needs a server-derived field (C4). It is not added here and is recorded for Plan 18's dashboard spec.
-- **Deferred to cutover (Plan 13, C1):**
+- **Spec 02 D11's "ended N days ago and still Active" hint:** it needs a server-derived field (C4). It is not added here and is recorded for Plan 16's dashboard spec.
+- **Deferred to cutover (Plan 18, C1):**
   - `GroupStudent` composite key, so membership is per season (spec 05 R1; an assignment here still moves a student's other-season membership, and the roster shows it);
   - `(seasonId, lower(name))` uniqueness on `Group`;
   - a `Season.timezone` column (M6).
@@ -6501,14 +6501,14 @@ tmux kill-session -t space-v2-plan16
 - **X12:** backend value imports are relative (`groupAssignmentsRequestSchema`, `sessionRangeQuerySchema`, `recurrenceScopeSchema`, constants); `lib/queries/seasons.ts` imports only a type from `@space/shared`.
 - **X13:**
   - org day/time are derived server-side (`dayKey`, `startTime`, `fromDayKey`/`toDayKey`, `expiresAtTime`);
-  - writes carry `startDay`/`startTime` (Plan 15's split), converted by Plan 15's `orgWallClockToInstant`;
+  - writes carry `startDay`/`startTime` (Plan 5's split), converted by Plan 5's `orgWallClockToInstant`;
   - the calendar default window starts at org midnight;
   - mobile renders through `formatDayKey`/`formatWallTime` only.
 - **X14:** no migration, no schema edit, no `process.env`, no `@/`, no `@prisma/client`.
-- **Plan 15 reuse:** `isoDaySchema`, `wallTimeSchema`, `orgWallTime`, `orgWallClockToInstant`, `useSeasonGroups`, `queryKeys.groups.bySeason`, `formatWallTime` — none redefined.
-- **Plan 12 contract:** `assignStudentsToGroups(tx, seasonId, assignments)` and `GroupOutsideSeasonError` live in `lib/queries/groups.ts` with the exact signature and both documented divergences (ACTIVE enrolment of a live STUDENT; returns what it applied), pinned by `roster-routes` and mutations 3–5.
+- **Plan 5 reuse:** `isoDaySchema`, `wallTimeSchema`, `orgWallTime`, `orgWallClockToInstant`, `useSeasonGroups`, `queryKeys.groups.bySeason`, `formatWallTime` — none redefined.
+- **Plan 17 contract:** `assignStudentsToGroups(tx, seasonId, assignments)` and `GroupOutsideSeasonError` live in `lib/queries/groups.ts` with the exact signature and both documented divergences (ACTIVE enrolment of a live STUDENT; returns what it applied), pinned by `roster-routes` and mutations 3–5.
 
 ## Revision 2026-10-05
 
-Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
-- Task 5's directory-href set is named `DIRECTORY_ROUTE_HREFS` (was `DIRECTORY_HREFS`) to match Plan 17 Task 9 and Plan 12 Step 0, which extend it; a note says they must keep `"seasons"`.
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
+- Task 5's directory-href set is named `DIRECTORY_ROUTE_HREFS` (was `DIRECTORY_HREFS`) to match Plan 10 Task 9 and Plan 17 Step 0, which extend it; a note says they must keep `"seasons"`.

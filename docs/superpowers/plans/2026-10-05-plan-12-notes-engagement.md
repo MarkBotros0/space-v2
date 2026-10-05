@@ -1,4 +1,4 @@
-# Plan 8 — Notes & Engagement Implementation Plan
+# Plan 12 — Notes & Engagement Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -17,12 +17,12 @@ function anywhere in v2 that returns a note without one. Note bodies are
 **plain text on the wire**: escaped on write, stripped on read, escaped again
 at every mail interpolation. The conversion lives in **one** shared module,
 `packages/shared/src/html-text.ts` (`escapeHtml`, `plainTextToHtml`,
-`htmlToPlainText` — ruling X3; Plan 10's forum reuses it), and the backend's
-only escaping entry point is `apps/backend/src/lib/html.ts` (ruling X2; Plan 9
+`htmlToPlainText` — ruling X3; Plan 14's forum reuses it), and the backend's
+only escaping entry point is `apps/backend/src/lib/html.ts` (ruling X2; Plan 13
 imports it). Engagement is a cohort aggregation with a
 constant number of queries, never 4N. Two mobile screens consume the results;
-`student/[id]/index.tsx` is **extended**, not created — Plan 5 builds it and
-Plan 17 moves it to the directory form (ruling X7) and rewrites it.
+`student/[id]/index.tsx` is **extended**, not created — Plan 7 builds it and
+Plan 10 moves it to the directory form (ruling X7) and rewrites it.
 
 **Tech Stack:** Express 5, Prisma 7 (`src/generated/prisma`), Zod, jest +
 supertest integration suite against the shared staging DB; Expo SDK 54 /
@@ -33,7 +33,7 @@ D1–D15 are load-bearing), `docs/superpowers/specs/domains/_DECISIONS.md`
 (C1, C4, C6, C8, C11 all bind here), and
 `docs/superpowers/specs/domains/04-attendance.md` for the attendance and
 absence-budget inputs engagement consumes — **cited, never restated**.
-Scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 8.
+Scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 12.
 
 ## Global Constraints
 
@@ -43,7 +43,7 @@ Scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 8.
 - **Never run database commands or integration tests outside the task step that says to.** `cleanupTestData` is prefix-global and safe only under `--runInBand`.
 - Response envelope `{ data }` / `{ error: { code, message } }` via `apiOk`/`apiError`.
 - **Value imports from shared use the relative path in EVERY backend `src` file, not only routes** (ruling X12; the `rootDir` emit trap in `CLAUDE.md`): `"../../../../packages/shared/src/index"` from `src/routes/` and `src/lib/`, `"../../../../../packages/shared/src/index"` from `src/lib/queries/`. `import type` may use the package name. The closing gate greps all of `dist/`.
-- **One 429 handler** (ruling X4): limiters import `rateLimitHandler` from `apps/backend/src/lib/rate-limit.ts`, which Plan 7 created. Never define another.
+- **One 429 handler** (ruling X4): limiters import `rateLimitHandler` from `apps/backend/src/lib/rate-limit.ts`, which Plan 9 created. Never define another.
 - **`requireAuth` is attached per route** (ruling X5) on every router mounted on a shared prefix (`/api/v1/students`, `/api/v1/me`, `/api/v1/seasons`). A router-wide `use(requireAuth)` there would run auth on every other router's requests under that prefix and turn unknown paths into 401 instead of the `not_found` 404 CLAUDE.md promises. `notesRouter` owns `/api/v1/notes` outright but attaches per route too, for uniformity.
 - **One escaper, one HTML↔text converter** (rulings X2, X3): `escapeHtml`, `plainTextToHtml`, `htmlToPlainText` are defined once in `packages/shared/src/html-text.ts` (Task 1); the backend reaches `escapeHtml` only through `apps/backend/src/lib/html.ts` (Task 3), and `buildNotificationHtml` is exported from `lib/email.ts` (Task 3). No `note-text.ts` exists.
 - `src/docs/openapi.ts` changes in the **same commit** as the route it documents.
@@ -58,22 +58,22 @@ Task 4 has landed; nothing else in this plan parallelises.
 
 ## Prerequisites
 
-This plan sits after Plans 5, 7, 17 and 14 in the execution order (rulings:
-1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → **8** → 9 → 10 → 11 → 18 → 12 → 13)
+This plan sits after Plans 7 and 9–11 in the execution order (rulings:
+1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → **12** → 13 → 14 → 15 → 16 → 17 → 18)
 and consumes three things they build —
 plus Plan 1's `/more` screen, which renders `navFor(user).sidebar` (ruling X15)
 and is how ADMIN/LEADER/SUPER reach this plan's new `/notes` sidebar entry:
 
-- `apps/backend/src/lib/rate-limit.ts` exporting `rateLimitHandler` (Plan 7
+- `apps/backend/src/lib/rate-limit.ts` exporting `rateLimitHandler` (Plan 9
   Task 4 Step 0, ruling X4). This plan imports it; it does not create it.
 
 - `apps/backend/src/lib/permissions.ts` must already export
-  `canViewStudent(user, studentUserId)` (Plan 5 Task 2). Every note read gates
+  `canViewStudent(user, studentUserId)` (Plan 7 Task 2). Every note read gates
   on it *and* on the visibility rule — two gates, in that order (spec R39, §4
   item 4).
 - `apps/mobile/app/(app)/student/[id]/index.tsx` must already exist with
   `useStudentDetail(id, role)` from `apps/mobile/src/hooks/use-students.ts`
-  (Plan 5 Task 7; moved to the directory form and rewritten by **Plan 17
+  (Plan 7 Task 7; moved to the directory form and rewritten by **Plan 10
   Task 7** so `student/[id]/edit.tsx` can sit beside it). Task 6 **extends**
   that file; it does not create it. The typed href `/student/[id]` is
   unchanged by the move.
@@ -163,13 +163,13 @@ single one of its rules.
 
 **Interfaces:**
 - Consumes: `userRoleSchema` from `./auth`.
-- Produces (exact names every later task — and Plans 9, 10, 13 — import): from `html-text.ts`: `escapeHtml(input: string): string`, `plainTextToHtml(text: string): string`, `htmlToPlainText(stored: string): string`; from `note.ts`: `noteVisibilitySchema` / `NoteVisibility`; `NOTE_BODY_MIN`, `NOTE_BODY_MAX`; `noteSummarySchema` / `NoteSummary`; `authoredNoteSchema` / `AuthoredNote`; `createNoteRequestSchema` / `CreateNoteBody`; `updateNoteRequestSchema` / `UpdateNoteBody`; `noteListQuerySchema` / `NoteListQuery`; `noteListResponseSchema`; `authoredNoteListResponseSchema`; `engagementScoreSchema` / `EngagementScore`; `engagementRowSchema` / `EngagementRow`; `studentEngagementSchema` / `StudentEngagement`; `studentSelfEngagementSchema` / `StudentSelfEngagement`; `seasonEngagementResponseSchema`; `AT_RISK_PCT`; `isAtRisk`.
+- Produces (exact names every later task — and Plans 13, 14 and 18 — import): from `html-text.ts`: `escapeHtml(input: string): string`, `plainTextToHtml(text: string): string`, `htmlToPlainText(stored: string): string`; from `note.ts`: `noteVisibilitySchema` / `NoteVisibility`; `NOTE_BODY_MIN`, `NOTE_BODY_MAX`; `noteSummarySchema` / `NoteSummary`; `authoredNoteSchema` / `AuthoredNote`; `createNoteRequestSchema` / `CreateNoteBody`; `updateNoteRequestSchema` / `UpdateNoteBody`; `noteListQuerySchema` / `NoteListQuery`; `noteListResponseSchema`; `authoredNoteListResponseSchema`; `engagementScoreSchema` / `EngagementScore`; `engagementRowSchema` / `EngagementRow`; `studentEngagementSchema` / `StudentEngagement`; `studentSelfEngagementSchema` / `StudentSelfEngagement`; `seasonEngagementResponseSchema`; `AT_RISK_PCT`; `isAtRisk`.
 
 **One file, not two.** Spec §8 suggests splitting notes and engagement because
 they share no type (R63). They ship in one plan, one backend workstream and one
 commit series here, and the file is 150 lines — a second file would add an
 index export and a second review surface for four schemas nobody reads
-separately. If Plan 11 (Reports) finds the coupling awkward when it consumes
+separately. If Plan 15 (Reports) finds the coupling awkward when it consumes
 `engagementRowSchema`, splitting is a rename, not a redesign.
 
 - [ ] **Step 1: Write the failing test**
@@ -402,7 +402,7 @@ export const noteSummarySchema = z.object({
   updatedAt: z.string(),
   edited: z.boolean(),
   authorId: z.number().int(),
-  // User.name is NOT NULL (schema.prisma), so no nullable here — Plan 11
+  // User.name is NOT NULL (schema.prisma), so no nullable here — Plan 15
   // consumes these schemas and must not have to guard a null that cannot occur.
   authorName: z.string(),
   authorRole: userRoleSchema,
@@ -552,7 +552,7 @@ export const seasonEngagementResponseSchema = z.object({
 ```
 
 Then the converter. It lives in `packages/shared` rather than the backend
-because Plan 10's forum needs the same conversion and ruling X3 allows one
+because Plan 14's forum needs the same conversion and ruling X3 allows one
 home; it has no dependencies, so the mobile bundle pays nothing for it.
 
 ```ts
@@ -582,7 +582,7 @@ export function escapeHtml(input: string): string {
 /**
  * Plain text → the paragraph-wrapped, escaped HTML stored in a column v1 still
  * renders with dangerouslySetInnerHTML (EngagementNote.body here; forum bodies
- * in Plan 10).
+ * in Plan 14).
  *
  * v2 cannot store raw text there without changing how v1 displays it, and must
  * not store anything a caller could turn into markup. Escaping and wrapping
@@ -664,7 +664,7 @@ git add packages/shared && git commit -m "feat(shared): note/engagement contract
 - Test: `apps/backend/src/__tests__/integration/notes-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `canViewStudent` (Plan 5), `isSuper`/`isMentor` from `../rbac`, `noteListQuerySchema` and `htmlToPlainText` (Task 1), `rateLimitHandler` (Plan 7, `lib/rate-limit.ts`), `apiOk`/`apiError`, `parseId`, `requireAuth`/`requireUser`.
+- Consumes: `canViewStudent` (Plan 7), `isSuper`/`isMentor` from `../rbac`, `noteListQuerySchema` and `htmlToPlainText` (Task 1), `rateLimitHandler` (Plan 9, `lib/rate-limit.ts`), `apiOk`/`apiError`, `parseId`, `requireAuth`/`requireUser`.
 - Produces: `noteVisibilityWhere(user: SessionUser): Prisma.EngagementNoteWhereInput | null`; `canViewNote(user, noteId): Promise<boolean>`; `canEditNote(user, noteId): Promise<boolean>`; `listNotesForStudent(user, studentUserId, query)`; `listAuthoredNotes(user, query)`; `toNoteSummary(row, user)`; the routers `notesRouter`, `studentNotesRouter`, `myNotesRouter`; endpoints `GET /api/v1/students/:id/notes` and `GET /api/v1/me/notes`.
 
 - [ ] **Step 1: Write the failing integration tests**
@@ -990,7 +990,7 @@ Expected: FAIL — every case 404s, no route exists.
 
 - [ ] **Step 3: Add the gate to `lib/permissions.ts`**
 
-Append below `canEditStudent` (Plan 5's addition). Extend the file's imports
+Append below `canEditStudent` (Plan 7's addition). Extend the file's imports
 with `import type { Prisma } from "../generated/prisma/client";` and add
 `isMentor` if it is not already imported (it is).
 
@@ -1247,11 +1247,11 @@ backend `note-text.ts` exists — ruling X3.)
 
 - [ ] **Step 5: Confirm the shared 429 handler is in place (ruling X4)**
 
-Plan 7 Task 4 Step 0 created `apps/backend/src/lib/rate-limit.ts` and removed
+Plan 9 Task 4 Step 0 created `apps/backend/src/lib/rate-limit.ts` and removed
 `routes/auth.ts`'s copy. Check, do not create:
 
 Run: `grep -rn "export const rateLimitHandler" apps/backend/src/` → exactly one hit, `lib/rate-limit.ts`.
-If it is missing, stop — that is the Plan 7 prerequisite failure, not something
+If it is missing, stop — that is the Plan 9 prerequisite failure, not something
 to patch here.
 
 - [ ] **Step 6: Write the read routes**
@@ -1424,7 +1424,7 @@ git add apps/backend && git commit -m "feat(backend): row-scoped note visibility
 
 **Interfaces:**
 - Consumes: `createNoteRequestSchema`, `updateNoteRequestSchema`, `escapeHtml`, `plainTextToHtml` (Task 1), `canEditNote` / `noteVisibilityWhere` (Task 2), `toNoteSummary` (Task 2), `createNotificationsBulk`.
-- Produces: `escapeHtml` re-exported from `apps/backend/src/lib/html.ts` (Plan 9 and every later backend escaping site import it from there); `buildNotificationHtml(title: string, body: string | null, viewLink: string | null): string` exported from `apps/backend/src/lib/email.ts` (Plan 9 consumes it; nobody re-implements the template); `canWriteNote(user, studentUserId): Promise<boolean>`; endpoints `POST /api/v1/students/:id/notes`, `PATCH /api/v1/notes/:id`, `DELETE /api/v1/notes/:id`.
+- Produces: `escapeHtml` re-exported from `apps/backend/src/lib/html.ts` (Plan 13 and every later backend escaping site import it from there); `buildNotificationHtml(title: string, body: string | null, viewLink: string | null): string` exported from `apps/backend/src/lib/email.ts` (Plan 13 consumes it; nobody re-implements the template); `canWriteNote(user, studentUserId): Promise<boolean>`; endpoints `POST /api/v1/students/:id/notes`, `PATCH /api/v1/notes/:id`, `DELETE /api/v1/notes/:id`.
 
 **The security argument, stated once.** Spec D1 option 2 says "keep HTML on the
 wire, sanitise on write and on read, render through a whitelisting RN HTML
@@ -1500,7 +1500,7 @@ export { escapeHtml } from "../../../../packages/shared/src/index";
 
 In `apps/backend/src/lib/email.ts`, extract and export the body builder, and
 escape at every interpolation site. `renderShell`'s `title` argument is now
-pre-escaped by its caller. Plan 9 builds on this function; it does not add a
+pre-escaped by its caller. Plan 13 builds on this function; it does not add a
 second template or a second escaper:
 
 ```ts
@@ -2008,7 +2008,7 @@ git add apps/backend && git commit -m "feat(backend): note writes with escaped b
 - Test: `apps/backend/src/__tests__/integration/engagement-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `isAtRisk`, `EngagementRow`, `StudentEngagement`, `StudentSelfEngagement` (Task 1); `canViewStudent` (Plan 5), `canAccessSeason` and `staffScopeForSeason` (existing, `lib/permissions.ts`), `canReadAllStudents` (existing, `lib/rbac.ts`).
+- Consumes: `isAtRisk`, `EngagementRow`, `StudentEngagement`, `StudentSelfEngagement` (Task 1); `canViewStudent` (Plan 7), `canAccessSeason` and `staffScopeForSeason` (existing, `lib/permissions.ts`), `canReadAllStudents` (existing, `lib/rbac.ts`).
 - Produces: `computeEngagementForSeason(seasonId, opts): Promise<EngagementRow[]>`; `mayScoreInSeason(user, studentUserId, seasonId, groupId): Promise<boolean>` (module-private in `routes/engagement.ts`); the routers `studentEngagementRouter`, `seasonEngagementRouter`; endpoints `GET /api/v1/students/:id/engagement`, `GET /api/v1/seasons/:id/engagement`.
 
 **Query budget.** Spec §5 asks for "two queries for the whole cohort". This
@@ -2779,7 +2779,7 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 // Every required MeUser field, so typecheck (which covers tests) passes
-// (ruling X11): avatarPath, and Plan 7's hasPassword.
+// (ruling X11): avatarPath, and Plan 9's hasPassword.
 const mentorSession = {
   user: {
     id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const,
@@ -2971,7 +2971,7 @@ the tabs), and ADMIN's new entry sits between `/students` (a tab) and
     ]);
 ```
 
-(The STUDENT and alumni expectations — STUDENT as Plan 14 left it — are
+(The STUDENT and alumni expectations — STUDENT as Plan 11 left it — are
 untouched: neither role gains `/notes`.)
 
 - [ ] **Step 4: Add the query-key factory**
@@ -3173,8 +3173,8 @@ per-entry assertions (ruling X9).
 Run: `pnpm --filter @space/shared jest src/__tests__/navigation.test.ts` → PASS (the pins now expect the three `/notes` entries).
 Run: `cd apps/mobile && pnpm jest src/__tests__/notes-screen.test.tsx src/__tests__/placeholder-screens.test.tsx src/__tests__/role-tabs.test.tsx src/__tests__/nav-routes.test.ts src/__tests__/more-screen.test.tsx` → PASS.
 Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile --filter=@space/shared` → clean. The
-`router.push({ pathname: "/student/[id]" … })` typecheck needs Plan 5's route
-(served by `student/[id]/index.tsx` since Plan 17); if it is missing, that is
+`router.push({ pathname: "/student/[id]" … })` typecheck needs Plan 7's route
+(served by `student/[id]/index.tsx` since Plan 10); if it is missing, that is
 the prerequisite failure, not a bug here.
 
 - [ ] **Step 8: Commit**
@@ -3188,14 +3188,14 @@ git add apps/mobile packages/shared && git commit -m "feat(mobile): authored-not
 ### Task 6: Mobile — engagement and notes on the student detail screen
 
 **Files:**
-- Modify: `apps/mobile/app/(app)/student/[id]/index.tsx` (**created by Plan 5 Task 7, moved and rewritten by Plan 17 Task 7 — extend it, do not rewrite it**)
+- Modify: `apps/mobile/app/(app)/student/[id]/index.tsx` (**created by Plan 7 Task 7, moved and rewritten by Plan 10 Task 7 — extend it, do not rewrite it**)
 - Modify: `apps/mobile/src/hooks/use-notes.ts` (add `useStudentNotes`, `useCreateNote`)
 - Create: `apps/mobile/src/hooks/use-engagement.ts`
 - Modify: `apps/mobile/src/lib/query-keys.ts` (add the `engagement` factory)
 - Test: `apps/mobile/src/__tests__/student-engagement-notes.test.tsx`
 
 **Interfaces:**
-- Consumes: Plan 5's `useStudentDetail(id, role)` and the file's existing structure as Plan 17 Task 7 left it — `ProfileCard`, `EnrollmentRow`, `enrollmentStatusLabel`, the `Screen edges={["top","left","right"]} scroll` wrapper, `useTheme`, the `useState` import, and `Button` / `Card` / `EmptyState` / `ErrorState` / `LoadingState` / `Screen` / `Text` from `../../../../src/ui` (four levels: the file is in the `student/[id]/` directory). Plus `noteListResponseSchema`, `noteSummarySchema`, `studentEngagementSchema`, `type NoteSummary`, `type NoteVisibility`, `type StudentEngagement` from `@space/shared`; `VISIBILITY_LABEL` is duplicated here rather than imported from the screen file (screens do not import from screens).
+- Consumes: Plan 7's `useStudentDetail(id, role)` and the file's existing structure as Plan 10 Task 7 left it — `ProfileCard`, `EnrollmentRow`, `enrollmentStatusLabel`, the `Screen edges={["top","left","right"]} scroll` wrapper, `useTheme`, the `useState` import, and `Button` / `Card` / `EmptyState` / `ErrorState` / `LoadingState` / `Screen` / `Text` from `../../../../src/ui` (four levels: the file is in the `student/[id]/` directory). Plus `noteListResponseSchema`, `noteSummarySchema`, `studentEngagementSchema`, `type NoteSummary`, `type NoteVisibility`, `type StudentEngagement` from `@space/shared`; `VISIBILITY_LABEL` is duplicated here rather than imported from the screen file (screens do not import from screens).
 - Produces: `useStudentNotes(studentId: number | null, enabled: boolean): UseInfiniteQueryResult<InfiniteData<NotePage>>` (cursor-paged like `useAuthoredNotes`); `useCreateNote(studentId: number)`; `useStudentEngagement(studentId: number | null, enabled: boolean)`; `isNoSeasonError(err: unknown): boolean`; the `<EngagementCard />`, `<NotesSection />` and `<NoteComposer />` components inside `student/[id]/index.tsx`.
 
 **Placement.** Both blocks are rendered as siblings *after* the existing
@@ -3241,7 +3241,7 @@ const superSession = {
   scopes: emptyScopes,
 };
 
-// Plan 5's internal-arm detail payload, trimmed to what this screen needs.
+// Plan 7's internal-arm detail payload, trimmed to what this screen needs.
 const detail = {
   id: 21,
   name: "Sara Student",
@@ -3551,9 +3551,9 @@ export function useCreateNote(studentId: number) {
 
 - [ ] **Step 5: Extend the student detail screen**
 
-In `apps/mobile/app/(app)/student/[id]/index.tsx`, **keep everything Plans 5
+In `apps/mobile/app/(app)/student/[id]/index.tsx`, **keep everything Plan 7
 and 17 wrote** and add the two components below `EnrollmentRow`, plus their
-imports. Plan 17's version already imports `useState` from `"react"` and
+imports. Plan 10's version already imports `useState` from `"react"` and
 `Button` from the ui barrel — do **not** import either again (a duplicate
 identifier does not compile); add `Input` to the existing
 `from "../../../../src/ui"` import, add `type NoteSummary, type NoteVisibility`
@@ -3784,7 +3784,7 @@ and inside the screen's success branch, **after** the existing "Seasons" card:
 `"primary" | "secondary" | "ghost"`; `Button` spreads `PressableProps`, so
 `accessibilityState` passes through.)
 
-`role` and `id` are already in scope in Plan 5's component (`role` from
+`role` and `id` are already in scope in Plan 7's component (`role` from
 `useSessionStore`, `id` from the parsed route param). The `enabled` guard
 mirrors the API: a STUDENT is refused notes outright (spec D5 #2), so the
 screen does not fire a request it knows will 403 — and a student reaching
@@ -3794,7 +3794,7 @@ cards.
 - [ ] **Step 6: Run the tests**
 
 Run: `cd apps/mobile && pnpm jest src/__tests__/student-engagement-notes.test.tsx src/__tests__/student-detail.test.tsx` → PASS.
-`student-detail.test.tsx` is Plan 5's suite and mocks only `apiClient.get`
+`student-detail.test.tsx` is Plan 7's suite and mocks only `apiClient.get`
 for `/api/v1/students/21`; its `get.mockResolvedValue` answers every URL, so
 the two new queries resolve with a student-detail payload and fail their
 parses into error branches — which the file does not assert on. If any of its
@@ -3833,7 +3833,7 @@ what it claims.
    `noteVisibilityWhere`, return `{}` for every non-student role instead of the
    `OR`. → `notes-routes.test.ts` "gives a LEADER who leads this student only
    LEADERS notes and their own" must fail: the leader now receives the
-   `MENTORS` note. *(This is the roadmap's stated done-criterion for Plan 8.)*
+   `MENTORS` note. *(This is the roadmap's stated done-criterion for Plan 12.)*
 2. **Recompute engagement client-side.** In
    `apps/mobile/app/(app)/student/[id]/index.tsx`'s `EngagementCard`, replace
    `data.atRisk` with a local `data.score < 60`. →
@@ -3900,12 +3900,12 @@ carried forward rather than rediscovered.
 
 Applied from the plan review (`review-plans-07-13.md`) and the coordinator's cross-plan rulings. Each finding was verified against the current tree first.
 
-- **Blocker / X12:** `lib/queries/engagement.ts` imported `isAtRisk` from `"@space/shared"`, a value import by package name. That is the `ERR_MODULE_NOT_FOUND` trap. It now uses `../../../../../packages/shared/src/index`. The rule covers every backend file, and the emit check greps all of `dist/`. With this fix at source, Plan 11's "fix it in passing" note is moot.
+- **Blocker / X12:** `lib/queries/engagement.ts` imported `isAtRisk` from `"@space/shared"`, a value import by package name. That is the `ERR_MODULE_NOT_FOUND` trap. It now uses `../../../../../packages/shared/src/index`. The rule covers every backend file, and the emit check greps all of `dist/`. With this fix at source, Plan 15's "fix it in passing" note is moot.
 - **X2 / X3:**
   - New `packages/shared/src/html-text.ts` (Task 1) defines `escapeHtml`, `plainTextToHtml` and `htmlToPlainText` once. It replaces the backend `note-text.ts` (`toStoredNoteHtml` → `plainTextToHtml`, `noteBodyToText` → `htmlToPlainText`). Its unit tests moved to `packages/shared`.
   - `apps/backend/src/lib/html.ts` is the backend's single entry point and re-exports `escapeHtml`. It does not define a second copy.
   - `buildNotificationHtml` stays exported from `lib/email.ts`.
-- **X4:** This plan no longer extracts `lib/rate-limit.ts`. Plan 7 does. Task 2 Step 5 now only verifies that it exists.
+- **X4:** This plan no longer extracts `lib/rate-limit.ts`. Plan 9 does. Task 2 Step 5 now only verifies that it exists.
 - **X5:** Every router on a shared prefix (`studentNotesRouter`, `myNotesRouter`, `studentEngagementRouter`, `seasonEngagementRouter`) attaches `requireAuth` per route. A new test proves an unknown anonymous path under `/api/v1/me` stays a 404, and a mutation entry covers it.
 - **S1 (engagement cross-season leak):** `GET /students/:id/engagement` now picks the newest enrolment the caller is scoped to, via `mayScoreInSeason`. An explicit out-of-scope `?seasonId=` returns 403. Three new tests cover it: admin of A naming B gets 403, the same admin naming A gets 200, and a leader naming B gets 403. A mutation entry covers it too.
 - **S2:** Task 5 updates `navigation.test.ts`'s pins for the three `/notes` sidebar entries, with exact anchors, and runs the shared tests.
@@ -3926,23 +3926,23 @@ Applied from the plan review (`review-plans-07-13.md`) and the coordinator's cro
   - `canViewNote` is unused. It is kept as the documented single-note gate for a future single-note GET.
 - **Link format (X1):** `MENTOR_FOLLOWUP` keeps writing v1's exact `/admin/students/:id` (jpc-space `note-actions.ts:84`).
 
-**Cross-plan consistency pass (2026-10-05, against plans 14–17 and the revised
-order … 5 → 6 → 7 → 17 → 14 → **8** → 9 …):**
+**Cross-plan consistency pass (2026-10-05, against plans 5, 6, 10 and 11 and the revised
+order … 7 → 8 → 9 → 10 → 11 → **12** → 13 …):**
 
 - **Prerequisites:** execution order corrected (17 now follows 7; the old
-  string had 17 before 6); Plan 17 added as a consumed plan.
-- **Student detail is `student/[id]/index.tsx`** (Plan 17 Task 7 moved it to
+  string had 17 before 6); Plan 10 added as a consumed plan.
+- **Student detail is `student/[id]/index.tsx`** (Plan 10 Task 7 moved it to
   the directory form and rewrote it). Task 6's Files/Consumes, the test import
   path, the device-pass mutation and the typecheck note follow. Task 6 Step 5's
   imports are now four levels deep (`../../../../src/...`) and **merge into**
-  Plan 17's existing imports: `useState` and `Button` are already imported
+  Plan 10's existing imports: `useState` and `Button` are already imported
   there, so re-importing them (as the old snippet did) would not compile; only
-  `Input`, the note types and the two hook modules are added. Plan 17 kept
+  `Input`, the note types and the two hook modules are added. Plan 10 kept
   `ProfileCard`, `EnrollmentRow`, `enrollmentStatusLabel` and the "Seasons"
   card, so the placement anchors are unchanged.
 - **Nav pin:** Plan 1's `nav-routes.test.ts` pins ADMIN's `/more` labels
   exactly; Task 5 Step 3 now adds "My notes" to that expectation (the old
   plan only updated `navigation.test.ts`, so `nav-routes` would have failed).
-- **Metric reuse:** `isAtRisk` stays the one definition (Plan 11 bands with it,
-  Plan 18 reuses it); engagement's submitted set `SUBMITTED|REVIEWED|RETURNED`
+- **Metric reuse:** `isAtRisk` stays the one definition (Plan 15 bands with it,
+  Plan 16 reuses it); engagement's submitted set `SUBMITTED|REVIEWED|RETURNED`
   is the complement of Plan 1's `isAssignmentOutstanding`.

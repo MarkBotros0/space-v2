@@ -57,7 +57,7 @@ parse with and appends all three detail routes at once). Then Tasks 2,
 
 **Out of scope here (owner named, ruling X8/X15):** the ADMIN/SUPER branch of
 `/groups` (season group list via Plan 4's `useCurrentSeasonId`) lands in
-Plan 16 — this plan renders an explicit "not available yet" state for those
+Plan 6 — this plan renders an explicit "not available yet" state for those
 roles instead of an empty list that looks like "you have no groups". The
 session detail screen and its link to attendance are Plan 4's.
 
@@ -296,7 +296,7 @@ git add apps/mobile packages/shared && git commit -m "feat(mobile): detail route
 
 **Interfaces:**
 - Consumes: `groupListItemSchema`, `groupDetailSchema` from `@space/shared`; `queryKeys.groups` (Task 1); `makeSession` (Plan 1).
-- Produces: `useMyGroups(enabled: boolean): UseQueryResult<GroupListItem[]>`, `useGroupDetail(id: number | null): UseQueryResult<GroupDetail>`; `MY_GROUPS_ROLES` (the roles `GET /groups` serves) exported from `use-groups.ts` — Plan 16 adds the admin branch beside it.
+- Produces: `useMyGroups(enabled: boolean): UseQueryResult<GroupListItem[]>`, `useGroupDetail(id: number | null): UseQueryResult<GroupDetail>`; `MY_GROUPS_ROLES` (the roles `GET /groups` serves) exported from `use-groups.ts` — Plan 6 adds the admin branch beside it.
 
 - [ ] **Step 1: Failing test**
 
@@ -361,7 +361,7 @@ it("shows the empty state for a leader with no groups", async () => {
 it("does not pretend an admin has no groups: explicit not-yet state, no request", async () => {
   // GET /groups is empty for ADMIN by design; rendering that as "No groups"
   // on ADMIN's second tab would be a lie. The season-wide admin branch is
-  // Plan 16's (ruling X8).
+  // Plan 6's (ruling X8).
   useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
 
   renderWithProviders(<GroupsScreen />);
@@ -500,7 +500,7 @@ export default function GroupsScreen() {
   const { data, isPending, isError, refetch, isRefetching } = useMyGroups(servesRole);
 
   if (!servesRole) {
-    // ADMIN/SUPER browse groups by season; that branch lands in Plan 16 on
+    // ADMIN/SUPER browse groups by season; that branch lands in Plan 6 on
     // Plan 4's useCurrentSeasonId (ruling X8).
     return (
       <Screen edges={["top", "left", "right"]}>
@@ -1613,7 +1613,7 @@ results, and any divergence from this plan.
   `src/lib/attendance-entries.ts` with unit tests.
 - Admin Groups tab (X8, review S8): ADMIN/SUPER/MENTOR get an explicit
   "not available yet" state with no request instead of a misleading empty
-  list; the season branch is Plan 16's. `MY_GROUPS_ROLES` exported.
+  list; the season branch is Plan 6's. `MY_GROUPS_ROLES` exported.
 - Every screen previously described in prose (groups, group detail, queue,
   review, attendance) now has full code; the review screen handles a 409
   without navigating away; sentinel query keys (`-1`) replaced with `null`.

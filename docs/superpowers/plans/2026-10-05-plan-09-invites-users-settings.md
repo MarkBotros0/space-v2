@@ -1,4 +1,4 @@
-# Plan 7 — Invites, Users & Settings Implementation Plan
+# Plan 9 — Invites, Users & Settings Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -27,13 +27,13 @@ Zustand, RNTL via `renderWithProviders`.
 §10 D1–D8), `docs/superpowers/specs/domains/18-settings.md` (esp. §7, §9, §10
 D1, D3, D6, D7), `docs/superpowers/specs/domains/_DECISIONS.md` (C1, C6, C7,
 C8, C11), scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md`
-§ Plan 7.
+§ Plan 9.
 
-**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → **7** → 17 → 14 → 8 → …):
+**Depends on** (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → **9** → 10 → 11 → 12 → …):
 - **Plan 1:** `DETAIL_ROUTE_NAMES` exported from `app/(app)/_layout.tsx` and Task 0's derived route-count tests (X9); `PLACEHOLDER_SCREENS`; the `makeSession`/`makeUser`/`makeScopes` fixtures (X11); `/more`.
 - **Plan 3:** `formatInOrgTime` in `lib/org-time.ts` (invite expiry in the email, Decision 6).
-- **Plan 16:** `GET /api/v1/groups/leader-options` and `useLeaderOptions` stay as Plan 16 built them — see Decision 17. Nothing else from Plan 16 is consumed.
-- Plans 2, 4, 15, 5 and 6 also run before this one; nothing here consumes them beyond the `DETAIL_ROUTE_NAMES` entries they appended. Plan 17 (users `/new`, bulk invites, forgot/reset, `confirmSuper` on create) and Plan 14 (`/me/profile`) run **after** this plan and consume it.
+- **Plan 6:** `GET /api/v1/groups/leader-options` and `useLeaderOptions` stay as Plan 6 built them — see Decision 17. Nothing else from Plan 6 is consumed.
+- Plans 2, 4, 5, 7 and 8 also run before this one; nothing here consumes them beyond the `DETAIL_ROUTE_NAMES` entries they appended. Plan 10 (users `/new`, bulk invites, forgot/reset, `confirmSuper` on create) and Plan 11 (`/me/profile`) run **after** this plan and consume it.
 
 ## Global Constraints
 
@@ -58,25 +58,25 @@ C8, C11), scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md`
 5. **Issuing an invite expires the target's prior live invites** (same transaction — spec 11 D5 rec 2: one live invite per user). Expiry is `expiresAt = now`, not `usedAt = now` — `usedAt` means "accepted" and must stay honest.
 6. **The invite email delivers a code to type/paste into the app, not a link — but a long code, not the short numeric one spec 11 D10 suggests.** D10 recommends "a short numeric code the user types" plus the real `expiresAt`. This plan adopts the code-not-link half (it removes R24 entirely — no token in any URL, browser history, or `Referer` — and the email cannot point at a route that doesn't exist, which is how D1 happened) and the real-expiry half (the email states `expiresAt` formatted with Plan 3's `formatInOrgTime`, and the detail screen shows it). It **deliberately diverges** on length: a 6–8 digit code is 20–27 bits, safe only behind a per-invite attempt counter, and `InviteToken` has no column to hold one (C1 — no migrations). Without that counter the only brake is the per-IP `acceptInviteLimiter`, which a distributed guesser walks around. So the code stays 32 base64url characters (~192 bits); it is pasted from the email, not memorised. Revisit at cutover if an attempts column is added.
 7. **`app/accept-invite.tsx` is in scope.** The roadmap's screen list names settings + users, but this plan's own done-condition ("an invite is the only way a UI-created user gets credentials") is unreachable if the flow ends at an email with no screen to enter it — that is D1 rebuilt with better plumbing. The screen is small (two fields, one anonymous POST) and sits beside `login.tsx`, outside `(app)`.
-8. **`user/[id].tsx` exists as a dynamic route.** The detail carries an edit form (name/role/graduationYear), a confirm-gated SUPER grant, an invite panel with the real `expiresAt` (v1 showed no expiry anywhere — R75), and deactivate/reactivate. That is far too much interaction to inline in a list row; it follows the `assignment/[id]` dynamic-route pattern (Plan 1 Task 2). A `user/new` create screen is **not** built here — `POST /api/v1/users` exists and is tested; the `/users/new` screen belongs to **Plan 17** (students & accounts follow-up, ruling X15).
+8. **`user/[id].tsx` exists as a dynamic route.** The detail carries an edit form (name/role/graduationYear), a confirm-gated SUPER grant, an invite panel with the real `expiresAt` (v1 showed no expiry anywhere — R75), and deactivate/reactivate. That is far too much interaction to inline in a list row; it follows the `assignment/[id]` dynamic-route pattern (Plan 1 Task 2). A `user/new` create screen is **not** built here — `POST /api/v1/users` exists and is tested; the `/users/new` screen belongs to **Plan 10** (students & accounts follow-up, ruling X15).
 9. **`PATCH /users/:id` is a full replace of `{ name, role, graduationYear }`** (plus the optional `confirmSuper` flag), not a partial patch. v1's form always submits all three (`user-actions.ts:103-130`), the alumni cross-field rule needs all of them present to validate without a server-side merge, and the guards (self-role, last-SUPER) get simpler when the intended end state is explicit.
 10. **Wrong current password on `POST /me/password` is `400 incorrect_password`, not 401.** The mobile axios interceptor treats any non-auth-endpoint 401 as an expired access token and burns a refresh rotation on it (`api-client.ts` — `__handleResponseError`); a 401 here would trigger that dance on every typo.
 11. **Password change revokes every refresh token except the one whose raw value the request presents.** The access token doesn't identify a refresh token, so the client sends its own refresh token in the body (optional `refreshToken` field) and the server excludes that hash from the revocation sweep. Omitting it revokes all — fail-safe. The same server already receives raw refresh tokens in `POST /auth/logout`'s body, so this adds no new exposure class.
 12. **Single-target invite refusal is explicit, not silent.** v1's batch silently dropped ineligible ids (R16). `POST /users/:id/invite` is a SUPER pressing a button on one row: an already-activated target gets `409 already_activated`, a deleted one `409 user_deleted`. The anonymous `accept-invite` endpoint is the opposite: **one opaque code for every failure** (unknown/used/expired/already-activated/deleted target all return the identical `400 invalid_invite` body), closing R27's oracle; the distinction lives in server behaviour only.
 13. **No org-level settings endpoints exist, because no org-level settings exist.** Verified against `jpc-space/src/lib/settings-actions.ts` (102 lines, read in full): three actions — `changePasswordAction`, `updateNotificationPreferencesAction`, `updateOwnProfileAction` — all keyed on `session.userId`, none accepting a subject id, none writing anything org-scoped. Spec 18 §2 confirms no `Setting`/`Config` model exists in the schema. Encoding reality means encoding its absence.
-14. **Notification preferences are named for Plan 9, not built here.** Spec 18 §3.5 assigns the preference surface to domain 10 (`GET/PUT /api/v1/me/notification-preferences`, all six keys including the writer-less `quizGraded`). Building a five-key twin here is precisely how v1 lost `quizGraded`. The settings screen ships without the toggles; Plan 9 adds the section.
+14. **Notification preferences are named for Plan 13, not built here.** Spec 18 §3.5 assigns the preference surface to domain 10 (`GET/PUT /api/v1/me/notification-preferences`, all six keys including the writer-less `quizGraded`). Building a five-key twin here is precisely how v1 lost `quizGraded`. The settings screen ships without the toggles; Plan 13 adds the section.
 15. **Also deferred, each with a named owner so nothing silently drops (ruling X15):**
-    - **Plan 17** (students & accounts follow-up): forgot/reset-password endpoints and their two anonymous screens (spec 11 §7, R65–R80 — the same anonymous-credential family; v1's reset flow at least *works*, so it must exist before cutover); the `/users/new` create screen over this plan's `POST /api/v1/users`; bulk "send all pending invites" (`sendAllPendingInvitesAction` — v1's 5000-sequential-SMTP loop must become a queue, R18/spec §7 note; single-target `POST /users/:id/invite` covers the admin flow until then).
-    - **Plan 14** (student self-service): the student's own profile — `GET/PATCH /me/profile` and the `/profile` screen (STUDENT editable, ALUMNI read-only). Plan 5 and an earlier draft of this plan each deferred it to the other; it belongs to neither. This plan's `PATCH /me` stays **name-only** and does not grow `StudentProfile` fields.
+    - **Plan 10** (students & accounts follow-up): forgot/reset-password endpoints and their two anonymous screens (spec 11 §7, R65–R80 — the same anonymous-credential family; v1's reset flow at least *works*, so it must exist before cutover); the `/users/new` create screen over this plan's `POST /api/v1/users`; bulk "send all pending invites" (`sendAllPendingInvitesAction` — v1's 5000-sequential-SMTP loop must become a queue, R18/spec §7 note; single-target `POST /users/:id/invite` covers the admin flow until then).
+    - **Plan 11** (student self-service): the student's own profile — `GET/PATCH /me/profile` and the `/profile` screen (STUDENT editable, ALUMNI read-only). Plan 7 and an earlier draft of this plan each deferred it to the other; it belongs to neither. This plan's `PATCH /me` stays **name-only** and does not grow `StudentProfile` fields.
     - **Deferred with uploads** (CLAUDE.md "Uploads are switched off"; ruling X15): avatar changes (`updateAvatarAction`).
-    - **No owner needed:** theme/biometrics/push are device state (spec 18 D3 — no endpoint, no column; push registration is Plan 9).
-    - **Plan 13 (cutover):** the operational step of nulling existing `ChangeMe123!` hashes in the live DB (spec 11 D2 — v2 cannot fix stored rows by writing code).
+    - **No owner needed:** theme/biometrics/push are device state (spec 18 D3 — no endpoint, no column; push registration is Plan 13).
+    - **Plan 18 (cutover):** the operational step of nulling existing `ChangeMe123!` hashes in the live DB (spec 11 D2 — v2 cannot fix stored rows by writing code).
 
-    **Ordering note (resolved).** `/users/new` and bulk resend consume this plan's `POST /api/v1/users`, `POST /api/v1/users/:id/invite` and `issueInvite`, and forgot/reset consume this plan's `passwordSchema`, exported `hashToken` and `lib/rate-limit.ts`. The revised execution order runs Plan 17 **after** this plan (… 6 → 7 → 17 → 14 …), so these exist when Plan 17 starts.
+    **Ordering note (resolved).** `/users/new` and bulk resend consume this plan's `POST /api/v1/users`, `POST /api/v1/users/:id/invite` and `issueInvite`, and forgot/reset consume this plan's `passwordSchema`, exported `hashToken` and `lib/rate-limit.ts`. The revised execution order runs Plan 10 **after** this plan (… 8 → 9 → 10 → 11 …), so these exist when Plan 10 starts.
 16. **The last-SUPER guard is serialised, not merely counted.** "Count SUPERs inside the transaction" does not stop two concurrent demotions under Postgres's default READ COMMITTED: each transaction counts two, each proceeds, and none remain. Both the PATCH and the deactivate path therefore take row locks on every active SUPER (`SELECT … FOR UPDATE`) inside their transaction before deciding (Task 3's `lockActiveSuperIds`). The second transaction blocks on the first's locks, re-evaluates its `WHERE` against the committed row (Postgres re-checks the predicate for `FOR UPDATE`), no longer sees the demoted SUPER, and refuses. The decision itself is a pure function (`isLastActiveSuper`) with a unit test, because the shared staging DB always contains real SUPERs and an integration test can never reach the "last one" branch.
 
-17. **Plan 16's leader picker is kept, not replaced.** Plan 16 (which runs before this plan) shipped `GET /api/v1/groups/leader-options` + `useLeaderOptions` as an interim read of live LEADER users, anticipating that this plan's `GET /users?role=` might replace it (Plan 16 D-16.14). It does not: `usersRouter` is SUPER-only (spec 11 — user administration), while group management is open to every season admin (`isAdminOfAnySeason`). Repointing the picker at `GET /users?role=LEADER` would either 403 every ADMIN or force this router to widen its gate for one read, leaking emails/roles of every account to admins. So `GET /groups/leader-options` stays the leader picker's source, `useLeaderOptions` is untouched, and this plan adds no `role`-filtered read for non-SUPER callers.
-18. **Forward note — `confirmSuper` on create is Plan 17's.** This plan enforces `confirmSuper: true` only on `PATCH /users/:id` (Task 3). `POST /users` accepts `role: "SUPER"` without it here; Plan 17 Decision 13 later adds `confirmSuper?: boolean` to `createUserRequestSchema` and makes `POST /users` refuse a SUPER grant without it (`400 confirm_super_required`, the same code). No behaviour change in this plan — do not add it early, or Plan 17's failing-test-first step has nothing to fail.
+17. **Plan 6's leader picker is kept, not replaced.** Plan 6 (which runs before this plan) shipped `GET /api/v1/groups/leader-options` + `useLeaderOptions` as an interim read of live LEADER users, anticipating that this plan's `GET /users?role=` might replace it (Plan 6 D-16.14). It does not: `usersRouter` is SUPER-only (spec 11 — user administration), while group management is open to every season admin (`isAdminOfAnySeason`). Repointing the picker at `GET /users?role=LEADER` would either 403 every ADMIN or force this router to widen its gate for one read, leaking emails/roles of every account to admins. So `GET /groups/leader-options` stays the leader picker's source, `useLeaderOptions` is untouched, and this plan adds no `role`-filtered read for non-SUPER callers.
+18. **Forward note — `confirmSuper` on create is Plan 10's.** This plan enforces `confirmSuper: true` only on `PATCH /users/:id` (Task 3). `POST /users` accepts `role: "SUPER"` without it here; Plan 10 Decision 13 later adds `confirmSuper?: boolean` to `createUserRequestSchema` and makes `POST /users` refuse a SUPER grant without it (`400 confirm_super_required`, the same code). No behaviour change in this plan — do not add it early, or Plan 10's failing-test-first step has nothing to fail.
 
 **Execution shape:** Task 1 first (everything consumes the contracts). Then
 Tasks 2–4 are one sequential backend stream (all touch `routes/users.ts`;
@@ -1365,7 +1365,7 @@ git commit -m "feat(backend): role change and deactivation revoke — scope casc
 
 **Interfaces:**
 - Consumes: `hashToken` (Task 3), `config`, `formatInOrgTime` from `lib/org-time.ts` (Plan 3), `sendInviteEmail`; `createUserRequestSchema`, `acceptInviteRequestSchema` (relative shared imports); Task 2's `requireSuper`, `loadUserDetail`.
-- Produces: `rateLimitHandler: RateLimitOptions["handler"]` from `apps/backend/src/lib/rate-limit.ts` (Task 5 and Plans 8, 11, 12 import it; nobody else defines one); `config.inviteTokenTtlHours: number`; `issueInvite(client: InviteWriter, userId: number, invitedById: number): Promise<{ raw: string; expiresAt: Date }>` with `export type InviteWriter = Pick<typeof db, "inviteToken">`; `sendInviteEmail(email: string, code: string, expiresAt: Date): Promise<void>`; `POST /api/v1/users` → 201 `{ data: { userId: number } }`; `POST /api/v1/users/:id/invite` → `{ data: InviteState }`; `POST /api/v1/auth/accept-invite` (anonymous, its own `acceptInviteLimiter`) → `{ data: AcceptInviteResponse }` / `400 invalid_invite`.
+- Produces: `rateLimitHandler: RateLimitOptions["handler"]` from `apps/backend/src/lib/rate-limit.ts` (Task 5 and Plans 12, 15 and 17 import it; nobody else defines one); `config.inviteTokenTtlHours: number`; `issueInvite(client: InviteWriter, userId: number, invitedById: number): Promise<{ raw: string; expiresAt: Date }>` with `export type InviteWriter = Pick<typeof db, "inviteToken">`; `sendInviteEmail(email: string, code: string, expiresAt: Date): Promise<void>`; `POST /api/v1/users` → 201 `{ data: { userId: number } }`; `POST /api/v1/users/:id/invite` → `{ data: InviteState }`; `POST /api/v1/auth/accept-invite` (anonymous, its own `acceptInviteLimiter`) → `{ data: AcceptInviteResponse }` / `400 invalid_invite`.
 
 - [ ] **Step 0: Extract the rate-limit handler (ruling X4)**
 
@@ -1512,7 +1512,7 @@ In `email.ts` add (below `sendNotificationEmail`):
  * letters, spaces, punctuation from Intl). Neither can carry markup, so no
  * escaping is needed by construction (ruling C11). v1 interpolated the
  * inviter's display name here (spec 11 D10, R90); v2 does not put any name in
- * this mail. If one is ever added, it goes through Plan 8's escapeHtml.
+ * this mail. If one is ever added, it goes through Plan 12's escapeHtml.
  *
  * The real expiry is stated (spec 11 D10, R75) — v1 said "will expire soon".
  */
@@ -1789,7 +1789,7 @@ Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBan
 
 - [ ] **Step 3: Implement `POST /users` and `POST /users/:id/invite`**
 
-(`POST /users` takes no `confirmSuper` here; Plan 17 adds it — Decision 18.)
+(`POST /users` takes no `confirmSuper` here; Plan 10 adds it — Decision 18.)
 
 In `routes/users.ts`, extend the relative shared import with
 `createUserRequestSchema`, and add:
@@ -3187,7 +3187,7 @@ git commit -m "feat(mobile): SUPER users list — search, cursor pagination, row
 - [ ] **Step 1: Register the hidden route**
 
 Append `"user/[id]"` to the exported `DETAIL_ROUTE_NAMES` const in
-`(app)/_layout.tsx` (Plan 1 Task 2 created it; Plans 2, 4, 15, 16, 5 and 6 have
+`(app)/_layout.tsx` (Plan 1 Task 2 created it; Plans 2 and 4–8 have
 appended or renamed their own dynamic routes). That is the whole layout change: `app-layout.test.tsx`
 derives its expectations — including `href: null` for every detail route —
 from that exported constant (ruling X9, Plan 1 Task 0), so no test edits and
@@ -3947,10 +3947,10 @@ sweeping used/expired `InviteToken`/`PasswordResetToken` rows and the missing
 `PasswordResetToken.expiresAt` index (spec 11 D5 rec 4); audit columns for role
 grants (spec 11 D7 rec 4); a per-invite attempts column that would allow the
 short numeric code of spec 11 D10 (Decision 6). Plus the deferred-to-later-plans
-list from Decision 15: notification preferences → Plan 9; student profile
-self-edit (`/me/profile`, `/profile`) → Plan 14; forgot/reset password,
-`/users/new` screen, bulk resend invites → Plan 17; avatar → deferred with
-uploads. (Decision 15's ordering note is resolved: Plan 17 runs after this
+list from Decision 15: notification preferences → Plan 13; student profile
+self-edit (`/me/profile`, `/profile`) → Plan 11; forgot/reset password,
+`/users/new` screen, bulk resend invites → Plan 10; avatar → deferred with
+uploads. (Decision 15's ordering note is resolved: Plan 10 runs after this
 plan.)
 
 ---
@@ -3967,7 +3967,7 @@ Applied from the plan review (`review-plans-07-13.md`) and the coordinator's cro
 - **S1** Raw invite codes are never logged, in any environment (Decision 2 rewritten). `NODE_ENV` defaults to `development`, so the old dev-only log would have leaked live codes from production. Send-failure logs carry the user id, not the address or the code. The leak sweep now greps `lib/` as well as `routes/`, and the integration suite stubs the mailer.
 - **S2** The last-SUPER guard is concurrency-safe. New `lib/super-guard.ts` provides `lockActiveSuperIds`, which runs `SELECT … FOR UPDATE`, and a pure `isLastActiveSuper`. PATCH and deactivate both use it inside one transaction. Deactivate had been counting outside any transaction. The guard has a unit test and a mutation entry (Decision 16, Task 3).
 - **S3** The code is kept long and recorded as a deliberate divergence from spec 11 D10. The schema has no attempts column, so a short code cannot be protected. The email now states the real expiry via Plan 3's `formatInOrgTime` (Decision 6).
-- **S4 / X15** Student profile self-edit now belongs to **Plan 14**, ending the Plan 5 ↔ Plan 7 ping-pong. Forgot/reset password, `/users/new` and bulk resend belong to **Plan 17**. Avatar is deferred with uploads (Decision 15).
+- **S4 / X15** Student profile self-edit now belongs to **Plan 11**, ending the Plan 7 ↔ Plan 9 ping-pong. Forgot/reset password, `/users/new` and bulk resend belong to **Plan 10**. Avatar is deferred with uploads (Decision 15).
 - **S5** PATCH `/users/:id` and `POST /users/:id/invite` now answer through the same `loadUserDetail` builder that GET uses, with a parity test.
 - **S6** Accept-invite goes through a `useAcceptInvite` hook that parses `acceptInviteResponseSchema`. `useSetActivation` parses `activationResponseSchema` (ruling X10).
 - **S7 / X9** Placeholder steps only remove rows, because Plan 1 removed the hardcoded count.
@@ -3983,11 +3983,11 @@ Applied from the plan review (`review-plans-07-13.md`) and the coordinator's cro
   - The `roleFilter as never` cast is removed.
   - `-1` query-key sentinel is replaced with `null`.
 - **Not done here (rulings):** `/more` is built by Plan 1 (X15), not this plan.
-- **Open for the coordinator:** the rulings place Plan 17 before Plan 7, but Plan 17 consumes this plan's `POST /users`, `POST /users/:id/invite`, `issueInvite`, `passwordSchema`, `hashToken` and `lib/rate-limit.ts` (Decision 15).
+- **Open for the coordinator:** the rulings place Plan 10 before Plan 9, but Plan 10 consumes this plan's `POST /users`, `POST /users/:id/invite`, `issueInvite`, `passwordSchema`, `hashToken` and `lib/rate-limit.ts` (Decision 15).
 
-Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
-- Added a `Depends on` header (Plans 1, 3, 16; 17 and 14 run after and consume this plan).
-- Decision 15's ordering note and the closing-gate repeat marked resolved (Plan 17 runs after Plan 7); the "Open for the coordinator" item above is closed by the same order.
-- New Decision 17: Plan 16's `GET /groups/leader-options` / `useLeaderOptions` are kept, not repointed at the SUPER-only `GET /users?role=`.
-- New Decision 18 + a note at Task 4 Step 3: `confirmSuper` on `POST /users` is added later by Plan 17 (no behaviour change here).
-- Task 8 wording: `DETAIL_ROUTE_NAMES` always exists (Plan 1); entries from Plans 2/4/15/16/5/6 precede this one.
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
+- Added a `Depends on` header (Plans 1, 3 and 6; 17 and 14 run after and consume this plan).
+- Decision 15's ordering note and the closing-gate repeat marked resolved (Plan 10 runs after Plan 9); the "Open for the coordinator" item above is closed by the same order.
+- New Decision 17: Plan 6's `GET /groups/leader-options` / `useLeaderOptions` are kept, not repointed at the SUPER-only `GET /users?role=`.
+- New Decision 18 + a note at Task 4 Step 3: `confirmSuper` on `POST /users` is added later by Plan 10 (no behaviour change here).
+- Task 8 wording: `DETAIL_ROUTE_NAMES` always exists (Plan 1); entries from Plans 2/4–8 precede this one.

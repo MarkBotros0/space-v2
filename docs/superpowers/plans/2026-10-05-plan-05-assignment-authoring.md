@@ -1,4 +1,4 @@
-# Plan 15 — Assignment Authoring Implementation Plan
+# Plan 5 — Assignment Authoring Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -39,7 +39,7 @@ R60–R80, R84–R86; §7 API, §8 contracts, §9 screens; §10 items 1, 3, 4, 5
 `src/components/assignments/{assignment-form,submission-tracker,assignments-list}.tsx`,
 `src/app/admin/season/[code]/assignments/{page,new/page,[id]/page,[id]/edit/page}.tsx`.
 
-**Depends on** (execution order 1 → 2 → 3 → 4 → **15** → 16 → 5 → …; nothing
+**Depends on** (execution order 1 → 2 → 3 → 4 → **5** → 6 → 7 → …; nothing
 later is assumed):
 - Plan 1: `app/(app)/assignment/[id].tsx` (student detail + submission
   editor), `assignments.tsx` (student list), `src/hooks/use-assignments.ts`
@@ -54,12 +54,12 @@ later is assumed):
 - Plan 4: `orgDayKey` in `lib/org-time.ts`, `sessionListItemSchema.dayKey`,
   `useCurrentSeasonId()` (ruling X8), `apiErrorMessage`, `formatDayKey`.
 
-**Consumed later by:** Plan 9 (its Step 7 producer table row "15" is
+**Consumed later by:** Plan 13 (its Step 7 producer table row "15" is
 `notifyAssignmentCreated` in `lib/assignment-writes.ts` — one call site, used
-by both create and edit); Plan 10 (must import `isoDaySchema`/`wallTimeSchema`
+by both create and edit); Plan 14 (must import `isoDaySchema`/`wallTimeSchema`
 from `packages/shared/src/org-time.ts` and `orgWallTime`/`orgWallClockToInstant`
-from `lib/org-time.ts` instead of defining them — see Open decisions); Plan 16
-(reuses `useSeasonGroups`); Plan 18 (staff dashboard links into `/assignments`).
+from `lib/org-time.ts` instead of defining them — see Open decisions); Plan 6
+(reuses `useSeasonGroups`); Plan 16 (staff dashboard links into `/assignments`).
 
 ## Global Constraints
 
@@ -92,7 +92,7 @@ Existing codes reused: `bad_request` 400, `forbidden` 403, `not_found` 404.
 
 **Divergences from v1, each with its authority:**
 
-| v1 behaviour | Plan 15 | Authority |
+| v1 behaviour | Plan 5 | Authority |
 |---|---|---|
 | `isAllGroups`/`groupIds` read off the raw body, unchecked (R11, R12) | In the Zod schema; every id must be a group of the path's season | spec §10 item 6, C8 |
 | "Specific groups" with no groups saved, targets nobody (R13) | 400 | spec §10 item 6 (deliberate) |
@@ -111,7 +111,7 @@ Unchanged from v1 on purpose: no publish flag (R26); due date never enforced
 exist (R72) — the edit screen warns when narrowing would hide started work
 (§10 item 5); FORUM/STANDARD coercion (R14–R17); audit columns stamped (R71,
 §10 item 13); notification fan-out after the commit, opt-outs honoured
-(R64–R65), failure never fails the write (Plan 3's precedent, which Plan 9
+(R64–R65), failure never fails the write (Plan 3's precedent, which Plan 13
 replaces with `bestEffort`).
 
 ---
@@ -127,7 +127,7 @@ replaces with `bestEffort`).
 **Interfaces:**
 - Consumes: `assignmentTypeSchema` from `./enums`; the existing response schemas in `assignment.ts`; Plan 1's `isAssignmentOutstanding` (left untouched at the end of `assignment.ts`).
 - Produces (exact names later tasks and plans import):
-  - `isoDaySchema` (`YYYY-MM-DD`, a real calendar day), `wallTimeSchema` (`HH:mm`, 24-hour) in `packages/shared/src/org-time.ts` — **Plan 10 imports these; it must not define its own.**
+  - `isoDaySchema` (`YYYY-MM-DD`, a real calendar day), `wallTimeSchema` (`HH:mm`, 24-hour) in `packages/shared/src/org-time.ts` — **Plan 14 imports these; it must not define its own.**
   - `DEFAULT_DUE_TIME = "23:59"` (spec R19).
   - `assignmentWriteRequestSchema` → `AssignmentWriteRequest` (`z.input`) / `AssignmentWriteBody` (`z.output`); `createAssignmentRequestSchema` and `updateAssignmentRequestSchema` are the same schema (one full-replace body; `seasonId` is never in it). The old `CreateAssignmentRequest/Body`, `UpdateAssignmentRequest/Body` type names remain as aliases.
   - `assignmentDetailSchema.dueOrgDay: string | null`, `assignmentDetailSchema.dueOrgTime: string | null`; `staffAssignmentListItemSchema.dueOrgDay: string | null`.
@@ -304,7 +304,7 @@ import { z } from "zod";
 // config.orgTimezone. The device's timezone never enters: a form reads back
 // exactly the day and time the user tapped and sends them as-is.
 //
-// Plan 15 created this module; Plan 10's event contracts import from it.
+// Plan 5 created this module; Plan 14's event contracts import from it.
 
 const ISO_DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -486,14 +486,14 @@ export type AssignmentDeletedResponse = z.infer<typeof assignmentDeletedResponse
 **Interfaces:**
 - Consumes: Plan 3's `orgWallClock`, `fromOrgWallClock`; Plan 4's `orgDayKey`; existing `isOverdue`, `loadAssignmentById`, `canManageAssignment`.
 - Produces:
-  - `orgWallTime(date: Date): string` (`HH:mm`) and `orgWallClockToInstant(day: string, time: string | null): Date` (null time = org midnight; throws `RangeError` on a malformed value) in `lib/org-time.ts` — **Plan 10 consumes both names and must not redefine them.**
+  - `orgWallTime(date: Date): string` (`HH:mm`) and `orgWallClockToInstant(day: string, time: string | null): Date` (null time = org midnight; throws `RangeError` on a malformed value) in `lib/org-time.ts` — **Plan 14 consumes both names and must not redefine them.**
   - `assignmentDetailPayload(detail, { isStudent, canManage, mySubmission })` and `MySubmissionData` in `lib/queries/assignments.ts` — the one builder of the detail response (GET, POST, PATCH).
   - `AssignmentListRow.dueOrgDay`.
 
 - [ ] **Step 1: Failing unit test.** Add `orgWallClockToInstant` and `orgWallTime` to the existing `from "../lib/org-time"` import in `apps/backend/src/__tests__/org-time.test.ts` (the file already pins `Africa/Cairo` with its `jest.mock` of config), then append:
 
 ```ts
-describe("orgWallTime / orgWallClockToInstant (Plan 15 — due dates, C2)", () => {
+describe("orgWallTime / orgWallClockToInstant (Plan 5 — due dates, C2)", () => {
   it("reads the org wall-clock time of an instant on both sides of DST", () => {
     expect(orgWallTime(new Date("2099-03-10T21:59:00.000Z"))).toBe("23:59"); // UTC+2
     expect(orgWallTime(new Date("2099-05-01T20:59:00.000Z"))).toBe("23:59"); // UTC+3
@@ -711,7 +711,7 @@ and in `AssignmentDetail`'s `properties`, after `dueAt`:
 **Interfaces:**
 - Consumes: `createAssignmentRequestSchema`, `AssignmentWriteBody` (Task 1); `orgWallClockToInstant` (Task 2), `formatInOrgTime` (Plan 3); `createNotificationsBulk`; `canManageAssignment`; `loadAssignmentById`, `assignmentDetailPayload` (Task 2).
 - Produces:
-  - in `lib/assignment-writes.ts`: `validateAssignmentRefs(seasonId, { sessionId, groupIds }): Promise<AssignmentRefRefusal | null>`; `assignmentColumns(body)`; `targetedStudentIds(seasonId, isAllGroups, groupIds): Promise<number[]>`; `notifyAssignmentCreated(assignment, studentIds): Promise<void>` (**the single `ASSIGNMENT_CREATED` producer — Plan 9's table row "15"**); `bodyErrorMessage(err, fallback)`.
+  - in `lib/assignment-writes.ts`: `validateAssignmentRefs(seasonId, { sessionId, groupIds }): Promise<AssignmentRefRefusal | null>`; `assignmentColumns(body)`; `targetedStudentIds(seasonId, isAllGroups, groupIds): Promise<number[]>`; `notifyAssignmentCreated(assignment, studentIds): Promise<void>` (**the single `ASSIGNMENT_CREATED` producer — Plan 13's table row "15"**); `bodyErrorMessage(err, fallback)`.
   - `POST /api/v1/seasons/:id/assignments` → `201 { data: AssignmentDetail }`; errors `bad_request` 400, `invalid_group` 400, `invalid_session` 400, `forbidden` 403, `not_found` 404.
 
 - [ ] **Step 1: Failing tests.** Create the suite:
@@ -1032,7 +1032,7 @@ import { formatInOrgTime, orgWallClockToInstant } from "./org-time";
 /**
  * Rules every assignment write shares, in one place so create and edit cannot
  * drift. Ported from v1 `src/lib/assignment-actions.ts:44-182` with the
- * divergences listed in Plan 15's header, each named where it happens.
+ * divergences listed in Plan 5's header, each named where it happens.
  */
 
 export interface AssignmentRefRefusal {
@@ -1129,7 +1129,7 @@ export async function notifyAssignmentCreated(
     });
   } catch {
     // Best-effort: the assignment exists; a notification failure must not
-    // report the write as failed (R86). Plan 9 replaces this try/catch with
+    // report the write as failed (R86). Plan 13 replaces this try/catch with
     // its bestEffort wrapper.
   }
 }
@@ -1694,7 +1694,7 @@ Run the suite → PASS. `pnpm turbo lint typecheck test:unit --filter=@space/bac
   - routes `/assignment/[id]` (route name `assignment/[id]/index`), `/assignment/[id]/edit` (`assignment/[id]/edit`), `/assignment/new` (`assignment/new`)
   - `queryKeys.assignments.staffBySeason(seasonId: number | null)`, `.trackers()`, `.tracker(id: number | null)`; `queryKeys.groups.bySeason(seasonId: number | null)`
   - `useStaffAssignments(seasonId: number | null): UseQueryResult<StaffAssignmentListItem[]>`, `useAssignmentTracker(id: number | null): UseQueryResult<AssignmentTracker>` (in `use-assignments.ts`)
-  - `useSeasonGroups(seasonId: number | null): UseQueryResult<GroupListItem[]>` (in `use-groups.ts` — **Plan 16's admin group screens reuse it**)
+  - `useSeasonGroups(seasonId: number | null): UseQueryResult<GroupListItem[]>` (in `use-groups.ts` — **Plan 6's admin group screens reuse it**)
   - `useCreateAssignment()` (`mutate({ seasonId, body })`), `useUpdateAssignment(id: number)`, `useDeleteAssignment()` (`mutate(id)`) in `use-assignment-writes.ts`
   - `formatWallTime(time: string | null): string`, `formatOrgDue(day: string | null, time: string | null): string` in `format.ts`
   - `MIME_CATEGORY_LABELS`, `targetLabel`, `trackerStatusLabel`, `configLabel` in `src/lib/assignment-labels.ts`
@@ -2162,7 +2162,7 @@ const seasonGroupListSchema = z.array(groupListItemSchema);
 /**
  * A season's groups — GET /seasons/:id/groups, which the server already
  * narrows (a leader gets only the groups they lead). The assignment form's
- * group picker and the "Assigned to" labels read it; Plan 16's admin group
+ * group picker and the "Assigned to" labels read it; Plan 6's admin group
  * screens reuse it rather than adding a second hook.
  */
 export function useSeasonGroups(seasonId: number | null): UseQueryResult<GroupListItem[]> {
@@ -2253,7 +2253,7 @@ Run the three test files → PASS.
 
 **Files:**
 - Modify: `apps/mobile/app/(app)/assignments.tsx`
-- Modify: `apps/mobile/src/__tests__/assignments-screen.test.tsx` (delete Plan 1's "does not run the student query for staff (their branch is Plan 15's)" case — this task replaces it)
+- Modify: `apps/mobile/src/__tests__/assignments-screen.test.tsx` (delete Plan 1's "does not run the student query for staff (their branch is Plan 5's)" case — this task replaces it)
 - Test: `apps/mobile/src/__tests__/assignments-staff-screen.test.tsx`
 
 **Interfaces:**
@@ -2883,7 +2883,7 @@ function TrackerCard({ assignmentId }: { assignmentId: number }) {
 /**
  * The staff half of assignment/[id] (v1 /admin/season/[code]/assignments/[id]).
  * Edit and delete appear when the server says `canManage` (C4 — v1 rendered
- * no delete control at all, R80; v2's DELETE is designed, Plan 15 Task 5).
+ * no delete control at all, R80; v2's DELETE is designed, Plan 5 Task 5).
  */
 export function AssignmentStaffPanel({ detail }: { detail: AssignmentDetail }) {
   const theme = useTheme();
@@ -3977,10 +3977,10 @@ tmux kill-session -t space-v2-plan15-server
 
 ## Open decisions (for the coordinator)
 
-1. **Due-date wire format changed from spec §8.** §8 specified `dueAt` as an ISO instant in the request; rulings C2/X13 (author's device zone must not decide the instant) override it, so the request carries `dueDay` + `dueTime` and reads carry `dueOrgDay`/`dueOrgTime`. This is the same shape Plan 10 already chose for events. **Plan 10 must therefore import, not define,** `isoDaySchema`/`wallTimeSchema` (now in `packages/shared/src/org-time.ts`; defining them again in `event.ts` is a duplicate `export *` compile error) and `orgWallTime`/`orgWallClockToInstant` (now in `lib/org-time.ts`, same names and signatures as Plan 10's Task — its Step 2 should drop those two and keep `isOrgMidnight`/`isoDayInOrgTime`). Plan 10's `isoDayInOrgTime` also duplicates Plan 4's `orgDayKey`; worth folding while that plan is open.
-2. **Later plans that name the old route file.** Plan 9 (prerequisites list) and Plan 10 (Task modifying `app/(app)/assignment/[id].tsx`, test imports of `…/assignment/[id]`) must use `app/(app)/assignment/[id]/index.tsx`. The pathname `/assignment/[id]` — and so Plan 9's `routeForTarget` — is unchanged. Plan 10's `AssignmentDetail` fixtures need `dueOrgDay`/`dueOrgTime`.
-3. **Description format (spec §10 item 10, still open).** The form edits `description` as plain text and stores it as typed; a v1-authored HTML description shows its markup when edited in the app. The clean fix is X3's `htmlToPlainText`/`plainTextToHtml` (`packages/shared/src/html-text.ts`), which Plan 8 creates after this plan; Plan 8 (or 13) should convert on load/save here. v1 renders a v2 plain-text description safely (sanitize-html) but collapses its line breaks.
+1. **Due-date wire format changed from spec §8.** §8 specified `dueAt` as an ISO instant in the request; rulings C2/X13 (author's device zone must not decide the instant) override it, so the request carries `dueDay` + `dueTime` and reads carry `dueOrgDay`/`dueOrgTime`. This is the same shape Plan 14 already chose for events. **Plan 14 must therefore import, not define,** `isoDaySchema`/`wallTimeSchema` (now in `packages/shared/src/org-time.ts`; defining them again in `event.ts` is a duplicate `export *` compile error) and `orgWallTime`/`orgWallClockToInstant` (now in `lib/org-time.ts`, same names and signatures as Plan 14's Task — its Step 2 should drop those two and keep `isOrgMidnight`/`isoDayInOrgTime`). Plan 14's `isoDayInOrgTime` also duplicates Plan 4's `orgDayKey`; worth folding while that plan is open.
+2. **Later plans that name the old route file.** Plan 13 (prerequisites list) and Plan 14 (Task modifying `app/(app)/assignment/[id].tsx`, test imports of `…/assignment/[id]`) must use `app/(app)/assignment/[id]/index.tsx`. The pathname `/assignment/[id]` — and so Plan 13's `routeForTarget` — is unchanged. Plan 14's `AssignmentDetail` fixtures need `dueOrgDay`/`dueOrgTime`.
+3. **Description format (spec §10 item 10, still open).** The form edits `description` as plain text and stores it as typed; a v1-authored HTML description shows its markup when edited in the app. The clean fix is X3's `htmlToPlainText`/`plainTextToHtml` (`packages/shared/src/html-text.ts`), which Plan 12 creates after this plan; Plan 12 (or 13) should convert on load/save here. v1 renders a v2 plain-text description safely (sanitize-html) but collapses its line breaks.
 4. **Delete policy.** Refused on any `Submission` row (drafts included), no `force`, 200 `{ deleted: true }` instead of §7's 204 — chosen per §10 item 4's "blocking is the safe default". Relax later if admins need it.
-5. **Edit notifies newly targeted students** (spec §10 item 5) — a behaviour v1 never had (R66). Plan 9's `bestEffort` wrapping applies to the single `notifyAssignmentCreated` call site in `lib/assignment-writes.ts`, which serves both create and edit (its producer table names one row for Plan 15 — still accurate).
+5. **Edit notifies newly targeted students** (spec §10 item 5) — a behaviour v1 never had (R66). Plan 13's `bestEffort` wrapping applies to the single `notifyAssignmentCreated` call site in `lib/assignment-writes.ts`, which serves both create and edit (its producer table names one row for Plan 5 — still accurate).
 6. **No SUPER nav entry for `/assignments`.** SUPER reaches it from the `/season` workspace's Assignments button (Plan 4) or a link; `packages/shared/src/navigation.ts` is unchanged. Add a sidebar entry if SUPERs author routinely.
-7. **Not changed here:** the student list still formats `dueAt` with the device's zone (Plan 1's `formatDueDate`); `studentAssignmentListItemSchema` has no `dueOrgDay`. A follow-up (Plan 14 or 18) can add it the same way. The staff list's per-row `expectedCount` N+1 (spec §7) is untouched.
+7. **Not changed here:** the student list still formats `dueAt` with the device's zone (Plan 1's `formatDueDate`); `studentAssignmentListItemSchema` has no `dueOrgDay`. A follow-up (Plan 11 or 18) can add it the same way. The staff list's per-row `expectedCount` N+1 (spec §7) is untouched.

@@ -1,4 +1,4 @@
-# Plan 9 — Notifications Completed + Push Implementation Plan
+# Plan 13 — Notifications Completed + Push Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -27,7 +27,7 @@ expo-router 6 (typed routes), React Query 5, Zustand 5, RNTL 13 via
 **Spec:** `docs/superpowers/specs/domains/10-notifications.md` (81 rules; §10
 D1–D12), `docs/superpowers/specs/domains/_DECISIONS.md` (C1, C6, C8 bind; C11
 and C12 also touched), scope from
-`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 9.
+`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 13.
 
 ---
 
@@ -118,7 +118,7 @@ burst). The roadmap sizes this plan at "the 2–3 interruptive types only".
 `PUSH_NOTIFICATION_TYPES` therefore ships as **`SESSION_RESCHEDULED`,
 `SUBMISSION_REVIEWED`, `QUIZ_GRADED`** — the three where the recipient is
 actively waiting. `MENTOR_FOLLOWUP` stays excluded. In v1 that was because R63
-put the first 140 characters of a pastoral note into the body. Plan 8 removed
+put the first 140 characters of a pastoral note into the body. Plan 12 removed
 the excerpt: v2's body is a fixed sentence. But the title still reads "Follow-up
 flagged for <student name>". A named young person flagged for pastoral
 follow-up must not appear on a lock screen that anyone near the phone can read
@@ -139,9 +139,9 @@ follow-up must not appear on a lock screen that anyone near the phone can read
   `"../../../../packages/shared/src/index"` from `src/routes/` and `src/lib/`.
   `import type` may use the package name. Mobile imports `@space/shared` by
   package name. The closing gate greps all of `dist/`.
-- **Escaping is Plan 8's, imported, never redefined** (ruling X2): the backend
+- **Escaping is Plan 12's, imported, never redefined** (ruling X2): the backend
   escapes through `escapeHtml` from `apps/backend/src/lib/html.ts`, and the
-  notification email is built by Plan 8's exported `buildNotificationHtml` in
+  notification email is built by Plan 12's exported `buildNotificationHtml` in
   `lib/email.ts`. This plan adds no escaper and no second template.
 - **`requireAuth` per route on shared prefixes** (ruling X5). `meRouter`
   (`/api/v1/me`) already attaches it per route; this plan's additions do the
@@ -149,7 +149,7 @@ follow-up must not appear on a lock screen that anyone near the phone can read
   router-level `use(requireAuth)` is allowed.
 - **Notification links are v1's exact strings** (ruling X1). Every producer
   writes the path v1 writes for that type; `parseNotificationLink` (Task 2)
-  recognises exactly the five shapes v1 emits, and Plan 13's M4 backfill maps
+  recognises exactly the five shapes v1 emits, and Plan 18's M4 backfill maps
   the same five.
 - No `@/` path alias in either app. Mobile uses relative imports.
 - `src/docs/openapi.ts` changes in the same commit as the route it documents.
@@ -176,14 +176,14 @@ follow-up must not appear on a lock screen that anyone near the phone can read
   unreachable `markNotificationReadAction` gets one endpoint, designed, not two
   ported).
 
-**Prerequisites (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → **9**):** Plan 7's settings
+**Prerequisites (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → **13**):** Plan 9's settings
 screen (`app/(app)/settings.tsx`, Task 9 adds a section to it) and its
-`me-settings-routes.test.ts` pattern; Plan 8's `apps/backend/src/lib/html.ts`
-(`escapeHtml`) and `lib/email.ts`'s exported `buildNotificationHtml`; Plan 5's
+`me-settings-routes.test.ts` pattern; Plan 12's `apps/backend/src/lib/html.ts`
+(`escapeHtml`) and `lib/email.ts`'s exported `buildNotificationHtml`; Plan 7's
 `/student/[id]` route, served by `app/(app)/student/[id]/index.tsx` since
-Plan 17 moved it to the directory form (Task 6 deep-links to it); Plan 1's
+Plan 10 moved it to the directory form (Task 6 deep-links to it); Plan 1's
 `/assignment/[id]` route, served by `app/(app)/assignment/[id]/index.tsx`
-since Plan 15's move; and Plan 1's `/more`. The typed pathnames
+since Plan 5's move; and Plan 1's `/more`. The typed pathnames
 `/student/[id]` and `/assignment/[id]` are unchanged by both moves. If any is missing, stop — do not
 re-create it here.
 
@@ -379,7 +379,7 @@ describe("deviceRegistrationSchema", () => {
     expect(deviceRegistrationSchema.safeParse({ token: "t", platform: "web" }).success).toBe(false);
   });
 
-  it("maps the lowercase wire platform to Plan 13 M10's DevicePlatform enum", () => {
+  it("maps the lowercase wire platform to Plan 18 M10's DevicePlatform enum", () => {
     expect(DEVICE_PLATFORM_TO_DB).toEqual({ ios: "IOS", android: "ANDROID" });
   });
 });
@@ -431,7 +431,7 @@ import { notificationTypeSchema, type NotificationType } from "./enums";
  * link shapes v1 actually emits is the bare `/student/calendar` (R67), and
  * pretending it names a session would be a lie the resolver has to keep.
  *
- * Wire values are lowercase. Plan 13's M4 stores the same set as the
+ * Wire values are lowercase. Plan 18's M4 stores the same set as the
  * uppercase Postgres enum `NotificationEntityType` (ASSIGNMENT, QUIZ,
  * CALENDAR, STUDENT, plus SUBMISSION/SESSION which nothing writes yet); the
  * mapping is written out in the cutover doc (Task 5) so the wire contract —
@@ -566,7 +566,7 @@ export const notificationPreferencesResponseSchema = z.object({
  * time-critical. LOW_ATTENDANCE_FLAG can burst (04 R87 gives it no dedupe) and
  * waits on 04's D7/D12. MENTOR_FOLLOWUP names a student flagged for pastoral
  * follow-up in its title, which must never reach a lock screen (R64, D8) —
- * Plan 8 removed v1's note excerpt from the body, but the name remains.
+ * Plan 12 removed v1's note excerpt from the body, but the name remains.
  */
 export const PUSH_NOTIFICATION_TYPES = [
   "SESSION_RESCHEDULED",
@@ -580,14 +580,14 @@ export function shouldPush(type: NotificationType): boolean {
 
 /**
  * The wire spelling of a device platform — lowercase, matching
- * react-native's `Platform.OS`. Plan 13's M10 stores it as the Postgres enum
+ * react-native's `Platform.OS`. Plan 18's M10 stores it as the Postgres enum
  * `DevicePlatform { IOS ANDROID }`; the server maps at the write
  * (`DEVICE_PLATFORM_TO_DB`, below), so the wire contract never changes.
  */
 export const devicePlatformSchema = z.enum(["ios", "android"]);
 export type DevicePlatform = z.infer<typeof devicePlatformSchema>;
 
-/** Wire → database enum value, for the cutover upsert (Task 5's doc, Plan 13 M10). */
+/** Wire → database enum value, for the cutover upsert (Task 5's doc, Plan 18 M10). */
 export const DEVICE_PLATFORM_TO_DB = {
   ios: "IOS",
   android: "ANDROID",
@@ -639,20 +639,20 @@ git add packages/shared && git commit -m "feat(shared): notification wire contra
   `apps/backend/src/__tests__/best-effort.test.ts` (new, unit),
   `apps/backend/src/__tests__/integration/notifications.test.ts` (rewrite the opt-out case, add one)
 
-**Not in this task, deliberately:** mail escaping. Plan 8 already routes every
+**Not in this task, deliberately:** mail escaping. Plan 12 already routes every
 notification email through its exported `buildNotificationHtml`
 (`apps/backend/src/lib/email.ts`), which escapes title, body and link with
 `escapeHtml` from `apps/backend/src/lib/html.ts`, and its `email-html.test.ts`
 pins it (rulings X2, C11). An earlier draft of this task added a second,
-private `escapeHtml` to `email.ts` (a duplicate identifier beside Plan 8's
+private `escapeHtml` to `email.ts` (a duplicate identifier beside Plan 12's
 import) and a `renderNotificationHtmlForTest` twin of the template; both are
-withdrawn. Step 6 only verifies Plan 8's work is in place.
+withdrawn. Step 6 only verifies Plan 12's work is in place.
 
 **Interfaces:**
-- Consumes: `NotificationTarget`, `NotificationEntityType` from shared (Task 1, type-only); Plan 8's `buildNotificationHtml` (unchanged).
+- Consumes: `NotificationTarget`, `NotificationEntityType` from shared (Task 1, type-only); Plan 12's `buildNotificationHtml` (unchanged).
 - Produces: `parseNotificationLink(link: string | null): NotificationTarget | null`;
   `NOTIFICATION_LINK_PATTERNS: readonly { re: RegExp; entityType: NotificationEntityType; hasId: boolean }[]`
-  — the closed set of v1 link shapes, which Plan 13's M4 backfill SQL mirrors one-for-one;
+  — the closed set of v1 link shapes, which Plan 18's M4 backfill SQL mirrors one-for-one;
   `bestEffort(label: string, fn: () => Promise<unknown>): Promise<void>`;
   `createNotificationsBulk(userIds, payload): Promise<BulkNotificationResult>`
   where `BulkNotificationResult = { written: number; suppressed: number }`.
@@ -674,9 +674,9 @@ nine call sites and five distinct shapes:
 
 v1 has no other notification writer (forum, video quizzes and events create
 none). Under ruling X1 every v2 producer writes the same string v1 writes for
-its type, so this table is also the complete set of shapes v2 writes — Plan 6's
+its type, so this table is also the complete set of shapes v2 writes — Plan 8's
 `QUIZ_GRADED` sites write `/student/quizzes`, Plan 3's reschedule writes
-`/student/calendar`, Plan 15's `ASSIGNMENT_CREATED` writes
+`/student/calendar`, Plan 5's `ASSIGNMENT_CREATED` writes
 `/student/assignments/:id`. A producer that writes anything else is a bug in
 that producer, not a sixth row here. An earlier draft also accepted a bare
 `/student/assignments`; no v1 producer writes it and current v2 does not
@@ -705,7 +705,7 @@ describe("parseNotificationLink", () => {
     expect(parseNotificationLink(link)).toEqual(expected);
   });
 
-  it("knows exactly five shapes — the set Plan 13's M4 backfill must mirror", () => {
+  it("knows exactly five shapes — the set Plan 18's M4 backfill must mirror", () => {
     expect(NOTIFICATION_LINK_PATTERNS).toHaveLength(5);
   });
 
@@ -788,7 +788,7 @@ import type {
  * scheme is already broken inside v1, where a mentor holding a GroupLeader row
  * gets a /leader link that bounces them (R4). v2's routes are flat, so the
  * string is meaningless to a device. The clean fix is two columns; the schema
- * is frozen (C1), so this parses instead, and Plan 13's M4 backfills the
+ * is frozen (C1), so this parses instead, and Plan 18's M4 backfills the
  * columns with SQL that mirrors NOTIFICATION_LINK_PATTERNS one row per entry.
  *
  * Do NOT let a screen parse the path. One function, one place, one test table.
@@ -937,15 +937,15 @@ export async function createNotificationsBulk(
 }
 ```
 
-- [ ] **Step 6: Confirm Plan 8's mail escaping is the only one (C11, ruling X2)**
+- [ ] **Step 6: Confirm Plan 12's mail escaping is the only one (C11, ruling X2)**
 
 Nothing to write. Check:
 
 Run: `grep -rn "function escapeHtml\|const escapeHtml" apps/backend/src/` → empty (the definition lives in `packages/shared/src/html-text.ts`; the backend re-exports it from `lib/html.ts`).
 Run: `grep -n "buildNotificationHtml" apps/backend/src/lib/email.ts` → the exported definition and its call inside `sendNotificationEmail`.
-Run: `cd apps/backend && npx jest src/__tests__/email-html.test.ts` → PASS (Plan 8's escaping test).
+Run: `cd apps/backend && npx jest src/__tests__/email-html.test.ts` → PASS (Plan 12's escaping test).
 
-If any of these fails, Plan 8 is incomplete — stop rather than adding a
+If any of these fails, Plan 12 is incomplete — stop rather than adding a
 second escaper here.
 
 - [ ] **Step 7: Route every producer through the helper (D6)**
@@ -954,20 +954,20 @@ Find every call site: `cd apps/backend/src && grep -rn "createNotificationsBulk\
 `lib/notifications.ts` (the definition) and `lib/attendance-notifications.ts`'s
 two internal awaits are not call sites to wrap — the latter is wrapped where
 `flagLowAttendance` is called. Every other hit must end up inside `bestEffort`.
-By the time this plan runs (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 →
-7 → 17 → 14 → 8 → 9) the expected producers are below. Plans 14, 16 and 17
-add **no** producer (checked: Plan 17's graduate/drop/delete notify nobody,
-Plan 16 converts session wire fields but never touches Plan 3's `SESSION_RESCHEDULED` call site,
-Plan 14's check-in notifies nobody):
+By the time this plan runs (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
+9 → 10 → 11 → 12 → 13) the expected producers are below. Plans 6, 10 and 11
+add **no** producer (checked: Plan 10's graduate/drop/delete notify nobody,
+Plan 6 converts session wire fields but never touches Plan 3's `SESSION_RESCHEDULED` call site,
+Plan 11's check-in notifies nobody):
 
 | Plan | File | Type | Label |
 |---|---|---|---|
 | main | `routes/submissions.ts` (review) | `SUBMISSION_REVIEWED` | `notify:SUBMISSION_REVIEWED` |
 | main | `routes/sessions.ts` (`flagLowAttendance` after attendance save) | `LOW_ATTENDANCE_FLAG` | `notify:LOW_ATTENDANCE_FLAG` |
 | 3 | `routes/sessions.ts` (session reschedule) | `SESSION_RESCHEDULED` | `notify:SESSION_RESCHEDULED` |
-| 15 | `lib/assignment-writes.ts` → `notifyAssignmentCreated` (the single call site; `POST /seasons/:id/assignments` and `PATCH /assignments/:id` both call it), link `/student/assignments/<id>` | `ASSIGNMENT_CREATED` | `notify:ASSIGNMENT_CREATED` |
-| 6 | the four `QUIZ_GRADED` sites in Plan 6's quiz routes | `QUIZ_GRADED` | `notify:QUIZ_GRADED` |
-| 8 | `routes/notes.ts` (flagged note) | `MENTOR_FOLLOWUP` | `notify:MENTOR_FOLLOWUP` |
+| 5 | `lib/assignment-writes.ts` → `notifyAssignmentCreated` (the single call site; `POST /seasons/:id/assignments` and `PATCH /assignments/:id` both call it), link `/student/assignments/<id>` | `ASSIGNMENT_CREATED` | `notify:ASSIGNMENT_CREATED` |
+| 8 | the four `QUIZ_GRADED` sites in Plan 8's quiz routes | `QUIZ_GRADED` | `notify:QUIZ_GRADED` |
+| 12 | `routes/notes.ts` (flagged note) | `MENTOR_FOLLOWUP` | `notify:MENTOR_FOLLOWUP` |
 
 If the grep finds a hit not in this table, wrap it the same way and name it in
 the report; if a row in this table has no hit, say so in the report (the
@@ -1030,7 +1030,7 @@ and must not be edited here — unchanged. Concretely, the two sites already on
    internal `createNotificationsBulk` awaits — leave that file otherwise
    untouched.
 
-And Plan 8's site in `routes/notes.ts` — its `try { await createNotificationsBulk(…) } catch { … }`
+And Plan 12's site in `routes/notes.ts` — its `try { await createNotificationsBulk(…) } catch { … }`
 around the `MENTOR_FOLLOWUP` fan-out becomes
 `await bestEffort("notify:MENTOR_FOLLOWUP", () => createNotificationsBulk(admins.map((a) => a.userId), { …the same payload… }));`.
 
@@ -1561,7 +1561,7 @@ git add apps/backend && git commit -m "feat(backend): notification inbox endpoin
 **Why a new file.** `me-routes.test.ts` does not use `fixtures.ts` — it builds
 its own user, declares its own `PASSWORD`, and has no second user. Extending it
 would mean undeclared `prefsUserId`/`prefsToken`/`otherUserId` (as an earlier
-draft did) or a redeclared `PASSWORD`. Plan 7 hit the same wall and created
+draft did) or a redeclared `PASSWORD`. Plan 9 hit the same wall and created
 `me-settings-routes.test.ts`; this plan follows it with a fixture-based suite of
 its own, which Task 5 extends.
 
@@ -1757,9 +1757,9 @@ meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
 ```
 
 Merge `DEFAULT_NOTIFICATION_PREFERENCES` and `notificationPreferencesSchema`
-into `me.ts`'s existing relative shared import (Plan 7 created it for
+into `me.ts`'s existing relative shared import (Plan 9 created it for
 `changePasswordRequestSchema`/`updateProfileRequestSchema`) rather than adding
-a second import statement; `apiError` is already imported (Plan 7).
+a second import statement; `apiError` is already imported (Plan 9).
 
 Note on `.safeParse`: `notificationPreferencesSchema` is a plain (non-strict)
 object, so an extra `userId` key in the body parses and is discarded rather
@@ -1883,19 +1883,19 @@ behaviour the endpoint will keep.
 
 Create `docs/superpowers/cutover/2026-08-24-notifications-push.md` (the
 directory is new — this is the first entry in the "migration thaw" list the
-roadmap's Plan 13 step 2 will execute):
+roadmap's Plan 18 step 2 will execute):
 
 ````markdown
 # Cutover — notifications: push device tokens, and the `link` columns
 
-Written 2026-08-24 during Plan 9. **Do not apply while jpc-space is still
+Written 2026-08-24 during Plan 13. **Do not apply while jpc-space is still
 writing to this database** (`_DECISIONS.md` C1). Both migrations are additive
 and neither breaks v1, but `prisma/migrations/` is a verbatim copy of v1's and
 must stay that way until v1 stops.
 
 ## 1. Device tokens (unblocks push)
 
-This section is written to match **Plan 13's M10 exactly** (Plan 13 Task 2.10
+This section is written to match **Plan 18's M10 exactly** (Plan 18 Task 2.10
 adopts this doc's SQL and deletes the duplicate — so the two must not differ).
 `platform` is a Postgres enum, not free text:
 
@@ -1980,7 +1980,7 @@ best-effort seam:
 
 ## 2. `Notification` target columns (spec D1)
 
-Plan 13's M4 owns this migration (an uppercase Postgres enum
+Plan 18's M4 owns this migration (an uppercase Postgres enum
 `NotificationEntityType` plus `entityId`). What this plan fixes for it is the
 **mapping** and the **closed set of shapes**:
 
@@ -2077,7 +2077,7 @@ describe("routeForTarget", () => {
   });
 
   it("deep-links a student target to the student detail route", () => {
-    // Plan 5 shipped the /student/[id] route (student/[id]/index.tsx since Plan 17) before this plan.
+    // Plan 7 shipped the /student/[id] route (student/[id]/index.tsx since Plan 10) before this plan.
     expect(routeForTarget({ entityType: "student", entityId: 12 })).toEqual({
       pathname: "/student/[id]",
       params: { id: "12" },
@@ -2108,8 +2108,8 @@ import type { NotificationTarget } from "@space/shared";
  * (apps/backend/src/lib/notification-target.ts, spec D1); this is the other
  * half — one switch, one place, no screen parsing anything. Every arm points
  * at a route file that exists by this plan (Plan 1's assignment/[id], now
- * assignment/[id]/index.tsx via Plan 15; Plan 5's student/[id], now
- * student/[id]/index.tsx via Plan 17); typed routes make a missing one a
+ * assignment/[id]/index.tsx via Plan 5; Plan 7's student/[id], now
+ * student/[id]/index.tsx via Plan 10); typed routes make a missing one a
  * compile error.
  *
  * The `student` arm has no list fallback: every v1 student link carries an id
@@ -2146,8 +2146,8 @@ export function routeForTarget(target: NotificationTarget | null): NotificationR
 ```
 
 Typed routes check both pathnames against the real tree: `/assignment/[id]`
-(Plan 1; file `assignment/[id]/index.tsx` since Plan 15) and `/student/[id]`
-(Plan 5; file `student/[id]/index.tsx` since Plan 17) are prerequisites of this plan, so a
+(Plan 1; file `assignment/[id]/index.tsx` since Plan 5) and `/student/[id]`
+(Plan 7; file `student/[id]/index.tsx` since Plan 10) are prerequisites of this plan, so a
 typecheck failure on either is the prerequisite missing, not something to
 work around with a cast.
 
@@ -2544,7 +2544,7 @@ are.
 
 Plan 1's `apps/mobile/src/__tests__/nav-routes.test.ts` pins three `/more`
 lists exactly (`moreItemsFor` = sidebar minus tabs), and "Notifications" now
-surfaces in each. As Plans 14 (STUDENT "Attendance") and 8 (ADMIN "My notes")
+surfaces in each. As Plan 11 (STUDENT "Attendance") and 8 (ADMIN "My notes")
 left them, the three expectations become:
 
 ```ts
@@ -2736,7 +2736,7 @@ git add apps/mobile packages/shared && git commit -m "feat(mobile): notification
 The bell's query runs for every role and every season state, so the
 dashboard now issues `GET /api/v1/notifications/unread-count` even in the
 "no active season" branch. Two consequences for `dashboard.test.tsx` (read it
-first — Plans 1 and 18 may have reshaped it; these edits are written against
+first — Plans 1 and 16 may have reshaped it; these edits are written against
 its no-season case, which every version keeps):
 
 1. The existing `"shows a distinct empty state when there is no active season,
@@ -2913,8 +2913,8 @@ git add apps/mobile && git commit -m "feat(mobile): unread notification bell on 
 
 **Files:**
 - Create: `apps/mobile/src/components/NotificationPreferences.tsx`
-- Modify: `apps/mobile/app/(app)/settings.tsx` (Plan 7's real screen — add one section)
-- Modify: `apps/mobile/src/__tests__/settings-screen.test.tsx` (Plan 7's suite — give its `get` mock a preferences answer)
+- Modify: `apps/mobile/app/(app)/settings.tsx` (Plan 9's real screen — add one section)
+- Modify: `apps/mobile/src/__tests__/settings-screen.test.tsx` (Plan 9's suite — give its `get` mock a preferences answer)
 - Test: `apps/mobile/src/__tests__/notification-preferences.test.tsx` (new)
 
 **Interfaces:**
@@ -3120,7 +3120,7 @@ export function NotificationPreferences() {
 
 - [ ] **Step 4: Mount it in settings**
 
-Plan 7 (earlier in the execution order) replaced the settings placeholder
+Plan 9 (earlier in the execution order) replaced the settings placeholder
 with the real six-role screen, so there is exactly one case here. In
 `apps/mobile/app/(app)/settings.tsx`, import
 
@@ -3128,13 +3128,13 @@ with the real six-role screen, so there is exactly one case here. In
 import { NotificationPreferences } from "../../src/components/NotificationPreferences";
 ```
 
-and render `<NotificationPreferences />` as its own block between Plan 7's
+and render `<NotificationPreferences />` as its own block between Plan 9's
 "Change password" card (or, when `hasPassword` is false, the "Profile" card)
 and the "Security" card — inside the existing
 `<View style={{ gap: theme.spacing.md }}>`, so it inherits the spacing. Change
 nothing else: domain 18 owns the rest of the screen, domain 10 owns this block.
 
-Plan 7's `settings-screen.test.tsx` mocks `apiClient.get` as a bare
+Plan 9's `settings-screen.test.tsx` mocks `apiClient.get` as a bare
 `jest.fn()`, which now receives the preferences request. In its `beforeEach`,
 after `jest.clearAllMocks()`, add:
 
@@ -3614,7 +3614,7 @@ const PUSH_COPY: Record<PushStatus | "idle", string> = {
 ```
 
 Then keep `expo-notifications` out of every suite that renders this component.
-At the top of `notification-preferences.test.tsx` **and** Plan 7's
+At the top of `notification-preferences.test.tsx` **and** Plan 9's
 `settings-screen.test.tsx`, with the other mocks:
 
 ```tsx
@@ -3646,7 +3646,7 @@ git add apps/mobile && git commit -m "feat(mobile): expo push permission flow an
 Run: `pnpm turbo lint typecheck test:unit build` (repo root) → all tasks green.
 Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern integration` → green.
 Run: `grep -rn 'require("@space/shared")' apps/backend/dist/` → empty — all of `dist/`, not just routes (ruling X12; the `rootDir` emit trap).
-Run: `grep -rn "function escapeHtml\|const escapeHtml\|renderNotificationHtmlForTest" apps/backend/src/` → empty (ruling X2 — escaping is Plan 8's, imported).
+Run: `grep -rn "function escapeHtml\|const escapeHtml\|renderNotificationHtmlForTest" apps/backend/src/` → empty (ruling X2 — escaping is Plan 12's, imported).
 
 - [ ] **Step 2: Mutation pass**
 
@@ -3676,7 +3676,7 @@ the one checked by inspection).
    against Task 2 Step 7's producer table (the only unwrapped hits allowed are
    the definition in `lib/notifications.ts` and the two awaits inside
    `lib/attendance-notifications.ts`).
-8. **X1.** In `routes/notes.ts` (Plan 8), change the `MENTOR_FOLLOWUP` link to
+8. **X1.** In `routes/notes.ts` (Plan 12), change the `MENTOR_FOLLOWUP` link to
    `/students/${studentUserId}` → `notes-routes.test.ts` "notifies season
    admins on a flagged note WITHOUT quoting it" fails on the link assertion,
    and `parseNotificationLink` of the new value is `null`. Restore.
@@ -3724,11 +3724,11 @@ student's device". That cannot be met before cutover: push delivery needs the
 VERDICT, above). What this plan can and does prove is the half that is not
 blocked: *a review recorded on one device produces an inbox row and an
 unread-badge increment on the student's device, and opening the inbox never
-writes (C6)* — device checklist items 1–4. The push half moves to Plan 13's
+writes (C6)* — device checklist items 1–4. The push half moves to Plan 18's
 M10 verification ("the endpoint stops returning 503 and upserts on `token`",
 plus one real push to a registered dev build). This plan does not edit the
-roadmap (out of scope for this pass); the coordinator should amend its Plan 9
-done criterion to the sentence above and point the push half at Plan 13 M10.
+roadmap (out of scope for this pass); the coordinator should amend its Plan 13
+done criterion to the sentence above and point the push half at Plan 18 M10.
 
 ---
 
@@ -3736,7 +3736,7 @@ done criterion to the sentence above and point the push half at Plan 13 M10.
 
 Applied from the plan review (`review-plans-07-13.md`) and the coordinator's cross-plan rulings. Each finding was checked against the current tree and against jpc-space's source.
 
-- **S1 / X2:** Withdrew Task 2's private `escapeHtml`, the `renderNotificationHtmlForTest` twin and the `encodeURI` link handling. This plan now uses Plan 8's `escapeHtml` (`apps/backend/src/lib/html.ts`) and `buildNotificationHtml` (`lib/email.ts`). Step 6 verifies them, and the closing gate greps that no second escaper exists.
+- **S1 / X2:** Withdrew Task 2's private `escapeHtml`, the `renderNotificationHtmlForTest` twin and the `encodeURI` link handling. This plan now uses Plan 12's `escapeHtml` (`apps/backend/src/lib/html.ts`) and `buildNotificationHtml` (`lib/email.ts`). Step 6 verifies them, and the closing gate greps that no second escaper exists.
 - **S2 / X1:** The link parser now covers exactly the five link shapes v1 writes. They were enumerated from `jpc-space/src/lib` (nine producers), and the table in Task 2 cites file:line for each:
   - `/student/assignments/:id`
   - `/student/quizzes`
@@ -3744,37 +3744,37 @@ Applied from the plan review (`review-plans-07-13.md`) and the coordinator's cro
   - `/admin/students/:id`
   - `/leader/students/:id`
 
-  They are exported as `NOTIFICATION_LINK_PATTERNS` so Plan 13's M4 can mirror them one-for-one. The bare `/student/assignments` shape is dropped, because no v1 or current v2 producer writes it. `/quizzes/:id` is not added: under X1, Plan 6 writes v1's `/student/quizzes`.
+  They are exported as `NOTIFICATION_LINK_PATTERNS` so Plan 18's M4 can mirror them one-for-one. The bare `/student/assignments` shape is dropped, because no v1 or current v2 producer writes it. `/quizzes/:id` is not added: under X1, Plan 8 writes v1's `/student/quizzes`.
 - **S3:** Step 7 now lists every `createNotificationsBulk` producer by plan (main, 3, 15, 6, 8), with a label and a mechanical transform for each, and checks call sites across `routes/` and `lib/`. The claim that Plan 3 consumes `BulkNotificationResult` was wrong and is removed.
 - **S4:** The `submissions.ts` link "fix" and the CORS `PUT` "fix" are dropped. Both were already on `main`.
-- **S5:** A student target now deep-links to `/student/[id]`, which Plan 5 ships before this plan.
+- **S5:** A student target now deep-links to `/student/[id]`, which Plan 7 ships before this plan.
 - **S6:** The `push.test.ts` mock factories wrap their `mock*` consts lazily, so there is no TDZ error.
 - **S7:** The EAS project id is now an explicit Task 10 Step 0 for the user (`eas init` writes `expo.extra.eas.projectId`). It is read in one place, `src/lib/app-config.ts` → `easProjectId()`, through `Constants`, never `process.env`. A missing id is its own `not_configured` status, separate from `denied`, with its own copy. Device checklist item 7 has an expected result for each branch.
-- **S8:** The roadmap's done criterion ("push on the student's device") cannot be met before cutover. The closing-gate report now states this drift, proves the inbox/badge half, and points the push half at Plan 13 M10. The roadmap itself is not edited in this pass.
+- **S8:** The roadmap's done criterion ("push on the student's device") cannot be met before cutover. The closing-gate report now states this drift, proves the inbox/badge half, and points the push half at Plan 18 M10. The roadmap itself is not edited in this pass.
 - **S9:** The preference and device tests moved to a new fixture-based `me-notifications-routes.test.ts`, which declares `prefsUserId`, `prefsToken` and `otherUserId`.
-- **DevicePlatform:** The wire stays lowercase (`devicePlatformSchema`). New `DEVICE_PLATFORM_TO_DB` maps it to Plan 13 M10's `DevicePlatform { IOS ANDROID }`. The cutover doc's `DeviceToken` DDL now matches M10 exactly: enum column, plus a `lastSeenAt` index. The doc also gives the lowercase-wire ↔ uppercase-enum mapping for `entityType` (M4).
+- **DevicePlatform:** The wire stays lowercase (`devicePlatformSchema`). New `DEVICE_PLATFORM_TO_DB` maps it to Plan 18 M10's `DevicePlatform { IOS ANDROID }`. The cutover doc's `DeviceToken` DDL now matches M10 exactly: enum column, plus a `lastSeenAt` index. The doc also gives the lowercase-wire ↔ uppercase-enum mapping for `entityType` (M4).
 - **X5:** `notificationsRouter` owns its prefix, so router-level `requireAuth` is allowed there. Everything added to `meRouter` attaches it per route.
-- **X9:** Task 9 no longer has a "settings is still a placeholder" branch, because Plan 7 runs first. It mounts the section in Plan 7's screen and gives Plan 7's suite a preferences mock.
+- **X9:** Task 9 no longer has a "settings is still a placeholder" branch, because Plan 9 runs first. It mounts the section in Plan 9's screen and gives Plan 9's suite a preferences mock.
 - **X12:** The emit check greps all of `dist/`.
 - **Nits fixed:**
-  - The MENTOR_FOLLOWUP push-exclusion rationale was rewritten. Plan 8 removed the excerpt, but the student's name is still in the title.
+  - The MENTOR_FOLLOWUP push-exclusion rationale was rewritten. Plan 12 removed the excerpt, but the student's name is still in the title.
   - Dropped the hard-coded case counts.
   - The dashboard test now answers only the bell's URL (other URLs reject). It also fixes the no-season case's `not.toHaveBeenCalled()`, which the bell would otherwise break.
   - Fixtures include `hasPassword` (X11).
   - The badge uses `theme.colors.white`.
 
-**Cross-plan consistency pass (2026-10-05, against plans 14–17 and the revised
-order … 5 → 6 → 7 → 17 → 14 → 8 → 9 …):**
+**Cross-plan consistency pass (2026-10-05, against plans 5, 6, 10 and 11 and the revised
+order … 7 → 8 → 9 → 10 → 11 → 12 → 13 …):**
 
 - **Prerequisites / Step 7:** execution order corrected (17 now follows 7).
   Route files named at their post-move paths — `assignment/[id]/index.tsx`
-  (Plan 15) and `student/[id]/index.tsx` (Plan 17); the typed pathnames
+  (Plan 5) and `student/[id]/index.tsx` (Plan 10); the typed pathnames
   `routeForTarget` returns are unchanged, so no code changes.
-- **X1 producers re-audited across Plans 14–17:** only Plan 15 writes a
+- **X1 producers re-audited across Plans 5, 6, 10 and 11:** only Plan 5 writes a
   notification (`ASSIGNMENT_CREATED`, link `/student/assignments/<id>` — one of
   the five v1 shapes), from a single call site, `notifyAssignmentCreated` in
-  `lib/assignment-writes.ts`; Step 7's table row now names that file. Plans 14,
+  `lib/assignment-writes.ts`; Step 7's table row now names that file. Plan 11,
   16 and 17 write none. `NOTIFICATION_LINK_PATTERNS` stays exactly v1's five.
 - **Nav pin:** Task 7 Step 4 also updates Plan 1's `nav-routes.test.ts`, whose
-  exact STUDENT / ADMIN / alumni `/more` lists (as Plans 14 and 8 left them)
+  exact STUDENT / ADMIN / alumni `/more` lists (as Plans 11 and 12 left them)
   would otherwise fail on the new "Notifications" sidebar entry.

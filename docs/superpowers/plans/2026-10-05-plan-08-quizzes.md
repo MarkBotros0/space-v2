@@ -1,4 +1,4 @@
-# Plan 6 — Quizzes Implementation Plan
+# Plan 8 — Quizzes Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,7 +8,7 @@
 `apps/backend/src/routes/quizzes.ts`, mounted at `/api/v1/quizzes`. Quiz
 creation is therefore `POST /api/v1/quizzes` with `seasonId` **in the body**,
 not `POST /api/v1/seasons/:id/quizzes` — the same recorded deviation Plan 3
-made for `POST /api/v1/sessions` (`2026-08-24-plan-03-season-session-writes.md`
+made for `POST /api/v1/sessions` (`2026-10-05-plan-03-season-session-writes.md`
 Task 4 Step 3), for the same reason: the domain's routes stay in one file that
 no other workstream touches. The contract split is the spine of the whole plan:
 `quizQuestionStudentSchema` has **no `correctIndex` field at all** and
@@ -29,7 +29,7 @@ RNTL 13 via `renderWithProviders`.
 D3, D4, D5, D7, D8, D9, D10, D12, D13, D15 are each implemented or explicitly
 declined below), `docs/superpowers/specs/domains/_DECISIONS.md` (C1, C4, C6,
 C8, C9, C11, C12), scope from
-`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 6.
+`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 8.
 
 ## Global Constraints
 
@@ -117,7 +117,7 @@ already handles null because v1 had to handle the orphan case anyway.
 Tasks 2 → 3 → 4 → 5 → 6 are the backend and are **sequential, not parallel**:
 they all edit `routes/quizzes.ts`, and single-file contention is
 coordinator-only per the roadmap. (This is a deliberate deviation from the
-roadmap's "2 backend agents" for Plan 6: the alternative — two route files for
+roadmap's "2 backend agents" for Plan 8: the alternative — two route files for
 one domain — buys parallelism by fragmenting the one file a reader needs to
 hold in their head, and the spec's headline risk is exactly a careless edit
 across two quiz reads that live apart.) Task 7 is the mobile foundation.
@@ -127,17 +127,17 @@ edits both of their screens. Task 11b (the session-quiz card's row press)
 runs after Task 9 — it links to Task 9's `quiz/[id]` route. Task 12 is the
 coordinator's closing gate.
 
-**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → **6** → 7 → 17 → …):
+**Depends on** (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → **8** → 9 → 10 → …):
 Plan 1 (`DETAIL_ROUTE_NAMES`; Task 0's derived route-count
 tests — ruling X9), Plan 4 (`useCurrentSeasonId` from
 `src/hooks/use-seasons.ts` — the only source of a staff season, ruling X8;
 `apiErrorMessage` from `src/lib/api-error.ts`; `dayKey` on session list rows),
-Plan 16 (`SessionQuizzesCard` in `src/components/SessionQuizzesCard.tsx`,
+Plan 6 (`SessionQuizzesCard` in `src/components/SessionQuizzesCard.tsx`,
 `sessionQuizItemSchema` in `packages/shared/src/session.ts`, its replaced
 `session-detail.test.tsx` harness — Task 11b; and the now-required
 `startTime` on session list rows, which this plan's session-list fixtures
-carry), Phase 0's `useSeasonSessions`. Plans 15 and 5 also run before this
-one; nothing here consumes them. Plan 17 runs **after** this plan.
+carry), Phase 0's `useSeasonSessions`. Plans 5 and 7 also run before this
+one; nothing here consumes them. Plan 10 runs **after** this plan.
 
 ---
 
@@ -3047,8 +3047,8 @@ the top of `routes/quizzes.ts` (Tasks 5 and 6 reuse it at their three other
  * v1's exact link for every QUIZ_GRADED row — `quiz-actions.ts:167,483,554`
  * all write the bare list path. Ruling X1: every plan writes v1's link format,
  * because v1 renders these same rows from the shared database today and a
- * v2-only path would be a dead link in v1. Plan 9's link parser maps this
- * shape to the mobile `/quizzes` tab; any remap is Plan 13's cutover backfill.
+ * v2-only path would be a dead link in v1. Plan 13's link parser maps this
+ * shape to the mobile `/quizzes` tab; any remap is Plan 18's cutover backfill.
  * Do not "improve" it to a per-quiz path here.
  */
 const QUIZ_GRADED_LINK = "/student/quizzes";
@@ -4203,10 +4203,10 @@ segment with child routes uses the directory form, never `x/[id].tsx` beside
 adds `quiz/[id]/edit` and `quiz/new` the same way.
 
 Append the two names to `DETAIL_ROUTE_NAMES` in `_layout.tsx`, keeping every
-entry already there (by the time this plan runs, Plans 1, 2, 4, 15, 16
-and 5 have appended theirs — e.g. `"assignment/[id]/index"` (Plan 15 moved
+entry already there (by the time this plan runs, Plans 1, 2 and 4–6
+and 5 have appended theirs — e.g. `"assignment/[id]/index"` (Plan 5 moved
 it), `"session/[id]/index"`, `"session/[id]/attendance"`, `"group/[id]/index"`
-(Plan 16 moved it), `"student/[id]"`):
+(Plan 6 moved it), `"student/[id]"`):
 
 ```tsx
   "quiz/[id]/index",
@@ -5618,7 +5618,7 @@ const seasonsList = {
 const sessionsList = {
   data: { data: { sessions: [{
     id: 12, title: "Week 1", startsAt: "2099-03-01T18:00:00.000Z", dayKey: "2099-03-01",
-    startTime: "20:00", // required since Plan 16 (org wall-clock start, X13)
+    startTime: "20:00", // required since Plan 6 (org wall-clock start, X13)
     durationMinutes: 60, location: null, recurrenceGroupId: null, attendanceMarked: false,
     seasonId: 7, seasonCode: "s26", seasonTitle: "Spring 2026",
     checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
@@ -6628,32 +6628,32 @@ git add apps/mobile && git commit -m "feat(mobile): quiz authoring — create, b
 
 ---
 
-### Task 11b: Mobile — session-quiz card rows open the quiz (Plan 16 follow-up)
+### Task 11b: Mobile — session-quiz card rows open the quiz (Plan 6 follow-up)
 
-Plan 16 Task 7 put `SessionQuizzesCard` on the leader/admin session detail
+Plan 6 Task 7 put `SessionQuizzesCard` on the leader/admin session detail
 (`GET /api/v1/sessions/:id/quizzes`, coverage gap G18) with **unpressable**
 rows, because `quiz/[id]` did not exist yet and typed routes forbid linking a
-missing route (Plan 16 D-16.10). This task adds the press. A row opens the
+missing route (Plan 6 D-16.10). This task adds the press. A row opens the
 staff preview at `/quiz/[id]` (Task 9's `StaffPreview`), which already offers
 "Grade this quiz" and — after Task 11 — "Edit quiz" when `canManage`. That is
 one destination for every kind and status, instead of re-deriving the quizzes
-list's draft-vs-published routing here. It also swaps Plan 16's inlined
-`kind` enum for this plan's `quizKindSchema`, as Plan 16 invited.
+list's draft-vs-published routing here. It also swaps Plan 6's inlined
+`kind` enum for this plan's `quizKindSchema`, as Plan 6 invited.
 
 **Files:**
 - Modify: `packages/shared/src/session.ts` (`sessionQuizItemSchema.kind` → `quizKindSchema`)
-- Modify: `apps/mobile/src/components/SessionQuizzesCard.tsx` (Plan 16's — rows become `Pressable`)
-- Test: `apps/mobile/src/__tests__/session-detail.test.tsx` (Plan 16's replaced file — one new case)
+- Modify: `apps/mobile/src/components/SessionQuizzesCard.tsx` (Plan 6's — rows become `Pressable`)
+- Test: `apps/mobile/src/__tests__/session-detail.test.tsx` (Plan 6's replaced file — one new case)
 
 **Interfaces:**
-- Consumes: Plan 16's `SessionQuizzesCard`, `useSessionQuizzes(id, enabled)`, `sessionQuizItemSchema`, and the `routeGets`/`baseDetail`/`leader()`/`mockPush` harness in `session-detail.test.tsx`; Task 1's `quizKindSchema` (`packages/shared/src/enums.ts`); Task 9's `/quiz/[id]` route.
+- Consumes: Plan 6's `SessionQuizzesCard`, `useSessionQuizzes(id, enabled)`, `sessionQuizItemSchema`, and the `routeGets`/`baseDetail`/`leader()`/`mockPush` harness in `session-detail.test.tsx`; Task 1's `quizKindSchema` (`packages/shared/src/enums.ts`); Task 9's `/quiz/[id]` route.
 - Produces: nothing new by name — `SessionQuizzesCard` rows navigate to `{ pathname: "/quiz/[id]", params: { id } }`.
 
 - [ ] **Step 1: Failing test.** Append to `apps/mobile/src/__tests__/session-detail.test.tsx`
-(Plan 16's file already imports `fireEvent` and mocks `useRouter` with `mockPush`):
+(Plan 6's file already imports `fireEvent` and mocks `useRouter` with `mockPush`):
 
 ```tsx
-it("opens a session quiz's staff preview from the quiz card (Plan 6 Task 11b)", async () => {
+it("opens a session quiz's staff preview from the quiz card (Plan 8 Task 11b)", async () => {
   useSessionStore.setState(leader());
   routeGets({
     detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
@@ -6673,7 +6673,7 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/session-detail.test.tsx` → FAI
 add `quizKindSchema` to the existing `./enums` import and change
 `sessionQuizItemSchema`'s `kind: z.enum(["PAPER", "ONLINE"]),` to
 `kind: quizKindSchema,`. Update the schema's doc comment: the kind is now
-Plan 6's enum. (Same two literals, so Plan 16's contract tests stay green.)
+Plan 8's enum. (Same two literals, so Plan 6's contract tests stay green.)
 
 - [ ] **Step 3: Make the rows pressable.** In
 `apps/mobile/src/components/SessionQuizzesCard.tsx`, replace the
@@ -6699,11 +6699,11 @@ the early returns — hooks order). Replace the row map with:
 ```
 
 and change the doc comment's "Rows are not pressable yet …" sentence to "A row
-opens the quiz's staff preview (`/quiz/[id]`, Plan 6 Task 11b)."
+opens the quiz's staff preview (`/quiz/[id]`, Plan 8 Task 11b)."
 
 - [ ] **Step 4: Run.**
 
-Run: `cd apps/mobile && pnpm jest src/__tests__/session-detail.test.tsx` → PASS (Plan 16's quiz-card cases unchanged).
+Run: `cd apps/mobile && pnpm jest src/__tests__/session-detail.test.tsx` → PASS (Plan 6's quiz-card cases unchanged).
 Run: `cd packages/shared && pnpm exec jest src/__tests__/season-admin-contracts.test.ts` → PASS.
 Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile --filter=@space/shared` → clean (the typed href `/quiz/[id]` resolves because Task 7 registered it).
 
@@ -6793,7 +6793,7 @@ Backend running, `apiClient` pointed at it. On staging:
    real guard; this is the sanity check that the deployed build matches it.
 4. As a **leader**: open the grading screen, mark the essay, save. The student's
    screen shows the total after a refetch; the student's notification carries
-   v1's link `/student/quizzes` (ruling X1), which Plan 9's parser opens as the
+   v1's link `/student/quizzes` (ruling X1), which Plan 13's parser opens as the
    Quizzes tab — and the same row renders correctly in v1.
 5. As a **leader**: reopen the attempt. The student sees the retake and a
    notification telling them so.
@@ -6831,8 +6831,8 @@ Applied the cross-plan rulings, the 01–06 review, and the coverage audit:
 - **X12:** the emitted-build grep covers all of `dist/`. X5 checked: `quizzesRouter.use(requireAuth)` is allowed because the router owns `/api/v1/quizzes` exclusively.
 
 
-Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
-- `Depends on` fixed: Plan 17 runs **after** this plan; Plan 16 is now named (session-quiz card, `sessionQuizItemSchema`, required `startTime` on session rows).
-- **New Task 11b:** `SessionQuizzesCard` (Plan 16) rows become pressable and open `/quiz/[id]` (staff preview → grade/edit); `sessionQuizItemSchema.kind` switches to `quizKindSchema`; one failing-first case in Plan 16's `session-detail.test.tsx`; device checklist item 8.
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
+- `Depends on` fixed: Plan 10 runs **after** this plan; Plan 6 is now named (session-quiz card, `sessionQuizItemSchema`, required `startTime` on session rows).
+- **New Task 11b:** `SessionQuizzesCard` (Plan 6) rows become pressable and open `/quiz/[id]` (staff preview → grade/edit); `sessionQuizItemSchema.kind` switches to `quizKindSchema`; one failing-first case in Plan 6's `session-detail.test.tsx`; device checklist item 8.
 - Task 7's `DETAIL_ROUTE_NAMES` example list now uses the moved names (`assignment/[id]/index`, `group/[id]/index`) and lists only plans that ran earlier.
-- Task 11's `sessionsList` fixture carries `startTime` (required on session list rows since Plan 16).
+- Task 11's `sessionsList` fixture carries `startTime` (required on session list rows since Plan 6).

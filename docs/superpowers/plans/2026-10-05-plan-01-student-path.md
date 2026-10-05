@@ -26,7 +26,7 @@ scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 1.
 v1 reference for `/more`: `jpc-space/src/components/layout/more-menu.tsx`.
 
 **Depends on:** nothing — this is the first plan in the execution order
-(1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → 9 → 10 → 11 → 18 → 12 → 13).
+(1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18).
 
 ## Global Constraints
 
@@ -54,8 +54,8 @@ needs Task 2; Task 4 needs Task 3. Task 5 needs Task 1. Task 6 needs only
 Task 0. Task 7 is the coordinator's closing gate.
 
 **Out of scope here (owner named, ruling X15):** the staff branch of
-`/assignments` and of `assignment/[id]` (Plan 15); `/history`, `/profile`,
-`/season` student content (Plan 14).
+`/assignments` and of `assignment/[id]` (Plan 5); `/history`, `/profile`,
+`/season` student content (Plan 11).
 
 ---
 
@@ -517,7 +517,7 @@ describe("AssignmentsScreen (student)", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("does not run the student query for staff (their branch is Plan 15's)", async () => {
+  it("does not run the student query for staff (their branch is Plan 5's)", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
 
     renderWithProviders(<AssignmentsScreen />);
@@ -639,7 +639,7 @@ export default function AssignmentsScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
   const seasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   // Staff land here too (D1: one route per destination). Their branch is
-  // Plan 15's; querying the student hook for them would parse the wrong
+  // Plan 5's; querying the student hook for them would parse the wrong
   // schema arm, so the query is gated on role as well as season.
   const isStudent = role === "STUDENT";
   const { data, isPending, isError, refetch, isRefetching } = useStudentAssignments(
@@ -1486,7 +1486,7 @@ git add apps/mobile packages/shared && git commit -m "feat(mobile): submission e
 outstanding when its status is `PENDING` or `DRAFT` — exactly the complement
 of C5's "completed" set (`SUBMITTED | REVIEWED | RETURNED`). A RETURNED
 submission counts as completed, not to-do. The predicate is defined once in
-`packages/shared` so the client count and Plan 18's server-side dashboard
+`packages/shared` so the client count and Plan 16's server-side dashboard
 summary can never disagree.
 
 **Files:**
@@ -1497,7 +1497,7 @@ summary can never disagree.
 
 **Interfaces:**
 - Consumes: `useStudentAssignments` (Task 1), `makeSession` (Task 0); the dashboard's existing sessions query stays untouched.
-- Produces: `isAssignmentOutstanding(status: AssignmentStudentStatus): boolean` in `packages/shared/src/assignment.ts` — the single definition spec 19 lists; **Plan 18 imports it, never redefines it**.
+- Produces: `isAssignmentOutstanding(status: AssignmentStudentStatus): boolean` in `packages/shared/src/assignment.ts` — the single definition spec 19 lists; **Plan 16 imports it, never redefines it**.
 
 - [ ] **Step 0: Shared predicate, test first**
 
@@ -1687,7 +1687,7 @@ anyone.
 
 **Interfaces:**
 - Consumes: `navFor`, `ALL_NAV_HREFS`, `type NavItem`, `type RoleNav` from `@space/shared`; `useLogout` from `src/hooks/use-session.ts`; `NavIcon` from `src/components/NavIcon`; `makeSession` (Task 0).
-- Produces: `navHref(href: string): Href | null` (the one place a nav-data string becomes a typed route — Plans 8, 9, 11 link to sidebar destinations through it) and `moreItemsFor(nav: RoleNav): NavItem[]` in `src/lib/nav-routes.ts`; the real `/more` screen.
+- Produces: `navHref(href: string): Href | null` (the one place a nav-data string becomes a typed route — Plans 12, 13 and 15 link to sidebar destinations through it) and `moreItemsFor(nav: RoleNav): NavItem[]` in `src/lib/nav-routes.ts`; the real `/more` screen.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2059,12 +2059,12 @@ and any divergence from this plan discovered while implementing.
 - Dashboard pull-to-refresh refetches assignments too (review nit), with a test.
 - Dashboard "to do" now means outstanding = PENDING | DRAFT (ruling C5, spec 19
   §10 D15); RETURNED is completed. Defined once as `isAssignmentOutstanding`
-  in `packages/shared/src/assignment.ts` (Plan 18 reuses it); test fixtures
+  in `packages/shared/src/assignment.ts` (Plan 16 reuses it); test fixtures
   add DRAFT and an overdue RETURNED row to pin it.
 - Assignment-detail tests serve a real submission for the editor's fetch.
-- Staff branch of `/assignments` names its owner (Plan 15) and no longer
+- Staff branch of `/assignments` names its owner (Plan 5) and no longer
   matches the placeholder text.
 - Header states the dependency/order per the rulings.
 
-Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
 - Header's execution-order line corrected to the authoritative order (17 runs after 7, not before 6).

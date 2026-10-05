@@ -1,4 +1,4 @@
-# Plan 14 — Student Self-Service Implementation Plan
+# Plan 11 — Student Self-Service Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -18,7 +18,7 @@ once, server-side, and sent on the contract (ruling C4): attendance %, season
 progress, upcoming sessions, the absence budget with `remainingPct`, the
 streak, and per-session budget cost. Every "which day" value is an
 org-calendar `dayKey` from Plan 4's `orgDayKey` (ruling X13). Budget and
-streak live in one pure module, `lib/attendance-budget.ts`, so Plan 18's
+streak live in one pure module, `lib/attendance-budget.ts`, so Plan 16's
 dashboard reads the same numbers through `GET /me/attendance` instead of
 recomputing them (spec 19 D14, §7). On mobile, `/history`, `/profile` and
 `/season`'s student branch replace placeholders. `/attendance` is new and gets
@@ -51,40 +51,40 @@ v1 reference (read-only): `jpc-space/src/lib/season-history-query.ts:18-80`,
 `app/checkin/[token]/page.tsx:1-77`, `components/sessions/student-checkin-button.tsx`,
 `components/sessions/qr-scanner-view.tsx:1-53`.
 
-**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → **14** → 8 → 9 → 10 → 11 → 18 → 12 → 13):
+**Depends on** (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → **11** → 12 → 13 → 14 → 15 → 16 → 17 → 18):
 - Plan 1: `makeSession`/`makeUser`/`makeScopes`, `listRouteNames`, `PLACEHOLDER_SCREENS` derivation (X9), `src/lib/nav-routes.ts` (`navHref`, `moreItemsFor`, `NAV_ROUTES`), `/more` (`app/(app)/more.tsx` with its local `initialsFor`).
 - Plan 3: `lib/org-time.ts`, `config.orgTimezone`.
 - Plan 4: `orgDayKey` (`lib/org-time.ts`), `sessionDetailSchema` (`canManageCheckIn`, `myAttendance`), `apiErrorBodySchema`, `apiErrorMessage`, `formatDayKey`, `queryKeys.sessions.detail`, `session/[id]/index.tsx`, `season.tsx` and its `season-screens.test.tsx`.
-- Plan 15: `isoDaySchema` in `packages/shared/src/org-time.ts`, reused for every `dayKey` and for date of birth. This plan defines no day schema of its own and uses none of `wallTimeSchema` / `orgWallTime` / `orgWallClockToInstant`. Plan 15 moved `assignment/[id].tsx` to `assignment/[id]/index.tsx`; nothing here links to it.
-- Plan 16: `apps/mobile/src/hooks/use-check-in.ts` (`useCheckInState`, `useRegenerateCheckIn`) — Task 10 **appends** `useCheckIn` to it; the restructured `session/[id]/index.tsx` (`CheckInConsole`, `LiveCheckInRoster`, `SessionQuizzesCard`) and the `session-detail.test.tsx` Plan 16 replaced (`routeGets`, `baseDetail`); `sessionDetailSchema`'s now-required `dayKey`/`startTime`. Plan 16's session write format (`startDay`/`startTime`) does not touch this plan: its fixtures write `Session` rows through Prisma (`startsAt` is still the column) and post no sessions over HTTP.
-- Plan 5: `packages/shared/src/student.ts` (`emptyToNull`, `studentProfilePrivateSchema`), `routes/students.ts` (`SELF_EDITABLE`/`ADMIN_EDITABLE`), `integration/students-routes.test.ts` (`student1Id`, `student1Token`, `adminToken`, `testEmail`).
-- Plan 7: `routes/me.ts` as Task 5 of that plan left it (`ME_SELECT`, `PATCH /me` = name only, relative shared import), `/settings` screen, `useLogout` (pre-existing in `use-session.ts`).
-- Plan 17: `app/login.tsx` and `login-screen.test.tsx` as Plans 7/17 left them (invite / forgot-password links); Plan 5's `student/[id]` is now `student/[id]/index.tsx` (nothing here links to it).
-- Plan 16 added cards to `session/[id]/index.tsx` and `season.tsx`. This plan inserts one branch into each, so place it as described and leave every Plan 16 addition where it is.
+- Plan 5: `isoDaySchema` in `packages/shared/src/org-time.ts`, reused for every `dayKey` and for date of birth. This plan defines no day schema of its own and uses none of `wallTimeSchema` / `orgWallTime` / `orgWallClockToInstant`. Plan 5 moved `assignment/[id].tsx` to `assignment/[id]/index.tsx`; nothing here links to it.
+- Plan 6: `apps/mobile/src/hooks/use-check-in.ts` (`useCheckInState`, `useRegenerateCheckIn`) — Task 10 **appends** `useCheckIn` to it; the restructured `session/[id]/index.tsx` (`CheckInConsole`, `LiveCheckInRoster`, `SessionQuizzesCard`) and the `session-detail.test.tsx` Plan 6 replaced (`routeGets`, `baseDetail`); `sessionDetailSchema`'s now-required `dayKey`/`startTime`. Plan 6's session write format (`startDay`/`startTime`) does not touch this plan: its fixtures write `Session` rows through Prisma (`startsAt` is still the column) and post no sessions over HTTP.
+- Plan 7: `packages/shared/src/student.ts` (`emptyToNull`, `studentProfilePrivateSchema`), `routes/students.ts` (`SELF_EDITABLE`/`ADMIN_EDITABLE`), `integration/students-routes.test.ts` (`student1Id`, `student1Token`, `adminToken`, `testEmail`).
+- Plan 9: `routes/me.ts` as Task 5 of that plan left it (`ME_SELECT`, `PATCH /me` = name only, relative shared import), `/settings` screen, `useLogout` (pre-existing in `use-session.ts`).
+- Plan 10: `app/login.tsx` and `login-screen.test.tsx` as Plans 9/10 left them (invite / forgot-password links); Plan 7's `student/[id]` is now `student/[id]/index.tsx` (nothing here links to it).
+- Plan 6 added cards to `session/[id]/index.tsx` and `season.tsx`. This plan inserts one branch into each, so place it as described and leave every Plan 6 addition where it is.
 
 **Not in this plan (owner named):** the student dashboard tiles that read
 `GET /me/attendance` and link to `/attendance`, `/history` and `/profile` —
-**Plan 18**. The profile's "Assignments completed/expected" counter (v1's stats
+**Plan 16**. The profile's "Assignments completed/expected" counter (v1's stats
 strip) is engagement's `submissionsCompleted`/`submissionsExpected`, which
-**Plan 8** builds. Plan 8 or Plan 18 adds it to `/profile`. Avatar upload and
+**Plan 12** builds. Plan 12 or Plan 16 adds it to `/profile`. Avatar upload and
 image read-back are deferred with uploads (CLAUDE.md; there is no avatar read
 path in v2, so `/profile` renders initials). Check-in token regeneration is
-**Plan 16**. The rotating check-in code (spec 04 D3 option 1), the check-in
+**Plan 6**. The rotating check-in code (spec 04 D3 option 1), the check-in
 role gate, error-code collapse and rate limit (spec 04 D4), and https
 universal links for v1's printed `https://…/checkin/<token>` sheets are
-**Plan 13's** register; see Decision 9.
+**Plan 18's** register; see Decision 9.
 
 ## Decisions this plan locks in
 
 1. **One writer per column (spec 18 D2/D8 over spec 06 §8).** `PATCH /me/profile`
    writes only the six `StudentProfile` columns a student may edit:
    `university`, `year`, `phone`, `dateOfBirth`, `spiritualBackground` and
-   `gifts`. `User.name` belongs to Plan 7's `PATCH /me`. A student may not
+   `gifts`. `User.name` belongs to Plan 9's `PATCH /me`. A student may not
    change `User.email` (spec 18 D8's recommendation: changing a login
    identifier with no verification is an account-takeover primitive). Spec
    06 §8 had put `name` and `email` in `updateOwnProfileInputSchema`.
    `_DECISIONS.md` does not rule on it, so this follows spec 18's
-   recommendation and the reason is stated here. Plan 5's `PATCH /students/:id`
+   recommendation and the reason is stated here. Plan 7's `PATCH /students/:id`
    also let the subject write `name` and `email` (`SELF_EDITABLE`), which is a
    back door around the same decision. Task 4 narrows it to the same six
    columns, and staff keep `name`/`email` through `ADMIN_EDITABLE`. Changing a
@@ -117,7 +117,7 @@ universal links for v1's printed `https://…/checkin/<token>` sheets are
    season, which is the same rule as `groupListItemSchema.studentCount`.
 6. **Ruling C3 lands on the scan write here.** `POST /sessions/check-in`
    measured `minutesLate` from `checkInOpenAt` (v1 R63), and no earlier plan
-   changed that. Plan 13 M3 assumes v2 already writes from `startsAt`. This plan
+   changed that. Plan 18 M3 assumes v2 already writes from `startsAt`. This plan
    owns the student check-in surface, and the success copy "N minutes after
    session start" is only true once C3 is in (spec 04 D15: "fix the copy in
    the same change as D1"), so the fix lands here. The threshold is zero
@@ -140,7 +140,7 @@ universal links for v1's printed `https://…/checkin/<token>` sheets are
    spec 04 D4's collapse would remove that). It also keeps having no role gate
    and no rate limit. A per-IP limiter would bucket a whole classroom behind
    one NAT, so it would need a per-user key. Both items, the rotating code,
-   and https universal links are listed for Plan 13's register in the closing
+   and https universal links are listed for Plan 18's register in the closing
    gate.
 10. **`GET /me/attendance` covers the active season only.** Spec 04 §7's
     optional `?seasonId` is not built, because no screen needs it and it would
@@ -151,7 +151,7 @@ universal links for v1's printed `https://…/checkin/<token>` sheets are
 11. **Date of birth travels as a calendar date, `"YYYY-MM-DD"`.** v1 stores a
     date input as UTC midnight, and a calendar date has no instant. Reading
     `toISOString().slice(0, 10)` and writing `${d}T00:00:00.000Z` round-trips
-    the value in every timezone. Plan 5's staff detail serialises the same
+    the value in every timezone. Plan 7's staff detail serialises the same
     column as a full ISO instant. Both are correct for their screens, and the
     difference is noted here so nobody "unifies" one into the other.
 
@@ -159,7 +159,7 @@ universal links for v1's printed `https://…/checkin/<token>` sheets are
 
 - Relative imports only, **no `@/` alias**, in both apps. No `process.env` outside `apps/backend/src/lib/config.ts`. Never import `@prisma/client`. **No migrations, no schema edits** (ruling X14, C1).
 - Backend **value** imports from `packages/shared` use the relative path in **every** backend src file (ruling X12): `"../../../../packages/shared/src/index"` from `src/routes/` and `src/lib/`, one more `../` from `src/lib/queries/`. `import type` may use `"@space/shared"`. This plan's only backend value imports are in `routes/me.ts`.
-- `requireAuth` is attached **per route** on `meRouter` (ruling X5), the same way Plan 7 does it.
+- `requireAuth` is attached **per route** on `meRouter` (ruling X5), the same way Plan 9 does it.
 - `src/docs/openapi.ts` changes in the same commit as the route it documents.
 - Every response is parsed with a shared Zod schema. That includes queries **and mutations** (ruling X10), and never `as T`.
 - Dependent queries pass `enabled`; manual `refetch()` is guarded; nullable ids go into query keys as `null`.
@@ -191,11 +191,11 @@ needs Tasks 2–4 deployed to the dev backend.
 **Files:**
 - Modify: `packages/shared/src/attendance.ts` (append)
 - Modify: `packages/shared/src/season.ts` (append)
-- Modify: `packages/shared/src/student.ts` (Plan 5's file; append)
+- Modify: `packages/shared/src/student.ts` (Plan 7's file; append)
 - Test: `packages/shared/src/__tests__/self-service.test.ts` (new)
 
 **Interfaces:**
-- Consumes: `attendanceStatusSchema`, `seasonStatusSchema` (`./enums`); Plan 5's module-private `emptyToNull` in `student.ts`; Plan 15's `isoDaySchema` (`packages/shared/src/org-time.ts` — `YYYY-MM-DD`, a real calendar day). Reused for every `dayKey` and for date of birth; not redefined.
+- Consumes: `attendanceStatusSchema`, `seasonStatusSchema` (`./enums`); Plan 7's module-private `emptyToNull` in `student.ts`; Plan 5's `isoDaySchema` (`packages/shared/src/org-time.ts` — `YYYY-MM-DD`, a real calendar day). Reused for every `dayKey` and for date of birth; not redefined.
 - Produces (exact names later tasks and plans use):
   - `attendance.ts`: `CHECK_IN_TOKEN_RE`; `parseCheckInCode(raw: string): string | null`; `checkInResponseSchema` / `CheckInResponse`; `checkInErrorCodeSchema` / `CheckInErrorCode`; `attendanceBudgetSchema` / `AttendanceBudget`; `myAttendanceSessionSchema` / `MyAttendanceSession`; `myAttendanceResponseSchema` / `MyAttendanceResponse`.
   - `season.ts`: `seasonHistoryCurriculumItemSchema`, `seasonHistoryRowSchema` / `SeasonHistoryRow`, `seasonHistoryResponseSchema`; `mySeasonLeaderSchema`, `mySeasonMemberSchema`, `mySeasonGroupSchema`, `mySeasonUpcomingSessionSchema`, `mySeasonSchema` / `MySeason`, `mySeasonResponseSchema`.
@@ -263,7 +263,7 @@ describe("updateOwnProfileInputSchema (Decision 1)", () => {
       expect(result.success).toBe(false);
       if (!result.success) expect(result.error.issues[0]?.message).toBe("Use YYYY-MM-DD.");
     }
-    // Plan 15's isoDaySchema rejects a well-formed but impossible day with its own message.
+    // Plan 5's isoDaySchema rejects a well-formed but impossible day with its own message.
     const impossible = updateOwnProfileInputSchema.safeParse({ dateOfBirth: "2001-02-30" });
     expect(impossible.success).toBe(false);
     if (!impossible.success) expect(impossible.error.issues[0]?.message).toBe("Not a real calendar day.");
@@ -334,7 +334,7 @@ Expected: FAIL — none of the imported names exist.
 
 ```ts
 // ---------------------------------------------------------------------------
-// Student self-service — Plan 14
+// Student self-service — Plan 11
 // ---------------------------------------------------------------------------
 
 /** `newPublicId()`'s alphabet and length — what `Session.checkInToken` holds (spec 04 R35). */
@@ -343,7 +343,7 @@ const CHECK_IN_URL_RE = /^https?:\/\/[^/?#\s]+\/checkin\/([0-9A-Za-z]{10})\/?(?:
 const CHECK_IN_APP_LINK_RE = /^spacev2:\/\/\/?checkin\/([0-9A-Za-z]{10})\/?$/i;
 
 /**
- * The one parser for anything a student scans or types (Plan 14 Decision 8):
+ * The one parser for anything a student scans or types (Plan 11 Decision 8):
  * the bare token (Plan 4's console QR), v1's printed
  * `http(s)://<host>/checkin/<token>` (spec 04 R41), or this app's own
  * `spacev2://checkin/<token>`. Anything else is null. Regexes rather than
@@ -404,7 +404,7 @@ export const myAttendanceSessionSchema = z.object({
 });
 export type MyAttendanceSession = z.infer<typeof myAttendanceSessionSchema>;
 
-/** `GET /api/v1/me/attendance` — the active season only (Plan 14 Decision 10). */
+/** `GET /api/v1/me/attendance` — the active season only (Plan 11 Decision 10). */
 export const myAttendanceResponseSchema = z.object({
   /** Null when the student has no active season, or it was soft-deleted. */
   season: z
@@ -425,20 +425,20 @@ export type MyAttendanceResponse = z.infer<typeof myAttendanceResponseSchema>;
 ```
 
 (`attendanceStatusSchema` is already imported at the top of the file. Add
-`import { isoDaySchema } from "./org-time";` — Plan 15's org-calendar day
+`import { isoDaySchema } from "./org-time";` — Plan 5's org-calendar day
 schema. Every `dayKey` below is an org day computed by `orgDayKey` (ruling
 X13); this plan defines no second day schema.)
 
 - [ ] **Step 4: Append to `packages/shared/src/season.ts`**
 
-Add `import { isoDaySchema } from "./org-time";` (Plan 15) to the imports. Plan 3's
+Add `import { isoDaySchema } from "./org-time";` (Plan 5) to the imports. Plan 3's
 conversion already imports `z` and `seasonStatusSchema`; if either is
 missing, add `import { z } from "zod";` /
 `import { seasonStatusSchema } from "./enums";`. Then append:
 
 ```ts
 // ---------------------------------------------------------------------------
-// Student self-service — Plan 14
+// Student self-service — Plan 11
 // ---------------------------------------------------------------------------
 
 export const seasonHistoryCurriculumItemSchema = z.object({
@@ -523,16 +523,16 @@ export const mySeasonResponseSchema = z.object({ season: mySeasonSchema.nullable
 
 - [ ] **Step 5: Append to `packages/shared/src/student.ts`**
 
-Add `import { isoDaySchema } from "./org-time";` (Plan 15) to its imports, then append:
+Add `import { isoDaySchema } from "./org-time";` (Plan 5) to its imports, then append:
 
 ```ts
 // ---------------------------------------------------------------------------
-// The student's own profile — Plan 14 (GET/PATCH /api/v1/me/profile)
+// The student's own profile — Plan 11 (GET/PATCH /api/v1/me/profile)
 // ---------------------------------------------------------------------------
 
 /**
  * The StudentProfile columns a student edits about themselves — and nothing
- * else (Plan 14 Decision 1). `User.name` is Plan 7's PATCH /me; `User.email`
+ * else (Plan 11 Decision 1). `User.name` is Plan 9's PATCH /me; `User.email`
  * is staff-only (spec 18 D8); `notes` and `activeSeasonId` never (R23).
  * routes/students.ts's SELF_EDITABLE is narrowed to this same set.
  */
@@ -557,7 +557,7 @@ export const updateOwnProfileInputSchema = z
     university: emptyToNull(160),
     year: emptyToNull(40),
     phone: emptyToNull(60),
-    /** A calendar date, "YYYY-MM-DD" (Plan 14 Decision 11) — Plan 15's isoDaySchema, not a copy. */
+    /** A calendar date, "YYYY-MM-DD" (Plan 11 Decision 11) — Plan 5's isoDaySchema, not a copy. */
     dateOfBirth: z
       .string()
       .nullish()
@@ -616,7 +616,7 @@ git add packages/shared && git commit -m "feat(shared): student self-service con
 
 **Interfaces:**
 - Consumes: Prisma `AttendanceStatus` type (`src/generated/prisma/enums`).
-- Produces: `budgetFrom(input: BudgetInput): AttendanceBudget`, `costMinutesFor(status, lateMinutes, absenceWeightMinutes): number | null`, `streakFrom(newestFirst: (AttendanceStatus | null)[]): number`, `interface AttendanceBudget` in `lib/attendance-budget.ts`; `computeAttendanceBudget(studentUserId: number, season: BudgetSeason): Promise<AttendanceBudget>` and `interface BudgetSeason` in `lib/queries/attendance-budget.ts`. **Plans 8 and 18 import these; they never re-derive the budget or the streak** (spec 19 §7: "computed by the one server function").
+- Produces: `budgetFrom(input: BudgetInput): AttendanceBudget`, `costMinutesFor(status, lateMinutes, absenceWeightMinutes): number | null`, `streakFrom(newestFirst: (AttendanceStatus | null)[]): number`, `interface AttendanceBudget` in `lib/attendance-budget.ts`; `computeAttendanceBudget(studentUserId: number, season: BudgetSeason): Promise<AttendanceBudget>` and `interface BudgetSeason` in `lib/queries/attendance-budget.ts`. **Plans 12 and 16 import these; they never re-derive the budget or the streak** (spec 19 §7: "computed by the one server function").
 
 - [ ] **Step 1: Write the failing unit test**
 
@@ -696,7 +696,7 @@ import type { AttendanceStatus } from "../generated/prisma/enums";
  * The absence budget and the attendance streak — defined ONCE (ruling C4,
  * spec 19 §7). v1 computed these in `lib/engagement.ts:109-172, 250-273` and
  * re-derived pieces of them in three pages; here every caller (GET
- * /me/attendance today, Plan 18's dashboard through it) gets the same numbers.
+ * /me/attendance today, Plan 16's dashboard through it) gets the same numbers.
  *
  * Pure on purpose: no DB import, so the arithmetic is unit-tested without a
  * database. `queries/attendance-budget.ts` feeds it.
@@ -909,9 +909,9 @@ replace the `minutesLate` computation with:
   // Ruling C3: lateness is measured from the session's START — not from when
   // an admin pressed "Open check-in" (spec 04 R63, D1), which made a punctual
   // student LATE whenever the console opened early. The threshold is zero
-  // until Plan 13 M3 adds `Season.lateThresholdMinutes` (C3 over spec 04 D1's
+  // until Plan 18 M3 adds `Season.lateThresholdMinutes` (C3 over spec 04 D1's
   // 15-minute grace). Rows v1 writes still mean "minutes since opening";
-  // C3 accepts that divergence and Plan 13 M3 backfills it.
+  // C3 accepts that divergence and Plan 18 M3 backfills it.
   const minutesLate = Math.max(
     0,
     Math.floor((now.getTime() - session.startsAt.getTime()) / 60_000),
@@ -1271,7 +1271,7 @@ export interface SeasonHistoryRow {
 }
 
 export async function loadSeasonHistory(user: SessionUser): Promise<SeasonHistoryRow[]> {
-  // R35, decided from the token (Plan 14 Decision 3): a current student's
+  // R35, decided from the token (Plan 11 Decision 3): a current student's
   // history excludes the season they are in; an alumnus sees everything.
   const excludeSeasonId = isAlumnus(user) ? null : user.activeSeasonId;
 
@@ -1516,13 +1516,13 @@ imports:
 import { loadMyAttendance, loadMySeason, loadSeasonHistory } from "../lib/queries/me";
 ```
 
-and append, after Plan 7's routes:
+and append, after Plan 9's routes:
 
 ```ts
 const STUDENTS_ONLY = "This is only available to students and alumni.";
 
 /*
- * Student self-service reads (Plan 14). requireAuth per route (ruling X5).
+ * Student self-service reads (Plan 11). requireAuth per route (ruling X5).
  * Role STUDENT covers alumni too (role stays STUDENT, graduationYear set).
  * Staff get 403, not an empty shape: a staff client calling these is a bug.
  */
@@ -1762,7 +1762,7 @@ describe("GET /api/v1/me/profile (spec 06 §7)", () => {
   });
 });
 
-describe("PATCH /api/v1/me/profile (Plan 14 Decision 1)", () => {
+describe("PATCH /api/v1/me/profile (Plan 11 Decision 1)", () => {
   const patch = (body: unknown, token = studentToken) =>
     request(app).patch("/api/v1/me/profile").set("authorization", `Bearer ${token}`).send(body as object);
 
@@ -1815,11 +1815,11 @@ describe("PATCH /api/v1/me/profile (Plan 14 Decision 1)", () => {
 });
 ```
 
-Append to `students-routes.test.ts` (Plan 5's suite; `student1Id`,
+Append to `students-routes.test.ts` (Plan 7's suite; `student1Id`,
 `student1Token`, `adminToken` and `testEmail` are already in scope there):
 
 ```ts
-describe("PATCH /api/v1/students/:id — one writer per column (Plan 14, spec 18 D2/D8)", () => {
+describe("PATCH /api/v1/students/:id — one writer per column (Plan 11, spec 18 D2/D8)", () => {
   it("refuses a student's own email change with forbidden_field", async () => {
     const res = await request(app)
       .patch(`/api/v1/students/${student1Id}`)
@@ -1908,7 +1908,7 @@ export async function loadMyProfile(userId: number): Promise<MyProfileRow | null
     university: p?.university ?? null,
     year: p?.year ?? null,
     phone: p?.phone ?? null,
-    // A calendar date stored at UTC midnight (Plan 14 Decision 11).
+    // A calendar date stored at UTC midnight (Plan 11 Decision 11).
     dateOfBirth: p?.dateOfBirth ? p.dateOfBirth.toISOString().slice(0, 10) : null,
     spiritualBackground: p?.spiritualBackground ?? null,
     gifts: p?.gifts ?? null,
@@ -1917,7 +1917,7 @@ export async function loadMyProfile(userId: number): Promise<MyProfileRow | null
 ```
 
 - [ ] **Step 3: Add the routes to `routes/me.ts`.** Extend the existing
-relative shared import (keep Plan 7's names):
+relative shared import (keep Plan 9's names):
 
 ```ts
 import {
@@ -1943,7 +1943,7 @@ meRouter.get("/profile", requireAuth, async (req, res) => {
 });
 
 /*
- * The student's own StudentProfile columns — and nothing else (Plan 14
+ * The student's own StudentProfile columns — and nothing else (Plan 11
  * Decision 1, spec 18 D2/D8). Name is PATCH /me; email is staff-only; notes
  * and activeSeasonId never (R23). Keys are checked RAW, before the schema,
  * so the refusal names the field instead of v1's silent drop (R24).
@@ -1983,7 +1983,7 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
     spiritualBackground: body.spiritualBackground,
     gifts: body.gifts,
   };
-  // Upsert, as Plan 5 does: v1's unconditional update threw for a STUDENT
+  // Upsert, as Plan 7 does: v1's unconditional update threw for a STUDENT
   // with no profile row (spec 06 §2).
   await db.studentProfile.upsert({
     where: { userId: user.userId },
@@ -1997,14 +1997,14 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
 });
 ```
 
-- [ ] **Step 4: Narrow Plan 5's self-edit allowlist.** In
+- [ ] **Step 4: Narrow Plan 7's self-edit allowlist.** In
 `apps/backend/src/routes/students.ts`, replace the two allowlists and extend
 their doc comment's first bullet:
 
 ```ts
 /*
  * - The subject edits their own StudentProfile columns only — the same six
- *   PATCH /me/profile accepts (Plan 14 Decision 1). `name` belongs to
+ *   PATCH /me/profile accepts (Plan 11 Decision 1). `name` belongs to
  *   PATCH /me and `email` is staff-only (spec 18 D2/D8: changing a login
  *   identifier without verification is an account-takeover primitive).
  */
@@ -2085,13 +2085,13 @@ const ADMIN_EDITABLE = new Set([...SELF_EDITABLE, "name", "email", "notes"]);
     },
 ```
 
-Also update `PATCH /api/v1/students/{id}`'s description, if Plan 5 documented
+Also update `PATCH /api/v1/students/{id}`'s description, if Plan 7 documented
 the self-edit set, to say "the subject may edit university, year, phone,
 dateOfBirth, spiritualBackground and gifts only".
 
 - [ ] **Step 6: Run**
 
-Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "me-self-service-routes|students-routes"` → PASS (Plan 5's existing "lets the student edit their own contact fields" sends only `phone` and stays green).
+Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "me-self-service-routes|students-routes"` → PASS (Plan 7's existing "lets the student edit their own contact fields" sends only `phone` and stays green).
 Run: `pnpm turbo lint typecheck test:unit build --filter=@space/backend` → clean, then
 `grep -rn 'require("@space/shared")' apps/backend/dist/` → empty (ruling X12).
 
@@ -2114,13 +2114,13 @@ git add apps/backend && git commit -m "feat(backend): own student profile read/e
 
 **Interfaces:**
 - Consumes: Task 1's schemas; `apiClient`.
-- Produces (exact names; Plan 18 reuses `useMyAttendance` and the key):
+- Produces (exact names; Plan 16 reuses `useMyAttendance` and the key):
   - `queryKeys.me.all`, `queryKeys.me.seasonHistory(activeSeasonId: number | null)`, `queryKeys.me.season(seasonId: number | null)`, `queryKeys.me.attendance(seasonId: number | null)`, `queryKeys.me.profile()`
   - `useSeasonHistory(activeSeasonId: number | null, enabled: boolean): UseQueryResult<SeasonHistoryRow[]>`
   - `useMySeason(seasonId: number | null): UseQueryResult<MySeason | null>`
   - `useMyAttendance(seasonId: number | null): UseQueryResult<MyAttendanceResponse>`
   - `useMyProfile(enabled: boolean): UseQueryResult<MyProfile>`
-  - `useUpdateStudentProfile(): UseMutationResult<MyProfile, Error, UpdateOwnProfileInput>` (distinct from Plan 7's `useUpdateProfile`, which is `PATCH /me` name)
+  - `useUpdateStudentProfile(): UseMutationResult<MyProfile, Error, UpdateOwnProfileInput>` (distinct from Plan 9's `useUpdateProfile`, which is `PATCH /me` name)
   - `initialsOf(name: string | null, fallback: string): string`
 
 - [ ] **Step 1: Write the failing tests**
@@ -2301,7 +2301,7 @@ import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
 /*
- * The student's own reads (Plan 14). Every endpoint resolves its subject from
+ * The student's own reads (Plan 11). Every endpoint resolves its subject from
  * the token — these hooks never send an id. Each is gated: the season-scoped
  * ones on a non-null season (spec 04 R93: no season, no queries), the rest on
  * the caller's role (staff get 403 from these endpoints).
@@ -2332,7 +2332,7 @@ export function useMySeason(seasonId: number | null): UseQueryResult<MySeason | 
   });
 }
 
-/** Plan 18's dashboard budget/streak tile reads this same hook and key (spec 19 §7). */
+/** Plan 16's dashboard budget/streak tile reads this same hook and key (spec 19 §7). */
 export function useMyAttendance(seasonId: number | null): UseQueryResult<MyAttendanceResponse> {
   return useQuery({
     queryKey: queryKeys.me.attendance(seasonId),
@@ -2414,7 +2414,7 @@ git add apps/mobile && git commit -m "feat(mobile): self-service hooks, me query
 
 **Interfaces:**
 - Consumes: `useSeasonHistory` (Task 5); `formatDate`, `formatDayKey` (Plan 4); `makeSession`.
-- Produces: the `/history` screen. Plan 18's alumni "View my history" links here.
+- Produces: the `/history` screen. Plan 16's alumni "View my history" links here.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2524,7 +2524,7 @@ const EDGES = ["top", "left", "right"] as const;
 /**
  * /history — STUDENT (sidebar) and ALUMNI (tab). One screen for v1's two
  * pages (spec 02 §9): the only difference was whether the current season is
- * excluded, and the server decides that from the token (Plan 14 Decision 3).
+ * excluded, and the server decides that from the token (Plan 11 Decision 3).
  * Privacy-critical (R34): the contract carries attendance % and curriculum
  * only, and its schema is strict, so nothing else can reach this screen.
  */
@@ -2615,7 +2615,7 @@ export default function HistoryScreen() {
 }
 ```
 
-(`theme.colors.brand.navy[900]` is the same token Plan 9's notification row uses.)
+(`theme.colors.brand.navy[900]` is the same token Plan 13's notification row uses.)
 
 - [ ] **Step 3: Delete the placeholder row.** In `placeholder-screens.test.tsx`
 delete the `["history", HistoryScreen, …]` row and its import. No count
@@ -2647,7 +2647,7 @@ git add apps/mobile && git commit -m "feat(mobile): season history for students 
 
 **Interfaces:**
 - Consumes: `useMyAttendance` (Task 5); `formatDayKey`, `formatSessionTime`.
-- Produces: nav href `/attendance` (STUDENT sidebar only, so it appears in More; ALUMNI and staff never see it); route `attendance` (in `ALL_ROUTE_NAMES` through `ALL_NAV_HREFS`, so `DETAIL_ROUTE_NAMES` does not change); `NavIconName` `"attendance"`. Plan 18's "Absence budget left" tile links here.
+- Produces: nav href `/attendance` (STUDENT sidebar only, so it appears in More; ALUMNI and staff never see it); route `attendance` (in `ALL_ROUTE_NAMES` through `ALL_NAV_HREFS`, so `DETAIL_ROUTE_NAMES` does not change); `NavIconName` `"attendance"`. Plan 16's "Absence budget left" tile links here.
 
 - [ ] **Step 1: Write the failing tests.** In `packages/shared/src/__tests__/navigation.test.ts`,
 inside the `navByRole.STUDENT` expected shape, insert after
@@ -2831,7 +2831,7 @@ function SessionRow({ row }: { row: MyAttendanceSession }) {
 /**
  * /attendance — v1 /student/attendance (spec 04 R93–R96). The budget, the
  * streak and every per-session cost come from GET /me/attendance, computed
- * once in lib/attendance-budget.ts (C4); Plan 18's dashboard tile reads the
+ * once in lib/attendance-budget.ts (C4); Plan 16's dashboard tile reads the
  * same query key, so the two can never disagree.
  */
 export default function AttendanceScreen() {
@@ -2932,7 +2932,7 @@ git add packages/shared apps/mobile && git commit -m "feat(mobile): student atte
 - Test: `apps/mobile/src/__tests__/profile-screen.test.tsx`
 
 **Interfaces:**
-- Consumes: `useMyProfile`, `useUpdateStudentProfile`, `useMyAttendance`, `initialsOf` (Task 5); `OWN_PROFILE_FIELDS`, `updateOwnProfileInputSchema` (Task 1); `apiErrorMessage` (Plan 4); `useLogout`; the `/settings` route (Plan 7).
+- Consumes: `useMyProfile`, `useUpdateStudentProfile`, `useMyAttendance`, `initialsOf` (Task 5); `OWN_PROFILE_FIELDS`, `updateOwnProfileInputSchema` (Task 1); `apiErrorMessage` (Plan 4); `useLogout`; the `/settings` route (Plan 9).
 - Produces: the `/profile` screen: STUDENT branch (form plus a stats strip with "Absence budget left" and "Streak"), ALUMNI read-only card, and an account card for every other role (Decision 2).
 
 - [ ] **Step 1: Write the failing test**
@@ -3659,7 +3659,7 @@ function UpcomingCard({ upcoming }: { upcoming: MySeason["upcoming"] }) {
 
 /**
  * The student's `/season` (v1 app/student/season/page.tsx:40-281, G21). One
- * read, GET /me/season (Plan 14 Decision 5): progress and "upcoming" are
+ * read, GET /me/season (Plan 11 Decision 5): progress and "upcoming" are
  * server-derived (C4) and the group comes from this season's enrollment (C9).
  */
 export function StudentSeason() {
@@ -3729,8 +3729,8 @@ export function StudentSeason() {
 
 - [ ] **Step 3: Dispatch in `season.tsx`.** In `apps/mobile/app/(app)/season.tsx`:
 rename `export default function SeasonScreen()` to `function StaffSeason()`
-and leave its body unchanged. Replace the file's header comment sentence "The richer student content (upcoming sessions, group card with leaders) is Plan 14"
-with "The student branch is `StudentSeason` (Plan 14)". Add
+and leave its body unchanged. Replace the file's header comment sentence "The richer student content (upcoming sessions, group card with leaders) is Plan 11"
+with "The student branch is `StudentSeason` (Plan 11)". Add
 `import { StudentSeason } from "../../src/components/season/StudentSeason";`
 and append:
 
@@ -3744,7 +3744,7 @@ export default function SeasonScreen() {
 }
 ```
 
-If Plan 16 has already restructured `season.tsx`, keep its structure and
+If Plan 6 has already restructured `season.tsx`, keep its structure and
 apply the same rule: the default export dispatches on `role === "STUDENT"`
 before calling any staff hook.
 
@@ -3768,10 +3768,10 @@ git add apps/mobile && git commit -m "feat(mobile): student current-season page 
 - Modify: `apps/mobile/app.json` (expo-camera config plugin)
 - Create: `apps/mobile/src/__tests__/helpers/expo-camera.tsx` (the Jest stand-in for expo-camera)
 - Create: `apps/mobile/src/lib/check-in-result.ts`
-- Modify: `apps/mobile/src/hooks/use-check-in.ts` (Plan 16's file — append `useCheckIn`)
+- Modify: `apps/mobile/src/hooks/use-check-in.ts` (Plan 6's file — append `useCheckIn`)
 - Create: `apps/mobile/src/components/check-in/QrScanner.tsx`, `CheckInResult.tsx`, `StudentCheckInCard.tsx`
 - Modify: `apps/mobile/app/(app)/session/[id]/index.tsx` (Plan 4's screen: one new branch)
-- Modify: `apps/mobile/src/__tests__/session-detail.test.tsx` (as Plan 16 replaced it: camera mock line + one student assertion)
+- Modify: `apps/mobile/src/__tests__/session-detail.test.tsx` (as Plan 6 replaced it: camera mock line + one student assertion)
 - Test: `apps/mobile/src/__tests__/check-in-result.test.ts`, `apps/mobile/src/__tests__/student-check-in.test.tsx`
 
 **Interfaces:**
@@ -3938,7 +3938,7 @@ const post = apiClient.post as jest.Mock;
 
 const detail = {
   id: 12, title: "Week 3", description: null,
-  startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00", // required since Plan 16
+  startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00", // required since Plan 6
   durationMinutes: 90, location: "Hall B",
   youtubeUrl: null, recurrenceGroupId: null, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring",
   checkInOpen: true, myAttendance: null, canMarkAttendance: false, canManageCheckIn: false,
@@ -4100,7 +4100,7 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     get.mockImplementation((url: string) => {
       if (url === "/api/v1/sessions/12")
         return Promise.resolve({ data: { data: { ...detail, canMarkAttendance: true, canManageCheckIn: true } } });
-      // Plan 16's staff cards: the console reads check-in state, the quiz card its quizzes.
+      // Plan 6's staff cards: the console reads check-in state, the quiz card its quizzes.
       if (url === "/api/v1/sessions/12/check-in")
         return Promise.resolve({ data: { data: {
           state: "not_open", isOpen: false, checkInToken: null, checkInOpenAt: null,
@@ -4118,7 +4118,7 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
 });
 ```
 
-In `session-detail.test.tsx` (the file Plan 16 Task 7 replaced), add
+In `session-detail.test.tsx` (the file Plan 6 Task 7 replaced), add
 `jest.mock("expo-camera", () => require("./helpers/expo-camera"));` beside its
 other `jest.mock` calls. In its first case ("shows a student the org-time
 header and their attendance, and no staff cards (C4)"), replace
@@ -4187,7 +4187,7 @@ export function checkInCopy(outcome: CheckInOutcome): CheckInCopy {
 
 - [ ] **Step 5: The mutation**
 
-`apps/mobile/src/hooks/use-check-in.ts` already exists (Plan 16 Task 7:
+`apps/mobile/src/hooks/use-check-in.ts` already exists (Plan 6 Task 7:
 `useCheckInState`, `useRegenerateCheckIn`). Do not recreate it. Merge the
 imports — add `type UseMutationResult` to the `@tanstack/react-query` import
 and `checkInResponseSchema, type CheckInResponse` to the `@space/shared`
@@ -4450,7 +4450,7 @@ import { useSessionStore } from "../../../../src/store/session";
 In `SessionDetailBody`, add
 `const role = useSessionStore((s) => s.user?.role ?? null);` directly after
 `const router = useRouter();`, which keeps it before the early returns. Then
-replace the `{/* Student check-in (scanner / enter code) is Plan 14 (ruling X15). */}`
+replace the `{/* Student check-in (scanner / enter code) is Plan 11 (ruling X15). */}`
 comment and the console/roster ternary with:
 
 ```tsx
@@ -4459,12 +4459,12 @@ comment and the console/roster ternary with:
       ) : data.canMarkAttendance ? (
         <LiveCheckInRoster detail={data} />
       ) : role === "STUDENT" ? (
-        // Spec 04 §9 row 3: students get the check-in action (Plan 14, G2).
+        // Spec 04 §9 row 3: students get the check-in action (Plan 11, G2).
         <StudentCheckInCard detail={data} />
       ) : null}
 ```
 
-If Plan 16 has added branches here (for example the session-quiz card),
+If Plan 6 has added branches here (for example the session-quiz card),
 leave them in place. The student card is the last branch of this ternary.
 
 - [ ] **Step 8: Run**
@@ -4611,7 +4611,7 @@ describe("CheckInLinkScreen", () => {
 In `login-screen.test.tsx`: above the `expo-router` mock add
 `let mockSearchParams: Record<string, string | undefined> = {};`, add
 `useLocalSearchParams: () => mockSearchParams,` to that mock's returned
-object (keep every member Plans 7/17 added, such as `push`), reset
+object (keep every member Plans 9/10 added, such as `push`), reset
 `mockSearchParams = {};` in `beforeEach`, and append:
 
 ```tsx
@@ -4655,7 +4655,7 @@ const CHECK_IN_PATH_RE = /^\/checkin\/([0-9A-Za-z]{10})$/;
 
 /**
  * Where /login may send the user after signing in. ONLY a check-in link
- * (`/checkin/<10-char token>`, Plan 14 Decision 7), rebuilt as a typed route —
+ * (`/checkin/<10-char token>`, Plan 11 Decision 7), rebuilt as a typed route —
  * never the raw string, so a crafted `returnTo` cannot redirect anywhere else.
  * Extend deliberately, one typed shape at a time.
  */
@@ -4813,13 +4813,13 @@ As an **alumnus**: History tab lists every past enrollment. The Profile tab is t
 
 As a **mentor**: the Profile tab shows the account card, "Settings" opens settings, and "Sign out" signs out.
 
-- [ ] **Step 4: Register for Plan 13** (the coordinator appends these to
-Plan 13's deferred/drop register; this plan does not edit Plan 13):
+- [ ] **Step 4: Register for Plan 18** (the coordinator appends these to
+Plan 18's deferred/drop register; this plan does not edit Plan 18):
 (a) the rotating check-in code (spec 04 D3 option 1; the static token is still forwardable);
 (b) spec 04 D4: a STUDENT role gate on `POST /sessions/check-in`, and a **per-user** rate limit (a per-IP limiter would bucket a whole classroom behind one NAT). The five distinct codes are kept on purpose (Decision 9);
 (c) https universal links / app links for v1's printed `https://<host>/checkin/<token>` sheets (until then those URLs open v1's web page, which keeps working until cutover);
 (d) avatar image read-back on `/profile` (with the uploads/CMS track);
-(e) the C3 era boundary: check-in rows written by v2 since this plan measure from `startsAt`, so Plan 13 M3's backfill must treat them as `SESSION_START`.
+(e) the C3 era boundary: check-in rows written by v2 since this plan measure from `startsAt`, so Plan 18 M3's backfill must treat them as `SESSION_START`.
 
 - [ ] **Step 5: Report** suite counts, the 20 mutation outcomes, the checklist results, and any divergence from this plan found while implementing.
 
@@ -4828,13 +4828,13 @@ Plan 13's deferred/drop register; this plan does not edit Plan 13):
 ## Names this plan produces (for later plans)
 
 - **Endpoints:** `GET /api/v1/me/season-history`, `GET /api/v1/me/season`, `GET /api/v1/me/attendance` (`{ season, budget, streak, sessions }`, budget carries `remainingPct`), `GET/PATCH /api/v1/me/profile`. Changed: `POST /api/v1/sessions/check-in` lateness now runs from `startsAt` (C3); `PATCH /students/:id` self-edits are limited to the six profile columns.
-- **Shared:** `CHECK_IN_TOKEN_RE`, `parseCheckInCode`, `checkInResponseSchema`, `checkInErrorCodeSchema`, `attendanceBudgetSchema`, `myAttendanceSessionSchema`, `myAttendanceResponseSchema`, `seasonHistoryCurriculumItemSchema`, `seasonHistoryRowSchema`, `seasonHistoryResponseSchema`, `mySeasonSchema` (+ `mySeasonLeaderSchema`, `mySeasonMemberSchema`, `mySeasonGroupSchema`, `mySeasonUpcomingSessionSchema`), `mySeasonResponseSchema`, `OWN_PROFILE_FIELDS`, `updateOwnProfileInputSchema`, `myProfileSchema`, `myProfileResponseSchema`; nav href `/attendance` (STUDENT sidebar), `NavIconName` `"attendance"`. Day values reuse Plan 15's `isoDaySchema`.
+- **Shared:** `CHECK_IN_TOKEN_RE`, `parseCheckInCode`, `checkInResponseSchema`, `checkInErrorCodeSchema`, `attendanceBudgetSchema`, `myAttendanceSessionSchema`, `myAttendanceResponseSchema`, `seasonHistoryCurriculumItemSchema`, `seasonHistoryRowSchema`, `seasonHistoryResponseSchema`, `mySeasonSchema` (+ `mySeasonLeaderSchema`, `mySeasonMemberSchema`, `mySeasonGroupSchema`, `mySeasonUpcomingSessionSchema`), `mySeasonResponseSchema`, `OWN_PROFILE_FIELDS`, `updateOwnProfileInputSchema`, `myProfileSchema`, `myProfileResponseSchema`; nav href `/attendance` (STUDENT sidebar), `NavIconName` `"attendance"`. Day values reuse Plan 5's `isoDaySchema`.
 - **Backend:** `lib/attendance-budget.ts` (`budgetFrom`, `costMinutesFor`, `streakFrom`, `AttendanceBudget`); `lib/queries/attendance-budget.ts` (`computeAttendanceBudget`); `lib/queries/me.ts` (`loadSeasonHistory`, `loadMySeason`, `loadMyAttendance`, `loadMyProfile`, `UPCOMING_LIMIT`).
 - **Mobile:** `queryKeys.me.{all,seasonHistory,season,attendance,profile}`; `use-self-service.ts` (`useSeasonHistory`, `useMySeason`, `useMyAttendance`, `useMyProfile`, `useUpdateStudentProfile`); `use-check-in.ts` (`useCheckIn`); `lib/check-in-result.ts` (`CheckInOutcome`, `checkInRefusalCode`, `checkInCopy`); `lib/return-to.ts` (`returnHrefFor`); `lib/initials.ts` (`initialsOf`); components `check-in/{QrScanner,CheckInResult,StudentCheckInCard}`, `season/StudentSeason`; routes `/attendance` (new), `/history`, `/profile`, `/season` student branch, `/checkin/[token]` (root, outside `(app)`); test helper `helpers/expo-camera.tsx` (`mockCamera`, `resetMockCamera`, `scanMockBarcode`, `GRANTED`).
 
 ## Revision 2026-10-05
 
-Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
-- `Depends on` reordered to the execution order and now names Plan 16 (its `use-check-in.ts`, restructured session detail and replaced `session-detail.test.tsx`) and Plan 17 (`login.tsx`, `student/[id]/index.tsx`).
-- Task 10: `use-check-in.ts` is **modified** (append `useCheckIn`, merge imports), not created — Plan 16 Task 7 created it.
-- Task 10 test fixtures: session detail carries `dayKey`/`startTime` (required since Plan 16); the staff case mocks Plan 16's `GET /sessions/12/check-in` and `/quizzes` instead of the stale season-wide list; the edited `session-detail.test.tsx` case is named as Plan 16 left it.
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
+- `Depends on` reordered to the execution order and now names Plan 6 (its `use-check-in.ts`, restructured session detail and replaced `session-detail.test.tsx`) and Plan 10 (`login.tsx`, `student/[id]/index.tsx`).
+- Task 10: `use-check-in.ts` is **modified** (append `useCheckIn`, merge imports), not created — Plan 6 Task 7 created it.
+- Task 10 test fixtures: session detail carries `dayKey`/`startTime` (required since Plan 6); the staff case mocks Plan 6's `GET /sessions/12/check-in` and `/quizzes` instead of the stale season-wide list; the edited `session-detail.test.tsx` case is named as Plan 6 left it.

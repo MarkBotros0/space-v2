@@ -9,61 +9,64 @@ State when this was written (main `371404d`): 32 endpoints live (19 read,
 23 mobile route files are placeholders; no dynamic route exists; all 17 domain
 specs and the 12 cross-cutting rulings (`_DECISIONS.md`) are in place.
 
-**All eighteen plans are now written** (thirteen on 2026-08-24; on 2026-10-05
-a coverage audit against v1's 104 pages and every `lib/*-actions.ts` /
-`*-query.ts` export found 23 gaps — 37 pages had no plan — so Plans 14–18 were
-added, a new spec `specs/domains/19-dashboards.md` was written, and Plans 1–13
-were reviewed and revised; each revised plan ends with a "Revision 2026-10-05"
-section). No execution has begun. The sections below are the scope statements
-the plans were written against; the files are the instructions.
+**All eighteen plans are written.** Thirteen were written on 2026-08-24. On
+2026-10-05 a coverage audit against v1's 104 pages and every `lib/*-actions.ts`
+/ `*-query.ts` export found 23 gaps (37 pages had no plan), so five plans were
+added (now 5, 6, 10, 11 and 16), a new spec `specs/domains/19-dashboards.md` was
+written, and the original thirteen were reviewed and revised — each revised
+plan ends with a "Revision 2026-10-05" section. The plans were then renumbered
+so that **plan number = execution order**. No execution has begun. The
+sections below are the scope statements the plans were written against; the
+files are the instructions.
 
 ## Execution order
 
-Numbers are identities, not order. Plans run in this order, and each plan's
-header lists only plans earlier in it:
+Run the plans in number order, 1 through 18. Each plan's header lists only
+plans before it.
 
-**1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → 9 → 10 → 11 → 18 → 12 → 13**
-
-| Order | # | Plan | File |
+| # | Plan | File | Was |
 |---|---|---|---|
-| 1 | 1 | Student path on a device (+ `/more`) | `2026-08-24-plan-01-student-path.md` |
-| 2 | 2 | Leader path on a device | `2026-08-24-plan-02-leader-path.md` |
-| 3 | 3 | Season & session writes | `2026-08-24-plan-03-season-session-writes.md` |
-| 4 | 4 | Admin core screens | `2026-08-24-plan-04-admin-core-screens.md` |
-| 5 | 15 | Assignment authoring | `2026-10-05-plan-15-assignment-authoring.md` |
-| 6 | 16 | Season, session & group admin screens | `2026-10-05-plan-16-season-admin-screens.md` |
-| 7 | 5 | Students & enrollment | `2026-08-24-plan-05-students-enrollment.md` |
-| 8 | 6 | Quizzes (+ authoring UI) | `2026-08-24-plan-06-quizzes.md` |
-| 9 | 7 | Invites, users & settings | `2026-08-24-plan-07-invites-users-settings.md` |
-| 10 | 17 | Students & accounts follow-up | `2026-10-05-plan-17-students-accounts-followup.md` |
-| 11 | 14 | Student self-service | `2026-10-05-plan-14-student-self-service.md` |
-| 12 | 8 | Notes & engagement | `2026-08-24-plan-08-notes-engagement.md` |
-| 13 | 9 | Notifications & push | `2026-08-24-plan-09-notifications-push.md` |
-| 14 | 10 | Video quizzes, forum, events | `2026-08-24-plan-10-video-forum-events.md` |
-| 15 | 11 | Reports & exports | `2026-08-24-plan-11-reports-exports.md` |
-| 16 | 18 | Role dashboards | `2026-10-05-plan-18-role-dashboards.md` |
-| 17 | 12 | Imports | `2026-08-24-plan-12-imports.md` |
-| 18 | 13 | Cutover | `2026-08-24-plan-13-cutover.md` |
+| 1 | Student path on a device (+ `/more`) | `2026-10-05-plan-01-student-path.md` | 1 |
+| 2 | Leader path on a device | `2026-10-05-plan-02-leader-path.md` | 2 |
+| 3 | Season & session writes | `2026-10-05-plan-03-season-session-writes.md` | 3 |
+| 4 | Admin core screens | `2026-10-05-plan-04-admin-core-screens.md` | 4 |
+| 5 | Assignment authoring | `2026-10-05-plan-05-assignment-authoring.md` | 15 |
+| 6 | Season, session & group admin screens | `2026-10-05-plan-06-season-admin-screens.md` | 16 |
+| 7 | Students & enrollment | `2026-10-05-plan-07-students-enrollment.md` | 5 |
+| 8 | Quizzes (+ authoring UI) | `2026-10-05-plan-08-quizzes.md` | 6 |
+| 9 | Invites, users & settings | `2026-10-05-plan-09-invites-users-settings.md` | 7 |
+| 10 | Students & accounts follow-up | `2026-10-05-plan-10-students-accounts-followup.md` | 17 |
+| 11 | Student self-service | `2026-10-05-plan-11-student-self-service.md` | 14 |
+| 12 | Notes & engagement | `2026-10-05-plan-12-notes-engagement.md` | 8 |
+| 13 | Notifications & push | `2026-10-05-plan-13-notifications-push.md` | 9 |
+| 14 | Video quizzes, forum, events | `2026-10-05-plan-14-video-forum-events.md` | 10 |
+| 15 | Reports & exports | `2026-10-05-plan-15-reports-exports.md` | 11 |
+| 16 | Role dashboards | `2026-10-05-plan-16-role-dashboards.md` | 18 |
+| 17 | Imports | `2026-10-05-plan-17-imports.md` | 12 |
+| 18 | Cutover | `2026-10-05-plan-18-cutover.md` | 13 |
 
-Hard dependencies worth knowing: 16 builds the season route and roster that
-12's group import hangs off; 17 needs 7's users/invites/rate-limit; 18 composes
-8, 10, 11 and 14; 13 depends on everything.
+"Was" is the number a plan had before the 2026-10-05 renumbering, for reading
+older commits and notes; every reference inside the plans uses the new numbers.
+
+Hard dependencies worth knowing: 6 builds the season route and roster that
+17's group import hangs off; 10 needs 9's users/invites/rate-limit; 16
+composes 11, 12, 14 and 15; 18 depends on everything.
 
 ## Cross-plan rulings (2026-10-05)
 
 Decided once so no plan re-decides them. They bind every plan.
 
-- **X1 Notification links** are written in v1's exact format. Plan 9's
+- **X1 Notification links** are written in v1's exact format. Plan 13's
   `NOTIFICATION_LINK_PATTERNS` holds v1's five shapes (`/student/assignments/:id`,
   `/student/quizzes`, `/student/calendar`, `/admin/students/:id`,
-  `/leader/students/:id`); Plan 13's link backfill maps the same set. A new
+  `/leader/students/:id`); Plan 18's link backfill maps the same set. A new
   producer must use one of them or extend both explicitly.
-- **X2/X3 One HTML module.** `packages/shared/src/html-text.ts` (Plan 8) holds
+- **X2/X3 One HTML module.** `packages/shared/src/html-text.ts` (Plan 12) holds
   `htmlToPlainText`, `plainTextToHtml`, `escapeHtml`; the backend's
   `lib/html.ts` re-exports. No other converter or escaper exists.
-- **X4 One rate-limit handler:** `lib/rate-limit.ts` (Plan 7); never copied.
+- **X4 One rate-limit handler:** `lib/rate-limit.ts` (Plan 9); never copied.
 - **X5 `requireAuth` per route,** or on a prefix the router owns exclusively —
-  unknown paths must stay `not_found` 404 (Plan 16 converts `seasons.ts`).
+  unknown paths must stay `not_found` 404 (Plan 6 converts `seasons.ts`).
 - **X6 Health check** is `curl -fsS localhost:4000/health` (root, not `/api/v1`).
 - **X7 Directory form for dynamic routes with children:** `x/[id]/index.tsx` +
   `x/[id]/child.tsx`, never `x/[id].tsx` beside `x/[id]/`. Moves: `session/[id]`
@@ -79,7 +82,7 @@ Decided once so no plan re-decides them. They bind every plan.
   `@space/shared`; build checks grep all of `dist/`.
 - **X13 Org timezone everywhere** (`lib/org-time.ts`: Plan 3, extended by 4, 15,
   10). Day grouping uses `dayKey`; recurrence steps are DST-safe calendar weeks.
-- **X14** No migrations before Plan 13; no `process.env` outside `config.ts`;
+- **X14** No migrations before Plan 18; no `process.env` outside `config.ts`;
   no `@/`; no `@prisma/client`.
 - **X17 Dashboards** (spec 19 §10): v1's 70%-attendance callout is replaced by
   the shared `isAtRisk`; "outstanding" is `isAssignmentOutstanding`
@@ -119,15 +122,15 @@ at scale.
 
 - Task 0 (revision): route-count tests derive their counts (ruling X9).
 - Coordinator first: create `app/(app)/assignment/[id].tsx` (the route-tree
-  change is one file plus typed-routes regen, not parallelizable; Plan 15
+  change is one file plus typed-routes regen, not parallelizable; Plan 5
   later moves it to `assignment/[id]/index.tsx`), extend
   `query-keys.ts`, and write `use-assignments.ts` / `use-submission.ts` hooks
   as the worked example.
 - Then 3 agents on disjoint screens: **assignments list** (`assignments.tsx`),
   **assignment detail + submission form** (`assignment/[id].tsx`),
   **dashboard upgrade** (real pending/overdue counts from the new contracts;
-  superseded by Plan 18's role dashboards). Also builds `/more`, the role's
-  sidebar renderer, which Plans 8, 9 and 11 rely on.
+  superseded by Plan 16's role dashboards). Also builds `/more`, the role's
+  sidebar renderer, which Plans 12, 13 and 15 rely on.
   Each writes its own component tests with `renderWithProviders`.
 - Done: `pnpm turbo lint typecheck test:unit` green; the student flow
   demonstrated against the staging backend; `isLate`/`canUploadFiles`/
@@ -174,8 +177,8 @@ get a read-only live roster via `canManageCheckIn`), attendance marking.
 
 - Revised scope: the season detail route, SUPER status edit, group
   management, session create/edit screens, the multi-season calendar, token
-  regeneration and the program filter moved to **Plan 16**; the student
-  check-in scanner and student `/season` content to **Plan 14**.
+  regeneration and the program filter moved to **Plan 6**; the student
+  check-in scanner and student `/season` content to **Plan 11**.
 - Coordinator: dynamic route `session/[id]/index.tsx` (X7).
 - 3 agents by destination: **calendar** (all five roles' branches — the
   worked example of D1 role-branching), **season workspace + seasons list**,
@@ -184,7 +187,33 @@ get a read-only live roster via `canManageCheckIn`), attendance marking.
 - Done: admin flow demonstrated; calendar renders sessions for every role
   from one route file.
 
-## Plan 5 — Students & enrollment (backend + screens)
+## Plan 5 — Assignment authoring
+
+**Goal:** domain 7's writes, which no original plan covered: create (with
+targets and `ASSIGNMENT_CREATED` fan-out), full-replace edit, soft delete
+blocked by submissions; staff `/assignments` list, staff assignment detail
+with the tracker, new/edit form.
+
+- Due dates travel as org-timezone `dueDay`/`dueTime` (C2); edits notify
+  newly targeted students (spec 07 §10 item 5).
+- Done: an admin creates, edits and deletes an assignment on device; students
+  are notified with v1's link shape.
+
+## Plan 6 — Season, session & group admin screens
+
+**Goal:** everything an admin or super needs to manage seasons beyond the
+current one: season detail by code with SUPER status transitions and delete,
+program filter, session create/edit/delete with series scope and impact
+preview, admin groups list/new/edit/delete with impact, roster grid and bulk
+group assignment, multi-season calendar with a season switcher, check-in
+state and token regeneration, the session-quiz card.
+
+- Produces `assignStudentsToGroups` and the `seasons/[code]/roster` route that
+  Plan 17 builds on; converts `seasons.ts` to per-route `requireAuth`.
+- Done: a SUPER activates a season and an admin builds its sessions and groups
+  entirely on device.
+
+## Plan 7 — Students & enrollment (backend + screens)
 
 **Goal:** domain 6, the largest greenfield API: student CRUD, enrollment
 state machine, alumni/dropped lists, student detail.
@@ -193,14 +222,14 @@ state machine, alumni/dropped lists, student detail.
   the spec's field-by-field visibility table is the contract) and **writes**
   (create/update/enrollment transitions; D7's hard-coded `ChangeMe123!`
   password is not ported — creation without an invite issues no credentials
-  until Plan 7).
+  until Plan 9).
 - Then 2 screen agents: **students list + alumni/dropped**, **student detail**
   (`student/[id].tsx`). Graduate/delete and the create/edit forms are
-  Plan 17; the student's own `/me/profile` is Plan 14.
+  Plan 10; the student's own `/me/profile` is Plan 11.
 - Done: mentor/admin/super each see their own narrowing of the same endpoint;
   enrollment history is append-only in every path (C9 discipline).
 
-## Plan 6 — Quizzes (backend + screens)
+## Plan 8 — Quizzes (backend + screens)
 
 **Goal:** domain 12, the largest single domain (12 v1 actions, 120 rules).
 
@@ -216,7 +245,7 @@ state machine, alumni/dropped lists, student detail.
   in any network response (assert this in an integration test, not by
   inspection).
 
-## Plan 7 — Invites, users & settings (backend + screens)
+## Plan 9 — Invites, users & settings (backend + screens)
 
 **Goal:** domains 11 and 18 together — they share the credential boundary.
 This plan retires the worst live v1 defects rather than porting them.
@@ -228,11 +257,33 @@ This plan retires the worst live v1 defects rather than porting them.
   preferences vs org config split per spec 18; bcryptjs).
 - 1 screen agent: **settings screen** (all six roles' branches) + **users
   list/detail** for super.
-- Forgot/reset password, `/users/new` and bulk invite resend are Plan 17.
+- Forgot/reset password, `/users/new` and bulk invite resend are Plan 10.
 - Done: no shared default password exists anywhere; an invite is the only way
   a UI-created user gets credentials; a demoted user's refresh stops working.
 
-## Plan 8 — Notes & engagement (backend + screens)
+## Plan 10 — Students & accounts follow-up
+
+**Goal:** the account and lifecycle screens Plans 7 and 9 deferred: student
+create (invite-only credentials), edit, graduate, drop, soft delete;
+`/users/new` with an explicit `confirmSuper` for SUPER grants; bulk pending
+invites in bounded batches; forgot/reset password (v1's token format).
+
+- Must precede cutover: without reset, a v1 user who forgets a password has
+  no path.
+- Done: a student is created, invited, graduated and deleted on device; a
+  reset email round-trips.
+
+## Plan 11 — Student self-service
+
+**Goal:** the student's own surfaces: season history (students and alumni),
+profile (`/me/profile`; self email change refused per spec 18 D8), attendance
+budget, streak and history, student `/season` content, and check-in — QR
+scanner, enter-code fallback and the `/checkin/[token]` deep link.
+
+- Lands ruling C3's check-in lateness from session start.
+- Done: a student checks in by scanning a session QR on device.
+
+## Plan 12 — Notes & engagement (backend + screens)
 
 **Goal:** domain 9 — pastoral notes with the visibility model actually
 enforced, engagement computed server-side.
@@ -245,7 +296,7 @@ enforced, engagement computed server-side.
 - Done: a leader-visibility note is unreadable by a leader outside the
   student's group — proven by integration test.
 
-## Plan 9 — Notifications completed + push
+## Plan 13 — Notifications completed + push
 
 **Goal:** finish the partial domain 10 and add the mobile win: inbox
 endpoints (list, mark-read as explicit writes — C6), preference surface, and
@@ -257,7 +308,7 @@ expo push (token registration, the 2–3 interruptive types only, per spec D5).
 - Done: a review recorded on one device produces a push on the student's
   device; opening the inbox never writes (C6).
 
-## Plan 10 — Video quizzes, forum, events
+## Plan 14 — Video quizzes, forum, events
 
 **Goal:** the three remaining engagement domains (13, 14, 15), batched
 because each is small and they share consumers built earlier.
@@ -266,12 +317,12 @@ because each is small and they share consumers built earlier.
   quizzes** (playback gating is server-checked per spec 13's headline
   finding), **forum** (no assumption that a submission row pre-exists —
   domain 8's upsert is the entry point; author-or-staff delete only),
-  **events** (SUPER-gated writes, merged into Plan 16's calendar;
+  **events** (SUPER-gated writes, merged into Plan 6's calendar;
   `GET /events?upcoming=true&limit=` for the dashboards).
 - Done: all three visible on device; forum posting works on an assignment the
   student has never opened.
 
-## Plan 11 — Reports & exports
+## Plan 15 — Reports & exports
 
 **Goal:** domain 17 with the metric definitions fixed per C3/C5 — not v1's
 three disagreeing "submission %"s.
@@ -284,7 +335,18 @@ three disagreeing "submission %"s.
 - Done: v2's numbers annotated where they deliberately diverge from v1's
   (raw-lateness era vs C3 era), export lands in the OS share sheet.
 
-## Plan 12 — Imports
+## Plan 16 — Role dashboards
+
+**Goal:** the six role dashboards from spec 19 behind one
+`GET /api/v1/me/dashboard` (STUDENT, SEASON_STAFF, MENTOR variants) plus the
+reports, events, attendance and notifications endpoints earlier plans built.
+One `/dashboard` route, a branch per role, upcoming events on all six.
+
+- Reuses `isAssignmentOutstanding`, `isAtRisk` and Plan 15's metrics; it
+  defines no new metric (C4/C5).
+- Done: each role's Home shows its v1 figures, computed server-side.
+
+## Plan 17 — Imports
 
 **Goal:** domain 16, deliberately last of the features: paste-first import
 (spreadsheet paste → parse → preview → commit) with file upload joining when
@@ -293,71 +355,12 @@ the CMS lands.
 - 2 agents: **backend** (parse/validate/commit endpoints; preview state held
   client-side and resubmitted, per spec; matching rules exactly as specced —
   idempotent by email; transactional commit, all-or-nothing) and **mobile**
-  (the three-step import screen, plus the group-import screen on Plan 16's
+  (the three-step import screen, plus the group-import screen on Plan 6's
   roster).
 - Done: a re-run of the same import creates zero duplicate rows against
   staging.
 
-## Plan 15 — Assignment authoring
-
-**Goal:** domain 7's writes, which no original plan covered: create (with
-targets and `ASSIGNMENT_CREATED` fan-out), full-replace edit, soft delete
-blocked by submissions; staff `/assignments` list, staff assignment detail
-with the tracker, new/edit form.
-
-- Due dates travel as org-timezone `dueDay`/`dueTime` (C2); edits notify
-  newly targeted students (spec 07 §10 item 5).
-- Done: an admin creates, edits and deletes an assignment on device; students
-  are notified with v1's link shape.
-
-## Plan 16 — Season, session & group admin screens
-
-**Goal:** everything an admin or super needs to manage seasons beyond the
-current one: season detail by code with SUPER status transitions and delete,
-program filter, session create/edit/delete with series scope and impact
-preview, admin groups list/new/edit/delete with impact, roster grid and bulk
-group assignment, multi-season calendar with a season switcher, check-in
-state and token regeneration, the session-quiz card.
-
-- Produces `assignStudentsToGroups` and the `seasons/[code]/roster` route that
-  Plan 12 builds on; converts `seasons.ts` to per-route `requireAuth`.
-- Done: a SUPER activates a season and an admin builds its sessions and groups
-  entirely on device.
-
-## Plan 17 — Students & accounts follow-up
-
-**Goal:** the account and lifecycle screens Plans 5 and 7 deferred: student
-create (invite-only credentials), edit, graduate, drop, soft delete;
-`/users/new` with an explicit `confirmSuper` for SUPER grants; bulk pending
-invites in bounded batches; forgot/reset password (v1's token format).
-
-- Must precede cutover: without reset, a v1 user who forgets a password has
-  no path.
-- Done: a student is created, invited, graduated and deleted on device; a
-  reset email round-trips.
-
-## Plan 14 — Student self-service
-
-**Goal:** the student's own surfaces: season history (students and alumni),
-profile (`/me/profile`; self email change refused per spec 18 D8), attendance
-budget, streak and history, student `/season` content, and check-in — QR
-scanner, enter-code fallback and the `/checkin/[token]` deep link.
-
-- Lands ruling C3's check-in lateness from session start.
-- Done: a student checks in by scanning a session QR on device.
-
-## Plan 18 — Role dashboards
-
-**Goal:** the six role dashboards from spec 19 behind one
-`GET /api/v1/me/dashboard` (STUDENT, SEASON_STAFF, MENTOR variants) plus the
-reports, events, attendance and notifications endpoints earlier plans built.
-One `/dashboard` route, a branch per role, upcoming events on all six.
-
-- Reuses `isAssignmentOutstanding`, `isAtRisk` and Plan 11's metrics; it
-  defines no new metric (C4/C5).
-- Done: each role's Home shows its v1 figures, computed server-side.
-
-## Plan 13 — Cutover
+## Plan 18 — Cutover
 
 **Goal:** retire jpc-space.
 
@@ -381,10 +384,10 @@ One `/dashboard` route, a branch per role, upcoming events on all six.
 
 ## Standing items that ride along, not plans of their own
 
-- **Uploads stay off until the CMS decision** — Plans 1 and 12 surface
+- **Uploads stay off until the CMS decision** — Plans 1 and 17 surface
   `canUploadFiles` so screens degrade honestly.
 - **Live v1 defects** (invite pair, `ChangeMe123!`, recurrence corruption,
-  upload path traversal) belong to jpc-space's owner; Plans 3 and 7 remove
+  upload path traversal) belong to jpc-space's owner; Plans 3 and 9 remove
   v2's dependence on the broken behaviours, which is the part this repo
   controls.
 - **Remaining bare interfaces** in `packages/shared` (`season.ts`,
