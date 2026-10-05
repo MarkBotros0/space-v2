@@ -21,8 +21,6 @@ import NotesScreen from "../../app/(app)/notes";
 import ProfileScreen from "../../app/(app)/profile";
 import QuizzesScreen from "../../app/(app)/quizzes";
 import ReportsScreen from "../../app/(app)/reports";
-import SeasonScreen from "../../app/(app)/season";
-import SeasonsScreen from "../../app/(app)/seasons";
 import SettingsScreen from "../../app/(app)/settings";
 import AlumniScreen from "../../app/(app)/students/alumni";
 import DroppedStudentsScreen from "../../app/(app)/students/dropped";
@@ -36,8 +34,6 @@ const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
   ["profile", ProfileScreen, "Profile"],
   ["quizzes", QuizzesScreen, "Quizzes"],
   ["reports", ReportsScreen, "Reports"],
-  ["season", SeasonScreen, "My Season"],
-  ["seasons", SeasonsScreen, "Seasons"],
   ["settings", SettingsScreen, "Settings"],
   ["students/alumni", AlumniScreen, "Alumni"],
   ["students/dropped", DroppedStudentsScreen, "Dropped Students"],
