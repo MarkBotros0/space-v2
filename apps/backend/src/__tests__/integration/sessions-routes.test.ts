@@ -3,6 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { config } from "../../lib/config";
+import { formatInOrgTime } from "../../lib/org-time";
 import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
@@ -240,5 +241,239 @@ describe("POST /api/v1/sessions", () => {
       .set("authorization", `Bearer ${superToken}`)
       .send({ seasonId: dead.id, title: "Ghost", startsAt: "2099-04-01T18:00:00.000Z", durationMinutes: 60 });
     expect(res.status).toBe(404);
+  });
+});
+
+type SeriesRow = { id: number; startsAt: Date };
+
+/** A 3-session weekly series via the real endpoint (Task 4), in creation order. */
+async function createSeries(startsAt: string, title: string): Promise<[SeriesRow, SeriesRow, SeriesRow]> {
+  const res = await request(app)
+    .post("/api/v1/sessions")
+    .set("authorization", `Bearer ${adminToken}`)
+    .send({ seasonId, title, startsAt, durationMinutes: 60, repeatWeeks: 3 });
+  expect(res.status).toBe(201);
+  const [a, b, c] = await db.session.findMany({
+    where: { recurrenceGroupId: res.body.data.recurrenceGroupId },
+    orderBy: { id: "asc" },
+    select: { id: true, startsAt: true },
+  });
+  if (!a || !b || !c) throw new Error("series fixture did not create three sessions");
+  return [a, b, c];
+}
+
+const HOUR = 3_600_000;
+
+describe("PATCH /api/v1/sessions/:id", () => {
+  it("edits one occurrence without touching its siblings", async () => {
+    const [a, b, c] = await createSeries("2099-06-05T18:00:00.000Z", "Series one");
+    const res = await request(app)
+      .patch(`/api/v1/sessions/${b.id}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ title: "Moved", startsAt: new Date(b.startsAt.getTime() + HOUR).toISOString(),
+        durationMinutes: 60, scope: "one" });
+    expect(res.status).toBe(200);
+    expect(res.body.data.updated).toBe(1);
+
+    const rows = await db.session.findMany({
+      where: { id: { in: [a.id, b.id, c.id] } },
+      orderBy: { id: "asc" },
+      select: { title: true, startsAt: true },
+    });
+    expect(rows.map((r) => r.title)).toEqual(["Series one", "Moved", "Series one"]);
+    expect(rows[0]?.startsAt.getTime()).toBe(a.startsAt.getTime());
+    expect(rows[1]?.startsAt.getTime()).toBe(b.startsAt.getTime() + HOUR);
+    expect(rows[2]?.startsAt.getTime()).toBe(c.startsAt.getTime());
+  });
+
+  it("shifts this-and-following by the same delta", async () => {
+    const [a, b, c] = await createSeries("2099-07-03T18:00:00.000Z", "Series two");
+    const res = await request(app)
+      .patch(`/api/v1/sessions/${b.id}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ title: "Series two", startsAt: new Date(b.startsAt.getTime() + HOUR).toISOString(),
+        durationMinutes: 60, scope: "future" });
+    expect(res.status).toBe(200);
+    expect(res.body.data.updated).toBe(2);
+
+    const rows = await db.session.findMany({
+      where: { id: { in: [a.id, b.id, c.id] } },
+      orderBy: { id: "asc" },
+      select: { startsAt: true },
+    });
+    expect(rows.map((r) => r.startsAt.getTime())).toEqual([
+      a.startsAt.getTime(), b.startsAt.getTime() + HOUR, c.startsAt.getTime() + HOUR,
+    ]);
+  });
+
+  it("NEVER touches another season's sessions sharing the recurrence id (ruling C10)", async () => {
+    // The live v1 bug: duplication cloned recurrenceGroupId verbatim and the
+    // sibling lookup had no season filter, so editing a series in one season
+    // rewrote another's. Recreate the corrupted state directly:
+    const otherSeason = await createTestSeason();
+    const shared = "space-v2-test-xrg";
+    const mine = await db.session.create({
+      data: { seasonId, title: "Mine", startsAt: new Date("2099-05-01T18:00:00.000Z"),
+        durationMinutes: 60, recurrenceGroupId: shared },
+      select: { id: true },
+    });
+    const theirs = await db.session.create({
+      data: { seasonId: otherSeason.id, title: "Theirs",
+        startsAt: new Date("2099-05-08T18:00:00.000Z"), durationMinutes: 60,
+        recurrenceGroupId: shared },
+      select: { id: true },
+    });
+
+    const res = await request(app)
+      .patch(`/api/v1/sessions/${mine.id}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ title: "Renamed", startsAt: "2099-05-01T19:00:00.000Z",
+        durationMinutes: 60, scope: "all" });
+    expect(res.status).toBe(200);
+
+    const untouched = await db.session.findUnique({
+      where: { id: theirs.id }, select: { title: true, startsAt: true },
+    });
+    expect(untouched?.title).toBe("Theirs");
+    expect(untouched?.startsAt.toISOString()).toBe("2099-05-08T18:00:00.000Z");
+  });
+
+  it("notifies enrolled students when the start time changes, and not otherwise", async () => {
+    const count = () =>
+      db.notification.count({ where: { userId: studentUserId, type: "SESSION_RESCHEDULED" } });
+    const before = await count();
+
+    // Title only, same start: no notification.
+    const same = await request(app)
+      .patch(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ title: "Session One (renamed)", startsAt: "2099-03-01T18:00:00.000Z",
+        durationMinutes: 90, scope: "one" });
+    expect(same.status).toBe(200);
+    expect(await count()).toBe(before);
+
+    // Moved start: exactly one, v1's link, org wall-clock body (C2).
+    const moved = await request(app)
+      .patch(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ title: "Session One (renamed)", startsAt: "2099-03-01T19:00:00.000Z",
+        durationMinutes: 90, scope: "one" });
+    expect(moved.status).toBe(200);
+    expect(await count()).toBe(before + 1);
+    const latest = await db.notification.findFirst({
+      where: { userId: studentUserId, type: "SESSION_RESCHEDULED" },
+      orderBy: { id: "desc" },
+      select: { title: true, body: true, link: true },
+    });
+    expect(latest).toEqual({
+      title: 'Session "Session One (renamed)" rescheduled',
+      body: `New time: ${formatInOrgTime(new Date("2099-03-01T19:00:00.000Z"))}`,
+      link: "/student/calendar",
+    });
+  });
+
+  it("refuses a non-admin of the season", async () => {
+    const res = await request(app)
+      .patch(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ title: "Nope", startsAt: "2099-03-01T18:00:00.000Z", durationMinutes: 90, scope: "one" });
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("DELETE /api/v1/sessions/:id", () => {
+  async function oneOff(title: string) {
+    return db.session.create({
+      data: { seasonId, title, startsAt: new Date("2099-08-01T18:00:00.000Z"), durationMinutes: 60 },
+      select: { id: true },
+    });
+  }
+
+  it("deletes a single session with no student records", async () => {
+    const s = await oneOff("Disposable");
+    const res = await request(app)
+      .delete(`/api/v1/sessions/${s.id}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({});
+    expect(res.status).toBe(200);
+    expect(res.body.data.deleted).toBe(1);
+    expect(await db.session.findUnique({ where: { id: s.id } })).toBeNull();
+  });
+
+  it("scope 'all' deletes only this season's members of a shared series (C10)", async () => {
+    const otherSeason = await createTestSeason();
+    const shared = "space-v2-test-xrg-del";
+    const mine = await db.session.create({
+      data: { seasonId, title: "Mine 1", startsAt: new Date("2099-09-01T18:00:00.000Z"),
+        durationMinutes: 60, recurrenceGroupId: shared },
+      select: { id: true },
+    });
+    await db.session.create({
+      data: { seasonId, title: "Mine 2", startsAt: new Date("2099-09-08T18:00:00.000Z"),
+        durationMinutes: 60, recurrenceGroupId: shared },
+    });
+    const theirs = await db.session.create({
+      data: { seasonId: otherSeason.id, title: "Theirs", startsAt: new Date("2099-09-15T18:00:00.000Z"),
+        durationMinutes: 60, recurrenceGroupId: shared },
+      select: { id: true },
+    });
+
+    const res = await request(app)
+      .delete(`/api/v1/sessions/${mine.id}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ scope: "all" });
+    expect(res.status).toBe(200);
+    expect(res.body.data.deleted).toBe(2);
+    expect(await db.session.findUnique({ where: { id: theirs.id } })).not.toBeNull();
+  });
+
+  it("refuses to destroy recorded attendance without force (409)", async () => {
+    const s = await oneOff("Has attendance");
+    await db.attendance.create({
+      data: { sessionId: s.id, studentUserId, status: "PRESENT", markedById: studentUserId },
+    });
+    const res = await request(app)
+      .delete(`/api/v1/sessions/${s.id}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({});
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("has_student_records");
+    expect(await db.session.findUnique({ where: { id: s.id } })).not.toBeNull();
+  });
+
+  it("refuses to destroy video progress without force (409)", async () => {
+    const s = await oneOff("Has progress");
+    await db.sessionVideoProgress.create({
+      data: { sessionId: s.id, studentUserId, furthestSeconds: 30 },
+    });
+    const res = await request(app)
+      .delete(`/api/v1/sessions/${s.id}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({});
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("has_student_records");
+  });
+
+  it("with force, deletes the session and its attendance", async () => {
+    const s = await oneOff("Forced");
+    await db.attendance.create({
+      data: { sessionId: s.id, studentUserId, status: "ABSENT", markedById: studentUserId },
+    });
+    const res = await request(app)
+      .delete(`/api/v1/sessions/${s.id}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ force: true });
+    expect(res.status).toBe(200);
+    expect(await db.attendance.count({ where: { sessionId: s.id } })).toBe(0);
+    expect(await db.session.findUnique({ where: { id: s.id } })).toBeNull();
+  });
+
+  it("refuses a non-admin of the season", async () => {
+    const s = await oneOff("Protected");
+    const res = await request(app)
+      .delete(`/api/v1/sessions/${s.id}`)
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({});
+    expect(res.status).toBe(403);
   });
 });

@@ -1061,6 +1061,69 @@ export const openApiDocument = {
           404: errRef("NotFound"),
         },
       },
+      patch: {
+        tags: ["Sessions"],
+        summary: "Edit a session, optionally its series",
+        description:
+          "Season-admin power. Full body plus `scope`: `one` (this session), `future` (this and later siblings), `all`. Series scopes shift every target by the anchor's start delta. The series is ALWAYS limited to this session's season (ruling C10 — v1 matched on recurrenceGroupId alone and could rewrite another season's sessions). A moved start notifies ACTIVE enrollees (SESSION_RESCHEDULED, link `/student/calendar`, time in ORG_TIMEZONE).",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["title", "startsAt", "durationMinutes", "scope"],
+                properties: {
+                  title: { type: "string", minLength: 2, maxLength: 120 },
+                  startsAt: { type: "string", format: "date-time" },
+                  durationMinutes: { type: "integer", minimum: 15, maximum: 600 },
+                  location: { type: ["string", "null"] },
+                  youtubeUrl: { type: ["string", "null"] },
+                  description: { type: ["string", "null"] },
+                  scope: { type: "string", enum: ["one", "future", "all"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { updated: { type: "integer" } } }, "Updated."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Sessions"],
+        summary: "Delete a session, optionally its series",
+        description:
+          "Season-admin power. Body `{ scope?: 'one'|'future'|'all' (default 'one'), force?: boolean }`; series fenced to this season (C10). Refused with 409 `has_student_records` when any target has attendance or video progress, unless `force: true`, which deletes those rows too. Also removed by cascade: the sessions' video questions. Kept with `sessionId` set to null: assignments and quizzes linked to them.",
+        parameters: [idParam],
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  scope: { type: "string", enum: ["one", "future", "all"], default: "one" },
+                  force: { type: "boolean", default: false },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { deleted: { type: "integer" } } }, "Deleted."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`has_student_records`."),
+        },
+      },
     },
     "/api/v1/sessions/{id}/attendance": {
       get: {
