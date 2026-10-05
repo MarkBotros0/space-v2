@@ -46,6 +46,10 @@ function errRef(ref: string) {
   return { $ref: `#/components/responses/${ref}` };
 }
 
+function conflict(description: string) {
+  return { description, content: { "application/json": { schema: errorResponse } } };
+}
+
 const idParam = {
   name: "id",
   in: "path",
@@ -217,6 +221,21 @@ export const openApiDocument = {
           seasonId: { type: "integer" },
           seasonCode: { type: "string" },
           seasonTitle: { type: "string" },
+        },
+      },
+      SeasonWriteRequest: {
+        type: "object",
+        required: ["program", "year", "startDate", "endDate", "status"],
+        properties: {
+          code: { type: "string", description: "Slugified server-side (v1 rules); defaults to '<program> <year>'. The slug must be 2–40 chars of a-z, 0-9 and inner dashes." },
+          program: { type: "string", minLength: 1, maxLength: 60 },
+          year: { type: "integer", minimum: 2000, maximum: 2100 },
+          description: { type: ["string", "null"], maxLength: 2000 },
+          startDate: { type: "string", format: "date-time" },
+          endDate: { type: "string", format: "date-time" },
+          status: { type: "string", enum: ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] },
+          absenceBudgetMinutes: { type: "integer", minimum: 1, default: 180 },
+          absenceWeightMinutes: { type: "integer", minimum: 1, default: 90 },
         },
       },
       GroupWriteRequest: {
@@ -737,6 +756,20 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
         },
       },
+      post: {
+        tags: ["Seasons"],
+        summary: "Create a season",
+        description:
+          "SUPER only (spec 02 D3). Title is derived as '<program> <year>'. Unlike v1, the absence budget fields are persisted on create (D1). A soft-deleted season still reserves its code.",
+        requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } } },
+        responses: {
+          201: ok({ type: "object", properties: { id: { type: "integer" }, code: { type: "string" } } }, "Created."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          409: conflict("`code_taken` — the slugified code is in use (also returned for the unique-index race, D15; D15's generic `conflict` is deliberately more specific here)."),
+        },
+      },
     },
     "/api/v1/seasons/{id}": {
       get: {
@@ -749,6 +782,37 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Seasons"],
+        summary: "Update a season",
+        description:
+          "Asymmetric by role (spec 02 D3). SUPER sends the full SeasonWriteRequest (v1's whole-body update; title re-derived). A season ADMIN sends a partial body containing only `description`, `absenceBudgetMinutes`, `absenceWeightMinutes`; any other key is refused with 403 `forbidden_field` rather than stripped.",
+        parameters: [idParam],
+        requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } } },
+        responses: {
+          200: ok({ type: "object", properties: { id: { type: "integer" }, code: { type: "string" } } }, "Updated."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` (not SUPER, not this season's ADMIN) or `forbidden_field` (ADMIN sent an identity field)."),
+          404: errRef("NotFound"),
+          409: conflict("`code_taken`."),
+        },
+      },
+      delete: {
+        tags: ["Seasons"],
+        summary: "Soft-delete a season",
+        description:
+          "SUPER only. Refused with 409 `season_in_use` while the season has any enrollment or session — archive it instead (decision on spec 02 D4). On success clears every StudentProfile.activeSeasonId pointing at it, in the same transaction.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ type: "object", properties: { deleted: { type: "boolean" } } }, "Deleted."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`season_in_use`."),
         },
       },
     },

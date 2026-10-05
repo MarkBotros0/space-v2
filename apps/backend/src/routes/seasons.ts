@@ -1,9 +1,10 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 
 import { db } from "../db/client";
 import type { Prisma } from "../generated/prisma/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
+import { isUniqueViolation } from "../lib/prisma-errors";
 import {
   listAssignmentsForSeason,
   listAssignmentsForStudent,
@@ -17,7 +18,12 @@ import { listSessionsForSeason } from "../lib/queries/sessions";
 import { canAccessSeason } from "../lib/permissions";
 import { isAdminOfSeason, isMentor, isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
-import { groupWriteRequestSchema } from "../../../../packages/shared/src/index";
+import {
+  groupWriteRequestSchema,
+  SEASON_ADMIN_EDITABLE_FIELDS,
+  seasonAdminPatchSchema,
+  seasonWriteRequestSchema,
+} from "../../../../packages/shared/src/index";
 
 export const seasonsRouter = Router();
 
@@ -121,6 +127,146 @@ seasonsRouter.get("/:id", async (req, res) => {
       leaderNames: g.leaders.map((l) => l.user.name).filter((n): n is string => Boolean(n)),
     })),
   });
+});
+
+const ADMIN_EDITABLE = new Set<string>(SEASON_ADMIN_EDITABLE_FIELDS);
+
+const codeTaken = (res: Response) =>
+  apiError(res, "code_taken", "A season with that code already exists.", 409);
+
+seasonsRouter.post("/", async (req, res) => {
+  const user = requireUser(req);
+  // Spec 02 D3: creation is SUPER-only (v1's canCreateSeason).
+  if (!isSuper(user)) return apiError(res, "forbidden", "You don't have access to this.", 403);
+
+  const parsed = seasonWriteRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid season body.", 400);
+  const body = parsed.data;
+
+  // v1 R7: the check has no deletedAt filter — a soft-deleted season keeps its code.
+  const clash = await db.season.findUnique({ where: { code: body.code }, select: { id: true } });
+  if (clash) return codeTaken(res);
+
+  try {
+    const season = await db.season.create({
+      data: {
+        code: body.code,
+        title: `${body.program} ${body.year}`,
+        program: body.program,
+        year: body.year,
+        description: body.description ?? null,
+        startDate: new Date(body.startDate),
+        endDate: new Date(body.endDate),
+        status: body.status,
+        absenceBudgetMinutes: body.absenceBudgetMinutes,
+        absenceWeightMinutes: body.absenceWeightMinutes,
+        createdById: user.userId,
+        updatedById: user.userId,
+      },
+      select: { id: true, code: true },
+    });
+    return apiOk(res, season, 201);
+  } catch (err) {
+    // D15: the race loser's P2002 becomes the same answer as the pre-check.
+    if (isUniqueViolation(err)) return codeTaken(res);
+    throw err;
+  }
+});
+
+seasonsRouter.patch("/:id", async (req, res) => {
+  const user = requireUser(req);
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+
+  const existing = await db.season.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
+  if (!existing) return apiError(res, "not_found", "Season not found.", 404);
+
+  if (isSuper(user)) {
+    // SUPER: v1's full-body update, title re-derived (R10).
+    const parsed = seasonWriteRequestSchema.safeParse(req.body);
+    if (!parsed.success) return apiError(res, "bad_request", "Invalid season body.", 400);
+    const body = parsed.data;
+    const clash = await db.season.findFirst({ where: { code: body.code, NOT: { id } }, select: { id: true } });
+    if (clash) return codeTaken(res);
+    try {
+      const season = await db.season.update({
+        where: { id },
+        data: {
+          code: body.code,
+          title: `${body.program} ${body.year}`,
+          program: body.program,
+          year: body.year,
+          description: body.description ?? null,
+          startDate: new Date(body.startDate),
+          endDate: new Date(body.endDate),
+          status: body.status,
+          absenceBudgetMinutes: body.absenceBudgetMinutes,
+          absenceWeightMinutes: body.absenceWeightMinutes,
+          updatedById: user.userId,
+        },
+        select: { id: true, code: true },
+      });
+      return apiOk(res, season);
+    } catch (err) {
+      if (isUniqueViolation(err)) return codeTaken(res);
+      throw err;
+    }
+  }
+
+  if (!isAdminOfSeason(user, id)) return apiError(res, "forbidden", "You don't have access to this.", 403);
+
+  // Spec 02 D3: v1's canEditSeason let a season ADMIN rename, restatus and
+  // delete. The allowlist is checked on the raw keys BEFORE parsing so an
+  // identity field is a 403, not a silently-stripped 200.
+  const raw: Record<string, unknown> =
+    typeof req.body === "object" && req.body !== null ? req.body : {};
+  if (Object.keys(raw).some((key) => !ADMIN_EDITABLE.has(key))) {
+    return apiError(res, "forbidden_field", "Season identity fields are SUPER-only.", 403);
+  }
+  const parsed = seasonAdminPatchSchema.safeParse(raw);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid season body.", 400);
+
+  const season = await db.season.update({
+    where: { id },
+    data: { ...parsed.data, updatedById: user.userId },
+    select: { id: true, code: true },
+  });
+  return apiOk(res, season);
+});
+
+seasonsRouter.delete("/:id", async (req, res) => {
+  const user = requireUser(req);
+  if (!isSuper(user)) return apiError(res, "forbidden", "You don't have access to this.", 403);
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+
+  const existing = await db.season.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
+  if (!existing) return apiError(res, "not_found", "Season not found.", 404);
+
+  // Product decision on spec 02 D4 (recorded in the Revision note): v1
+  // checked nothing and stranded children. v2 refuses while the season has
+  // ANY enrollment or session — archive it (status ARCHIVED) instead. D4's
+  // `force` escape hatch is not offered: a soft-deleted season with sessions
+  // stays reachable by id everywhere (R50), which is the state D4 objects to.
+  const [enrollments, sessions] = await Promise.all([
+    db.seasonEnrollment.count({ where: { seasonId: id } }),
+    db.session.count({ where: { seasonId: id } }),
+  ]);
+  if (enrollments > 0 || sessions > 0) {
+    return apiError(
+      res,
+      "season_in_use",
+      "This season has sessions or enrollments; archive it instead.",
+      409,
+    );
+  }
+
+  // R51: v1 left StudentProfile.activeSeasonId pointing at the deleted row.
+  await db.$transaction([
+    db.studentProfile.updateMany({ where: { activeSeasonId: id }, data: { activeSeasonId: null } }),
+    db.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } }),
+  ]);
+  return apiOk(res, { deleted: true });
 });
 
 seasonsRouter.get("/:id/groups", async (req, res) => {
