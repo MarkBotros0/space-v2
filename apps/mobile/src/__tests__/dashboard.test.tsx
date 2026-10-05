@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { ScrollView } from "react-native";
 
 // Same hoisting constraint as use-session.test.tsx and use-sessions.test.tsx:
 // a `jest.mock` factory may only close over out-of-scope consts whose names
@@ -13,6 +14,7 @@ jest.mock("../lib/api-client", () => ({
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
+import { makeSession } from "./helpers/session";
 
 import DashboardScreen from "../../app/(app)/dashboard";
 
@@ -109,5 +111,55 @@ describe("DashboardScreen", () => {
 
     expect(await screen.findByText("Kickoff")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/sessions");
+  });
+
+  it("shows pending and overdue assignment counts for a student", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 }));
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/seasons/7/assignments"
+        ? Promise.resolve({
+            data: {
+              data: {
+                assignments: [
+                  { id: 1, title: "A", dueAt: null, isOverdue: false, status: "PENDING", reviewedAt: null },
+                  { id: 2, title: "B", dueAt: null, isOverdue: true, status: "PENDING", reviewedAt: null },
+                  { id: 3, title: "C", dueAt: null, isOverdue: false, status: "DRAFT", reviewedAt: null },
+                  { id: 4, title: "D", dueAt: null, isOverdue: true, status: "RETURNED", reviewedAt: null },
+                  { id: 5, title: "E", dueAt: null, isOverdue: false, status: "SUBMITTED", reviewedAt: null },
+                ],
+              },
+            },
+          })
+        : Promise.resolve({ data: { data: { sessions: [] } } }),
+    );
+
+    renderWithProviders(<DashboardScreen />);
+
+    // Outstanding = PENDING or DRAFT (C5 / spec 19 D15): 3 rows, 1 overdue.
+    // The RETURNED row is completed under C5 — its isOverdue flag must not
+    // leak into the count. Server-derived rows, no date math on the device.
+    expect(await screen.findByText("3 to do · 1 overdue")).toBeTruthy();
+  });
+
+  it("pull-to-refresh refetches the assignments as well as the sessions", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 }));
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/seasons/7/assignments"
+        ? Promise.resolve({ data: { data: { assignments: [] } } })
+        : Promise.resolve({ data: { data: { sessions: [] } } }),
+    );
+
+    renderWithProviders(<DashboardScreen />);
+    await screen.findByText("0 to do · 0 overdue");
+    get.mockClear();
+
+    await act(async () => {
+      screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
+    });
+
+    await waitFor(() => {
+      expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/sessions");
+      expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/assignments");
+    });
   });
 });
