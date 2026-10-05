@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { config } from "../../lib/config";
 import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
@@ -163,5 +164,81 @@ describe("GET /api/v1/sessions/:id", () => {
       .get("/api/v1/sessions/2147483000")
       .set("authorization", `Bearer ${superToken}`);
     expect(missing.status).toBe(404);
+  });
+});
+
+describe("POST /api/v1/sessions", () => {
+  it("creates a weekly series sharing one recurrence id, one calendar week apart", async () => {
+    const res = await request(app)
+      .post("/api/v1/sessions")
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({
+        seasonId, title: "Weekly session", startsAt: "2099-03-01T18:00:00.000Z",
+        durationMinutes: 90, repeatWeeks: 3,
+      });
+
+    expect(res.status).toBe(201);
+    expect(typeof res.body.data.recurrenceGroupId).toBe("string");
+    const rows = await db.session.findMany({
+      where: { recurrenceGroupId: res.body.data.recurrenceGroupId },
+      orderBy: { startsAt: "asc" },
+      select: { id: true, startsAt: true, seasonId: true },
+    });
+    expect(rows.map((r) => r.startsAt.toISOString())).toEqual([
+      "2099-03-01T18:00:00.000Z", "2099-03-08T18:00:00.000Z", "2099-03-15T18:00:00.000Z",
+    ]);
+    expect(rows.every((r) => r.seasonId === seasonId)).toBe(true);
+    expect(res.body.data.id).toBe(rows[0]?.id);
+  });
+
+  it("keeps the org wall-clock time across a DST change (C2, X13)", async () => {
+    // Precondition, stated so a non-default .env fails readably.
+    expect(config.orgTimezone).toBe("Africa/Cairo");
+    // Cairo moves UTC+2 → UTC+3 on 2099-04-24. v1's host-zone addDays would
+    // keep the UTC instant on a UTC server and drift the class to 21:00.
+    const res = await request(app)
+      .post("/api/v1/sessions")
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({
+        seasonId, title: "Spring series", startsAt: "2099-04-17T18:00:00.000Z",
+        durationMinutes: 60, repeatWeeks: 3,
+      });
+
+    expect(res.status).toBe(201);
+    const rows = await db.session.findMany({
+      where: { recurrenceGroupId: res.body.data.recurrenceGroupId },
+      orderBy: { startsAt: "asc" },
+      select: { startsAt: true },
+    });
+    expect(rows.map((r) => r.startsAt.toISOString())).toEqual([
+      "2099-04-17T18:00:00.000Z", "2099-04-24T17:00:00.000Z", "2099-05-01T17:00:00.000Z",
+    ]);
+  });
+
+  it("creates a single session with a null recurrence id", async () => {
+    const res = await request(app)
+      .post("/api/v1/sessions")
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ seasonId, title: "One-off", startsAt: "2099-04-01T18:00:00.000Z", durationMinutes: 60 });
+    expect(res.status).toBe(201);
+    expect(res.body.data.recurrenceGroupId).toBeNull();
+  });
+
+  it("refuses a non-admin of the season", async () => {
+    const res = await request(app)
+      .post("/api/v1/sessions")
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ seasonId, title: "Nope", startsAt: "2099-04-01T18:00:00.000Z", durationMinutes: 60 });
+    expect(res.status).toBe(403);
+  });
+
+  it("404s a soft-deleted season (v1 never checked)", async () => {
+    const dead = await createTestSeason();
+    await db.season.update({ where: { id: dead.id }, data: { deletedAt: new Date() } });
+    const res = await request(app)
+      .post("/api/v1/sessions")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ seasonId: dead.id, title: "Ghost", startsAt: "2099-04-01T18:00:00.000Z", durationMinutes: 60 });
+    expect(res.status).toBe(404);
   });
 });

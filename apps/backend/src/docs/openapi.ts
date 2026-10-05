@@ -1009,6 +1009,45 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/sessions": {
+      post: {
+        tags: ["Sessions"],
+        summary: "Create a session or weekly series",
+        description:
+          "Season-admin power. `repeatWeeks` (1–26; v1 clamped silently, v2 refuses) creates that many sessions one calendar week apart **in the organisation timezone** (ORG_TIMEZONE), so the wall-clock time holds across DST; they share a fresh recurrenceGroupId. Creation lives here with `seasonId` in the body, not under /seasons/:id, so the season and session write workstreams never share a route file — do not move it.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["seasonId", "title", "startsAt", "durationMinutes"],
+                properties: {
+                  seasonId: { type: "integer" },
+                  title: { type: "string", minLength: 2, maxLength: 120 },
+                  startsAt: { type: "string", format: "date-time" },
+                  durationMinutes: { type: "integer", minimum: 15, maximum: 600 },
+                  location: { type: ["string", "null"], maxLength: 200 },
+                  youtubeUrl: { type: ["string", "null"], format: "uri" },
+                  description: { type: ["string", "null"], maxLength: 2000 },
+                  repeatWeeks: { type: "integer", minimum: 1, maximum: 26, default: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok(
+            { type: "object", properties: { id: { type: "integer" }, recurrenceGroupId: { type: ["string", "null"] } } },
+            "Created; `id` is the first session.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
     "/api/v1/sessions/{id}": {
       get: {
         tags: ["Sessions"],

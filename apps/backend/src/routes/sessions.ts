@@ -5,6 +5,7 @@ import { AttendanceStatus } from "../generated/prisma/enums";
 import { apiOk, apiError } from "../lib/api-response";
 import { flagLowAttendance } from "../lib/attendance-notifications";
 import { isCheckInOpen } from "../lib/check-in";
+import { addWeeksInOrgTime } from "../lib/org-time";
 import { parseId } from "../lib/parse-id";
 import { attendanceScopeFor, canAccessSeason, canMarkAttendance } from "../lib/permissions";
 import { loadAttendanceRoster } from "../lib/queries/sessions";
@@ -13,6 +14,7 @@ import { isAdminOfSeason } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
   checkInRequestSchema,
+  createSessionRequestSchema,
   saveAttendanceRequestSchema,
 } from "../../../../packages/shared/src/index";
 
@@ -83,6 +85,51 @@ sessionsRouter.post("/check-in", async (req, res) => {
   });
 
   return apiOk(res, { status, minutesLate });
+});
+
+sessionsRouter.post("/", async (req, res) => {
+  const user = requireUser(req);
+  const parsed = createSessionRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid session body.", 400);
+  const body = parsed.data;
+
+  const season = await db.season.findFirst({
+    where: { id: body.seasonId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  if (!isAdminOfSeason(user, body.seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  // X13 / C2: calendar-week steps in the org zone, so a series keeps its
+  // wall-clock time across DST. v1's addDays did the same in the HOST's zone.
+  // Spec 03 item 11's season-range check stays un-ported (advisory in v1 too).
+  const start = new Date(body.startsAt);
+  const dates = Array.from({ length: body.repeatWeeks }, (_, i) => addWeeksInOrgTime(start, i));
+  // v1 used nanoid(8); nanoid is ESM-only here (CLAUDE.md). The column is a
+  // free string and nothing compares lengths.
+  const recurrenceGroupId = body.repeatWeeks > 1 ? newPublicId() : null;
+
+  const created = await db.$transaction(
+    dates.map((startsAt) =>
+      db.session.create({
+        data: {
+          seasonId: body.seasonId,
+          title: body.title,
+          startsAt,
+          durationMinutes: body.durationMinutes,
+          location: body.location ?? null,
+          youtubeUrl: body.youtubeUrl ?? null,
+          description: body.description ?? null,
+          recurrenceGroupId,
+        },
+        select: { id: true },
+      }),
+    ),
+  );
+
+  return apiOk(res, { id: created[0]?.id ?? null, recurrenceGroupId }, 201);
 });
 
 sessionsRouter.get("/:id", async (req, res) => {
