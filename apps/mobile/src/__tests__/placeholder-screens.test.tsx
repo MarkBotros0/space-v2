@@ -19,7 +19,6 @@ import CalendarScreen from "../../app/(app)/calendar";
 import EventsScreen from "../../app/(app)/events";
 import GroupsScreen from "../../app/(app)/groups";
 import HistoryScreen from "../../app/(app)/history";
-import MoreScreen from "../../app/(app)/more";
 import NotesScreen from "../../app/(app)/notes";
 import ProfileScreen from "../../app/(app)/profile";
 import QuizzesScreen from "../../app/(app)/quizzes";
@@ -38,7 +37,6 @@ const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
   ["events", EventsScreen, "JPC Events"],
   ["groups", GroupsScreen, "Groups"],
   ["history", HistoryScreen, "History"],
-  ["more", MoreScreen, "More"],
   ["notes", NotesScreen, "Notes"],
   ["profile", ProfileScreen, "Profile"],
   ["quizzes", QuizzesScreen, "Quizzes"],
