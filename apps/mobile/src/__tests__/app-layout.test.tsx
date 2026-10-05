@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react-native";
 import { navByRole } from "@space/shared";
 
 import { useSessionStore } from "../store/session";
+import { listRouteNames } from "./helpers/routes";
+import { makeScopes, makeUser } from "./helpers/session";
 
 // Task-7 fix round, Fix 1: nothing in the suite before this file ever
 // rendered `app/(app)/_layout.tsx` — role-tabs.test.tsx only exercises
@@ -20,13 +22,18 @@ import { useSessionStore } from "../store/session";
 // actually receives, so all three mutations fail here.
 //
 // Verified (see task report for how): mutation (a) fails the "visible
-// tabs, in order" assertion in both the STUDENT and ADMIN tests (19 screens
-// come back visible instead of 5); mutation (b) fails only the ADMIN
-// test's ordered-names assertion, because STUDENT's tabs never include the
-// "/students" href that exercises the special case — role-tabs.test.tsx's
-// "routeNameForHref produces a name that exists on disk" test also catches
-// it independently; mutation (c) fails the anonymous test — `getByTestId`
-// throws because no <Redirect> marker renders.
+// tabs, in order" assertion in both the STUDENT and ADMIN tests; mutation
+// (b) fails only the ADMIN test's ordered-names assertion, because
+// STUDENT's tabs never include the "/students" href that exercises the
+// special case — role-tabs.test.tsx's "routeNameForHref produces a name that
+// exists on disk" test also catches it independently; mutation (c) fails the
+// anonymous test — `getByTestId` throws because no <Redirect> marker renders.
+//
+// Plan 1 Task 0 (ruling X9): the route total is DERIVED from the layout's
+// own exported lists, not pinned. Every plan that adds a route used to have
+// to bump a hardcoded 19 here; now it appends to DETAIL_ROUTE_NAMES and the
+// "every route file is declared" test below — which reads the filesystem,
+// independently of the layout — is what keeps that list honest.
 type CapturedScreen = { name: string; title?: string; href?: string | null };
 let mockScreens: CapturedScreen[] = [];
 
@@ -48,21 +55,9 @@ jest.mock("expo-router", () => {
   };
 });
 
-import AppLayout from "../../app/(app)/_layout";
+import AppLayout, { ALL_ROUTE_NAMES, DETAIL_ROUTE_NAMES } from "../../app/(app)/_layout";
 
-const scopes = {
-  seasonAdminIds: [],
-  groupLeaderIds: [],
-  activeSeasonId: null,
-  graduationYear: null as number | null,
-};
-const user = (role: "STUDENT" | "ADMIN") => ({
-  id: 1,
-  name: "A",
-  email: "a@b.test",
-  role,
-  avatarPath: null,
-});
+const scopes = makeScopes();
 
 // Hardcoded independently of routeNameForHref: the expectation must not be
 // computed with the same (possibly mutated) function the layout uses, or a
@@ -70,7 +65,7 @@ const user = (role: "STUDENT" | "ADMIN") => ({
 // test would keep passing.
 const STUDENT_VISIBLE_NAMES = ["calendar", "assignments", "dashboard", "quizzes", "more"];
 const ADMIN_VISIBLE_NAMES = ["calendar", "groups", "dashboard", "students/index", "more"];
-const TOTAL_ROUTES = 19;
+const TOTAL_ROUTES = ALL_ROUTE_NAMES.length + DETAIL_ROUTE_NAMES.length;
 
 beforeEach(() => {
   useSessionStore.getState().clear();
@@ -79,7 +74,7 @@ beforeEach(() => {
 
 describe("AppLayout tab shell", () => {
   it("shows exactly the STUDENT tabs, in order, hiding every other route", () => {
-    useSessionStore.getState().setSession(user("STUDENT"), scopes);
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     render(<AppLayout />);
 
     expect(mockScreens).toHaveLength(TOTAL_ROUTES);
@@ -92,7 +87,7 @@ describe("AppLayout tab shell", () => {
   });
 
   it("shows a different visible set for ADMIN", () => {
-    useSessionStore.getState().setSession(user("ADMIN"), scopes);
+    useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
     render(<AppLayout />);
 
     expect(mockScreens).toHaveLength(TOTAL_ROUTES);
@@ -111,5 +106,23 @@ describe("AppLayout tab shell", () => {
 
     expect(screen.getByTestId("redirect")).toHaveTextContent("/login");
     expect(mockScreens).toHaveLength(0);
+  });
+  it("declares every route file under app/(app), so none can leak into the tab bar", () => {
+    // `Tabs` auto-registers every file in the directory; one the layout does
+    // not declare renders AS A TAB. The left side is read from disk, not from
+    // the layout, so a new route file without a DETAIL_ROUTE_NAMES entry
+    // fails here even though the derived TOTAL_ROUTES above would not notice.
+    expect(new Set(listRouteNames())).toEqual(new Set([...ALL_ROUTE_NAMES, ...DETAIL_ROUTE_NAMES]));
+  });
+
+  it("declares every detail route with href: null", () => {
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    render(<AppLayout />);
+
+    for (const name of DETAIL_ROUTE_NAMES) {
+      const declared = mockScreens.find((s) => s.name === name);
+      expect(declared).toBeDefined();
+      expect(declared?.href).toBeNull();
+    }
   });
 });

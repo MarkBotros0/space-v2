@@ -10,10 +10,10 @@ import { screen } from "@testing-library/react-native";
 // example of `renderWithProviders`, so the first Phase 1 author to build a
 // real screen has something to copy instead of hitting that error cold.
 //
-// `dashboard` used to be in this list — it's now the one real `useQuery`
-// screen (see `dashboard.test.tsx`) and dropped out of the placeholder
-// count below, from 19 to 18.
+// Rows are deleted as screens are built; the first test derives the expected
+// set from disk, so there is no count to maintain (ruling X9).
 import { renderWithProviders } from "./helpers/render";
+import { listRouteNames, readRouteSource } from "./helpers/routes";
 
 import AssignmentsScreen from "../../app/(app)/assignments";
 import CalendarScreen from "../../app/(app)/calendar";
@@ -55,15 +55,25 @@ const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
   ["users", UsersScreen, "Users"],
 ];
 
+const PLACEHOLDER_MESSAGE = "This screen isn't built yet.";
+
 describe("placeholder screens", () => {
-  it("covers all remaining placeholder route files under app/(app)", () => {
-    expect(PLACEHOLDER_SCREENS).toHaveLength(18);
+  it("lists exactly the route files that still render the placeholder message", () => {
+    // Derived from disk, not pinned (ruling X9). A plan that builds a screen
+    // deletes its row below and nothing else; forgetting to delete it fails
+    // here, and so does adding a placeholder file without a row.
+    const onDisk = listRouteNames()
+      .filter((name) => readRouteSource(name).includes(PLACEHOLDER_MESSAGE))
+      .sort();
+    expect(PLACEHOLDER_SCREENS.map(([route]) => route).sort()).toEqual(onDisk);
   });
 
+  // When the last row is deleted, delete this whole file: `it.each` refuses
+  // an empty table.
   it.each(PLACEHOLDER_SCREENS)("renders %s with its title and placeholder message", (_route, Component, title) => {
     renderWithProviders(<Component />);
 
     expect(screen.getByText(title)).toBeTruthy();
-    expect(screen.getByText("This screen isn't built yet.")).toBeTruthy();
+    expect(screen.getByText(PLACEHOLDER_MESSAGE)).toBeTruthy();
   });
 });

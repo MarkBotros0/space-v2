@@ -34,7 +34,20 @@ export function routeNameForHref(href: string): string {
  * which is what puts "Home" in the middle of a 5-tab bar for a role that
  * has it there.
  */
-const ALL_ROUTE_NAMES = Array.from(new Set(ALL_NAV_HREFS.map(routeNameForHref)));
+export const ALL_ROUTE_NAMES: readonly string[] = Array.from(
+  new Set(ALL_NAV_HREFS.map(routeNameForHref)),
+);
+
+/**
+ * Detail routes: reachable by navigation, never tabs. They are not in any
+ * nav's hrefs, so ALL_ROUTE_NAMES cannot know about them — but `Tabs`
+ * auto-registers every file in this directory, and an undeclared screen
+ * appears IN the tab bar. Every route file under (app)/ that is not a nav
+ * href is listed here; app-layout.test.tsx reads the filesystem and fails if
+ * one is missing, and pins that each entry is declared with href: null.
+ * Plans add a detail route by appending to this list — nothing else.
+ */
+export const DETAIL_ROUTE_NAMES: readonly string[] = [];
 
 /**
  * `(app)/_layout.tsx` — the `Tabs` navigator every authenticated screen
@@ -65,6 +78,7 @@ export default function AppLayout() {
   const orderedRouteNames = [
     ...tabs.map((tab) => routeNameForHref(tab.href)),
     ...ALL_ROUTE_NAMES.filter((name) => !tabByRouteName.has(name)),
+    ...DETAIL_ROUTE_NAMES,
   ];
 
   return (
