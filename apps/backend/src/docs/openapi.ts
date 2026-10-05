@@ -816,6 +816,40 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/seasons/{id}/duplicate": {
+      post: {
+        tags: ["Seasons"],
+        summary: "Duplicate a season's structure",
+        description:
+          "SUPER only. Creates a DRAFT season copying program, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is 404.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["year", "startDate", "endDate"],
+                properties: {
+                  year: { type: "integer", minimum: 2000, maximum: 2100 },
+                  code: { type: "string" },
+                  startDate: { type: "string", format: "date-time" },
+                  endDate: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok({ type: "object", properties: { id: { type: "integer" }, code: { type: "string" } } }, "Created."),
+          400: conflict("`bad_request` or `invalid_code` (the derived slug is not a valid season code)."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`code_taken`."),
+        },
+      },
+    },
     "/api/v1/seasons/{id}/groups": {
       post: {
         tags: ["Groups"],
