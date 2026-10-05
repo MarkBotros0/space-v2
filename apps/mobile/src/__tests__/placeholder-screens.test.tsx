@@ -28,7 +28,6 @@ import SettingsScreen from "../../app/(app)/settings";
 import AlumniScreen from "../../app/(app)/students/alumni";
 import DroppedStudentsScreen from "../../app/(app)/students/dropped";
 import StudentsScreen from "../../app/(app)/students/index";
-import SubmissionsScreen from "../../app/(app)/submissions";
 import UsersScreen from "../../app/(app)/users";
 
 const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
@@ -45,7 +44,6 @@ const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
   ["students/alumni", AlumniScreen, "Alumni"],
   ["students/dropped", DroppedStudentsScreen, "Dropped Students"],
   ["students/index", StudentsScreen, "Students"],
-  ["submissions", SubmissionsScreen, "Submissions"],
   ["users", UsersScreen, "Users"],
 ];
 
