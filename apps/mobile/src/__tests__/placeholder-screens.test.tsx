@@ -17,7 +17,6 @@ import { listRouteNames, readRouteSource } from "./helpers/routes";
 
 import CalendarScreen from "../../app/(app)/calendar";
 import EventsScreen from "../../app/(app)/events";
-import GroupsScreen from "../../app/(app)/groups";
 import HistoryScreen from "../../app/(app)/history";
 import NotesScreen from "../../app/(app)/notes";
 import ProfileScreen from "../../app/(app)/profile";
@@ -35,7 +34,6 @@ import UsersScreen from "../../app/(app)/users";
 const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
   ["calendar", CalendarScreen, "Calendar"],
   ["events", EventsScreen, "JPC Events"],
-  ["groups", GroupsScreen, "Groups"],
   ["history", HistoryScreen, "History"],
   ["notes", NotesScreen, "Notes"],
   ["profile", ProfileScreen, "Profile"],
