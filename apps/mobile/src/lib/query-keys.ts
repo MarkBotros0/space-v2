@@ -37,4 +37,9 @@ export const queryKeys = {
     details: () => [...queryKeys.assignments.all, "detail"] as const,
     detail: (id: number | null) => [...queryKeys.assignments.details(), id] as const,
   },
+  submissions: {
+    all: ["submissions"] as const,
+    details: () => [...queryKeys.submissions.all, "detail"] as const,
+    detail: (publicId: string | null) => [...queryKeys.submissions.details(), publicId] as const,
+  },
 } as const;

@@ -115,3 +115,17 @@ export const submissionQueueQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
 export type SubmissionQueueQuery = z.infer<typeof submissionQueueQuerySchema>;
+
+/** `PUT /submissions/by-assignment/:assignmentId` — idempotent create-or-fetch. */
+export const ensureSubmissionResponseSchema = z.object({
+  publicId: z.string(),
+  status: submissionStatusSchema,
+});
+export type EnsureSubmissionResponse = z.infer<typeof ensureSubmissionResponseSchema>;
+
+/** `PATCH /submissions/:publicId`. `saved` is always true on success. */
+export const saveSubmissionResponseSchema = z.object({
+  saved: z.literal(true),
+  submitted: z.boolean(),
+});
+export type SaveSubmissionResponse = z.infer<typeof saveSubmissionResponseSchema>;

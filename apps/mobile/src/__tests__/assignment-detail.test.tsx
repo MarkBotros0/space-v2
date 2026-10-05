@@ -39,6 +39,16 @@ const detail = {
   canManage: false,
 };
 
+const submissionFor = (status: "REVIEWED" | "SUBMITTED", isLate: boolean, feedback: string | null) => ({
+  id: 900, publicId: "abc123defg", status, text: "the work", feedback,
+  submittedAt: "2099-03-30T10:00:00.000Z",
+  reviewedAt: status === "REVIEWED" ? "2099-03-31T10:00:00.000Z" : null,
+  isLate, assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: null,
+  assignmentDescription: null, seasonCode: "S26", studentUserId: 9,
+  studentName: "Test student", studentEmail: "s@jpc.test",
+  files: [], canUploadFiles: false, canReview: false,
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
@@ -59,21 +69,19 @@ describe("AssignmentDetailScreen", () => {
   });
 
   it("shows reviewed feedback from mySubmission", async () => {
-    get.mockResolvedValue({
-      data: {
-        data: {
-          ...detail,
-          mySubmission: {
-            publicId: "abc123defg",
-            status: "REVIEWED",
-            submittedAt: "2099-03-30T10:00:00.000Z",
-            reviewedAt: "2099-03-31T10:00:00.000Z",
-            feedback: "Solid work.",
-            isLate: false,
-          },
-        },
+    const assignment = {
+      ...detail,
+      mySubmission: {
+        publicId: "abc123defg", status: "REVIEWED" as const,
+        submittedAt: "2099-03-30T10:00:00.000Z", reviewedAt: "2099-03-31T10:00:00.000Z",
+        feedback: "Solid work.", isLate: false,
       },
-    });
+    };
+    get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: { data: url === "/api/v1/assignments/41" ? assignment : submissionFor("REVIEWED", false, "Solid work.") },
+      }),
+    );
 
     renderWithProviders(<AssignmentDetailScreen />);
 
@@ -82,21 +90,18 @@ describe("AssignmentDetailScreen", () => {
   });
 
   it("shows the late badge from the contract flag", async () => {
-    get.mockResolvedValue({
-      data: {
-        data: {
-          ...detail,
-          mySubmission: {
-            publicId: "abc123defg",
-            status: "SUBMITTED",
-            submittedAt: "2099-04-02T10:00:00.000Z",
-            reviewedAt: null,
-            feedback: null,
-            isLate: true,
-          },
-        },
+    const assignment = {
+      ...detail,
+      mySubmission: {
+        publicId: "abc123defg", status: "SUBMITTED" as const,
+        submittedAt: "2099-04-02T10:00:00.000Z", reviewedAt: null, feedback: null, isLate: true,
       },
-    });
+    };
+    get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: { data: url === "/api/v1/assignments/41" ? assignment : submissionFor("SUBMITTED", true, null) },
+      }),
+    );
 
     renderWithProviders(<AssignmentDetailScreen />);
 
