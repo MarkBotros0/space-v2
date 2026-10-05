@@ -134,4 +134,10 @@ describe("AppLayout tab shell", () => {
 
     expect(mockScreens.find((s) => s.name === "assignment/[id]")?.href).toBeNull();
   });
+
+  it("registers the leader-path detail routes as hidden", () => {
+    for (const name of ["group/[id]", "submission/[publicId]", "session/[id]/attendance"]) {
+      expect(DETAIL_ROUTE_NAMES).toContain(name);
+    }
+  });
 });

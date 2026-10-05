@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { AttendanceStatus } from "./enums";
+import { attendanceStatusSchema, type AttendanceStatus } from "./enums";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 
@@ -50,15 +50,16 @@ export interface SessionDetail {
   canMarkAttendance: boolean;
 }
 
-export interface AttendanceRosterRow {
-  studentUserId: number;
-  name: string | null;
-  email: string;
-  groupName: string | null;
-  status: AttendanceStatus | null;
-  notes: string | null;
-  lateMinutes: number | null;
-}
+export const attendanceRosterRowSchema = z.object({
+  studentUserId: z.number(),
+  name: z.string().nullable(),
+  email: z.string(),
+  groupName: z.string().nullable(),
+  status: attendanceStatusSchema.nullable(),
+  notes: z.string().nullable(),
+  lateMinutes: z.number().nullable(),
+});
+export type AttendanceRosterRow = z.infer<typeof attendanceRosterRowSchema>;
 
 export const checkInRequestSchema = z.object({ token: z.string().min(1) });
 export type CheckInRequest = z.infer<typeof checkInRequestSchema>;

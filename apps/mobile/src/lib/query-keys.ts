@@ -41,5 +41,17 @@ export const queryKeys = {
     all: ["submissions"] as const,
     details: () => [...queryKeys.submissions.all, "detail"] as const,
     detail: (publicId: string | null) => [...queryKeys.submissions.details(), publicId] as const,
+    queues: () => [...queryKeys.submissions.all, "queue"] as const,
+    queue: (filters: { pendingOnly: boolean; seasonId?: number }) =>
+      [...queryKeys.submissions.queues(), filters] as const,
+  },
+  groups: {
+    all: ["groups"] as const,
+    mine: () => [...queryKeys.groups.all, "mine"] as const,
+    detail: (id: number | null) => [...queryKeys.groups.all, "detail", id] as const,
+  },
+  attendance: {
+    all: ["attendance"] as const,
+    roster: (sessionId: number | null) => [...queryKeys.attendance.all, "roster", sessionId] as const,
   },
 } as const;

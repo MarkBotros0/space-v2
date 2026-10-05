@@ -129,3 +129,10 @@ export const saveSubmissionResponseSchema = z.object({
   submitted: z.boolean(),
 });
 export type SaveSubmissionResponse = z.infer<typeof saveSubmissionResponseSchema>;
+
+/** `POST /submissions/:publicId/review` success payload. */
+export const reviewSubmissionResponseSchema = z.object({
+  reviewed: z.literal(true),
+  returnedForRevision: z.boolean(),
+});
+export type ReviewSubmissionResponse = z.infer<typeof reviewSubmissionResponseSchema>;
