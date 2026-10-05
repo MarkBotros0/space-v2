@@ -465,3 +465,27 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("season write response shapes (the mobile client parses these — Plan 4)", () => {
+  it("PATCH answers { id, code } and DELETE answers { deleted: true }", async () => {
+    const target = await createTestSeason({ status: "DRAFT" });
+    const shapeAdmin = await createTestUser("shape-admin", "ADMIN");
+    await db.seasonAdmin.create({ data: { seasonId: target.id, userId: shapeAdmin.id } });
+    const shapeAdminToken = await login(app, shapeAdmin.email);
+
+    const patched = await request(app)
+      .patch(`/api/v1/seasons/${target.id}`)
+      .set("authorization", `Bearer ${shapeAdminToken}`)
+      .send({ description: "Shape check" });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data).toEqual({ id: target.id, code: target.code });
+
+    const shapeSuper = await createTestUser("shape-super", "SUPER");
+    const shapeSuperToken = await login(app, shapeSuper.email);
+    const deleted = await request(app)
+      .delete(`/api/v1/seasons/${target.id}`)
+      .set("authorization", `Bearer ${shapeSuperToken}`);
+    expect(deleted.status).toBe(200);
+    expect(deleted.body.data).toEqual({ deleted: true });
+  });
+});

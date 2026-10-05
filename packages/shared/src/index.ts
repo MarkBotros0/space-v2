@@ -7,3 +7,4 @@ export * from "./session";
 export * from "./assignment";
 export * from "./attendance";
 export * from "./submission";
+export * from "./api-error";

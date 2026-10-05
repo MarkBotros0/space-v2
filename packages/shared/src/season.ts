@@ -117,3 +117,9 @@ export const duplicateSeasonRequestSchema = z
     path: ["endDate"], message: DATE_ORDER_MESSAGE,
   });
 export type DuplicateSeasonBody = z.output<typeof duplicateSeasonRequestSchema>;
+
+/** POST /seasons, POST /seasons/:id/duplicate and PATCH /seasons/:id all answer this. */
+export const seasonRefResponseSchema = z.object({ id: z.number(), code: z.string() });
+export type SeasonRefResponse = z.infer<typeof seasonRefResponseSchema>;
+
+export const seasonDeletedResponseSchema = z.object({ deleted: z.literal(true) });

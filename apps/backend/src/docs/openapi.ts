@@ -295,6 +295,7 @@ export const openApiDocument = {
           id: { type: "integer" },
           title: { type: "string" },
           startsAt: { type: "string", format: "date-time" },
+          dayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-timezone calendar day of startsAt (ruling X13). Group by this, not by formatting startsAt on the device." },
           durationMinutes: { type: "integer" },
           location: { type: ["string", "null"] },
           recurrenceGroupId: { type: ["string", "null"] },
@@ -342,6 +343,7 @@ export const openApiDocument = {
             },
           },
           canMarkAttendance: { type: "boolean" },
+          canManageCheckIn: { type: "boolean", description: "Season admins only — the gate check-in-open/close enforce. Group leaders have canMarkAttendance but not this." },
         },
       },
       AttendanceRosterRow: {

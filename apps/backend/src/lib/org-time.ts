@@ -85,3 +85,28 @@ export function addWeeksInOrgTime(start: Date, weeks: number): Date {
   const p = orgWallClock(start);
   return fromOrgWallClock({ ...p, day: p.day + weeks * 7 });
 }
+
+const dayKeyFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: config.orgTimezone,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * The organisation-calendar day an instant falls on, as "YYYY-MM-DD".
+ *
+ * Ruling X13 / C2: "which day does this belong to" resolves against the org
+ * timezone, server-side, once. The calendar groups sessions by this key; a
+ * client grouping by its own device zone would file a 23:30Z session under
+ * the wrong day for every viewer east of UTC. Built from formatToParts rather
+ * than a locale whose default pattern happens to be ISO-shaped, so a
+ * locale-data change cannot reorder the fields.
+ */
+export function orgDayKey(date: Date): string {
+  const parts: Record<string, string> = {};
+  for (const part of dayKeyFormatter.formatToParts(date)) {
+    if (part.type !== "literal") parts[part.type] = part.value;
+  }
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}

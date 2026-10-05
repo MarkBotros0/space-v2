@@ -2,7 +2,7 @@
 // are exact-value tests of Cairo's rules.
 jest.mock("../lib/config", () => ({ config: { orgTimezone: "Africa/Cairo" } }));
 
-import { addWeeksInOrgTime, formatInOrgTime, fromOrgWallClock, orgWallClock } from "../lib/org-time";
+import { addWeeksInOrgTime, formatInOrgTime, fromOrgWallClock, orgDayKey, orgWallClock } from "../lib/org-time";
 
 describe("formatInOrgTime", () => {
   it("renders an instant as the organisation's wall clock, not the host's", () => {
@@ -40,5 +40,23 @@ describe("orgWallClock / fromOrgWallClock", () => {
   it("round-trips an instant", () => {
     const at = new Date("2099-07-01T09:30:15.250Z");
     expect(fromOrgWallClock(orgWallClock(at)).toISOString()).toBe(at.toISOString());
+  });
+});
+
+describe("orgDayKey", () => {
+  // config.orgTimezone defaults to Africa/Cairo (Plan 3): UTC+2 in March.
+  // If the configured zone changes, these expectations change with it.
+  it("keys an evening session to its own org-calendar day", () => {
+    expect(orgDayKey(new Date("2099-03-01T18:00:00.000Z"))).toBe("2099-03-01");
+  });
+
+  it("keys a late-UTC instant to the NEXT day when the org clock has passed midnight", () => {
+    // 23:30Z is 01:30 on the 2nd in Cairo. A device in UTC would group this
+    // session under the 1st — the bug ruling X13 exists to prevent.
+    expect(orgDayKey(new Date("2099-03-01T23:30:00.000Z"))).toBe("2099-03-02");
+  });
+
+  it("zero-pads month and day", () => {
+    expect(orgDayKey(new Date("2099-01-05T10:00:00.000Z"))).toBe("2099-01-05");
   });
 });

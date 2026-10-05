@@ -221,6 +221,11 @@ sessionsRouter.get("/:id", async (req, res) => {
     checkInOpen: isCheckInOpen(session),
     myAttendance,
     canMarkAttendance: await canMarkAttendance(user, id),
+    // Ruling C4: the client renders this and never re-derives it. It is the
+    // exact predicate check-in-open/-close enforce below — a leader passes
+    // canMarkAttendance (attendanceScopeFor) but not this, which is why the
+    // console must not key off canMarkAttendance (spec 04 §9 row 2).
+    canManageCheckIn: isAdminOfSeason(user, session.seasonId),
   });
 });
 
