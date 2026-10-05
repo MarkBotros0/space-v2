@@ -15,7 +15,6 @@ import { screen } from "@testing-library/react-native";
 import { renderWithProviders } from "./helpers/render";
 import { listRouteNames, readRouteSource } from "./helpers/routes";
 
-import CalendarScreen from "../../app/(app)/calendar";
 import EventsScreen from "../../app/(app)/events";
 import HistoryScreen from "../../app/(app)/history";
 import NotesScreen from "../../app/(app)/notes";
@@ -31,7 +30,6 @@ import StudentsScreen from "../../app/(app)/students/index";
 import UsersScreen from "../../app/(app)/users";
 
 const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
-  ["calendar", CalendarScreen, "Calendar"],
   ["events", EventsScreen, "JPC Events"],
   ["history", HistoryScreen, "History"],
   ["notes", NotesScreen, "Notes"],
