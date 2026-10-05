@@ -19,6 +19,7 @@ const validSession = {
   id: 1,
   title: "Kickoff",
   startsAt: "2026-03-01T18:00:00.000Z",
+  dayKey: "2026-03-01",
   durationMinutes: 60,
   location: "Room 1",
   recurrenceGroupId: null,

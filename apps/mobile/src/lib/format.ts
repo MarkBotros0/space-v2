@@ -1,4 +1,4 @@
-import { format, isValid, parseISO } from "date-fns";
+import { format, isValid, parse, parseISO } from "date-fns";
 
 // Every timestamp that crosses the wire (`dueAt`, `submittedAt`,
 // `reviewedAt`, `checkedInAt`, session start times, ...) is a JSON ISO
@@ -30,4 +30,19 @@ export function formatDate(iso: string | null): string {
 /** e.g. "Apr 1, 2026" — an assignment's due date, rendered as a calendar day (no time). */
 export function formatDueDate(iso: string | null): string {
   return formatIso(iso, "MMM d, yyyy");
+}
+
+/**
+ * e.g. "Mar 1, 2099" — an org-calendar day key ("2099-03-01") from the server.
+ *
+ * No timezone conversion happens here, deliberately: the server already
+ * resolved which day the instant belongs to in the org timezone (ruling X13).
+ * `parse` builds a local-midnight Date from the key's own Y-M-D, and `format`
+ * reads the same Y-M-D back, so the day cannot move whatever the device zone.
+ */
+export function formatDayKey(dayKey: string | null): string {
+  if (dayKey == null) return PLACEHOLDER;
+  const date = parse(dayKey, "yyyy-MM-dd", new Date());
+  if (!isValid(date)) return PLACEHOLDER;
+  return format(date, "MMM d, yyyy");
 }

@@ -1,4 +1,4 @@
-import { formatDate, formatDueDate, formatSessionTime } from "../lib/format";
+import { formatDate, formatDayKey, formatDueDate, formatSessionTime } from "../lib/format";
 
 describe("format", () => {
   it("formats an ISO string from the API, not a Date", () => {
@@ -37,5 +37,17 @@ describe("format", () => {
 
   it("returns a placeholder for a string shaped like a date but with out-of-range fields", () => {
     expect(formatDate("2026-13-45")).toBe("—");
+  });
+});
+
+describe("formatDayKey", () => {
+  it("renders the server's org-calendar day without shifting it into the device zone", () => {
+    // The key is already the org's day (ruling X13); formatting must not move it.
+    expect(formatDayKey("2099-03-01")).toBe("Mar 1, 2099");
+    expect(formatDayKey("2099-12-31")).toBe("Dec 31, 2099");
+  });
+  it("returns the placeholder for null or a malformed key", () => {
+    expect(formatDayKey(null)).toBe("—");
+    expect(formatDayKey("not-a-day")).toBe("—");
   });
 });

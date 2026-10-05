@@ -28,6 +28,12 @@ export const queryKeys = {
     // sentinel like `-1`) keeps the cache key honest about that: a `null`
     // key can never collide with a real season's cached list.
     bySeason: (seasonId: number | null) => [...queryKeys.sessions.lists(), { seasonId }] as const,
+    detail: (id: number | null) => [...queryKeys.sessions.all, "detail", { id }] as const,
+  },
+  seasons: {
+    all: ["seasons"] as const,
+    list: () => [...queryKeys.seasons.all, "list"] as const,
+    detail: (id: number | null) => [...queryKeys.seasons.all, "detail", { id }] as const,
   },
   assignments: {
     all: ["assignments"] as const,

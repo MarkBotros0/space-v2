@@ -140,4 +140,12 @@ describe("AppLayout tab shell", () => {
       expect(DETAIL_ROUTE_NAMES).toContain(name);
     }
   });
+
+  it("registers session/[id]/index as a hidden detail route", () => {
+    useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
+    render(<AppLayout />);
+    const detail = mockScreens.find((s) => s.name === "session/[id]/index");
+    expect(detail).toBeDefined();
+    expect(detail?.href).toBeNull();
+  });
 });
