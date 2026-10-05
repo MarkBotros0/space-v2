@@ -9,6 +9,8 @@ jest.mock("expo-router", () => ({
 }));
 
 import { apiClient } from "../lib/api-client";
+import type { SessionDetail } from "@space/shared";
+
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -17,7 +19,7 @@ import SessionDetailScreen from "../../app/(app)/session/[id]/index";
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
-const baseDetail = {
+const baseDetail: SessionDetail = {
   id: 12, title: "Week 3", description: "Bring your notebook.",
   startsAt: "2099-03-15T18:00:00.000Z", durationMinutes: 90, location: "Hall B",
   youtubeUrl: null, recurrenceGroupId: null, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring",
