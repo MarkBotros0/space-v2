@@ -1,6 +1,11 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { z } from "zod";
-import { studentAssignmentListItemSchema, type StudentAssignmentListItem } from "@space/shared";
+import {
+  assignmentDetailSchema,
+  studentAssignmentListItemSchema,
+  type AssignmentDetail,
+  type StudentAssignmentListItem,
+} from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
@@ -23,5 +28,19 @@ export function useStudentAssignments(
     queryKey: queryKeys.assignments.bySeason(seasonId),
     queryFn: () => fetchStudentAssignments(seasonId as number),
     enabled: seasonId !== null,
+  });
+}
+
+async function fetchAssignmentDetail(id: number): Promise<AssignmentDetail> {
+  const res = await apiClient.get(`/api/v1/assignments/${id}`);
+  return assignmentDetailSchema.parse(res.data.data);
+}
+
+/** `id` is null while the route param is unparsed or invalid. */
+export function useAssignmentDetail(id: number | null): UseQueryResult<AssignmentDetail> {
+  return useQuery({
+    queryKey: queryKeys.assignments.detail(id),
+    queryFn: () => fetchAssignmentDetail(id as number),
+    enabled: id !== null,
   });
 }
