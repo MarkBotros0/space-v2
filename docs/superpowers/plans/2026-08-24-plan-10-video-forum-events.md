@@ -20,13 +20,39 @@ expo-router 6, React Query 5, RNTL 13, and
 `14-forum.md`, `15-events.md` (all three, including each §10),
 `_DECISIONS.md` (C1, C4, C6, C8, C9, C10, C11, C12); roadmap § Plan 10.
 
-**Depends on:** Plan 1 (`DETAIL_ROUTE_NAMES`, `assignment/[id]`,
+**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 →
+14 → 8 → 9 → **10** → 11 → 18 → 12 → 13; this plan uses only plans before it):
+Plan 1 (`DETAIL_ROUTE_NAMES`, `useAssignmentDetail`,
 `PUT /submissions/by-assignment/:assignmentId`, the hooks/test patterns),
-Plan 3 (`lib/org-time.ts`, session writes), Plan 4 (`app/(app)/calendar.tsx`,
-`app/(app)/session/[id].tsx`, `useCurrentSeasonId`, `useSessionDetail`).
-Plan 6 (domain 12, text quizzes) now exists and has adopted the "answer-key
+Plan 3 (`lib/org-time.ts` — `orgWallClock`, `config.orgTimezone`, session writes), Plan 4
+(`useCurrentSeasonId`, `useSessionDetail`, `sessionDetailSchema.canManageCheckIn`,
+`formatDayKey`), Plan 6 (domain 12, text quizzes; has adopted the "answer-key
 split" by name — see D-13.3 below for the one place the two plans enforce it
-differently on the client.
+differently on the client), Plan 8 (`packages/shared/src/html-text.ts` —
+`htmlToPlainText` / `plainTextToHtml`, ruling X3 — which this plan imports and
+never redefines).
+**Plan 15** (assignment authoring): creates FORUM assignments; moved the
+assignment screen to `app/(app)/assignment/[id]/index.tsx` and role-branched it
+(Task 8 here edits that file); created `packages/shared/src/org-time.ts`
+(`isoDaySchema`, `wallTimeSchema`) and backend `orgWallTime` /
+`orgWallClockToInstant` in `lib/org-time.ts` — all **consumed** here, never
+redefined (this plan adds only `isOrgMidnight`); `formatWallTime` /
+`formatOrgDue` in mobile `src/lib/format.ts`; detail `dueOrgDay`/`dueOrgTime`.
+**Plan 16** (season/session admin screens): the restructured
+`app/(app)/calendar.tsx` (`PinnedSeasonCalendar` / `RangeSessions` /
+`useSessionRange`) and `groupSessionsByDay` in `src/lib/day-groups.ts`, which
+Task 10's events merge targets; its replacement of
+`app/(app)/session/[id]/index.tsx` (the directory form, ruling X7), which Task 5
+extends; `sessionDetailSchema.dayKey`/`.startTime` and session rows' `startTime`.
+**Plan 14** (student self-service): `StudentCheckInCard` on the same session
+screen and the `src/__tests__/helpers/expo-camera.tsx` Jest stand-in Task 5's
+suite mocks with.
+Plan 4 also supplies `orgDayKey(date)` in `lib/org-time.ts`, the sessions'
+`dayKey`, and mobile `formatDayKey(dayKey)` — the event payload reuses all
+three rather than adding a second day helper.
+**Consumed later by:** Plan 18 (role dashboards — `useEvents()` for the
+`UpcomingEventsCard`), Plan 13 (cutover register: forum `hiddenAt`, video
+duration, forum `NotificationType`).
 
 ## Global Constraints
 
@@ -40,8 +66,17 @@ differently on the client.
 - Response envelope `{ data }` / `{ error: { code, message } }` via
   `apiOk`/`apiError`.
 - Value imports from shared use the relative path
-  `"../../../../packages/shared/src/index"` in backend route files (the
-  `rootDir` emit trap in `CLAUDE.md`). Mobile imports `@space/shared`.
+  `"../../../../packages/shared/src/index"` (depth adjusted — `lib/queries/*.ts`
+  is one level deeper) in **every** backend `src` file, not only routes (ruling
+  X12; the `rootDir` emit trap in `CLAUDE.md`). Mobile imports `@space/shared`.
+- **`requireAuth` is attached per route** (ruling X5). `forumRouter` and
+  `videoQuizRouter` are mounted on the shared `/api/v1` prefix, so a router-wide
+  `use(requireAuth)` would turn every unknown `/api/v1/*` path into a 401 and
+  run auth twice for every later router. Only `eventsRouter`, which owns
+  `/api/v1/events` exclusively, may use router-wide auth.
+- **Org time** (ruling X13): every wall-clock day or time an event shows or is
+  written with is computed on the server in `config.orgTimezone`. The device
+  timezone is never used to bucket a day or compose an instant.
 - `src/docs/openapi.ts` changes in the **same commit** as the route it
   documents.
 - Integration fixtures: every row carries `space-v2-test-` in `User.email`,
@@ -155,6 +190,14 @@ and `submittedAt` together. Ruling C6 forbids v1's read-time
 `ensureDraftSubmission`, and `forumOwnResponseSchema.submissionPublicId` is
 therefore **nullable** — the screen renders the compose box, the word counter
 and the locked feed with no row in existence.
+**And it is the only writer.** The generic submission routes Plan 1 relies on —
+`PUT /submissions/by-assignment/:assignmentId` (create-or-fetch) and
+`PATCH /submissions/:publicId` (save, or `{ submit: true }`) — would otherwise
+accept a FORUM assignment: an empty `SUBMITTED` row unlocks the feed (defeating
+D-14.5), `forumMinWords` is never applied, and the text is stored unescaped
+(ruling C11). Both refuse a FORUM assignment with
+`409 use_forum_endpoint` (Task 6, Step 4b). v1's student page never routed a
+FORUM assignment through the generic editor, so no client loses anything.
 
 **D-14.2 — Forum posts are addressed by `Submission.publicId`, never the
 integer id.** v1 addresses every forum write by the sequential
@@ -270,6 +313,13 @@ and `to` are optional; omitted, the server defaults to `[now − 30d, now + 365d
 stays the encoding — but "midnight" resolves against `config.orgTimezone`, not
 against each of three viewers' devices (R19) nor the server's incidental zone
 (R15/R20).
+**Both directions are server-side** (ruling X13). On write, the client sends
+wall-clock fields — `day` (`YYYY-MM-DD`), `time` (`HH:mm` or `null` for
+all-day), `endDay` — and the server composes the instant in the org zone
+(Plan 15's `orgWallClockToInstant`, consumed). On read, every row carries `dayKey`, `endDayKey` and
+`time` computed in the org zone, so the calendar buckets and labels by strings
+the server produced and a phone set to another zone shows the same day. This
+supersedes the earlier draft's "compose the ISO instant on the client".
 
 **D-15.7 — Event photos are not built.** Uploads are off (`ENABLE_UPLOADS`
 defaults `false`), `imagePath` never crosses the wire, and `imageUrl` is absent
@@ -284,9 +334,9 @@ exactly as `submissions/:publicId/files/:fileId` already is.
 - **`GET /api/v1/calendar`** — see D-15.1.
 - **Event photo endpoints** — see D-15.7.
 - **The `UpcomingEventsCard` on all six dashboards** (spec 15 R78). The events
-  data and hook land here; `dashboard.tsx` is left alone because Plan 9's
-  notifications work also targets that file and two plans editing one screen is
-  how a merge conflict becomes a regression. Follow-up, one small task.
+  data and hook (`useEvents()`, `queryKeys.events.list()`) land here;
+  `dashboard.tsx` is left alone. The card is **Plan 18's** (role dashboards,
+  ruling X15), which runs after this plan and composes `useEvents()` unchanged.
 - **Domain 3's save-time `youtubeUrl` validation** (spec 13 D7c) and the
   recurrence fan-out that copies a URL to every sibling (spec 13 D12/R16) —
   both are `routes/sessions.ts`, Plan 3's file.
@@ -294,18 +344,17 @@ exactly as `submissions/:publicId/files/:fileId` already is.
 
 ## Contradictions found while reading, recorded here
 
-1. **`app.ts` does not allow `PUT` through CORS.**
-   `cors({ methods: ["GET","POST","PATCH","DELETE","OPTIONS"] })` — but
-   `PUT /api/v1/submissions/by-assignment/:assignmentId` already exists and this
-   plan adds two more PUTs. A native client is unaffected (no preflight); any
-   browser client is. Fixed in Task 2.
+1. ~~`app.ts` does not allow `PUT` through CORS.~~ **Stale — already fixed on
+   main** (`app.ts:35` lists `PUT`, with a comment naming the by-assignment
+   route). This plan adds two more PUTs and needs no CORS change; Task 2 no
+   longer touches the CORS call.
 2. **`cleanupTestData` cannot reach `JpcEvent`.** `JpcEvent.season` is
    `onDelete: SetNull`, so deleting a test season leaves an orphaned event row
    behind **in the shared production-adjacent database**. Fixed in Task 2 with a
    `TEST_PREFIX` on `JpcEvent.title`.
 3. **Spec 13 §9 says the student player route is `/sessions/[id]`**; the v2 tree
-   Plan 4 builds is `app/(app)/session/[id].tsx` (singular), matching
-   `assignment/[id]`. The plan follows the code, not the spec's prose.
+   Plan 4 builds is `app/(app)/session/[id]/index.tsx` (singular, directory form per ruling X7 because `attendance` is a child route), matching
+   `assignment/[id]/index.tsx` (Plan 15's directory form). The plan follows the code, not the spec's prose.
 4. **Spec 14 §7 addresses posts by `submissionId`**; this plan uses `publicId`
    (D-14.2). Named so it is not read as a transcription error.
 
@@ -316,7 +365,7 @@ independent streams: **video** (Tasks 3, 4, 5), **forum** (Tasks 6, 7, 8),
 
 ---
 
-### Task 1: Contracts — three domain modules and three pure helpers
+### Task 1: Contracts — three domain modules and the pure helpers
 
 **Files:**
 - Create: `packages/shared/src/video-quiz.ts`
@@ -324,16 +373,22 @@ independent streams: **video** (Tasks 3, 4, 5), **forum** (Tasks 6, 7, 8),
 - Create: `packages/shared/src/event.ts`
 - Create: `packages/shared/src/video-time.ts`
 - Create: `packages/shared/src/youtube.ts`
-- Create: `packages/shared/src/forum-text.ts`
 - Modify: `packages/shared/src/enums.ts` (add `jpcVisibilitySchema`)
-- Modify: `packages/shared/src/index.ts` (export the six new modules)
+- Modify: `packages/shared/src/index.ts` (export the five new modules)
 - Test: `packages/shared/src/__tests__/video-time.test.ts`
 - Test: `packages/shared/src/__tests__/youtube.test.ts`
-- Test: `packages/shared/src/__tests__/forum-text.test.ts`
+- Test: `packages/shared/src/__tests__/forum-words.test.ts`
+
+**No `forum-text.ts`** (ruling X3). HTML↔plain-text conversion has exactly one
+home, `packages/shared/src/html-text.ts`, created by Plan 8 (`htmlToPlainText`,
+`plainTextToHtml`). This plan imports it; `countWords` — the one forum-specific
+text rule — lives in `forum.ts` beside the forum contracts.
 - Test: `packages/shared/src/__tests__/plan10-schemas.test.ts`
 
 **Interfaces:**
-- Consumes: `submissionStatusSchema` from `./enums`.
+- Consumes: `submissionStatusSchema` from `./enums`; `isoDaySchema`, `wallTimeSchema` from `./org-time` (Plan 15 Task 1 — consumed, never redefined); `htmlToPlainText`,
+  `plainTextToHtml` from `./html-text` (Plan 8, ruling X3) — re-exported by
+  `index.ts` already, so backend and mobile import them from the shared index.
 - Produces (exact names every later task imports):
   `jpcVisibilitySchema`/`JpcVisibility`;
   `videoQuestionInputSchema`/`VideoQuestionInput`, `videoQuestionAdminSchema`,
@@ -343,16 +398,25 @@ independent streams: **video** (Tasks 3, 4, 5), **forum** (Tasks 6, 7, 8),
   `videoQuizResultRowSchema`, `videoQuizResultsSchema`;
   `forumCommentSchema`, `forumPostSchema`, `forumOwnResponseSchema`,
   `forumViewSchema`/`ForumView`, `submitForumResponseRequestSchema`,
-  `addForumCommentRequestSchema`, `forumFeedQuerySchema`;
+  `addForumCommentRequestSchema`, `forumFeedQuerySchema`, `forumCommentsQuerySchema`,
+  `forumCommentsPageSchema`, `addForumCommentResponseSchema`,
+  `deleteForumCommentResponseSchema`;
+  `createVideoQuestionResponseSchema`, `updateVideoQuestionResponseSchema`,
+  `deleteVideoQuestionResponseSchema`, the constant `MAX_VIDEO_SECONDS`;
   `jpcEventListItemSchema`/`JpcEventListItem`, `jpcEventDetailSchema`/`JpcEventDetail`,
   `createJpcEventRequestSchema`/`CreateJpcEventBody`,
-  `updateJpcEventRequestSchema`/`UpdateJpcEventBody`, `eventListQuerySchema`;
+  `updateJpcEventRequestSchema`/`UpdateJpcEventBody`, `eventListQuerySchema`,
+  `deleteJpcEventResponseSchema`, `jpcEventListResponseSchema`, `mergedEventSchema`, `refineEvent`
+  (`isoDaySchema` / `wallTimeSchema` are **consumed** from Plan 15's
+  `packages/shared/src/org-time.ts`, already exported by the index — not produced here);
   functions `formatTimestamp(totalSeconds: number): string`,
   `parseTimestamp(input: string, maxSeconds?: number): number | null`,
   `parseYouTubeId(raw: string): string | null`,
-  `countWords(text: string): number`,
-  `plainTextToHtml(text: string): string`,
-  `htmlToPlainText(html: string): string`.
+  `countWords(text: string): number` (in `forum.ts`).
+  (Day labels on mobile use Plan 4's `formatDayKey` from `src/lib/format.ts`;
+  this plan adds no second day formatter.)
+  Every write endpoint in this plan has a response schema here, so no mobile
+  hook ever casts a response with `as` (ruling X10).
 
 - [ ] **Step 1: Failing tests for the three pure helpers**
 
@@ -488,7 +552,7 @@ describe("parseYouTubeId — the two holes v1 left open", () => {
 ```
 
 ```ts
-// packages/shared/src/__tests__/forum-text.test.ts
+// packages/shared/src/__tests__/forum-words.test.ts
 import { countWords, htmlToPlainText, plainTextToHtml } from "../index";
 
 describe("countWords — v1 semantics, carried verbatim", () => {
@@ -500,43 +564,31 @@ describe("countWords — v1 semantics, carried verbatim", () => {
   });
 
   it("still does not handle numeric entities (v1 R10) — pinned, not fixed", () => {
-    // The live counter and the server gate must agree; changing this on one
-    // side gives a student an enabled button the server refuses.
-    expect(countWords("one&#160;two")).toBe(2);
-  });
-});
-
-describe("plainTextToHtml / htmlToPlainText", () => {
-  it("escapes markup so a post can never inject it (ruling C11)", () => {
-    expect(plainTextToHtml("<script>x</script>")).toBe(
-      "<p>&lt;script&gt;x&lt;/script&gt;</p>",
-    );
-    expect(plainTextToHtml("a & b")).toBe("<p>a &amp; b</p>");
+    // v1's entity rule is /&[a-z]+;/i, which cannot match "&#160;" ('#' is not
+    // a letter), so the whole run is one token. The live counter and the
+    // server gate must agree; changing this on one side gives a student an
+    // enabled button the server refuses.
+    expect(countWords("one&#160;two")).toBe(1);
   });
 
-  it("makes one paragraph per line", () => {
-    expect(plainTextToHtml("one\ntwo")).toBe("<p>one</p><p>two</p>");
-  });
-
-  it("round-trips through the reader", () => {
-    const text = "line one\nline two & three";
+  it("counts the same words before and after the stored-HTML round trip", () => {
+    // The server gates on the plain text the client typed; v1 counts the stored
+    // HTML. Plan 8's converters (ruling X3) must not change the answer.
+    // (No bare "&": the plain text counts it as a word, the stored "&amp;" is
+    // stripped as an entity — the server gates on the plain text, so that is
+    // the count that matters.)
+    const text = "first line here\nsecond line";
+    expect(countWords(plainTextToHtml(text))).toBe(countWords(text));
     expect(htmlToPlainText(plainTextToHtml(text))).toBe(text);
-  });
-
-  it("reads v1's stored rich text as plain text (ruling C11 on read)", () => {
-    // Existing rows in the shared database are HTML written by v1's editor.
-    expect(htmlToPlainText("<p>alpha</p><p>beta</p>")).toBe("alpha\nbeta");
-    expect(htmlToPlainText("alpha<br>beta")).toBe("alpha\nbeta");
-    expect(htmlToPlainText("<p><strong>bold</strong> text</p>")).toBe("bold text");
-    expect(htmlToPlainText("<p>a &amp; b</p>")).toBe("a & b");
   });
 });
 ```
 
-Run: `pnpm --filter @space/shared jest src/__tests__/video-time.test.ts src/__tests__/youtube.test.ts src/__tests__/forum-text.test.ts`
-Expected: FAIL — none of the three modules exist.
+Run: `pnpm --filter @space/shared jest src/__tests__/video-time.test.ts src/__tests__/youtube.test.ts src/__tests__/forum-words.test.ts`
+Expected: FAIL — `video-time`, `youtube` and `countWords` do not exist yet
+(`html-text` does — Plan 8).
 
-- [ ] **Step 2: Implement the three helpers**
+- [ ] **Step 2: Implement the two helper modules** (`countWords` lands with the forum contracts in Step 5)
 
 ```ts
 // packages/shared/src/video-time.ts
@@ -676,72 +728,8 @@ export function parseYouTubeId(raw: string): string | null {
 }
 ```
 
-```ts
-// packages/shared/src/forum-text.ts
 
-/**
- * v1's word counter, carried verbatim from `jpc-space/src/lib/forum.ts`.
- *
- * Shared for the reason v1 shared it: the live counter in the compose box and
- * the server's `forumMinWords` gate must agree, or a student gets an enabled
- * button and a refusal. Numeric entities (`&#160;`) are deliberately still
- * unhandled — matching v1 exactly is the point (spec 14 R10).
- */
-export function countWords(text: string): number {
-  const stripped = text
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&[a-z]+;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!stripped) return 0;
-  return stripped.split(" ").length;
-}
-
-/**
- * Plain text in, one escaped `<p>` per line out.
- *
- * The column is shared with running v1, whose `RichTextView` renders it as
- * HTML — so v2 must write HTML or v1's readers see a single run-on line. Ruling
- * C11: sanitise on write where the field is new. Escaping here means a post can
- * never carry markup at all, which is a stronger guarantee than v1's
- * render-time allow-list.
- */
-export function plainTextToHtml(text: string): string {
-  const escape = (s: string): string =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return text
-    .split(/\r?\n/)
-    .map((line) => `<p>${escape(line)}</p>`)
-    .join("");
-}
-
-/**
- * Stored rich text out as plain text.
- *
- * Ruling C11: sanitise on read at the API boundary for everything already
- * stored — every existing forum post in the shared database is HTML written by
- * v1's editor. React Native renders text, so this is also what makes those rows
- * readable at all. Converting them to structured rich text is a cutover task.
- */
-export function htmlToPlainText(html: string): string {
-  return html
-    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
-    .replace(/<\/\s*(p|div|li|h[1-6])\s*>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    // Last, or an escaped "&amp;lt;" would decode twice.
-    .replace(/&amp;/g, "&")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-```
-
-Run the three suites → PASS.
+Run the `video-time` and `youtube` suites → PASS (`forum-words` stays red until Step 5).
 
 - [ ] **Step 3: Failing test for the schemas**
 
@@ -846,24 +834,22 @@ describe("addForumCommentRequestSchema", () => {
 describe("createJpcEventRequestSchema", () => {
   const valid = {
     title: "space-v2-test-retreat",
-    date: "2099-06-01T00:00:00.000Z",
-    endDate: null,
-    allDay: true,
+    day: "2099-06-01",
+    time: null,
+    endDay: null,
     description: null,
     url: null,
     visibility: "ALL" as const,
     seasonId: null,
   };
 
-  it("refuses an end before the start (v1 R11)", () => {
-    expect(
-      createJpcEventRequestSchema.safeParse({ ...valid, endDate: "2099-05-01T00:00:00.000Z" })
-        .success,
-    ).toBe(false);
-    expect(
-      createJpcEventRequestSchema.safeParse({ ...valid, endDate: "2099-06-01T00:00:00.000Z" })
-        .success,
-    ).toBe(true);
+  it("refuses an end day before the start day (v1 R11)", () => {
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, endDay: "2099-05-01" }).success).toBe(
+      false,
+    );
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, endDay: "2099-06-01" }).success).toBe(
+      true,
+    );
   });
 
   it("requires a season for a SEASON event (v1 R12)", () => {
@@ -876,14 +862,17 @@ describe("createJpcEventRequestSchema", () => {
     ).toBe(true);
   });
 
-  it("takes a full ISO instant, not v1's four-field date/time split", () => {
-    // v1 posted date + time as separate naive strings and let the *server*
-    // resolve them in its own zone (R15/R20). Composing the instant before the
-    // wire is what stops an event authored as all-day in one zone from
-    // round-tripping to a non-midnight instant in another.
-    expect(createJpcEventRequestSchema.safeParse({ ...valid, date: "2099-06-01" }).success).toBe(
-      false,
-    );
+  it("takes org wall-clock fields, never a device-composed instant (ruling X13)", () => {
+    // v1 posted naive strings and let the server resolve them in the *host's*
+    // zone (R15/R20). v2 keeps the wall-clock shape but names the zone: the
+    // server composes the instant in config.orgTimezone. An ISO instant is
+    // refused, because accepting one is how a device's zone leaks back in.
+    expect(
+      createJpcEventRequestSchema.safeParse({ ...valid, day: "2099-06-01T00:00:00.000Z" }).success,
+    ).toBe(false);
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, time: "18:30" }).success).toBe(true);
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, time: "24:00" }).success).toBe(false);
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, time: "6pm" }).success).toBe(false);
   });
 });
 ```
@@ -903,6 +892,8 @@ export type JpcVisibility = z.infer<typeof jpcVisibilitySchema>;
 // packages/shared/src/video-quiz.ts
 import { z } from "zod";
 
+import { MAX_VIDEO_SECONDS } from "./video-time";
+
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 //
 // Domain 13 is NOT domain 12. `Quiz`/`QuizQuestion`/`QuizAttempt`/`QuizAnswer`
@@ -913,7 +904,7 @@ import { z } from "zod";
 /** Authoring input. Mirrors v1's `questionSchema` bounds exactly. */
 export const videoQuestionInputSchema = z
   .object({
-    atSeconds: z.number().int().min(0).max(86_400),
+    atSeconds: z.number().int().min(0).max(MAX_VIDEO_SECONDS),
     prompt: z.string().trim().min(2).max(500),
     options: z.array(z.string().trim().min(1).max(200)).min(2).max(6),
     correctIndex: z.number().int().min(0),
@@ -1017,7 +1008,7 @@ export type SubmitVideoAnswerResponse = z.infer<typeof submitVideoAnswerResponse
  * The server knows the question set and the responses; it derives completion.
  */
 export const videoProgressRequestSchema = z.object({
-  furthestSeconds: z.number().int().min(0).max(86_400),
+  furthestSeconds: z.number().int().min(0).max(MAX_VIDEO_SECONDS),
 });
 export type VideoProgressRequest = z.infer<typeof videoProgressRequestSchema>;
 
@@ -1046,6 +1037,26 @@ export const videoQuizResultsSchema = z.object({
   rows: z.array(videoQuizResultRowSchema),
 });
 export type VideoQuizResults = z.infer<typeof videoQuizResultsSchema>;
+
+// Write responses — the mobile hooks parse these rather than casting (X10).
+
+export const createVideoQuestionResponseSchema = z.object({
+  question: videoQuestionAdminSchema,
+});
+
+export const updateVideoQuestionResponseSchema = z.object({
+  question: videoQuestionAdminSchema,
+  /** How many recorded answers flipped verdict under the new key (spec 13 D5). */
+  regradedCount: z.number().int().min(0),
+  pointsChanged: z.boolean(),
+});
+export type UpdateVideoQuestionResponse = z.infer<typeof updateVideoQuestionResponseSchema>;
+
+export const deleteVideoQuestionResponseSchema = z.object({
+  deleted: z.literal(true),
+  responsesRemoved: z.number().int().min(0),
+});
+export type DeleteVideoQuestionResponse = z.infer<typeof deleteVideoQuestionResponseSchema>;
 ```
 
 - [ ] **Step 5: The forum contracts**
@@ -1176,6 +1187,39 @@ export const forumCommentsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 export type ForumCommentsQuery = z.output<typeof forumCommentsQuerySchema>;
+
+/** `GET .../posts/:publicId/comments` — one page, oldest first. */
+export const forumCommentsPageSchema = z.object({
+  comments: z.array(forumCommentSchema),
+  nextCursor: z.number().nullable(),
+});
+export type ForumCommentsPage = z.infer<typeof forumCommentsPageSchema>;
+
+export const addForumCommentResponseSchema = z.object({ comment: forumCommentSchema });
+
+export const deleteForumCommentResponseSchema = z.object({ deleted: z.literal(true) });
+
+/**
+ * v1's word counter, carried verbatim from `jpc-space/src/lib/forum.ts`.
+ *
+ * Shared for the reason v1 shared it: the live counter in the compose box and
+ * the server's `forumMinWords` gate must agree, or a student gets an enabled
+ * button and a refusal. Numeric entities (`&#160;`) are deliberately still
+ * unhandled — matching v1 exactly is the point (spec 14 R10).
+ *
+ * This is the only text helper the forum owns. Converting between stored HTML
+ * and plain text is `html-text.ts` (Plan 8, ruling X3) — never a second copy.
+ */
+export function countWords(text: string): number {
+  const stripped = text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&[a-z]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!stripped) return 0;
+  return stripped.split(" ").length;
+}
 ```
 
 - [ ] **Step 6: The event contracts**
@@ -1185,14 +1229,24 @@ export type ForumCommentsQuery = z.output<typeof forumCommentsQuerySchema>;
 import { z } from "zod";
 
 import { jpcVisibilitySchema } from "./enums";
+// Plan 15 created `org-time.ts` (shared wall-clock schemas, ruling C2/X13).
+// Consumed here, never redefined — a second `isoDaySchema` in `event.ts` would
+// collide on `export *` in `index.ts`.
+import { isoDaySchema, wallTimeSchema } from "./org-time";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 
 export const jpcEventListItemSchema = z.object({
   id: z.number(),
   title: z.string(),
+  /** The stored instant — for ordering only. Never formatted on the device. */
   date: z.string(),
   endDate: z.string().nullable(),
+  /** The org-calendar day `date` falls on, computed server-side (ruling X13). */
+  dayKey: isoDaySchema,
+  endDayKey: isoDaySchema.nullable(),
+  /** Org wall-clock start, `HH:mm`; null exactly when `allDay`. */
+  time: wallTimeSchema.nullable(),
   /**
    * Derived once, server-side, against the organisation timezone (ruling C2,
    * spec 15 §10 item 6). v1 re-ran `getHours() !== 0 || getMinutes() !== 0` in
@@ -1228,28 +1282,34 @@ export const jpcEventDetailSchema = jpcEventListItemSchema.extend({
 });
 export type JpcEventDetail = z.infer<typeof jpcEventDetailSchema>;
 
+/**
+ * Org wall-clock fields, not an instant (D-15.6, ruling X13). The server
+ * composes the instant in `config.orgTimezone`; `time: null` means all-day and
+ * is stored as org midnight — no `allDay` column exists or can be added (C1).
+ */
 const eventWriteBase = z.object({
   title: z.string().trim().min(1).max(200),
-  /** A full ISO instant, composed client-side (spec 15 §10 item 7). */
-  date: z.string().datetime({ offset: true }),
-  endDate: z.string().datetime({ offset: true }).nullable().default(null),
-  /**
-   * No column exists and none can be added (ruling C1), so midnight stays the
-   * encoding — but the server normalises to midnight *in the organisation
-   * timezone* rather than trusting whatever instant a device composed.
-   */
-  allDay: z.boolean().default(false),
+  day: isoDaySchema,
+  time: wallTimeSchema.nullable().default(null),
+  endDay: isoDaySchema.nullable().default(null),
   description: z.string().max(2000).nullable().default(null),
   url: z.string().url().nullable().default(null),
   visibility: jpcVisibilitySchema,
   seasonId: z.number().int().positive().nullable().default(null),
 });
 
-function refineEvent(v: z.infer<typeof eventWriteBase>, ctx: z.RefinementCtx): void {
-  if (v.endDate && new Date(v.endDate).getTime() < new Date(v.date).getTime()) {
+/**
+ * Exported so the PATCH handler re-runs the same two rules against the merged
+ * row. ISO days compare correctly as strings.
+ */
+export function refineEvent(
+  v: { day: string; endDay: string | null; visibility: string; seasonId: number | null },
+  ctx: z.RefinementCtx,
+): void {
+  if (v.endDay !== null && v.endDay < v.day) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["endDate"],
+      path: ["endDay"],
       message: "End must be on or after the start.",
     });
   }
@@ -1268,17 +1328,57 @@ export type CreateJpcEventBody = z.output<typeof createJpcEventRequestSchema>;
 /**
  * A partial, unlike v1 — whose update reused the create schema, so an edit had
  * to resend every field. Both refinements re-apply against the *merged* row in
- * the route, not against the patch, because `{ visibility: "SEASON" }` alone
- * cannot know whether the stored row already has a season.
+ * the route (`mergedEventSchema` below), not against the patch, because
+ * `{ visibility: "SEASON" }` alone cannot know whether the stored row already
+ * has a season. `.partial()` wraps each defaulted field in an optional, so an
+ * omitted field parses to `undefined` and does not reset the stored value.
  */
 export const updateJpcEventRequestSchema = eventWriteBase.partial();
 export type UpdateJpcEventBody = z.output<typeof updateJpcEventRequestSchema>;
 
-export const eventListQuerySchema = z.object({
-  from: z.string().datetime({ offset: true }).optional(),
-  to: z.string().datetime({ offset: true }).optional(),
-});
+/** The PATCH handler parses `{ ...storedAsWallClock, ...patch }` with this. */
+export const mergedEventSchema = eventWriteBase.superRefine(refineEvent);
+
+/**
+ * The window bounds stored instants and carries no day semantics, so instants
+ * are right here. Omitted, the server picks the default (D-15.5).
+ */
+export const eventListQuerySchema = z
+  .object({
+    from: z.string().datetime({ offset: true }).optional(),
+    to: z.string().datetime({ offset: true }).optional(),
+    /**
+     * Spec 19 §7 (dashboards): the lower bound becomes the start of *today in
+     * the org zone* on `(endDate ?? date)` — v1's card filter, moved server-side
+     * and out of the host's zone (spec 19 R8, ruling C2/X13). Not combinable
+     * with `from`, which would make the bound ambiguous.
+     */
+    upcoming: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((v) => v === "true"),
+    /** Cap on `events` (spec 19 §7: 1–20). `total` is counted before it. */
+    limit: z.coerce.number().int().min(1).max(20).optional(),
+  })
+  .refine((q) => !(q.upcoming && q.from !== undefined), {
+    message: "Use either upcoming or from, not both.",
+    path: ["from"],
+  });
 export type EventListQuery = z.output<typeof eventListQuerySchema>;
+
+/**
+ * `GET /events`. `total` is the number of visible events in the window
+ * *before* `limit` — the SUPER dashboard tile reads it from the same response
+ * the card renders, so the tile and the card cannot disagree (spec 19 D19/R15).
+ */
+export const jpcEventListResponseSchema = z.object({
+  events: z.array(jpcEventListItemSchema),
+  total: z.number().int().min(0),
+});
+export type JpcEventListResponse = z.infer<typeof jpcEventListResponseSchema>;
+
+export const deleteJpcEventResponseSchema = z.object({ deleted: z.literal(true) });
+
 ```
 
 - [ ] **Step 7: Export and verify**
@@ -1291,16 +1391,18 @@ export * from "./forum";
 export * from "./event";
 export * from "./video-time";
 export * from "./youtube";
-export * from "./forum-text";
 ```
 
-Run: `pnpm --filter @space/shared jest` → all four suites PASS.
+(`./html-text` is already exported — Plan 8.)
+
+Run: `pnpm --filter @space/shared jest` → the four new suites PASS (and Plan 8's
+`html-text` suite still passes — this plan does not touch it).
 Run: `pnpm turbo lint typecheck --filter=@space/shared` → clean.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/shared && git commit -m "feat(shared): video-quiz, forum and event contracts plus timestamp/YouTube/forum-text helpers"
+git add packages/shared && git commit -m "feat(shared): video-quiz, forum and event contracts plus timestamp and YouTube helpers"
 ```
 
 ---
@@ -1316,10 +1418,10 @@ streams touch the same file.
 - Create: `apps/backend/src/routes/video-quiz.ts` (empty router)
 - Create: `apps/backend/src/routes/forum.ts` (empty router)
 - Create: `apps/backend/src/routes/events.ts` (empty router)
-- Modify: `apps/backend/src/app.ts` (three mounts + `PUT` in the CORS allowlist)
+- Modify: `apps/backend/src/app.ts` (three mounts; CORS already allows `PUT` — untouched)
 - Modify: `apps/backend/src/__tests__/integration/fixtures.ts` (event prefix + cleanup)
 - Modify: `apps/mobile/src/lib/query-keys.ts` (three factories)
-- Test: `apps/backend/src/__tests__/app.test.ts` (mounts answer, CORS allows PUT)
+- Test: `apps/backend/src/__tests__/app.test.ts` (unknown `/api/v1` paths stay `not_found`)
 - Test: `apps/backend/src/__tests__/integration/plan10-gates.test.ts` (new suite)
 
 **Interfaces:**
@@ -1335,47 +1437,49 @@ streams touch the same file.
   - fixtures `testEventTitle(): string`
   - `queryKeys.videoQuiz`, `queryKeys.forum`, `queryKeys.events`
 
-- [ ] **Step 1: Failing unit test for the mounts**
+- [ ] **Step 1: A regression test for the X5 rule**
+
+The earlier draft of this step asserted a router count through Express's
+private `app._router` (Express 5 has no such property) and a CORS `PUT` that is
+already on main — neither could fail. Mounts are proved by the stream tasks'
+integration suites, which issue real requests to real routes. What this task
+*can* break is the 404 envelope for unknown paths: a router mounted at
+`/api/v1` with a router-wide `use(requireAuth)` turns every unknown
+`/api/v1/*` path into a 401. Pin that.
 
 Append to `apps/backend/src/__tests__/app.test.ts`:
 
 ```ts
-describe("plan 10 router mounts", () => {
-  it("mounts the three plan-10 routers", async () => {
-    // A router with no routes yet falls through to notFound exactly as an
-    // unmounted path does, so until the stream tasks add routes the only
-    // structural claim available is that the mounts exist. Each stream's own
-    // integration suite proves its routes answer.
-    const app = createApp();
-    const stack = (app as unknown as { _router: { stack: { name: string }[] } })._router.stack;
-    expect(stack.filter((l) => l.name === "router").length).toBeGreaterThanOrEqual(10);
-  });
-
-  it("allows PUT through CORS", async () => {
-    // PUT /submissions/by-assignment/:assignmentId already exists and this plan
-    // adds two more, but the allowlist never had PUT — a browser client's
-    // preflight would refuse every one of them.
-    const res = await request(createApp())
-      .options("/api/v1/assignments/1/forum/response")
-      .set("Origin", "http://localhost:8081")
-      .set("Access-Control-Request-Method", "PUT");
-    expect(res.headers["access-control-allow-methods"]).toMatch(/PUT/);
+describe("routers mounted on the shared /api/v1 prefix (ruling X5)", () => {
+  it("leaves an unknown /api/v1 path a not_found 404, not a 401", async () => {
+    // forumRouter and videoQuizRouter mount at /api/v1. If either ever gains a
+    // router-wide `use(requireAuth)`, this anonymous request is refused with
+    // 401 before it can reach the catch-all, and the envelope CLAUDE.md
+    // promises for unknown paths is gone.
+    const res = await request(createApp()).get("/api/v1/space-v2-no-such-route");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
   });
 });
 ```
 
-Run: `cd apps/backend && npx jest src/__tests__/app.test.ts` → FAIL (seven
-routers mounted, and no `PUT` in the allow-methods header).
+Run: `cd apps/backend && npx jest src/__tests__/app.test.ts` → PASS today (no
+router at `/api/v1` yet). Then, as the red check, temporarily add
+`app.use("/api/v1", Router().use(requireAuth))` in `createApp` → FAIL with 401;
+remove it. This is a regression guard, recorded as such in Task 11's mutation
+pass (item 9).
 
 - [ ] **Step 2: Create the three routers and mount them**
 
-Each new file is the same three lines; the comments differ:
+`forumRouter` and `videoQuizRouter` carry **no** router-level middleware; every
+route added in Tasks 3, 4, 6 and 7 lists `requireAuth` as its first handler
+(`forumRouter.get("/assignments/:id/forum", requireAuth, async (req, res) => …)`).
+`eventsRouter` owns `/api/v1/events` exclusively, so router-wide auth is allowed
+there by X5 and kept.
 
 ```ts
 // apps/backend/src/routes/video-quiz.ts
 import { Router } from "express";
-
-import { requireAuth } from "../middleware/require-auth";
 
 /**
  * Domain 13. Mounted at /api/v1 rather than under a single prefix because the
@@ -1383,27 +1487,29 @@ import { requireAuth } from "../middleware/require-auth";
  * session (`/sessions/:id/video-*`) while update and delete address a question
  * directly (`/video-questions/:questionId`).
  *
+ * Because the prefix is shared, `requireAuth` is attached to each route, never
+ * with `videoQuizRouter.use(...)` (ruling X5): a router-wide guard here would
+ * answer 401 for every unknown /api/v1 path and re-run auth for every router
+ * mounted after it.
+ *
  * Nothing here belongs to domain 12. Text quizzes own Quiz/QuizQuestion/
  * QuizAttempt/QuizAnswer/QuizGrade; this owns SessionVideoQuestion/
  * SessionVideoQuestionResponse/SessionVideoProgress. They share no table.
  */
 export const videoQuizRouter = Router();
-videoQuizRouter.use(requireAuth);
 ```
 
 ```ts
 // apps/backend/src/routes/forum.ts
 import { Router } from "express";
 
-import { requireAuth } from "../middleware/require-auth";
-
 /**
  * Domain 14. Mounted at /api/v1 because the thread hangs off an assignment
  * (`/assignments/:id/forum*`) while a comment is addressed on its own
- * (`/forum/comments/:commentId`).
+ * (`/forum/comments/:commentId`). Per-route `requireAuth` only (ruling X5) —
+ * see video-quiz.ts for why.
  */
 export const forumRouter = Router();
-forumRouter.use(requireAuth);
 ```
 
 ```ts
@@ -1412,42 +1518,30 @@ import { Router } from "express";
 
 import { requireAuth } from "../middleware/require-auth";
 
-/** Domain 15. Mounted at /api/v1/events — one parent, unlike the other two. */
+/**
+ * Domain 15. Mounted at /api/v1/events, a prefix this router owns exclusively,
+ * so router-wide auth is permitted (ruling X5).
+ */
 export const eventsRouter = Router();
 eventsRouter.use(requireAuth);
 ```
 
-In `app.ts`, add the imports beside the existing route imports and change two
-things:
+In `app.ts`, add the three imports beside the existing route imports and,
+immediately **above** `app.use("/api/v1/seasons", seasonsRouter);`:
 
 ```ts
-  app.use(
-    cors({
-      origin: config.mobileAppOrigin,
-      // PUT belongs here: PUT /api/v1/submissions/by-assignment/:assignmentId
-      // has existed since Plan 1 and the forum response and video progress
-      // endpoints are PUTs too. A native client sends no preflight, so the
-      // omission was invisible — a browser client would have every PUT refused.
-      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    }),
-  );
-```
-
-and, immediately **above** `app.use("/api/v1/seasons", seasonsRouter);`:
-
-```ts
-  // Mounted at the version root because their paths span two parents each.
-  // Registered ahead of the prefixed routers so the more specific path wins
-  // outright rather than relying on the prefixed router falling through.
+  // forum + video-quiz: mounted at the version root because their paths span
+  // two parents each. They carry no router-level middleware (per-route
+  // requireAuth, ruling X5), so a request that matches none of their routes
+  // falls straight through to the prefixed routers and the catch-all 404.
   app.use("/api/v1", forumRouter);
   app.use("/api/v1", videoQuizRouter);
   app.use("/api/v1/events", eventsRouter);
 ```
 
-Run the app test → PASS. (If Express 5's internal `_router` shape makes the
-count assertion brittle, replace it with a check that
-`app.options("/api/v1/events")` returns a non-404 status — but do not weaken it
-to a test that would pass with the mounts removed.)
+The CORS call is not touched — `PUT` is already in its `methods` list.
+
+Run the app test → PASS.
 
 - [ ] **Step 3: Export `groupIdInSeason`**
 
@@ -1665,16 +1759,32 @@ describe("canCommentOnForumSubmission", () => {
     // v1 read only `assignmentId` from the target, so a student who satisfied
     // the group and post-first rules could comment on a group-mate's unposted
     // draft by naming its sequential id.
+    //
+    // The draft's author is in groupMate's OWN group (A), so the group check
+    // passes and the DRAFT rule is the only thing that can refuse — an
+    // outsider's draft would be refused by the group mismatch and mask a
+    // removed DRAFT check.
+    const draftAuthorRow = await createTestUser("fdraftauthor", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { seasonId, studentUserId: draftAuthorRow.id, groupId: groupAId, status: "ACTIVE" },
+    });
     const draft = await db.submission.create({
       data: {
         assignmentId,
-        studentUserId: outsider.userId,
+        studentUserId: draftAuthorRow.id,
         publicId: newPublicId(),
         status: "DRAFT",
       },
       select: { id: true },
     });
     expect(await canCommentOnForumSubmission(groupMate, draft.id)).toBe(false);
+    // Control: the same author's post, once SUBMITTED, is commentable — so the
+    // refusal above is the DRAFT rule and nothing else.
+    await db.submission.update({
+      where: { id: draft.id },
+      data: { status: "SUBMITTED", submittedAt: new Date(), text: "<p>space-v2-test</p>" },
+    });
+    expect(await canCommentOnForumSubmission(groupMate, draft.id)).toBe(true);
   });
 
   it("refuses when comments are switched off on the assignment", async () => {
@@ -2009,6 +2119,9 @@ Append three factories inside `queryKeys` in
   events: {
     all: ["events"] as const,
     list: () => [...queryKeys.events.all, "list"] as const,
+    // Plan 18's UpcomingEventsCard (spec 19 §7). Under `all`, so every event
+    // write's prefix invalidation refreshes the dashboards too.
+    upcoming: (limit: number) => [...queryKeys.events.all, "upcoming", limit] as const,
     detail: (id: number) => [...queryKeys.events.all, "detail", id] as const,
   },
 ```
@@ -2019,7 +2132,7 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend --filter=@spac
 Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern plan10-gates` → PASS.
 
 ```bash
-git add apps/backend apps/mobile && git commit -m "feat(backend): plan-10 permission gates, router mounts, PUT in CORS, event-safe fixtures"
+git add apps/backend apps/mobile && git commit -m "feat(backend): plan-10 permission gates, router mounts, event-safe fixtures"
 ```
 
 ---
@@ -2515,7 +2628,9 @@ import { parseId } from "../lib/parse-id";
 // Task 4 adds canManageSessionVideo and staffScopeForSeason to this import.
 import { hasActiveEnrollment } from "../lib/permissions";
 import { loadStudentVideoQuiz } from "../lib/queries/video-quiz";
-import { requireUser } from "../middleware/require-auth";
+// requireAuth is passed to every route individually — this router shares the
+// /api/v1 prefix (ruling X5).
+import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
   submitVideoAnswerRequestSchema,
   videoProgressRequestSchema,
@@ -2550,7 +2665,7 @@ async function requireStudentOnSession(
   return session;
 }
 
-videoQuizRouter.get("/sessions/:id/video-quiz", async (req, res) => {
+videoQuizRouter.get("/sessions/:id/video-quiz", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const sessionId = parseId(req.params.id);
   if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
@@ -2575,8 +2690,10 @@ videoQuizRouter.get("/sessions/:id/video-quiz", async (req, res) => {
 });
 ```
 
-`POST /sessions/:id/video-quiz/answers` — the order of the checks *is* the
-behaviour, so implement them in exactly this sequence:
+`POST /sessions/:id/video-quiz/answers` — registered as
+`videoQuizRouter.post("/sessions/:id/video-quiz/answers", requireAuth, async (req, res) => { … })`
+(per-route auth, ruling X5). The order of the checks *is* the behaviour, so
+implement them in exactly this sequence:
 
 1. `parseId`, then `requireStudentOnSession`.
 2. Parse the body with `submitVideoAnswerRequestSchema`; 400 `bad_request`.
@@ -2658,7 +2775,7 @@ behaviour, so implement them in exactly this sequence:
 `PUT /sessions/:id/video-quiz/progress`:
 
 ```ts
-videoQuizRouter.put("/sessions/:id/video-quiz/progress", async (req, res) => {
+videoQuizRouter.put("/sessions/:id/video-quiz/progress", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const sessionId = parseId(req.params.id);
   if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
@@ -2920,13 +3037,34 @@ describe("GET /api/v1/sessions/:id/video-quiz/results", () => {
   });
 
   it("gives a leader only their own group's members", async () => {
+    // An ACTIVE student in a group this leader does NOT lead. Without them the
+    // assertion below would pass for an admin too (every row would be in-group
+    // by construction), so the test could not tell a scoped read from a
+    // season-wide one.
+    const groupB = await db.group.create({
+      data: { seasonId, name: "Group B" },
+      select: { id: true },
+    });
+    const outsider = await createTestUser("vqoutsider", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { seasonId, studentUserId: outsider.id, groupId: groupB.id, status: "ACTIVE" },
+    });
+
     const res = await request(app)
       .get(`/api/v1/sessions/${sessionId}/video-quiz/results`)
       .set("authorization", `Bearer ${leaderToken}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.rows.every((r: { groupId: number | null }) => r.groupId !== null)).toBe(
-      true,
-    );
+    const ids = res.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId);
+    expect(ids).toContain(studentId);
+    expect(ids).not.toContain(outsider.id);
+
+    // The control: the season admin does see the outsider.
+    const asAdmin = await request(app)
+      .get(`/api/v1/sessions/${sessionId}/video-quiz/results`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(
+      asAdmin.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId),
+    ).toContain(outsider.id);
   });
 
   it("refuses a student outright", async () => {
@@ -3053,9 +3191,12 @@ export async function loadVideoQuizResults(
 
 - [ ] **Step 3: The authoring routes**
 
-All four authoring handlers begin the same way: resolve the session (for the two
-session-scoped paths) or the question's `sessionId` (for the two question-scoped
-ones), then `canManageSessionVideo`. A shared local helper above the routes:
+Every handler below is registered with `requireAuth` as its first handler
+(`videoQuizRouter.<verb>(path, requireAuth, async (req, res) => …)`, ruling X5);
+the PATCH is written out in full as the pattern. All four authoring handlers
+begin the same way: resolve the session (for the two session-scoped paths) or
+the question's `sessionId` (for the two question-scoped ones), then
+`canManageSessionVideo`. A shared local helper above the routes:
 
 ```ts
 /** The admin row shape — the only place `correctIndex` may be selected. */
@@ -3107,7 +3248,7 @@ function toAdminRow(q: {
 - **`PATCH /video-questions/:questionId`** — the re-grade:
 
 ```ts
-videoQuizRouter.patch("/video-questions/:questionId", async (req, res) => {
+videoQuizRouter.patch("/video-questions/:questionId", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const questionId = parseId(req.params.questionId);
   if (questionId === null) return apiError(res, "bad_request", "Invalid question id.", 400);
@@ -3216,13 +3357,12 @@ git add apps/backend && git commit -m "feat(backend): video question authoring w
 - Create: `apps/mobile/src/hooks/use-video-quiz.ts`
 - Create: `apps/mobile/src/components/VideoQuizPlayer.tsx`
 - Create: `apps/mobile/src/components/VideoQuestionsEditor.tsx`
-- Modify: `apps/mobile/app/(app)/session/[id].tsx` (Plan 4's screen gains a video section)
+- Modify: `apps/mobile/app/(app)/session/[id]/index.tsx` (Plan 4's screen as Plan 16 Task 7 replaced it — gains a video section)
 - Modify: `apps/mobile/package.json` (two deps)
-- Modify: `apps/mobile/jest.config.js` (transform allowlist)
 - Test: `apps/mobile/src/__tests__/video-quiz-screen.test.tsx`
 
 **Interfaces:**
-- Consumes: Plan 4's `useSessionDetail(id)` and the `session/[id]` route; `queryKeys.videoQuiz` (Task 2); `studentVideoQuizSchema`, `videoQuestionAdminSchema`, `videoQuizResultsSchema`, `formatTimestamp`, `parseTimestamp`, `MAX_VIDEO_SECONDS` (Task 1); Task 3/4's endpoints.
+- Consumes: Plan 4's `useSessionDetail(id)` and the `session/[id]` route; `queryKeys.videoQuiz` (Task 2); `studentVideoQuizSchema`, `videoQuestionAdminSchema`, `videoQuizResultsSchema`, `createVideoQuestionResponseSchema`, `updateVideoQuestionResponseSchema`, `deleteVideoQuestionResponseSchema`, `formatTimestamp`, `parseTimestamp`, `MAX_VIDEO_SECONDS` (Task 1); Task 3/4's endpoints.
 - Produces: `useStudentVideoQuiz(sessionId)`, `useSubmitVideoAnswer(sessionId)`, `useSaveVideoProgress(sessionId)`, `useVideoQuestions(sessionId, enabled)`, `useVideoQuestionWrites(sessionId)`, `useVideoQuizResults(sessionId, enabled)`; the components `<VideoQuizPlayer />` and `<VideoQuestionsEditor />`.
 
 - [ ] **Step 1: Install the player and make Jest tolerate it**
@@ -3249,10 +3389,11 @@ cd apps/mobile && npx expo install react-native-webview && pnpm add react-native
   argument for the server-side ordering rule (D-13.2) and the reason the client
   barrier is a courtesy, not a control.
 
-Add `react-native-youtube-iframe` and `react-native-webview` to the
-`transformIgnorePatterns` allowlist in `jest.config.js` (extend the existing
-alternation, do not replace it), and mock the player in tests:
-`jest.mock("react-native-youtube-iframe", () => "YoutubePlayer");`
+**No `jest.config.js` change.** The existing `transformIgnorePatterns` entry
+`(jest-)?react-native` is an unanchored prefix inside the negative lookahead, so
+`react-native-youtube-iframe` and `react-native-webview` are already
+transformed. The player is mocked in the test (Step 2) as a component exposing
+the three imperative methods the screen calls.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -3267,13 +3408,31 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "12" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
-jest.mock("react-native-youtube-iframe", () => "YoutubePlayer");
+// The session screen statically imports Plan 14's StudentCheckInCard → QrScanner
+// → expo-camera (a native module). Plan 14's stand-in, as every suite that
+// renders session/[id] uses it.
+jest.mock("expo-camera", () => require("./helpers/expo-camera"));
+// A component, not a string: the player calls seekTo/getDuration/getCurrentTime
+// through its ref, and a host-string mock has none of them.
+jest.mock("react-native-youtube-iframe", () => {
+  const React = jest.requireActual<typeof import("react")>("react");
+  const MockPlayer = React.forwardRef<object, object>((_props, ref) => {
+    React.useImperativeHandle(ref, () => ({
+      getCurrentTime: () => Promise.resolve(0),
+      getDuration: () => Promise.resolve(600),
+      seekTo: () => undefined,
+    }));
+    return null;
+  });
+  return { __esModule: true, default: MockPlayer };
+});
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
+import { VideoQuizPlayer } from "../components/VideoQuizPlayer";
 import { renderWithProviders } from "./helpers/render";
 
-import SessionDetailScreen from "../../app/(app)/session/[id]";
+import SessionDetailScreen from "../../app/(app)/session/[id]/index";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -3283,6 +3442,9 @@ const sessionDetail = {
   title: "Week three",
   description: null,
   startsAt: "2099-03-01T18:00:00.000Z",
+  // Plan 16's sessionDetailSchema fields (X13): the org day and wall time.
+  dayKey: "2099-03-01",
+  startTime: "20:00",
   durationMinutes: 90,
   location: null,
   youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -3293,6 +3455,7 @@ const sessionDetail = {
   checkInOpen: false,
   myAttendance: null,
   canMarkAttendance: false,
+  canManageCheckIn: false, // Plan 4's flag — sessionDetailSchema requires it
 };
 
 const question = (id: number, atSeconds: number, answered = false) => ({
@@ -3319,12 +3482,12 @@ const quiz = {
 };
 
 const studentSession = {
-  user: { id: 9, name: "S", email: "s@jpc.test", role: "STUDENT" as const },
+  user: { id: 9, name: "S", email: "s@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
 
 const adminSession = {
-  user: { id: 2, name: "A", email: "a@jpc.test", role: "ADMIN" as const },
+  user: { id: 2, name: "A", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
   scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
 };
 
@@ -3355,11 +3518,10 @@ describe("student video quiz", () => {
   });
 
   it("opens the question modal at the barrier and posts the answer", async () => {
-    get.mockImplementation((url: string) =>
-      url === "/api/v1/sessions/12"
-        ? Promise.resolve({ data: { data: sessionDetail } })
-        : Promise.resolve({ data: { data: quiz } }),
-    );
+    // Rendered directly with an injected clock: a webview reports no playhead
+    // under Jest. The clock reads 31 s, past question 1's barrier (30 s), so
+    // the component's ordinary 400 ms poll opens the real modal on its own —
+    // no test-only branch, and the barrier logic under test is the shipped one.
     post.mockResolvedValue({
       data: {
         data: {
@@ -3372,12 +3534,13 @@ describe("student video quiz", () => {
       },
     });
 
-    renderWithProviders(<SessionDetailScreen />);
+    renderWithProviders(
+      <VideoQuizPlayer sessionId={12} quiz={quiz} readCurrentTime={async () => 31} />,
+    );
 
-    // The barrier is exercised through the test hook the player exposes for
-    // exactly this reason: the webview cannot report a playhead under Jest.
-    fireEvent.press(await screen.findByText("Question 1"));
-    fireEvent.press(await screen.findByText("alpha"));
+    // The modal opens by itself; the test only waits for the prompt.
+    expect(await screen.findByText("Question 1", {}, { timeout: 3000 })).toBeTruthy();
+    fireEvent.press(screen.getByText("alpha"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/video-quiz/answers", {
@@ -3519,8 +3682,11 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/video-quiz-screen.test.tsx` → 
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { z } from "zod";
 import {
+  createVideoQuestionResponseSchema,
+  deleteVideoQuestionResponseSchema,
   studentVideoQuizSchema,
   submitVideoAnswerResponseSchema,
+  updateVideoQuestionResponseSchema,
   videoProgressResponseSchema,
   videoQuestionAdminSchema,
   videoQuizResultsSchema,
@@ -3606,7 +3772,7 @@ export function useVideoQuestionWrites(sessionId: number) {
   const create = useMutation({
     mutationFn: async (input: VideoQuestionInput) => {
       const res = await apiClient.post(`/api/v1/sessions/${sessionId}/video-questions`, input);
-      return res.data.data as { question: VideoQuestionAdmin };
+      return createVideoQuestionResponseSchema.parse(res.data.data);
     },
     onSuccess: invalidate,
   });
@@ -3614,11 +3780,7 @@ export function useVideoQuestionWrites(sessionId: number) {
   const update = useMutation({
     mutationFn: async (vars: { questionId: number; input: VideoQuestionInput }) => {
       const res = await apiClient.patch(`/api/v1/video-questions/${vars.questionId}`, vars.input);
-      return res.data.data as {
-        question: VideoQuestionAdmin;
-        regradedCount: number;
-        pointsChanged: boolean;
-      };
+      return updateVideoQuestionResponseSchema.parse(res.data.data);
     },
     onSuccess: invalidate,
   });
@@ -3626,7 +3788,7 @@ export function useVideoQuestionWrites(sessionId: number) {
   const remove = useMutation({
     mutationFn: async (questionId: number) => {
       const res = await apiClient.delete(`/api/v1/video-questions/${questionId}`);
-      return res.data.data as { deleted: true; responsesRemoved: number };
+      return deleteVideoQuestionResponseSchema.parse(res.data.data);
     },
     onSuccess: invalidate,
   });
@@ -3714,14 +3876,11 @@ export function useVideoQuizResults(
     `() => playerRef.current?.getCurrentTime() ?? Promise.resolve(0)`. A webview
     reports no playhead under Jest, so the test passes `async () => 31` and the
     ordinary poll opens the real modal on its own tick — no test-only branch in
-    the component, and the barrier logic under test is the shipped one.
-    **Adjust Step 2's test accordingly when implementing:** pass
-    `readCurrentTime` through the screen is not possible, so in that test render
-    `<VideoQuizPlayer sessionId={12} quiz={quiz} readCurrentTime={async () => 31} />`
-    directly for the barrier case (keeping the screen-level cases as written),
-    and drop the `fireEvent.press(await screen.findByText("Question 1"))` line —
-    the modal opens by itself, so the test only waits for the prompt and then
-    presses "alpha".
+    the component, and the barrier logic under test is the shipped one (Step 2's
+    barrier case renders the component directly for this reason). The poll
+    starts on mount; the deadlock guard (7) stops it only once `getDuration()`
+    has answered, so a player that never fires `onReady` still gates.
+    Export the component as a named export, `export function VideoQuizPlayer`.
 
 - [ ] **Step 5: `VideoQuestionsEditor`**
 
@@ -3755,14 +3914,27 @@ simple table: student name, `answeredCount / questionCount`,
 `earnedPoints / totalPoints`, and a completion tick. This is the surface v1 has
 for nobody.
 
-- [ ] **Step 6: Wire both into `session/[id].tsx`**
+- [ ] **Step 6: Wire both into `session/[id]/index.tsx`**
 
-Below Plan 4's existing header and check-in console, add one section, driven by
-role and by the session's `youtubeUrl`:
+The file is **Plan 16 Task 7's** replacement of Plan 4's screen (header from
+`dayKey`/`startTime`, check-in console with Regenerate, "Edit session", the
+session-quiz card, Plan 4's leader roster), plus **Plan 14 Task 10's** student
+`StudentCheckInCard` branch. Keep all of it. Below the
+session-quiz card, add one section, driven by role and by the session's
+`youtubeUrl`:
 
 ```tsx
   const isStudent = user?.role === "STUDENT";
-  const canAuthorVideo = detail.canMarkAttendance && !isStudent;
+  // Mirrors canManageSessionVideo exactly: SUPER, or an ADMIN of this season.
+  // NOT `canMarkAttendance` — that flag admits a group LEADER, who may not
+  // author questions, and is false on a session an admin has not opened
+  // check-in for. The server enforces the gate regardless; this only decides
+  // whether the editor (and its answer-key read) is ever mounted.
+  const canAuthorVideo =
+    user?.role === "SUPER" ||
+    (user?.role === "ADMIN" && (scopes?.seasonAdminIds ?? []).includes(detail.seasonId));
+  // Results: authors, plus a LEADER (the server narrows a leader to their groups).
+  const canSeeResults = canAuthorVideo || user?.role === "LEADER";
   const quiz = useStudentVideoQuiz(sessionId, isStudent && detail.youtubeUrl !== null);
 ```
 
@@ -3771,11 +3943,12 @@ role and by the session's `youtubeUrl`:
   When the quiz loads but `questions.length === 0`, render the plain
   "Watch on YouTube" button and no player — same fallback as v1's
   `hasInteractiveVideo` branch (R38), minus the silence.
-- Staff who may manage the season (`canManageAssignment`-equivalent — use
-  `detail.canMarkAttendance` **and** a non-LEADER role, since authoring is
-  ADMIN/SUPER only and the server enforces it regardless):
-  `<VideoQuestionsEditor sessionId={sessionId} />`. A LEADER gets the results
-  table only.
+- `canAuthorVideo` (SUPER, or ADMIN of the session's season):
+  `<VideoQuestionsEditor sessionId={sessionId} />`, which also renders the
+  results table. `canSeeResults` without `canAuthorVideo` (a LEADER): the
+  results table only — `useVideoQuizResults(sessionId, canSeeResults)` — and
+  never `useVideoQuestions`, whose payload carries the answer key. `user` and
+  `scopes` come from `useSessionStore`.
 - No `youtubeUrl` at all: render nothing. Do not offer to author questions
   against a session with no video — v1 does exactly that and lets an admin
   build a full quiz that no student can ever reach (R17).
@@ -3797,16 +3970,28 @@ git add apps/mobile && git commit -m "feat(mobile): interactive video quiz playe
 **Files:**
 - Create: `apps/backend/src/lib/queries/forum.ts`
 - Modify: `apps/backend/src/routes/forum.ts`
+- Modify: `apps/backend/src/routes/submissions.ts` (refuse FORUM on the two generic writers — Step 4b)
 - Modify: `apps/backend/src/docs/openapi.ts`
 - Test: `apps/backend/src/__tests__/integration/forum-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `forumAudienceFor`, `ForumAudience`, `groupIdInSeason` (Task 2); `countWords`, `plainTextToHtml`, `htmlToPlainText`, `submitForumResponseRequestSchema`, `forumFeedQuerySchema` (Task 1); `newPublicId`.
+- Consumes: `forumAudienceFor`, `ForumAudience`, `groupIdInSeason` (Task 2); `countWords`, `submitForumResponseRequestSchema`, `forumFeedQuerySchema` (Task 1); `plainTextToHtml`, `htmlToPlainText` (Plan 8's `packages/shared/src/html-text.ts`, ruling X3 — imported from the shared index by relative path, X12); `newPublicId`.
 - Produces:
+  - `loadForumAssignment(assignmentId): Promise<ForumAssignmentRow | null>` in `lib/queries/forum.ts` — the one "is this a live FORUM assignment" lookup; every forum route calls it **before** any audience check, so missing / deleted / non-FORUM is always 404
   - `loadForumView(assignmentId, user, audience, query): Promise<ForumViewData | null>` and `ForumViewData` in `lib/queries/forum.ts`
   - `displayNameFor(name: string | null): string` (exported from the same module — the one place the no-email rule is applied)
   - `GET /api/v1/assignments/:id/forum`
   - `PUT /api/v1/assignments/:id/forum/response`
+  - `409 use_forum_endpoint` from `PUT /api/v1/submissions/by-assignment/:assignmentId` and `PATCH /api/v1/submissions/:publicId` for a FORUM assignment
+
+**Status-code rule for the whole forum surface (decided here, applied in Tasks 6
+and 7):** the assignment is resolved first — missing, soft-deleted or not
+`FORUM` → **404 `not_found`** for every caller; only then does the audience gate
+run → **403 `forbidden`**. An earlier draft let `forumAudienceFor` (which also
+returns null for a non-FORUM id) answer first, so the handler said 403 while the
+test said 404. The assignment's *type* is not secret — Plan 1's assignment
+detail already returns it to anyone targeted — so ordering existence before
+audience leaks nothing.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -4048,6 +4233,20 @@ describe("PUT /api/v1/assignments/:id/forum/response", () => {
 });
 
 describe("GET /api/v1/assignments/:id/forum", () => {
+  it("404s a STANDARD assignment for student and staff alike", async () => {
+    const standard = await db.assignment.create({
+      data: { seasonId, title: "space-v2-test-standard-get", type: "STANDARD", isAllGroups: true },
+      select: { id: true },
+    });
+    for (const token of [studentAToken, adminToken]) {
+      const res = await request(app)
+        .get(`/api/v1/assignments/${standard.id}/forum`)
+        .set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe("not_found");
+    }
+  });
+
   it("renders for a student with no submission row at all", async () => {
     const res = await request(app)
       .get(`/api/v1/assignments/${assignmentId}/forum`)
@@ -4267,12 +4466,35 @@ export function displayNameFor(name: string | null): string {
 }
 ```
 
+```ts
+export interface ForumAssignmentRow {
+  id: number;
+  seasonId: number;
+  dueAt: Date | null;
+  forumMinWords: number | null;
+  forumAllowComments: boolean;
+}
+
+/**
+ * The one existence check for the forum surface. `type: "FORUM"` in the where
+ * is what makes every forum endpoint refuse a standard assignment (404) rather
+ * than serve an empty thread — and because routes call this before
+ * `forumAudienceFor`, the answer is 404 for every caller, never a 403 that
+ * depends on who is asking.
+ */
+export async function loadForumAssignment(assignmentId: number): Promise<ForumAssignmentRow | null> {
+  return db.assignment.findFirst({
+    where: { id: assignmentId, deletedAt: null, type: "FORUM" },
+    select: { id: true, seasonId: true, dueAt: true, forumMinWords: true, forumAllowComments: true },
+  });
+}
+```
+
 `loadForumView` runs, in order:
 
-1. `db.assignment.findFirst({ where: { id: assignmentId, deletedAt: null, type: "FORUM" }, select: { id, dueAt, forumMinWords, forumAllowComments, seasonId } })`.
-   Null → return null (the route 404s). **`type: "FORUM"` in the `where` is what
-   makes this endpoint refuse a standard assignment rather than serve an empty
-   thread.**
+1. `loadForumAssignment(assignmentId)`. Null → return null (the route has
+   already 404'd on the same call; this is the race where the row was deleted
+   between the two reads, and it 404s too).
 2. **Own response** — only for `audience.kind === "student"`, and looked up by
    `(assignmentId, callerUserId)`, never by an id the client supplied. v1's
    `loadForumView` takes `ownSubmissionId` as an argument and echoes it back
@@ -4348,20 +4570,30 @@ export function displayNameFor(name: string | null): string {
    staff removal power unreachable (spec 14 R52). At most three comments per
    post are inlined, so the per-row await is bounded; Task 7's
    `listForumComments` computes it the same way for the same reason. `canComment`
-   per post is `assignment.forumAllowComments && (audience.kind === "staff" ||
-   own.posted)` — the same conditions the POST enforces, so the affordance and
-   the gate cannot drift.
+   per post is `assignment.forumAllowComments && (audience.kind === "student" ?
+   own.posted : user.role !== "MENTOR")` — the same conditions the POST
+   enforces (`canCommentOnForumSubmission` refuses MENTOR, who reads every group
+   but stays read-only), so the affordance and the gate cannot drift. A staff
+   audience otherwise only contains posts the caller may comment on: a LEADER's
+   audience is exactly the groups they lead, and SUPER / the season ADMIN pass
+   the gate outright.
 
 - [ ] **Step 3: The two routes**
 
 ```ts
-forumRouter.get("/assignments/:id/forum", async (req, res) => {
+// Per-route requireAuth: this router shares the /api/v1 prefix (ruling X5).
+forumRouter.get("/assignments/:id/forum", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const assignmentId = parseId(req.params.id);
   if (assignmentId === null) return apiError(res, "bad_request", "Invalid assignment id.", 400);
 
   const parsedQuery = forumFeedQuerySchema.safeParse(req.query);
   if (!parsedQuery.success) return apiError(res, "bad_request", "Invalid query.", 400);
+
+  // Existence first, for everyone (the status-code rule above).
+  if ((await loadForumAssignment(assignmentId)) === null) {
+    return apiError(res, "not_found", "Assignment not found.", 404);
+  }
 
   // The gate answers "may this caller read this thread, and whose posts" in one
   // call. v1 answers it in a page's early returns and a query's where clause.
@@ -4374,16 +4606,18 @@ forumRouter.get("/assignments/:id/forum", async (req, res) => {
 });
 ```
 
-`PUT /assignments/:id/forum/response`:
+`PUT /assignments/:id/forum/response` — registered as
+`forumRouter.put("/assignments/:id/forum/response", requireAuth, async (req, res) => { … })`:
 
 1. `parseId`; `user.role !== "STUDENT"` → 403 `"Only a student can post a response."`
    (v1's post action has **no** role check at all — R7).
-2. `forumAudienceFor(user, assignmentId)`; null or `kind !== "student"` → 403.
+2. `loadForumAssignment(assignmentId)` → 404 when missing, deleted or not
+   `FORUM` (the status-code rule: existence before audience). Keep the row; its
+   `forumMinWords` feeds step 5.
+3. `forumAudienceFor(user, assignmentId)`; null or `kind !== "student"` → 403.
    This is where targeting, enrolment and season access are enforced, and it is
    the only place they can be now that no page render precedes the write
    (spec 14 D1/D5).
-3. Load the assignment for `type`, `forumMinWords` — 404 when missing, deleted
-   or not `FORUM`.
 4. Parse with `submitForumResponseRequestSchema` → 400.
 5. Word gate on the **plain text**, before wrapping, so the count the client
    showed and the count the server applied are the same string:
@@ -4445,16 +4679,110 @@ forumRouter.get("/assignments/:id/forum", async (req, res) => {
 
 - [ ] **Step 4:** Run the suite → PASS; `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
 
+- [ ] **Step 4a: Failing tests — the generic submission writers refuse FORUM**
+
+The forum rules (post-to-unlock needs a real post, `forumMinWords`, escaped
+storage) live only in the PUT above. `routes/submissions.ts` already exposes two
+writers that would accept a FORUM assignment and skip all three: create-or-fetch
+an empty row, then `PATCH {submit:true}` — an empty `SUBMITTED` post that
+unlocks every peer's work (D-14.5), with raw text stored where v1 renders HTML
+(C11). Append to `forum-routes.test.ts`:
+
+```ts
+describe("the generic submission routes refuse a FORUM assignment", () => {
+  it("PUT /submissions/by-assignment/:id → 409 use_forum_endpoint, and no row", async () => {
+    const res = await request(app)
+      .put(`/api/v1/submissions/by-assignment/${assignmentId}`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("use_forum_endpoint");
+    expect(
+      await db.submission.count({ where: { assignmentId, studentUserId: studentAId } }),
+    ).toBe(0);
+  });
+
+  it("PATCH /submissions/:publicId → 409 for save and for submit, text untouched", async () => {
+    // A row can exist (posted through the forum PUT, or written by v1).
+    const posted = await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+    const publicId = posted.body.data.submissionPublicId as string;
+
+    for (const body of [{ text: "<b>x</b>" }, { text: "", submit: true }]) {
+      const res = await request(app)
+        .patch(`/api/v1/submissions/${publicId}`)
+        .set("authorization", `Bearer ${studentAToken}`)
+        .send(body);
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("use_forum_endpoint");
+    }
+    const row = await db.submission.findUnique({
+      where: { publicId },
+      select: { text: true },
+    });
+    expect(row?.text).toBe(`<p>${OWN_TEXT}</p>`);
+  });
+
+  it("still serves a STANDARD assignment as before", async () => {
+    const standard = await db.assignment.create({
+      data: { seasonId, title: "space-v2-test-standard-ok", type: "STANDARD", isAllGroups: true },
+      select: { id: true },
+    });
+    const res = await request(app)
+      .put(`/api/v1/submissions/by-assignment/${standard.id}`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    expect(res.status).toBe(200);
+  });
+});
+```
+
+Run the suite → the first two cases FAIL (200s today).
+
+- [ ] **Step 4b: Refuse FORUM in `routes/submissions.ts`**
+
+In `PUT /by-assignment/:assignmentId`, add `type: true` to the assignment
+`select`, and directly after the `if (!assignment) … 404` line:
+
+```ts
+  // A forum post has exactly one writer: PUT /assignments/:id/forum/response,
+  // which applies forumMinWords, refuses an empty post (it would unlock every
+  // peer's work) and stores escaped HTML. Creating the row here would let a
+  // client skip all three with a follow-up PATCH {submit:true} (plan 10 D-14.1).
+  if (assignment.type === "FORUM") {
+    return apiError(
+      res,
+      "use_forum_endpoint",
+      "Post forum responses through the forum endpoint.",
+      409,
+    );
+  }
+```
+
+In `PATCH /:publicId`, extend the select to
+`assignment: { select: { dueAt: true, type: true } }` and, directly after the
+author check (`throw new ForbiddenError()`), add the same `if
+(sub.assignment.type === "FORUM") return apiError(res, "use_forum_endpoint", …, 409);`
+— before the body is parsed, for both the save and the submit branch. A save
+is refused too: it would replace a posted body with unescaped text while the
+row stays `SUBMITTED`.
+
+Run the suite → PASS. Run Plan 1's submission suite too
+(`--testPathPattern submissions`) → still green: no STANDARD path changed.
+
 - [ ] **Step 5: OpenAPI, same commit** — both paths plus `ForumView`,
 `ForumPost`, `ForumOwnResponse` and `SubmitForumResponseRequest`. The prose must
 say that the PUT creates the row (and why a GET must not), that `locked` is a
 product mechanic rather than an error, that `text` is plain text in both
-directions, and that a late post is allowed on purpose.
+directions, and that a late post is allowed on purpose. Add a `409` response
+(`use_forum_endpoint`) to the existing `PUT /submissions/by-assignment/{assignmentId}`
+and `PATCH /submissions/{publicId}` entries, saying a FORUM assignment is
+written only through `PUT /assignments/{id}/forum/response`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/backend && git commit -m "feat(backend): forum thread read and the upsert that creates the submission row"
+git add apps/backend && git commit -m "feat(backend): forum thread read, the upsert that creates the row, and FORUM refused on the generic writers"
 ```
 
 ---
@@ -4468,7 +4796,7 @@ git add apps/backend && git commit -m "feat(backend): forum thread read and the 
 - Test: extend `apps/backend/src/__tests__/integration/forum-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `canCommentOnForumSubmission`, `canDeleteForumComment`, `forumAudienceFor` (Task 2); `addForumCommentRequestSchema`, `forumCommentsQuerySchema` (Task 1); `displayNameFor` (Task 6).
+- Consumes: `canCommentOnForumSubmission`, `canDeleteForumComment`, `forumAudienceFor` (Task 2); `addForumCommentRequestSchema`, `forumCommentsQuerySchema` (Task 1); `displayNameFor`, `loadForumAssignment` (Task 6).
 - Produces:
   - `listForumComments(submissionId, user, query): Promise<{ comments: ForumCommentData[]; nextCursor: number | null }>`
   - `GET /api/v1/assignments/:id/forum/posts/:publicId/comments`
@@ -4745,12 +5073,20 @@ async function resolvePost(assignmentId: number, publicId: string) {
 }
 ```
 
+All three are registered with `requireAuth` as the first handler
+(`forumRouter.get(path, requireAuth, async …)`) — never `forumRouter.use`
+(ruling X5). The two assignment-scoped routes apply Task 6's status-code rule:
+`loadForumAssignment` → 404 before any audience or comment gate.
+
 - **`GET /assignments/:id/forum/posts/:publicId/comments`** — `parseId` the
   assignment; parse the query with `forumCommentsQuerySchema`;
-  `forumAudienceFor` → 403 on null; `resolvePost` → 404; **and, for a student
-  audience, the same lock the feed applies** (their own response must be
-  posted) → 403 `post_first`. Then `listForumComments`.
+  `loadForumAssignment` → 404; `forumAudienceFor` → 403 on null;
+  `resolvePost` → 404; **and, for a student audience, the same lock the feed
+  applies** (their own response must be posted) → 403 `post_first`. Then
+  `listForumComments`; respond with the `forumCommentsPageSchema` shape
+  `{ comments, nextCursor }`.
 - **`POST /assignments/:id/forum/posts/:publicId/comments`**:
+  0. `parseId`; `loadForumAssignment` → 404.
   1. `resolvePost` → 404 (before the gate, but note in a comment that
      `canCommentOnForumSubmission` also returns false for a missing row, so a
      probe cannot distinguish "no such post" from "not allowed" — v1 has that
@@ -4794,12 +5130,12 @@ git add apps/backend && git commit -m "feat(backend): forum comments with server
 **Files:**
 - Create: `apps/mobile/src/hooks/use-forum.ts`
 - Create: `apps/mobile/src/components/ForumThread.tsx`
-- Modify: `apps/mobile/app/(app)/assignment/[id].tsx` (Plan 1's screen gains the FORUM branch)
+- Modify: `apps/mobile/app/(app)/assignment/[id]/index.tsx` (Plan 1's screen, moved to the directory form and role-branched by **Plan 15** — it gains the FORUM branch)
 - Test: `apps/mobile/src/__tests__/forum-screen.test.tsx`
 
 **Interfaces:**
-- Consumes: Plan 1's `useAssignmentDetail(id)` and its `type`/`forumMinWords`/`forumAllowComments` fields; `queryKeys.forum` (Task 2); `forumViewSchema`, `forumCommentSchema`, `countWords` (Task 1); Tasks 6–7's endpoints.
-- Produces: `useForumThread(assignmentId, enabled)`, `useSubmitForumResponse(assignmentId)`, `usePostComment(assignmentId)`, `useDeleteComment(assignmentId)`; the component `<ForumThread assignmentId={...} />`.
+- Consumes: Plan 1's `useAssignmentDetail(id)` and its `type`/`forumMinWords`/`forumAllowComments` fields; Plan 15's `assignment/[id]/index.tsx` (`isStudent` branch: `SubmissionSection` vs `AssignmentStaffPanel`) and its `dueOrgDay`/`dueOrgTime` detail fields; `queryKeys.forum` (Task 2); `forumViewSchema`, `forumOwnResponseSchema`, `forumCommentsPageSchema`, `addForumCommentResponseSchema`, `deleteForumCommentResponseSchema`, `countWords` (Task 1); Tasks 6–7's endpoints.
+- Produces: `useForumThread(assignmentId, enabled)`, `useForumComments(assignmentId, postPublicId, enabled)`, `useSubmitForumResponse(assignmentId)`, `usePostComment(assignmentId)`, `useDeleteComment(assignmentId)`; the component `<ForumThread assignmentId={...} />`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -4819,7 +5155,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import AssignmentDetailScreen from "../../app/(app)/assignment/[id]";
+import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
 
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
@@ -4834,7 +5170,11 @@ const forumAssignment = {
   sessionTitle: null,
   title: "Week three discussion",
   description: null,
-  dueAt: "2099-04-01T00:00:00.000Z",
+  // Org midnight on Apr 1 (Cairo, UTC+2). Plan 15's detail carries the
+  // server's org day/time and the screen renders those, never dueAt.
+  dueAt: "2099-03-31T22:00:00.000Z",
+  dueOrgDay: "2099-04-01",
+  dueOrgTime: null,
   isOverdue: false,
   isAllGroups: true,
   type: "FORUM" as const,
@@ -4903,7 +5243,14 @@ const unlockedView = {
 };
 
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const },
+  user: {
+    id: 9,
+    name: "Test student",
+    email: "s@jpc.test",
+    role: "STUDENT" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
 
@@ -5013,6 +5360,43 @@ describe("forum branch of the assignment screen", () => {
     );
   });
 
+  it("fetches the rest of a post's comments on 'Show all comments'", async () => {
+    const threeComments = {
+      ...unlockedView,
+      posts: [{ ...unlockedView.posts[0], commentCount: 3 }],
+    };
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/assignments/41") {
+        return Promise.resolve({ data: { data: forumAssignment } });
+      }
+      if (url === "/api/v1/assignments/41/forum/posts/peer000001/comments") {
+        return Promise.resolve({
+          data: {
+            data: {
+              comments: [5, 6, 7].map((id) => ({
+                id,
+                authorUserId: 12,
+                authorDisplayName: "Group member",
+                body: `space-v2-test comment ${id}`,
+                createdAt: "2099-03-02T11:00:00.000Z",
+                canDelete: false,
+              })),
+              nextCursor: null,
+            },
+          },
+        });
+      }
+      return Promise.resolve({ data: { data: threeComments } });
+    });
+
+    renderWithProviders(<AssignmentDetailScreen />);
+    expect(await screen.findByText("2 more")).toBeTruthy();
+    fireEvent.press(screen.getByText("Show all comments"));
+
+    expect(await screen.findByText("space-v2-test comment 7")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/assignments/41/forum/posts/peer000001/comments");
+  });
+
   it("hides the comment block entirely when the assignment disallows comments", async () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/assignments/41"
@@ -5055,8 +5439,21 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/forum-screen.test.tsx` → FAIL.
 
 ```ts
 // apps/mobile/src/hooks/use-forum.ts
-import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { forumOwnResponseSchema, forumViewSchema, type ForumView } from "@space/shared";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
+import {
+  addForumCommentResponseSchema,
+  deleteForumCommentResponseSchema,
+  forumCommentsPageSchema,
+  forumOwnResponseSchema,
+  forumViewSchema,
+  type ForumView,
+} from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
@@ -5077,10 +5474,33 @@ export function useForumThread(
   });
 }
 
+/**
+ * The rest of one post's comments, behind "Show all comments". The thread
+ * inlines at most three per post (Task 6); this pages through the comments
+ * endpoint with its numeric cursor. `enabled` stays false until the press, so
+ * opening a thread issues one request, not one per post.
+ */
+export function useForumComments(assignmentId: number, postPublicId: string, enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.forum.comments(assignmentId, postPublicId),
+    initialPageParam: null as number | null,
+    queryFn: async ({ pageParam }) => {
+      const base = `/api/v1/assignments/${assignmentId}/forum/posts/${postPublicId}/comments`;
+      const res = await apiClient.get(pageParam === null ? base : `${base}?cursor=${pageParam}`);
+      return forumCommentsPageSchema.parse(res.data.data);
+    },
+    getNextPageParam: (last) => last.nextCursor,
+    enabled,
+  });
+}
+
 function useInvalidateThread(assignmentId: number) {
   const queryClient = useQueryClient();
   return (): void => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.forum.thread(assignmentId) });
+    // Expanded comment lists live under forum.comments(...); a new or removed
+    // comment must refresh them too. Prefix-match on the forum subtree.
+    void queryClient.invalidateQueries({ queryKey: [...queryKeys.forum.all, "comments", assignmentId] });
     // The post flips the submission's status, which the assignment detail also
     // reports — invalidate it too or the header keeps saying "Not started".
     void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.detail(assignmentId) });
@@ -5113,7 +5533,7 @@ export function usePostComment(assignmentId: number) {
         `/api/v1/assignments/${assignmentId}/forum/posts/${vars.postPublicId}/comments`,
         { body: vars.body },
       );
-      return res.data.data as { comment: { id: number } };
+      return addForumCommentResponseSchema.parse(res.data.data);
     },
     onSuccess: invalidate,
   });
@@ -5124,7 +5544,7 @@ export function useDeleteComment(assignmentId: number) {
   return useMutation({
     mutationFn: async (commentId: number) => {
       const res = await apiClient.delete(`/api/v1/forum/comments/${commentId}`);
-      return res.data.data as { deleted: true };
+      return deleteForumCommentResponseSchema.parse(res.data.data);
     },
     onSuccess: invalidate,
   });
@@ -5138,9 +5558,13 @@ Structure:
 
 1. `useForumThread(assignmentId, true)` → `LoadingState` / `ErrorState`
    (`onRetry` wired to `refetch`).
-2. **Due date** — `Due {formatDueDate(view.dueAt)}` when non-null. v1's FORUM
-   branch renders a badge and a title and no due date at all, on the one
-   assignment type where the field is set and unused (spec 14 D10).
+2. **Due date** — *not rendered here.* v1's FORUM branch renders a badge and a
+   title and no due date at all, on the one assignment type where the field is
+   set and unused (spec 14 D10). Plan 15's `assignment/[id]/index.tsx` header
+   already shows `Due {formatOrgDue(dueOrgDay, dueOrgTime)}` — the server's org
+   day (X13) — for every assignment type, so that is where the forum's due date
+   appears; a second, device-zone `formatDueDate(view.dueAt)` line here would
+   duplicate it (and break the test's `getByText("Due Apr 1, 2099")`).
 3. **Compose card**, rendered only when `view.own !== null` (a staff reader has
    no response of their own): a multiline `Input` labelled **Your response**
    seeded from `view.own.text`, a live counter
@@ -5166,8 +5590,14 @@ Structure:
    gets a real empty state rather than a spinner or an error.
 5. **Feed** — a `FlatList` of `Card`s: `authorDisplayName`, the post `text`,
    `formatDate(submittedAt)`, and the first comments with
-   `{commentCount - comments.length} more` and a "Show all comments" press that
-   fetches the rest through the comments endpoint. Empty, unlocked feed →
+   `{commentCount - comments.length} more` and a "Show all comments" press.
+   Each post card owns a `const [expanded, setExpanded] = useState(false)` and
+   calls `useForumComments(assignmentId, post.submissionPublicId, expanded)`;
+   once expanded, it renders the flattened `data.pages` comments **instead of**
+   the inline ones (they overlap — the first page starts at the same oldest
+   comment), with a "More comments" button while `hasNextPage`, wired to
+   `fetchNextPage`. A failed page shows the same `ErrorState`/`refetch` pair as
+   the thread. Empty, unlocked feed →
    `EmptyState` "No one has posted yet."
    Pagination: a "Load more" `Button` shown while `nextCursor !== null`.
 6. **Comments** — rendered only when `view.allowComments`. Per post: the
@@ -5181,20 +5611,35 @@ Structure:
    decision D-14.4's residual gap, stated where the person who will hit it is
    standing, rather than only in this plan.
 
-- [ ] **Step 4: Wire it into `assignment/[id].tsx`**
+- [ ] **Step 4: Wire it into `assignment/[id]/index.tsx`**
 
-In Plan 1's screen, branch on `detail.type`:
+Plan 15 Task 8 replaced this screen's default export with a role branch —
+`{isStudent ? <SubmissionSection detail={data} /> : <AssignmentStaffPanel detail={data} />}`.
+Verify: `grep -n "AssignmentStaffPanel" "apps/mobile/app/(app)/assignment/[id]/index.tsx"` → hits.
+Add `import { ForumThread } from "../../../../src/components/ForumThread";`
+(the file is one directory deeper than Plan 1 wrote it), add
+`const isMentor = useSessionStore((s) => s.user?.role === "MENTOR");` beside
+`isStudent`, and replace that one line with:
 
 ```tsx
-  // The FORUM branch replaces the submission editor entirely — a forum
-  // assignment can never carry file attachments (domain 7 forces
-  // maxFileSizeMb null and allowedMimeCategories empty for FORUM), and its
-  // response IS the submission.
-  {detail.type === "FORUM" ? (
-    <ForumThread assignmentId={detail.id} />
-  ) : (
-    <SubmissionSection detail={detail} />
-  )}
+          {/* The FORUM branch replaces the student's submission editor entirely —
+              a forum assignment can never carry file attachments (domain 7
+              forces maxFileSizeMb null and allowedMimeCategories empty for
+              FORUM), and its response IS the submission. Staff keep Plan 15's
+              authoring panel and read the thread below it (own === null);
+              MENTOR has no forum audience (the API answers 403), so no thread. */}
+          {isStudent ? (
+            data.type === "FORUM" ? (
+              <ForumThread assignmentId={data.id} />
+            ) : (
+              <SubmissionSection detail={data} />
+            )
+          ) : (
+            <>
+              <AssignmentStaffPanel detail={data} />
+              {data.type === "FORUM" && !isMentor ? <ForumThread assignmentId={data.id} /> : null}
+            </>
+          )}
 ```
 
 - [ ] **Step 5:** Run the suite → PASS; `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
@@ -5213,71 +5658,64 @@ git add apps/mobile && git commit -m "feat(mobile): forum thread with post-to-un
 
 **Files:**
 - Create: `apps/backend/src/lib/queries/events.ts`
-- Modify: `apps/backend/src/lib/org-time.ts` (Plan 3's file; add two functions)
+- Modify: `apps/backend/src/lib/org-time.ts` (Plan 3's file; add **one** function, `isOrgMidnight`)
 - Modify: `apps/backend/src/routes/events.ts`
 - Modify: `apps/backend/src/docs/openapi.ts`
 - Test: `apps/backend/src/__tests__/org-time.test.ts` (extend, unit)
 - Test: `apps/backend/src/__tests__/integration/events-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `isSuper`, `isAlumnus`, `isAdminOfSeason`, `isLeaderOfGroup` from `../lib/rbac`; `createJpcEventRequestSchema`, `updateJpcEventRequestSchema`, `eventListQuerySchema` (Task 1); `config.orgTimezone` (Plan 3).
+- Consumes: `isSuper`, `isAlumnus`, `isAdminOfSeason`, `isLeaderOfGroup` from `../lib/rbac`; `createJpcEventRequestSchema`, `updateJpcEventRequestSchema`, `mergedEventSchema`, `eventListQuerySchema` (Task 1); `config.orgTimezone` and `orgWallClock` (Plan 3); `orgDayKey` (Plan 4); `orgWallTime(date): string` and `orgWallClockToInstant(day, time): Date` (**Plan 15 Task 2**, all in `lib/org-time.ts` — consumed, never redefined).
 - Produces:
-  - `startOfDayInOrgTime(date: Date): Date` and `isOrgMidnight(date: Date): boolean` in `lib/org-time.ts`
+  - in `lib/org-time.ts`: `isOrgMidnight(date: Date): boolean` only — beside Plan 4's `orgDayKey` and Plan 15's `orgWallTime` / `orgWallClockToInstant`, which this task **consumes** and does not redefine (a second definition is a duplicate-export compile error)
   - `viewerSeasonIds(user): Promise<number[] | "all">` and `eventVisibilityFilter(user): Promise<Prisma.JpcEventWhereInput>` in `lib/queries/events.ts`
   - `GET /api/v1/events`, `GET /api/v1/events/:id`, `POST /api/v1/events`, `PATCH /api/v1/events/:id`, `DELETE /api/v1/events/:id`
 
-- [ ] **Step 1: Failing unit test for the two org-time helpers**
+- [ ] **Step 1: Failing unit test for `isOrgMidnight`**
 
-Append to `apps/backend/src/__tests__/org-time.test.ts`:
+`orgWallTime` and `orgWallClockToInstant` already exist (Plan 15 Task 2, with
+their own DST tests in this file). Verify before writing anything:
+`grep -n "export function orgWallTime\|export function orgWallClockToInstant" apps/backend/src/lib/org-time.ts`
+→ two hits. If either is missing, stop: Plan 15 has not run.
+
+Add `isOrgMidnight` to the file's existing `from "../lib/org-time"` import in
+`apps/backend/src/__tests__/org-time.test.ts` (`orgDayKey`, `orgWallTime` and
+`orgWallClockToInstant` are already imported by Plans 4 and 15), then append:
 
 ```ts
-import { isOrgMidnight, startOfDayInOrgTime } from "../lib/org-time";
-
-describe("org-time day boundaries", () => {
-  // Africa/Cairo is UTC+2 in winter, so local midnight on 2099-01-15 is
-  // 22:00Z on the 14th. If config.orgTimezone changes, these change with it.
+// Every date below is in January, when Africa/Cairo is UTC+2 with no DST in
+// force, so the assertions do not depend on Egypt's (reinstated, revisable)
+// summer-time rule. If config.orgTimezone changes, these change with it.
+describe("isOrgMidnight (Plan 10 — all-day events)", () => {
   it("recognises midnight in the organisation's zone, not the host's", () => {
     expect(isOrgMidnight(new Date("2099-01-14T22:00:00.000Z"))).toBe(true);
     expect(isOrgMidnight(new Date("2099-01-15T00:00:00.000Z"))).toBe(false);
   });
 
-  it("snaps an instant to the start of its organisation day", () => {
-    expect(startOfDayInOrgTime(new Date("2099-01-15T09:30:00.000Z")).toISOString()).toBe(
-      "2099-01-14T22:00:00.000Z",
-    );
-    // Already midnight: idempotent.
-    const midnight = new Date("2099-01-14T22:00:00.000Z");
-    expect(startOfDayInOrgTime(midnight).toISOString()).toBe(midnight.toISOString());
+  it("agrees with Plan 15's composer: a null time is org midnight, a time is not", () => {
+    expect(isOrgMidnight(orgWallClockToInstant("2099-01-20", null))).toBe(true);
+    const instant = orgWallClockToInstant("2099-01-20", "09:05");
+    expect(isOrgMidnight(instant)).toBe(false);
+    expect(orgDayKey(instant)).toBe("2099-01-20");
+    expect(orgWallTime(instant)).toBe("09:05");
+  });
+
+  it("is not fooled by a non-zero second", () => {
+    expect(isOrgMidnight(new Date("2099-01-14T22:00:01.000Z"))).toBe(false);
   });
 });
 ```
 
-Run: `cd apps/backend && npx jest src/__tests__/org-time.test.ts` → FAIL.
+Run: `cd apps/backend && npx jest src/__tests__/org-time.test.ts` → FAIL (`isOrgMidnight` not exported).
 
-- [ ] **Step 2: Implement them**
+- [ ] **Step 2: Implement it**
 
-Append to `apps/backend/src/lib/org-time.ts`:
+Append to `apps/backend/src/lib/org-time.ts`. It reads the parts through Plan
+3's `orgWallClock` — do **not** add a second `Intl.DateTimeFormat` or a second
+`partsFormatter` const (Plan 3 already declares one in this module; a second
+`const` of that name does not compile):
 
 ```ts
-const partsFormatter = new Intl.DateTimeFormat("en-US", {
-  timeZone: config.orgTimezone,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hourCycle: "h23",
-});
-
-function orgParts(date: Date): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const part of partsFormatter.formatToParts(date)) {
-    if (part.type !== "literal") out[part.type] = Number(part.value);
-  }
-  return out;
-}
-
 /**
  * Is this instant midnight on the organisation's clock?
  *
@@ -5286,36 +5724,14 @@ function orgParts(date: Date): Record<string, number> {
  * files with `getHours() !== 0 || getMinutes() !== 0`, each in the *viewer's*
  * timezone, against an instant the *server* had composed (spec 15 R19/R20), so
  * an all-day event stopped reading as all-day for anyone in another zone.
- * Ruling C2: one zone, server-side, once.
+ * Ruling C2/X13: one zone, server-side, once. Plan 15's
+ * `orgWallClockToInstant(day, null)` produces exactly these instants.
  */
 export function isOrgMidnight(date: Date): boolean {
-  const p = orgParts(date);
+  const p = orgWallClock(date);
   return p.hour === 0 && p.minute === 0 && p.second === 0;
 }
-
-/** The instant of 00:00 organisation time on the org-calendar day `date` falls on. */
-export function startOfDayInOrgTime(date: Date): Date {
-  const p = orgParts(date);
-  // The zone's offset at this instant, recovered by comparing the local
-  // wall-clock reading against the instant itself.
-  const asIfUtc = Date.UTC(
-    p.year as number,
-    (p.month as number) - 1,
-    p.day as number,
-    p.hour as number,
-    p.minute as number,
-    p.second as number,
-  );
-  const offsetMs = asIfUtc - Math.floor(date.getTime() / 1000) * 1000;
-  return new Date(Date.UTC(p.year as number, (p.month as number) - 1, p.day as number) - offsetMs);
-}
 ```
-
-**Known limit, accepted:** the offset is sampled at `date`'s own instant, so a
-day containing a DST transition can snap an hour off. Africa/Cairo currently
-observes DST; an event authored at 03:00 on a transition day is the only case
-affected, and getting it exactly right needs a tz library this backend does not
-carry. Record it; do not paper over it.
 
 Run the unit test → PASS.
 
@@ -5368,9 +5784,12 @@ beforeAll(async () => {
   const superUser = await createTestUser("evsuper", "SUPER");
 
   // An alumnus is role STUDENT with a graduationYear — the whole of spec 15's
-  // headline defect turns on that.
+  // headline defect turns on that. `graduationYear` is a column on User
+  // (schema.prisma:111), not on StudentProfile, and login reads it from there
+  // into the token's `graduationYear` claim.
+  await db.user.update({ where: { id: alumnus.id }, data: { graduationYear: 2098 } });
   await db.studentProfile.create({
-    data: { userId: alumnus.id, graduationYear: 2098, activeSeasonId: seasonId },
+    data: { userId: alumnus.id, activeSeasonId: seasonId },
   });
   await db.studentProfile.create({
     data: { userId: student.id, activeSeasonId: seasonId },
@@ -5475,7 +5894,11 @@ describe("GET /api/v1/events — visibility derived from the token", () => {
     expect(await idsFor(leaderToken)).toContain(seasonEventId);
     expect(await idsFor(adminToken)).toContain(seasonEventId);
     // A mentor holds none of the three claims, so sees no SEASON event —
-    // v1's behaviour (R51), kept.
+    // v1's behaviour, kept: jpc-space/src/lib/jpc-events-query.ts:24-37
+    // (`viewerSeasonIds` adds only activeSeasonId, seasonAdminIds and the
+    // seasons of groupLeaderIds; a MENTOR token carries none). Spec 15 R51,
+    // spec 19 R7. Spec 19 D19 recommends widening this; the coordinator ruled
+    // v1 parity for this plan — a widening is a product decision, not a port.
     expect(await idsFor(mentorToken)).not.toContain(seasonEventId);
     // SUPER sees everything.
     expect(await idsFor(superToken)).toEqual(
@@ -5530,15 +5953,92 @@ describe("GET /api/v1/events — visibility derived from the token", () => {
     expect((res.body.data.events as { id: number }[]).map((e) => e.id)).toContain(retreat.id);
   });
 
-  it("derives allDay server-side", async () => {
+  it("upcoming=true starts at today's org midnight and limit caps events, not total", async () => {
+    // Spec 19 §7 / D19: the dashboards' UpcomingEventsCard. Three ALL events
+    // dated far in the future plus one that ended in 2000.
+    const future = await Promise.all(
+      [1, 2, 3].map((n) =>
+        db.jpcEvent.create({
+          data: {
+            title: testEventTitle(`upcoming${n}`),
+            // Inside the default upper bound (now + 365d) so the window keeps them.
+            date: new Date(Date.now() + n * 24 * 3600 * 1000),
+            visibility: "ALL",
+          },
+          select: { id: true },
+        }),
+      ),
+    );
+    const past = await db.jpcEvent.create({
+      data: {
+        title: testEventTitle("past"),
+        date: new Date("2000-01-01T10:00:00.000Z"),
+        visibility: "ALL",
+      },
+      select: { id: true },
+    });
+
+    const res = await request(app)
+      .get("/api/v1/events?upcoming=true&limit=2")
+      .set("authorization", `Bearer ${studentToken}`);
+    expect(res.status).toBe(200);
+    const ids = (res.body.data.events as { id: number }[]).map((e) => e.id);
+    expect(ids).toHaveLength(2);
+    expect(ids).not.toContain(past.id);
+    // The uncapped read is the reference: the cap keeps its first two (date
+    // ascending), and `total` is its length. Other visible staging rows may
+    // exist, so the test compares against this read rather than fixed ids.
+    const full = await request(app)
+      .get("/api/v1/events?upcoming=true")
+      .set("authorization", `Bearer ${studentToken}`);
+    const fullIds = (full.body.data.events as { id: number }[]).map((e) => e.id);
+    expect(fullIds).toEqual(expect.arrayContaining(future.map((e) => e.id)));
+    expect(fullIds).not.toContain(past.id);
+    expect(ids).toEqual(fullIds.slice(0, 2));
+    expect(res.body.data.total).toBe(fullIds.length);
+    expect(full.body.data.total).toBe(fullIds.length);
+  });
+
+  it("refuses upcoming together with from, and a limit outside 1–20", async () => {
+    for (const qs of [
+      "?upcoming=true&from=2099-01-01T00:00:00.000Z",
+      "?limit=0",
+      "?limit=21",
+    ]) {
+      const res = await request(app)
+        .get(`/api/v1/events${qs}`)
+        .set("authorization", `Bearer ${studentToken}`);
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("derives allDay, dayKey and time server-side, in the org zone", async () => {
+    const midnight = await db.jpcEvent.create({
+      data: {
+        title: testEventTitle("orgmidnight"),
+        // 00:00 on 2099-01-20 in Africa/Cairo (UTC+2 in January).
+        date: new Date("2099-01-19T22:00:00.000Z"),
+        visibility: "ALL",
+      },
+      select: { id: true },
+    });
     const res = await request(app)
       .get(`/api/v1/events${WINDOW}`)
       .set("authorization", `Bearer ${superToken}`);
-    const row = (res.body.data.events as { id: number; allDay: boolean }[]).find(
-      (e) => e.id === allEventId,
-    );
-    // Created at 00:00Z, which is 02:00 in Africa/Cairo — NOT all-day.
-    expect(row?.allDay).toBe(false);
+    type Row = { id: number; allDay: boolean; dayKey: string; time: string | null };
+    const rows = res.body.data.events as Row[];
+
+    // 00:00Z is not org midnight — NOT all-day, and its org time is shown.
+    const utcMidnight = rows.find((e) => e.id === allEventId);
+    expect(utcMidnight?.allDay).toBe(false);
+    expect(utcMidnight?.dayKey).toBe("2099-06-01");
+    expect(utcMidnight?.time).not.toBeNull();
+
+    // Org midnight IS all-day, and its day is the org day — the 20th, although
+    // the stored instant is on the 19th in UTC. A client bucketing by its own
+    // zone would put this on the wrong day; this field is why it never has to.
+    const orgMidnight = rows.find((e) => e.id === midnight.id);
+    expect(orgMidnight).toMatchObject({ allDay: true, dayKey: "2099-01-20", time: null });
   });
 });
 
@@ -5565,27 +6065,40 @@ describe("GET /api/v1/events/:id", () => {
 describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
   const body = {
     title: "space-v2-test-created",
-    date: "2099-08-01T00:00:00.000Z",
-    endDate: null,
-    allDay: true,
+    day: "2099-01-20",
+    time: null,
+    endDay: null,
     description: "space-v2-test description",
     url: null,
     visibility: "ALL" as const,
     seasonId: null,
   };
 
-  it("creates, normalising an all-day instant to org midnight", async () => {
+  it("creates an all-day event at org midnight", async () => {
     const res = await request(app)
       .post("/api/v1/events")
       .set("authorization", `Bearer ${superToken}`)
       .send({ ...body, title: `space-v2-test-${Date.now()}` });
 
     expect(res.status).toBe(201);
-    expect(res.body.data.allDay).toBe(true);
-    // Africa/Cairo midnight on 2099-08-01 is 21:00Z on 2099-07-31 (DST).
-    expect(res.body.data.date).toBe("2099-07-31T21:00:00.000Z");
+    expect(res.body.data).toMatchObject({ allDay: true, dayKey: "2099-01-20", time: null });
+    // Africa/Cairo midnight on 2099-01-20 is 22:00Z on the 19th (UTC+2).
+    expect(res.body.data.date).toBe("2099-01-19T22:00:00.000Z");
     // v1 returns only { success: true } and the client refetches (R39).
     expect(res.body.data.id).toEqual(expect.any(Number));
+  });
+
+  it("composes a timed event in the org zone, not the caller's", async () => {
+    // The request carries no zone at all — the server's org zone is the only
+    // one that can apply, so a SUPER travelling abroad cannot shift the event.
+    const res = await request(app)
+      .post("/api/v1/events")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ ...body, title: `space-v2-test-timed-${Date.now()}`, time: "18:30" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data).toMatchObject({ allDay: false, dayKey: "2099-01-20", time: "18:30" });
+    expect(res.body.data.date).toBe("2099-01-20T16:30:00.000Z");
   });
 
   it("refuses create, update and delete to an ADMIN", async () => {
@@ -5611,7 +6124,8 @@ describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
     const target = await db.jpcEvent.create({
       data: {
         title: testEventTitle("patchable"),
-        date: new Date("2099-09-01T00:00:00.000Z"),
+        // 18:30 on 2099-01-21, org time.
+        date: new Date("2099-01-21T16:30:00.000Z"),
         visibility: "ALL",
       },
       select: { id: true },
@@ -5624,6 +6138,22 @@ describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
       .send({ description: "space-v2-test-updated" });
     expect(ok.status).toBe(200);
     expect(ok.body.data.title).toContain("space-v2-test-");
+    // An untouched day/time survives the merge exactly.
+    expect(ok.body.data.date).toBe("2099-01-21T16:30:00.000Z");
+
+    // Changing only the time keeps the stored org day.
+    const retimed = await request(app)
+      .patch(`/api/v1/events/${target.id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ time: "09:00" });
+    expect(retimed.body.data).toMatchObject({ dayKey: "2099-01-21", time: "09:00" });
+
+    // An end day before the stored start day is refused against the merge.
+    const backwards = await request(app)
+      .patch(`/api/v1/events/${target.id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ endDay: "2099-01-01" });
+    expect(backwards.status).toBe(400);
 
     // SEASON without a season, where the season would have to come from the
     // stored row — and does not.
@@ -5806,12 +6336,52 @@ const LIST_SELECT = {
 // they cannot see (spec 15 R32). The storage key never crosses this wire.
 ```
 
-- **`GET /`** — parse `eventListQuerySchema`; default the window to
-  `[now − 30d, now + 365d]` when either bound is absent (spec 15 item 10: v1
-  returns every event ever created on every calendar render, for every role);
-  `where: { AND: [await eventVisibilityFilter(user), eventWindowFilter(from, to)] }`;
-  `orderBy: { date: "asc" }`; map to list items with
-  `allDay: isOrgMidnight(row.date)`; respond `{ events }`.
+- **`GET /`** — parse `eventListQuerySchema` → 400 `bad_request`. Bounds:
+  `to` defaults to `now + 365d`; `from` defaults to `now − 30d`, **or**, when
+  `upcoming` is true, to the start of today in the org zone —
+  `orgWallClockToInstant(orgDayKey(new Date()), null)` (spec 19 §7, C2/X13;
+  v1's card used `startOfDay` in the host's zone, spec 19 R8). Spec 15 item 10:
+  v1 returns every event ever created on every calendar render, for every role.
+  `const where = { AND: [await eventVisibilityFilter(user), eventWindowFilter(from, to)] }`;
+  then, together,
+  `db.jpcEvent.findMany({ where, orderBy: [{ date: "asc" }, { id: "asc" }], ...(limit ? { take: limit } : {}), select: LIST_SELECT })`
+  and `db.jpcEvent.count({ where })` (the count ignores `limit`). Map each row
+  with the one mapper:
+
+```ts
+function toListItem(row: {
+  id: number;
+  title: string;
+  date: Date;
+  endDate: Date | null;
+  url: string | null;
+  visibility: JpcVisibility;
+  seasonId: number | null;
+  season: { code: string; title: string } | null;
+}) {
+  // Every day and time on the wire is computed here, in config.orgTimezone
+  // (ruling X13) — the client buckets and labels by these strings and never
+  // turns `date` into a day itself.
+  const allDay = isOrgMidnight(row.date);
+  return {
+    id: row.id,
+    title: row.title,
+    date: row.date,
+    endDate: row.endDate,
+    dayKey: orgDayKey(row.date),
+    endDayKey: row.endDate ? orgDayKey(row.endDate) : null,
+    time: allDay ? null : orgWallTime(row.date),
+    allDay,
+    url: row.url,
+    visibility: row.visibility,
+    seasonId: row.seasonId,
+    seasonCode: row.season?.code ?? null,
+  };
+}
+```
+
+  Respond `{ events: rows.map(toListItem), total }` — the
+  `jpcEventListResponseSchema` shape.
 - **`GET /:id`** — `parseId`; `findFirst({ where: { AND: [{ id }, await eventVisibilityFilter(user)] } })`;
   missing → **404, not 403**, so a caller cannot distinguish an event they may
   not see from one that does not exist; add `description`, `seasonTitle` and
@@ -5820,15 +6390,16 @@ const LIST_SELECT = {
   **first**, then parse. v1 enforces this inside the action rather than by page
   placement, which is one of the few places it gets the shape right (R3) — but
   it `throw`s a bare `Error("Forbidden")` that the client's error branch never
-  sees (R2), so the envelope is the fix. Normalise:
+  sees (R2), so the envelope is the fix. Compose the instants on the server,
+  in the org zone (D-15.6, ruling X13):
 
 ```ts
-  const date = body.allDay ? startOfDayInOrgTime(new Date(body.date)) : new Date(body.date);
-  const endDate = body.endDate
-    ? body.allDay
-      ? startOfDayInOrgTime(new Date(body.endDate))
-      : new Date(body.endDate)
-    : null;
+  // The body carries wall-clock fields and no zone; the org zone is the only
+  // one that can apply. time === null → org midnight, v1's all-day encoding.
+  const date = orgWallClockToInstant(body.day, body.time);
+  // An end is a day, not an instant: stored at org midnight of that day, as v1
+  // stores an all-day end.
+  const endDate = body.endDay ? orgWallClockToInstant(body.endDay, null) : null;
   // v1 force-nulls the season whenever visibility is not SEASON (R13); kept,
   // because a detached seasonId on an ALL event is unreachable data.
   const seasonId = body.visibility === "SEASON" ? body.seasonId : null;
@@ -5837,11 +6408,31 @@ const LIST_SELECT = {
   Create with `createdById: user.userId` and respond with the **detail shape**,
   201 — v1 returns `{ success: true }` and makes the client refetch (R39).
 - **`PATCH /:id`** — SUPER gate; `findUnique` → 404; parse with
-  `updateJpcEventRequestSchema`; **merge the patch onto the stored row and
-  re-run both refinements against the merged values** (`endDate >= date`, and
-  `visibility === "SEASON" → seasonId != null`) → 400 `bad_request` on failure.
-  Apply the same all-day normalisation and the same season force-null. Respond
-  with the detail shape. `createdById` is untouched: it means "who first
+  `updateJpcEventRequestSchema`; **merge the patch onto the stored row, read
+  back as wall-clock fields, and re-run both refinements against the merged
+  values**:
+
+```ts
+  const stored = {
+    title: row.title,
+    day: orgDayKey(row.date),
+    time: isOrgMidnight(row.date) ? null : orgWallTime(row.date),
+    endDay: row.endDate ? orgDayKey(row.endDate) : null,
+    description: row.description,
+    url: row.url,
+    visibility: row.visibility,
+    seasonId: row.seasonId,
+  };
+  // Drop undefined keys so an omitted field keeps its stored value.
+  const patch = Object.fromEntries(
+    Object.entries(parsed.data).filter(([, v]) => v !== undefined),
+  );
+  const merged = mergedEventSchema.safeParse({ ...stored, ...patch });
+  if (!merged.success) return apiError(res, "bad_request", "Invalid event.", 400);
+```
+
+  then compose `date`/`endDate` from `merged.data` exactly as POST does, apply
+  the same season force-null, `update`, and respond with the detail shape. `createdById` is untouched: it means "who first
   authored this", and there is no `updatedById` column to add under C1
   (spec 15 R34).
 - **`DELETE /:id`** — SUPER gate; `findUnique` → 404 (v1 does not read first, so
@@ -5856,7 +6447,9 @@ const LIST_SELECT = {
 - [ ] **Step 7: OpenAPI, same commit** — the five paths plus `JpcEventListItem`,
 `JpcEventDetail`, `CreateJpcEventRequest` and `UpdateJpcEventRequest`. Say that
 visibility is derived from the token and cannot be widened by a parameter; that
-the window is `(endDate ?? date)` and defaults when omitted; that `allDay` is
+the window is `(endDate ?? date)` and defaults when omitted; that `upcoming=true`
+starts the window at today's org midnight, `limit` (1–20) caps `events` and
+`total` is counted before the cap; that `allDay` is
 server-derived against the organisation timezone; and that the photo endpoints
 are deliberately absent while uploads are disabled.
 
@@ -5874,16 +6467,17 @@ git add apps/backend && git commit -m "feat(backend): JPC events with one token-
 - Create: `apps/mobile/src/hooks/use-events.ts`
 - Create: `apps/mobile/app/(app)/event/[id].tsx`
 - Modify: `apps/mobile/app/(app)/events.tsx` (replace the placeholder)
-- Modify: `apps/mobile/app/(app)/calendar.tsx` (Plan 4's screen gains events)
+- Modify: `apps/mobile/app/(app)/calendar.tsx` (**Plan 16 Task 9's** role-branched rewrite of Plan 4's screen gains events)
+- Modify: `apps/mobile/src/lib/day-groups.ts` (Plan 16's; append `groupCalendarByDay`)
 - Modify: `apps/mobile/app/(app)/_layout.tsx` (`DETAIL_ROUTE_NAMES` gains `"event/[id]"`)
 - Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx` (drop `events`)
 - Modify: `apps/mobile/src/__tests__/app-layout.test.tsx` (the new detail route)
 - Test: `apps/mobile/src/__tests__/events-screen.test.tsx`
-- Test: extend `apps/mobile/src/__tests__/calendar-screen.test.tsx` (Plan 4's file)
+- Test: extend `apps/mobile/src/__tests__/calendar-screen.test.tsx` (Plan 4's file, as Plan 16 Task 9 left it)
 
 **Interfaces:**
-- Consumes: `queryKeys.events` (Task 2); `jpcEventListItemSchema`, `jpcEventDetailSchema` (Task 1); Task 9's endpoints; Plan 4's `calendar.tsx` day-grouping; `DETAIL_ROUTE_NAMES` (Plan 1).
-- Produces: `useEvents()`, `useEventDetail(id)`, `useCreateEvent()`, `useUpdateEvent(id)`, `useDeleteEvent()`; the route `/event/[id]`.
+- Consumes: `queryKeys.events` (Task 2); `jpcEventListItemSchema`, `jpcEventDetailSchema` (Task 1); Task 9's endpoints; Plan 16 Task 9's `calendar.tsx` (`PinnedSeasonCalendar`, `RangeSessions`, `SessionDays`), `useSessionRange` and `groupSessionsByDay` / `DayGroup` in `src/lib/day-groups.ts`; Plan 15's `formatWallTime`; Plan 4's `formatDayKey`; `DETAIL_ROUTE_NAMES` (Plan 1).
+- Produces: `useEvents()`, `useUpcomingEvents(limit)` (for Plan 18), `useEventDetail(id)`, `useCreateEvent()`, `useUpdateEvent(id)`, `useDeleteEvent()`; `groupCalendarByDay(sessions, events): CalendarDayGroup[]` and `CalendarEntry` in `src/lib/day-groups.ts`; the route `/event/[id]`.
 
 - [ ] **Step 1: Register the detail route**
 
@@ -5921,8 +6515,11 @@ const post = apiClient.post as jest.Mock;
 const listRow = {
   id: 3,
   title: "Summer retreat",
-  date: "2099-07-01T00:00:00.000Z",
-  endDate: "2099-07-05T00:00:00.000Z",
+  date: "2099-06-30T21:00:00.000Z",
+  endDate: "2099-07-04T21:00:00.000Z",
+  dayKey: "2099-07-01",
+  endDayKey: "2099-07-05",
+  time: null,
   allDay: true,
   url: null,
   visibility: "ALL" as const,
@@ -5938,19 +6535,19 @@ const detailRow = {
 };
 
 const superSession = {
-  user: { id: 1, name: "Su", email: "su@jpc.test", role: "SUPER" as const },
+  user: { id: 1, name: "Su", email: "su@jpc.test", role: "SUPER" as const, avatarPath: null, hasPassword: true },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
 };
 
 const alumnusSession = {
-  user: { id: 8, name: "Al", email: "al@jpc.test", role: "STUDENT" as const },
+  user: { id: 8, name: "Al", email: "al@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: 2098 },
 };
 
 beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
-  get.mockResolvedValue({ data: { data: { events: [listRow] } } });
+  get.mockResolvedValue({ data: { data: { events: [listRow], total: 1 } } });
 });
 
 describe("events screen", () => {
@@ -5964,20 +6561,37 @@ describe("events screen", () => {
     fireEvent.press(screen.getByText("New event"));
     fireEvent.changeText(screen.getByLabelText("Title"), "Graduation");
     fireEvent.changeText(screen.getByLabelText("Date"), "2099-09-01");
+    fireEvent.changeText(screen.getByLabelText("Time"), "18:30");
     fireEvent.press(screen.getByText("Create event"));
 
+    // Wall-clock fields only — the device composes no instant and applies no
+    // zone; the server does that in the org zone (ruling X13).
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/events", {
         title: "Graduation",
-        date: "2099-09-01T00:00:00.000Z",
-        endDate: null,
-        allDay: true,
+        day: "2099-09-01",
+        time: "18:30",
+        endDay: null,
         description: null,
         url: null,
         visibility: "ALL",
         seasonId: null,
       }),
     );
+  });
+
+  it("refuses a malformed time before any request", async () => {
+    useSessionStore.setState(superSession);
+    renderWithProviders(<EventsScreen />);
+
+    fireEvent.press(await screen.findByText("New event"));
+    fireEvent.changeText(screen.getByLabelText("Title"), "Graduation");
+    fireEvent.changeText(screen.getByLabelText("Date"), "2099-09-01");
+    fireEvent.changeText(screen.getByLabelText("Time"), "6pm");
+    fireEvent.press(screen.getByText("Create event"));
+
+    await waitFor(() => expect(post).not.toHaveBeenCalled());
+    expect(screen.getByLabelText("Time").props.accessibilityHint).toContain("HH:mm");
   });
 
   it("shows a non-SUPER role the same list with no write controls", async () => {
@@ -5993,7 +6607,7 @@ describe("events screen", () => {
 
   it("renders an empty state rather than nothing (spec 15 R75)", async () => {
     useSessionStore.setState(alumnusSession);
-    get.mockResolvedValue({ data: { data: { events: [] } } });
+    get.mockResolvedValue({ data: { data: { events: [], total: 0 } } });
 
     renderWithProviders(<EventsScreen />);
     expect(await screen.findByText("No upcoming events")).toBeTruthy();
@@ -6015,7 +6629,9 @@ describe("event detail screen", () => {
     renderWithProviders(<EventDetailScreen />);
 
     expect(await screen.findByText("Five days away.")).toBeTruthy();
-    // All-day, so no time is rendered — the boolean comes from the server.
+    // All-day, so no time is rendered — the boolean comes from the server, and
+    // the label is built from the server's org days, not from `date` (whose
+    // UTC day is June 30th).
     expect(screen.getByText("Jul 1, 2099 – Jul 5, 2099")).toBeTruthy();
     expect(screen.queryByText("Delete event")).toBeNull();
   });
@@ -6030,65 +6646,113 @@ describe("event detail screen", () => {
 });
 ```
 
-And, appended to Plan 4's `calendar-screen.test.tsx`:
+And, in `calendar-screen.test.tsx` (Plan 4's file as **Plan 16 Task 9** left
+it — reuse its `session(id, title, startsAt, dayKey)` helper, which Plan 16
+Task 5 gave `startTime`, its `studentSession`, its `range(...)` helper, `get`
+and `makeSession`):
+
+First, **edit Plan 4's** "shows an empty state for a student with no season and
+fetches nothing" case. The pinned calendar now always asks for events (an
+alumnus is a STUDENT with no season, and ALUMNI's nav labels `/calendar`
+"Events"), so "fetches nothing" becomes "fetches no sessions". Replace its last
+line, `expect(get).not.toHaveBeenCalled();`, with:
 
 ```tsx
-it("interleaves JPC events with sessions in the same day buckets", async () => {
-  useSessionStore.setState({
-    user: { id: 9, name: "S", email: "s@jpc.test", role: "STUDENT" },
-    scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
-  });
-  get.mockImplementation((url: string) =>
-    url.startsWith("/api/v1/events")
-      ? Promise.resolve({
-          data: {
-            data: {
-              events: [
-                {
-                  id: 3,
-                  title: "Summer retreat",
-                  date: "2099-03-01T09:00:00.000Z",
-                  endDate: null,
-                  allDay: false,
-                  url: null,
-                  visibility: "ALL",
-                  seasonId: null,
-                  seasonCode: null,
-                },
-              ],
-            },
-          },
-        })
-      : Promise.resolve({
-          data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z")] } },
-        }),
-  );
+  // Events are org-wide and need no season; sessions do and are not fetched.
+  expect(get).toHaveBeenCalledTimes(1);
+  expect(get).toHaveBeenCalledWith("/api/v1/events");
+```
 
-  renderWithProviders(<CalendarScreen />);
+(Plan 16's LEADER-with-no-groups and MENTOR cases keep
+`expect(get).not.toHaveBeenCalled()`: both return before any branch component
+mounts, so no events request is made.) Then append:
 
-  // One day header, both entries under it, event first (09:00 before 18:00).
-  expect(await screen.findByText("Summer retreat")).toBeTruthy();
-  expect(screen.getByText("Kickoff")).toBeTruthy();
-  expect(screen.getAllByText("Mar 1, 2099")).toHaveLength(1);
+```tsx
+const eventRow = (id: number, title: string, date: string, dayKey: string, time: string | null) => ({
+  id, title, date, endDate: null, dayKey, endDayKey: null, time, allDay: time === null,
+  url: null, visibility: "ALL" as const, seasonId: null, seasonCode: null,
 });
 
-it("still renders the calendar when the events request fails", async () => {
-  // Two independent queries on one screen: an events outage must not take the
-  // session calendar down with it.
-  useSessionStore.setState({
-    user: { id: 9, name: "S", email: "s@jpc.test", role: "STUDENT" },
-    scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
-  });
-  get.mockImplementation((url: string) =>
-    url.startsWith("/api/v1/events")
-      ? Promise.reject(new Error("boom"))
-      : Promise.resolve({
-          data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z")] } },
-        }),
-  );
+describe("calendar — JPC events merged into the day buckets (Plan 10)", () => {
+  it("interleaves JPC events with a student's sessions in the same day buckets", async () => {
+    useSessionStore.setState(studentSession);
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/events")
+        ? Promise.resolve({
+            data: { data: { events: [eventRow(3, "Summer retreat", "2099-03-01T09:00:00.000Z", "2099-03-01", "11:00")], total: 1 } },
+          })
+        : Promise.resolve({
+            data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] } },
+          }),
+    );
 
-  renderWithProviders(<CalendarScreen />);
-  expect(await screen.findByText("Kickoff")).toBeTruthy();
+    renderWithProviders(<CalendarScreen />);
+
+    // One day header, both entries under it, event first (09:00Z before 18:00Z).
+    expect(await screen.findByText("Summer retreat")).toBeTruthy();
+    expect(screen.getByText("Kickoff")).toBeTruthy();
+    expect(screen.getAllByText("Mar 1, 2099")).toHaveLength(1);
+    const titles = screen.getAllByText(/^(Summer retreat|Kickoff)$/).map((n) => n.props.children);
+    expect(titles).toEqual(["Summer retreat", "Kickoff"]);
+
+    fireEvent.press(screen.getByText("Summer retreat"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "3" } });
+  });
+
+  it("still renders the calendar when the events request fails", async () => {
+    // Two independent queries on one screen: an events outage must not take the
+    // session calendar down with it.
+    useSessionStore.setState(studentSession);
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/events")
+        ? Promise.reject(new Error("boom"))
+        : Promise.resolve({
+            data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] } },
+          }),
+    );
+
+    renderWithProviders(<CalendarScreen />);
+    expect(await screen.findByText("Kickoff")).toBeTruthy();
+  });
+
+  it("shows an alumnus with no season the org's events instead of an empty wall", async () => {
+    useSessionStore.setState({ ...studentSession, scopes: { ...studentSession.scopes, activeSeasonId: null } });
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/events")
+        ? Promise.resolve({
+            data: { data: { events: [eventRow(4, "Alumni dinner", "2099-03-05T17:00:00.000Z", "2099-03-05", "19:00")], total: 1 } },
+          })
+        : Promise.reject(new Error(`unexpected GET ${url}`)),
+    );
+
+    renderWithProviders(<CalendarScreen />);
+    expect(await screen.findByText("Alumni dinner")).toBeTruthy();
+    expect(screen.queryByText("No season to show")).toBeNull();
+  });
+
+  it("shows a windowed (SUPER) calendar only the events inside its org-day window", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/events")
+        ? Promise.resolve({
+            data: {
+              data: {
+                events: [
+                  eventRow(5, "In window", "2099-03-02T08:00:00.000Z", "2099-03-02", "10:00"),
+                  eventRow(6, "Out of window", "2099-06-01T08:00:00.000Z", "2099-06-01", "10:00"),
+                ],
+                total: 2,
+              },
+            },
+          })
+        : Promise.resolve(range([session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")])),
+    );
+
+    renderWithProviders(<CalendarScreen />);
+    expect(await screen.findByText("In window")).toBeTruthy();
+    expect(screen.getByText("Kickoff")).toBeTruthy();
+    expect(screen.queryByText("Out of window")).toBeNull();
+  });
 });
 ```
 
@@ -6099,20 +6763,19 @@ Run both suites → FAIL.
 ```ts
 // apps/mobile/src/hooks/use-events.ts
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { z } from "zod";
 import {
+  deleteJpcEventResponseSchema,
   jpcEventDetailSchema,
-  jpcEventListItemSchema,
+  jpcEventListResponseSchema,
   type CreateJpcEventBody,
   type JpcEventDetail,
   type JpcEventListItem,
+  type JpcEventListResponse,
   type UpdateJpcEventBody,
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
-
-const eventListSchema = z.array(jpcEventListItemSchema);
 
 /**
  * No `from`/`to` from the client.
@@ -6127,7 +6790,22 @@ export function useEvents(): UseQueryResult<JpcEventListItem[]> {
     queryKey: queryKeys.events.list(),
     queryFn: async () => {
       const res = await apiClient.get("/api/v1/events");
-      return eventListSchema.parse(res.data.data.events);
+      return jpcEventListResponseSchema.parse(res.data.data).events;
+    },
+  });
+}
+
+/**
+ * The dashboards' "upcoming events" read (spec 19 §7): today onwards in the org
+ * zone, capped server-side, with `total` for the SUPER tile. Built here so
+ * Plan 18 composes it unchanged; nothing in this plan renders it.
+ */
+export function useUpcomingEvents(limit: number): UseQueryResult<JpcEventListResponse> {
+  return useQuery({
+    queryKey: queryKeys.events.upcoming(limit),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/events?upcoming=true&limit=${limit}`);
+      return jpcEventListResponseSchema.parse(res.data.data);
     },
   });
 }
@@ -6183,7 +6861,7 @@ export function useDeleteEvent() {
   return useMutation({
     mutationFn: async (id: number) => {
       const res = await apiClient.delete(`/api/v1/events/${id}`);
-      return res.data.data as { deleted: true };
+      return deleteJpcEventResponseSchema.parse(res.data.data);
     },
     onSuccess: invalidate,
   });
@@ -6195,10 +6873,13 @@ export function useDeleteEvent() {
 **`events.tsx`** — one route, role branches inside, exactly as `/calendar` does:
 - `useEvents()` → `LoadingState` / `ErrorState` (`onRetry` → `refetch`) /
   a list of pressable `Card`s pushing `/event/[id]`. Each card: title, the date
-  label (`formatDate(date)`, or `formatDate(date) + " – " + formatDate(endDate)`
-  when `endDate` is set, plus `formatSessionTime(date)` **only when
-  `!allDay`** — the boolean comes from the server and the client never tests
-  hours itself), and a visibility badge. A `SEASON` event is badged with its
+  label — `formatDayKey(dayKey)`, or
+  `formatDayKey(dayKey) + " – " + formatDayKey(endDayKey)` when
+  `endDayKey` is set, plus `· {time}` **only when `time !== null`** — every
+  piece comes from the server in the org zone (ruling X13); the client never
+  formats `date`/`endDate` (device-zone `formatDate`/`formatSessionTime` would
+  move an org-midnight event to the previous day west of Cairo), and never
+  tests hours itself. Then a visibility badge. A `SEASON` event is badged with its
   `seasonCode`; v1 styles `SEASON` identically to `ALL`, so nothing on its
   calendar distinguishes an organisation-wide event from a season-scoped one
   (spec 15 R68, item 12).
@@ -6209,16 +6890,22 @@ export function useDeleteEvent() {
   for **Title**, **Date** (`YYYY-MM-DD`), **Time** (optional `HH:mm`), **End
   date** (optional), **Description**, **Link**, and a visibility selector; when
   `SEASON` is chosen, a season picker appears (`useSeasons()` from Plan 4).
-  **The instant is composed here, on the client** (spec 15 item 7): an empty
-  time means all-day, and the body carries a full ISO instant plus
-  `allDay: true`. v1 posts four naive strings and lets the *server* resolve them
-  in its own zone, which is why editing an event from another timezone silently
-  moves it (R15/R20/R82).
+  **The form sends wall-clock fields, and the server composes the instant in
+  the org zone** (D-15.6, ruling X13): `{ day, time, endDay }` with an empty
+  Time sent as `time: null` (all-day) and an empty End date as `endDay: null`.
+  Before mutating, the form parses its values with `createJpcEventRequestSchema`;
+  a failed field sets that `Input`'s `accessibilityHint` to the issue message
+  (`"Use HH:mm."`, `"Use YYYY-MM-DD."`) and no request is sent. v1 posts naive
+  strings and lets the server resolve them in *its host's* zone, which is why
+  editing an event from another timezone silently moves it (R15/R20/R82); the
+  earlier draft of this plan moved that resolution to the *device's* zone, which
+  is the same bug from the other side.
 - Non-SUPER roles reaching `/events` by deep link get the same read-only list —
   never a crash and never a "not available" wall, because ALUMNI's nav labels
   `/calendar` "Events" and a mis-tap is likely.
 
-**`event/[id].tsx`** — `useEventDetail(Number(id))`: title, the date label,
+**`event/[id].tsx`** — `useEventDetail(Number(id))`: title, the same
+server-derived date label as the list card,
 `description`, `seasonTitle` when present, and an "Open link" `Button` calling
 `Linking.openURL(url)` when `url` is set. When `canManage`, an inline "Edit"
 section PATCHing the same fields as the create form (partial — the endpoint
@@ -6226,30 +6913,186 @@ accepts one), and a "Delete event" button with the two-press confirm. This
 screen is the reason `description` and the season stop being write-only data:
 v1 has no event detail page anywhere (R70).
 
-- [ ] **Step 5: The calendar merge**
+- [ ] **Step 5: The calendar merge — on Plan 16's restructured `calendar.tsx`**
 
-In Plan 4's `calendar.tsx`, add `const events = useEvents();` beside the
-existing sessions query and build one day-bucketed list from both arrays:
+Plan 16 Task 9 replaced Plan 4's screen with role branches:
+`PinnedSeasonCalendar` (STUDENT / ALUMNI, `useSeasonSessions`), `RangeSessions`
+(the windowed `useSessionRange` view used by `MultiSeasonCalendar` and
+`AdminCalendar`), and a shared `SessionDays` renderer over
+`groupSessionsByDay`. Verify before editing:
+`grep -n "function SessionDays\|function PinnedSeasonCalendar\|function RangeSessions" "apps/mobile/app/(app)/calendar.tsx"`
+→ three hits; `grep -n "export function groupSessionsByDay" apps/mobile/src/lib/day-groups.ts` → one hit.
+If not, stop — Plan 16 has not run. The merge rides on that structure; it does
+not reintroduce Plan 4's single-season screen.
+
+(a) Append to `apps/mobile/src/lib/day-groups.ts` (Plan 16's file —
+`groupSessionsByDay` stays as it is):
+
+```ts
+import type { JpcEventListItem } from "@space/shared";
+
+export type CalendarEntry =
+  | { kind: "session"; at: number; session: SessionListItem }
+  | { kind: "event"; at: number; event: JpcEventListItem };
+
+export interface CalendarDayGroup {
+  dayKey: string;
+  entries: CalendarEntry[];
+}
+
+/**
+ * Sessions and JPC events in one list of org-day buckets (Plan 10). Both are
+ * keyed by the **server's** `dayKey` (ruling X13) — the same `orgDayKey` on the
+ * backend — so one day's sessions and events share a bucket by construction.
+ * Days sort as ISO strings; entries within a day by instant (zone-independent),
+ * so a 09:00 event precedes an 18:00 session. Unlike `groupSessionsByDay` this
+ * cannot rely on input order: the two arrays arrive separately.
+ */
+export function groupCalendarByDay(
+  sessions: SessionListItem[],
+  events: JpcEventListItem[],
+): CalendarDayGroup[] {
+  const byDay = new Map<string, CalendarEntry[]>();
+  const add = (dayKey: string, entry: CalendarEntry) => {
+    const list = byDay.get(dayKey);
+    if (list) list.push(entry);
+    else byDay.set(dayKey, [entry]);
+  };
+  for (const s of sessions) add(s.dayKey, { kind: "session", at: Date.parse(s.startsAt), session: s });
+  for (const e of events) add(e.dayKey, { kind: "event", at: Date.parse(e.date), event: e });
+  return [...byDay.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([dayKey, entries]) => ({ dayKey, entries: entries.sort((x, y) => x.at - y.at) }));
+}
+```
+
+(Merge the `import type` into the file's existing `@space/shared` type import:
+`import type { JpcEventListItem, SessionListItem } from "@space/shared";`.)
+
+(b) In `calendar.tsx`, change the shared import to
+`import type { JpcEventListItem, SessionListItem } from "@space/shared";`,
+replace `import { groupSessionsByDay } from "../../src/lib/day-groups";` with
+`import { groupCalendarByDay } from "../../src/lib/day-groups";`, and add
+`import { useEvents } from "../../src/hooks/use-events";`.
+
+(c) Replace `SessionDays` with `CalendarDays` — the same session card, plus an
+event card:
+
+```tsx
+/**
+ * Day-grouped sessions and JPC events. Every day, time and order comes from the
+ * server's org-clock values (X13) — never `formatDate(startsAt)` /
+ * `formatDate(date)`, which are device-zone and would split an org-midnight
+ * event from its day's sessions on a phone west of Cairo.
+ */
+function CalendarDays({
+  sessions,
+  events,
+  showSeason,
+}: {
+  sessions: SessionListItem[];
+  events: JpcEventListItem[];
+  showSeason: boolean;
+}) {
+  const theme = useTheme();
+  const router = useRouter();
+  return (
+    <>
+      {groupCalendarByDay(sessions, events).map((group) => (
+        <View key={group.dayKey} style={{ marginBottom: theme.spacing.md }}>
+          <Text variant="heading">{formatDayKey(group.dayKey)}</Text>
+          {group.entries.map((entry) =>
+            entry.kind === "session" ? (
+              <Card
+                key={`s${entry.session.id}`}
+                style={{ marginTop: theme.spacing.sm }}
+                onPress={() => router.push({ pathname: "/session/[id]", params: { id: String(entry.session.id) } })}
+              >
+                <Text variant="body">{entry.session.title}</Text>
+                <Text variant="label" color={theme.colors.neutral[600]}>
+                  {entry.session.location
+                    ? `${formatWallTime(entry.session.startTime)} · ${entry.session.location}`
+                    : formatWallTime(entry.session.startTime)}
+                </Text>
+                {showSeason ? (
+                  <Text variant="caption" color={theme.colors.neutral[600]}>{entry.session.seasonTitle}</Text>
+                ) : null}
+              </Card>
+            ) : (
+              <Card
+                key={`e${entry.event.id}`}
+                style={{ marginTop: theme.spacing.sm }}
+                onPress={() => router.push({ pathname: "/event/[id]", params: { id: String(entry.event.id) } })}
+              >
+                <Text variant="body">{entry.event.title}</Text>
+                <Text variant="label" color={theme.colors.neutral[600]}>
+                  {entry.event.time ? `JPC event · ${formatWallTime(entry.event.time)}` : "JPC event · All day"}
+                </Text>
+                {entry.event.seasonCode ? (
+                  <Text variant="caption" color={theme.colors.neutral[600]}>{entry.event.seasonCode}</Text>
+                ) : null}
+              </Card>
+            ),
+          )}
+        </View>
+      ))}
+    </>
+  );
+}
+```
+
+(d) `PinnedSeasonCalendar` — call `useEvents()` beside the sessions query and
+let events fill a season-less calendar (an alumnus):
 
 ```tsx
   // Two queries, interleaved on the client — exactly what v1's calendar pages
   // do (season-calendar.tsx merges a session list and an event list). A single
-  // /api/v1/calendar endpoint is the tidier shape and is deliberately deferred:
-  // the sessions half already has a home and a season-scope derivation, and
-  // moving it would re-home Plan 4's work for one fewer request.
-  //
-  // The events query is NOT allowed to fail the screen: its error is swallowed
-  // into an empty array, because a calendar with no JPC events is still a
-  // calendar and a calendar with no sessions is not.
+  // /api/v1/calendar endpoint is the tidier shape and is deliberately deferred
+  // (D-15.1). The events query is NOT allowed to fail the screen: its error is
+  // swallowed into an empty array, because a calendar with no JPC events is
+  // still a calendar and a calendar with no sessions is not.
+  const events = useEvents();
   const eventRows = events.data ?? [];
 ```
 
-Bucket by `formatDate(startsAt)` / `formatDate(date)` — the same key the
-sessions already use — and sort within a day by the underlying instant so an
-event at 09:00 precedes a session at 18:00. Render an event row with a distinct
-icon and the subtitle "JPC event"; press pushes `/event/[id]`. Sessions keep
-pushing `/session/[id]`. The empty state appears only when **both** arrays are
-empty (v1 R71, kept).
+and change the body chain's `seasonId === null`, empty and success arms to:
+
+```tsx
+  else if (current.seasonId === null)
+    body =
+      eventRows.length === 0 ? (
+        <EmptyState title="No season to show" message="You aren't in a season right now, so there are no sessions on your calendar." />
+      ) : (
+        <CalendarDays sessions={[]} events={eventRows} showSeason={false} />
+      );
+  // …isPending / isError arms unchanged…
+  else if (sessions.data.length === 0 && eventRows.length === 0)
+    body = <EmptyState title="No sessions" message="This season doesn't have any sessions yet." />;
+  else body = <CalendarDays sessions={sessions.data} events={eventRows} showSeason={false} />;
+```
+
+and add `void events.refetch();` to the `onRefresh` handler (both arms).
+
+(e) `RangeSessions` — call `useEvents()` **above** its early returns (hooks
+order), and show only events whose start day lies in the window the header
+names (`fromDayKey`–`toDayKey`, inclusive, ISO strings compare correctly):
+
+```tsx
+  const events = useEvents();
+  // …the existing isPending / isError returns, then `const data = range.data;`…
+  const eventRows = (events.data ?? []).filter(
+    (e) => e.dayKey >= data.fromDayKey && e.dayKey <= data.toDayKey,
+  );
+```
+
+The empty arm becomes `data.sessions.length === 0 && eventRows.length === 0`
+and the list arm `<CalendarDays sessions={data.sessions} events={eventRows} showSeason={showSeason} />`.
+(`useEvents()` reads the server's default window, today − 30 d to + 365 d;
+paging "Earlier" past that shows sessions without events. Recorded, not fixed:
+a windowed events read is the deferred `/api/v1/calendar`'s job, D-15.1.)
+
+The empty state appears only when **both** arrays are empty (v1 R71, kept).
+`grep -n "formatSessionTime\|formatDate(" "apps/mobile/app/(app)/calendar.tsx"` → still no output (X13).
 
 - [ ] **Step 6:** Drop `events` from `placeholder-screens.test.tsx`. Run
 `cd apps/mobile && pnpm jest` → PASS; `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
@@ -6306,10 +7149,30 @@ testing what it claims.
      to v1's `user.role !== "STUDENT"`. → "shows ALUMNI_ONLY events TO ALUMNI"
      fails. This is spec 15's headline defect; the test exists so the port
      cannot quietly reintroduce it.
+  9. **X5, router-wide auth.** Add `forumRouter.use(requireAuth)` in
+     `routes/forum.ts`. → `app.test.ts`'s "leaves an unknown /api/v1 path a
+     not_found 404" fails with 401.
+  10. **Forum bypass via the generic writers.** Delete the
+     `assignment.type === "FORUM"` refusal from
+     `PUT /submissions/by-assignment/:assignmentId`. → "PUT
+     /submissions/by-assignment/:id → 409 use_forum_endpoint" fails. Restore,
+     then delete the same refusal from `PATCH /submissions/:publicId` → the
+     PATCH case fails. Each half of D-14.1's "only writer" claim must be pinned
+     separately.
+  11. **Forum status-code rule.** Move the `loadForumAssignment` check in
+     `GET /assignments/:id/forum` below `forumAudienceFor`. → "404s a STANDARD
+     assignment for student and staff alike" fails (403).
+  12. **Events, org time.** In `toListItem`, replace `orgDayKey(row.date)`
+     with `row.date.toISOString().slice(0, 10)` (the UTC day). → "derives
+     allDay, dayKey and time server-side" fails on the org-midnight row.
 
-- [ ] **Step 3: Emit check.** `grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/routes/`
-→ empty. The three new route files import shared by relative path; a bare
-specifier here crashes the built server with `ERR_MODULE_NOT_FOUND`.
+- [ ] **Step 3: Emit check** (ruling X12 — all of `dist/`, not only routes).
+`grep -rn 'require("@space/shared")' apps/backend/dist/` → empty. Every backend
+file this plan adds (`routes/{video-quiz,forum,events}.ts`,
+`lib/queries/{video-quiz,forum,events}.ts`) imports shared values by relative
+path; a bare specifier anywhere crashes the built server with
+`ERR_MODULE_NOT_FOUND`. Also `grep -rn "forum-text" apps packages` → empty
+(ruling X3).
 
 - [ ] **Step 4: Fixture-leak check.** After the full integration run, against
 staging:
@@ -6346,7 +7209,7 @@ webview needs one):
      on a second device, confirm an `ALUMNI_ONLY` event is **not** visible and
      an `ALL` event is.
 
-- [ ] **Step 6: Report.** Suite and case counts, the eight mutation outcomes,
+- [ ] **Step 6: Report.** Suite and case counts, the twelve mutation outcomes,
 the fixture-leak query results, the device checklist, and every divergence from
 this plan. Call out explicitly, for the product owner:
   - **the forum moderation gap** (D-14.4): staff can now read threads and remove
@@ -6365,3 +7228,98 @@ this plan. Call out explicitly, for the product owner:
     forum post moderation; a forum `NotificationType` member for
     "someone commented on your response"; `updatedById` on `SessionVideoQuestion`
     so an answer-key edit is attributable.
+
+---
+
+## Revision 2026-10-05
+
+Review pass against `review-plans-07-13.md`, the cross-plan rulings (X1–X16)
+and the coordinator's spec-19 addendum. Changes:
+
+- **Header:** dependencies restated against the execution order
+  (… 7 → 14 → 8 → 9 → **10** → 11 → 18 → 12 → 13); Plan 8 added (html-text);
+  consumers named (Plan 18 `useEvents` / `useUpcomingEvents`); Plan 4's
+  `orgDayKey`, sessions' `dayKey` and `formatDayKey` consumed. Session screen path is the X7 directory form
+  `session/[id]/index.tsx`. The `UpcomingEventsCard` is Plan 18's.
+- **X3:** `packages/shared/src/forum-text.ts` removed. Conversion comes from
+  Plan 8's `packages/shared/src/html-text.ts` (`htmlToPlainText`,
+  `plainTextToHtml`); `countWords` moved into `forum.ts`. The `&#160;` pin
+  corrected to 1 word (v1's `/&[a-z]+;/` cannot match `#`).
+- **X5:** `forumRouter`/`videoQuizRouter` take `requireAuth` per route; only
+  `eventsRouter` (exclusive prefix) keeps router-wide auth. The unfailable
+  `app._router` count and CORS-`PUT` tests were dropped (CORS `PUT` is already on
+  main — Contradiction 1 marked stale) and replaced by an unknown-path 404 guard.
+- **Forum B2:** one status-code rule — `loadForumAssignment` (missing / deleted /
+  non-FORUM → 404) runs before the audience gate (→ 403) on every forum route;
+  GET test added.
+- **Forum B3:** `PUT /submissions/by-assignment/:id` and
+  `PATCH /submissions/:publicId` refuse a FORUM assignment with
+  `409 use_forum_endpoint` (Task 6 Steps 4a/4b), with tests, OpenAPI and
+  mutation items 10–11.
+- **Forum:** DRAFT-target gate test no longer masked by a group mismatch;
+  `canComment` excludes MENTOR; "Show all comments" built on
+  `useForumComments` (`useInfiniteQuery`); every write hook parses a shared
+  response schema (X10).
+- **Video:** editor gated on SUPER / ADMIN-of-season, not `canMarkAttendance`;
+  leader-results test has an out-of-group control; the barrier test is written
+  in final form (direct render with an injected clock, a ref-capable player
+  mock); the needless `jest.config.js` edit removed; write hooks Zod-parsed.
+- **Events B1:** `graduationYear` set on `User`, not `StudentProfile`.
+- **Events X13:** writes carry org wall-clock fields (`day`, `time`, `endDay`)
+  and the server composes instants (`orgWallClockToInstant`); reads carry
+  `dayKey`, `endDayKey`, `time`; the calendar buckets by org ISO day and labels
+  with Plan 4's `formatDayKey`. `startOfDayInOrgTime` replaced by
+  `orgWallTime`, `orgWallClockToInstant` beside Plan 4's `orgDayKey` (consumed,
+  not redefined — the `dayKey` field name matches Plan 4's sessions); tests use
+  January dates (no DST dependence).
+- **Spec 19 addendum:** `GET /events` gains `?upcoming=true` (lower bound = today's
+  org midnight on `endDate ?? date`) and `?limit=` (1–20), and returns `total`
+  (counted before the cap); `useUpcomingEvents(limit)` and
+  `queryKeys.events.upcoming(limit)` added for Plan 18. MENTOR still sees no
+  SEASON events — v1 parity, `jpc-space/src/lib/jpc-events-query.ts:24-37`;
+  spec 19 D19's widening is not taken here.
+- **X11:** mobile session fixtures include `avatarPath: null`. **X12:** the emit
+  check greps all of `dist/`.
+
+Rejected: none of the plan-10 findings was wrong on verification. The nit
+"export list omits `MAX_VIDEO_SECONDS`" was half-right — it was already
+exported from `video-time.ts`; `video-quiz.ts` now imports it instead of
+repeating `86_400`.
+
+**Cross-plan consistency pass (2026-10-05, against plans 14–17 and the revised
+order … 5 → 6 → 7 → 17 → 14 → 8 → 9 → 10 …):**
+
+- **Header:** execution order corrected (17 now follows 7); Plans 15 and 16
+  added as real dependencies with the exact names consumed.
+- **Plan 15 owns the wall-clock helpers.** Task 1's `event.ts` no longer defines
+  `isoDaySchema` / `wallTimeSchema` — it imports them from Plan 15's
+  `packages/shared/src/org-time.ts` (a second definition is a duplicate
+  `export *` compile error). Task 9 no longer defines `orgWallTime` /
+  `orgWallClockToInstant`; it verifies Plan 15's and adds only
+  `isOrgMidnight`, built on Plan 3's `orgWallClock` (the old private
+  `partsFormatter`/`orgParts`/`orgOffsetMs` would have redeclared Plan 3's
+  `partsFormatter` const). Its unit test is now `isOrgMidnight`-only.
+- **Calendar merge retargeted at Plan 16 Task 9's `calendar.tsx`.** New
+  `groupCalendarByDay` beside Plan 16's `groupSessionsByDay` in
+  `src/lib/day-groups.ts`; `SessionDays` becomes `CalendarDays`;
+  `PinnedSeasonCalendar` and `RangeSessions` each call `useEvents()` (the
+  windowed branch filters events to its `fromDayKey`–`toDayKey`); a season-less
+  alumnus now sees events. Plan 4's "no season … fetches nothing" case is edited
+  to "fetches only `/api/v1/events`"; new cases cover the alumnus and the window
+  filter. Times render with Plan 15's `formatWallTime`.
+- **Forum on `assignment/[id]/index.tsx`** (Plan 15's move). Task 8 edits that
+  file's `isStudent` branch: students get `ForumThread` in place of
+  `SubmissionSection` on FORUM; staff keep `AssignmentStaffPanel` and read the
+  thread below it (not MENTOR). The test import path, and the fixture's
+  `dueOrgDay`/`dueOrgTime`, follow Plan 15. `ForumThread` no longer renders its
+  own device-zone due line — Plan 15's header shows the org due day.
+- **Session screen:** Task 5 extends Plan 16 Task 7's replacement of
+  `session/[id]/index.tsx`; the `sessionDetail` fixture gains `dayKey`,
+  `startTime` (Plan 16) and `canManageCheckIn` (Plan 4), all required by
+  `sessionDetailSchema`.
+- **X11:** inline session fixtures gain `hasPassword: true` (Plan 7's `MeUser`).
+- **Plan 14:** the video suite mocks `expo-camera` with Plan 14's
+  `helpers/expo-camera` stand-in — the session screen now imports
+  `StudentCheckInCard` (Plan 14 Task 10), whose scanner pulls the native module.
+  Step 6 names Plan 14's branch among what to keep. Plan 14 also added to the
+  header's consumed plans.

@@ -46,13 +46,26 @@ C8, C9, C11, C12** all bind here), and
 domain consumes — **cited, never restated**. Scope from
 `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 11.
 
-**Depends on:** **Plan 4** — it installs `react-native-svg` (as the peer of
+**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 →
+14 → 8 → 9 → 10 → **11** → 18 → 12 → 13; only plans before this one; **not** Plan 18):
+**Plan 4** — it installs `react-native-svg` (as the peer of
 `react-native-qrcode-svg`) *and* adds it to the Jest transform allow-list;
 without that step the chart primitives in Task 9 have no renderer and the
 component tests fail to transform. **Plan 8** — the per-student submission
 percentage with the C5 targeted denominator is domain 9's field, consumed here
 unchanged; this plan does not compute it and must not grow a second copy.
-Starting this plan before either one is a wasted run, not a slow one.
+**Plan 7** — `lib/rate-limit.ts` / `rateLimitHandler` (ruling X4). **Plan 4** —
+`orgDayKey` in `lib/org-time.ts` (`"YYYY-MM-DD"`, org zone; ruling X13).
+**Plan 16** — `seasonsRouter` attaches `requireAuth` per route (X5), which Task
+7's `/api/v1/seasons` 404 guard relies on. **Plan 17** — the student detail
+route file is `student/[id]/index.tsx` (directory form); the typed href
+`/student/[id]` Task 8 pushes is unchanged. Plans 3, 5 and 6 as listed
+under Prerequisites. Starting this plan before any of them is a wasted run, not
+a slow one.
+**Consumed later by:** Plan 18 (role dashboards — `GET /api/v1/reports/organisation`
+for the SUPER tiles, via `useOrganisationReport(enabled)` and
+`queryKeys.reports.organisation()` — Plan 18 reuses both so the dashboard and
+`/reports` share one cache entry), Plan 13 (the five cutover deferrals).
 
 Handed forward to **Plan 13** (`2026-08-24-plan-13-cutover.md`): the LATE-minute
 number, the `ExportAudit` table, the `GroupStudent` uniqueness fix, the season
@@ -68,11 +81,14 @@ the divergence ledger below with the migration that discharges it.
   `/reports` screen pages through it inline with a "Show more" under the
   at-risk card. Adding a second route file widens the roadmap's "mobile:
   reports screen" to two screens for ten more rows.
-- **No `/seasons/[code]` detail route** and no link from the organisation
-  roll-up's season rows. The rows carry `code` on the contract (fixing R62/D13
-  at the data layer) so wiring the link is one line when domain 2 lands the
-  route. Linking to a route that does not exist would need `as Href`, which
-  `CLAUDE.md` forbids.
+- **No link from the organisation roll-up's season rows.** The rows carry
+  `code` on the contract (fixing R62/D13 at the data layer). Plan 16 — earlier
+  in the execution order — builds the season detail route (spec 02 §9's
+  `/seasons/[code]`); wiring `{ pathname: "/seasons/[code]", params: { code } }`
+  onto each row is a one-line follow-up for Plan 18's SUPER dashboard, which
+  renders the same rows. It is left out here only to keep this plan's screen
+  test surface unchanged; typed routes will reject the link if Plan 16 named
+  the route differently, which is the point of not hard-coding it blind.
 - **No student or leader surface.** Both are refused explicitly by the
   endpoints (R109, R110, D6 #4). A leader-scoped "my group's engagement"
   report is a reasonable future feature and must not arrive by accident.
@@ -177,28 +193,29 @@ report; it does not open the file.
 
 ## Prerequisites
 
-This plan sits after Plans 3, 4, 5, 6 and 8 in the roadmap and consumes work
-from all five. If any of these is missing, **stop and say so** rather than
+This plan sits after Plans 3, 4, 5, 6, 7, 16, 17 and 8 in the execution order and consumes work
+from all of them. If any of these is missing, **stop and say so** rather than
 reimplementing it — a second copy of any of them is exactly the drift C4 and
 C8 exist to prevent.
 
 | From | What | Used by |
 |---|---|---|
 | Plan 3 | `config.orgTimezone` and `apps/backend/src/lib/org-time.ts` (`formatInOrgTime`) | Task 6 extends that file with `formatDayInOrgTime` for workbook column headers (C2) |
+| Plan 4 | `orgDayKey(date): string` (`YYYY-MM-DD`, org zone) in `lib/org-time.ts` — the same key sessions and events carry as `dayKey` | Task 3's `exportDay`, Task 7's filenames. Consumed, never redefined |
+| Plan 7 | `apps/backend/src/lib/rate-limit.ts` exporting `rateLimitHandler` (ruling X4) | Task 7's export limiter imports it; this plan never creates or copies it |
 | Plan 4 | `react-native-svg` in `apps/mobile/package.json` **and** in `jest.config.js`'s `transformIgnorePatterns` allow-list | Task 8's chart primitives. If absent: `cd apps/mobile && npx expo install react-native-svg` |
-| Plan 5 | `canViewStudent` in `lib/permissions.ts`; the `/student/[id]` route file | Task 8's at-risk rows navigate to `{ pathname: "/student/[id]", params: { id } }` |
+| Plan 5 / 17 | `canViewStudent` in `lib/permissions.ts` (Plan 5); the `/student/[id]` route, served by `student/[id]/index.tsx` since Plan 17 Task 7 | Task 8's at-risk rows navigate to `{ pathname: "/student/[id]", params: { id } }` |
 | Plan 6 | quiz routes and, critically, whether `cleanupTestData` already deletes quiz rows | Task 2 checks and adds it if not |
 | **Plan 8** | `packages/shared/src/note.ts`: `engagementScoreSchema`, `EngagementScore`, `isAtRisk`, `AT_RISK_PCT`, `engagementRowSchema`, `EngagementRow`. And `apps/backend/src/lib/queries/engagement.ts`: `computeEngagementForSeason` | **Task 1 and Task 3 both build directly on these.** Task 3 generalises the query function's signature |
 
-### A defect to fix in passing, from Plan 8
+### Plan 8's shared import in `engagement.ts`
 
-Plan 8's Task 4 writes `import { isAtRisk } from "@space/shared";` at the top
-of `apps/backend/src/lib/queries/engagement.ts`. That is a **value** import
-through the bare specifier — the exact `ERR_MODULE_NOT_FOUND` trap `CLAUDE.md`
-documents, and it will not surface until someone runs the built server. Task 3
-edits that file anyway; **fix the import to
-`"../../../../../packages/shared/src/index"` in the same commit** and say so in
-the report. Task 10's emit check greps for it.
+Fixed at source: Plan 8 (revised under ruling X12) imports `isAtRisk` in
+`apps/backend/src/lib/queries/engagement.ts` from
+`"../../../../../packages/shared/src/index"`, and its own emit check greps all
+of `dist/`. Task 3 edits that file and **keeps** the relative path; it is not a
+fix this plan owns any more. If the bare `"@space/shared"` specifier is found
+there, Plan 8 has not been revised — stop and report.
 
 ---
 
@@ -500,8 +517,10 @@ organisation timezone read from config, "never the device's zone".
 
 **Ruling.** **C2 wins; `?tz=` is not implemented.**
 
-- Chart data carries raw ISO instants (`startsAt`) plus the session title. The
-  client formats for display with `formatDate` and derives nothing.
+- Chart data carries raw ISO instants (`startsAt`, for ordering) plus the
+  server's org-calendar `dayKey` (Plan 4's `orgDayKey`, ruling X13) and the
+  session title. The client labels with the timezone-free `formatDayKey(dayKey)`
+  and derives nothing — never `formatDate(startsAt)` in the device's zone.
 - The **workbook** has no client-side formatting step — the server writes the
   header text — so its date columns are formatted with
   `formatDayInOrgTime(date)`, which is `Intl.DateTimeFormat` pinned to
@@ -1009,6 +1028,7 @@ describe("attendancePointSchema", () => {
       seasonTitle: "Spring 2099",
       title: "Week 1",
       startsAt: "2099-03-01T18:00:00.000Z",
+      dayKey: "2099-03-01",
       presentCount: 8,
       expectedCount: 10,
       pct: 80,
@@ -1031,6 +1051,7 @@ describe("attendancePointSchema", () => {
         seasonTitle: "Spring 2099",
         title: "Week 1",
         startsAt: "2099-03-01T18:00:00.000Z",
+        dayKey: "2099-03-01",
         presentCount: 12,
         expectedCount: 10,
         pct: 120,
@@ -1062,11 +1083,13 @@ describe("assignmentCompletionRowSchema", () => {
 
 describe("reportScopeQuerySchema", () => {
   it("accepts a repeated seasonId, a single one, and none", () => {
-    expect(reportScopeQuerySchema.parse({ seasonId: ["3", "4"] }).seasonIds).toEqual([3, 4]);
-    expect(reportScopeQuerySchema.parse({ seasonId: "3" }).seasonIds).toEqual([3]);
+    // The wire name and the parsed name are both `seasonId` (an array after
+    // parse); the routes read `parsed.data.seasonId`.
+    expect(reportScopeQuerySchema.parse({ seasonId: ["3", "4"] }).seasonId).toEqual([3, 4]);
+    expect(reportScopeQuerySchema.parse({ seasonId: "3" }).seasonId).toEqual([3]);
     // Empty means "my whole permitted scope" — resolved server-side, never
     // "every season in the database" as v1's empty array meant (R1).
-    expect(reportScopeQuerySchema.parse({}).seasonIds).toEqual([]);
+    expect(reportScopeQuerySchema.parse({}).seasonId).toEqual([]);
   });
 
   it("defaults the trend window to 26 points and caps it", () => {
@@ -1151,6 +1174,7 @@ import { z } from "zod";
 
 import { seasonStatusSchema } from "./enums";
 import { engagementScoreSchema, isAtRisk, type EngagementScore } from "./note";
+import { isoDaySchema } from "./org-time"; // Plan 15's — consumed, never redefined
 
 // ---------------------------------------------------------------------------
 // Engagement bands
@@ -1236,15 +1260,6 @@ export const reportScopeQuerySchema = z.object({
 });
 export type ReportScopeQuery = z.output<typeof reportScopeQuerySchema>;
 
-// `seasonId` is the wire name (repeatable); `seasonIds` is what every consumer
-// wants to read. Renamed on parse so no handler re-derives it.
-export const reportScopeQuerySchemaWithIds = reportScopeQuerySchema.transform((q) => ({
-  seasonIds: q.seasonId,
-  from: q.from,
-  to: q.to,
-  trendLimit: q.trendLimit,
-}));
-
 export const resolvedScopeSchema = z.object({
   /** The intersection actually queried — never the request (ruling C8, spec D6 #1). */
   seasonIds: z.array(z.number().int()),
@@ -1288,6 +1303,12 @@ export const attendancePointSchema = z.object({
   seasonTitle: z.string(),
   title: z.string(),
   startsAt: z.string(),
+  /**
+   * The org-calendar day of `startsAt`, computed server-side with Plan 4's
+   * `orgDayKey` (ruling X13). The chart labels by this — never by formatting
+   * `startsAt` in the device's zone.
+   */
+  dayKey: isoDaySchema,
   presentCount: z.number().int().min(0),
   expectedCount: z.number().int().min(0),
   pct: z.number().int().min(0).max(100).nullable(),
@@ -1364,6 +1385,14 @@ export const engagementSummarySchema = z.object({
   /** Enrolments — the number the band counts actually count (R32). */
   enrollmentCount: z.number().int().min(0),
   generatedAt: z.string(),
+  /**
+   * Today in the ORGANISATION's zone, `YYYY-MM-DD` (ruling C2/X13), from the
+   * server's `orgDayKey`. The client builds the engagement export's local
+   * filename from this — never from its own clock, whose UTC or device day
+   * differs from the server's `Content-Disposition` day around midnight
+   * (D-17.16's "cannot drift").
+   */
+  exportDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 export type EngagementSummary = z.infer<typeof engagementSummarySchema>;
 
@@ -1641,7 +1670,7 @@ git add apps/backend/src/__tests__/integration/fixtures.ts && \
 Hands the coordinator a `lib/permissions.ts` fragment; does not open that file.
 
 **Files:**
-- Modify: `apps/backend/src/lib/queries/engagement.ts` (generalise the signature to a season list; fix Plan 8's bare-specifier import)
+- Modify: `apps/backend/src/lib/queries/engagement.ts` (generalise the signature to a season list; keep Plan 8's relative `isAtRisk` import — see Prerequisites)
 - Create: `apps/backend/src/lib/queries/reports.ts`
 - **Fragment for the coordinator:** `apps/backend/src/lib/permissions.ts` (add `ReportScope`, `reportScopeFor`, `canExportSeasonWorkbook`)
 - Test: `apps/backend/src/__tests__/integration/reports-queries.test.ts`
@@ -2172,7 +2201,11 @@ export async function computeEngagementForSeasons(
       enrolledAt: true,
       groupId: true,
       group: { select: { name: true } },
-      studentUser: { select: { name: true, email: true } },
+      // name only — NOT email. EngagementRow is domain 9's contract and Plan 8
+      // serves it to LEADERs; widening it with an address would leak one to
+      // every leader-facing engagement read (ruling C8). Reports derive the
+      // email in their own query (loadStudentEmails in lib/queries/reports.ts).
+      studentUser: { select: { name: true } },
       season: { select: { title: true } },
     },
   });
@@ -2304,15 +2337,14 @@ export async function computeEngagementForSeason(
 }
 ```
 
-> **Note for the agent.** Plan 8's `EngagementRow` does not carry `email`.
-> Task 3 needs it for the CSV-replacement export and the cohort endpoint, so
-> `studentUser: { select: { name: true, email: true } }` is selected above.
-> If `engagementRowSchema` in `packages/shared/src/note.ts` lacks
-> `studentEmail`, **add it there** (`studentEmail: z.string()`) rather than
-> re-fetching users here, and map it in the return (`studentEmail:
-> e.studentUser.email`). Put the change in your report as a fragment — it is
-> domain 9's contract file, and one extra field is cheaper than a second query
-> or a second row type.
+> **Email is derived here, not added to Plan 8's contract.** Plan 8's
+> `engagementRowSchema` (`packages/shared/src/note.ts`) has no email field and
+> **stays unchanged** — it is the payload of a leader-readable endpoint, and an
+> address there would be a C8 widening nobody decided. The reports rows that
+> need an email (the at-risk list, the cohort page, the engagement workbook)
+> get it from `loadStudentEmails` in Step 5: one `user.findMany` over **only
+> the ids being returned** (≤ 10 for the summary, one page for the cohort), so
+> the cost is one small query and no other surface ever sees the field.
 
 - [ ] **Step 4: The permissions fragment** *(hand to the coordinator; do not edit the file)*
 
@@ -2382,6 +2414,7 @@ import type {
 import { BAND_ORDER, bandFor } from "../../../../../packages/shared/src/index";
 
 import { db } from "../../db/client";
+import { orgDayKey } from "../org-time";
 import type { ReportScope } from "../permissions";
 import { computeEngagementForSeasons } from "./engagement";
 
@@ -2453,6 +2486,7 @@ export interface EngagementSummaryResult {
   cohortSize: number;
   enrollmentCount: number;
   generatedAt: string;
+  exportDay: string;
 }
 
 const EMPTY_BANDS = () => BAND_ORDER.map((band) => ({ band, count: 0 }));
@@ -2474,7 +2508,11 @@ export async function buildEngagementSummary(
   scope: ResolvedScope,
   options: EngagementSummaryOptions,
 ): Promise<EngagementSummaryResult> {
-  const generatedAt = new Date().toISOString();
+  const now = new Date();
+  const generatedAt = now.toISOString();
+  // The org-zone day for the client's export filename (X13) — the same
+  // function routes/exports.ts stamps on Content-Disposition.
+  const exportDay = orgDayKey(now);
   const seasonIds = scope.seasonIds;
   if (seasonIds.length === 0) {
     return {
@@ -2487,6 +2525,7 @@ export async function buildEngagementSummary(
       cohortSize: 0,
       enrollmentCount: 0,
       generatedAt,
+      exportDay,
     };
   }
 
@@ -2578,6 +2617,7 @@ export async function buildEngagementSummary(
       seasonTitle: seasonTitleById.get(s.seasonId) ?? "",
       title: s.title,
       startsAt: s.startsAt.toISOString(),
+      dayKey: orgDayKey(s.startsAt), // X13: the label's day is the org's, not the device's
       presentCount,
       expectedCount: eligible.size,
       // null, not 0: a session that ran before anybody enrolled has no
@@ -2669,7 +2709,7 @@ export async function buildEngagementSummary(
     bands: BAND_ORDER.map((band) => ({ band, count: bandCounts.get(band) ?? 0 })),
     // The cap is v1's (R33). What is new is atRiskTotal beside it: a reader
     // currently cannot tell whether ten is all of them (spec D16).
-    atRisk: atRiskAll.slice(0, 10),
+    atRisk: await withEmails(atRiskAll.slice(0, 10)),
     atRiskTotal: atRiskAll.length,
     // Two numbers, because they differ and v1 conflated them: bucket counts
     // count ENROLMENTS, so a two-season student is counted twice and the pie's
@@ -2677,13 +2717,17 @@ export async function buildEngagementSummary(
     cohortSize: new Set(rows.map((r) => r.studentUserId)).size,
     enrollmentCount: rows.length,
     generatedAt,
+    exportDay,
   };
 }
 
 /** score ascending, then studentUserId, then seasonId — total and stable. */
-function byScoreThenId(a: EngagementReportRow, b: EngagementReportRow): number {
+function byScoreThenId(a: ScoredReportRow, b: ScoredReportRow): number {
   return a.score - b.score || a.studentUserId - b.studentUserId || a.seasonId - b.seasonId;
 }
+
+/** A report row before its email is attached — what sorting and banding need. */
+export type ScoredReportRow = Omit<EngagementReportRow, "email">;
 
 /**
  * Domain 9's row plus this domain's band. The band is computed HERE and
@@ -2692,7 +2736,7 @@ function byScoreThenId(a: EngagementReportRow, b: EngagementReportRow): number {
  * `atRisk` boolean: `band === "AT_RISK"` is the same answer, and shipping both
  * is how a client ends up trusting the wrong one.
  */
-function toReportRows(rows: Awaited<ReturnType<typeof computeEngagementForSeasons>>): EngagementReportRow[] {
+function toReportRows(rows: Awaited<ReturnType<typeof computeEngagementForSeasons>>): ScoredReportRow[] {
   return rows.map((r) => ({
     score: r.score,
     attendancePct: r.attendancePct,
@@ -2702,12 +2746,32 @@ function toReportRows(rows: Awaited<ReturnType<typeof computeEngagementForSeason
     submissionsExpected: r.submissionsExpected,
     submissionsCompleted: r.submissionsCompleted,
     studentUserId: r.studentUserId,
-    name: r.studentName,
-    email: r.studentEmail,
+    // User.name is non-null in the schema; Plan 8's contract types it nullable.
+    name: r.studentName ?? "",
     seasonId: r.seasonId,
     seasonTitle: r.seasonTitle ?? "",
     band: bandFor(r),
   }));
+}
+
+/**
+ * The reports domain's own email lookup (Plan 8's EngagementRow has none, and
+ * must not grow one — see the note under Step 3). Called with only the ids
+ * about to be returned, never the whole cohort.
+ */
+export async function loadStudentEmails(ids: number[]): Promise<Map<number, string>> {
+  if (ids.length === 0) return new Map();
+  const users = await db.user.findMany({
+    where: { id: { in: [...new Set(ids)] } },
+    select: { id: true, email: true },
+  });
+  return new Map(users.map((u) => [u.id, u.email]));
+}
+
+/** Attach emails to the rows being returned, in one query. */
+export async function withEmails(rows: ScoredReportRow[]): Promise<EngagementReportRow[]> {
+  const emails = await loadStudentEmails(rows.map((r) => r.studentUserId));
+  return rows.map((r) => ({ ...r, email: emails.get(r.studentUserId) ?? "" }));
 }
 
 /**
@@ -2760,7 +2824,7 @@ export async function listEngagementRows(
     .sort(byScoreThenId);
 
   const offset = decodeCursor(options.cursor);
-  const rows = all.slice(offset, offset + options.limit);
+  const rows = await withEmails(all.slice(offset, offset + options.limit));
   const next = offset + rows.length;
 
   return {
@@ -3376,7 +3440,10 @@ import { requireAuth, requireUser } from "../middleware/require-auth";
 
 export const reportsRouter = Router();
 
-reportsRouter.use(requireAuth);
+// No `reportsRouter.use(requireAuth)`: /api/v1/reports is shared with
+// reportExportsRouter, so router-level auth would answer 401 for unknown
+// /api/v1/reports/* paths and run twice per request (ruling X5). Each route
+// lists requireAuth first.
 
 /**
  * The engagement summary.
@@ -3387,7 +3454,7 @@ reportsRouter.use(requireAuth);
  * authorization of any kind and its only protection is which server component
  * calls it (R3).
  */
-reportsRouter.get("/engagement", async (req, res) => {
+reportsRouter.get("/engagement", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
   const scope = reportScopeFor(user);
@@ -3416,7 +3483,7 @@ reportsRouter.get("/engagement", async (req, res) => {
  * purpose: "separately gated" is the requirement, and a helper that both routes
  * call is one edit away from being loosened for both at once.
  */
-reportsRouter.get("/engagement/students", async (req, res) => {
+reportsRouter.get("/engagement/students", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
   const scope = reportScopeFor(user);
@@ -3444,7 +3511,7 @@ reportsRouter.get("/engagement/students", async (req, res) => {
  * authorization (R49, R50); requireRole(["SUPER"]) on its single calling page
  * is the entire protection in v1, and it moves here.
  */
-reportsRouter.get("/organisation", async (req, res) => {
+reportsRouter.get("/organisation", requireAuth, async (req, res) => {
   const user = requireUser(req);
   if (!isSuper(user)) return apiError(res, "forbidden", "You don't have access to this.", 403);
 
@@ -3494,8 +3561,8 @@ reader's only warning about the v1 divergences:
           "not the same unit as a per-student submission percentage. A row's `band` is " +
           "the at-risk answer: `AT_RISK` means either engagement component is below 60, " +
           "and the at-risk list is exactly the rows in that band.\n\n" +
-          "Times: `startsAt` is a raw UTC instant; the client formats it. The server " +
-          "performs no wall-clock derivation for this endpoint.",
+          "Times: `startsAt` is a raw UTC instant (for ordering); `dayKey` is its " +
+          "organisation-calendar day (YYYY-MM-DD, ORG_TIMEZONE), which clients label by.",
         parameters: [
           { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
           { name: "from", in: "query", required: false, schema: { type: "string", format: "date-time" } },
@@ -3512,12 +3579,56 @@ reader's only warning about the v1 divergences:
     },
 ```
 
-…and the same treatment for `/api/v1/reports/engagement/students` (note in its
-description that it is **separately gated** and returns one row per active
-enrolment, so a student in two in-scope seasons appears twice) and
-`/api/v1/reports/organisation` (note that `totalStudentsNotGraduated` counts
-student **accounts**, not enrolments, and that `withdrawnCount` is the
-`WITHDRAWN` enum member displayed as "Dropped").
+The other two paths, written out (CLAUDE.md: the document changes in the same
+commit as the route):
+
+```ts
+    "/api/v1/reports/engagement/students": {
+      get: {
+        tags: ["Reports"],
+        summary: "The engagement cohort, paged",
+        description:
+          "SEPARATELY GATED from the summary (same roles: SUPER, MENTOR, ADMIN; LEADER " +
+          "and STUDENT refused) and absent from the summary's payload on purpose — v1 " +
+          "shipped every student's name, email and scores to every screen (R34).\n\n" +
+          "One row per ACTIVE ENROLMENT, so a student in two in-scope seasons appears " +
+          "twice. Ordered by score ascending, then studentUserId, then seasonId. " +
+          "`cursor` is opaque; a malformed cursor restarts the list. `band` filters to " +
+          "one engagement band. Scope intersection is identical to the summary's.",
+        parameters: [
+          { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+          { name: "band", in: "query", required: false, schema: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "AT_RISK"] } },
+          { name: "cursor", in: "query", required: false, schema: { type: "string" } },
+          { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 200, default: 50 } },
+        ],
+        responses: {
+          200: ok(engagementStudentPageSchemaDoc, "One page of the cohort"),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/reports/organisation": {
+      get: {
+        tags: ["Reports"],
+        summary: "Organisation roll-up (SUPER only)",
+        description:
+          "Counts across the whole organisation; every other role is refused with 403.\n\n" +
+          "`totalStudentsNotGraduated` counts student ACCOUNTS (role STUDENT, no " +
+          "graduationYear, not deleted), not enrolments — the same population v1 " +
+          "labelled \"Current students\", renamed so the label stops overclaiming (D4). " +
+          "`withdrawnCount` is the WITHDRAWN enrolment status, displayed as \"Dropped\". " +
+          "Season rows carry `code` beside `seasonId` so a client can address the " +
+          "season detail route by code (D13).",
+        responses: {
+          200: ok(organisationReportSchemaDoc, "Organisation roll-up"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+```
 
 Declare `engagementSummarySchemaDoc`, `engagementStudentPageSchemaDoc` and
 `organisationReportSchemaDoc` as `const` objects alongside the file's existing
@@ -3938,18 +4049,13 @@ const dayFormatter = new Intl.DateTimeFormat("en-US", {
 export function formatDayInOrgTime(date: Date): string {
   return dayFormatter.format(date);
 }
-
-/** "2026-08-24" in the organisation's zone — for filenames, which must sort. */
-export function isoDayInOrgTime(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: config.orgTimezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-  return parts; // en-CA formats as YYYY-MM-DD
-}
 ```
+
+**No ISO-day helper is added here** — Plan 4 (Task 1) already created
+`orgDayKey(date)` in this file (`"2026-08-24"`, org zone) and this plan
+consumes it unchanged for filenames and the summary's `exportDay`. A second
+definition is the drift C4 forbids; if it is missing, Plan 4 has not landed —
+stop.
 
 - [ ] **Step 4: Shared workbook styling**
 
@@ -4503,7 +4609,6 @@ git add apps/backend/package.json apps/backend/src/lib \
 time).
 
 **Files:**
-- Create: `apps/backend/src/lib/rate-limit.ts` *(if Plan 8 has not already extracted it)*
 - Create: `apps/backend/src/lib/exports/audit.ts`
 - Create: `apps/backend/src/routes/exports.ts`
 - Modify: `apps/backend/src/app.ts` (two mounts)
@@ -4514,10 +4619,11 @@ time).
 - Consumes: `buildSeasonWorkbook`, `summariseSeasonWorkbook`,
   `buildEngagementWorkbook` (Task 6); `reportScopeFor`,
   `canExportSeasonWorkbook` (Task 3 fragment); `resolveReportScope`,
-  `listEngagementRows` (Task 3); `isoDayInOrgTime` (Task 6);
+  `listEngagementRows` (Task 3); `orgDayKey` (Plan 4); `rateLimitHandler`
+  (Plan 7's `lib/rate-limit.ts`, ruling X4);
   `exportFilename`, `exportFormatSchema`, `XLSX_MIME` (Task 1 — **value**
   imports, relative, four levels up from `routes/`).
-- Produces: `rateLimitHandler`; `logExport`; `reportExportsRouter`,
+- Produces: `logExport`; `reportExportsRouter`,
   `seasonExportsRouter`;
   `GET /api/v1/reports/engagement/export`,
   `GET /api/v1/seasons/:id/exports/workbook`,
@@ -4835,40 +4941,54 @@ exist but the gate is a verbatim port of
 `"REFUSES a MENTOR"` failing with `Expected: 403 Received: 200` — v1's own gate,
 faithfully ported, hands a mentor the whole season.
 
+Append one more case to the same suite — the X5 guard for the two shared
+prefixes this task mounts on:
+
+```ts
+describe("shared prefixes keep the not_found envelope (ruling X5)", () => {
+  it("answers an unknown /reports path with 404, not 401", async () => {
+    // reportsRouter and reportExportsRouter both attach requireAuth per route.
+    // A router-level use(requireAuth) on either turns this anonymous request
+    // into a 401.
+    const res = await request(app).get("/api/v1/reports/space-v2-no-such-route");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+
+  it("answers an unknown /seasons path with 404, not 401", async () => {
+    // Plan 16 removed seasonsRouter's router-level use(requireAuth) (its
+    // Task 1 grep pins that). seasonExportsRouter shares the prefix and
+    // attaches requireAuth per route, so an anonymous unknown path still
+    // reaches the catch-all.
+    const res = await request(app).get("/api/v1/seasons/1/space-v2-no-such-route");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+});
+```
+
+Both prefixes are asserted: `seasonsRouter`'s router-level `use(requireAuth)`
+(on main at `routes/seasons.ts:24`) is gone since **Plan 16** (per-route
+`requireAuth`, ruling X5), so this plan's `seasonExportsRouter` is the only
+thing that could reintroduce a 401 there — and it must not.
+
 - [ ] **Step 2: Run it to see it fail**
 
 ```bash
 cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern exports-routes
 ```
 
-- [ ] **Step 3: Extract the rate-limit handler** *(skip if Plan 8 already did)*
+- [ ] **Step 3: Confirm the shared rate-limit handler exists**
 
 ```bash
-ls apps/backend/src/lib/rate-limit.ts
+grep -n "export const rateLimitHandler" apps/backend/src/lib/rate-limit.ts
+grep -rn "const rateLimitHandler" apps/backend/src/routes/
 ```
 
-If absent:
-
-```ts
-// apps/backend/src/lib/rate-limit.ts
-import type { Options as RateLimitOptions } from "express-rate-limit";
-
-import { apiError } from "./api-response";
-
-/**
- * express-rate-limit's default 429 body is plain text, which breaks the
- * envelope every other path in this API keeps. routes/auth.ts has had this
- * handler inline since the port; it moves here the first time a second domain
- * needs a limiter.
- */
-export const rateLimitHandler: RateLimitOptions["handler"] = (_req, res) => {
-  apiError(res, "too_many_requests", "Too many requests. Please try again later.", 429);
-};
-```
-
-Then replace the local `const rateLimitHandler = …` in
-`apps/backend/src/routes/auth.ts` with an import of this one — same behaviour,
-one definition.
+Expect one hit for the first command and **none** for the second. Plan 7
+extracted `lib/rate-limit.ts` (ruling X4) and every limiter imports it. This
+plan adds no copy and creates no file; if the first grep is empty, Plan 7 has
+not landed — stop and report rather than recreating it.
 
 - [ ] **Step 4: The audit log**
 
@@ -4928,7 +5048,7 @@ import { apiError, apiOk } from "../lib/api-response";
 import { logExport } from "../lib/exports/audit";
 import { buildEngagementWorkbook } from "../lib/exports/engagement-workbook";
 import { buildSeasonWorkbook, summariseSeasonWorkbook } from "../lib/exports/season-workbook";
-import { isoDayInOrgTime } from "../lib/org-time";
+import { orgDayKey } from "../lib/org-time";
 import { parseId } from "../lib/parse-id";
 import { canExportSeasonWorkbook, reportScopeFor } from "../lib/permissions";
 import { listEngagementRows, resolveReportScope } from "../lib/queries/reports";
@@ -4938,8 +5058,11 @@ import { requireAuth, requireUser } from "../middleware/require-auth";
 export const reportExportsRouter = Router();
 export const seasonExportsRouter = Router();
 
-reportExportsRouter.use(requireAuth);
-seasonExportsRouter.use(requireAuth);
+// Per-route requireAuth (ruling X5): both prefixes are shared —
+// /api/v1/reports with reportsRouter, /api/v1/seasons with seasonsRouter — so a
+// router-level guard would 401 unknown paths and re-run auth for every request
+// that falls through. requireAuth is listed BEFORE exportLimiter on each route,
+// which is what guarantees the limiter's user-id key exists.
 
 /**
  * Ten exports per fifteen minutes, per USER.
@@ -4948,8 +5071,8 @@ seasonExportsRouter.use(requireAuth);
  * two that return the most personal data per request (R48, R85); v1 rate-limits
  * neither (R88). Keyed on the user id rather than the IP because an office
  * behind one NAT would otherwise share a bucket — and because keying on IP
- * drags in IPv6 normalisation for no benefit. Mounted AFTER requireAuth so the
- * key always exists.
+ * drags in IPv6 normalisation for no benefit. Listed AFTER requireAuth on each
+ * route so the key always exists.
  *
  * The 429 body is the same `too_many_requests` envelope the login limiter
  * already returns.
@@ -4989,7 +5112,7 @@ function setDownloadHeaders(res: Response, filename: string): void {
 }
 
 /** The engagement export — v1's CSV, as a workbook (spec D7). */
-reportExportsRouter.get("/engagement/export", exportLimiter, async (req, res) => {
+reportExportsRouter.get("/engagement/export", requireAuth, exportLimiter, async (req, res) => {
   const user = requireUser(req);
 
   const scope = reportScopeFor(user);
@@ -5012,7 +5135,7 @@ reportExportsRouter.get("/engagement/export", exportLimiter, async (req, res) =>
   // legitimately wants every row, and it is rate-limited and audited for it.
   const page = await listEngagementRows(resolved, { limit: Number.MAX_SAFE_INTEGER });
 
-  const filename = exportFilename("engagement", resolved.label, isoDayInOrgTime(new Date()));
+  const filename = exportFilename("engagement", resolved.label, orgDayKey(new Date()));
   const workbook = buildEngagementWorkbook(page.rows, resolved.label);
 
   setDownloadHeaders(res, filename);
@@ -5036,7 +5159,7 @@ reportExportsRouter.get("/engagement/export", exportLimiter, async (req, res) =>
  * a path parameter matches the existing seasons router and makes the row-scoped
  * gate the obvious one (spec §7).
  */
-seasonExportsRouter.get("/:id/exports/workbook", exportLimiter, async (req, res) => {
+seasonExportsRouter.get("/:id/exports/workbook", requireAuth, exportLimiter, async (req, res) => {
   const user = requireUser(req);
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -5058,7 +5181,7 @@ seasonExportsRouter.get("/:id/exports/workbook", exportLimiter, async (req, res)
   const filename = exportFilename(
     "season-workbook",
     built.seasonCode,
-    isoDayInOrgTime(new Date()),
+    orgDayKey(new Date()),
   );
 
   setDownloadHeaders(res, filename);
@@ -5085,7 +5208,7 @@ seasonExportsRouter.get("/:id/exports/workbook", exportLimiter, async (req, res)
  * the workbook (spec §7). Same gate as the workbook, deliberately — a manifest
  * a caller cannot act on is a size oracle over a season they may not read.
  */
-seasonExportsRouter.get("/:id/exports/manifest", async (req, res) => {
+seasonExportsRouter.get("/:id/exports/manifest", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -5098,7 +5221,7 @@ seasonExportsRouter.get("/:id/exports/manifest", async (req, res) => {
   if (!summary) return apiError(res, "not_found", "Season not found.", 404);
 
   return apiOk(res, {
-    filename: exportFilename("season-workbook", summary.seasonCode, isoDayInOrgTime(new Date())),
+    filename: exportFilename("season-workbook", summary.seasonCode, orgDayKey(new Date())),
     mimeType: XLSX_MIME,
     sheets: summary.sheets,
     estimatedBytes: summary.estimatedBytes,
@@ -5131,7 +5254,7 @@ import { reportExportsRouter, seasonExportsRouter } from "./routes/exports";
 
 - [ ] **Step 7: OpenAPI, same commit**
 
-Three more paths. Each **must** state, in prose:
+Three more paths. Each **must** state, in prose (the entries below do):
 
 - success is **bytes plus `Content-Disposition`**, and every error on the path
   is still the JSON envelope, so a client can distinguish a 403 from a file;
@@ -5147,31 +5270,107 @@ Three more paths. Each **must** state, in prose:
 - `LATE` cells render `"L"` and the recorded minutes are withheld until the
   cutover backfill, with a pointer to ruling C3.
 
-For the binary responses use a raw content type rather than the `ok()` helper:
+The three entries, written out. A shared `xlsxResponse` constant carries the
+binary 200 (a raw content type rather than the `ok()` helper):
 
 ```ts
+const xlsxResponse = {
+  description: "XLSX workbook (bytes). Every non-200 on this path is the JSON error envelope.",
+  headers: {
+    "Content-Disposition": {
+      schema: { type: "string" },
+      description:
+        'attachment; filename="<ascii fallback>"; filename*=UTF-8\'\'<percent-encoded>. ' +
+        "The filename is built by exportFilename() in packages/shared and carries the " +
+        "organisation-timezone day.",
+    },
+  },
+  content: {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+      schema: { type: "string", format: "binary" },
+    },
+  },
+} as const;
+
+const EXPORT_COMMON =
+  "Success is bytes plus Content-Disposition; every error is the JSON envelope, so a " +
+  "client can tell a 403 from a file. ENABLE_UPLOADS does NOT gate this endpoint — it " +
+  "reads database rows and touches no Storage driver. Rate-limited to 10 per 15 " +
+  "minutes per user; the 429 is `too_many_requests` in the envelope.";
+```
+
+```ts
+    "/api/v1/reports/engagement/export": {
+      get: {
+        tags: ["Reports"],
+        summary: "Engagement export (XLSX) for the caller's permitted seasons",
+        description:
+          EXPORT_COMMON + "\n\n" +
+          "Roles: SUPER, ADMIN (their seasons) and MENTOR. MENTOR may take THIS export — " +
+          "it is the data v1 shows mentors on screen — and may not take the season " +
+          "workbook. Scope intersection is identical to /reports/engagement. " +
+          "`?format=csv` is refused with a legible 400: XLSX is the only format (D7).",
+        parameters: [
+          { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+          { name: "format", in: "query", required: false, schema: { type: "string", enum: ["xlsx"], default: "xlsx" } },
+        ],
         responses: {
-          200: {
-            description: "XLSX workbook",
-            headers: {
-              "Content-Disposition": {
-                schema: { type: "string" },
-                description: 'attachment; filename="…"; filename*=UTF-8\'\'…',
-              },
-            },
-            content: {
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                schema: { type: "string", format: "binary" },
-              },
-            },
-          },
+          200: xlsxResponse,
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/exports/workbook": {
+      get: {
+        tags: ["Reports"],
+        summary: "Season workbook (XLSX): attendance, grades, assignments, key",
+        description:
+          EXPORT_COMMON + "\n\n" +
+          "Roles: SUPER, or an ADMIN of this season. MENTOR is REFUSED — a deliberate " +
+          "divergence from v1, whose only mentor protection was an unrendered button " +
+          "(spec D6 #3). A soft-deleted season is 404.\n\n" +
+          "`Submitted %` divides by the assignments assigned to that student (ruling C5), " +
+          "which CHANGES its value relative to v1 for any season with a group-targeted " +
+          "assignment. LATE attendance cells render \"L\": the recorded minutes are " +
+          "measured from the wrong instant and are withheld until the cutover backfill " +
+          "(ruling C3).",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        responses: {
+          200: xlsxResponse,
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
           429: errRef("TooManyRequests"),
         },
+      },
+    },
+    "/api/v1/seasons/{id}/exports/manifest": {
+      get: {
+        tags: ["Reports"],
+        summary: "What the season workbook will contain, without building it",
+        description:
+          "Same gate as the workbook (a manifest a caller cannot act on is a size oracle). " +
+          "Returns the exact filename the workbook download will carry, the sheet list, an " +
+          "estimated byte size for a cellular-data warning, and a scope description. Not " +
+          "rate-limited: it builds nothing.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        responses: {
+          200: ok(exportManifestSchemaDoc, "Workbook manifest"),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
 ```
+
+Declare `exportManifestSchemaDoc` beside the other hand-authored response
+shapes, mirroring Task 1's `exportManifestSchema` field for field.
 
 If `TooManyRequests` is not already in `components.responses`, add it beside the
 others using the same `errorResponse` shape.
@@ -5234,7 +5433,7 @@ locally while working; it must not commit a stub.
   `engagementStudentPageSchema`, `organisationReportSchema`, `BAND_LABEL`,
   `BAND_ORDER`, `REPORT_METRIC_NOTES`, and the row/point types from
   `@space/shared` (mobile may use the package name — Metro resolves it, and the
-  `rootDir` emit trap is backend-only); `formatDate` from `../lib/format`;
+  `rootDir` emit trap is backend-only); `formatDayKey` (Plan 4) from `../lib/format`;
   `Card`, `EmptyState`, `ErrorState`, `LoadingState`, `Screen`, `Text` from
   `../ui`; `useTheme` from `../theme`; `ExportMenu` from
   `../components/ExportMenu` (Task 9).
@@ -5285,7 +5484,7 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const sessionFor = (role: "SUPER" | "MENTOR" | "ADMIN" | "LEADER" | "STUDENT") => ({
-  user: { id: 1, name: `Test ${role}`, email: `${role}@jpc.test`, role },
+  user: { id: 1, name: `Test ${role}`, email: `${role}@jpc.test`, role, avatarPath: null, hasPassword: true },
   scopes: emptyScopes,
 });
 
@@ -5322,6 +5521,7 @@ const summary = {
       seasonTitle: "Spring 2099",
       title: "Opening",
       startsAt: "2099-03-01T18:00:00.000Z",
+      dayKey: "2099-03-01",
       presentCount: 8,
       expectedCount: 10,
       pct: 80,
@@ -5332,6 +5532,7 @@ const summary = {
       seasonTitle: "Spring 2099",
       title: "Week two",
       startsAt: "2099-03-08T18:00:00.000Z",
+      dayKey: "2099-03-08",
       presentCount: 5,
       expectedCount: 10,
       pct: 50,
@@ -5368,6 +5569,7 @@ const summary = {
   cohortSize: 40,
   enrollmentCount: 44,
   generatedAt: "2099-03-10T00:00:00.000Z",
+  exportDay: "2099-03-10",
 };
 
 const organisation = {
@@ -5639,8 +5841,11 @@ describe("ReportsScreen — the season picker", () => {
 
     renderWithProviders(<ReportsScreen />);
 
-    expect(await screen.findByText("All seasons")).toBeTruthy();
-    expect(screen.getByText("Spring 2099")).toBeTruthy();
+    // By accessibility label, not text: "Spring 2099" is also the at-risk row's
+    // season caption and a chart label, and "All seasons" is also the scope
+    // caption, so getByText would throw on multiple matches.
+    expect(await screen.findByLabelText("Season filter: All seasons")).toBeTruthy();
+    expect(screen.getByLabelText("Season filter: Spring 2099")).toBeTruthy();
     // The permitted set is already on scope.seasons; asking GET /seasons again
     // would be a second round trip for data the first response carried.
     expect(get.mock.calls.map((c) => String(c[0]))).not.toContain("/api/v1/seasons");
@@ -5651,7 +5856,7 @@ describe("ReportsScreen — the season picker", () => {
     mockEndpoints({ withOrg: true });
 
     renderWithProviders(<ReportsScreen />);
-    fireEvent.press(await screen.findByText("Autumn 2099"));
+    fireEvent.press(await screen.findByLabelText("Season filter: Autumn 2099"));
 
     await waitFor(() => {
       const urls = get.mock.calls.map((c) => String(c[0]));
@@ -6081,7 +6286,7 @@ import {
   useEngagementStudents,
   useOrganisationReport,
 } from "../../src/hooks/use-reports";
-import { formatDate } from "../../src/lib/format";
+import { formatDayKey } from "../../src/lib/format";
 import { bandColor } from "../../src/lib/report-colors";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
@@ -6134,7 +6339,13 @@ function SeasonPicker({
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      <Pressable accessibilityRole="button" onPress={() => onSelect(null)} style={chip(selected === null)}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Season filter: All seasons"
+        accessibilityState={{ selected: selected === null }}
+        onPress={() => onSelect(null)}
+        style={chip(selected === null)}
+      >
         <Text
           variant="label"
           color={selected === null ? theme.colors.neutral[50] : theme.colors.neutral[900]}
@@ -6146,6 +6357,8 @@ function SeasonPicker({
         <Pressable
           key={s.id}
           accessibilityRole="button"
+          accessibilityLabel={`Season filter: ${s.title}`}
+          accessibilityState={{ selected: selected === s.id }}
           onPress={() => onSelect(s.id)}
           style={chip(selected === s.id)}
         >
@@ -6300,6 +6513,7 @@ export default function ReportsScreen() {
             canExportWorkbook={
               seasonId !== null && (role === "SUPER" || role === "ADMIN")
             }
+            exportDay={summary.data.exportDay}
           />
 
           {summary.data.enrollmentCount === 0 && summary.data.attendanceTrend.length === 0 ? (
@@ -6364,18 +6578,20 @@ export default function ReportsScreen() {
                 <Text variant="heading">Attendance trend</Text>
                 <TrendLine
                   points={summary.data.attendanceTrend.map((p) => ({
-                    // Formatted on the DEVICE from a raw instant. v1 formatted
-                    // on the server with date-fns and no year, so a reader saw
-                    // the server's calendar day and sessions from different
-                    // years collapsed onto one label (R15, R101, C2, D12).
-                    label: formatDate(p.startsAt),
+                    // The server's org-calendar day, labelled with the
+                    // timezone-free formatDayKey (X13). v1 formatted on the
+                    // server with date-fns and no year, so sessions from
+                    // different years collapsed onto one label (R15, R101, D12);
+                    // formatting startsAt on the device would instead show the
+                    // phone's calendar day.
+                    label: formatDayKey(p.dayKey),
                     pct: p.pct,
                   }))}
                 />
                 {summary.data.attendanceTrend.length > 0 ? (
                   <Text variant="caption" color={theme.colors.neutral[600]}>
-                    {`${formatDate(summary.data.attendanceTrend[0]!.startsAt)} – ${formatDate(
-                      summary.data.attendanceTrend[summary.data.attendanceTrend.length - 1]!.startsAt,
+                    {`${formatDayKey(summary.data.attendanceTrend[0]!.dayKey)} – ${formatDayKey(
+                      summary.data.attendanceTrend[summary.data.attendanceTrend.length - 1]!.dayKey,
                     )}`}
                   </Text>
                 ) : null}
@@ -6425,10 +6641,10 @@ export default function ReportsScreen() {
 - [ ] **Step 8: Placeholder-guard fragment** *(for the coordinator)*
 
 In `apps/mobile/src/__tests__/placeholder-screens.test.tsx`: remove the
-`ReportsScreen` import and the `["reports", ReportsScreen, "Reports"]` row, and
-decrement the `toHaveLength(...)` assertion by one. It reads `18` on the branch
-this plan starts from; decrement whatever number is actually there, since Plans
-8–10 also removed entries.
+`ReportsScreen` import and the `["reports", ReportsScreen, "Reports"]` row. Do
+not touch any count: Plan 1 Task 0 rewrote this suite to assert each listed
+entry renders, with no length pin (ruling X9), so removing the row is the whole
+edit.
 
 - [ ] **Step 9: Verification**
 
@@ -6478,6 +6694,8 @@ export interface ExportMenuProps {
   scopeLabel: string;
   /** Whether to offer the season workbook. False for MENTOR and for the all-seasons scope. */
   canExportWorkbook: boolean;
+  /** `summary.exportDay` — the org-zone day the server will stamp on the file (X13). */
+  exportDay: string;
 }
 export function ExportMenu(props: ExportMenuProps): JSX.Element;
 ```
@@ -6506,7 +6724,12 @@ build error.
 ```ts
 // apps/mobile/src/__tests__/export-download.test.ts
 const mockDownloadAsync = jest.fn();
-const mockCreateDownloadResumable = jest.fn(() => ({ downloadAsync: mockDownloadAsync }));
+// `(..._args: unknown[])` so `mock.calls[0]` is typed as an argument list, not
+// `[]` — the tests below destructure it and index `[3]`, which fails typecheck
+// against a zero-parameter mock.
+const mockCreateDownloadResumable = jest.fn((..._args: unknown[]) => ({
+  downloadAsync: mockDownloadAsync,
+}));
 const mockDeleteAsync = jest.fn();
 const mockMakeDirectoryAsync = jest.fn();
 const mockReadAsStringAsync = jest.fn();
@@ -6515,23 +6738,29 @@ const mockShareAsync = jest.fn();
 const mockLoadAccessToken = jest.fn();
 const mockRefreshAccessToken = jest.fn();
 
+// Every factory wraps its mock in an arrow instead of referencing it directly.
+// babel-jest hoists jest.mock above the `const mock… = jest.fn()` lines and the
+// ES imports below compile to requires that run first, so a factory that READS
+// a mock const at evaluation time hits the temporal dead zone ("Cannot access
+// 'mockCreateDownloadResumable' before initialization"). The arrow defers the
+// read to call time, when the const exists.
 jest.mock("expo-file-system/legacy", () => ({
   cacheDirectory: "file:///cache/",
-  createDownloadResumable: mockCreateDownloadResumable,
-  deleteAsync: mockDeleteAsync,
-  makeDirectoryAsync: mockMakeDirectoryAsync,
-  readAsStringAsync: mockReadAsStringAsync,
+  createDownloadResumable: (...a: unknown[]) => mockCreateDownloadResumable(...a),
+  deleteAsync: (...a: unknown[]) => mockDeleteAsync(...a),
+  makeDirectoryAsync: (...a: unknown[]) => mockMakeDirectoryAsync(...a),
+  readAsStringAsync: (...a: unknown[]) => mockReadAsStringAsync(...a),
 }));
 jest.mock("expo-sharing", () => ({
-  isAvailableAsync: mockIsAvailableAsync,
-  shareAsync: mockShareAsync,
+  isAvailableAsync: (...a: unknown[]) => mockIsAvailableAsync(...a),
+  shareAsync: (...a: unknown[]) => mockShareAsync(...a),
 }));
 jest.mock("../lib/token-storage", () => ({
-  loadAccessToken: mockLoadAccessToken,
+  loadAccessToken: (...a: unknown[]) => mockLoadAccessToken(...a),
 }));
 jest.mock("../lib/api-client", () => ({
   apiClient: { defaults: { baseURL: "http://localhost:4000" } },
-  refreshAccessToken: mockRefreshAccessToken,
+  refreshAccessToken: (...a: unknown[]) => mockRefreshAccessToken(...a),
 }));
 
 import {
@@ -6717,8 +6946,9 @@ describe("downloadAndShare", () => {
 ```tsx
 // apps/mobile/src/__tests__/export-menu.test.tsx
 const mockDownloadAndShare = jest.fn();
+// Lazy wrapper — see export-download.test.ts for the temporal-dead-zone reason.
 jest.mock("../lib/export-download", () => ({
-  downloadAndShare: mockDownloadAndShare,
+  downloadAndShare: (...a: unknown[]) => mockDownloadAndShare(...a),
   ExportShareUnavailableError: class extends Error {},
 }));
 jest.mock("../lib/api-client", () => ({
@@ -6756,7 +6986,12 @@ beforeEach(() => {
 describe("ExportMenu", () => {
   it("offers the engagement export in every scope", async () => {
     renderWithProviders(
-      <ExportMenu seasonId={null} scopeLabel="All seasons" canExportWorkbook={false} />,
+      <ExportMenu
+        seasonId={null}
+        scopeLabel="All seasons"
+        canExportWorkbook={false}
+        exportDay="2026-08-24"
+      />,
     );
     fireEvent.press(await screen.findByText("Export engagement"));
 
@@ -6764,7 +6999,8 @@ describe("ExportMenu", () => {
       expect(mockDownloadAndShare).toHaveBeenCalledWith(
         expect.objectContaining({
           path: "/api/v1/reports/engagement/export",
-          filename: expect.stringMatching(/^engagement-all-seasons-\d{4}-\d{2}-\d{2}\.xlsx$/),
+          // Exactly the server's org day, not whatever day the test machine is on.
+          filename: "engagement-all-seasons-2026-08-24.xlsx",
         }),
       ),
     );
@@ -6772,7 +7008,12 @@ describe("ExportMenu", () => {
 
   it("hides the workbook button when the caller may not take one", async () => {
     renderWithProviders(
-      <ExportMenu seasonId={null} scopeLabel="All seasons" canExportWorkbook={false} />,
+      <ExportMenu
+        seasonId={null}
+        scopeLabel="All seasons"
+        canExportWorkbook={false}
+        exportDay="2026-08-24"
+      />,
     );
     expect(await screen.findByText("Export engagement")).toBeTruthy();
     // v1's ONLY mentor protection was a button that was never rendered (R86).
@@ -6784,14 +7025,14 @@ describe("ExportMenu", () => {
 
   it("shows the manifest's size before a workbook download", async () => {
     renderWithProviders(
-      <ExportMenu seasonId={7} scopeLabel="GBV 2026" canExportWorkbook />,
+      <ExportMenu seasonId={7} scopeLabel="GBV 2026" canExportWorkbook exportDay="2026-08-24" />,
     );
     expect(await screen.findByText("Export season workbook (~40 KB)")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/exports/manifest");
   });
 
   it("uses the manifest's filename verbatim so the share sheet and the header agree", async () => {
-    renderWithProviders(<ExportMenu seasonId={7} scopeLabel="GBV 2026" canExportWorkbook />);
+    renderWithProviders(<ExportMenu seasonId={7} scopeLabel="GBV 2026" canExportWorkbook exportDay="2026-08-24" />);
     fireEvent.press(await screen.findByText("Export season workbook (~40 KB)"));
 
     await waitFor(() =>
@@ -6810,7 +7051,12 @@ describe("ExportMenu", () => {
       Object.assign(new Error("nope"), { code: "forbidden" }),
     );
     renderWithProviders(
-      <ExportMenu seasonId={null} scopeLabel="All seasons" canExportWorkbook={false} />,
+      <ExportMenu
+        seasonId={null}
+        scopeLabel="All seasons"
+        canExportWorkbook={false}
+        exportDay="2026-08-24"
+      />,
     );
     fireEvent.press(await screen.findByText("Export engagement"));
 
@@ -7057,6 +7303,7 @@ export interface ExportMenuProps {
   seasonId: number | null;
   scopeLabel: string;
   canExportWorkbook: boolean;
+  exportDay: string;
 }
 
 function kb(bytes: number): string {
@@ -7075,12 +7322,10 @@ function kb(bytes: number): string {
  * proves it; hiding the control just avoids offering a user something that can
  * only fail.
  */
-export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook }: ExportMenuProps) {
+export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook, exportDay }: ExportMenuProps) {
   const theme = useTheme();
   const exportMutation = useReportExport();
   const manifest = useSeasonWorkbookManifest(seasonId, canExportWorkbook);
-
-  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <View style={{ gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
@@ -7097,7 +7342,11 @@ export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook }: ExportMe
             // name in the share sheet and the name in the header cannot drift
             // (D-17.16). The local path must be chosen before any header is
             // visible, which is why this is shared code and not a header parse.
-            filename: exportFilename("engagement", scopeLabel, today),
+            // exportDay is the server's org-zone day (ruling X13), not
+            // `new Date()` on the device: the server stamps
+            // orgDayKey(now) on Content-Disposition, and a device clock
+            // in UTC or another zone names a different day near midnight.
+            filename: exportFilename("engagement", scopeLabel, exportDay),
             dialogTitle: `Engagement — ${scopeLabel}`,
           })
         }
@@ -7183,21 +7432,26 @@ Both green. Record the suite and test counts against the baseline taken in Task
 - [ ] **Step 2: Emit check**
 
 ```bash
-grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/ || echo "clean"
+grep -rn 'require("@space/shared")' apps/backend/dist/ || echo "clean"
 ```
 
-Expect `clean`. This plan adds value imports from shared in four backend files
-(`lib/queries/reports.ts`, `lib/exports/season-workbook.ts` — via
-`workbook-style.ts` —, `lib/exports/engagement-workbook.ts`,
-`routes/exports.ts`) plus the fix to Plan 8's `lib/queries/engagement.ts`, and
+Expect `clean` — the whole of `dist/`, not one subtree (ruling X12). This plan
+adds value imports from shared in four backend files (`lib/queries/reports.ts`,
+`lib/exports/season-workbook.ts` — via `workbook-style.ts` —,
+`lib/exports/engagement-workbook.ts`, `routes/exports.ts`), and Plan 8's
+`lib/queries/engagement.ts` already uses the relative path (X12), and
 the depth differs between `routes/` (four levels) and `lib/**/` (five). A wrong
 depth is a TypeScript error; a bare specifier is not, and only shows up as
 `ERR_MODULE_NOT_FOUND` when the built server starts. Belt and braces:
 
 ```bash
 cd apps/backend && node dist/apps/backend/src/server.js &
-sleep 4 && curl -s localhost:4000/api/v1/health && kill %1
+sleep 4 && curl -fsS localhost:4000/health && kill %1
 ```
+
+Health is mounted at the root (`app.ts` mounts `healthRouter` before any
+`/api` prefix), not under `/api/v1` — and `-f` makes a 404 fail the command
+instead of printing the envelope and "passing" (ruling X6).
 
 - [ ] **Step 3: Mutation pass**
 
@@ -7345,8 +7599,10 @@ judgement.
 - [ ] No `db.*.create|update|delete` anywhere under `src/lib/queries/reports.ts`, `src/lib/queries/organisation-report.ts`, `src/lib/exports/`, `src/routes/reports.ts`, `src/routes/exports.ts` (ruling C6):
       `grep -rn "\.create(\|\.update(\|\.delete(\|\.upsert(\|deleteMany\|updateMany" <those paths>` → empty.
 - [ ] Nothing under `apps/backend/prisma/` changed: `git diff --name-only main -- apps/backend/prisma` is empty (ruling C1).
-- [ ] `grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/` is empty after `pnpm build`.
-- [ ] The built server starts and answers `/api/v1/health`.
+- [ ] `grep -rn 'require("@space/shared")' apps/backend/dist/` is empty after `pnpm build`.
+- [ ] The built server starts and `curl -fsS localhost:4000/health` succeeds.
+- [ ] `GET /api/v1/reports/space-v2-no-such-route` without a token answers `404 not_found`, not 401 (ruling X5).
+- [ ] `grep -rn "const rateLimitHandler" apps/backend/src` is empty — the only definition is the `export const` in `lib/rate-limit.ts` (ruling X4).
 
 **Numbers**
 - [ ] A season workbook's `Attendance %` and `Submitted %` columns equal the values `GET /api/v1/students/:id/engagement` returns for the same student and season — asserted by `season-workbook.test.ts`'s "agrees with the engagement report cell-for-cell".
@@ -7365,7 +7621,7 @@ judgement.
 - [ ] `grep -rn "csv\|text/csv" apps/backend/src apps/mobile/src` returns only the `?format=csv` rejection message.
 
 **Mobile**
-- [ ] `apps/mobile/app/(app)/reports.tsx` no longer renders "This screen isn't built yet."; `placeholder-screens.test.tsx`'s count is decremented and green.
+- [ ] `apps/mobile/app/(app)/reports.tsx` no longer renders "This screen isn't built yet."; its entry is removed from `placeholder-screens.test.tsx` (no count is pinned there since Plan 1, ruling X9) and the suite is green.
 - [ ] `cd apps/mobile && pnpm jest` is green.
 - [ ] `grep -rn "expo-file-system" apps/mobile/src apps/mobile/app` matches **only** `src/lib/export-download.ts`, and that import is `expo-file-system/legacy`.
 - [ ] `grep -rn "base64\|arrayBuffer" apps/mobile/src/lib/export-download.ts` is empty.
@@ -7378,3 +7634,67 @@ judgement.
 - [ ] The full integration set is green in one serial run.
 - [ ] All eight mutations were applied one at a time, each turned the named test red, and each was reverted.
 - [ ] The implementation report names the seven deliberate divergences and the five cutover deferrals, and the deferrals appear in `docs/superpowers/plans/2026-08-24-plan-13-cutover.md`.
+
+---
+
+## Revision 2026-10-05
+
+Review pass against `review-plans-07-13.md` and the cross-plan rulings. Changes:
+
+- **Header:** dependencies restated against the execution order
+  (… 9 → 10 → **11** → 18 → 12 → 13); Plan 7 (`rateLimitHandler`) and Plan 4
+  (`orgDayKey`) added; consumers named (Plan 18 reuses
+  `useOrganisationReport` / `queryKeys.reports.organisation()`).
+- **S1 — email:** Plan 8's `engagementRowSchema` is consumed unchanged (no
+  `studentEmail`; it is leader-readable, C8). The generalised
+  `computeEngagementForSeasons` selects `name` only; reports attach emails in
+  their own query (`loadStudentEmails` / `withEmails` in
+  `lib/queries/reports.ts`) for only the rows returned. `name` maps
+  `studentName ?? ""`.
+- **S2:** schema test asserts `.seasonId` (the parsed name); dead
+  `reportScopeQuerySchemaWithIds` deleted.
+- **S3:** season chips carry `accessibilityLabel="Season filter: …"`; tests
+  query by label.
+- **S4/S5:** every `jest.mock` factory wraps its `mock*` const in a lazy arrow
+  (no TDZ); `mockCreateDownloadResumable` typed `(..._args: unknown[])`.
+- **S6 / X13:** the engagement summary carries `exportDay`
+  (`orgDayKey(now)`); `ExportMenu` takes an `exportDay` prop and never
+  reads the device clock. `orgDayKey` is Plan 4's — the draft's own
+  `orgDayKey` (a second ISO-day helper) is deleted.
+- **S7 / X6:** `curl -fsS localhost:4000/health`.
+- **S9:** the two remaining report paths and all three export paths are written
+  out in OpenAPI.
+- **X4:** no rate-limit file is created or copied; Task 7 Step 3 only verifies
+  Plan 7's `lib/rate-limit.ts`.
+- **X5:** `requireAuth` per route on `reportsRouter`, `reportExportsRouter`,
+  `seasonExportsRouter` (listed before `exportLimiter`); a 404 guard test for
+  unknown `/api/v1/reports/*`. Not asserted for `/api/v1/seasons/*`, because
+  main's `seasonsRouter` still has router-level auth (`routes/seasons.ts:24`) —
+  Plans 3/16's file.
+- **X9/X11/X12:** no placeholder count edits; `avatarPath: null` in session
+  fixtures; emit check greps all of `dist/`; the Plan 8 "fix in passing" note
+  replaced (fixed at source by Plan 8).
+
+Rejected: none outright. S8 (Plan 13 drift) is Plan 13's to reconcile; this
+plan's handed-forward list is unchanged. Nits on test counts were not re-audited.
+
+**Cross-plan consistency pass (2026-10-05, against plans 14–17 and the revised
+order … 5 → 6 → 7 → 17 → 14 → 8 → 9 → 10 → 11 …):**
+
+- **Header / Prerequisites:** execution order corrected (17 now follows 7);
+  explicitly no dependency on Plan 18. Plan 16 (per-route `requireAuth` on
+  `seasonsRouter`) and Plan 17 (`student/[id]/index.tsx` directory form; the
+  typed href `/student/[id]` is unchanged) named.
+- **X5:** Plan 16 removed `seasonsRouter`'s router-level auth, so Task 7's
+  guard now also asserts an unknown anonymous `/api/v1/seasons/*` path answers
+  404 — the stale "not asserted, main still has router-level auth" note is gone.
+- **X13 (trend labels):** `attendancePointSchema` gains `dayKey`
+  (Plan 15's `isoDaySchema`), set server-side with Plan 4's `orgDayKey`; the
+  `/reports` chart labels and range caption use `formatDayKey(dayKey)` instead
+  of device-zone `formatDate(startsAt)`. Fixtures and OpenAPI updated.
+- **Metric definitions (spec 19 reuse):** verified — at-risk is Plan 8's
+  `isAtRisk` via `bandFor` (no redefinition); completion counts
+  `SUBMITTED|REVIEWED|RETURNED`, the exact complement of Plan 1's
+  `isAssignmentOutstanding` (`PENDING|DRAFT`). Task 3's Files line now says
+  it keeps Plan 8's relative import rather than "fixing" it.
+- **X11:** the `sessionFor` fixture gains `hasPassword: true` (Plan 7's `MeUser`).

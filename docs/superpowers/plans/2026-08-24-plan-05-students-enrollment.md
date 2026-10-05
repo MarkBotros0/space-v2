@@ -28,6 +28,10 @@ field-visibility table is the read contract; §10 D1–D16),
 convention ratified by this domain), `_DECISIONS.md` (C1, C8, C9 bind),
 scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 5.
 
+**Depends on:** Plan 1 (Task 0's derived route-count tests — ruling X9 — and
+Task 2's `DETAIL_ROUTE_NAMES`). Runs after Plans 4, 15 and 16 in the execution
+order; it consumes nothing from them.
+
 ## Global Constraints
 
 - **No migrations, ever.** No edits under `apps/backend/prisma/`. Shared live
@@ -80,11 +84,29 @@ scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 5.
 attendance %, submissions, engagement-note and document sub-resources of the
 detail (spec 06 §7's sub-resource split — notes/engagement land in Plan 8,
 documents ride with uploads/CMS); graduation (`User.graduationYear`,
-SUPER-only per R55) and soft-delete `DELETE /students/:id` — they ride with
-the student write screens in a later plan; `GET/PATCH /me/profile` (Plan 7's
-credential boundary); mobile create/edit forms and drop bottom-sheets (the
-write endpoints ship API-first, per the roadmap's plan split); photo/document
-uploads (`ENABLE_UPLOADS` is off).
+SUPER-only per R55) and soft-delete `DELETE /students/:id` — **Plan 17**
+(ruling X15), with the student create/edit screens and the graduate and drop
+bottom-sheets that consume this plan's write endpoints (they ship API-first
+here, per the roadmap's plan split); `GET/PATCH /me/profile` and the
+`/profile` screen — **Plan 14** (ruling X15); photo/document uploads stay
+deferred with uploads (`ENABLE_UPLOADS` is off; recorded in Plan 13's
+register).
+
+**Later plans that change what this plan builds** (so an executor is not
+surprised when the code moves on):
+- **Plan 17** (runs after this one): adds `POST /students/:id/graduate` and
+  `DELETE /students/:id`, makes `POST /students` mint an invite, builds the
+  `/students/new` and `/student/[id]/edit` forms plus the graduate/drop
+  bottom sheets, and moves this plan's `student/[id].tsx` to the directory
+  form `student/[id]/index.tsx` (ruling X7) — its `DETAIL_ROUTE_NAMES` entry
+  becomes `"student/[id]/index"`. Build `student/[id].tsx` as the file form
+  here; do not pre-empt the move.
+- **Plan 14** (runs after Plan 17): narrows this plan's `SELF_EDITABLE`
+  allowlist (Task 4 below) to the six `StudentProfile` columns — `name` and
+  `email` are removed from the subject's self-edit (spec 18 D8: no
+  unverified login-identifier change; `User.name` is Plan 7's `PATCH /me`).
+  Staff keep `name`/`email` through `ADMIN_EDITABLE`. Ship the allowlist as
+  written here; Plan 14 owns the narrowing and its tests.
 
 **Execution shape:** Task 1 first (both streams consume the contracts). Then
 two independent streams: **backend** Tasks 2 → 3 → 4 → 5 (sequential — they
@@ -1465,7 +1487,7 @@ git add apps/backend && git commit -m "feat(backend): role-shaped student detail
 
 **Interfaces:**
 - Consumes: `createStudentRequestSchema`, `updateStudentRequestSchema` (Task 1, via the existing relative shared import), `canEditStudent` (Task 2), `Prisma` error class as a **value** from `"../generated/prisma/client"` (verify against how `db/client.ts` imports it and match that path).
-- Produces: `POST /api/v1/students` → `{ data: { id, email } }` 201; `PATCH /api/v1/students/:id` → `{ data: { id } }`; error codes `email_taken` (409), `forbidden_field` (403).
+- Produces: `POST /api/v1/students` → `{ data: { id, email } }` 201; `PATCH /api/v1/students/:id` → `{ data: { id } }`; error codes `email_taken` (409), `forbidden_field` (403), `not_enrolled` (409 — `activeSeasonId` names a season with no ACTIVE enrollment for this student), `not_found` (404 — `activeSeasonId` names a missing/deleted season).
 
 - [ ] **Step 1: Append the failing tests**
 
@@ -1581,22 +1603,56 @@ describe("PATCH /api/v1/students/:id", () => {
     expect(refused.body.error.code).toBe("forbidden_field");
   });
 
-  it("lets SUPER move activeSeasonId", async () => {
+  it("lets SUPER move activeSeasonId to a season the student is ACTIVE in", async () => {
+    // student2 has an ACTIVE enrollment in B and a null pointer.
     const res = await request(app)
-      .patch(`/api/v1/students/${student1Id}`)
+      .patch(`/api/v1/students/${student2Id}`)
       .set("authorization", `Bearer ${superToken}`)
       .send({ activeSeasonId: seasonBId });
     expect(res.status).toBe(200);
     const profile = await db.studentProfile.findUnique({
-      where: { userId: student1Id },
+      where: { userId: student2Id },
       select: { activeSeasonId: true },
     });
     expect(profile?.activeSeasonId).toBe(seasonBId);
     // Restore for any later reader of the fixture.
     await db.studentProfile.update({
-      where: { userId: student1Id },
-      data: { activeSeasonId: seasonAId },
+      where: { userId: student2Id },
+      data: { activeSeasonId: null },
     });
+  });
+
+  it("refuses a pointer at a season the student has no ACTIVE enrollment in (409, D1)", async () => {
+    // student1's B enrollment is COMPLETED: pointer and enrollment would
+    // disagree, which spec 06 D1 says must never happen.
+    const res = await request(app)
+      .patch(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ activeSeasonId: seasonBId });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("not_enrolled");
+    const profile = await db.studentProfile.findUnique({
+      where: { userId: student1Id },
+      select: { activeSeasonId: true },
+    });
+    expect(profile?.activeSeasonId).toBe(seasonAId);
+  });
+
+  it("answers 404 for a nonexistent season id instead of a foreign-key 500", async () => {
+    const res = await request(app)
+      .patch(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ activeSeasonId: 2147483000 });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+
+  it("lets SUPER clear the pointer with null (no enrollment check)", async () => {
+    const res = await request(app)
+      .patch(`/api/v1/students/${student2Id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ activeSeasonId: null });
+    expect(res.status).toBe(200);
   });
 
   it("refuses ADMIN for a student with no ACTIVE enrollment in their seasons (D4)", async () => {
@@ -1651,6 +1707,8 @@ itself uses for the generated client and keep the `../` depth correct for
  *   it follows creation to SUPER in v2.
  * - SUPER: everything (allowlist `null` = unchecked).
  */
+// Plan 14 Task 4 later removes "name" and "email" from SELF_EDITABLE (spec
+// 18 D8) and re-spreads ADMIN_EDITABLE so staff keep them.
 const SELF_EDITABLE = new Set([
   "name", "email", "university", "year", "phone", "dateOfBirth", "spiritualBackground", "gifts",
 ]);
@@ -1768,6 +1826,26 @@ studentsRouter.patch("/:id", async (req, res) => {
     }
   }
 
+  // The pointer must name a live season the student is ACTIVE in (spec 06
+  // D1: pointer and enrollment agree). Without this a stale id is a P2003
+  // foreign-key 500, and a season the student never joined silently splits
+  // the two definitions of "in this season" again (R13). `null` clears and
+  // needs no check; `undefined` leaves the column alone.
+  if (body.activeSeasonId !== undefined && body.activeSeasonId !== null) {
+    const season = await db.season.findFirst({
+      where: { id: body.activeSeasonId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!season) return apiError(res, "not_found", "Season not found.", 404);
+    const enrollment = await db.seasonEnrollment.findUnique({
+      where: { studentUserId_seasonId: { studentUserId: id, seasonId: body.activeSeasonId } },
+      select: { status: true },
+    });
+    if (enrollment?.status !== "ACTIVE") {
+      return apiError(res, "not_enrolled", "The student has no active enrollment in that season.", 409);
+    }
+  }
+
   // Prisma treats `undefined` as "leave the column alone", which is exactly
   // this endpoint's PATCH contract — absent keys pass through untouched,
   // explicit nulls clear.
@@ -1832,7 +1910,9 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
 - [ ] **Step 4: OpenAPI** — add both paths in the same commit. Document:
 SUPER-only creation and WHY there is no password field (D7 — invites are the
 only credential path, Plan 7); the optional `seasonId` transaction semantics
-(D1); the per-role PATCH allowlists and `forbidden_field`; `email_taken`.
+(D1); the per-role PATCH allowlists and `forbidden_field`; `email_taken`; and
+`activeSeasonId`'s validation — `404 not_found` for a missing/deleted season,
+`409 not_enrolled` when the student has no ACTIVE enrollment there.
 
 - [ ] **Step 5: Commit**
 
@@ -2164,7 +2244,7 @@ git add apps/backend && git commit -m "feat(backend): explicit enrollment create
 - Create: `apps/mobile/src/components/StudentList.tsx`
 - Modify: `apps/mobile/src/lib/query-keys.ts` (add the `students` factory)
 - Modify: `apps/mobile/app/(app)/students/index.tsx`, `students/alumni.tsx`, `students/dropped.tsx` (replace the placeholders)
-- Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx` (read it first; remove the three students entries — it asserts every placeholder renders "This screen isn't built yet.", which stops being true here)
+- Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx` (remove the three students entries and their imports — it asserts every placeholder renders "This screen isn't built yet.", which stops being true here; there is no count to change, Plan 1 Task 0 removed the length pin — ruling X9)
 - Test: `apps/mobile/src/__tests__/students-list.test.tsx`
 
 **Interfaces:**
@@ -2202,15 +2282,15 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const superSession = {
-  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const },
+  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const, avatarPath: null },
   scopes: emptyScopes,
 };
 const mentorSession = {
-  user: { id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const },
+  user: { id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const, avatarPath: null },
   scopes: emptyScopes,
 };
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "stu@jpc.test", role: "STUDENT" as const },
+  user: { id: 9, name: "Test student", email: "stu@jpc.test", role: "STUDENT" as const, avatarPath: null },
   scopes: { ...emptyScopes, activeSeasonId: 7 },
 };
 
@@ -2383,7 +2463,9 @@ explains why):
     lists: () => [...queryKeys.students.all, "list"] as const,
     list: (status: string, q: string) => [...queryKeys.students.lists(), { status, q }] as const,
     details: () => [...queryKeys.students.all, "detail"] as const,
-    detail: (id: number) => [...queryKeys.students.details(), id] as const,
+    // number | null, like sessions.bySeason: a null key can never collide
+    // with a real student's cached detail (no -1 sentinel).
+    detail: (id: number | null) => [...queryKeys.students.details(), { id }] as const,
   },
 ```
 
@@ -2622,8 +2704,10 @@ export default function DroppedScreen() {
 - [ ] **Step 6: Update `placeholder-screens.test.tsx`**
 
 Read it, remove the `students/index`, `students/alumni` and `students/dropped`
-entries from its screen list (they no longer render the placeholder copy).
-Keep every other entry.
+entries (and their imports) from its screen list — they no longer render the
+placeholder copy. Keep every other entry. Do not edit any count: Plan 1
+Task 0 made the file derive it (ruling X9). If a `toHaveLength(<number>)` pin
+is still there, Plan 1 Task 0 has not landed — stop and land it first.
 
 - [ ] **Step 7: Run the tests**
 
@@ -2655,29 +2739,27 @@ git add apps/mobile && git commit -m "feat(mobile): students, alumni and dropped
 - Consumes: `queryKeys.students.detail(id)` (Task 6); `studentDetailPublicSchema`/`studentDetailPrivateSchema`/`studentDetailInternalSchema` + types, `EnrollmentHistoryItem`, `UserRole` from `@space/shared`; `DETAIL_ROUTE_NAMES` in `_layout.tsx` (created by Plan 1 Task 2).
 - Produces: `useStudentDetail(id: number | null, role: UserRole | null): UseQueryResult<StudentDetail>` and `type StudentDetail = StudentDetailPublic | StudentDetailPrivate | StudentDetailInternal`; the route `/student/[id]` in the typed route tree (unblocks Task 6's `router.push` typecheck).
 
-**If Plan 1 has not landed yet** (no `DETAIL_ROUTE_NAMES` in `_layout.tsx`):
-create the mechanism exactly as Plan 1 Task 2 specifies — an exported
-`export const DETAIL_ROUTE_NAMES = ["student/[id]"] as const;` below
-`ALL_ROUTE_NAMES` with the doc comment explaining that `Tabs` auto-registers
-every file and undeclared screens appear in the tab bar, and
-`...DETAIL_ROUTE_NAMES` appended to `orderedRouteNames` (detail routes are
-never in `tabByRouteName`, so each renders with the existing `{ href: null }`
-fallback). If it exists, append `"student/[id]"` to the array.
+Plan 1 (Tasks 0 and 2) is a hard prerequisite — it is earlier in the
+execution order (rulings, plan order 1 → … → 5). `DETAIL_ROUTE_NAMES` exists
+in `_layout.tsx` and the layout/placeholder tests derive their counts; this
+task only appends `"student/[id]"`. There is no fallback path. `student/[id]`
+has no child routes, so the file form `student/[id].tsx` is correct (ruling X7
+applies only to a dynamic segment with children).
 
 - [ ] **Step 1: Extend the layout test**
 
-Add to `apps/mobile/src/__tests__/app-layout.test.tsx`, following the file's
-existing assertion style for hidden screens (Plan 1's case for
-`assignment/[id]` is the template if it landed; otherwise extend whatever
-`href: null` assertion the file already makes):
+Add to `apps/mobile/src/__tests__/app-layout.test.tsx`. The file's
+`expo-router` mock records each `Tabs.Screen` as `{ name, title, href }` into
+`mockScreens`; use the file's own fixtures, which Plan 1 Task 0 made
+`makeUser(role)` (from `./helpers/session`) and `const scopes = makeScopes()`:
 
 ```tsx
 it("declares student/[id] hidden from the tab bar", () => {
-  useSessionStore.setState(studentSession); // the file's existing fixture
-  const screens = renderLayoutAndCollectScreens(); // the file's existing helper pattern
-  const detail = screens.find((s) => s.name === "student/[id]");
-  expect(detail).toBeTruthy();
-  expect(detail?.options?.href).toBeNull();
+  useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
+  render(<AppLayout />);
+  const detail = mockScreens.find((s) => s.name === "student/[id]");
+  expect(detail).toBeDefined();
+  expect(detail?.href).toBeNull();
 });
 ```
 
@@ -2712,11 +2794,11 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const superSession = {
-  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const },
+  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const, avatarPath: null },
   scopes: emptyScopes,
 };
 const mentorSession = {
-  user: { id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const },
+  user: { id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const, avatarPath: null },
   scopes: emptyScopes,
 };
 
@@ -2865,10 +2947,13 @@ export function useStudentDetail(
   role: UserRole | null,
 ): UseQueryResult<StudentDetail> {
   return useQuery({
-    queryKey: queryKeys.students.detail(id ?? -1),
+    queryKey: queryKeys.students.detail(id),
     queryFn: async () => {
+      // `enabled` guarantees both are set when this runs; the guard keeps the
+      // narrowing honest without a cast.
+      if (role === null) throw new Error("useStudentDetail ran without a role");
       const res = await apiClient.get(`/api/v1/students/${id}`);
-      return detailSchemaFor(role as UserRole).parse(res.data.data);
+      return detailSchemaFor(role).parse(res.data.data);
     },
     enabled: id !== null && role !== null,
   });
@@ -3003,8 +3088,7 @@ export default function StudentDetailScreen() {
 }
 ```
 
-In `_layout.tsx`, append `"student/[id]"` to `DETAIL_ROUTE_NAMES` (or create
-the const + `orderedRouteNames` spread per the fallback note above).
+In `_layout.tsx`, append `"student/[id]"` to `DETAIL_ROUTE_NAMES`.
 
 - [ ] **Step 5: Check the two guard tests**
 
@@ -3041,7 +3125,7 @@ Then the full serial integration run:
 
 - [ ] **Step 2: Mutation pass**
 
-Three mutations, one at a time, each must break at least one named test, then
+Four mutations, one at a time, each must break at least one named test, then
 restore:
 
 1. **Drop the LEADER narrowing.** In `lib/queries/students.ts`
@@ -3055,12 +3139,18 @@ restore:
    return `"internal"` unconditionally — the MENTOR absence test
    (`not.toHaveProperty("phone")` …) and the LEADER public-shape test must
    fail.
+4. **Drop the pointer validation.** In `routes/students.ts` PATCH, delete the
+   `if (body.activeSeasonId !== undefined && body.activeSeasonId !== null)`
+   block — "refuses a pointer at a season the student has no ACTIVE
+   enrollment in" fails (200 instead of 409) and the nonexistent-season case
+   fails with a 500.
 
 - [ ] **Step 3: Emit check**
 
-`grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/routes/` → empty
-(the CLAUDE.md `rootDir` trap; `routes/students.ts` carries this plan's only
-new value import from shared).
+`grep -rn 'require("@space/shared")' apps/backend/dist/` → empty
+(the CLAUDE.md `rootDir` trap, checked across all of `dist/` per ruling X12 —
+`routes/students.ts` carries this plan's only new value import from shared,
+but a value import from any backend file would land in the same trap).
 
 - [ ] **Step 4: Device checklist (manual, on Expo Go or a dev build)**
 
@@ -3081,3 +3171,21 @@ pointed at it. Against staging accounts:
 
 Report: suite counts, the three mutation outcomes, device checklist results,
 and any divergence from this plan discovered while implementing.
+
+---
+
+## Revision 2026-10-05
+
+Applied the cross-plan rulings and the 01–06 review:
+- **S16:** `PATCH /students/:id` now validates `activeSeasonId` — a missing or deleted season is `404 not_found` (was a P2003 foreign-key 500), and a season without an ACTIVE enrollment for that student is `409 not_enrolled` (spec 06 D1: pointer and enrollment agree). `null` still clears. The SUPER "move" test now uses `student2` (ACTIVE in B); new tests cover 409, 404 and the null clear; closing-gate mutation 4 pins the block.
+- **B4 / X11:** every session-store fixture carries `avatarPath: null`.
+- **B5 / X9, S17:** no hardcoded route count is edited; the "Plan 1 not landed" fallback is removed (Plan 1 is earlier in the execution order); the layout assertion uses the test file's real `mockScreens` capture (`{ name, title, href }`) instead of a nonexistent helper.
+- **S5:** `queryKeys.students.detail` takes `number | null` — no `-1` sentinel; the role cast in `useStudentDetail` became a guard.
+- **X12:** the emitted-build grep covers all of `dist/`.
+- **X15:** graduation, soft-delete and the student write screens are assigned to Plan 17; `/me/profile` to Plan 14.
+- X7 checked: `student/[id]` has no children, so the file form stays.
+
+
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
+- New "Later plans that change what this plan builds" note: Plan 17 adds graduate/delete, the create/edit forms and sheets, and moves `student/[id].tsx` → `student/[id]/index.tsx`; Plan 14 narrows `SELF_EDITABLE` (removes `name`/`email`). A matching comment sits on `SELF_EDITABLE` in Task 4's code.
+- Task 7's layout case uses Plan 1 Task 0's real fixtures (`makeUser("ADMIN")`, `scopes = makeScopes()`) instead of a hedged `user()`.

@@ -20,10 +20,13 @@ classification). The write itself is **not new code**: student creation is
 extracted out of Plan 5's `POST /api/v1/students` handler into
 `createStudentRows()` in `lib/queries/students.ts` and both callers use it, so
 a form-created student and an imported student are byte-for-byte the same kind
-of account. Group membership is written by `assignStudentsToGroups()` added
-beside domain 5's existing `setGroupStudents()` in `lib/queries/groups.ts`.
-On mobile, one route — `app/(app)/users/import.tsx` — holds a three-step state
-machine (paste → preview → result) in local state.
+of account. Group membership is written by Plan 16's `assignStudentsToGroups()`
+in `lib/queries/groups.ts` — the same function behind Plan 16's roster grid
+(`PUT /seasons/:id/group-assignments`), consumed here, never copied.
+On mobile, two routes, each a three-step state machine (paste → preview →
+result) in local state: `app/(app)/users/import.tsx` (students, SUPER) and
+`app/(app)/seasons/[code]/roster/import.tsx` (groups, season ADMIN / SUPER),
+the latter hanging off Plan 16's season detail and roster screens.
 
 **Tech Stack:** Express 5, Prisma 7 (`src/generated/prisma`, never
 `@prisma/client`), Zod contracts in `packages/shared`, `express-rate-limit`,
@@ -36,12 +39,29 @@ clipboard package.
 **Spec:** `docs/superpowers/specs/domains/16-imports.md` (84 rules R1–R84,
 §10 D1–D19), `docs/superpowers/specs/domains/_DECISIONS.md` (C1, C4, C6, C8,
 C9, C11, C12 bind), scope from
-`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 12. Immediate
-dependencies: `docs/superpowers/plans/2026-08-24-plan-05-students-enrollment.md`
-(the student write path and its contracts — this plan reuses both rather than
-growing a second one) and
-`docs/superpowers/plans/2026-08-24-plan-07-invites-users-settings.md`
-(credentials come from invites and nowhere else).
+`docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 12.
+
+**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 →
+14 → 8 → 9 → 10 → 11 → 18 → **12** → 13; only plans before this one — nothing
+from Plan 18 is consumed):
+**Plan 4** (`useSeasons`, the seasons query keys); **Plan 5** (the student write
+path and its contracts — `POST /students` and `POST /students/:id/enrollments`,
+both refactored here onto shared functions rather than duplicated; Plan 5's
+enrolment rules are what `enrollStudentInSeason` encodes); **Plan 7**
+(credentials come from invites and nowhere else; the real `/users` screen this
+plan adds an entry point to; `lib/rate-limit.ts` / `rateLimitHandler`, ruling
+X4); **Plan 16** (the season detail route `seasons/[code]/index.tsx`, the roster
+screen `seasons/[code]/roster/index.tsx`, `assignStudentsToGroups` /
+`GroupOutsideSeasonError` in `lib/queries/groups.ts` — consumed, not created;
+the `DIRECTORY_ROUTE_HREFS` set in `_layout.tsx`; per-route `requireAuth` on
+`seasonsRouter`); **Plan 17** (already made `users/` a directory for
+`/users/new` and added `"users"` to `DIRECTORY_ROUTE_HREFS` — Task 6 Step 0
+only verifies; `POST /students` now mints an invite in its transaction, which
+Task 4 Step 4 keeps; graduation completes **all** ACTIVE enrolments, sets
+`graduationYear` and clears `activeSeasonId` — the same end state this
+importer's `alumni` mode writes for a new student: `graduationYear` set, no
+ACTIVE enrolment, no pointer). Plan 13 follows and picks up
+"Deferred to cutover".
 
 **Not in scope** (each named so nothing drops silently):
 
@@ -55,21 +75,20 @@ growing a second one) and
   (D-16.4). The mobile screen mitigates by letting the operator edit the paste
   text and re-preview without losing the mode/target selection.
 - **Bulk invites after an import.** R55 is preserved — the import sends
-  nothing — and Plan 7 decision 15 explicitly defers `POST /users/invites` to
-  a queue-backed later plan. The result step reports "no invites were sent"
-  and links to `/users`; it does not ship a button for an endpoint that does
-  not exist.
+  nothing. Bulk (re)sending of invites is **Plan 17's** (ruling X15; it runs
+  before this plan) and lives on the users screen. The result step reports "no
+  invites were sent" and points at `/users`; it does not add a second invite
+  action of its own.
 - **Bulk unassign in the group importer** (spec D10). A blank group cell stays
   `no_group`. Recorded as a design in D-16.19 for whoever wants it.
 - **An importer for staff, leaders, sessions, attendance or grades.** Spec D16:
   do not invent one during the port. Role is hard-coded `STUDENT`.
-- **The group import *screen*.** Its route's ancestors (`/seasons/[code]`,
-  the roster screen) belong to domain 2 and domain 5 and do not exist yet —
-  spec §9 says so explicitly. The endpoints ship, tested and documented, so
-  the screen is a thin add in whichever plan builds the roster surface. See
-  D-16.20.
-- **`/users` itself.** Plan 7 Task 7 owns the users list. This plan only moves
-  the placeholder file so a `users/import` child route can exist (D-16.17).
+- **The roster grid itself** and `PUT /seasons/:id/group-assignments` — Plan
+  16's. This plan's group-import screen (Task 6b) hangs off Plan 16's roster
+  screen and its commit reuses Plan 16's `assignStudentsToGroups`.
+- **`/users` itself.** Plan 7 Task 7 owns the users list and Plan 17 Task 9
+  moved it to `users/index.tsx`. This plan adds one header button and the
+  `users/import` child route (D-16.17); it moves nothing.
 
 ---
 
@@ -107,10 +126,12 @@ suite, so they are one stream and must not be split across agents. Agent A
 (no database) and **must not** run anything matching `--testPathPattern
 integration`.
 
-**Agent B — mobile (Task 6).** Owns `apps/mobile/app/(app)/users/import.tsx`,
+**Agent B — mobile (Tasks 6 → 6b, sequential).** Owns
+`apps/mobile/app/(app)/users/import.tsx`,
+`apps/mobile/app/(app)/seasons/[code]/roster/import.tsx`,
 `apps/mobile/src/hooks/use-import.ts`, `apps/mobile/src/lib/query-keys.ts`,
-`apps/mobile/src/components/ImportRowCard.tsx`, and
-`apps/mobile/src/__tests__/student-import.test.tsx`. Screens mock `apiClient`,
+`apps/mobile/src/components/ImportRowCard.tsx`, and the
+`student-import.test.tsx` / `group-import.test.tsx` suites. Screens mock `apiClient`,
 so Agent B never needs the backend and may run its own jest suite freely.
 Agent B does **not** touch `_layout.tsx` — it declares its dependency on the
 route existing and the coordinator creates it (Task 6 Step 0).
@@ -135,8 +156,8 @@ runs Task 7.
   — see "Deferred to cutover" below, and do not overload an existing column to
   work around a missing one.
 - **No credential is ever created by an import.** Every account this plan
-  creates has `passwordHash: null`. v1's `student-actions.ts:94` hard-codes
-  `ChangeMe123!` for form-created students; Plan 5 D7 and Plan 7 decision 2
+  creates has `passwordHash: null`. v1's `student-actions.ts:59` hard-codes
+  `ChangeMe123!` for form-created students; Plan 5 D7 and Plan 7 (invites are the only credential path)
   already ruled that out of v2, and an importer is the last place it may
   sneak back in. **There is no shared default password anywhere in v2**, and
   an invite is the only way a UI-created user gets credentials (Plan 7). An
@@ -202,22 +223,23 @@ decision diverges from v1 it says so; where it diverges from spec 16's own §10
 recommendation it says that too, because a silent divergence from the spec is
 the failure mode this section exists to prevent.
 
-### D-16.1 — Domain 16 ships both importers on the backend; only the student importer gets a screen in this plan.
+### D-16.1 — Domain 16 ships both importers, backend and screen. (Revised: the group screen was deferred while its ancestors did not exist; Plan 16 now builds them first.)
 
 *Question.* Spec 16 owns two importers (student/profile and group-assignment).
 The roadmap's Plan 12 entry names "the three-step import screen", singular.
 
 *Ruling.* Both importers' **endpoints** ship here — they share the parser, the
 header vocabulary, the preview/commit protocol and the rate limiters, and
-splitting them across plans would duplicate all four. Only the **student**
-import screen ships. The group import screen's route is
-`/seasons/[code]/roster/import`, and spec 16 §9 records that neither
-`/seasons/[code]` nor the roster screen exists yet (domains 2 and 5).
+splitting them across plans would duplicate all four. **Both screens ship
+too**: the student importer at `/users/import` (Task 6) and the group importer
+at `/seasons/[code]/roster/import` (Task 6b).
 
-*Reason.* Building a screen whose three ancestor routes do not exist means
-inventing three routes this plan does not own — that would be widening scope,
-not honouring it. The endpoints are fully tested, so the screen is a
-render-and-wire task for whoever builds the roster surface.
+*Reason.* The earlier draft deferred the group screen because its ancestors
+(`/seasons/[code]`, the roster screen) did not exist. Plan 16 — which now runs
+before this plan — builds both, plus `GET /seasons/:id/roster`,
+`PUT /seasons/:id/group-assignments` and the `assignStudentsToGroups` write
+this plan's commit reuses. Nothing is invented: the screen hangs off routes
+Plan 16 owns and is reached from its roster's header action, as in v1.
 
 ### D-16.2 — Intake is pasted text only. There is no file upload, no `multer`, no `exceljs`, and no second env flag.
 
@@ -354,12 +376,16 @@ and no new enrolment.
 values:
 
 - `skip` — reproduces v1 exactly.
-- `enroll` — for an existing, non-deleted `STUDENT`, creates the
-  `SeasonEnrollment` for the target season if none exists and points
-  `StudentProfile.activeSeasonId` at it. It touches **no** `User` field and
-  **no** profile field, and an enrolment that already exists is left entirely
+- `enroll` — for an existing, non-deleted `STUDENT`, applies **Plan 5's
+  enrolment rules through the same function** (`enrollStudentInSeason`,
+  Task 4 Step 4b): creates an ACTIVE `SeasonEnrollment` for the target season
+  if none exists, and points `StudentProfile.activeSeasonId` at it **only if
+  the pointer is unset** (Plan 5 never steals a pointer another season
+  holds). An enrolment that already exists, of any status, is left entirely
   alone — status, `enrolledAt`, `groupId`, `droppedAt` and `dropReason`
-  survive untouched. `enroll` is valid only in season mode; the alumni arm of
+  survive — and the row is reported `skipped` ("Already enrolled in this
+  season"), the per-row form of Plan 5's `409 already_enrolled`. It touches
+  **no** `User` field and no other profile field. `enroll` is valid only in season mode; the alumni arm of
   the discriminated union accepts `z.literal("skip")` and nothing else.
 
 The field has **no default**, so nothing can inherit `enroll` by accident, and
@@ -384,8 +410,19 @@ importer's gets `passwordHash: null`.
 *Ruling.* Plan 5's `POST /api/v1/students` handler body is **extracted** into
 `createStudentRows(tx, inputs, target)` in
 `apps/backend/src/lib/queries/students.ts`, and both the route and the
-importer call it. It is the only function in the repo that inserts a `User`
-with `role: "STUDENT"`.
+importer call it. Plan 5's `POST /students/:id/enrollments` body is likewise
+extracted into `enrollStudentInSeason(tx, studentUserId, seasonId)` beside it,
+and the importer's `enroll` arm calls that, so an imported enrolment follows
+Plan 5's rules exactly (D-16.7).
+
+*Not* the only `STUDENT` writer, and the earlier draft's grep claiming so was
+false: Plan 7's `POST /api/v1/users` creates a `User` of any role — `STUDENT`
+included — with an empty profile and an invite, and its role-change `PATCH`
+creates a profile on a promotion to `STUDENT`. That path is invite-first,
+creates no enrolment and is not routed through `createStudentRows` (it would
+drag the invite flow into the students module). The invariant that matters is
+the **credential** one, and it holds on every path: `passwordHash: null`.
+Task 7 checks it as a review item, not a grep.
 
 *Reason.* Two write paths for one fact is how the two v1 paths came to
 disagree about credentials. Extracting rather than re-implementing also means
@@ -455,9 +492,11 @@ costs the operator one find-and-replace and buys correctness for every row.
 ### D-16.12 — Unrecognised columns are reported back.
 
 *Ruling.* The preview returns `unrecognisedColumns: string[]` — every header
-cell that matched no alias, echoed verbatim (trailing spaces and all, so
-`"Mobile Number "` is visibly different from `"Mobile Number"`). The screen
-renders it as a warning above the row list.
+cell that matched no alias, echoed as typed **after trimming**. Both the parser
+and the header mapper trim, so surrounding whitespace can never cause a miss
+(`"Mobile Number "` matches the alias); the earlier claim that whitespace is
+echoed was false and is withdrawn. The screen renders the list as a warning
+above the row list.
 
 *Reason.* Spec D11: v1 shows `detectedColumns` (R19) but never says what it
 *failed* to detect, which is the half that matters. A header typed `Phone No`
@@ -527,16 +566,18 @@ single mistyped fixture address mints a real-looking account in a database
 (`SeasonEnrollment.studentUser` is `onDelete: Restrict`) and strand the whole
 fixture set. See the model-coverage audit in Task 3 Step 1.
 
-### D-16.17 — `app/(app)/users.tsx` becomes `app/(app)/users/index.tsx` so `users/import` can exist, and `routeNameForHref` is generalised rather than special-cased again.
+### D-16.17 — `users/import` lives in the `users/` directory Plan 17 created, and `routeNameForHref` stays the generalised set.
 
-*Ruling.* The coordinator converts the file, adds `"users"` to a new
-`DIRECTORY_ROUTE_HREFS` set consulted by `routeNameForHref`, and appends
-`"users/import"` to `DETAIL_ROUTE_NAMES`.
+*Ruling.* Plan 17 Task 9 (earlier in the order) already converted
+`app/(app)/users.tsx` to `app/(app)/users/index.tsx` and added `"users"` to
+the `DIRECTORY_ROUTE_HREFS` set that Plan 16 introduced
+(`["students", "seasons", "users"]`). This plan only verifies that, then
+appends `"users/import"` to `DETAIL_ROUTE_NAMES`.
 
 *Reason.* Spec §9 puts the screen at `/users/import`, and expo-router needs a
-directory for that. `routeNameForHref` already hard-codes one such case
-(`students` → `students/index`); adding a second hard-coded branch would make
-the third inevitable. `DETAIL_ROUTE_NAMES` is the existing mechanism for a
+directory for that — which Plan 17 already provides for `users/new`.
+`routeNameForHref` consults one set (Plan 16's mechanism) rather than
+hard-coded branches, so no edit to it is needed here. `DETAIL_ROUTE_NAMES` is the existing mechanism for a
 route file that must be declared to `Tabs` but hidden with `href: null` —
 without a declaration, `Tabs` auto-registers the file and it *appears in the
 tab bar*.
@@ -586,10 +627,14 @@ Four rulings in one, all on the group importer:
 
 *Ruling.* Group import paths are
 `POST /api/v1/seasons/:id/imports/groups/preview|commit`, with `seasonId`
-taken **only** from the path. Both routers live in `routes/imports.ts` and
-`seasonImportsRouter` is mounted at `/api/v1/seasons` *after* `seasonsRouter`
-in `app.ts`. The group commit body carries resolved
-`{ studentUserId, groupId }` pairs, as v1's did.
+taken **only** from the path. Both routers live in `routes/imports.ts`.
+`seasonImportsRouter` is mounted at `/api/v1/seasons` **before** the global
+JSON parser (and so before `seasonsRouter`) because it parses its own bodies
+with a larger limit (Task 3 Step 4a); it defines only the two POSTs and carries
+no router-level middleware, so every other `/api/v1/seasons/*` request falls
+through untouched, and `requireAuth` is attached per route (ruling X5). The
+group commit body carries resolved `{ studentUserId, groupId }` pairs, as v1's
+did.
 
 *Reason.* v1 takes `seasonId` as an argument on **both** calls
 (`group-import-actions.ts:20,59`), so preview and commit could in principle
@@ -607,9 +652,14 @@ achieves nothing they could not already do from the roster grid.
 ### D-16.21 — Both preview endpoints and both commit endpoints are rate-limited.
 
 *Ruling.* `previewLimiter` = 30 requests / 15 min, `commitLimiter` = 10 / 15
-min, both in the same shape as `routes/auth.ts`'s existing limiters
-(`too_many_requests` 429 in the `{ error: { code, message } }` envelope, not
-express-rate-limit's plain-text default).
+min by default, read from `config.importPreviewRateLimit` /
+`config.importCommitRateLimit` (env `IMPORT_PREVIEW_RATE_LIMIT`,
+`IMPORT_COMMIT_RATE_LIMIT`) and built by `importLimiter(limit)` with Plan 7's
+shared `rateLimitHandler` from `lib/rate-limit.ts` (ruling X4 — no local copy):
+`too_many_requests` 429 in the `{ error: { code, message } }` envelope, not
+express-rate-limit's plain-text default. The integration suite lifts both
+limits in `jest.setup.ts`, because it commits ~22 times from one IP; the 429
+itself is pinned by a unit test on a limit-1 instance.
 
 *Reason.* Spec D18/R84: neither importer is rate-limited in v1, where the
 server-action transport makes that hard to notice. As HTTP endpoints taking a
@@ -661,17 +711,11 @@ of it is worked around by overloading an existing column.
 - Test: `packages/shared/src/__tests__/import-schemas.test.ts`
 
 **Interfaces:**
-- Consumes: `createStudentRequestSchema` from `./student` (Plan 5 Task 1). See the fallback below if Plan 5 has not landed.
+- Consumes: `createStudentRequestSchema` from `./student` (Plan 5 Task 1).
 - Produces (exact names later tasks import): `IMPORT_MAX_ROWS`, `IMPORT_MAX_PASTE_CHARS`, `IMPORT_MAX_CELL_CHARS`, `IMPORT_NAME_HEADERS`, `IMPORT_EMAIL_HEADERS`, `IMPORT_GROUP_HEADERS`, `IMPORT_PROFILE_FIELDS`, `ImportProfileFieldKey`, `IMPORT_PROFILE_ALIASES`, `IMPORT_FIELD_LABELS`, `importRowStatusSchema` / `ImportRowStatus`, `importCellValuesSchema` / `ImportCellValues`, `studentImportRowSchema` / `StudentImportRow`, `studentImportPreviewRowSchema`, `studentImportCountsSchema`, `studentImportPreviewSchema` / `StudentImportPreview`, `importOnExistingSchema` / `ImportOnExisting`, `studentImportCommitRowSchema`, `studentImportCommitInputSchema` / `StudentImportCommitInput`, `importCommitOutcomeSchema`, `studentImportResultRowSchema` / `StudentImportResultRow`, `studentImportResultSchema` / `StudentImportResult`, `importColumnSpecSchema`, `importTemplateSchema` / `ImportTemplate`, `pastedSheetInputSchema` / `PastedSheetInput`, `groupImportRowStatusSchema`, `groupImportPreviewRowSchema`, `groupImportPreviewSchema` / `GroupImportPreview`, `groupImportCommitInputSchema`, `groupImportResultSchema` / `GroupImportResult`.
 
-**If Plan 5 has not landed yet** (no `packages/shared/src/student.ts`): define
-`studentImportRowSchema` inline in this file with the maxima Plan 5 Task 1
-specifies — `name` 2–120, `email` `.email()`, `university` 160, `year` 40,
-`phone` 60, `spiritualBackground` 4000, `gifts` 2000, `notes` 4000,
-`dateOfBirth` `z.string().datetime({ offset: true }).nullish()`, every optional
-field `"" → null` — and leave a `// TODO(plan-05)` above it naming the
-`.omit({ seasonId: true })` derivation that replaces it. Do not invent
-different numbers: D-16.9's whole point is that one set exists.
+Plan 5 runs before this plan in the execution order, so `createStudentRequestSchema`
+always exists here; derive from it (`.omit({ seasonId: true })`) — never restate its maxima (D-16.9).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -782,7 +826,7 @@ describe("the header vocabulary", () => {
     expect(IMPORT_NAME_HEADERS).toContain("name");
   });
 
-  it("keeps v1's nineteen profile aliases", () => {
+  it("keeps v1's profile aliases", () => {
     expect(IMPORT_PROFILE_ALIASES["mobile no."]).toBe("phone");
     expect(IMPORT_PROFILE_ALIASES["spiritual gifts"]).toBe("gifts");
     expect(IMPORT_PROFILE_ALIASES.college).toBe("university");
@@ -981,9 +1025,8 @@ export const studentImportPreviewSchema = z.object({
   detectedColumns: z.array(z.string()),
   /**
    * v2's addition (spec D11 / D-16.12). v1 silently ignores an unknown header
-   * (R18), so `Phone No` or `Uni` or a trailing space vanishes without a word.
-   * Echoed verbatim, whitespace included, so `"Mobile Number "` is visibly
-   * different from `"Mobile Number"`.
+   * (R18), so `Phone No` or `Uni` vanishes without a word. Echoed as typed,
+   * trimmed — matching trims too, so whitespace alone never causes a miss.
    */
   unrecognisedColumns: z.array(z.string()),
   /** What auto-sniffing chose, so the screen can say "read as tab-separated". */
@@ -1541,13 +1584,17 @@ git add apps/backend && git commit -m "feat(backend): delimited-text parser for 
 **Files:**
 - Create: `apps/backend/src/lib/imports/students.ts`
 - Create: `apps/backend/src/routes/imports.ts`
-- Modify: `apps/backend/src/app.ts` — **coordinator applies this**; Agent A writes the two lines into its handback note
+- Modify: `apps/backend/src/lib/config.ts` (three import settings — Step 4a)
+- Modify: `apps/backend/jest.setup.ts` (lift the import rate limits under test — Step 4a)
+- Modify: `apps/backend/src/middleware/error-handler.ts` (`entity.too.large` → 413 — Step 4a)
+- Test: create `apps/backend/src/__tests__/import-limits.test.ts` (unit, no database — Step 4a)
+- Modify: `apps/backend/src/app.ts` — **coordinator applies this**; Agent A writes the fragment into its handback note
 - Modify: `apps/backend/src/docs/openapi.ts` — **coordinator applies**; Agent A hands back the fragment
 - Test: create `apps/backend/src/__tests__/integration/imports-routes.test.ts` (**written, not run**, by Agent A)
 
 **Interfaces:**
-- Consumes: `parseDelimited` / `ImportParseError` / `ParsedSheet` (Task 2); `importCellValuesSchema`, `studentImportRowSchema`, `pastedSheetInputSchema`, `IMPORT_*` constants (Task 1); `db` from `../../db/client`; `isSuper` from `../rbac`; `apiOk`/`apiError`; `requireAuth`/`requireUser`.
-- Produces: `mapStudentHeaders(header)`, `toCellValues(map, cells)`, `normaliseEmail(email)`, `validateImportRow(values)`, `findExistingByEmail(client, emails)`, `buildStudentImportPreview(sheet)`, `studentImportTemplate()` in `lib/imports/students.ts`; `importsRouter` and `seasonImportsRouter` in `routes/imports.ts`; the endpoints `POST /api/v1/imports/students/preview` and `GET /api/v1/imports/students/template`; and the integration suite's shared fixture block, which Tasks 4 and 5 extend.
+- Consumes: `parseDelimited` / `ImportParseError` / `ParsedSheet` (Task 2); `importCellValuesSchema`, `studentImportRowSchema`, `pastedSheetInputSchema`, `IMPORT_*` constants (Task 1); `db` from `../../db/client`; `isSuper` from `../rbac`; `apiOk`/`apiError`; `requireAuth`/`requireUser`; `rateLimitHandler` from `../lib/rate-limit` (Plan 7, ruling X4 — imported, never copied).
+- Produces: `config.importBodyLimit`, `config.importPreviewRateLimit`, `config.importCommitRateLimit`; `importLimiter(limit)` and `importJsonParser` in `routes/imports.ts`; the `payload_too_large` 413 mapping; `mapStudentHeaders(header)`, `toCellValues(map, cells)`, `normaliseEmail(email)`, `validateImportRow(values)`, `findExistingByEmail(client, emails)`, `buildStudentImportPreview(sheet)`, `studentImportTemplate()` in `lib/imports/students.ts`; `importsRouter` and `seasonImportsRouter` in `routes/imports.ts`; the endpoints `POST /api/v1/imports/students/preview` and `GET /api/v1/imports/students/template`; and the integration suite's shared fixture block, which Tasks 4 and 5 extend.
 
 #### Fixture-safety audit — do this before writing a line of the test
 
@@ -1610,7 +1657,12 @@ function sheet(header: string, ...lines: string[]): string {
     for (const cell of line.split(/[\t,]/)) {
       const value = cell.trim();
       if (!value.includes("@")) continue;
-      if (!(value.startsWith(TEST_PREFIX) && value.endsWith("@jpc.test"))) {
+      // Compared lower-cased: the case-insensitivity tests deliberately paste
+      // `testEmail(...).toUpperCase()`, which is still a fixture address. Any
+      // uppercase variant the importer wrongly stored is swept by the
+      // case-insensitive delete in afterAll below.
+      const lower = value.toLowerCase();
+      if (!(lower.startsWith(TEST_PREFIX) && lower.endsWith("@jpc.test"))) {
         throw new Error(
           `Fixture paste contains "${value}", which cleanupTestData cannot delete. ` +
             `Every fixture email must come from testEmail().`,
@@ -1665,8 +1717,18 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await cleanupTestData();
+  // cleanupTestData's filter is case-SENSITIVE. This suite pastes uppercase
+  // variants of fixture addresses on purpose; if a regression ever stored one,
+  // the shared filter would miss it. Sweep case-insensitively before asserting.
+  const anyCase = {
+    email: { startsWith: TEST_PREFIX, endsWith: "@jpc.test", mode: "insensitive" as const },
+  };
+  await db.studentProfile.deleteMany({ where: { user: anyCase } });
+  await db.user.deleteMany({ where: anyCase });
   // Belt and braces on a shared database: prove the suite left nothing.
-  const strays = await db.user.count({ where: { email: { startsWith: TEST_PREFIX } } });
+  const strays = await db.user.count({
+    where: { email: { startsWith: TEST_PREFIX, mode: "insensitive" } },
+  });
   if (strays !== 0) {
     throw new Error(`imports suite left ${strays} prefixed users behind — cleanupTestData did not reach them`);
   }
@@ -1679,6 +1741,10 @@ describe("the fixture guard itself", () => {
     // writes a real-looking account into a live database.
     expect(() => sheet("name\temail", "A Real Person\treal.person@gmail.com")).toThrow(/cannot delete/);
     expect(() => sheet("name\temail", `A Test\t${testEmail("ok")}`)).not.toThrow();
+    // An uppercase fixture address is still a fixture address.
+    expect(() =>
+      sheet("name\temail", `A Test\t${testEmail("shout").toUpperCase()}`),
+    ).not.toThrow();
   });
 });
 
@@ -1773,7 +1839,7 @@ describe("POST /api/v1/imports/students/preview", () => {
     expect(res.body.data.unrecognisedColumns).toEqual(["Group"]);
   });
 
-  it("names an unrecognised column verbatim, whitespace included", async () => {
+  it("names an unrecognised column as typed (trimmed)", async () => {
     const res = await request(app)
       .post("/api/v1/imports/students/preview")
       .set("authorization", `Bearer ${superToken}`)
@@ -2237,11 +2303,14 @@ export function studentImportTemplate(): ImportTemplate {
 
 ```ts
 // apps/backend/src/routes/imports.ts
-import { Router } from "express";
-import rateLimit, { type Options as RateLimitOptions } from "express-rate-limit";
+import express, { Router } from "express";
+import rateLimit from "express-rate-limit";
 
 import { apiError, apiOk } from "../lib/api-response";
+import { config } from "../lib/config";
 import { ImportParseError, parseDelimited } from "../lib/imports/delimited";
+// The one 429 handler (ruling X4: Plan 7 extracted it; no copies anywhere).
+import { rateLimitHandler } from "../lib/rate-limit";
 import { buildStudentImportPreview, studentImportTemplate } from "../lib/imports/students";
 import { isSuper } from "../lib/rbac";
 // Value import — relative path is mandatory here (CLAUDE.md's rootDir emit
@@ -2277,15 +2346,37 @@ import { requireAuth, requireUser } from "../middleware/require-auth";
  */
 const IMPORT_FILE_UPLOAD_SUPPORTED = false;
 
-const rateLimitHandler: RateLimitOptions["handler"] = (_req, res) => {
-  apiError(res, "too_many_requests", "Too many import requests. Try again shortly.", 429);
-};
-// Spec D18/R84: neither importer is rate-limited in v1, where the
-// server-action transport makes that hard to notice. As HTTP endpoints taking
-// a 256 KB body and a 2000-row commit, both want one.
-const previewLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, handler: rateLimitHandler });
-const commitLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, handler: rateLimitHandler });
+/**
+ * Spec D18/R84: neither importer is rate-limited in v1, where the
+ * server-action transport makes that hard to notice. As HTTP endpoints taking
+ * a 256 KB paste and a 2000-row commit, both want one.
+ *
+ * A factory, and the limits come from config (defaults 30 / 10 per 15 min):
+ * the integration suite commits ~22 times from one IP, so jest.setup.ts lifts
+ * both limits under test, and the 429 behaviour itself is proven by a unit
+ * test that builds `importLimiter(1)` directly (import-limits.test.ts).
+ */
+export function importLimiter(limit: number) {
+  return rateLimit({ windowMs: 15 * 60 * 1000, limit, handler: rateLimitHandler });
+}
+const previewLimiter = importLimiter(config.importPreviewRateLimit);
+const commitLimiter = importLimiter(config.importCommitRateLimit);
 
+/**
+ * This router's own JSON parser, with an explicit limit.
+ *
+ * The global `express.json()` in app.ts keeps body-parser's 100 KB default,
+ * which a legal 256 KB paste — and a 2000-row commit that resubmits every cell
+ * — both exceed; the overflow would surface as an unmapped `entity.too.large`
+ * and a 500. These routers are therefore mounted in app.ts BEFORE the global
+ * parser, and every POST lists `importJsonParser` itself, AFTER its limiter so
+ * a throttled request is refused before its body is read. Nothing else in the
+ * API gets the larger limit.
+ */
+export const importJsonParser = express.json({ limit: config.importBodyLimit });
+
+// /api/v1/imports is this router's exclusive prefix, so router-level auth is
+// permitted (ruling X5).
 export const importsRouter = Router();
 importsRouter.use(requireAuth);
 
@@ -2310,7 +2401,7 @@ importsRouter.get("/students/template", async (req, res) => {
   return apiOk(res, studentImportTemplate());
 });
 
-importsRouter.post("/students/preview", previewLimiter, async (req, res) => {
+importsRouter.post("/students/preview", previewLimiter, importJsonParser, async (req, res) => {
   if (!requireSuper(req, res)) return;
 
   const parsed = pastedSheetInputSchema.safeParse(req.body);
@@ -2335,15 +2426,144 @@ importsRouter.post("/students/preview", previewLimiter, async (req, res) => {
 });
 
 /**
- * Season-scoped import routes. Mounted at /api/v1/seasons AFTER seasonsRouter
- * (see app.ts): a request that seasonsRouter does not match simply falls
- * through to this one, so neither file has to know about the other and
- * `routes/seasons.ts` stays untouched (D-16.20).
+ * Season-scoped import routes, mounted at /api/v1/seasons. That prefix is
+ * SHARED with seasonsRouter (and Plan 11's seasonExportsRouter), so there is
+ * no `seasonImportsRouter.use(requireAuth)` — each route lists requireAuth
+ * first (ruling X5). It is mounted ahead of the global JSON parser (see
+ * importJsonParser), so it sits before seasonsRouter too; it defines only
+ * POST /:id/imports/groups/*, so every other request falls through untouched
+ * and `routes/seasons.ts` stays unmodified (D-16.20).
  */
 export const seasonImportsRouter = Router();
-seasonImportsRouter.use(requireAuth);
 
 export { commitLimiter, previewLimiter, IMPORT_FILE_UPLOAD_SUPPORTED };
+```
+
+- [ ] **Step 4a: Config, the test-time limits, the 413 mapping, and a unit test for the limiter**
+
+In `apps/backend/src/lib/config.ts`, add to `envSchema`:
+
+```ts
+  // Body limit for the import routes only (routes/imports.ts). The global
+  // parser keeps body-parser's 100 KB default; a 256 KB paste and a 2000-row
+  // commit resubmitting every cell need more. Any body-parser size string.
+  IMPORT_BODY_LIMIT: z.string().default("2mb"),
+  // Import rate limits per 15 minutes (spec D18). Configurable so the
+  // integration suite, which commits ~22 times from one IP, can lift them.
+  IMPORT_PREVIEW_RATE_LIMIT: z.coerce.number().int().positive().default(30),
+  IMPORT_COMMIT_RATE_LIMIT: z.coerce.number().int().positive().default(10),
+```
+
+and to the exported `config`:
+
+```ts
+  importBodyLimit: parsed.data.IMPORT_BODY_LIMIT,
+  importPreviewRateLimit: parsed.data.IMPORT_PREVIEW_RATE_LIMIT,
+  importCommitRateLimit: parsed.data.IMPORT_COMMIT_RATE_LIMIT,
+```
+
+Document the three keys in `apps/backend/.env.example` (commented, defaults
+shown) and in `apps/backend/README.md`'s environment table.
+
+In `apps/backend/jest.setup.ts`, after the `ENABLE_UPLOADS` line — forced, like
+it, so a developer's `.env` cannot reintroduce the 429s:
+
+```ts
+// The imports suite commits ~22 times and previews ~30 times from one IP in
+// one run; the production limits (10 / 30 per 15 min) would 429 it halfway.
+// The limiter's own behaviour is covered by import-limits.test.ts, which
+// builds a limit-1 instance directly.
+process.env.IMPORT_COMMIT_RATE_LIMIT = "1000";
+process.env.IMPORT_PREVIEW_RATE_LIMIT = "1000";
+```
+
+In `apps/backend/src/middleware/error-handler.ts`, beside `isBodyParseError`:
+
+```ts
+/** body-parser rejects a body over its `limit` with this `type`. */
+function isBodyTooLargeError(err: unknown): boolean {
+  return (err as { type?: string } | null)?.type === "entity.too.large";
+}
+```
+
+and in `errorHandler`, directly after the `isBodyParseError` branch:
+
+```ts
+  // An over-limit body is the client's error and must say so — without this it
+  // falls through to the generic 500 (the import routes accept up to
+  // config.importBodyLimit; every other route keeps the 100 KB default).
+  if (isBodyTooLargeError(err)) {
+    apiError(res, "payload_too_large", "Request body is too large.", 413);
+    return;
+  }
+```
+
+Unit test, no database:
+
+```ts
+// apps/backend/src/__tests__/import-limits.test.ts
+import express from "express";
+import request from "supertest";
+
+import { errorHandler } from "../middleware/error-handler";
+import { importLimiter } from "../routes/imports";
+
+describe("importLimiter", () => {
+  it("answers the 429 envelope once the limit is spent", async () => {
+    const app = express();
+    app.post("/x", importLimiter(1), (_req, res) => {
+      res.json({ data: { ok: true } });
+    });
+    expect((await request(app).post("/x")).status).toBe(200);
+    const second = await request(app).post("/x");
+    expect(second.status).toBe(429);
+    expect(second.body.error.code).toBe("too_many_requests");
+  });
+});
+
+describe("body limits", () => {
+  it("maps an over-limit JSON body to 413 payload_too_large, not 500", async () => {
+    const app = express();
+    app.post("/x", express.json({ limit: "1kb" }), (_req, res) => {
+      res.json({ data: {} });
+    });
+    app.use(errorHandler);
+    const res = await request(app)
+      .post("/x")
+      .set("content-type", "application/json")
+      .send(JSON.stringify({ text: "x".repeat(4096) }));
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe("payload_too_large");
+  });
+});
+```
+
+Run: `cd apps/backend && npx jest src/__tests__/import-limits.test.ts` → FAIL
+first (no `importLimiter`, no 413 branch), PASS after Steps 4–4a.
+
+And append to the integration suite (`imports-routes.test.ts`, run by the
+coordinator):
+
+```ts
+describe("the import body limit", () => {
+  it("accepts a paste larger than the global 100 KB parser limit", async () => {
+    // ~150 KB: under IMPORT_MAX_PASTE_CHARS, over body-parser's default. Before
+    // the route-level parser this was an unmapped entity.too.large → 500.
+    const rows = Array.from(
+      { length: 900 },
+      (_, i) => `Bulk Student ${i}\t${testEmail(`bulk-${i}`)}\t${"x".repeat(80)}`,
+    );
+    const text = sheet("name\temail\tNotes", ...rows);
+    expect(text.length).toBeGreaterThan(100 * 1024);
+    const res = await request(app)
+      .post("/api/v1/imports/students/preview")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ text });
+    expect(res.status).toBe(200);
+    expect(res.body.data.rows).toHaveLength(900);
+  });
+});
+```
 ```
 
 > `requireSuper`'s parameter types are spelled through `Parameters<typeof …>`
@@ -2358,11 +2578,21 @@ export { commitLimiter, previewLimiter, IMPORT_FILE_UPLOAD_SUPPORTED };
 // apps/backend/src/app.ts — with the other route imports
 import { importsRouter, seasonImportsRouter } from "./routes/imports";
 
-// …and with the other mounts, AFTER the existing seasons mount:
-app.use("/api/v1/seasons", seasonsRouter);
-app.use("/api/v1/seasons", seasonImportsRouter);
+// …and BEFORE the global `app.use(express.json())`, directly after cors():
+//
+// The import routes parse their own bodies with a larger, explicit limit
+// (routes/imports.ts → importJsonParser). body-parser skips a body that is
+// already parsed but NOT one that already failed, so these must run before
+// the global 100 KB parser can reject a legal 256 KB paste.
 app.use("/api/v1/imports", importsRouter);
+app.use("/api/v1/seasons", seasonImportsRouter);
+app.use(express.json());
 ```
+
+`seasonImportsRouter` therefore sits ahead of `seasonsRouter`; it defines only
+`POST /:id/imports/groups/{preview,commit}` and carries no router-level
+middleware, so every other `/api/v1/seasons/*` request falls through to
+`seasonsRouter` exactly as before.
 
 - [ ] **Step 6: Hand back the OpenAPI fragment (coordinator applies)**
 
@@ -2416,8 +2646,8 @@ git add apps/backend && git commit -m "feat(backend): student import preview and
 This is the task the plan exists for. Everything load-bearing lives here.
 
 **Files:**
-- Modify: `apps/backend/src/lib/queries/students.ts` (add `createStudentRows`)
-- Modify: `apps/backend/src/routes/students.ts` (Plan 5's `POST /` handler now calls `createStudentRows`)
+- Modify: `apps/backend/src/lib/queries/students.ts` (add `createStudentRows`, `enrollStudentInSeason`)
+- Modify: `apps/backend/src/routes/students.ts` (Plan 5's `POST /` calls `createStudentRows`; Plan 5's `POST /:id/enrollments` calls `enrollStudentInSeason`)
 - Modify: `apps/backend/src/lib/imports/students.ts` (add the commit half)
 - Modify: `apps/backend/src/routes/imports.ts` (add the commit route)
 - Modify: `apps/backend/src/docs/openapi.ts` — **coordinator applies the fragment**
@@ -2426,15 +2656,11 @@ This is the task the plan exists for. Everything load-bearing lives here.
 
 **Interfaces:**
 - Consumes: `validateImportRow`, `normaliseEmail`, `findExistingByEmail` (Task 3); `studentImportCommitInputSchema`, `ImportOnExisting`, `StudentImportResult` (Task 1); `Prisma` as a value from `../generated/prisma/client`.
-- Produces: `NewStudentInput`, `StudentCreateTarget`, `createStudentRows(tx, inputs, target)` in `lib/queries/students.ts`; `StudentImportTarget`, `ImportRowsInvalidError`, `commitStudentImport(rows, target, onExisting)` in `lib/imports/students.ts`; the endpoint `POST /api/v1/imports/students/commit`.
+- Produces: `NewStudentInput`, `StudentCreateTarget`, `createStudentRows(tx, inputs, target)`, `enrollStudentInSeason(tx, studentUserId, seasonId): Promise<"enrolled" | "already_enrolled">` in `lib/queries/students.ts`; `StudentImportTarget`, `ImportRowsInvalidError`, `commitStudentImport(rows, target, onExisting)` in `lib/imports/students.ts`; the endpoint `POST /api/v1/imports/students/commit`.
 
-**If Plan 5 has not landed yet:** `lib/queries/students.ts` and
-`routes/students.ts` do not exist. Create `lib/queries/students.ts` containing
-`createStudentRows` alone (nothing else in this task needs the rest of it) and
-skip Step 2's route refactor, leaving a `// TODO(plan-05): POST /api/v1/students
-must call createStudentRows — there is exactly one way to create a student
-(D-16.8)` at the top of the new file. Note it in the closing report so Plan 5
-picks it up.
+Plan 5 runs long before this plan in the execution order, so
+`lib/queries/students.ts` and `routes/students.ts` exist. If they do not, stop:
+this task refactors Plan 5's handlers and must not recreate them.
 
 - [ ] **Step 1: Write the failing tests — integration first**
 
@@ -2477,7 +2703,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
     const [row] = await usersByEmail([email]);
     expect(row).toMatchObject({
       role: "STUDENT",
-      // THE credential rule. v1's student-actions.ts:94 hard-codes
+      // THE credential rule. v1's student-actions.ts:59 hard-codes
       // "ChangeMe123!" for form-created students; v2 has no shared default
       // password anywhere, and an invite is the only way an account gets
       // credentials (Plan 7). An imported account exists and cannot be
@@ -2667,9 +2893,11 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
     expect(res.body.data).toMatchObject({ created: 0, skipped: 0, enrolled: 1 });
 
     const [row] = await usersByEmail([returning.email]);
-    // The two columns that mean "this person is in this season" moved…
-    expect(row.studentProfile?.activeSeasonId).toBe(seasonId);
+    // The enrolment was created…
     expect(row.seasonEnrollments.map((e) => e.seasonId).sort()).toEqual([otherSeasonId, seasonId].sort());
+    // …but the pointer, already held by another season, was NOT stolen —
+    // Plan 5's rule (POST /students/:id/enrollments), now the same function.
+    expect(row.studentProfile?.activeSeasonId).toBe(otherSeasonId);
     // …and nothing else did. A spreadsheet must never erase pastoral notes.
     expect(row.name).toBe("Test returning");
     expect(row.studentProfile?.notes).toBe("A year of pastoral notes");
@@ -2695,6 +2923,35 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
     // A resurrected WITHDRAWN enrolment with its reason erased is the most
     // damaging thing a bulk write can do (spec 06 D2). It must not happen.
     expect(enrolment).toMatchObject({ status: "WITHDRAWN", dropReason: "Moved away" });
+  });
+
+  it("reports an existing enrolment as skipped, and points an UNSET pointer (Plan 5's rules)", async () => {
+    const already = await createTestUser("already-enrolled", "STUDENT");
+    await db.studentProfile.create({ data: { userId: already.id } });
+    await db.seasonEnrollment.create({
+      data: { studentUserId: already.id, seasonId, status: "ACTIVE" },
+    });
+    const fresh = await createTestUser("pointer-unset", "STUDENT");
+    await db.studentProfile.create({ data: { userId: fresh.id } });
+
+    const blank = { university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null };
+    const res = await request(app)
+      .post("/api/v1/imports/students/commit")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({
+        mode: "season",
+        seasonId,
+        onExisting: "enroll",
+        rows: [
+          { rowNumber: 2, values: { name: "Already Here", email: already.email, ...blank } },
+          { rowNumber: 3, values: { name: "Pointer Unset", email: fresh.email, ...blank } },
+        ],
+      });
+
+    expect(res.body.data).toMatchObject({ created: 0, skipped: 1, enrolled: 1 });
+    expect(res.body.data.rows[0]).toMatchObject({ outcome: "skipped", message: expect.stringMatching(/already enrolled/i) });
+    const [freshRow] = await usersByEmail([fresh.email]);
+    expect(freshRow.studentProfile?.activeSeasonId).toBe(seasonId);
   });
 
   it("skips a soft-deleted address even under enroll, with a message that says why", async () => {
@@ -2909,7 +3166,7 @@ export type StudentCreateTarget =
  * student are the same kind of account (decision D-16.8).
  *
  * v1 has two paths that disagree: `createStudentAction` sets a temporary
- * password (`jpc-space/src/lib/student-actions.ts:94`, the hard-coded
+ * password (`jpc-space/src/lib/student-actions.ts:59`, the hard-coded
  * `ChangeMe123!`) while `commitStudentImport` writes `passwordHash: null`
  * (`student-import.ts:260`) — the spec records this at R46 as "the two paths
  * produce differently-initialised accounts". v2 has one path and it issues no
@@ -2995,18 +3252,28 @@ export async function createStudentRows(
 }
 ```
 
-- [ ] **Step 4: Point Plan 5's `POST /api/v1/students` at it**
+- [ ] **Step 4: Point Plan 5's `POST /api/v1/students` at it — keeping Plan 17's invite**
 
-In `apps/backend/src/routes/students.ts`, replace the body of the
-`db.$transaction` in the POST handler. Everything else about the handler —
-the SUPER gate, the season liveness lookup, the pre-emptive `email_taken`
-check and the `P2002` catch — is unchanged.
+By now **Plan 17 Task 2 Step 3** has rewritten this handler's tail: inside the
+`db.$transaction` it writes the user/profile/enrollment rows **and then**
+calls `issueInvite(tx, student.id, user.userId)`; after commit it sends the
+invite mail best-effort. Only the **row-writing block** moves into
+`createStudentRows`. The `issueInvite` line, the `let created` / `let invite`
+declarations, the `P2002 → email_taken` catch, the post-commit
+`sendInviteEmail` and the `apiOk(res, created, 201)` all stay exactly as Plan
+17 wrote them — the importer calls `createStudentRows` without `issueInvite`,
+which is precisely how it keeps sending nothing (spec R55). Verify first:
+`grep -n "issueInvite(tx, student.id" apps/backend/src/routes/students.ts` → one hit;
+if absent, stop — Plan 17 has not run.
+
+In `apps/backend/src/routes/students.ts`, inside that transaction, replace
+everything from `const student = await tx.user.create({` through the closing
+brace of the `if (body.seasonId != null) { … }` enrollment block with:
 
 ```ts
-  try {
-    const created = await db.$transaction(async (tx) => {
-      // One writer for this fact (D-16.8): the bulk importer calls exactly
+      // One writer for these rows (D-16.8): the bulk importer calls exactly
       // this function, so the two paths cannot drift apart the way v1's did.
+      // Plan 17's invite stays below, in the route — the importer never mints one.
       const [student] = await createStudentRows(
         tx,
         [
@@ -3024,16 +3291,86 @@ check and the `P2002` catch — is unchanged.
         ],
         body.seasonId != null ? { kind: "season", seasonId: body.seasonId } : { kind: "none" },
       );
-      return student;
-    });
-    return apiOk(res, created, 201);
-  } catch (err) { /* unchanged */ }
+      if (!student) throw new Error("createStudentRows returned no row for one input");
 ```
+
+leaving Plan 17's next lines —
+`const issued = await issueInvite(tx, student.id, user.userId); return { student, issued };` —
+untouched. `createStudentRows` returns `{ id, email }[]`, the same `select`
+Plan 17's `tx.user.create` used, so `created` keeps its type and the 201 body
+(`{ data: { id, email } }`) is unchanged.
 
 Add `createStudentRows` to the existing
 `import { … } from "../lib/queries/students";`. Plan 5's whole
-`students-routes.test.ts` suite must still pass unchanged — that is the proof
-the extraction was behaviour-preserving, and Task 7 Step 1 runs it.
+`students-routes.test.ts` suite — including the invite cases Plan 17 Task 2
+added to it — must
+still pass unchanged; that is the proof the extraction was
+behaviour-preserving, and Task 7 Step 1 runs it.
+
+- [ ] **Step 4b: Extract Plan 5's enrolment write into `enrollStudentInSeason`**
+
+Append to `apps/backend/src/lib/queries/students.ts`:
+
+```ts
+/**
+ * Enrol one student in one season — Plan 5's `POST /students/:id/enrollments`
+ * rules, in the one place both that route and the bulk importer call
+ * (D-16.7/D-16.8; spec 06 D1/R2):
+ *
+ *  - one enrolment per student per season, EVER: an existing row of any
+ *    status is "already_enrolled" and is not touched (a WITHDRAWN row is
+ *    history, not an obstacle — re-admission is not invented here);
+ *  - entry is always ACTIVE (R47);
+ *  - the profile pointer is set only when UNSET — never stolen from a season
+ *    that already holds it. updateMany so a student with no profile row is a
+ *    no-op rather than a throw, exactly as Plan 5's guarded update behaved.
+ *
+ * A concurrent caller can still lose the unique-index race (P2002); the
+ * caller's existing P2002 handling answers it (409 already_enrolled on the
+ * route, 409 import_conflict on the importer, whose transaction rolls back).
+ */
+export async function enrollStudentInSeason(
+  tx: Prisma.TransactionClient,
+  studentUserId: number,
+  seasonId: number,
+): Promise<"enrolled" | "already_enrolled"> {
+  const existing = await tx.seasonEnrollment.findUnique({
+    where: { studentUserId_seasonId: { studentUserId, seasonId } },
+    select: { id: true },
+  });
+  if (existing) return "already_enrolled";
+
+  await tx.seasonEnrollment.create({
+    data: { studentUserId, seasonId, status: "ACTIVE" },
+  });
+  await tx.studentProfile.updateMany({
+    where: { userId: studentUserId, activeSeasonId: null },
+    data: { activeSeasonId: seasonId },
+  });
+  return "enrolled";
+}
+```
+
+In `apps/backend/src/routes/students.ts`'s `POST /:id/enrollments`, replace
+the pre-transaction `existing` lookup and the transaction body with:
+
+```ts
+  try {
+    const outcome = await db.$transaction((tx) => enrollStudentInSeason(tx, id, seasonId));
+    if (outcome === "already_enrolled") {
+      return apiError(res, "already_enrolled", "This student already has an enrollment in that season.", 409);
+    }
+    const enrollment = await db.seasonEnrollment.findUniqueOrThrow({
+      where: { studentUserId_seasonId: { studentUserId: id, seasonId } },
+      select: { id: true, seasonId: true, status: true },
+    });
+    return apiOk(res, enrollment, 201);
+  } catch (err) { /* the existing P2002 → 409 already_enrolled branch, unchanged */ }
+```
+
+The gate, the season and student lookups and the P2002 branch are unchanged.
+Plan 5's enrolment tests (`describe("POST /api/v1/students/:id/enrollments")`)
+must pass unchanged — they are the proof the rules moved without changing.
 
 - [ ] **Step 5: Write the commit half of `lib/imports/students.ts`**
 
@@ -3042,7 +3379,11 @@ Append:
 ```ts
 import type { StudentImportResult, StudentImportResultRow } from "@space/shared";
 
-import { createStudentRows, type NewStudentInput } from "../queries/students";
+import {
+  createStudentRows,
+  enrollStudentInSeason,
+  type NewStudentInput,
+} from "../queries/students";
 
 export type StudentImportTarget =
   | { kind: "season"; seasonId: number }
@@ -3188,26 +3529,26 @@ export async function commitStudentImport(
 
       if (target.kind === "season") {
         for (const e of toEnroll) {
-          // D-16.7: enrol, never overwrite. `update: {}` is the create-if-
-          // absent idiom — an enrolment that already exists keeps its status,
-          // enrolledAt, groupId, droppedAt and dropReason untouched, so a
-          // spreadsheet can never resurrect a WITHDRAWN enrolment or erase
-          // why somebody left. Ruling C6's "use a real upsert on the natural
-          // unique key" rather than read-then-create-then-catch.
-          await tx.seasonEnrollment.upsert({
-            where: {
-              studentUserId_seasonId: { studentUserId: e.userId, seasonId: target.seasonId },
-            },
-            update: {},
-            create: { studentUserId: e.userId, seasonId: target.seasonId, status: "ACTIVE" },
-          });
-          // The pointer follows the enrolment, and NOTHING else on the
-          // profile is written.
-          await tx.studentProfile.upsert({
-            where: { userId: e.userId },
-            update: { activeSeasonId: target.seasonId },
-            create: { userId: e.userId, activeSeasonId: target.seasonId },
-          });
+          // D-16.7, on Plan 5's rules (one writer — enrollStudentInSeason):
+          //  - one enrolment per student per season, ever. An existing row —
+          //    ACTIVE, WITHDRAWN or COMPLETED — is left entirely alone and the
+          //    row is reported `skipped`, the bulk form of Plan 5's 409
+          //    already_enrolled. A spreadsheet can never resurrect a WITHDRAWN
+          //    enrolment or erase why somebody left;
+          //  - the profile pointer is set only when it is UNSET; a pointer
+          //    another season already holds is never stolen;
+          //  - nothing else on the profile is written.
+          const result = await enrollStudentInSeason(tx, e.userId, target.seasonId);
+          if (result === "already_enrolled") {
+            const prior = outcomes.get(e.rowNumber);
+            if (prior) {
+              outcomes.set(e.rowNumber, {
+                ...prior,
+                outcome: "skipped",
+                message: "Already enrolled in this season — left unchanged.",
+              });
+            }
+          }
         }
       }
     },
@@ -3257,6 +3598,10 @@ function existingOutcome(
     // migration, which is Plan 13.
     return {
       ...base,
+      // No id for a removed or staff account: the import screen has no use
+      // for it, and it would hand the operator a handle on a row they
+      // reached only by typing its address.
+      userId: null,
       outcome: "skipped",
       message: "Previously removed — restore this account from the users screen.",
     };
@@ -3264,11 +3609,15 @@ function existingOutcome(
   if (match.role !== "STUDENT") {
     return {
       ...base,
+      userId: null,
       outcome: "skipped",
       message: "That address already belongs to a staff account.",
     };
   }
   if (onExisting === "enroll" && target.kind === "season") {
+    // Provisional: the enrol loop below may downgrade this to `skipped` when
+    // the student already holds an enrolment in the target season (Plan 5's
+    // already_enrolled rule, applied per row).
     return { ...base, outcome: "enrolled", message: "Already in the system — enrolled in this season." };
   }
   return { ...base, outcome: "skipped", message: "Already in the system." };
@@ -3288,7 +3637,7 @@ value import with `studentImportCommitInputSchema`, and add
 which that module exports at the end of `client.ts`):
 
 ```ts
-importsRouter.post("/students/commit", commitLimiter, async (req, res) => {
+importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (req, res) => {
   if (!requireSuper(req, res)) return;
 
   const parsed = studentImportCommitInputSchema.safeParse(req.body);
@@ -3394,19 +3743,17 @@ git add apps/backend && git commit -m "feat(backend): transactional, email-idemp
 
 **Files:**
 - Create: `apps/backend/src/lib/imports/groups.ts`
-- Modify: `apps/backend/src/lib/queries/groups.ts` (add `assignStudentsToGroups`, `GroupOutsideSeasonError`)
+- (Not modified: `apps/backend/src/lib/queries/groups.ts` — `assignStudentsToGroups` and `GroupOutsideSeasonError` are **Plan 16's**, consumed here)
 - Modify: `apps/backend/src/routes/imports.ts` (fill in `seasonImportsRouter`)
 - Modify: `apps/backend/src/docs/openapi.ts` — **coordinator applies the fragment**
 - Test: extend `apps/backend/src/__tests__/integration/imports-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `parseDelimited` / `ImportParseError` (Task 2); `normaliseEmail` (Task 3); `groupImportCommitInputSchema`, `pastedSheetInputSchema`, `IMPORT_GROUP_HEADERS`, `IMPORT_EMAIL_HEADERS`, `IMPORT_NAME_HEADERS` (Task 1); `isAdminOfSeason` from `../lib/rbac`; `parseId`.
-- Produces: `buildGroupImportPreview(sheet, seasonId)` in `lib/imports/groups.ts`; `assignStudentsToGroups(tx, seasonId, assignments)` and `GroupOutsideSeasonError` in `lib/queries/groups.ts`; the endpoints `POST /api/v1/seasons/:id/imports/groups/preview` and `.../commit`.
+- Consumes: `parseDelimited` / `ImportParseError` (Task 2); `normaliseEmail` (Task 3); `groupImportCommitInputSchema`, `pastedSheetInputSchema`, `IMPORT_GROUP_HEADERS`, `IMPORT_EMAIL_HEADERS`, `IMPORT_NAME_HEADERS` (Task 1); `isAdminOfSeason` from `../lib/rbac`; `parseId`; **Plan 16's** `assignStudentsToGroups(tx, seasonId, assignments)` and `GroupOutsideSeasonError` from `lib/queries/groups.ts`.
+- Produces: `buildGroupImportPreview(sheet, seasonId)` in `lib/imports/groups.ts`; the endpoints `POST /api/v1/seasons/:id/imports/groups/preview` and `.../commit`.
 
-`lib/queries/groups.ts` is domain 5's file. This task adds one exported
-function beside the existing `setGroupStudents` and changes nothing else in
-it. Both live there because group-membership writes should have one home; if
-domain 5 work is ever in flight concurrently, this becomes a coordinator merge.
+`lib/queries/groups.ts` is domain 5's file and Plan 16 already added the bulk
+write there. This task does not edit it.
 
 - [ ] **Step 1: Append the failing tests**
 
@@ -3615,94 +3962,78 @@ describe("POST /api/v1/seasons/:id/imports/groups/preview", () => {
 });
 ```
 
-- [ ] **Step 2: Add the bulk write to `lib/queries/groups.ts`**
+- [ ] **Step 2: Consume Plan 16's bulk write — do not create one**
 
-Append, below `setGroupStudents`:
+Plan 16 (season admin screens, earlier in the execution order) ships
+`assignStudentsToGroups(tx, seasonId, assignments)` and `GroupOutsideSeasonError`
+in `apps/backend/src/lib/queries/groups.ts`, behind its
+`PUT /api/v1/seasons/:id/group-assignments`. The group-import commit calls that
+same function — one home for group-membership writes, so the roster grid and
+the importer cannot disagree.
+
+```bash
+grep -n "export async function assignStudentsToGroups\|export class GroupOutsideSeasonError" \
+  apps/backend/src/lib/queries/groups.ts
+```
+
+Expect both. If either is missing, Plan 16 has not landed — stop and report;
+do not write a second copy here. The contract this task relies on, pinned by the
+Step 1 commit tests (they fail against an implementation that drifts):
+
+- signature `assignStudentsToGroups(tx: Prisma.TransactionClient, seasonId: number,
+  assignments: { studentUserId: number; groupId: number }[]):
+  Promise<{ assigned: number; skippedStudentIds: number[] }>`;
+- throws `GroupOutsideSeasonError` — refusing the **whole** batch — when any
+  `groupId` is not in `seasonId` (spec R75; "refuses the WHOLE batch");
+- eligibility is an **ACTIVE** `SeasonEnrollment` in this season held by a
+  live STUDENT, not `StudentProfile.activeSeasonId` (ruling C9; v1's pointer
+  gate is what produced spec D5's silent skips) — "writes the memberships…",
+  "skips a WITHDRAWN enrolment";
+- it returns what it **applied**, not the requested length (spec R80/D5) —
+  "reports what it ACTUALLY wrote";
+- it writes both `GroupStudent` (delete-then-create, because
+  `GroupStudent.studentUserId` is `@unique` standalone — Plan 13 item) and
+  `SeasonEnrollment.groupId`.
+
+If Plan 16's function admits a non-ACTIVE enrolment, the WITHDRAWN test below
+fails: fix it **in Plan 16's function** (one `status: "ACTIVE"` in its
+enrolment lookup), so the roster grid gets the same rule.
+
+Add the WITHDRAWN case to the commit describe in Step 1:
 
 ```ts
-/**
- * A target group does not belong to the season. Refuses the WHOLE batch
- * (spec R75) — a partially-applied bulk move is worse than a refused one,
- * because the operator cannot tell which half happened.
- */
-export class GroupOutsideSeasonError extends Error {
-  constructor() {
-    super("A selected group does not belong to this season.");
-    this.name = "GroupOutsideSeasonError";
-  }
-}
+    it("skips a WITHDRAWN enrolment — only ACTIVE students are placed (C9)", async () => {
+      const gone = await createTestUser("grp-withdrawn", "STUDENT");
+      await db.seasonEnrollment.create({
+        data: { studentUserId: gone.id, seasonId, status: "WITHDRAWN" },
+      });
 
-/**
- * Move a set of students into named groups, without disturbing anyone the
- * caller did not name.
- *
- * Deliberately NOT `setGroupStudents`: that one means "this is now the
- * group's whole roster", which for an import would empty every group the
- * paste happened not to list in full.
- *
- * Two divergences from v1's `assignStudentsToGroupsAction`
- * (`jpc-space/src/lib/group-actions.ts:192-248`), both required:
- *
- * 1. Eligibility is an ENROLMENT in this season, not
- *    `StudentProfile.activeSeasonId` (ruling C9; v1 at :215-223). v1 gates on
- *    the pointer in both the roster query and the write, which is exactly what
- *    produces spec D5's silent skips — a row that previewed `assign` gets
- *    dropped by the write with no error and no report entry. Here the
- *    preview's candidate set and this accept set derive from the same fact,
- *    so a row that previews `assign` is a row that gets written.
- * 2. It returns what it APPLIED. v1 returns nothing and its caller reports
- *    the requested array length (spec R80/D5), so "Assigned 40 students" can
- *    mean 12 were written — reported as success.
- */
-export async function assignStudentsToGroups(
-  tx: Prisma.TransactionClient,
-  seasonId: number,
-  assignments: { studentUserId: number; groupId: number }[],
-): Promise<{ assigned: number; skippedStudentIds: number[] }> {
-  const groupIds = [...new Set(assignments.map((a) => a.groupId))];
-  const validGroups = new Set(
-    (
-      await tx.group.findMany({ where: { id: { in: groupIds }, seasonId }, select: { id: true } })
-    ).map((g) => g.id),
-  );
-  if (groupIds.some((id) => !validGroups.has(id))) throw new GroupOutsideSeasonError();
+      const res = await request(app)
+        .post(`/api/v1/seasons/${seasonId}/imports/groups/commit`)
+        .set("authorization", `Bearer ${adminToken}`)
+        .send({ assignments: [{ studentUserId: gone.id, groupId: groupAId }] });
 
-  const studentIds = [...new Set(assignments.map((a) => a.studentUserId))];
-  const enrolled = new Set(
-    (
-      await tx.seasonEnrollment.findMany({
-        where: { seasonId, studentUserId: { in: studentIds } },
-        select: { studentUserId: true },
-      })
-    ).map((e) => e.studentUserId),
-  );
-
-  const skippedStudentIds: number[] = [];
-  let assigned = 0;
-
-  for (const a of assignments) {
-    if (!enrolled.has(a.studentUserId)) {
-      skippedStudentIds.push(a.studentUserId);
-      continue;
-    }
-    // GroupStudent.studentUserId is @unique STANDALONE (schema.prisma:330) —
-    // a student is in at most one group across the entire database, not one
-    // per season — so the existing row, whichever season's group it belongs
-    // to, has to go before this one can be written. That is a real defect
-    // (ruling C9, spec R70/R77) and fixing it is a composite key, which is a
-    // migration, which is Plan 13. Until then the per-season truth lives on
-    // SeasonEnrollment.groupId below and every read in v2 uses that.
-    await tx.groupStudent.deleteMany({ where: { studentUserId: a.studentUserId } });
-    await tx.groupStudent.create({ data: { groupId: a.groupId, studentUserId: a.studentUserId } });
-    await tx.seasonEnrollment.update({
-      where: { studentUserId_seasonId: { studentUserId: a.studentUserId, seasonId } },
-      data: { groupId: a.groupId },
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ assigned: 0, skippedStudentIds: [gone.id] });
+      expect(await db.groupStudent.count({ where: { studentUserId: gone.id } })).toBe(0);
     });
-    assigned += 1;
-  }
+```
 
-  return { assigned, skippedStudentIds };
-}
+and to the preview describe:
+
+```ts
+  it("classifies a WITHDRAWN student no_student, not assign", async () => {
+    const gone = await createTestUser("grp-withdrawn-preview", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { studentUserId: gone.id, seasonId, status: "WITHDRAWN" },
+    });
+    const res = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/imports/groups/preview`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ text: sheet("email\tgroup", `${gone.email}\tGroup A`) });
+    expect(res.status).toBe(200);
+    expect(res.body.data.rows[0].status).toBe("no_student");
+  });
 ```
 
 - [ ] **Step 3: Write `lib/imports/groups.ts`**
@@ -3778,8 +4109,11 @@ export async function buildGroupImportPreview(
     // (groups-query.ts:143-148), so a student with an ACTIVE enrolment whose
     // pointer names another season is invisible here — and the write gates on
     // the same pointer and silently drops them (spec R61/R76).
+    // ACTIVE only — the same population the commit (Plan 16's
+    // assignStudentsToGroups) accepts, so a row that previews `assign` is a
+    // row that gets written. A WITHDRAWN/COMPLETED enrolment is `no_student`.
     db.seasonEnrollment.findMany({
-      where: { seasonId, studentUser: { role: "STUDENT", deletedAt: null } },
+      where: { seasonId, status: "ACTIVE", studentUser: { role: "STUDENT", deletedAt: null } },
       select: { studentUserId: true, groupId: true, studentUser: { select: { email: true } } },
     }),
     db.group.findMany({ where: { seasonId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
@@ -3908,7 +4242,13 @@ async function resolveAdministeredSeason(
   return season.id;
 }
 
-seasonImportsRouter.post("/:id/imports/groups/preview", previewLimiter, async (req, res) => {
+// requireAuth per route — /api/v1/seasons is a shared prefix (ruling X5).
+seasonImportsRouter.post(
+  "/:id/imports/groups/preview",
+  requireAuth,
+  previewLimiter,
+  importJsonParser,
+  async (req, res) => {
   const seasonId = await resolveAdministeredSeason(req, res);
   if (seasonId === null) return;
 
@@ -3926,7 +4266,12 @@ seasonImportsRouter.post("/:id/imports/groups/preview", previewLimiter, async (r
   }
 });
 
-seasonImportsRouter.post("/:id/imports/groups/commit", commitLimiter, async (req, res) => {
+seasonImportsRouter.post(
+  "/:id/imports/groups/commit",
+  requireAuth,
+  commitLimiter,
+  importJsonParser,
+  async (req, res) => {
   const seasonId = await resolveAdministeredSeason(req, res);
   if (seasonId === null) return;
 
@@ -3989,8 +4334,10 @@ Coordinator, after merge:
 cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern imports
 cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern groups
 ```
-The second is the regression gate on domain 5: adding
-`assignStudentsToGroups` beside `setGroupStudents` must not have disturbed it.
+The second is the regression gate on domain 5 and Plan 16: the importer calls
+Plan 16's `assignStudentsToGroups`, and any contract fix Step 2 required there
+(e.g. ACTIVE-only) must not have broken the roster grid's own suite. Also run
+`--testPathPattern roster` (Plan 16's group-assignments suite).
 
 - [ ] **Step 7: Commit**
 
@@ -4003,9 +4350,10 @@ git add apps/backend && git commit -m "feat(backend): group-assignment import wi
 ### Task 6: Mobile — the three-step import screen *(Step 0 coordinator, Steps 1–7 Agent B)*
 
 **Files:**
-- Move: `apps/mobile/app/(app)/users.tsx` → `apps/mobile/app/(app)/users/index.tsx` *(coordinator)*
+- Verify only (no move): `apps/mobile/app/(app)/users/index.tsx` and `"users"` in `DIRECTORY_ROUTE_HREFS` — **Plan 17 Task 9 already did the conversion** *(coordinator)*
+- Modify: `apps/mobile/app/(app)/users/index.tsx` — Plan 7's real users screen (moved by Plan 17, which also added its bulk-invite card) gains an "Import students" action *(coordinator)*
 - Modify: `apps/mobile/app/(app)/_layout.tsx` *(coordinator)*
-- Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx`, `app-layout.test.tsx`, `role-tabs.test.tsx` *(coordinator)*
+- Modify: `apps/mobile/src/__tests__/users-screen.test.tsx` (Plan 7's, at the import path Plan 17 set; the new action only), `app-layout.test.tsx` *(coordinator)*
 - Create: `apps/mobile/app/(app)/users/import.tsx` *(Agent B)*
 - Create: `apps/mobile/src/hooks/use-import.ts` *(Agent B)*
 - Create: `apps/mobile/src/components/ImportRowCard.tsx` *(Agent B)*
@@ -4013,22 +4361,27 @@ git add apps/backend && git commit -m "feat(backend): group-assignment import wi
 - Test: `apps/mobile/src/__tests__/student-import.test.tsx` *(Agent B)*
 
 **Interfaces:**
-- Consumes: `studentImportPreviewSchema`, `studentImportResultSchema`, `importTemplateSchema`, `IMPORT_MAX_PASTE_CHARS`, `IMPORT_MAX_ROWS` and their types from `@space/shared`; `apiClient`; `useSessionStore`; `renderWithProviders`; the `ui` primitives (`Screen`, `Card`, `Text`, `Button`, `Input`, `LoadingState`, `ErrorState`, `EmptyState`).
+- Consumes: `studentImportPreviewSchema`, `studentImportResultSchema`, `importTemplateSchema`, `IMPORT_MAX_PASTE_CHARS`, `IMPORT_MAX_ROWS` and their types from `@space/shared`; Plan 4's `useSeasons(enabled)` from `src/hooks/use-seasons.ts` (the season picker — no second seasons fetch); `apiClient`; `useSessionStore`; `renderWithProviders`; the `ui` primitives (`Screen`, `Card`, `Text`, `Button`, `Input`, `LoadingState`, `ErrorState`, `EmptyState`).
 - Produces: `queryKeys.imports.all/template()`; `useImportTemplate()`, `useStudentImportPreview()`, `useStudentImportCommit()` in `src/hooks/use-import.ts`; `<ImportRowCard row />`; the route `/users/import`.
 
-- [ ] **Step 0 (coordinator): make the route exist**
+- [ ] **Step 0 (coordinator): make the route exist, on the post-Plan-17 tree**
 
-1. `git mv apps/mobile/app/\(app\)/users.tsx apps/mobile/app/\(app\)/users/index.tsx` — the file's contents do not change.
-2. In `apps/mobile/app/(app)/_layout.tsx`, generalise `routeNameForHref`:
+By now Plan 7 has replaced the `/users` placeholder with the real users screen,
+Plan 1 Task 0 made the layout tests derive their counts (ruling X9), Plan 16
+Task 5 turned `routeNameForHref`'s hard-coded `students` branch into the
+`DIRECTORY_ROUTE_HREFS` set (adding `"seasons"` for `seasons/[code]/…`), and
+**Plan 17 Task 9 has already done the `users/` directory conversion** for
+`/users/new` (execution order … 7 → 17 → … → 12). Items 1–2 are therefore
+**verification only** — never move the file or edit the set here.
+
+1. Verify the move: `ls "apps/mobile/app/(app)/users/index.tsx" "apps/mobile/app/(app)/users/new.tsx"`
+   → both exist, and `ls "apps/mobile/app/(app)/users.tsx"` → no such file.
+   `users-screen.test.tsx` already imports `"../../app/(app)/users/index"`.
+   If `users/index.tsx` is missing, stop — Plan 17 has not run.
+2. Verify the set in `apps/mobile/app/(app)/_layout.tsx` is exactly Plan 17's:
 
 ```ts
-/**
- * Hrefs whose route file is a directory index rather than a sibling file.
- * `students` was hard-coded here; `users` is the second (Plan 12 needs a
- * `users/import` child route), and a third hard-coded branch would have been
- * inevitable, so the special case becomes a set.
- */
-const DIRECTORY_ROUTE_HREFS = new Set(["students", "users"]);
+const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons", "users"]);
 
 export function routeNameForHref(href: string): string {
   const path = href.slice(1);
@@ -4036,31 +4389,58 @@ export function routeNameForHref(href: string): string {
 }
 ```
 
-3. Append `"users/import"` to `DETAIL_ROUTE_NAMES` (create the const exactly
-   as Plan 5 Task 7 / Plan 1 Task 2 specify if it does not exist yet:
-   `export const DETAIL_ROUTE_NAMES = ["users/import"] as const;` below
-   `ALL_ROUTE_NAMES`, spread into `orderedRouteNames`). **Without a
-   declaration, `Tabs` auto-registers the file and the import screen appears
-   in the tab bar for every role.**
-4. In `placeholder-screens.test.tsx`, change the `UsersScreen` import to
-   `"../../app/(app)/users/index"`. The entry itself stays until Plan 7
-   replaces the placeholder; the count stays 18.
-5. Add to `app-layout.test.tsx`, in the file's existing hidden-screen style:
+   `grep -n 'DIRECTORY_ROUTE_HREFS = new Set' "apps/mobile/app/(app)/_layout.tsx"`
+   → one hit containing `"students"`, `"seasons"` and `"users"`. Plan 17's
+   `app-layout.test.tsx` case "maps /users to its directory index and hides
+   users/new (Plan 17)" already pins all three mappings. Dropping `"seasons"`
+   would hide the SUPER Seasons tab, so do not "simplify" the set.
+3. Append `"users/import"` to the exported `DETAIL_ROUTE_NAMES` (Plan 1).
+   **Without the declaration, `Tabs` auto-registers the file and the import
+   screen appears in the tab bar for every role.** `app-layout.test.tsx`
+   derives its hidden-route expectations from that exported constant (X9), so
+   no count is edited; add one explicit assertion in its existing style:
 
 ```tsx
 it("declares users/import hidden from the tab bar", () => {
-  useSessionStore.setState(superSession); // the file's existing fixture
-  const screens = renderLayoutAndCollectScreens(); // the file's existing helper
-  const detail = screens.find((s) => s.name === "users/import");
-  expect(detail).toBeTruthy();
-  expect(detail?.options?.href).toBeNull();
+  expect(DETAIL_ROUTE_NAMES).toContain("users/import");
 });
 ```
 
-6. `pnpm turbo routes:generate --filter=@space/mobile` then
+4. **The way in.** In `users/index.tsx`, above the search `Input` (inside the
+   SUPER branch — the non-SUPER guard returns earlier), add:
+
+```tsx
+        {/* Spec 16 §9: the importer is reached from its parent list's header
+            action, as in v1 (super/users/page.tsx:59). */}
+        <Button
+          title="Import students"
+          variant="secondary"
+          onPress={() => router.push("/users/import")}
+        />
+```
+
+   using the `const router = useRouter();` that Plan 17 Task 9 already added
+   near the top of `UsersScreen` — do not declare a second `router`. Place it beside Plan 17's `PendingInvitesCard`
+   — the import button and the bulk-invite card are the two header actions
+   (spec 16 R55: the import itself sends no invites). Append to
+   `users-screen.test.tsx`:
+
+```tsx
+it("offers SUPER a way into the importer", async () => {
+  useSessionStore.setState(superSession);
+  get.mockResolvedValue({ data: { data: { users: [], nextCursor: null } } });
+  renderWithProviders(<UsersScreen />);
+  fireEvent.press(await screen.findByText("Import students"));
+  expect(mockPush).toHaveBeenCalledWith("/users/import");
+});
+```
+
+   (Use the file's existing list-response shape for the mock if it differs.)
+
+5. `pnpm turbo routes:generate --filter=@space/mobile` then
    `pnpm turbo typecheck --filter=@space/mobile`. Typed routes are generated,
-   not written — without regenerating, `Href` degrades to `string` and checks
-   nothing.
+   not written — without regenerating, `Href` degrades to `string`, and
+   `router.push("/users/import")` would compile against nothing.
 
 - [ ] **Step 1: Write the failing screen test**
 
@@ -4093,11 +4473,11 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const superSession = {
-  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const },
+  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const, avatarPath: null, hasPassword: true },
   scopes: emptyScopes,
 };
 const adminSession = {
-  user: { id: 2, name: "Test admin", email: "adm@jpc.test", role: "ADMIN" as const },
+  user: { id: 2, name: "Test admin", email: "adm@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
   scopes: emptyScopes,
 };
 
@@ -4116,7 +4496,25 @@ const template = {
   },
 };
 
-const seasons = { data: { data: { seasons: [{ id: 7, code: "s-7", title: "Spring 2099" }] } } };
+// Plan 4's useSeasons parses every row with Plan 3's full seasonListItemSchema.
+const seasons = {
+  data: {
+    data: {
+      seasons: [
+        {
+          id: 7,
+          code: "s-7",
+          title: "Spring 2099",
+          program: "GBV",
+          year: 2099,
+          status: "ACTIVE",
+          startDate: "2099-01-01T00:00:00.000Z",
+          endDate: "2099-06-30T00:00:00.000Z",
+        },
+      ],
+    },
+  },
+};
 
 const previewBody = (overrides: Record<string, unknown> = {}) => ({
   data: {
@@ -4195,14 +4593,36 @@ describe("ImportScreen — step 1, paste", () => {
   });
 });
 
-describe("ImportScreen — step 2, preview", () => {
-  async function reachPreview() {
+describe("ImportScreen — step 1, the season picker", () => {
+  it("lists the seasons from Plan 4's useSeasons and keeps Import disabled until one is chosen", async () => {
     useSessionStore.setState(superSession);
     post.mockResolvedValue(previewBody());
     renderWithProviders(<ImportScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
+
+    expect(await screen.findByLabelText("Target season: Spring 2099")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/seasons");
+
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText("1 new");
+
+    // No season chosen: the commit is refused client-side (it would 400), and
+    // the screen says why instead of sending `seasonId: null`.
+    expect(screen.getByText("Choose a season before importing")).toBeTruthy();
+    fireEvent.press(screen.getByText("Choose a season before importing"));
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ImportScreen — step 2, preview", () => {
+  async function reachPreview(body = previewBody()) {
+    useSessionStore.setState(superSession);
+    post.mockResolvedValue(body);
+    renderWithProviders(<ImportScreen />);
+    fireEvent.press(await screen.findByLabelText("Target season: Spring 2099"));
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
+    fireEvent.press(screen.getByText("Preview"));
+    await screen.findByText(/\d+ new · /);
   }
 
   it("defaults the filter to the rows that need attention, not to everything", async () => {
@@ -4237,18 +4657,42 @@ describe("ImportScreen — step 2, preview", () => {
     expect("status" in body.rows[0]).toBe(false);
   });
 
-  it("requires an explicit confirmation before sending onExisting=enroll (D-16.7)", async () => {
-    await reachPreview();
+  it("requires an explicit confirmation before sending onExisting=enroll, and then SENDS the existing rows (D-16.7)", async () => {
+    const existingRow = {
+      rowNumber: 4,
+      name: "Returning Student",
+      email: "back@jpc.test",
+      status: "exists",
+      message: "Already in the system.",
+      values: { name: "Returning Student", email: "back@jpc.test", university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null },
+    };
+    const base = previewBody().data.data;
+    await reachPreview({
+      data: {
+        data: {
+          ...base,
+          rows: [...base.rows, existingRow],
+          counts: { ...base.counts, exists: 1, total: 3 },
+        },
+      },
+    });
     fireEvent.press(screen.getByText("Also enrol people already in the system"));
 
     // The control alone must not arm it — enrol changes existing records.
     expect(await screen.findByText(/will also enrol/i)).toBeTruthy();
+    // Unconfirmed: the button still counts only the new row.
+    expect(screen.getByText("Import 1 student")).toBeTruthy();
     fireEvent.press(screen.getByText("Yes, enrol them too"));
 
-    post.mockResolvedValue({ data: { data: { created: 1, skipped: 0, enrolled: 0, rows: [] } } });
-    fireEvent.press(screen.getByText("Import 1 student"));
+    post.mockResolvedValue({ data: { data: { created: 1, skipped: 0, enrolled: 1, rows: [] } } });
+    // Confirmed: the existing row is now part of the commit — without it,
+    // `enroll` reaches the server with nothing to enrol (D-16.7's whole point).
+    fireEvent.press(screen.getByText("Import 1 student, enrol 1"));
 
-    await waitFor(() => expect(post.mock.calls[1][1].onExisting).toBe("enroll"));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
+    const body = post.mock.calls[1][1];
+    expect(body.onExisting).toBe("enroll");
+    expect(body.rows.map((r: { rowNumber: number }) => r.rowNumber).sort()).toEqual([2, 4]);
   });
 
   it("keeps the paste when the operator goes back, so a fix does not start over", async () => {
@@ -4283,7 +4727,8 @@ describe("ImportScreen — step 3, result", () => {
       ] } } });
 
     renderWithProviders(<ImportScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
+    fireEvent.press(await screen.findByLabelText("Target season: Spring 2099"));
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText("1 new");
     fireEvent.press(screen.getByText("Import 1 student"));
@@ -4305,7 +4750,8 @@ describe("ImportScreen — step 3, result", () => {
       .mockResolvedValueOnce({ data: { data: { created: 1, skipped: 0, enrolled: 0, rows: [] } } });
 
     renderWithProviders(<ImportScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
+    fireEvent.press(await screen.findByLabelText("Target season: Spring 2099"));
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText("1 new");
     fireEvent.press(screen.getByText("Import 1 student"));
@@ -4470,11 +4916,17 @@ export function ImportRowCard({ row }: { row: PreviewRow }) {
 // apps/mobile/app/(app)/users/import.tsx
 import { useMemo, useState } from "react";
 import { FlatList, View } from "react-native";
-import type { ImportRowStatus, StudentImportPreview, StudentImportResult } from "@space/shared";
+import type {
+  ImportRowStatus,
+  StudentImportCommitInput,
+  StudentImportPreview,
+  StudentImportResult,
+} from "@space/shared";
 import { IMPORT_MAX_PASTE_CHARS } from "@space/shared";
 
 import { ImportRowCard } from "../../../src/components/ImportRowCard";
 import { useImportTemplate, useStudentImportCommit, useStudentImportPreview } from "../../../src/hooks/use-import";
+import { useSeasons } from "../../../src/hooks/use-seasons";
 import { useSessionStore } from "../../../src/store/session";
 import { useTheme } from "../../../src/theme";
 import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../src/ui";
@@ -4522,13 +4974,22 @@ export default function ImportScreen() {
   const [enrolConfirmed, setEnrolConfirmed] = useState(false);
 
   const template = useImportTemplate(isSuper);
+  // Plan 4's hook — the same cached list the seasons screen reads.
+  const seasons = useSeasons(isSuper);
   const previewMutation = useStudentImportPreview();
   const commitMutation = useStudentImportCommit();
 
-  const importable = useMemo(
-    () => preview?.rows.filter((r) => r.status === "new") ?? [],
-    [preview],
+  const enrolArmed = mode === "season" && enrolExisting && enrolConfirmed;
+  const newRows = useMemo(() => preview?.rows.filter((r) => r.status === "new") ?? [], [preview]);
+  // D-16.7: with `enroll` confirmed, rows already in the system are SENT too —
+  // the server decides per row (enrol, already enrolled, staff, removed).
+  // Unconfirmed, they are never sent.
+  const existingRows = useMemo(
+    () => (enrolArmed ? (preview?.rows.filter((r) => r.status === "exists") ?? []) : []),
+    [preview, enrolArmed],
   );
+  const importable = useMemo(() => [...newRows, ...existingRows], [newRows, existingRows]);
+  const needsSeason = mode === "season" && seasonId === null;
   const visibleRows = useMemo(() => {
     if (!preview) return [];
     return filter === "all" ? preview.rows : preview.rows.filter((r) => ATTENTION.includes(r.status));
@@ -4576,11 +5037,16 @@ export default function ImportScreen() {
     // `status` is deliberately not sent: the server re-derives every
     // classification itself (D-16.4), so the client's opinion is not part of
     // the contract.
-    const onExisting = enrolExisting && enrolConfirmed ? ("enroll" as const) : ("skip" as const);
-    const body =
-      mode === "season"
-        ? { mode: "season" as const, seasonId: seasonId as number, onExisting, rows }
-        : { mode: "alumni" as const, graduationYear: Number(graduationYear), onExisting: "skip" as const, rows };
+    const onExisting = enrolArmed ? ("enroll" as const) : ("skip" as const);
+    let body: StudentImportCommitInput;
+    if (mode === "season") {
+      // Narrowed, not cast: the button is disabled without a season, and this
+      // guard makes the type say so (the earlier draft sent `null as number`).
+      if (seasonId === null) return;
+      body = { mode: "season", seasonId, onExisting, rows };
+    } else {
+      body = { mode: "alumni", graduationYear: Number(graduationYear), onExisting: "skip", rows };
+    }
 
     try {
       setResult(await commitMutation.mutateAsync(body));
@@ -4706,9 +5172,17 @@ export default function ImportScreen() {
             <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
               {localError ? <Text variant="body" color={theme.colors.error[600]}>{localError}</Text> : null}
               <Button
-                title={importable.length === 0 ? "Nothing to import" : `Import ${importable.length} student${importable.length === 1 ? "" : "s"}`}
+                title={
+                  needsSeason
+                    ? "Choose a season before importing"
+                    : importable.length === 0
+                      ? "Nothing to import"
+                      : `Import ${newRows.length} student${newRows.length === 1 ? "" : "s"}${
+                          existingRows.length > 0 ? `, enrol ${existingRows.length}` : ""
+                        }`
+                }
                 onPress={runCommit}
-                disabled={importable.length === 0 || commitMutation.isPending}
+                disabled={needsSeason || importable.length === 0 || commitMutation.isPending}
               />
               <Button title="Back" variant="secondary" onPress={() => setStep("paste")} />
             </View>
@@ -4746,10 +5220,34 @@ export default function ImportScreen() {
       {mode === "alumni" ? (
         <Input label="Graduation year" value={graduationYear} onChangeText={setGraduationYear} keyboardType="number-pad" />
       ) : null}
-      {/* The season picker consumes the seasons list endpoint; wire it to the
-          same `useSeasons` hook the seasons screen uses. Until a season is
-          chosen the Preview button stays enabled — the target is only needed
-          at commit — but the commit button is disabled without one. */}
+      {mode === "season" ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          <Text variant="label">Season</Text>
+          {/* Preview stays enabled without a season — the target is only
+              needed at commit — but the commit button is disabled until one
+              is chosen. Draft and archived seasons are listed too: v1's
+              picker offers every non-deleted season (spec 16 R37). */}
+          {seasons.isPending ? (
+            <LoadingState />
+          ) : seasons.isError ? (
+            <ErrorState message="Couldn't load seasons." onRetry={() => void seasons.refetch()} />
+          ) : (seasons.data ?? []).length === 0 ? (
+            <EmptyState title="No seasons" message="Create a season before importing into one." />
+          ) : (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs }}>
+              {(seasons.data ?? []).map((s) => (
+                <Button
+                  key={s.id}
+                  title={s.title}
+                  accessibilityLabel={`Target season: ${s.title}`}
+                  variant={seasonId === s.id ? "primary" : "secondary"}
+                  onPress={() => setSeasonId(s.id)}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      ) : null}
 
       <Input
         label="Paste your spreadsheet"
@@ -4786,12 +5284,10 @@ export default function ImportScreen() {
 }
 ```
 
-> The season picker is intentionally left as a one-line wiring note rather
-> than invented here: `GET /api/v1/seasons` and its hook belong to domain 2,
-> and this screen must consume whatever that plan produced rather than grow a
-> second seasons fetch. If no hook exists yet, add a local `useQuery` against
-> `/api/v1/seasons` parsed with `seasonListItemSchema` and say so in the
-> report.
+> The season picker consumes Plan 4's `useSeasons` (`src/hooks/use-seasons.ts`)
+> — no second seasons fetch. If `Button` in `src/ui` does not forward
+> `accessibilityLabel`, add the prop pass-through there (one line) rather than
+> wrapping each chip in a `Pressable`; the tests query chips by that label.
 
 - [ ] **Step 7: Verification**
 
@@ -4807,6 +5303,444 @@ All green. `routes:generate` must run before `typecheck` or `Href` degrades to
 
 ```bash
 git add apps/mobile && git commit -m "feat(mobile): three-step paste-first student import screen"
+```
+
+---
+
+### Task 6b: Mobile — the group-import screen under Plan 16's roster *(Step 0 coordinator, Steps 1–5 Agent B, after Task 6)*
+
+Plan 16 (earlier in the execution order) builds the season detail route
+`/seasons/[code]` and the roster screen `/seasons/[code]/roster` with
+`GET /seasons/:id/roster` and `PUT /seasons/:id/group-assignments`. Spec 16 §9
+puts the group importer at `/seasons/[code]/roster/import`, reached from the
+roster's header action (v1 `admin/season/[code]/roster/page.tsx:42`). Its
+ancestors now exist, so D-16.1's deferral is lifted and the screen ships here.
+
+**Files:**
+- Verify only (no move): `apps/mobile/app/(app)/seasons/[code]/roster/index.tsx` — Plan 16 Task 5 created it in the directory form (ruling X7) and already lists `"seasons/[code]/roster/index"` in `DETAIL_ROUTE_NAMES` *(coordinator)*
+- Modify: `apps/mobile/app/(app)/seasons/[code]/roster/index.tsx` — an "Import groups" action *(coordinator)*
+- Modify: `apps/mobile/app/(app)/_layout.tsx` (`DETAIL_ROUTE_NAMES` gains `"seasons/[code]/roster/import"`), `app-layout.test.tsx` *(coordinator)*
+- Create: `apps/mobile/app/(app)/seasons/[code]/roster/import.tsx` *(Agent B)*
+- Modify: `apps/mobile/src/hooks/use-import.ts` (two mutations) *(Agent B)*
+- Modify: `packages/shared/src/import.ts` (export `GroupImportCommitInput`) *(coordinator)*
+- Test: `apps/mobile/src/__tests__/group-import.test.tsx` *(Agent B)*
+
+**Interfaces:**
+- Consumes: Plan 16's route files `app/(app)/seasons/[code]/index.tsx` and the
+  roster screen; Plan 4's `useSeasons(enabled)` (the season is resolved from
+  the route's `code` against that cached list — no new season fetch, and no
+  dependency on any Plan 16 hook name); `groupImportPreviewSchema`,
+  `groupImportResultSchema`, `GroupImportPreview`, `GroupImportResult`,
+  `GroupImportCommitInput`, `IMPORT_MAX_PASTE_CHARS` from `@space/shared`;
+  Task 5's two endpoints; Task 6's `ImportRowCard` pattern (not the component —
+  the group row has different fields).
+- Produces: `useGroupImportPreview(seasonId)`, `useGroupImportCommit(seasonId)`
+  in `src/hooks/use-import.ts`; the route `/seasons/[code]/roster/import`
+  (route name `seasons/[code]/roster/import`).
+
+- [ ] **Step 0 (coordinator): the route and the way in**
+
+1. Verify: `ls "apps/mobile/app/(app)/seasons/[code]/roster/index.tsx"` → exists,
+   and `ls "apps/mobile/app/(app)/seasons/[code]/roster.tsx"` → no such file.
+   Plan 16 Task 5 created the directory form (ruling X7) and appended
+   `"seasons/[code]/roster/index"` to `DETAIL_ROUTE_NAMES`. If the index file
+   is missing, stop — Plan 16 has not run. Nothing is moved here.
+2. Append `"seasons/[code]/roster/import"` to `DETAIL_ROUTE_NAMES`; add to
+   `app-layout.test.tsx`:
+
+```tsx
+it("declares the group importer hidden from the tab bar", () => {
+  expect(DETAIL_ROUTE_NAMES).toContain("seasons/[code]/roster/import");
+});
+```
+
+3. In the roster screen, for SUPER and for an ADMIN of the season (the same
+   predicate the roster screen already uses for its write controls), add:
+
+```tsx
+        <Button
+          title="Import groups"
+          variant="secondary"
+          onPress={() =>
+            router.push({ pathname: "/seasons/[code]/roster/import", params: { code } })
+          }
+        />
+```
+
+   and one test in Plan 16's roster test file asserting the press pushes
+   exactly that object for an ADMIN of the season.
+4. In `packages/shared/src/import.ts`, below `groupImportCommitInputSchema`:
+   `export type GroupImportCommitInput = z.infer<typeof groupImportCommitInputSchema>;`
+5. `pnpm turbo routes:generate --filter=@space/mobile`, then typecheck.
+
+- [ ] **Step 1: Write the failing screen test**
+
+```tsx
+// apps/mobile/src/__tests__/group-import.test.tsx
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+
+jest.mock("../lib/api-client", () => ({
+  apiClient: { get: jest.fn(), post: jest.fn() },
+}));
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({ code: "s-7" }),
+  useRouter: () => ({ push: (...a: unknown[]) => mockPush(...a), back: jest.fn() }),
+}));
+
+import { apiClient } from "../lib/api-client";
+import { useSessionStore } from "../store/session";
+import { renderWithProviders } from "./helpers/render";
+
+import GroupImportScreen from "../../app/(app)/seasons/[code]/roster/import";
+
+const get = apiClient.get as jest.Mock;
+const post = apiClient.post as jest.Mock;
+
+const season = {
+  id: 7,
+  code: "s-7",
+  title: "Spring 2099",
+  program: "GBV",
+  year: 2099,
+  status: "ACTIVE",
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-06-30T00:00:00.000Z",
+};
+const scopesFor = (seasonAdminIds: number[]) => ({
+  seasonAdminIds,
+  groupLeaderIds: [] as number[],
+  activeSeasonId: null as number | null,
+  graduationYear: null as number | null,
+});
+const adminOf7 = {
+  user: { id: 2, name: "Admin", email: "adm@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
+  scopes: scopesFor([7]),
+};
+const adminOfOther = { ...adminOf7, scopes: scopesFor([8]) };
+
+const preview = {
+  rows: [
+    { rowNumber: 2, name: "Ann", email: "ann@jpc.test", group: "Group A", status: "assign", message: null, studentUserId: 11, groupId: 3 },
+    { rowNumber: 3, name: "Bob", email: "bob@jpc.test", group: "Group A", status: "unchanged", message: null, studentUserId: 12, groupId: 3 },
+    { rowNumber: 4, name: "Cy", email: "cy@jpc.test", group: "Nope", status: "no_group", message: "No group named \"Nope\".", studentUserId: 13, groupId: null },
+  ],
+  delimiter: "tab",
+  counts: { assign: 1, unchanged: 1, no_student: 0, no_group: 1, invalid: 0, total: 3 },
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  useSessionStore.setState(useSessionStore.getInitialState(), true);
+  get.mockResolvedValue({ data: { data: { seasons: [season] } } });
+});
+
+describe("GroupImportScreen", () => {
+  it("refuses an ADMIN of another season without calling the import API", async () => {
+    useSessionStore.setState(adminOfOther);
+    renderWithProviders(<GroupImportScreen />);
+    expect(await screen.findByText(/isn't available for this season/)).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("previews against the season resolved from the route's code", async () => {
+    useSessionStore.setState(adminOf7);
+    post.mockResolvedValue({ data: { data: preview } });
+    renderWithProviders(<GroupImportScreen />);
+
+    expect(await screen.findByText("Import groups · Spring 2099")).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "email\tgroup\nann@jpc.test\tGroup A");
+    fireEvent.press(screen.getByText("Preview"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/imports/groups/preview", {
+        text: "email\tgroup\nann@jpc.test\tGroup A",
+        delimiter: "auto",
+      }),
+    );
+    expect(await screen.findByText("1 to assign · 1 unchanged · 1 not matched")).toBeTruthy();
+  });
+
+  it("commits only the assign rows, as resolved id pairs, and reports what was APPLIED", async () => {
+    useSessionStore.setState(adminOf7);
+    post
+      .mockResolvedValueOnce({ data: { data: preview } })
+      .mockResolvedValueOnce({ data: { data: { assigned: 0, skipped: 1, skippedStudentIds: [11] } } });
+    renderWithProviders(<GroupImportScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "email\tgroup\nann@jpc.test\tGroup A");
+    fireEvent.press(screen.getByText("Preview"));
+    fireEvent.press(await screen.findByText("Assign 1 student"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenLastCalledWith("/api/v1/seasons/7/imports/groups/commit", {
+        assignments: [{ studentUserId: 11, groupId: 3 }],
+      }),
+    );
+    // v1 reported the requested count (spec R80); the screen reports the
+    // server's applied count and names the skipped row.
+    expect(await screen.findByText("0 assigned · 1 skipped")).toBeTruthy();
+    expect(screen.getByText(/Row 2 · ann@jpc.test/)).toBeTruthy();
+  });
+});
+```
+
+Run: `cd apps/mobile && pnpm jest src/__tests__/group-import.test.tsx` → FAIL
+(module not found).
+
+- [ ] **Step 2: The hooks** — append to `src/hooks/use-import.ts`:
+
+```ts
+import {
+  groupImportPreviewSchema,
+  groupImportResultSchema,
+  type GroupImportCommitInput,
+  type GroupImportPreview,
+  type GroupImportResult,
+} from "@space/shared";
+
+/** Mutations, not queries — the same D-16.18 reasons as the student importer. */
+export function useGroupImportPreview(
+  seasonId: number | null,
+): UseMutationResult<GroupImportPreview, unknown, { text: string; delimiter: "auto" | "comma" | "tab" }> {
+  return useMutation({
+    mutationFn: async (input) => {
+      if (seasonId === null) throw new Error("No season.");
+      const res = await apiClient.post(`/api/v1/seasons/${seasonId}/imports/groups/preview`, input);
+      return groupImportPreviewSchema.parse(res.data.data);
+    },
+  });
+}
+
+export function useGroupImportCommit(
+  seasonId: number | null,
+): UseMutationResult<GroupImportResult, unknown, GroupImportCommitInput> {
+  return useMutation({
+    mutationFn: async (input) => {
+      if (seasonId === null) throw new Error("No season.");
+      const res = await apiClient.post(`/api/v1/seasons/${seasonId}/imports/groups/commit`, input);
+      return groupImportResultSchema.parse(res.data.data);
+    },
+  });
+}
+```
+
+(Merge the new names into the file's existing `@space/shared` import rather
+than adding a second import statement.)
+
+- [ ] **Step 3: The screen**
+
+```tsx
+// apps/mobile/app/(app)/seasons/[code]/roster/import.tsx
+import { useLocalSearchParams } from "expo-router";
+import { useMemo, useState } from "react";
+import { FlatList, View } from "react-native";
+import type { GroupImportPreview, GroupImportResult } from "@space/shared";
+import { IMPORT_MAX_PASTE_CHARS } from "@space/shared";
+
+import { useGroupImportCommit, useGroupImportPreview } from "../../../../../src/hooks/use-import";
+import { useSeasons } from "../../../../../src/hooks/use-seasons";
+import { useSessionStore } from "../../../../../src/store/session";
+import { useTheme } from "../../../../../src/theme";
+import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../../../src/ui";
+
+/**
+ * `/seasons/[code]/roster/import` — bulk group assignment, three steps in
+ * local state (paste → preview → result), exactly like `/users/import`.
+ *
+ * The season comes from the route's `code`, resolved against Plan 4's cached
+ * `useSeasons` list; the endpoints take the id in the PATH (D-16.20), so
+ * preview and commit cannot target different seasons. Gate: SUPER, or an
+ * ADMIN of THIS season — the endpoints refuse anyone else regardless.
+ */
+type Step = "paste" | "preview" | "result";
+
+function messageFor(err: unknown): string {
+  const body = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
+  return body?.message ?? "Something went wrong. Try again.";
+}
+
+export default function GroupImportScreen() {
+  const theme = useTheme();
+  const { code } = useLocalSearchParams<{ code: string }>();
+  const role = useSessionStore((s) => s.user?.role ?? null);
+  const adminIds = useSessionStore((s) => s.scopes?.seasonAdminIds ?? []);
+
+  const seasons = useSeasons(role === "SUPER" || role === "ADMIN");
+  const season = useMemo(
+    () => (seasons.data ?? []).find((s) => s.code === code) ?? null,
+    [seasons.data, code],
+  );
+  const seasonId = season?.id ?? null;
+  const allowed = role === "SUPER" || (role === "ADMIN" && seasonId !== null && adminIds.includes(seasonId));
+
+  const [step, setStep] = useState<Step>("paste");
+  const [text, setText] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<GroupImportPreview | null>(null);
+  const [result, setResult] = useState<GroupImportResult | null>(null);
+
+  const previewMutation = useGroupImportPreview(seasonId);
+  const commitMutation = useGroupImportCommit(seasonId);
+  const toAssign = useMemo(
+    () =>
+      (preview?.rows ?? []).filter(
+        (r): r is typeof r & { studentUserId: number; groupId: number } =>
+          r.status === "assign" && r.studentUserId !== null && r.groupId !== null,
+      ),
+    [preview],
+  );
+
+  if (seasons.isPending) {
+    return (
+      <Screen edges={["top", "left", "right"]}>
+        <LoadingState />
+      </Screen>
+    );
+  }
+  if (seasons.isError) {
+    return (
+      <Screen edges={["top", "left", "right"]}>
+        <ErrorState message="Couldn't load the season." onRetry={() => void seasons.refetch()} />
+      </Screen>
+    );
+  }
+  if (!season || !allowed) {
+    return (
+      <Screen edges={["top", "left", "right"]}>
+        <EmptyState title="Import groups" message="This screen isn't available for this season." />
+      </Screen>
+    );
+  }
+
+  async function runPreview() {
+    setLocalError(null);
+    if (text.trim() === "") return setLocalError("Paste a header row and at least one data row first.");
+    if (text.length > IMPORT_MAX_PASTE_CHARS) return setLocalError("That paste is too long. Import it in smaller batches.");
+    try {
+      setPreview(await previewMutation.mutateAsync({ text, delimiter: "auto" }));
+      setStep("preview");
+    } catch (err) {
+      setLocalError(messageFor(err));
+    }
+  }
+
+  async function runCommit() {
+    setLocalError(null);
+    if (toAssign.length === 0) return;
+    try {
+      setResult(
+        await commitMutation.mutateAsync({
+          assignments: toAssign.map((r) => ({ studentUserId: r.studentUserId, groupId: r.groupId })),
+        }),
+      );
+      setStep("result");
+    } catch (err) {
+      setLocalError(messageFor(err));
+    }
+  }
+
+  if (step === "result" && result && preview) {
+    const skipped = new Set(result.skippedStudentIds);
+    const skippedRows = preview.rows.filter((r) => r.studentUserId !== null && skipped.has(r.studentUserId));
+    return (
+      <Screen scroll edges={["top", "left", "right"]}>
+        <Text variant="heading">Groups updated</Text>
+        {/* The APPLIED count from the server (spec R80/D5), never the request. */}
+        <Text variant="body">{`${result.assigned} assigned · ${result.skipped} skipped`}</Text>
+        {skippedRows.map((r) => (
+          <Card key={r.rowNumber} style={{ marginTop: theme.spacing.sm }}>
+            <Text variant="label">{`Row ${r.rowNumber} · ${r.email}`}</Text>
+            <Text variant="caption" color={theme.colors.neutral[600]}>
+              Not placed — no active enrolment in this season.
+            </Text>
+          </Card>
+        ))}
+        <Button
+          title="Import another"
+          onPress={() => {
+            setResult(null);
+            setPreview(null);
+            setText("");
+            setStep("paste");
+          }}
+        />
+      </Screen>
+    );
+  }
+
+  if (step === "preview" && preview) {
+    const notMatched = preview.counts.no_student + preview.counts.no_group + preview.counts.invalid;
+    return (
+      <Screen edges={["top", "left", "right"]} padded={false}>
+        <FlatList
+          data={preview.rows}
+          keyExtractor={(r) => String(r.rowNumber)}
+          contentContainerStyle={{ padding: theme.spacing.md }}
+          renderItem={({ item }) => (
+            <Card style={{ marginBottom: theme.spacing.sm }}>
+              <Text variant="label">{`${item.name || item.email} → ${item.group || "—"}`}</Text>
+              <Text variant="caption" color={theme.colors.neutral[600]}>
+                {`Row ${item.rowNumber} · ${item.status}${item.message ? ` · ${item.message}` : ""}`}
+              </Text>
+            </Card>
+          )}
+          ListHeaderComponent={
+            <Card style={{ marginBottom: theme.spacing.md }}>
+              <Text variant="body">
+                {`${preview.counts.assign} to assign · ${preview.counts.unchanged} unchanged · ${notMatched} not matched`}
+              </Text>
+            </Card>
+          }
+          ListFooterComponent={
+            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
+              {localError ? <Text variant="body" color={theme.colors.error[600]}>{localError}</Text> : null}
+              <Button
+                title={toAssign.length === 0 ? "Nothing to assign" : `Assign ${toAssign.length} student${toAssign.length === 1 ? "" : "s"}`}
+                onPress={runCommit}
+                disabled={toAssign.length === 0 || commitMutation.isPending}
+              />
+              <Button title="Back" variant="secondary" onPress={() => setStep("paste")} />
+            </View>
+          }
+        />
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen scroll edges={["top", "left", "right"]}>
+      <Text variant="heading">{`Import groups · ${season.title}`}</Text>
+      <Text variant="caption" color={theme.colors.neutral[600]}>
+        Paste two columns, "email" and "group". A blank group cell is left alone.
+      </Text>
+      <Input
+        label="Paste your spreadsheet"
+        value={text}
+        onChangeText={setText}
+        multiline
+        numberOfLines={8}
+        placeholder={"email\tgroup"}
+      />
+      {localError ? <Text variant="body" color={theme.colors.error[600]}>{localError}</Text> : null}
+      <Button title="Preview" onPress={runPreview} disabled={previewMutation.isPending} />
+    </Screen>
+  );
+}
+```
+
+- [ ] **Step 4: Verification**
+
+```bash
+cd apps/mobile && pnpm jest src/__tests__/group-import.test.tsx src/__tests__/app-layout.test.tsx
+pnpm turbo routes:generate --filter=@space/mobile
+pnpm turbo lint typecheck test:unit --filter=@space/mobile
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/mobile packages/shared && git commit -m "feat(mobile): group-assignment import screen under the season roster"
 ```
 
 ---
@@ -4880,7 +5814,8 @@ rule is not actually tested and the task is not done.
    unconditionally.
    **Must go red:** `"refuses ADMIN and STUDENT (spec D3 — SUPER-only, and it stays that way)"`
    and `"refuses a non-SUPER caller (D3 — the gate stays SUPER-only)"`.
-7. **The group importer's true count.**
+7. **The group importer's true count.** (The function is Plan 16's; the
+   mutation is still this plan's, because the importer's report depends on it.)
    In `apps/backend/src/lib/queries/groups.ts`, `assignStudentsToGroups`:
    return `{ assigned: assignments.length, skippedStudentIds }`.
    **Must go red:** `"writes the memberships, sets SeasonEnrollment.groupId, and reports what it ACTUALLY wrote (D5)"`.
@@ -4892,9 +5827,10 @@ rule is not actually tested and the task is not done.
 - [ ] **Step 3: Emit check — the `rootDir` trap**
 
 ```bash
-grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/ ; echo "exit=$?"
+grep -rn 'require("@space/shared")' apps/backend/dist/ ; echo "exit=$?"
 ```
-Must print nothing (`exit=1`). This plan adds three value imports from
+Must print nothing (`exit=1`) — the whole of `dist/`, not one subtree
+(ruling X12). This plan adds three value imports from
 `@space/shared` — `routes/imports.ts`, `lib/imports/students.ts`,
 `lib/imports/groups.ts` — and every one must have compiled to a relative
 `require` into `dist/packages/shared/src/`. A hit here is a server that
@@ -4908,25 +5844,51 @@ Must print nothing.
 
 - [ ] **Step 4: Fixture-safety re-check**
 
-After the full integration run, with no test in flight:
-```bash
-cd apps/backend && node -e "
-const { PrismaClient } = require('./src/generated/prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
-require('dotenv/config');
-const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
-(async () => {
-  const users = await db.user.count({ where: { email: { startsWith: 'space-v2-test-' } } });
-  const seasons = await db.season.count({ where: { code: { startsWith: 'space-v2-test-' } } });
-  console.log({ users, seasons });
-  await db.\$disconnect();
-})();
-"
+After the full integration run, with no test in flight. The earlier draft
+ran `node -e "require('./src/generated/prisma/client')"` — that cannot work:
+Prisma 7's `prisma-client` generator emits **TypeScript**, which plain `node`
+cannot load, and the snippet read `process.env` outside `config.ts`. The check
+is a jest test instead, so it compiles through ts-jest and uses the app's own
+`db` client and config:
+
+```ts
+// apps/backend/src/__tests__/integration/fixture-leak.test.ts
+import { db } from "../../db/client";
+import { TEST_PREFIX } from "./fixtures";
+
+jest.setTimeout(60000);
+
+afterAll(async () => {
+  await db.$disconnect();
+});
+
+/**
+ * Every integration suite cleans up in its own afterAll, so between suites —
+ * and after the full run — the shared staging database must hold no prefixed
+ * row. Case-insensitive on purpose: the imports suite pastes uppercase
+ * variants of fixture addresses, and cleanupTestData's own filter is
+ * case-sensitive.
+ */
+describe("no test fixture survives cleanup", () => {
+  it("leaves zero prefixed users and seasons", async () => {
+    const users = await db.user.count({
+      where: { email: { startsWith: TEST_PREFIX, mode: "insensitive" } },
+    });
+    const seasons = await db.season.count({ where: { code: { startsWith: TEST_PREFIX } } });
+    expect({ users, seasons }).toEqual({ users: 0, seasons: 0 });
+  });
+});
 ```
-Must print `{ users: 0, seasons: 0 }`. Anything else means the import suite
+
+```bash
+cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern fixture-leak
+```
+
+Must pass with `{ users: 0, seasons: 0 }`. Anything else means a suite
 wrote rows `cleanupTestData` cannot reach — stop and fix the fixtures before
 doing anything else, because those rows are sitting in a database jpc-space is
-serving.
+serving. The file stays in the repo: it also runs inside every full
+integration run, where it checks the state between suites.
 
 - [ ] **Step 5: Device checklist (manual, Expo Go or a dev build)**
 
@@ -4948,6 +5910,10 @@ pointed at it, signed in as a staging SUPER.
 6. Paste a row with `dob` as `01/02/2003`: it previews `invalid` with the
    YYYY-MM-DD message rather than importing a transposed date.
 7. Confirm the import screen does **not** appear in the tab bar for any role.
+7b. As a season ADMIN, open that season's roster (Plan 16), tap "Import
+   groups", paste `email`/`group` rows for two enrolled students and one
+   unknown address: the preview shows 2 to assign and 1 not matched; commit;
+   the result's assigned count equals what the roster grid now shows.
 8. Backgrounding the app during the preview step and returning keeps the
    preview (same JS context); force-quitting loses it, which is the documented
    trade in D-16.4 — confirm the screen recovers cleanly to step 1 rather than
@@ -4985,16 +5951,18 @@ Objectively checkable, in order.
 - [ ] `cd apps/mobile && pnpm jest` is green, including `student-import.test.tsx`, `app-layout.test.tsx` and `placeholder-screens.test.tsx`.
 - [ ] **A re-run of the same paste creates zero duplicate rows against staging**, proven by the test `"re-running the same paste creates ZERO new rows (D-16.6 / spec R44)"`, whose final assertions count `User`, `StudentProfile` and `SeasonEnrollment` rows — and which goes **red** when the email-match branch is deleted (mutation 1).
 - [ ] All eight mutations in Task 7 Step 2 turned at least one **named** test red, and every one was restored.
-- [ ] `grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/` prints nothing.
+- [ ] `grep -rn 'require("@space/shared")' apps/backend/dist/` prints nothing (ruling X12).
+- [ ] `grep -rn "const rateLimitHandler" apps/backend/src` prints nothing — `routes/imports.ts` imports Plan 7's (ruling X4).
+- [ ] A 150 KB paste previews 200 (route-level parser), and an over-limit body answers `413 payload_too_large`, never 500.
 - [ ] `grep -rn "@prisma/client" apps/backend/src/lib/imports apps/backend/src/routes/imports.ts` prints nothing.
 - [ ] After the full integration run, the staging database holds **zero** rows whose `User.email` or `Season.code` starts with `space-v2-test-` (Task 7 Step 4).
 - [ ] Every paste in `imports-routes.test.ts` is built by `sheet()`, and the test `"refuses a paste whose emails cleanupTestData could not delete"` passes — i.e. the guard is still a guard.
 - [ ] No file under `apps/backend/prisma/` is modified; `git diff --stat main -- apps/backend/prisma` is empty.
-- [ ] `grep -rn "ChangeMe123" apps/ packages/` prints nothing, and every account any code path in this plan creates has `passwordHash: null` — asserted in `"creates User + StudentProfile + ACTIVE SeasonEnrollment with NO credentials"` and in `"writes one user per distinct address, case-insensitively"`.
+- [ ] `grep -rn "ChangeMe123" apps/ packages/ --exclude-dir=__tests__` prints nothing (Plan 7 keeps the string in a test on purpose, asserting it is NOT accepted), and every account any code path in this plan creates has `passwordHash: null` — asserted in `"creates User + StudentProfile + ACTIVE SeasonEnrollment with NO credentials"` and in `"writes one user per distinct address, case-insensitively"`.
 - [ ] `grep -rniE "AUTH_SECRET|GMAIL_APP_PASSWORD|DATABASE_URL" apps/backend/src/lib/imports apps/backend/src/routes/imports.ts` prints nothing.
 - [ ] `exceljs`, `multer` and `expo-document-picker` appear in **no** new import in this plan's diff; `apps/backend/package.json` and `apps/mobile/package.json` are unchanged.
 - [ ] `POST /api/v1/imports/students/preview`, `POST /api/v1/imports/students/commit`, `GET /api/v1/imports/students/template`, `POST /api/v1/seasons/{id}/imports/groups/preview` and `POST /api/v1/seasons/{id}/imports/groups/commit` all appear in `apps/backend/src/docs/openapi.ts` and render at `/api/docs`.
-- [ ] There is exactly one function in the backend that inserts a `User` with `role: "STUDENT"` — `createStudentRows` — verified by `grep -rn 'role: "STUDENT"' apps/backend/src` returning only `lib/queries/students.ts` (plus test fixtures).
+- [ ] Review check (not a grep — the string also appears in Plan 7's users routes and in this plan's `groups.ts` filters): the backend's student-account writers are exactly `createStudentRows` (Plan 5's form and this importer) and Plan 7's invite-first `POST /users` / role-change `PATCH`, and every one writes `passwordHash: null`. Enrolments written by the importer go through `enrollStudentInSeason`, the same function Plan 5's `POST /students/:id/enrollments` now calls.
 - [ ] `/users/import` is reachable by navigation and absent from the tab bar for every role, asserted in `app-layout.test.tsx`.
 - [ ] The device checklist in Task 7 Step 5 has been walked end to end, item 5 included.
 - [ ] The closing report names the three cross-domain flags and the seven cutover items, and `2026-08-24-plan-13-cutover.md` has been told about them.
@@ -5003,3 +5971,88 @@ Objectively checkable, in order.
 
 
 
+
+---
+
+## Revision 2026-10-05
+
+Review pass against `review-plans-07-13.md`, the cross-plan rulings, and two
+coordinator addenda (Plan 16 owns the group write and the season routes).
+Changes:
+
+- **Header / order:** dependencies restated against the execution order
+  (… 11 → 18 → **12** → 13). Plans 4, 5, 7, 16 and 17 named, each with what is
+  consumed.
+- **B1 — body size:** import routers parse their own JSON with
+  `express.json({ limit: config.importBodyLimit })` (default `2mb`), mounted
+  in `app.ts` **before** the global 100 KB parser; `entity.too.large` now maps
+  to `413 payload_too_large`. Unit test + a >100 KB integration paste.
+- **B2 — rate limits vs the suite:** `importLimiter(limit)` factory; limits
+  from `config.importPreviewRateLimit` / `importCommitRateLimit`
+  (`IMPORT_PREVIEW_RATE_LIMIT`, `IMPORT_COMMIT_RATE_LIMIT`), lifted in
+  `jest.setup.ts`; the 429 pinned by a limit-1 unit test. **X4:** the local
+  `rateLimitHandler` copy is gone — imported from Plan 7's `lib/rate-limit.ts`.
+- **X5:** `seasonImportsRouter` has no router-level auth (shared
+  `/api/v1/seasons` prefix); `requireAuth` per route. `importsRouter` keeps
+  router-level auth on its exclusive `/api/v1/imports`.
+- **B3 — season picker:** built on Plan 4's `useSeasons`; commit disabled until
+  a season is chosen; the `seasonId as number` cast removed.
+- **B4 — enrol existing:** with `enroll` confirmed, `exists` rows are sent with
+  the new rows; tested.
+- **S1 — enrolment rules:** `enrollStudentInSeason(tx, studentUserId, seasonId)`
+  extracted from Plan 5's `POST /students/:id/enrollments` and used by both:
+  an existing enrolment is `skipped` (Plan 5's `already_enrolled`), the pointer
+  is set only when unset.
+- **S2:** the "only one STUDENT writer" claim withdrawn (Plan 7's `POST /users`
+  also creates students); replaced by a credential review check.
+- **S3/S4/S7/S8:** case-insensitive fixture guard + afterAll sweep;
+  `ChangeMe123` grep excludes `__tests__`; the "echoed verbatim" header claim
+  corrected; group preview and commit accept ACTIVE enrolments only (tests).
+- **Plan 16 addendum:** `assignStudentsToGroups` / `GroupOutsideSeasonError`
+  are **consumed from Plan 16**, not created; Task 5's tests pin the contract
+  (whole-batch refusal, applied count, ACTIVE-only).
+- **D-16.1:** the group-import screen now ships (new **Task 6b**) at
+  `/seasons/[code]/roster/import`, reached from Plan 16's roster.
+- **Users screen:** Task 6 Step 0 rewritten for the post-Plan-7 tree (directory
+  move only if Plan 17 has not done it, relative imports deepened, no
+  placeholder/count edits — X9) plus an "Import students" entry point and test.
+- **S9:** the fixture-leak check is a jest test (`fixture-leak.test.ts`), not
+  `node -e` against Prisma 7's TypeScript client.
+- **X11/X12:** `avatarPath: null` in session fixtures; emit check greps all of
+  `dist/`. Nits: `student-actions.ts:59`, alias-count wording, removed/staff
+  rows return `userId: null`, bulk invites → Plan 17.
+
+Rejected: routing Plan 7's `POST /users` STUDENT branch through
+`createStudentRows` (review S2's first option) — it would pull the invite flow
+into the students module; the invariant that matters (`passwordHash: null`) is
+checked instead. S6 (Plan 13's view of an import store) is Plan 13's to fix.
+
+**Cross-plan consistency pass (2026-10-05, against plans 14–17 and the revised
+order … 5 → 6 → 7 → 17 → 14 → … → 18 → 12 → 13):**
+
+- **Header:** execution order corrected (17 now follows 7); states that no
+  Plan 18 output is consumed; Plan 16 (route files `seasons/[code]/index.tsx`,
+  `seasons/[code]/roster/index.tsx`, `DIRECTORY_ROUTE_HREFS`, per-route auth on
+  `seasonsRouter`) and Plan 17 (users directory, invite-on-create, graduation
+  semantics) named precisely.
+- **Task 6 Step 0 is verification-only** (supersedes the "Users screen" bullet
+  above): Plan 17 Task 9 always runs first and has already moved `users.tsx`
+  to `users/index.tsx`; the set shown is now the real
+  `["students", "seasons", "users"]` (Plan 16 added `"seasons"`; the old
+  `["students", "users"]` snippet would have hidden the SUPER Seasons tab).
+  D-16.17 and "Not in scope" reworded to match. The "Import students" button
+  reuses Plan 17's `router` in `UsersScreen` and sits beside its
+  `PendingInvitesCard`.
+- **Task 4 Step 4 keeps Plan 17's invite.** The old step replaced the whole
+  `POST /students` transaction body and would have deleted Plan 17's
+  `issueInvite(tx, …)`; it now swaps only the row-writing block for
+  `createStudentRows` and leaves the invite mint, the post-commit mail and
+  the 201 body untouched. The importer still mints nothing (R55).
+- **Task 6b Step 0:** the conditional `roster.tsx` → `roster/index.tsx` move is
+  now a verification — Plan 16 creates the directory form directly.
+- **Graduation (Plan 17):** checked — graduation completes all ACTIVE
+  enrolments, sets `graduationYear` and clears `activeSeasonId`, the same end
+  state as this plan's `alumni` mode; the group importer's ACTIVE-only roster
+  correctly excludes graduated students; `enrollStudentInSeason`'s
+  "any existing row = already_enrolled" rule is Plan 5's and unchanged.
+- **X11:** inline session fixtures gain `hasPassword: true` (Plan 7's `MeUser`).

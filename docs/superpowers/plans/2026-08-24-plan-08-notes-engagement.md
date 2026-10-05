@@ -15,9 +15,14 @@ The visibility rule is written once, in `lib/permissions.ts`, as a Prisma
 `where` fragment that takes the viewer as a required argument — there is no
 function anywhere in v2 that returns a note without one. Note bodies are
 **plain text on the wire**: escaped on write, stripped on read, escaped again
-at every mail interpolation. Engagement is a cohort aggregation with a
+at every mail interpolation. The conversion lives in **one** shared module,
+`packages/shared/src/html-text.ts` (`escapeHtml`, `plainTextToHtml`,
+`htmlToPlainText` — ruling X3; Plan 10's forum reuses it), and the backend's
+only escaping entry point is `apps/backend/src/lib/html.ts` (ruling X2; Plan 9
+imports it). Engagement is a cohort aggregation with a
 constant number of queries, never 4N. Two mobile screens consume the results;
-`student/[id].tsx` is **extended**, not created — Plan 5 builds it.
+`student/[id]/index.tsx` is **extended**, not created — Plan 5 builds it and
+Plan 17 moves it to the directory form (ruling X7) and rewrites it.
 
 **Tech Stack:** Express 5, Prisma 7 (`src/generated/prisma`), Zod, jest +
 supertest integration suite against the shared staging DB; Expo SDK 54 /
@@ -37,7 +42,10 @@ Scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 8.
 - **Notes are pastoral records about named young people.** Never paste real note content into a test, a fixture, a commit message, or a report. Every fixture row carries the `space-v2-test-` prefix in `User.email` or `Season.code`.
 - **Never run database commands or integration tests outside the task step that says to.** `cleanupTestData` is prefix-global and safe only under `--runInBand`.
 - Response envelope `{ data }` / `{ error: { code, message } }` via `apiOk`/`apiError`.
-- Value imports from shared use the relative path `"../../../../packages/shared/src/index"` in route files (the `rootDir` emit trap in `CLAUDE.md`). `import type` may use the package name.
+- **Value imports from shared use the relative path in EVERY backend `src` file, not only routes** (ruling X12; the `rootDir` emit trap in `CLAUDE.md`): `"../../../../packages/shared/src/index"` from `src/routes/` and `src/lib/`, `"../../../../../packages/shared/src/index"` from `src/lib/queries/`. `import type` may use the package name. The closing gate greps all of `dist/`.
+- **One 429 handler** (ruling X4): limiters import `rateLimitHandler` from `apps/backend/src/lib/rate-limit.ts`, which Plan 7 created. Never define another.
+- **`requireAuth` is attached per route** (ruling X5) on every router mounted on a shared prefix (`/api/v1/students`, `/api/v1/me`, `/api/v1/seasons`). A router-wide `use(requireAuth)` there would run auth on every other router's requests under that prefix and turn unknown paths into 401 instead of the `not_found` 404 CLAUDE.md promises. `notesRouter` owns `/api/v1/notes` outright but attaches per route too, for uniformity.
+- **One escaper, one HTML↔text converter** (rulings X2, X3): `escapeHtml`, `plainTextToHtml`, `htmlToPlainText` are defined once in `packages/shared/src/html-text.ts` (Task 1); the backend reaches `escapeHtml` only through `apps/backend/src/lib/html.ts` (Task 3), and `buildNotificationHtml` is exported from `lib/email.ts` (Task 3). No `note-text.ts` exists.
 - `src/docs/openapi.ts` changes in the **same commit** as the route it documents.
 - Integration fixtures come from `apps/backend/src/__tests__/integration/fixtures.ts`: `createTestSeason` / `createTestUser` / `login` / `cleanupTestData`; `jest.setTimeout(60000)`. `cleanupTestData` **already deletes `EngagementNote`** (lines 125–132) — it does so by `studentUser`/`authorUser` prefix match, because `EngagementNote`'s two `User` relations are `onDelete: Restrict` and the season graph above does not reach them. No fixture change is needed for notes; do not add one.
 - Mobile: relative imports only (no `@/`); every response parsed with a Zod schema from `@space/shared`, never cast; dependent queries pass `enabled` and guard manual `refetch()`; tab screens pass `edges={["top","left","right"]}` to `Screen`; tests use `renderWithProviders`; `jest.mock` factories may only close over consts named `mock*`; never `as Href` / `as any`.
@@ -50,18 +58,29 @@ Task 4 has landed; nothing else in this plan parallelises.
 
 ## Prerequisites
 
-This plan sits after Plan 5 in the roadmap and consumes two things it builds:
+This plan sits after Plans 5, 7, 17 and 14 in the execution order (rulings:
+1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → **8** → 9 → 10 → 11 → 18 → 12 → 13)
+and consumes three things they build —
+plus Plan 1's `/more` screen, which renders `navFor(user).sidebar` (ruling X15)
+and is how ADMIN/LEADER/SUPER reach this plan's new `/notes` sidebar entry:
+
+- `apps/backend/src/lib/rate-limit.ts` exporting `rateLimitHandler` (Plan 7
+  Task 4 Step 0, ruling X4). This plan imports it; it does not create it.
 
 - `apps/backend/src/lib/permissions.ts` must already export
   `canViewStudent(user, studentUserId)` (Plan 5 Task 2). Every note read gates
   on it *and* on the visibility rule — two gates, in that order (spec R39, §4
   item 4).
-- `apps/mobile/app/(app)/student/[id].tsx` must already exist with
+- `apps/mobile/app/(app)/student/[id]/index.tsx` must already exist with
   `useStudentDetail(id, role)` from `apps/mobile/src/hooks/use-students.ts`
-  (Plan 5 Task 7). Task 6 **extends** that file; it does not create it.
+  (Plan 5 Task 7; moved to the directory form and rewritten by **Plan 17
+  Task 7** so `student/[id]/edit.tsx` can sit beside it). Task 6 **extends**
+  that file; it does not create it. The typed href `/student/[id]` is
+  unchanged by the move.
 
-If either is missing, stop and say so rather than reimplementing it here — a
-second `canViewStudent` is exactly the drift C8 exists to prevent.
+If any is missing, stop and say so rather than reimplementing it here — a
+second `canViewStudent` is exactly the drift C8 exists to prevent, and a second
+`rateLimitHandler` is exactly what ruling X4 forbids.
 
 ## Divergence ledger — what this plan adopts, and what it refuses
 
@@ -134,16 +153,17 @@ single one of its rules.
 
 ---
 
-### Task 1: Contracts — `packages/shared/src/note.ts`
+### Task 1: Contracts — `packages/shared/src/note.ts` and `packages/shared/src/html-text.ts`
 
 **Files:**
 - Create: `packages/shared/src/note.ts`
-- Modify: `packages/shared/src/index.ts` (add the export line)
-- Test: `packages/shared/src/__tests__/note-schemas.test.ts`
+- Create: `packages/shared/src/html-text.ts` (rulings X2/X3 — the one escaper and the one HTML↔plain-text converter)
+- Modify: `packages/shared/src/index.ts` (add the two export lines)
+- Test: `packages/shared/src/__tests__/note-schemas.test.ts`, `packages/shared/src/__tests__/html-text.test.ts`
 
 **Interfaces:**
 - Consumes: `userRoleSchema` from `./auth`.
-- Produces (exact names every later task imports): `noteVisibilitySchema` / `NoteVisibility`; `NOTE_BODY_MIN`, `NOTE_BODY_MAX`; `noteSummarySchema` / `NoteSummary`; `authoredNoteSchema` / `AuthoredNote`; `createNoteRequestSchema` / `CreateNoteBody`; `updateNoteRequestSchema` / `UpdateNoteBody`; `noteListQuerySchema` / `NoteListQuery`; `noteListResponseSchema`; `authoredNoteListResponseSchema`; `engagementScoreSchema` / `EngagementScore`; `engagementRowSchema` / `EngagementRow`; `studentEngagementSchema` / `StudentEngagement`; `studentSelfEngagementSchema` / `StudentSelfEngagement`; `seasonEngagementResponseSchema`; `AT_RISK_PCT`; `isAtRisk`.
+- Produces (exact names every later task — and Plans 9, 10, 13 — import): from `html-text.ts`: `escapeHtml(input: string): string`, `plainTextToHtml(text: string): string`, `htmlToPlainText(stored: string): string`; from `note.ts`: `noteVisibilitySchema` / `NoteVisibility`; `NOTE_BODY_MIN`, `NOTE_BODY_MAX`; `noteSummarySchema` / `NoteSummary`; `authoredNoteSchema` / `AuthoredNote`; `createNoteRequestSchema` / `CreateNoteBody`; `updateNoteRequestSchema` / `UpdateNoteBody`; `noteListQuerySchema` / `NoteListQuery`; `noteListResponseSchema`; `authoredNoteListResponseSchema`; `engagementScoreSchema` / `EngagementScore`; `engagementRowSchema` / `EngagementRow`; `studentEngagementSchema` / `StudentEngagement`; `studentSelfEngagementSchema` / `StudentSelfEngagement`; `seasonEngagementResponseSchema`; `AT_RISK_PCT`; `isAtRisk`.
 
 **One file, not two.** Spec §8 suggests splitting notes and engagement because
 they share no type (R63). They ship in one plan, one backend workstream and one
@@ -268,9 +288,72 @@ describe("studentSelfEngagementSchema", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to see it fail**
+And the converter's test (these cases were the backend's `note-text.test.ts`
+in an earlier draft; ruling X3 moves the module to `packages/shared`):
 
-Run: `cd packages/shared && npx jest src/__tests__/note-schemas.test.ts`
+```ts
+// packages/shared/src/__tests__/html-text.test.ts
+import { escapeHtml, htmlToPlainText, plainTextToHtml } from "../index";
+
+describe("escapeHtml — the one escaper (ruling X2)", () => {
+  it("escapes the five HTML-significant characters", () => {
+    expect(escapeHtml(`<a href="x">Tom & 'Jerry'</a>`)).toBe(
+      "&lt;a href=&quot;x&quot;&gt;Tom &amp; &#39;Jerry&#39;&lt;/a&gt;",
+    );
+  });
+});
+
+describe("plainTextToHtml — the write half", () => {
+  it("escapes markup so nothing a caller sends can execute in v1's raw render", () => {
+    expect(plainTextToHtml("<script>alert(1)</script>")).toBe(
+      "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
+    );
+  });
+
+  it("wraps each line in a paragraph so v1's reader still renders it as prose", () => {
+    expect(plainTextToHtml("first\nsecond")).toBe("<p>first</p><p>second</p>");
+  });
+
+  it("escapes ampersands and quotes", () => {
+    expect(plainTextToHtml(`Tom & "Jerry"`)).toBe("<p>Tom &amp; &quot;Jerry&quot;</p>");
+  });
+});
+
+describe("htmlToPlainText — the read half", () => {
+  it("round-trips what the write half stored", () => {
+    const original = `Tom & "Jerry"\nsecond line`;
+    expect(htmlToPlainText(plainTextToHtml(original))).toBe(original);
+  });
+
+  it("renders v1's TipTap rows as readable text with the tags gone", () => {
+    expect(htmlToPlainText("<p>Legacy &amp; <b>bold</b></p><p>second line</p>")).toBe(
+      "Legacy & bold\nsecond line",
+    );
+  });
+
+  it("turns <br> into a line break rather than joining words", () => {
+    expect(htmlToPlainText("<p>one<br>two</p>")).toBe("one\ntwo");
+  });
+
+  it("decodes non-breaking spaces in both spellings to a plain space", () => {
+    expect(htmlToPlainText("<p>one&nbsp;two&#160;three</p>")).toBe("one two three");
+  });
+
+  it("leaves no angle bracket behind for any sink to interpret", () => {
+    expect(htmlToPlainText("<p>a</p><script>alert(1)</script>")).not.toContain("<");
+  });
+
+  it("decodes &amp; last, so an escaped entity does not become a live one", () => {
+    // "&amp;lt;" is the stored form of the literal text "&lt;". Decoding &amp;
+    // first would yield "&lt;" and a second pass would turn it into "<".
+    expect(htmlToPlainText("<p>&amp;lt;</p>")).toBe("&lt;");
+  });
+});
+```
+
+- [ ] **Step 2: Run them to see them fail**
+
+Run: `cd packages/shared && npx jest src/__tests__/note-schemas.test.ts src/__tests__/html-text.test.ts`
 Expected: FAIL — `Cannot find module` / the exports do not exist.
 
 - [ ] **Step 3: Write the contracts**
@@ -319,7 +402,9 @@ export const noteSummarySchema = z.object({
   updatedAt: z.string(),
   edited: z.boolean(),
   authorId: z.number().int(),
-  authorName: z.string().nullable(),
+  // User.name is NOT NULL (schema.prisma), so no nullable here — Plan 11
+  // consumes these schemas and must not have to guard a null that cannot occur.
+  authorName: z.string(),
   authorRole: userRoleSchema,
   seasonId: z.number().int().nullable(),
   seasonTitle: z.string().nullable(),
@@ -331,7 +416,7 @@ export type NoteSummary = z.infer<typeof noteSummarySchema>;
 export const authoredNoteSchema = noteSummarySchema.extend({
   student: z.object({
     id: z.number().int(),
-    name: z.string().nullable(),
+    name: z.string(),
     email: z.string(),
   }),
 });
@@ -455,7 +540,7 @@ export type StudentSelfEngagement = z.infer<typeof studentSelfEngagementSchema>;
 
 /** One row of the cohort endpoint. */
 export const engagementRowSchema = studentEngagementSchema.extend({
-  studentName: z.string().nullable(),
+  studentName: z.string(),
   groupId: z.number().int().nullable(),
   groupName: z.string().nullable(),
 });
@@ -466,23 +551,104 @@ export const seasonEngagementResponseSchema = z.object({
 });
 ```
 
-- [ ] **Step 4: Export it**
+Then the converter. It lives in `packages/shared` rather than the backend
+because Plan 10's forum needs the same conversion and ruling X3 allows one
+home; it has no dependencies, so the mobile bundle pays nothing for it.
+
+```ts
+// packages/shared/src/html-text.ts
+const ESCAPES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
+/**
+ * THE escaper (ruling X2). Ruling C11 says nothing renders as HTML and every
+ * mail interpolation escapes; this is what both halves of that call. The
+ * backend reaches it only through apps/backend/src/lib/html.ts.
+ *
+ * Five characters, no whitelist, nothing to keep up to date — which is exactly
+ * why the wire format for note bodies is plain text rather than sanitised
+ * HTML. The hard part of sanitising is deciding what to KEEP, and nothing in
+ * this product needs to keep any of it.
+ */
+export function escapeHtml(input: string): string {
+  return input.replace(/[&<>"']/g, (c) => ESCAPES[c] ?? c);
+}
+
+/**
+ * Plain text → the paragraph-wrapped, escaped HTML stored in a column v1 still
+ * renders with dangerouslySetInnerHTML (EngagementNote.body here; forum bodies
+ * in Plan 10).
+ *
+ * v2 cannot store raw text there without changing how v1 displays it, and must
+ * not store anything a caller could turn into markup. Escaping and wrapping
+ * each line in a paragraph satisfies both: v1 renders v2's text as prose, and
+ * a body containing <script> arrives in an admin's browser as visible text.
+ */
+export function plainTextToHtml(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("");
+}
+
+const ENTITIES: [RegExp, string][] = [
+  [/&lt;/g, "<"],
+  [/&gt;/g, ">"],
+  [/&quot;/g, '"'],
+  [/&#0?39;/g, "'"],
+  [/&apos;/g, "'"],
+  [/&nbsp;/g, " "],
+  [/&#160;/g, " "],
+  // &amp; LAST. Decoding it first would turn the stored "&amp;lt;" — the
+  // escaped form of the literal text "&lt;" — into "&lt;", which the next rule
+  // would then decode into a live "<".
+  [/&amp;/g, "&"],
+];
+
+/**
+ * Stored HTML → plain text for the wire (ruling C11: sanitise on read for
+ * everything already stored — every pre-migration row is TipTap HTML written
+ * by v1). Block-level closers become newlines first so "<p>a</p><p>b</p>"
+ * reads as two lines rather than "ab"; then all tags go.
+ *
+ * This is a presentation conversion, NOT the security boundary. Its output is
+ * rendered as text by React Native and escaped again by escapeHtml before it
+ * ever reaches an HTML sink, so a tag this regex fails to recognise is a
+ * cosmetic bug, not an injection.
+ */
+export function htmlToPlainText(stored: string): string {
+  const withBreaks = stored
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr)\s*>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n");
+  const stripped = withBreaks.replace(/<[^>]*>/g, "");
+  const decoded = ENTITIES.reduce((acc, [pattern, char]) => acc.replace(pattern, char), stripped);
+  return decoded.replace(/\n{3,}/g, "\n\n").trim();
+}
+```
+
+- [ ] **Step 4: Export them**
 
 In `packages/shared/src/index.ts`, append below the existing lines:
 
 ```ts
+export * from "./html-text";
 export * from "./note";
 ```
 
 - [ ] **Step 5: Run the tests**
 
-Run: `cd packages/shared && npx jest src/__tests__/note-schemas.test.ts` → PASS (all 11).
+Run: `cd packages/shared && npx jest src/__tests__/note-schemas.test.ts src/__tests__/html-text.test.ts` → PASS.
 Run: `pnpm turbo lint typecheck --filter=@space/shared` → clean.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/shared && git commit -m "feat(shared): note and engagement Zod contracts with the single at-risk definition"
+git add packages/shared && git commit -m "feat(shared): note/engagement contracts and the one html-text converter"
 ```
 
 ---
@@ -492,16 +658,14 @@ git add packages/shared && git commit -m "feat(shared): note and engagement Zod 
 **Files:**
 - Modify: `apps/backend/src/lib/permissions.ts` (add `noteVisibilityWhere`, `canViewNote`, `canEditNote`)
 - Create: `apps/backend/src/lib/queries/notes.ts`
-- Create: `apps/backend/src/lib/rate-limit.ts`
-- Modify: `apps/backend/src/routes/auth.ts` (import the shared handler instead of its local copy)
 - Create: `apps/backend/src/routes/notes.ts`
 - Modify: `apps/backend/src/app.ts` (three mounts)
 - Modify: `apps/backend/src/docs/openapi.ts`
 - Test: `apps/backend/src/__tests__/integration/notes-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `canViewStudent` (Plan 5), `isSuper`/`isMentor` from `../rbac`, `noteListQuerySchema` (Task 1), `apiOk`/`apiError`, `parseId`, `requireAuth`/`requireUser`.
-- Produces: `noteVisibilityWhere(user: SessionUser): Prisma.EngagementNoteWhereInput | null`; `canViewNote(user, noteId): Promise<boolean>`; `canEditNote(user, noteId): Promise<boolean>`; `listNotesForStudent(user, studentUserId, query)`; `listAuthoredNotes(user, query)`; `toNoteSummary(row, user)`; `rateLimitHandler`; the routers `notesRouter`, `studentNotesRouter`, `myNotesRouter`; endpoints `GET /api/v1/students/:id/notes` and `GET /api/v1/me/notes`.
+- Consumes: `canViewStudent` (Plan 5), `isSuper`/`isMentor` from `../rbac`, `noteListQuerySchema` and `htmlToPlainText` (Task 1), `rateLimitHandler` (Plan 7, `lib/rate-limit.ts`), `apiOk`/`apiError`, `parseId`, `requireAuth`/`requireUser`.
+- Produces: `noteVisibilityWhere(user: SessionUser): Prisma.EngagementNoteWhereInput | null`; `canViewNote(user, noteId): Promise<boolean>`; `canEditNote(user, noteId): Promise<boolean>`; `listNotesForStudent(user, studentUserId, query)`; `listAuthoredNotes(user, query)`; `toNoteSummary(row, user)`; the routers `notesRouter`, `studentNotesRouter`, `myNotesRouter`; endpoints `GET /api/v1/students/:id/notes` and `GET /api/v1/me/notes`.
 
 - [ ] **Step 1: Write the failing integration tests**
 
@@ -523,6 +687,7 @@ const app = createApp();
 let seasonId: number;
 let studentUserId: number;
 let groupAId: number;
+let adminUserId: number;
 let mentorsNoteId: number;
 let adminsNoteId: number;
 let leadersNoteId: number;
@@ -547,6 +712,7 @@ beforeAll(async () => {
   const mentor = await createTestUser("note-mentor", "MENTOR");
   const superUser = await createTestUser("note-super", "SUPER");
   studentUserId = student.id;
+  adminUserId = admin.id;
 
   const groupA = await db.group.create({
     data: { seasonId, name: "Group A", leaders: { create: { userId: insideLeader.id } } },
@@ -801,6 +967,17 @@ describe("GET /api/v1/me/notes", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("shared-prefix mounting (ruling X5)", () => {
+  it("leaves an unknown anonymous path under /api/v1/me a 404, not a 401", async () => {
+    // myNotesRouter shares /api/v1/me with meRouter. A router-wide
+    // use(requireAuth) on it would answer this request 401 before the
+    // catch-all not_found handler ever saw it.
+    const res = await request(app).get("/api/v1/me/no-such-thing");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+});
 ```
 
 Note for the implementer: `groupAId` is asserted against in the fixture and
@@ -909,11 +1086,13 @@ export async function canEditNote(user: SessionUser, noteId: number): Promise<bo
 ```ts
 // apps/backend/src/lib/queries/notes.ts
 import type { AuthoredNote, NoteListQuery, NoteSummary } from "@space/shared";
+// A VALUE import, so relative — five levels up from src/lib/queries/ (ruling
+// X12; the rootDir emit trap in CLAUDE.md). `import type` above is erased.
+import { htmlToPlainText } from "../../../../../packages/shared/src/index";
 
 import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
 import { noteVisibilityWhere } from "../permissions";
-import { noteBodyToText } from "../note-text";
 
 /**
  * The row shape both list functions select. Kept in one place so the two
@@ -941,7 +1120,7 @@ type NoteRow = {
   updatedAt: Date;
   authorUserId: number;
   seasonId: number | null;
-  authorUser: { name: string | null; role: "SUPER" | "ADMIN" | "LEADER" | "STUDENT" | "MENTOR" };
+  authorUser: { name: string; role: "SUPER" | "ADMIN" | "LEADER" | "STUDENT" | "MENTOR" };
   season: { title: string } | null;
 };
 
@@ -961,7 +1140,7 @@ export function toNoteSummary(row: NoteRow, user: SessionUser): NoteSummary {
     // Plain text on the wire, always. The stored column holds v1's TipTap HTML
     // for every pre-migration row (ruling C11 — sanitise on read for what is
     // already stored).
-    body: noteBodyToText(row.body),
+    body: htmlToPlainText(row.body),
     visibility: row.visibility,
     followUpFlagged: row.followUpFlagged,
     createdAt: row.createdAt.toISOString(),
@@ -1063,34 +1242,17 @@ export async function listAuthoredNotes(
 }
 ```
 
-`noteBodyToText` does not exist yet — it lands in Task 3 with the rest of the
-text handling. Create `apps/backend/src/lib/note-text.ts` now with just that
-function and its helper so this task compiles; Task 3 adds the write-side
-half to the same file. Copy the implementation and its doc comment verbatim
-from Task 3 Step 3 rather than writing a placeholder.
+(`htmlToPlainText` came from Task 1's `packages/shared/src/html-text.ts`. No
+backend `note-text.ts` exists — ruling X3.)
 
-- [ ] **Step 5: Extract the rate-limit handler**
+- [ ] **Step 5: Confirm the shared 429 handler is in place (ruling X4)**
 
-```ts
-// apps/backend/src/lib/rate-limit.ts
-import type { Options as RateLimitOptions } from "express-rate-limit";
+Plan 7 Task 4 Step 0 created `apps/backend/src/lib/rate-limit.ts` and removed
+`routes/auth.ts`'s copy. Check, do not create:
 
-import { apiError } from "./api-response";
-
-/**
- * express-rate-limit's default 429 body is plain text, which would be the one
- * response in the API outside the { error: { code, message } } envelope.
- * Extracted from routes/auth.ts so the notes routes reuse the same handler
- * rather than growing a second copy that drifts.
- */
-export const rateLimitHandler: RateLimitOptions["handler"] = (_req, res) => {
-  apiError(res, "too_many_requests", "Too many requests. Please try again later.", 429);
-};
-```
-
-In `apps/backend/src/routes/auth.ts`, delete the local `rateLimitHandler`
-const and import it from `"../lib/rate-limit"` instead. Nothing else in that
-file changes; `authLimiter` and `refreshLimiter` keep their windows and limits.
+Run: `grep -rn "export const rateLimitHandler" apps/backend/src/` → exactly one hit, `lib/rate-limit.ts`.
+If it is missing, stop — that is the Plan 7 prerequisite failure, not something
+to patch here.
 
 - [ ] **Step 6: Write the read routes**
 
@@ -1137,9 +1299,11 @@ const noteReadLimiter = rateLimit({
   handler: rateLimitHandler,
 });
 
-notesRouter.use(requireAuth);
-studentNotesRouter.use(requireAuth);
-myNotesRouter.use(requireAuth);
+// requireAuth is attached to each route below, never with router.use()
+// (ruling X5). studentNotesRouter and myNotesRouter share /api/v1/students
+// and /api/v1/me with other routers; a router-wide use() would run auth on
+// their requests too and turn an unknown path under those prefixes into a 401
+// instead of the not_found 404 CLAUDE.md promises.
 
 /**
  * Spec D15 again: "who looked at what" is a question someone may one day have
@@ -1158,7 +1322,7 @@ function auditNoteRead(viewerId: number, studentUserId: number, noteCount: numbe
   );
 }
 
-studentNotesRouter.get("/:id/notes", noteReadLimiter, async (req, res) => {
+studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, res) => {
   const user = requireUser(req);
   const studentUserId = parseId(req.params.id);
   if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
@@ -1194,7 +1358,7 @@ studentNotesRouter.get("/:id/notes", noteReadLimiter, async (req, res) => {
   return apiOk(res, page);
 });
 
-myNotesRouter.get("/notes", noteReadLimiter, async (req, res) => {
+myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
   const user = requireUser(req);
   // Only the four roles that can author have anything to list (R46–R49, R51).
   if (user.role === "STUDENT") {
@@ -1251,17 +1415,16 @@ git add apps/backend && git commit -m "feat(backend): row-scoped note visibility
 ### Task 3: Note writes — sanitisation, the follow-up notification, and the delete that is not shipped
 
 **Files:**
-- Create: `apps/backend/src/lib/html.ts`
-- Modify: `apps/backend/src/lib/note-text.ts` (add the write half beside Task 2's `noteBodyToText`)
-- Modify: `apps/backend/src/lib/email.ts` (escape every interpolation; extract `buildNotificationHtml`)
+- Create: `apps/backend/src/lib/html.ts` (the backend's one escaping entry point — ruling X2)
+- Modify: `apps/backend/src/lib/email.ts` (escape every interpolation; extract and export `buildNotificationHtml`)
 - Modify: `apps/backend/src/lib/permissions.ts` (add `canWriteNote`)
 - Modify: `apps/backend/src/routes/notes.ts` (POST / PATCH / DELETE)
 - Modify: `apps/backend/src/docs/openapi.ts`
-- Test: `apps/backend/src/__tests__/note-text.test.ts` (unit), `apps/backend/src/__tests__/email-html.test.ts` (unit), extend `apps/backend/src/__tests__/integration/notes-routes.test.ts`
+- Test: `apps/backend/src/__tests__/email-html.test.ts` (unit), extend `apps/backend/src/__tests__/integration/notes-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `createNoteRequestSchema`, `updateNoteRequestSchema` (Task 1), `canEditNote` / `noteVisibilityWhere` (Task 2), `toNoteSummary` (Task 2), `createNotificationsBulk`.
-- Produces: `escapeHtml(input: string): string`; `toStoredNoteHtml(text: string): string`; `noteBodyToText(stored: string): string`; `buildNotificationHtml(title, body, viewLink): string`; `canWriteNote(user, studentUserId): Promise<boolean>`; endpoints `POST /api/v1/students/:id/notes`, `PATCH /api/v1/notes/:id`, `DELETE /api/v1/notes/:id`.
+- Consumes: `createNoteRequestSchema`, `updateNoteRequestSchema`, `escapeHtml`, `plainTextToHtml` (Task 1), `canEditNote` / `noteVisibilityWhere` (Task 2), `toNoteSummary` (Task 2), `createNotificationsBulk`.
+- Produces: `escapeHtml` re-exported from `apps/backend/src/lib/html.ts` (Plan 9 and every later backend escaping site import it from there); `buildNotificationHtml(title: string, body: string | null, viewLink: string | null): string` exported from `apps/backend/src/lib/email.ts` (Plan 9 consumes it; nobody re-implements the template); `canWriteNote(user, studentUserId): Promise<boolean>`; endpoints `POST /api/v1/students/:id/notes`, `PATCH /api/v1/notes/:id`, `DELETE /api/v1/notes/:id`.
 
 **The security argument, stated once.** Spec D1 option 2 says "keep HTML on the
 wire, sanitise on write and on read, render through a whitelisting RN HTML
@@ -1272,62 +1435,23 @@ renders HTML, and the only HTML sink in the whole system is email, which
 escapes. That leaves escaping — five characters, trivially correct — as the
 security boundary, and tag-stripping as a mere presentation conversion for
 v1's existing rows. No sanitiser dependency is added, and no whitelist can rot.
-The stored column keeps paragraph-wrapped escaped HTML so v1's still-running
-`dangerouslySetInnerHTML` readers render v2's notes correctly and safely.
+The stored column keeps paragraph-wrapped escaped HTML (`plainTextToHtml`) so
+v1's still-running `dangerouslySetInnerHTML` readers render v2's notes
+correctly and safely. The converter itself was written and tested in Task 1
+(`packages/shared/src/html-text.ts`); this task wires it into the backend.
 
-- [ ] **Step 1: Write the failing unit tests**
-
-```ts
-// apps/backend/src/__tests__/note-text.test.ts
-import { noteBodyToText, toStoredNoteHtml } from "../lib/note-text";
-
-describe("toStoredNoteHtml — the write half", () => {
-  it("escapes markup so nothing a caller sends can execute in v1's raw render", () => {
-    expect(toStoredNoteHtml("<script>alert(1)</script>")).toBe(
-      "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
-    );
-  });
-
-  it("wraps each line in a paragraph so v1's reader still renders it as prose", () => {
-    expect(toStoredNoteHtml("first\nsecond")).toBe("<p>first</p><p>second</p>");
-  });
-
-  it("escapes ampersands and quotes", () => {
-    expect(toStoredNoteHtml(`Tom & "Jerry"`)).toBe("<p>Tom &amp; &quot;Jerry&quot;</p>");
-  });
-});
-
-describe("noteBodyToText — the read half", () => {
-  it("round-trips what the write half stored", () => {
-    const original = `Tom & "Jerry"\nsecond line`;
-    expect(noteBodyToText(toStoredNoteHtml(original))).toBe(original);
-  });
-
-  it("renders v1's TipTap rows as readable text with the tags gone", () => {
-    expect(noteBodyToText("<p>Legacy &amp; <b>bold</b></p><p>second line</p>")).toBe(
-      "Legacy & bold\nsecond line",
-    );
-  });
-
-  it("turns <br> into a line break rather than joining words", () => {
-    expect(noteBodyToText("<p>one<br>two</p>")).toBe("one\ntwo");
-  });
-
-  it("leaves no angle bracket behind for any sink to interpret", () => {
-    expect(noteBodyToText("<p>a</p><script>alert(1)</script>")).not.toContain("<");
-  });
-
-  it("decodes &amp; last, so an escaped entity does not become a live one", () => {
-    // "&amp;lt;" is the stored form of the literal text "&lt;". Decoding &amp;
-    // first would yield "&lt;" and a second pass would turn it into "<".
-    expect(noteBodyToText("<p>&amp;lt;</p>")).toBe("&lt;");
-  });
-});
-```
+- [ ] **Step 1: Write the failing unit test**
 
 ```ts
 // apps/backend/src/__tests__/email-html.test.ts
 import { buildNotificationHtml } from "../lib/email";
+import { escapeHtml } from "../lib/html";
+
+describe("lib/html", () => {
+  it("is the shared escaper, not a second copy (ruling X2)", () => {
+    expect(escapeHtml("<b>&</b>")).toBe("&lt;b&gt;&amp;&lt;/b&gt;");
+  });
+});
 
 describe("buildNotificationHtml", () => {
   it("escapes the title — v1 interpolated it into an <h1> untouched", () => {
@@ -1349,103 +1473,35 @@ describe("buildNotificationHtml", () => {
 });
 ```
 
-- [ ] **Step 2: Run them to see them fail**
+- [ ] **Step 2: Run it to see it fail**
 
-Run: `cd apps/backend && npx jest src/__tests__/note-text.test.ts src/__tests__/email-html.test.ts`
-Expected: FAIL — `toStoredNoteHtml` and `buildNotificationHtml` are not exported.
+Run: `cd apps/backend && npx jest src/__tests__/email-html.test.ts`
+Expected: FAIL — `lib/html` does not exist and `buildNotificationHtml` is not exported.
 
-- [ ] **Step 3: Write the text handling**
+- [ ] **Step 3: The backend's escaping entry point**
 
 ```ts
 // apps/backend/src/lib/html.ts
-const ESCAPES: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
-
 /**
- * The one escaper. Ruling C11 says nothing renders as HTML and every mail
- * interpolation escapes; this is what both halves of that call.
+ * The backend's ONE way to escape text for an HTML sink (ruling X2). Every
+ * mail template and every future HTML interpolation imports escapeHtml from
+ * here — never a private copy in the file that needs it.
  *
- * Five characters, no whitelist, nothing to keep up to date — which is exactly
- * why the wire format for note bodies is plain text rather than sanitised
- * HTML. The hard part of sanitising is deciding what to KEEP, and nothing in
- * this product needs to keep any of it.
+ * The function is defined once, in packages/shared/src/html-text.ts (ruling
+ * X3 — the same module holds plainTextToHtml/htmlToPlainText, and the
+ * write half needs the escaper), and re-exported here so backend callers have
+ * one stable local path. Relative value import, not "@space/shared": the
+ * rootDir emit trap applies to every backend file (ruling X12).
  */
-export function escapeHtml(input: string): string {
-  return input.replace(/[&<>"']/g, (c) => ESCAPES[c] ?? c);
-}
+export { escapeHtml } from "../../../../packages/shared/src/index";
 ```
-
-```ts
-// apps/backend/src/lib/note-text.ts
-import { escapeHtml } from "./html";
-
-/**
- * Plain text → the form stored in EngagementNote.body.
- *
- * The column is shared with a running v1 that renders it with
- * dangerouslySetInnerHTML in two places (spec R6, D1), so v2 cannot store raw
- * text there without changing how v1 displays it — and must not store anything
- * a caller could turn into markup. Escaping and wrapping each line in a
- * paragraph satisfies both: v1 renders v2's notes as prose, and a body
- * containing <script> arrives in an admin's browser as visible text.
- */
-export function toStoredNoteHtml(text: string): string {
-  return text
-    .split(/\r?\n/)
-    .map((line) => `<p>${escapeHtml(line)}</p>`)
-    .join("");
-}
-
-const ENTITIES: [RegExp, string][] = [
-  [/&lt;/g, "<"],
-  [/&gt;/g, ">"],
-  [/&quot;/g, '"'],
-  [/&#0?39;/g, "'"],
-  [/&apos;/g, "'"],
-  [/&nbsp;/g, " "],
-  // &amp; LAST. Decoding it first would turn the stored "&amp;lt;" — the
-  // escaped form of the literal text "&lt;" — into "&lt;", which the next rule
-  // would then decode into a live "<".
-  [/&amp;/g, "&"],
-];
-
-/**
- * The stored column → plain text for the wire.
- *
- * Ruling C11 requires sanitising on read for everything already stored, and
- * every pre-migration row is TipTap HTML written by v1. Block-level closers
- * become newlines first so "<p>a</p><p>b</p>" reads as two lines rather than
- * "ab"; then all tags go.
- *
- * This is a presentation conversion, NOT the security boundary. Its output is
- * rendered as text by React Native and escaped again by lib/html.ts before it
- * ever reaches an HTML sink, so a tag this regex fails to recognise is a
- * cosmetic bug, not an injection.
- */
-export function noteBodyToText(stored: string): string {
-  const withBreaks = stored
-    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr)\s*>/gi, "\n")
-    .replace(/<br\s*\/?>/gi, "\n");
-  const stripped = withBreaks.replace(/<[^>]*>/g, "");
-  const decoded = ENTITIES.reduce((acc, [pattern, char]) => acc.replace(pattern, char), stripped);
-  return decoded.replace(/\n{3,}/g, "\n\n").trim();
-}
-```
-
-If Task 2 already created `note-text.ts` with `noteBodyToText`, this step adds
-`toStoredNoteHtml` and the `html.ts` import beside it — do not duplicate the
-file.
 
 - [ ] **Step 4: Escape every mail interpolation**
 
 In `apps/backend/src/lib/email.ts`, extract and export the body builder, and
 escape at every interpolation site. `renderShell`'s `title` argument is now
-pre-escaped by its caller:
+pre-escaped by its caller. Plan 9 builds on this function; it does not add a
+second template or a second escaper:
 
 ```ts
 import { escapeHtml } from "./html";
@@ -1492,7 +1548,7 @@ the `renderShell(...)` call with:
 
 - [ ] **Step 5: Run the unit tests**
 
-Run: `cd apps/backend && npx jest src/__tests__/note-text.test.ts src/__tests__/email-html.test.ts` → PASS (all 9).
+Run: `cd apps/backend && npx jest src/__tests__/email-html.test.ts src/__tests__/email.test.ts` → PASS (the existing `email.test.ts` still passes: `sendNotificationEmail`'s observable behaviour is unchanged apart from escaping).
 
 - [ ] **Step 6: Write the failing integration tests**
 
@@ -1583,7 +1639,10 @@ describe("POST /api/v1/students/:id/notes", () => {
   });
 
   it("notifies season admins on a flagged note WITHOUT quoting it (spec D2)", async () => {
-    const before = await db.notification.count({ where: { type: "MENTOR_FOLLOWUP" } });
+    // Scoped to this suite's season admin: counting MENTOR_FOLLOWUP rows
+    // database-wide would race v1, which writes the same table on staging.
+    const mine = { type: "MENTOR_FOLLOWUP" as const, userId: adminUserId };
+    const before = await db.notification.count({ where: mine });
 
     const res = await request(app)
       .post(`/api/v1/students/${studentUserId}/notes`)
@@ -1596,16 +1655,17 @@ describe("POST /api/v1/students/:id/notes", () => {
     expect(res.status).toBe(201);
 
     const notifications = await db.notification.findMany({
-      where: { type: "MENTOR_FOLLOWUP" },
+      where: mine,
       orderBy: { id: "desc" },
       take: 1,
       select: { body: true, title: true, link: true },
     });
-    expect(await db.notification.count({ where: { type: "MENTOR_FOLLOWUP" } })).toBe(before + 1);
+    expect(await db.notification.count({ where: mine })).toBe(before + 1);
     // v1 put body.slice(0, 140) here and mailed it unescaped to every season
     // admin — including admins who cannot open the note in the app at all.
     expect(notifications[0]?.body).not.toContain("confidential");
     expect(notifications[0]?.title).toContain("Follow-up flagged");
+    // v1's exact link for this type (jpc-space note-actions.ts:84; ruling X1).
     expect(notifications[0]?.link).toBe(`/admin/students/${studentUserId}`);
   });
 });
@@ -1745,10 +1805,10 @@ export async function canWriteNote(user: SessionUser, studentUserId: number): Pr
 
 Append to `apps/backend/src/routes/notes.ts` (extend its imports with
 `canEditNote`, `canWriteNote` from `../lib/permissions`, `toNoteSummary` from
-`../lib/queries/notes`, `toStoredNoteHtml` from `../lib/note-text`,
-`createNotificationsBulk` from `../lib/notifications`, and
-`createNoteRequestSchema` / `updateNoteRequestSchema` from the shared relative
-import):
+`../lib/queries/notes`, `createNotificationsBulk` from `../lib/notifications`,
+and `createNoteRequestSchema` / `updateNoteRequestSchema` / `plainTextToHtml`
+added to the existing relative shared import — all three are value imports, so
+the relative path, never `"@space/shared"`):
 
 ```ts
 const NOTE_SELECT_FOR_SUMMARY = {
@@ -1764,7 +1824,7 @@ const NOTE_SELECT_FOR_SUMMARY = {
   season: { select: { title: true } },
 } as const;
 
-studentNotesRouter.post("/:id/notes", async (req, res) => {
+studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const studentUserId = parseId(req.params.id);
   if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
@@ -1817,7 +1877,7 @@ studentNotesRouter.post("/:id/notes", async (req, res) => {
       // From the session, never from input (R9).
       authorUserId: user.userId,
       seasonId,
-      body: toStoredNoteHtml(parsed.data.body),
+      body: plainTextToHtml(parsed.data.body),
       visibility: parsed.data.visibility,
       followUpFlagged: parsed.data.followUpFlagged,
     },
@@ -1864,7 +1924,7 @@ studentNotesRouter.post("/:id/notes", async (req, res) => {
   return apiOk(res, { note: toNoteSummary(created, user) }, 201);
 });
 
-notesRouter.patch("/:id", async (req, res) => {
+notesRouter.patch("/:id", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid note id.", 400);
@@ -1886,7 +1946,7 @@ notesRouter.patch("/:id", async (req, res) => {
     // body only. visibility, followUpFlagged and seasonId are immutable after
     // creation (R24) — a note written to the wrong audience is corrected by
     // writing a new one, not by silently re-aiming the old one.
-    data: { body: toStoredNoteHtml(parsed.data.body) },
+    data: { body: plainTextToHtml(parsed.data.body) },
     select: NOTE_SELECT_FOR_SUMMARY,
   });
 
@@ -1906,7 +1966,7 @@ notesRouter.patch("/:id", async (req, res) => {
  * 501 rather than 404 so a client can tell "this note does not exist" from
  * "this system cannot delete notes yet" and say the right thing.
  */
-notesRouter.delete("/:id", (_req, res) =>
+notesRouter.delete("/:id", requireAuth, (_req, res) =>
   apiError(
     res,
     "delete_unavailable",
@@ -1948,8 +2008,8 @@ git add apps/backend && git commit -m "feat(backend): note writes with escaped b
 - Test: `apps/backend/src/__tests__/integration/engagement-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `isAtRisk`, `EngagementRow`, `StudentEngagement`, `StudentSelfEngagement` (Task 1); `canViewStudent` (Plan 5), `canAccessSeason` and `staffScopeForSeason` (existing, `lib/permissions.ts`).
-- Produces: `computeEngagementForSeason(seasonId, opts): Promise<EngagementRow[]>`; the routers `studentEngagementRouter`, `seasonEngagementRouter`; endpoints `GET /api/v1/students/:id/engagement`, `GET /api/v1/seasons/:id/engagement`.
+- Consumes: `isAtRisk`, `EngagementRow`, `StudentEngagement`, `StudentSelfEngagement` (Task 1); `canViewStudent` (Plan 5), `canAccessSeason` and `staffScopeForSeason` (existing, `lib/permissions.ts`), `canReadAllStudents` (existing, `lib/rbac.ts`).
+- Produces: `computeEngagementForSeason(seasonId, opts): Promise<EngagementRow[]>`; `mayScoreInSeason(user, studentUserId, seasonId, groupId): Promise<boolean>` (module-private in `routes/engagement.ts`); the routers `studentEngagementRouter`, `seasonEngagementRouter`; endpoints `GET /api/v1/students/:id/engagement`, `GET /api/v1/seasons/:id/engagement`.
 
 **Query budget.** Spec §5 asks for "two queries for the whole cohort". This
 lands at **five**, and the load-bearing property is that it is five regardless
@@ -1979,8 +2039,10 @@ let groupAId: number;
 let earlyStudentId: number;
 let lateJoinerId: number;
 let otherGroupStudentId: number;
+let otherSeasonId: number;
 let superToken: string;
 let leaderToken: string;
+let adminAToken: string;
 let earlyStudentToken: string;
 let lateJoinerToken: string;
 
@@ -2092,8 +2154,29 @@ beforeAll(async () => {
     ],
   });
 
+  // A second season the early student is also enrolled in, plus an admin of
+  // the FIRST season only. canViewStudent admits that admin (they share
+  // season A with the student), which is exactly why the score itself must be
+  // gated per season (ruling C8): passing the student gate must not unlock
+  // the student's numbers in a season the caller has no scope over.
+  const adminA = await createTestUser("eng-admin-a", "ADMIN");
+  await db.seasonAdmin.create({ data: { seasonId, userId: adminA.id } });
+  const seasonB = await createTestSeason();
+  otherSeasonId = seasonB.id;
+  await db.seasonEnrollment.create({
+    data: {
+      seasonId: seasonB.id,
+      studentUserId: early.id,
+      status: "ACTIVE",
+      // Earlier than the season-A enrolment, so the default (latest ACTIVE)
+      // season for every caller below stays season A.
+      enrolledAt: new Date("2019-11-01T00:00:00.000Z"),
+    },
+  });
+
   superToken = await login(app, superUser.email);
   leaderToken = await login(app, leader.email);
+  adminAToken = await login(app, adminA.email);
   earlyStudentToken = await login(app, early.email);
   lateJoinerToken = await login(app, late.email);
   expect(groupB.id).not.toBe(groupA.id);
@@ -2208,6 +2291,29 @@ describe("GET /api/v1/students/:id/engagement", () => {
     expect(res.status).toBe(403);
   });
 
+  it("refuses an admin of season A who names season B — scope is per season, not per student (C8)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${earlyStudentId}/engagement?seasonId=${otherSeasonId}`)
+      .set("authorization", `Bearer ${adminAToken}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("forbidden");
+  });
+
+  it("gives the same admin the season they DO administer", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${earlyStudentId}/engagement?seasonId=${seasonId}`)
+      .set("authorization", `Bearer ${adminAToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ seasonId, score: 75 });
+  });
+
+  it("refuses a leader a season in which they lead none of the student's groups", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${earlyStudentId}/engagement?seasonId=${otherSeasonId}`)
+      .set("authorization", `Bearer ${leaderToken}`);
+    expect(res.status).toBe(403);
+  });
+
   it("404s when the student has no enrolment to score", async () => {
     const orphan = await createTestUser("eng-orphan", "STUDENT");
     const res = await request(app)
@@ -2226,7 +2332,12 @@ Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBan
 ```ts
 // apps/backend/src/lib/queries/engagement.ts
 import type { EngagementRow } from "@space/shared";
-import { isAtRisk } from "@space/shared";
+// A VALUE import, so the relative path — never "@space/shared" (ruling X12).
+// A bare specifier here survives tsc untouched and makes the BUILT server
+// resolve node_modules/@space/shared back to TypeScript source:
+// ERR_MODULE_NOT_FOUND at startup (CLAUDE.md, the routes/auth.ts note). Five
+// levels up from src/lib/queries/.
+import { isAtRisk } from "../../../../../packages/shared/src/index";
 
 import { db } from "../../db/client";
 
@@ -2403,15 +2514,44 @@ import { Router } from "express";
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
+import type { SessionUser } from "../lib/auth/tokens";
 import { canAccessSeason, canViewStudent, staffScopeForSeason } from "../lib/permissions";
 import { computeEngagementForSeason } from "../lib/queries/engagement";
+import { canReadAllStudents } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 
 export const studentEngagementRouter = Router();
 export const seasonEngagementRouter = Router();
 
-studentEngagementRouter.use(requireAuth);
-seasonEngagementRouter.use(requireAuth);
+// requireAuth is attached per route (ruling X5): these routers share
+// /api/v1/students and /api/v1/seasons with other routers.
+
+/**
+ * May this caller see this student's score IN THIS SEASON?
+ *
+ * canViewStudent answers "may I see this student at all" — true if the
+ * caller shares ANY season with them. That is not enough here: an earlier
+ * draft passed that gate and then scored whatever ?seasonId= named, so an
+ * admin of season A could read the student's season-B numbers (ruling C8 —
+ * row-scoped at the API). The season-specific check:
+ *   - STUDENT: only themselves (any of their own seasons);
+ *   - SUPER / MENTOR: everything (canReadAllStudents);
+ *   - ADMIN: must administer that season;
+ *   - LEADER: must lead the group the student is in for that season (C9).
+ */
+async function mayScoreInSeason(
+  user: SessionUser,
+  studentUserId: number,
+  seasonId: number,
+  groupId: number | null,
+): Promise<boolean> {
+  if (user.role === "STUDENT") return user.userId === studentUserId;
+  if (canReadAllStudents(user)) return true;
+  const scope = await staffScopeForSeason(user, seasonId);
+  if (scope === null) return false;
+  if (scope.kind === "season") return true;
+  return groupId !== null && scope.groupIds.includes(groupId);
+}
 
 /**
  * One student's engagement.
@@ -2421,7 +2561,7 @@ seasonEngagementRouter.use(requireAuth);
  * only protection was which page called it (R85). The gate is here, before the
  * call, and the PAYLOAD narrows by role as well (ruling C8 #2).
  */
-studentEngagementRouter.get("/:id/engagement", async (req, res) => {
+studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const studentUserId = parseId(req.params.id);
   if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
@@ -2433,18 +2573,32 @@ studentEngagementRouter.get("/:id/engagement", async (req, res) => {
   const requestedSeasonId = parseId(
     typeof req.query.seasonId === "string" ? req.query.seasonId : undefined,
   );
-  const enrollment = await db.seasonEnrollment.findFirst({
+  const candidates = await db.seasonEnrollment.findMany({
     where: {
       studentUserId,
       ...(requestedSeasonId !== null ? { seasonId: requestedSeasonId } : { status: "ACTIVE" }),
     },
     orderBy: { enrolledAt: "desc" },
-    select: { seasonId: true },
+    select: { seasonId: true, groupId: true },
   });
   // v1 simply omitted the engagement card when the student had no active
   // season (R83). An endpoint has to say so.
-  if (!enrollment) {
+  if (candidates.length === 0) {
     return apiError(res, "no_season", "This student has no season to score.", 404);
+  }
+
+  // The newest enrolment the caller is scoped to. With ?seasonId there is one
+  // candidate, so a season outside the caller's scope is a 403, never a
+  // silently different season.
+  let enrollment: { seasonId: number; groupId: number | null } | null = null;
+  for (const candidate of candidates) {
+    if (await mayScoreInSeason(user, studentUserId, candidate.seasonId, candidate.groupId)) {
+      enrollment = candidate;
+      break;
+    }
+  }
+  if (!enrollment) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
   const rows = await computeEngagementForSeason(enrollment.seasonId, {
@@ -2488,7 +2642,7 @@ studentEngagementRouter.get("/:id/engagement", async (req, res) => {
  * The cohort endpoint — the one the mentor dashboard and the reports screen
  * both consume. v1's per-student fan-out is unshippable on mobile (spec D10).
  */
-seasonEngagementRouter.get("/:id/engagement", async (req, res) => {
+seasonEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -2577,21 +2731,30 @@ git add apps/backend && git commit -m "feat(backend): cohort engagement endpoint
 
 **Files:**
 - Modify: `packages/shared/src/navigation.ts` (add `/notes` to three sidebars — spec D14)
+- Modify: `packages/shared/src/__tests__/navigation.test.ts` (its pin test freezes every sidebar item — three insertions)
+- Modify: `apps/mobile/src/__tests__/nav-routes.test.ts` (Plan 1's exact ADMIN `/more` list gains "My notes")
 - Create: `apps/mobile/src/hooks/use-notes.ts`
 - Modify: `apps/mobile/src/lib/query-keys.ts` (add the `notes` factory)
 - Modify: `apps/mobile/app/(app)/notes.tsx` (replace the placeholder)
-- Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx` (drop the `notes` entry and decrement its count assertion)
+- Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx` (drop the `notes` row; no count to change — ruling X9)
 - Test: `apps/mobile/src/__tests__/notes-screen.test.tsx`
 
 **Interfaces:**
 - Consumes: `apiClient`, `useSessionStore`, `authoredNoteListResponseSchema` / `type AuthoredNote` from `@space/shared`, `formatDate` from `../../src/lib/format`.
-- Produces: `queryKeys.notes.all/lists()/authored()/byStudent(studentId)`; `useAuthoredNotes(enabled: boolean): UseQueryResult<AuthoredNote[]>`. Task 6 adds `useStudentNotes` and `useCreateNote` to the same hook file.
+- Produces: `queryKeys.notes.all/lists()/authored()/byStudent(studentId: number | null)`; `useAuthoredNotes(enabled: boolean): UseInfiniteQueryResult<InfiniteData<AuthoredNotePage>>` where `AuthoredNotePage = z.infer<typeof authoredNoteListResponseSchema>`; `flattenNotePages<T>(pages: { notes: T[] }[] | undefined): T[]`. Task 6 adds `useStudentNotes` and `useCreateNote` to the same hook file.
+
+**Pagination is real, not capped.** `GET /me/notes` and
+`GET /students/:id/notes` page by cursor (20 by default) precisely to end v1's
+silent 100-row cap (R41). A hook that fetched only the first page and ignored
+`nextCursor` would re-create that defect at 20 rows. Both list hooks are
+`useInfiniteQuery`, and both lists render a "Load more" control while
+`hasNextPage`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```tsx
 // apps/mobile/src/__tests__/notes-screen.test.tsx
-import { fireEvent, screen } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
@@ -2615,12 +2778,20 @@ const emptyScopes = {
   activeSeasonId: null as number | null,
   graduationYear: null as number | null,
 };
+// Every required MeUser field, so typecheck (which covers tests) passes
+// (ruling X11): avatarPath, and Plan 7's hasPassword.
 const mentorSession = {
-  user: { id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const },
+  user: {
+    id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const,
+    avatarPath: null, hasPassword: true,
+  },
   scopes: emptyScopes,
 };
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "stu@jpc.test", role: "STUDENT" as const },
+  user: {
+    id: 9, name: "Test student", email: "stu@jpc.test", role: "STUDENT" as const,
+    avatarPath: null, hasPassword: true,
+  },
   scopes: emptyScopes,
 };
 
@@ -2713,6 +2884,26 @@ describe("NotesScreen", () => {
 
     expect(await screen.findByText("No notes yet")).toBeTruthy();
   });
+
+  it("follows nextCursor — the list is never silently capped at one page (R41)", async () => {
+    useSessionStore.setState(mentorSession);
+    const older = { ...note, id: 4, student: { id: 22, name: "Omar Older", email: "o@jpc.test" } };
+    get.mockImplementation((url: string) =>
+      Promise.resolve(
+        url === "/api/v1/me/notes"
+          ? { data: { data: { notes: [note], nextCursor: "5" } } }
+          : { data: { data: { notes: [older], nextCursor: null } } },
+      ),
+    );
+
+    renderWithProviders(<NotesScreen />);
+    fireEvent.press(await screen.findByText("Load more"));
+
+    expect(await screen.findByText("Omar Older")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/me/notes?cursor=5");
+    // Last page reached: the control goes away.
+    await waitFor(() => expect(screen.queryByText("Load more")).toBeNull());
+  });
 });
 ```
 
@@ -2724,16 +2915,16 @@ Expected: FAIL — the placeholder renders "This screen isn't built yet".
 - [ ] **Step 3: Extend navigation (spec D14)**
 
 In `packages/shared/src/navigation.ts`, add a `/notes` **sidebar** entry to
-`SUPER`, `ADMIN` and `LEADER`. MENTOR already has the tab (line 139) and keeps
-it; all three of the others have five tabs already, and the sidebar is what
-`/more` renders.
+`SUPER`, `ADMIN` and `LEADER`. MENTOR already has the tab and keeps it; all
+three of the others have five tabs already, and the sidebar is what Plan 1's
+`/more` screen renders (ruling X15).
 
 ```ts
-  // In SUPER.sidebar, after the "/students" entries:
+  // In SUPER.sidebar, immediately after { href: "/students/dropped", … }:
     { href: "/notes", label: "My notes", icon: "notes" },
-  // In ADMIN.sidebar, after "/students":
+  // In ADMIN.sidebar, immediately after { href: "/students", … }:
     { href: "/notes", label: "My notes", icon: "notes" },
-  // In LEADER.sidebar, after "/groups":
+  // In LEADER.sidebar, immediately after { href: "/groups", label: "My Groups", … }:
     { href: "/notes", label: "My notes", icon: "notes" },
 ```
 
@@ -2747,11 +2938,41 @@ Spec D14's reasoning, worth a comment above the SUPER entry:
     // cannot type (spec D14).
 ```
 
-`icon: "notes"` is already a member of the icon union (`navigation.ts:31`), so
-no type change is needed. `ALL_NAV_HREFS` derives from these arrays, so
-`role-tabs.test.tsx`'s coverage check picks the new entries up automatically —
-run it in Step 7 and expect it to stay green because `app/(app)/notes.tsx`
-already exists.
+`icon: "notes"` is already a member of the icon union, so no type change is
+needed. `ALL_NAV_HREFS` derives from these arrays, so `role-tabs.test.tsx`'s
+coverage check picks the new entries up automatically — run it in Step 7 and
+expect it to stay green because `app/(app)/notes.tsx` already exists.
+
+`packages/shared/src/__tests__/navigation.test.ts`'s
+`"pins every nav item so an accidental edit fails loudly"` case freezes every
+sidebar as `[href, label, icon]` triples, so it must change in the same commit.
+Insert, in the expected shapes:
+
+```ts
+  // SUPER sidebar, immediately after ["/students/dropped", "Dropped students", "dropped"],
+        ["/notes", "My notes", "notes"],
+  // ADMIN sidebar, immediately after ["/students", "Students", "students"],
+        ["/notes", "My notes", "notes"],
+  // LEADER sidebar, immediately after ["/groups", "My Groups", "groups"],
+        ["/notes", "My notes", "notes"],
+```
+
+Change nothing else in that test — no `tabs` array moves, and the five-tab
+case stays as it is.
+
+Plan 1's `apps/mobile/src/__tests__/nav-routes.test.ts` also pins ADMIN's
+`/more` items exactly (`moreItemsFor(navByRole.ADMIN)` — the sidebar minus
+the tabs), and ADMIN's new entry sits between `/students` (a tab) and
+`/assignments`, so it surfaces there. Its ADMIN expectation becomes:
+
+```ts
+    expect(moreItemsFor(navByRole.ADMIN).map((i) => i.label)).toEqual([
+      "My Season", "My notes", "Assignments", "Quizzes", "Reports", "Settings",
+    ]);
+```
+
+(The STUDENT and alumni expectations — STUDENT as Plan 14 left it — are
+untouched: neither role gains `/notes`.)
 
 - [ ] **Step 4: Add the query-key factory**
 
@@ -2763,7 +2984,8 @@ In `apps/mobile/src/lib/query-keys.ts`, add a sibling inside the same
     all: ["notes"] as const,
     lists: () => [...queryKeys.notes.all, "list"] as const,
     authored: () => [...queryKeys.notes.lists(), "authored"] as const,
-    byStudent: (studentId: number) => [...queryKeys.notes.lists(), { studentId }] as const,
+    // Nullable per this file's header convention — no -1 sentinel.
+    byStudent: (studentId: number | null) => [...queryKeys.notes.lists(), { studentId }] as const,
   },
 ```
 
@@ -2771,14 +2993,31 @@ In `apps/mobile/src/lib/query-keys.ts`, add a sibling inside the same
 
 ```ts
 // apps/mobile/src/hooks/use-notes.ts
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { authoredNoteListResponseSchema, type AuthoredNote } from "@space/shared";
+import {
+  useInfiniteQuery,
+  type InfiniteData,
+  type UseInfiniteQueryResult,
+} from "@tanstack/react-query";
+import { authoredNoteListResponseSchema } from "@space/shared";
+import type { z } from "zod";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
+export type AuthoredNotePage = z.infer<typeof authoredNoteListResponseSchema>;
+
+/** `?cursor=` appended only past the first page, so page one's URL is bare. */
+function withCursor(path: string, cursor: string | null): string {
+  return cursor === null ? path : `${path}?cursor=${encodeURIComponent(cursor)}`;
+}
+
+/** Every page's rows, in order, for rendering. */
+export function flattenNotePages<T>(pages: { notes: T[] }[] | undefined): T[] {
+  return (pages ?? []).flatMap((p) => p.notes);
+}
+
 /**
- * The notes this caller wrote, across students.
+ * The notes this caller wrote, across students — every page, not the first.
  *
  * `enabled` is passed by the screen rather than derived here, because the one
  * role that must NOT call this (STUDENT) gets a 403, not an empty list — the
@@ -2786,17 +3025,23 @@ import { queryKeys } from "../lib/query-keys";
  * be refused would surface as an error state on a screen that should simply
  * say the surface is not theirs.
  */
-export function useAuthoredNotes(enabled: boolean): UseQueryResult<AuthoredNote[]> {
-  return useQuery({
+export function useAuthoredNotes(
+  enabled: boolean,
+): UseInfiniteQueryResult<InfiniteData<AuthoredNotePage>> {
+  return useInfiniteQuery({
     queryKey: queryKeys.notes.authored(),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/me/notes");
-      return authoredNoteListResponseSchema.parse(res.data.data).notes;
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const res = await apiClient.get(withCursor("/api/v1/me/notes", pageParam));
+      return authoredNoteListResponseSchema.parse(res.data.data);
     },
+    getNextPageParam: (last) => last.nextCursor,
     enabled,
   });
 }
 ```
+
+(`zod` is a direct dependency of `apps/mobile` — `package.json` lists it.)
 
 - [ ] **Step 6: Write the screen**
 
@@ -2807,11 +3052,11 @@ import { useRouter } from "expo-router";
 import { Pressable } from "react-native";
 import type { AuthoredNote, NoteVisibility } from "@space/shared";
 
-import { useAuthoredNotes } from "../../src/hooks/use-notes";
+import { flattenNotePages, useAuthoredNotes } from "../../src/hooks/use-notes";
 import { formatDate } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
-import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
+import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
 /**
  * The truth about the visibility setting, in the words the API enforces.
@@ -2841,10 +3086,14 @@ function NoteRow({ item }: { item: AuthoredNote }) {
       }
     >
       <Card style={{ marginBottom: theme.spacing.sm }}>
-        <Text variant="heading">{item.student.name ?? item.student.email}</Text>
+        <Text variant="heading">{item.student.name}</Text>
         <Text variant="body">{item.body}</Text>
         <Text variant="label" color={theme.colors.neutral[600]}>
-          {`${formatDate(item.createdAt)} · ${VISIBILITY_LABEL[item.visibility]}`}
+          {formatDate(item.createdAt)}
+        </Text>
+        {/* Its own node, so the label is findable and read out on its own. */}
+        <Text variant="label" color={theme.colors.neutral[600]}>
+          {VISIBILITY_LABEL[item.visibility]}
         </Text>
         {item.followUpFlagged ? (
           <Text variant="caption" color={theme.colors.neutral[600]}>
@@ -2867,7 +3116,9 @@ export default function NotesScreen() {
   // Four roles can author (spec R46–R49); a STUDENT never can (R51) and the
   // API refuses them, so the screen does not ask.
   const canAuthor = role !== null && role !== "STUDENT";
-  const { data, isPending, isError, refetch, isRefetching } = useAuthoredNotes(canAuthor);
+  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useAuthoredNotes(canAuthor);
+  const notes = flattenNotePages(data?.pages);
 
   const handleRefresh = () => {
     if (canAuthor) void refetch();
@@ -2887,16 +3138,24 @@ export default function NotesScreen() {
         <LoadingState />
       ) : isError ? (
         <ErrorState message="Couldn't load your notes." onRetry={() => void refetch()} />
-      ) : data.length === 0 ? (
+      ) : notes.length === 0 ? (
         <EmptyState
           title="No notes yet"
           message="Notes you write about a student appear here. Open a student to write one."
         />
       ) : (
         <>
-          {data.map((item) => (
+          {notes.map((item) => (
             <NoteRow key={item.id} item={item} />
           ))}
+          {hasNextPage ? (
+            <Button
+              title="Load more"
+              variant="ghost"
+              loading={isFetchingNextPage}
+              onPress={() => void fetchNextPage()}
+            />
+          ) : null}
         </>
       )}
     </Screen>
@@ -2907,15 +3166,16 @@ export default function NotesScreen() {
 - [ ] **Step 7: Update the placeholder guard test and run everything**
 
 In `apps/mobile/src/__tests__/placeholder-screens.test.tsx`: remove the
-`NotesScreen` import and its `["notes", NotesScreen, "Notes"]` row, and
-decrement the `toHaveLength(...)` assertion by one (it reads 18 on `main`; it
-may read less if another plan landed first — decrement whatever is there, do
-not hardcode).
+`NotesScreen` import and its `["notes", NotesScreen, "Notes"]` row. There is no
+length assertion to adjust — Plan 1 Task 0 replaced the hardcoded count with
+per-entry assertions (ruling X9).
 
-Run: `cd apps/mobile && pnpm jest src/__tests__/notes-screen.test.tsx src/__tests__/placeholder-screens.test.tsx src/__tests__/role-tabs.test.tsx` → PASS.
-Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean. The
+Run: `pnpm --filter @space/shared jest src/__tests__/navigation.test.ts` → PASS (the pins now expect the three `/notes` entries).
+Run: `cd apps/mobile && pnpm jest src/__tests__/notes-screen.test.tsx src/__tests__/placeholder-screens.test.tsx src/__tests__/role-tabs.test.tsx src/__tests__/nav-routes.test.ts src/__tests__/more-screen.test.tsx` → PASS.
+Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile --filter=@space/shared` → clean. The
 `router.push({ pathname: "/student/[id]" … })` typecheck needs Plan 5's route
-file; if it is missing, that is the prerequisite failure, not a bug here.
+(served by `student/[id]/index.tsx` since Plan 17); if it is missing, that is
+the prerequisite failure, not a bug here.
 
 - [ ] **Step 8: Commit**
 
@@ -2928,15 +3188,15 @@ git add apps/mobile packages/shared && git commit -m "feat(mobile): authored-not
 ### Task 6: Mobile — engagement and notes on the student detail screen
 
 **Files:**
-- Modify: `apps/mobile/app/(app)/student/[id].tsx` (**created by Plan 5 Task 7 — extend it, do not rewrite it**)
+- Modify: `apps/mobile/app/(app)/student/[id]/index.tsx` (**created by Plan 5 Task 7, moved and rewritten by Plan 17 Task 7 — extend it, do not rewrite it**)
 - Modify: `apps/mobile/src/hooks/use-notes.ts` (add `useStudentNotes`, `useCreateNote`)
 - Create: `apps/mobile/src/hooks/use-engagement.ts`
 - Modify: `apps/mobile/src/lib/query-keys.ts` (add the `engagement` factory)
 - Test: `apps/mobile/src/__tests__/student-engagement-notes.test.tsx`
 
 **Interfaces:**
-- Consumes: Plan 5's `useStudentDetail(id, role)` and the file's existing structure — `ProfileCard`, `EnrollmentRow`, `enrollmentStatusLabel`, the `Screen edges={["top","left","right"]} scroll` wrapper, `useTheme`, and `Card` / `EmptyState` / `ErrorState` / `LoadingState` / `Screen` / `Text` from `../../../src/ui`. Plus `noteListResponseSchema`, `noteSummarySchema`, `studentEngagementSchema`, `type NoteSummary`, `type NoteVisibility`, `type StudentEngagement` from `@space/shared`; `VISIBILITY_LABEL` is duplicated here rather than imported from the screen file (screens do not import from screens).
-- Produces: `useStudentNotes(studentId: number | null, enabled: boolean)`; `useCreateNote(studentId: number)`; `useStudentEngagement(studentId: number | null, enabled: boolean)`; the `<EngagementCard />`, `<NotesSection />` and `<NoteComposer />` components inside `student/[id].tsx`.
+- Consumes: Plan 5's `useStudentDetail(id, role)` and the file's existing structure as Plan 17 Task 7 left it — `ProfileCard`, `EnrollmentRow`, `enrollmentStatusLabel`, the `Screen edges={["top","left","right"]} scroll` wrapper, `useTheme`, the `useState` import, and `Button` / `Card` / `EmptyState` / `ErrorState` / `LoadingState` / `Screen` / `Text` from `../../../../src/ui` (four levels: the file is in the `student/[id]/` directory). Plus `noteListResponseSchema`, `noteSummarySchema`, `studentEngagementSchema`, `type NoteSummary`, `type NoteVisibility`, `type StudentEngagement` from `@space/shared`; `VISIBILITY_LABEL` is duplicated here rather than imported from the screen file (screens do not import from screens).
+- Produces: `useStudentNotes(studentId: number | null, enabled: boolean): UseInfiniteQueryResult<InfiniteData<NotePage>>` (cursor-paged like `useAuthoredNotes`); `useCreateNote(studentId: number)`; `useStudentEngagement(studentId: number | null, enabled: boolean)`; `isNoSeasonError(err: unknown): boolean`; the `<EngagementCard />`, `<NotesSection />` and `<NoteComposer />` components inside `student/[id]/index.tsx`.
 
 **Placement.** Both blocks are rendered as siblings *after* the existing
 "Seasons" card, each owning its own query. Notes must not be folded into the
@@ -2962,7 +3222,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import StudentDetailScreen from "../../app/(app)/student/[id]";
+import StudentDetailScreen from "../../app/(app)/student/[id]/index";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -2974,7 +3234,10 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const superSession = {
-  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const },
+  user: {
+    id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const,
+    avatarPath: null, hasPassword: true,
+  },
   scopes: emptyScopes,
 };
 
@@ -3076,18 +3339,40 @@ describe("student detail — engagement block", () => {
     expect(await screen.findByText("At risk")).toBeTruthy();
   });
 
-  it("says so plainly when the student has no season to score", async () => {
+  it("says so plainly when the API answers no_season", async () => {
     get.mockImplementation((url: string) => {
       if (url === "/api/v1/students/21") return Promise.resolve({ data: { data: detail } });
       if (url === "/api/v1/students/21/notes") {
         return Promise.resolve({ data: { data: { notes: [], nextCursor: null } } });
       }
-      return Promise.reject(Object.assign(new Error("no season"), { status: 404 }));
+      // The shape axios rejects with: isAxiosError + the envelope body.
+      return Promise.reject({
+        isAxiosError: true,
+        response: { status: 404, data: { error: { code: "no_season", message: "x" } } },
+      });
     });
 
     renderWithProviders(<StudentDetailScreen />);
 
     expect(await screen.findByText("No season to score yet")).toBeTruthy();
+  });
+
+  it("shows a retryable error — not 'no season' — for any other failure", async () => {
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/students/21") return Promise.resolve({ data: { data: detail } });
+      if (url === "/api/v1/students/21/notes") {
+        return Promise.resolve({ data: { data: { notes: [], nextCursor: null } } });
+      }
+      return Promise.reject({
+        isAxiosError: true,
+        response: { status: 403, data: { error: { code: "forbidden", message: "x" } } },
+      });
+    });
+
+    renderWithProviders(<StudentDetailScreen />);
+
+    expect(await screen.findByText("Couldn't load engagement.")).toBeTruthy();
+    expect(screen.queryByText("No season to score yet")).toBeNull();
   });
 });
 
@@ -3106,7 +3391,9 @@ describe("student detail — notes", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText(/Visible to group leaders only/)).toBeTruthy();
+    // Exactly one match: the note card's caption. The composer's chips say
+    // "Group leaders" / "Mentors" / "Season admins", so they cannot collide.
+    expect(await screen.findByText("Visible to group leaders only")).toBeTruthy();
   });
 
   it("posts a new note with the chosen visibility and clears the field", async () => {
@@ -3117,7 +3404,7 @@ describe("student detail — notes", () => {
 
     const input = await screen.findByLabelText("New note");
     fireEvent.changeText(input, "space-v2-test new observation");
-    fireEvent.press(screen.getByText("Visible to season admins only"));
+    fireEvent.press(screen.getByText("Season admins"));
     fireEvent.press(screen.getByText("Save note"));
 
     await waitFor(() =>
@@ -3154,18 +3441,32 @@ In `apps/mobile/src/lib/query-keys.ts`, beside the `notes` factory from Task 5:
 ```ts
   engagement: {
     all: ["engagement"] as const,
-    student: (studentId: number) => [...queryKeys.engagement.all, "student", studentId] as const,
-    season: (seasonId: number) => [...queryKeys.engagement.all, "season", seasonId] as const,
+    // Nullable per this file's header convention — no -1 sentinel.
+    student: (studentId: number | null) => [...queryKeys.engagement.all, "student", { studentId }] as const,
+    season: (seasonId: number | null) => [...queryKeys.engagement.all, "season", { seasonId }] as const,
   },
 ```
 
 ```ts
 // apps/mobile/src/hooks/use-engagement.ts
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import axios from "axios";
 import { studentEngagementSchema, type StudentEngagement } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+
+/**
+ * True only for the API's `404 no_season` — "this student has nothing to
+ * score", a real answer. Every other failure (403, 500, offline) is an error
+ * the screen must show as one, with a retry; an earlier draft rendered every
+ * error as "No season to score yet".
+ */
+export function isNoSeasonError(err: unknown): boolean {
+  if (!axios.isAxiosError(err)) return false;
+  const body = err.response?.data as { error?: { code?: string } } | undefined;
+  return err.response?.status === 404 && body?.error?.code === "no_season";
+}
 
 /**
  * One student's engagement, staff arm.
@@ -3183,7 +3484,7 @@ export function useStudentEngagement(
   enabled: boolean,
 ): UseQueryResult<StudentEngagement> {
   return useQuery({
-    queryKey: queryKeys.engagement.student(studentId ?? -1),
+    queryKey: queryKeys.engagement.student(studentId),
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/students/${studentId}/engagement`);
       return studentEngagementSchema.parse(res.data.data);
@@ -3206,20 +3507,24 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   noteListResponseSchema,
   noteSummarySchema,
-  type NoteSummary,
   type NoteVisibility,
 } from "@space/shared";
 
+export type NotePage = z.infer<typeof noteListResponseSchema>;
+
+/** Every page of one student's notes, following nextCursor (R41). */
 export function useStudentNotes(
   studentId: number | null,
   enabled: boolean,
-): UseQueryResult<NoteSummary[]> {
-  return useQuery({
-    queryKey: queryKeys.notes.byStudent(studentId ?? -1),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/students/${studentId}/notes`);
-      return noteListResponseSchema.parse(res.data.data).notes;
+): UseInfiniteQueryResult<InfiniteData<NotePage>> {
+  return useInfiniteQuery({
+    queryKey: queryKeys.notes.byStudent(studentId),
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const res = await apiClient.get(withCursor(`/api/v1/students/${studentId}/notes`, pageParam));
+      return noteListResponseSchema.parse(res.data.data);
     },
+    getNextPageParam: (last) => last.nextCursor,
     enabled: enabled && studentId !== null,
   });
 }
@@ -3246,16 +3551,17 @@ export function useCreateNote(studentId: number) {
 
 - [ ] **Step 5: Extend the student detail screen**
 
-In `apps/mobile/app/(app)/student/[id].tsx`, **keep everything Plan 5 wrote**
-and add the two components below `EnrollmentRow`, plus their imports:
+In `apps/mobile/app/(app)/student/[id]/index.tsx`, **keep everything Plans 5
+and 17 wrote** and add the two components below `EnrollmentRow`, plus their
+imports. Plan 17's version already imports `useState` from `"react"` and
+`Button` from the ui barrel — do **not** import either again (a duplicate
+identifier does not compile); add `Input` to the existing
+`from "../../../../src/ui"` import, add `type NoteSummary, type NoteVisibility`
+to the existing `@space/shared` import, and add:
 
 ```tsx
-import { useState } from "react";
-import type { NoteSummary, NoteVisibility } from "@space/shared";
-
-import { useStudentEngagement } from "../../../src/hooks/use-engagement";
-import { useCreateNote, useStudentNotes } from "../../../src/hooks/use-notes";
-import { Button, Input } from "../../../src/ui";
+import { isNoSeasonError, useStudentEngagement } from "../../../../src/hooks/use-engagement";
+import { flattenNotePages, useCreateNote, useStudentNotes } from "../../../../src/hooks/use-notes";
 ```
 
 ```tsx
@@ -3284,7 +3590,7 @@ const VISIBILITY_ORDER: NoteVisibility[] = ["LEADERS", "MENTORS", "ADMINS"];
  */
 function EngagementCard({ studentId, enabled }: { studentId: number; enabled: boolean }) {
   const theme = useTheme();
-  const { data, isPending, isError } = useStudentEngagement(studentId, enabled);
+  const { data, isPending, isError, error, refetch } = useStudentEngagement(studentId, enabled);
 
   if (!enabled) return null;
 
@@ -3293,10 +3599,20 @@ function EngagementCard({ studentId, enabled }: { studentId: number; enabled: bo
       <Text variant="heading">Engagement</Text>
       {isPending ? (
         <LoadingState />
-      ) : isError ? (
+      ) : isError && isNoSeasonError(error) ? (
+        // The one error that is an answer (404 no_season).
         <Text variant="body" color={theme.colors.neutral[600]}>
           No season to score yet
         </Text>
+      ) : isError ? (
+        // Everything else is a failure, shown as one, with a retry guarded by
+        // the same `enabled` the query uses (CLAUDE.md "Data fetching").
+        <ErrorState
+          message="Couldn't load engagement."
+          onRetry={() => {
+            if (enabled) void refetch();
+          }}
+        />
       ) : (
         <>
           <Text variant="title">{String(data.score)}</Text>
@@ -3322,7 +3638,7 @@ function NoteCard({ item }: { item: NoteSummary }) {
     <Card style={{ marginTop: theme.spacing.sm }}>
       <Text variant="body">{item.body}</Text>
       <Text variant="label" color={theme.colors.neutral[600]}>
-        {`${item.authorName ?? "Staff"} · ${formatDate(item.createdAt)}`}
+        {`${item.authorName} · ${formatDate(item.createdAt)}`}
       </Text>
       <Text variant="caption" color={theme.colors.neutral[600]}>
         {VISIBILITY_LABEL[item.visibility]}
@@ -3336,6 +3652,17 @@ function NoteCard({ item }: { item: NoteSummary }) {
     </Card>
   );
 }
+
+/**
+ * Chip labels for the composer. Short on purpose: the full "Visible to …"
+ * sentence belongs to a WRITTEN note's caption, and reusing it on the chips
+ * made the same text appear twice on screen.
+ */
+const VISIBILITY_CHIP: Record<NoteVisibility, string> = {
+  LEADERS: "Group leaders",
+  MENTORS: "Mentors",
+  ADMINS: "Season admins",
+};
 
 function NoteComposer({ studentId }: { studentId: number }) {
   const theme = useTheme();
@@ -3359,10 +3686,14 @@ function NoteComposer({ studentId }: { studentId: number }) {
         not automatically see leader or mentor notes.
       </Text>
       <Input label="New note" value={body} onChangeText={setBody} multiline numberOfLines={5} />
+      <Text variant="label" color={theme.colors.neutral[600]}>
+        Who can read it
+      </Text>
       {VISIBILITY_ORDER.map((v) => (
         <Button
           key={v}
-          title={VISIBILITY_LABEL[v]}
+          title={VISIBILITY_CHIP[v]}
+          accessibilityState={{ selected: v === visibility }}
           variant={v === visibility ? "primary" : "secondary"}
           onPress={() => setVisibility(v)}
         />
@@ -3400,7 +3731,9 @@ function NoteComposer({ studentId }: { studentId: number }) {
  */
 function NotesSection({ studentId, enabled }: { studentId: number; enabled: boolean }) {
   const theme = useTheme();
-  const { data, isPending, isError, refetch } = useStudentNotes(studentId, enabled);
+  const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useStudentNotes(studentId, enabled);
+  const notes = flattenNotePages(data?.pages);
 
   if (!enabled) return null;
 
@@ -3413,12 +3746,25 @@ function NotesSection({ studentId, enabled }: { studentId: number; enabled: bool
           <LoadingState />
         ) : isError ? (
           <ErrorState message="Couldn't load notes." onRetry={() => void refetch()} />
-        ) : data.length === 0 ? (
+        ) : notes.length === 0 ? (
           <Text variant="body" color={theme.colors.neutral[600]}>
             No notes about this student yet.
           </Text>
         ) : (
-          data.map((n) => <NoteCard key={n.id} item={n} />)
+          <>
+            {notes.map((n) => (
+              <NoteCard key={n.id} item={n} />
+            ))}
+            {/* Older notes are reachable — v1's 100-row cap hid them (R41). */}
+            {hasNextPage ? (
+              <Button
+                title="Load more"
+                variant="ghost"
+                loading={isFetchingNextPage}
+                onPress={() => void fetchNextPage()}
+              />
+            ) : null}
+          </>
         )}
       </Card>
     </>
@@ -3433,13 +3779,10 @@ and inside the screen's success branch, **after** the existing "Seasons" card:
           <NotesSection studentId={id} enabled={role !== null && role !== "STUDENT"} />
 ```
 
-**Check two primitives before running.** `Text`'s variant scale must actually
-have `"title"` (`src/ui/Text.tsx`) — Plan 1 flagged the same thing; if it does
-not, use the largest heading variant it has, in the code and in the test's
-`getByText("75")` target. `Button`'s `ButtonVariant` union must have
-`"primary"` and `"secondary"` (`src/ui/Button.tsx`); if `"primary"` is
-expressed as the default rather than a named variant, pass `undefined` for the
-selected state instead. Do not silence either with a cast.
+(Verified against the tree: `Text`'s variants come from `typography` in
+`src/theme/tokens.ts`, which has `title`; `ButtonVariant` is
+`"primary" | "secondary" | "ghost"`; `Button` spreads `PressableProps`, so
+`accessibilityState` passes through.)
 
 `role` and `id` are already in scope in Plan 5's component (`role` from
 `useSessionStore`, `id` from the parsed route param). The `enabled` guard
@@ -3482,7 +3825,7 @@ Record the suite counts before and after this plan.
 
 - [ ] **Step 2: Mutation pass**
 
-Five mutations, **one at a time**, restoring after each. Each must make the
+Seven mutations, **one at a time**, restoring after each. Each must make the
 named test fail — a mutation the suite survives is a test that is not testing
 what it claims.
 
@@ -3492,7 +3835,7 @@ what it claims.
    LEADERS notes and their own" must fail: the leader now receives the
    `MENTORS` note. *(This is the roadmap's stated done-criterion for Plan 8.)*
 2. **Recompute engagement client-side.** In
-   `apps/mobile/app/(app)/student/[id].tsx`'s `EngagementCard`, replace
+   `apps/mobile/app/(app)/student/[id]/index.tsx`'s `EngagementCard`, replace
    `data.atRisk` with a local `data.score < 60`. →
    `student-engagement-notes.test.tsx` "takes the at-risk flag from the
    contract, not from a local threshold" must fail (composite 75, attendance
@@ -3502,7 +3845,7 @@ what it claims.
    `notes-routes.test.ts` "notifies season admins on a flagged note WITHOUT
    quoting it" must fail.
 4. **Stop escaping on write.** In `routes/notes.ts`, store
-   `parsed.data.body` directly instead of `toStoredNoteHtml(parsed.data.body)`.
+   `parsed.data.body` directly instead of `plainTextToHtml(parsed.data.body)`.
    → `notes-routes.test.ts` "neutralises markup on the way in and on the way
    out" must fail on the stored-column assertion.
 5. **Restore v1's attendance denominator.** In
@@ -3510,12 +3853,28 @@ what it claims.
    `eligibleSessions` is every past session. → `engagement-routes.test.ts`
    "scores a mid-season joiner only against sessions after they enrolled" must
    fail (25% instead of 50%).
+6. **Drop the per-season engagement gate.** In `routes/engagement.ts`, make
+   `mayScoreInSeason` return `true` unconditionally. →
+   `engagement-routes.test.ts` "refuses an admin of season A who names season
+   B" must fail (200 instead of 403).
+7. **Router-wide auth on a shared prefix.** In `routes/notes.ts`, add
+   `myNotesRouter.use(requireAuth);` →
+   `notes-routes.test.ts` "leaves an unknown anonymous path under /api/v1/me a
+   404, not a 401" must fail (ruling X5).
 
 - [ ] **Step 3: Emit check**
 
-`grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/routes/` → empty.
-(The `rootDir` trap in `CLAUDE.md`: `routes/notes.ts` carries this plan's only
-value import from shared, via the relative path.)
+`grep -rn 'require("@space/shared")' apps/backend/dist/` → empty — **all of
+`dist/`**, not just routes (ruling X12). This plan has value imports from
+shared in `routes/notes.ts`, `lib/html.ts`, `lib/queries/notes.ts` and
+`lib/queries/engagement.ts`; an earlier draft of the last one used the package
+name and grepped only `routes/`, so the built server would have crashed at
+startup with `ERR_MODULE_NOT_FOUND` while this check passed.
+
+Also: `grep -rn "function escapeHtml\|const escapeHtml" apps/ packages/ --include=*.ts` →
+exactly one hit, `packages/shared/src/html-text.ts` (rulings X2/X3);
+`grep -rn "rateLimitHandler.*=" apps/backend/src/` → exactly one definition,
+`lib/rate-limit.ts` (ruling X4); `grep -rn "\.use(requireAuth)" apps/backend/src/routes/notes.ts apps/backend/src/routes/engagement.ts` → empty (ruling X5).
 
 - [ ] **Step 4: Manual device pass**
 
@@ -3525,7 +3884,8 @@ Backend running, `apiClient` pointed at it, against staging:
 2. As a LEADER of a group: open a student they lead → engagement card shows served numbers; notes list shows `LEADERS` notes and their own, and no `ADMINS` note.
 3. Write a note as that leader → it appears in the list and on the Notes screen without a manual refresh.
 4. As a STUDENT: their own detail screen shows no notes section and no engagement card, and no request to either endpoint is issued.
-5. As an ADMIN: `/more` now offers "My notes"; it lists what that admin wrote.
+5. As an ADMIN: `/more` (Plan 1's sidebar screen) now offers "My notes"; it lists what that admin wrote.
+6. As a MENTOR with more than 20 notes: scroll to the end of `/notes` → "Load more" fetches the next page.
 
 - [ ] **Step 5: Report**
 
@@ -3533,3 +3893,56 @@ Report: suite counts, all five mutation outcomes, the device pass, and any
 divergence from this plan found while implementing. State explicitly in the
 report that the D3 **ladder was not implemented** and why, so the deferral is
 carried forward rather than rediscovered.
+
+---
+
+## Revision 2026-10-05
+
+Applied from the plan review (`review-plans-07-13.md`) and the coordinator's cross-plan rulings. Each finding was verified against the current tree first.
+
+- **Blocker / X12:** `lib/queries/engagement.ts` imported `isAtRisk` from `"@space/shared"`, a value import by package name. That is the `ERR_MODULE_NOT_FOUND` trap. It now uses `../../../../../packages/shared/src/index`. The rule covers every backend file, and the emit check greps all of `dist/`. With this fix at source, Plan 11's "fix it in passing" note is moot.
+- **X2 / X3:**
+  - New `packages/shared/src/html-text.ts` (Task 1) defines `escapeHtml`, `plainTextToHtml` and `htmlToPlainText` once. It replaces the backend `note-text.ts` (`toStoredNoteHtml` → `plainTextToHtml`, `noteBodyToText` → `htmlToPlainText`). Its unit tests moved to `packages/shared`.
+  - `apps/backend/src/lib/html.ts` is the backend's single entry point and re-exports `escapeHtml`. It does not define a second copy.
+  - `buildNotificationHtml` stays exported from `lib/email.ts`.
+- **X4:** This plan no longer extracts `lib/rate-limit.ts`. Plan 7 does. Task 2 Step 5 now only verifies that it exists.
+- **X5:** Every router on a shared prefix (`studentNotesRouter`, `myNotesRouter`, `studentEngagementRouter`, `seasonEngagementRouter`) attaches `requireAuth` per route. A new test proves an unknown anonymous path under `/api/v1/me` stays a 404, and a mutation entry covers it.
+- **S1 (engagement cross-season leak):** `GET /students/:id/engagement` now picks the newest enrolment the caller is scoped to, via `mayScoreInSeason`. An explicit out-of-scope `?seasonId=` returns 403. Three new tests cover it: admin of A naming B gets 403, the same admin naming A gets 200, and a leader naming B gets 403. A mutation entry covers it too.
+- **S2:** Task 5 updates `navigation.test.ts`'s pins for the three `/notes` sidebar entries, with exact anchors, and runs the shared tests.
+- **S3:** `/more` is Plan 1's (X15). Prerequisites and the device pass now say so.
+- **S4:** `useAuthoredNotes` and `useStudentNotes` are `useInfiniteQuery` and follow `nextCursor`. Both lists render "Load more". A test pins the second-page fetch.
+- **S5:** Composer chips now read "Group leaders", "Mentors" and "Season admins", so "Visible to … only" appears once per note. The `/notes` row's visibility label is now its own `Text`. The old combined string would never have matched the exact-text query.
+- **S6:** The engagement card shows "No season to score yet" only for `404 no_season`, detected by `isNoSeasonError`. Any other failure shows `ErrorState` with a guarded retry. Tests cover both.
+- **Nits fixed:**
+  - The follow-up notification test is scoped to the suite's admin, so it no longer counts rows DB-wide while v1 writes to the same table.
+  - The `-1` query-key sentinels are now `null`.
+  - Name fields are non-null to match `User.name`.
+  - Session fixtures include `avatarPath` and `hasPassword` (X11).
+  - Placeholder edits only remove rows (X9).
+  - The "check two primitives" prose is replaced by verified facts.
+- **Not changed (nits, reasons):**
+  - PATCH returns 404 before 403. Note ids are sequential, so existence is not a meaningful secret.
+  - Engagement scores ACTIVE enrolments only, so history seasons stay unscorable. That matches v1's behaviour and is left as is.
+  - `canViewNote` is unused. It is kept as the documented single-note gate for a future single-note GET.
+- **Link format (X1):** `MENTOR_FOLLOWUP` keeps writing v1's exact `/admin/students/:id` (jpc-space `note-actions.ts:84`).
+
+**Cross-plan consistency pass (2026-10-05, against plans 14–17 and the revised
+order … 5 → 6 → 7 → 17 → 14 → **8** → 9 …):**
+
+- **Prerequisites:** execution order corrected (17 now follows 7; the old
+  string had 17 before 6); Plan 17 added as a consumed plan.
+- **Student detail is `student/[id]/index.tsx`** (Plan 17 Task 7 moved it to
+  the directory form and rewrote it). Task 6's Files/Consumes, the test import
+  path, the device-pass mutation and the typecheck note follow. Task 6 Step 5's
+  imports are now four levels deep (`../../../../src/...`) and **merge into**
+  Plan 17's existing imports: `useState` and `Button` are already imported
+  there, so re-importing them (as the old snippet did) would not compile; only
+  `Input`, the note types and the two hook modules are added. Plan 17 kept
+  `ProfileCard`, `EnrollmentRow`, `enrollmentStatusLabel` and the "Seasons"
+  card, so the placement anchors are unchanged.
+- **Nav pin:** Plan 1's `nav-routes.test.ts` pins ADMIN's `/more` labels
+  exactly; Task 5 Step 3 now adds "My notes" to that expectation (the old
+  plan only updated `navigation.test.ts`, so `nav-routes` would have failed).
+- **Metric reuse:** `isAtRisk` stays the one definition (Plan 11 bands with it,
+  Plan 18 reuses it); engagement's submitted set `SUBMITTED|REVIEWED|RETURNED`
+  is the complement of Plan 1's `isAssignmentOutstanding`.

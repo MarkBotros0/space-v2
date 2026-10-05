@@ -12,9 +12,13 @@ made for `POST /api/v1/sessions` (`2026-08-24-plan-03-season-session-writes.md`
 Task 4 Step 3), for the same reason: the domain's routes stay in one file that
 no other workstream touches. The contract split is the spine of the whole plan:
 `quizQuestionStudentSchema` has **no `correctIndex` field at all** and
-`quizQuestionAuthoringSchema` does, so a handler cannot widen a student payload
-into an authoring one and still typecheck. Mobile adds three screens over the
-`DETAIL_ROUTE_NAMES` mechanism Plan 1 established.
+`quizQuestionAuthoringSchema` does. On the server the guarantee is a raw-JSON
+integration test (Task 4), backed by a student-question mapper whose object
+literal is typed as `QuizQuestionStudent` (an added `correctIndex` line fails
+the excess-property check; a spread would not — which is why the test, not the
+type, is the guarantee). Mobile adds four screens over the
+`DETAIL_ROUTE_NAMES` mechanism Plan 1 established — list, runner, grading, and
+the authoring builder (Task 11).
 
 **Tech Stack:** Express 5, Prisma 7 (`src/generated/prisma`), Zod contracts in
 `packages/shared`, jest + supertest integration suite against the shared
@@ -118,7 +122,22 @@ one domain — buys parallelism by fragmenting the one file a reader needs to
 hold in their head, and the spec's headline risk is exactly a careless edit
 across two quiz reads that live apart.) Task 7 is the mobile foundation.
 Tasks 8+9 (list + runner) and Task 10 (grading screen) are then two independent
-screen workstreams. Task 11 is the coordinator's closing gate.
+screen workstreams. Task 11 (the authoring UI) runs after Tasks 8 and 9 — it
+edits both of their screens. Task 11b (the session-quiz card's row press)
+runs after Task 9 — it links to Task 9's `quiz/[id]` route. Task 12 is the
+coordinator's closing gate.
+
+**Depends on** (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → **6** → 7 → 17 → …):
+Plan 1 (`DETAIL_ROUTE_NAMES`; Task 0's derived route-count
+tests — ruling X9), Plan 4 (`useCurrentSeasonId` from
+`src/hooks/use-seasons.ts` — the only source of a staff season, ruling X8;
+`apiErrorMessage` from `src/lib/api-error.ts`; `dayKey` on session list rows),
+Plan 16 (`SessionQuizzesCard` in `src/components/SessionQuizzesCard.tsx`,
+`sessionQuizItemSchema` in `packages/shared/src/session.ts`, its replaced
+`session-detail.test.tsx` harness — Task 11b; and the now-required
+`startTime` on session list rows, which this plan's session-list fixtures
+carry), Phase 0's `useSeasonSessions`. Plans 15 and 5 also run before this
+one; nothing here consumes them. Plan 17 runs **after** this plan.
 
 ---
 
@@ -150,7 +169,13 @@ screen workstreams. Task 11 is the coordinator's closing gate.
   `saveQuizAnswersRequestSchema` (`SaveQuizAnswersBody`),
   `saveQuizGradesRequestSchema` (`SaveQuizGradesBody`),
   `gradeEssayAnswersRequestSchema` (`GradeEssayAnswersBody`),
-  `reopenAttemptRequestSchema`, `quizListQuerySchema`, `quizAttemptsQuerySchema`.
+  `reopenAttemptRequestSchema`, `quizListQuerySchema`, `quizAttemptsQuerySchema`;
+  type `QuizQuestionInput` (`z.input` of `quizQuestionRequestSchema` — what a
+  client form sends); and the mutation response schemas (ruling X10 — no
+  client casts a write response): `quizCreatedResponseSchema`,
+  `quizUpdatedResponseSchema`, `quizQuestionDeletedResponseSchema`,
+  `reorderQuestionsResponseSchema`, `publishQuizResponseSchema`,
+  `saveQuizAnswersResponseSchema`, `reopenAttemptResponseSchema`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -317,11 +342,14 @@ import { quizAttemptStatusSchema, quizKindSchema, quizQuestionTypeSchema } from 
 //
 // THE CENTRAL DECISION OF THIS DOMAIN (spec §8, D2): there is no schema
 // anywhere in this file with an optional `correctIndex`. The presence of the
-// answer key is a DIFFERENT TYPE. A handler that tries to serve the authoring
-// shape where the student shape is declared fails typecheck, and the
-// integration test in the attempts task asserts the same thing against raw
-// response JSON. v1's protection was a `select` list living in the same file
-// as the two reads that do return the key.
+// answer key is a DIFFERENT TYPE, so a client parsing the student shape can
+// never be handed the key as a typed field. On the server, the raw-JSON
+// integration test in the attempts task is the guarantee; the typed
+// `toStudentQuestion` mapper there catches the most likely edit (a
+// `correctIndex` line added to its literal) at typecheck, but structural
+// typing lets a spread through, so the test is what must never be weakened.
+// v1's protection was a `select` list living in the same file as the two
+// reads that do return the key.
 
 // ---------------------------------------------------------------------------
 // Read shapes
@@ -610,6 +638,8 @@ export const quizQuestionRequestSchema = z
     d.type === "ESSAY" ? { ...d, options: [] as string[], correctIndex: null } : d,
   );
 export type QuizQuestionBody = z.output<typeof quizQuestionRequestSchema>;
+/** What a client form sends (before the schema's defaults and transform run). */
+export type QuizQuestionInput = z.input<typeof quizQuestionRequestSchema>;
 
 /** New in v2 (R20: v1 had no reorder at all). Must be a permutation — checked server-side. */
 export const reorderQuestionsRequestSchema = z.object({
@@ -694,6 +724,30 @@ export const quizAttemptsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 export type QuizAttemptsQuery = z.infer<typeof quizAttemptsQuerySchema>;
+
+// ---------------------------------------------------------------------------
+// Write responses — every client mutation parses one of these (ruling X10).
+// ---------------------------------------------------------------------------
+
+/** POST /quizzes */
+export const quizCreatedResponseSchema = z.object({ id: z.number() });
+/** PATCH /quizzes/:id */
+export const quizUpdatedResponseSchema = z.object({ updated: z.literal(true) });
+/** DELETE /quizzes/:id/questions/:questionId */
+export const quizQuestionDeletedResponseSchema = z.object({ deleted: z.literal(true) });
+/** PUT /quizzes/:id/questions/order */
+export const reorderQuestionsResponseSchema = z.object({
+  questions: z.array(quizQuestionAuthoringSchema),
+});
+/** POST /quizzes/:id/publish */
+export const publishQuizResponseSchema = z.object({ publishedAt: z.string().nullable() });
+/** PATCH /quizzes/:id/attempt */
+export const saveQuizAnswersResponseSchema = z.object({ saved: z.number() });
+/** POST /quizzes/:id/attempts/reopen */
+export const reopenAttemptResponseSchema = z.object({
+  attemptId: z.number(),
+  attemptNumber: z.number(),
+});
 ```
 
 - [ ] **Step 4: Export it.** In `packages/shared/src/index.ts` append
@@ -1446,9 +1500,11 @@ backend — if the generated client wants `_count: true`, use that and read
 - [ ] **Step 5: Mount it.** In `apps/backend/src/app.ts` add
 `import { quizzesRouter } from "./routes/quizzes";` beside the other route
 imports and `app.use("/api/v1/quizzes", quizzesRouter);` after the submissions
-line. Also add `"PUT"` to the `cors({ methods: [...] })` array — Task 4's
-attempt endpoint is a PUT and the current list omits it, so a browser preflight
-would refuse it.
+line. The router owns that prefix exclusively, so its router-wide
+`quizzesRouter.use(requireAuth)` is allowed under ruling X5 (an unknown path
+under any *other* prefix still falls through to `not_found`). CORS needs no
+change: `app.ts` already lists `"PUT"` in `cors({ methods })` (added for
+`PUT /submissions/by-assignment/:id`), which covers Task 4's attempt PUT.
 
 - [ ] **Step 6: Run the suite**
 
@@ -2089,8 +2145,8 @@ assertion the whole plan exists to make true.
   `createNotificationsBulk` from `lib/notifications`,
   `saveQuizAnswersRequestSchema` (Task 1).
 - Produces:
-  - `loadStudentQuizDetail(quizId, studentUserId): Promise<StudentQuizDetail | null>` — **the select without `correctIndex`**; Tasks 9's screen consumes its shape.
-  - `loadQuizAuthoringDetail(quizId, user): Promise<QuizAuthoringDetail | null>` — the select **with** `correctIndex`.
+  - `loadStudentQuizDetail(quizId, studentUserId): Promise<StudentQuizDetailRow | null>` — **the select without `correctIndex`**, each question built by the typed `toStudentQuestion` mapper; `StudentQuizDetailRow` is the shared `StudentQuizDetail` with its two timestamps as `Date`. Task 9's screen consumes its shape.
+  - `loadQuizAuthoringDetail(quizId, canManage: boolean)` — the select **with** `correctIndex`.
   - `GET /api/v1/quizzes/:id` → staff `{ data: QuizAuthoringDetail }`, student `{ data: StudentQuizDetail }`.
   - `PUT /api/v1/quizzes/:id/attempt` → `{ data: StudentQuizDetail }` (create-or-resume, idempotent).
   - `PATCH /api/v1/quizzes/:id/attempt` → `{ data: { saved: number } }`.
@@ -2100,6 +2156,22 @@ assertion the whole plan exists to make true.
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
+/**
+ * QUIZ_GRADED rows for the suite's student. v1's link for this type is the
+ * bare list path `/student/quizzes` (ruling X1), so a row cannot be tied to
+ * one quiz by its link — and every quiz in this file grades the same
+ * `ownStudentId`, while notifications are only cleaned in beforeAll/afterAll.
+ * So every notification assertion in Tasks 4–6 is a DELTA from a baseline
+ * taken inside the same test, never an absolute count. The suite runs
+ * --runInBand and `ownStudentId` belongs to this file alone, so nothing else
+ * writes these rows mid-test. (Tasks 5 and 6 append below and reuse this.)
+ */
+async function quizGradedCount(): Promise<number> {
+  return db.notification.count({
+    where: { userId: ownStudentId, type: "QUIZ_GRADED", link: "/student/quizzes" },
+  });
+}
+
 describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   let onlineQuizId: number;
   let mcqId: number;
@@ -2330,6 +2402,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   });
 
   it("submits a mixed quiz to SUBMITTED with autoScore only (R63)", async () => {
+    const before = await quizGradedCount();
     await request(app)
       .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`);
@@ -2358,15 +2431,13 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     expect(attempt).toMatchObject({ autoScore: 2, manualScore: null, totalScore: null });
     expect(attempt?.submittedAt).not.toBeNull();
 
-    const notifications = await db.notification.count({
-      where: { userId: ownStudentId, type: "QUIZ_GRADED" },
-    });
     // R65: the essay path notifies nobody — there is nothing graded to tell them about.
-    expect(notifications).toBe(0);
+    expect((await quizGradedCount()) - before).toBe(0);
   });
 
   it("auto-grades an all-MCQ quiz, all-or-nothing, and notifies once (R60, R64, R65)", async () => {
     const built = await buildPublishedQuiz({ withEssay: false });
+    const before = await quizGradedCount();
     await request(app)
       .put(`/api/v1/quizzes/${built.quizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`);
@@ -2394,12 +2465,9 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     expect(attempt).toMatchObject({ manualScore: 0, gradedById: null });
     expect(attempt?.gradedAt).not.toBeNull();
 
-    const notifications = await db.notification.count({
-      where: { userId: ownStudentId, type: "QUIZ_GRADED", link: `/quizzes/${built.quizId}` },
-    });
-    // R118: v1's three notification sites all linked to the bare list with
-    // three different bodies. There is a detail route now — link to it.
-    expect(notifications).toBe(1);
+    // Exactly one new row, carrying v1's link (ruling X1 — v1's three sites all
+    // write the bare list path; the row is still rendered by v1 today).
+    expect((await quizGradedCount()) - before).toBe(1);
   });
 
   it("refuses a second submit and a save after submit (R49, R58)", async () => {
@@ -2470,12 +2538,63 @@ Add to `routes/quizzes.ts`:
  * NEVER SELECTS correctIndex. v1's equivalent had exactly this property and
  * said so in a comment (quiz-query.ts:373-374) — but it lived in the same file
  * as the two reads that DO return the key, so the protection was one "let's
- * reuse this query" refactor away from evaporating. Here it is also the return
- * type: studentQuizDetailSchema's questions have no such field, so widening
- * this select does not typecheck, and the integration test above asserts it
- * against raw response JSON as well.
+ * reuse this query" refactor away from evaporating.
+ *
+ * What protects it here, stated exactly (no stronger claim):
+ * 1. The raw-JSON integration test above — the guarantee. It fails on any
+ *    path by which the key reaches the response.
+ * 2. `toStudentQuestion` below returns an object LITERAL typed as the shared
+ *    `QuizQuestionStudent`, so TypeScript's excess-property check rejects a
+ *    `correctIndex: q.correctIndex` line added to it. It does NOT catch a
+ *    spread (`...q`) or a select widened and passed through some other way —
+ *    structural typing allows extra keys on non-literals — which is why (1)
+ *    exists and is the one that must never be weakened.
+ * The loader's return type is `StudentQuizDetailRow`: the shared wire type
+ * with its two timestamps as `Date` (the backend hands Dates to res.json()).
  */
-async function loadStudentQuizDetail(quizId: number, studentUserId: number) {
+type StudentQuizDetailRow = Omit<StudentQuizDetail, "submittedAt" | "gradedAt"> & {
+  submittedAt: Date | null;
+  gradedAt: Date | null;
+};
+
+interface StudentQuestionSource {
+  id: number;
+  order: number;
+  type: "MCQ" | "ESSAY";
+  prompt: string;
+  points: number;
+  options: string[];
+}
+interface StudentAnswerSource {
+  selectedIndex: number | null;
+  text: string | null;
+  isCorrect: boolean | null;
+  pointsAwarded: number | null;
+}
+
+function toStudentQuestion(
+  q: StudentQuestionSource,
+  a: StudentAnswerSource | undefined,
+): QuizQuestionStudent {
+  return {
+    id: q.id,
+    order: q.order,
+    type: q.type,
+    prompt: q.prompt,
+    points: q.points,
+    options: q.options,
+    selectedIndex: a?.selectedIndex ?? null,
+    text: a?.text ?? null,
+    // Null until submit (R52/R54), so nothing leaks mid-attempt.
+    isCorrect: a?.isCorrect ?? null,
+    pointsAwarded: a?.pointsAwarded ?? null,
+  };
+}
+
+async function loadStudentQuizDetail(
+  quizId: number,
+  studentUserId: number,
+): Promise<StudentQuizDetailRow | null> {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
     select: {
@@ -2542,22 +2661,7 @@ async function loadStudentQuizDetail(quizId: number, studentUserId: number) {
     totalScore: attempt?.totalScore ?? null,
     submittedAt: attempt?.submittedAt ?? null,
     gradedAt: attempt?.gradedAt ?? null,
-    questions: quiz.questions.map((q) => {
-      const a = answerByQuestion.get(q.id);
-      return {
-        id: q.id,
-        order: q.order,
-        type: q.type,
-        prompt: q.prompt,
-        points: q.points,
-        options: q.options,
-        selectedIndex: a?.selectedIndex ?? null,
-        text: a?.text ?? null,
-        // Null until submit (R52/R54), so nothing leaks mid-attempt.
-        isCorrect: a?.isCorrect ?? null,
-        pointsAwarded: a?.pointsAwarded ?? null,
-      };
-    }),
+    questions: quiz.questions.map((q) => toStudentQuestion(q, answerByQuestion.get(q.id))),
   };
 }
 
@@ -2612,6 +2716,13 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean) {
   };
 }
 ```
+
+Add `import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";`
+to `routes/quizzes.ts` — **type-only**, so it is erased at emit and the
+`rootDir` trap (CLAUDE.md, ruling X12) does not apply; every *value* import
+from shared stays on the relative path. Prisma's `QuizQuestionType` enum value
+is the string union `"MCQ" | "ESSAY"`, so `quiz.questions` passes to
+`toStudentQuestion` without a cast.
 
 - [ ] **Step 3: `GET /:id` — role dispatch to those two loaders**
 
@@ -2912,9 +3023,8 @@ quizzesRouter.post("/:id/attempt/submit", async (req, res) => {
         type: "QUIZ_GRADED",
         title: `Quiz graded: ${quiz.title}`,
         body: "Your quiz was graded automatically.",
-        // R118: v1 linked all three notification sites at the bare list. There
-        // is a detail route now.
-        link: `/quizzes/${id}`,
+        // v1's exact link (ruling X1) — see QUIZ_GRADED_LINK below.
+        link: QUIZ_GRADED_LINK,
       });
     } catch {
       // Swallowed deliberately; see above.
@@ -2928,7 +3038,21 @@ quizzesRouter.post("/:id/attempt/submit", async (req, res) => {
 ```
 
 Add `createNotificationsBulk` (from `../lib/notifications`), `canGradeQuiz` and
-`saveQuizAnswersRequestSchema` to the imports.
+`saveQuizAnswersRequestSchema` to the imports, and declare the link once near
+the top of `routes/quizzes.ts` (Tasks 5 and 6 reuse it at their three other
+`QUIZ_GRADED` sites):
+
+```ts
+/**
+ * v1's exact link for every QUIZ_GRADED row — `quiz-actions.ts:167,483,554`
+ * all write the bare list path. Ruling X1: every plan writes v1's link format,
+ * because v1 renders these same rows from the shared database today and a
+ * v2-only path would be a dead link in v1. Plan 9's link parser maps this
+ * shape to the mobile `/quizzes` tab; any remap is Plan 13's cutover backfill.
+ * Do not "improve" it to a per-quiz path here.
+ */
+const QUIZ_GRADED_LINK = "/student/quizzes";
+```
 
 **Nothing tells a grader an attempt is waiting.** That is R65/D14, and it stays
 unbuilt: a new `NotificationType` value is a schema change and therefore blocked
@@ -3067,6 +3191,7 @@ describe("ONLINE grading", () => {
   });
 
   it("grades essays, requires every essay, and rejects an over-max award", async () => {
+    const before = await quizGradedCount();
     const incomplete = await request(app)
       .post(`/api/v1/quizzes/${quizId}/attempts/${attemptId}/grade`)
       .set("authorization", `Bearer ${leaderToken}`)
@@ -3095,10 +3220,7 @@ describe("ONLINE grading", () => {
     });
     expect(ok.body.data.gradedByName).toBe("Test leader");
 
-    const notifications = await db.notification.count({
-      where: { userId: ownStudentId, type: "QUIZ_GRADED", link: `/quizzes/${quizId}` },
-    });
-    expect(notifications).toBe(1);
+    expect((await quizGradedCount()) - before).toBe(1);
 
     // A re-save at the same total is a no-op for the student (D8's unified
     // rule: notify on a first grade and on a score change, silent otherwise —
@@ -3107,18 +3229,14 @@ describe("ONLINE grading", () => {
       .post(`/api/v1/quizzes/${quizId}/attempts/${attemptId}/grade`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ awards: [{ questionId: essayId, points: 4 }] });
-    expect(
-      await db.notification.count({ where: { userId: ownStudentId, type: "QUIZ_GRADED" } }),
-    ).toBe(1);
+    expect((await quizGradedCount()) - before).toBe(1);
 
     // A changed total does notify again.
     await request(app)
       .post(`/api/v1/quizzes/${quizId}/attempts/${attemptId}/grade`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ awards: [{ questionId: essayId, points: 5 }] });
-    expect(
-      await db.notification.count({ where: { userId: ownStudentId, type: "QUIZ_GRADED" } }),
-    ).toBe(2);
+    expect((await quizGradedCount()) - before).toBe(2);
   });
 
   it("refuses grading an attempt whose student is outside the caller's scope (R68)", async () => {
@@ -3156,6 +3274,7 @@ describe("ONLINE grading", () => {
       where: { id: attemptId },
       data: { status: "GRADED", manualScore: 4, totalScore: 6, gradedAt: new Date() },
     });
+    const before = await quizGradedCount();
 
     const res = await request(app)
       .post(`/api/v1/quizzes/${quizId}/attempts/reopen`)
@@ -3178,9 +3297,7 @@ describe("ONLINE grading", () => {
     expect(attempts[1]).toMatchObject({ attemptNumber: 2, status: "IN_PROGRESS" });
 
     // v1 sent NOTHING on reopen — the student was never told they had a retake.
-    expect(
-      await db.notification.count({ where: { userId: ownStudentId, type: "QUIZ_GRADED" } }),
-    ).toBe(1);
+    expect((await quizGradedCount()) - before).toBe(1);
   });
 
   it("reopens a SUBMITTED attempt, then refuses while that one is open", async () => {
@@ -3469,7 +3586,7 @@ quizzesRouter.post("/:id/attempts/:attemptId/grade", async (req, res) => {
         type: "QUIZ_GRADED",
         title: `Quiz graded: ${quiz.title}`,
         body: "Your quiz has been graded.",
-        link: `/quizzes/${id}`,
+        link: QUIZ_GRADED_LINK,
       });
     } catch {
       // Best-effort; a transport failure must not fail the grade.
@@ -3576,7 +3693,7 @@ quizzesRouter.post("/:id/attempts/reopen", async (req, res) => {
       type: "QUIZ_GRADED",
       title: `You can retake: ${quiz.title}`,
       body: "Your quiz has been reopened, so you can take it again.",
-      link: `/quizzes/${id}`,
+      link: QUIZ_GRADED_LINK,
     });
   } catch {
     // Best-effort.
@@ -3656,6 +3773,7 @@ describe("PAPER grades", () => {
   });
 
   it("saves a batch and notifies only the newly graded", async () => {
+    const before = await quizGradedCount();
     const res = await request(app)
       .post(`/api/v1/quizzes/${quizId}/grades`)
       .set("authorization", `Bearer ${leaderToken}`)
@@ -3667,27 +3785,21 @@ describe("PAPER grades", () => {
     );
     expect(row).toMatchObject({ score: 18, notes: "Strong." });
     expect(row.gradedByName).toBe("Test leader");
-    expect(
-      await db.notification.count({ where: { userId: ownStudentId, type: "QUIZ_GRADED" } }),
-    ).toBe(1);
+    expect((await quizGradedCount()) - before).toBe(1);
 
     // Re-saving the same score is silent (D8's unified rule).
     await request(app)
       .post(`/api/v1/quizzes/${quizId}/grades`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ entries: [{ studentUserId: ownStudentId, score: 18, notes: "Strong." }] });
-    expect(
-      await db.notification.count({ where: { userId: ownStudentId, type: "QUIZ_GRADED" } }),
-    ).toBe(1);
+    expect((await quizGradedCount()) - before).toBe(1);
 
     // Changing the score notifies again.
     await request(app)
       .post(`/api/v1/quizzes/${quizId}/grades`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ entries: [{ studentUserId: ownStudentId, score: 19, notes: "Strong." }] });
-    expect(
-      await db.notification.count({ where: { userId: ownStudentId, type: "QUIZ_GRADED" } }),
-    ).toBe(2);
+    expect((await quizGradedCount()) - before).toBe(2);
   });
 
   // -------------------------------------------------------------------
@@ -3980,7 +4092,7 @@ quizzesRouter.post("/:id/grades", async (req, res) => {
         type: "QUIZ_GRADED",
         title: `Quiz graded: ${quiz.title}`,
         body: "Your quiz has been graded.",
-        link: `/quizzes/${id}`,
+        link: QUIZ_GRADED_LINK,
       });
     } catch {
       // Best-effort, outside the transaction. v1 issued three queries per
@@ -4043,11 +4155,23 @@ git add apps/backend && git commit -m "feat(backend): paper grade sheet with the
 
 - [ ] **Step 1: Extend the layout test**
 
-Add the two names to the "detail routes hidden from the tab bar" assertion the
-earlier plans established (it loops over `DETAIL_ROUTE_NAMES` asserting each
-entry is declared with `href: null`) — no new assertion shape, just the two new
-entries flowing through the existing loop. Run
-`cd apps/mobile && pnpm jest src/__tests__/app-layout.test.tsx` → FAIL (names absent).
+Plan 1 Task 0 made `app-layout.test.tsx` derive its counts from
+`DETAIL_ROUTE_NAMES` (ruling X9), so appending to the const can never fail a
+derived count — the failing-first assertion has to name the routes. Add (using
+the file's own `user()`/`scopes` fixtures and its `mockScreens` capture of
+`{ name, title, href }`; if Plan 1 Task 0 renamed them, use its names):
+
+```tsx
+it.each(["quiz/[id]/index", "quiz/[id]/grade"])("registers %s as a hidden detail route", (name) => {
+  useSessionStore.getState().setSession(user("STUDENT"), scopes);
+  render(<AppLayout />);
+  const detail = mockScreens.find((s) => s.name === name);
+  expect(detail).toBeDefined();
+  expect(detail?.href).toBeNull();
+});
+```
+
+Run `cd apps/mobile && pnpm jest src/__tests__/app-layout.test.tsx` → FAIL (names absent).
 
 - [ ] **Step 2: Create the two stubs and extend the const**
 
@@ -4071,26 +4195,23 @@ export default function QuizDetailScreen() {
 `apps/mobile/app/(app)/quiz/[id]/grade.tsx` is the same with the heading
 `Grade quiz {id}`. Both are four levels deep, hence `../../../../src/ui`.
 
-**Why `quiz/[id]/index.tsx` and not `quiz/[id].tsx`:** the two routes must
-coexist, and a file plus a directory of the same name is ambiguous in
-expo-router. `index.tsx` inside the dynamic directory is the unambiguous form,
-and `routeNameForHref` already maps `/students` → `students/index` for exactly
-this reason. The route names are `quiz/[id]/index` and `quiz/[id]/grade`; the
-hrefs are `/quiz/[id]` and `/quiz/[id]/grade`.
+**Why `quiz/[id]/index.tsx` and not `quiz/[id].tsx`:** ruling X7 — a dynamic
+segment with child routes uses the directory form, never `x/[id].tsx` beside
+`x/[id]/` (Plan 4 does the same for `session/[id]/index.tsx` beside Plan 2's
+`session/[id]/attendance.tsx`). The route names are `quiz/[id]/index` and
+`quiz/[id]/grade`; the hrefs are `/quiz/[id]` and `/quiz/[id]/grade`. Task 11
+adds `quiz/[id]/edit` and `quiz/new` the same way.
+
+Append the two names to `DETAIL_ROUTE_NAMES` in `_layout.tsx`, keeping every
+entry already there (by the time this plan runs, Plans 1, 2, 4, 15, 16
+and 5 have appended theirs — e.g. `"assignment/[id]/index"` (Plan 15 moved
+it), `"session/[id]/index"`, `"session/[id]/attendance"`, `"group/[id]/index"`
+(Plan 16 moved it), `"student/[id]"`):
 
 ```tsx
-export const DETAIL_ROUTE_NAMES = [
-  "assignment/[id]",
-  "group/[id]",
-  "submission/[publicId]",
-  "session/[id]/attendance",
   "quiz/[id]/index",
   "quiz/[id]/grade",
-] as const;
 ```
-
-(Take the existing entries from the file as they stand when this task runs —
-Plans 1, 2 and 4 have each appended to it; add only the two quiz names.)
 
 - [ ] **Step 3: Add the query-key factory** to `query-keys.ts`, same spreading
 pattern as the others:
@@ -4101,9 +4222,11 @@ pattern as the others:
     lists: () => [...queryKeys.quizzes.all, "list"] as const,
     bySeason: (seasonId: number | null) => [...queryKeys.quizzes.lists(), { seasonId }] as const,
     details: () => [...queryKeys.quizzes.all, "detail"] as const,
-    detail: (id: number) => [...queryKeys.quizzes.details(), id] as const,
-    attempts: (id: number) => [...queryKeys.quizzes.detail(id), "attempts"] as const,
-    grades: (id: number) => [...queryKeys.quizzes.detail(id), "grades"] as const,
+    // number | null, like sessions.bySeason — a null key never collides with a
+    // real quiz's cache entry, so no -1 sentinel anywhere.
+    detail: (id: number | null) => [...queryKeys.quizzes.details(), { id }] as const,
+    attempts: (id: number | null) => [...queryKeys.quizzes.detail(id), "attempts"] as const,
+    grades: (id: number | null) => [...queryKeys.quizzes.detail(id), "grades"] as const,
   },
 ```
 
@@ -4119,12 +4242,14 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import { z } from "zod";
 import {
   quizAuthoringDetailSchema,
   quizGradeSheetSchema,
+  quizGradingAttemptSchema,
   quizGradingPageSchema,
   quizListPageSchema,
+  reopenAttemptResponseSchema,
+  saveQuizAnswersResponseSchema,
   studentQuizDetailSchema,
   studentQuizListPageSchema,
   type QuizAuthoringDetail,
@@ -4175,7 +4300,7 @@ export function useStudentQuizDetail(
   id: number | null,
 ): UseQueryResult<StudentQuizDetail> {
   return useQuery({
-    queryKey: [...queryKeys.quizzes.detail(id ?? -1), "student"] as const,
+    queryKey: [...queryKeys.quizzes.detail(id), "student"] as const,
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/quizzes/${id}`);
       return studentQuizDetailSchema.parse(res.data.data);
@@ -4196,7 +4321,7 @@ export function useQuizAuthoringDetail(
   enabled: boolean,
 ): UseQueryResult<QuizAuthoringDetail> {
   return useQuery({
-    queryKey: [...queryKeys.quizzes.detail(id ?? -1), "staff"] as const,
+    queryKey: [...queryKeys.quizzes.detail(id), "staff"] as const,
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/quizzes/${id}`);
       return quizAuthoringDetailSchema.parse(res.data.data);
@@ -4226,13 +4351,11 @@ export interface AnswerInput {
   text: string | null;
 }
 
-const savedSchema = z.object({ saved: z.number() });
-
 export function useSaveAnswers(id: number) {
   return useMutation({
     mutationFn: async (answers: AnswerInput[]) => {
       const res = await apiClient.patch(`/api/v1/quizzes/${id}/attempt`, { answers });
-      return savedSchema.parse(res.data.data);
+      return saveQuizAnswersResponseSchema.parse(res.data.data);
     },
     // Deliberately no invalidation: the runner holds the authoritative draft in
     // local state while the student is typing, and refetching mid-attempt would
@@ -4259,7 +4382,7 @@ export function useQuizGradeSheet(
   enabled: boolean,
 ): UseQueryResult<QuizGradeSheet> {
   return useQuery({
-    queryKey: queryKeys.quizzes.grades(id ?? -1),
+    queryKey: queryKeys.quizzes.grades(id),
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/quizzes/${id}/grades`);
       return quizGradeSheetSchema.parse(res.data.data);
@@ -4293,7 +4416,7 @@ export function useQuizAttempts(
   enabled: boolean,
 ): UseQueryResult<QuizGradingPage> {
   return useQuery({
-    queryKey: queryKeys.quizzes.attempts(id ?? -1),
+    queryKey: queryKeys.quizzes.attempts(id),
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/quizzes/${id}/attempts`);
       return quizGradingPageSchema.parse(res.data.data);
@@ -4313,7 +4436,7 @@ export function useGradeEssays(id: number) {
         `/api/v1/quizzes/${id}/attempts/${input.attemptId}/grade`,
         { awards: input.awards },
       );
-      return res.data.data as { attemptId: number };
+      return quizGradingAttemptSchema.parse(res.data.data);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
@@ -4329,7 +4452,7 @@ export function useReopenAttempt(id: number) {
       const res = await apiClient.post(`/api/v1/quizzes/${id}/attempts/reopen`, {
         studentUserId,
       });
-      return res.data.data as { attemptId: number; attemptNumber: number };
+      return reopenAttemptResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
@@ -4366,7 +4489,7 @@ git add apps/mobile && git commit -m "feat(mobile): quiz detail routes, query ke
 - Test: `apps/mobile/src/__tests__/quizzes-screen.test.tsx`
 
 **Interfaces:**
-- Consumes: `useQuizList`, `useStudentQuizList` (Task 7); `useSessionStore`; `formatDate` from `../../src/lib/format`.
+- Consumes: `useQuizList`, `useStudentQuizList` (Task 7); `useSessionStore`; `formatDate` from `../../src/lib/format`; **`useCurrentSeasonId` from `src/hooks/use-seasons.ts` (Plan 4)** for the staff branch — staff have no `scopes.activeSeasonId` (it is read from the StudentProfile and is always null for ADMIN/LEADER/SUPER), so ruling X8 makes Plan 4's hook the only source of a staff season.
 - Produces: nothing downstream; the two detail screens are reached from here by `router.push`.
 
 - [ ] **Step 1: Write the failing test**
@@ -4387,13 +4510,34 @@ import QuizzesScreen from "../../app/(app)/quizzes";
 const get = apiClient.get as jest.Mock;
 
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const },
+  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const, avatarPath: null },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
+// activeSeasonId is null for every staff role on a real device (it is the
+// student profile pointer) — the fixture says so, and the staff season comes
+// from GET /api/v1/seasons via useCurrentSeasonId (ruling X8).
 const leaderSession = {
-  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const },
-  scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: 7, graduationYear: null },
+  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null },
+  scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
 };
+
+const seasonsList = {
+  data: { data: { seasons: [{
+    id: 7, code: "s26", title: "Spring 2026", program: "TEST", year: 2026, status: "ACTIVE",
+    startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-12-31T00:00:00.000Z",
+  }] } },
+};
+
+/** Staff screens make two GETs: the seasons list, then the season's quizzes. */
+function staffGets(quizPage: unknown) {
+  get.mockImplementation((url: string) =>
+    url === "/api/v1/seasons"
+      ? Promise.resolve(seasonsList)
+      : url === "/api/v1/quizzes?seasonId=7"
+        ? Promise.resolve({ data: { data: quizPage } })
+        : Promise.reject(new Error(`unexpected GET ${url}`)),
+  );
+}
 
 function studentRow(over: Partial<Record<string, unknown>> = {}) {
   return {
@@ -4486,7 +4630,7 @@ describe("QuizzesScreen — student", () => {
 describe("QuizzesScreen — staff", () => {
   it("shows the server's graded progress and routes to the grading screen", async () => {
     useSessionStore.setState(leaderSession);
-    get.mockResolvedValue({ data: { data: { items: [staffRow()], nextCursor: null } } });
+    staffGets({ items: [staffRow()], nextCursor: null });
 
     renderWithProviders(<QuizzesScreen />);
 
@@ -4504,20 +4648,27 @@ describe("QuizzesScreen — staff", () => {
 
   it("shows an online quiz's draft state", async () => {
     useSessionStore.setState(leaderSession);
-    get.mockResolvedValue({
-      data: {
-        data: {
-          items: [staffRow({ id: 51, title: "Online quiz", kind: "ONLINE",
-            publishedAt: null, questionCount: 4, maxScore: 7, gradedCount: 0 })],
-          nextCursor: null,
-        },
-      },
+    staffGets({
+      items: [staffRow({ id: 51, title: "Online quiz", kind: "ONLINE",
+        publishedAt: null, questionCount: 4, maxScore: 7, gradedCount: 0 })],
+      nextCursor: null,
     });
 
     renderWithProviders(<QuizzesScreen />);
 
     expect(await screen.findByText("Online quiz")).toBeTruthy();
     expect(screen.getByText("Online · Draft · 4 questions")).toBeTruthy();
+  });
+
+  it("takes a staff season from the seasons list, never from scopes.activeSeasonId (X8)", async () => {
+    useSessionStore.setState(leaderSession);
+    staffGets({ items: [staffRow()], nextCursor: null });
+
+    renderWithProviders(<QuizzesScreen />);
+
+    expect(await screen.findByText("Week 1 quiz")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/seasons");
+    expect(get).toHaveBeenCalledWith("/api/v1/quizzes?seasonId=7");
   });
 });
 ```
@@ -4534,6 +4685,7 @@ import { Pressable } from "react-native";
 import type { QuizSummary, StudentQuizResult } from "@space/shared";
 
 import { useQuizList, useStudentQuizList } from "../../src/hooks/use-quizzes";
+import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
 import { formatDate } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
@@ -4644,19 +4796,29 @@ function staffStatus(row: QuizSummary): string {
   return `Online · ${state} · ${row.questionCount} question${row.questionCount === 1 ? "" : "s"}`;
 }
 
-function StaffQuizzes({ seasonId }: { seasonId: number | null }) {
+function StaffQuizzes() {
   const theme = useTheme();
   const router = useRouter();
+  // Ruling X8: a staff season comes from Plan 4's hook — never
+  // scopes.activeSeasonId, which is the student-profile pointer and always
+  // null for staff.
+  const current = useCurrentSeasonId();
+  const seasonId = current.seasonId;
   const { data, isPending, isError, refetch, isRefetching } = useQuizList(seasonId);
 
   const handleRefresh = () => {
     if (seasonId !== null) void refetch();
+    else current.refetch();
   };
 
   return (
     <Screen edges={["top", "left", "right"]} onRefresh={handleRefresh} refreshing={isRefetching} scroll>
-      {seasonId === null ? (
-        <EmptyState title="No season selected" message="Pick a season to see its quizzes." />
+      {current.isPending ? (
+        <LoadingState />
+      ) : current.isError ? (
+        <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />
+      ) : seasonId === null ? (
+        <EmptyState title="No season" message="You aren't attached to a season yet." />
       ) : isPending ? (
         <LoadingState />
       ) : isError ? (
@@ -4690,11 +4852,12 @@ function StaffQuizzes({ seasonId }: { seasonId: number | null }) {
 
 export default function QuizzesScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
-  const seasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
+  // A student's season IS the pinned profile pointer.
+  const studentSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
 
-  if (role === "STUDENT") return <StudentQuizzes seasonId={seasonId} />;
+  if (role === "STUDENT") return <StudentQuizzes seasonId={studentSeasonId} />;
   if (role === "LEADER" || role === "ADMIN" || role === "SUPER") {
-    return <StaffQuizzes seasonId={seasonId} />;
+    return <StaffQuizzes />;
   }
   // MENTOR has no quiz access anywhere in v1 and /quizzes is not in the mentor
   // nav (spec D11). Confirmed as deliberate rather than widened here.
@@ -4709,8 +4872,10 @@ export default function QuizzesScreen() {
 Check `Text`'s real variants in `src/ui/Text.tsx` and `Screen`'s `scroll` /
 `onRefresh` prop names before relying on them, exactly as Plan 1 Task 3 did.
 
-- [ ] **Step 3: Drop `quizzes` from `placeholder-screens.test.tsx`** (it asserts
-each placeholder renders "This screen isn't built yet", no longer true here).
+- [ ] **Step 3: Drop `quizzes` from `placeholder-screens.test.tsx`** (entry and
+import — it asserts each placeholder renders "This screen isn't built yet", no
+longer true here). There is no count to change: Plan 1 Task 0 removed the
+length pin (ruling X9).
 
 - [ ] **Step 4: Run**
 
@@ -4761,7 +4926,7 @@ const patch = apiClient.patch as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const },
+  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const, avatarPath: null },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
 
@@ -4927,8 +5092,8 @@ describe("quiz runner", () => {
 
   it("gives staff a read-only preview with a link to grading", async () => {
     useSessionStore.setState({
-      user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" },
-      scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: 7, graduationYear: null },
+      user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null },
+      scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
     });
     get.mockResolvedValue({
       data: {
@@ -5112,8 +5277,8 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const leaderSession = {
-  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const },
-  scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: 7, graduationYear: null },
+  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null },
+  scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
 };
 
 function authoring(over: Partial<Record<string, unknown>> = {}) {
@@ -5347,9 +5512,10 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/quiz-grading.test.tsx` → FAIL 
    - "Save marks" sends **every essay** of that attempt (the server rejects a
      partial payload with `awards_incomplete`, which is the point — v1 silently
      lowered the total instead). Server errors surface inline, same as the grid.
-   - When `detail.canManage || true` — i.e. for any caller who reached this
-     screen, since `canGradeQuiz` is the reopen gate now — a
-     `Button title="Reopen for a retake" variant="secondary"` calling
+   - For **every** caller who reached this screen — not gated on
+     `detail.canManage`, because reopen is gated server-side on
+     `canGradeQuiz` (Task 5: leaders may reopen; v1's admin-only gate was the
+     bug) — a `Button title="Reopen for a retake" variant="secondary"` calling
      `reopen.mutate(item.studentUserId)`, shown for a `GRADED` or `SUBMITTED`
      attempt and hidden for `IN_PROGRESS`.
    - Below the list, a "Waiting" section from `page.waiting`: each entry as
@@ -5371,7 +5537,1185 @@ git add apps/mobile && git commit -m "feat(mobile): quiz grading screen for pape
 
 ---
 
-### Task 11: Closing gate (coordinator)
+### Task 11: Mobile — quiz authoring (create, build, reorder, publish)
+
+The authoring UI v1 had (`src/components/quizzes/create-quiz-form.tsx`,
+`src/components/quizzes/quiz-builder.tsx`,
+`src/app/admin/season/[code]/quizzes/[quizId]/edit/page.tsx`, actions in
+`src/lib/quiz-actions.ts:29-84, 218-328`) over this plan's own Task 2–3
+endpoints; spec 12 §9. Without it the closing gate's first device-checklist
+item cannot be executed (coverage gap G8). Two routes: `quiz/new` (the create
+form) and `quiz/[id]/edit` (the builder). Divergences from v1, each already
+decided by the backend tasks: questions can be **reordered** (R20 — v1 had no
+reorder at all); the builder **locks** once a student has started
+(`canEditStructure`, spec D3) instead of letting edits cascade-delete answers;
+unpublish of a quiz with graded attempts is refused with the server's message
+(D4); a PAPER quiz opens a "no questions" card rather than v1's silent
+redirect (`edit/page.tsx:30-32`).
+
+**Files:**
+- Create: `apps/mobile/src/hooks/use-quiz-authoring.ts`
+- Create: `apps/mobile/src/components/QuestionEditor.tsx`
+- Create: `apps/mobile/app/(app)/quiz/new.tsx`, `apps/mobile/app/(app)/quiz/[id]/edit.tsx`
+- Modify: `apps/mobile/app/(app)/_layout.tsx` (`DETAIL_ROUTE_NAMES` gains `"quiz/new"`, `"quiz/[id]/edit"`)
+- Modify: `apps/mobile/app/(app)/quizzes.tsx` (staff branch: "New quiz" button; ADMIN/SUPER open a draft ONLINE quiz in the builder)
+- Modify: `apps/mobile/app/(app)/quiz/[id]/index.tsx` (`StaffPreview` gains an "Edit quiz" button when `canManage`)
+- Test: `apps/mobile/src/__tests__/quiz-authoring.test.tsx` (new), `apps/mobile/src/__tests__/quizzes-screen.test.tsx` (extend), `apps/mobile/src/__tests__/app-layout.test.tsx` (extend)
+
+**Interfaces:**
+- Consumes: Task 1's `createQuizRequestSchema`, `quizQuestionRequestSchema`, `QuizQuestionInput`, `quizQuestionAuthoringSchema`, `quizCreatedResponseSchema`, `quizUpdatedResponseSchema`, `quizQuestionDeletedResponseSchema`, `reorderQuestionsResponseSchema`, `publishQuizResponseSchema`; Task 7's `useQuizAuthoringDetail`, `queryKeys.quizzes`; Plan 4's `useCurrentSeasonId` and `apiErrorMessage`; Phase 0's `useSeasonSessions`.
+- Produces: hooks `useCreateQuiz()`, `useUpdateQuiz(id)`, `useAddQuestion(id)`, `useUpdateQuestion(id)`, `useDeleteQuestion(id)`, `useReorderQuestions(id)`, `usePublishQuiz(id)`; component `<QuestionEditor />`; routes `/quiz/new` and `/quiz/[id]/edit` (route names `quiz/new`, `quiz/[id]/edit`).
+
+- [ ] **Step 1: Failing layout assertion.** In `app-layout.test.tsx`, extend
+Task 7's `it.each` list to
+`["quiz/[id]/index", "quiz/[id]/grade", "quiz/[id]/edit", "quiz/new"]`. Run
+`cd apps/mobile && pnpm jest src/__tests__/app-layout.test.tsx` → FAIL (two
+names absent).
+
+- [ ] **Step 2: Failing screen tests.**
+
+```tsx
+// apps/mobile/src/__tests__/quiz-authoring.test.tsx
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+
+jest.mock("../lib/api-client", () => ({
+  apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));
+const mockPush = jest.fn();
+const mockReplace = jest.fn();
+jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({ id: "41" }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
+}));
+
+import { apiClient } from "../lib/api-client";
+import { useSessionStore } from "../store/session";
+import { renderWithProviders } from "./helpers/render";
+import NewQuizScreen from "../../app/(app)/quiz/new";
+import QuizEditScreen from "../../app/(app)/quiz/[id]/edit";
+
+const get = apiClient.get as jest.Mock;
+const post = apiClient.post as jest.Mock;
+const patch = apiClient.patch as jest.Mock;
+const put = apiClient.put as jest.Mock;
+const del = apiClient.delete as jest.Mock;
+
+const adminSession = {
+  user: { id: 2, name: "Test admin", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null },
+  scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
+};
+const leaderSession = {
+  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null },
+  scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
+};
+
+const seasonsList = {
+  data: { data: { seasons: [{
+    id: 7, code: "s26", title: "Spring 2026", program: "TEST", year: 2026, status: "ACTIVE",
+    startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-12-31T00:00:00.000Z",
+  }] } },
+};
+const sessionsList = {
+  data: { data: { sessions: [{
+    id: 12, title: "Week 1", startsAt: "2099-03-01T18:00:00.000Z", dayKey: "2099-03-01",
+    startTime: "20:00", // required since Plan 16 (org wall-clock start, X13)
+    durationMinutes: 60, location: null, recurrenceGroupId: null, attendanceMarked: false,
+    seasonId: 7, seasonCode: "s26", seasonTitle: "Spring 2026",
+    checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
+  }] } },
+};
+
+const mcq = {
+  id: 100, order: 0, type: "MCQ" as const, prompt: "Capital of France?", points: 2,
+  options: ["London", "Paris"], correctIndex: 1,
+};
+const essay = {
+  id: 101, order: 1, type: "ESSAY" as const, prompt: "Discuss.", points: 5,
+  options: [] as string[], correctIndex: null,
+};
+
+function authoring(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, seasonCode: "s26",
+    sessionId: 12, sessionTitle: "Week 1", publishedAt: null, maxScore: 7,
+    attemptCount: 0, gradeCount: 0, canEditStructure: true, canManage: true,
+    questions: [mcq, essay], ...over,
+  };
+}
+
+const conflict = (code: string, message: string) =>
+  Object.assign(new Error("409"), {
+    isAxiosError: true,
+    response: { status: 409, data: { error: { code, message } } },
+  });
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  useSessionStore.setState(useSessionStore.getInitialState(), true);
+});
+
+describe("NewQuizScreen", () => {
+  beforeEach(() => {
+    useSessionStore.setState(adminSession);
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/seasons"
+        ? Promise.resolve(seasonsList)
+        : url === "/api/v1/seasons/7/sessions"
+          ? Promise.resolve(sessionsList)
+          : Promise.reject(new Error(`unexpected GET ${url}`)),
+    );
+  });
+
+  it("creates an ONLINE quiz on a session in the current season and opens the builder", async () => {
+    post.mockResolvedValue({ data: { data: { id: 77 } } });
+    renderWithProviders(<NewQuizScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText("Title"), "Week 3 quiz");
+    fireEvent.press(screen.getByText("Online"));
+    fireEvent.press(await screen.findByText("Week 1"));
+    fireEvent.press(screen.getByText("Create & add questions"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/quizzes", {
+        seasonId: 7, sessionId: 12, title: "Week 3 quiz", kind: "ONLINE",
+      }),
+    );
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/quiz/[id]/edit", params: { id: "77" } });
+  });
+
+  it("creates a PAPER quiz with v1's default max score and opens its grade sheet", async () => {
+    post.mockResolvedValue({ data: { data: { id: 78 } } });
+    renderWithProviders(<NewQuizScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText("Title"), "Paper quiz");
+    fireEvent.press(screen.getByText("Create quiz"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/quizzes", {
+        seasonId: 7, sessionId: null, title: "Paper quiz", kind: "PAPER", maxScore: 100,
+      }),
+    );
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/quiz/[id]/grade", params: { id: "78" } });
+  });
+
+  it("refuses a PAPER quiz with no max score before calling the API", async () => {
+    renderWithProviders(<NewQuizScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText("Title"), "Paper quiz");
+    fireEvent.changeText(screen.getByLabelText("Max score"), "");
+    fireEvent.press(screen.getByText("Create quiz"));
+
+    expect(await screen.findByText("Max score is required for paper quizzes.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("is not available to a leader and fetches nothing", async () => {
+    useSessionStore.setState(leaderSession);
+    get.mockReset();
+    renderWithProviders(<NewQuizScreen />);
+    expect(await screen.findByText("Not available")).toBeTruthy();
+    expect(get).not.toHaveBeenCalled();
+  });
+});
+
+describe("QuizEditScreen (the builder)", () => {
+  beforeEach(() => {
+    useSessionStore.setState(adminSession);
+  });
+
+  it("lists questions in order with the answer key", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    renderWithProviders(<QuizEditScreen />);
+
+    expect(await screen.findByText("1. Capital of France?")).toBeTruthy();
+    expect(screen.getByText("2. Discuss.")).toBeTruthy();
+    expect(screen.getByText("Correct answer: Paris")).toBeTruthy();
+    expect(screen.getByText("Draft · 7 points")).toBeTruthy();
+  });
+
+  it("adds an MCQ through the editor and sends exactly the form's question", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    post.mockResolvedValue({
+      data: { data: { id: 102, order: 2, type: "MCQ", prompt: "2 + 2?", points: 2, options: ["3", "4"], correctIndex: 1 } },
+    });
+    renderWithProviders(<QuizEditScreen />);
+
+    fireEvent.press(await screen.findByText("Add question"));
+    fireEvent.changeText(screen.getByLabelText("Question prompt"), "2 + 2?");
+    fireEvent.changeText(screen.getByLabelText("Points"), "2");
+    fireEvent.changeText(screen.getByLabelText("Option 1"), "3");
+    fireEvent.changeText(screen.getByLabelText("Option 2"), "4");
+    fireEvent.press(screen.getByLabelText("Mark option 2 correct"));
+    fireEvent.press(screen.getByText("Save question"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/questions", {
+        type: "MCQ", prompt: "2 + 2?", points: 2, options: ["3", "4"], correctIndex: 1,
+      }),
+    );
+  });
+
+  it("refuses an MCQ with no correct answer marked, locally, with the schema's message", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    renderWithProviders(<QuizEditScreen />);
+
+    fireEvent.press(await screen.findByText("Add question"));
+    fireEvent.changeText(screen.getByLabelText("Question prompt"), "2 + 2?");
+    fireEvent.changeText(screen.getByLabelText("Option 1"), "3");
+    fireEvent.changeText(screen.getByLabelText("Option 2"), "4");
+    fireEvent.press(screen.getByText("Save question"));
+
+    expect(await screen.findByText("Mark the correct answer.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("edits a question in place", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    patch.mockResolvedValue({ data: { data: { ...mcq, prompt: "Capital of Italy?" } } });
+    renderWithProviders(<QuizEditScreen />);
+
+    fireEvent.press(await screen.findByLabelText("Edit question 1"));
+    fireEvent.changeText(screen.getByLabelText("Question prompt"), "Capital of Italy?");
+    fireEvent.press(screen.getByText("Save question"));
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41/questions/100", {
+        type: "MCQ", prompt: "Capital of Italy?", points: 2, options: ["London", "Paris"], correctIndex: 1,
+      }),
+    );
+  });
+
+  it("reorders by sending the full permutation", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    put.mockResolvedValue({ data: { data: { questions: [{ ...essay, order: 0 }, { ...mcq, order: 1 }] } } });
+    renderWithProviders(<QuizEditScreen />);
+
+    fireEvent.press(await screen.findByLabelText("Move question 2 up"));
+
+    await waitFor(() =>
+      expect(put).toHaveBeenCalledWith("/api/v1/quizzes/41/questions/order", { questionIds: [101, 100] }),
+    );
+  });
+
+  it("deletes only on a second, confirming press", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    del.mockResolvedValue({ data: { data: { deleted: true } } });
+    renderWithProviders(<QuizEditScreen />);
+
+    fireEvent.press(await screen.findByLabelText("Delete question 1"));
+    expect(del).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByLabelText("Really delete question 1"));
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/quizzes/41/questions/100"));
+  });
+
+  it("publishes, and shows the server's refusal verbatim", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    post.mockRejectedValue(conflict("mcq_without_answer", "Every multiple-choice question needs a correct answer."));
+    renderWithProviders(<QuizEditScreen />);
+
+    fireEvent.press(await screen.findByText("Publish"));
+
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/publish", { publish: true }));
+    expect(await screen.findByText("Every multiple-choice question needs a correct answer.")).toBeTruthy();
+  });
+
+  it("locks the structure once a student has started (canEditStructure: false — spec D3)", async () => {
+    get.mockResolvedValue({
+      data: { data: authoring({ canEditStructure: false, attemptCount: 1, publishedAt: "2099-02-01T00:00:00.000Z" }) },
+    });
+    renderWithProviders(<QuizEditScreen />);
+
+    expect(await screen.findByText("Students have started this quiz, so its questions can no longer change.")).toBeTruthy();
+    expect(screen.queryByText("Add question")).toBeNull();
+    expect(screen.queryByLabelText("Edit question 1")).toBeNull();
+    expect(screen.queryByLabelText("Move question 2 up")).toBeNull();
+    // Publishing state can still change; D4's guard is the server's.
+    expect(screen.getByText("Unpublish")).toBeTruthy();
+  });
+
+  it("renames a PAPER quiz and shows no question builder", async () => {
+    get.mockResolvedValue({
+      data: { data: authoring({ kind: "PAPER", maxScore: 20, questions: [], canEditStructure: false }) },
+    });
+    patch.mockResolvedValue({ data: { data: { updated: true } } });
+    renderWithProviders(<QuizEditScreen />);
+
+    expect(await screen.findByText("This is a paper quiz — it has no questions. Grade it from the grade sheet.")).toBeTruthy();
+    expect(screen.queryByText("Add question")).toBeNull();
+    fireEvent.changeText(screen.getByLabelText("Quiz title"), "Renamed");
+    fireEvent.press(screen.getByText("Save title"));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
+  });
+
+  it("is not available to a leader and fetches nothing", async () => {
+    useSessionStore.setState(leaderSession);
+    renderWithProviders(<QuizEditScreen />);
+    expect(await screen.findByText("Not available")).toBeTruthy();
+    expect(get).not.toHaveBeenCalled();
+  });
+});
+```
+
+Append to `quizzes-screen.test.tsx` (it already has `staffGets` and
+`staffRow` from Task 8):
+
+```tsx
+describe("QuizzesScreen — authoring entry points (Task 11)", () => {
+  const adminSession = {
+    user: { id: 2, name: "Test admin", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null },
+    scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
+  };
+
+  it("gives an admin a New quiz button", async () => {
+    useSessionStore.setState(adminSession);
+    staffGets({ items: [], nextCursor: null });
+    renderWithProviders(<QuizzesScreen />);
+    fireEvent.press(await screen.findByText("New quiz"));
+    expect(mockPush).toHaveBeenCalledWith("/quiz/new");
+  });
+
+  it("opens an admin's draft ONLINE quiz in the builder, not the grade screen", async () => {
+    useSessionStore.setState(adminSession);
+    staffGets({
+      items: [staffRow({ id: 51, title: "Draft online", kind: "ONLINE", publishedAt: null, questionCount: 0 })],
+      nextCursor: null,
+    });
+    renderWithProviders(<QuizzesScreen />);
+    fireEvent.press(await screen.findByText("Draft online"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/quiz/[id]/edit", params: { id: "51" } });
+  });
+
+  it("gives a leader no New quiz button", async () => {
+    useSessionStore.setState(leaderSession);
+    staffGets({ items: [], nextCursor: null });
+    renderWithProviders(<QuizzesScreen />);
+    expect(await screen.findByText("No quizzes")).toBeTruthy();
+    expect(screen.queryByText("New quiz")).toBeNull();
+  });
+});
+```
+
+Run `cd apps/mobile && pnpm jest src/__tests__/quiz-authoring.test.tsx src/__tests__/quizzes-screen.test.tsx` → FAIL.
+
+- [ ] **Step 3: Hooks.**
+
+```ts
+// apps/mobile/src/hooks/use-quiz-authoring.ts
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { z } from "zod";
+import {
+  publishQuizResponseSchema,
+  quizCreatedResponseSchema,
+  quizQuestionAuthoringSchema,
+  quizQuestionDeletedResponseSchema,
+  quizUpdatedResponseSchema,
+  reorderQuestionsResponseSchema,
+  type createQuizRequestSchema,
+  type QuizQuestionInput,
+} from "@space/shared";
+
+import { apiClient } from "../lib/api-client";
+import { queryKeys } from "../lib/query-keys";
+
+/** What the create form sends — the request schema's input side. */
+export type CreateQuizInput = z.input<typeof createQuizRequestSchema>;
+
+/**
+ * Every builder write invalidates the quiz's own detail (whose staff entry
+ * holds the questions and canEditStructure) and the lists (questionCount,
+ * maxScore and the draft badge all change).
+ */
+function useInvalidateQuiz(id: number | null) {
+  const queryClient = useQueryClient();
+  return () => {
+    if (id !== null) void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.detail(id) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+  };
+}
+
+export function useCreateQuiz() {
+  const invalidate = useInvalidateQuiz(null);
+  return useMutation({
+    mutationFn: async (body: CreateQuizInput) => {
+      const res = await apiClient.post("/api/v1/quizzes", body);
+      return quizCreatedResponseSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateQuiz(id: number) {
+  const invalidate = useInvalidateQuiz(id);
+  return useMutation({
+    mutationFn: async (body: { title?: string; maxScore?: number }) => {
+      const res = await apiClient.patch(`/api/v1/quizzes/${id}`, body);
+      return quizUpdatedResponseSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function useAddQuestion(id: number) {
+  const invalidate = useInvalidateQuiz(id);
+  return useMutation({
+    mutationFn: async (body: QuizQuestionInput) => {
+      const res = await apiClient.post(`/api/v1/quizzes/${id}/questions`, body);
+      return quizQuestionAuthoringSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateQuestion(id: number) {
+  const invalidate = useInvalidateQuiz(id);
+  return useMutation({
+    mutationFn: async (input: { questionId: number; body: QuizQuestionInput }) => {
+      const res = await apiClient.patch(`/api/v1/quizzes/${id}/questions/${input.questionId}`, input.body);
+      return quizQuestionAuthoringSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteQuestion(id: number) {
+  const invalidate = useInvalidateQuiz(id);
+  return useMutation({
+    mutationFn: async (questionId: number) => {
+      const res = await apiClient.delete(`/api/v1/quizzes/${id}/questions/${questionId}`);
+      return quizQuestionDeletedResponseSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+/** Sends the FULL permutation — the server refuses anything else (`invalid_order`). */
+export function useReorderQuestions(id: number) {
+  const invalidate = useInvalidateQuiz(id);
+  return useMutation({
+    mutationFn: async (questionIds: number[]) => {
+      const res = await apiClient.put(`/api/v1/quizzes/${id}/questions/order`, { questionIds });
+      return reorderQuestionsResponseSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export function usePublishQuiz(id: number) {
+  const invalidate = useInvalidateQuiz(id);
+  return useMutation({
+    mutationFn: async (publish: boolean) => {
+      const res = await apiClient.post(`/api/v1/quizzes/${id}/publish`, { publish });
+      return publishQuizResponseSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+```
+
+(`createQuizRequestSchema` is imported with an inline `type` modifier because
+this file uses it only as `typeof createQuizRequestSchema`.)
+
+- [ ] **Step 4: `QuestionEditor`.**
+
+```tsx
+// apps/mobile/src/components/QuestionEditor.tsx
+import { useState } from "react";
+import { Pressable, View } from "react-native";
+import {
+  quizQuestionRequestSchema,
+  type QuizQuestionAuthoring,
+  type QuizQuestionInput,
+  type QuizQuestionType,
+} from "@space/shared";
+
+import { useTheme } from "../theme";
+import { Button, Input, Text } from "../ui";
+
+export interface QuestionEditorProps {
+  /** Present when editing; absent when adding. */
+  initial?: QuizQuestionAuthoring;
+  submitting: boolean;
+  /** A server error from the caller's mutation, shown under the form. */
+  serverError: string | null;
+  onSubmit: (body: QuizQuestionInput) => void;
+  onCancel: () => void;
+}
+
+const MAX_OPTIONS = 6; // quizQuestionRequestSchema: options .max(6)
+
+/**
+ * One form for add and edit (v1 quiz-builder.tsx's QuestionForm). Validated
+ * with the SAME shared schema the server parses, so the messages a phone shows
+ * ("Add at least 2 options.", "Mark the correct answer.") are the server's own
+ * refinements, not a hand-copied second set.
+ */
+export function QuestionEditor({ initial, submitting, serverError, onSubmit, onCancel }: QuestionEditorProps) {
+  const theme = useTheme();
+  const [type, setType] = useState<QuizQuestionType>(initial?.type ?? "MCQ");
+  const [prompt, setPrompt] = useState(initial?.prompt ?? "");
+  const [points, setPoints] = useState(initial ? String(initial.points) : "1");
+  const [options, setOptions] = useState<string[]>(
+    initial && initial.type === "MCQ" ? initial.options : ["", ""],
+  );
+  const [correctIndex, setCorrectIndex] = useState<number | null>(initial?.correctIndex ?? null);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const removeOption = (index: number) => {
+    setOptions((prev) => prev.filter((_, i) => i !== index));
+    setCorrectIndex((prev) => (prev === null || prev === index ? null : prev > index ? prev - 1 : prev));
+  };
+
+  const submit = () => {
+    const body: QuizQuestionInput =
+      type === "ESSAY"
+        ? { type, prompt, points: Number(points) }
+        : { type, prompt, points: Number(points), options, correctIndex };
+    const parsed = quizQuestionRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      setLocalError(parsed.error.issues[0]?.message ?? "Check the question.");
+      return;
+    }
+    setLocalError(null);
+    onSubmit(body);
+  };
+
+  const error = localError ?? serverError;
+
+  return (
+    <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
+      <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+        <Button
+          title="Multiple choice"
+          variant={type === "MCQ" ? "primary" : "secondary"}
+          onPress={() => setType("MCQ")}
+        />
+        <Button
+          title="Essay"
+          variant={type === "ESSAY" ? "primary" : "secondary"}
+          onPress={() => setType("ESSAY")}
+        />
+      </View>
+      <Input label="Question prompt" value={prompt} onChangeText={setPrompt} multiline />
+      <Input label="Points" value={points} onChangeText={setPoints} keyboardType="number-pad" />
+      {type === "MCQ" ? (
+        <>
+          {options.map((option, index) => (
+            <View key={index} style={{ gap: theme.spacing.xs }}>
+              <Input
+                label={`Option ${index + 1}`}
+                value={option}
+                onChangeText={(value) =>
+                  setOptions((prev) => prev.map((o, i) => (i === index ? value : o)))
+                }
+              />
+              <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityLabel={`Mark option ${index + 1} correct`}
+                  accessibilityState={{ selected: correctIndex === index }}
+                  onPress={() => setCorrectIndex(index)}
+                >
+                  <Text variant="label">{correctIndex === index ? "✓ Correct answer" : "Mark correct"}</Text>
+                </Pressable>
+                {options.length > 2 ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove option ${index + 1}`}
+                    onPress={() => removeOption(index)}
+                  >
+                    <Text variant="label" color={theme.colors.error[500]}>Remove</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          ))}
+          {options.length < MAX_OPTIONS ? (
+            <Button title="Add option" variant="ghost" onPress={() => setOptions((prev) => [...prev, ""])} />
+          ) : null}
+        </>
+      ) : null}
+      {error ? <Text variant="label" color={theme.colors.error[500]}>{error}</Text> : null}
+      <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+        <Button title="Save question" onPress={submit} loading={submitting} />
+        <Button title="Cancel" variant="ghost" onPress={onCancel} />
+      </View>
+    </View>
+  );
+}
+```
+
+- [ ] **Step 5: `quiz/new.tsx`.**
+
+```tsx
+// apps/mobile/app/(app)/quiz/new.tsx
+import { useState } from "react";
+import { Pressable, View } from "react-native";
+import { useRouter } from "expo-router";
+import { createQuizRequestSchema, type QuizKind } from "@space/shared";
+
+import { useCreateQuiz, type CreateQuizInput } from "../../../src/hooks/use-quiz-authoring";
+import { useCurrentSeasonId } from "../../../src/hooks/use-seasons";
+import { useSeasonSessions } from "../../../src/hooks/use-sessions";
+import { apiErrorMessage } from "../../../src/lib/api-error";
+import { formatDayKey } from "../../../src/lib/format";
+import { useSessionStore } from "../../../src/store/session";
+import { useTheme } from "../../../src/theme";
+import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../src/ui";
+
+/**
+ * v1 create-quiz-form.tsx, as a screen. Creating is a season-admin power
+ * (POST /quizzes is isAdminOfSeason-gated), so only ADMIN/SUPER get the form;
+ * the server stays the gate. Defaults mirror v1: PAPER, max score 100.
+ * The season is the staff current season (ruling X8); a session is optional
+ * (spec D12 — the column is nullable).
+ */
+function NewQuizForm() {
+  const theme = useTheme();
+  const router = useRouter();
+  const current = useCurrentSeasonId();
+  const sessions = useSeasonSessions(current.seasonId);
+  const create = useCreateQuiz();
+  const [title, setTitle] = useState("");
+  const [kind, setKind] = useState<QuizKind>("PAPER");
+  const [maxScore, setMaxScore] = useState("100");
+  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (current.isPending) return <LoadingState />;
+  if (current.isError) return <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
+  const seasonId = current.seasonId;
+  if (seasonId === null) {
+    return <EmptyState title="No season" message="You aren't an admin of a season yet." />;
+  }
+
+  const submit = () => {
+    const body: CreateQuizInput =
+      kind === "PAPER"
+        ? { seasonId, sessionId, title, kind, ...(maxScore.trim() === "" ? {} : { maxScore: Number(maxScore) }) }
+        : { seasonId, sessionId, title, kind };
+    const parsed = createQuizRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Check the quiz details.");
+      return;
+    }
+    setError(null);
+    create.mutate(body, {
+      onSuccess: ({ id }) =>
+        router.replace(
+          kind === "ONLINE"
+            ? { pathname: "/quiz/[id]/edit", params: { id: String(id) } }
+            : { pathname: "/quiz/[id]/grade", params: { id: String(id) } },
+        ),
+      onError: (err) => setError(apiErrorMessage(err, "Couldn't create the quiz.")),
+    });
+  };
+
+  return (
+    <Card style={{ gap: theme.spacing.sm }}>
+      <Text variant="heading">New quiz</Text>
+      <Input label="Title" value={title} onChangeText={setTitle} placeholder="e.g. Week 3 Quiz" />
+      <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+        <Button title="Paper" variant={kind === "PAPER" ? "primary" : "secondary"} onPress={() => setKind("PAPER")} />
+        <Button title="Online" variant={kind === "ONLINE" ? "primary" : "secondary"} onPress={() => setKind("ONLINE")} />
+      </View>
+      {kind === "PAPER" ? (
+        <Input label="Max score" value={maxScore} onChangeText={setMaxScore} keyboardType="number-pad" />
+      ) : (
+        <Text variant="caption" color={theme.colors.neutral[600]}>
+          An online quiz's max score is the sum of its question points.
+        </Text>
+      )}
+      <Text variant="label">Session (optional)</Text>
+      <Pressable
+        accessibilityRole="radio"
+        accessibilityState={{ selected: sessionId === null }}
+        onPress={() => setSessionId(null)}
+      >
+        <Text variant="body">{sessionId === null ? "✓ No session" : "No session"}</Text>
+      </Pressable>
+      {(sessions.data ?? []).map((s) => (
+        <Pressable
+          key={s.id}
+          accessibilityRole="radio"
+          accessibilityState={{ selected: sessionId === s.id }}
+          onPress={() => setSessionId(s.id)}
+        >
+          <Text variant="body">{s.title}</Text>
+          <Text variant="caption" color={theme.colors.neutral[600]}>
+            {sessionId === s.id ? `✓ ${formatDayKey(s.dayKey)}` : formatDayKey(s.dayKey)}
+          </Text>
+        </Pressable>
+      ))}
+      {error ? <Text variant="label" color={theme.colors.error[500]}>{error}</Text> : null}
+      <Button
+        title={kind === "ONLINE" ? "Create & add questions" : "Create quiz"}
+        onPress={submit}
+        loading={create.isPending}
+      />
+    </Card>
+  );
+}
+
+export default function NewQuizScreen() {
+  const role = useSessionStore((s) => s.user?.role ?? null);
+  return (
+    <Screen edges={["top", "left", "right"]} scroll>
+      {role === "ADMIN" || role === "SUPER" ? (
+        <NewQuizForm />
+      ) : (
+        <EmptyState title="Not available" message="Only a season admin can create quizzes." />
+      )}
+    </Screen>
+  );
+}
+```
+
+- [ ] **Step 6: `quiz/[id]/edit.tsx` — the builder.**
+
+```tsx
+// apps/mobile/app/(app)/quiz/[id]/edit.tsx
+import { useState } from "react";
+import { View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import type { QuizAuthoringDetail, QuizQuestionAuthoring } from "@space/shared";
+
+import { QuestionEditor } from "../../../../src/components/QuestionEditor";
+import {
+  useAddQuestion,
+  useDeleteQuestion,
+  usePublishQuiz,
+  useReorderQuestions,
+  useUpdateQuestion,
+  useUpdateQuiz,
+} from "../../../../src/hooks/use-quiz-authoring";
+import { useQuizAuthoringDetail } from "../../../../src/hooks/use-quizzes";
+import { apiErrorMessage } from "../../../../src/lib/api-error";
+import { useSessionStore } from "../../../../src/store/session";
+import { useTheme } from "../../../../src/theme";
+import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../../src/ui";
+
+function parseId(raw: string | undefined): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+function QuizSettings({ quiz, onError }: { quiz: QuizAuthoringDetail; onError: (m: string | null) => void }) {
+  const theme = useTheme();
+  const update = useUpdateQuiz(quiz.id);
+  const [title, setTitle] = useState(quiz.title);
+  const [maxScore, setMaxScore] = useState(String(quiz.maxScore));
+
+  const save = (body: { title?: string; maxScore?: number }) => {
+    onError(null);
+    update.mutate(body, { onError: (err) => onError(apiErrorMessage(err, "Couldn't save the quiz.")) });
+  };
+
+  return (
+    <Card style={{ gap: theme.spacing.sm }}>
+      <Input label="Quiz title" value={title} onChangeText={setTitle} />
+      <Button title="Save title" variant="secondary" onPress={() => save({ title })} loading={update.isPending} />
+      {quiz.kind === "PAPER" ? (
+        <>
+          {/* Refused server-side once grades exist (quiz_has_grades). */}
+          <Input label="Max score" value={maxScore} onChangeText={setMaxScore} keyboardType="number-pad" />
+          <Button title="Save max score" variant="secondary" onPress={() => save({ maxScore: Number(maxScore) })} />
+        </>
+      ) : null}
+    </Card>
+  );
+}
+
+function QuestionRow({
+  quiz,
+  question,
+  index,
+  editable,
+  onError,
+}: {
+  quiz: QuizAuthoringDetail;
+  question: QuizQuestionAuthoring;
+  index: number;
+  editable: boolean;
+  onError: (m: string | null) => void;
+}) {
+  const theme = useTheme();
+  const update = useUpdateQuestion(quiz.id);
+  const remove = useDeleteQuestion(quiz.id);
+  const reorder = useReorderQuestions(quiz.id);
+  const [editing, setEditing] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const n = index + 1;
+  const ids = quiz.questions.map((q) => q.id);
+
+  const move = (delta: -1 | 1) => {
+    const target = index + delta;
+    const next = [...ids];
+    [next[index], next[target]] = [next[target] as number, next[index] as number];
+    onError(null);
+    reorder.mutate(next, { onError: (err) => onError(apiErrorMessage(err, "Couldn't reorder.")) });
+  };
+
+  const onDelete = () => {
+    if (!armed) {
+      setArmed(true);
+      return;
+    }
+    onError(null);
+    remove.mutate(question.id, {
+      onError: (err) => {
+        setArmed(false);
+        onError(apiErrorMessage(err, "Couldn't delete the question."));
+      },
+    });
+  };
+
+  const correct =
+    question.type === "MCQ" && question.correctIndex !== null ? question.options[question.correctIndex] : undefined;
+
+  return (
+    <Card style={{ marginTop: theme.spacing.sm, gap: theme.spacing.xs }}>
+      <Text variant="body">{`${n}. ${question.prompt}`}</Text>
+      <Text variant="caption" color={theme.colors.neutral[600]}>
+        {`${question.type === "MCQ" ? "Multiple choice" : "Essay"} · ${question.points} pt${question.points === 1 ? "" : "s"}`}
+      </Text>
+      {question.type === "MCQ"
+        ? question.options.map((o, i) => (
+            <Text key={i} variant="label">{`${String.fromCharCode(65 + i)}. ${o}`}</Text>
+          ))
+        : null}
+      {correct !== undefined ? <Text variant="label">{`Correct answer: ${correct}`}</Text> : null}
+      {editable ? (
+        editing ? (
+          <QuestionEditor
+            initial={question}
+            submitting={update.isPending}
+            serverError={serverError}
+            onCancel={() => setEditing(false)}
+            onSubmit={(body) =>
+              update.mutate(
+                { questionId: question.id, body },
+                {
+                  onSuccess: () => setEditing(false),
+                  onError: (err) => setServerError(apiErrorMessage(err, "Couldn't save the question.")),
+                },
+              )
+            }
+          />
+        ) : (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm }}>
+            <Button
+              title="Up"
+              variant="ghost"
+              accessibilityLabel={`Move question ${n} up`}
+              disabled={index === 0 || reorder.isPending}
+              onPress={() => move(-1)}
+            />
+            <Button
+              title="Down"
+              variant="ghost"
+              accessibilityLabel={`Move question ${n} down`}
+              disabled={index === ids.length - 1 || reorder.isPending}
+              onPress={() => move(1)}
+            />
+            <Button title="Edit" variant="secondary" accessibilityLabel={`Edit question ${n}`} onPress={() => setEditing(true)} />
+            <Button
+              title={armed ? "Really delete?" : "Delete"}
+              variant="ghost"
+              accessibilityLabel={armed ? `Really delete question ${n}` : `Delete question ${n}`}
+              loading={remove.isPending}
+              onPress={onDelete}
+            />
+          </View>
+        )
+      ) : null}
+    </Card>
+  );
+}
+
+function QuizBuilder({ id }: { id: number }) {
+  const theme = useTheme();
+  const router = useRouter();
+  const { data, isPending, isError, refetch, isRefetching } = useQuizAuthoringDetail(id, true);
+  const add = useAddQuestion(id);
+  const publish = usePublishQuiz(id);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (isPending) return <LoadingState />;
+  if (isError) return <ErrorState message="Couldn't load this quiz." onRetry={() => void refetch()} />;
+  if (!data.canManage) {
+    return <EmptyState title="Not available" message="Only an admin of this quiz's season can edit it." />;
+  }
+
+  const published = data.publishedAt !== null;
+
+  return (
+    <Screen edges={["top", "left", "right"]} scroll onRefresh={() => void refetch()} refreshing={isRefetching}>
+      <Text variant="title">{data.title}</Text>
+      <Text variant="label" color={theme.colors.neutral[600]}>
+        {`${published ? "Published" : "Draft"} · ${data.maxScore} points`}
+      </Text>
+      <QuizSettings quiz={data} onError={setError} />
+
+      {data.kind === "PAPER" ? (
+        <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
+          <Text variant="body">This is a paper quiz — it has no questions. Grade it from the grade sheet.</Text>
+          <Button
+            title="Open grade sheet"
+            variant="secondary"
+            onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })}
+          />
+        </Card>
+      ) : (
+        <>
+          <Button
+            title={published ? "Unpublish" : "Publish"}
+            variant={published ? "secondary" : "primary"}
+            style={{ marginTop: theme.spacing.md }}
+            loading={publish.isPending}
+            onPress={() => {
+              setError(null);
+              publish.mutate(!published, {
+                onError: (err) => setError(apiErrorMessage(err, "Couldn't change the publish state.")),
+              });
+            }}
+          />
+          {!data.canEditStructure ? (
+            <Text variant="label" style={{ marginTop: theme.spacing.sm }}>
+              Students have started this quiz, so its questions can no longer change.
+            </Text>
+          ) : null}
+          {data.questions.length === 0 ? (
+            <EmptyState title="No questions yet" message="Add multiple-choice or essay questions, then publish the quiz." />
+          ) : (
+            data.questions.map((q, index) => (
+              <QuestionRow
+                key={q.id}
+                quiz={data}
+                question={q}
+                index={index}
+                editable={data.canEditStructure}
+                onError={setError}
+              />
+            ))
+          )}
+          {data.canEditStructure ? (
+            adding ? (
+              <Card style={{ marginTop: theme.spacing.md }}>
+                <QuestionEditor
+                  submitting={add.isPending}
+                  serverError={addError}
+                  onCancel={() => setAdding(false)}
+                  onSubmit={(body) =>
+                    add.mutate(body, {
+                      onSuccess: () => {
+                        setAdding(false);
+                        setAddError(null);
+                      },
+                      onError: (err) => setAddError(apiErrorMessage(err, "Couldn't add the question.")),
+                    })
+                  }
+                />
+              </Card>
+            ) : (
+              <Button title="Add question" style={{ marginTop: theme.spacing.md }} onPress={() => setAdding(true)} />
+            )
+          ) : null}
+        </>
+      )}
+      {error ? (
+        <Text variant="label" color={theme.colors.error[500]} style={{ marginTop: theme.spacing.sm }}>
+          {error}
+        </Text>
+      ) : null}
+    </Screen>
+  );
+}
+
+export default function QuizEditScreen() {
+  const { id: raw } = useLocalSearchParams<{ id: string }>();
+  const id = parseId(raw);
+  const role = useSessionStore((s) => s.user?.role ?? null);
+
+  // v1's builder route was requireRole(["ADMIN","SUPER"]) + canManageQuiz; the
+  // role check here avoids a pointless fetch, and canManage (server-derived,
+  // C4) is checked in QuizBuilder. The server enforces both on every write.
+  if (role !== "ADMIN" && role !== "SUPER") {
+    return (
+      <Screen edges={["top", "left", "right"]}>
+        <EmptyState title="Not available" message="Only a season admin can edit quizzes." />
+      </Screen>
+    );
+  }
+  if (id === null) {
+    return (
+      <Screen edges={["top", "left", "right"]}>
+        <EmptyState title="Not found" message="That quiz doesn't exist." />
+      </Screen>
+    );
+  }
+  return <QuizBuilder id={id} />;
+}
+```
+
+- [ ] **Step 7: Entry points.**
+
+In `apps/mobile/app/(app)/quizzes.tsx`'s `StaffQuizzes`: read
+`const role = useSessionStore((s) => s.user?.role ?? null);` and
+`const canAuthor = role === "ADMIN" || role === "SUPER";`. Render, as the
+first child of the `Screen` (before the state branches):
+
+```tsx
+{canAuthor && seasonId !== null ? (
+  <Button
+    title="New quiz"
+    style={{ marginBottom: theme.spacing.sm }}
+    onPress={() => router.push("/quiz/new")}
+  />
+) : null}
+```
+
+and change the row's `onPress` to:
+
+```tsx
+onPress={() =>
+  router.push(
+    canAuthor && row.kind === "ONLINE" && row.publishedAt === null
+      ? { pathname: "/quiz/[id]/edit", params: { id: String(row.id) } }
+      : { pathname: "/quiz/[id]/grade", params: { id: String(row.id) } },
+  )
+}
+```
+
+(add `Button` to the `../../src/ui` import). A published quiz still opens the
+grade screen; its builder is one tap further via the preview below.
+
+In `apps/mobile/app/(app)/quiz/[id]/index.tsx`'s `StaffPreview` (Task 9),
+next to "Grade this quiz", add:
+
+```tsx
+{data.canManage ? (
+  <Button
+    title="Edit quiz"
+    variant="secondary"
+    onPress={() => router.push({ pathname: "/quiz/[id]/edit", params: { id: String(id) } })}
+  />
+) : null}
+```
+
+and extend Task 9's "gives staff a read-only preview" test with
+`expect(screen.queryByText("Edit quiz")).toBeNull();` (its fixture has
+`canManage: false`).
+
+- [ ] **Step 8: Register the routes.** Append `"quiz/new"` and
+`"quiz/[id]/edit"` to `DETAIL_ROUTE_NAMES` in `_layout.tsx`. `quiz/new` is a
+static segment beside the dynamic `quiz/[id]/` directory — expo-router matches
+static segments first, so `/quiz/new` never resolves as a quiz id. Run
+`pnpm turbo routes:generate --filter=@space/mobile`.
+
+- [ ] **Step 9: Run.**
+
+Run: `cd apps/mobile && pnpm jest src/__tests__/quiz-authoring.test.tsx src/__tests__/quizzes-screen.test.tsx src/__tests__/quiz-runner.test.tsx src/__tests__/app-layout.test.tsx src/__tests__/role-tabs.test.tsx` → PASS.
+Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add apps/mobile && git commit -m "feat(mobile): quiz authoring — create, build, reorder and publish"
+```
+
+---
+
+### Task 11b: Mobile — session-quiz card rows open the quiz (Plan 16 follow-up)
+
+Plan 16 Task 7 put `SessionQuizzesCard` on the leader/admin session detail
+(`GET /api/v1/sessions/:id/quizzes`, coverage gap G18) with **unpressable**
+rows, because `quiz/[id]` did not exist yet and typed routes forbid linking a
+missing route (Plan 16 D-16.10). This task adds the press. A row opens the
+staff preview at `/quiz/[id]` (Task 9's `StaffPreview`), which already offers
+"Grade this quiz" and — after Task 11 — "Edit quiz" when `canManage`. That is
+one destination for every kind and status, instead of re-deriving the quizzes
+list's draft-vs-published routing here. It also swaps Plan 16's inlined
+`kind` enum for this plan's `quizKindSchema`, as Plan 16 invited.
+
+**Files:**
+- Modify: `packages/shared/src/session.ts` (`sessionQuizItemSchema.kind` → `quizKindSchema`)
+- Modify: `apps/mobile/src/components/SessionQuizzesCard.tsx` (Plan 16's — rows become `Pressable`)
+- Test: `apps/mobile/src/__tests__/session-detail.test.tsx` (Plan 16's replaced file — one new case)
+
+**Interfaces:**
+- Consumes: Plan 16's `SessionQuizzesCard`, `useSessionQuizzes(id, enabled)`, `sessionQuizItemSchema`, and the `routeGets`/`baseDetail`/`leader()`/`mockPush` harness in `session-detail.test.tsx`; Task 1's `quizKindSchema` (`packages/shared/src/enums.ts`); Task 9's `/quiz/[id]` route.
+- Produces: nothing new by name — `SessionQuizzesCard` rows navigate to `{ pathname: "/quiz/[id]", params: { id } }`.
+
+- [ ] **Step 1: Failing test.** Append to `apps/mobile/src/__tests__/session-detail.test.tsx`
+(Plan 16's file already imports `fireEvent` and mocks `useRouter` with `mockPush`):
+
+```tsx
+it("opens a session quiz's staff preview from the quiz card (Plan 6 Task 11b)", async () => {
+  useSessionStore.setState(leader());
+  routeGets({
+    detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
+    quizzes: [{ id: 41, title: "Online quiz", kind: "ONLINE", maxScore: 10, questionCount: 4, publishedAt: null }],
+  });
+  renderWithProviders(<SessionDetailScreen />);
+
+  fireEvent.press(await screen.findByText("Online quiz"));
+
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/quiz/[id]", params: { id: "41" } });
+});
+```
+
+Run: `cd apps/mobile && pnpm jest src/__tests__/session-detail.test.tsx` → FAIL (`mockPush` not called).
+
+- [ ] **Step 2: Use the shared quiz kind.** In `packages/shared/src/session.ts`,
+add `quizKindSchema` to the existing `./enums` import and change
+`sessionQuizItemSchema`'s `kind: z.enum(["PAPER", "ONLINE"]),` to
+`kind: quizKindSchema,`. Update the schema's doc comment: the kind is now
+Plan 6's enum. (Same two literals, so Plan 16's contract tests stay green.)
+
+- [ ] **Step 3: Make the rows pressable.** In
+`apps/mobile/src/components/SessionQuizzesCard.tsx`, replace the
+`react-native` import with
+`import { Pressable } from "react-native";`, add
+`import { useRouter } from "expo-router";`, and add
+`const router = useRouter();` directly after `const theme = useTheme();` (before
+the early returns — hooks order). Replace the row map with:
+
+```tsx
+      {quizzes.data.map((q) => (
+        <Pressable
+          key={q.id}
+          accessibilityRole="button"
+          onPress={() => router.push({ pathname: "/quiz/[id]", params: { id: String(q.id) } })}
+        >
+          <Text variant="body">{q.title}</Text>
+          <Text variant="caption" color={theme.colors.neutral[600]}>
+            {q.kind === "ONLINE" && q.publishedAt === null ? `Max score: ${q.maxScore} · Draft` : `Max score: ${q.maxScore}`}
+          </Text>
+        </Pressable>
+      ))}
+```
+
+and change the doc comment's "Rows are not pressable yet …" sentence to "A row
+opens the quiz's staff preview (`/quiz/[id]`, Plan 6 Task 11b)."
+
+- [ ] **Step 4: Run.**
+
+Run: `cd apps/mobile && pnpm jest src/__tests__/session-detail.test.tsx` → PASS (Plan 16's quiz-card cases unchanged).
+Run: `cd packages/shared && pnpm exec jest src/__tests__/season-admin-contracts.test.ts` → PASS.
+Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile --filter=@space/shared` → clean (the typed href `/quiz/[id]` resolves because Task 7 registered it).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/shared apps/mobile && git commit -m "feat(mobile): session quiz card rows open the quiz preview"
+```
+
+---
+
+### Task 12: Closing gate (coordinator)
 
 **Files:** none created — verification only.
 
@@ -5393,9 +6737,16 @@ it claims.
    `user.role === "STUDENT"` branch so every caller gets
    `loadQuizAuthoringDetail`. → the raw-JSON answer-key test fails on
    `expect(raw).not.toContain("correctIndex")`.
-   *(Typecheck should also fail, because the response no longer matches the
-   student shape. If it does not, the handler is returning an untyped object —
-   fix that, it is the second half of D2's protection.)*
+   *(Typecheck will NOT fail here — `apiOk` takes `unknown`, so nothing at the
+   handler level is typed against the student shape. That is expected; the
+   raw-JSON test is the guarantee.)*
+1b. **The typed mapper.** Widen `StudentQuestionSource` with
+   `correctIndex: number | null`, add `correctIndex: true` to the student
+   select, and add `correctIndex: q.correctIndex,` to `toStudentQuestion`'s
+   returned literal. → `pnpm turbo typecheck --filter=@space/backend` fails
+   with an excess-property error on `QuizQuestionStudent`. (This is the one
+   edit the type does catch; the Task 4 note says exactly which ones it
+   does not.)
 2. **The D1 season check.** In `POST /:id/grades`, restore v1's condition —
    replace `if (!(await canGradeQuiz(user, id)))` with
    `if (user.role === "LEADER" && !(await canGradeQuiz(user, id)))`. → the
@@ -5412,10 +6763,18 @@ it claims.
 6. **The runner's batching.** In `use-quizzes.ts`'s `useSaveAnswers`, send only
    the last-edited answer instead of the batch. → the debounce test's payload
    assertion fails.
+7. **The builder lock.** In `quiz/[id]/edit.tsx`, pass `editable={true}` to
+   every `QuestionRow` and drop the `data.canEditStructure` gate on "Add
+   question". → the "locks the structure once a student has started" test fails.
+8. **The full permutation.** In `useReorderQuestions`, send only the two
+   swapped ids. → the "reorders by sending the full permutation" test fails.
+9. **The notification link.** Change `QUIZ_GRADED_LINK` to `"/quizzes"` (a
+   v2-style path). → every non-zero `quizGradedCount()` delta assertion fails,
+   because the helper counts only rows carrying v1's link (ruling X1).
 
 - [ ] **Step 3: Check the emitted build for the CLAUDE.md require trap**
 
-Run: `grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/routes/` → empty.
+Run: `grep -rn 'require("@space/shared")' apps/backend/dist/` → empty (all of `dist/`, ruling X12).
 (`routes/quizzes.ts` has a value import from shared, so it is exactly the file
 this trap catches. The relative import path is what keeps it out of `dist`.)
 
@@ -5423,8 +6782,8 @@ this trap catches. The relative import path is what keeps it out of `dist`.)
 
 Backend running, `apiClient` pointed at it. On staging:
 
-1. As an **admin**: create an ONLINE quiz on a session, add two MCQs and an
-   essay, reorder them, publish. Then try to add a question after a student has
+1. As an **admin** (Task 11's screens): Quizzes → "New quiz", create an
+   ONLINE quiz on a session, add two MCQs and an essay, reorder them, publish. Then try to add a question after a student has
    started — refused, with the message the API sends.
 2. As a **student**: the quizzes tab lists the published quiz as "Not started";
    open it, press "Start quiz", answer one MCQ, kill the app, reopen — the
@@ -5433,20 +6792,47 @@ Backend running, `apiClient` pointed at it. On staging:
    response to the student contains `correctIndex`. The integration test is the
    real guard; this is the sanity check that the deployed build matches it.
 4. As a **leader**: open the grading screen, mark the essay, save. The student's
-   screen shows the total after a refetch; the student's notification links to
-   the quiz, not to a bare list.
+   screen shows the total after a refetch; the student's notification carries
+   v1's link `/student/quizzes` (ruling X1), which Plan 9's parser opens as the
+   Quizzes tab — and the same row renders correctly in v1.
 5. As a **leader**: reopen the attempt. The student sees the retake and a
    notification telling them so.
 6. As an **admin**: a PAPER quiz's grid saves a score, clears one by emptying
    the field, and refuses a score above the max with the server's message.
 7. As a **leader**: confirm the grid and the attempts list show **only your own
    group's** students, while an admin sees the whole season.
+8. As a **leader**: open a session that has a quiz — its Quizzes card row opens
+   that quiz's preview (Task 11b).
 
 - [ ] **Step 5: Report**
 
-Suite counts (unit and integration), the six mutation outcomes, the device
+Suite counts (unit and integration), the ten mutation outcomes (1, 1b, 2–9), the device
 checklist results, and any divergence from this plan found while implementing —
 in particular anything the "verify at implementation time" notes turned up
 (Prisma `groupBy` shape, `Prisma.TransactionClient`, RNTL fake timers,
 `cleanupTestData`'s ordering against the `Restrict` relations on `QuizGrade`
 and `QuizAttempt`).
+
+---
+
+## Revision 2026-10-05
+
+Applied the cross-plan rulings, the 01–06 review, and the coverage audit:
+- **New Task 11 — quiz authoring UI** (coverage gap G8, ruling X15): `quiz/new` (create form, v1 defaults PAPER / max score 100, optional session from the current season) and `quiz/[id]/edit` (builder: add/edit/delete/reorder questions through one shared-schema-validated `QuestionEditor`, publish/unpublish, the D3 lock when `canEditStructure` is false, a PAPER card instead of v1's redirect), hooks in `src/hooks/use-quiz-authoring.ts`, entry points on the staff Quizzes list and the staff preview, full tests. The closing gate is now Task 12, with three new mutations.
+- **B3:** every `QUIZ_GRADED` count is a delta from a baseline taken in the same test, through one `quizGradedCount()` helper — absolute counts accumulated across quizzes graded for the same student.
+- **X1 / S2:** all four `QUIZ_GRADED` sites write v1's exact link, `QUIZ_GRADED_LINK = "/student/quizzes"` (`jpc-space/src/lib/quiz-actions.ts:167,483,554`), not `/quizzes/${id}`; tests assert it.
+- **S18:** the "widening the select does not typecheck" claim was false and is removed everywhere (header, `quiz.ts` comment, Task 4, mutation 1). The student loader now returns `StudentQuizDetailRow` and builds questions through a `toStudentQuestion` mapper typed `QuizQuestionStudent` (catches an added `correctIndex` line; stated plainly that it does not catch a spread); the raw-JSON test remains the guarantee; new mutation 1b proves what the type does catch.
+- **X8 / S1:** the staff Quizzes branch gets its season from Plan 4's `useCurrentSeasonId()`; staff fixtures use `activeSeasonId: null` and mock `GET /api/v1/seasons`; a new test pins it. `Depends on` now names Plan 4.
+- **X10 / S3:** new shared response schemas (`quizCreatedResponseSchema`, `quizUpdatedResponseSchema`, `quizQuestionDeletedResponseSchema`, `reorderQuestionsResponseSchema`, `publishQuizResponseSchema`, `saveQuizAnswersResponseSchema`, `reopenAttemptResponseSchema`) and `QuizQuestionInput`; `useGradeEssays` parses `quizGradingAttemptSchema`; no `as` casts remain on responses.
+- **X7 / S4:** the `quiz/[id]/index.tsx` rationale now cites ruling X7 (Plan 4 uses the same form for `session/[id]`); the `DETAIL_ROUTE_NAMES` snippet appends instead of restating a stale full list.
+- **X9 / B5, X11 / B4:** no hardcoded counts are edited; layout assertions name the routes explicitly; every session-store fixture has `avatarPath: null`.
+- **S5:** `queryKeys.quizzes.detail/attempts/grades` take `number | null` — no `-1` sentinels.
+- **S19:** the CORS `"PUT"` step is dropped (already in `app.ts`); the reopen control is stated as shown to every grader (`canGradeQuiz` gate), not `canManage || true`.
+- **X12:** the emitted-build grep covers all of `dist/`. X5 checked: `quizzesRouter.use(requireAuth)` is allowed because the router owns `/api/v1/quizzes` exclusively.
+
+
+Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → …):
+- `Depends on` fixed: Plan 17 runs **after** this plan; Plan 16 is now named (session-quiz card, `sessionQuizItemSchema`, required `startTime` on session rows).
+- **New Task 11b:** `SessionQuizzesCard` (Plan 16) rows become pressable and open `/quiz/[id]` (staff preview → grade/edit); `sessionQuizItemSchema.kind` switches to `quizKindSchema`; one failing-first case in Plan 16's `session-detail.test.tsx`; device checklist item 8.
+- Task 7's `DETAIL_ROUTE_NAMES` example list now uses the moved names (`assignment/[id]/index`, `group/[id]/index`) and lists only plans that ran earlier.
+- Task 11's `sessionsList` fixture carries `startTime` (required on session list rows since Plan 16).

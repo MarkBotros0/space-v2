@@ -218,3 +218,6 @@ the wrong account fails with a misleading `Repository not found`.
 - Design: `docs/superpowers/specs/2026-08-20-space-v2-monorepo-design.md`
 - Plan: `docs/superpowers/plans/2026-08-20-space-v2-scaffold.md`
 - API port plan: `docs/superpowers/plans/2026-08-20-space-v2-api-port.md`
+- Migration roadmap (18 plans, execution order, cross-plan rulings X1–X17):
+  `docs/superpowers/plans/2026-08-24-migration-roadmap.md` — plan numbers are
+  identities, not order; follow the roadmap's execution order.

@@ -117,10 +117,12 @@ sentence (04's D7/D12 unsettled, and R87 gives the flag no dedupe, so it can
 burst). The roadmap sizes this plan at "the 2–3 interruptive types only".
 `PUSH_NOTIFICATION_TYPES` therefore ships as **`SESSION_RESCHEDULED`,
 `SUBMISSION_REVIEWED`, `QUIZ_GRADED`** — the three where the recipient is
-actively waiting. `MENTOR_FOLLOWUP` is additionally excluded because R63 puts
-the first 140 characters of a pastoral note into the notification body, and a
-lock-screen preview is the worst possible place for it (R64, D8). Adding a
-type later is one array entry plus one test line.
+actively waiting. `MENTOR_FOLLOWUP` stays excluded. In v1 that was because R63
+put the first 140 characters of a pastoral note into the body. Plan 8 removed
+the excerpt: v2's body is a fixed sentence. But the title still reads "Follow-up
+flagged for <student name>". A named young person flagged for pastoral
+follow-up must not appear on a lock screen that anyone near the phone can read
+(R64, D8). Adding a type later is one array entry plus one test line.
 
 ---
 
@@ -132,10 +134,23 @@ type later is one array entry plus one test line.
   write to it.
 - Response envelope `{ data }` / `{ error: { code, message } }` via
   `apiOk`/`apiError`.
-- Value imports from shared use the relative path
-  `"../../../../packages/shared/src/index"` in backend route files (the
-  `rootDir` emit trap in `CLAUDE.md`); mobile imports `@space/shared` by
-  package name.
+- Value imports from shared use the relative path in **every backend `src`
+  file**, not only routes (ruling X12; the `rootDir` emit trap in `CLAUDE.md`):
+  `"../../../../packages/shared/src/index"` from `src/routes/` and `src/lib/`.
+  `import type` may use the package name. Mobile imports `@space/shared` by
+  package name. The closing gate greps all of `dist/`.
+- **Escaping is Plan 8's, imported, never redefined** (ruling X2): the backend
+  escapes through `escapeHtml` from `apps/backend/src/lib/html.ts`, and the
+  notification email is built by Plan 8's exported `buildNotificationHtml` in
+  `lib/email.ts`. This plan adds no escaper and no second template.
+- **`requireAuth` per route on shared prefixes** (ruling X5). `meRouter`
+  (`/api/v1/me`) already attaches it per route; this plan's additions do the
+  same. `notificationsRouter` owns `/api/v1/notifications` outright, so its
+  router-level `use(requireAuth)` is allowed.
+- **Notification links are v1's exact strings** (ruling X1). Every producer
+  writes the path v1 writes for that type; `parseNotificationLink` (Task 2)
+  recognises exactly the five shapes v1 emits, and Plan 13's M4 backfill maps
+  the same five.
 - No `@/` path alias in either app. Mobile uses relative imports.
 - `src/docs/openapi.ts` changes in the same commit as the route it documents.
 - Integration fixtures: every row carries the `space-v2-test-` prefix in
@@ -160,6 +175,17 @@ type later is one array entry plus one test line.
   mail interpolation), **C12** (dead v1 code is not a specification — v1's
   unreachable `markNotificationReadAction` gets one endpoint, designed, not two
   ported).
+
+**Prerequisites (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 → 7 → 17 → 14 → 8 → **9**):** Plan 7's settings
+screen (`app/(app)/settings.tsx`, Task 9 adds a section to it) and its
+`me-settings-routes.test.ts` pattern; Plan 8's `apps/backend/src/lib/html.ts`
+(`escapeHtml`) and `lib/email.ts`'s exported `buildNotificationHtml`; Plan 5's
+`/student/[id]` route, served by `app/(app)/student/[id]/index.tsx` since
+Plan 17 moved it to the directory form (Task 6 deep-links to it); Plan 1's
+`/assignment/[id]` route, served by `app/(app)/assignment/[id]/index.tsx`
+since Plan 15's move; and Plan 1's `/more`. The typed pathnames
+`/student/[id]` and `/assignment/[id]` are unchanged by both moves. If any is missing, stop — do not
+re-create it here.
 
 **Execution shape:** Task 1 first (coordinator — both streams consume the
 contracts). Then two agents in parallel: **backend** Tasks 2 → 3 → 4 → 5
@@ -190,7 +216,8 @@ no file except `packages/shared/src/index.ts`, which Task 1 finishes.
   `notificationPreferencesSchema` → `NotificationPreferences`;
   `notificationPreferencesResponseSchema`;
   `DEFAULT_NOTIFICATION_PREFERENCES`; `PUSH_NOTIFICATION_TYPES`;
-  `shouldPush(type)`; `deviceRegistrationSchema` → `DeviceRegistration`.
+  `shouldPush(type)`; `devicePlatformSchema` → `DevicePlatform`;
+  `DEVICE_PLATFORM_TO_DB`; `deviceRegistrationSchema` → `DeviceRegistration`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -198,6 +225,7 @@ no file except `packages/shared/src/index.ts`, which Task 1 finishes.
 // packages/shared/src/__tests__/notification-contracts.test.ts
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
+  DEVICE_PLATFORM_TO_DB,
   NOTIFICATION_PREFERENCE_KEYS,
   NOTIFICATION_PREFERENCE_KEY_BY_TYPE,
   PUSH_NOTIFICATION_TYPES,
@@ -335,7 +363,7 @@ describe("push policy", () => {
     expect(shouldPush("ASSIGNMENT_CREATED")).toBe(false);
     // Can burst (04 R87, no dedupe) and is deferred until 04's D7/D12 settle.
     expect(shouldPush("LOW_ATTENDANCE_FLAG")).toBe(false);
-    // Carries 140 characters of a pastoral note (R63/R64) — never on a lock screen.
+    // Names a student flagged for pastoral follow-up — never on a lock screen (R64).
     expect(shouldPush("MENTOR_FOLLOWUP")).toBe(false);
   });
 });
@@ -349,6 +377,10 @@ describe("deviceRegistrationSchema", () => {
       deviceRegistrationSchema.safeParse({ token: "t", platform: "ios", userId: 3 }).success,
     ).toBe(false);
     expect(deviceRegistrationSchema.safeParse({ token: "t", platform: "web" }).success).toBe(false);
+  });
+
+  it("maps the lowercase wire platform to Plan 13 M10's DevicePlatform enum", () => {
+    expect(DEVICE_PLATFORM_TO_DB).toEqual({ ios: "IOS", android: "ANDROID" });
   });
 });
 ```
@@ -395,9 +427,15 @@ import { notificationTypeSchema, type NotificationType } from "./enums";
  * writing `link` verbatim so v1 — still in production against the same
  * database — keeps working. No client may parse the path itself.
  *
- * `calendar` is a destination rather than an entity because one of the six
+ * `calendar` is a destination rather than an entity because one of the five
  * link shapes v1 actually emits is the bare `/student/calendar` (R67), and
  * pretending it names a session would be a lie the resolver has to keep.
+ *
+ * Wire values are lowercase. Plan 13's M4 stores the same set as the
+ * uppercase Postgres enum `NotificationEntityType` (ASSIGNMENT, QUIZ,
+ * CALENDAR, STUDENT, plus SUBMISSION/SESSION which nothing writes yet); the
+ * mapping is written out in the cutover doc (Task 5) so the wire contract —
+ * and every client built against it — does not change at cutover.
  */
 export const notificationEntityTypeSchema = z.enum([
   "assignment",
@@ -526,8 +564,9 @@ export const notificationPreferencesResponseSchema = z.object({
  *
  * ASSIGNMENT_CREATED is the highest-volume fan-out in the system and is not
  * time-critical. LOW_ATTENDANCE_FLAG can burst (04 R87 gives it no dedupe) and
- * waits on 04's D7/D12. MENTOR_FOLLOWUP's body is the first 140 characters of a
- * pastoral note (R63), which must never reach a lock screen (R64, D8).
+ * waits on 04's D7/D12. MENTOR_FOLLOWUP names a student flagged for pastoral
+ * follow-up in its title, which must never reach a lock screen (R64, D8) —
+ * Plan 8 removed v1's note excerpt from the body, but the name remains.
  */
 export const PUSH_NOTIFICATION_TYPES = [
   "SESSION_RESCHEDULED",
@@ -540,6 +579,21 @@ export function shouldPush(type: NotificationType): boolean {
 }
 
 /**
+ * The wire spelling of a device platform — lowercase, matching
+ * react-native's `Platform.OS`. Plan 13's M10 stores it as the Postgres enum
+ * `DevicePlatform { IOS ANDROID }`; the server maps at the write
+ * (`DEVICE_PLATFORM_TO_DB`, below), so the wire contract never changes.
+ */
+export const devicePlatformSchema = z.enum(["ios", "android"]);
+export type DevicePlatform = z.infer<typeof devicePlatformSchema>;
+
+/** Wire → database enum value, for the cutover upsert (Task 5's doc, Plan 13 M10). */
+export const DEVICE_PLATFORM_TO_DB = {
+  ios: "IOS",
+  android: "ANDROID",
+} as const satisfies Record<DevicePlatform, string>;
+
+/**
  * Device registration (spec D5). The row this writes does not exist yet — the
  * schema is frozen and there is no DeviceToken model — so the endpoint answers
  * 503 until cutover. The contract is fixed now so the client is built once.
@@ -547,7 +601,7 @@ export function shouldPush(type: NotificationType): boolean {
 export const deviceRegistrationSchema = z
   .object({
     token: z.string().min(1).max(200),
-    platform: z.enum(["ios", "android"]),
+    platform: devicePlatformSchema,
   })
   .strict();
 export type DeviceRegistration = z.infer<typeof deviceRegistrationSchema>;
@@ -563,7 +617,7 @@ export * from "./notification";
 
 - [ ] **Step 6: Run the tests**
 
-Run: `pnpm --filter @space/shared jest src/__tests__/notification-contracts.test.ts` → PASS (11 cases)
+Run: `pnpm --filter @space/shared jest src/__tests__/notification-contracts.test.ts` → PASS
 Run: `pnpm turbo lint typecheck test:unit` → clean.
 
 - [ ] **Step 7: Commit**
@@ -574,42 +628,75 @@ git add packages/shared && git commit -m "feat(shared): notification wire contra
 
 ---
 
-### Task 2: Delivery library — D4 channel split, D1 target parser, D6 helper, C11 escaping
+### Task 2: Delivery library — D4 channel split, D1 target parser, D6 helper
 
 **Files:**
 - Create: `apps/backend/src/lib/notification-target.ts`
 - Create: `apps/backend/src/lib/best-effort.ts`
 - Modify: `apps/backend/src/lib/notifications.ts`
-- Modify: `apps/backend/src/lib/email.ts` (escape at the template boundary)
-- Modify: `apps/backend/src/routes/submissions.ts:379-389` (best-effort helper; fix the link's missing assignment id)
-- Modify: `apps/backend/src/routes/sessions.ts:227` (best-effort helper)
+- Modify: every producer call site of `createNotificationsBulk` / `flagLowAttendance` in `apps/backend/src/routes/` (Step 7 enumerates them by plan)
 - Test: `apps/backend/src/__tests__/notification-target.test.ts` (new, unit),
   `apps/backend/src/__tests__/best-effort.test.ts` (new, unit),
-  `apps/backend/src/__tests__/email.test.ts` (extend, unit),
   `apps/backend/src/__tests__/integration/notifications.test.ts` (rewrite the opt-out case, add one)
 
+**Not in this task, deliberately:** mail escaping. Plan 8 already routes every
+notification email through its exported `buildNotificationHtml`
+(`apps/backend/src/lib/email.ts`), which escapes title, body and link with
+`escapeHtml` from `apps/backend/src/lib/html.ts`, and its `email-html.test.ts`
+pins it (rulings X2, C11). An earlier draft of this task added a second,
+private `escapeHtml` to `email.ts` (a duplicate identifier beside Plan 8's
+import) and a `renderNotificationHtmlForTest` twin of the template; both are
+withdrawn. Step 6 only verifies Plan 8's work is in place.
+
 **Interfaces:**
-- Consumes: `NotificationTarget` from `@space/shared` (Task 1).
+- Consumes: `NotificationTarget`, `NotificationEntityType` from shared (Task 1, type-only); Plan 8's `buildNotificationHtml` (unchanged).
 - Produces: `parseNotificationLink(link: string | null): NotificationTarget | null`;
+  `NOTIFICATION_LINK_PATTERNS: readonly { re: RegExp; entityType: NotificationEntityType; hasId: boolean }[]`
+  — the closed set of v1 link shapes, which Plan 13's M4 backfill SQL mirrors one-for-one;
   `bestEffort(label: string, fn: () => Promise<unknown>): Promise<void>`;
   `createNotificationsBulk(userIds, payload): Promise<BulkNotificationResult>`
-  where `BulkNotificationResult = { written: number; suppressed: number }`
-  (Task 3 and Plan 3's reschedule both consume the return value).
+  where `BulkNotificationResult = { written: number; suppressed: number }`.
+  No current producer reads the counts (they run inside `bestEffort`, which
+  returns void); they exist so the session-write response can report them
+  later (`03-sessions.md` R17) without another signature change.
+
+**The v1 link shapes — enumerated from jpc-space source, not from the spec.**
+`grep -rn "link:" jpc-space/src/lib` finds every producer; there are exactly
+nine call sites and five distinct shapes:
+
+| Shape | v1 producer(s) | Type(s) |
+|---|---|---|
+| `/student/assignments/:id` | `assignment-actions.ts:91`, `submission-actions.ts:197` | `ASSIGNMENT_CREATED`, `SUBMISSION_REVIEWED` |
+| `/student/quizzes` | `quiz-actions.ts:167`, `:483`, `:554` | `QUIZ_GRADED` |
+| `/student/calendar` | `session-actions.ts:167` | `SESSION_RESCHEDULED` |
+| `/admin/students/:id` | `note-actions.ts:84`, `attendance-notifications.ts:65` | `MENTOR_FOLLOWUP`, `LOW_ATTENDANCE_FLAG` |
+| `/leader/students/:id` | `attendance-notifications.ts:73` | `LOW_ATTENDANCE_FLAG` |
+
+v1 has no other notification writer (forum, video quizzes and events create
+none). Under ruling X1 every v2 producer writes the same string v1 writes for
+its type, so this table is also the complete set of shapes v2 writes — Plan 6's
+`QUIZ_GRADED` sites write `/student/quizzes`, Plan 3's reschedule writes
+`/student/calendar`, Plan 15's `ASSIGNMENT_CREATED` writes
+`/student/assignments/:id`. A producer that writes anything else is a bug in
+that producer, not a sixth row here. An earlier draft also accepted a bare
+`/student/assignments`; no v1 producer writes it and current v2 does not
+either (`routes/submissions.ts` already writes the id), so it is dropped — a
+stray staging row of that shape resolves to `null` and opens the inbox, which
+is the documented fallback.
 
 - [ ] **Step 1: Write the failing unit tests**
 
 ```ts
 // apps/backend/src/__tests__/notification-target.test.ts
-import { parseNotificationLink } from "../lib/notification-target";
+import { NOTIFICATION_LINK_PATTERNS, parseNotificationLink } from "../lib/notification-target";
 
 describe("parseNotificationLink", () => {
-  // The complete set of link shapes the nine v1 producers emit (spec R3, R62,
-  // R63, R66, R67, R68, R69), plus the one v2 currently writes. Nothing else
-  // reaches this table; anything else is a null target and a list fallback on
-  // the client.
+  // The complete set of link shapes v1 emits (jpc-space src/lib, nine
+  // producers, five shapes — see the table in this task). Ruling X1: every v2
+  // producer writes one of these. Anything else is a null target and a list
+  // fallback on the client.
   it.each([
     ["/student/assignments/41", { entityType: "assignment", entityId: 41 }],
-    ["/student/assignments", { entityType: "assignment", entityId: null }],
     ["/student/quizzes", { entityType: "quiz", entityId: null }],
     ["/student/calendar", { entityType: "calendar", entityId: null }],
     ["/admin/students/12", { entityType: "student", entityId: 12 }],
@@ -618,10 +705,18 @@ describe("parseNotificationLink", () => {
     expect(parseNotificationLink(link)).toEqual(expected);
   });
 
+  it("knows exactly five shapes — the set Plan 13's M4 backfill must mirror", () => {
+    expect(NOTIFICATION_LINK_PATTERNS).toHaveLength(5);
+  });
+
   it("returns null for a null link, an unknown shape, or a non-numeric id", () => {
     expect(parseNotificationLink(null)).toBeNull();
     expect(parseNotificationLink("/super/reports")).toBeNull();
     expect(parseNotificationLink("/student/assignments/abc")).toBeNull();
+    // Not a v1 shape (no producer writes the bare list path).
+    expect(parseNotificationLink("/student/assignments")).toBeNull();
+    // Not v1's route either: v1 writes the quiz LIST for QUIZ_GRADED.
+    expect(parseNotificationLink("/student/quizzes/7")).toBeNull();
     expect(parseNotificationLink("https://evil.test/student/assignments/1")).toBeNull();
   });
 
@@ -670,43 +765,19 @@ describe("bestEffort", () => {
 });
 ```
 
-Extend `apps/backend/src/__tests__/email.test.ts` (read it first and match its
-existing mocking of `nodemailer`; if it asserts on the rendered HTML it already
-has the seam this needs):
-
-```ts
-it("escapes notification title and body before interpolating them into the mail", async () => {
-  // R29/C11: title and body are built from user-controlled strings on every
-  // type — assignment titles, quiz titles, student names, and 140 characters
-  // of a mentor's free-text note. The in-app surfaces render through React and
-  // escape; the mail is real HTML sent to a real inbox and does not.
-  const html = renderNotificationHtmlForTest(
-    '<img src=x onerror="alert(1)">',
-    "5 < 6 & 7 > 2",
-    null,
-  );
-  expect(html).not.toContain("<img");
-  expect(html).toContain("&lt;img");
-  expect(html).toContain("5 &lt; 6 &amp; 7 &gt; 2");
-});
-```
-
-If `email.test.ts` has no such seam, export a small
-`export function renderNotificationHtmlForTest(title, body, link)` from
-`email.ts` that returns the same string `sendNotificationEmail` passes to
-`sendMail`, and have `sendNotificationEmail` call it — one function, two
-callers, no duplicated template.
-
 - [ ] **Step 2: Run them to see them fail**
 
-Run: `cd apps/backend && npx jest --testPathPattern "(notification-target|best-effort|email)"`
-Expected: FAIL — `lib/notification-target.ts` and `lib/best-effort.ts` do not exist; the escaping case fails on the raw `<img`.
+Run: `cd apps/backend && npx jest --testPathPattern "(notification-target|best-effort)"`
+Expected: FAIL — `lib/notification-target.ts` and `lib/best-effort.ts` do not exist.
 
 - [ ] **Step 3: Write the link parser**
 
 ```ts
 // apps/backend/src/lib/notification-target.ts
-import type { NotificationTarget } from "../../../../packages/shared/src/index";
+import type {
+  NotificationEntityType,
+  NotificationTarget,
+} from "../../../../packages/shared/src/index";
 
 /**
  * The one place a stored `Notification.link` becomes a route-independent
@@ -717,26 +788,26 @@ import type { NotificationTarget } from "../../../../packages/shared/src/index";
  * scheme is already broken inside v1, where a mentor holding a GroupLeader row
  * gets a /leader link that bounces them (R4). v2's routes are flat, so the
  * string is meaningless to a device. The clean fix is two columns; the schema
- * is frozen (C1), so this parses instead, and the same function backfills the
- * columns at cutover (docs/superpowers/cutover/2026-08-24-notifications-push.md).
+ * is frozen (C1), so this parses instead, and Plan 13's M4 backfills the
+ * columns with SQL that mirrors NOTIFICATION_LINK_PATTERNS one row per entry.
  *
  * Do NOT let a screen parse the path. One function, one place, one test table.
  */
-const PATTERNS: {
+export const NOTIFICATION_LINK_PATTERNS: readonly {
   re: RegExp;
-  build: (id: string | undefined) => NotificationTarget;
+  entityType: NotificationEntityType;
+  hasId: boolean;
 }[] = [
-  {
-    re: /^\/student\/assignments\/(\d+)$/,
-    build: (id) => ({ entityType: "assignment", entityId: Number(id) }),
-  },
-  { re: /^\/student\/assignments$/, build: () => ({ entityType: "assignment", entityId: null }) },
-  { re: /^\/student\/quizzes$/, build: () => ({ entityType: "quiz", entityId: null }) },
-  { re: /^\/student\/calendar$/, build: () => ({ entityType: "calendar", entityId: null }) },
-  {
-    re: /^\/(?:admin|leader)\/students\/(\d+)$/,
-    build: (id) => ({ entityType: "student", entityId: Number(id) }),
-  },
+  // ASSIGNMENT_CREATED, SUBMISSION_REVIEWED (v1 assignment-actions.ts:91, submission-actions.ts:197)
+  { re: /^\/student\/assignments\/(\d+)$/, entityType: "assignment", hasId: true },
+  // QUIZ_GRADED (v1 quiz-actions.ts:167, :483, :554) — the list, not a quiz
+  { re: /^\/student\/quizzes$/, entityType: "quiz", hasId: false },
+  // SESSION_RESCHEDULED (v1 session-actions.ts:167)
+  { re: /^\/student\/calendar$/, entityType: "calendar", hasId: false },
+  // MENTOR_FOLLOWUP, LOW_ATTENDANCE_FLAG (v1 note-actions.ts:84, attendance-notifications.ts:65)
+  { re: /^\/admin\/students\/(\d+)$/, entityType: "student", hasId: true },
+  // LOW_ATTENDANCE_FLAG to leaders (v1 attendance-notifications.ts:73)
+  { re: /^\/leader\/students\/(\d+)$/, entityType: "student", hasId: true },
 ];
 
 export function parseNotificationLink(link: string | null): NotificationTarget | null {
@@ -748,9 +819,9 @@ export function parseNotificationLink(link: string | null): NotificationTarget |
   const path = link.split("?")[0]?.replace(/\/+$/, "") ?? "";
   const normalised = path === "" ? "/" : path;
 
-  for (const { re, build } of PATTERNS) {
+  for (const { re, entityType, hasId } of NOTIFICATION_LINK_PATTERNS) {
     const match = re.exec(normalised);
-    if (match) return build(match[1]);
+    if (match) return { entityType, entityId: hasId ? Number(match[1]) : null };
   }
   return null;
 }
@@ -866,47 +937,67 @@ export async function createNotificationsBulk(
 }
 ```
 
-- [ ] **Step 6: Escape at the mail template boundary (C11, D8)**
+- [ ] **Step 6: Confirm Plan 8's mail escaping is the only one (C11, ruling X2)**
 
-In `apps/backend/src/lib/email.ts` add, above `renderShell`:
+Nothing to write. Check:
+
+Run: `grep -rn "function escapeHtml\|const escapeHtml" apps/backend/src/` → empty (the definition lives in `packages/shared/src/html-text.ts`; the backend re-exports it from `lib/html.ts`).
+Run: `grep -n "buildNotificationHtml" apps/backend/src/lib/email.ts` → the exported definition and its call inside `sendNotificationEmail`.
+Run: `cd apps/backend && npx jest src/__tests__/email-html.test.ts` → PASS (Plan 8's escaping test).
+
+If any of these fails, Plan 8 is incomplete — stop rather than adding a
+second escaper here.
+
+- [ ] **Step 7: Route every producer through the helper (D6)**
+
+Find every call site: `cd apps/backend/src && grep -rn "createNotificationsBulk\|flagLowAttendance" --include=*.ts routes/ lib/`.
+`lib/notifications.ts` (the definition) and `lib/attendance-notifications.ts`'s
+two internal awaits are not call sites to wrap — the latter is wrapped where
+`flagLowAttendance` is called. Every other hit must end up inside `bestEffort`.
+By the time this plan runs (execution order 1 → 2 → 3 → 4 → 15 → 16 → 5 → 6 →
+7 → 17 → 14 → 8 → 9) the expected producers are below. Plans 14, 16 and 17
+add **no** producer (checked: Plan 17's graduate/drop/delete notify nobody,
+Plan 16 converts session wire fields but never touches Plan 3's `SESSION_RESCHEDULED` call site,
+Plan 14's check-in notifies nobody):
+
+| Plan | File | Type | Label |
+|---|---|---|---|
+| main | `routes/submissions.ts` (review) | `SUBMISSION_REVIEWED` | `notify:SUBMISSION_REVIEWED` |
+| main | `routes/sessions.ts` (`flagLowAttendance` after attendance save) | `LOW_ATTENDANCE_FLAG` | `notify:LOW_ATTENDANCE_FLAG` |
+| 3 | `routes/sessions.ts` (session reschedule) | `SESSION_RESCHEDULED` | `notify:SESSION_RESCHEDULED` |
+| 15 | `lib/assignment-writes.ts` → `notifyAssignmentCreated` (the single call site; `POST /seasons/:id/assignments` and `PATCH /assignments/:id` both call it), link `/student/assignments/<id>` | `ASSIGNMENT_CREATED` | `notify:ASSIGNMENT_CREATED` |
+| 6 | the four `QUIZ_GRADED` sites in Plan 6's quiz routes | `QUIZ_GRADED` | `notify:QUIZ_GRADED` |
+| 8 | `routes/notes.ts` (flagged note) | `MENTOR_FOLLOWUP` | `notify:MENTOR_FOLLOWUP` |
+
+If the grep finds a hit not in this table, wrap it the same way and name it in
+the report; if a row in this table has no hit, say so in the report (the
+owning plan may have been re-scoped) — do not invent the call.
+
+The transformation is mechanical. A site written as
 
 ```ts
-/**
- * Escape before interpolating into the HTML mail (ruling C11, spec D8/R29).
- *
- * `title` and `body` are built from user-controlled strings on every
- * notification type — assignment, quiz and session titles, student names, and
- * the first 140 characters of a mentor's note. The in-app surfaces render
- * through React and escape; this template does not, and the mail is real HTML
- * delivered to a real inbox.
- */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+  try {
+    await createNotificationsBulk(recipientIds, payload);
+  } catch {
+    // swallowed
+  }
 ```
 
-and apply it at every interpolation of caller-supplied text inside
-`sendNotificationEmail` / the extracted `renderNotificationHtmlForTest`:
-`escapeHtml(title)` in the shell heading and the subject's interpolation is
-plain text (subjects are not HTML — leave the subject unescaped), and
-`escapeHtml(body ?? "You have a new notification in JPC Space.")` in the body
-paragraph. `viewLink` is server-built from `config.authUrl` plus the stored
-`link`; run it through `encodeURI` before it reaches `buttonHtml`'s `href`.
+or as a bare `await createNotificationsBulk(recipientIds, payload);` becomes
 
-- [ ] **Step 7: Route the producers through the helper (D6)**
+```ts
+  // Best-effort: the business write above has committed. A notification or
+  // mail failure after that point must not report it as failed (spec D6,
+  // R75) — and, unlike a bare catch, bestEffort logs (R21).
+  await bestEffort("notify:<TYPE>", () => createNotificationsBulk(recipientIds, payload));
+```
 
-Find every call site: `cd apps/backend/src && grep -rn "createNotificationsBulk\|flagLowAttendance" --include=*.ts routes/`.
-At plan time that is exactly two (plus any reschedule producer Plan 3 has since
-added — wrap that too):
+with `payload` — including its `link`, which is v1's exact string per ruling X1
+and must not be edited here — unchanged. Concretely, the two sites already on
+`main`:
 
-1. `routes/submissions.ts:379-389` — replace the silent `try/catch` with the
-   helper, **and fix the link**, which currently drops the assignment id that
-   R66 requires:
+1. `routes/submissions.ts` — replace the `try { await createNotificationsBulk(...) } catch { … }`
+   block after the review update with:
 
 ```ts
   // Best-effort: the student is told, but a mail or notification failure must
@@ -917,17 +1008,14 @@ added — wrap that too):
       title: parsed.data.returnForRevision
         ? `${sub.assignment.title} was returned for revision`
         : `${sub.assignment.title} was reviewed`,
-      // R66: the link is /student/assignments/:id. This wrote the bare list
-      // path, so the row could not deep-link in either app.
+      // v1's exact link (submission-actions.ts:197; ruling X1). main already
+      // writes it — this step changes only the error handling.
       link: `/student/assignments/${sub.assignmentId}`,
     }),
   );
 ```
 
-   The `findUnique` above it selects `{ id, status, studentUserId, assignment: { select: { title: true } } }` —
-   add `assignmentId: true` to that select or `sub.assignmentId` does not exist.
-
-2. `routes/sessions.ts:227` — `await flagLowAttendance(sessionId, parsed.data.entries);`
+2. `routes/sessions.ts` — `await flagLowAttendance(sessionId, parsed.data.entries);`
    becomes:
 
 ```ts
@@ -939,10 +1027,14 @@ added — wrap that too):
 ```
 
    Wrapping at the call site covers both of `attendance-notifications.ts`'s
-   internal `createNotificationsBulk` awaits (`:62`, `:70`) — leave that file
-   otherwise untouched.
+   internal `createNotificationsBulk` awaits — leave that file otherwise
+   untouched.
 
-Import `bestEffort` from `../lib/best-effort` in both route files.
+And Plan 8's site in `routes/notes.ts` — its `try { await createNotificationsBulk(…) } catch { … }`
+around the `MENTOR_FOLLOWUP` fan-out becomes
+`await bestEffort("notify:MENTOR_FOLLOWUP", () => createNotificationsBulk(admins.map((a) => a.userId), { …the same payload… }));`.
+
+Import `bestEffort` from `../lib/best-effort` in every route file touched.
 
 - [ ] **Step 8: Rewrite the opt-out integration case (D4) and add one**
 
@@ -993,7 +1085,7 @@ through its shared `beforeAll`).
 
 - [ ] **Step 9: Run the unit tests; hand the integration tests to the coordinator**
 
-Run: `cd apps/backend && npx jest --testPathPattern "(notification-target|best-effort|email)"` → PASS
+Run: `cd apps/backend && npx jest --testPathPattern "(notification-target|best-effort|email-html|email)"` → PASS
 Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
 Do **not** run the integration suite as a subagent (`cleanupTestData` is
 prefix-global and safe only under `--runInBand`).
@@ -1001,7 +1093,7 @@ prefix-global and safe only under `--runInBand`).
 - [ ] **Step 10: Commit**
 
 ```bash
-git add apps/backend && git commit -m "feat(backend): notification channel split, link target parser, best-effort producer helper, mail escaping"
+git add apps/backend && git commit -m "feat(backend): notification channel split, v1 link-shape parser, best-effort producers"
 ```
 
 ---
@@ -1010,7 +1102,7 @@ git add apps/backend && git commit -m "feat(backend): notification channel split
 
 **Files:**
 - Create: `apps/backend/src/routes/notifications.ts`
-- Modify: `apps/backend/src/app.ts` (mount the router; add `PUT` to the CORS method list)
+- Modify: `apps/backend/src/app.ts` (mount the router)
 - Modify: `apps/backend/src/docs/openapi.ts`
 - Test: `apps/backend/src/__tests__/integration/notifications-routes.test.ts` (new)
 
@@ -1277,6 +1369,8 @@ import {
 
 export const notificationsRouter = Router();
 
+// Allowed by ruling X5: this router owns /api/v1/notifications outright, so a
+// router-level requireAuth cannot turn another router's unknown path into 401.
 notificationsRouter.use(requireAuth);
 
 const LIST_SELECT = {
@@ -1415,7 +1509,7 @@ notificationsRouter.post("/read", async (req, res) => {
 });
 ```
 
-- [ ] **Step 4: Mount it, and fix the CORS method list**
+- [ ] **Step 4: Mount it**
 
 In `apps/backend/src/app.ts`:
 
@@ -1427,18 +1521,11 @@ import { notificationsRouter } from "./routes/notifications";
   app.use("/api/v1/notifications", notificationsRouter);
 ```
 
-placed with the other `/api/v1` mounts (order among them is irrelevant —
-distinct prefixes).
-
-In the same file, the CORS options list `methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"]`
-**omits `PUT`**. That is already wrong on `main` — `PUT /api/v1/submissions/by-assignment/:assignmentId`
-exists — and Task 4 adds a second `PUT`. Change it to:
-
-```ts
-  app.use(cors({ origin: config.mobileAppOrigin, methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] }));
-```
-
-Report it: it is a pre-existing bug this plan happened to walk into.
+placed with the other `/api/v1` mounts, before `notFoundHandler` (order among
+them is irrelevant — distinct prefixes). The CORS method list already includes
+`PUT` on `main` (`app.ts` — added with `PUT /submissions/by-assignment/:id`),
+which Task 4's `PUT /me/notification-preferences` needs; an earlier draft of
+this step "fixed" it again — nothing to change.
 
 - [ ] **Step 5: OpenAPI, same commit**
 
@@ -1469,7 +1556,14 @@ git add apps/backend && git commit -m "feat(backend): notification inbox endpoin
 **Files:**
 - Modify: `apps/backend/src/routes/me.ts`
 - Modify: `apps/backend/src/docs/openapi.ts`
-- Test: `apps/backend/src/__tests__/integration/me-routes.test.ts` (extend — read it first for its fixtures)
+- Test: `apps/backend/src/__tests__/integration/me-notifications-routes.test.ts` (new)
+
+**Why a new file.** `me-routes.test.ts` does not use `fixtures.ts` — it builds
+its own user, declares its own `PASSWORD`, and has no second user. Extending it
+would mean undeclared `prefsUserId`/`prefsToken`/`otherUserId` (as an earlier
+draft did) or a redeclared `PASSWORD`. Plan 7 hit the same wall and created
+`me-settings-routes.test.ts`; this plan follows it with a fixture-based suite of
+its own, which Task 5 extends.
 
 **Interfaces:**
 - Consumes: `notificationPreferencesSchema`, `DEFAULT_NOTIFICATION_PREFERENCES`,
@@ -1479,10 +1573,37 @@ git add apps/backend && git commit -m "feat(backend): notification inbox endpoin
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `me-routes.test.ts` (reuse its existing user fixture and token; if it
-has none, create one with `createTestUser("prefs", "STUDENT")` + `login`):
-
 ```ts
+// apps/backend/src/__tests__/integration/me-notifications-routes.test.ts
+import request from "supertest";
+
+import { createApp } from "../../app";
+import { db } from "../../db/client";
+import { cleanupTestData, createTestUser, login } from "./fixtures";
+
+jest.setTimeout(60000);
+
+const app = createApp();
+
+let prefsUserId: number;
+let prefsToken: string;
+let otherUserId: number;
+
+beforeAll(async () => {
+  await cleanupTestData();
+  const prefsUser = await createTestUser("prefs", "STUDENT");
+  const other = await createTestUser("prefs-other", "STUDENT");
+  prefsUserId = prefsUser.id;
+  otherUserId = other.id;
+  prefsToken = await login(app, prefsUser.email);
+});
+
+afterAll(async () => {
+  await db.notificationPreference.deleteMany({ where: { userId: { in: [prefsUserId, otherUserId] } } });
+  await cleanupTestData();
+  await db.$disconnect();
+});
+
 describe("notification preferences", () => {
   const allTrue = {
     assignmentCreated: true,
@@ -1565,10 +1686,6 @@ describe("notification preferences", () => {
 });
 ```
 
-If `me-routes.test.ts` has no second user, add
-`const other = await createTestUser("prefs-other", "STUDENT"); otherUserId = other.id;`
-to its `beforeAll`.
-
 - [ ] **Step 2: (Coordinator) run — expect FAIL (404s).**
 
 - [ ] **Step 3: Implement in `routes/me.ts`**
@@ -1639,7 +1756,10 @@ meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
 });
 ```
 
-`me.ts` currently imports only `apiOk` — add `apiError` to that import.
+Merge `DEFAULT_NOTIFICATION_PREFERENCES` and `notificationPreferencesSchema`
+into `me.ts`'s existing relative shared import (Plan 7 created it for
+`changePasswordRequestSchema`/`updateProfileRequestSchema`) rather than adding
+a second import statement; `apiError` is already imported (Plan 7).
 
 Note on `.safeParse`: `notificationPreferencesSchema` is a plain (non-strict)
 object, so an extra `userId` key in the body parses and is discarded rather
@@ -1651,8 +1771,8 @@ there the extra key would be adjacent to a real id array.
 `NotificationPreferences` schema, and a description recording that a user with
 no row is opted in to everything.
 
-- [ ] **Step 5: (Coordinator) run the me suite** →
-`npx jest --config jest.integration.config.js --runInBand --testPathPattern me-routes` → PASS.
+- [ ] **Step 5: (Coordinator) run the suites** →
+`cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "me-routes|me-notifications-routes"` → PASS (`me-routes` proves the existing `GET /me` is untouched).
 
 - [ ] **Step 6: Commit**
 
@@ -1668,10 +1788,10 @@ git add apps/backend && git commit -m "feat(backend): notification preferences r
 - Create: `docs/superpowers/cutover/2026-08-24-notifications-push.md`
 - Modify: `apps/backend/src/routes/me.ts` (the device endpoint)
 - Modify: `apps/backend/src/docs/openapi.ts`
-- Test: `apps/backend/src/__tests__/integration/me-routes.test.ts` (extend)
+- Test: `apps/backend/src/__tests__/integration/me-notifications-routes.test.ts` (extend — Task 4 created it)
 
 **Interfaces:**
-- Consumes: `deviceRegistrationSchema`, `shouldPush`, `PUSH_NOTIFICATION_TYPES`
+- Consumes: `deviceRegistrationSchema`, `DEVICE_PLATFORM_TO_DB`, `shouldPush`, `PUSH_NOTIFICATION_TYPES`
   from shared (Task 1).
 - Produces: `POST /api/v1/me/devices` → `503 { error: { code: "push_unavailable" } }`
   until the cutover migration lands. The mobile client (Task 10) treats that
@@ -1679,7 +1799,7 @@ git add apps/backend && git commit -m "feat(backend): notification preferences r
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `me-routes.test.ts`:
+Append to `me-notifications-routes.test.ts` (it already declares `prefsToken`):
 
 ```ts
 describe("POST /api/v1/me/devices", () => {
@@ -1738,8 +1858,9 @@ In `routes/me.ts` (import `deviceRegistrationSchema` alongside the others):
  *
  * To finish this at cutover: apply the migration in
  * docs/superpowers/cutover/2026-08-24-notifications-push.md, then replace the
- * 503 below with the upsert described there. Nothing else changes — not the
- * route, not the schema, not the client.
+ * 503 below with the upsert described there (it maps the lowercase wire
+ * platform to the DevicePlatform enum with DEVICE_PLATFORM_TO_DB). Nothing
+ * else changes — not the route, not the request contract, not the client.
  */
 meRouter.post("/devices", requireAuth, async (req, res) => {
   const parsed = deviceRegistrationSchema.safeParse(req.body);
@@ -1774,17 +1895,24 @@ must stay that way until v1 stops.
 
 ## 1. Device tokens (unblocks push)
 
+This section is written to match **Plan 13's M10 exactly** (Plan 13 Task 2.10
+adopts this doc's SQL and deletes the duplicate — so the two must not differ).
+`platform` is a Postgres enum, not free text:
+
 ```prisma
+enum DevicePlatform { IOS ANDROID }
+
 model DeviceToken {
-  id         Int      @id @default(autoincrement())
+  id         Int            @id @default(autoincrement())
   userId     Int
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token      String   @unique
-  platform   String
-  lastSeenAt DateTime @default(now())
-  createdAt  DateTime @default(now())
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String         @unique           // Expo push token — a credential; never log it
+  platform   DevicePlatform
+  lastSeenAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
 
   @@index([userId])
+  @@index([lastSeenAt])
 }
 ```
 
@@ -1797,17 +1925,25 @@ and on `User`, alongside `notifications` / `notificationPreference`:
 SQL:
 
 ```sql
+CREATE TYPE "DevicePlatform" AS ENUM ('IOS', 'ANDROID');
 CREATE TABLE "DeviceToken" (
   "id"         SERIAL PRIMARY KEY,
   "userId"     INTEGER NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
   "token"      TEXT NOT NULL,
-  "platform"   TEXT NOT NULL,
+  "platform"   "DevicePlatform" NOT NULL,
   "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX "DeviceToken_token_key" ON "DeviceToken"("token");
 CREATE INDEX "DeviceToken_userId_idx" ON "DeviceToken"("userId");
+CREATE INDEX "DeviceToken_lastSeenAt_idx" ON "DeviceToken"("lastSeenAt");
 ```
+
+**Wire vs. column.** The request body keeps the lowercase wire value
+(`"ios" | "android"`, `deviceRegistrationSchema` — what `Platform.OS` returns),
+and the server maps it at the write with `DEVICE_PLATFORM_TO_DB` from
+`packages/shared/src/notification.ts`. The client never learns the column's
+spelling, so nothing on the device changes at cutover.
 
 `token` is unique rather than `(userId, token)`: a device handed to a second
 user must move, not accumulate — the upsert below re-points it.
@@ -1816,10 +1952,12 @@ Then replace the 503 in `apps/backend/src/routes/me.ts`'s `POST /devices` with:
 
 ```ts
   const user = requireUser(req);
+  // Lowercase wire value → DevicePlatform enum (see "Wire vs. column" above).
+  const platform = DEVICE_PLATFORM_TO_DB[parsed.data.platform];
   await db.deviceToken.upsert({
     where: { token: parsed.data.token },
-    update: { userId: user.userId, platform: parsed.data.platform, lastSeenAt: new Date() },
-    create: { userId: user.userId, token: parsed.data.token, platform: parsed.data.platform },
+    update: { userId: user.userId, platform, lastSeenAt: new Date() },
+    create: { userId: user.userId, token: parsed.data.token, platform },
   });
   return apiOk(res, { registered: true });
 ```
@@ -1842,19 +1980,23 @@ best-effort seam:
 
 ## 2. `Notification` target columns (spec D1)
 
-```prisma
-  entityType String?
-  entityId   Int?
-```
+Plan 13's M4 owns this migration (an uppercase Postgres enum
+`NotificationEntityType` plus `entityId`). What this plan fixes for it is the
+**mapping** and the **closed set of shapes**:
 
-```sql
-ALTER TABLE "Notification" ADD COLUMN "entityType" TEXT;
-ALTER TABLE "Notification" ADD COLUMN "entityId" INTEGER;
-```
+| Wire `entityType` (this plan) | Column value (M4) |
+|---|---|
+| `assignment` | `ASSIGNMENT` |
+| `quiz` | `QUIZ` |
+| `calendar` | `CALENDAR` |
+| `student` | `STUDENT` |
 
-Backfill with the same function the API already reads through —
-`parseNotificationLink` in `apps/backend/src/lib/notification-target.ts`,
-whose test table is the closed set of shapes the producers emit. After the
+The backfill must map exactly the five link shapes in
+`NOTIFICATION_LINK_PATTERNS` (`apps/backend/src/lib/notification-target.ts`)
+— `/student/assignments/:id`, `/student/quizzes`, `/student/calendar`,
+`/admin/students/:id`, `/leader/students/:id` — and its result must equal
+`parseNotificationLink`'s on a sample. The API keeps serving the lowercase wire
+values after M4 (it maps the column back), so no client changes. After the
 backfill, producers stop writing `link` and the parser becomes the backfill's
 only remaining caller.
 
@@ -1873,7 +2015,8 @@ only remaining caller.
 `DeviceRegistration`, documented responses `503 push_unavailable` (with the
 reason: the table lands at cutover) and `400 bad_request`.
 
-- [ ] **Step 6: (Coordinator) run the me suite** → PASS.
+- [ ] **Step 6: (Coordinator) run the suite** →
+`cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern me-notifications-routes` → PASS.
 Run `pnpm turbo lint typecheck test:unit build --filter=@space/backend` → clean.
 
 - [ ] **Step 7: Commit**
@@ -1933,12 +2076,11 @@ describe("routeForTarget", () => {
     });
   });
 
-  it("sends a student target to the students list", () => {
-    // The per-student detail route belongs to Plan 5. Until it exists this
-    // lands on the list rather than a route the typed-route table has never
-    // heard of.
+  it("deep-links a student target to the student detail route", () => {
+    // Plan 5 shipped the /student/[id] route (student/[id]/index.tsx since Plan 17) before this plan.
     expect(routeForTarget({ entityType: "student", entityId: 12 })).toEqual({
-      pathname: "/students",
+      pathname: "/student/[id]",
+      params: { id: "12" },
     });
   });
 
@@ -1965,14 +2107,22 @@ import type { NotificationTarget } from "@space/shared";
  * The server derives `target` from the stored v1 path in one place
  * (apps/backend/src/lib/notification-target.ts, spec D1); this is the other
  * half — one switch, one place, no screen parsing anything. Every arm points
- * at a route file that exists today; when Plan 5 adds `student/[id]`, the
- * student arm becomes a deep link and this test file is where that is pinned.
+ * at a route file that exists by this plan (Plan 1's assignment/[id], now
+ * assignment/[id]/index.tsx via Plan 15; Plan 5's student/[id], now
+ * student/[id]/index.tsx via Plan 17); typed routes make a missing one a
+ * compile error.
+ *
+ * The `student` arm has no list fallback: every v1 student link carries an id
+ * (/admin|leader/students/:id), so entityId is never null for it. The switch
+ * still falls back to the roster rather than asserting, so a future null
+ * cannot crash the inbox.
  */
 export type NotificationRoute =
   | { pathname: "/assignment/[id]"; params: { id: string } }
   | { pathname: "/assignments" }
   | { pathname: "/quizzes" }
   | { pathname: "/calendar" }
+  | { pathname: "/student/[id]"; params: { id: string } }
   | { pathname: "/students" };
 
 export function routeForTarget(target: NotificationTarget | null): NotificationRoute | null {
@@ -1988,16 +2138,18 @@ export function routeForTarget(target: NotificationTarget | null): NotificationR
     case "calendar":
       return { pathname: "/calendar" };
     case "student":
-      return { pathname: "/students" };
+      return target.entityId === null
+        ? { pathname: "/students" }
+        : { pathname: "/student/[id]", params: { id: String(target.entityId) } };
   }
 }
 ```
 
-**Before running typecheck:** confirm `apps/mobile/app/(app)/assignment/[id].tsx`
-exists (Plan 1 Task 2 created it). If this checkout does not have it, drop the
-first arm to `{ pathname: "/assignments" }`, delete the corresponding test
-case, and say so in the report — typed routes are on and a pathname with no
-route file is a compile error, which is exactly the guard working.
+Typed routes check both pathnames against the real tree: `/assignment/[id]`
+(Plan 1; file `assignment/[id]/index.tsx` since Plan 15) and `/student/[id]`
+(Plan 5; file `student/[id]/index.tsx` since Plan 17) are prerequisites of this plan, so a
+typecheck failure on either is the prerequisite missing, not something to
+work around with a cast.
 
 - [ ] **Step 4: Add the query-key factory**
 
@@ -2180,6 +2332,8 @@ So this task does **both** halves:
   MENTOR, ALUMNI)
 - Modify: `packages/shared/src/__tests__/navigation.test.ts` (the pin test
   freezes every sidebar — six edits)
+- Modify: `apps/mobile/src/__tests__/nav-routes.test.ts` (Plan 1's exact
+  `/more` lists for STUDENT, ADMIN and alumni gain "Notifications")
 - Modify: `apps/mobile/src/components/NavIcon.tsx` (one glyph)
 - Test: `apps/mobile/src/__tests__/notifications-screen.test.tsx` (new)
 
@@ -2212,7 +2366,10 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const, avatarPath: null },
+  user: {
+    id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const,
+    avatarPath: null, hasPassword: true, // every required MeUser field (ruling X11)
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
 
@@ -2384,6 +2541,25 @@ immediately before the `["/settings", "Settings", "settings"]` line in **all
 six** expected shapes (SUPER, ADMIN, LEADER, STUDENT, MENTOR, alumni). Change
 nothing else — the `tabs` arrays and the five-tab case stay exactly as they
 are.
+
+Plan 1's `apps/mobile/src/__tests__/nav-routes.test.ts` pins three `/more`
+lists exactly (`moreItemsFor` = sidebar minus tabs), and "Notifications" now
+surfaces in each. As Plans 14 (STUDENT "Attendance") and 8 (ADMIN "My notes")
+left them, the three expectations become:
+
+```ts
+    expect(moreItemsFor(navByRole.STUDENT).map((i) => i.label)).toEqual([
+      "Current Season", "Attendance", "History", "Profile", "Notifications", "Settings",
+    ]);
+    expect(moreItemsFor(navByRole.ADMIN).map((i) => i.label)).toEqual([
+      "My Season", "My notes", "Assignments", "Quizzes", "Reports", "Notifications", "Settings",
+    ]);
+    expect(moreItemsFor(navFor({ role: "STUDENT", graduationYear: 2024 })).map((i) => i.label)).toEqual([
+      "Notifications", "Settings",
+    ]);
+```
+
+Run: `cd apps/mobile && pnpm jest src/__tests__/nav-routes.test.ts src/__tests__/more-screen.test.tsx` → PASS once Step 3 has landed.
 
 - [ ] **Step 5: Write the screen**
 
@@ -2557,15 +2733,44 @@ git add apps/mobile packages/shared && git commit -m "feat(mobile): notification
 
 - [ ] **Step 1: Extend the dashboard test**
 
+The bell's query runs for every role and every season state, so the
+dashboard now issues `GET /api/v1/notifications/unread-count` even in the
+"no active season" branch. Two consequences for `dashboard.test.tsx` (read it
+first — Plans 1 and 18 may have reshaped it; these edits are written against
+its no-season case, which every version keeps):
+
+1. The existing `"shows a distinct empty state when there is no active season,
+   without calling the API"` case asserts `expect(get).not.toHaveBeenCalled()`.
+   That is now false by design. Replace that one line with an assertion that
+   no **session** fetch happened, which is what the case is about:
+
 ```tsx
+    // The bell's own count is the only request; no season data is fetched.
+    expect(
+      get.mock.calls.filter(([url]) => url !== "/api/v1/notifications/unread-count"),
+    ).toEqual([]);
+```
+
+2. Add the bell cases. They use the no-season state so the bell's request is
+   the only one the dashboard makes; any other URL rejects, which would only
+   put a sibling card into its error state and cannot affect the bell:
+
+```tsx
+function mockUnreadCount(unreadCount: number) {
+  get.mockImplementation((url: string) =>
+    url === "/api/v1/notifications/unread-count"
+      ? Promise.resolve({ data: { data: { unreadCount } } })
+      : Promise.reject(new Error(`not under test: ${url}`)),
+  );
+}
+
+const noSeason = { scopes: { ...scopesWithSeason, activeSeasonId: null } };
+
 it("shows the unread badge and opens the inbox", async () => {
   // The dashboard is the one destination in every role's tab bar, which is
   // why the bell lives here (spec D3 — a sidebar-only entry buries the badge).
-  get.mockImplementation((url: string) =>
-    url === "/api/v1/notifications/unread-count"
-      ? Promise.resolve({ data: { data: { unreadCount: 3 } } })
-      : Promise.resolve({ data: { data: { sessions: [] } } }),
-  );
+  useSessionStore.setState(noSeason);
+  mockUnreadCount(3);
 
   renderWithProviders(<DashboardScreen />);
 
@@ -2577,11 +2782,8 @@ it("shows the unread badge and opens the inbox", async () => {
 });
 
 it("caps the badge at 9+", async () => {
-  get.mockImplementation((url: string) =>
-    url === "/api/v1/notifications/unread-count"
-      ? Promise.resolve({ data: { data: { unreadCount: 42 } } })
-      : Promise.resolve({ data: { data: { sessions: [] } } }),
-  );
+  useSessionStore.setState(noSeason);
+  mockUnreadCount(42);
 
   renderWithProviders(<DashboardScreen />);
 
@@ -2589,11 +2791,8 @@ it("caps the badge at 9+", async () => {
 });
 
 it("renders no badge at zero unread", async () => {
-  get.mockImplementation((url: string) =>
-    url === "/api/v1/notifications/unread-count"
-      ? Promise.resolve({ data: { data: { unreadCount: 0 } } })
-      : Promise.resolve({ data: { data: { sessions: [] } } }),
-  );
+  useSessionStore.setState(noSeason);
+  mockUnreadCount(0);
 
   renderWithProviders(<DashboardScreen />);
 
@@ -2602,24 +2801,30 @@ it("renders no badge at zero unread", async () => {
 });
 ```
 
-`dashboard.test.tsx` does not currently mock `expo-router` (the screen never
-navigated). Add at the top, with the other mocks:
+`dashboard.test.tsx` may not mock `expo-router` yet (the screen never
+navigated before the bell). If it does not, add with the other mocks — the
+factory reads `mockPush` lazily, inside the returned function, so the hoisted
+`jest.mock` never touches it before its declaration:
 
 ```tsx
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: (...args: unknown[]) => mockPush(...args) }),
 }));
 ```
 
-and switch its existing `get.mockResolvedValue(...)` calls to the
-`mockImplementation` URL-router form shown above, so the existing session
-cases keep passing while the bell's query resolves too.
+If a `jest.mock("expo-router", …)` already exists there (a later dashboard
+plan may have added one), add `push` to its `useRouter` return instead of
+declaring a second mock. The existing season cases keep their own
+`get.mockResolvedValue(...)`; that resolves the bell's request with a
+sessions-shaped body, which fails `unreadCountResponseSchema` and leaves the
+bell badge-less — none of those cases assert on the bell.
 
 - [ ] **Step 2: Run to see it fail**
 
 Run: `cd apps/mobile && pnpm jest src/__tests__/dashboard.test.tsx`
-Expected: the three new cases FAIL; the existing ones PASS.
+Expected: the three new cases FAIL, and so does nothing else (the rewritten
+no-season assertion passes before and after the bell exists).
 
 - [ ] **Step 3: Write the bell**
 
@@ -2670,7 +2875,7 @@ export function NotificationBell() {
         >
           {/* Capped like v1's bell (R38) — the exact number stops being useful
               past a handful and the badge stops fitting. */}
-          <Text variant="caption" color="#ffffff">
+          <Text variant="caption" color={theme.colors.white}>
             {count > 9 ? "9+" : String(count)}
           </Text>
         </View>
@@ -2680,9 +2885,9 @@ export function NotificationBell() {
 }
 ```
 
-Check `theme.spacing.xs`, `theme.colors.error[600]` and the `caption` text
-variant exist in `src/theme/tokens.ts` / `src/ui/Text.tsx`; substitute the
-nearest real token if not.
+(`theme.spacing.xs`, `theme.colors.error[600]` and the `caption` text variant
+all exist — verified in `src/theme/tokens.ts`. Use `theme.colors.white` rather
+than the literal `"#ffffff"` for the badge text.)
 
 - [ ] **Step 4: Mount it**
 
@@ -2708,9 +2913,8 @@ git add apps/mobile && git commit -m "feat(mobile): unread notification bell on 
 
 **Files:**
 - Create: `apps/mobile/src/components/NotificationPreferences.tsx`
-- Modify: `apps/mobile/app/(app)/settings.tsx`
-- Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx` (only if
-  settings is still a placeholder — read it first)
+- Modify: `apps/mobile/app/(app)/settings.tsx` (Plan 7's real screen — add one section)
+- Modify: `apps/mobile/src/__tests__/settings-screen.test.tsx` (Plan 7's suite — give its `get` mock a preferences answer)
 - Test: `apps/mobile/src/__tests__/notification-preferences.test.tsx` (new)
 
 **Interfaces:**
@@ -2916,38 +3120,47 @@ export function NotificationPreferences() {
 
 - [ ] **Step 4: Mount it in settings**
 
-Read `apps/mobile/app/(app)/settings.tsx` first.
-
-- If it is still the eight-line placeholder (an `EmptyState` reading "Settings"
-  / "This screen isn't built yet."), replace it with:
+Plan 7 (earlier in the execution order) replaced the settings placeholder
+with the real six-role screen, so there is exactly one case here. In
+`apps/mobile/app/(app)/settings.tsx`, import
 
 ```tsx
 import { NotificationPreferences } from "../../src/components/NotificationPreferences";
-import { Screen, Text } from "../../src/ui";
-
-export default function SettingsScreen() {
-  return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      <Text variant="heading">Settings</Text>
-      {/* Domain 18 owns the rest of this screen (Plan 7); domain 10 owns the
-          notification block inside it. */}
-      <NotificationPreferences />
-    </Screen>
-  );
-}
 ```
 
-  and remove the `["settings", SettingsScreen, "Settings"]` entry from
-  `placeholder-screens.test.tsx`, dropping its length assertion from 18 to 17.
-  Leave every other entry untouched.
+and render `<NotificationPreferences />` as its own block between Plan 7's
+"Change password" card (or, when `hasPassword` is false, the "Profile" card)
+and the "Security" card — inside the existing
+`<View style={{ gap: theme.spacing.md }}>`, so it inherits the spacing. Change
+nothing else: domain 18 owns the rest of the screen, domain 10 owns this block.
 
-- If Plan 7 has already built it, insert `<NotificationPreferences />` as a
-  section in the existing layout and change nothing else — no placeholder test
-  edit is needed in that case.
+Plan 7's `settings-screen.test.tsx` mocks `apiClient.get` as a bare
+`jest.fn()`, which now receives the preferences request. In its `beforeEach`,
+after `jest.clearAllMocks()`, add:
+
+```tsx
+  (apiClient.get as jest.Mock).mockResolvedValue({
+    data: {
+      data: {
+        preferences: {
+          assignmentCreated: true,
+          submissionReviewed: true,
+          sessionRescheduled: true,
+          lowAttendanceFlag: true,
+          mentorFollowup: true,
+          quizGraded: true,
+        },
+      },
+    },
+  });
+```
+
+so the section renders its switches rather than an error card. None of Plan
+7's assertions change.
 
 - [ ] **Step 5: Run the tests**
 
-Run: `cd apps/mobile && pnpm jest src/__tests__/notification-preferences.test.tsx src/__tests__/placeholder-screens.test.tsx` → PASS.
+Run: `cd apps/mobile && pnpm jest src/__tests__/notification-preferences.test.tsx src/__tests__/settings-screen.test.tsx` → PASS.
 Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
 
 - [ ] **Step 6: Commit**
@@ -2963,26 +3176,67 @@ git add apps/mobile && git commit -m "feat(mobile): six notification preference 
 Push **delivery** is blocked on cutover (see the header). What ships here is
 everything on the device: the dependency, the config, the permission prompt
 behind an explicit control, the token, its storage, its clearing on logout, and
-an honest message about why it is not doing anything yet.
+an honest message for each state push can be in.
 
 **Files:**
 - Modify: `apps/mobile/package.json` (via `npx expo install`, not by hand)
-- Modify: `apps/mobile/app.json` (plugin entry)
+- Modify: `apps/mobile/app.json` (plugin entry; `extra.eas.projectId` per Step 0)
+- Create: `apps/mobile/src/lib/app-config.ts` (the one reader of `Constants.expoConfig.extra` for push)
 - Create: `apps/mobile/src/lib/push.ts`
 - Modify: `apps/mobile/src/lib/token-storage.ts`
 - Modify: `apps/mobile/src/store/session.ts`
 - Modify: `apps/mobile/src/components/NotificationPreferences.tsx` (the push row)
+- Modify: `apps/mobile/src/__tests__/notification-preferences.test.tsx`, `apps/mobile/src/__tests__/settings-screen.test.tsx` (mock `../lib/push` so `expo-notifications` never loads in those suites)
 - Test: `apps/mobile/src/__tests__/push.test.ts` (new),
   `apps/mobile/src/__tests__/session-store.test.ts` (extend)
 
 **Interfaces:**
-- Consumes: `apiClient`, `useSessionStore`.
-- Produces: `requestPushToken(): Promise<string | null>`;
+- Consumes: `apiClient`, `useSessionStore`, `Constants` from `expo-constants`.
+- Produces: `easProjectId(): string | null` (`src/lib/app-config.ts`);
+  `PushTokenResult = { kind: "token"; token: string } | { kind: "denied" } | { kind: "not_configured" } | { kind: "failed" }`;
+  `requestPushToken(): Promise<PushTokenResult>`;
   `registerPushToken(token: string): Promise<"registered" | "unavailable" | "failed">`;
-  `enablePush(): Promise<{ token: string | null; status: "registered" | "unavailable" | "denied" | "failed" }>`;
+  `PushStatus = "registered" | "unavailable" | "denied" | "not_configured" | "failed"`;
+  `enablePush(): Promise<{ token: string | null; status: PushStatus }>`;
   session store gains `pushToken: string | null` and `setPushToken`;
   `token-storage` gains `savePushToken` / `loadPushToken`, and `clearSession`
   clears the push token too.
+
+**Configuration rule.** CLAUDE.md's "no `process.env` outside
+`src/lib/config.ts`" is the backend's rule; the mobile equivalent here is that
+build configuration is read from the Expo app config through
+`Constants.expoConfig.extra`, in **one** module (`src/lib/app-config.ts`), and
+never from `process.env`. The EAS project id is not a secret — it is
+committed in `app.json` like `apiBaseUrl`.
+
+- [ ] **Step 0: Prerequisite — the EAS project id ([USER] step, then commit)**
+
+`getExpoPushTokenAsync` needs an EAS project id, and `app.json` has none
+(`extra` holds only `apiBaseUrl`). Creating one needs the owner's Expo account,
+so it is a **[USER]** step, not something an agent can do:
+
+```bash
+cd apps/mobile
+npx eas-cli@latest login          # the account that will own the app
+npx eas-cli@latest init           # creates the EAS project; writes expo.extra.eas.projectId (and expo.owner) into app.json
+```
+
+Confirm `app.json` now contains, under `"expo"`:
+
+```json
+    "extra": {
+      "apiBaseUrl": "http://localhost:4000",
+      "eas": { "projectId": "<the UUID eas init printed>" }
+    },
+```
+
+and commit it with this task. **If the owner has not done this when the task
+runs, proceed anyway**: nothing below requires the id to exist. Without it,
+`easProjectId()` returns `null`, `requestPushToken` reports
+`{ kind: "not_configured" }` without calling the token service, the settings
+row says so in plain words, and device checklist item 7 (Task 11) has an
+explicit expected result for that case. The missing id is never reported as
+"denied".
 
 - [ ] **Step 1: Install the dependency**
 
@@ -2998,45 +3252,54 @@ In `apps/mobile/app.json`, add the plugin:
     "plugins": ["expo-router", "expo-secure-store", "expo-notifications"],
 ```
 
-Nothing else in `app.json` changes. Two facts to record rather than work
-around: push does not work in Expo Go on Android (SDK 53+ removed it), so a
-development build is required to see a real notification; and
-`getExpoPushTokenAsync` needs an EAS project id, which this app does not have
-(`extra` holds only `apiBaseUrl`). `requestPushToken` below returns `null` with
-a single warning in that case rather than throwing — which is the honest state
-of push in this repo today.
+One fact to record rather than work around: push does not work in Expo Go on
+Android (SDK 53+ removed it), so a development build is required to see a real
+notification.
 
-- [ ] **Step 2: Write the failing test**
+- [ ] **Step 2: Write the failing tests**
 
 ```ts
 // apps/mobile/src/__tests__/push.test.ts
+//
+// Every jest.mock factory below closes over mock* consts LAZILY — inside an
+// arrow that runs at call time. jest.mock is hoisted above these declarations,
+// so a factory that read `mockGetPermissions` directly (an earlier draft did:
+// `getPermissionsAsync: mockGetPermissions`) would hit the temporal dead zone
+// when push.ts is imported.
 const mockGetPermissions = jest.fn();
 const mockRequestPermissions = jest.fn();
 const mockGetToken = jest.fn();
+const mockEasProjectId = jest.fn();
+const mockPost = jest.fn();
+const mockSavePushToken = jest.fn();
 
 jest.mock("expo-notifications", () => ({
-  getPermissionsAsync: mockGetPermissions,
-  requestPermissionsAsync: mockRequestPermissions,
-  getExpoPushTokenAsync: mockGetToken,
+  getPermissionsAsync: (...a: unknown[]) => mockGetPermissions(...a),
+  requestPermissionsAsync: (...a: unknown[]) => mockRequestPermissions(...a),
+  getExpoPushTokenAsync: (...a: unknown[]) => mockGetToken(...a),
 }));
-
-jest.mock("expo-constants", () => ({
-  __esModule: true,
-  default: { expoConfig: { extra: { eas: { projectId: "test-project" } } } },
+jest.mock("../lib/app-config", () => ({
+  easProjectId: () => mockEasProjectId(),
 }));
-
-const mockPost = jest.fn();
-jest.mock("../lib/api-client", () => ({ apiClient: { post: mockPost } }));
-
-const mockSavePushToken = jest.fn();
-jest.mock("../lib/token-storage", () => ({ savePushToken: mockSavePushToken }));
+jest.mock("../lib/api-client", () => ({
+  apiClient: { post: (...a: unknown[]) => mockPost(...a) },
+}));
+jest.mock("../lib/token-storage", () => ({
+  savePushToken: (...a: unknown[]) => mockSavePushToken(...a),
+}));
 
 import { enablePush, registerPushToken, requestPushToken } from "../lib/push";
 import { useSessionStore } from "../store/session";
 
+const unavailable = {
+  isAxiosError: true,
+  response: { status: 503, data: { error: { code: "push_unavailable" } } },
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
+  mockEasProjectId.mockReturnValue("test-project");
 });
 
 describe("requestPushToken", () => {
@@ -3044,8 +3307,9 @@ describe("requestPushToken", () => {
     mockGetPermissions.mockResolvedValue({ status: "granted" });
     mockGetToken.mockResolvedValue({ data: "ExponentPushToken[abc]" });
 
-    await expect(requestPushToken()).resolves.toBe("ExponentPushToken[abc]");
+    await expect(requestPushToken()).resolves.toEqual({ kind: "token", token: "ExponentPushToken[abc]" });
     expect(mockRequestPermissions).not.toHaveBeenCalled();
+    expect(mockGetToken).toHaveBeenCalledWith({ projectId: "test-project" });
   });
 
   it("prompts once when permission is undetermined", async () => {
@@ -3053,23 +3317,33 @@ describe("requestPushToken", () => {
     mockRequestPermissions.mockResolvedValue({ status: "granted" });
     mockGetToken.mockResolvedValue({ data: "ExponentPushToken[abc]" });
 
-    await expect(requestPushToken()).resolves.toBe("ExponentPushToken[abc]");
+    await expect(requestPushToken()).resolves.toEqual({ kind: "token", token: "ExponentPushToken[abc]" });
     expect(mockRequestPermissions).toHaveBeenCalledTimes(1);
   });
 
-  it("returns null when the user denies, and never asks for a token", async () => {
+  it("reports denial, and never asks for a token", async () => {
     mockGetPermissions.mockResolvedValue({ status: "undetermined" });
     mockRequestPermissions.mockResolvedValue({ status: "denied" });
 
-    await expect(requestPushToken()).resolves.toBeNull();
+    await expect(requestPushToken()).resolves.toEqual({ kind: "denied" });
     expect(mockGetToken).not.toHaveBeenCalled();
   });
 
-  it("returns null rather than throwing when the token service fails", async () => {
+  it("reports not_configured — distinct from denied — when the build has no EAS project id", async () => {
+    mockEasProjectId.mockReturnValue(null);
     mockGetPermissions.mockResolvedValue({ status: "granted" });
-    mockGetToken.mockRejectedValue(new Error("no EAS project"));
 
-    await expect(requestPushToken()).resolves.toBeNull();
+    await expect(requestPushToken()).resolves.toEqual({ kind: "not_configured" });
+    expect(mockGetToken).not.toHaveBeenCalled();
+  });
+
+  it("reports failed rather than throwing when the token service fails", async () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    mockGetPermissions.mockResolvedValue({ status: "granted" });
+    mockGetToken.mockRejectedValue(new Error("network"));
+
+    await expect(requestPushToken()).resolves.toEqual({ kind: "failed" });
+    warn.mockRestore();
   });
 });
 
@@ -3077,10 +3351,7 @@ describe("registerPushToken", () => {
   it("treats 503 push_unavailable as expected, not as an error", async () => {
     // The server has nowhere to store it until the cutover migration; the
     // client keeps the token locally and stops asking.
-    mockPost.mockRejectedValue({
-      isAxiosError: true,
-      response: { status: 503, data: { error: { code: "push_unavailable" } } },
-    });
+    mockPost.mockRejectedValue(unavailable);
 
     await expect(registerPushToken("ExponentPushToken[abc]")).resolves.toBe("unavailable");
   });
@@ -3100,10 +3371,7 @@ describe("enablePush", () => {
   it("stores the token in the session store and in secure storage", async () => {
     mockGetPermissions.mockResolvedValue({ status: "granted" });
     mockGetToken.mockResolvedValue({ data: "ExponentPushToken[abc]" });
-    mockPost.mockRejectedValue({
-      isAxiosError: true,
-      response: { status: 503, data: { error: { code: "push_unavailable" } } },
-    });
+    mockPost.mockRejectedValue(unavailable);
 
     const result = await enablePush();
 
@@ -3118,6 +3386,15 @@ describe("enablePush", () => {
 
     expect(await enablePush()).toEqual({ token: null, status: "denied" });
     expect(mockSavePushToken).not.toHaveBeenCalled();
+  });
+
+  it("reports not_configured without touching storage or the server", async () => {
+    mockEasProjectId.mockReturnValue(null);
+    mockGetPermissions.mockResolvedValue({ status: "granted" });
+
+    expect(await enablePush()).toEqual({ token: null, status: "not_configured" });
+    expect(mockSavePushToken).not.toHaveBeenCalled();
+    expect(mockPost).not.toHaveBeenCalled();
   });
 });
 ```
@@ -3135,7 +3412,7 @@ it("drops the push token on clear", () => {
 - [ ] **Step 3: Run to see it fail**
 
 Run: `cd apps/mobile && pnpm jest src/__tests__/push.test.ts src/__tests__/session-store.test.ts`
-Expected: FAIL — `../lib/push` does not exist and the store has no `pushToken`.
+Expected: FAIL — `../lib/push` and `../lib/app-config` do not exist and the store has no `pushToken`.
 
 - [ ] **Step 4: Extend the store and the token storage**
 
@@ -3156,7 +3433,7 @@ and to the store body: `pushToken: null,`,
 `setPushToken: (pushToken) => set({ pushToken }),`, and add `pushToken: null`
 to the object `clear()` sets.
 
-In `src/lib/token-storage.ts`:
+In `src/lib/token-storage.ts`, beside `ACCESS_KEY`/`REFRESH_KEY`:
 
 ```ts
 const PUSH_KEY = "space.pushToken";
@@ -3170,25 +3447,46 @@ export async function loadPushToken(): Promise<string | null> {
 }
 ```
 
-and add `await SecureStore.deleteItemAsync(PUSH_KEY);` to `clearSession()`.
-**Read `src/__tests__/api-client.test.ts` first** — if it asserts on the number
-of `deleteItemAsync` calls made by `clearSession`, update that count in the
-same commit.
+and add `await SecureStore.deleteItemAsync(PUSH_KEY);` as the last line of
+`clearSession()`. (No existing test counts `deleteItemAsync` calls — verified;
+`api-client.test.ts` mocks `token-storage` wholesale.)
 
-- [ ] **Step 5: Write the push library**
+- [ ] **Step 5: Write the config reader and the push library**
+
+```ts
+// apps/mobile/src/lib/app-config.ts
+import Constants from "expo-constants";
+
+/**
+ * The EAS project id from app.json's `expo.extra.eas.projectId` (Task 10
+ * Step 0), or null when this build has none. The one place push reads build
+ * configuration — never process.env.
+ */
+export function easProjectId(): string | null {
+  const extra = Constants.expoConfig?.extra as { eas?: { projectId?: unknown } } | undefined;
+  const id = extra?.eas?.projectId;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+```
 
 ```ts
 // apps/mobile/src/lib/push.ts
-import { Platform } from "react-native";
 import axios from "axios";
-import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 
 import { apiClient } from "./api-client";
+import { easProjectId } from "./app-config";
 import { savePushToken } from "./token-storage";
 import { useSessionStore } from "../store/session";
 
-export type PushStatus = "registered" | "unavailable" | "denied" | "failed";
+export type PushTokenResult =
+  | { kind: "token"; token: string }
+  | { kind: "denied" }
+  | { kind: "not_configured" }
+  | { kind: "failed" };
+
+export type PushStatus = "registered" | "unavailable" | "denied" | "not_configured" | "failed";
 
 /**
  * Ask for notification permission (once) and get this device's Expo token.
@@ -3197,30 +3495,28 @@ export type PushStatus = "registered" | "unavailable" | "denied" | "failed";
  * start: a permission prompt that appears at a moment the user did not ask for
  * is the fastest way to get it denied permanently.
  *
- * Returns null — never throws — when permission is refused or when the token
- * service cannot answer. It cannot answer today: `getExpoPushTokenAsync` needs
- * an EAS project id, and `app.json` has none. That is part of what "push is
- * blocked on cutover" means in this repo.
+ * Never throws. Each way it can come back empty is reported as itself — an
+ * earlier draft folded "this build has no EAS project id" into "denied", which
+ * told the user they had refused something they had accepted.
  */
-export async function requestPushToken(): Promise<string | null> {
+export async function requestPushToken(): Promise<PushTokenResult> {
   const existing = await Notifications.getPermissionsAsync();
   let status = existing.status;
   if (status !== "granted") {
     status = (await Notifications.requestPermissionsAsync()).status;
   }
-  if (status !== "granted") return null;
+  if (status !== "granted") return { kind: "denied" };
+
+  const projectId = easProjectId();
+  if (projectId === null) return { kind: "not_configured" };
 
   try {
-    const projectId = (
-      Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined
-    )?.eas?.projectId;
-    const token = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined,
-    );
-    return token.data;
+    const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    return { kind: "token", token: token.data };
   } catch (err) {
-    console.warn("[push] could not obtain an Expo push token:", err);
-    return null;
+    // The error, never a token (there is none) — and never log a token anywhere.
+    console.warn("[push] could not obtain an Expo push token:", err instanceof Error ? err.message : err);
+    return { kind: "failed" };
   }
 }
 
@@ -3247,49 +3543,91 @@ export async function registerPushToken(token: string): Promise<"registered" | "
 
 /** Permission → token → store → server, in one call for the settings control. */
 export async function enablePush(): Promise<{ token: string | null; status: PushStatus }> {
-  const token = await requestPushToken();
-  if (!token) return { token: null, status: "denied" };
+  const result = await requestPushToken();
+  if (result.kind !== "token") return { token: null, status: result.kind };
 
-  useSessionStore.getState().setPushToken(token);
-  await savePushToken(token);
+  useSessionStore.getState().setPushToken(result.token);
+  await savePushToken(result.token);
 
-  const status = await registerPushToken(token);
-  return { token, status };
+  const status = await registerPushToken(result.token);
+  return { token: result.token, status };
 }
 ```
 
 - [ ] **Step 6: Surface it in settings**
 
-Add to `NotificationPreferences.tsx`, below the six switches:
+In `NotificationPreferences.tsx`, add the imports
 
 ```tsx
-      <View style={{ marginTop: theme.spacing.md }}>
+import { useState } from "react";
+
+import { enablePush, type PushStatus } from "../lib/push";
+import { useSessionStore } from "../store/session";
+import { Button } from "../ui";
+```
+
+(merge `Button` into the existing `../ui` import), add at the top of the
+component, **before** the `isPending`/`isError` early returns (hooks first):
+
+```tsx
+  const pushToken = useSessionStore((s) => s.pushToken);
+  const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
+  const [enabling, setEnabling] = useState(false);
+```
+
+and below the six switches, inside the `Card`:
+
+```tsx
+      <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.xs }}>
         <Text variant="body">Push notifications</Text>
         <Text variant="caption" color={theme.colors.neutral[600]}>
-          {pushToken
-            ? "This device is ready for push. Delivery switches on when the server migration lands."
-            : "Get alerted when a session moves, or when your work or a quiz is graded."}
+          {PUSH_COPY[pushStatus ?? (pushToken ? "unavailable" : "idle")]}
         </Text>
         <Button
           title={pushToken ? "Push enabled on this device" : "Enable push notifications"}
           variant="secondary"
+          loading={enabling}
           disabled={pushToken !== null}
-          onPress={() => void enablePush()}
+          onPress={() => {
+            setEnabling(true);
+            void enablePush()
+              .then(({ status }) => setPushStatus(status))
+              .finally(() => setEnabling(false));
+          }}
         />
       </View>
 ```
 
-with `const pushToken = useSessionStore((s) => s.pushToken);` at the top of the
-component and the matching imports. The copy names the three types that would
-push (`PUSH_NOTIFICATION_TYPES`) rather than promising all six.
+with, at module level:
+
+```tsx
+/** One honest sentence per push state. Names the three types that would push
+ *  (PUSH_NOTIFICATION_TYPES) rather than promising all six. */
+const PUSH_COPY: Record<PushStatus | "idle", string> = {
+  idle: "Get alerted when a session moves, or when your work or a quiz is graded.",
+  registered: "Push is on for this device.",
+  unavailable: "This device is ready for push. Delivery switches on when the server migration lands.",
+  denied: "Notifications are off for JPC Space in your phone's settings.",
+  not_configured: "Push isn't set up for this build of the app yet.",
+  failed: "Couldn't set up push. Try again.",
+};
+```
+
+Then keep `expo-notifications` out of every suite that renders this component.
+At the top of `notification-preferences.test.tsx` **and** Plan 7's
+`settings-screen.test.tsx`, with the other mocks:
+
+```tsx
+jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
+```
 
 - [ ] **Step 7: Run everything mobile**
 
 Run: `cd apps/mobile && pnpm jest` → PASS.
 Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
-If `jest-expo` fails to transform `expo-notifications`, the mock at the top of
-`push.test.ts` is what keeps the real module out of the unit suite — make sure
-every test file that transitively imports `src/lib/push.ts` carries it.
+If any other suite now fails to transform `expo-notifications`, it imports
+`src/lib/push.ts` transitively — add the same `jest.mock("../lib/push", …)`
+line to it; never import the real module into a unit suite.
 
 - [ ] **Step 8: Commit**
 
@@ -3307,11 +3645,13 @@ git add apps/mobile && git commit -m "feat(mobile): expo push permission flow an
 
 Run: `pnpm turbo lint typecheck test:unit build` (repo root) → all tasks green.
 Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern integration` → green.
-Run: `grep -rn 'require("@space/shared")' apps/backend/dist/apps/backend/src/routes/` → empty (the `rootDir` emit trap; the new route file must not have picked up a bare specifier).
+Run: `grep -rn 'require("@space/shared")' apps/backend/dist/` → empty — all of `dist/`, not just routes (ruling X12; the `rootDir` emit trap).
+Run: `grep -rn "function escapeHtml\|const escapeHtml\|renderNotificationHtmlForTest" apps/backend/src/` → empty (ruling X2 — escaping is Plan 8's, imported).
 
 - [ ] **Step 2: Mutation pass**
 
-One at a time, restore after each. Each must fail the named test.
+One at a time, restore after each. Each must fail the named test (item 7 is
+the one checked by inspection).
 
 1. **C6.** In `routes/notifications.ts`'s `GET /`, add
    `await db.notification.updateMany({ where: { userId: user.userId, readAt: null }, data: { readAt: new Date() } });`
@@ -3330,9 +3670,16 @@ One at a time, restore after each. Each must fail the named test.
 7. **D6.** Replace `bestEffort(...)` in `routes/submissions.ts` with a bare
    `await createNotificationsBulk(...)` → `best-effort.test.ts` still passes
    (it tests the helper, not the call site), so **also** confirm by inspection
-   that no `createNotificationsBulk` / `flagLowAttendance` call in
-   `src/routes/` sits outside `bestEffort`:
-   `grep -rn "createNotificationsBulk\|flagLowAttendance" apps/backend/src/routes/` and read each hit.
+   that no `createNotificationsBulk` / `flagLowAttendance` call sits outside
+   `bestEffort`:
+   `grep -rn "createNotificationsBulk\|flagLowAttendance" apps/backend/src/routes/ apps/backend/src/lib/` and read each hit
+   against Task 2 Step 7's producer table (the only unwrapped hits allowed are
+   the definition in `lib/notifications.ts` and the two awaits inside
+   `lib/attendance-notifications.ts`).
+8. **X1.** In `routes/notes.ts` (Plan 8), change the `MENTOR_FOLLOWUP` link to
+   `/students/${studentUserId}` → `notes-routes.test.ts` "notifies season
+   admins on a flagged note WITHOUT quoting it" fails on the link assertion,
+   and `parseNotificationLink` of the new value is `null`. Restore.
 
 - [ ] **Step 3: Device checklist (manual, dev build or Expo Go)**
 
@@ -3350,12 +3697,84 @@ pointed at it, signed in as a staging student:
 5. "Mark all read" → badge clears; pull to refresh → still clear.
 6. Settings → six toggles; turn `quizGraded` off, kill the app, reopen → still
    off (the column v1 could never write).
-7. Settings → "Enable push notifications" → the OS prompt appears; accepting
-   leaves the button in its enabled state and produces no crash (registration
-   answers 503 by design).
+7. Settings → "Enable push notifications" → the OS prompt appears. Accept it.
+   The expected result depends on Task 10 Step 0:
+   - **`extra.eas.projectId` present (dev build):** the button changes to
+     "Push enabled on this device" and the caption reads "This device is ready
+     for push. Delivery switches on when the server migration lands."
+     (registration answered `503 push_unavailable` by design).
+   - **No project id:** the caption reads "Push isn't set up for this build of
+     the app yet.", the button stays enabled, and nothing is stored. It must
+     **not** say notifications are off — that copy is reserved for a real
+     denial.
+   - Decline the prompt on a second device/simulator → "Notifications are off
+     for JPC Space in your phone's settings."
 
 - [ ] **Step 4: Report**
 
-Report: suite counts, all seven mutation outcomes, device checklist results,
-and — explicitly — whether the reviewer accepts the two deliberate behaviour
-changes in the header (D4's channel split, and the three-type push list).
+Report: suite counts, all eight mutation outcomes, device checklist results
+(including which branch of item 7 applied), and — explicitly — whether the
+reviewer accepts the two deliberate behaviour changes in the header (D4's
+channel split, and the three-type push list).
+
+**Roadmap drift — state it in the report.** The roadmap's done criterion for
+this plan reads "a review recorded on one device produces a push on the
+student's device". That cannot be met before cutover: push delivery needs the
+`DeviceToken` table, which ruling C1 forbids until v1 stops (THE SCHEMA
+VERDICT, above). What this plan can and does prove is the half that is not
+blocked: *a review recorded on one device produces an inbox row and an
+unread-badge increment on the student's device, and opening the inbox never
+writes (C6)* — device checklist items 1–4. The push half moves to Plan 13's
+M10 verification ("the endpoint stops returning 503 and upserts on `token`",
+plus one real push to a registered dev build). This plan does not edit the
+roadmap (out of scope for this pass); the coordinator should amend its Plan 9
+done criterion to the sentence above and point the push half at Plan 13 M10.
+
+---
+
+## Revision 2026-10-05
+
+Applied from the plan review (`review-plans-07-13.md`) and the coordinator's cross-plan rulings. Each finding was checked against the current tree and against jpc-space's source.
+
+- **S1 / X2:** Withdrew Task 2's private `escapeHtml`, the `renderNotificationHtmlForTest` twin and the `encodeURI` link handling. This plan now uses Plan 8's `escapeHtml` (`apps/backend/src/lib/html.ts`) and `buildNotificationHtml` (`lib/email.ts`). Step 6 verifies them, and the closing gate greps that no second escaper exists.
+- **S2 / X1:** The link parser now covers exactly the five link shapes v1 writes. They were enumerated from `jpc-space/src/lib` (nine producers), and the table in Task 2 cites file:line for each:
+  - `/student/assignments/:id`
+  - `/student/quizzes`
+  - `/student/calendar`
+  - `/admin/students/:id`
+  - `/leader/students/:id`
+
+  They are exported as `NOTIFICATION_LINK_PATTERNS` so Plan 13's M4 can mirror them one-for-one. The bare `/student/assignments` shape is dropped, because no v1 or current v2 producer writes it. `/quizzes/:id` is not added: under X1, Plan 6 writes v1's `/student/quizzes`.
+- **S3:** Step 7 now lists every `createNotificationsBulk` producer by plan (main, 3, 15, 6, 8), with a label and a mechanical transform for each, and checks call sites across `routes/` and `lib/`. The claim that Plan 3 consumes `BulkNotificationResult` was wrong and is removed.
+- **S4:** The `submissions.ts` link "fix" and the CORS `PUT` "fix" are dropped. Both were already on `main`.
+- **S5:** A student target now deep-links to `/student/[id]`, which Plan 5 ships before this plan.
+- **S6:** The `push.test.ts` mock factories wrap their `mock*` consts lazily, so there is no TDZ error.
+- **S7:** The EAS project id is now an explicit Task 10 Step 0 for the user (`eas init` writes `expo.extra.eas.projectId`). It is read in one place, `src/lib/app-config.ts` → `easProjectId()`, through `Constants`, never `process.env`. A missing id is its own `not_configured` status, separate from `denied`, with its own copy. Device checklist item 7 has an expected result for each branch.
+- **S8:** The roadmap's done criterion ("push on the student's device") cannot be met before cutover. The closing-gate report now states this drift, proves the inbox/badge half, and points the push half at Plan 13 M10. The roadmap itself is not edited in this pass.
+- **S9:** The preference and device tests moved to a new fixture-based `me-notifications-routes.test.ts`, which declares `prefsUserId`, `prefsToken` and `otherUserId`.
+- **DevicePlatform:** The wire stays lowercase (`devicePlatformSchema`). New `DEVICE_PLATFORM_TO_DB` maps it to Plan 13 M10's `DevicePlatform { IOS ANDROID }`. The cutover doc's `DeviceToken` DDL now matches M10 exactly: enum column, plus a `lastSeenAt` index. The doc also gives the lowercase-wire ↔ uppercase-enum mapping for `entityType` (M4).
+- **X5:** `notificationsRouter` owns its prefix, so router-level `requireAuth` is allowed there. Everything added to `meRouter` attaches it per route.
+- **X9:** Task 9 no longer has a "settings is still a placeholder" branch, because Plan 7 runs first. It mounts the section in Plan 7's screen and gives Plan 7's suite a preferences mock.
+- **X12:** The emit check greps all of `dist/`.
+- **Nits fixed:**
+  - The MENTOR_FOLLOWUP push-exclusion rationale was rewritten. Plan 8 removed the excerpt, but the student's name is still in the title.
+  - Dropped the hard-coded case counts.
+  - The dashboard test now answers only the bell's URL (other URLs reject). It also fixes the no-season case's `not.toHaveBeenCalled()`, which the bell would otherwise break.
+  - Fixtures include `hasPassword` (X11).
+  - The badge uses `theme.colors.white`.
+
+**Cross-plan consistency pass (2026-10-05, against plans 14–17 and the revised
+order … 5 → 6 → 7 → 17 → 14 → 8 → 9 …):**
+
+- **Prerequisites / Step 7:** execution order corrected (17 now follows 7).
+  Route files named at their post-move paths — `assignment/[id]/index.tsx`
+  (Plan 15) and `student/[id]/index.tsx` (Plan 17); the typed pathnames
+  `routeForTarget` returns are unchanged, so no code changes.
+- **X1 producers re-audited across Plans 14–17:** only Plan 15 writes a
+  notification (`ASSIGNMENT_CREATED`, link `/student/assignments/<id>` — one of
+  the five v1 shapes), from a single call site, `notifyAssignmentCreated` in
+  `lib/assignment-writes.ts`; Step 7's table row now names that file. Plans 14,
+  16 and 17 write none. `NOTIFICATION_LINK_PATTERNS` stays exactly v1's five.
+- **Nav pin:** Task 7 Step 4 also updates Plan 1's `nav-routes.test.ts`, whose
+  exact STUDENT / ADMIN / alumni `/more` lists (as Plans 14 and 8 left them)
+  would otherwise fail on the new "Notifications" sidebar entry.
