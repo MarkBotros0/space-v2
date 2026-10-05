@@ -125,4 +125,13 @@ describe("AppLayout tab shell", () => {
       expect(declared?.href).toBeNull();
     }
   });
+
+  it("registers assignment/[id] as a hidden detail route", () => {
+    expect(DETAIL_ROUTE_NAMES).toContain("assignment/[id]");
+
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    render(<AppLayout />);
+
+    expect(mockScreens.find((s) => s.name === "assignment/[id]")?.href).toBeNull();
+  });
 });
