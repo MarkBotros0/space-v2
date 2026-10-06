@@ -220,3 +220,16 @@ it("hides the quiz card when the session has none", async () => {
   await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/quizzes"));
   expect(screen.queryByText("Quizzes")).toBeNull();
 });
+
+it("opens a session quiz's staff preview from the quiz card (Plan 8 Task 11b)", async () => {
+  useSessionStore.setState(leader());
+  routeGets({
+    detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
+    quizzes: [{ id: 41, title: "Online quiz", kind: "ONLINE", maxScore: 10, questionCount: 4, publishedAt: null }],
+  });
+  renderWithProviders(<SessionDetailScreen />);
+
+  fireEvent.press(await screen.findByText("Online quiz"));
+
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/quiz/[id]", params: { id: "41" } });
+});
