@@ -51,6 +51,19 @@ export async function createTestUser(
   return user;
 }
 
+/** A user in the state only v1's CSV importer could produce (spec 11 R15):
+ *  no password hash, never logged in — the precondition of the invite flow. */
+export async function createUnactivatedTestUser(
+  label: string,
+  role: TestRole,
+): Promise<{ id: number; email: string }> {
+  const email = testEmail(label);
+  return db.user.create({
+    data: { email, name: `Test ${label}`, role, passwordHash: null },
+    select: { id: true, email: true },
+  });
+}
+
 export async function createTestSeason(
   overrides: { status?: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED"; year?: number } = {},
 ): Promise<{ id: number; code: string }> {

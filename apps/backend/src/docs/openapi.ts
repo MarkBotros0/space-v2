@@ -98,6 +98,7 @@ export const openApiDocument = {
     { name: "Me", description: "The authenticated user" },
     { name: "Seasons", description: "Seasons and their sub-resources" },
     { name: "Groups", description: "Group detail" },
+    { name: "Users", description: "SUPER-only user administration: list, detail, role change, activation, invites" },
     { name: "Students", description: "Student lists, role-shaped detail, profile edits and enrollment transitions" },
     { name: "Sessions", description: "Sessions, attendance, and check-in" },
     { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
@@ -556,6 +557,48 @@ export const openApiDocument = {
           students: { type: "array", items: { $ref: "#/components/schemas/GroupMember" } },
           canManage: { type: "boolean", description: "isAdminOfSeason for the caller." },
         },
+      },
+
+      InviteState: {
+        type: "object",
+        required: ["issuedAt", "expiresAt", "usedAt", "invitedByName"],
+        description: "Invite metadata. There is no token field, ever: the code travels in the invite email only.",
+        properties: {
+          issuedAt: { type: "string", format: "date-time" },
+          expiresAt: { type: "string", format: "date-time" },
+          usedAt: { type: ["string", "null"], format: "date-time" },
+          invitedByName: { type: ["string", "null"] },
+        },
+      },
+
+      UserListItem: {
+        type: "object",
+        required: ["id", "name", "email", "role", "graduationYear", "lastLoginAt", "deletedAt", "status"],
+        properties: {
+          id: { type: "integer" },
+          name: { type: "string" },
+          email: { type: "string", format: "email" },
+          role: { $ref: "#/components/schemas/UserRole" },
+          graduationYear: { type: ["integer", "null"] },
+          lastLoginAt: { type: ["string", "null"], format: "date-time" },
+          deletedAt: { type: ["string", "null"], format: "date-time" },
+          status: {
+            type: "string",
+            enum: ["active", "invited", "pending", "inactive"],
+            description: "Derived server-side: inactive (soft-deleted) > active (has a password or has logged in) > invited (live unaccepted invite) > pending.",
+          },
+        },
+      },
+
+      UserDetail: {
+        allOf: [
+          { $ref: "#/components/schemas/UserListItem" },
+          {
+            type: "object",
+            required: ["invite"],
+            properties: { invite: { oneOf: [{ $ref: "#/components/schemas/InviteState" }, { type: "null" }] } },
+          },
+        ],
       },
 
       StudentListItem: {
@@ -1571,6 +1614,53 @@ export const openApiDocument = {
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/GroupDetail" }, "The group."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+
+    "/api/v1/users": {
+      get: {
+        tags: ["Users"],
+        summary: "User list (SUPER only)",
+        description:
+          "Cursor-paginated and filtered in the database. `status` is derived server-side (inactive, active, invited, pending); the password hash never leaves the server. `q` matches name or email, case-insensitive. `cursor` is the last row's id; `total` is the whole population under the current filters.",
+        parameters: [
+          { name: "q", in: "query", schema: { type: "string" } },
+          { name: "role", in: "query", schema: { $ref: "#/components/schemas/UserRole" } },
+          { name: "status", in: "query", schema: { type: "string", enum: ["active", "invited", "pending", "inactive"] } },
+          { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                users: { type: "array", items: { $ref: "#/components/schemas/UserListItem" } },
+                nextCursor: { type: ["integer", "null"] },
+                total: { type: "integer" },
+              },
+            },
+            "One page of users.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+
+    "/api/v1/users/{id}": {
+      get: {
+        tags: ["Users"],
+        summary: "User detail with invite metadata (SUPER only)",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/UserDetail" }, "The user."),
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),

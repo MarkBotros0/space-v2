@@ -9,6 +9,7 @@ import { authRouter } from "./routes/auth";
 import { assignmentsRouter } from "./routes/assignments";
 import { groupsRouter } from "./routes/groups";
 import { meRouter } from "./routes/me";
+import { usersRouter } from "./routes/users";
 import { seasonsRouter } from "./routes/seasons";
 import { sessionsRouter } from "./routes/sessions";
 import { studentsRouter } from "./routes/students";
@@ -53,6 +54,7 @@ export function createApp(): Express {
 
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/me", meRouter);
+  app.use("/api/v1/users", usersRouter);
   app.use("/api/v1/seasons", seasonsRouter);
   app.use("/api/v1/groups", groupsRouter);
   app.use("/api/v1/sessions", sessionsRouter);
