@@ -8,9 +8,9 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-import { apiClient } from "../lib/api-client";
 import type { SessionDetail } from "@space/shared";
 
+import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -21,64 +21,73 @@ const post = apiClient.post as jest.Mock;
 
 const baseDetail: SessionDetail = {
   id: 12, title: "Week 3", description: "Bring your notebook.",
-  startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00", durationMinutes: 90, location: "Hall B",
-  youtubeUrl: null, recurrenceGroupId: null, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring",
+  startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00",
+  durationMinutes: 90, location: "Hall B", youtubeUrl: null, recurrenceGroupId: null,
+  seasonId: 7, seasonCode: "s7", seasonTitle: "Spring",
   checkInOpen: false, myAttendance: null, canMarkAttendance: false, canManageCheckIn: false,
 };
 
-const listRow = (checkInToken: string | null) => ({
-  id: 12, title: "Week 3", startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00",
-  durationMinutes: 90, location: "Hall B", recurrenceGroupId: null, attendanceMarked: false,
-  seasonId: 7, seasonCode: "s7", seasonTitle: "Spring", checkInToken,
-  checkInOpenAt: null, checkInClosedAt: null,
+const checkInState = (over: Record<string, unknown> = {}) => ({
+  state: "not_open", isOpen: false, checkInToken: null, checkInOpenAt: null,
+  checkInClosedAt: null, expiresAt: null, expiresAtTime: null, ...over,
 });
 
+interface RouteState {
+  detail: SessionDetail;
+  checkIn?: ReturnType<typeof checkInState>;
+  roster?: unknown[];
+  quizzes?: unknown[];
+}
 
-/** Routes GETs by URL; `detail` is read at call time so a test can flip it mid-flight. */
-function routeGets(state: { detail: typeof baseDetail; token: string | null; roster?: unknown[] }) {
+const ok = (data: unknown) => Promise.resolve({ data: { data } });
+
+/** Routes GETs by URL; state is read at call time so a test can change it mid-flight. */
+function routeGets(state: RouteState) {
   get.mockImplementation((url: string) => {
-    if (url === "/api/v1/sessions/12") return Promise.resolve({ data: { data: state.detail } });
-    if (url === "/api/v1/seasons/7/sessions")
-      return Promise.resolve({ data: { data: { sessions: [listRow(state.token)] } } });
-    if (url === "/api/v1/sessions/12/attendance")
-      return Promise.resolve({ data: { data: { roster: state.roster ?? [] } } });
+    if (url === "/api/v1/sessions/12") return ok(state.detail);
+    if (url === "/api/v1/sessions/12/check-in") return ok(state.checkIn ?? checkInState());
+    if (url === "/api/v1/sessions/12/attendance") return ok({ roster: state.roster ?? [] });
+    if (url === "/api/v1/sessions/12/quizzes") return ok({ quizzes: state.quizzes ?? [] });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 }
+
+const admin = () => makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 2 });
+const leader = () => makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 });
 
 beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
-it("shows a student their header and attendance, and no check-in card (C4: flags drive the UI)", async () => {
+it("shows a student the org-time header and their attendance, and no staff cards (C4)", async () => {
   useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 }));
   routeGets({
     detail: { ...baseDetail, myAttendance: { status: "LATE", notes: null, lateMinutes: 10, checkedInAt: null } },
-    token: null,
   });
 
   renderWithProviders(<SessionDetailScreen />);
 
   expect(await screen.findByText("Week 3")).toBeTruthy();
-  expect(screen.getByText("Hall B")).toBeTruthy();
-  expect(screen.getByText("Bring your notebook.")).toBeTruthy();
+  // Server-derived day and wall-clock time (X13) — not the device's reading of startsAt.
+  expect(screen.getByText("Mar 15, 2099 · 8:00 PM · 90 min")).toBeTruthy();
   expect(screen.getByText("Your attendance: Late (10 min)")).toBeTruthy();
   expect(screen.queryByText("Check-in")).toBeNull();
-  expect(screen.queryByText("Open check-in")).toBeNull();
+  expect(screen.queryByText("Edit session")).toBeNull();
   expect(screen.queryByText("Mark attendance")).toBeNull();
+  expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/quizzes");
 });
 
 it("lets a season admin open check-in and shows the QR from the open response", async () => {
-  useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 2 }));
-  const state = {
-    detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true },
-    token: null as string | null,
-  };
+  useSessionStore.setState(admin());
+  const state: RouteState = { detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } };
   routeGets(state);
-  post.mockImplementation(() => {
-    state.detail = { ...state.detail, checkInOpen: true };
-    return Promise.resolve({ data: { data: { checkInToken: "tok123" } } });
+  post.mockImplementation((url: string) => {
+    if (url === "/api/v1/sessions/12/check-in-open") {
+      state.detail = { ...state.detail, checkInOpen: true };
+      return ok({ checkInToken: "tok123" });
+    }
+    return Promise.reject(new Error(`unexpected POST ${url}`));
   });
 
   renderWithProviders(<SessionDetailScreen />);
@@ -89,17 +98,19 @@ it("lets a season admin open check-in and shows the QR from the open response", 
   expect(await screen.findByText("Close check-in")).toBeTruthy();
 });
 
-it("shows an admin the QR of an already-open session without reopening (token from the staff session list)", async () => {
-  useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 2 }));
+it("recovers an open session's QR from GET /check-in — not the season-wide list (D-16.9)", async () => {
+  useSessionStore.setState(admin());
   routeGets({
     detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: true },
-    token: "tokABC",
+    checkIn: checkInState({ state: "open", isOpen: true, checkInToken: "tokABC", expiresAtTime: "23:00" }),
   });
   post.mockResolvedValue({ data: { data: { closed: true } } });
 
   renderWithProviders(<SessionDetailScreen />);
 
   expect(await screen.findByText("Code: tokABC")).toBeTruthy();
+  expect(screen.getByText("Closes at 11:00 PM")).toBeTruthy();
+  expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/sessions");
   fireEvent.press(screen.getByText("Close check-in"));
   await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/check-in-close"));
 
@@ -107,16 +118,45 @@ it("shows an admin the QR of an already-open session without reopening (token fr
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]/attendance", params: { id: "12" } });
 });
 
-it("gives a leader a read-only live roster — no open/close (spec 04 §9 row 2, G18)", async () => {
-  useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
+it("regenerates an OPEN session's code only on a confirming second press (spec 03 §10 item 9)", async () => {
+  useSessionStore.setState(admin());
+  const state: RouteState = {
+    detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: true },
+    checkIn: checkInState({ state: "open", isOpen: true, checkInToken: "tokOLD" }),
+  };
+  routeGets(state);
+  post.mockImplementation((url: string) => {
+    if (url === "/api/v1/sessions/12/check-in-regenerate") {
+      state.checkIn = checkInState({ state: "open", isOpen: true, checkInToken: "tokNEW" });
+      return ok({ checkInToken: "tokNEW" });
+    }
+    return Promise.reject(new Error(`unexpected POST ${url}`));
+  });
+
+  renderWithProviders(<SessionDetailScreen />);
+
+  fireEvent.press(await screen.findByText("Regenerate code"));
+  expect(post).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText("Replace the code? The current one stops working."));
+  await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/check-in-regenerate"));
+  expect(await screen.findByText("Code: tokNEW")).toBeTruthy();
+});
+
+it("gives a season admin Edit session", async () => {
+  useSessionStore.setState(admin());
+  routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
+  renderWithProviders(<SessionDetailScreen />);
+  fireEvent.press(await screen.findByText("Edit session"));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]/edit", params: { id: "12" } });
+});
+
+it("gives a leader a read-only live roster — no open/close/regenerate/edit (spec 04 §9 row 2)", async () => {
+  useSessionStore.setState(leader());
   routeGets({
     detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: false },
-    token: "never-shown",
     roster: [
-      { studentUserId: 21, name: "Sara Student", email: "sara@jpc.test", groupName: "Group A",
-        status: "PRESENT", notes: null, lateMinutes: null },
-      { studentUserId: 22, name: "Omar Student", email: "omar@jpc.test", groupName: "Group A",
-        status: null, notes: null, lateMinutes: null },
+      { studentUserId: 21, name: "Sara Student", email: "sara@jpc.test", groupName: "Group A", status: "PRESENT", notes: null, lateMinutes: null },
+      { studentUserId: 22, name: "Omar Student", email: "omar@jpc.test", groupName: "Group A", status: null, notes: null, lateMinutes: null },
     ],
   });
 
@@ -126,10 +166,12 @@ it("gives a leader a read-only live roster — no open/close (spec 04 §9 row 2,
   expect(screen.getByText("Check-in is open")).toBeTruthy();
   expect(screen.getByText("Present")).toBeTruthy();
   expect(screen.getByText("Not checked in")).toBeTruthy();
-  expect(screen.queryByText("Open check-in")).toBeNull();
-  expect(screen.queryByText("Close check-in")).toBeNull();
+  for (const label of ["Open check-in", "Close check-in", "Regenerate code", "Edit session"]) {
+    expect(screen.queryByText(label)).toBeNull();
+  }
   expect(screen.queryByText(/Code:/)).toBeNull();
-  // The leader never pulls the season list just to find a token they may not use.
+  // The leader never asks for the token in any form.
+  expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/check-in");
   expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/sessions");
   expect(screen.getByText("Mark attendance")).toBeTruthy();
 });
@@ -137,14 +179,9 @@ it("gives a leader a read-only live roster — no open/close (spec 04 §9 row 2,
 it("refreshes the leader's roster every 10 seconds while check-in is open", async () => {
   jest.useFakeTimers();
   try {
-    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
-    routeGets({
-      detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: false },
-      token: null,
-      roster: [],
-    });
-    const rosterCalls = () =>
-      get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12/attendance").length;
+    useSessionStore.setState(leader());
+    routeGets({ detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: false }, roster: [] });
+    const rosterCalls = () => get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12/attendance").length;
 
     renderWithProviders(<SessionDetailScreen />);
     expect(await screen.findByText("Check-in is open")).toBeTruthy();
@@ -157,4 +194,29 @@ it("refreshes the leader's roster every 10 seconds while check-in is open", asyn
   } finally {
     jest.useRealTimers();
   }
+});
+
+it("shows staff the session's quizzes (G18; v1 leader/sessions/[id])", async () => {
+  useSessionStore.setState(leader());
+  routeGets({
+    detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
+    quizzes: [
+      { id: 40, title: "Paper quiz", kind: "PAPER", maxScore: 20, questionCount: 0, publishedAt: null },
+      { id: 41, title: "Online quiz", kind: "ONLINE", maxScore: 10, questionCount: 4, publishedAt: null },
+    ],
+  });
+  renderWithProviders(<SessionDetailScreen />);
+  expect(await screen.findByText("Quizzes")).toBeTruthy();
+  expect(screen.getByText("Paper quiz")).toBeTruthy();
+  expect(screen.getByText("Max score: 20")).toBeTruthy();
+  expect(screen.getByText("Max score: 10 · Draft")).toBeTruthy();
+});
+
+it("hides the quiz card when the session has none", async () => {
+  useSessionStore.setState(leader());
+  routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false }, quizzes: [] });
+  renderWithProviders(<SessionDetailScreen />);
+  expect(await screen.findByText("Week 3")).toBeTruthy();
+  await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/quizzes"));
+  expect(screen.queryByText("Quizzes")).toBeNull();
 });

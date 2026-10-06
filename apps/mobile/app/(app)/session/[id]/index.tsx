@@ -4,21 +4,18 @@ import QRCode from "react-native-qrcode-svg";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { AttendanceRosterRow, MyAttendance, SessionDetail } from "@space/shared";
 
+import { SessionQuizzesCard } from "../../../../src/components/SessionQuizzesCard";
 import { useAttendanceRoster } from "../../../../src/hooks/use-attendance";
+import { useCheckInState, useRegenerateCheckIn } from "../../../../src/hooks/use-check-in";
 import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../../../src/hooks/use-session-detail";
-import { useSeasonSessions } from "../../../../src/hooks/use-sessions";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
-import { formatDate, formatSessionTime } from "../../../../src/lib/format";
+import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
+import { parsePositiveInt } from "../../../../src/lib/params";
 import { useTheme } from "../../../../src/theme";
 import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
 
 /** v1's leader page refreshed every 10s while check-in was open (check-in-attendance-list.tsx:58). */
 export const LIVE_ROSTER_REFRESH_MS = 10_000;
-
-function parseId(raw: string | undefined): number | null {
-  const n = Number(raw);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
 
 function attendanceLine(a: MyAttendance): string {
   if (a.status === "PRESENT") return "Your attendance: Present";
@@ -35,18 +32,18 @@ function rosterStatus(row: AttendanceRosterRow): string {
   return "Not checked in";
 }
 
-/** Season admins only (canManageCheckIn): open/close and the QR. */
+/** Season admins only (canManageCheckIn): open/close/regenerate and the QR. */
 function CheckInConsole({ detail }: { detail: SessionDetail }) {
   const theme = useTheme();
   const open = useOpenCheckIn(detail.id);
   const close = useCloseCheckIn(detail.id);
-  // Staff receive checkInToken on the season's session list (withheld only
-  // from students), so an already-open session shows its QR after a restart
-  // without a pointless reopen.
-  const seasonSessions = useSeasonSessions(detail.seasonId);
-  const listedToken = seasonSessions.data?.find((s) => s.id === detail.id)?.checkInToken ?? null;
-  const token = open.token ?? listedToken;
+  const regenerate = useRegenerateCheckIn(detail.id);
+  // The narrow admin-only read (D-16.9) — after an app restart, the open
+  // session's QR comes back without a reopen and without the season-wide list.
+  const checkIn = useCheckInState(detail.id, true);
+  const token = checkIn.data?.checkInToken ?? open.token;
   const [error, setError] = useState<string | null>(null);
+  const [regenArmed, setRegenArmed] = useState(false);
 
   const onOpen = () => {
     setError(null);
@@ -55,6 +52,16 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
   const onClose = () => {
     setError(null);
     close.mutate(undefined, { onError: (err) => setError(apiErrorMessage(err, "Couldn't close check-in.")) });
+  };
+  const onRegenerate = () => {
+    // While open, a code on the room screen stops working — confirm (spec 03 §10 item 9).
+    if (detail.checkInOpen && !regenArmed) {
+      setRegenArmed(true);
+      return;
+    }
+    setRegenArmed(false);
+    setError(null);
+    regenerate.mutate(undefined, { onError: (err) => setError(apiErrorMessage(err, "Couldn't replace the code.")) });
   };
 
   return (
@@ -66,6 +73,9 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
             <View style={{ alignItems: "center", gap: theme.spacing.sm }}>
               <QRCode value={token} size={220} />
               <Text variant="caption">{`Code: ${token}`}</Text>
+              {checkIn.data?.expiresAtTime ? (
+                <Text variant="caption">{`Closes at ${formatWallTime(checkIn.data.expiresAtTime)}`}</Text>
+              ) : null}
               {/* Spec 04 D3's risk, stated until the rotating-code upgrade lands. */}
               <Text variant="caption" color={theme.colors.neutral[600]}>
                 Anyone with this code can check in — keep it on the room screen only.
@@ -79,6 +89,14 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
       ) : (
         <Button title="Open check-in" onPress={onOpen} loading={open.isPending} />
       )}
+      {token ? (
+        <Button
+          title={regenArmed ? "Replace the code? The current one stops working." : "Regenerate code"}
+          variant="ghost"
+          onPress={onRegenerate}
+          loading={regenerate.isPending}
+        />
+      ) : null}
       {error ? <Text variant="label" color={theme.colors.error[500]}>{error}</Text> : null}
     </Card>
   );
@@ -146,13 +164,23 @@ function SessionDetailBody({ id }: { id: number }) {
     <Screen edges={["top", "left", "right"]} scroll onRefresh={() => void refetch()} refreshing={isRefetching}>
       <Card>
         <Text variant="title">{data.title}</Text>
+        {/* Org day and time from the server (X13) — the device zone never re-reads startsAt. */}
         <Text variant="label" color={theme.colors.neutral[600]}>
-          {`${formatDate(data.startsAt)} · ${formatSessionTime(data.startsAt)} · ${data.durationMinutes} min`}
+          {`${formatDayKey(data.dayKey)} · ${formatWallTime(data.startTime)} · ${data.durationMinutes} min`}
         </Text>
         {data.location ? <Text variant="body">{data.location}</Text> : null}
         {data.description ? <Text variant="body">{data.description}</Text> : null}
         {data.myAttendance ? <Text variant="label">{attendanceLine(data.myAttendance)}</Text> : null}
       </Card>
+
+      {data.canManageCheckIn ? (
+        <Button
+          title="Edit session"
+          variant="secondary"
+          style={{ marginTop: theme.spacing.md }}
+          onPress={() => router.push({ pathname: "/session/[id]/edit", params: { id: String(id) } })}
+        />
+      ) : null}
 
       {/* Student check-in (scanner / enter code) is Plan 11 (ruling X15). */}
       {data.canManageCheckIn ? (
@@ -160,6 +188,8 @@ function SessionDetailBody({ id }: { id: number }) {
       ) : data.canMarkAttendance ? (
         <LiveCheckInRoster detail={data} />
       ) : null}
+
+      {data.canMarkAttendance ? <SessionQuizzesCard sessionId={data.id} /> : null}
 
       {data.canMarkAttendance ? (
         <Button
@@ -175,7 +205,7 @@ function SessionDetailBody({ id }: { id: number }) {
 
 export default function SessionDetailScreen() {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
-  const id = parseId(raw);
+  const id = parsePositiveInt(raw);
   if (id === null) {
     return (
       <Screen edges={["top", "left", "right"]}>
