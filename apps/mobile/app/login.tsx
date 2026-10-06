@@ -85,6 +85,11 @@ export default function LoginScreen() {
           variant="ghost"
           onPress={() => router.push("/accept-invite")}
         />
+        <Button
+          title="Forgot password?"
+          variant="ghost"
+          onPress={() => router.push("/forgot-password")}
+        />
       </View>
     </Screen>
   );
