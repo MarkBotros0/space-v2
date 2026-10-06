@@ -188,10 +188,10 @@ describe("AppLayout tab shell", () => {
     expect(routeNameForHref("/calendar")).toBe("calendar");
   });
 
-  it("declares student/[id] hidden from the tab bar", () => {
+  it("declares student/[id]/index hidden from the tab bar (directory form, ruling X7)", () => {
     useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
     render(<AppLayout />);
-    const detail = mockScreens.find((s) => s.name === "student/[id]");
+    const detail = mockScreens.find((s) => s.name === "student/[id]/index");
     expect(detail).toBeDefined();
     expect(detail?.href).toBeNull();
   });
