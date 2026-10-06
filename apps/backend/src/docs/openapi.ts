@@ -98,6 +98,7 @@ export const openApiDocument = {
     { name: "Me", description: "The authenticated user" },
     { name: "Seasons", description: "Seasons and their sub-resources" },
     { name: "Groups", description: "Group detail" },
+    { name: "Students", description: "Student lists, role-shaped detail, profile edits and enrollment transitions" },
     { name: "Sessions", description: "Sessions, attendance, and check-in" },
     { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
     { name: "Submissions", description: "Submissions and their files" },
@@ -323,6 +324,89 @@ export const openApiDocument = {
           leaders: { type: "array", items: { $ref: "#/components/schemas/GroupMember" } },
           students: { type: "array", items: { $ref: "#/components/schemas/GroupMember" } },
           canManage: { type: "boolean", description: "isAdminOfSeason for the caller." },
+        },
+      },
+
+      StudentListItem: {
+        type: "object",
+        required: ["id", "name", "email", "avatarPath", "university", "year", "graduationYear", "activeSeasonTitle", "currentGroupName", "droppedEnrollment"],
+        properties: {
+          id: { type: "integer" },
+          name: { type: "string" },
+          email: { type: "string" },
+          avatarPath: { type: ["string", "null"] },
+          university: { type: ["string", "null"] },
+          year: { type: ["string", "null"] },
+          graduationYear: { type: ["integer", "null"] },
+          activeSeasonTitle: { type: ["string", "null"] },
+          currentGroupName: { type: ["string", "null"], description: "Advisory: from GroupStudent, the one question that table may answer (C9)." },
+          droppedEnrollment: {
+            description: "Non-null only on `status=dropped` rows, which are enrollment-keyed — key rows on `enrollmentId`, not the user id.",
+            oneOf: [
+              {
+                type: "object",
+                properties: {
+                  enrollmentId: { type: "integer" },
+                  seasonId: { type: "integer" },
+                  seasonTitle: { type: "string" },
+                  droppedAt: { type: ["string", "null"], format: "date-time" },
+                  dropReason: { type: ["string", "null"] },
+                },
+              },
+              { type: "null" },
+            ],
+          },
+        },
+      },
+
+      EnrollmentHistoryItem: {
+        type: "object",
+        properties: {
+          enrollmentId: { type: "integer" },
+          seasonId: { type: "integer" },
+          seasonCode: { type: "string" },
+          seasonTitle: { type: "string" },
+          seasonStatus: { $ref: "#/components/schemas/SeasonStatus" },
+          startDate: { type: "string", format: "date-time" },
+          endDate: { type: "string", format: "date-time" },
+          groupName: { type: ["string", "null"], description: "The historic group for that season, from SeasonEnrollment.groupId (C9)." },
+          status: { type: "string", enum: ["ACTIVE", "COMPLETED", "WITHDRAWN"] },
+          enrolledAt: { type: "string", format: "date-time" },
+          completedAt: { type: ["string", "null"], format: "date-time" },
+          droppedAt: { type: ["string", "null"], format: "date-time" },
+          dropReason: { type: ["string", "null"], description: "Always null for MENTOR and LEADER." },
+        },
+      },
+      StudentDetail: {
+        type: "object",
+        description:
+          "Three role-shaped payloads share this envelope; only `profile` differs. **Fields withheld from a role are absent from the wire, not null.** `public` (MENTOR, LEADER): university, year, gifts, activeSeasonId/Title/Code. `private` (the student themselves): public + phone, dateOfBirth, spiritualBackground. `internal` (SUPER, ADMIN): private + notes. The subject never receives `notes`.",
+        properties: {
+          id: { type: "integer" },
+          name: { type: "string" },
+          email: { type: "string" },
+          avatarPath: { type: ["string", "null"] },
+          graduationYear: { type: ["integer", "null"] },
+          currentGroup: {
+            description: "Advisory current group (GroupStudent).",
+            oneOf: [{ type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } }, { type: "null" }],
+          },
+          enrollments: { type: "array", items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }, description: "`enrolledAt` descending. For a LEADER only the rows naming one of their groups." },
+          profile: {
+            type: "object",
+            properties: {
+              university: { type: ["string", "null"] },
+              year: { type: ["string", "null"] },
+              gifts: { type: ["string", "null"] },
+              activeSeasonId: { type: ["integer", "null"] },
+              activeSeasonTitle: { type: ["string", "null"] },
+              activeSeasonCode: { type: ["string", "null"] },
+              phone: { type: ["string", "null"], description: "private and internal shapes only." },
+              dateOfBirth: { type: ["string", "null"], format: "date-time", description: "private and internal shapes only." },
+              spiritualBackground: { type: ["string", "null"], description: "private and internal shapes only." },
+              notes: { type: ["string", "null"], description: "internal shape only (SUPER, ADMIN)." },
+            },
+          },
         },
       },
 
@@ -1260,6 +1344,194 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+    },
+
+    "/api/v1/students": {
+      get: {
+        tags: ["Students"],
+        summary: "Student list (active, alumni or dropped)",
+        description:
+          "One endpoint serves all three list surfaces, selected by `status` (default `active`).\n\nScope is per role: SUPER and MENTOR read every student; ADMIN gets the students ever enrolled in their seasons; LEADER gets the students whose **enrollment** names one of their groups (C9 — never GroupStudent). `alumni` (graduationYear set) is refused with 403 `forbidden` to LEADER. `dropped` lists WITHDRAWN enrollments, not students (a student dropped from three seasons appears three times; rows carry `droppedEnrollment`) and is SUPER/ADMIN only — it hands out drop reasons, so MENTOR and LEADER get 403. STUDENT is refused on every surface.\n\nPagination is cursor-based: pass the last row's id (the enrollment id when `status=dropped`) as `cursor`; `nextCursor` is null on the last page. `total` is the whole population under the current filters, not the page size (D14). `q` matches name, email or university, case-insensitive.",
+        parameters: [
+          { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
+          { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
+          { name: "q", in: "query", schema: { type: "string", maxLength: 120 } },
+          { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                students: { type: "array", items: { $ref: "#/components/schemas/StudentListItem" } },
+                nextCursor: { type: ["integer", "null"] },
+                total: { type: "integer" },
+              },
+            },
+            "One page of students.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+      post: {
+        tags: ["Students"],
+        summary: "Create a student",
+        description:
+          "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported, and the account has no login path until an invite mints credentials (Plan 9) — the same state v1's CSV import produces. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment and points `activeSeasonId` at the same season, so the two definitions of \"in this season\" agree (D1). Empty strings are stored as null.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "email"],
+                properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
+                  email: { type: "string", format: "email" },
+                  university: { type: ["string", "null"], maxLength: 160 },
+                  year: { type: ["string", "null"], maxLength: 40 },
+                  phone: { type: ["string", "null"], maxLength: 60 },
+                  dateOfBirth: { type: ["string", "null"], format: "date-time" },
+                  spiritualBackground: { type: ["string", "null"], maxLength: 4000 },
+                  gifts: { type: ["string", "null"], maxLength: 2000 },
+                  notes: { type: ["string", "null"], maxLength: 4000 },
+                  seasonId: { type: ["integer", "null"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok({ type: "object", properties: { id: { type: "integer" }, email: { type: "string" } } }, "Created."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`email_taken` — also for a soft-deleted student's address, which stays reserved."),
+        },
+      },
+    },
+
+    "/api/v1/students/{id}": {
+      get: {
+        tags: ["Students"],
+        summary: "Student detail, shaped by the caller's role",
+        description:
+          "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9). Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nThe payload is narrowed per role, not just the access (C8): see `StudentDetail` for which profile fields exist on the wire for MENTOR/LEADER (phone, dateOfBirth, spiritualBackground, notes and per-row dropReason are absent) and why the subject never receives `notes`.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/StudentDetail" }, "The student."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Students"],
+        summary: "Edit a student's profile",
+        description:
+          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The student may edit name, email, university, year, phone, dateOfBirth, spiritualBackground and gifts, never `notes` or `activeSeasonId`. ADMIN (of a season with an ACTIVE enrollment for the student) adds `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
+                  email: { type: "string", format: "email" },
+                  university: { type: ["string", "null"] },
+                  year: { type: ["string", "null"] },
+                  phone: { type: ["string", "null"] },
+                  dateOfBirth: { type: ["string", "null"], format: "date-time" },
+                  spiritualBackground: { type: ["string", "null"] },
+                  gifts: { type: ["string", "null"] },
+                  notes: { type: ["string", "null"] },
+                  activeSeasonId: { type: ["integer", "null"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { id: { type: "integer" } } }, "Updated."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`email_taken` or `not_enrolled`."),
+        },
+      },
+    },
+
+    "/api/v1/students/{id}/enrollments": {
+      post: {
+        tags: ["Students"],
+        summary: "Enroll a student in a season",
+        description:
+          "Season-admin of the **target** season (SUPER passes); gated before any lookup. Creates an ACTIVE enrollment and, if the student's `activeSeasonId` is unset, points it at the new season (never overwrites a set pointer). One enrollment per student per season, ever: a second attempt \u2014 even over a WITHDRAWN row \u2014 is 409 `already_enrolled`.\n\nBoundary: this endpoint owns enrollment existence and status only. `groupId` is written exclusively by `PATCH /api/v1/groups/{id}` \u2014 group membership is written only there. Enrollment rows are never deleted.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { type: "object", required: ["seasonId"], properties: { seasonId: { type: "integer", minimum: 1 } } },
+            },
+          },
+        },
+        responses: {
+          201: ok(
+            { type: "object", properties: { id: { type: "integer" }, seasonId: { type: "integer" }, status: { type: "string", enum: ["ACTIVE"] } } },
+            "Enrolled.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`already_enrolled`."),
+        },
+      },
+    },
+
+    "/api/v1/students/{id}/enrollments/{seasonId}": {
+      patch: {
+        tags: ["Students"],
+        summary: "Complete or drop an enrollment",
+        description:
+          "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The only transitions are ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`) and ACTIVE \u2192 COMPLETED (sets completedAt). ACTIVE is not accepted in the body: there is no re-activation. A non-ACTIVE row is 409 `not_active`. The row is transitioned in place and never deleted.",
+        parameters: [
+          idParam,
+          { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["status"],
+                properties: {
+                  status: { type: "string", enum: ["WITHDRAWN", "COMPLETED"] },
+                  dropReason: { type: ["string", "null"], maxLength: 500, description: "Only with WITHDRAWN." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { id: { type: "integer" }, status: { type: "string" } } }, "Transitioned."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`not_active`."),
         },
       },
     },

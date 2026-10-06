@@ -1,9 +1,5 @@
-import { EmptyState, Screen } from "../../../src/ui";
+import { StudentList } from "../../../src/components/StudentList";
 
 export default function AlumniScreen() {
-  return (
-    <Screen edges={["top", "left", "right"]}>
-      <EmptyState title="Alumni" message="This screen isn't built yet." />
-    </Screen>
-  );
+  return <StudentList status="alumni" allowedRoles={["SUPER", "ADMIN", "MENTOR"]} title="Alumni" />;
 }
