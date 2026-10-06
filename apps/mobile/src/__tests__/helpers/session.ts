@@ -13,6 +13,7 @@ export function makeUser(role: UserRole, overrides: Partial<MeUser> = {}): MeUse
     email: `${role.toLowerCase()}@jpc.test`,
     role,
     avatarPath: null,
+    hasPassword: true,
     ...overrides,
   };
 }

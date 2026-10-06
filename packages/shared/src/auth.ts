@@ -45,6 +45,13 @@ export type MeScopes = z.infer<typeof meScopesSchema>;
 
 export const meUserSchema = authUserSchema.extend({
   avatarPath: z.string().nullable(),
+  /**
+   * False when passwordHash is null (invited, never activated). Drives the
+   * settings screen's password-section branch (spec 18 section 9) so the user
+   * learns before typing, not after submitting (R27). Defaults true: a backend
+   * that predates the field parses as "has a password".
+   */
+  hasPassword: z.boolean().default(true),
 });
 export type MeUser = z.infer<typeof meUserSchema>;
 

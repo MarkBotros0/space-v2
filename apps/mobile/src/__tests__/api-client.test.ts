@@ -19,7 +19,7 @@ jest.mock("../lib/token-storage", () => ({
   clearSession: jest.fn(async () => undefined),
 }));
 
-const user = { id: 1, name: "A", email: "a@b.test", role: "STUDENT" as const, avatarPath: null };
+const user = { id: 1, name: "A", email: "a@b.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true };
 const scopes = {
   seasonAdminIds: [],
   groupLeaderIds: [],

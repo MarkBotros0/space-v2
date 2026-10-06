@@ -33,7 +33,7 @@ const mockLoadAccessToken = loadAccessToken as jest.Mock;
 const mockClearSession = clearSession as jest.Mock;
 
 const me = {
-  user: { id: 1, name: "A", email: "a@b.test", role: "STUDENT" as const, avatarPath: null },
+  user: { id: 1, name: "A", email: "a@b.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
   scopes: {
     seasonAdminIds: [],
     groupLeaderIds: [],
