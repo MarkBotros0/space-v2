@@ -270,3 +270,103 @@ describe("GET /api/v1/students?status=dropped", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("GET /api/v1/students/:id", () => {
+  it("returns the internal shape to SUPER — notes and phone included", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${superToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toMatchObject({
+      university: "Test University",
+      phone: "+20 100 000 0000",
+      spiritualBackground: "Test background",
+      notes: "Internal staff note",
+    });
+    // Both enrollments, newest first (R72); the historic group comes from the
+    // ENROLLMENT row (C9/R5), not GroupStudent — none exists for student1.
+    expect(res.body.data.enrollments).toHaveLength(2);
+    const inA = res.body.data.enrollments.find(
+      (e: { seasonId: number }) => e.seasonId === seasonAId,
+    );
+    expect(inA).toMatchObject({ status: "ACTIVE", groupName: "Group A" });
+    expect(res.body.data.currentGroup).toBeNull(); // advisory pointer genuinely unset
+  });
+
+  it("returns the internal shape to a season ADMIN of the student", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile.notes).toBe("Internal staff note");
+  });
+
+  it("refuses an ADMIN outside the student's seasons", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student2Id}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("withholds phone, DOB, spiritual background and notes from MENTOR — absence, not null (D3)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${mentorToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toHaveProperty("university", "Test University");
+    // The keys must not exist on the wire at all — a null would still admit
+    // the field exists and still round-trip through generic clients.
+    expect(res.body.data.profile).not.toHaveProperty("phone");
+    expect(res.body.data.profile).not.toHaveProperty("dateOfBirth");
+    expect(res.body.data.profile).not.toHaveProperty("spiritualBackground");
+    expect(res.body.data.profile).not.toHaveProperty("notes");
+  });
+
+  it("admits a LEADER to their own student with the public shape and only their rows", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${leaderToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).not.toHaveProperty("phone");
+    expect(res.body.data.profile).not.toHaveProperty("notes");
+    // student1 holds two enrollments; only the one naming the leader's group
+    // travels (spec 06 §7: "the scoped season rows").
+    expect(res.body.data.enrollments).toHaveLength(1);
+    expect(res.body.data.enrollments[0].seasonId).toBe(seasonAId);
+    expect(res.body.data.enrollments[0].dropReason).toBeNull();
+  });
+
+  it("refuses a LEADER outside their groups (C8 — the row gate, not just the route)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student2Id}`)
+      .set("authorization", `Bearer ${leaderToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("returns the private shape to the student themselves — never their internal notes (R23)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${student1Token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toHaveProperty("phone", "+20 100 000 0000");
+    expect(res.body.data.profile).not.toHaveProperty("notes");
+  });
+
+  it("refuses a student reading another student", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student2Id}`)
+      .set("authorization", `Bearer ${student1Token}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("404s a soft-deleted student (R69)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${deletedDroppedId}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(res.status).toBe(404);
+  });
+});

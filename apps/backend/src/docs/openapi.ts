@@ -359,6 +359,57 @@ export const openApiDocument = {
         },
       },
 
+      EnrollmentHistoryItem: {
+        type: "object",
+        properties: {
+          enrollmentId: { type: "integer" },
+          seasonId: { type: "integer" },
+          seasonCode: { type: "string" },
+          seasonTitle: { type: "string" },
+          seasonStatus: { $ref: "#/components/schemas/SeasonStatus" },
+          startDate: { type: "string", format: "date-time" },
+          endDate: { type: "string", format: "date-time" },
+          groupName: { type: ["string", "null"], description: "The historic group for that season, from SeasonEnrollment.groupId (C9)." },
+          status: { type: "string", enum: ["ACTIVE", "COMPLETED", "WITHDRAWN"] },
+          enrolledAt: { type: "string", format: "date-time" },
+          completedAt: { type: ["string", "null"], format: "date-time" },
+          droppedAt: { type: ["string", "null"], format: "date-time" },
+          dropReason: { type: ["string", "null"], description: "Always null for MENTOR and LEADER." },
+        },
+      },
+      StudentDetail: {
+        type: "object",
+        description:
+          "Three role-shaped payloads share this envelope; only `profile` differs. **Fields withheld from a role are absent from the wire, not null.** `public` (MENTOR, LEADER): university, year, gifts, activeSeasonId/Title/Code. `private` (the student themselves): public + phone, dateOfBirth, spiritualBackground. `internal` (SUPER, ADMIN): private + notes. The subject never receives `notes`.",
+        properties: {
+          id: { type: "integer" },
+          name: { type: "string" },
+          email: { type: "string" },
+          avatarPath: { type: ["string", "null"] },
+          graduationYear: { type: ["integer", "null"] },
+          currentGroup: {
+            description: "Advisory current group (GroupStudent).",
+            oneOf: [{ type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } }, { type: "null" }],
+          },
+          enrollments: { type: "array", items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }, description: "`enrolledAt` descending. For a LEADER only the rows naming one of their groups." },
+          profile: {
+            type: "object",
+            properties: {
+              university: { type: ["string", "null"] },
+              year: { type: ["string", "null"] },
+              gifts: { type: ["string", "null"] },
+              activeSeasonId: { type: ["integer", "null"] },
+              activeSeasonTitle: { type: ["string", "null"] },
+              activeSeasonCode: { type: ["string", "null"] },
+              phone: { type: ["string", "null"], description: "private and internal shapes only." },
+              dateOfBirth: { type: ["string", "null"], format: "date-time", description: "private and internal shapes only." },
+              spiritualBackground: { type: ["string", "null"], description: "private and internal shapes only." },
+              notes: { type: ["string", "null"], description: "internal shape only (SUPER, ADMIN)." },
+            },
+          },
+        },
+      },
+
       SessionListItem: {
         type: "object",
         properties: {
@@ -1325,6 +1376,23 @@ export const openApiDocument = {
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
+        },
+      },
+    },
+
+    "/api/v1/students/{id}": {
+      get: {
+        tags: ["Students"],
+        summary: "Student detail, shaped by the caller's role",
+        description:
+          "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9). Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nThe payload is narrowed per role, not just the access (C8): see `StudentDetail` for which profile fields exist on the wire for MENTOR/LEADER (phone, dateOfBirth, spiritualBackground, notes and per-row dropReason are absent) and why the subject never receives `notes`.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/StudentDetail" }, "The student."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
         },
       },
     },
