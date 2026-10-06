@@ -1338,6 +1338,39 @@ export const openApiDocument = {
           404: errRef("NotFound"),
         },
       },
+      patch: {
+        tags: ["Assignments"],
+        summary: "Replace an assignment",
+        description:
+          "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). Students newly targeted by the edit get ASSIGNMENT_CREATED (same text and link as create); students already targeted are not notified again. Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/AssignmentWriteRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "The updated assignment."),
+          400: conflict("`bad_request`, `invalid_group`, or `invalid_session`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Assignments"],
+        summary: "Soft-delete an assignment nobody has started",
+        description:
+          "Season admins of the assignment's season. Designed rather than ported: v1's soft-delete action had no caller (ruling C12). Sets `deletedAt`; targets and any history stay. Refused with 409 `has_submissions` while any Submission row exists (any status, drafts included) — there is no force option. Notifies nobody. Deleting twice is 404. Returns 200 with `{ deleted: true }` (the response envelope), not 204.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ type: "object", properties: { deleted: { type: "boolean", enum: [true] } } }, "Deleted."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`has_submissions`."),
+        },
+      },
     },
 
     "/api/v1/assignments/{id}/tracker": {
