@@ -8,3 +8,6 @@ dist/
 coverage/
 *.log
 uploads/
+# expo prebuild output (generated in CI for the Maestro APK build)
+apps/mobile/android/
+apps/mobile/ios/

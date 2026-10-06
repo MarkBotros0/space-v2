@@ -1,0 +1,27 @@
+appId: com.jpc.space
+---
+- launchApp:
+    clearState: true
+- runFlow: subflows/login-student.yaml
+- extendedWaitUntil:
+    visible: "E2E Opening Session"
+    timeout: 30000
+# Deep link rather than tapOn: "Assignments", which also matches the
+# dashboard summary card heading.
+- openLink: "spacev2:///assignments"
+- extendedWaitUntil:
+    visible: "E2E Reflection"
+    timeout: 15000
+- tapOn: "E2E Reflection"
+- tapOn: "Start working"
+- extendedWaitUntil:
+    visible: "Your answer"
+    timeout: 15000
+- tapOn: "Your answer"
+- inputText: "Written by the Maestro end-to-end flow."
+- hideKeyboard
+- tapOn: "Save draft"
+- tapOn: "Submit"
+- extendedWaitUntil:
+    visible: "Submitted"
+    timeout: 15000

@@ -1,0 +1,4 @@
+# Top-level flows only; subflows/ is reached via runFlow, never run alone.
+# Flows assume the seeded E2E database (apps/backend `pnpm seed:e2e`).
+flows:
+  - "*.yaml"
