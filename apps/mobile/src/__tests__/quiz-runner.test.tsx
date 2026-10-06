@@ -207,6 +207,7 @@ describe("quiz runner", () => {
     expect(await screen.findByText("Capital of France?")).toBeTruthy();
     // Staff DO see the key — that is the audience it exists for.
     expect(screen.getByText("Correct answer: Paris")).toBeTruthy();
+    expect(screen.queryByText("Edit quiz")).toBeNull();
     fireEvent.press(screen.getByText("Grade this quiz"));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/quiz/[id]/grade",

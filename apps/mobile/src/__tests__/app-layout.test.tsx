@@ -174,7 +174,7 @@ describe("AppLayout tab shell", () => {
     expect(DETAIL_ROUTE_NAMES).not.toContain("group/[id]");
   });
 
-  it.each(["quiz/[id]/index", "quiz/[id]/grade"])("registers %s as a hidden detail route", (name) => {
+  it.each(["quiz/[id]/index", "quiz/[id]/grade", "quiz/[id]/edit", "quiz/new"])("registers %s as a hidden detail route", (name) => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     render(<AppLayout />);
     const detail = mockScreens.find((s) => s.name === name);

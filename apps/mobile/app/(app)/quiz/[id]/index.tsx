@@ -335,6 +335,13 @@ function StaffPreview({ id }: { id: number }) {
           title="Grade this quiz"
           onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })}
         />
+        {data.canManage ? (
+          <Button
+            title="Edit quiz"
+            variant="secondary"
+            onPress={() => router.push({ pathname: "/quiz/[id]/edit", params: { id: String(id) } })}
+          />
+        ) : null}
       </Card>
       {data.kind === "PAPER" ? (
         <Text variant="body">This is a paper quiz — there are no questions to preview.</Text>

@@ -7,7 +7,7 @@ import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
 import { formatDate } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
-import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
+import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
 /**
  * Three v1 pages collapse into this one: /student/quizzes, /leader/quizzes and
@@ -122,6 +122,8 @@ function StaffQuizzes() {
   // null for staff.
   const current = useCurrentSeasonId();
   const seasonId = current.seasonId;
+  const role = useSessionStore((s) => s.user?.role ?? null);
+  const canAuthor = role === "ADMIN" || role === "SUPER";
   const { data, isPending, isError, refetch, isRefetching } = useQuizList(seasonId);
 
   const handleRefresh = () => {
@@ -131,6 +133,13 @@ function StaffQuizzes() {
 
   return (
     <Screen edges={["top", "left", "right"]} onRefresh={handleRefresh} refreshing={isRefetching} scroll>
+      {canAuthor && seasonId !== null ? (
+        <Button
+          title="New quiz"
+          style={{ marginBottom: theme.spacing.sm }}
+          onPress={() => router.push("/quiz/new")}
+        />
+      ) : null}
       {current.isPending ? (
         <LoadingState />
       ) : current.isError ? (
@@ -149,7 +158,11 @@ function StaffQuizzes() {
             key={row.id}
             accessibilityRole="button"
             onPress={() =>
-              router.push({ pathname: "/quiz/[id]/grade", params: { id: String(row.id) } })
+              router.push(
+                canAuthor && row.kind === "ONLINE" && row.publishedAt === null
+                  ? { pathname: "/quiz/[id]/edit", params: { id: String(row.id) } }
+                  : { pathname: "/quiz/[id]/grade", params: { id: String(row.id) } },
+              )
             }
           >
             <Card style={{ marginBottom: theme.spacing.sm }}>

@@ -173,3 +173,36 @@ describe("QuizzesScreen — staff", () => {
     expect(get).toHaveBeenCalledWith("/api/v1/quizzes?seasonId=7");
   });
 });
+describe("QuizzesScreen — authoring entry points (Task 11)", () => {
+  const adminSession = {
+    user: { id: 2, name: "Test admin", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null },
+    scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
+  };
+
+  it("gives an admin a New quiz button", async () => {
+    useSessionStore.setState(adminSession);
+    staffGets({ items: [], nextCursor: null });
+    renderWithProviders(<QuizzesScreen />);
+    fireEvent.press(await screen.findByText("New quiz"));
+    expect(mockPush).toHaveBeenCalledWith("/quiz/new");
+  });
+
+  it("opens an admin's draft ONLINE quiz in the builder, not the grade screen", async () => {
+    useSessionStore.setState(adminSession);
+    staffGets({
+      items: [staffRow({ id: 51, title: "Draft online", kind: "ONLINE", publishedAt: null, questionCount: 0 })],
+      nextCursor: null,
+    });
+    renderWithProviders(<QuizzesScreen />);
+    fireEvent.press(await screen.findByText("Draft online"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/quiz/[id]/edit", params: { id: "51" } });
+  });
+
+  it("gives a leader no New quiz button", async () => {
+    useSessionStore.setState(leaderSession);
+    staffGets({ items: [], nextCursor: null });
+    renderWithProviders(<QuizzesScreen />);
+    expect(await screen.findByText("No quizzes")).toBeTruthy();
+    expect(screen.queryByText("New quiz")).toBeNull();
+  });
+});
