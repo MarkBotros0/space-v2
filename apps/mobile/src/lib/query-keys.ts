@@ -39,6 +39,15 @@ export const queryKeys = {
     checkIn: (id: number | null) => [...queryKeys.sessions.all, "checkIn", { id }] as const,
     quizzes: (id: number | null) => [...queryKeys.sessions.all, "quizzes", { id }] as const,
   },
+  users: {
+    all: ["users"] as const,
+    lists: () => [...queryKeys.users.all, "list"] as const,
+    list: (filters: { q: string }) => [...queryKeys.users.lists(), filters] as const,
+    details: () => [...queryKeys.users.all, "detail"] as const,
+    // Nullable, per this file's header convention (a null key never collides
+    // with a real id) — not a -1 sentinel.
+    detail: (id: number | null) => [...queryKeys.users.details(), { id }] as const,
+  },
   students: {
     all: ["students"] as const,
     lists: () => [...queryKeys.students.all, "list"] as const,
