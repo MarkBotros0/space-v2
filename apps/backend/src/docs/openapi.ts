@@ -1782,7 +1782,7 @@ export const openApiDocument = {
         tags: ["Users"],
         summary: "Create a user and issue their invite (SUPER only)",
         description:
-          "Creation and invitation are one operation. The account is created with a NULL password hash (there is no default password anywhere) and an invite is minted in the same transaction; the code goes out by email after commit, best-effort (a mail failure never rolls back the account, re-send from `POST /users/{id}/invite`). The response never carries the code. LEADER, ADMIN and MENTOR require a graduationYear. A STUDENT gets a StudentProfile.",
+          "Creation and invitation are one operation. The account is created with a NULL password hash (there is no default password anywhere) and an invite is minted in the same transaction; the code goes out by email after commit, best-effort (a mail failure never rolls back the account, re-send from `POST /users/{id}/invite`). The response never carries the code. LEADER, ADMIN and MENTOR require a graduationYear. A STUDENT gets a StudentProfile. Creating a SUPER requires `confirmSuper: true`, otherwise `400 confirm_super_required` (a SUPER grant can never be a mis-tapped picker item).",
         requestBody: {
           required: true,
           content: {
@@ -1795,6 +1795,7 @@ export const openApiDocument = {
                   email: { type: "string", format: "email" },
                   role: { $ref: "#/components/schemas/UserRole" },
                   graduationYear: { type: ["integer", "null"], minimum: 1990 },
+                  confirmSuper: { type: "boolean", description: "Must be true when `role` is SUPER." },
                 },
               },
             },
@@ -1806,6 +1807,45 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           409: conflict("`email_taken`."),
+        },
+      },
+    },
+
+    "/api/v1/users/invites/pending": {
+      get: {
+        tags: ["Users"],
+        summary: "Count accounts a bulk invite would reach (SUPER only)",
+        description:
+          "\"Pending\" means: not deleted, no password, never signed in, and no live **v2** invite. A live v1 plaintext invite still counts as pending, because v2 can never accept it. The client hides the bulk button at zero.",
+        responses: {
+          200: ok({ type: "object", required: ["pending"], properties: { pending: { type: "integer", minimum: 0 } } }, "The count."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+      post: {
+        tags: ["Users"],
+        summary: "Send invites to pending accounts, one bounded batch (SUPER only)",
+        description:
+          "Processes at most 20 pending accounts per request, oldest id first; call again for the rest (`remaining`). Each account gets its own short transaction that row-locks the user and re-checks eligibility, so a double-tap or two SUPERs racing skip rather than re-mint (`skipped`). Mail goes out after the commits with a small concurrency pool. A mail failure expires the invite just minted, so that person stays pending and the next call retries them (`failed`). Refused with 503 `email_not_configured` when no mail transport is configured, so no invites are minted that nobody can receive. No response ever carries an invite code. Rate limited to 30 requests per hour.",
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["sent", "skipped", "failed", "remaining"],
+              properties: {
+                sent: { type: "integer", minimum: 0 },
+                skipped: { type: "integer", minimum: 0 },
+                failed: { type: "integer", minimum: 0 },
+                remaining: { type: "integer", minimum: 0 },
+              },
+            },
+            "Batch counters.",
+          ),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          429: errRef("TooManyRequests"),
+          503: { description: "`email_not_configured`.", content: { "application/json": { schema: errorResponse } } },
         },
       },
     },

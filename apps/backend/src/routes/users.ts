@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import type { Request, Response } from "express";
 import {
@@ -16,8 +17,9 @@ import { apiOk, apiError } from "../lib/api-response";
 import { revokeAllRefreshTokensForUser, type SessionUser } from "../lib/auth/tokens";
 import { parseId } from "../lib/parse-id";
 import { canManageUsers } from "../lib/rbac";
-import { sendInviteEmail } from "../lib/email";
-import { issueInvite } from "../lib/invites";
+import { isEmailConfigured, sendInviteEmail } from "../lib/email";
+import { issueInvite, liveInviteWhere, listPendingInviteUserIds, sendPendingInviteBatch } from "../lib/invites";
+import { rateLimitHandler } from "../lib/rate-limit";
 import { isLastActiveSuper, lockActiveSuperIds } from "../lib/super-guard";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 
@@ -34,11 +36,6 @@ function requireSuper(req: Request, res: Response): SessionUser | null {
     return null;
   }
   return user;
-}
-
-/** A live, unaccepted invite — the "invited" badge condition (R82). */
-export function liveInviteWhere(now: Date) {
-  return { usedAt: null, expiresAt: { gt: now } } as const;
 }
 
 interface StatusRow {
@@ -208,6 +205,40 @@ export async function loadUserDetail(id: number): Promise<UserDetail | null> {
       : null,
   };
 }
+
+// Own bucket (Plan 10 Decision 11). With the 20-user batch ceiling this caps
+// bulk sending at 600 invites an hour.
+const bulkInviteLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30, handler: rateLimitHandler });
+
+/** How many accounts the bulk button would reach (R87: hidden at zero). */
+usersRouter.get("/invites/pending", async (req, res) => {
+  const user = requireSuper(req, res);
+  if (!user) return;
+  const ids = await listPendingInviteUserIds();
+  return apiOk(res, { pending: ids.length });
+});
+
+/**
+ * "Send all pending invites" (v1 sendAllPendingInvitesAction,
+ * invite-actions.ts:53-75) as ONE bounded batch per request — Plan 10
+ * Decision 12. Refuses outright with no mail transport: minting codes nobody
+ * receives would also empty the pending pool, hiding the very accounts that
+ * still need an invite.
+ */
+usersRouter.post("/invites/pending", bulkInviteLimiter, async (req, res) => {
+  const user = requireSuper(req, res);
+  if (!user) return;
+  if (!isEmailConfigured()) {
+    return apiError(
+      res,
+      "email_not_configured",
+      "Email isn't configured on this server, so invites can't be delivered.",
+      503,
+    );
+  }
+  const result = await sendPendingInviteBatch(user.userId);
+  return apiOk(res, result);
+});
 
 usersRouter.get("/:id", async (req, res) => {
   const user = requireSuper(req, res);
@@ -389,6 +420,12 @@ usersRouter.post("/", async (req, res) => {
     );
   }
   const body = parsed.data;
+
+  // Plan 10 Decision 13 — spec 11 D7 rec 3 on CREATE as Plan 9 has it on
+  // PATCH: a SUPER grant can never be a mis-tapped picker item.
+  if (body.role === "SUPER" && body.confirmSuper !== true) {
+    return apiError(res, "confirm_super_required", "Granting SUPER requires explicit confirmation.", 400);
+  }
 
   // Pre-check for the friendly 409; the @unique constraint stays the real
   // guard, so a lost race is caught below rather than surfacing as a 500.

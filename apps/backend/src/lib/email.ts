@@ -18,6 +18,15 @@ function isConfigured(): boolean {
   return Boolean(config.gmailUser && config.gmailAppPassword);
 }
 
+/**
+ * Public form of isConfigured, for callers that must refuse rather than mint
+ * a credential nobody can receive — the bulk invite sender (Plan 10 Decision
+ * 12) and the password-reset request (Decision 9).
+ */
+export function isEmailConfigured(): boolean {
+  return isConfigured();
+}
+
 function getTransporter(): Transporter {
   if (!cachedTransporter) {
     cachedTransporter = nodemailer.createTransport({
