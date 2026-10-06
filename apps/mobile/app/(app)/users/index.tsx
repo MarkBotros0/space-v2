@@ -1,12 +1,13 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { FlatList, Pressable, View } from "react-native";
-import type { UserListItem, UserStatus } from "@space/shared";
+import { Alert, FlatList, Pressable, View } from "react-native";
+import { BULK_INVITE_BATCH_SIZE, type BulkInviteResponse, type UserListItem, type UserStatus } from "@space/shared";
 
-import { useSendInvite, useUsers } from "../../src/hooks/use-users";
-import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../src/ui";
+import { usePendingInviteCount, useSendInvite, useSendPendingInvites, useUsers } from "../../../src/hooks/use-users";
+import { apiErrorMessage } from "../../../src/lib/api-error";
+import { useSessionStore } from "../../../src/store/session";
+import { useTheme } from "../../../src/theme";
+import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../src/ui";
 
 /** The four badge states, labelled exactly as v1's vocabulary (R82). */
 const STATUS_LABEL: Record<UserStatus, string> = {
@@ -55,8 +56,60 @@ function UserRow({ item }: { item: UserListItem }) {
   );
 }
 
+function bulkSummary(r: BulkInviteResponse): string {
+  return `Sent ${r.sent} · failed ${r.failed} · skipped ${r.skipped} · ${r.remaining} still pending.`;
+}
+
+/**
+ * v1's SendPendingInvitesButton (invite-buttons.tsx:40-65) — now one bounded
+ * batch per tap (Plan 10 Decision 12). Mounted only inside the SUPER branch,
+ * so its count query never fires for anyone else. Hidden at zero (R87), and
+ * also hidden while the count is unknown: a button whose reach we can't state
+ * shouldn't offer to mail anyone.
+ */
+function PendingInvitesCard() {
+  const theme = useTheme();
+  const pending = usePendingInviteCount(true);
+  const sendPending = useSendPendingInvites();
+
+  if (!pending.data) return null;
+  const count = pending.data;
+
+  const run = () =>
+    Alert.alert(
+      `Send invites to ${count} ${count === 1 ? "person" : "people"}?`,
+      `Up to ${BULK_INVITE_BATCH_SIZE} are sent per tap — tap again for the rest.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send",
+          onPress: () =>
+            sendPending.mutate(undefined, {
+              onSuccess: (result) => Alert.alert("Invites sent", bulkSummary(result)),
+              onError: (err) => Alert.alert("Couldn't send invites", apiErrorMessage(err, "Try again later.")),
+            }),
+        },
+      ],
+    );
+
+  return (
+    <Card>
+      <Text variant="body">{`${count} ${count === 1 ? "account has" : "accounts have"} no invite yet.`}</Text>
+      <View style={{ marginTop: theme.spacing.sm }}>
+        <Button
+          title="Send pending invites"
+          variant="secondary"
+          loading={sendPending.isPending}
+          onPress={run}
+        />
+      </View>
+    </Card>
+  );
+}
+
 export default function UsersScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
   // `draft` is what the field shows; `q` is what was last submitted. Searching
   // on submit rather than per keystroke keeps a typed name from issuing one
@@ -84,6 +137,8 @@ export default function UsersScreen() {
   return (
     <Screen edges={["top", "left", "right"]} padded scroll={false}>
       <View style={{ gap: theme.spacing.sm, flex: 1 }}>
+        <Button title="New user" onPress={() => router.push("/users/new")} />
+        <PendingInvitesCard />
         <Input
           label="Search"
           value={draft}

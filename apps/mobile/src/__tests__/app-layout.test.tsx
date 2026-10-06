@@ -200,3 +200,10 @@ describe("AppLayout tab shell", () => {
 it("declares students/new and student/[id]/edit hidden from the tab bar", () => {
   expect(DETAIL_ROUTE_NAMES).toEqual(expect.arrayContaining(["students/new", "student/[id]/edit"]));
 });
+
+it("maps /users to its directory index and hides users/new (Plan 10)", () => {
+  expect(routeNameForHref("/users")).toBe("users/index");
+  expect(routeNameForHref("/students")).toBe("students/index");
+  expect(routeNameForHref("/seasons")).toBe("seasons/index"); // Plan 6's entry survives
+  expect(DETAIL_ROUTE_NAMES).toContain("users/new");
+});

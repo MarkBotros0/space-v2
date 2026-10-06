@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -12,7 +13,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import UsersScreen from "../../app/(app)/users";
+import UsersScreen from "../../app/(app)/users/index";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -93,5 +94,51 @@ describe("UsersScreen", () => {
     renderWithProviders(<UsersScreen />);
     expect(screen.getByText("Users")).toBeTruthy();
     expect(get).not.toHaveBeenCalled();
+  });
+});
+
+describe("UsersScreen — Plan 10 entry points", () => {
+  const routeGets = (pending: number) =>
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/users/invites/pending"
+        ? Promise.resolve({ data: { data: { pending } } })
+        : Promise.resolve({ data: { data: { users: rows, nextCursor: null, total: 2 } } }),
+    );
+
+  it("offers New user", async () => {
+    useSessionStore.setState(superSession);
+    routeGets(0);
+    renderWithProviders(<UsersScreen />);
+    fireEvent.press(await screen.findByText("New user"));
+    expect(mockPush).toHaveBeenCalledWith("/users/new");
+  });
+
+  it("hides the bulk card at zero pending (R87)", async () => {
+    useSessionStore.setState(superSession);
+    routeGets(0);
+    renderWithProviders(<UsersScreen />);
+    await screen.findByText("Active Ann");
+    expect(screen.queryByText("Send pending invites")).toBeNull();
+  });
+
+  it("sends one batch after a confirm and reports the four counters", async () => {
+    useSessionStore.setState(superSession);
+    routeGets(3);
+    post.mockResolvedValue({ data: { data: { sent: 2, skipped: 0, failed: 1, remaining: 1 } } });
+    const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
+      buttons?.find((b) => b.text === "Send")?.onPress?.();
+    });
+    renderWithProviders(<UsersScreen />);
+
+    expect(await screen.findByText("3 accounts have no invite yet.")).toBeTruthy();
+    fireEvent.press(screen.getByText("Send pending invites"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/users/invites/pending", undefined, { timeout: 60_000 }),
+    );
+    await waitFor(() =>
+      expect(alert).toHaveBeenCalledWith("Invites sent", "Sent 2 · failed 1 · skipped 0 · 1 still pending."),
+    );
+    alert.mockRestore();
   });
 });
