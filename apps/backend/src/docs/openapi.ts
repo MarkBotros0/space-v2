@@ -1901,6 +1901,7 @@ export const openApiDocument = {
       post: {
         tags: ["Users"],
         summary: "Reactivate a deactivated user (SUPER only)",
+        description: "Also clears a student profile's deletion stamp (set by `DELETE /students/{id}`).",
         parameters: [idParam],
         responses: {
           200: ok(
@@ -2034,6 +2035,63 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
           409: conflict("`email_taken` or `not_enrolled`."),
+        },
+      },
+      delete: {
+        tags: ["Students"],
+        summary: "Soft-delete a student (SUPER only)",
+        description:
+          "SUPER only. One transaction stamps `User.deletedAt` and `StudentProfile.deletedAt` and revokes every refresh token. Nothing cascades: enrollments, attendance, submissions and notes survive as history. Reversible only through `POST /users/{id}/reactivate`. `not_found` covers a non-student, an unknown id and an already-deleted student. Writes a server-side audit line (ids only).",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", properties: { id: { type: "integer" }, deletedAt: { type: "string", format: "date-time" } } },
+            "Deleted.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+
+    "/api/v1/students/{id}/graduate": {
+      post: {
+        tags: ["Students"],
+        summary: "Graduate a student (SUPER only)",
+        description:
+          "SUPER only (R55). Body `{ graduationYear }`, 1990 through the current year, evaluated per request. In one transaction: sets `graduationYear`, completes **every** ACTIVE enrollment (v1 completed only the one the profile pointed at), and clears `activeSeasonId`. WITHDRAWN and COMPLETED enrollments are untouched; `role` stays STUDENT. Irreversible: a second graduation is 409 `already_graduated`. `not_found` covers a non-student or deleted id. Writes a server-side audit line (ids only).",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["graduationYear"],
+                properties: { graduationYear: { type: "integer", minimum: 1990 } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                id: { type: "integer" },
+                graduationYear: { type: "integer" },
+                enrollmentsCompleted: { type: "integer" },
+              },
+            },
+            "Graduated.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`already_graduated`."),
         },
       },
     },

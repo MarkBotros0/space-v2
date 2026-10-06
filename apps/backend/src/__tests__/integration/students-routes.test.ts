@@ -773,3 +773,244 @@ describe("enrollment transitions leave an audit line (spec 06 D15, Plan 10 Decis
     info.mockRestore();
   });
 });
+
+async function makeGraduand(
+  label: string,
+  enrollments: { seasonId: number; status: "ACTIVE" | "WITHDRAWN" | "COMPLETED"; dropReason?: string }[],
+  activeSeasonId: number | null,
+): Promise<number> {
+  const s = await createTestUser(label, "STUDENT");
+  await db.studentProfile.create({ data: { userId: s.id, activeSeasonId } });
+  for (const e of enrollments) {
+    await db.seasonEnrollment.create({
+      data: {
+        studentUserId: s.id,
+        seasonId: e.seasonId,
+        status: e.status,
+        ...(e.status === "WITHDRAWN" ? { droppedAt: new Date(), dropReason: e.dropReason ?? null } : {}),
+        ...(e.status === "COMPLETED" ? { completedAt: new Date() } : {}),
+      },
+    });
+  }
+  return s.id;
+}
+
+describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
+  it("records the year, completes EVERY active enrollment, clears the pointer — one transaction", async () => {
+    const sid = await makeGraduand(
+      "graduand",
+      [
+        { seasonId: seasonAId, status: "ACTIVE" },
+        { seasonId: seasonBId, status: "ACTIVE" },
+      ],
+      seasonAId,
+    );
+
+    const res = await request(app)
+      .post(`/api/v1/students/${sid}/graduate`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ graduationYear: 2020 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ id: sid, graduationYear: 2020, enrollmentsCompleted: 2 });
+
+    const row = await db.user.findUnique({
+      where: { id: sid },
+      select: {
+        role: true,
+        graduationYear: true,
+        studentProfile: { select: { activeSeasonId: true } },
+        seasonEnrollments: { select: { status: true, completedAt: true }, orderBy: { seasonId: "asc" } },
+      },
+    });
+    expect(row?.role).toBe("STUDENT"); // R57: the year is the whole marker
+    expect(row?.graduationYear).toBe(2020);
+    expect(row?.studentProfile?.activeSeasonId).toBeNull();
+    // v1 completed only the pointed-at season (R48/R60); B would have stayed ACTIVE.
+    expect(row?.seasonEnrollments.map((e) => e.status)).toEqual(["COMPLETED", "COMPLETED"]);
+    expect(row?.seasonEnrollments.every((e) => e.completedAt !== null)).toBe(true);
+  });
+
+  it("leaves terminal enrollments exactly as they were", async () => {
+    const sid = await makeGraduand(
+      "graduand-terminal",
+      [
+        { seasonId: seasonAId, status: "WITHDRAWN", dropReason: "Kept reason" },
+        { seasonId: seasonBId, status: "ACTIVE" },
+      ],
+      seasonBId,
+    );
+
+    const res = await request(app)
+      .post(`/api/v1/students/${sid}/graduate`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ graduationYear: 2021 });
+
+    expect(res.body.data.enrollmentsCompleted).toBe(1);
+    const dropped = await db.seasonEnrollment.findFirst({
+      where: { studentUserId: sid, seasonId: seasonAId },
+      select: { status: true, dropReason: true, completedAt: true },
+    });
+    expect(dropped).toEqual({ status: "WITHDRAWN", dropReason: "Kept reason", completedAt: null });
+  });
+
+  it("is SUPER-only (R55) — a season admin of the student's season is refused", async () => {
+    const sid = await makeGraduand("graduand-admin", [{ seasonId: seasonAId, status: "ACTIVE" }], seasonAId);
+    const res = await request(app)
+      .post(`/api/v1/students/${sid}/graduate`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ graduationYear: 2020 });
+    expect(res.status).toBe(403);
+    const row = await db.user.findUnique({ where: { id: sid }, select: { graduationYear: true } });
+    expect(row?.graduationYear).toBeNull();
+  });
+
+  it("bounds the year per request (R58)", async () => {
+    const sid = await makeGraduand("graduand-year", [], null);
+    for (const graduationYear of [new Date().getFullYear() + 1, 1989]) {
+      const res = await request(app)
+        .post(`/api/v1/students/${sid}/graduate`)
+        .set("authorization", `Bearer ${superToken}`)
+        .send({ graduationYear });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("bad_request");
+    }
+  });
+
+  it("refuses a second graduation instead of overwriting the year (R61)", async () => {
+    const sid = await makeGraduand("graduand-twice", [], null);
+    await request(app)
+      .post(`/api/v1/students/${sid}/graduate`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ graduationYear: 2019 });
+    const again = await request(app)
+      .post(`/api/v1/students/${sid}/graduate`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ graduationYear: 2020 });
+
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe("already_graduated");
+    const row = await db.user.findUnique({ where: { id: sid }, select: { graduationYear: true } });
+    expect(row?.graduationYear).toBe(2019);
+  });
+
+  it("answers 404 for a non-student id", async () => {
+    const leader = await createTestUser("not-a-student", "LEADER");
+    const res = await request(app)
+      .post(`/api/v1/students/${leader.id}/graduate`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ graduationYear: 2020 });
+    expect(res.status).toBe(404);
+  });
+
+  it("writes an audit line with ids only — never the year (spec 06 D15)", async () => {
+    const sid = await makeGraduand("graduand-audit", [], null);
+    const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
+    await request(app)
+      .post(`/api/v1/students/${sid}/graduate`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ graduationYear: 2018 });
+    const lines = info.mock.calls.map((c) => String(c[0]));
+    expect(lines.some((l) => new RegExp(`^\\[audit\\] student\\.graduate actor=\\d+ subject=${sid}$`).test(l))).toBe(true);
+    expect(lines.join("\n")).not.toContain("2018");
+    info.mockRestore();
+  });
+});
+
+describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
+  it("stamps User and StudentProfile together, revokes every session, keeps the history", async () => {
+    const s = await createTestUser("to-delete", "STUDENT");
+    await db.studentProfile.create({ data: { userId: s.id } });
+    await db.seasonEnrollment.create({
+      data: { studentUserId: s.id, seasonId: seasonAId, status: "ACTIVE" },
+    });
+    await login(app, s.email); // creates a live RefreshToken row
+
+    const res = await request(app)
+      .delete(`/api/v1/students/${s.id}`)
+      .set("authorization", `Bearer ${superToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(s.id);
+    expect(typeof res.body.data.deletedAt).toBe("string");
+
+    const row = await db.user.findUnique({
+      where: { id: s.id },
+      select: {
+        deletedAt: true,
+        studentProfile: { select: { deletedAt: true } },
+        seasonEnrollments: { select: { status: true } },
+        refreshTokens: { select: { revokedAt: true } },
+      },
+    });
+    expect(row?.deletedAt).not.toBeNull();
+    // R86 fixed: v1 wrote these two in separate statements.
+    expect(row?.studentProfile?.deletedAt).not.toBeNull();
+    // R87 kept: soft delete cascades to nothing.
+    expect(row?.seasonEnrollments).toEqual([{ status: "ACTIVE" }]);
+    // Spec 11 D6: deactivation revokes. (A refresh would 401 anyway via
+    // issueSession's deletedAt check — this asserts the revocation itself.)
+    expect(row?.refreshTokens.length).toBeGreaterThan(0);
+    expect(row?.refreshTokens.every((t) => t.revokedAt !== null)).toBe(true);
+
+    const detail = await request(app)
+      .get(`/api/v1/students/${s.id}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(detail.status).toBe(404);
+  });
+
+  it("is SUPER-only", async () => {
+    const s = await createTestUser("delete-admin", "STUDENT");
+    await db.studentProfile.create({ data: { userId: s.id } });
+    await db.seasonEnrollment.create({
+      data: { studentUserId: s.id, seasonId: seasonAId, status: "ACTIVE" },
+    });
+    const res = await request(app)
+      .delete(`/api/v1/students/${s.id}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(403);
+    const row = await db.user.findUnique({ where: { id: s.id }, select: { deletedAt: true } });
+    expect(row?.deletedAt).toBeNull();
+  });
+
+  it("answers 404 for a non-student and for an already-deleted student", async () => {
+    const leader = await createTestUser("delete-leader", "LEADER");
+    const notStudent = await request(app)
+      .delete(`/api/v1/students/${leader.id}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(notStudent.status).toBe(404);
+
+    const again = await request(app)
+      .delete(`/api/v1/students/${deletedDroppedId}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(again.status).toBe(404);
+  });
+
+  it("a SUPER reactivation through /users clears BOTH stamps (Plan 9's reactivate, amended)", async () => {
+    const s = await createTestUser("delete-reactivate", "STUDENT");
+    await db.studentProfile.create({ data: { userId: s.id } });
+    await request(app).delete(`/api/v1/students/${s.id}`).set("authorization", `Bearer ${superToken}`);
+
+    const res = await request(app)
+      .post(`/api/v1/users/${s.id}/reactivate`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(res.status).toBe(200);
+
+    const row = await db.user.findUnique({
+      where: { id: s.id },
+      select: { deletedAt: true, studentProfile: { select: { deletedAt: true } } },
+    });
+    expect(row).toEqual({ deletedAt: null, studentProfile: { deletedAt: null } });
+  });
+
+  it("writes an audit line", async () => {
+    const s = await createTestUser("delete-audit", "STUDENT");
+    await db.studentProfile.create({ data: { userId: s.id } });
+    const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
+    await request(app).delete(`/api/v1/students/${s.id}`).set("authorization", `Bearer ${superToken}`);
+    expect(info.mock.calls.map((c) => String(c[0]))).toEqual(
+      expect.arrayContaining([expect.stringMatching(new RegExp(`^\\[audit\\] student\\.delete actor=\\d+ subject=${s.id}$`))]),
+    );
+    info.mockRestore();
+  });
+});

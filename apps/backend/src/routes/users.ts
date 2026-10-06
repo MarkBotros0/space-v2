@@ -365,7 +365,15 @@ usersRouter.post("/:id/reactivate", async (req, res) => {
   const target = await db.user.findUnique({ where: { id }, select: { id: true } });
   if (!target) return apiError(res, "not_found", "User not found.", 404);
 
-  await db.user.update({ where: { id }, data: { deletedAt: null } });
+  await db.$transaction([
+    db.user.update({ where: { id }, data: { deletedAt: null } }),
+    // A student deleted through DELETE /students/:id also carries a profile
+    // stamp (v1 parity, R86). Clearing only the user would leave the profile
+    // "deleted" to v1's readers — jpc-space/src/app/admin/quizzes/page.tsx:31
+    // counts profiles with deletedAt: null. updateMany: non-students have no
+    // profile row, and that is fine.
+    db.studentProfile.updateMany({ where: { userId: id }, data: { deletedAt: null } }),
+  ]);
   return apiOk(res, { deletedAt: null });
 });
 
