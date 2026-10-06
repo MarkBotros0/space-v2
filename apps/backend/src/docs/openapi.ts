@@ -1378,6 +1378,43 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
         },
       },
+      post: {
+        tags: ["Students"],
+        summary: "Create a student",
+        description:
+          "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported, and the account has no login path until an invite mints credentials (Plan 9) — the same state v1's CSV import produces. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment and points `activeSeasonId` at the same season, so the two definitions of \"in this season\" agree (D1). Empty strings are stored as null.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "email"],
+                properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
+                  email: { type: "string", format: "email" },
+                  university: { type: ["string", "null"], maxLength: 160 },
+                  year: { type: ["string", "null"], maxLength: 40 },
+                  phone: { type: ["string", "null"], maxLength: 60 },
+                  dateOfBirth: { type: ["string", "null"], format: "date-time" },
+                  spiritualBackground: { type: ["string", "null"], maxLength: 4000 },
+                  gifts: { type: ["string", "null"], maxLength: 2000 },
+                  notes: { type: ["string", "null"], maxLength: 4000 },
+                  seasonId: { type: ["integer", "null"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok({ type: "object", properties: { id: { type: "integer" }, email: { type: "string" } } }, "Created."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`email_taken` — also for a soft-deleted student's address, which stays reserved."),
+        },
+      },
     },
 
     "/api/v1/students/{id}": {
@@ -1393,6 +1430,43 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Students"],
+        summary: "Edit a student's profile",
+        description:
+          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The student may edit name, email, university, year, phone, dateOfBirth, spiritualBackground and gifts, never `notes` or `activeSeasonId`. ADMIN (of a season with an ACTIVE enrollment for the student) adds `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
+                  email: { type: "string", format: "email" },
+                  university: { type: ["string", "null"] },
+                  year: { type: ["string", "null"] },
+                  phone: { type: ["string", "null"] },
+                  dateOfBirth: { type: ["string", "null"], format: "date-time" },
+                  spiritualBackground: { type: ["string", "null"] },
+                  gifts: { type: ["string", "null"] },
+                  notes: { type: ["string", "null"] },
+                  activeSeasonId: { type: ["integer", "null"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { id: { type: "integer" } } }, "Updated."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`email_taken` or `not_enrolled`."),
         },
       },
     },
