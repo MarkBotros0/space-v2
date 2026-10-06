@@ -47,6 +47,8 @@ export const queryKeys = {
     // Nullable, per this file's header convention (a null key never collides
     // with a real id) — not a -1 sentinel.
     detail: (id: number | null) => [...queryKeys.users.details(), { id }] as const,
+    /** GET /users/invites/pending — under `users.all`, so every users mutation refreshes it. */
+    pendingInvites: () => [...queryKeys.users.all, "pending-invites"] as const,
   },
   students: {
     all: ["students"] as const,
