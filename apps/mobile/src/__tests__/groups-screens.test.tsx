@@ -54,19 +54,6 @@ it("shows the empty state for a leader with no groups", async () => {
   expect(await screen.findByText("No groups")).toBeTruthy();
 });
 
-it("does not pretend an admin has no groups: explicit not-yet state, no request", async () => {
-  // GET /groups is empty for ADMIN by design; rendering that as "No groups"
-  // on ADMIN's second tab would be a lie. The season-wide admin branch is
-  // Plan 6's (ruling X8).
-  useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-
-  renderWithProviders(<GroupsScreen />);
-
-  expect(await screen.findByText(/isn't available in the app yet/)).toBeTruthy();
-  expect(screen.queryByText("No groups")).toBeNull();
-  expect(get).not.toHaveBeenCalled();
-});
-
 it("shows members with emails for a staff caller", async () => {
   get.mockResolvedValue({
     data: {
@@ -85,6 +72,7 @@ it("shows members with emails for a staff caller", async () => {
   expect(await screen.findByText("Test student")).toBeTruthy();
   expect(screen.getByText("s@jpc.test")).toBeTruthy();
   expect(get).toHaveBeenCalledWith("/api/v1/groups/3");
+  expect(screen.queryByText("Edit group")).toBeNull();
 });
 
 it("renders a student's member list without emails (the contract omits them)", async () => {

@@ -1,9 +1,9 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import type { GroupMember } from "@space/shared";
 
 import { useGroupDetail } from "../../../../src/hooks/use-groups";
 import { useTheme } from "../../../../src/theme";
-import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
+import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
 
 function MemberSection({ title, members }: { title: string; members: GroupMember[] }) {
   const theme = useTheme();
@@ -34,6 +34,7 @@ function MemberSection({ title, members }: { title: string; members: GroupMember
 
 export default function GroupDetailScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const parsed = Number(rawId);
   const id = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -54,6 +55,13 @@ export default function GroupDetailScreen() {
           <Text variant="label" color={theme.colors.neutral[600]}>
             {data.seasonTitle}
           </Text>
+          {data.canManage ? (
+            <Button
+              title="Edit group"
+              variant="secondary"
+              onPress={() => router.push({ pathname: "/group/[id]/edit", params: { id: String(data.id) } })}
+            />
+          ) : null}
           {data.description ? (
             <Text variant="body" style={{ marginTop: theme.spacing.sm }}>
               {data.description}
