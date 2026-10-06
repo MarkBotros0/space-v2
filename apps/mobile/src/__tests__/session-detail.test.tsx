@@ -21,13 +21,13 @@ const post = apiClient.post as jest.Mock;
 
 const baseDetail: SessionDetail = {
   id: 12, title: "Week 3", description: "Bring your notebook.",
-  startsAt: "2099-03-15T18:00:00.000Z", durationMinutes: 90, location: "Hall B",
+  startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00", durationMinutes: 90, location: "Hall B",
   youtubeUrl: null, recurrenceGroupId: null, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring",
   checkInOpen: false, myAttendance: null, canMarkAttendance: false, canManageCheckIn: false,
 };
 
 const listRow = (checkInToken: string | null) => ({
-  id: 12, title: "Week 3", startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15",
+  id: 12, title: "Week 3", startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00",
   durationMinutes: 90, location: "Hall B", recurrenceGroupId: null, attendanceMarked: false,
   seasonId: 7, seasonCode: "s7", seasonTitle: "Spring", checkInToken,
   checkInOpenAt: null, checkInClosedAt: null,

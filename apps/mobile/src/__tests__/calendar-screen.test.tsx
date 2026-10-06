@@ -15,7 +15,7 @@ const get = apiClient.get as jest.Mock;
 const session = (id: number, title: string, startsAt: string, dayKey: string) => ({
   id, title, startsAt, dayKey, durationMinutes: 60, location: null, recurrenceGroupId: null,
   attendanceMarked: false, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026",
-  checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
+  checkInToken: null, checkInOpenAt: null, checkInClosedAt: null, startTime: "20:00",
 });
 
 const seasonRow = (id: number, year: number, status: "DRAFT" | "ACTIVE") => ({

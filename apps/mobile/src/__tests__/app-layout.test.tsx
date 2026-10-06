@@ -55,7 +55,11 @@ jest.mock("expo-router", () => {
   };
 });
 
-import AppLayout, { ALL_ROUTE_NAMES, DETAIL_ROUTE_NAMES } from "../../app/(app)/_layout";
+import AppLayout, {
+  ALL_ROUTE_NAMES,
+  DETAIL_ROUTE_NAMES,
+  routeNameForHref,
+} from "../../app/(app)/_layout";
 
 const scopes = makeScopes();
 
@@ -141,7 +145,7 @@ describe("AppLayout tab shell", () => {
   });
 
   it("registers the leader-path detail routes as hidden", () => {
-    for (const name of ["group/[id]", "submission/[publicId]", "session/[id]/attendance"]) {
+    for (const name of ["group/[id]/index", "submission/[publicId]", "session/[id]/attendance"]) {
       expect(DETAIL_ROUTE_NAMES).toContain(name);
     }
   });
@@ -152,5 +156,27 @@ describe("AppLayout tab shell", () => {
     const detail = mockScreens.find((s) => s.name === "session/[id]/index");
     expect(detail).toBeDefined();
     expect(detail?.href).toBeNull();
+  });
+
+  it("registers Plan 6's detail routes, in the directory form where they have children (X7)", () => {
+    for (const name of [
+      "seasons/[code]/index",
+      "seasons/[code]/edit",
+      "seasons/[code]/roster/index",
+      "group/new",
+      "group/[id]/index",
+      "group/[id]/edit",
+      "session/new",
+      "session/[id]/edit",
+    ]) {
+      expect(DETAIL_ROUTE_NAMES).toContain(name);
+    }
+    expect(DETAIL_ROUTE_NAMES).not.toContain("group/[id]");
+  });
+
+  it("maps the /seasons tab to its directory route, like /students", () => {
+    expect(routeNameForHref("/seasons")).toBe("seasons/index");
+    expect(routeNameForHref("/students")).toBe("students/index");
+    expect(routeNameForHref("/calendar")).toBe("calendar");
   });
 });

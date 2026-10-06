@@ -11,7 +11,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SeasonScreen from "../../app/(app)/season";
-import SeasonsScreen from "../../app/(app)/seasons";
+import SeasonsScreen from "../../app/(app)/seasons/index";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -27,6 +27,9 @@ const detail = {
   ...seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
   description: "The spring season.",
   sessionCount: 3,
+  absenceBudgetMinutes: 180,
+  absenceWeightMinutes: 90,
+  canAdminister: true,
   studentCount: 12,
   groups: [{ id: 3, name: "Group A", studentCount: 6, leaderNames: ["Lina Leader"] }],
 };

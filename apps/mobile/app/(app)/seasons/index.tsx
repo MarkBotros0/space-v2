@@ -2,16 +2,16 @@ import { useState } from "react";
 import { View } from "react-native";
 import type { SeasonListItem } from "@space/shared";
 
-import { useSeasons } from "../../src/hooks/use-seasons";
+import { useSeasons } from "../../../src/hooks/use-seasons";
 import {
   useCreateSeason,
   useDeleteSeason,
   useDuplicateSeason,
-} from "../../src/hooks/use-season-writes";
-import { apiErrorMessage } from "../../src/lib/api-error";
-import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../src/ui";
+} from "../../../src/hooks/use-season-writes";
+import { apiErrorMessage } from "../../../src/lib/api-error";
+import { useSessionStore } from "../../../src/store/session";
+import { useTheme } from "../../../src/theme";
+import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../src/ui";
 
 /**
  * SUPER's seasons list (v1 /super/seasons + /super/seasons/new inline).

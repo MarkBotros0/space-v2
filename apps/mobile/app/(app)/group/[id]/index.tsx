@@ -1,9 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
 import type { GroupMember } from "@space/shared";
 
-import { useGroupDetail } from "../../../src/hooks/use-groups";
-import { useTheme } from "../../../src/theme";
-import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../src/ui";
+import { useGroupDetail } from "../../../../src/hooks/use-groups";
+import { useTheme } from "../../../../src/theme";
+import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
 
 function MemberSection({ title, members }: { title: string; members: GroupMember[] }) {
   const theme = useTheme();

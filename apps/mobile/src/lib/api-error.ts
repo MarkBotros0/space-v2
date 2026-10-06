@@ -13,3 +13,10 @@ export function apiErrorMessage(err: unknown, fallback: string): string {
   const parsed = apiErrorBodySchema.safeParse(err.response?.data);
   return parsed.success ? parsed.data.error.message : fallback;
 }
+
+/** The envelope's machine code (e.g. "has_student_records"), or null. Screens branch on this, never on message text. */
+export function apiErrorCode(err: unknown): string | null {
+  if (!axios.isAxiosError(err)) return null;
+  const parsed = apiErrorBodySchema.safeParse(err.response?.data);
+  return parsed.success ? parsed.data.error.code : null;
+}

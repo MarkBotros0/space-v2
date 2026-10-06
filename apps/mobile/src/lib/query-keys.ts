@@ -1,3 +1,5 @@
+import type { RecurrenceScope } from "@space/shared";
+
 /**
  * Query-key convention for React Query.
  *
@@ -29,11 +31,19 @@ export const queryKeys = {
     // key can never collide with a real season's cached list.
     bySeason: (seasonId: number | null) => [...queryKeys.sessions.lists(), { seasonId }] as const,
     detail: (id: number | null) => [...queryKeys.sessions.all, "detail", { id }] as const,
+    /** GET /sessions windows (D-16.7). Under lists(), so invalidating sessions.all refreshes them. */
+    range: (params: { seasonId: number | null; from: string | null; to: string | null }) =>
+      [...queryKeys.sessions.lists(), "range", params] as const,
+    series: (id: number | null, scope: RecurrenceScope) =>
+      [...queryKeys.sessions.all, "series", { id, scope }] as const,
+    checkIn: (id: number | null) => [...queryKeys.sessions.all, "checkIn", { id }] as const,
+    quizzes: (id: number | null) => [...queryKeys.sessions.all, "quizzes", { id }] as const,
   },
   seasons: {
     all: ["seasons"] as const,
     list: () => [...queryKeys.seasons.all, "list"] as const,
     detail: (id: number | null) => [...queryKeys.seasons.all, "detail", { id }] as const,
+    byCode: (code: string | null) => [...queryKeys.seasons.all, "byCode", { code }] as const,
   },
   assignments: {
     all: ["assignments"] as const,
@@ -62,6 +72,14 @@ export const queryKeys = {
     mine: () => [...queryKeys.groups.all, "mine"] as const,
     detail: (id: number | null) => [...queryKeys.groups.all, "detail", id] as const,
     bySeason: (seasonId: number | null) => [...queryKeys.groups.all, "season", { seasonId }] as const,
+    impact: (id: number | null) => [...queryKeys.groups.all, "impact", { id }] as const,
+    leaderOptions: () => [...queryKeys.groups.all, "leaderOptions"] as const,
+    /**
+     * Under groups.all ON PURPOSE: every group write (create, edit, delete,
+     * bulk assign) can change any roster row — GroupStudent is globally unique
+     * (spec 05 R3) — so they all invalidate groups.all and this goes with it.
+     */
+    roster: (seasonId: number | null) => [...queryKeys.groups.all, "roster", { seasonId }] as const,
   },
   attendance: {
     all: ["attendance"] as const,

@@ -60,7 +60,7 @@ const sessionRow = {
   id: 12, title: "Week 4", startsAt: "2099-03-01T18:00:00.000Z", dayKey: "2099-03-01",
   durationMinutes: 60, location: null, recurrenceGroupId: null, attendanceMarked: false,
   seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
-  checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
+  checkInToken: null, checkInOpenAt: null, checkInClosedAt: null, startTime: "20:00",
 };
 const detail = {
   id: 55, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",

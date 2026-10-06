@@ -12,7 +12,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import GroupsScreen from "../../app/(app)/groups";
-import GroupDetailScreen from "../../app/(app)/group/[id]";
+import GroupDetailScreen from "../../app/(app)/group/[id]/index";
 
 const get = apiClient.get as jest.Mock;
 
@@ -75,6 +75,7 @@ it("shows members with emails for a staff caller", async () => {
         seasonCode: "S26", seasonTitle: "Spring 2026",
         leaders: [{ id: 5, name: "Test leader", email: "l@jpc.test" }],
         students: [{ id: 9, name: "Test student", email: "s@jpc.test" }],
+        canManage: false,
       },
     },
   });
@@ -95,6 +96,7 @@ it("renders a student's member list without emails (the contract omits them)", a
         seasonCode: "S26", seasonTitle: "Spring 2026",
         leaders: [{ id: 5, name: "Test leader" }],
         students: [{ id: 9, name: null }],
+        canManage: false,
       },
     },
   });
