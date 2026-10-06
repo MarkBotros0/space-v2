@@ -13,6 +13,17 @@
     },
     "extra": {
       "apiBaseUrl": "http://localhost:4000"
+    },
+    "ios": {
+      "bundleIdentifier": "com.jpc.space",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.jpc.space"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }

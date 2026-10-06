@@ -12,7 +12,9 @@
     "test:integration": "jest --config jest.integration.config.js --runInBand --testPathPattern integration",
     "clean": "rm -rf dist src/generated",
     "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:migrate:local": "bash scripts/apply-migrations.sh",
+    "seed:e2e": "ts-node --transpile-only scripts/seed-e2e.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",

@@ -1,0 +1,9 @@
+appId: com.jpc.space
+---
+- launchApp:
+    clearState: true
+- runFlow: subflows/login-student.yaml
+- extendedWaitUntil:
+    visible: "E2E Opening Session"
+    timeout: 30000
+- assertVisible: "1 to do · 0 overdue"

@@ -1,0 +1,12 @@
+appId: com.jpc.space
+---
+- launchApp:
+    clearState: true
+- assertVisible: "JPC Space"
+- tapOn: "Email"
+- inputText: "student@e2e.jpc.test"
+- tapOn: "Password"
+- inputText: "definitely-wrong"
+- hideKeyboard
+- tapOn: "Sign in"
+- assertVisible: "Incorrect email or password."

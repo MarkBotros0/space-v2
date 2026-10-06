@@ -1,0 +1,15 @@
+appId: com.jpc.space
+---
+# Signing in once keeps the user signed in across a cold app restart
+# (tokens come back from secure storage).
+- launchApp:
+    clearState: true
+- runFlow: subflows/login-student.yaml
+- extendedWaitUntil:
+    visible: "E2E Opening Session"
+    timeout: 30000
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: "E2E Opening Session"
+    timeout: 30000

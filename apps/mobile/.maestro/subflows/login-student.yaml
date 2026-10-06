@@ -1,0 +1,8 @@
+appId: com.jpc.space
+---
+- tapOn: "Email"
+- inputText: "student@e2e.jpc.test"
+- tapOn: "Password"
+- inputText: "e2e-password-123"
+- hideKeyboard
+- tapOn: "Sign in"
