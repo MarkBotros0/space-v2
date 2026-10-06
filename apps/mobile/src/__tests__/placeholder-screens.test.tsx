@@ -20,7 +20,6 @@ import HistoryScreen from "../../app/(app)/history";
 import NotesScreen from "../../app/(app)/notes";
 import ProfileScreen from "../../app/(app)/profile";
 import ReportsScreen from "../../app/(app)/reports";
-import SettingsScreen from "../../app/(app)/settings";
 import UsersScreen from "../../app/(app)/users";
 
 const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
@@ -29,7 +28,6 @@ const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
   ["notes", NotesScreen, "Notes"],
   ["profile", ProfileScreen, "Profile"],
   ["reports", ReportsScreen, "Reports"],
-  ["settings", SettingsScreen, "Settings"],
   ["users", UsersScreen, "Users"],
 ];
 
