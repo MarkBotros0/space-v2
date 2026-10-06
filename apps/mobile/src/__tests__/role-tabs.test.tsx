@@ -6,6 +6,7 @@ import type { RoleNav } from "@space/shared";
 
 import { routeNameForHref } from "../../app/(app)/_layout";
 import { useSessionStore } from "../store/session";
+import { ambiguousRouteSiblings } from "./helpers/routes";
 
 const scopes = {
   seasonAdminIds: [],
@@ -94,6 +95,13 @@ describe("route file layout (P13)", () => {
         fs.existsSync(path.join(appDir, base, "index.tsx"));
       expect(bothExist).toBe(false);
     }
+  });
+
+  it("no route directory anywhere has a same-named sibling file (ruling X7)", () => {
+    // The href-only check above cannot see dynamic routes: session/[id].tsx
+    // beside session/[id]/attendance.tsx is not a nav href, but it is the
+    // same ambiguity. Dynamic segments with children use [id]/index.tsx.
+    expect(ambiguousRouteSiblings()).toEqual([]);
   });
 
   it("no route directory has its own _layout.tsx", () => {

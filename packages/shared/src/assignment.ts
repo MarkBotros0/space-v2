@@ -246,3 +246,15 @@ export const updateAssignmentRequestSchema = assignmentWriteBase
 
 export type UpdateAssignmentRequest = z.input<typeof updateAssignmentRequestSchema>;
 export type UpdateAssignmentBody = z.output<typeof updateAssignmentRequestSchema>;
+
+/**
+ * Outstanding = not yet handed in: PENDING or DRAFT. The exact complement of
+ * ruling C5's "completed" set (SUBMITTED | REVIEWED | RETURNED), so
+ * outstanding + completed = assignments expected of the student. RETURNED is
+ * completed for counting purposes even though the student may revise it.
+ * One definition (spec 19 §10 D15): the mobile dashboard count and the
+ * server-side dashboard summary both call this.
+ */
+export function isAssignmentOutstanding(status: AssignmentStudentStatus): boolean {
+  return status === "PENDING" || status === "DRAFT";
+}

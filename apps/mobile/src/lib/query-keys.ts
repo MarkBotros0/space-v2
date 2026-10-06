@@ -16,8 +16,7 @@
  * `(string | number)[]`) so a caller can't accidentally invalidate a broader
  * subtree than intended by passing a mistyped key.
  *
- * Only the sessions domain exists so far — this file grows one small factory
- * per domain as more screens are wired up, not one shared mega-object.
+ * One small factory per domain, added as screens are wired up.
  */
 export const queryKeys = {
   sessions: {
@@ -29,5 +28,18 @@ export const queryKeys = {
     // sentinel like `-1`) keeps the cache key honest about that: a `null`
     // key can never collide with a real season's cached list.
     bySeason: (seasonId: number | null) => [...queryKeys.sessions.lists(), { seasonId }] as const,
+  },
+  assignments: {
+    all: ["assignments"] as const,
+    lists: () => [...queryKeys.assignments.all, "list"] as const,
+    bySeason: (seasonId: number | null) =>
+      [...queryKeys.assignments.lists(), { seasonId }] as const,
+    details: () => [...queryKeys.assignments.all, "detail"] as const,
+    detail: (id: number | null) => [...queryKeys.assignments.details(), id] as const,
+  },
+  submissions: {
+    all: ["submissions"] as const,
+    details: () => [...queryKeys.submissions.all, "detail"] as const,
+    detail: (publicId: string | null) => [...queryKeys.submissions.details(), publicId] as const,
   },
 } as const;
