@@ -187,3 +187,17 @@ describe("DroppedScreen", () => {
     expect(get).not.toHaveBeenCalled();
   });
 });
+
+it("offers SUPER — and only SUPER — a way to create a student", async () => {
+  get.mockResolvedValue(page([activeRow]));
+  useSessionStore.setState(superSession);
+  const { unmount } = renderWithProviders(<StudentsScreen />);
+  fireEvent.press(await screen.findByText("New student"));
+  expect(mockPush).toHaveBeenCalledWith("/students/new");
+  unmount();
+
+  useSessionStore.setState(mentorSession);
+  renderWithProviders(<StudentsScreen />);
+  await screen.findByText("Sara Student");
+  expect(screen.queryByText("New student")).toBeNull();
+});

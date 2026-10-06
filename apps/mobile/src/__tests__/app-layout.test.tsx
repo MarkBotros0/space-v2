@@ -196,3 +196,7 @@ describe("AppLayout tab shell", () => {
     expect(detail?.href).toBeNull();
   });
 });
+
+it("declares students/new and student/[id]/edit hidden from the tab bar", () => {
+  expect(DETAIL_ROUTE_NAMES).toEqual(expect.arrayContaining(["students/new", "student/[id]/edit"]));
+});

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 import { Pressable } from "react-native";
 import type { StudentListItem, StudentListStatus, UserRole } from "@space/shared";
@@ -57,9 +57,11 @@ export interface StudentListProps {
   /** Mirrors the endpoint's per-surface role gate — the screen never asks for a 403. */
   allowedRoles: readonly UserRole[];
   title: string;
+  /** Rendered above the search field, inside the allowed branch — e.g. "New student" for SUPER. */
+  headerAction?: ReactNode;
 }
 
-export function StudentList({ status, allowedRoles, title }: StudentListProps) {
+export function StudentList({ status, allowedRoles, title, headerAction }: StudentListProps) {
   const theme = useTheme();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const allowed = role !== null && allowedRoles.includes(role);
@@ -93,6 +95,7 @@ export function StudentList({ status, allowedRoles, title }: StudentListProps) {
       onRefresh={() => void refetch()}
       refreshing={isRefetching}
     >
+      {headerAction ?? null}
       <Input
         label="Search students"
         value={search}
