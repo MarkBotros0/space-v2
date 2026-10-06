@@ -185,6 +185,31 @@ export const openApiDocument = {
           studentCount: { type: "integer" },
         },
       },
+      QuizQuestionAuthoring: {
+        type: "object",
+        description: "The authoring projection — the only quiz question shape that carries the answer key (`correctIndex`).",
+        required: ["id", "order", "type", "prompt", "points", "options", "correctIndex"],
+        properties: {
+          id: { type: "integer" },
+          order: { type: "integer", description: "A 0-based position; renumbered on delete." },
+          type: { $ref: "#/components/schemas/QuizQuestionType" },
+          prompt: { type: "string" },
+          points: { type: "integer" },
+          options: { type: "array", items: { type: "string" } },
+          correctIndex: { type: ["integer", "null"] },
+        },
+      },
+      QuizQuestionRequest: {
+        type: "object",
+        required: ["type", "prompt", "points"],
+        properties: {
+          type: { $ref: "#/components/schemas/QuizQuestionType" },
+          prompt: { type: "string", minLength: 2, maxLength: 2000 },
+          points: { type: "integer", minimum: 1, maximum: 100 },
+          options: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 500 }, description: "MCQ needs at least 2. An ESSAY's options are discarded." },
+          correctIndex: { type: ["integer", "null"], minimum: 0, description: "MCQ only; must be a valid index into `options`. Discarded for ESSAY." },
+        },
+      },
       StudentQuizResult: {
         type: "object",
         required: ["quizId", "title", "kind", "maxScore", "score", "notes", "gradedAt", "sessionTitle", "sessionDate", "attemptStatus"],
@@ -2067,6 +2092,128 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
           409: conflict("`wrong_quiz_kind` or `quiz_has_grades`."),
+        },
+      },
+    },
+
+    "/api/v1/quizzes/{id}/questions": {
+      post: {
+        tags: ["Quizzes"],
+        summary: "Add a question to an ONLINE quiz",
+        description:
+          "Season-admin (or SUPER) only — a leader is refused. Appended at the end (`order` = current count) and, in the same transaction, the quiz's `maxScore` is recomputed as the sum of question points.\n\n**Structural freeze (D3):** once any attempt exists, every question write (add, edit, delete, reorder) is refused with 409 `quiz_has_attempts`; nothing versions a quiz, so editing under attempts would rebase graded scores or cascade-delete graded answers. A PAPER quiz has no questions: 409 `wrong_quiz_kind`.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/QuizQuestionRequest" } } },
+        },
+        responses: {
+          201: ok({ $ref: "#/components/schemas/QuizQuestionAuthoring" }, "The created question."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_attempts`."),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}/questions/order": {
+      put: {
+        tags: ["Quizzes"],
+        summary: "Reorder a quiz's questions",
+        description:
+          "Season-admin only. `questionIds` must be an exact permutation of the quiz's current question ids (400 `invalid_order` otherwise — a partial list would leave omitted questions on stale positions). Subject to the same attempt freeze as every question write (409 `quiz_has_attempts`). Returns the questions in their new order.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["questionIds"],
+                properties: { questionIds: { type: "array", minItems: 1, items: { type: "integer", minimum: 1 } } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["questions"],
+              properties: { questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionAuthoring" } } },
+            },
+            "The reordered questions.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_attempts`."),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}/questions/{questionId}": {
+      patch: {
+        tags: ["Quizzes"],
+        summary: "Replace a question's content",
+        description:
+          "Season-admin only. Takes the same body as create; `order` is not writable here (use the reorder endpoint). The question is addressed through its quiz: an id belonging to another quiz is 404 `question_not_in_quiz`. Recomputes `maxScore`. Frozen once attempts exist (409 `quiz_has_attempts`).",
+        parameters: [idParam, { name: "questionId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/QuizQuestionRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/QuizQuestionAuthoring" }, "The updated question."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: conflict("`not_found` (quiz) or `question_not_in_quiz`."),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_attempts`."),
+        },
+      },
+      delete: {
+        tags: ["Quizzes"],
+        summary: "Delete a question",
+        description:
+          "Season-admin only. In one transaction: deletes the question, renumbers the survivors to a gap-free `0..n-1`, and recomputes `maxScore`. Frozen once attempts exist (409 `quiz_has_attempts`); 404 `question_not_in_quiz` for another quiz's question.",
+        parameters: [idParam, { name: "questionId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          200: ok({ type: "object", required: ["deleted"], properties: { deleted: { type: "boolean", const: true } } }, "Deleted."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: conflict("`not_found` (quiz) or `question_not_in_quiz`."),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_attempts`."),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}/publish": {
+      post: {
+        tags: ["Quizzes"],
+        summary: "Publish or unpublish an ONLINE quiz",
+        description:
+          "Season-admin only. Body `{ publish: boolean }`. Publishing requires at least one question (409 `no_questions`) and every MCQ to have a `correctIndex` inside its options (409 `mcq_without_answer`); it is allowed while attempts exist. **Unpublishing is refused (409 `quiz_has_graded_attempts`) once any attempt is GRADED (D4)** — both student reads filter on `publishedAt`, so unpublishing would make graded students lose their own result. A PAPER quiz cannot be published (409 `wrong_quiz_kind`). Returns the new `publishedAt` (null when unpublished).",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { type: "object", required: ["publish"], properties: { publish: { type: "boolean" } } },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            { type: "object", required: ["publishedAt"], properties: { publishedAt: { type: ["string", "null"], format: "date-time" } } },
+            "The new publish state.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind`, `no_questions`, `mcq_without_answer` or `quiz_has_graded_attempts`."),
         },
       },
     },
