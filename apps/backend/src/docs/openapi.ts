@@ -1949,7 +1949,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Create a student",
         description:
-          "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported, and the account has no login path until an invite mints credentials (Plan 9) — the same state v1's CSV import produces. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment and points `activeSeasonId` at the same season, so the two definitions of \"in this season\" agree (D1). Empty strings are stored as null.",
+          "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported. The account is created with no password and an invite is minted in the same transaction and emailed after commit (best-effort — a mail failure never fails the create; the code never appears in any response). The student sets a password by accepting the invite. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment and points `activeSeasonId` at the same season, so the two definitions of \"in this season\" agree (D1). Empty strings are stored as null.",
         requestBody: {
           required: true,
           content: {
@@ -2072,7 +2072,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Complete or drop an enrollment",
         description:
-          "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The only transitions are ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`) and ACTIVE \u2192 COMPLETED (sets completedAt). ACTIVE is not accepted in the body: there is no re-activation. A non-ACTIVE row is 409 `not_active`. The row is transitioned in place and never deleted.",
+          "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The only transitions are ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`) and ACTIVE \u2192 COMPLETED (sets completedAt). ACTIVE is not accepted in the body: there is no re-activation. A non-ACTIVE row is 409 `not_active`. The row is transitioned in place and never deleted. Writes a server-side audit line (actor and subject ids only).",
         parameters: [
           idParam,
           { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },

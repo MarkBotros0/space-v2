@@ -3,7 +3,10 @@ import { Router } from "express";
 import { db } from "../db/client";
 import { Prisma } from "../generated/prisma/client";
 import { apiOk, apiError } from "../lib/api-response";
+import { auditLog } from "../lib/audit";
 import type { SessionUser } from "../lib/auth/tokens";
+import { sendInviteEmail } from "../lib/email";
+import { issueInvite, type IssuedInvite } from "../lib/invites";
 import { parseId } from "../lib/parse-id";
 import { canEditStudent, canViewStudent } from "../lib/permissions";
 import { listStudents, loadStudentDetail, type StudentDetailView } from "../lib/queries/students";
@@ -115,16 +118,17 @@ studentsRouter.post("/", async (req, res) => {
   const clash = await db.user.findUnique({ where: { email: body.email }, select: { id: true } });
   if (clash) return apiError(res, "email_taken", "A user with that email already exists.", 409);
 
+  let created: { id: number; email: string };
+  let invite: IssuedInvite;
   try {
-    const created = await db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const student = await tx.user.create({
         data: {
           email: body.email,
           name: body.name,
           role: "STUDENT", // forced, never an input (R14)
-          // D7: no password. Credentials come from Plan 9's invites; v1's
-          // hard-coded ChangeMe123! and its plaintext log line (R16/R17) are
-          // deliberately not ported. Never log a credential.
+          // D7: no password. v1's hard-coded ChangeMe123! and its plaintext
+          // log line (R16/R17) are deliberately not ported.
           passwordHash: null,
           studentProfile: {
             create: {
@@ -143,21 +147,42 @@ studentsRouter.post("/", async (req, res) => {
         select: { id: true, email: true },
       });
       if (body.seasonId != null) {
-        // The enrollment v1's form never created (R15) — the fix
-        // commitStudentImport already models (student-import.ts:253-273).
+        // The enrollment v1's form never created (R15).
         await tx.seasonEnrollment.create({
           data: { studentUserId: student.id, seasonId: body.seasonId, status: "ACTIVE" },
         });
       }
-      return student;
+      // Plan 10 Decision 1 — spec 06 D7 / spec 11 §7: creation and
+      // invitation are ONE operation, exactly as POST /users does it. The
+      // invite is minted in this transaction (a rolled-back student can't
+      // have an invite) and mailed after commit (a mail failure can't roll
+      // back the student). This line stays in the ROUTE, after the row
+      // writes: Plan 17 extracts the block above into createStudentRows, and
+      // its importer must keep sending nothing (its R55).
+      const issued = await issueInvite(tx, student.id, user.userId);
+      return { student, issued };
     });
-    return apiOk(res, created, 201);
+    created = result.student;
+    invite = result.issued;
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return apiError(res, "email_taken", "A user with that email already exists.", 409);
     }
     throw err;
   }
+
+  // Best-effort, after commit (R25). The log names the user id and the error
+  // — never the address or the code (Plan 9 Decision 2).
+  try {
+    await sendInviteEmail(created.email, invite.raw, invite.expiresAt);
+  } catch (err) {
+    console.error(
+      `[invites] failed to send invite email for user ${created.id}:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  return apiOk(res, created, 201);
 });
 
 studentsRouter.patch("/:id", async (req, res) => {
@@ -390,5 +415,10 @@ studentsRouter.patch("/:id/enrollments/:seasonId", async (req, res) => {
         : { status: "COMPLETED", completedAt: new Date() },
     select: { id: true, status: true },
   });
+  auditLog(
+    parsed.data.status === "WITHDRAWN" ? "enrollment.drop" : "enrollment.complete",
+    user.userId,
+    id,
+  );
   return apiOk(res, updated);
 });

@@ -1,7 +1,19 @@
+// Plan 10: POST /students now mails an invite. Stubbed for the same two
+// reasons Plan 9's invites suite gives — a staging .env with GMAIL_* set would
+// otherwise send real SMTP to @jpc.test addresses on every run, and the stub
+// is how this suite proves the raw code reaches the mailer and nothing else.
+// Lazy wrapper: jest.mock is hoisted above this const.
+const mockSendInviteEmail = jest.fn().mockResolvedValue(undefined);
+jest.mock("../../lib/email", () => ({
+  ...jest.requireActual("../../lib/email"),
+  sendInviteEmail: (...args: unknown[]) => mockSendInviteEmail(...args),
+}));
+
 import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { hashToken } from "../../lib/auth/tokens";
 import { cleanupTestData, createTestSeason, createTestUser, login, testEmail } from "./fixtures";
 
 jest.setTimeout(60000);
@@ -694,5 +706,70 @@ describe("PATCH /api/v1/students/:id/enrollments/:seasonId", () => {
       .set("authorization", `Bearer ${superToken}`)
       .send({ status: "ACTIVE" });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/v1/students — credentials only via Plan 9's invite (Plan 10 Decision 1)", () => {
+  it("mints one hashed invite in the creating transaction and mails the raw code — nowhere else", async () => {
+    mockSendInviteEmail.mockClear();
+    const email = testEmail("invited-student");
+    const res = await request(app)
+      .post("/api/v1/students")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Invited Student", email });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data).toEqual({ id: res.body.data.id, email });
+
+    const row = await db.user.findUnique({
+      where: { id: res.body.data.id },
+      select: { passwordHash: true, invitesReceived: { select: { token: true, usedAt: true } } },
+    });
+    // D7: still no password — the invite is the ONLY credential path.
+    expect(row?.passwordHash).toBeNull();
+    expect(row?.invitesReceived).toHaveLength(1);
+    expect(row?.invitesReceived[0]?.token).toMatch(/^[0-9a-f]{64}$/);
+    expect(row?.invitesReceived[0]?.usedAt).toBeNull();
+
+    const calls = mockSendInviteEmail.mock.calls as [string, string, Date][];
+    const call = calls[calls.length - 1]!;
+    expect(call[0]).toBe(email);
+    expect(hashToken(call[1])).toBe(row?.invitesReceived[0]?.token);
+    // The raw code is in no response body.
+    expect(JSON.stringify(res.body)).not.toContain(call[1]);
+  });
+
+  it("still creates the student when the mailer throws — the invite row is the truth (R25)", async () => {
+    mockSendInviteEmail.mockRejectedValueOnce(new Error("smtp down"));
+    const res = await request(app)
+      .post("/api/v1/students")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Mail Failure Student", email: testEmail("mail-fail") });
+
+    expect(res.status).toBe(201);
+    const invites = await db.inviteToken.count({ where: { userId: res.body.data.id } });
+    expect(invites).toBe(1);
+  });
+});
+
+describe("enrollment transitions leave an audit line (spec 06 D15, Plan 10 Decision 4)", () => {
+  it("logs actor and subject for a drop — and never the reason", async () => {
+    const s = await createTestUser("audited-drop", "STUDENT");
+    await db.studentProfile.create({ data: { userId: s.id } });
+    await db.seasonEnrollment.create({
+      data: { studentUserId: s.id, seasonId: seasonAId, status: "ACTIVE" },
+    });
+    const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
+
+    const res = await request(app)
+      .patch(`/api/v1/students/${s.id}/enrollments/${seasonAId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ status: "WITHDRAWN", dropReason: "Private family matter" });
+
+    expect(res.status).toBe(200);
+    const lines = info.mock.calls.map((c) => String(c[0]));
+    expect(lines.some((l) => new RegExp(`^\\[audit\\] enrollment\\.drop actor=\\d+ subject=${s.id}$`).test(l))).toBe(true);
+    expect(lines.join("\n")).not.toContain("Private family matter");
+    info.mockRestore();
   });
 });
