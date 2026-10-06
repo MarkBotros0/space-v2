@@ -91,3 +91,20 @@ export function useCurrentSeasonId(): CurrentSeason {
   if (seasons.isError) return { seasonId: null, isPending: false, isError: true, refetch };
   return { seasonId: pickCurrentSeasonId(seasons.data), isPending: false, isError: false, refetch };
 }
+
+/**
+ * A season by its code (GET /seasons/by-code/:code, spec 02 §7). The query is
+ * keyed by code because that is the screen's address; children then use the
+ * resolved `id` for every id-addressed endpoint (spec 02 D8).
+ */
+export function useSeasonByCode(code: string | null): UseQueryResult<SeasonDetail> {
+  return useQuery({
+    queryKey: queryKeys.seasons.byCode(code),
+    queryFn: async () => {
+      if (code === null) throw new Error("useSeasonByCode ran without a code");
+      const res = await apiClient.get(`/api/v1/seasons/by-code/${encodeURIComponent(code)}`);
+      return seasonDetailSchema.parse(res.data.data);
+    },
+    enabled: code !== null,
+  });
+}

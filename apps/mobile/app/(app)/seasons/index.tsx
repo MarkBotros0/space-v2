@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
+import { useRouter } from "expo-router";
 import type { SeasonListItem } from "@space/shared";
 
 import { useSeasons } from "../../../src/hooks/use-seasons";
@@ -14,10 +15,10 @@ import { useTheme } from "../../../src/theme";
 import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../src/ui";
 
 /**
- * SUPER's seasons list (v1 /super/seasons + /super/seasons/new inline).
- * Rows do not navigate: opening an arbitrary season (seasons/[code]) and the
- * SUPER identity/status edit screen are Plan 6 (ruling X15). ADMIN and
- * MENTOR may reach this route and see the list read-only.
+ * SUPER's seasons list (v1 /super/seasons + /super/seasons/new inline). A row
+ * opens the season by code (Plan 6); the SUPER identity/status edit screen
+ * hangs off that detail. ADMIN and MENTOR may reach this route and see the
+ * list read-only.
  */
 const STAFF_ROLES = new Set(["SUPER", "ADMIN", "MENTOR"]);
 
@@ -89,6 +90,7 @@ function DuplicateForm({ source }: { source: SeasonListItem }) {
 
 function SeasonRow({ season, canWrite }: { season: SeasonListItem; canWrite: boolean }) {
   const theme = useTheme();
+  const router = useRouter();
   const remove = useDeleteSeason();
   const [duplicating, setDuplicating] = useState(false);
   // RN has no window.confirm; the first press arms, the second deletes.
@@ -109,7 +111,10 @@ function SeasonRow({ season, canWrite }: { season: SeasonListItem; canWrite: boo
   };
 
   return (
-    <Card style={{ marginTop: theme.spacing.sm }}>
+    <Card
+      style={{ marginTop: theme.spacing.sm }}
+      onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: season.code } })}
+    >
       <Text variant="body">{season.title}</Text>
       <Text variant="label" color={theme.colors.neutral[600]}>{`${season.code} · ${season.status}`}</Text>
       {canWrite ? (
@@ -124,12 +129,39 @@ function SeasonRow({ season, canWrite }: { season: SeasonListItem; canWrite: boo
   );
 }
 
+/**
+ * Program filter (G20; spec 02 §9 — "filters, not routes"). Client-side over
+ * the role-scoped list already loaded (Plan 6 D-16.5). Exact string match,
+ * v1 R44: "GBV" and "gbv" are different programs.
+ */
+function ProgramFilter({
+  programs,
+  value,
+  onChange,
+}: {
+  programs: string[];
+  value: string | null;
+  onChange: (program: string | null) => void;
+}) {
+  const theme = useTheme();
+  if (programs.length < 2) return null;
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+      <Button title="All programs" variant={value === null ? "primary" : "secondary"} onPress={() => onChange(null)} />
+      {programs.map((p) => (
+        <Button key={p} title={p} variant={value === p ? "primary" : "secondary"} onPress={() => onChange(p)} />
+      ))}
+    </View>
+  );
+}
+
 export default function SeasonsScreen() {
   const theme = useTheme();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const isStaff = role !== null && STAFF_ROLES.has(role);
   const isSuper = role === "SUPER";
   const seasons = useSeasons(isStaff);
+  const [program, setProgram] = useState<string | null>(null);
 
   if (!isStaff) {
     return (
@@ -139,7 +171,11 @@ export default function SeasonsScreen() {
     );
   }
 
-  const years = seasons.data ? Array.from(new Set(seasons.data.map((s) => s.year))) : [];
+  const programs = seasons.data
+    ? Array.from(new Set(seasons.data.map((s) => s.program))).sort((a, b) => a.localeCompare(b))
+    : [];
+  const visible = seasons.data ? seasons.data.filter((s) => program === null || s.program === program) : [];
+  const years = Array.from(new Set(visible.map((s) => s.year)));
 
   return (
     <Screen
@@ -156,16 +192,19 @@ export default function SeasonsScreen() {
       ) : seasons.data.length === 0 ? (
         <EmptyState title="No seasons" message="There are no seasons yet." />
       ) : (
-        years.map((year) => (
-          <View key={year} style={{ marginBottom: theme.spacing.md }}>
-            <Text variant="heading">{String(year)}</Text>
-            {seasons.data
-              .filter((s) => s.year === year)
-              .map((s) => (
-                <SeasonRow key={s.id} season={s} canWrite={isSuper} />
-              ))}
-          </View>
-        ))
+        <>
+          <ProgramFilter programs={programs} value={program} onChange={setProgram} />
+          {years.map((year) => (
+            <View key={year} style={{ marginBottom: theme.spacing.md }}>
+              <Text variant="heading">{String(year)}</Text>
+              {visible
+                .filter((s) => s.year === year)
+                .map((s) => (
+                  <SeasonRow key={s.id} season={s} canWrite={isSuper} />
+                ))}
+            </View>
+          ))}
+        </>
       )}
     </Screen>
   );

@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { z } from "zod";
 import { seasonDeletedResponseSchema, seasonRefResponseSchema } from "@space/shared";
+import type { seasonWriteRequestSchema } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
@@ -72,6 +74,20 @@ export function useDeleteSeason() {
     mutationFn: async (id: number) => {
       const res = await apiClient.delete(`/api/v1/seasons/${id}`);
       return seasonDeletedResponseSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+/** SUPER's full-body PATCH input (Plan 3: whole SeasonWriteRequest, title re-derived). */
+export type SeasonIdentityInput = z.input<typeof seasonWriteRequestSchema>;
+
+export function useUpdateSeasonAsSuper(id: number) {
+  const invalidate = useInvalidateSeasons();
+  return useMutation({
+    mutationFn: async (body: SeasonIdentityInput) => {
+      const res = await apiClient.patch(`/api/v1/seasons/${id}`, body);
+      return seasonRefResponseSchema.parse(res.data.data);
     },
     onSuccess: invalidate,
   });

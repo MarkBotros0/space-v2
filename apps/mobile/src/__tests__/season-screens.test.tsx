@@ -191,3 +191,32 @@ describe("SeasonScreen (workspace)", () => {
     expect(get).not.toHaveBeenCalled();
   });
 });
+
+describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => {
+  beforeEach(() => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue({
+      data: { data: { seasons: [
+        seasonRow(8, 2027, "DRAFT", "Spring 2027"),
+        { ...seasonRow(9, 2027, "ACTIVE", "GBV 2027"), program: "GBV" },
+      ] } },
+    });
+  });
+
+  it("opens a season by code", async () => {
+    renderWithProviders(<SeasonsScreen />);
+    fireEvent.press(await screen.findByText("Spring 2027"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s8" } });
+  });
+
+  it("filters by program with exact matching (v1 R44), client-side (D-16.5)", async () => {
+    renderWithProviders(<SeasonsScreen />);
+    await screen.findByText("Spring 2027");
+    fireEvent.press(screen.getByText("GBV"));
+    expect(screen.queryByText("Spring 2027")).toBeNull();
+    expect(screen.getByText("GBV 2027")).toBeTruthy();
+    fireEvent.press(screen.getByText("All programs"));
+    expect(screen.getByText("Spring 2027")).toBeTruthy();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+});
