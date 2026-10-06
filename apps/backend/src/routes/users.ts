@@ -4,6 +4,7 @@ import type { Request, Response } from "express";
 import {
   userRoleSchema,
   userStatusSchema,
+  updateUserRequestSchema,
   type UserDetail,
   type UserRole,
   type UserStatus,
@@ -11,9 +12,10 @@ import {
 
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
-import type { SessionUser } from "../lib/auth/tokens";
+import { revokeAllRefreshTokensForUser, type SessionUser } from "../lib/auth/tokens";
 import { parseId } from "../lib/parse-id";
 import { canManageUsers } from "../lib/rbac";
+import { isLastActiveSuper, lockActiveSuperIds } from "../lib/super-guard";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 
 export const usersRouter = Router();
@@ -213,4 +215,153 @@ usersRouter.get("/:id", async (req, res) => {
   const detail = await loadUserDetail(id);
   if (!detail) return apiError(res, "not_found", "User not found.", 404);
   return apiOk(res, detail);
+});
+
+usersRouter.patch("/:id", async (req, res) => {
+  const user = requireSuper(req, res);
+  if (!user) return;
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+
+  const parsed = updateUserRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return apiError(
+      res, "bad_request",
+      parsed.error.issues[0]?.message ?? "Invalid user body.", 400,
+    );
+  }
+  const body = parsed.data;
+
+  const outcome = await db.$transaction(async (tx) => {
+    const target = await tx.user.findUnique({
+      where: { id },
+      select: { id: true, role: true, deletedAt: true },
+    });
+    if (!target) return { fail: ["not_found", "User not found.", 404] as const };
+
+    const roleChanged = body.role !== target.role;
+
+    // D7 rec 1: you cannot change your own role — the lockout guard v1's
+    // updateUserAction lacked (R50). Renaming yourself stays allowed.
+    if (roleChanged && id === user.userId) {
+      return {
+        fail: ["cannot_change_own_role", "You can't change your own role.", 409] as const,
+      };
+    }
+
+    // D7 rec 3: SUPER is never a mis-tapped picker item.
+    if (roleChanged && body.role === "SUPER" && body.confirmSuper !== true) {
+      return {
+        fail: [
+          "confirm_super_required",
+          "Granting SUPER requires explicit confirmation.", 400,
+        ] as const,
+      };
+    }
+
+    // D7 rec 2: never demote the last SUPER. The active SUPER rows are LOCKED
+    // (Decision 16), not merely counted — a count alone lets two concurrent
+    // demotions both pass under READ COMMITTED.
+    if (roleChanged && target.role === "SUPER") {
+      const activeSuperIds = await lockActiveSuperIds(tx);
+      if (isLastActiveSuper(activeSuperIds, id)) {
+        return {
+          fail: ["last_super", "This is the only active SUPER account.", 409] as const,
+        };
+      }
+    }
+
+    if (roleChanged) {
+      // D3 — fix the write, not the predicate: demotion cascades to the scope
+      // tables so loadScopes has nothing to return on the next refresh...
+      if (target.role === "ADMIN") {
+        await tx.seasonAdmin.deleteMany({ where: { userId: id } });
+      }
+      if (target.role === "LEADER") {
+        await tx.groupLeader.deleteMany({ where: { userId: id } });
+      }
+      // ...and a promotion to STUDENT finally gets a profile (R46: v1 left
+      // promoted users with a null activeSeasonId forever).
+      if (body.role === "STUDENT") {
+        await tx.studentProfile.upsert({
+          where: { userId: id },
+          update: {},
+          create: { userId: id },
+        });
+      }
+    }
+
+    await tx.user.update({
+      where: { id },
+      data: { name: body.name, role: body.role, graduationYear: body.graduationYear },
+    });
+
+    if (roleChanged) {
+      // C7 made real: the claims baked into live tokens cannot outlive the
+      // change. Access tokens die within 900s; the refresh path dies now.
+      await revokeAllRefreshTokensForUser(tx, id);
+    }
+
+    return { fail: null };
+  });
+
+  if (outcome.fail) {
+    const [code, message, status] = outcome.fail;
+    return apiError(res, code, message, status);
+  }
+
+  // Through the same builder GET /:id uses, so PATCH returns exactly what GET
+  // does — invite panel included.
+  const detail = await loadUserDetail(id);
+  if (!detail) return apiError(res, "not_found", "User not found.", 404);
+  return apiOk(res, detail);
+});
+
+usersRouter.post("/:id/deactivate", async (req, res) => {
+  const user = requireSuper(req, res);
+  if (!user) return;
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+  if (id === user.userId) {
+    // v1 returned void and the UI couldn't tell the no-op from success (R57,
+    // R58). An explicit error is the fix, not a silent return.
+    return apiError(res, "cannot_deactivate_self", "You can't deactivate yourself.", 400);
+  }
+
+  const deletedAt = new Date();
+  // The existence check, the last-SUPER guard and the write share one
+  // transaction, and the guard locks the SUPER rows (Decision 16) — an earlier
+  // draft counted outside any transaction, so a concurrent demotion could
+  // slip between the count and the write.
+  const outcome = await db.$transaction(async (tx) => {
+    const target = await tx.user.findUnique({ where: { id }, select: { role: true } });
+    if (!target) return "not_found" as const;
+    if (target.role === "SUPER") {
+      const activeSuperIds = await lockActiveSuperIds(tx);
+      if (isLastActiveSuper(activeSuperIds, id)) return "last_super" as const;
+    }
+    await tx.user.update({ where: { id }, data: { deletedAt } });
+    // D6: deactivation revokes — v1 left the refresh path live for 30 days.
+    await revokeAllRefreshTokensForUser(tx, id);
+    return "ok" as const;
+  });
+
+  if (outcome === "not_found") return apiError(res, "not_found", "User not found.", 404);
+  if (outcome === "last_super") {
+    return apiError(res, "last_super", "This is the only active SUPER account.", 409);
+  }
+  return apiOk(res, { deletedAt: deletedAt.toISOString() });
+});
+
+usersRouter.post("/:id/reactivate", async (req, res) => {
+  const user = requireSuper(req, res);
+  if (!user) return;
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+
+  const target = await db.user.findUnique({ where: { id }, select: { id: true } });
+  if (!target) return apiError(res, "not_found", "User not found.", 404);
+
+  await db.user.update({ where: { id }, data: { deletedAt: null } });
+  return apiOk(res, { deletedAt: null });
 });

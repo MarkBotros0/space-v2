@@ -1667,6 +1667,78 @@ export const openApiDocument = {
           404: errRef("NotFound"),
         },
       },
+      patch: {
+        tags: ["Users"],
+        summary: "Edit a user's name, role and graduation year (SUPER only)",
+        description:
+          "A full replace of `{ name, role, graduationYear }` (email is not editable; unknown keys are refused). LEADER, ADMIN and MENTOR require a graduationYear (alumni-only roles).\n\n**A role change is a revocation.** In one transaction: a demoted ADMIN loses their SeasonAdmin rows, a demoted LEADER their GroupLeader rows, a user landing on STUDENT gets a StudentProfile, and every live refresh token of the target is revoked — so the old claims cannot be re-minted. Access tokens already issued live out their 15-minute TTL.\n\nGuards: changing your own role is `409 cannot_change_own_role` (renaming yourself is fine); granting SUPER needs `confirmSuper: true` (`400 confirm_super_required`); demoting the only active SUPER is `409 last_super` (the active SUPER rows are locked FOR UPDATE inside the transaction, so two concurrent demotions cannot both pass). Answers with the same `UserDetail` GET returns.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "role", "graduationYear"],
+                additionalProperties: false,
+                properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
+                  role: { $ref: "#/components/schemas/UserRole" },
+                  graduationYear: { type: ["integer", "null"], minimum: 1990 },
+                  confirmSuper: { type: "boolean", description: "Must be true for a role change to SUPER." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/UserDetail" }, "The updated user."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`cannot_change_own_role` or `last_super`."),
+        },
+      },
+    },
+
+    "/api/v1/users/{id}/deactivate": {
+      post: {
+        tags: ["Users"],
+        summary: "Deactivate a user (SUPER only)",
+        description:
+          "Soft-deletes the user and revokes every live refresh token in the same transaction. Refused for yourself (`400 cannot_deactivate_self`) and for the only active SUPER (`409 last_super`, serialised with row locks).",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", required: ["deletedAt"], properties: { deletedAt: { type: "string", format: "date-time" } } },
+            "Deactivated.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`last_super`."),
+        },
+      },
+    },
+
+    "/api/v1/users/{id}/reactivate": {
+      post: {
+        tags: ["Users"],
+        summary: "Reactivate a deactivated user (SUPER only)",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", required: ["deletedAt"], properties: { deletedAt: { type: "null" } } },
+            "Reactivated.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
     },
 
     "/api/v1/students": {
