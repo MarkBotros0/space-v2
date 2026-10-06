@@ -329,6 +329,33 @@ export const openApiDocument = {
           nextCursor: { type: ["integer", "null"], description: "A student user id; pages over the caller's student set." },
         },
       },
+      QuizGradeRow: {
+        type: "object",
+        required: ["studentUserId", "studentName", "score", "notes", "gradedAt", "gradedByName"],
+        properties: {
+          studentUserId: { type: "integer" },
+          studentName: { type: ["string", "null"] },
+          score: { type: ["integer", "null"] },
+          notes: { type: ["string", "null"] },
+          gradedAt: { type: ["string", "null"], format: "date-time" },
+          gradedByName: { type: ["string", "null"] },
+        },
+      },
+      QuizGradeSheet: {
+        type: "object",
+        description: "One row per student in the caller's scope, ungraded students included.",
+        required: ["id", "title", "kind", "maxScore", "seasonId", "sessionTitle", "studentCount", "rows"],
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          maxScore: { type: "integer" },
+          seasonId: { type: "integer" },
+          sessionTitle: { type: ["string", "null"] },
+          studentCount: { type: "integer" },
+          rows: { type: "array", items: { $ref: "#/components/schemas/QuizGradeRow" } },
+        },
+      },
       StudentQuizResult: {
         type: "object",
         required: ["quizId", "title", "kind", "maxScore", "score", "notes", "gradedAt", "sessionTitle", "sessionDate", "attemptStatus"],
@@ -2523,6 +2550,65 @@ export const openApiDocument = {
           403: conflict("`forbidden` or `student_not_in_scope`."),
           404: errRef("NotFound"),
           409: conflict("`quiz_not_published`, `no_attempt` or `attempt_open`."),
+        },
+      },
+    },
+
+    "/api/v1/quizzes/{id}/grades": {
+      get: {
+        tags: ["Quizzes"],
+        summary: "The PAPER grade sheet",
+        description:
+          "Staff with a scope in the quiz's season. One row per live student in the caller's server-derived student set (a leader: their own groups' ACTIVE enrolments; admin/SUPER: the whole season), name-ordered, with `score`/`notes` null for ungraded students and `gradedByName` as the audit trail.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/QuizGradeSheet" }, "The sheet."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      post: {
+        tags: ["Quizzes"],
+        summary: "Save PAPER grades in one batch",
+        description:
+          "Replaces v1's `saveQuizGradesAction`, which was unscoped twice over. (1) **One gate for every role:** any staff with a scope in *this quiz's season* (v1 checked the season only for LEADERs, so an ADMIN of any other season could write grades anywhere) — 403 `forbidden`. (2) **The student set is server-derived**, and every entry must be inside it: **the whole batch is rejected, nothing written,** with 403 `student_not_in_scope` if any entry is not (v1 upserted whatever ids it was sent). (3) **Atomic:** all upserts/deletes run in one transaction, and a score above the quiz's `maxScore` rejects the whole batch with 400 `score_exceeds_max` (not clamped). `score: null` **clears** that student's grade. A PAPER-only route: 409 `wrong_quiz_kind` for an ONLINE quiz. Students are notified (`QUIZ_GRADED`) only for a first grade or a changed score. Returns the sheet after the write.\n\nThere is deliberately no `DELETE /quizzes/{id}`.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["entries"],
+                properties: {
+                  entries: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 200,
+                    items: {
+                      type: "object",
+                      required: ["studentUserId", "score"],
+                      properties: {
+                        studentUserId: { type: "integer", minimum: 1 },
+                        score: { type: ["integer", "null"], minimum: 0, description: "Null clears the grade." },
+                        notes: { type: ["string", "null"], maxLength: 1000 },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/QuizGradeSheet" }, "The sheet after the write."),
+          400: conflict("`bad_request` or `score_exceeds_max`."),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` or `student_not_in_scope`."),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind`."),
         },
       },
     },
