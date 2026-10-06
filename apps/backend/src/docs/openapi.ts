@@ -46,6 +46,10 @@ function errRef(ref: string) {
   return { $ref: `#/components/responses/${ref}` };
 }
 
+function conflict(description: string) {
+  return { description, content: { "application/json": { schema: errorResponse } } };
+}
+
 const idParam = {
   name: "id",
   in: "path",
@@ -95,7 +99,7 @@ export const openApiDocument = {
     { name: "Seasons", description: "Seasons and their sub-resources" },
     { name: "Groups", description: "Group detail" },
     { name: "Sessions", description: "Sessions, attendance, and check-in" },
-    { name: "Assignments", description: "Assignment detail" },
+    { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
     { name: "Submissions", description: "Submissions and their files" },
   ],
   security: [{ bearerAuth: [] }],
@@ -219,6 +223,21 @@ export const openApiDocument = {
           seasonTitle: { type: "string" },
         },
       },
+      SeasonWriteRequest: {
+        type: "object",
+        required: ["program", "year", "startDate", "endDate", "status"],
+        properties: {
+          code: { type: "string", description: "Slugified server-side (v1 rules); defaults to '<program> <year>'. The slug must be 2–40 chars of a-z, 0-9 and inner dashes." },
+          program: { type: "string", minLength: 1, maxLength: 60 },
+          year: { type: "integer", minimum: 2000, maximum: 2100 },
+          description: { type: ["string", "null"], maxLength: 2000 },
+          startDate: { type: "string", format: "date-time" },
+          endDate: { type: "string", format: "date-time" },
+          status: { type: "string", enum: ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] },
+          absenceBudgetMinutes: { type: "integer", minimum: 1, default: 180 },
+          absenceWeightMinutes: { type: "integer", minimum: 1, default: 90 },
+        },
+      },
       GroupWriteRequest: {
         type: "object",
         required: ["name"],
@@ -276,6 +295,7 @@ export const openApiDocument = {
           id: { type: "integer" },
           title: { type: "string" },
           startsAt: { type: "string", format: "date-time" },
+          dayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-timezone calendar day of startsAt (ruling X13). Group by this, not by formatting startsAt on the device." },
           durationMinutes: { type: "integer" },
           location: { type: ["string", "null"] },
           recurrenceGroupId: { type: ["string", "null"] },
@@ -323,6 +343,7 @@ export const openApiDocument = {
             },
           },
           canMarkAttendance: { type: "boolean" },
+          canManageCheckIn: { type: "boolean", description: "Season admins only — the gate check-in-open/close enforce. Group leaders have canMarkAttendance but not this." },
         },
       },
       AttendanceRosterRow: {
@@ -363,6 +384,11 @@ export const openApiDocument = {
           id: { type: "integer" },
           title: { type: "string" },
           dueAt: { type: ["string", "null"], format: "date-time" },
+          dueOrgDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Organisation-calendar day of `dueAt` (ORG_TIMEZONE), derived server-side. Label deadlines with this, never by formatting `dueAt` on the device.",
+          },
           isOverdue: {
             type: "boolean",
             description:
@@ -415,6 +441,16 @@ export const openApiDocument = {
           title: { type: "string" },
           description: { type: ["string", "null"] },
           dueAt: { type: ["string", "null"], format: "date-time" },
+          dueOrgDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Organisation-calendar day of `dueAt`; null when there is no due date.",
+          },
+          dueOrgTime: {
+            type: ["string", "null"],
+            pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
+            description: "Organisation wall-clock time of `dueAt`, 24-hour `HH:mm`; null when there is no due date. With `dueOrgDay`, exactly what the write body's `dueDay`/`dueTime` take.",
+          },
           isAllGroups: { type: "boolean" },
           type: { $ref: "#/components/schemas/AssignmentType" },
           forumMinWords: { type: ["integer", "null"] },
@@ -476,6 +512,44 @@ export const openApiDocument = {
           submissionPublicId: {
             type: ["string", "null"],
             description: "The handle into the review screen; null when nothing was started.",
+          },
+        },
+      },
+      AssignmentWriteRequest: {
+        type: "object",
+        required: ["title", "isAllGroups"],
+        description: "One full-replace body for create (POST) and update (PATCH). There is no `seasonId`: create takes it from the path and an assignment never moves season.",
+        properties: {
+          title: { type: "string", minLength: 2, maxLength: 160 },
+          description: { type: ["string", "null"], maxLength: 20000 },
+          dueDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Organisation-calendar day the assignment is due; null = no due date. The server composes the instant in ORG_TIMEZONE (ruling C2) — a client never sends an instant.",
+          },
+          dueTime: {
+            type: ["string", "null"],
+            pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
+            default: "23:59",
+            description: "Organisation wall-clock time, 24-hour. Ignored when `dueDay` is null.",
+          },
+          sessionId: { type: ["integer", "null"], description: "Must be a session of the assignment's season (400 `invalid_session`)." },
+          type: { $ref: "#/components/schemas/AssignmentType" },
+          forumMinWords: { type: ["integer", "null"], minimum: 0, maximum: 2000, description: "Kept only for FORUM; forced null for STANDARD." },
+          forumAllowComments: { type: "boolean", default: false, description: "Kept only for FORUM; forced false for STANDARD." },
+          maxFileSizeMb: { type: ["integer", "null"], minimum: 1, maximum: 100, description: "Null = accepts no files. Forced null for FORUM." },
+          allowedMimeCategories: {
+            type: "array",
+            items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
+            default: [],
+            description: "Empty = any type. Forced empty for FORUM.",
+          },
+          isAllGroups: { type: "boolean" },
+          groupIds: {
+            type: "array",
+            items: { type: "integer" },
+            default: [],
+            description: "Required non-empty when `isAllGroups` is false; every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
           },
         },
       },
@@ -737,6 +811,20 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
         },
       },
+      post: {
+        tags: ["Seasons"],
+        summary: "Create a season",
+        description:
+          "SUPER only (spec 02 D3). Title is derived as '<program> <year>'. Unlike v1, the absence budget fields are persisted on create (D1). A soft-deleted season still reserves its code.",
+        requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } } },
+        responses: {
+          201: ok({ type: "object", properties: { id: { type: "integer" }, code: { type: "string" } } }, "Created."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          409: conflict("`code_taken` — the slugified code is in use (also returned for the unique-index race, D15; D15's generic `conflict` is deliberately more specific here)."),
+        },
+      },
     },
     "/api/v1/seasons/{id}": {
       get: {
@@ -749,6 +837,71 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Seasons"],
+        summary: "Update a season",
+        description:
+          "Asymmetric by role (spec 02 D3). SUPER sends the full SeasonWriteRequest (v1's whole-body update; title re-derived). A season ADMIN sends a partial body containing only `description`, `absenceBudgetMinutes`, `absenceWeightMinutes`; any other key is refused with 403 `forbidden_field` rather than stripped.",
+        parameters: [idParam],
+        requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } } },
+        responses: {
+          200: ok({ type: "object", properties: { id: { type: "integer" }, code: { type: "string" } } }, "Updated."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` (not SUPER, not this season's ADMIN) or `forbidden_field` (ADMIN sent an identity field)."),
+          404: errRef("NotFound"),
+          409: conflict("`code_taken`."),
+        },
+      },
+      delete: {
+        tags: ["Seasons"],
+        summary: "Soft-delete a season",
+        description:
+          "SUPER only. Refused with 409 `season_in_use` while the season has any enrollment or session — archive it instead (decision on spec 02 D4). On success clears every StudentProfile.activeSeasonId pointing at it, in the same transaction.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ type: "object", properties: { deleted: { type: "boolean" } } }, "Deleted."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`season_in_use`."),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/duplicate": {
+      post: {
+        tags: ["Seasons"],
+        summary: "Duplicate a season's structure",
+        description:
+          "SUPER only. Creates a DRAFT season copying program, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is 404.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["year", "startDate", "endDate"],
+                properties: {
+                  year: { type: "integer", minimum: 2000, maximum: 2100 },
+                  code: { type: "string" },
+                  startDate: { type: "string", format: "date-time" },
+                  endDate: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok({ type: "object", properties: { id: { type: "integer" }, code: { type: "string" } } }, "Created."),
+          400: conflict("`bad_request` or `invalid_code` (the derived slug is not a valid season code)."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`code_taken`."),
         },
       },
     },
@@ -844,6 +997,24 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
         },
       },
+      post: {
+        tags: ["Assignments"],
+        summary: "Create an assignment in a season",
+        description:
+          "Season admins (SUPER passes). Row and targets commit in one transaction. Afterwards every ACTIVE enrolled student the assignment targets — resolved through SeasonEnrollment (ruling C9), opted-out students skipped — gets ASSIGNMENT_CREATED titled `New assignment: <title>`, body `Due <org time>` (omitted with no due date), link `/student/assignments/<id>` (v1's path, ruling X1). A notification failure never fails the create.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/AssignmentWriteRequest" } } },
+        },
+        responses: {
+          201: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "Created — the same shape GET /assignments/{id} returns."),
+          400: conflict("`bad_request` (body; message names the first failing field), `invalid_group`, or `invalid_session`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
     },
 
     "/api/v1/groups": {
@@ -911,6 +1082,45 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/sessions": {
+      post: {
+        tags: ["Sessions"],
+        summary: "Create a session or weekly series",
+        description:
+          "Season-admin power. `repeatWeeks` (1–26; v1 clamped silently, v2 refuses) creates that many sessions one calendar week apart **in the organisation timezone** (ORG_TIMEZONE), so the wall-clock time holds across DST; they share a fresh recurrenceGroupId. Creation lives here with `seasonId` in the body, not under /seasons/:id, so the season and session write workstreams never share a route file — do not move it.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["seasonId", "title", "startsAt", "durationMinutes"],
+                properties: {
+                  seasonId: { type: "integer" },
+                  title: { type: "string", minLength: 2, maxLength: 120 },
+                  startsAt: { type: "string", format: "date-time" },
+                  durationMinutes: { type: "integer", minimum: 15, maximum: 600 },
+                  location: { type: ["string", "null"], maxLength: 200 },
+                  youtubeUrl: { type: ["string", "null"], format: "uri" },
+                  description: { type: ["string", "null"], maxLength: 2000 },
+                  repeatWeeks: { type: "integer", minimum: 1, maximum: 26, default: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok(
+            { type: "object", properties: { id: { type: "integer" }, recurrenceGroupId: { type: ["string", "null"] } } },
+            "Created; `id` is the first session.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
     "/api/v1/sessions/{id}": {
       get: {
         tags: ["Sessions"],
@@ -922,6 +1132,69 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Sessions"],
+        summary: "Edit a session, optionally its series",
+        description:
+          "Season-admin power. Full body plus `scope`: `one` (this session), `future` (this and later siblings), `all`. Series scopes shift every target by the anchor's start delta. The series is ALWAYS limited to this session's season (ruling C10 — v1 matched on recurrenceGroupId alone and could rewrite another season's sessions). A moved start notifies ACTIVE enrollees (SESSION_RESCHEDULED, link `/student/calendar`, time in ORG_TIMEZONE).",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["title", "startsAt", "durationMinutes", "scope"],
+                properties: {
+                  title: { type: "string", minLength: 2, maxLength: 120 },
+                  startsAt: { type: "string", format: "date-time" },
+                  durationMinutes: { type: "integer", minimum: 15, maximum: 600 },
+                  location: { type: ["string", "null"] },
+                  youtubeUrl: { type: ["string", "null"] },
+                  description: { type: ["string", "null"] },
+                  scope: { type: "string", enum: ["one", "future", "all"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { updated: { type: "integer" } } }, "Updated."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Sessions"],
+        summary: "Delete a session, optionally its series",
+        description:
+          "Season-admin power. Body `{ scope?: 'one'|'future'|'all' (default 'one'), force?: boolean }`; series fenced to this season (C10). Refused with 409 `has_student_records` when any target has attendance or video progress, unless `force: true`, which deletes those rows too. Also removed by cascade: the sessions' video questions. Kept with `sessionId` set to null: assignments and quizzes linked to them.",
+        parameters: [idParam],
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  scope: { type: "string", enum: ["one", "future", "all"], default: "one" },
+                  force: { type: "boolean", default: false },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { deleted: { type: "integer" } } }, "Deleted."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`has_student_records`."),
         },
       },
     },
@@ -1063,6 +1336,39 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Assignments"],
+        summary: "Replace an assignment",
+        description:
+          "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). Students newly targeted by the edit get ASSIGNMENT_CREATED (same text and link as create); students already targeted are not notified again. Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/AssignmentWriteRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "The updated assignment."),
+          400: conflict("`bad_request`, `invalid_group`, or `invalid_session`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Assignments"],
+        summary: "Soft-delete an assignment nobody has started",
+        description:
+          "Season admins of the assignment's season. Designed rather than ported: v1's soft-delete action had no caller (ruling C12). Sets `deletedAt`; targets and any history stay. Refused with 409 `has_submissions` while any Submission row exists (any status, drafts included) — there is no force option. Notifies nobody. Deleting twice is 404. Returns 200 with `{ deleted: true }` (the response envelope), not 204.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ type: "object", properties: { deleted: { type: "boolean", enum: [true] } } }, "Deleted."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`has_submissions`."),
         },
       },
     },

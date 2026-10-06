@@ -2,8 +2,12 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   assignmentDetailSchema,
+  assignmentTrackerSchema,
+  staffAssignmentListItemSchema,
   studentAssignmentListItemSchema,
   type AssignmentDetail,
+  type AssignmentTracker,
+  type StaffAssignmentListItem,
   type StudentAssignmentListItem,
 } from "@space/shared";
 
@@ -41,6 +45,38 @@ export function useAssignmentDetail(id: number | null): UseQueryResult<Assignmen
   return useQuery({
     queryKey: queryKeys.assignments.detail(id),
     queryFn: () => fetchAssignmentDetail(id as number),
+    enabled: id !== null,
+  });
+}
+
+const staffListSchema = z.array(staffAssignmentListItemSchema);
+
+/**
+ * The staff arm of GET /seasons/:id/assignments. Parsed against the staff
+ * schema specifically — the same reasoning as fetchStudentAssignments: a union
+ * parse would accept the wrong role's rows and hide a routing bug.
+ */
+export function useStaffAssignments(
+  seasonId: number | null,
+): UseQueryResult<StaffAssignmentListItem[]> {
+  return useQuery({
+    queryKey: queryKeys.assignments.staffBySeason(seasonId),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/seasons/${seasonId}/assignments`);
+      return staffListSchema.parse(res.data.data.assignments);
+    },
+    enabled: seasonId !== null,
+  });
+}
+
+/** GET /assignments/:id/tracker — season admins see everyone, a leader their own groups. */
+export function useAssignmentTracker(id: number | null): UseQueryResult<AssignmentTracker> {
+  return useQuery({
+    queryKey: queryKeys.assignments.tracker(id),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/assignments/${id}/tracker`);
+      return assignmentTrackerSchema.parse(res.data.data);
+    },
     enabled: id !== null,
   });
 }

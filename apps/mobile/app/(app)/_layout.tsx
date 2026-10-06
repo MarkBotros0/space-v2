@@ -48,10 +48,13 @@ export const ALL_ROUTE_NAMES: readonly string[] = Array.from(
  * Plans add a detail route by appending to this list — nothing else.
  */
 export const DETAIL_ROUTE_NAMES: readonly string[] = [
-  "assignment/[id]",
+  "assignment/[id]/index",
+  "assignment/[id]/edit",
+  "assignment/new",
   "group/[id]",
   "submission/[publicId]",
   "session/[id]/attendance",
+  "session/[id]/index",
 ];
 
 /**
