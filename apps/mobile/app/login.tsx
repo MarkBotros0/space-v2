@@ -80,6 +80,11 @@ export default function LoginScreen() {
           onPress={handleSubmit(onSubmit)}
           loading={formState.isSubmitting}
         />
+        <Button
+          title="I have an invite code"
+          variant="ghost"
+          onPress={() => router.push("/accept-invite")}
+        />
       </View>
     </Screen>
   );
