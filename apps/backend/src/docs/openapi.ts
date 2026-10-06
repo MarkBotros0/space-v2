@@ -190,6 +190,9 @@ export const openApiDocument = {
           endDate: { type: "string", format: "date-time" },
           sessionCount: { type: "integer" },
           studentCount: { type: "integer" },
+          absenceBudgetMinutes: { type: "integer" },
+          absenceWeightMinutes: { type: "integer" },
+          canAdminister: { type: "boolean", description: "isAdminOfSeason for the caller (C4)." },
           groups: {
             type: "array",
             description: "A STUDENT sees only their own group here.",
@@ -206,6 +209,39 @@ export const openApiDocument = {
         },
       },
 
+      SeasonRosterRow: {
+        type: "object",
+        properties: {
+          userId: { type: "integer" },
+          name: { type: ["string", "null"] },
+          email: { type: "string" },
+          groupId: { type: ["integer", "null"], description: "This season's group, from SeasonEnrollment.groupId (C9)." },
+          groupName: { type: ["string", "null"] },
+          otherSeasonGroup: {
+            type: ["object", "null"],
+            description: "The student's current group in ANOTHER season. Assigning them here removes it (GroupStudent is globally unique).",
+            properties: { groupName: { type: "string" }, seasonCode: { type: "string" } },
+          },
+        },
+      },
+      GroupAssignmentsRequest: {
+        type: "object",
+        required: ["assignments"],
+        properties: {
+          assignments: {
+            type: "array",
+            maxItems: 500,
+            items: {
+              type: "object",
+              required: ["studentUserId", "groupId"],
+              properties: {
+                studentUserId: { type: "integer" },
+                groupId: { type: ["integer", "null"], description: "null unassigns from this season's group." },
+              },
+            },
+          },
+        },
+      },
       GroupListItem: {
         type: "object",
         properties: {
@@ -902,6 +938,71 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
           409: conflict("`code_taken`."),
+        },
+      },
+    },
+    "/api/v1/seasons/by-code/{code}": {
+      get: {
+        tags: ["Seasons"],
+        summary: "Season detail by code",
+        description:
+          "Resolves a season code (the mobile app's address) to the same SeasonDetail GET /seasons/{id} serves. 404 for an unknown or soft-deleted code; 403 when the caller cannot see the season. The API stays canonical on id (spec 02 D8).",
+        parameters: [{ name: "code", in: "path", required: true, schema: { type: "string" } }],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/SeasonDetail" }, "The season."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/roster": {
+      get: {
+        tags: ["Groups"],
+        summary: "Season roster for bulk group assignment",
+        description:
+          "Season-admin only. ACTIVE enrolments of live students (C9 — v1 used StudentProfile.activeSeasonId), name-ordered, unpaginated (a season is hundreds of rows; the group form needs full membership).",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", properties: { roster: { type: "array", items: { $ref: "#/components/schemas/SeasonRosterRow" } } } },
+            "The roster.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/group-assignments": {
+      put: {
+        tags: ["Groups"],
+        summary: "Bulk-assign students to this season's groups",
+        description:
+          "Season-admin only; at most 500 rows, each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
+        parameters: [idParam],
+        requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GroupAssignmentsRequest" } } } },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                assigned: { type: "integer" },
+                unassigned: { type: "integer" },
+                skippedStudentIds: { type: "array", items: { type: "integer" } },
+              },
+            },
+            "What was written.",
+          ),
+          400: {
+            description: "`bad_request` or `group_outside_season`.",
+            content: { "application/json": { schema: errorResponse } },
+          },
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
         },
       },
     },

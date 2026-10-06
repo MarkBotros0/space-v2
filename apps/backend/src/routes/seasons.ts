@@ -1,4 +1,4 @@
-import { Router, type Response } from "express";
+import { Router, type Request, type Response } from "express";
 
 import { db } from "../db/client";
 import type { Prisma } from "../generated/prisma/client";
@@ -13,10 +13,15 @@ import {
   loadAssignmentById,
 } from "../lib/queries/assignments";
 import {
+  assignStudentsToGroups,
+  GroupOutsideSeasonError,
   listGroupsForSeason,
+  listSeasonRoster,
   setGroupStudents,
+  unassignStudentsFromGroups,
   validateGroupWrite,
 } from "../lib/queries/groups";
+import { loadSeasonDetail } from "../lib/queries/seasons";
 import { listSessionsForSeason } from "../lib/queries/sessions";
 import { canAccessSeason, canManageAssignment } from "../lib/permissions";
 import { isAdminOfSeason, isMentor, isSuper } from "../lib/rbac";
@@ -31,6 +36,7 @@ import {
 import {
   createAssignmentRequestSchema,
   duplicateSeasonRequestSchema,
+  groupAssignmentsRequestSchema,
   groupWriteRequestSchema,
   isValidSeasonCode,
   SEASON_ADMIN_EDITABLE_FIELDS,
@@ -41,9 +47,12 @@ import {
 
 export const seasonsRouter = Router();
 
-seasonsRouter.use(requireAuth);
+// requireAuth is attached per route (ruling X5): /api/v1/seasons is a shared
+// prefix — Plans 12, 15 and 17 mount their own routers on it — so a router-level
+// use(requireAuth) here would answer their requests, and every unknown path,
+// with 401 instead of the not_found envelope.
 
-seasonsRouter.get("/", async (req, res) => {
+seasonsRouter.get("/", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
   // The visibility rule is expressed as a Prisma filter rather than a
@@ -84,7 +93,30 @@ seasonsRouter.get("/", async (req, res) => {
   apiOk(res, { seasons });
 });
 
-seasonsRouter.get("/:id", async (req, res) => {
+/**
+ * Resolve a season code (spec 02 §7, Plan 6 D-16.2). The mobile app is
+ * code-addressed (/seasons/[code]); the API stays canonical on id (spec 02
+ * D8). Never overload /:id with codes — a numeric code is a legal slug.
+ * Registered before every /:id/* route, or /by-code/roster would match
+ * /:id/roster with id "by-code".
+ */
+seasonsRouter.get("/by-code/:code", requireAuth, async (req, res) => {
+  const user = requireUser(req);
+  const code = String(req.params.code);
+  if (code.length === 0 || code.length > 200) return apiError(res, "bad_request", "Invalid season code.", 400);
+
+  const found = await db.season.findFirst({ where: { code, deletedAt: null }, select: { id: true } });
+  if (!found) return apiError(res, "not_found", "Season not found.", 404);
+  if (!(await canAccessSeason(user, found.id))) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const season = await loadSeasonDetail(user, found.id);
+  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  return apiOk(res, season);
+});
+
+seasonsRouter.get("/:id", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -93,54 +125,9 @@ seasonsRouter.get("/:id", async (req, res) => {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
-  const season = await db.season.findFirst({
-    where: { id, deletedAt: null },
-    select: {
-      id: true,
-      code: true,
-      title: true,
-      program: true,
-      year: true,
-      description: true,
-      status: true,
-      startDate: true,
-      endDate: true,
-      _count: { select: { sessions: true, enrollments: true } },
-      groups: {
-        // Students may only see their own group.
-        where:
-          user.role === "STUDENT" ? { students: { some: { studentUserId: user.userId } } } : {},
-        orderBy: { name: "asc" },
-        select: {
-          id: true,
-          name: true,
-          _count: { select: { students: true } },
-          leaders: { select: { user: { select: { name: true } } } },
-        },
-      },
-    },
-  });
+  const season = await loadSeasonDetail(user, id);
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
-
-  return apiOk(res, {
-    id: season.id,
-    code: season.code,
-    title: season.title,
-    program: season.program,
-    year: season.year,
-    description: season.description,
-    status: season.status,
-    startDate: season.startDate,
-    endDate: season.endDate,
-    sessionCount: season._count.sessions,
-    studentCount: season._count.enrollments,
-    groups: season.groups.map((g) => ({
-      id: g.id,
-      name: g.name,
-      studentCount: g._count.students,
-      leaderNames: g.leaders.map((l) => l.user.name).filter((n): n is string => Boolean(n)),
-    })),
-  });
+  return apiOk(res, season);
 });
 
 const ADMIN_EDITABLE = new Set<string>(SEASON_ADMIN_EDITABLE_FIELDS);
@@ -148,7 +135,7 @@ const ADMIN_EDITABLE = new Set<string>(SEASON_ADMIN_EDITABLE_FIELDS);
 const codeTaken = (res: Response) =>
   apiError(res, "code_taken", "A season with that code already exists.", 409);
 
-seasonsRouter.post("/", async (req, res) => {
+seasonsRouter.post("/", requireAuth, async (req, res) => {
   const user = requireUser(req);
   // Spec 02 D3: creation is SUPER-only (v1's canCreateSeason).
   if (!isSuper(user)) return apiError(res, "forbidden", "You don't have access to this.", 403);
@@ -187,7 +174,7 @@ seasonsRouter.post("/", async (req, res) => {
   }
 });
 
-seasonsRouter.patch("/:id", async (req, res) => {
+seasonsRouter.patch("/:id", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -248,7 +235,7 @@ seasonsRouter.patch("/:id", async (req, res) => {
   return apiOk(res, season);
 });
 
-seasonsRouter.delete("/:id", async (req, res) => {
+seasonsRouter.delete("/:id", requireAuth, async (req, res) => {
   const user = requireUser(req);
   if (!isSuper(user)) return apiError(res, "forbidden", "You don't have access to this.", 403);
   const id = parseId(req.params.id);
@@ -283,7 +270,7 @@ seasonsRouter.delete("/:id", async (req, res) => {
   return apiOk(res, { deleted: true });
 });
 
-seasonsRouter.post("/:id/duplicate", async (req, res) => {
+seasonsRouter.post("/:id/duplicate", requireAuth, async (req, res) => {
   const user = requireUser(req);
   // R54: canCreateSeason (SUPER), not the source's admin rights.
   if (!isSuper(user)) return apiError(res, "forbidden", "You don't have access to this.", 403);
@@ -431,7 +418,7 @@ seasonsRouter.post("/:id/duplicate", async (req, res) => {
   }
 });
 
-seasonsRouter.get("/:id/groups", async (req, res) => {
+seasonsRouter.get("/:id/groups", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -448,7 +435,7 @@ seasonsRouter.get("/:id/groups", async (req, res) => {
   return apiOk(res, { groups: groups ?? [] });
 });
 
-seasonsRouter.post("/:id/groups", async (req, res) => {
+seasonsRouter.post("/:id/groups", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -488,7 +475,7 @@ seasonsRouter.post("/:id/groups", async (req, res) => {
   return apiOk(res, { id: group.id }, 201);
 });
 
-seasonsRouter.get("/:id/sessions", async (req, res) => {
+seasonsRouter.get("/:id/sessions", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -503,7 +490,7 @@ seasonsRouter.get("/:id/sessions", async (req, res) => {
   return apiOk(res, { sessions });
 });
 
-seasonsRouter.get("/:id/assignments", async (req, res) => {
+seasonsRouter.get("/:id/assignments", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -522,7 +509,7 @@ seasonsRouter.get("/:id/assignments", async (req, res) => {
   return apiOk(res, { assignments });
 });
 
-seasonsRouter.post("/:id/assignments", async (req, res) => {
+seasonsRouter.post("/:id/assignments", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -572,4 +559,76 @@ seasonsRouter.post("/:id/assignments", async (req, res) => {
   // Unreachable — the row was written above — but the loader is nullable.
   if (!detail) return apiError(res, "not_found", "Assignment not found.", 404);
   return apiOk(res, assignmentDetailPayload(detail, { isStudent: false, canManage: true, mySubmission: null }), 201);
+});
+
+/** Season-admin only (spec 05 §4 — v1's roster page required canEditSeason). */
+async function requireLiveSeasonAdmin(
+  req: Request,
+  res: Response,
+): Promise<number | null> {
+  const user = requireUser(req);
+  const seasonId = parseId(req.params.id);
+  if (seasonId === null) {
+    apiError(res, "bad_request", "Invalid season id.", 400);
+    return null;
+  }
+  if (!isAdminOfSeason(user, seasonId)) {
+    apiError(res, "forbidden", "You don't have access to this.", 403);
+    return null;
+  }
+  const season = await db.season.findFirst({ where: { id: seasonId, deletedAt: null }, select: { id: true } });
+  if (!season) {
+    apiError(res, "not_found", "Season not found.", 404);
+    return null;
+  }
+  return seasonId;
+}
+
+seasonsRouter.get("/:id/roster", requireAuth, async (req, res) => {
+  const seasonId = await requireLiveSeasonAdmin(req, res);
+  if (seasonId === null) return;
+  return apiOk(res, { roster: await listSeasonRoster(seasonId) });
+});
+
+/**
+ * Bulk group assignment (spec 05 §7, Plan 6 D-16.12). Non-null groupIds go
+ * through assignStudentsToGroups — the same function Plan 17's importer
+ * commits through — and nulls through unassignStudentsFromGroups, in ONE
+ * transaction: a group outside the season refuses everything.
+ */
+seasonsRouter.put("/:id/group-assignments", requireAuth, async (req, res) => {
+  const seasonId = await requireLiveSeasonAdmin(req, res);
+  if (seasonId === null) return;
+
+  const parsed = groupAssignmentsRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid assignments.", 400);
+
+  const toAssign: { studentUserId: number; groupId: number }[] = [];
+  const toUnassign: number[] = [];
+  for (const a of parsed.data.assignments) {
+    if (a.groupId === null) toUnassign.push(a.studentUserId);
+    else toAssign.push({ studentUserId: a.studentUserId, groupId: a.groupId });
+  }
+
+  try {
+    const result = await db.$transaction(
+      async (tx) => {
+        const assigned = await assignStudentsToGroups(tx, seasonId, toAssign);
+        const unassigned = await unassignStudentsFromGroups(tx, seasonId, toUnassign);
+        return {
+          assigned: assigned.assigned,
+          unassigned: unassigned.unassigned,
+          skippedStudentIds: [...assigned.skippedStudentIds, ...unassigned.skippedStudentIds],
+        };
+      },
+      // Four statements per student, 500 students max (spec 05 R56).
+      { timeout: 30_000 },
+    );
+    return apiOk(res, result);
+  } catch (err) {
+    if (err instanceof GroupOutsideSeasonError) {
+      return apiError(res, "group_outside_season", err.message, 400);
+    }
+    throw err;
+  }
 });
