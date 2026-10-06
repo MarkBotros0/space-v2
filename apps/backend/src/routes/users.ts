@@ -5,6 +5,7 @@ import {
   userRoleSchema,
   userStatusSchema,
   updateUserRequestSchema,
+  createUserRequestSchema,
   type UserDetail,
   type UserRole,
   type UserStatus,
@@ -15,6 +16,8 @@ import { apiOk, apiError } from "../lib/api-response";
 import { revokeAllRefreshTokensForUser, type SessionUser } from "../lib/auth/tokens";
 import { parseId } from "../lib/parse-id";
 import { canManageUsers } from "../lib/rbac";
+import { sendInviteEmail } from "../lib/email";
+import { issueInvite } from "../lib/invites";
 import { isLastActiveSuper, lockActiveSuperIds } from "../lib/super-guard";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 
@@ -364,4 +367,107 @@ usersRouter.post("/:id/reactivate", async (req, res) => {
 
   await db.user.update({ where: { id }, data: { deletedAt: null } });
   return apiOk(res, { deletedAt: null });
+});
+
+usersRouter.post("/", async (req, res) => {
+  const user = requireSuper(req, res);
+  if (!user) return;
+
+  const parsed = createUserRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return apiError(
+      res, "bad_request",
+      parsed.error.issues[0]?.message ?? "Invalid user body.", 400,
+    );
+  }
+  const body = parsed.data;
+
+  // Pre-check for the friendly 409; the @unique constraint stays the real
+  // guard, so a lost race is caught below rather than surfacing as a 500.
+  const existing = await db.user.findUnique({ where: { email: body.email }, select: { id: true } });
+  if (existing) return apiError(res, "email_taken", "Email already in use.", 409);
+
+  let issuedRaw: string;
+  let issuedExpiresAt: Date;
+  let createdId: number;
+  try {
+    const result = await db.$transaction(async (tx) => {
+      // Spec 11 §7: creation and invitation are ONE operation. passwordHash
+      // stays null — the column is nullable and null IS the activation model
+      // (R14). No temp password exists to log, display, or share (D2).
+      const created = await tx.user.create({
+        data: {
+          name: body.name,
+          email: body.email,
+          role: body.role,
+          graduationYear: body.graduationYear,
+          passwordHash: null,
+          ...(body.role === "STUDENT" ? { studentProfile: { create: {} } } : {}),
+        },
+        select: { id: true },
+      });
+      const invite = await issueInvite(tx, created.id, user.userId);
+      return { id: created.id, raw: invite.raw, expiresAt: invite.expiresAt };
+    });
+    createdId = result.id;
+    issuedRaw = result.raw;
+    issuedExpiresAt = result.expiresAt;
+  } catch (err) {
+    // Unique-violation from the race the pre-check can lose.
+    if (err instanceof Error && "code" in err && (err as { code?: string }).code === "P2002") {
+      return apiError(res, "email_taken", "Email already in use.", 409);
+    }
+    throw err;
+  }
+
+  // Mail AFTER commit, best-effort — v1's behaviour and the right one: a
+  // transport failure must not roll back the account (R25). The operator can
+  // re-send from the detail screen; the invite row's existence is the truth.
+  // The log names the user id and the error — never the code (Decision 2).
+  try {
+    await sendInviteEmail(body.email, issuedRaw, issuedExpiresAt);
+  } catch (err) {
+    console.error(
+      `[invites] failed to send invite email for user ${createdId}:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  return apiOk(res, { userId: createdId }, 201);
+});
+
+usersRouter.post("/:id/invite", async (req, res) => {
+  const user = requireSuper(req, res);
+  if (!user) return;
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+
+  const target = await db.user.findUnique({
+    where: { id },
+    select: { email: true, passwordHash: true, lastLoginAt: true, deletedAt: true },
+  });
+  if (!target) return apiError(res, "not_found", "User not found.", 404);
+  // Explicit refusals where v1 silently dropped (R16): this is an
+  // authenticated SUPER pressing a button on one row, and deserves an answer.
+  if (target.deletedAt) return apiError(res, "user_deleted", "This account is deactivated.", 409);
+  if (target.passwordHash !== null || target.lastLoginAt !== null) {
+    return apiError(res, "already_activated", "This account is already activated.", 409);
+  }
+
+  const invite = await db.$transaction((tx) => issueInvite(tx, id, user.userId));
+
+  try {
+    await sendInviteEmail(target.email, invite.raw, invite.expiresAt);
+  } catch (err) {
+    // User id and error only — never the code (Decision 2).
+    console.error(
+      `[invites] failed to send invite email for user ${id}:`,
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  // The panel the detail screen renders, read back from the row just written
+  // (loadUserDetail returns the latest invite, which is this one).
+  const detail = await loadUserDetail(id);
+  return apiOk(res, detail!.invite);
 });

@@ -33,6 +33,10 @@ const envSchema = z.object({
   // Hard ceiling on a single upload. multer buffers the whole file in memory
   // before the per-assignment maxFileSizeMb check can run, so this bounds what
   // one request can allocate. 25 MB.
+  // Invite acceptance window. 168h = 7 days, deliberately longer than v1's 72h
+  // default: the invite is delivered to email and typed into a phone, and v1's
+  // TTL never mattered because no invite was ever acceptable (spec 11 D1).
+  INVITE_TOKEN_TTL_HOURS: z.coerce.number().int().positive().default(168),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(25 * 1024 * 1024),
   // Accept file uploads on POST /api/v1/submissions/:publicId/files.
   //
@@ -93,5 +97,6 @@ export const config = {
   localUploadsDir: parsed.data.LOCAL_UPLOADS_DIR,
   maxUploadBytes: parsed.data.MAX_UPLOAD_BYTES,
   enableUploads: parsed.data.ENABLE_UPLOADS,
+  inviteTokenTtlHours: parsed.data.INVITE_TOKEN_TTL_HOURS,
   enableApiDocs: parsed.data.ENABLE_API_DOCS,
 } as const;

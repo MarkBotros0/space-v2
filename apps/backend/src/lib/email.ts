@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 
 import { config } from "./config";
+import { formatInOrgTime } from "./org-time";
 
 const NAVY = "#1F3260";
 const TEAL_LIGHT = "#7DCED1";
@@ -11,6 +12,7 @@ const BORDER = "#e0e0e0";
 
 let cachedTransporter: Transporter | null = null;
 let warnedUnconfigured = false;
+let warnedInviteUnconfigured = false;
 
 function isConfigured(): boolean {
   return Boolean(config.gmailUser && config.gmailAppPassword);
@@ -107,5 +109,57 @@ export async function sendNotificationEmail(
     to: email,
     subject: `JPC Space — ${title}`,
     html: renderShell(title, "Jesus Project Community", bodyHtml),
+  });
+}
+
+/**
+ * The invite email. It delivers a CODE the recipient types (or pastes) into
+ * the app's accept-invite screen — not a link. Spec 11 D10 recommends exactly
+ * this for a mobile client: no token in any URL, browser history or Referer
+ * (R24), and no possibility of mailing a link to a route that doesn't exist,
+ * which is how v1's entire invite flow came to 404 (D1).
+ *
+ * Two interpolations, neither user-controlled: the code (base64url alphabet,
+ * A–Z a–z 0–9 - _) and the expiry as formatted by formatInOrgTime (digits,
+ * letters, spaces, punctuation from Intl). Neither can carry markup, so no
+ * escaping is needed by construction (ruling C11). v1 interpolated the
+ * inviter's display name here (spec 11 D10, R90); v2 does not put any name in
+ * this mail. If one is ever added, it goes through Plan 12's escapeHtml.
+ *
+ * The real expiry is stated (spec 11 D10, R75) — v1 said "will expire soon".
+ */
+export async function sendInviteEmail(email: string, code: string, expiresAt: Date): Promise<void> {
+  if (!isConfigured()) {
+    // Decision 2: the code is NEVER logged, in any environment — NODE_ENV
+    // defaults to "development", so a dev-only log line would leak live
+    // credentials from any deploy that forgot to set it. Warn once, without
+    // the code and without the address.
+    if (!warnedInviteUnconfigured) {
+      warnedInviteUnconfigured = true;
+      console.warn(
+        "[email] GMAIL_USER/GMAIL_APP_PASSWORD are unset — invite emails are disabled. Invites are still issued and recorded.",
+      );
+    }
+    return;
+  }
+
+  const bodyHtml = `
+    <p style="font-size: 16px; color: ${TEXT}; line-height: 1.6; margin: 0 0 16px 0;">
+      You've been invited to JPC Space. Open the app, choose
+      <strong>&ldquo;I have an invite code&rdquo;</strong>, and enter:
+    </p>
+    <p style="font-family: monospace; font-size: 18px; letter-spacing: 1px; background-color: ${BG}; border: 1px solid ${BORDER}; border-radius: 6px; padding: 12px 16px; margin: 0 0 16px 0; word-break: break-all;">
+      ${code}
+    </p>
+    <p style="font-size: 14px; color: ${TEXT}; margin: 0;">
+      This code can be used once and expires on ${formatInOrgTime(expiresAt)}.
+    </p>
+  `;
+
+  await getTransporter().sendMail({
+    from: fromAddress(),
+    to: email,
+    subject: "JPC Space — you're invited",
+    html: renderShell("Welcome to JPC Space", "Jesus Project Community", bodyHtml),
   });
 }

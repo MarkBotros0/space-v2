@@ -1149,6 +1149,36 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/auth/accept-invite": {
+      post: {
+        tags: ["Auth"],
+        summary: "Accept an invite and set a first password",
+        description:
+          "Anonymous: possession of the invite code is the authorization, behind its own rate limiter (20 / 15 min per IP). The code is looked up by SHA-256 digest only. Consumed atomically (single use); sets a bcrypt cost-12 password hash. An invite activates an account, it never resets one: a target that already has a password, or is deactivated, is refused. **Every failure is the same `400 invalid_invite` body** (unknown, used, expired, already-activated or deactivated target) so the endpoint is not an existence oracle. Shape violations (missing token, password under 8 characters or over 72 bytes) are `400 bad_request`.",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token", "password"],
+                properties: {
+                  token: { type: "string", minLength: 16, maxLength: 128, description: "The code from the invite email." },
+                  password: { type: "string", minLength: 8, description: "At most 72 bytes (bcrypt)." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } }, "Activated; sign in with the new password."),
+          400: conflict("`bad_request` (malformed body) or `invalid_invite` (any invite failure)."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+
     "/api/v1/me": {
       get: {
         tags: ["Me"],
@@ -1652,6 +1682,36 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
         },
       },
+      post: {
+        tags: ["Users"],
+        summary: "Create a user and issue their invite (SUPER only)",
+        description:
+          "Creation and invitation are one operation. The account is created with a NULL password hash (there is no default password anywhere) and an invite is minted in the same transaction; the code goes out by email after commit, best-effort (a mail failure never rolls back the account, re-send from `POST /users/{id}/invite`). The response never carries the code. LEADER, ADMIN and MENTOR require a graduationYear. A STUDENT gets a StudentProfile.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "email", "role"],
+                properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
+                  email: { type: "string", format: "email" },
+                  role: { $ref: "#/components/schemas/UserRole" },
+                  graduationYear: { type: ["integer", "null"], minimum: 1990 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok({ type: "object", required: ["userId"], properties: { userId: { type: "integer" } } }, "Created."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          409: conflict("`email_taken`."),
+        },
+      },
     },
 
     "/api/v1/users/{id}": {
@@ -1698,6 +1758,24 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
           409: conflict("`cannot_change_own_role` or `last_super`."),
+        },
+      },
+    },
+
+    "/api/v1/users/{id}/invite": {
+      post: {
+        tags: ["Users"],
+        summary: "Issue (or re-issue) an invite (SUPER only)",
+        description:
+          "Mints a fresh invite and expires the target's previous live one (one live invite per user), then emails the code. The response is the invite metadata only; the code is never returned. Refused explicitly: an already-activated target is `409 already_activated`, a deactivated one `409 user_deleted`.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/InviteState" }, "The new invite's metadata."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`already_activated` or `user_deleted`."),
         },
       },
     },
