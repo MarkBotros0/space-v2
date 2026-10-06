@@ -57,6 +57,14 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  // URL scheme the mobile app registers (apps/mobile/app.json "scheme").
+  // Password-reset emails link to <scheme>://reset-password?token=… (Plan 10
+  // Decision 10). A custom-scheme link is never fetched over HTTP, so the
+  // token never reaches a proxy log, a CDN log or a Referer header.
+  MOBILE_APP_SCHEME: z
+    .string()
+    .regex(/^[a-z][a-z0-9+.-]*$/, "must be a bare URL scheme, e.g. spacev2")
+    .default("spacev2"),
 });
 
 /**
@@ -99,4 +107,5 @@ export const config = {
   enableUploads: parsed.data.ENABLE_UPLOADS,
   inviteTokenTtlHours: parsed.data.INVITE_TOKEN_TTL_HOURS,
   enableApiDocs: parsed.data.ENABLE_API_DOCS,
+  mobileAppScheme: parsed.data.MOBILE_APP_SCHEME,
 } as const;

@@ -9,6 +9,7 @@ import {
 
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
+import { expireLiveResetTokens } from "../lib/auth/password-reset";
 import { hashToken, revokeAllRefreshTokensForUser } from "../lib/auth/tokens";
 // The one 429 handler (ruling X4) — never a local copy.
 import { rateLimitHandler } from "../lib/rate-limit";
@@ -119,6 +120,9 @@ meRouter.post("/password", requireAuth, passwordLimiter, async (req, res) => {
   // session dies; the presented refresh token (this device) survives.
   const sessionsRevoked = await db.$transaction(async (tx) => {
     await tx.user.update({ where: { id: user.userId }, data: { passwordHash: newHash } });
+    // Spec 18 R29 / spec 11 D6: an outstanding reset link must not outlive
+    // the password it was meant to replace.
+    await expireLiveResetTokens(tx, user.userId);
     return revokeAllRefreshTokensForUser(tx, user.userId, exceptHash);
   });
 

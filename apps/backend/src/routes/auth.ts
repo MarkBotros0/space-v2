@@ -9,12 +9,15 @@ import rateLimit from "express-rate-limit";
 // the built server would crash with ERR_MODULE_NOT_FOUND. Keep this relative.
 import {
   acceptInviteRequestSchema,
+  forgotPasswordRequestSchema,
   loginRequestSchema,
   refreshRequestSchema,
+  resetPasswordRequestSchema,
 } from "../../../../packages/shared/src/index";
 
 import { db } from "../db/client";
 import { verifyCredentials } from "../lib/auth/credentials";
+import { completePasswordReset, requestPasswordReset } from "../lib/auth/password-reset";
 import {
   hashToken,
   issueSession,
@@ -153,4 +156,49 @@ authRouter.post("/logout-all", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const revoked = await revokeAllRefreshTokensForUser(db, user.userId);
   return apiOk(res, { revoked });
+});
+
+// Own buckets (Plan 10 Decision 11), like acceptInviteLimiter: sharing the
+// login limiter would let failed sign-ins lock a person out of recovering.
+const forgotPasswordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, handler: rateLimitHandler });
+const resetPasswordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, handler: rateLimitHandler });
+
+/**
+ * Anonymous by design (spec 11 §4). The SAME body on every path (R67), and
+ * the work runs after the response is sent, so the response time can't
+ * reveal whether the address exists either (R69). v1 had no limiter here.
+ */
+authRouter.post("/forgot-password", forgotPasswordLimiter, (req, res) => {
+  const parsed = forgotPasswordRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return apiError(res, "bad_request", "A valid email is required.", 400);
+  }
+  void requestPasswordReset(parsed.data.email).catch((err: unknown) => {
+    console.error("[password-reset] request failed:", err instanceof Error ? err.message : err);
+  });
+  return apiOk(res, { ok: true });
+});
+
+/**
+ * Possession of the token is the authorization. One opaque failure,
+ * invalid_reset_token, as 400 — not 401, which the mobile interceptor would
+ * spend a refresh rotation on (Plan 9 Decision 10). The password is validated
+ * by the schema before the token is looked at (R77's order kept), so a weak
+ * password never consumes a token.
+ */
+authRouter.post("/reset-password", resetPasswordLimiter, async (req, res) => {
+  const parsed = resetPasswordRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return apiError(
+      res,
+      "bad_request",
+      parsed.error.issues[0]?.message ?? "A reset code and a valid password are required.",
+      400,
+    );
+  }
+  const outcome = await completePasswordReset(parsed.data.token, parsed.data.password);
+  if (outcome === "invalid") {
+    return apiError(res, "invalid_reset_token", "This reset code is invalid or has expired. Request a new one.", 400);
+  }
+  return apiOk(res, { ok: true });
 });

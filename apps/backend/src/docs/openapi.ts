@@ -1179,6 +1179,59 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/auth/forgot-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Request a password-reset code",
+        description:
+          "Anonymous, behind its own rate limiter (10 / 15 min per IP). **Always answers `{ ok: true }`** for a well-formed body, whether or not the address exists, and the work runs after the response is sent, so neither the body nor the timing reveals the account. A malformed email is `400 bad_request`. Behind the response: nothing is minted for an unknown or deactivated account, or when no mail transport is configured; a second request for the same account within 60 s is ignored; a new code expires the previous one (one live reset per user). The code is v1's format (32 random bytes as 64 hex characters), stored only as its SHA-256 digest, valid for 60 minutes, and is delivered by email only.",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { type: "object", required: ["email"], properties: { email: { type: "string", format: "email" } } },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } }, "Acknowledged."),
+          400: errRef("BadRequest"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+
+    "/api/v1/auth/reset-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Complete a password reset",
+        description:
+          "Anonymous: possession of the code is the authorization (20 / 15 min per IP). Tokens minted by v1 are accepted (same format and storage). The password is validated before the code is looked at, so a weak password consumes nothing. **Every code failure is the same `400 invalid_reset_token`** (unknown, used, expired, or deleted account). On success, in one transaction: a bcrypt cost-12 hash is written, the code is consumed (single use), every other outstanding reset code and live invite is expired, and every refresh token of the account is revoked. A never-activated account may reset, which activates it.",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token", "password"],
+                properties: {
+                  token: { type: "string", minLength: 16, maxLength: 256 },
+                  password: { type: "string", minLength: 8, description: "At most 72 bytes (bcrypt)." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } }, "Password set; sign in."),
+          400: conflict("`bad_request` (malformed body) or `invalid_reset_token`."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+
     "/api/v1/auth/logout-all": {
       post: {
         tags: ["Auth"],
@@ -1281,7 +1334,7 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "Change your password and evict other sessions",
         description:
-          "Verifies `currentPassword`, writes a bcrypt cost-12 hash and revokes every refresh token of the caller in one transaction, **except** the one whose raw value is sent as `refreshToken` (this device). Omit `refreshToken` and every session is revoked. A wrong current password is `400 incorrect_password` (deliberately not 401, which the mobile client reads as an expired access token). An invited account with no password is `409 no_password`. Rate limited (10 / 15 min per IP); 429 uses the standard envelope. New password: 8+ characters, at most 72 bytes.",
+          "Verifies `currentPassword`, writes a bcrypt cost-12 hash and revokes every refresh token of the caller in one transaction, **except** the one whose raw value is sent as `refreshToken` (this device). Omit `refreshToken` and every session is revoked. A wrong current password is `400 incorrect_password` (deliberately not 401, which the mobile client reads as an expired access token). An invited account with no password is `409 no_password`. Rate limited (10 / 15 min per IP); 429 uses the standard envelope. New password: 8+ characters, at most 72 bytes. Also expires any outstanding password-reset codes.",
         requestBody: {
           required: true,
           content: {

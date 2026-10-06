@@ -1,5 +1,8 @@
 import nodemailer, { type Transporter } from "nodemailer";
 
+// Value import — relative (ruling X12).
+import { PASSWORD_RESET_TTL_MINUTES } from "../../../../packages/shared/src/index";
+
 import { config } from "./config";
 import { formatInOrgTime } from "./org-time";
 
@@ -13,6 +16,7 @@ const BORDER = "#e0e0e0";
 let cachedTransporter: Transporter | null = null;
 let warnedUnconfigured = false;
 let warnedInviteUnconfigured = false;
+let warnedResetUnconfigured = false;
 
 function isConfigured(): boolean {
   return Boolean(config.gmailUser && config.gmailAppPassword);
@@ -170,5 +174,55 @@ export async function sendInviteEmail(email: string, code: string, expiresAt: Da
     to: email,
     subject: "JPC Space — you're invited",
     html: renderShell("Welcome to JPC Space", "Jesus Project Community", bodyHtml),
+  });
+}
+
+/**
+ * The password-reset email (Plan 10 Decisions 9–10). It offers the app deep
+ * link AND prints the code, because many mail clients don't linkify custom
+ * schemes; the reset screen accepts either (and a pasted v1 web link).
+ *
+ * Interpolations: the code (hex — no markup possible), the scheme (validated
+ * by config to [a-z0-9+.-]), the TTL constant, and formatInOrgTime's output.
+ * None is user-controlled, so nothing needs escaping by construction (ruling
+ * C11) — and no name is put in this mail.
+ */
+export async function sendPasswordResetEmail(email: string, code: string, expiresAt: Date): Promise<void> {
+  if (!isConfigured()) {
+    // Never the code, never the address (Plan 9 Decision 2's rule).
+    if (!warnedResetUnconfigured) {
+      warnedResetUnconfigured = true;
+      console.warn("[email] GMAIL_USER/GMAIL_APP_PASSWORD are unset — password-reset emails are disabled.");
+    }
+    return;
+  }
+
+  const link = `${config.mobileAppScheme}://reset-password?token=${code}`;
+  const bodyHtml = `
+    <p style="font-size: 16px; color: ${TEXT}; line-height: 1.6; margin: 0 0 16px 0;">
+      We received a request to reset the password for your JPC Space account.
+      On your phone, tap the button to choose a new password in the app.
+    </p>
+    ${buttonHtml(link, "Reset password in the app")}
+    <p style="font-size: 14px; color: ${TEXT}; margin: 16px 0 8px 0;">
+      Or open the app, choose <strong>&ldquo;Forgot password?&rdquo;</strong> then
+      <strong>&ldquo;I have a reset code&rdquo;</strong>, and paste:
+    </p>
+    <p style="font-family: monospace; font-size: 15px; background-color: ${BG}; border: 1px solid ${BORDER}; border-radius: 6px; padding: 12px 16px; margin: 0 0 16px 0; word-break: break-all;">
+      ${code}
+    </p>
+    <p style="font-size: 14px; color: ${TEXT}; margin: 0 0 8px 0;">
+      This code works once and expires in ${PASSWORD_RESET_TTL_MINUTES} minutes (at ${formatInOrgTime(expiresAt)}).
+    </p>
+    <p style="font-size: 14px; color: ${TEXT}; margin: 0;">
+      If you didn't ask for this, you can ignore this email — your password stays the same.
+    </p>
+  `;
+
+  await getTransporter().sendMail({
+    from: fromAddress(),
+    to: email,
+    subject: "JPC Space — Password Reset",
+    html: renderShell("Password Reset Request", "Jesus Project Community", bodyHtml),
   });
 }
