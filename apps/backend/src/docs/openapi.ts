@@ -1179,11 +1179,24 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/auth/logout-all": {
+      post: {
+        tags: ["Auth"],
+        summary: "Revoke every refresh token you hold",
+        description:
+          "Authenticated (Bearer). Revokes all of the caller's live refresh tokens, including the current device's: the lost-phone lever. Access tokens already issued live out their 15-minute TTL.",
+        responses: {
+          200: ok({ type: "object", required: ["revoked"], properties: { revoked: { type: "integer", minimum: 0 } } }, "Number of sessions revoked."),
+          401: errRef("Unauthorized"),
+        },
+      },
+    },
+
     "/api/v1/me": {
       get: {
         tags: ["Me"],
         summary: "The authenticated user and their scopes",
-        description: "Scopes come from the token's claims, not a fresh database read — they are what this token was minted with.",
+        description: "Scopes come from the token's claims, not a fresh database read — they are what this token was minted with. `user` is null when the row is soft-deleted (or gone).",
         responses: {
           200: ok(
             {
@@ -1197,6 +1210,7 @@ export const openApiDocument = {
                     email: { type: "string", format: "email" },
                     role: { $ref: "#/components/schemas/UserRole" },
                     avatarPath: { type: ["string", "null"] },
+                    hasPassword: { type: "boolean", description: "False for an invited account that has never set a password." },
                   },
                 },
                 scopes: {
@@ -1216,6 +1230,88 @@ export const openApiDocument = {
             "The current user.",
           ),
           401: errRef("Unauthorized"),
+        },
+      },
+      patch: {
+        tags: ["Me"],
+        summary: "Update your own display name",
+        description:
+          "Self-scoped: the subject is the token, never the body. A body carrying `userId` (or any unknown key) is a 400. The name is trimmed, 2-120 characters. Returns the updated user.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name"],
+                additionalProperties: false,
+                properties: { name: { type: "string", minLength: 2, maxLength: 120 } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                user: {
+                  type: "object",
+                  properties: {
+                    id: { type: "integer" },
+                    name: { type: "string" },
+                    email: { type: "string", format: "email" },
+                    role: { $ref: "#/components/schemas/UserRole" },
+                    avatarPath: { type: ["string", "null"] },
+                    hasPassword: { type: "boolean" },
+                  },
+                },
+              },
+            },
+            "The updated user.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+        },
+      },
+    },
+
+    "/api/v1/me/password": {
+      post: {
+        tags: ["Me"],
+        summary: "Change your password and evict other sessions",
+        description:
+          "Verifies `currentPassword`, writes a bcrypt cost-12 hash and revokes every refresh token of the caller in one transaction, **except** the one whose raw value is sent as `refreshToken` (this device). Omit `refreshToken` and every session is revoked. A wrong current password is `400 incorrect_password` (deliberately not 401, which the mobile client reads as an expired access token). An invited account with no password is `409 no_password`. Rate limited (10 / 15 min per IP); 429 uses the standard envelope. New password: 8+ characters, at most 72 bytes.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["currentPassword", "newPassword"],
+                additionalProperties: false,
+                properties: {
+                  currentPassword: { type: "string", minLength: 1 },
+                  newPassword: { type: "string", minLength: 8 },
+                  refreshToken: { type: "string", description: "The caller's own refresh token, spared from the sweep." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["ok", "sessionsRevoked"],
+              properties: { ok: { type: "boolean", example: true }, sessionsRevoked: { type: "integer", minimum: 0 } },
+            },
+            "Changed.",
+          ),
+          400: conflict("`bad_request` (malformed body) or `incorrect_password`."),
+          401: errRef("Unauthorized"),
+          409: conflict("`no_password`."),
+          429: errRef("TooManyRequests"),
         },
       },
     },

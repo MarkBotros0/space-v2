@@ -61,6 +61,7 @@ describe("GET /api/v1/me", () => {
       email: EMAIL,
       role: "STUDENT",
       avatarPath: null,
+      hasPassword: true,
     });
     expect(res.body.data.scopes).toEqual({
       seasonAdminIds: [],

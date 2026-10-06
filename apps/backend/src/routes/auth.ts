@@ -15,9 +15,16 @@ import {
 
 import { db } from "../db/client";
 import { verifyCredentials } from "../lib/auth/credentials";
-import { hashToken, issueSession, rotateRefreshToken, revokeRefreshToken } from "../lib/auth/tokens";
+import {
+  hashToken,
+  issueSession,
+  revokeAllRefreshTokensForUser,
+  rotateRefreshToken,
+  revokeRefreshToken,
+} from "../lib/auth/tokens";
 import { rateLimitHandler } from "../lib/rate-limit";
 import { apiOk, apiError } from "../lib/api-response";
+import { requireAuth, requireUser } from "../middleware/require-auth";
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, handler: rateLimitHandler });
 const refreshLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, handler: rateLimitHandler });
@@ -137,4 +144,13 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
   if (!consumed) return refuse();
 
   return apiOk(res, { ok: true });
+});
+
+// Unlike /logout (one token, anonymous, idempotent), this revokes EVERYTHING
+// the caller holds — the only recovery a user has when a device is lost
+// (spec 18 D1). Authenticated: "everything of mine" needs a proven "me".
+authRouter.post("/logout-all", requireAuth, async (req, res) => {
+  const user = requireUser(req);
+  const revoked = await revokeAllRefreshTokensForUser(db, user.userId);
+  return apiOk(res, { revoked });
 });
