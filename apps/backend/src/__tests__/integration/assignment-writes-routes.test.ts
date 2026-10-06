@@ -397,7 +397,12 @@ describe("PATCH /api/v1/assignments/:id", () => {
     const made = await create();
     const id = made.body.data.id as number;
     await db.assignment.update({ where: { id }, data: { deletedAt: new Date() } });
-    expect((await patch(id)).status).toBe(404);
+    const refused = await patch(id, { title: "Changed after delete" });
+    expect(refused.status).toBe(404);
+    // The refusal must come before the write: a 404 that still updated the
+    // deleted row would pass a status-only check (the final reload filters it).
+    const row = await db.assignment.findUnique({ where: { id }, select: { title: true } });
+    expect(row?.title).toBe("Week 4 reflection");
     expect((await patch(2147483000)).status).toBe(404);
     const bad = await request(app)
       .patch("/api/v1/assignments/abc")
