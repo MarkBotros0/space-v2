@@ -1,9 +1,16 @@
 import { db } from "../../db/client";
+import type { Prisma } from "../../generated/prisma/client";
+import { orgDayKey, orgWallTime } from "../org-time";
+import type { CalendarScope } from "../permissions";
 
 export interface SessionListRow {
   id: number;
   title: string;
   startsAt: Date;
+  /** Org-calendar day of startsAt (Plan 4, X13). */
+  dayKey: string;
+  /** Org wall-clock "HH:mm" of startsAt (Plan 6, X13). */
+  startTime: string;
   durationMinutes: number;
   location: string | null;
   recurrenceGroupId: string | null;
@@ -16,36 +23,34 @@ export interface SessionListRow {
   checkInClosedAt: Date | null;
 }
 
+const SESSION_LIST_SELECT = {
+  id: true,
+  title: true,
+  startsAt: true,
+  durationMinutes: true,
+  location: true,
+  recurrenceGroupId: true,
+  checkInToken: true,
+  checkInOpenAt: true,
+  checkInClosedAt: true,
+  _count: { select: { attendance: true } },
+  season: { select: { id: true, code: true, title: true } },
+} as const satisfies Prisma.SessionSelect;
+
+type SessionListSource = Prisma.SessionGetPayload<{ select: typeof SESSION_LIST_SELECT }>;
+
 /**
- * Possession of `checkInToken` is what authorises a check-in, so it must never
- * reach students — a student holding it could mark themselves present without
- * attending, or pass it to someone who is absent.
+ * Possession of `checkInToken` is what authorises a check-in, so it is
+ * masked unless the caller may run check-in for that row's season — every
+ * list path masks through here.
  */
-export async function listSessionsForSeason(
-  seasonId: number,
-  { includeCheckInToken = true }: { includeCheckInToken?: boolean } = {},
-): Promise<SessionListRow[]> {
-  const rows = await db.session.findMany({
-    where: { seasonId },
-    orderBy: { startsAt: "asc" },
-    select: {
-      id: true,
-      title: true,
-      startsAt: true,
-      durationMinutes: true,
-      location: true,
-      recurrenceGroupId: true,
-      checkInToken: includeCheckInToken,
-      checkInOpenAt: true,
-      checkInClosedAt: true,
-      _count: { select: { attendance: true } },
-      season: { select: { id: true, code: true, title: true } },
-    },
-  });
-  return rows.map((s) => ({
+function toSessionListRow(s: SessionListSource, includeToken: boolean): SessionListRow {
+  return {
     id: s.id,
     title: s.title,
     startsAt: s.startsAt,
+    dayKey: orgDayKey(s.startsAt),
+    startTime: orgWallTime(s.startsAt),
     durationMinutes: s.durationMinutes,
     location: s.location,
     recurrenceGroupId: s.recurrenceGroupId,
@@ -53,10 +58,43 @@ export async function listSessionsForSeason(
     seasonId: s.season.id,
     seasonCode: s.season.code,
     seasonTitle: s.season.title,
-    checkInToken: includeCheckInToken ? (s.checkInToken ?? null) : null,
+    checkInToken: includeToken ? (s.checkInToken ?? null) : null,
     checkInOpenAt: s.checkInOpenAt,
     checkInClosedAt: s.checkInClosedAt,
-  }));
+  };
+}
+
+/** Unchanged contract (Phase 0 / Plan 4): token for every non-student caller. */
+export async function listSessionsForSeason(
+  seasonId: number,
+  { includeCheckInToken = true }: { includeCheckInToken?: boolean } = {},
+): Promise<SessionListRow[]> {
+  const rows = await db.session.findMany({
+    where: { seasonId },
+    orderBy: { startsAt: "asc" },
+    select: SESSION_LIST_SELECT,
+  });
+  return rows.map((s) => toSessionListRow(s, includeCheckInToken));
+}
+
+/**
+ * The multi-season calendar (Plan 6 D-16.7; v1 sessions-query.ts:64-116).
+ * `active` is v1's "all ACTIVE, non-deleted seasons" (R23); `seasons` is an
+ * explicit, already-authorized set. The window is half-open [from, to).
+ */
+export async function listSessionsInRange(
+  scope: CalendarScope,
+  window: { from: Date; to: Date },
+  includeTokenFor: (seasonId: number) => boolean,
+): Promise<SessionListRow[]> {
+  const where: Prisma.SessionWhereInput = {
+    startsAt: { gte: window.from, lt: window.to },
+    ...(scope.kind === "active"
+      ? { season: { status: "ACTIVE", deletedAt: null } }
+      : { seasonId: { in: scope.seasonIds } }),
+  };
+  const rows = await db.session.findMany({ where, orderBy: { startsAt: "asc" }, select: SESSION_LIST_SELECT });
+  return rows.map((s) => toSessionListRow(s, includeTokenFor(s.season.id)));
 }
 
 export interface AttendanceRosterEntry {

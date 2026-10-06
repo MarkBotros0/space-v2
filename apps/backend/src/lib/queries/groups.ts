@@ -249,3 +249,205 @@ export async function listMyGroups(user: SessionUser): Promise<GroupListRow[]> {
   });
   return toListRows(groups);
 }
+
+export interface SeasonRosterRow {
+  userId: number;
+  name: string | null;
+  email: string;
+  groupId: number | null;
+  groupName: string | null;
+  otherSeasonGroup: { groupName: string; seasonCode: string } | null;
+}
+
+/**
+ * The season's roster for the bulk-assign grid and the group form (D-16.11).
+ *
+ * Population: ACTIVE enrolments of live STUDENT users (ruling C9). v1 used
+ * `StudentProfile.activeSeasonId` (spec 05 R81), which hides an enrolled
+ * student whose pointer has moved on. The group shown is this season's, from
+ * `SeasonEnrollment.groupId`; `otherSeasonGroup` is the student's GroupStudent
+ * row in a DIFFERENT season's group — the membership an assignment here will
+ * remove (GroupStudent.studentUserId is globally unique, spec 05 R1). v1
+ * reported such a student as plain "unassigned" (R82).
+ */
+export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRow[]> {
+  const enrolments = await db.seasonEnrollment.findMany({
+    where: { seasonId, status: "ACTIVE", studentUser: { role: "STUDENT", deletedAt: null } },
+    select: {
+      studentUserId: true,
+      groupId: true,
+      group: { select: { name: true } },
+      studentUser: { select: { name: true, email: true } },
+    },
+    orderBy: { studentUser: { name: "asc" } },
+  });
+  if (enrolments.length === 0) return [];
+
+  const elsewhere = await db.groupStudent.findMany({
+    where: {
+      studentUserId: { in: enrolments.map((e) => e.studentUserId) },
+      group: { seasonId: { not: seasonId } },
+    },
+    select: { studentUserId: true, group: { select: { name: true, season: { select: { code: true } } } } },
+  });
+  const elsewhereBy = new Map(
+    elsewhere.map((g) => [g.studentUserId, { groupName: g.group.name, seasonCode: g.group.season.code }]),
+  );
+
+  return enrolments.map((e) => ({
+    userId: e.studentUserId,
+    name: e.studentUser.name,
+    email: e.studentUser.email,
+    groupId: e.groupId,
+    groupName: e.group?.name ?? null,
+    otherSeasonGroup: elsewhereBy.get(e.studentUserId) ?? null,
+  }));
+}
+
+/**
+ * A target group does not belong to the season. Refuses the WHOLE batch
+ * (spec 05 R75) — a partially-applied bulk move is worse than a refused one,
+ * because the operator cannot tell which half happened.
+ */
+export class GroupOutsideSeasonError extends Error {
+  constructor() {
+    super("A selected group does not belong to this season.");
+    this.name = "GroupOutsideSeasonError";
+  }
+}
+
+/** ACTIVE enrolments of live STUDENT users among `studentIds` — the one eligibility rule (C9). */
+async function eligibleStudentIds(
+  tx: Prisma.TransactionClient,
+  seasonId: number,
+  studentIds: number[],
+): Promise<Set<number>> {
+  if (studentIds.length === 0) return new Set();
+  const rows = await tx.seasonEnrollment.findMany({
+    where: {
+      seasonId,
+      status: "ACTIVE",
+      studentUserId: { in: studentIds },
+      studentUser: { role: "STUDENT", deletedAt: null },
+    },
+    select: { studentUserId: true },
+  });
+  return new Set(rows.map((r) => r.studentUserId));
+}
+
+/**
+ * Move a set of students into named groups of one season, without disturbing
+ * anyone the caller did not name. The roster grid (PUT
+ * /seasons/:id/group-assignments) and Plan 17's group importer both write
+ * through this — one home for bulk membership writes.
+ *
+ * Deliberately NOT `setGroupStudents`: that one means "this is now the
+ * group's whole roster", which would empty every group a bulk move happened
+ * not to list in full.
+ *
+ * Two divergences from v1's `assignStudentsToGroupsAction`
+ * (`jpc-space/src/lib/group-actions.ts:192-248`), both required:
+ *
+ * 1. Eligibility is an ACTIVE `SeasonEnrollment` in this season held by a
+ *    live STUDENT, not `StudentProfile.activeSeasonId` (ruling C9; v1 at
+ *    :215-223). v1 gated on the pointer in both its roster query and this
+ *    write, which is what produces spec 05/16's silent skips; and v1 upserted
+ *    an enrolment for anyone it accepted, resurrecting WITHDRAWN students.
+ *    Here a non-ACTIVE or unknown student is skipped and reported.
+ * 2. It returns what it APPLIED. v1 returned nothing and its callers reported
+ *    the requested length (spec 05 R57, spec 16 R80/D5).
+ */
+export async function assignStudentsToGroups(
+  tx: Prisma.TransactionClient,
+  seasonId: number,
+  assignments: { studentUserId: number; groupId: number }[],
+): Promise<{ assigned: number; skippedStudentIds: number[] }> {
+  const groupIds = [...new Set(assignments.map((a) => a.groupId))];
+  if (groupIds.length > 0) {
+    const valid = new Set(
+      (await tx.group.findMany({ where: { id: { in: groupIds }, seasonId }, select: { id: true } })).map((g) => g.id),
+    );
+    if (groupIds.some((id) => !valid.has(id))) throw new GroupOutsideSeasonError();
+  }
+
+  const eligible = await eligibleStudentIds(tx, seasonId, [...new Set(assignments.map((a) => a.studentUserId))]);
+
+  const skippedStudentIds: number[] = [];
+  let assigned = 0;
+  for (const a of assignments) {
+    if (!eligible.has(a.studentUserId)) {
+      skippedStudentIds.push(a.studentUserId);
+      continue;
+    }
+    // GroupStudent.studentUserId is @unique STANDALONE (schema.prisma:330): a
+    // student is in at most one group across the whole database, so the
+    // existing row — whichever season's group it is — has to go first. The
+    // fix is a composite key, which is a migration (Plan 18). Meanwhile the
+    // per-season truth is SeasonEnrollment.groupId below, and every v2 read
+    // uses that (C9).
+    await tx.groupStudent.deleteMany({ where: { studentUserId: a.studentUserId } });
+    await tx.groupStudent.create({ data: { groupId: a.groupId, studentUserId: a.studentUserId } });
+    await tx.seasonEnrollment.update({
+      where: { studentUserId_seasonId: { studentUserId: a.studentUserId, seasonId } },
+      data: { groupId: a.groupId },
+    });
+    assigned += 1;
+  }
+  return { assigned, skippedStudentIds };
+}
+
+/**
+ * Take students out of their group IN THIS SEASON. Only this season's
+ * GroupStudent row is removed — v1 deleted the student's membership unscoped
+ * (spec 05 R3), so unassigning in one season could silently empty their
+ * current group in another. Same eligibility as assignStudentsToGroups.
+ */
+export async function unassignStudentsFromGroups(
+  tx: Prisma.TransactionClient,
+  seasonId: number,
+  studentIds: number[],
+): Promise<{ unassigned: number; skippedStudentIds: number[] }> {
+  const eligible = await eligibleStudentIds(tx, seasonId, studentIds);
+  const skippedStudentIds: number[] = [];
+  let unassigned = 0;
+  for (const studentUserId of studentIds) {
+    if (!eligible.has(studentUserId)) {
+      skippedStudentIds.push(studentUserId);
+      continue;
+    }
+    await tx.groupStudent.deleteMany({ where: { studentUserId, group: { seasonId } } });
+    await tx.seasonEnrollment.update({
+      where: { studentUserId_seasonId: { studentUserId, seasonId } },
+      data: { groupId: null },
+    });
+    unassigned += 1;
+  }
+  return { unassigned, skippedStudentIds };
+}
+
+/**
+ * What deleting a group would do (spec 05 §10 item 5, Plan 6 D-16.13).
+ * `soleTargetAssignments`: live assignments that are not "all groups" and
+ * whose ONLY target is this group — deleting it would cascade their last
+ * AssignmentTarget away and leave them visible to nobody (R44).
+ */
+export async function loadGroupImpact(groupId: number): Promise<{
+  studentCount: number;
+  leaderCount: number;
+  soleTargetAssignments: { id: number; title: string }[];
+}> {
+  const [studentCount, leaderCount, targeted] = await Promise.all([
+    db.seasonEnrollment.count({ where: { groupId, status: "ACTIVE" } }),
+    db.groupLeader.count({ where: { groupId } }),
+    db.assignment.findMany({
+      where: { deletedAt: null, isAllGroups: false, targets: { some: { groupId } } },
+      orderBy: { id: "asc" },
+      select: { id: true, title: true, _count: { select: { targets: true } } },
+    }),
+  ]);
+  return {
+    studentCount,
+    leaderCount,
+    soleTargetAssignments: targeted.filter((a) => a._count.targets === 1).map((a) => ({ id: a.id, title: a.title })),
+  };
+}

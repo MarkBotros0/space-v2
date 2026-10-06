@@ -82,13 +82,4 @@ describe("AssignmentsScreen (student)", () => {
     expect(await screen.findByText("No active season")).toBeTruthy();
     expect(get).not.toHaveBeenCalled();
   });
-
-  it("does not run the student query for staff (their branch is Plan 5's)", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-
-    renderWithProviders(<AssignmentsScreen />);
-
-    expect(await screen.findByText("Assignments")).toBeTruthy();
-    expect(get).not.toHaveBeenCalled();
-  });
 });

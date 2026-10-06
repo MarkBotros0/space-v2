@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import {
   ensureSubmissionResponseSchema,
+  reviewSubmissionResponseSchema,
   saveSubmissionResponseSchema,
   submissionDetailSchema,
   type SubmissionDetail,
@@ -55,6 +56,24 @@ export function useSaveSubmission(publicId: string, assignmentId: number) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.submissions.detail(publicId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.detail(assignmentId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.lists() });
+    },
+  });
+}
+
+export function useReviewSubmission(publicId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { feedback: string; returnForRevision?: boolean }) => {
+      const body: { feedback: string; returnForRevision?: boolean } = {
+        feedback: input.feedback,
+      };
+      if (input.returnForRevision) body.returnForRevision = true;
+      const res = await apiClient.post(`/api/v1/submissions/${publicId}/review`, body);
+      return reviewSubmissionResponseSchema.parse(res.data.data);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.submissions.detail(publicId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.submissions.queues() });
     },
   });
 }

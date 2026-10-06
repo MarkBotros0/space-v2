@@ -16,3 +16,12 @@ export const saveAttendanceRequestSchema = z.object({
   entries: z.array(attendanceEntrySchema),
 });
 export type SaveAttendanceRequest = z.infer<typeof saveAttendanceRequestSchema>;
+
+/**
+ * `POST /sessions/:id/attendance` success payload. `saved` is the number of
+ * entries written — a count, not a flag.
+ */
+export const saveAttendanceResponseSchema = z.object({
+  saved: z.number().int().nonnegative(),
+});
+export type SaveAttendanceResponse = z.infer<typeof saveAttendanceResponseSchema>;

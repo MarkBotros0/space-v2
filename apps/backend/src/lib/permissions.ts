@@ -201,3 +201,52 @@ export async function canReviewSubmission(
   if (enrollment?.groupId == null) return false;
   return isLeaderOfGroup(user, enrollment.groupId);
 }
+
+/** Which seasons a calendar request may read (Plan 6 D-16.7). */
+export type CalendarScope = { kind: "active" } | { kind: "seasons"; seasonIds: number[] };
+
+/**
+ * The season set behind GET /api/v1/sessions, derived from the role — never
+ * from the query. `seasonId` NARROWS within the caller's set; outside it the
+ * answer is "forbidden", never a widened read (C8).
+ */
+export async function calendarScopeFor(
+  user: SessionUser,
+  seasonId: number | null,
+): Promise<CalendarScope | "forbidden" | "not_found"> {
+  if (seasonId !== null) {
+    const live = await db.season.findFirst({ where: { id: seasonId, deletedAt: null }, select: { id: true } });
+    if (!live) return "not_found";
+  }
+
+  if (isSuper(user)) {
+    return seasonId !== null ? { kind: "seasons", seasonIds: [seasonId] } : { kind: "active" };
+  }
+
+  if (user.role === "ADMIN") {
+    if (seasonId !== null) {
+      return isAdminOfSeason(user, seasonId) ? { kind: "seasons", seasonIds: [seasonId] } : "forbidden";
+    }
+    const live = await db.season.findMany({
+      where: { id: { in: user.seasonAdminIds }, deletedAt: null },
+      select: { id: true },
+    });
+    return { kind: "seasons", seasonIds: live.map((s) => s.id) };
+  }
+
+  if (user.role === "LEADER") {
+    // One query instead of v1's per-season N+1 (spec 03 R85).
+    const groups = await db.group.findMany({
+      where: { id: { in: user.groupLeaderIds }, season: { deletedAt: null } },
+      select: { seasonId: true },
+    });
+    const led = [...new Set(groups.map((g) => g.seasonId))];
+    if (seasonId !== null) {
+      return led.includes(seasonId) ? { kind: "seasons", seasonIds: [seasonId] } : "forbidden";
+    }
+    return { kind: "seasons", seasonIds: led };
+  }
+
+  // STUDENT keeps the pinned-season route; MENTOR has no calendar (spec 03 §9).
+  return "forbidden";
+}

@@ -6,17 +6,22 @@ import { NavIcon } from "../../src/components/NavIcon";
 import { useSessionStore } from "../../src/store/session";
 
 /**
+ * Hrefs whose route is a directory (`x/index.tsx`) because the destination
+ * has child routes (ruling X7): `students` (alumni, dropped) and `seasons`
+ * (Plan 6's `seasons/[code]/…`). Without the mapping the tab bar looks for
+ * a file named "seasons" and silently omits the tab.
+ */
+const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons"]);
+
+/**
  * href → route name (the `name` prop `Tabs.Screen` expects, which is the
- * file path relative to this directory, extension dropped). `students` is
- * the one href that maps to a directory rather than a sibling file — see
- * R1 in the task-7 brief; without this the tab bar would look for a file
- * named "students" instead of "students/index" and silently omit the tab.
- * Exported (not just used locally) so tests can check its output against
- * what actually exists on disk instead of trusting the hardcoded case here.
+ * file path relative to this directory, extension dropped). Exported (not just
+ * used locally) so tests can check its output against what actually exists
+ * on disk instead of trusting the hardcoded cases here.
  */
 export function routeNameForHref(href: string): string {
   const path = href.slice(1);
-  return path === "students" ? "students/index" : path;
+  return DIRECTORY_ROUTE_HREFS.has(path) ? `${path}/index` : path;
 }
 
 /**
@@ -47,7 +52,22 @@ export const ALL_ROUTE_NAMES: readonly string[] = Array.from(
  * one is missing, and pins that each entry is declared with href: null.
  * Plans add a detail route by appending to this list — nothing else.
  */
-export const DETAIL_ROUTE_NAMES: readonly string[] = ["assignment/[id]"];
+export const DETAIL_ROUTE_NAMES: readonly string[] = [
+  "assignment/[id]/index",
+  "assignment/[id]/edit",
+  "assignment/new",
+  "group/[id]/index",
+  "submission/[publicId]",
+  "session/[id]/attendance",
+  "session/[id]/index",
+  "seasons/[code]/index",
+  "seasons/[code]/edit",
+  "seasons/[code]/roster/index",
+  "group/new",
+  "group/[id]/edit",
+  "session/new",
+  "session/[id]/edit",
+];
 
 /**
  * `(app)/_layout.tsx` — the `Tabs` navigator every authenticated screen
