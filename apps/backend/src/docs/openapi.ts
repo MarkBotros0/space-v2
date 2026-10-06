@@ -101,6 +101,7 @@ export const openApiDocument = {
     { name: "Sessions", description: "Sessions, attendance, and check-in" },
     { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
     { name: "Submissions", description: "Submissions and their files" },
+    { name: "Quizzes", description: "Quiz authoring, attempts and grading" },
   ],
   security: [{ bearerAuth: [] }],
   components: {
@@ -141,6 +142,65 @@ export const openApiDocument = {
       AttendanceStatus: { type: "string", enum: ["PRESENT", "ABSENT", "LATE"] },
       SubmissionStatus: { type: "string", enum: ["DRAFT", "SUBMITTED", "REVIEWED", "RETURNED"] },
       AssignmentType: { type: "string", enum: ["STANDARD", "FORUM"] },
+
+      QuizKind: { type: "string", enum: ["PAPER", "ONLINE"] },
+      QuizQuestionType: { type: "string", enum: ["MCQ", "ESSAY"] },
+      QuizAttemptStatus: { type: "string", enum: ["IN_PROGRESS", "SUBMITTED", "GRADED"] },
+      CreateQuizRequest: {
+        type: "object",
+        required: ["seasonId", "title", "kind"],
+        properties: {
+          seasonId: { type: "integer", minimum: 1 },
+          sessionId: { type: ["integer", "null"], minimum: 1, description: "Null for a season-level quiz." },
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          maxScore: { type: "integer", minimum: 1, maximum: 1000, description: "Required for PAPER; rejected for ONLINE." },
+        },
+      },
+      UpdateQuizRequest: {
+        type: "object",
+        description: "At least one field. `kind` is not accepted.",
+        properties: {
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          maxScore: { type: "integer", minimum: 1, maximum: 1000 },
+          sessionId: { type: ["integer", "null"], minimum: 1 },
+        },
+      },
+      QuizSummary: {
+        type: "object",
+        required: ["id", "title", "kind", "publishedAt", "questionCount", "maxScore", "sessionId", "sessionTitle", "sessionDate", "seasonId", "seasonCode", "gradedCount", "studentCount"],
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          publishedAt: { type: ["string", "null"], format: "date-time" },
+          questionCount: { type: "integer" },
+          maxScore: { type: "integer" },
+          sessionId: { type: ["integer", "null"] },
+          sessionTitle: { type: ["string", "null"] },
+          sessionDate: { type: ["string", "null"], format: "date-time" },
+          seasonId: { type: "integer" },
+          seasonCode: { type: "string" },
+          gradedCount: { type: "integer" },
+          studentCount: { type: "integer" },
+        },
+      },
+      StudentQuizResult: {
+        type: "object",
+        required: ["quizId", "title", "kind", "maxScore", "score", "notes", "gradedAt", "sessionTitle", "sessionDate", "attemptStatus"],
+        properties: {
+          quizId: { type: "integer" },
+          title: { type: "string" },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          maxScore: { type: "integer" },
+          score: { type: ["integer", "null"] },
+          notes: { type: ["string", "null"] },
+          gradedAt: { type: ["string", "null"], format: "date-time" },
+          sessionTitle: { type: ["string", "null"] },
+          sessionDate: { type: ["string", "null"], format: "date-time" },
+          attemptStatus: { oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }], description: "ONLINE only." },
+        },
+      },
 
       Session: {
         type: "object",
@@ -1930,6 +1990,83 @@ export const openApiDocument = {
             description: "No such file, it belongs to another submission, or the stored blob is missing.",
             content: { "application/json": { schema: errorResponse } },
           },
+        },
+      },
+    },
+
+    "/api/v1/quizzes": {
+      post: {
+        tags: ["Quizzes"],
+        summary: "Create a quiz",
+        description:
+          "Season-admin (or SUPER) only. `seasonId` is in the **body**, not the path: every quiz route lives in one router mounted at `/api/v1/quizzes`, so creation cannot hang off `/seasons/{id}` — the same deviation `POST /api/v1/sessions` makes. `sessionId` may be null (a season-level quiz); when set it must belong to `seasonId` (400 `session_not_in_season`). PAPER requires `maxScore`; ONLINE **rejects** it (400) and starts at 0, then derives it from question points.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/CreateQuizRequest" } } },
+        },
+        responses: {
+          201: ok({ type: "object", required: ["id"], properties: { id: { type: "integer" } } }, "Created."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      get: {
+        tags: ["Quizzes"],
+        summary: "List quizzes (row shape depends on the caller's role)",
+        description:
+          "**The row shape differs by role.** Staff (SUPER, season admin, leader with a group in the season) receive `QuizSummary` rows. A STUDENT receives their own `StudentQuizResult` rows and `nextCursor` is always null: PAPER quizzes appear only once graded, ONLINE quizzes as soon as they are published.\n\n`seasonId` defaults to the caller's active season; with none, the list is empty. Staff outside the season get 403.\n\nOne definition each, computed server-side: `studentCount` is the ACTIVE enrolments of the quiz's season narrowed to the caller's scope (a leader sees only their own groups); `gradedCount` is, within that same student set, QuizGrade rows with a non-null score for PAPER and QuizAttempt rows with status GRADED for ONLINE.",
+        parameters: [
+          { name: "seasonId", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "sessionId", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "cursor", in: "query", description: "Quiz id; returns rows with a smaller id.", schema: { type: "integer", minimum: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["items", "nextCursor"],
+              properties: {
+                items: {
+                  type: "array",
+                  items: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/QuizSummary" },
+                      { $ref: "#/components/schemas/StudentQuizResult" },
+                    ],
+                  },
+                },
+                nextCursor: { type: ["integer", "null"] },
+              },
+            },
+            "Newest first for staff; by session date descending for a student.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}": {
+      patch: {
+        tags: ["Quizzes"],
+        summary: "Edit a quiz's title, session or max score",
+        description:
+          "Season-admin (or SUPER) of the quiz's season. `kind` can never change. `maxScore` is refused with 409 `wrong_quiz_kind` on an ONLINE quiz (it is derived), and with 409 `quiz_has_grades` on a PAPER quiz that already has grades — moving the denominator under awarded scores is refused, not silently applied. A new `sessionId` must belong to the quiz's season.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/UpdateQuizRequest" } } },
+        },
+        responses: {
+          200: ok({ type: "object", required: ["updated"], properties: { updated: { type: "boolean", const: true } } }, "Updated."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_grades`."),
         },
       },
     },
