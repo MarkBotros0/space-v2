@@ -15,15 +15,12 @@ import { screen } from "@testing-library/react-native";
 import { renderWithProviders } from "./helpers/render";
 import { listRouteNames, readRouteSource } from "./helpers/routes";
 
-import CalendarScreen from "../../app/(app)/calendar";
 import EventsScreen from "../../app/(app)/events";
 import HistoryScreen from "../../app/(app)/history";
 import NotesScreen from "../../app/(app)/notes";
 import ProfileScreen from "../../app/(app)/profile";
 import QuizzesScreen from "../../app/(app)/quizzes";
 import ReportsScreen from "../../app/(app)/reports";
-import SeasonScreen from "../../app/(app)/season";
-import SeasonsScreen from "../../app/(app)/seasons";
 import SettingsScreen from "../../app/(app)/settings";
 import AlumniScreen from "../../app/(app)/students/alumni";
 import DroppedStudentsScreen from "../../app/(app)/students/dropped";
@@ -31,15 +28,12 @@ import StudentsScreen from "../../app/(app)/students/index";
 import UsersScreen from "../../app/(app)/users";
 
 const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
-  ["calendar", CalendarScreen, "Calendar"],
   ["events", EventsScreen, "JPC Events"],
   ["history", HistoryScreen, "History"],
   ["notes", NotesScreen, "Notes"],
   ["profile", ProfileScreen, "Profile"],
   ["quizzes", QuizzesScreen, "Quizzes"],
   ["reports", ReportsScreen, "Reports"],
-  ["season", SeasonScreen, "My Season"],
-  ["seasons", SeasonsScreen, "Seasons"],
   ["settings", SettingsScreen, "Settings"],
   ["students/alumni", AlumniScreen, "Alumni"],
   ["students/dropped", DroppedStudentsScreen, "Dropped Students"],

@@ -7,8 +7,10 @@ import { parseId } from "../lib/parse-id";
 import { isUniqueViolation } from "../lib/prisma-errors";
 import { newPublicId } from "../lib/public-id";
 import {
+  assignmentDetailPayload,
   listAssignmentsForSeason,
   listAssignmentsForStudent,
+  loadAssignmentById,
 } from "../lib/queries/assignments";
 import {
   listGroupsForSeason,
@@ -16,10 +18,18 @@ import {
   validateGroupWrite,
 } from "../lib/queries/groups";
 import { listSessionsForSeason } from "../lib/queries/sessions";
-import { canAccessSeason } from "../lib/permissions";
+import { canAccessSeason, canManageAssignment } from "../lib/permissions";
 import { isAdminOfSeason, isMentor, isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
+  assignmentColumns,
+  bodyErrorMessage,
+  notifyAssignmentCreated,
+  targetedStudentIds,
+  validateAssignmentRefs,
+} from "../lib/assignment-writes";
+import {
+  createAssignmentRequestSchema,
   duplicateSeasonRequestSchema,
   groupWriteRequestSchema,
   isValidSeasonCode,
@@ -510,4 +520,56 @@ seasonsRouter.get("/:id/assignments", async (req, res) => {
       : await listAssignmentsForSeason(seasonId);
 
   return apiOk(res, { assignments });
+});
+
+seasonsRouter.post("/:id/assignments", async (req, res) => {
+  const user = requireUser(req);
+  const seasonId = parseId(req.params.id);
+  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+
+  // v1 canCreateAssignment = isAdminOfSeason (SUPER passes) — permissions.ts:273-278.
+  if (!canManageAssignment(user, seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const season = await db.season.findFirst({
+    where: { id: seasonId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+
+  const parsed = createAssignmentRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return apiError(res, "bad_request", bodyErrorMessage(parsed.error, "Invalid assignment body."), 400);
+  }
+  const body = parsed.data;
+
+  const refusal = await validateAssignmentRefs(seasonId, body);
+  if (refusal) return apiError(res, refusal.code, refusal.message, 400);
+
+  const columns = assignmentColumns(body);
+  // R84: the row and its targets commit together.
+  const created = await db.$transaction(async (tx) => {
+    const assignment = await tx.assignment.create({
+      data: { seasonId, ...columns, createdById: user.userId, updatedById: user.userId },
+      select: { id: true },
+    });
+    if (!body.isAllGroups) {
+      await tx.assignmentTarget.createMany({
+        data: body.groupIds.map((groupId) => ({ assignmentId: assignment.id, groupId })),
+      });
+    }
+    return assignment;
+  });
+
+  // R65: fan-out after the commit, never inside it.
+  await notifyAssignmentCreated(
+    { id: created.id, title: body.title, dueAt: columns.dueAt },
+    await targetedStudentIds(seasonId, body.isAllGroups, body.groupIds),
+  );
+
+  const detail = await loadAssignmentById(created.id);
+  // Unreachable — the row was written above — but the loader is nullable.
+  if (!detail) return apiError(res, "not_found", "Assignment not found.", 404);
+  return apiOk(res, assignmentDetailPayload(detail, { isStudent: false, canManage: true, mySubmission: null }), 201);
 });

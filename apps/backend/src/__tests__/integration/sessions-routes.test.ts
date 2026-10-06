@@ -106,6 +106,15 @@ describe("GET /api/v1/seasons/:id/sessions", () => {
       .set("authorization", `Bearer ${outsiderToken}`);
     expect(res.status).toBe(403);
   });
+
+  it("keys each session to its org-calendar day (ruling X13)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/seasons/${seasonId}/sessions`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+    // The fixture session starts 2099-03-01T18:00Z — 20:00 in Cairo.
+    expect(res.body.data.sessions[0].dayKey).toBe("2099-03-01");
+  });
 });
 
 describe("GET /api/v1/sessions/:id", () => {
@@ -475,5 +484,50 @@ describe("DELETE /api/v1/sessions/:id", () => {
       .set("authorization", `Bearer ${studentToken}`)
       .send({});
     expect(res.status).toBe(403);
+  });
+});
+
+describe("canManageCheckIn on GET /api/v1/sessions/:id (Plan 4)", () => {
+  let leaderToken: string;
+
+  beforeAll(async () => {
+    // groupLeaderIds is a token claim loaded at login, so the group must
+    // exist before this login.
+    const leader = await createTestUser("checkin-leader", "LEADER");
+    await db.group.create({
+      data: { seasonId, name: "Leader's group", leaders: { create: { userId: leader.id } } },
+    });
+    leaderToken = await login(app, leader.email);
+  });
+
+  it("is true for a season admin — the same gate check-in-open enforces", async () => {
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ canMarkAttendance: true, canManageCheckIn: true });
+  });
+
+  it("is false for a group leader, who can still mark attendance", async () => {
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${leaderToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ canMarkAttendance: true, canManageCheckIn: false });
+  });
+
+  it("agrees with the write gate: the leader's open is refused", async () => {
+    const res = await request(app)
+      .post(`/api/v1/sessions/${sessionId}/check-in-open`)
+      .set("authorization", `Bearer ${leaderToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("is false for a student", async () => {
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${studentToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.canManageCheckIn).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import { db } from "../../db/client";
 import type { SubmissionStatus } from "../../generated/prisma/enums";
+import { orgDayKey, orgWallTime } from "../org-time";
 
 /**
  * Which group a student is in **for a given season**.
@@ -38,6 +39,7 @@ export interface AssignmentListRow {
   id: number;
   title: string;
   dueAt: Date | null;
+  dueOrgDay: string | null;
   isOverdue: boolean;
   isAllGroups: boolean;
   targetGroupIds: number[];
@@ -82,6 +84,7 @@ export async function listAssignmentsForSeason(seasonId: number): Promise<Assign
         id: a.id,
         title: a.title,
         dueAt: a.dueAt,
+        dueOrgDay: a.dueAt ? orgDayKey(a.dueAt) : null,
         isOverdue: isOverdue(a.dueAt, now),
         isAllGroups: a.isAllGroups,
         targetGroupIds,
@@ -339,6 +342,37 @@ export async function loadAssignmentTracker(
     submittedCount: rows.filter((r) => r.status !== "PENDING" && r.status !== "DRAFT").length,
     expectedCount: rows.length,
     rows,
+  };
+}
+
+export interface MySubmissionData {
+  publicId: string;
+  status: SubmissionStatus;
+  submittedAt: Date | null;
+  reviewedAt: Date | null;
+  feedback: string | null;
+  isLate: boolean;
+}
+
+/**
+ * The detail response, built in one place for GET, POST and PATCH so the three
+ * cannot drift. Everything derived is derived here, server-side (ruling C4):
+ * `isOverdue`, and the organisation-clock day/time of the deadline that every
+ * screen labels with and the edit form pre-fills from (C2/X13). Students get
+ * `groupIds: null` (ruling C8 — narrow the payload, not just the access).
+ */
+export function assignmentDetailPayload(
+  detail: AssignmentDetailData,
+  opts: { isStudent: boolean; canManage: boolean; mySubmission: MySubmissionData | null },
+) {
+  return {
+    ...detail,
+    groupIds: opts.isStudent ? null : detail.groupIds,
+    isOverdue: isOverdue(detail.dueAt, new Date()),
+    dueOrgDay: detail.dueAt ? orgDayKey(detail.dueAt) : null,
+    dueOrgTime: detail.dueAt ? orgWallTime(detail.dueAt) : null,
+    mySubmission: opts.mySubmission,
+    canManage: opts.canManage,
   };
 }
 

@@ -2,7 +2,15 @@
 // are exact-value tests of Cairo's rules.
 jest.mock("../lib/config", () => ({ config: { orgTimezone: "Africa/Cairo" } }));
 
-import { addWeeksInOrgTime, formatInOrgTime, fromOrgWallClock, orgWallClock } from "../lib/org-time";
+import {
+  addWeeksInOrgTime,
+  formatInOrgTime,
+  fromOrgWallClock,
+  orgDayKey,
+  orgWallClock,
+  orgWallClockToInstant,
+  orgWallTime,
+} from "../lib/org-time";
 
 describe("formatInOrgTime", () => {
   it("renders an instant as the organisation's wall clock, not the host's", () => {
@@ -40,5 +48,51 @@ describe("orgWallClock / fromOrgWallClock", () => {
   it("round-trips an instant", () => {
     const at = new Date("2099-07-01T09:30:15.250Z");
     expect(fromOrgWallClock(orgWallClock(at)).toISOString()).toBe(at.toISOString());
+  });
+});
+
+describe("orgDayKey", () => {
+  // config.orgTimezone defaults to Africa/Cairo (Plan 3): UTC+2 in March.
+  // If the configured zone changes, these expectations change with it.
+  it("keys an evening session to its own org-calendar day", () => {
+    expect(orgDayKey(new Date("2099-03-01T18:00:00.000Z"))).toBe("2099-03-01");
+  });
+
+  it("keys a late-UTC instant to the NEXT day when the org clock has passed midnight", () => {
+    // 23:30Z is 01:30 on the 2nd in Cairo. A device in UTC would group this
+    // session under the 1st — the bug ruling X13 exists to prevent.
+    expect(orgDayKey(new Date("2099-03-01T23:30:00.000Z"))).toBe("2099-03-02");
+  });
+
+  it("zero-pads month and day", () => {
+    expect(orgDayKey(new Date("2099-01-05T10:00:00.000Z"))).toBe("2099-01-05");
+  });
+});
+
+describe("orgWallTime / orgWallClockToInstant (Plan 5 — due dates, C2)", () => {
+  it("reads the org wall-clock time of an instant on both sides of DST", () => {
+    expect(orgWallTime(new Date("2099-03-10T21:59:00.000Z"))).toBe("23:59"); // UTC+2
+    expect(orgWallTime(new Date("2099-05-01T20:59:00.000Z"))).toBe("23:59"); // UTC+3
+  });
+
+  it("composes the instant an org day and time name — the offset follows DST", () => {
+    expect(orgWallClockToInstant("2099-03-10", "23:59").toISOString()).toBe(
+      "2099-03-10T21:59:00.000Z",
+    );
+    expect(orgWallClockToInstant("2099-05-01", "23:59").toISOString()).toBe(
+      "2099-05-01T20:59:00.000Z",
+    );
+    expect(orgWallClockToInstant("2099-01-15", null).toISOString()).toBe("2099-01-14T22:00:00.000Z");
+  });
+
+  it("round-trips through orgDayKey and orgWallTime", () => {
+    const at = orgWallClockToInstant("2099-10-29", "09:05"); // the day DST ends
+    expect(orgDayKey(at)).toBe("2099-10-29");
+    expect(orgWallTime(at)).toBe("09:05");
+  });
+
+  it("refuses a malformed day or time instead of composing garbage", () => {
+    expect(() => orgWallClockToInstant("2099-3-10", "23:59")).toThrow(RangeError);
+    expect(() => orgWallClockToInstant("2099-03-10", "24:00")).toThrow(RangeError);
   });
 });

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { assignmentTypeSchema, submissionStatusSchema } from "./enums";
+import { isoDaySchema, wallTimeSchema } from "./org-time";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 //
@@ -38,6 +39,12 @@ export const staffAssignmentListItemSchema = z.object({
   id: z.number(),
   title: z.string(),
   dueAt: z.string().nullable(),
+  /**
+   * The organisation-calendar day `dueAt` falls on (ruling C4/X13). Screens
+   * label the deadline with this; formatting `dueAt` on the device would show
+   * a different day to a reader in a different zone.
+   */
+  dueOrgDay: isoDaySchema.nullable(),
   /**
    * Derived server-side (ruling C4): `dueAt` is in the past. Never re-derive
    * this on the client — a device in another timezone would disagree with the
@@ -102,6 +109,9 @@ export const assignmentDetailSchema = z.object({
   title: z.string(),
   description: z.string().nullable(),
   dueAt: z.string().nullable(),
+  /** Org-calendar day and org wall-clock time of `dueAt`; both null when there is no due date. */
+  dueOrgDay: isoDaySchema.nullable(),
+  dueOrgTime: wallTimeSchema.nullable(),
   isOverdue: z.boolean(),
   isAllGroups: z.boolean(),
   type: assignmentTypeSchema,
@@ -157,11 +167,20 @@ export type AssignmentTracker = z.infer<typeof assignmentTrackerSchema>;
 // Request schemas
 // ---------------------------------------------------------------------------
 
+/** v1's form defaulted a picked due date to 23:59 (spec 07 R19). */
+export const DEFAULT_DUE_TIME = "23:59";
+
 const assignmentWriteBase = z.object({
   title: z.string().min(2).max(160),
   description: z.string().max(20000).nullable().optional(),
-  /** ISO-8601 instant. Wall-clock composition happens before the wire, never here. */
-  dueAt: z.string().datetime({ offset: true }).nullable().optional(),
+  /**
+   * The due date as an organisation-calendar day plus wall-clock time. The
+   * server composes the instant in config.orgTimezone (ruling C2). v1 sent an
+   * instant composed with `setHours` in the author's browser zone (R45), so
+   * the same "23:59" meant a different moment per author.
+   */
+  dueDay: isoDaySchema.nullable().optional(),
+  dueTime: wallTimeSchema.nullable().optional(),
   sessionId: z.number().int().positive().nullable().optional(),
   type: assignmentTypeSchema.default("STANDARD"),
   forumMinWords: z.number().int().min(0).max(2000).nullable().optional(),
@@ -170,7 +189,8 @@ const assignmentWriteBase = z.object({
   allowedMimeCategories: z.array(mimeCategorySchema).default([]),
   /**
    * Targeting. In v1 these two were read off the *raw* request body, never the
-   * parsed one, so nothing constrained them at all. They are in the schema now.
+   * parsed one, so nothing constrained them at all (R11). They are in the
+   * schema now; the server additionally checks each id belongs to the season.
    */
   isAllGroups: z.boolean(),
   groupIds: z.array(z.number().int().positive()).default([]),
@@ -195,19 +215,19 @@ function refineTargeting(value: AssignmentWriteParsed, ctx: z.RefinementCtx): vo
 }
 
 /**
- * The type-driven coercion v1 applied in its action bodies, hoisted into the
- * schema so both write paths get it identically and neither can forget it.
- *
- * A FORUM assignment cannot hold file settings; a STANDARD one cannot hold
- * forum settings. Duplicate group ids collapse, which is what stops v1's
- * update path from throwing a unique-constraint error mid-transaction.
+ * The type-driven coercion v1 applied in its action bodies (R14–R17), hoisted
+ * into the schema so both write paths get it identically and neither can
+ * forget it. Duplicate group ids collapse, which is what stops v1's update
+ * path from throwing a unique-constraint error mid-transaction (R70).
  */
 function normalizeAssignmentWrite(value: AssignmentWriteParsed) {
   const isForum = value.type === "FORUM";
+  const dueDay = value.dueDay ?? null;
   return {
     title: value.title,
     description: value.description ?? null,
-    dueAt: value.dueAt ?? null,
+    dueDay,
+    dueTime: dueDay === null ? null : (value.dueTime ?? DEFAULT_DUE_TIME),
     sessionId: value.sessionId ?? null,
     type: value.type,
     forumMinWords: isForum ? (value.forumMinWords ?? null) : null,
@@ -219,33 +239,32 @@ function normalizeAssignmentWrite(value: AssignmentWriteParsed) {
   };
 }
 
-export const createAssignmentRequestSchema = assignmentWriteBase
-  .extend({
-    /**
-     * The owning season. Set once, here — `PATCH` has no `seasonId` at all,
-     * because an assignment can never move between seasons.
-     */
-    seasonId: z.number().int().positive(),
-  })
-  .superRefine(refineTargeting)
-  .transform((value) => ({ ...normalizeAssignmentWrite(value), seasonId: value.seasonId }));
-
-/** What a client sends. */
-export type CreateAssignmentRequest = z.input<typeof createAssignmentRequestSchema>;
-/** What the server acts on after defaults and type coercion. */
-export type CreateAssignmentBody = z.output<typeof createAssignmentRequestSchema>;
-
 /**
- * A full replace, not a partial merge. v1 had no partial update and the edit
- * form always sends every field; inventing PATCH-merge semantics here would
- * make "clear the due date" and "leave the due date alone" the same request.
+ * One body for create and for update. A full replace, not a partial merge
+ * (spec 07 R67, §8): v1 had no partial update and the edit form always sends
+ * every field; PATCH-merge semantics would make "clear the due date" and
+ * "leave the due date alone" the same request. `seasonId` is not a field —
+ * create takes it from the path and update can never change it (R68).
  */
-export const updateAssignmentRequestSchema = assignmentWriteBase
+export const assignmentWriteRequestSchema = assignmentWriteBase
   .superRefine(refineTargeting)
   .transform(normalizeAssignmentWrite);
 
-export type UpdateAssignmentRequest = z.input<typeof updateAssignmentRequestSchema>;
-export type UpdateAssignmentBody = z.output<typeof updateAssignmentRequestSchema>;
+/** What a client sends. */
+export type AssignmentWriteRequest = z.input<typeof assignmentWriteRequestSchema>;
+/** What the server acts on after defaults and type coercion. */
+export type AssignmentWriteBody = z.output<typeof assignmentWriteRequestSchema>;
+
+export const createAssignmentRequestSchema = assignmentWriteRequestSchema;
+export const updateAssignmentRequestSchema = assignmentWriteRequestSchema;
+export type CreateAssignmentRequest = AssignmentWriteRequest;
+export type CreateAssignmentBody = AssignmentWriteBody;
+export type UpdateAssignmentRequest = AssignmentWriteRequest;
+export type UpdateAssignmentBody = AssignmentWriteBody;
+
+/** `DELETE /assignments/:id`. */
+export const assignmentDeletedResponseSchema = z.object({ deleted: z.literal(true) });
+export type AssignmentDeletedResponse = z.infer<typeof assignmentDeletedResponseSchema>;
 
 /**
  * Outstanding = not yet handed in: PENDING or DRAFT. The exact complement of

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { attendanceStatusSchema, type AttendanceStatus } from "./enums";
+import { attendanceStatusSchema } from "./enums";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 
@@ -8,6 +8,12 @@ export const sessionListItemSchema = z.object({
   id: z.number(),
   title: z.string(),
   startsAt: z.string(),
+  /**
+   * The organisation-calendar day of `startsAt`, "YYYY-MM-DD", computed
+   * server-side in the org timezone (ruling X13). Group by this — never by
+   * formatting `startsAt` in the device zone.
+   */
+  dayKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   durationMinutes: z.number(),
   location: z.string().nullable(),
   recurrenceGroupId: z.string().nullable(),
@@ -25,30 +31,46 @@ export const sessionListItemSchema = z.object({
 });
 export type SessionListItem = z.infer<typeof sessionListItemSchema>;
 
-export interface MyAttendance {
-  status: AttendanceStatus;
-  notes: string | null;
-  lateMinutes: number | null;
-  checkedInAt: string | null;
-}
+export const myAttendanceSchema = z.object({
+  status: attendanceStatusSchema,
+  notes: z.string().nullable(),
+  lateMinutes: z.number().nullable(),
+  checkedInAt: z.string().nullable(),
+});
+export type MyAttendance = z.infer<typeof myAttendanceSchema>;
 
-export interface SessionDetail {
-  id: number;
-  title: string;
-  description: string | null;
-  startsAt: string;
-  durationMinutes: number;
-  location: string | null;
-  youtubeUrl: string | null;
-  recurrenceGroupId: string | null;
-  seasonId: number;
-  seasonCode: string;
-  seasonTitle: string;
-  checkInOpen: boolean;
+export const sessionDetailSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  description: z.string().nullable(),
+  startsAt: z.string(),
+  durationMinutes: z.number(),
+  location: z.string().nullable(),
+  youtubeUrl: z.string().nullable(),
+  recurrenceGroupId: z.string().nullable(),
+  seasonId: z.number(),
+  seasonCode: z.string(),
+  seasonTitle: z.string(),
+  /**
+   * True only while a scan would actually be accepted — opened, not closed,
+   * within the server's three-hour window. The client renders this flag and
+   * never re-derives the rule (ruling C4).
+   */
+  checkInOpen: z.boolean(),
   /** Present only for students; null for everyone else. */
-  myAttendance: MyAttendance | null;
-  canMarkAttendance: boolean;
-}
+  myAttendance: myAttendanceSchema.nullable(),
+  /** Season admins AND group leaders (attendanceScopeFor). Drives "Mark attendance". */
+  canMarkAttendance: z.boolean(),
+  /**
+   * Season admins only (isAdminOfSeason) — the open/close gate. A leader has
+   * canMarkAttendance but not this, and gets the read-only live roster.
+   */
+  canManageCheckIn: z.boolean(),
+});
+export type SessionDetail = z.infer<typeof sessionDetailSchema>;
+
+export const checkInOpenResponseSchema = z.object({ checkInToken: z.string() });
+export const checkInCloseResponseSchema = z.object({ closed: z.literal(true) });
 
 export const attendanceRosterRowSchema = z.object({
   studentUserId: z.number(),
