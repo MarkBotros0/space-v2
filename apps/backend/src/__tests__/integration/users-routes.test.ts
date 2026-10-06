@@ -274,6 +274,13 @@ describe("POST /api/v1/users/:id/deactivate & reactivate", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.deletedAt).not.toBeNull();
 
+    // Asserted on the rows BEFORE any rotate attempt: rotating revokes the
+    // presented token itself, and issueSession's deletedAt check would 401 it
+    // anyway, so the 401 below cannot prove the revocation on its own.
+    // Otherwise a reactivation would resurrect every pre-deactivation session.
+    const live = await db.refreshToken.count({ where: { userId: target.id, revokedAt: null } });
+    expect(live).toBe(0);
+
     const rotate = await request(app)
       .post("/api/v1/auth/refresh")
       .send({ refreshToken: oldRefresh });
