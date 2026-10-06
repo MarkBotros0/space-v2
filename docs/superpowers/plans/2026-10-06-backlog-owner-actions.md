@@ -38,6 +38,11 @@ been run.
   (d) try to demote or deactivate the only active SUPER and confirm it is
   refused.
 
+- Plan 10, students and accounts follow-up: Task 11's device checklist in
+  `2026-10-05-plan-10-students-accounts-followup.md`. Also open a real
+  `spacev2://reset-password?token=...` link on a phone: the deep link was only
+  tested in Jest.
+
 The testing thread's PR #8 (Maestro flows, seed script, web build) may replace
 some of this; it had never been run when this was written.
 
@@ -51,6 +56,9 @@ some of this; it had never been run when this was written.
   silently not sent (invites are still created). Send one real invite email
   and confirm delivery; no thread could test real mail.
 - `INVITE_TOKEN_TTL_HOURS`: defaults to 168 (7 days). Confirm that suits you.
+- `MOBILE_APP_SCHEME`: used to build the link in password-reset emails
+  (the app's scheme is `spacev2`). Send yourself a real reset email and open
+  the link on a phone.
 - `ENABLE_UPLOADS` stays `false` until the CMS/storage driver exists.
 
 ## 4. Cutover operations from Plan 9 (spec 11)
@@ -88,7 +96,6 @@ These are operations on the live database, not code:
 
 ## 7. Still to build
 
-Plans 10 to 18 are not started: students/accounts follow-up (graduate, delete,
-create/edit forms, forgot/reset password, `/users/new`), student self-service,
+Plans 11 to 18 are not started: student self-service,
 notes and engagement, notifications and push, video/forum/events, reports and
 exports, role dashboards, imports, cutover.
