@@ -19,7 +19,6 @@ import EventsScreen from "../../app/(app)/events";
 import HistoryScreen from "../../app/(app)/history";
 import NotesScreen from "../../app/(app)/notes";
 import ProfileScreen from "../../app/(app)/profile";
-import QuizzesScreen from "../../app/(app)/quizzes";
 import ReportsScreen from "../../app/(app)/reports";
 import SettingsScreen from "../../app/(app)/settings";
 import UsersScreen from "../../app/(app)/users";
@@ -29,7 +28,6 @@ const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
   ["history", HistoryScreen, "History"],
   ["notes", NotesScreen, "Notes"],
   ["profile", ProfileScreen, "Profile"],
-  ["quizzes", QuizzesScreen, "Quizzes"],
   ["reports", ReportsScreen, "Reports"],
   ["settings", SettingsScreen, "Settings"],
   ["users", UsersScreen, "Users"],

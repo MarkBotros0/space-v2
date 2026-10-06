@@ -94,4 +94,15 @@ export const queryKeys = {
     all: ["attendance"] as const,
     roster: (sessionId: number | null) => [...queryKeys.attendance.all, "roster", sessionId] as const,
   },
+  quizzes: {
+    all: ["quizzes"] as const,
+    lists: () => [...queryKeys.quizzes.all, "list"] as const,
+    bySeason: (seasonId: number | null) => [...queryKeys.quizzes.lists(), { seasonId }] as const,
+    details: () => [...queryKeys.quizzes.all, "detail"] as const,
+    // number | null, like sessions.bySeason: a null key never collides with a
+    // real quiz's cache entry, so no -1 sentinel anywhere.
+    detail: (id: number | null) => [...queryKeys.quizzes.details(), { id }] as const,
+    attempts: (id: number | null) => [...queryKeys.quizzes.detail(id), "attempts"] as const,
+    grades: (id: number | null) => [...queryKeys.quizzes.detail(id), "grades"] as const,
+  },
 } as const;

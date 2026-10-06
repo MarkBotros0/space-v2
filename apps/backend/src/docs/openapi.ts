@@ -102,6 +102,7 @@ export const openApiDocument = {
     { name: "Sessions", description: "Sessions, attendance, and check-in" },
     { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
     { name: "Submissions", description: "Submissions and their files" },
+    { name: "Quizzes", description: "Quiz authoring, attempts and grading" },
   ],
   security: [{ bearerAuth: [] }],
   components: {
@@ -142,6 +143,236 @@ export const openApiDocument = {
       AttendanceStatus: { type: "string", enum: ["PRESENT", "ABSENT", "LATE"] },
       SubmissionStatus: { type: "string", enum: ["DRAFT", "SUBMITTED", "REVIEWED", "RETURNED"] },
       AssignmentType: { type: "string", enum: ["STANDARD", "FORUM"] },
+
+      QuizKind: { type: "string", enum: ["PAPER", "ONLINE"] },
+      QuizQuestionType: { type: "string", enum: ["MCQ", "ESSAY"] },
+      QuizAttemptStatus: { type: "string", enum: ["IN_PROGRESS", "SUBMITTED", "GRADED"] },
+      CreateQuizRequest: {
+        type: "object",
+        required: ["seasonId", "title", "kind"],
+        properties: {
+          seasonId: { type: "integer", minimum: 1 },
+          sessionId: { type: ["integer", "null"], minimum: 1, description: "Null for a season-level quiz." },
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          maxScore: { type: "integer", minimum: 1, maximum: 1000, description: "Required for PAPER; rejected for ONLINE." },
+        },
+      },
+      UpdateQuizRequest: {
+        type: "object",
+        description: "At least one field. `kind` is not accepted.",
+        properties: {
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          maxScore: { type: "integer", minimum: 1, maximum: 1000 },
+          sessionId: { type: ["integer", "null"], minimum: 1 },
+        },
+      },
+      QuizSummary: {
+        type: "object",
+        required: ["id", "title", "kind", "publishedAt", "questionCount", "maxScore", "sessionId", "sessionTitle", "sessionDate", "seasonId", "seasonCode", "gradedCount", "studentCount"],
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          publishedAt: { type: ["string", "null"], format: "date-time" },
+          questionCount: { type: "integer" },
+          maxScore: { type: "integer" },
+          sessionId: { type: ["integer", "null"] },
+          sessionTitle: { type: ["string", "null"] },
+          sessionDate: { type: ["string", "null"], format: "date-time" },
+          seasonId: { type: "integer" },
+          seasonCode: { type: "string" },
+          gradedCount: { type: "integer" },
+          studentCount: { type: "integer" },
+        },
+      },
+      QuizQuestionAuthoring: {
+        type: "object",
+        description: "The authoring projection — the only quiz question shape that carries the answer key (`correctIndex`).",
+        required: ["id", "order", "type", "prompt", "points", "options", "correctIndex"],
+        properties: {
+          id: { type: "integer" },
+          order: { type: "integer", description: "A 0-based position; renumbered on delete." },
+          type: { $ref: "#/components/schemas/QuizQuestionType" },
+          prompt: { type: "string" },
+          points: { type: "integer" },
+          options: { type: "array", items: { type: "string" } },
+          correctIndex: { type: ["integer", "null"] },
+        },
+      },
+      QuizQuestionRequest: {
+        type: "object",
+        required: ["type", "prompt", "points"],
+        properties: {
+          type: { $ref: "#/components/schemas/QuizQuestionType" },
+          prompt: { type: "string", minLength: 2, maxLength: 2000 },
+          points: { type: "integer", minimum: 1, maximum: 100 },
+          options: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 500 }, description: "MCQ needs at least 2. An ESSAY's options are discarded." },
+          correctIndex: { type: ["integer", "null"], minimum: 0, description: "MCQ only; must be a valid index into `options`. Discarded for ESSAY." },
+        },
+      },
+      QuizAuthoringDetail: {
+        type: "object",
+        description: "Staff projection of a quiz. Carries the answer key (`questions[].correctIndex`).",
+        required: ["id", "title", "kind", "seasonId", "seasonCode", "sessionId", "sessionTitle", "publishedAt", "maxScore", "attemptCount", "gradeCount", "canEditStructure", "canManage", "questions"],
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          seasonId: { type: "integer" },
+          seasonCode: { type: "string" },
+          sessionId: { type: ["integer", "null"] },
+          sessionTitle: { type: ["string", "null"] },
+          publishedAt: { type: ["string", "null"], format: "date-time" },
+          maxScore: { type: "integer" },
+          attemptCount: { type: "integer" },
+          gradeCount: { type: "integer" },
+          canEditStructure: { type: "boolean", description: "`canManage`, ONLINE, and no attempts yet — exactly the condition the question writes enforce." },
+          canManage: { type: "boolean", description: "SUPER or admin of the quiz's season (authoring and publishing); a grading-only leader gets false." },
+          questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionAuthoring" } },
+        },
+      },
+      QuizQuestionStudent: {
+        type: "object",
+        description: "The student projection of a question. **There is no `correctIndex` field** — not null, not optional; it is a different shape from `QuizQuestionAuthoring`.",
+        required: ["id", "order", "type", "prompt", "points", "options", "selectedIndex", "text", "isCorrect", "pointsAwarded"],
+        properties: {
+          id: { type: "integer" },
+          order: { type: "integer" },
+          type: { $ref: "#/components/schemas/QuizQuestionType" },
+          prompt: { type: "string" },
+          points: { type: "integer" },
+          options: { type: "array", items: { type: "string" } },
+          selectedIndex: { type: ["integer", "null"] },
+          text: { type: ["string", "null"] },
+          isCorrect: { type: ["boolean", "null"], description: "Null until an auto-graded submit." },
+          pointsAwarded: { type: ["integer", "null"], description: "Null until graded." },
+        },
+      },
+      StudentQuizDetail: {
+        type: "object",
+        description: "A student's view of an ONLINE quiz and their own attempt. `autoScore`/`manualScore` are deliberately absent; `totalScore` is the only score shown.",
+        required: ["id", "title", "kind", "seasonId", "maxScore", "sessionTitle", "attemptId", "attemptNumber", "status", "totalScore", "submittedAt", "gradedAt", "questions"],
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          seasonId: { type: "integer" },
+          maxScore: { type: "integer" },
+          sessionTitle: { type: ["string", "null"] },
+          attemptId: { type: ["integer", "null"], description: "Null until the student starts." },
+          attemptNumber: { type: "integer", description: "0 when there is no attempt." },
+          status: { oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }] },
+          totalScore: { type: ["integer", "null"] },
+          submittedAt: { type: ["string", "null"], format: "date-time" },
+          gradedAt: { type: ["string", "null"], format: "date-time" },
+          questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionStudent" } },
+        },
+      },
+      QuizGradingAnswer: {
+        type: "object",
+        description: "Grader-only: carries the answer key by design.",
+        required: ["questionId", "type", "prompt", "points", "options", "correctIndex", "selectedIndex", "isCorrect", "text", "pointsAwarded"],
+        properties: {
+          questionId: { type: "integer" },
+          type: { $ref: "#/components/schemas/QuizQuestionType" },
+          prompt: { type: "string" },
+          points: { type: "integer" },
+          options: { type: "array", items: { type: "string" } },
+          correctIndex: { type: ["integer", "null"] },
+          selectedIndex: { type: ["integer", "null"] },
+          isCorrect: { type: ["boolean", "null"] },
+          text: { type: ["string", "null"] },
+          pointsAwarded: { type: ["integer", "null"] },
+        },
+      },
+      QuizGradingAttempt: {
+        type: "object",
+        required: ["attemptId", "studentUserId", "studentName", "attemptNumber", "status", "autoScore", "manualScore", "totalScore", "submittedAt", "gradedByName", "answers"],
+        properties: {
+          attemptId: { type: "integer" },
+          studentUserId: { type: "integer" },
+          studentName: { type: ["string", "null"] },
+          attemptNumber: { type: "integer" },
+          status: { $ref: "#/components/schemas/QuizAttemptStatus" },
+          autoScore: { type: ["integer", "null"] },
+          manualScore: { type: ["integer", "null"] },
+          totalScore: { type: ["integer", "null"] },
+          submittedAt: { type: ["string", "null"], format: "date-time" },
+          gradedByName: { type: ["string", "null"], description: "Who graded it; null for an auto-graded attempt." },
+          answers: { type: "array", items: { $ref: "#/components/schemas/QuizGradingAnswer" } },
+        },
+      },
+      QuizGradingPage: {
+        type: "object",
+        required: ["id", "title", "kind", "maxScore", "hasEssays", "studentCount", "items", "waiting", "nextCursor"],
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          maxScore: { type: "integer" },
+          hasEssays: { type: "boolean" },
+          studentCount: { type: "integer", description: "The caller's whole student set, not just this page." },
+          items: { type: "array", description: "The latest attempt of each student on this page whose attempt is SUBMITTED or GRADED.", items: { $ref: "#/components/schemas/QuizGradingAttempt" } },
+          waiting: {
+            type: "array",
+            description: "Students on this page with no gradable attempt: never started (`startedAt` null) or latest attempt IN_PROGRESS (`startedAt` = when it was opened).",
+            items: {
+              type: "object",
+              required: ["studentUserId", "studentName", "startedAt"],
+              properties: {
+                studentUserId: { type: "integer" },
+                studentName: { type: ["string", "null"] },
+                startedAt: { type: ["string", "null"], format: "date-time" },
+              },
+            },
+          },
+          nextCursor: { type: ["integer", "null"], description: "A student user id; pages over the caller's student set." },
+        },
+      },
+      QuizGradeRow: {
+        type: "object",
+        required: ["studentUserId", "studentName", "score", "notes", "gradedAt", "gradedByName"],
+        properties: {
+          studentUserId: { type: "integer" },
+          studentName: { type: ["string", "null"] },
+          score: { type: ["integer", "null"] },
+          notes: { type: ["string", "null"] },
+          gradedAt: { type: ["string", "null"], format: "date-time" },
+          gradedByName: { type: ["string", "null"] },
+        },
+      },
+      QuizGradeSheet: {
+        type: "object",
+        description: "One row per student in the caller's scope, ungraded students included.",
+        required: ["id", "title", "kind", "maxScore", "seasonId", "sessionTitle", "studentCount", "rows"],
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          maxScore: { type: "integer" },
+          seasonId: { type: "integer" },
+          sessionTitle: { type: ["string", "null"] },
+          studentCount: { type: "integer" },
+          rows: { type: "array", items: { $ref: "#/components/schemas/QuizGradeRow" } },
+        },
+      },
+      StudentQuizResult: {
+        type: "object",
+        required: ["quizId", "title", "kind", "maxScore", "score", "notes", "gradedAt", "sessionTitle", "sessionDate", "attemptStatus"],
+        properties: {
+          quizId: { type: "integer" },
+          title: { type: "string" },
+          kind: { $ref: "#/components/schemas/QuizKind" },
+          maxScore: { type: "integer" },
+          score: { type: ["integer", "null"] },
+          notes: { type: ["string", "null"] },
+          gradedAt: { type: ["string", "null"], format: "date-time" },
+          sessionTitle: { type: ["string", "null"] },
+          sessionDate: { type: ["string", "null"], format: "date-time" },
+          attemptStatus: { oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }], description: "ONLINE only." },
+        },
+      },
 
       Session: {
         type: "object",
@@ -2202,6 +2433,454 @@ export const openApiDocument = {
             description: "No such file, it belongs to another submission, or the stored blob is missing.",
             content: { "application/json": { schema: errorResponse } },
           },
+        },
+      },
+    },
+
+    "/api/v1/quizzes": {
+      post: {
+        tags: ["Quizzes"],
+        summary: "Create a quiz",
+        description:
+          "Season-admin (or SUPER) only. `seasonId` is in the **body**, not the path: every quiz route lives in one router mounted at `/api/v1/quizzes`, so creation cannot hang off `/seasons/{id}` — the same deviation `POST /api/v1/sessions` makes. `sessionId` may be null (a season-level quiz); when set it must belong to `seasonId` (400 `session_not_in_season`). PAPER requires `maxScore`; ONLINE **rejects** it (400) and starts at 0, then derives it from question points.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/CreateQuizRequest" } } },
+        },
+        responses: {
+          201: ok({ type: "object", required: ["id"], properties: { id: { type: "integer" } } }, "Created."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      get: {
+        tags: ["Quizzes"],
+        summary: "List quizzes (row shape depends on the caller's role)",
+        description:
+          "**The row shape differs by role.** Staff (SUPER, season admin, leader with a group in the season) receive `QuizSummary` rows. A STUDENT receives their own `StudentQuizResult` rows and `nextCursor` is always null: PAPER quizzes appear only once graded, ONLINE quizzes as soon as they are published.\n\n`seasonId` defaults to the caller's active season; with none, the list is empty. Staff outside the season get 403.\n\nOne definition each, computed server-side: `studentCount` is the ACTIVE enrolments of the quiz's season narrowed to the caller's scope (a leader sees only their own groups); `gradedCount` is, within that same student set, QuizGrade rows with a non-null score for PAPER and QuizAttempt rows with status GRADED for ONLINE.",
+        parameters: [
+          { name: "seasonId", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "sessionId", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "cursor", in: "query", description: "Quiz id; returns rows with a smaller id.", schema: { type: "integer", minimum: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["items", "nextCursor"],
+              properties: {
+                items: {
+                  type: "array",
+                  items: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/QuizSummary" },
+                      { $ref: "#/components/schemas/StudentQuizResult" },
+                    ],
+                  },
+                },
+                nextCursor: { type: ["integer", "null"] },
+              },
+            },
+            "Newest first for staff; by session date descending for a student.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}": {
+      get: {
+        tags: ["Quizzes"],
+        summary: "Quiz detail (the schema depends on the caller's role)",
+        description:
+          "**Two response schemas, chosen by role on the server.** Staff with a scope in the quiz's season (SUPER, season admin, leader of a group in it) receive `QuizAuthoringDetail`, which **carries the answer key** because grading needs it. A STUDENT receives `StudentQuizDetail`, whose questions have **no `correctIndex` field at all**; this is enforced by separate loaders with separate selects and pinned by a raw-JSON integration test. A student gets 404 for a quiz that is unpublished, PAPER, or in a season they cannot access (indistinguishable from a missing quiz). A GET never creates an attempt.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            {
+              oneOf: [
+                { $ref: "#/components/schemas/QuizAuthoringDetail" },
+                { $ref: "#/components/schemas/StudentQuizDetail" },
+              ],
+            },
+            "`QuizAuthoringDetail` for staff, `StudentQuizDetail` for a student.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Quizzes"],
+        summary: "Edit a quiz's title, session or max score",
+        description:
+          "Season-admin (or SUPER) of the quiz's season. `kind` can never change. `maxScore` is refused with 409 `wrong_quiz_kind` on an ONLINE quiz (it is derived), and with 409 `quiz_has_grades` on a PAPER quiz that already has grades — moving the denominator under awarded scores is refused, not silently applied. A new `sessionId` must belong to the quiz's season.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/UpdateQuizRequest" } } },
+        },
+        responses: {
+          200: ok({ type: "object", required: ["updated"], properties: { updated: { type: "boolean", const: true } } }, "Updated."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_grades`."),
+        },
+      },
+    },
+
+    "/api/v1/quizzes/{id}/questions": {
+      post: {
+        tags: ["Quizzes"],
+        summary: "Add a question to an ONLINE quiz",
+        description:
+          "Season-admin (or SUPER) only — a leader is refused. Appended at the end (`order` = current count) and, in the same transaction, the quiz's `maxScore` is recomputed as the sum of question points.\n\n**Structural freeze (D3):** once any attempt exists, every question write (add, edit, delete, reorder) is refused with 409 `quiz_has_attempts`; nothing versions a quiz, so editing under attempts would rebase graded scores or cascade-delete graded answers. A PAPER quiz has no questions: 409 `wrong_quiz_kind`.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/QuizQuestionRequest" } } },
+        },
+        responses: {
+          201: ok({ $ref: "#/components/schemas/QuizQuestionAuthoring" }, "The created question."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_attempts`."),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}/questions/order": {
+      put: {
+        tags: ["Quizzes"],
+        summary: "Reorder a quiz's questions",
+        description:
+          "Season-admin only. `questionIds` must be an exact permutation of the quiz's current question ids (400 `invalid_order` otherwise — a partial list would leave omitted questions on stale positions). Subject to the same attempt freeze as every question write (409 `quiz_has_attempts`). Returns the questions in their new order.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["questionIds"],
+                properties: { questionIds: { type: "array", minItems: 1, items: { type: "integer", minimum: 1 } } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["questions"],
+              properties: { questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionAuthoring" } } },
+            },
+            "The reordered questions.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_attempts`."),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}/questions/{questionId}": {
+      patch: {
+        tags: ["Quizzes"],
+        summary: "Replace a question's content",
+        description:
+          "Season-admin only. Takes the same body as create; `order` is not writable here (use the reorder endpoint). The question is addressed through its quiz: an id belonging to another quiz is 404 `question_not_in_quiz`. Recomputes `maxScore`. Frozen once attempts exist (409 `quiz_has_attempts`).",
+        parameters: [idParam, { name: "questionId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/QuizQuestionRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/QuizQuestionAuthoring" }, "The updated question."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: conflict("`not_found` (quiz) or `question_not_in_quiz`."),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_attempts`."),
+        },
+      },
+      delete: {
+        tags: ["Quizzes"],
+        summary: "Delete a question",
+        description:
+          "Season-admin only. In one transaction: deletes the question, renumbers the survivors to a gap-free `0..n-1`, and recomputes `maxScore`. Frozen once attempts exist (409 `quiz_has_attempts`); 404 `question_not_in_quiz` for another quiz's question.",
+        parameters: [idParam, { name: "questionId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          200: ok({ type: "object", required: ["deleted"], properties: { deleted: { type: "boolean", const: true } } }, "Deleted."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: conflict("`not_found` (quiz) or `question_not_in_quiz`."),
+          409: conflict("`wrong_quiz_kind` or `quiz_has_attempts`."),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}/publish": {
+      post: {
+        tags: ["Quizzes"],
+        summary: "Publish or unpublish an ONLINE quiz",
+        description:
+          "Season-admin only. Body `{ publish: boolean }`. Publishing requires at least one question (409 `no_questions`) and every MCQ to have a `correctIndex` inside its options (409 `mcq_without_answer`); it is allowed while attempts exist. **Unpublishing is refused (409 `quiz_has_graded_attempts`) once any attempt is GRADED (D4)** — both student reads filter on `publishedAt`, so unpublishing would make graded students lose their own result. A PAPER quiz cannot be published (409 `wrong_quiz_kind`). Returns the new `publishedAt` (null when unpublished).",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { type: "object", required: ["publish"], properties: { publish: { type: "boolean" } } },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            { type: "object", required: ["publishedAt"], properties: { publishedAt: { type: ["string", "null"], format: "date-time" } } },
+            "The new publish state.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind`, `no_questions`, `mcq_without_answer` or `quiz_has_graded_attempts`."),
+        },
+      },
+    },
+
+    "/api/v1/quizzes/{id}/attempt": {
+      put: {
+        tags: ["Quizzes"],
+        summary: "Start or resume the caller's attempt",
+        description:
+          "STUDENT only (staff get 403), in a season they can access. Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The open attempt."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`quiz_not_published` or `attempt_closed`."),
+        },
+      },
+      patch: {
+        tags: ["Quizzes"],
+        summary: "Save a batch of answers",
+        description:
+          "STUDENT only. Upserts one answer per question into the open attempt (1-100 per call); saving never grades. Validation, all-or-nothing before any write: 400 `question_not_in_quiz`; 400 `wrong_answer_type` (text on an MCQ, or an option index on an ESSAY); 400 `answer_out_of_range` (`selectedIndex` must be below **that question's** option count). 409 `no_attempt` if the quiz was never started; 409 `attempt_closed` once submitted.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["answers"],
+                properties: {
+                  answers: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 100,
+                    items: {
+                      type: "object",
+                      required: ["questionId"],
+                      properties: {
+                        questionId: { type: "integer", minimum: 1 },
+                        selectedIndex: { type: ["integer", "null"], minimum: 0 },
+                        text: { type: ["string", "null"], maxLength: 20000 },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", required: ["saved"], properties: { saved: { type: "integer" } } }, "How many answers were saved."),
+          400: conflict("`bad_request`, `question_not_in_quiz`, `wrong_answer_type` or `answer_out_of_range`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          409: conflict("`no_attempt` or `attempt_closed`."),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}/attempt/submit": {
+      post: {
+        tags: ["Quizzes"],
+        summary: "Submit the open attempt",
+        description:
+          "STUDENT only. Every question must be answered (409 `attempt_incomplete`; an essay must be non-blank). MCQs are scored all-or-nothing against the key, in the same request. A quiz with an ESSAY becomes `SUBMITTED` with `autoScore` set and no `totalScore` (a human must grade it, and nobody is notified). An all-MCQ quiz becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification (link `/student/quizzes`, v1's format) is created best-effort. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail`, now with `isCorrect`/`pointsAwarded` per MCQ but never the key.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The submitted attempt."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`no_attempt`, `attempt_closed` or `attempt_incomplete`."),
+        },
+      },
+    },
+
+    "/api/v1/quizzes/{id}/attempts": {
+      get: {
+        tags: ["Quizzes"],
+        summary: "The grading list for an ONLINE quiz",
+        description:
+          "Staff with a scope in the quiz's season (SUPER, season admin, leader of a group in it). **The student set is derived on the server** from the caller's scope (a leader sees only their own groups' ACTIVE enrolments) and is never accepted from the client. Pages over that set by student id (`cursor` = last student id of the previous page). `items` holds each student's latest attempt when it is SUBMITTED or GRADED, with the answer key (grader audience). `waiting` lists students with no gradable attempt — never started, or latest attempt still IN_PROGRESS (including one just reopened) — so nobody vanishes from the screen.",
+        parameters: [
+          idParam,
+          { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+        ],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/QuizGradingPage" }, "One page of the grading list."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}/attempts/{attemptId}/grade": {
+      post: {
+        tags: ["Quizzes"],
+        summary: "Mark an attempt's essay answers",
+        description:
+          "Staff with a scope in the season; the attempt's student must be in the caller's own student set (403 `student_not_in_scope`), and the attempt must belong to this quiz (404). 409 `attempt_not_submitted` for an IN_PROGRESS attempt. `awards` must name **every** ESSAY question exactly once (400 `awards_incomplete`) and each award may not exceed that question's points (400 `score_exceeds_max` — rejected, not clamped). Sets `manualScore` = sum of awards, `totalScore` = stored `autoScore` + `manualScore`, status GRADED, `gradedById` = caller. The student gets a `QUIZ_GRADED` notification on a first grade or whenever the total changes; an identical re-save is silent. The response carries `answers: []` — refetch the list for the recomputed page.",
+        parameters: [idParam, { name: "attemptId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["awards"],
+                properties: {
+                  awards: {
+                    type: "array",
+                    minItems: 1,
+                    items: {
+                      type: "object",
+                      required: ["questionId", "points"],
+                      properties: { questionId: { type: "integer", minimum: 1 }, points: { type: "integer", minimum: 0 } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/QuizGradingAttempt" }, "The graded attempt (with an empty `answers`)."),
+          400: conflict("`bad_request`, `awards_incomplete` or `score_exceeds_max`."),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` or `student_not_in_scope`."),
+          404: errRef("NotFound"),
+          409: conflict("`attempt_not_submitted`."),
+        },
+      },
+    },
+    "/api/v1/quizzes/{id}/attempts/reopen": {
+      post: {
+        tags: ["Quizzes"],
+        summary: "Grant a student a retake",
+        description:
+          "**A leader power, not admin-only:** any staff with a scope in the season may reopen, for a student in their own student set (403 `student_not_in_scope`). Creates a new attempt (`attemptNumber` + 1, IN_PROGRESS); earlier attempts and answers are preserved. 409 `quiz_not_published` (PAPER or unpublished), `no_attempt` (never attempted), `attempt_open` (latest attempt is already IN_PROGRESS). The student is notified (reusing `QUIZ_GRADED` with retake copy, link `/student/quizzes`).",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["studentUserId"],
+                properties: { studentUserId: { type: "integer", minimum: 1 } },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok(
+            { type: "object", required: ["attemptId", "attemptNumber"], properties: { attemptId: { type: "integer" }, attemptNumber: { type: "integer" } } },
+            "The new attempt.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` or `student_not_in_scope`."),
+          404: errRef("NotFound"),
+          409: conflict("`quiz_not_published`, `no_attempt` or `attempt_open`."),
+        },
+      },
+    },
+
+    "/api/v1/quizzes/{id}/grades": {
+      get: {
+        tags: ["Quizzes"],
+        summary: "The PAPER grade sheet",
+        description:
+          "Staff with a scope in the quiz's season. One row per live student in the caller's server-derived student set (a leader: their own groups' ACTIVE enrolments; admin/SUPER: the whole season), name-ordered, with `score`/`notes` null for ungraded students and `gradedByName` as the audit trail.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/QuizGradeSheet" }, "The sheet."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      post: {
+        tags: ["Quizzes"],
+        summary: "Save PAPER grades in one batch",
+        description:
+          "Replaces v1's `saveQuizGradesAction`, which was unscoped twice over. (1) **One gate for every role:** any staff with a scope in *this quiz's season* (v1 checked the season only for LEADERs, so an ADMIN of any other season could write grades anywhere) — 403 `forbidden`. (2) **The student set is server-derived**, and every entry must be inside it: **the whole batch is rejected, nothing written,** with 403 `student_not_in_scope` if any entry is not (v1 upserted whatever ids it was sent). (3) **Atomic:** all upserts/deletes run in one transaction, and a score above the quiz's `maxScore` rejects the whole batch with 400 `score_exceeds_max` (not clamped). `score: null` **clears** that student's grade. A PAPER-only route: 409 `wrong_quiz_kind` for an ONLINE quiz. Students are notified (`QUIZ_GRADED`) only for a first grade or a changed score. Returns the sheet after the write.\n\nThere is deliberately no `DELETE /quizzes/{id}`.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["entries"],
+                properties: {
+                  entries: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 200,
+                    items: {
+                      type: "object",
+                      required: ["studentUserId", "score"],
+                      properties: {
+                        studentUserId: { type: "integer", minimum: 1 },
+                        score: { type: ["integer", "null"], minimum: 0, description: "Null clears the grade." },
+                        notes: { type: ["string", "null"], maxLength: 1000 },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/QuizGradeSheet" }, "The sheet after the write."),
+          400: conflict("`bad_request` or `score_exceeds_max`."),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` or `student_not_in_scope`."),
+          404: errRef("NotFound"),
+          409: conflict("`wrong_quiz_kind`."),
         },
       },
     },

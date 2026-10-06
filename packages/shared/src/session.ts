@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { attendanceStatusSchema } from "./enums";
+import { attendanceStatusSchema, quizKindSchema } from "./enums";
 import { isoDaySchema, wallTimeSchema } from "./org-time";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
@@ -233,14 +233,13 @@ export const checkInStateSchema = z.object({
 export type CheckInStateResponse = z.infer<typeof checkInStateSchema>;
 
 /**
- * A quiz linked to a session (v1 listQuizzesForSession). `kind` is inlined
- * because Plan 8, which owns quiz contracts, runs after this plan; Plan 8 may
- * swap in its own quizKindSchema.
+ * A quiz linked to a session (v1 listQuizzesForSession). `kind` is Plan 8's
+ * shared quiz-kind enum.
  */
 export const sessionQuizItemSchema = z.object({
   id: z.number(),
   title: z.string(),
-  kind: z.enum(["PAPER", "ONLINE"]),
+  kind: quizKindSchema,
   maxScore: z.number(),
   questionCount: z.number().int().nonnegative(),
   publishedAt: z.string().nullable(),

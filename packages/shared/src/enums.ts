@@ -16,3 +16,12 @@ export type SubmissionStatus = z.infer<typeof submissionStatusSchema>;
 
 export const assignmentTypeSchema = z.enum(["STANDARD", "FORUM"]);
 export type AssignmentType = z.infer<typeof assignmentTypeSchema>;
+
+export const quizKindSchema = z.enum(["PAPER", "ONLINE"]);
+export type QuizKind = z.infer<typeof quizKindSchema>;
+
+export const quizQuestionTypeSchema = z.enum(["MCQ", "ESSAY"]);
+export type QuizQuestionType = z.infer<typeof quizQuestionTypeSchema>;
+
+export const quizAttemptStatusSchema = z.enum(["IN_PROGRESS", "SUBMITTED", "GRADED"]);
+export type QuizAttemptStatus = z.infer<typeof quizAttemptStatusSchema>;
