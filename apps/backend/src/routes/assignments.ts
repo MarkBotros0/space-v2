@@ -5,8 +5,8 @@ import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import { canAccessSeason, canManageAssignment, staffScopeForSeason } from "../lib/permissions";
 import {
+  assignmentDetailPayload,
   isLate,
-  isOverdue,
   loadAssignmentById,
   loadAssignmentTracker,
   studentCanSeeAssignment,
@@ -69,16 +69,14 @@ assignmentsRouter.get("/:id", async (req, res) => {
     mySubmission = sub && { ...sub, isLate: isLate(sub.submittedAt, detail.dueAt) };
   }
 
-  return apiOk(res, {
-    ...detail,
-    // Ruling C8 — narrow the payload, not just the access. v1 handed students
-    // the authoring shape so its own page could re-check targeting client-side;
-    // that check now happens above, server-side, so the ids need not travel.
-    groupIds: isStudent ? null : detail.groupIds,
-    isOverdue: isOverdue(detail.dueAt, new Date()),
-    mySubmission,
-    canManage: canManageAssignment(user, detail.seasonId),
-  });
+  return apiOk(
+    res,
+    assignmentDetailPayload(detail, {
+      isStudent,
+      canManage: canManageAssignment(user, detail.seasonId),
+      mySubmission,
+    }),
+  );
 });
 
 /**

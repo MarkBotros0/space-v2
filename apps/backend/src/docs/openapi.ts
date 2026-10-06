@@ -384,6 +384,11 @@ export const openApiDocument = {
           id: { type: "integer" },
           title: { type: "string" },
           dueAt: { type: ["string", "null"], format: "date-time" },
+          dueOrgDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Organisation-calendar day of `dueAt` (ORG_TIMEZONE), derived server-side. Label deadlines with this, never by formatting `dueAt` on the device.",
+          },
           isOverdue: {
             type: "boolean",
             description:
@@ -436,6 +441,16 @@ export const openApiDocument = {
           title: { type: "string" },
           description: { type: ["string", "null"] },
           dueAt: { type: ["string", "null"], format: "date-time" },
+          dueOrgDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Organisation-calendar day of `dueAt`; null when there is no due date.",
+          },
+          dueOrgTime: {
+            type: ["string", "null"],
+            pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
+            description: "Organisation wall-clock time of `dueAt`, 24-hour `HH:mm`; null when there is no due date. With `dueOrgDay`, exactly what the write body's `dueDay`/`dueTime` take.",
+          },
           isAllGroups: { type: "boolean" },
           type: { $ref: "#/components/schemas/AssignmentType" },
           forumMinWords: { type: ["integer", "null"] },
