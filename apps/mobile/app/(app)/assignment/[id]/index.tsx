@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import type { AssignmentDetail, MySubmissionSummary } from "@space/shared";
 
-import { useAssignmentDetail } from "../../../src/hooks/use-assignments";
+import { useAssignmentDetail } from "../../../../src/hooks/use-assignments";
 import {
   useEnsureSubmission,
   useSaveSubmission,
   useSubmissionDetail,
-} from "../../../src/hooks/use-submission";
-import { formatDueDate } from "../../../src/lib/format";
-import { useTheme } from "../../../src/theme";
+} from "../../../../src/hooks/use-submission";
+import { formatDueDate } from "../../../../src/lib/format";
+import { useTheme } from "../../../../src/theme";
 import {
   Button,
   Card,
@@ -19,7 +19,7 @@ import {
   LoadingState,
   Screen,
   Text,
-} from "../../../src/ui";
+} from "../../../../src/ui";
 
 function submissionStatusLine(sub: MySubmissionSummary): string {
   if (sub.status === "REVIEWED") return "Reviewed";

@@ -1,4 +1,11 @@
-import { formatDate, formatDayKey, formatDueDate, formatSessionTime } from "../lib/format";
+import {
+  formatDate,
+  formatDayKey,
+  formatDueDate,
+  formatOrgDue,
+  formatSessionTime,
+  formatWallTime,
+} from "../lib/format";
 
 describe("format", () => {
   it("formats an ISO string from the API, not a Date", () => {
@@ -49,5 +56,21 @@ describe("formatDayKey", () => {
   it("returns the placeholder for null or a malformed key", () => {
     expect(formatDayKey(null)).toBe("—");
     expect(formatDayKey("not-a-day")).toBe("—");
+  });
+});
+
+describe("formatWallTime / formatOrgDue (server org-clock values, no zone conversion — X13)", () => {
+  it("renders an HH:mm wall-clock time as 12-hour text", () => {
+    expect(formatWallTime("23:59")).toBe("11:59 PM");
+    expect(formatWallTime("00:05")).toBe("12:05 AM");
+    expect(formatWallTime("12:00")).toBe("12:00 PM");
+    expect(formatWallTime(null)).toBe("—");
+    expect(formatWallTime("7pm")).toBe("—");
+  });
+
+  it("labels a deadline from the server's org day and time", () => {
+    expect(formatOrgDue("2099-04-01", "23:59")).toBe("Apr 1, 2099, 11:59 PM");
+    expect(formatOrgDue("2099-04-01", null)).toBe("Apr 1, 2099");
+    expect(formatOrgDue(null, null)).toBe("No due date");
   });
 });

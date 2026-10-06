@@ -46,3 +46,23 @@ export function formatDayKey(dayKey: string | null): string {
   if (!isValid(date)) return PLACEHOLDER;
   return format(date, "MMM d, yyyy");
 }
+
+/**
+ * e.g. "11:59 PM" — an organisation wall-clock time ("23:59") from the server.
+ * Pure text arithmetic, no Date and no timezone: the server already resolved
+ * the instant onto the org clock (ruling X13).
+ */
+export function formatWallTime(time: string | null): string {
+  if (time == null) return PLACEHOLDER;
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  if (!m) return PLACEHOLDER;
+  const hour = Number(m[1]);
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  return `${twelve}:${m[2] ?? "00"} ${hour < 12 ? "AM" : "PM"}`;
+}
+
+/** e.g. "Apr 1, 2099, 11:59 PM" — a deadline from the server's `dueOrgDay`/`dueOrgTime`. */
+export function formatOrgDue(day: string | null, time: string | null): string {
+  if (day == null) return "No due date";
+  return time == null ? formatDayKey(day) : `${formatDayKey(day)}, ${formatWallTime(time)}`;
+}

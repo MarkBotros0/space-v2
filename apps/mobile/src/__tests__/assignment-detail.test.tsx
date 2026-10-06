@@ -13,7 +13,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import AssignmentDetailScreen from "../../app/(app)/assignment/[id]";
+import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
 
 const get = apiClient.get as jest.Mock;
 
@@ -27,6 +27,8 @@ const detail = {
   title: "Essay one",
   description: "Write about the thing.",
   dueAt: "2099-04-01T21:59:00.000Z",
+  dueOrgDay: "2099-04-01",
+  dueOrgTime: "23:59",
   isOverdue: false,
   isAllGroups: true,
   type: "STANDARD" as const,

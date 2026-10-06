@@ -41,3 +41,22 @@ export function useGroupDetail(id: number | null): UseQueryResult<GroupDetail> {
     enabled: id !== null,
   });
 }
+
+const seasonGroupListSchema = z.array(groupListItemSchema);
+
+/**
+ * A season's groups — GET /seasons/:id/groups, which the server already
+ * narrows (a leader gets only the groups they lead). The assignment form's
+ * group picker and the "Assigned to" labels read it; Plan 6's admin group
+ * screens reuse it rather than adding a second hook.
+ */
+export function useSeasonGroups(seasonId: number | null): UseQueryResult<GroupListItem[]> {
+  return useQuery({
+    queryKey: queryKeys.groups.bySeason(seasonId),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/seasons/${seasonId}/groups`);
+      return seasonGroupListSchema.parse(res.data.data.groups);
+    },
+    enabled: seasonId !== null,
+  });
+}
