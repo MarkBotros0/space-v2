@@ -110,3 +110,36 @@ export function orgDayKey(date: Date): string {
   }
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
+
+const ORG_DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const ORG_TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+/** `HH:mm` on the organisation's clock — the inverse of the time half of orgWallClockToInstant. */
+export function orgWallTime(date: Date): string {
+  const p = orgWallClock(date);
+  return `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+}
+
+/**
+ * The instant at which the organisation's clock reads `day` at `time`
+ * (`null` = midnight). The one place a wall-clock deadline becomes an instant
+ * (ruling C2): v1 did this with `setHours` in the author's browser, so the
+ * stored instant depended on where the admin was sitting (spec 07 R45).
+ * Validates its own input — the shared schemas already have, but a malformed
+ * value reaching here would otherwise normalise silently (Date.UTC rolls
+ * "24:00" into the next day).
+ */
+export function orgWallClockToInstant(day: string, time: string | null): Date {
+  const d = ORG_DAY_RE.exec(day);
+  const t = ORG_TIME_RE.exec(time ?? "00:00");
+  if (!d || !t) throw new RangeError(`Not an organisation wall clock: ${day} ${time ?? ""}`);
+  return fromOrgWallClock({
+    year: Number(d[1]),
+    month: Number(d[2]),
+    day: Number(d[3]),
+    hour: Number(t[1]),
+    minute: Number(t[2]),
+    second: 0,
+    millisecond: 0,
+  });
+}

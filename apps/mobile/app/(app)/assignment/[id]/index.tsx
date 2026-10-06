@@ -2,14 +2,16 @@ import { useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import type { AssignmentDetail, MySubmissionSummary } from "@space/shared";
 
-import { useAssignmentDetail } from "../../../src/hooks/use-assignments";
+import { AssignmentStaffPanel } from "../../../../src/components/assignment-staff-panel";
+import { useAssignmentDetail } from "../../../../src/hooks/use-assignments";
 import {
   useEnsureSubmission,
   useSaveSubmission,
   useSubmissionDetail,
-} from "../../../src/hooks/use-submission";
-import { formatDueDate } from "../../../src/lib/format";
-import { useTheme } from "../../../src/theme";
+} from "../../../../src/hooks/use-submission";
+import { formatOrgDue } from "../../../../src/lib/format";
+import { useSessionStore } from "../../../../src/store/session";
+import { useTheme } from "../../../../src/theme";
 import {
   Button,
   Card,
@@ -19,7 +21,7 @@ import {
   LoadingState,
   Screen,
   Text,
-} from "../../../src/ui";
+} from "../../../../src/ui";
 
 function submissionStatusLine(sub: MySubmissionSummary): string {
   if (sub.status === "REVIEWED") return "Reviewed";
@@ -104,6 +106,9 @@ export default function AssignmentDetailScreen() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const parsed = Number(rawId);
   const id = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  // D1: one route, the role picks the branch. Students get Plan 1's
+  // submission editor; staff get the authoring panel and tracker.
+  const isStudent = useSessionStore((s) => s.user?.role === "STUDENT");
 
   const { data, isPending, isError, refetch } = useAssignmentDetail(id);
 
@@ -119,14 +124,17 @@ export default function AssignmentDetailScreen() {
         <>
           <Text variant="title">{data.title}</Text>
           <Text variant="label" color={theme.colors.neutral[600]}>
-            {`Due ${formatDueDate(data.dueAt)}${data.isOverdue ? " · Overdue" : ""}`}
+            {/* The server's org-clock day and time (C2/X13), never dueAt in the device's zone. */}
+            {`${data.dueOrgDay === null ? "No due date" : `Due ${formatOrgDue(data.dueOrgDay, data.dueOrgTime)}`}${
+              data.isOverdue ? " · Overdue" : ""
+            }`}
           </Text>
           {data.description ? (
             <Text variant="body" style={{ marginTop: theme.spacing.sm }}>
               {data.description}
             </Text>
           ) : null}
-          <SubmissionSection detail={data} />
+          {isStudent ? <SubmissionSection detail={data} /> : <AssignmentStaffPanel detail={data} />}
         </>
       )}
     </Screen>

@@ -99,7 +99,7 @@ export const openApiDocument = {
     { name: "Seasons", description: "Seasons and their sub-resources" },
     { name: "Groups", description: "Group detail" },
     { name: "Sessions", description: "Sessions, attendance, and check-in" },
-    { name: "Assignments", description: "Assignment detail" },
+    { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
     { name: "Submissions", description: "Submissions and their files" },
   ],
   security: [{ bearerAuth: [] }],
@@ -384,6 +384,11 @@ export const openApiDocument = {
           id: { type: "integer" },
           title: { type: "string" },
           dueAt: { type: ["string", "null"], format: "date-time" },
+          dueOrgDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Organisation-calendar day of `dueAt` (ORG_TIMEZONE), derived server-side. Label deadlines with this, never by formatting `dueAt` on the device.",
+          },
           isOverdue: {
             type: "boolean",
             description:
@@ -436,6 +441,16 @@ export const openApiDocument = {
           title: { type: "string" },
           description: { type: ["string", "null"] },
           dueAt: { type: ["string", "null"], format: "date-time" },
+          dueOrgDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Organisation-calendar day of `dueAt`; null when there is no due date.",
+          },
+          dueOrgTime: {
+            type: ["string", "null"],
+            pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
+            description: "Organisation wall-clock time of `dueAt`, 24-hour `HH:mm`; null when there is no due date. With `dueOrgDay`, exactly what the write body's `dueDay`/`dueTime` take.",
+          },
           isAllGroups: { type: "boolean" },
           type: { $ref: "#/components/schemas/AssignmentType" },
           forumMinWords: { type: ["integer", "null"] },
@@ -497,6 +512,44 @@ export const openApiDocument = {
           submissionPublicId: {
             type: ["string", "null"],
             description: "The handle into the review screen; null when nothing was started.",
+          },
+        },
+      },
+      AssignmentWriteRequest: {
+        type: "object",
+        required: ["title", "isAllGroups"],
+        description: "One full-replace body for create (POST) and update (PATCH). There is no `seasonId`: create takes it from the path and an assignment never moves season.",
+        properties: {
+          title: { type: "string", minLength: 2, maxLength: 160 },
+          description: { type: ["string", "null"], maxLength: 20000 },
+          dueDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Organisation-calendar day the assignment is due; null = no due date. The server composes the instant in ORG_TIMEZONE (ruling C2) — a client never sends an instant.",
+          },
+          dueTime: {
+            type: ["string", "null"],
+            pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
+            default: "23:59",
+            description: "Organisation wall-clock time, 24-hour. Ignored when `dueDay` is null.",
+          },
+          sessionId: { type: ["integer", "null"], description: "Must be a session of the assignment's season (400 `invalid_session`)." },
+          type: { $ref: "#/components/schemas/AssignmentType" },
+          forumMinWords: { type: ["integer", "null"], minimum: 0, maximum: 2000, description: "Kept only for FORUM; forced null for STANDARD." },
+          forumAllowComments: { type: "boolean", default: false, description: "Kept only for FORUM; forced false for STANDARD." },
+          maxFileSizeMb: { type: ["integer", "null"], minimum: 1, maximum: 100, description: "Null = accepts no files. Forced null for FORUM." },
+          allowedMimeCategories: {
+            type: "array",
+            items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
+            default: [],
+            description: "Empty = any type. Forced empty for FORUM.",
+          },
+          isAllGroups: { type: "boolean" },
+          groupIds: {
+            type: "array",
+            items: { type: "integer" },
+            default: [],
+            description: "Required non-empty when `isAllGroups` is false; every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
           },
         },
       },
@@ -944,6 +997,24 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
         },
       },
+      post: {
+        tags: ["Assignments"],
+        summary: "Create an assignment in a season",
+        description:
+          "Season admins (SUPER passes). Row and targets commit in one transaction. Afterwards every ACTIVE enrolled student the assignment targets — resolved through SeasonEnrollment (ruling C9), opted-out students skipped — gets ASSIGNMENT_CREATED titled `New assignment: <title>`, body `Due <org time>` (omitted with no due date), link `/student/assignments/<id>` (v1's path, ruling X1). A notification failure never fails the create.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/AssignmentWriteRequest" } } },
+        },
+        responses: {
+          201: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "Created — the same shape GET /assignments/{id} returns."),
+          400: conflict("`bad_request` (body; message names the first failing field), `invalid_group`, or `invalid_session`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
     },
 
     "/api/v1/groups": {
@@ -1265,6 +1336,39 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Assignments"],
+        summary: "Replace an assignment",
+        description:
+          "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). Students newly targeted by the edit get ASSIGNMENT_CREATED (same text and link as create); students already targeted are not notified again. Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/AssignmentWriteRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "The updated assignment."),
+          400: conflict("`bad_request`, `invalid_group`, or `invalid_session`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Assignments"],
+        summary: "Soft-delete an assignment nobody has started",
+        description:
+          "Season admins of the assignment's season. Designed rather than ported: v1's soft-delete action had no caller (ruling C12). Sets `deletedAt`; targets and any history stay. Refused with 409 `has_submissions` while any Submission row exists (any status, drafts included) — there is no force option. Notifies nobody. Deleting twice is 404. Returns 200 with `{ deleted: true }` (the response envelope), not 204.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ type: "object", properties: { deleted: { type: "boolean", enum: [true] } } }, "Deleted."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`has_submissions`."),
         },
       },
     },

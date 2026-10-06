@@ -126,13 +126,18 @@ describe("AppLayout tab shell", () => {
     }
   });
 
-  it("registers assignment/[id] as a hidden detail route", () => {
-    expect(DETAIL_ROUTE_NAMES).toContain("assignment/[id]");
+  it("registers the assignment detail, edit and new routes as hidden detail routes (X7)", () => {
+    const names = ["assignment/[id]/index", "assignment/[id]/edit", "assignment/new"];
+    for (const name of names) expect(DETAIL_ROUTE_NAMES).toContain(name);
+    // The file form must be gone: x/[id].tsx beside x/[id]/ is the ambiguity X7 forbids.
+    expect(DETAIL_ROUTE_NAMES).not.toContain("assignment/[id]");
 
-    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
     render(<AppLayout />);
 
-    expect(mockScreens.find((s) => s.name === "assignment/[id]")?.href).toBeNull();
+    for (const name of names) {
+      expect(mockScreens.find((s) => s.name === name)?.href).toBeNull();
+    }
   });
 
   it("registers the leader-path detail routes as hidden", () => {

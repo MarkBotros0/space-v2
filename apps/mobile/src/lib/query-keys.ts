@@ -42,6 +42,12 @@ export const queryKeys = {
       [...queryKeys.assignments.lists(), { seasonId }] as const,
     details: () => [...queryKeys.assignments.all, "detail"] as const,
     detail: (id: number | null) => [...queryKeys.assignments.details(), id] as const,
+    // The staff arm of the same endpoint, keyed apart from the student arm so
+    // one role's cached shape can never be served to the other's parser.
+    staffBySeason: (seasonId: number | null) =>
+      [...queryKeys.assignments.lists(), "staff", { seasonId }] as const,
+    trackers: () => [...queryKeys.assignments.all, "tracker"] as const,
+    tracker: (id: number | null) => [...queryKeys.assignments.trackers(), id] as const,
   },
   submissions: {
     all: ["submissions"] as const,
@@ -55,6 +61,7 @@ export const queryKeys = {
     all: ["groups"] as const,
     mine: () => [...queryKeys.groups.all, "mine"] as const,
     detail: (id: number | null) => [...queryKeys.groups.all, "detail", id] as const,
+    bySeason: (seasonId: number | null) => [...queryKeys.groups.all, "season", { seasonId }] as const,
   },
   attendance: {
     all: ["attendance"] as const,

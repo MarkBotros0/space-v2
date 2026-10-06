@@ -130,6 +130,8 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
       id: allGroupsAssignmentId,
       title: "Open To All",
       dueAt: expect.any(String),
+      // 2099-04-01T00:00Z is 02:00 on the 1st in Cairo (UTC+2): the org day.
+      dueOrgDay: "2099-04-01",
       // Due 2099 — derived server-side, never by the reader (ruling C4).
       isOverdue: false,
       isAllGroups: true,
@@ -147,6 +149,7 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
     // GroupStudent row points elsewhere. Counting GroupStudent would find one.
     expect(targeted.expectedCount).toBe(2);
     expect(targeted.targetGroupIds).toEqual([groupBId]);
+    expect(targeted.dueOrgDay).toBeNull(); // no due date
   });
 
   it("returns the student shape, filtered to assignments that apply to them", async () => {
@@ -202,7 +205,19 @@ describe("GET /api/v1/assignments/:id", () => {
       type: "STANDARD",
       groupIds: [],
       mySubmission: null,
+      dueOrgDay: "2099-04-01",
+      dueOrgTime: "02:00",
+      canManage: true,
     });
+  });
+
+  it("returns null org due fields when there is no due date", async () => {
+    const res = await request(app)
+      .get(`/api/v1/assignments/${targetedAssignmentId}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.dueOrgDay).toBeNull();
+    expect(res.body.data.dueOrgTime).toBeNull();
   });
 
   it("returns a student's own submission summary", async () => {

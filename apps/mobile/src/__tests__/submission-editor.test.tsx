@@ -13,7 +13,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import AssignmentDetailScreen from "../../app/(app)/assignment/[id]";
+import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
 
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
@@ -22,7 +22,7 @@ const patch = apiClient.patch as jest.Mock;
 const detailNoSubmission = {
   id: 41, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026",
   sessionId: null, sessionTitle: null, title: "Essay one",
-  description: null, dueAt: null, isOverdue: false, isAllGroups: true,
+  description: null, dueAt: null, dueOrgDay: null, dueOrgTime: null, isOverdue: false, isAllGroups: true,
   type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false,
   maxFileSizeMb: 10, allowedMimeCategories: [], groupIds: null,
   mySubmission: null, canManage: false,
