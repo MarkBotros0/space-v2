@@ -26,6 +26,11 @@ export const seasonDetailSchema = seasonListItemSchema.extend({
   description: z.string().nullable(),
   sessionCount: z.number(),
   studentCount: z.number(),
+  /** Needed by the SUPER edit form: its PATCH is a full body whose budget fields default (D-16.3). */
+  absenceBudgetMinutes: z.number().int(),
+  absenceWeightMinutes: z.number().int(),
+  /** isAdminOfSeason for the caller (C4) — drives the roster / new-group / new-session actions. */
+  canAdminister: z.boolean(),
   groups: z.array(seasonDetailGroupSchema),
 });
 export type SeasonDetail = z.infer<typeof seasonDetailSchema>;

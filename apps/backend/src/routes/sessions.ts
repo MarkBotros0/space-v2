@@ -6,7 +6,7 @@ import { apiOk, apiError } from "../lib/api-response";
 import { flagLowAttendance } from "../lib/attendance-notifications";
 import { isCheckInOpen } from "../lib/check-in";
 import { createNotificationsBulk } from "../lib/notifications";
-import { addWeeksInOrgTime, formatInOrgTime } from "../lib/org-time";
+import { addWeeksInOrgTime, formatInOrgTime, orgWallClockToInstant } from "../lib/org-time";
 import { parseId } from "../lib/parse-id";
 import { attendanceScopeFor, canAccessSeason, canMarkAttendance } from "../lib/permissions";
 import { loadAttendanceRoster } from "../lib/queries/sessions";
@@ -23,6 +23,20 @@ import {
 import type { RecurrenceScope } from "@space/shared";
 
 export const sessionsRouter = Router();
+
+/**
+ * A session write's start as an instant. Plan 6 D-16.6: the mobile form
+ * sends org wall-clock fields (startDay + startTime — Plan 5's dueDay/dueTime
+ * split) and the conversion happens HERE, in ORG_TIMEZONE; the device never
+ * composes an instant. The shared schema guarantees exactly one form is present.
+ */
+function sessionStartFrom(body: { startsAt?: string; startDay?: string; startTime?: string }): Date {
+  if (body.startDay !== undefined && body.startTime !== undefined) {
+    return orgWallClockToInstant(body.startDay, body.startTime);
+  }
+  if (body.startsAt !== undefined) return new Date(body.startsAt);
+  throw new Error("unreachable: the session write schema requires a start");
+}
 
 interface SeriesAnchor {
   id: number;
@@ -140,7 +154,7 @@ sessionsRouter.post("/", async (req, res) => {
   // X13 / C2: calendar-week steps in the org zone, so a series keeps its
   // wall-clock time across DST. v1's addDays did the same in the HOST's zone.
   // Spec 03 item 11's season-range check stays un-ported (advisory in v1 too).
-  const start = new Date(body.startsAt);
+  const start = sessionStartFrom(body);
   const dates = Array.from({ length: body.repeatWeeks }, (_, i) => addWeeksInOrgTime(start, i));
   // v1 used nanoid(8); nanoid is ESM-only here (CLAUDE.md). The column is a
   // free string and nothing compares lengths.
@@ -248,7 +262,7 @@ sessionsRouter.patch("/:id", async (req, res) => {
   const body = parsed.data;
 
   const targets = await resolveSeriesTargets(existing, body.scope);
-  const newStart = new Date(body.startsAt);
+  const newStart = sessionStartFrom(body);
   const delta = newStart.getTime() - existing.startsAt.getTime();
   const fields = {
     title: body.title,
