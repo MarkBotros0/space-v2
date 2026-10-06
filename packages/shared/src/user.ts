@@ -92,6 +92,12 @@ export const createUserRequestSchema = z
     email: z.string().email("Must be a valid email."),
     role: userRoleSchema,
     graduationYear: z.number().int().nullable().default(null),
+    /**
+     * Must be `true` when `role` is SUPER (Plan 10 Decision 13 — spec 11 D7
+     * rec 3 applied to creation as Plan 9 applied it to PATCH). The route
+     * enforces it; the schema only types it.
+     */
+    confirmSuper: z.boolean().optional(),
   })
   .superRefine(checkUserFields);
 export type CreateUserBody = z.output<typeof createUserRequestSchema>;
@@ -164,3 +170,32 @@ export const logoutAllResponseSchema = z.object({
   revoked: z.number().int().nonnegative(),
 });
 export type LogoutAllResponse = z.infer<typeof logoutAllResponseSchema>;
+/** POST /users — Plan 9's response, given a schema so `/users/new` parses it. */
+export const createUserResponseSchema = z.object({ userId: z.number().int() });
+export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
+
+/**
+ * Bulk "send all pending invites" (Plan 10 Decision 12): at most this many
+ * users per request. Exported so the confirm dialog quotes the same number
+ * the server enforces.
+ */
+export const BULK_INVITE_BATCH_SIZE = 20;
+
+/** GET /users/invites/pending — how many accounts the bulk button would reach. */
+export const pendingInvitesResponseSchema = z.object({
+  pending: z.number().int().nonnegative(),
+});
+export type PendingInvitesResponse = z.infer<typeof pendingInvitesResponseSchema>;
+
+/**
+ * POST /users/invites/pending. `skipped` is spec 11 R16's missing third
+ * counter (a user who stopped being eligible between listing and locking);
+ * `remaining` is what is still pending after this batch.
+ */
+export const bulkInviteResponseSchema = z.object({
+  sent: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  remaining: z.number().int().nonnegative(),
+});
+export type BulkInviteResponse = z.infer<typeof bulkInviteResponseSchema>;

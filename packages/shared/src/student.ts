@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { enrollmentStatusSchema, seasonStatusSchema } from "./enums";
+import { isoDaySchema } from "./org-time";
 
 // Wire shapes — timestamps travel as ISO strings (see the note in season.ts).
 //
@@ -250,3 +251,93 @@ export const updateEnrollmentRequestSchema = z
     message: "A drop reason only accompanies a withdrawal.",
   });
 export type UpdateEnrollmentBody = z.output<typeof updateEnrollmentRequestSchema>;
+// ---------------------------------------------------------------------------
+// Lifecycle (Plan 10) — graduate, delete, and the response shapes every
+// student write answers with (ruling X10: the client parses, never casts).
+// ---------------------------------------------------------------------------
+
+/**
+ * Graduation is SUPER-only (R55) and irreversible (R61). The upper bound is
+ * evaluated per call — v1 captured CURRENT_YEAR at module load and refused
+ * January graduates until the process restarted (R58).
+ */
+export const graduateStudentRequestSchema = z
+  .object({ graduationYear: z.number().int("Enter a whole year.") })
+  .strict()
+  .superRefine((v, ctx) => {
+    const currentYear = new Date().getFullYear();
+    if (v.graduationYear < 1990 || v.graduationYear > currentYear) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["graduationYear"],
+        message: `Enter a year between 1990 and ${currentYear}.`,
+      });
+    }
+  });
+export type GraduateStudentBody = z.infer<typeof graduateStudentRequestSchema>;
+
+export const graduateStudentResponseSchema = z.object({
+  id: z.number().int(),
+  graduationYear: z.number().int(),
+  /** Every ACTIVE enrollment is completed, not only the pointed-at one (Plan 10 Decision 2). */
+  enrollmentsCompleted: z.number().int().nonnegative(),
+});
+export type GraduateStudentResponse = z.infer<typeof graduateStudentResponseSchema>;
+
+export const studentDeletedResponseSchema = z.object({
+  id: z.number().int(),
+  deletedAt: z.string(),
+});
+export type StudentDeletedResponse = z.infer<typeof studentDeletedResponseSchema>;
+
+/** POST /students — Plan 7's response, given a schema so the create screen parses it. */
+export const createStudentResponseSchema = z.object({
+  id: z.number().int(),
+  email: z.string(),
+});
+export type CreateStudentResponse = z.infer<typeof createStudentResponseSchema>;
+
+/** PATCH /students/:id — Plan 7's response. */
+export const updateStudentResponseSchema = z.object({ id: z.number().int() });
+export type UpdateStudentResponse = z.infer<typeof updateStudentResponseSchema>;
+
+/** PATCH /students/:id/enrollments/:seasonId — Plan 7's response. */
+export const enrollmentTransitionResponseSchema = z.object({
+  id: z.number().int(),
+  status: enrollmentStatusSchema,
+});
+export type EnrollmentTransitionResponse = z.infer<typeof enrollmentTransitionResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// Date-only values (Plan 10 Decision 8). A date of birth is a calendar day,
+// not an instant: it has no wall clock for the org timezone to apply to, and
+// the device timezone must never decide it either (ruling X13).
+// ---------------------------------------------------------------------------
+
+/**
+ * True for a real calendar day written as YYYY-MM-DD ("2003-02-29" is not).
+ * Delegates to Plan 5's isoDaySchema (packages/shared/src/org-time.ts) — one
+ * definition of "a day on the wire", not a second regex.
+ */
+export function isDateOnly(value: string): boolean {
+  return isoDaySchema.safeParse(value).success;
+}
+
+/** The instant v2 stores for a calendar day: that day's UTC midnight. */
+export function isoFromDateOnly(day: string): string {
+  return `${day}T00:00:00.000Z`;
+}
+
+/**
+ * The calendar day a stored date-of-birth instant names, read without any
+ * timezone: shift +12h and take the UTC day. A local midnight from any zone
+ * in UTC−11…UTC+12 lands inside its own day — so v1's rows (its web date
+ * picker stored browser-local midnight, e.g. Cairo's `…T22:00Z` on the
+ * previous UTC day) and v2's UTC-midnight rows both read back correctly.
+ */
+export function dateOnlyFromIso(iso: string | null): string | null {
+  if (iso == null) return null;
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return null;
+  return new Date(ms + 12 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}

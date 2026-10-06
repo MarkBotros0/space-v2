@@ -1,12 +1,16 @@
 import {
+  BULK_INVITE_BATCH_SIZE,
   acceptInviteRequestSchema,
   acceptInviteResponseSchema,
   activationResponseSchema,
+  bulkInviteResponseSchema,
   changePasswordRequestSchema,
   createUserRequestSchema,
+  createUserResponseSchema,
   inviteStateSchema,
   meUserSchema,
   passwordSchema,
+  pendingInvitesResponseSchema,
   updateProfileRequestSchema,
   updateUserRequestSchema,
 } from "../index";
@@ -118,5 +122,31 @@ describe("meUserSchema.hasPassword", () => {
       id: 1, name: "N", email: "n@jpc.test", role: "STUDENT", avatarPath: null,
     });
     expect(parsed.hasPassword).toBe(true);
+  });
+});
+describe("createUserRequestSchema.confirmSuper (Plan 10 Decision 13)", () => {
+  const base = { name: "New Person", email: "p@jpc.test", role: "SUPER" as const };
+
+  it("is an optional boolean — the route, not the schema, decides when it is required", () => {
+    expect(createUserRequestSchema.safeParse(base).success).toBe(true);
+    expect(createUserRequestSchema.parse({ ...base, confirmSuper: true }).confirmSuper).toBe(true);
+    expect(createUserRequestSchema.safeParse({ ...base, confirmSuper: "yes" }).success).toBe(false);
+  });
+});
+
+describe("bulk invite contracts (Plan 10 Decision 12)", () => {
+  it("carries four counters, all non-negative", () => {
+    expect(
+      bulkInviteResponseSchema.safeParse({ sent: 3, skipped: 1, failed: 0, remaining: 12 }).success,
+    ).toBe(true);
+    expect(
+      bulkInviteResponseSchema.safeParse({ sent: -1, skipped: 0, failed: 0, remaining: 0 }).success,
+    ).toBe(false);
+  });
+
+  it("states the per-request ceiling once, for the API and the confirm dialog alike", () => {
+    expect(BULK_INVITE_BATCH_SIZE).toBe(20);
+    expect(pendingInvitesResponseSchema.safeParse({ pending: 0 }).success).toBe(true);
+    expect(createUserResponseSchema.safeParse({ userId: 5 }).success).toBe(true);
   });
 });
