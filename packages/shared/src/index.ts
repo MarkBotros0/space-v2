@@ -10,3 +10,4 @@ export * from "./attendance";
 export * from "./submission";
 export * from "./quiz";
 export * from "./api-error";
+export * from "./student";

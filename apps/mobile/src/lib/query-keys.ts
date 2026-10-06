@@ -39,6 +39,15 @@ export const queryKeys = {
     checkIn: (id: number | null) => [...queryKeys.sessions.all, "checkIn", { id }] as const,
     quizzes: (id: number | null) => [...queryKeys.sessions.all, "quizzes", { id }] as const,
   },
+  students: {
+    all: ["students"] as const,
+    lists: () => [...queryKeys.students.all, "list"] as const,
+    list: (status: string, q: string) => [...queryKeys.students.lists(), { status, q }] as const,
+    details: () => [...queryKeys.students.all, "detail"] as const,
+    // number | null, like sessions.bySeason: a null key can never collide
+    // with a real student's cached detail (no -1 sentinel).
+    detail: (id: number | null) => [...queryKeys.students.details(), { id }] as const,
+  },
   seasons: {
     all: ["seasons"] as const,
     list: () => [...queryKeys.seasons.all, "list"] as const,

@@ -280,3 +280,58 @@ export async function canGradeQuiz(user: SessionUser, quizId: number): Promise<b
   if (!quiz) return false;
   return (await staffScopeForSeason(user, quiz.seasonId)) !== null;
 }
+
+/**
+ * May this caller read this student at all? (spec 06 §4.1 "Read student detail")
+ *
+ * v1's loadStudentDetail performed no authorization — four pages each called
+ * canViewStudent by convention before it (R70). Here the gate lives in the
+ * handler. One deliberate divergence from v1's gate: the LEADER branch
+ * resolves through SeasonEnrollment.groupId, not GroupStudent (ruling C9) —
+ * GroupStudent holds one row per student across the whole database, so it
+ * answers "are they in my group NOW", denying a leader their own students'
+ * history the moment a new season reassigns them. canViewSubmission already
+ * made this exact call; the two must not disagree.
+ */
+export async function canViewStudent(user: SessionUser, studentUserId: number): Promise<boolean> {
+  if (isSuper(user) || isMentor(user)) return true;
+  if (user.userId === studentUserId) return true;
+  if (user.role === "ADMIN") {
+    if (user.seasonAdminIds.length === 0) return false;
+    const enrollment = await db.seasonEnrollment.findFirst({
+      where: { studentUserId, seasonId: { in: user.seasonAdminIds } },
+      select: { id: true },
+    });
+    return enrollment !== null;
+  }
+  if (user.role === "LEADER") {
+    if (user.groupLeaderIds.length === 0) return false;
+    const enrollment = await db.seasonEnrollment.findFirst({
+      where: { studentUserId, groupId: { in: user.groupLeaderIds } },
+      select: { id: true },
+    });
+    return enrollment !== null;
+  }
+  return false;
+}
+
+/**
+ * May this caller edit this student's profile?
+ *
+ * Divergence from v1, per spec 06 D4: v1's canEditStudent tested the
+ * activeSeasonId pointer while canViewStudent tested enrollments, so an ADMIN
+ * could edit a student their list never showed them and not edit one it did.
+ * Both gates are enrollment-based here, and edit additionally requires the
+ * enrollment to be ACTIVE — an admin's write power over a person ends when
+ * that person's season with them does.
+ */
+export async function canEditStudent(user: SessionUser, studentUserId: number): Promise<boolean> {
+  if (isSuper(user)) return true;
+  if (user.userId === studentUserId) return true;
+  if (user.role !== "ADMIN" || user.seasonAdminIds.length === 0) return false;
+  const enrollment = await db.seasonEnrollment.findFirst({
+    where: { studentUserId, seasonId: { in: user.seasonAdminIds }, status: "ACTIVE" },
+    select: { id: true },
+  });
+  return enrollment !== null;
+}

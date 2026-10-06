@@ -71,6 +71,7 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "quiz/[id]/grade",
   "quiz/new",
   "quiz/[id]/edit",
+  "student/[id]",
 ];
 
 /**
