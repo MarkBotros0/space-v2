@@ -66,6 +66,10 @@ Flows live in `apps/mobile/.maestro/`:
 - `03-submit-assignment.yaml` start, draft and submit an assignment
 - `04-session-persists.yaml` still signed in after a cold restart
 
+All four are student flows. The seeded admin can sign in, but no admin flows exist
+yet (the admin dashboard currently shows "No active season" because it reads the
+student-only active season).
+
 **In CI** (`.github/workflows/mobile-e2e.yml`) it runs on every PR touching
 `apps/mobile`, `apps/backend` or `packages/shared`, and can be started by hand
 from the Actions tab (Run workflow). It starts Postgres, migrates and seeds it,
