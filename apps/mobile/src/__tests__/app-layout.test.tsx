@@ -174,6 +174,14 @@ describe("AppLayout tab shell", () => {
     expect(DETAIL_ROUTE_NAMES).not.toContain("group/[id]");
   });
 
+  it.each(["quiz/[id]/index", "quiz/[id]/grade"])("registers %s as a hidden detail route", (name) => {
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    render(<AppLayout />);
+    const detail = mockScreens.find((s) => s.name === name);
+    expect(detail).toBeDefined();
+    expect(detail?.href).toBeNull();
+  });
+
   it("maps the /seasons tab to its directory route, like /students", () => {
     expect(routeNameForHref("/seasons")).toBe("seasons/index");
     expect(routeNameForHref("/students")).toBe("students/index");
