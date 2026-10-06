@@ -98,6 +98,7 @@ export const openApiDocument = {
     { name: "Me", description: "The authenticated user" },
     { name: "Seasons", description: "Seasons and their sub-resources" },
     { name: "Groups", description: "Group detail" },
+    { name: "Students", description: "Student lists, role-shaped detail, profile edits and enrollment transitions" },
     { name: "Sessions", description: "Sessions, attendance, and check-in" },
     { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
     { name: "Submissions", description: "Submissions and their files" },
@@ -323,6 +324,38 @@ export const openApiDocument = {
           leaders: { type: "array", items: { $ref: "#/components/schemas/GroupMember" } },
           students: { type: "array", items: { $ref: "#/components/schemas/GroupMember" } },
           canManage: { type: "boolean", description: "isAdminOfSeason for the caller." },
+        },
+      },
+
+      StudentListItem: {
+        type: "object",
+        required: ["id", "name", "email", "avatarPath", "university", "year", "graduationYear", "activeSeasonTitle", "currentGroupName", "droppedEnrollment"],
+        properties: {
+          id: { type: "integer" },
+          name: { type: "string" },
+          email: { type: "string" },
+          avatarPath: { type: ["string", "null"] },
+          university: { type: ["string", "null"] },
+          year: { type: ["string", "null"] },
+          graduationYear: { type: ["integer", "null"] },
+          activeSeasonTitle: { type: ["string", "null"] },
+          currentGroupName: { type: ["string", "null"], description: "Advisory: from GroupStudent, the one question that table may answer (C9)." },
+          droppedEnrollment: {
+            description: "Non-null only on `status=dropped` rows, which are enrollment-keyed — key rows on `enrollmentId`, not the user id.",
+            oneOf: [
+              {
+                type: "object",
+                properties: {
+                  enrollmentId: { type: "integer" },
+                  seasonId: { type: "integer" },
+                  seasonTitle: { type: "string" },
+                  droppedAt: { type: ["string", "null"], format: "date-time" },
+                  dropReason: { type: ["string", "null"] },
+                },
+              },
+              { type: "null" },
+            ],
+          },
         },
       },
 
@@ -1260,6 +1293,38 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+    },
+
+    "/api/v1/students": {
+      get: {
+        tags: ["Students"],
+        summary: "Student list (active, alumni or dropped)",
+        description:
+          "One endpoint serves all three list surfaces, selected by `status` (default `active`).\n\nScope is per role: SUPER and MENTOR read every student; ADMIN gets the students ever enrolled in their seasons; LEADER gets the students whose **enrollment** names one of their groups (C9 — never GroupStudent). `alumni` (graduationYear set) is refused with 403 `forbidden` to LEADER. `dropped` lists WITHDRAWN enrollments, not students (a student dropped from three seasons appears three times; rows carry `droppedEnrollment`) and is SUPER/ADMIN only — it hands out drop reasons, so MENTOR and LEADER get 403. STUDENT is refused on every surface.\n\nPagination is cursor-based: pass the last row's id (the enrollment id when `status=dropped`) as `cursor`; `nextCursor` is null on the last page. `total` is the whole population under the current filters, not the page size (D14). `q` matches name, email or university, case-insensitive.",
+        parameters: [
+          { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
+          { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
+          { name: "q", in: "query", schema: { type: "string", maxLength: 120 } },
+          { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                students: { type: "array", items: { $ref: "#/components/schemas/StudentListItem" } },
+                nextCursor: { type: ["integer", "null"] },
+                total: { type: "integer" },
+              },
+            },
+            "One page of students.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
         },
       },
     },
