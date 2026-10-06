@@ -1471,6 +1471,71 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/students/{id}/enrollments": {
+      post: {
+        tags: ["Students"],
+        summary: "Enroll a student in a season",
+        description:
+          "Season-admin of the **target** season (SUPER passes); gated before any lookup. Creates an ACTIVE enrollment and, if the student's `activeSeasonId` is unset, points it at the new season (never overwrites a set pointer). One enrollment per student per season, ever: a second attempt \u2014 even over a WITHDRAWN row \u2014 is 409 `already_enrolled`.\n\nBoundary: this endpoint owns enrollment existence and status only. `groupId` is written exclusively by `PATCH /api/v1/groups/{id}` \u2014 group membership is written only there. Enrollment rows are never deleted.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { type: "object", required: ["seasonId"], properties: { seasonId: { type: "integer", minimum: 1 } } },
+            },
+          },
+        },
+        responses: {
+          201: ok(
+            { type: "object", properties: { id: { type: "integer" }, seasonId: { type: "integer" }, status: { type: "string", enum: ["ACTIVE"] } } },
+            "Enrolled.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`already_enrolled`."),
+        },
+      },
+    },
+
+    "/api/v1/students/{id}/enrollments/{seasonId}": {
+      patch: {
+        tags: ["Students"],
+        summary: "Complete or drop an enrollment",
+        description:
+          "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The only transitions are ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`) and ACTIVE \u2192 COMPLETED (sets completedAt). ACTIVE is not accepted in the body: there is no re-activation. A non-ACTIVE row is 409 `not_active`. The row is transitioned in place and never deleted.",
+        parameters: [
+          idParam,
+          { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["status"],
+                properties: {
+                  status: { type: "string", enum: ["WITHDRAWN", "COMPLETED"] },
+                  dropReason: { type: ["string", "null"], maxLength: 500, description: "Only with WITHDRAWN." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { id: { type: "integer" }, status: { type: "string" } } }, "Transitioned."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`not_active`."),
+        },
+      },
+    },
+
     "/api/v1/sessions": {
       post: {
         tags: ["Sessions"],

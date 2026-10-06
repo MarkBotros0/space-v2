@@ -7,10 +7,12 @@ import type { SessionUser } from "../lib/auth/tokens";
 import { parseId } from "../lib/parse-id";
 import { canEditStudent, canViewStudent } from "../lib/permissions";
 import { listStudents, loadStudentDetail, type StudentDetailView } from "../lib/queries/students";
-import { isSuper } from "../lib/rbac";
+import { isAdminOfSeason, isSuper } from "../lib/rbac";
 import {
+  createEnrollmentRequestSchema,
   createStudentRequestSchema,
   studentListQuerySchema,
+  updateEnrollmentRequestSchema,
   updateStudentRequestSchema,
 } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
@@ -269,4 +271,124 @@ studentsRouter.patch("/:id", async (req, res) => {
   }
 
   return apiOk(res, { id });
+});
+
+/**
+ * Explicit enrollment — the endpoint v1 never had (spec 06 §7): its only
+ * creation paths were "be added to a group" (which destroyed history, D2)
+ * and CSV import. Group membership is NOT set here: groupId belongs to the
+ * groups endpoints (PATCH /groups/:id → setGroupStudents), one writer per
+ * fact, per-season membership through the enrollment (C9).
+ */
+studentsRouter.post("/:id/enrollments", async (req, res) => {
+  const user = requireUser(req);
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+
+  const parsed = createEnrollmentRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid enrollment body.", 400);
+  const { seasonId } = parsed.data;
+
+  // Season-admin power over the TARGET season; SUPER passes inside the
+  // predicate. Gate before any lookup — a refused caller learns nothing.
+  if (!isAdminOfSeason(user, seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const season = await db.season.findFirst({
+    where: { id: seasonId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+
+  const student = await db.user.findFirst({
+    where: { id, role: "STUDENT", deletedAt: null },
+    select: { id: true, studentProfile: { select: { activeSeasonId: true } } },
+  });
+  if (!student) return apiError(res, "not_found", "Student not found.", 404);
+
+  const existing = await db.seasonEnrollment.findUnique({
+    where: { studentUserId_seasonId: { studentUserId: id, seasonId } },
+    select: { id: true },
+  });
+  if (existing) {
+    // R2: one enrollment per student per season, EVER. A WITHDRAWN row is
+    // history, not an obstacle to clear — re-admission is a transition v1
+    // never had (R50) and is not invented here.
+    return apiError(res, "already_enrolled", "This student already has an enrollment in that season.", 409);
+  }
+
+  try {
+    const enrollment = await db.$transaction(async (tx) => {
+      const row = await tx.seasonEnrollment.create({
+        // Entry is always ACTIVE (R47).
+        data: { studentUserId: id, seasonId, status: "ACTIVE" },
+        select: { id: true, seasonId: true, status: true },
+      });
+      // D1's reconciliation, applied conservatively: point an UNSET pointer
+      // at the new enrollment so the student is assignable on the roster
+      // (R11) — but never steal a pointer another season already holds.
+      if (student.studentProfile && student.studentProfile.activeSeasonId === null) {
+        await tx.studentProfile.update({
+          where: { userId: id },
+          data: { activeSeasonId: seasonId },
+        });
+      }
+      return row;
+    });
+    return apiOk(res, enrollment, 201);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return apiError(res, "already_enrolled", "This student already has an enrollment in that season.", 409);
+    }
+    throw err;
+  }
+});
+
+/**
+ * The enrollment state machine's only two transitions, both out of ACTIVE
+ * (R48–R50): → WITHDRAWN (drop, with optional reason) and → COMPLETED.
+ * Addressed by (student, season) — the natural unique key — rather than a
+ * bare enrollment id: the bare-id shape is exactly what let v1's document
+ * delete lose its row-scoped gate unnoticed (D5's lesson, applied here).
+ * The row is transitioned in place, never deleted, never resurrected.
+ */
+studentsRouter.patch("/:id/enrollments/:seasonId", async (req, res) => {
+  const user = requireUser(req);
+  const id = parseId(req.params.id);
+  const seasonId = parseId(req.params.seasonId);
+  if (id === null || seasonId === null) {
+    return apiError(res, "bad_request", "Invalid student or season id.", 400);
+  }
+
+  const parsed = updateEnrollmentRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid enrollment body.", 400);
+
+  // R64's gate, moved BEFORE the lookup: v1 fetched the enrollment first and
+  // gated second, so a refused caller still learned whether an arbitrary id
+  // existed (R65).
+  if (!isAdminOfSeason(user, seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const enrollment = await db.seasonEnrollment.findUnique({
+    where: { studentUserId_seasonId: { studentUserId: id, seasonId } },
+    select: { id: true, status: true },
+  });
+  if (!enrollment) return apiError(res, "not_found", "Enrollment not found.", 404);
+  if (enrollment.status !== "ACTIVE") {
+    // R49 (drop refuses non-ACTIVE) generalised to both transitions; there
+    // is no path out of a terminal state (R50).
+    return apiError(res, "not_active", "Only an active enrollment can be completed or dropped.", 409);
+  }
+
+  const updated = await db.seasonEnrollment.update({
+    where: { id: enrollment.id },
+    data:
+      parsed.data.status === "WITHDRAWN"
+        ? { status: "WITHDRAWN", droppedAt: new Date(), dropReason: parsed.data.dropReason ?? null }
+        : { status: "COMPLETED", completedAt: new Date() },
+    select: { id: true, status: true },
+  });
+  return apiOk(res, updated);
 });

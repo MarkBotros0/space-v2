@@ -557,3 +557,142 @@ describe("PATCH /api/v1/students/:id", () => {
     expect(profile?.university).toBe("Test University");
   });
 });
+
+describe("POST /api/v1/students/:id/enrollments", () => {
+  it("creates an ACTIVE enrollment and points an unset activeSeasonId at it (R47, D1)", async () => {
+    const s = await createTestUser("enrollee", "STUDENT");
+    await db.studentProfile.create({ data: { userId: s.id } });
+
+    const res = await request(app)
+      .post(`/api/v1/students/${s.id}/enrollments`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ seasonId: seasonAId });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data).toMatchObject({ seasonId: seasonAId, status: "ACTIVE" });
+    const profile = await db.studentProfile.findUnique({
+      where: { userId: s.id },
+      select: { activeSeasonId: true },
+    });
+    expect(profile?.activeSeasonId).toBe(seasonAId);
+  });
+
+  it("never overwrites an activeSeasonId that is already set", async () => {
+    const s = await createTestUser("enrollee-b", "STUDENT");
+    await db.studentProfile.create({ data: { userId: s.id, activeSeasonId: seasonBId } });
+
+    const res = await request(app)
+      .post(`/api/v1/students/${s.id}/enrollments`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ seasonId: seasonAId });
+
+    expect(res.status).toBe(201);
+    const profile = await db.studentProfile.findUnique({
+      where: { userId: s.id },
+      select: { activeSeasonId: true },
+    });
+    expect(profile?.activeSeasonId).toBe(seasonBId);
+  });
+
+  it("refuses an enrollment into a season the caller does not administer (R64's shape)", async () => {
+    const res = await request(app)
+      .post(`/api/v1/students/${student2Id}/enrollments`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ seasonId: seasonBId });
+    expect(res.status).toBe(403);
+  });
+
+  it("refuses a LEADER", async () => {
+    const res = await request(app)
+      .post(`/api/v1/students/${student2Id}/enrollments`)
+      .set("authorization", `Bearer ${leaderToken}`)
+      .send({ seasonId: seasonAId });
+    expect(res.status).toBe(403);
+  });
+
+  it("refuses a duplicate — one enrollment per student per season, ever (R2)", async () => {
+    const res = await request(app)
+      .post(`/api/v1/students/${student1Id}/enrollments`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ seasonId: seasonAId });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("already_enrolled");
+  });
+});
+
+describe("PATCH /api/v1/students/:id/enrollments/:seasonId", () => {
+  async function makeActiveEnrollee(label: string): Promise<number> {
+    const s = await createTestUser(label, "STUDENT");
+    await db.studentProfile.create({ data: { userId: s.id } });
+    await db.seasonEnrollment.create({
+      data: { studentUserId: s.id, seasonId: seasonAId, status: "ACTIVE" },
+    });
+    return s.id;
+  }
+
+  it("drops an ACTIVE enrollment with a reason — and the row SURVIVES (never deleted)", async () => {
+    const sid = await makeActiveEnrollee("to-drop");
+    const res = await request(app)
+      .patch(`/api/v1/students/${sid}/enrollments/${seasonAId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ status: "WITHDRAWN", dropReason: "Left the program" });
+
+    expect(res.status).toBe(200);
+    const rows = await db.seasonEnrollment.findMany({
+      where: { studentUserId: sid, seasonId: seasonAId },
+      select: { status: true, droppedAt: true, dropReason: true },
+    });
+    expect(rows).toHaveLength(1); // transitioned in place, not delete+recreate
+    expect(rows[0]).toMatchObject({ status: "WITHDRAWN", dropReason: "Left the program" });
+    expect(rows[0]?.droppedAt).not.toBeNull();
+  });
+
+  it("completes an ACTIVE enrollment with completedAt (R48's write, made per-enrollment)", async () => {
+    const sid = await makeActiveEnrollee("to-complete");
+    const res = await request(app)
+      .patch(`/api/v1/students/${sid}/enrollments/${seasonAId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ status: "COMPLETED" });
+
+    expect(res.status).toBe(200);
+    const row = await db.seasonEnrollment.findFirst({
+      where: { studentUserId: sid, seasonId: seasonAId },
+      select: { status: true, completedAt: true, dropReason: true },
+    });
+    expect(row).toMatchObject({ status: "COMPLETED", dropReason: null });
+    expect(row?.completedAt).not.toBeNull();
+  });
+
+  it("refuses a second transition out of a terminal state — no un-drop (R49/R50)", async () => {
+    const sid = await makeActiveEnrollee("terminal");
+    await request(app)
+      .patch(`/api/v1/students/${sid}/enrollments/${seasonAId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ status: "WITHDRAWN" });
+
+    const res = await request(app)
+      .patch(`/api/v1/students/${sid}/enrollments/${seasonAId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ status: "COMPLETED" });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("not_active");
+  });
+
+  it("gates on the season BEFORE the row lookup — no existence leak (fixes R65)", async () => {
+    // adminToken does not administer season B; the answer must be 403 even
+    // though no such enrollment exists, proving the gate runs first.
+    const res = await request(app)
+      .patch(`/api/v1/students/${student1Id}/enrollments/${seasonBId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ status: "WITHDRAWN" });
+    expect(res.status).toBe(403);
+  });
+
+  it("refuses ACTIVE in the body — re-activation does not exist (R50)", async () => {
+    const res = await request(app)
+      .patch(`/api/v1/students/${student1Id}/enrollments/${seasonAId}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ status: "ACTIVE" });
+    expect(res.status).toBe(400);
+  });
+});
