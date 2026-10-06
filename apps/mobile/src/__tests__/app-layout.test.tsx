@@ -55,7 +55,11 @@ jest.mock("expo-router", () => {
   };
 });
 
-import AppLayout, { ALL_ROUTE_NAMES, DETAIL_ROUTE_NAMES } from "../../app/(app)/_layout";
+import AppLayout, {
+  ALL_ROUTE_NAMES,
+  DETAIL_ROUTE_NAMES,
+  routeNameForHref,
+} from "../../app/(app)/_layout";
 
 const scopes = makeScopes();
 
@@ -126,12 +130,53 @@ describe("AppLayout tab shell", () => {
     }
   });
 
-  it("registers assignment/[id] as a hidden detail route", () => {
-    expect(DETAIL_ROUTE_NAMES).toContain("assignment/[id]");
+  it("registers the assignment detail, edit and new routes as hidden detail routes (X7)", () => {
+    const names = ["assignment/[id]/index", "assignment/[id]/edit", "assignment/new"];
+    for (const name of names) expect(DETAIL_ROUTE_NAMES).toContain(name);
+    // The file form must be gone: x/[id].tsx beside x/[id]/ is the ambiguity X7 forbids.
+    expect(DETAIL_ROUTE_NAMES).not.toContain("assignment/[id]");
 
-    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
     render(<AppLayout />);
 
-    expect(mockScreens.find((s) => s.name === "assignment/[id]")?.href).toBeNull();
+    for (const name of names) {
+      expect(mockScreens.find((s) => s.name === name)?.href).toBeNull();
+    }
+  });
+
+  it("registers the leader-path detail routes as hidden", () => {
+    for (const name of ["group/[id]/index", "submission/[publicId]", "session/[id]/attendance"]) {
+      expect(DETAIL_ROUTE_NAMES).toContain(name);
+    }
+  });
+
+  it("registers session/[id]/index as a hidden detail route", () => {
+    useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
+    render(<AppLayout />);
+    const detail = mockScreens.find((s) => s.name === "session/[id]/index");
+    expect(detail).toBeDefined();
+    expect(detail?.href).toBeNull();
+  });
+
+  it("registers Plan 6's detail routes, in the directory form where they have children (X7)", () => {
+    for (const name of [
+      "seasons/[code]/index",
+      "seasons/[code]/edit",
+      "seasons/[code]/roster/index",
+      "group/new",
+      "group/[id]/index",
+      "group/[id]/edit",
+      "session/new",
+      "session/[id]/edit",
+    ]) {
+      expect(DETAIL_ROUTE_NAMES).toContain(name);
+    }
+    expect(DETAIL_ROUTE_NAMES).not.toContain("group/[id]");
+  });
+
+  it("maps the /seasons tab to its directory route, like /students", () => {
+    expect(routeNameForHref("/seasons")).toBe("seasons/index");
+    expect(routeNameForHref("/students")).toBe("students/index");
+    expect(routeNameForHref("/calendar")).toBe("calendar");
   });
 });

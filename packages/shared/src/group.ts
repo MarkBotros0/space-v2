@@ -66,5 +66,77 @@ export const groupDetailSchema = z.object({
   seasonTitle: z.string(),
   leaders: z.array(groupMemberSchema),
   students: z.array(groupMemberSchema),
+  /** isAdminOfSeason for the caller (C4, D-16.15): may edit or delete this group. */
+  canManage: z.boolean(),
 });
 export type GroupDetail = z.infer<typeof groupDetailSchema>;
+
+/** POST /seasons/:id/groups (201) and PATCH /groups/:id. */
+export const groupRefResponseSchema = z.object({ id: z.number() });
+
+/** GET /groups/leader-options (D-16.14) — interim until domain 11's user directory. */
+export const leaderOptionSchema = z.object({
+  id: z.number(),
+  name: z.string().nullable(),
+  email: z.string(),
+});
+export type LeaderOption = z.infer<typeof leaderOptionSchema>;
+
+/** GET /groups/:id/impact — the confirmation v1 never had (spec 05 R45, D-16.13). */
+export const groupImpactSchema = z.object({
+  /** ACTIVE enrolments that would lose their group. */
+  studentCount: z.number().int().nonnegative(),
+  leaderCount: z.number().int().nonnegative(),
+  /** Live assignments targeted at this group ONLY. Non-empty → delete is refused. */
+  soleTargetAssignments: z.array(z.object({ id: z.number(), title: z.string() })),
+});
+export type GroupImpact = z.infer<typeof groupImpactSchema>;
+
+export const groupDeleteResponseSchema = z.object({
+  deleted: z.literal(true),
+  orphanedStudentIds: z.array(z.number()),
+});
+
+/** GET /seasons/:id/roster (D-16.11). */
+export const seasonRosterRowSchema = z.object({
+  userId: z.number(),
+  name: z.string().nullable(),
+  email: z.string(),
+  /** This season's group, from SeasonEnrollment.groupId (C9). */
+  groupId: z.number().nullable(),
+  groupName: z.string().nullable(),
+  /**
+   * The student's current GroupStudent membership in ANOTHER season's group —
+   * which assigning them here removes, because GroupStudent is globally
+   * unique (spec 05 R1/R82; a Plan 18 item).
+   */
+  otherSeasonGroup: z.object({ groupName: z.string(), seasonCode: z.string() }).nullable(),
+});
+export type SeasonRosterRow = z.infer<typeof seasonRosterRowSchema>;
+
+/** v1 allowed 2000 and could not finish inside its own 20 s timeout (spec 05 R56). */
+export const GROUP_ASSIGNMENTS_MAX = 500;
+
+export const groupAssignmentsRequestSchema = z.object({
+  assignments: z
+    .array(
+      z.object({
+        studentUserId: z.number().int().positive(),
+        /** null = unassign from this season's group. */
+        groupId: z.number().int().positive().nullable(),
+      }),
+    )
+    .max(GROUP_ASSIGNMENTS_MAX)
+    .refine((rows) => new Set(rows.map((r) => r.studentUserId)).size === rows.length, {
+      message: "Each student may appear only once.",
+    }),
+});
+export type GroupAssignmentsRequest = z.infer<typeof groupAssignmentsRequestSchema>;
+
+/** Counts of what was WRITTEN (spec 05 R57) — the same shape Plan 17's group importer reports. */
+export const groupAssignmentsResponseSchema = z.object({
+  assigned: z.number().int().nonnegative(),
+  unassigned: z.number().int().nonnegative(),
+  skippedStudentIds: z.array(z.number()),
+});
+export type GroupAssignmentsResult = z.infer<typeof groupAssignmentsResponseSchema>;

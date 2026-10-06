@@ -23,8 +23,13 @@ export function testEmail(label: string): string {
   return `${TEST_PREFIX}${label}-${randomUUID()}${EMAIL_SUFFIX}`;
 }
 
+/**
+ * 26 chars: the prefix plus 12 hex digits (48 bits — collision-free at test
+ * scale). Season codes are bounded at 40 (v1 R4), and duplication appends
+ * "-<year>" to derived codes, so the fixture must leave room.
+ */
 export function testSeasonCode(): string {
-  return `${TEST_PREFIX}${randomUUID()}`;
+  return `${TEST_PREFIX}${randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
 export type TestRole = "SUPER" | "ADMIN" | "LEADER" | "STUDENT" | "MENTOR";

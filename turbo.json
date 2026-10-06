@@ -50,7 +50,8 @@
         "STORAGE_DRIVER",
         "LOCAL_UPLOADS_DIR",
         "MAX_UPLOAD_BYTES",
-        "ENABLE_API_DOCS"
+        "ENABLE_API_DOCS",
+        "ORG_TIMEZONE"
       ]
     },
     "dev": {
