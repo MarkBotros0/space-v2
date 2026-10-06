@@ -424,3 +424,30 @@ export async function unassignStudentsFromGroups(
   }
   return { unassigned, skippedStudentIds };
 }
+
+/**
+ * What deleting a group would do (spec 05 §10 item 5, Plan 6 D-16.13).
+ * `soleTargetAssignments`: live assignments that are not "all groups" and
+ * whose ONLY target is this group — deleting it would cascade their last
+ * AssignmentTarget away and leave them visible to nobody (R44).
+ */
+export async function loadGroupImpact(groupId: number): Promise<{
+  studentCount: number;
+  leaderCount: number;
+  soleTargetAssignments: { id: number; title: string }[];
+}> {
+  const [studentCount, leaderCount, targeted] = await Promise.all([
+    db.seasonEnrollment.count({ where: { groupId, status: "ACTIVE" } }),
+    db.groupLeader.count({ where: { groupId } }),
+    db.assignment.findMany({
+      where: { deletedAt: null, isAllGroups: false, targets: { some: { groupId } } },
+      orderBy: { id: "asc" },
+      select: { id: true, title: true, _count: { select: { targets: true } } },
+    }),
+  ]);
+  return {
+    studentCount,
+    leaderCount,
+    soleTargetAssignments: targeted.filter((a) => a._count.targets === 1).map((a) => ({ id: a.id, title: a.title })),
+  };
+}

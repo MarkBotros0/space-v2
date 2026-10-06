@@ -45,3 +45,13 @@ export function canReadAllStudents(u: SessionUser): boolean {
 export function canManageUsers(u: SessionUser): boolean {
   return u.role === "SUPER";
 }
+
+/**
+ * May act as a season admin somewhere — e.g. read the leader picker for a
+ * group form. The role is tested with the claim (C7): a stray SeasonAdmin row
+ * on a STUDENT grants nothing.
+ */
+export function isAdminOfAnySeason(u: SessionUser): boolean {
+  if (u.role === "SUPER") return true;
+  return u.role === "ADMIN" && u.seasonAdminIds.length > 0;
+}

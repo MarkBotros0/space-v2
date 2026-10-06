@@ -322,6 +322,7 @@ export const openApiDocument = {
           seasonTitle: { type: "string" },
           leaders: { type: "array", items: { $ref: "#/components/schemas/GroupMember" } },
           students: { type: "array", items: { $ref: "#/components/schemas/GroupMember" } },
+          canManage: { type: "boolean", description: "isAdminOfSeason for the caller." },
         },
       },
 
@@ -1145,7 +1146,84 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/groups/leader-options": {
+      get: {
+        tags: ["Groups"],
+        summary: "Leaders a group form may pick from",
+        description:
+          "Season-admin (of any season) or SUPER only. Live LEADER users, name-ordered. Interim: spec 05 puts this behind the user directory (Plan 9), which may replace this route.",
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                leaders: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: { id: { type: "integer" }, name: { type: ["string", "null"] }, email: { type: "string" } },
+                  },
+                },
+              },
+            },
+            "Leader users.",
+          ),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/groups/{id}/impact": {
+      get: {
+        tags: ["Groups"],
+        summary: "What deleting a group would do",
+        description:
+          "Season-admin only. studentCount (ACTIVE enrolments that would lose their group), leaderCount, and soleTargetAssignments: live assignments targeted at this group ONLY, which make DELETE refuse (spec 05 R44).",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                studentCount: { type: "integer" },
+                leaderCount: { type: "integer" },
+                soleTargetAssignments: {
+                  type: "array",
+                  items: { type: "object", properties: { id: { type: "integer" }, title: { type: "string" } } },
+                },
+              },
+            },
+            "The impact.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
     "/api/v1/groups/{id}": {
+      delete: {
+        tags: ["Groups"],
+        summary: "Delete a group",
+        description:
+          "Season-admin only. Designed rather than ported: v1's delete action was unreachable (C12). Refuses with 409 `group_has_sole_targets` while any live non-all-groups assignment targets only this group, so none is left visible to nobody. Otherwise, in one transaction that re-checks that condition: unassigns every enrolment pointing at the group, deletes its leaders, memberships and target rows, and hard-deletes the group. Returns `{ deleted: true, orphanedStudentIds }`.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: { deleted: { type: "boolean" }, orphanedStudentIds: { type: "array", items: { type: "integer" } } },
+            },
+            "Deleted.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`group_has_sole_targets`."),
+        },
+      },
       patch: {
         tags: ["Groups"],
         summary: "Edit a group's name, description, leaders and roster",
