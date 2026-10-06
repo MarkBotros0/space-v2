@@ -6,6 +6,10 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().min(1),
   PORT: z.coerce.number().int().positive().default(4000),
   NODE_ENV: z.string().default("development"),
+  // IANA zone every wall-clock derivation resolves against (ruling C2): the
+  // text of a reschedule notice, where the next weekly occurrence lands, any
+  // day bucketing. Never the host's zone. The organisation is Cairo-based.
+  ORG_TIMEZONE: z.string().default("Africa/Cairo"),
   // Number of proxy hops (e.g. a load balancer) in front of the app. Passed
   // straight to Express's `trust proxy` setting, which controls how `req.ip`
   // is derived and therefore how express-rate-limit buckets clients. Defaults
@@ -79,6 +83,7 @@ export const config = {
   authSecret: parsed.data.AUTH_SECRET,
   port: parsed.data.PORT,
   nodeEnv: parsed.data.NODE_ENV,
+  orgTimezone: parsed.data.ORG_TIMEZONE,
   trustProxy: parsed.data.TRUST_PROXY,
   mobileAppOrigin: parsed.data.MOBILE_APP_ORIGIN,
   gmailUser: parsed.data.GMAIL_USER,

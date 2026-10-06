@@ -47,7 +47,15 @@ export const ALL_ROUTE_NAMES: readonly string[] = Array.from(
  * one is missing, and pins that each entry is declared with href: null.
  * Plans add a detail route by appending to this list — nothing else.
  */
-export const DETAIL_ROUTE_NAMES: readonly string[] = ["assignment/[id]"];
+export const DETAIL_ROUTE_NAMES: readonly string[] = [
+  "assignment/[id]/index",
+  "assignment/[id]/edit",
+  "assignment/new",
+  "group/[id]",
+  "submission/[publicId]",
+  "session/[id]/attendance",
+  "session/[id]/index",
+];
 
 /**
  * `(app)/_layout.tsx` — the `Tabs` navigator every authenticated screen

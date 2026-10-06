@@ -1,9 +1,11 @@
 import { db } from "../../db/client";
+import { orgDayKey } from "../org-time";
 
 export interface SessionListRow {
   id: number;
   title: string;
   startsAt: Date;
+  dayKey: string;
   durationMinutes: number;
   location: string | null;
   recurrenceGroupId: string | null;
@@ -46,6 +48,7 @@ export async function listSessionsForSeason(
     id: s.id,
     title: s.title,
     startsAt: s.startsAt,
+    dayKey: orgDayKey(s.startsAt),
     durationMinutes: s.durationMinutes,
     location: s.location,
     recurrenceGroupId: s.recurrenceGroupId,
