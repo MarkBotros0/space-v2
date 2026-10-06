@@ -8,4 +8,5 @@ export * from "./session";
 export * from "./assignment";
 export * from "./attendance";
 export * from "./submission";
+export * from "./quiz";
 export * from "./api-error";
