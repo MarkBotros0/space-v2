@@ -4,12 +4,23 @@ import { db } from "../db/client";
 import { AttendanceStatus } from "../generated/prisma/enums";
 import { apiOk, apiError } from "../lib/api-response";
 import { flagLowAttendance } from "../lib/attendance-notifications";
-import { isCheckInOpen } from "../lib/check-in";
+import { CHECK_IN_WINDOW_MS, checkInState, isCheckInOpen } from "../lib/check-in";
 import { createNotificationsBulk } from "../lib/notifications";
-import { addWeeksInOrgTime, formatInOrgTime, orgWallClockToInstant } from "../lib/org-time";
+import {
+  addWeeksInOrgTime,
+  formatInOrgTime,
+  orgDayKey,
+  orgWallClockToInstant,
+  orgWallTime,
+} from "../lib/org-time";
 import { parseId } from "../lib/parse-id";
-import { attendanceScopeFor, canAccessSeason, canMarkAttendance } from "../lib/permissions";
-import { loadAttendanceRoster } from "../lib/queries/sessions";
+import {
+  attendanceScopeFor,
+  calendarScopeFor,
+  canAccessSeason,
+  canMarkAttendance,
+} from "../lib/permissions";
+import { listSessionsInRange, loadAttendanceRoster } from "../lib/queries/sessions";
 import { newPublicId } from "../lib/public-id";
 import { isAdminOfSeason } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
@@ -17,7 +28,11 @@ import {
   checkInRequestSchema,
   createSessionRequestSchema,
   deleteSessionRequestSchema,
+  recurrenceScopeSchema,
   saveAttendanceRequestSchema,
+  SESSION_RANGE_DEFAULT_WEEKS,
+  SESSION_RANGE_MAX_DAYS,
+  sessionRangeQuerySchema,
   updateSessionRequestSchema,
 } from "../../../../packages/shared/src/index";
 import type { RecurrenceScope } from "@space/shared";
@@ -181,6 +196,54 @@ sessionsRouter.post("/", async (req, res) => {
   return apiOk(res, { id: created[0]?.id ?? null, recurrenceGroupId }, 201);
 });
 
+/**
+ * The multi-season calendar (Plan 6 D-16.7, G17). The season set comes from
+ * the role (calendarScopeFor); the window is required in practice — v1's
+ * super calendar was every session of every ACTIVE season, unbounded (spec
+ * 03 R75). Day boundaries are org midnights (C2).
+ */
+sessionsRouter.get("/", async (req, res) => {
+  const user = requireUser(req);
+  const parsed = sessionRangeQuerySchema.safeParse(req.query);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid calendar window.", 400);
+  const q = parsed.data;
+
+  let from: Date;
+  let to: Date;
+  if (q.from && q.to) {
+    from = new Date(q.from);
+    to = new Date(q.to);
+  } else if (q.from) {
+    from = new Date(q.from);
+    to = addWeeksInOrgTime(from, SESSION_RANGE_DEFAULT_WEEKS);
+  } else if (q.to) {
+    to = new Date(q.to);
+    from = addWeeksInOrgTime(to, -SESSION_RANGE_DEFAULT_WEEKS);
+  } else {
+    from = orgWallClockToInstant(orgDayKey(new Date()), null);
+    to = addWeeksInOrgTime(from, SESSION_RANGE_DEFAULT_WEEKS);
+  }
+  const span = to.getTime() - from.getTime();
+  if (span <= 0 || span > SESSION_RANGE_MAX_DAYS * 86_400_000) {
+    return apiError(res, "bad_request", `The window must be positive and at most ${SESSION_RANGE_MAX_DAYS} days.`, 400);
+  }
+
+  const scope = await calendarScopeFor(user, q.seasonId ?? null);
+  if (scope === "not_found") return apiError(res, "not_found", "Season not found.", 404);
+  if (scope === "forbidden") return apiError(res, "forbidden", "You don't have access to this.", 403);
+
+  // Tokens only for seasons the caller can actually run check-in for (spec
+  // 04 §7): v1 handed them to every non-student, leaders included.
+  const sessions = await listSessionsInRange(scope, { from, to }, (sid) => isAdminOfSeason(user, sid));
+  return apiOk(res, {
+    sessions,
+    from,
+    to,
+    fromDayKey: orgDayKey(from),
+    toDayKey: orgDayKey(new Date(to.getTime() - 1)),
+  });
+});
+
 sessionsRouter.get("/:id", async (req, res) => {
   const user = requireUser(req);
   const id = parseId(req.params.id);
@@ -225,6 +288,8 @@ sessionsRouter.get("/:id", async (req, res) => {
     title: session.title,
     description: session.description,
     startsAt: session.startsAt,
+    dayKey: orgDayKey(session.startsAt),
+    startTime: orgWallTime(session.startsAt),
     durationMinutes: session.durationMinutes,
     location: session.location,
     youtubeUrl: session.youtubeUrl,
@@ -492,4 +557,150 @@ sessionsRouter.post("/:id/check-in-close", async (req, res) => {
   });
 
   return apiOk(res, { closed: true });
+});
+
+/**
+ * What a scoped edit/delete would touch (spec 03 §7, Plan 6 D-16.8). Uses
+ * resolveSeriesTargets — the SAME season-fenced selection PATCH and DELETE
+ * use — so the preview cannot disagree with the write. A GET: writes nothing (C6).
+ */
+sessionsRouter.get("/:id/series", async (req, res) => {
+  const user = requireUser(req);
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+
+  const anchor = await db.session.findUnique({
+    where: { id },
+    select: { id: true, seasonId: true, recurrenceGroupId: true, startsAt: true },
+  });
+  if (!anchor) return apiError(res, "not_found", "Session not found.", 404);
+  if (!isAdminOfSeason(user, anchor.seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const scope = recurrenceScopeSchema.safeParse(req.query.scope);
+  if (!scope.success) return apiError(res, "bad_request", "Pass scope=one|future|all.", 400);
+
+  const targetIds = (await resolveSeriesTargets(anchor, scope.data)).map((t) => t.id);
+  const inTargets = { sessionId: { in: targetIds } };
+  const [rows, attendanceCount, videoProgressCount] = await Promise.all([
+    db.session.findMany({
+      where: { id: { in: targetIds } },
+      orderBy: { startsAt: "asc" },
+      select: { id: true, title: true, startsAt: true, _count: { select: { attendance: true } } },
+    }),
+    db.attendance.count({ where: inTargets }),
+    db.sessionVideoProgress.count({ where: inTargets }),
+  ]);
+
+  return apiOk(res, {
+    scope: scope.data,
+    sessions: rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      startsAt: r.startsAt,
+      dayKey: orgDayKey(r.startsAt),
+      startTime: orgWallTime(r.startsAt),
+      isAnchor: r.id === anchor.id,
+      attendanceCount: r._count.attendance,
+    })),
+    attendanceCount,
+    videoProgressCount,
+  });
+});
+
+/**
+ * Read the check-in state back (spec 04 §7, Plan 6 D-16.9). The narrow,
+ * admin-only way to recover the token after an app restart — so the console
+ * no longer depends on the season-wide session list for it.
+ */
+sessionsRouter.get("/:id/check-in", async (req, res) => {
+  const user = requireUser(req);
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+
+  const session = await db.session.findUnique({
+    where: { id },
+    select: { seasonId: true, checkInToken: true, checkInOpenAt: true, checkInClosedAt: true },
+  });
+  if (!session) return apiError(res, "not_found", "Session not found.", 404);
+  if (!isAdminOfSeason(user, session.seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const state = checkInState(session);
+  const expiresAt =
+    state === "open" && session.checkInOpenAt
+      ? new Date(session.checkInOpenAt.getTime() + CHECK_IN_WINDOW_MS)
+      : null;
+  return apiOk(res, {
+    state,
+    isOpen: state === "open",
+    checkInToken: session.checkInToken,
+    checkInOpenAt: session.checkInOpenAt,
+    checkInClosedAt: session.checkInClosedAt,
+    expiresAt,
+    expiresAtTime: expiresAt ? orgWallTime(expiresAt) : null,
+  });
+});
+
+/**
+ * Replace the check-in token (v1 regenerateCheckInTokenAction,
+ * session-actions.ts:275-295, R40): both timestamps are left alone, so an
+ * open window stays open under the new code and the old one stops working.
+ */
+sessionsRouter.post("/:id/check-in-regenerate", async (req, res) => {
+  const user = requireUser(req);
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+
+  const session = await db.session.findUnique({ where: { id }, select: { seasonId: true } });
+  if (!session) return apiError(res, "not_found", "Session not found.", 404);
+  if (!isAdminOfSeason(user, session.seasonId)) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const checkInToken = newPublicId();
+  await db.session.update({ where: { id }, data: { checkInToken } });
+  return apiOk(res, { checkInToken });
+});
+
+/**
+ * The session's quizzes for staff (v1 listQuizzesForSession, quiz-query.ts:
+ * 141-170; Plan 6 D-16.10). Gated like the attendance roster: season
+ * admins and leaders with a group in the season.
+ */
+sessionsRouter.get("/:id/quizzes", async (req, res) => {
+  const user = requireUser(req);
+  const id = parseId(req.params.id);
+  if (id === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+
+  const exists = await db.session.findUnique({ where: { id }, select: { id: true } });
+  if (!exists) return apiError(res, "not_found", "Session not found.", 404);
+  if ((await attendanceScopeFor(user, id)) === null) {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+
+  const quizzes = await db.quiz.findMany({
+    where: { sessionId: id },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      title: true,
+      kind: true,
+      maxScore: true,
+      publishedAt: true,
+      _count: { select: { questions: true } },
+    },
+  });
+  return apiOk(res, {
+    quizzes: quizzes.map((q) => ({
+      id: q.id,
+      title: q.title,
+      kind: q.kind,
+      maxScore: q.maxScore,
+      questionCount: q._count.questions,
+      publishedAt: q.publishedAt,
+    })),
+  });
 });

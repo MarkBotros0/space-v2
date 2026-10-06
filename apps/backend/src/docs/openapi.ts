@@ -331,6 +331,7 @@ export const openApiDocument = {
           id: { type: "integer" },
           title: { type: "string" },
           startsAt: { type: "string", format: "date-time" },
+          startTime: { type: "string", pattern: "^\\d{2}:\\d{2}$", description: "Org wall-clock start, HH:mm (X13)." },
           dayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-timezone calendar day of startsAt (ruling X13). Group by this, not by formatting startsAt on the device." },
           durationMinutes: { type: "integer" },
           location: { type: ["string", "null"] },
@@ -356,6 +357,8 @@ export const openApiDocument = {
           title: { type: "string" },
           description: { type: ["string", "null"] },
           startsAt: { type: "string", format: "date-time" },
+          dayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-calendar day of startsAt (X13)." },
+          startTime: { type: "string", pattern: "^\\d{2}:\\d{2}$", description: "Org wall-clock start, HH:mm (X13)." },
           durationMinutes: { type: "integer" },
           location: { type: ["string", "null"] },
           youtubeUrl: { type: ["string", "null"] },
@@ -1195,11 +1198,13 @@ export const openApiDocument = {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["seasonId", "title", "startsAt", "durationMinutes"],
+                required: ["seasonId", "title", "durationMinutes"],
                 properties: {
                   seasonId: { type: "integer" },
                   title: { type: "string", minLength: 2, maxLength: 120 },
-                  startsAt: { type: "string", format: "date-time" },
+                  startsAt: { type: "string", format: "date-time", description: "An instant. Send this OR startDay + startTime, never both." },
+                  startDay: { type: "string", description: "YYYY-MM-DD on the org calendar. Org wall-clock start (D-16.6, Plan 5's day/time split); send exactly one of startsAt, or startDay + startTime." },
+                  startTime: { type: "string", description: "HH:mm on the org clock. Pair of startDay." },
                   durationMinutes: { type: "integer", minimum: 15, maximum: 600 },
                   location: { type: ["string", "null"], maxLength: 200 },
                   youtubeUrl: { type: ["string", "null"], format: "uri" },
@@ -1215,6 +1220,97 @@ export const openApiDocument = {
             { type: "object", properties: { id: { type: "integer" }, recurrenceGroupId: { type: ["string", "null"] } } },
             "Created; `id` is the first session.",
           ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      get: {
+        tags: ["Sessions"],
+        summary: "Calendar sessions across seasons, windowed",
+        description:
+          "Season set by role: SUPER all ACTIVE seasons (or any one live season via seasonId); ADMIN their seasons; LEADER every season they lead a group in; STUDENT/MENTOR 403. seasonId narrows within that set and is 403 outside it. Window [from, to) defaults to org-midnight today + 8 calendar weeks; one bound alone extends 8 weeks; span ≤ 120 days. checkInToken only on rows of seasons the caller administers.",
+        parameters: [
+          { name: "from", in: "query", schema: { type: "string", format: "date-time" } },
+          { name: "to", in: "query", schema: { type: "string", format: "date-time" } },
+          { name: "seasonId", in: "query", schema: { type: "integer" } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                sessions: { type: "array", items: { $ref: "#/components/schemas/SessionListItem" } },
+                from: { type: "string", format: "date-time" },
+                to: { type: "string", format: "date-time" },
+                fromDayKey: { type: "string" },
+                toDayKey: { type: "string" },
+              },
+            },
+            "Sessions in the window.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/series": {
+      get: {
+        tags: ["Sessions"],
+        summary: "Preview the sessions a scoped edit or delete would touch",
+        description:
+          "Season-admin only. Same season-fenced selection PATCH/DELETE use (C10). 'future' = the anchor and every sibling at or after its stored start. Totals are what DELETE refuses without force.",
+        parameters: [idParam, { name: "scope", in: "query", required: true, schema: { type: "string", enum: ["one", "future", "all"] } }],
+        responses: {
+          200: ok({ type: "object" }, "The targets with dayKey, startTime, isAnchor, attendanceCount; totals attendanceCount, videoProgressCount."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/check-in": {
+      get: {
+        tags: ["Sessions"],
+        summary: "Check-in state for the admin console",
+        description: "Season-admin only. state ∈ not_open|open|expired|closed (lib/check-in.ts — the same rule the scan enforces); expiresAt/expiresAtTime only while open.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ type: "object" }, "The state."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/check-in-regenerate": {
+      post: {
+        tags: ["Sessions"],
+        summary: "Replace the check-in token",
+        description: "Season-admin only. Timestamps untouched: an open window stays open under the new code, and the old code is rejected with invalid_token (v1 R40).",
+        parameters: [idParam],
+        responses: {
+          200: ok({ type: "object", properties: { checkInToken: { type: "string" } } }, "The new token."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/quizzes": {
+      get: {
+        tags: ["Sessions"],
+        summary: "Quizzes linked to a session",
+        description: "Season admins and leaders with a group in the season. Oldest first (v1 listQuizzesForSession).",
+        parameters: [idParam],
+        responses: {
+          200: ok({ type: "object" }, "{ quizzes: [{ id, title, kind, maxScore, questionCount, publishedAt }] }"),
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
@@ -1247,10 +1343,12 @@ export const openApiDocument = {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["title", "startsAt", "durationMinutes", "scope"],
+                required: ["title", "durationMinutes", "scope"],
                 properties: {
                   title: { type: "string", minLength: 2, maxLength: 120 },
-                  startsAt: { type: "string", format: "date-time" },
+                  startsAt: { type: "string", format: "date-time", description: "An instant. Send this OR startDay + startTime, never both." },
+                  startDay: { type: "string", description: "YYYY-MM-DD on the org calendar. Org wall-clock start (D-16.6, Plan 5's day/time split); send exactly one of startsAt, or startDay + startTime." },
+                  startTime: { type: "string", description: "HH:mm on the org clock. Pair of startDay." },
                   durationMinutes: { type: "integer", minimum: 15, maximum: 600 },
                   location: { type: ["string", "null"] },
                   youtubeUrl: { type: ["string", "null"] },
