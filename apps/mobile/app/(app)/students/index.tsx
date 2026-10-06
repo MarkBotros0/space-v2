@@ -1,9 +1,14 @@
-import { EmptyState, Screen } from "../../../src/ui";
+import { StudentList } from "../../../src/components/StudentList";
 
 export default function StudentsScreen() {
+  // LEADER is included: their nav has no /students tab, but the endpoint
+  // narrows them to their groups' members, and the route stays reachable by
+  // navigation (spec 06 §9's leader-roster decision, answered "yes, scoped").
   return (
-    <Screen edges={["top", "left", "right"]}>
-      <EmptyState title="Students" message="This screen isn't built yet." />
-    </Screen>
+    <StudentList
+      status="active"
+      allowedRoles={["SUPER", "ADMIN", "MENTOR", "LEADER"]}
+      title="Students"
+    />
   );
 }
