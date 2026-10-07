@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { post: jest.fn() } }));
 let mockParams: Record<string, string> = { token: "AbC123XyZ0" };
@@ -45,10 +45,16 @@ describe("CheckInLinkScreen", () => {
     renderWithProviders(<CheckInLinkScreen />);
 
     expect(screen.getByText("Check in to the session this code belongs to?")).toBeTruthy();
+    // React Query starts a mutation on a later tick, so let effects and
+    // microtasks settle before asserting that nothing was written on open.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     expect(post).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByText("Check in"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/sessions/check-in", { token: "AbC123XyZ0" }));
+    expect(post).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("You're checked in!")).toBeTruthy();
   });
 
