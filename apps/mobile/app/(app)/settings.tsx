@@ -3,6 +3,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { passwordSchema } from "@space/shared";
 
+import { NotificationPreferences } from "../../src/components/NotificationPreferences";
 import { useChangePassword, useLogoutAll, useUpdateProfile } from "../../src/hooks/use-me";
 import { useLogout } from "../../src/hooks/use-session";
 import { clearSession } from "../../src/lib/token-storage";
@@ -170,6 +171,8 @@ export default function SettingsScreen() {
             </View>
           </Card>
         ) : null}
+
+        <NotificationPreferences />
 
         <Card>
           <Text variant="heading">Security</Text>

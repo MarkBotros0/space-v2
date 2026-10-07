@@ -33,6 +33,20 @@ function sessionFor(role: "SUPER" | "ADMIN" | "LEADER" | "STUDENT" | "MENTOR", g
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (apiClient.get as jest.Mock).mockResolvedValue({
+    data: {
+      data: {
+        preferences: {
+          assignmentCreated: true,
+          submissionReviewed: true,
+          sessionRescheduled: true,
+          lowAttendanceFlag: true,
+          mentorFollowup: true,
+          quizGraded: true,
+        },
+      },
+    },
+  });
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   mockLoadRefreshToken.mockResolvedValue("stored-refresh");
 });
