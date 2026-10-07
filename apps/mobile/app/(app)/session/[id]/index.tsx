@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Linking, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { AttendanceRosterRow, MyAttendance, SessionDetail } from "@space/shared";
 
 import { StudentCheckInCard } from "../../../../src/components/check-in/StudentCheckInCard";
 import { SessionQuizzesCard } from "../../../../src/components/SessionQuizzesCard";
+import { VideoQuestionsEditor, VideoQuizResultsTable } from "../../../../src/components/VideoQuestionsEditor";
+import { VideoQuizPlayer } from "../../../../src/components/VideoQuizPlayer";
 import { useAttendanceRoster } from "../../../../src/hooks/use-attendance";
 import { useCheckInState, useRegenerateCheckIn } from "../../../../src/hooks/use-check-in";
 import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../../../src/hooks/use-session-detail";
+import { useStudentVideoQuiz } from "../../../../src/hooks/use-video-quiz";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
@@ -142,6 +145,64 @@ function LiveCheckInRoster({ detail }: { detail: SessionDetail }) {
   );
 }
 
+/**
+ * The session's interactive video (Plan 14). Students get the player; a season
+ * admin / SUPER gets the question editor (which reads the answer key); a LEADER
+ * gets the results table only. Nothing renders for a session with no video — v1
+ * lets an admin author a full quiz no student can ever reach (R17).
+ */
+function VideoSection({ detail }: { detail: SessionDetail }) {
+  const theme = useTheme();
+  const user = useSessionStore((s) => s.user);
+  const scopes = useSessionStore((s) => s.scopes);
+  const isStudent = user?.role === "STUDENT";
+  // Mirrors canManageSessionVideo exactly: SUPER, or an ADMIN of this season.
+  // NOT `canMarkAttendance` — that flag admits a group LEADER, who may not
+  // author questions. The server enforces the gate regardless; this only decides
+  // whether the editor (and its answer-key read) is ever mounted.
+  const canAuthorVideo =
+    user?.role === "SUPER" ||
+    (user?.role === "ADMIN" && (scopes?.seasonAdminIds ?? []).includes(detail.seasonId));
+  // Results: authors, plus a LEADER (the server narrows a leader to their groups).
+  const canSeeResults = canAuthorVideo || user?.role === "LEADER";
+  const hasVideo = detail.youtubeUrl !== null;
+  const quiz = useStudentVideoQuiz(detail.id, isStudent && hasVideo);
+
+  if (!hasVideo) return null;
+
+  if (isStudent) {
+    const youtubeUrl = detail.youtubeUrl;
+    return (
+      <View style={{ marginTop: theme.spacing.md }}>
+        {quiz.isPending ? (
+          <LoadingState />
+        ) : quiz.isError ? (
+          <ErrorState message="Couldn't load the video quiz." onRetry={() => void quiz.refetch()} />
+        ) : quiz.data.questions.length === 0 ? (
+          <Button
+            title="Watch on YouTube"
+            variant="secondary"
+            onPress={() => {
+              if (youtubeUrl !== null) void Linking.openURL(youtubeUrl);
+            }}
+          />
+        ) : (
+          <VideoQuizPlayer sessionId={detail.id} quiz={quiz.data} onRetry={() => void quiz.refetch()} />
+        )}
+      </View>
+    );
+  }
+  if (canAuthorVideo) return <VideoQuestionsEditor sessionId={detail.id} />;
+  if (canSeeResults) {
+    return (
+      <View style={{ marginTop: theme.spacing.md }}>
+        <VideoQuizResultsTable sessionId={detail.id} />
+      </View>
+    );
+  }
+  return null;
+}
+
 function SessionDetailBody({ id }: { id: number }) {
   const theme = useTheme();
   const router = useRouter();
@@ -195,6 +256,8 @@ function SessionDetailBody({ id }: { id: number }) {
       ) : null}
 
       {data.canMarkAttendance ? <SessionQuizzesCard sessionId={data.id} /> : null}
+
+      <VideoSection detail={data} />
 
       {data.canMarkAttendance ? (
         <Button
