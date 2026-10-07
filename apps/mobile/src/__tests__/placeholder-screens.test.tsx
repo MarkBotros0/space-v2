@@ -16,12 +16,10 @@ import { renderWithProviders } from "./helpers/render";
 import { listRouteNames, readRouteSource } from "./helpers/routes";
 
 import EventsScreen from "../../app/(app)/events";
-import NotesScreen from "../../app/(app)/notes";
 import ReportsScreen from "../../app/(app)/reports";
 
 const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
   ["events", EventsScreen, "JPC Events"],
-  ["notes", NotesScreen, "Notes"],
   ["reports", ReportsScreen, "Reports"],
 ];
 

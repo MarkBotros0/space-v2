@@ -94,8 +94,21 @@ These are operations on the live database, not code:
   events (CI, reviews) to reach Claude automatically.
 - Plan 18's register lists every deliberate deferral; read it before cutover.
 
-## 7. Still to build
+## 7. Plans 11 and 12 (built, awaiting merge)
 
-Plans 11 to 18 are not started: student self-service,
-notes and engagement, notifications and push, video/forum/events, reports and
-exports, role dashboards, imports, cutover.
+- Device checks (Expo Go or dev build): student check-in by QR scan and by
+  the `/checkin/<token>` deep link (camera permission prompt, denied state),
+  the History, Attendance and Profile screens, the Season screen's student
+  branch, the authored-notes screen and the engagement card on student detail.
+- Plan 11 adds `expo-camera ~17.0.10` (package.json, app.json plugin,
+  lockfile). `npx expo install --check` could not run here (Expo API blocked
+  by the proxy); run it once on a machine with access.
+- If the testing PR (#8) merges first, regenerate `pnpm-lock.yaml` with pnpm
+  rather than hand-merging it.
+- Note deletion answers `501 delete_unavailable` by design (Plan 12); decide
+  later whether v1's delete behaviour is wanted.
+
+## 8. Still to build
+
+Plans 13 to 18 are not started: notifications and push, video/forum/events,
+reports and exports, role dashboards, imports, cutover.

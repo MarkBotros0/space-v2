@@ -1,17 +1,24 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, View } from "react-native";
-import { dateOnlyFromIso, type EnrollmentHistoryItem } from "@space/shared";
+import {
+  dateOnlyFromIso,
+  type EnrollmentHistoryItem,
+  type NoteSummary,
+  type NoteVisibility,
+} from "@space/shared";
 
 import { DropEnrollmentSheet } from "../../../../src/components/DropEnrollmentSheet";
 import { GraduateStudentSheet } from "../../../../src/components/GraduateStudentSheet";
+import { isNoSeasonError, useStudentEngagement } from "../../../../src/hooks/use-engagement";
+import { flattenNotePages, useCreateNote, useStudentNotes } from "../../../../src/hooks/use-notes";
 import { useDeleteStudent, useStudentDetail, type StudentDetail } from "../../../../src/hooks/use-students";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
-import { formatDayKey } from "../../../../src/lib/format";
+import { formatDate, formatDayKey } from "../../../../src/lib/format";
 import { studentActionsFor } from "../../../../src/lib/student-actions";
 import { useSessionStore } from "../../../../src/store/session";
 import { useTheme } from "../../../../src/theme";
-import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
+import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../../src/ui";
 
 function enrollmentStatusLabel(status: EnrollmentHistoryItem["status"]): string {
   if (status === "COMPLETED") return "Completed";
@@ -66,6 +73,212 @@ function EnrollmentRow({ item, onDrop }: { item: EnrollmentHistoryItem; onDrop: 
       ) : null}
       {onDrop ? <Button title="Drop" variant="ghost" onPress={onDrop} /> : null}
     </Card>
+  );
+}
+
+const VISIBILITY_LABEL: Record<NoteVisibility, string> = {
+  LEADERS: "Visible to group leaders only",
+  MENTORS: "Visible to mentors only",
+  ADMINS: "Visible to season admins only",
+};
+
+const VISIBILITY_ORDER: NoteVisibility[] = ["LEADERS", "MENTORS", "ADMINS"];
+
+/**
+ * The engagement card.
+ *
+ * Every number here is served, not computed. v1 re-derived the score at each
+ * render site (four student-detail pages, the mentor dashboard, the reports
+ * screen), which is how "at risk" ended up meaning three different things
+ * (spec R73/R74, D7) and how the mentor dashboard came to issue 4N queries per
+ * render (R80, D10).
+ *
+ * The absence-budget figure is NOT here. It is domain 4's number on domain 4's
+ * terms, it means "absence budget remaining" rather than "attendance" (spec
+ * R68/R87, D8 #2), and it inherits ruling C3's wrong-instant lateness defect,
+ * which this domain's attendancePct does not — see
+ * docs/superpowers/specs/domains/04-attendance.md.
+ */
+function EngagementCard({ studentId, enabled }: { studentId: number; enabled: boolean }) {
+  const theme = useTheme();
+  const { data, isPending, isError, error, refetch } = useStudentEngagement(studentId, enabled);
+
+  if (!enabled) return null;
+
+  return (
+    <Card style={{ marginTop: theme.spacing.md }}>
+      <Text variant="heading">Engagement</Text>
+      {isPending ? (
+        <LoadingState />
+      ) : isError && isNoSeasonError(error) ? (
+        // The one error that is an answer (404 no_season).
+        <Text variant="body" color={theme.colors.neutral[600]}>
+          No season to score yet
+        </Text>
+      ) : isError ? (
+        // Everything else is a failure, shown as one, with a retry guarded by
+        // the same `enabled` the query uses (CLAUDE.md "Data fetching").
+        <ErrorState
+          message="Couldn't load engagement."
+          onRetry={() => {
+            if (enabled) void refetch();
+          }}
+        />
+      ) : (
+        <>
+          <Text variant="title">{String(data.score)}</Text>
+          <Text variant="label" color={theme.colors.neutral[600]}>
+            {`Attendance ${data.attendancePct}%`}
+          </Text>
+          <Text variant="label" color={theme.colors.neutral[600]}>
+            {`Submissions ${data.submissionPct}%`}
+          </Text>
+          <Text variant="caption" color={theme.colors.neutral[600]}>
+            {`${data.attendancePresent}/${data.attendanceTotal} sessions · ${data.submissionsCompleted}/${data.submissionsExpected} assignments`}
+          </Text>
+          {data.atRisk ? <Text variant="label">At risk</Text> : null}
+        </>
+      )}
+    </Card>
+  );
+}
+
+function NoteCard({ item }: { item: NoteSummary }) {
+  const theme = useTheme();
+  return (
+    <Card style={{ marginTop: theme.spacing.sm }}>
+      <Text variant="body">{item.body}</Text>
+      <Text variant="label" color={theme.colors.neutral[600]}>
+        {`${item.authorName} · ${formatDate(item.createdAt)}`}
+      </Text>
+      <Text variant="caption" color={theme.colors.neutral[600]}>
+        {VISIBILITY_LABEL[item.visibility]}
+      </Text>
+      {item.followUpFlagged ? <Text variant="caption">Follow-up flagged</Text> : null}
+      {item.edited ? (
+        <Text variant="caption" color={theme.colors.neutral[600]}>
+          Edited
+        </Text>
+      ) : null}
+    </Card>
+  );
+}
+
+/**
+ * Chip labels for the composer. Short on purpose: the full "Visible to …"
+ * sentence belongs to a WRITTEN note's caption, and reusing it on the chips
+ * made the same text appear twice on screen.
+ */
+const VISIBILITY_CHIP: Record<NoteVisibility, string> = {
+  LEADERS: "Group leaders",
+  MENTORS: "Mentors",
+  ADMINS: "Season admins",
+};
+
+function NoteComposer({ studentId }: { studentId: number }) {
+  const theme = useTheme();
+  const [body, setBody] = useState("");
+  const [visibility, setVisibility] = useState<NoteVisibility>("LEADERS");
+  const create = useCreateNote(studentId);
+
+  return (
+    <Card style={{ marginTop: theme.spacing.md }}>
+      <Text variant="heading">Write a note</Text>
+      {/*
+        The copy v1 got wrong. Its composer said "Who can read this note (in
+        addition to you and admins)" while the filter matched the viewer's role
+        against the setting by equality, so admins read none of the LEADERS
+        notes the schema defaults to (spec R36, D3). Widening the rule to match
+        the promise would expose historic notes written under a different one;
+        the plan defers that to the pastoral owner and tells the truth here.
+      */}
+      <Text variant="caption" color={theme.colors.neutral[600]}>
+        Only the group you choose can read this note, plus you and SUPER users. Season admins do
+        not automatically see leader or mentor notes.
+      </Text>
+      <Input label="New note" value={body} onChangeText={setBody} multiline numberOfLines={5} />
+      <Text variant="label" color={theme.colors.neutral[600]}>
+        Who can read it
+      </Text>
+      {VISIBILITY_ORDER.map((v) => (
+        <Button
+          key={v}
+          title={VISIBILITY_CHIP[v]}
+          accessibilityState={{ selected: v === visibility }}
+          variant={v === visibility ? "primary" : "secondary"}
+          onPress={() => setVisibility(v)}
+        />
+      ))}
+      <Button
+        title="Save note"
+        loading={create.isPending}
+        onPress={() => {
+          if (body.trim().length < 2) return;
+          create.mutate(
+            // followUpFlagged is sent explicitly rather than omitted so the
+            // request shape matches the contract's default exactly.
+            { body: body.trim(), visibility, followUpFlagged: false },
+            { onSuccess: () => setBody("") },
+          );
+        }}
+      />
+      {create.isError ? (
+        <Text variant="caption" color={theme.colors.neutral[600]}>
+          Couldn&apos;t save that note. Check your connection and try again.
+        </Text>
+      ) : null}
+    </Card>
+  );
+}
+
+/**
+ * Notes come from their own gated endpoint, always.
+ *
+ * They deliberately do NOT ride inside the student-detail payload (spec D5
+ * #3): in v1 they did, and the payload's safety then depended on every
+ * consumer remembering to filter it afterwards (R38). A separate request means
+ * a separate gate, and it means this block can be refused without the rest of
+ * the screen failing.
+ */
+function NotesSection({ studentId, enabled }: { studentId: number; enabled: boolean }) {
+  const theme = useTheme();
+  const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useStudentNotes(studentId, enabled);
+  const notes = flattenNotePages(data?.pages);
+
+  if (!enabled) return null;
+
+  return (
+    <>
+      <NoteComposer studentId={studentId} />
+      <Card style={{ marginTop: theme.spacing.md }}>
+        <Text variant="heading">Notes</Text>
+        {isPending ? (
+          <LoadingState />
+        ) : isError ? (
+          <ErrorState message="Couldn't load notes." onRetry={() => void refetch()} />
+        ) : notes.length === 0 ? (
+          <Text variant="body" color={theme.colors.neutral[600]}>
+            No notes about this student yet.
+          </Text>
+        ) : (
+          <>
+            {notes.map((n) => (
+              <NoteCard key={n.id} item={n} />
+            ))}
+            {/* Older notes are reachable — v1's 100-row cap hid them (R41). */}
+            {hasNextPage ? (
+              <Button
+                title="Load more"
+                variant="ghost"
+                loading={isFetchingNextPage}
+                onPress={() => void fetchNextPage()}
+              />
+            ) : null}
+          </>
+        )}
+      </Card>
+    </>
   );
 }
 
@@ -191,6 +404,8 @@ export default function StudentDetailScreen() {
                   ))
                 )}
               </Card>
+              <EngagementCard studentId={id} enabled={role !== null && role !== "STUDENT"} />
+              <NotesSection studentId={id} enabled={role !== null && role !== "STUDENT"} />
 
               {actions.canGraduate ? (
                 <GraduateStudentSheet

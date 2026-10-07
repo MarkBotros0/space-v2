@@ -13,3 +13,5 @@ export * from "./api-error";
 export * from "./student";
 export * from "./user";
 export * from "./password-reset";
+export * from "./html-text";
+export * from "./note";

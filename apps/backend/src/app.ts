@@ -15,6 +15,8 @@ import { sessionsRouter } from "./routes/sessions";
 import { studentsRouter } from "./routes/students";
 import { submissionsRouter } from "./routes/submissions";
 import { quizzesRouter } from "./routes/quizzes";
+import { seasonEngagementRouter, studentEngagementRouter } from "./routes/engagement";
+import { myNotesRouter, notesRouter, studentNotesRouter } from "./routes/notes";
 import { docsRouter } from "./routes/docs";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
@@ -62,6 +64,19 @@ export function createApp(): Express {
   app.use("/api/v1/submissions", submissionsRouter);
   app.use("/api/v1/quizzes", quizzesRouter);
   app.use("/api/v1/students", studentsRouter);
+  // Notes mount three ways on purpose - see the comment in routes/notes.ts.
+  // These sit after the domain routers whose prefixes they share: Express
+  // falls through unmatched paths, and /students/:id/notes cannot be matched
+  // by studentsRouter's /:id.
+  app.use("/api/v1/notes", notesRouter);
+  app.use("/api/v1/students", studentNotesRouter);
+  app.use("/api/v1/me", myNotesRouter);
+  // Same fall-through mounting as the notes routers: /students/:id/engagement
+  // and /seasons/:id/engagement cannot be matched by those domains' /:id
+  // routes, and keeping this domain's arithmetic in one file keeps its single
+  // definition single (ruling C4).
+  app.use("/api/v1/students", studentEngagementRouter);
+  app.use("/api/v1/seasons", seasonEngagementRouter);
 
   // Must be last: 404 catches anything unmatched above, the error handler
   // catches anything thrown (including JSON parse failures from express.json()).

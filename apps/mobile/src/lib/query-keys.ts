@@ -21,6 +21,19 @@ import type { RecurrenceScope } from "@space/shared";
  * One small factory per domain, added as screens are wired up.
  */
 export const queryKeys = {
+  notes: {
+    all: ["notes"] as const,
+    lists: () => [...queryKeys.notes.all, "list"] as const,
+    authored: () => [...queryKeys.notes.lists(), "authored"] as const,
+    // Nullable per this file's header convention — no -1 sentinel.
+    byStudent: (studentId: number | null) => [...queryKeys.notes.lists(), { studentId }] as const,
+  },
+  engagement: {
+    all: ["engagement"] as const,
+    // Nullable per this file's header convention — no -1 sentinel.
+    student: (studentId: number | null) => [...queryKeys.engagement.all, "student", { studentId }] as const,
+    season: (seasonId: number | null) => [...queryKeys.engagement.all, "season", { seasonId }] as const,
+  },
   sessions: {
     all: ["sessions"] as const,
     lists: () => [...queryKeys.sessions.all, "list"] as const,
