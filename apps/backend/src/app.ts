@@ -22,6 +22,7 @@ import { eventsRouter } from "./routes/events";
 import { forumRouter } from "./routes/forum";
 import { videoQuizRouter } from "./routes/video-quiz";
 import { docsRouter } from "./routes/docs";
+import { reportsRouter } from "./routes/reports";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -89,6 +90,7 @@ export function createApp(): Express {
   // definition single (ruling C4).
   app.use("/api/v1/students", studentEngagementRouter);
   app.use("/api/v1/seasons", seasonEngagementRouter);
+  app.use("/api/v1/reports", reportsRouter);
 
   // Must be last: 404 catches anything unmatched above, the error handler
   // catches anything thrown (including JSON parse failures from express.json()).

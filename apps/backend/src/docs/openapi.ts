@@ -50,6 +50,156 @@ function conflict(description: string) {
   return { description, content: { "application/json": { schema: errorResponse } } };
 }
 
+// Reports (Plan 15). Hand-authored like every response in this document.
+const intField = { type: "integer" } as const;
+const reportScopeDoc = {
+  type: "object",
+  required: ["seasonIds", "seasons", "truncated", "label"],
+  properties: {
+    seasonIds: { type: "array", items: intField },
+    seasons: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["id", "code", "title"],
+        properties: { id: intField, code: { type: "string" }, title: { type: "string" } },
+      },
+    },
+    truncated: { type: "boolean" },
+    label: { type: "string" },
+  },
+} as const;
+const engagementReportRowDoc = {
+  type: "object",
+  required: [
+    "score", "attendancePct", "submissionPct", "attendanceTotal", "attendancePresent",
+    "submissionsExpected", "submissionsCompleted", "studentUserId", "name", "email",
+    "seasonId", "seasonTitle", "band",
+  ],
+  properties: {
+    score: intField,
+    attendancePct: intField,
+    submissionPct: intField,
+    attendanceTotal: intField,
+    attendancePresent: intField,
+    submissionsExpected: intField,
+    submissionsCompleted: intField,
+    studentUserId: intField,
+    name: { type: "string" },
+    email: { type: "string" },
+    seasonId: intField,
+    seasonTitle: { type: "string" },
+    band: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "AT_RISK"] },
+  },
+} as const;
+const engagementSummarySchemaDoc = {
+  type: "object",
+  required: [
+    "scope", "attendanceTrend", "completion", "bands", "atRisk", "atRiskTotal",
+    "cohortSize", "enrollmentCount", "generatedAt", "exportDay",
+  ],
+  properties: {
+    scope: reportScopeDoc,
+    attendanceTrend: {
+      type: "array",
+      items: {
+        type: "object",
+        required: [
+          "sessionId", "seasonId", "seasonTitle", "title", "startsAt", "dayKey",
+          "presentCount", "expectedCount", "pct",
+        ],
+        properties: {
+          sessionId: intField,
+          seasonId: intField,
+          seasonTitle: { type: "string" },
+          title: { type: "string" },
+          startsAt: { type: "string", format: "date-time" },
+          dayKey: { type: "string", example: "2026-08-24" },
+          presentCount: intField,
+          expectedCount: intField,
+          pct: { type: ["integer", "null"], minimum: 0, maximum: 100 },
+        },
+      },
+    },
+    completion: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["assignmentId", "seasonId", "title", "targeting", "completed", "expected", "completionRate"],
+        properties: {
+          assignmentId: intField,
+          seasonId: intField,
+          title: { type: "string" },
+          targeting: { type: "string", enum: ["all_groups", "targeted"] },
+          completed: intField,
+          expected: intField,
+          completionRate: { type: ["integer", "null"], minimum: 0, maximum: 100 },
+        },
+      },
+    },
+    bands: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["band", "count"],
+        properties: { band: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "AT_RISK"] }, count: intField },
+      },
+    },
+    atRisk: { type: "array", maxItems: 10, items: engagementReportRowDoc },
+    atRiskTotal: intField,
+    cohortSize: intField,
+    enrollmentCount: intField,
+    generatedAt: { type: "string", format: "date-time" },
+    exportDay: { type: "string", example: "2026-08-24" },
+  },
+} as const;
+const engagementStudentPageSchemaDoc = {
+  type: "object",
+  required: ["scope", "rows", "nextCursor", "total"],
+  properties: {
+    scope: reportScopeDoc,
+    rows: { type: "array", items: engagementReportRowDoc },
+    nextCursor: { type: ["string", "null"] },
+    total: intField,
+  },
+} as const;
+const organisationReportSchemaDoc = {
+  type: "object",
+  required: ["totalStudentsNotGraduated", "totalAlumni", "activeSeasonCount", "seasons", "alumniByYear", "generatedAt"],
+  properties: {
+    totalStudentsNotGraduated: intField,
+    totalAlumni: intField,
+    activeSeasonCount: intField,
+    seasons: {
+      type: "array",
+      items: {
+        type: "object",
+        required: [
+          "seasonId", "code", "program", "year", "title", "status",
+          "activeCount", "completedCount", "withdrawnCount", "leaderCount",
+        ],
+        properties: {
+          seasonId: intField,
+          code: { type: "string" },
+          program: { type: "string" },
+          year: intField,
+          title: { type: "string" },
+          status: { type: "string" },
+          activeCount: intField,
+          completedCount: intField,
+          withdrawnCount: intField,
+          leaderCount: intField,
+        },
+      },
+    },
+    alumniByYear: {
+      type: "array",
+      items: { type: "object", required: ["year", "count"], properties: { year: intField, count: intField } },
+    },
+    generatedAt: { type: "string", format: "date-time" },
+  },
+} as const;
+
 const idParam = {
   name: "id",
   in: "path",
@@ -4665,6 +4815,84 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/reports/engagement": {
+      get: {
+        tags: ["Reports"],
+        summary: "Engagement summary for the caller's permitted seasons",
+        description:
+          "Charts, band counts and the capped at-risk list. The cohort is NOT included — " +
+          "see /api/v1/reports/engagement/students.\n\n" +
+          "Scope: `seasonId` may repeat. The requested ids are INTERSECTED with the " +
+          "caller's permitted set (SUPER/MENTOR: every non-deleted season; ADMIN: their " +
+          "seasonAdminIds); ids outside it are dropped silently and `scope.truncated` is " +
+          "set. LEADER and STUDENT are refused.\n\n" +
+          "Metrics: `attendanceTrend[].pct` divides by the roster as it stood at that " +
+          "session's instant, so it cannot exceed 100 and is `null` when nobody was " +
+          "enrolled yet. `completion[].completionRate` is a per-ASSIGNMENT figure and is " +
+          "not the same unit as a per-student submission percentage. A row's `band` is " +
+          "the at-risk answer: `AT_RISK` means either engagement component is below 60, " +
+          "and the at-risk list is exactly the rows in that band.\n\n" +
+          "Times: `startsAt` is a raw UTC instant (for ordering); `dayKey` is its " +
+          "organisation-calendar day (YYYY-MM-DD, ORG_TIMEZONE), which clients label by.",
+        parameters: [
+          { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+          { name: "from", in: "query", required: false, schema: { type: "string", format: "date-time" } },
+          { name: "to", in: "query", required: false, schema: { type: "string", format: "date-time" } },
+          { name: "trendLimit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 200, default: 26 } },
+        ],
+        responses: {
+          200: ok(engagementSummarySchemaDoc, "Engagement summary"),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/reports/engagement/students": {
+      get: {
+        tags: ["Reports"],
+        summary: "The engagement cohort, paged",
+        description:
+          "SEPARATELY GATED from the summary (same roles: SUPER, MENTOR, ADMIN; LEADER " +
+          "and STUDENT refused) and absent from the summary's payload on purpose — v1 " +
+          "shipped every student's name, email and scores to every screen (R34).\n\n" +
+          "One row per ACTIVE ENROLMENT, so a student in two in-scope seasons appears " +
+          "twice. Ordered by score ascending, then studentUserId, then seasonId. " +
+          "`cursor` is opaque; a malformed cursor restarts the list. `band` filters to " +
+          "one engagement band. Scope intersection is identical to the summary's.",
+        parameters: [
+          { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+          { name: "band", in: "query", required: false, schema: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "AT_RISK"] } },
+          { name: "cursor", in: "query", required: false, schema: { type: "string" } },
+          { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 200, default: 50 } },
+        ],
+        responses: {
+          200: ok(engagementStudentPageSchemaDoc, "One page of the cohort"),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/reports/organisation": {
+      get: {
+        tags: ["Reports"],
+        summary: "Organisation roll-up (SUPER only)",
+        description:
+          "Counts across the whole organisation; every other role is refused with 403.\n\n" +
+          "`totalStudentsNotGraduated` counts student ACCOUNTS (role STUDENT, no " +
+          "graduationYear, not deleted), not enrolments — the same population v1 " +
+          "labelled \"Current students\", renamed so the label stops overclaiming (D4). " +
+          "`withdrawnCount` is the WITHDRAWN enrolment status, displayed as \"Dropped\". " +
+          "Season rows carry `code` beside `seasonId` so a client can address the " +
+          "season detail route by code (D13).",
+        responses: {
+          200: ok(organisationReportSchemaDoc, "Organisation roll-up"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
         },
       },
     },
