@@ -21,7 +21,7 @@ describe("moreItemsFor", () => {
       "Current Season", "History", "Profile", "Settings",
     ]);
     expect(moreItemsFor(navByRole.ADMIN).map((i) => i.label)).toEqual([
-      "My Season", "Assignments", "Quizzes", "Reports", "Settings",
+      "My Season", "My notes", "Assignments", "Quizzes", "Reports", "Settings",
     ]);
     expect(moreItemsFor(navFor({ role: "STUDENT", graduationYear: 2024 })).map((i) => i.label)).toEqual([
       "Settings",

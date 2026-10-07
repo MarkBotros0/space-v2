@@ -53,6 +53,12 @@ const SUPER: RoleNav = {
     { href: "/students", label: "Students", icon: "students" },
     { href: "/students/alumni", label: "Alumni", icon: "alumni" },
     { href: "/students/dropped", label: "Dropped students", icon: "dropped" },
+    // GET /me/notes is open to every role that can author (spec §7, R44) —
+    // ADMIN, LEADER and SUPER could all write notes in v1 and none of them
+    // could list what they had written. The nav has to follow in the same
+    // change, or the route is reachable only by typing a URL a phone user
+    // cannot type (spec D14).
+    { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/users", label: "Users", icon: "users" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/settings", label: "Settings", icon: "settings" },
@@ -73,6 +79,7 @@ const ADMIN: RoleNav = {
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/groups", label: "Groups", icon: "groups" },
     { href: "/students", label: "Students", icon: "students" },
+    { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/assignments", label: "Assignments", icon: "assignments" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/reports", label: "Reports", icon: "reports" },
@@ -91,6 +98,7 @@ const LEADER: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/groups", label: "My Groups", icon: "groups" },
+    { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/submissions", label: "Submissions", icon: "submissions" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
