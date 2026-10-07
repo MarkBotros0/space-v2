@@ -376,6 +376,49 @@ const studentImportResultDoc = {
   },
 } as const;
 
+const groupImportPreviewDoc = {
+  type: "object",
+  properties: {
+    rows: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          rowNumber: { type: "integer" },
+          name: { type: "string", description: "Display only; never written." },
+          email: { type: "string" },
+          group: { type: "string" },
+          status: { type: "string", enum: ["assign", "unchanged", "no_student", "no_group", "invalid"] },
+          message: { type: "string", nullable: true },
+          studentUserId: { type: "integer", nullable: true },
+          groupId: { type: "integer", nullable: true },
+        },
+      },
+    },
+    delimiter: { type: "string", enum: ["comma", "tab"] },
+    counts: {
+      type: "object",
+      properties: {
+        assign: { type: "integer" },
+        unchanged: { type: "integer" },
+        no_student: { type: "integer" },
+        no_group: { type: "integer" },
+        invalid: { type: "integer" },
+        total: { type: "integer" },
+      },
+    },
+  },
+} as const;
+
+const groupImportResultDoc = {
+  type: "object",
+  properties: {
+    assigned: { type: "integer", description: "The number actually WRITTEN, not the number requested." },
+    skipped: { type: "integer" },
+    skippedStudentIds: { type: "array", items: { type: "integer" } },
+  },
+} as const;
+
 const idParam = {
   name: "id",
   in: "path",
@@ -5300,6 +5343,71 @@ export const openApiDocument = {
           409: conflict("`import_conflict`."),
           413: conflict("`payload_too_large`."),
           422: conflict("`import_rows_invalid`."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/imports/groups/preview": {
+      post: {
+        tags: ["Imports"],
+        summary: "Preview a pasted group-assignment sheet (season admin or SUPER)",
+        description:
+          "Gate is `isAdminOfSeason` on the **path** id (SUPER short-circuits), so preview and commit cannot target different seasons. Body `{ text, delimiter? }`, pasted text. Needs `email` and `group` columns; `name` is display only. " +
+          "Statuses: `assign`, `unchanged`, `no_student`, `no_group`, `invalid`. A **blank** group cell is `no_group`, not an unassign - there is no bulk unassign. " +
+          "The roster is resolved through an ACTIVE `SeasonEnrollment` (ruling C9), not `StudentProfile.activeSeasonId`, which is why a previewed `assign` is always written. " +
+          "The file is **refused** (`400 bad_request`) when two groups in the season share a case-insensitive name, rather than one silently winning.",
+        parameters: [idParam],
+        requestBody: { required: true, content: { "application/json": { schema: pastedSheetBodyDoc } } },
+        responses: {
+          200: ok(groupImportPreviewDoc, "Row-by-row classification."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          413: conflict("`payload_too_large`."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/imports/groups/commit": {
+      post: {
+        tags: ["Imports"],
+        summary: "Commit resolved group assignments (season admin or SUPER)",
+        description:
+          "Body `{ assignments: [{ studentUserId, groupId }] }` (ids resolved by the preview; the write independently re-derives scope, so fabricated ids achieve nothing). One transaction through the same write as `PUT /seasons/{id}/group-assignments`. " +
+          "`assigned` is the number **written** and `skippedStudentIds` names the rest (not actively enrolled in this season) - a deliberate correction of v1 reporting the requested count. " +
+          "`400 group_outside_season` refuses the whole batch when any group is not in this season.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["assignments"],
+                properties: {
+                  assignments: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 2000,
+                    items: {
+                      type: "object",
+                      required: ["studentUserId", "groupId"],
+                      properties: { studentUserId: { type: "integer" }, groupId: { type: "integer" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(groupImportResultDoc, "What was written."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          413: conflict("`payload_too_large`."),
           429: errRef("TooManyRequests"),
         },
       },

@@ -7,6 +7,7 @@ import { Prisma } from "../generated/prisma/client";
 import { apiError, apiOk } from "../lib/api-response";
 import { config } from "../lib/config";
 import { ImportParseError, parseDelimited } from "../lib/imports/delimited";
+import { buildGroupImportPreview } from "../lib/imports/groups";
 // The one 429 handler (ruling X4: Plan 9 extracted it; no copies anywhere).
 import { rateLimitHandler } from "../lib/rate-limit";
 import {
@@ -16,11 +17,14 @@ import {
   studentImportTemplate,
   type StudentImportTarget,
 } from "../lib/imports/students";
-import { isSuper } from "../lib/rbac";
+import { parseId } from "../lib/parse-id";
+import { assignStudentsToGroups, GroupOutsideSeasonError } from "../lib/queries/groups";
+import { isAdminOfSeason, isSuper } from "../lib/rbac";
 // Value import — relative path is mandatory here (CLAUDE.md's rootDir emit
 // trap). `import type` may use "@space/shared"; this line may not.
 import {
   IMPORT_MAX_ROWS,
+  groupImportCommitInputSchema,
   pastedSheetInputSchema,
   studentImportCommitInputSchema,
 } from "../../../../packages/shared/src/index";
@@ -94,7 +98,10 @@ importsRouter.use(requireAuth);
  * own roster, the row-scoped check goes in THE SAME change as the widened
  * role gate, never after it (ruling C8).
  */
-function requireSuper(req: Parameters<typeof requireUser>[0], res: Parameters<typeof apiError>[0]): boolean {
+function requireSuper(
+  req: Parameters<typeof requireUser>[0],
+  res: Parameters<typeof apiError>[0],
+): boolean {
   const user = requireUser(req);
   if (isSuper(user)) return true;
   apiError(res, "forbidden", "Only a super user can import students.", 403);
@@ -193,5 +200,102 @@ importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (r
  * and `routes/seasons.ts` stays unmodified (D-16.20).
  */
 export const seasonImportsRouter = Router();
+
+/**
+ * `seasonId` comes from the PATH and nowhere else (D-16.20). v1 takes it as an
+ * argument on both the preview and the commit
+ * (`jpc-space/src/lib/group-import-actions.ts:20,59`), so the two calls could
+ * in principle target different seasons.
+ *
+ * Returns the season id on success, or null having already answered.
+ */
+async function resolveAdministeredSeason(
+  req: Parameters<typeof requireUser>[0],
+  res: Parameters<typeof apiError>[0],
+): Promise<number | null> {
+  const user = requireUser(req);
+  const seasonId = parseId((req.params as { id?: string }).id);
+  if (seasonId === null) {
+    apiError(res, "bad_request", "Invalid season id.", 400);
+    return null;
+  }
+  // Claims-only, per rbac.ts — and paired with the role that may hold the
+  // claim (ruling C7), so a stray SeasonAdmin row naming a student grants
+  // nothing. SUPER short-circuits inside isAdminOfSeason.
+  if (!isAdminOfSeason(user, seasonId)) {
+    apiError(res, "forbidden", "You don't have access to this.", 403);
+    return null;
+  }
+  const season = await db.season.findFirst({
+    where: { id: seasonId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!season) {
+    apiError(res, "not_found", "Season not found.", 404);
+    return null;
+  }
+  return season.id;
+}
+
+// requireAuth per route — /api/v1/seasons is a shared prefix (ruling X5).
+seasonImportsRouter.post(
+  "/:id/imports/groups/preview",
+  requireAuth,
+  previewLimiter,
+  importJsonParser,
+  async (req, res) => {
+    const seasonId = await resolveAdministeredSeason(req, res);
+    if (seasonId === null) return;
+
+    const parsed = pastedSheetInputSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return apiError(res, "bad_request", "Paste a header row and at least one data row.", 400);
+    }
+
+    try {
+      const sheet = parseDelimited(parsed.data.text, parsed.data.delimiter, IMPORT_MAX_ROWS);
+      return apiOk(res, await buildGroupImportPreview(sheet, seasonId));
+    } catch (err) {
+      if (err instanceof ImportParseError) return apiError(res, "bad_request", err.message, 400);
+      throw err;
+    }
+  },
+);
+
+seasonImportsRouter.post(
+  "/:id/imports/groups/commit",
+  requireAuth,
+  commitLimiter,
+  importJsonParser,
+  async (req, res) => {
+    const seasonId = await resolveAdministeredSeason(req, res);
+    if (seasonId === null) return;
+
+    const parsed = groupImportCommitInputSchema.safeParse(req.body);
+    if (!parsed.success) return apiError(res, "bad_request", "Invalid import request.", 400);
+
+    try {
+      // v1's group import is already transactional (spec R79) and stays that
+      // way. The write independently re-derives every scope it needs — every
+      // group must belong to this season, every student must hold an enrolment
+      // in it — which is why posting resolved ids is safe here in a way it is
+      // not for the student importer (spec §4).
+      const result = await db.$transaction(
+        (tx) => assignStudentsToGroups(tx, seasonId, parsed.data.assignments),
+        { timeout: 30_000 },
+      );
+      return apiOk(res, {
+        assigned: result.assigned,
+        skipped: result.skippedStudentIds.length,
+        skippedStudentIds: result.skippedStudentIds,
+      });
+    } catch (err) {
+      if (err instanceof GroupOutsideSeasonError) {
+        return apiError(res, "group_outside_season", err.message, 400);
+      }
+      throw err;
+    }
+  },
+);
 
 export { commitLimiter, previewLimiter, IMPORT_FILE_UPLOAD_SUPPORTED };
