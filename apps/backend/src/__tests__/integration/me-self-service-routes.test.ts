@@ -267,3 +267,82 @@ describe("GET /api/v1/me/attendance (spec 04 §7, spec 19 D14)", () => {
     expect((await get("/api/v1/me/attendance", leaderToken)).status).toBe(403);
   });
 });
+
+describe("GET /api/v1/me/profile (spec 06 §7)", () => {
+  it("returns the student's own profile — never their staff-only notes (R23)", async () => {
+    const res = await get("/api/v1/me/profile", studentToken);
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toMatchObject({
+      name: "Test self-student",
+      university: "Cairo University",
+      phone: "+20 100 000 0000",
+      dateOfBirth: "2001-04-05",
+      activeSeasonTitle: "Current Season",
+      graduationYear: null,
+    });
+    expect(res.body.data.profile).not.toHaveProperty("notes");
+    expect(JSON.stringify(res.body)).not.toContain("STAFF ONLY");
+  });
+
+  it("serves an alumnus their read-only record", async () => {
+    const res = await get("/api/v1/me/profile", alumnusToken);
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toMatchObject({ university: "Ain Shams", graduationYear: 2098 });
+  });
+
+  it("refuses staff", async () => {
+    expect((await get("/api/v1/me/profile", leaderToken)).status).toBe(403);
+  });
+});
+
+describe("PATCH /api/v1/me/profile (Plan 11 Decision 1)", () => {
+  const patch = (body: unknown, token = studentToken) =>
+    request(app).patch("/api/v1/me/profile").set("authorization", `Bearer ${token}`).send(body as object);
+
+  it("writes only the fields sent; '' clears to null (R26); returns the fresh row", async () => {
+    const res = await patch({ phone: "+20 122 222 2222", gifts: "" });
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toMatchObject({
+      phone: "+20 122 222 2222",
+      gifts: null,
+      university: "Cairo University", // untouched
+    });
+    const row = await db.studentProfile.findUnique({
+      where: { userId: studentId },
+      select: { phone: true, gifts: true, notes: true },
+    });
+    expect(row).toEqual({ phone: "+20 122 222 2222", gifts: null, notes: "STAFF ONLY — never sent to the subject" });
+  });
+
+  it("stores a calendar date of birth at UTC midnight and reads it back unchanged (Decision 11)", async () => {
+    const res = await patch({ dateOfBirth: "2002-07-09" });
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile.dateOfBirth).toBe("2002-07-09");
+    const row = await db.studentProfile.findUnique({ where: { userId: studentId }, select: { dateOfBirth: true } });
+    expect(row?.dateOfBirth?.toISOString()).toBe("2002-07-09T00:00:00.000Z");
+  });
+
+  it("400s an impossible date", async () => {
+    const res = await patch({ dateOfBirth: "2002-02-30" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("bad_request");
+  });
+
+  it("refuses name, email, notes and activeSeasonId by name — loudly, not v1's silent drop (R24)", async () => {
+    for (const body of [{ name: "New Name" }, { email: "x@jpc.test" }, { notes: "mine now" }, { activeSeasonId: 1 }]) {
+      const res = await patch(body);
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("forbidden_field");
+    }
+  });
+
+  it("is read-only for an alumnus", async () => {
+    const res = await patch({ phone: "+20 1" }, alumnusToken);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("forbidden");
+  });
+
+  it("refuses staff", async () => {
+    expect((await patch({ phone: "+20 1" }, leaderToken)).status).toBe(403);
+  });
+});

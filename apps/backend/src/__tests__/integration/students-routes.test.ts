@@ -1014,3 +1014,31 @@ describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
     info.mockRestore();
   });
 });
+
+describe("PATCH /api/v1/students/:id — one writer per column (Plan 11, spec 18 D2/D8)", () => {
+  it("refuses a student's own email change with forbidden_field", async () => {
+    const res = await request(app)
+      .patch(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${student1Token}`)
+      .send({ email: testEmail("self-email") });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("forbidden_field");
+  });
+
+  it("refuses a student's own name change here — PATCH /me owns User.name", async () => {
+    const res = await request(app)
+      .patch(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${student1Token}`)
+      .send({ name: "Self Renamed" });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("forbidden_field");
+  });
+
+  it("still lets an admin correct a student's name", async () => {
+    const res = await request(app)
+      .patch(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ name: "Admin Corrected" });
+    expect(res.status).toBe(200);
+  });
+});

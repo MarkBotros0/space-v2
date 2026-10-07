@@ -271,3 +271,64 @@ export async function loadMyAttendance(user: SessionUser, now: Date = new Date()
   // query, unlike v1's separate computeAttendanceStreak scan (R70).
   return { season, budget, streak: streakFrom(sessions.map((s) => s.status)), sessions };
 }
+
+// ---------------------------------------------------------------------------
+// Own profile — v1 app/student/profile/page.tsx, app/alumni/profile/page.tsx
+// ---------------------------------------------------------------------------
+
+export interface MyProfileRow {
+  name: string;
+  email: string;
+  avatarPath: string | null;
+  graduationYear: number | null;
+  activeSeasonTitle: string | null;
+  university: string | null;
+  year: string | null;
+  phone: string | null;
+  dateOfBirth: string | null;
+  spiritualBackground: string | null;
+  gifts: string | null;
+}
+
+/**
+ * Deliberately NOT GET /students/:id with id = self (spec 06 §7): `notes` is
+ * not in this select at all, so no future flag can leak it (R23, R71).
+ */
+export async function loadMyProfile(userId: number): Promise<MyProfileRow | null> {
+  const row = await db.user.findFirst({
+    where: { id: userId, deletedAt: null },
+    select: {
+      name: true,
+      email: true,
+      avatarPath: true,
+      graduationYear: true,
+      studentProfile: {
+        select: {
+          university: true,
+          year: true,
+          phone: true,
+          dateOfBirth: true,
+          spiritualBackground: true,
+          gifts: true,
+          activeSeason: { select: { title: true, deletedAt: true } },
+        },
+      },
+    },
+  });
+  if (!row) return null;
+  const p = row.studentProfile;
+  return {
+    name: row.name,
+    email: row.email,
+    avatarPath: row.avatarPath,
+    graduationYear: row.graduationYear,
+    activeSeasonTitle: p?.activeSeason && p.activeSeason.deletedAt === null ? p.activeSeason.title : null,
+    university: p?.university ?? null,
+    year: p?.year ?? null,
+    phone: p?.phone ?? null,
+    // A calendar date stored at UTC midnight (Plan 11 Decision 11).
+    dateOfBirth: p?.dateOfBirth ? p.dateOfBirth.toISOString().slice(0, 10) : null,
+    spiritualBackground: p?.spiritualBackground ?? null,
+    gifts: p?.gifts ?? null,
+  };
+}

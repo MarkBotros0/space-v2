@@ -1109,6 +1109,24 @@ export const openApiDocument = {
           },
         },
       },
+      MyProfile: {
+        type: "object",
+        additionalProperties: false,
+        description: "The caller's own profile. Never carries staff-only notes (spec 06 R23).",
+        properties: {
+          name: { type: "string" },
+          email: { type: "string" },
+          avatarPath: { type: ["string", "null"] },
+          graduationYear: { type: ["integer", "null"], description: "Non-null = alumnus; the profile is then read-only." },
+          activeSeasonTitle: { type: ["string", "null"] },
+          university: { type: ["string", "null"] },
+          year: { type: ["string", "null"] },
+          phone: { type: ["string", "null"] },
+          dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "A calendar date." },
+          spiritualBackground: { type: ["string", "null"] },
+          gifts: { type: ["string", "null"] },
+        },
+      },
       MyAttendance: {
         type: "object",
         properties: {
@@ -1474,6 +1492,49 @@ export const openApiDocument = {
           200: ok({ $ref: "#/components/schemas/MyAttendance" }, "Empty shape (season null) when there is no active season."),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/me/profile": {
+      get: {
+        tags: ["Me"],
+        summary: "The caller's own student profile (students and alumni)",
+        responses: {
+          200: ok({ type: "object", properties: { profile: { $ref: "#/components/schemas/MyProfile" } } }, "The profile."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Me"],
+        summary: "Edit the caller's own StudentProfile columns (students; alumni are read-only)",
+        description: "PATCH: absent = untouched, '' or null = cleared. Any key outside university/year/phone/dateOfBirth/spiritualBackground/gifts is refused 403 forbidden_field — name is PATCH /me, email is staff-only.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  university: { type: ["string", "null"], maxLength: 160 },
+                  year: { type: ["string", "null"], maxLength: 40 },
+                  phone: { type: ["string", "null"], maxLength: 60 },
+                  dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+                  spiritualBackground: { type: ["string", "null"], maxLength: 4000 },
+                  gifts: { type: ["string", "null"], maxLength: 2000 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { profile: { $ref: "#/components/schemas/MyProfile" } } }, "The updated profile."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
         },
       },
     },
@@ -2245,7 +2306,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Edit a student's profile",
         description:
-          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The student may edit name, email, university, year, phone, dateOfBirth, spiritualBackground and gifts, never `notes` or `activeSeasonId`. ADMIN (of a season with an ACTIVE enrollment for the student) adds `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
+          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The subject may edit university, year, phone, dateOfBirth, spiritualBackground and gifts only (never `name` — that is PATCH /me — nor `email`, `notes` or `activeSeasonId`). ADMIN (of a season with an ACTIVE enrollment for the student) adds `name`, `email` and `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
         parameters: [idParam],
         requestBody: {
           required: true,
