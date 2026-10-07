@@ -318,6 +318,24 @@ describe("DashboardScreen — STUDENT", () => {
     expect(requested()).not.toContain("/api/v1/me/attendance");
   });
 
+  it("offers no stream link for a session that is not running, even with a youtubeUrl (D13)", async () => {
+    serve({
+      "/api/v1/me/dashboard": {
+        ...studentDashboard,
+        nextSession: { ...liveSession, isInProgress: false },
+      },
+      "/api/v1/me/attendance": myAttendance,
+      [EVENTS]: events,
+      [UNREAD]: { unreadCount: 0 },
+    });
+
+    renderWithProviders(<DashboardScreen />);
+
+    expect(await screen.findByText("Next session")).toBeTruthy();
+    expect(screen.queryByText("Happening now")).toBeNull();
+    expect(screen.queryByText("Join stream")).toBeNull();
+  });
+
   it("keeps the budget tile when the events card fails — cards fail independently", async () => {
     serve({
       "/api/v1/me/dashboard": studentDashboard,
