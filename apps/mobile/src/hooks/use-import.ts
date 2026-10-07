@@ -1,9 +1,14 @@
 // apps/mobile/src/hooks/use-import.ts
 import { useMutation, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 import {
+  groupImportPreviewSchema,
+  groupImportResultSchema,
   importTemplateSchema,
   studentImportPreviewSchema,
   studentImportResultSchema,
+  type GroupImportCommitInput,
+  type GroupImportPreview,
+  type GroupImportResult,
   type ImportTemplate,
   type StudentImportCommitInput,
   type StudentImportPreview,
@@ -57,6 +62,30 @@ export function useStudentImportCommit(): UseMutationResult<
     mutationFn: async (input) => {
       const res = await apiClient.post("/api/v1/imports/students/commit", input);
       return studentImportResultSchema.parse(res.data.data);
+    },
+  });
+}
+
+export function useGroupImportPreview(
+  seasonId: number | null,
+): UseMutationResult<GroupImportPreview, unknown, { text: string; delimiter: "auto" | "comma" | "tab" }> {
+  return useMutation({
+    mutationFn: async (input) => {
+      if (seasonId === null) throw new Error("No season.");
+      const res = await apiClient.post(`/api/v1/seasons/${seasonId}/imports/groups/preview`, input);
+      return groupImportPreviewSchema.parse(res.data.data);
+    },
+  });
+}
+
+export function useGroupImportCommit(
+  seasonId: number | null,
+): UseMutationResult<GroupImportResult, unknown, GroupImportCommitInput> {
+  return useMutation({
+    mutationFn: async (input) => {
+      if (seasonId === null) throw new Error("No season.");
+      const res = await apiClient.post(`/api/v1/seasons/${seasonId}/imports/groups/commit`, input);
+      return groupImportResultSchema.parse(res.data.data);
     },
   });
 }

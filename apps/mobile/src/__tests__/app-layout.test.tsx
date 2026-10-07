@@ -123,6 +123,10 @@ describe("AppLayout tab shell", () => {
     expect(DETAIL_ROUTE_NAMES).toContain("users/import");
   });
 
+  it("declares the group importer hidden from the tab bar", () => {
+    expect(DETAIL_ROUTE_NAMES).toContain("seasons/[code]/roster/import");
+  });
+
   it("declares every detail route with href: null", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     render(<AppLayout />);

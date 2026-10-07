@@ -381,6 +381,8 @@ export const groupImportCommitInputSchema = z.object({
     .max(IMPORT_MAX_ROWS),
 });
 
+export type GroupImportCommitInput = z.infer<typeof groupImportCommitInputSchema>;
+
 export const groupImportResultSchema = z.object({
   /**
    * The number actually WRITTEN. v1 returns the requested array length

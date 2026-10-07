@@ -63,6 +63,7 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "seasons/[code]/index",
   "seasons/[code]/edit",
   "seasons/[code]/roster/index",
+  "seasons/[code]/roster/import",
   "group/new",
   "group/[id]/edit",
   "session/new",

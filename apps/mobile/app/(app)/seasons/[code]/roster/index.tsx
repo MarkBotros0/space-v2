@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import type { GroupListItem, SeasonRosterRow } from "@space/shared";
 
 import { useSaveGroupAssignments, useSeasonRoster } from "../../../../../src/hooks/use-group-admin";
@@ -139,8 +139,9 @@ function RosterGrid({ seasonId }: { seasonId: number }) {
   );
 }
 
-/** /seasons/[code]/roster — Plan 17 adds `roster/import.tsx` beside this and a link to it here. */
+/** /seasons/[code]/roster — `roster/import.tsx` (Plan 17) hangs off the "Import groups" action. */
 export default function SeasonRosterScreen() {
+  const router = useRouter();
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
   const season = useSeasonByCode(code);
@@ -155,6 +156,15 @@ export default function SeasonRosterScreen() {
 
   return (
     <Screen edges={["top", "left", "right"]} scroll>
+      {/* Spec 16 §9 / v1 roster/page.tsx:42: same predicate as the grid — the
+          server's own canAdminister, not a client re-derivation. */}
+      {code !== null && season.data?.canAdminister ? (
+        <Button
+          title="Import groups"
+          variant="secondary"
+          onPress={() => router.push({ pathname: "/seasons/[code]/roster/import", params: { code } })}
+        />
+      ) : null}
       {body}
     </Screen>
   );
