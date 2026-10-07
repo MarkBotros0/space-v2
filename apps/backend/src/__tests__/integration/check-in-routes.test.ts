@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 // The brief specifies 30000ms. Raised to 60000ms: the shared Neon staging
@@ -248,5 +249,60 @@ describe("POST /api/v1/sessions/:id/check-in-close", () => {
       .post(`/api/v1/sessions/${sessionId}/check-in-close`)
       .set("authorization", `Bearer ${studentToken}`);
     expect(res.status).toBe(403);
+  });
+});
+
+describe("lateness is measured from the session start, not from opening (ruling C3, spec 04 D1)", () => {
+  it("marks a scan 20 minutes after startsAt LATE by 20 — although check-in opened only now", async () => {
+    const started = await db.session.create({
+      data: {
+        seasonId,
+        title: "Started 20 minutes ago",
+        // +5s so floor() lands on 20 however slow the round-trip is.
+        startsAt: new Date(Date.now() - 20 * 60_000 - 5_000),
+        durationMinutes: 90,
+      },
+      select: { id: true },
+    });
+    const open = await request(app)
+      .post(`/api/v1/sessions/${started.id}/check-in-open`)
+      .set("authorization", `Bearer ${adminToken}`);
+
+    const res = await request(app)
+      .post("/api/v1/sessions/check-in")
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ token: open.body.data.checkInToken });
+
+    // Measured from checkInOpenAt (v1 R63) this would be PRESENT / 0.
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ status: "LATE", minutesLate: 20 });
+    const row = await db.attendance.findUnique({
+      where: { sessionId_studentUserId: { sessionId: started.id, studentUserId } },
+      select: { status: true, lateMinutes: true },
+    });
+    expect(row).toEqual({ status: "LATE", lateMinutes: 20 });
+  });
+
+  it("marks a scan before the start PRESENT even when check-in opened half an hour earlier", async () => {
+    const upcoming = await db.session.create({
+      data: {
+        seasonId,
+        title: "Starts in 10 minutes",
+        startsAt: new Date(Date.now() + 10 * 60_000),
+        durationMinutes: 90,
+        checkInToken: newPublicId(),
+        // Opened 30 minutes ago: v1 would charge 30 "late" minutes to an early arrival.
+        checkInOpenAt: new Date(Date.now() - 30 * 60_000),
+      },
+      select: { id: true, checkInToken: true },
+    });
+
+    const res = await request(app)
+      .post("/api/v1/sessions/check-in")
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ token: upcoming.checkInToken });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ status: "PRESENT", minutesLate: 0 });
   });
 });

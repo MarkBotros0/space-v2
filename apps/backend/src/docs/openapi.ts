@@ -2547,7 +2547,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Student self check-in",
         description:
-          "Marks the caller PRESENT, or LATE with the elapsed minutes if check-in opened earlier. Check-in hard-stops three hours after opening even if never explicitly closed.",
+          "Marks the caller PRESENT, or LATE with the whole minutes elapsed since the session's start (ruling C3 — not since check-in opened). Check-in hard-stops three hours after opening even if never explicitly closed.",
         requestBody: {
           required: true,
           content: {
@@ -2566,7 +2566,7 @@ export const openApiDocument = {
               type: "object",
               properties: {
                 status: { type: "string", enum: ["PRESENT", "LATE"] },
-                minutesLate: { type: "integer" },
+                minutesLate: { type: "integer", description: "Whole minutes after Session.startsAt; 0 when on time." },
               },
             },
             "Checked in.",
