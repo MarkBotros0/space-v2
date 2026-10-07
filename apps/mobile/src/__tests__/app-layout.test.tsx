@@ -119,6 +119,10 @@ describe("AppLayout tab shell", () => {
     expect(new Set(listRouteNames())).toEqual(new Set([...ALL_ROUTE_NAMES, ...DETAIL_ROUTE_NAMES]));
   });
 
+  it("declares users/import hidden from the tab bar", () => {
+    expect(DETAIL_ROUTE_NAMES).toContain("users/import");
+  });
+
   it("declares every detail route with href: null", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     render(<AppLayout />);

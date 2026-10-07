@@ -113,6 +113,14 @@ describe("UsersScreen — Plan 10 entry points", () => {
     expect(mockPush).toHaveBeenCalledWith("/users/new");
   });
 
+  it("offers SUPER a way into the importer", async () => {
+    useSessionStore.setState(superSession);
+    routeGets(0);
+    renderWithProviders(<UsersScreen />);
+    fireEvent.press(await screen.findByText("Import students"));
+    expect(mockPush).toHaveBeenCalledWith("/users/import");
+  });
+
   it("hides the bulk card at zero pending (R87)", async () => {
     useSessionStore.setState(superSession);
     routeGets(0);

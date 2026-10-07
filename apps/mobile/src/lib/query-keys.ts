@@ -47,6 +47,16 @@ export const queryKeys = {
     student: (studentId: number | null) => [...queryKeys.engagement.all, "student", { studentId }] as const,
     season: (seasonId: number | null) => [...queryKeys.engagement.all, "season", { seasonId }] as const,
   },
+  imports: {
+    all: ["imports"] as const,
+    /**
+     * The only cached import query. Preview and commit are MUTATIONS, not
+     * queries, on purpose (D-16.18): a preview is a 2000-row roster with
+     * phone numbers, birth dates and pastoral notes, and it must not outlive
+     * the screen in a query cache, nor be refetched on window focus.
+     */
+    template: () => [...queryKeys.imports.all, "template"] as const,
+  },
   sessions: {
     all: ["sessions"] as const,
     lists: () => [...queryKeys.sessions.all, "list"] as const,
