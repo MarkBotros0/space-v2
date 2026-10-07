@@ -149,6 +149,63 @@ export const openApiDocument = {
       QuizKind: { type: "string", enum: ["PAPER", "ONLINE"] },
       QuizQuestionType: { type: "string", enum: ["MCQ", "ESSAY"] },
       QuizAttemptStatus: { type: "string", enum: ["IN_PROGRESS", "SUBMITTED", "GRADED"] },
+      EngagementScore: {
+        type: "object",
+        required: ["score", "attendancePct", "submissionPct", "attendanceTotal", "attendancePresent", "submissionsExpected", "submissionsCompleted"],
+        properties: {
+          score: { type: "integer", minimum: 0, maximum: 100, description: "round(attendancePct * 0.5 + submissionPct * 0.5). Staff-only." },
+          attendancePct: { type: "integer", minimum: 0, maximum: 100 },
+          submissionPct: { type: "integer", minimum: 0, maximum: 100 },
+          attendanceTotal: { type: "integer", minimum: 0 },
+          attendancePresent: { type: "integer", minimum: 0 },
+          submissionsExpected: { type: "integer", minimum: 0 },
+          submissionsCompleted: { type: "integer", minimum: 0 },
+        },
+      },
+      StudentEngagement: {
+        allOf: [
+          { $ref: "#/components/schemas/EngagementScore" },
+          {
+            type: "object",
+            required: ["studentUserId", "seasonId", "seasonTitle", "atRisk"],
+            properties: {
+              studentUserId: { type: "integer" },
+              seasonId: { type: "integer" },
+              seasonTitle: { type: ["string", "null"] },
+              atRisk: { type: "boolean", description: "The one at-risk definition: a component under 60% with a non-zero denominator." },
+            },
+          },
+        ],
+      },
+      StudentSelfEngagement: {
+        type: "object",
+        description: "A student's own view: the two components only. No `score` and no `atRisk` \u2014 deliberately.",
+        required: ["attendancePct", "submissionPct", "attendanceTotal", "attendancePresent", "submissionsExpected", "submissionsCompleted", "seasonId", "seasonTitle"],
+        properties: {
+          attendancePct: { type: "integer", minimum: 0, maximum: 100 },
+          submissionPct: { type: "integer", minimum: 0, maximum: 100 },
+          attendanceTotal: { type: "integer", minimum: 0 },
+          attendancePresent: { type: "integer", minimum: 0 },
+          submissionsExpected: { type: "integer", minimum: 0 },
+          submissionsCompleted: { type: "integer", minimum: 0 },
+          seasonId: { type: "integer" },
+          seasonTitle: { type: ["string", "null"] },
+        },
+      },
+      EngagementRow: {
+        allOf: [
+          { $ref: "#/components/schemas/StudentEngagement" },
+          {
+            type: "object",
+            required: ["studentName", "groupId", "groupName"],
+            properties: {
+              studentName: { type: "string" },
+              groupId: { type: ["integer", "null"] },
+              groupName: { type: ["string", "null"] },
+            },
+          },
+        ],
+      },
       NoteVisibility: {
         type: "string",
         enum: ["LEADERS", "MENTORS", "ADMINS"],
@@ -2431,6 +2488,49 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           429: errRef("TooManyRequests"),
+        },
+      },
+    },
+
+    "/api/v1/students/{id}/engagement": {
+      get: {
+        tags: ["Notes"],
+        summary: "One student's engagement in one season",
+        description:
+          "Computed on the server from a single definition; clients never recompute the score or the at-risk flag. Two gates: the caller must be able to view the student, **and** must be scoped to the season being scored (a season admin of season A cannot read the student's season-B numbers; a leader must lead the student's group in that season; SUPER and MENTOR read any). `seasonId` selects the season, else the newest ACTIVE enrollment the caller is scoped to. **Staff** receive `StudentEngagement` (composite and `atRisk`). **A student asking about themselves** receives `StudentSelfEngagement`: the two components and **no `score` and no `atRisk`** (deliberate). The attendance denominator counts past sessions at or after the student's own enrollment date (a deliberate divergence from v1, which counted the whole season); a zero denominator never flags. The score counts PRESENT and LATE attendance rows and does **not** read `lateMinutes`, so it is unaffected by the lateness-instant defect (ruling C3) that the absence-budget figures in the attendance domain inherit.",
+        parameters: [idParam, { name: "seasonId", in: "query", schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          200: ok(
+            { oneOf: [{ $ref: "#/components/schemas/StudentEngagement" }, { $ref: "#/components/schemas/StudentSelfEngagement" }] },
+            "Staff arm or the student's own arm, by caller role.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: conflict("`no_season` (no enrollment to score) or `not_found`."),
+        },
+      },
+    },
+
+    "/api/v1/seasons/{id}/engagement": {
+      get: {
+        tags: ["Notes"],
+        summary: "Engagement for a season's whole cohort",
+        description:
+          "Staff only (STUDENT gets 403). Computed in a constant number of queries regardless of cohort size (v1 issued four per student). SUPER, MENTOR and the season's admins read every active enrollment; a LEADER is narrowed to the students in the groups they lead (naming another group via `groupId` is 403). `groupId` optionally restricts to one group. Each row carries the composite `score` and the single `atRisk` flag. The attendance denominator starts at each student's enrollment date; the score does not read `lateMinutes` (see `GET /students/{id}/engagement`).",
+        parameters: [idParam, { name: "groupId", in: "query", schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["students"],
+              properties: { students: { type: "array", items: { $ref: "#/components/schemas/EngagementRow" } } },
+            },
+            "One row per active enrollment in scope.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
         },
       },
     },
