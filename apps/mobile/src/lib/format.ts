@@ -1,4 +1,4 @@
-import { format, isValid, parse, parseISO } from "date-fns";
+import { format, formatDistanceToNowStrict, isValid, parse, parseISO } from "date-fns";
 
 // Every timestamp that crosses the wire (`dueAt`, `submittedAt`,
 // `reviewedAt`, `checkedInAt`, session start times, ...) is a JSON ISO
@@ -78,8 +78,30 @@ export function formatEventWhen(event: {
   endDayKey: string | null;
   time: string | null;
 }): string {
-  const days = event.endDayKey
-    ? `${formatDayKey(event.dayKey)} – ${formatDayKey(event.endDayKey)}`
-    : formatDayKey(event.dayKey);
+  const days =
+    event.endDayKey && event.endDayKey !== event.dayKey
+      ? `${formatDayKey(event.dayKey)} – ${formatDayKey(event.endDayKey)}`
+      : formatDayKey(event.dayKey);
   return event.time !== null ? `${days} · ${formatWallTime(event.time)}` : days;
+}
+
+/**
+ * The greeting's first name (spec 19 D21): first whitespace token of the
+ * trimmed name, "there" when the name is null OR empty. v1's student and
+ * alumni pages disagreed on exactly this.
+ */
+export function firstName(name: string | null | undefined): string {
+  const first = (name ?? "").trim().split(/\s+/)[0];
+  return first ? first : "there";
+}
+
+/**
+ * "2 hours ago" — a RELATIVE label from an instant. The one thing the device
+ * clock is good for (spec 19 D23); it buckets nothing by day.
+ */
+export function formatTimeAgo(iso: string | null): string {
+  if (iso == null) return PLACEHOLDER;
+  const date = parseISO(iso);
+  if (!isValid(date)) return PLACEHOLDER;
+  return formatDistanceToNowStrict(date, { addSuffix: true });
 }

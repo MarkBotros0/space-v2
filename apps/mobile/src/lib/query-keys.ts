@@ -176,6 +176,16 @@ export const queryKeys = {
     comments: (assignmentId: number, postPublicId: string) =>
       [...queryKeys.forum.all, "comments", assignmentId, postPublicId] as const,
   },
+  dashboard: {
+    // Every dashboard query sits under `all`, so one invalidation after any
+    // dashboard-moving mutation refreshes whichever variant is mounted
+    // (spec 19 §7 "Invalidation").
+    all: ["dashboard"] as const,
+    // The season is part of the key: a staff user's current season, or the
+    // student's token season — a refreshed token pointing elsewhere never
+    // serves the old season's figures. null for the mentor.
+    me: (seasonId: number | null) => [...queryKeys.dashboard.all, "me", { seasonId }] as const,
+  },
   events: {
     all: ["events"] as const,
     list: () => [...queryKeys.events.all, "list"] as const,
