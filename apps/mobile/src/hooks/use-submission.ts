@@ -8,6 +8,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 /**
@@ -43,6 +44,8 @@ export function useSubmissionDetail(publicId: string | null): UseQueryResult<Sub
 export function useSaveSubmission(publicId: string, assignmentId: number) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (input: { text: string; submit?: boolean }) => {
       // `submit` is omitted (not sent as false) on a plain save — the wire
       // contract treats absence and false identically, and omitting keeps the
@@ -63,6 +66,8 @@ export function useSaveSubmission(publicId: string, assignmentId: number) {
 export function useReviewSubmission(publicId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (input: { feedback: string; returnForRevision?: boolean }) => {
       const body: { feedback: string; returnForRevision?: boolean } = {
         feedback: input.feedback,

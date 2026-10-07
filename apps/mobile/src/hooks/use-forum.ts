@@ -15,6 +15,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 /**
@@ -86,6 +87,8 @@ function useInvalidateThread(assignmentId: number) {
 export function useSubmitForumResponse(assignmentId: number) {
   const invalidate = useInvalidateThread(assignmentId);
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (text: string) => {
       const res = await apiClient.put(`/api/v1/assignments/${assignmentId}/forum/response`, {
         text,
