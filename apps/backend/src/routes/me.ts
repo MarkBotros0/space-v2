@@ -11,6 +11,7 @@ import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { expireLiveResetTokens } from "../lib/auth/password-reset";
 import { hashToken, revokeAllRefreshTokensForUser } from "../lib/auth/tokens";
+import { loadMyAttendance, loadMySeason, loadSeasonHistory } from "../lib/queries/me";
 // The one 429 handler (ruling X4) — never a local copy.
 import { rateLimitHandler } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
@@ -127,4 +128,29 @@ meRouter.post("/password", requireAuth, passwordLimiter, async (req, res) => {
   });
 
   return apiOk(res, { ok: true, sessionsRevoked });
+});
+
+const STUDENTS_ONLY = "This is only available to students and alumni.";
+
+/*
+ * Student self-service reads (Plan 11). requireAuth per route (ruling X5).
+ * Role STUDENT covers alumni too (role stays STUDENT, graduationYear set).
+ * Staff get 403, not an empty shape: a staff client calling these is a bug.
+ */
+meRouter.get("/season-history", requireAuth, async (req, res) => {
+  const user = requireUser(req);
+  if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
+  return apiOk(res, { seasons: await loadSeasonHistory(user) });
+});
+
+meRouter.get("/season", requireAuth, async (req, res) => {
+  const user = requireUser(req);
+  if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
+  return apiOk(res, { season: await loadMySeason(user) });
+});
+
+meRouter.get("/attendance", requireAuth, async (req, res) => {
+  const user = requireUser(req);
+  if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
+  return apiOk(res, await loadMyAttendance(user));
 });

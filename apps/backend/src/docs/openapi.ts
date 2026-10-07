@@ -1038,6 +1038,120 @@ export const openApiDocument = {
           },
         },
       },
+      SeasonHistoryRow: {
+        type: "object",
+        additionalProperties: false,
+        description: "A past enrollment — attendance % and curriculum ONLY (spec 02 R34: no submissions, feedback or notes, by design).",
+        properties: {
+          seasonId: { type: "integer" },
+          title: { type: "string" },
+          startDate: { type: "string", format: "date-time" },
+          endDate: { type: "string", format: "date-time" },
+          groupName: { type: ["string", "null"] },
+          attendancePct: { type: "integer", minimum: 0, maximum: 100 },
+          curriculum: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                sessionId: { type: "integer" },
+                title: { type: "string" },
+                startsAt: { type: "string", format: "date-time" },
+                dayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-calendar day (ruling X13)." },
+              },
+            },
+          },
+        },
+      },
+      MySeason: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          code: { type: "string" },
+          title: { type: "string" },
+          description: { type: ["string", "null"] },
+          status: { $ref: "#/components/schemas/SeasonStatus" },
+          startDate: { type: "string", format: "date-time" },
+          endDate: { type: "string", format: "date-time" },
+          progress: {
+            type: "object",
+            description: "Session-based (R29): completed = startsAt <= now.",
+            properties: {
+              completedSessions: { type: "integer" },
+              totalSessions: { type: "integer" },
+              pct: { type: "integer", minimum: 0, maximum: 100 },
+            },
+          },
+          group: {
+            type: ["object", "null"],
+            description: "From this season's SeasonEnrollment (ruling C9). Leaders carry email; peers never do (R89).",
+            properties: {
+              id: { type: "integer" },
+              name: { type: "string" },
+              description: { type: ["string", "null"] },
+              leaders: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" }, email: { type: "string" } } } },
+              members: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" }, isYou: { type: "boolean" } } } },
+            },
+          },
+          upcoming: {
+            type: "array",
+            maxItems: 3,
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "integer" },
+                title: { type: "string" },
+                startsAt: { type: "string", format: "date-time" },
+                dayKey: { type: "string" },
+                location: { type: ["string", "null"] },
+              },
+            },
+          },
+        },
+      },
+      MyAttendance: {
+        type: "object",
+        properties: {
+          season: {
+            type: ["object", "null"],
+            properties: {
+              id: { type: "integer" },
+              title: { type: "string" },
+              absenceBudgetMinutes: { type: "integer" },
+              absenceWeightMinutes: { type: "integer" },
+            },
+          },
+          budget: {
+            type: ["object", "null"],
+            properties: {
+              minutesUsed: { type: "integer" },
+              budgetMinutes: { type: "integer" },
+              budgetPct: { type: "integer", minimum: 0, maximum: 100 },
+              remainingPct: { type: "integer", minimum: 0, maximum: 100, description: "max(0, 100 − budgetPct) — 'Absence budget left' (spec 19 D14)." },
+              absentCount: { type: "integer" },
+              lateCount: { type: "integer" },
+            },
+          },
+          streak: { type: "integer", minimum: 0, description: "Consecutive attended past sessions; ABSENT breaks it, unmarked is skipped." },
+          sessions: {
+            type: "array",
+            description: "Past sessions, newest first.",
+            items: {
+              type: "object",
+              properties: {
+                sessionId: { type: "integer" },
+                title: { type: "string" },
+                startsAt: { type: "string", format: "date-time" },
+                dayKey: { type: "string" },
+                status: { oneOf: [{ $ref: "#/components/schemas/AttendanceStatus" }, { type: "null" }] },
+                checkedInAt: { type: ["string", "null"], format: "date-time" },
+                lateMinutes: { type: ["integer", "null"] },
+                costMinutes: { type: ["integer", "null"] },
+              },
+            },
+          },
+        },
+      },
     },
   },
 
@@ -1329,6 +1443,40 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/me/season-history": {
+      get: {
+        tags: ["Me"],
+        summary: "The caller's past seasons (students and alumni)",
+        description: "Self only. A current student's active season is excluded; an alumnus sees every enrollment. Soft-deleted seasons are hidden.",
+        responses: {
+          200: ok({ type: "object", properties: { seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonHistoryRow" } } } }, "Past seasons, most recent enrollment first."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/me/season": {
+      get: {
+        tags: ["Me"],
+        summary: "The caller's current season — progress, group, next sessions (students)",
+        responses: {
+          200: ok({ type: "object", properties: { season: { oneOf: [{ $ref: "#/components/schemas/MySeason" }, { type: "null" }] } } }, "Null when the student has no active season."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/me/attendance": {
+      get: {
+        tags: ["Me"],
+        summary: "The caller's absence budget, streak and past-session attendance (students)",
+        responses: {
+          200: ok({ $ref: "#/components/schemas/MyAttendance" }, "Empty shape (season null) when there is no active season."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
     "/api/v1/me/password": {
       post: {
         tags: ["Me"],
