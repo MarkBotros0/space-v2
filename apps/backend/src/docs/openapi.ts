@@ -105,6 +105,7 @@ export const openApiDocument = {
     { name: "Submissions", description: "Submissions and their files" },
     { name: "Quizzes", description: "Quiz authoring, attempts and grading" },
     { name: "Notifications", description: "The caller's own notification inbox: list, unread count, explicit mark-read" },
+    { name: "Video quiz", description: "Interactive session-video questions: student view, ordered answers, progress (authoring and results below)" },
     { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
   ],
   security: [{ bearerAuth: [] }],
@@ -140,6 +141,64 @@ export const openApiDocument = {
       },
     },
     schemas: {
+      StudentVideoQuiz: {
+        type: "object",
+        description:
+          "The student's view of a session's video quiz. **`correctIndex` is absent from every question by design** (the answer-key split): the select list never reads it and the mobile schema is strict. It is returned only by the answer endpoint, for the question just answered.",
+        required: ["videoId", "youtubeUrl", "questions", "furthestSeconds", "completedAt", "earnedPoints", "totalPoints", "answeredCount", "nextQuestionId"],
+        properties: {
+          videoId: { type: ["string", "null"], description: "Resolved server-side from `Session.youtubeUrl`; null when missing or unparseable." },
+          youtubeUrl: { type: ["string", "null"] },
+          questions: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["id", "atSeconds", "prompt", "options", "points", "answered", "selectedIndex", "isCorrect"],
+              properties: {
+                id: { type: "integer" },
+                atSeconds: { type: "integer" },
+                prompt: { type: "string" },
+                options: { type: "array", items: { type: "string" } },
+                points: { type: "integer" },
+                answered: { type: "boolean" },
+                selectedIndex: { type: ["integer", "null"] },
+                isCorrect: { type: ["boolean", "null"] },
+              },
+            },
+          },
+          furthestSeconds: { type: "integer" },
+          completedAt: { type: ["string", "null"], format: "date-time" },
+          earnedPoints: { type: "integer" },
+          totalPoints: { type: "integer" },
+          answeredCount: { type: "integer" },
+          nextQuestionId: { type: ["integer", "null"], description: "The only question the server will accept an answer for next (earliest unanswered by `atSeconds`, `id` tiebreak); null when all are answered." },
+        },
+      },
+      SubmitVideoAnswerRequest: {
+        type: "object",
+        required: ["questionId", "selectedIndex"],
+        properties: {
+          questionId: { type: "integer", minimum: 1 },
+          selectedIndex: { type: "integer", minimum: 0, description: "Checked against the stored option count, not a client value." },
+        },
+      },
+      SubmitVideoAnswerResponse: {
+        type: "object",
+        required: ["isCorrect", "correctIndex", "furthestSeconds", "completedAt", "nextQuestionId"],
+        properties: {
+          isCorrect: { type: "boolean" },
+          correctIndex: { type: "integer", description: "Returned for the question just answered, and only then. Safe because the first answer is final." },
+          furthestSeconds: { type: "integer" },
+          completedAt: { type: ["string", "null"], format: "date-time" },
+          nextQuestionId: { type: ["integer", "null"] },
+        },
+      },
+      VideoProgressRequest: {
+        type: "object",
+        required: ["furthestSeconds"],
+        description: "There is no `completed` field: any extra key is ignored. Completion is derived by the server when the last question is answered.",
+        properties: { furthestSeconds: { type: "integer", minimum: 0, maximum: 86400 } },
+      },
       Error: errorResponse,
       UserRole: { type: "string", enum: ["SUPER", "ADMIN", "LEADER", "STUDENT", "MENTOR"] },
       SeasonStatus: { type: "string", enum: ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] },
@@ -4036,6 +4095,70 @@ export const openApiDocument = {
           403: conflict("`forbidden` or `student_not_in_scope`."),
           404: errRef("NotFound"),
           409: conflict("`wrong_quiz_kind`."),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-quiz": {
+      get: {
+        tags: ["Video quiz"],
+        summary: "The student's video quiz",
+        description:
+          "STUDENT with an **ACTIVE** enrolment in the session's season only (staff use the authoring read) — 403 otherwise. **`correctIndex` is absent from this payload by design**: it travels to a student on exactly one path, the answer response for the question they just answered. `videoId` is resolved server-side so no client parses a URL; `nextQuestionId` is the barrier, derived once.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/StudentVideoQuiz" }, "The quiz and the caller's progress."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-quiz/answers": {
+      post: {
+        tags: ["Video quiz"],
+        summary: "Answer a video question",
+        description:
+          "Same gate as the read. **`out_of_order` (409) is the server-side barrier:** an answer is accepted only for the earliest unanswered question (`atSeconds` asc, `id` asc), which reproduces the ordering v1 enforced only inside its player component. It proves ordering, **not** that the video was watched — `furthestSeconds` is client-reported and no server can observe a YouTube playhead. The first answer is final; repeating a question replays the recorded verdict (200) instead of failing, including a double tap that loses the unique-index race. Completion is derived in the same transaction as the last answer. `furthestSeconds` only moves forward. A question belonging to another session is 404; an index outside the stored options is 400 `invalid_answer`.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/SubmitVideoAnswerRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/SubmitVideoAnswerResponse" }, "The verdict and the new progress."),
+          400: conflict("`bad_request` or `invalid_answer`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`out_of_order` — answer the earlier questions first."),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-quiz/progress": {
+      put: {
+        tags: ["Video quiz"],
+        summary: "Save playback progress",
+        description:
+          "Idempotent and monotone: `furthestSeconds` is `max(stored, sent)`, read and written in one transaction. **`completed` is not an accepted field** — a body carrying it is accepted but the key is ignored; completion is derived when the last question is answered, never asserted by the client.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/VideoProgressRequest" } } },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["furthestSeconds", "completedAt"],
+              properties: { furthestSeconds: { type: "integer" }, completedAt: { type: ["string", "null"], format: "date-time" } },
+            },
+            "The stored progress.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
         },
       },
     },
