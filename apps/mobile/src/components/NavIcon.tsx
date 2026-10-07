@@ -28,6 +28,7 @@ const GLYPHS: Record<NavIconName, IoniconName> = {
   alumni: "ribbon",
   dropped: "person-remove",
   notes: "clipboard",
+  notifications: "notifications",
   quizzes: "help-circle",
   more: "ellipsis-horizontal",
   settings: "settings",

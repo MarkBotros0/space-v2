@@ -17,6 +17,7 @@ import { submissionsRouter } from "./routes/submissions";
 import { quizzesRouter } from "./routes/quizzes";
 import { seasonEngagementRouter, studentEngagementRouter } from "./routes/engagement";
 import { myNotesRouter, notesRouter, studentNotesRouter } from "./routes/notes";
+import { notificationsRouter } from "./routes/notifications";
 import { docsRouter } from "./routes/docs";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
@@ -56,6 +57,7 @@ export function createApp(): Express {
 
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/me", meRouter);
+  app.use("/api/v1/notifications", notificationsRouter);
   app.use("/api/v1/users", usersRouter);
   app.use("/api/v1/seasons", seasonsRouter);
   app.use("/api/v1/groups", groupsRouter);

@@ -5,6 +5,7 @@ import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import { createNotificationsBulk } from "../lib/notifications";
+import { bestEffort } from "../lib/best-effort";
 import { canEditNote, canViewStudent, canWriteNote } from "../lib/permissions";
 import { listAuthoredNotes, listNotesForStudent, NOTE_SELECT, toNoteSummary } from "../lib/queries/notes";
 import { rateLimitHandler } from "../lib/rate-limit";
@@ -186,8 +187,8 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
       db.user.findUnique({ where: { id: studentUserId }, select: { name: true } }),
     ]);
     if (admins.length > 0) {
-      try {
-        await createNotificationsBulk(
+      await bestEffort("notify:MENTOR_FOLLOWUP", () =>
+        createNotificationsBulk(
           admins.map((a) => a.userId),
           {
             type: "MENTOR_FOLLOWUP",
@@ -204,13 +205,8 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
             // cutover item, not this plan's.
             link: `/admin/students/${studentUserId}`,
           },
-        );
-      } catch {
-        // Best-effort, matching the review path in routes/submissions.ts: a
-        // mail or notification failure must not report the note as unsaved.
-        // v1 was non-transactional here too (R20) and failed in the same
-        // direction — note kept, nobody told — but silently.
-      }
+        ),
+      );
     }
   }
 

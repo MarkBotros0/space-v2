@@ -25,3 +25,13 @@ export type QuizQuestionType = z.infer<typeof quizQuestionTypeSchema>;
 
 export const quizAttemptStatusSchema = z.enum(["IN_PROGRESS", "SUBMITTED", "GRADED"]);
 export type QuizAttemptStatus = z.infer<typeof quizAttemptStatusSchema>;
+
+export const notificationTypeSchema = z.enum([
+  "ASSIGNMENT_CREATED",
+  "SUBMISSION_REVIEWED",
+  "SESSION_RESCHEDULED",
+  "LOW_ATTENDANCE_FLAG",
+  "MENTOR_FOLLOWUP",
+  "QUIZ_GRADED",
+]);
+export type NotificationType = z.infer<typeof notificationTypeSchema>;

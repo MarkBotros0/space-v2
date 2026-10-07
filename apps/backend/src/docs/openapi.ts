@@ -104,6 +104,7 @@ export const openApiDocument = {
     { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
     { name: "Submissions", description: "Submissions and their files" },
     { name: "Quizzes", description: "Quiz authoring, attempts and grading" },
+    { name: "Notifications", description: "The caller's own notification inbox: list, unread count, explicit mark-read" },
     { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
   ],
   security: [{ bearerAuth: [] }],
@@ -149,6 +150,51 @@ export const openApiDocument = {
       QuizKind: { type: "string", enum: ["PAPER", "ONLINE"] },
       QuizQuestionType: { type: "string", enum: ["MCQ", "ESSAY"] },
       QuizAttemptStatus: { type: "string", enum: ["IN_PROGRESS", "SUBMITTED", "GRADED"] },
+      NotificationTarget: {
+        type: "object",
+        required: ["entityType", "entityId"],
+        description: "Route-independent reference derived server-side from the stored v1 link (spec D1). Clients never parse `link`.",
+        properties: {
+          entityType: { type: "string", enum: ["assignment", "quiz", "calendar", "student"] },
+          entityId: { type: ["integer", "null"], description: "Null for the list-level targets (`quiz`, `calendar`)." },
+        },
+      },
+      Notification: {
+        type: "object",
+        required: ["id", "type", "title", "body", "link", "target", "readAt", "createdAt"],
+        properties: {
+          id: { type: "integer" },
+          type: { type: "string", enum: ["ASSIGNMENT_CREATED", "SUBMISSION_REVIEWED", "SESSION_RESCHEDULED", "LOW_ATTENDANCE_FLAG", "MENTOR_FOLLOWUP", "QUIZ_GRADED"] },
+          title: { type: "string" },
+          body: { type: ["string", "null"] },
+          link: { type: ["string", "null"], description: "The raw v1 path, still written for v1's benefit. Render `target`." },
+          target: { oneOf: [{ $ref: "#/components/schemas/NotificationTarget" }, { type: "null" }] },
+          readAt: { type: ["string", "null"], format: "date-time", description: "Null means unread." },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      NotificationPreferences: {
+        type: "object",
+        required: ["assignmentCreated", "submissionReviewed", "sessionRescheduled", "lowAttendanceFlag", "mentorFollowup", "quizGraded"],
+        description: "One boolean per notification type — all six keys. A user with no stored row is opted in to everything.",
+        properties: {
+          assignmentCreated: { type: "boolean" },
+          submissionReviewed: { type: "boolean" },
+          sessionRescheduled: { type: "boolean" },
+          lowAttendanceFlag: { type: "boolean" },
+          mentorFollowup: { type: "boolean" },
+          quizGraded: { type: "boolean" },
+        },
+      },
+      DeviceRegistration: {
+        type: "object",
+        required: ["token", "platform"],
+        additionalProperties: false,
+        properties: {
+          token: { type: "string", minLength: 1, maxLength: 200, description: "Expo push token. A credential; never log it." },
+          platform: { type: "string", enum: ["ios", "android"] },
+        },
+      },
       EngagementScore: {
         type: "object",
         required: ["score", "attendancePct", "submissionPct", "attendanceTotal", "attendancePresent", "submissionsExpected", "submissionsCompleted"],
@@ -2670,6 +2716,138 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/notifications": {
+      get: {
+        tags: ["Notifications"],
+        summary: "The caller's notification inbox, newest first",
+        description:
+          "Returns only the caller's own rows (the user id comes from the token, never a parameter). **Performs no write** — it never marks anything read, however often the client refetches (ruling C6); use `POST /notifications/read`. Ordered by id descending; `nextCursor` is the id of the last row of the page, or null at the end. `unreadCount` is a real count over all of the caller's unread rows, not a filter over the page. `target` is derived from the stored v1 link in one server-side function.",
+        parameters: [
+          { name: "cursor", in: "query", required: false, schema: { type: "integer", minimum: 1 }, description: "`nextCursor` of the previous page." },
+          { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+          { name: "unreadOnly", in: "query", required: false, schema: { type: "string", enum: ["true", "false"], default: "false" } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["items", "nextCursor", "unreadCount"],
+              properties: {
+                items: { type: "array", items: { $ref: "#/components/schemas/Notification" } },
+                nextCursor: { type: ["integer", "null"] },
+                unreadCount: { type: "integer", minimum: 0 },
+              },
+            },
+            "One page of the inbox.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+        },
+      },
+    },
+    "/api/v1/notifications/unread-count": {
+      get: {
+        tags: ["Notifications"],
+        summary: "The caller's unread notification count (the badge)",
+        description: "A single count over the caller's own unread rows. Separate from the list so rendering a badge never fetches rows.",
+        responses: {
+          200: ok(
+            { type: "object", required: ["unreadCount"], properties: { unreadCount: { type: "integer", minimum: 0 } } },
+            "The unread count.",
+          ),
+          401: errRef("Unauthorized"),
+        },
+      },
+    },
+    "/api/v1/notifications/read": {
+      post: {
+        tags: ["Notifications"],
+        summary: "Mark notifications read (the explicit write)",
+        description:
+          "Body is exactly one of `{ ids: number[] }` (1–200) or `{ all: true }`; both together, an empty `ids`, or any other key (including `userId`) is `400 bad_request`. **`ids` is not an ownership assertion**: the update is scoped to the caller's own unread rows, so another user's id updates nothing and counts as zero. Idempotent — already-read rows are skipped and keep their original `readAt`; `marked` is the number of rows this call changed.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                oneOf: [
+                  {
+                    type: "object",
+                    required: ["ids"],
+                    additionalProperties: false,
+                    properties: { ids: { type: "array", minItems: 1, maxItems: 200, items: { type: "integer", minimum: 1 } } },
+                  },
+                  {
+                    type: "object",
+                    required: ["all"],
+                    additionalProperties: false,
+                    properties: { all: { type: "boolean", enum: [true] } },
+                  },
+                ],
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            { type: "object", required: ["marked"], properties: { marked: { type: "integer", minimum: 0 } } },
+            "How many rows this call marked.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+        },
+      },
+    },
+    "/api/v1/me/notification-preferences": {
+      get: {
+        tags: ["Me"],
+        summary: "Your notification preferences (all six)",
+        description:
+          "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email now, push at cutover); the in-app inbox row is always written.",
+        responses: {
+          200: ok(
+            { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
+            "The caller's preferences.",
+          ),
+          401: errRef("Unauthorized"),
+        },
+      },
+      put: {
+        tags: ["Me"],
+        summary: "Replace your notification preferences",
+        description:
+          "PUT, not PATCH: the body must carry all six keys, so a partial body is `400 bad_request`. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferences" } } },
+        },
+        responses: {
+          200: ok(
+            { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
+            "What was stored.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+        },
+      },
+    },
+    "/api/v1/me/devices": {
+      post: {
+        tags: ["Me"],
+        summary: "Register this device for push (blocked on cutover)",
+        description:
+          "The request body is validated, then the endpoint answers `503 push_unavailable`: Expo push needs a device-token table, the database schema is frozen while v1 runs against it, and the table lands at cutover (see docs/superpowers/cutover/2026-08-24-notifications-push.md). The contract is fixed now so the client is built once; the client keeps the token locally and stops retrying this session.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/DeviceRegistration" } } },
+        },
+        responses: {
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          503: conflict("`push_unavailable` — push registration is not available until the cutover migration lands."),
+        },
+      },
+    },
     "/api/v1/me/notes": {
       get: {
         tags: ["Notes"],

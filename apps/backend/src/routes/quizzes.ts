@@ -7,6 +7,7 @@ import type { Prisma } from "../generated/prisma/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import { createNotificationsBulk } from "../lib/notifications";
+import { bestEffort } from "../lib/best-effort";
 import { canAccessSeason, canGradeQuiz, canManageQuiz } from "../lib/permissions";
 import { visibleStudentIdsForQuiz } from "../lib/quiz-scope";
 import { isAdminOfSeason } from "../lib/rbac";
@@ -1067,20 +1068,17 @@ quizzesRouter.post("/:id/attempt/submit", async (req, res) => {
   ]);
 
   if (!hasEssays) {
-    // Best-effort, outside the transaction, and swallowed — the same shape as
-    // submissions.ts's review notification. A mail failure must not report a
-    // submitted quiz as failed.
-    try {
-      await createNotificationsBulk([user.userId], {
+    // Best-effort, outside the transaction (spec D6). A mail failure must not
+    // report a submitted quiz as failed.
+    await bestEffort("notify:QUIZ_GRADED", () =>
+      createNotificationsBulk([user.userId], {
         type: "QUIZ_GRADED",
         title: `Quiz graded: ${quiz.title}`,
         body: "Your quiz was graded automatically.",
         // v1's exact link (ruling X1) — see QUIZ_GRADED_LINK below.
         link: QUIZ_GRADED_LINK,
-      });
-    } catch {
-      // Swallowed deliberately; see above.
-    }
+      }),
+    );
   }
 
   const detail = await loadStudentQuizDetail(id, user.userId);
@@ -1313,16 +1311,14 @@ quizzesRouter.post("/:id/attempts/:attemptId/grade", async (req, res) => {
     // D8's single rule for both grading paths: notify on a first grade and on
     // any score change, silent on a no-op re-save. v1's two paths disagreed —
     // ONLINE notified on every call (R75), PAPER never re-notified (R92).
-    try {
-      await createNotificationsBulk([attempt.studentUserId], {
+    await bestEffort("notify:QUIZ_GRADED", () =>
+      createNotificationsBulk([attempt.studentUserId], {
         type: "QUIZ_GRADED",
         title: `Quiz graded: ${quiz.title}`,
         body: "Your quiz has been graded.",
         link: QUIZ_GRADED_LINK,
-      });
-    } catch {
-      // Best-effort; a transport failure must not fail the grade.
-    }
+      }),
+    );
   }
 
   const page = await db.quizAttempt.findUnique({
@@ -1411,16 +1407,14 @@ quizzesRouter.post("/:id/attempts/reopen", async (req, res) => {
   // is no dedicated NotificationType and adding one is a schema change (C1), so
   // QUIZ_GRADED is reused with copy that says what actually happened — D5's
   // explicit second option.
-  try {
-    await createNotificationsBulk([parsed.data.studentUserId], {
+  await bestEffort("notify:QUIZ_GRADED", () =>
+    createNotificationsBulk([parsed.data.studentUserId], {
       type: "QUIZ_GRADED",
       title: `You can retake: ${quiz.title}`,
       body: "Your quiz has been reopened, so you can take it again.",
       link: QUIZ_GRADED_LINK,
-    });
-  } catch {
-    // Best-effort.
-  }
+    }),
+  );
 
   return apiOk(res, { attemptId: created.id, attemptNumber: created.attemptNumber }, 201);
 });
@@ -1607,18 +1601,17 @@ quizzesRouter.post("/:id/grades", async (req, res) => {
     .filter((e) => e.score !== null && previousScore.get(e.studentUserId) !== e.score)
     .map((e) => e.studentUserId);
   if (notifyIds.length > 0) {
-    try {
-      await createNotificationsBulk(notifyIds, {
+    // Best-effort, outside the transaction. v1 issued three queries per
+    // student here, one student at a time (R96); createNotificationsBulk
+    // batches the whole set.
+    await bestEffort("notify:QUIZ_GRADED", () =>
+      createNotificationsBulk(notifyIds, {
         type: "QUIZ_GRADED",
         title: `Quiz graded: ${quiz.title}`,
         body: "Your quiz has been graded.",
         link: QUIZ_GRADED_LINK,
-      });
-    } catch {
-      // Best-effort, outside the transaction. v1 issued three queries per
-      // student here, one student at a time (R96); createNotificationsBulk
-      // batches the whole set.
-    }
+      }),
+    );
   }
 
   const sheet = await buildGradeSheet(id, studentIds);

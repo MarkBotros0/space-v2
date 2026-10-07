@@ -15,3 +15,4 @@ export * from "./user";
 export * from "./password-reset";
 export * from "./html-text";
 export * from "./note";
+export * from "./notification";

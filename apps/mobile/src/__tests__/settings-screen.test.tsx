@@ -15,6 +15,8 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 
+jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
+
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -33,6 +35,20 @@ function sessionFor(role: "SUPER" | "ADMIN" | "LEADER" | "STUDENT" | "MENTOR", g
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (apiClient.get as jest.Mock).mockResolvedValue({
+    data: {
+      data: {
+        preferences: {
+          assignmentCreated: true,
+          submissionReviewed: true,
+          sessionRescheduled: true,
+          lowAttendanceFlag: true,
+          mentorFollowup: true,
+          quizGraded: true,
+        },
+      },
+    },
+  });
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   mockLoadRefreshToken.mockResolvedValue("stored-refresh");
 });

@@ -108,7 +108,28 @@ These are operations on the live database, not code:
 - Note deletion answers `501 delete_unavailable` by design (Plan 12); decide
   later whether v1's delete behaviour is wanted.
 
-## 8. Still to build
+## 8. Plan 13 (notifications and push)
 
-Plans 13 to 18 are not started: notifications and push, video/forum/events,
-reports and exports, role dashboards, imports, cutover.
+- Run `eas init` once under your Expo account so `expo.extra.eas.projectId`
+  is written to `app.json`. Until then the settings row says push "isn't set
+  up for this build yet".
+- Device checklist (Plan 13, Task 11 Step 3): bell and badge count, inbox
+  paging, badge unchanged by merely opening the inbox, tap-through to an
+  assignment, "Mark all read", six preference toggles surviving a restart
+  (`quizGraded` included), and the push permission prompt.
+- Push delivery itself is blocked on cutover: apply the migration in
+  `docs/superpowers/cutover/2026-08-24-notifications-push.md` once v1 is
+  retired. Until then `POST /me/devices` answers 503 `push_unavailable`.
+- Behaviour change to accept: opted-out users now get the in-app row (only
+  email and push respect the preference). v1's own inbox will show those rows
+  too while both apps share the database.
+- `expo-notifications ~0.32.17` was added without `expo install --check`
+  (Expo API blocked here); run it once on an unrestricted machine.
+- Roadmap drift: Plan 13's done criterion ("a push on the student's device")
+  cannot be met before cutover; the inbox and badge half is proven, the push
+  half moves to Plan 18 M10.
+
+## 9. Still to build
+
+Plans 14 to 18 are not started: video/forum/events, reports and exports,
+role dashboards, imports, cutover.

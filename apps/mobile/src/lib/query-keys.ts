@@ -52,6 +52,15 @@ export const queryKeys = {
     checkIn: (id: number | null) => [...queryKeys.sessions.all, "checkIn", { id }] as const,
     quizzes: (id: number | null) => [...queryKeys.sessions.all, "quizzes", { id }] as const,
   },
+  notifications: {
+    all: ["notifications"] as const,
+    lists: () => [...queryKeys.notifications.all, "list"] as const,
+    // The unread-only inbox is a different server query, so it gets its own
+    // cache entry rather than being filtered out of the full one.
+    list: (unreadOnly: boolean) => [...queryKeys.notifications.lists(), { unreadOnly }] as const,
+    unreadCount: () => [...queryKeys.notifications.all, "unread-count"] as const,
+    preferences: () => [...queryKeys.notifications.all, "preferences"] as const,
+  },
   users: {
     all: ["users"] as const,
     lists: () => [...queryKeys.users.all, "list"] as const,

@@ -1,5 +1,6 @@
 import { isAssignmentOutstanding, type SessionListItem, type StudentAssignmentListItem } from "@space/shared";
 
+import { NotificationBell } from "../../src/components/NotificationBell";
 import { formatDate, formatSessionTime } from "../../src/lib/format";
 import { useStudentAssignments } from "../../src/hooks/use-assignments";
 import { useSeasonSessions } from "../../src/hooks/use-sessions";
@@ -63,6 +64,7 @@ export default function DashboardScreen() {
 
   return (
     <Screen edges={["top", "left", "right"]} onRefresh={handleRefresh} refreshing={isRefetching}>
+      <NotificationBell />
       {assignments.data ? <AssignmentsSummary rows={assignments.data} /> : null}
       {seasonId === null ? (
         <EmptyState

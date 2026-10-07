@@ -3,8 +3,11 @@ import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 // Relative, not "@space/shared" — the rootDir emit trap (see routes/auth.ts).
 import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
   OWN_PROFILE_FIELDS,
   changePasswordRequestSchema,
+  deviceRegistrationSchema,
+  notificationPreferencesSchema,
   updateOwnProfileInputSchema,
   updateProfileRequestSchema,
 } from "../../../../packages/shared/src/index";
@@ -220,4 +223,93 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
   const profile = await loadMyProfile(user.userId);
   if (!profile) return apiError(res, "not_found", "Profile not found.", 404);
   return apiOk(res, { profile });
+});
+
+const PREFERENCE_SELECT = {
+  assignmentCreated: true,
+  submissionReviewed: true,
+  sessionRescheduled: true,
+  lowAttendanceFlag: true,
+  mentorFollowup: true,
+  quizGraded: true,
+} as const;
+
+/**
+ * The caller's own notification preferences — all six keys.
+ *
+ * v1 read the sixth column from the database and dropped it on the floor while
+ * projecting to a five-field type (§5, R56), which is why `quizGraded` could
+ * never be turned off. The contract is derived from the enum
+ * (packages/shared/src/notification.ts), so a seventh type would be a compile
+ * error rather than a silently unreachable toggle.
+ *
+ * No row means opted in to everything (R6) — the row is created lazily, on
+ * first save, and most users have none (R59).
+ */
+meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
+  const user = requireUser(req);
+  const row = await db.notificationPreference.findUnique({
+    where: { userId: user.userId },
+    select: PREFERENCE_SELECT,
+  });
+  return apiOk(res, { preferences: row ?? DEFAULT_NOTIFICATION_PREFERENCES });
+});
+
+/**
+ * Replace them. PUT, not PATCH: the body carries all six keys, so there is no
+ * way for a client that has not been updated to leave a new key at its default
+ * without saying so.
+ *
+ * The target row is never an input (R54) — `user.userId` comes from the
+ * verified token, so one user cannot write another's preferences no matter
+ * what the body says.
+ */
+meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
+  const user = requireUser(req);
+
+  const parsed = notificationPreferencesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return apiError(res, "bad_request", "All six notification preferences are required.", 400);
+  }
+
+  const preferences = await db.notificationPreference.upsert({
+    where: { userId: user.userId },
+    update: parsed.data,
+    create: { userId: user.userId, ...parsed.data },
+    select: PREFERENCE_SELECT,
+  });
+
+  return apiOk(res, { preferences });
+});
+
+/**
+ * Register this device for push.
+ *
+ * BLOCKED ON CUTOVER. Expo push needs a device token per user, which is a new
+ * table (`DeviceToken`: userId, token @unique, platform, lastSeenAt) — and the
+ * schema is frozen while v1 runs against the same database (ruling C1). There
+ * is no existing column that legitimately holds an Expo push token, and C1
+ * forbids overloading one that means something else.
+ *
+ * So the contract ships and the write does not. The body is validated first,
+ * so a client integration error surfaces as a 400 today rather than at
+ * cutover; a well-formed registration gets 503 and the client keeps the token
+ * locally.
+ *
+ * To finish this at cutover: apply the migration in
+ * docs/superpowers/cutover/2026-08-24-notifications-push.md, then replace the
+ * 503 below with the upsert described there (it maps the lowercase wire
+ * platform to the DevicePlatform enum with DEVICE_PLATFORM_TO_DB). Nothing
+ * else changes — not the route, not the request contract, not the client.
+ */
+meRouter.post("/devices", requireAuth, async (req, res) => {
+  const parsed = deviceRegistrationSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid device registration.", 400);
+
+  return apiError(
+    res,
+    "push_unavailable",
+    "Push notifications aren't available yet.",
+    503,
+  );
 });
