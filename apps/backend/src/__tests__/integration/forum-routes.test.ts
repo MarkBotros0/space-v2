@@ -317,6 +317,33 @@ describe("GET /api/v1/assignments/:id/forum", () => {
     expect(JSON.stringify(res.body)).not.toContain("secret-draft");
   });
 
+  it("never serves a posted-looking peer row that has no text (spec 14 R23)", async () => {
+    // The other half of the rule: a non-DRAFT row whose text is null (a
+    // file-only submission, say) is not a forum post and must not appear as an
+    // empty one.
+    await db.submission.create({
+      data: {
+        assignmentId,
+        studentUserId: studentA2Id,
+        publicId: newPublicId(),
+        status: "SUBMITTED",
+        text: null,
+        submittedAt: new Date(),
+      },
+    });
+    await request(app)
+      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: OWN_TEXT });
+
+    const res = await request(app)
+      .get(`/api/v1/assignments/${assignmentId}/forum`)
+      .set("authorization", `Bearer ${studentAToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.posts).toEqual([]);
+  });
+
   it("shows only the reader's own group", async () => {
     for (const token of [studentAToken, studentA2Token, studentBToken]) {
       await request(app)
