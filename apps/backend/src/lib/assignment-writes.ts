@@ -4,6 +4,7 @@ import type { AssignmentWriteBody } from "@space/shared";
 import { db } from "../db/client";
 
 import { createNotificationsBulk } from "./notifications";
+import { bestEffort } from "./best-effort";
 import { formatInOrgTime, orgWallClockToInstant } from "./org-time";
 
 /**
@@ -97,18 +98,16 @@ export async function notifyAssignmentCreated(
   studentIds: number[],
 ): Promise<void> {
   if (studentIds.length === 0) return;
-  try {
-    await createNotificationsBulk(studentIds, {
+  // Best-effort: the assignment exists; a notification failure must not
+  // report the write as failed (spec D6, R86) — and bestEffort logs (R21).
+  await bestEffort("notify:ASSIGNMENT_CREATED", () =>
+    createNotificationsBulk(studentIds, {
       type: "ASSIGNMENT_CREATED",
       title: `New assignment: ${assignment.title}`,
       body: assignment.dueAt ? `Due ${formatInOrgTime(assignment.dueAt)}` : undefined,
       link: `/student/assignments/${assignment.id}`,
-    });
-  } catch {
-    // Best-effort: the assignment exists; a notification failure must not
-    // report the write as failed (R86). Plan 13 replaces this try/catch with
-    // its bestEffort wrapper.
-  }
+    }),
+  );
 }
 
 /** The first schema issue as a sentence the client can show, prefixed with its field. */

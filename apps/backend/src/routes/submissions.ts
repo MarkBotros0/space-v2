@@ -7,6 +7,7 @@ import { apiOk, apiError } from "../lib/api-response";
 import { ForbiddenError } from "../lib/auth/errors";
 import { config } from "../lib/config";
 import { createNotificationsBulk } from "../lib/notifications";
+import { bestEffort } from "../lib/best-effort";
 import { parseId } from "../lib/parse-id";
 import { canAccessSeason, canReviewSubmission, canViewSubmission } from "../lib/permissions";
 import { newPublicId } from "../lib/public-id";
@@ -380,22 +381,18 @@ submissionsRouter.post("/:publicId/review", async (req, res) => {
   });
 
   // Best-effort: the student is told, but a mail or notification failure must
-  // not report the review itself as failed. Ruling from the notifications
-  // spec's D6 — v1 lets a transport error roll back a business write.
-  try {
-    await createNotificationsBulk([sub.studentUserId], {
+  // not report the review itself as failed (spec D6, ruling from R75).
+  await bestEffort("notify:SUBMISSION_REVIEWED", () =>
+    createNotificationsBulk([sub.studentUserId], {
       type: "SUBMISSION_REVIEWED",
       title: parsed.data.returnForRevision
         ? `${sub.assignment.title} was returned for revision`
         : `${sub.assignment.title} was reviewed`,
-      // The assignment, not the list. A notification whose link cannot reach
-      // the thing it is about is a notification the recipient has to go and
-      // find manually.
+      // v1's exact link (submission-actions.ts:197; ruling X1): the assignment,
+      // not the list.
       link: `/student/assignments/${sub.assignmentId}`,
-    });
-  } catch {
-    // Swallowed deliberately; see above.
-  }
+    }),
+  );
 
   return apiOk(res, { reviewed: true, returnedForRevision: Boolean(parsed.data.returnForRevision) });
 });

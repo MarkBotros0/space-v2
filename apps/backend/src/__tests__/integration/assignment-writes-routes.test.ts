@@ -204,7 +204,15 @@ describe("POST /api/v1/seasons/:id/assignments", () => {
       },
     ]);
     expect(await notificationsFor(studentBId, id)).toEqual([]); // Group B not targeted
-    expect(await notificationsFor(optedOutId, id)).toEqual([]); // R64 opt-out honoured
+    // BEHAVIOUR CHANGE, spec D4 (Plan 13): the opt-out suppresses outbound
+    // channels only; the in-app row is history and is always written.
+    expect(await notificationsFor(optedOutId, id)).toEqual([
+      {
+        title: "New assignment: Targeted",
+        body: "Due Mar 10, 2099, 11:59 PM",
+        link: `/student/assignments/${id}`,
+      },
+    ]);
   });
 
   it("notifies through the season enrolment, not GroupStudent (C9)", async () => {

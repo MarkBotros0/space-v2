@@ -6,6 +6,7 @@ import { apiOk, apiError } from "../lib/api-response";
 import { flagLowAttendance } from "../lib/attendance-notifications";
 import { CHECK_IN_WINDOW_MS, checkInState, isCheckInOpen } from "../lib/check-in";
 import { createNotificationsBulk } from "../lib/notifications";
+import { bestEffort } from "../lib/best-effort";
 import {
   addWeeksInOrgTime,
   formatInOrgTime,
@@ -365,8 +366,10 @@ sessionsRouter.patch("/:id", async (req, res) => {
       where: { seasonId: existing.seasonId, status: "ACTIVE" },
       select: { studentUserId: true },
     });
-    try {
-      await createNotificationsBulk(
+    // Best-effort: the reschedule has committed; a notification failure must
+    // not report it as failed (spec D6, R75) — and bestEffort logs (R21).
+    await bestEffort("notify:SESSION_RESCHEDULED", () =>
+      createNotificationsBulk(
         enrolled.map((e) => e.studentUserId),
         {
           type: "SESSION_RESCHEDULED",
@@ -376,11 +379,8 @@ sessionsRouter.patch("/:id", async (req, res) => {
           // X1: v1's exact link for this type.
           link: "/student/calendar",
         },
-      );
-    } catch {
-      // Best-effort: a notification failure must not fail the reschedule.
-      // Plan 13 replaces this try/catch with its bestEffort wrapper.
-    }
+      ),
+    );
   }
 
   return apiOk(res, { updated: targets.length });
@@ -515,7 +515,11 @@ sessionsRouter.post("/:id/attendance", async (req, res) => {
     ),
   );
 
-  await flagLowAttendance(sessionId, parsed.data.entries);
+  // The attendance rows are committed. A notification failure after that point
+  // must not tell the leader their marking failed (spec D6).
+  await bestEffort("notify:LOW_ATTENDANCE_FLAG", () =>
+    flagLowAttendance(sessionId, parsed.data.entries),
+  );
 
   return apiOk(res, { saved: parsed.data.entries.length });
 });
