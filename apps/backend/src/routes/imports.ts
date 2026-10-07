@@ -2,18 +2,27 @@
 import express, { Router } from "express";
 import rateLimit from "express-rate-limit";
 
+import { db } from "../db/client";
+import { Prisma } from "../generated/prisma/client";
 import { apiError, apiOk } from "../lib/api-response";
 import { config } from "../lib/config";
 import { ImportParseError, parseDelimited } from "../lib/imports/delimited";
 // The one 429 handler (ruling X4: Plan 9 extracted it; no copies anywhere).
 import { rateLimitHandler } from "../lib/rate-limit";
-import { buildStudentImportPreview, studentImportTemplate } from "../lib/imports/students";
+import {
+  buildStudentImportPreview,
+  commitStudentImport,
+  ImportRowsInvalidError,
+  studentImportTemplate,
+  type StudentImportTarget,
+} from "../lib/imports/students";
 import { isSuper } from "../lib/rbac";
 // Value import — relative path is mandatory here (CLAUDE.md's rootDir emit
 // trap). `import type` may use "@space/shared"; this line may not.
 import {
   IMPORT_MAX_ROWS,
   pastedSheetInputSchema,
+  studentImportCommitInputSchema,
 } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 
@@ -117,6 +126,59 @@ importsRouter.post("/students/preview", previewLimiter, importJsonParser, async 
     // (student-import.ts:280). The row number is what a support conversation
     // actually needs, and a log full of student addresses is not (spec D19).
     if (err instanceof ImportParseError) return apiError(res, "bad_request", err.message, 400);
+    throw err;
+  }
+});
+
+importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (req, res) => {
+  if (!requireSuper(req, res)) return;
+
+  const parsed = studentImportCommitInputSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid import request.", 400);
+  const body = parsed.data;
+
+  let target: StudentImportTarget;
+  if (body.mode === "season") {
+    // Liveness, not scope (spec R39/R40). This endpoint is SUPER-only and
+    // stays that way (D3); if it is ever opened to a season ADMIN, the
+    // row-scoped check goes in the SAME change as the widened gate (C8).
+    const season = await db.season.findFirst({
+      where: { id: body.seasonId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!season) return apiError(res, "not_found", "That season no longer exists.", 404);
+    target = { kind: "season", seasonId: season.id };
+  } else {
+    target = { kind: "alumni", graduationYear: body.graduationYear };
+  }
+
+  try {
+    return apiOk(res, await commitStudentImport(body.rows, target, body.onExisting));
+  } catch (err) {
+    if (err instanceof ImportRowsInvalidError) {
+      const shown = err.rowNumbers.slice(0, 10).join(", ");
+      const more = err.rowNumbers.length > 10 ? ` and ${err.rowNumbers.length - 10} more` : "";
+      return apiError(
+        res,
+        "import_rows_invalid",
+        `${err.rowNumbers.length} row(s) are not valid — rows ${shown}${more}. Nothing was imported. Preview again and fix them.`,
+        422,
+      );
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      // Somebody else created one of these addresses between this request's
+      // existence lookup and its insert. The whole transaction rolled back,
+      // so nothing partial landed — and because the commit is idempotent,
+      // re-running the same paste is safe. Say exactly that: v1 downgraded
+      // this race to a silent per-row "skipped" (R52), which made a genuine
+      // conflict indistinguishable from a clean no-op.
+      return apiError(
+        res,
+        "import_conflict",
+        "Someone else added one of these people while this import was running. Nothing was written — run it again.",
+        409,
+      );
+    }
     throw err;
   }
 });

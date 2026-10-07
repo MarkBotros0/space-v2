@@ -332,6 +332,50 @@ const pastedSheetBodyDoc = {
   },
 } as const;
 
+const studentImportCommitBodyDoc = {
+  type: "object",
+  required: ["mode", "onExisting", "rows"],
+  properties: {
+    mode: { type: "string", enum: ["season", "alumni"] },
+    seasonId: { type: "integer", description: "Required when mode is `season`." },
+    graduationYear: { type: "integer", minimum: 1990, description: "Required when mode is `alumni`; not in the future (evaluated per request)." },
+    onExisting: { type: "string", enum: ["skip", "enroll"], description: "Required, no default. `enroll` is valid in season mode only." },
+    rows: {
+      type: "array",
+      minItems: 1,
+      maxItems: 2000,
+      items: {
+        type: "object",
+        required: ["rowNumber", "values"],
+        properties: { rowNumber: { type: "integer", minimum: 1 }, values: importCellValuesDoc },
+      },
+    },
+  },
+} as const;
+
+const studentImportResultDoc = {
+  type: "object",
+  properties: {
+    created: { type: "integer" },
+    skipped: { type: "integer" },
+    enrolled: { type: "integer" },
+    rows: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          rowNumber: { type: "integer" },
+          name: { type: "string" },
+          email: { type: "string" },
+          outcome: { type: "string", enum: ["created", "skipped", "enrolled"] },
+          message: { type: "string", nullable: true },
+          userId: { type: "integer", nullable: true },
+        },
+      },
+    },
+  },
+} as const;
+
 const idParam = {
   name: "id",
   in: "path",
@@ -5232,6 +5276,31 @@ export const openApiDocument = {
           200: ok(importTemplateDoc, "Template."),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/imports/students/commit": {
+      post: {
+        tags: ["Imports"],
+        summary: "Commit a student import (SUPER only)",
+        description:
+          "SUPER only. The body carries cell **values and a row number, never a status**: the server re-validates every row and re-runs the existence lookup inside the transaction, so a client cannot commit a row the server would have refused. " +
+          "**All-or-nothing**: any unimportable row answers `422 import_rows_invalid` naming the row numbers and nothing is written (deliberate divergence from v1, which committed row-by-row and left partial imports behind). " +
+          "**Idempotent by email**, matched case-insensitively and stored exactly as sent: a re-run creates nothing. In-paste repeats are skipped. " +
+          "`onExisting` is required. `skip` reproduces v1. `enroll` (season mode only) enrols an existing live STUDENT using the same rules as `POST /students/{id}/enrollments` (an existing enrolment of any status is left alone and reported `skipped`; `activeSeasonId` is set only when unset) and writes no other field. A soft-deleted or staff address is always skipped. " +
+          "Created accounts have no credential and no invite is sent. Outcomes are `created` / `skipped` / `enrolled`; there is no `failed`. " +
+          "404 `not_found` for a soft-deleted season; 409 `import_conflict` for a concurrent create (nothing was written; re-running is safe); 429.",
+        requestBody: { required: true, content: { "application/json": { schema: studentImportCommitBodyDoc } } },
+        responses: {
+          200: ok(studentImportResultDoc, "Per-row outcomes."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`import_conflict`."),
+          413: conflict("`payload_too_large`."),
+          422: conflict("`import_rows_invalid`."),
+          429: errRef("TooManyRequests"),
         },
       },
     },
