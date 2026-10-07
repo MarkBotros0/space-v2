@@ -10,6 +10,10 @@ import { ScrollView } from "react-native";
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
 }));
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: (...args: unknown[]) => mockPush(...args) }),
+}));
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
@@ -50,6 +54,16 @@ beforeEach(() => {
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
+function mockUnreadCount(unreadCount: number) {
+  get.mockImplementation((url: string) =>
+    url === "/api/v1/notifications/unread-count"
+      ? Promise.resolve({ data: { data: { unreadCount } } })
+      : Promise.reject(new Error(`not under test: ${url}`)),
+  );
+}
+
+const noSeason = { scopes: { ...scopesWithSeason, activeSeasonId: null } };
+
 describe("DashboardScreen", () => {
   it("shows a distinct empty state when there is no active season, without calling the API", async () => {
     useSessionStore.setState({
@@ -59,7 +73,10 @@ describe("DashboardScreen", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("No active season")).toBeTruthy();
-    expect(get).not.toHaveBeenCalled();
+    // The bell's own count is the only request; no season data is fetched.
+    expect(
+      get.mock.calls.filter(([url]) => url !== "/api/v1/notifications/unread-count"),
+    ).toEqual([]);
   });
 
   it("shows LoadingState while the request is in flight", async () => {
@@ -82,17 +99,27 @@ describe("DashboardScreen", () => {
 
   it("shows ErrorState with onRetry wired to the query's refetch", async () => {
     useSessionStore.setState({ scopes: scopesWithSeason });
-    get.mockRejectedValueOnce(new Error("network down"));
+    // URL-routed rather than `mockRejectedValueOnce`: the bell's unread-count
+    // request now shares this mock and would consume a one-shot rejection.
+    const sessionsUrl = "/api/v1/seasons/7/sessions";
+    const sessionCalls = () => get.mock.calls.filter(([url]) => url === sessionsUrl).length;
+    let failSessions = true;
+    get.mockImplementation((url: string) => {
+      if (url !== sessionsUrl) return Promise.reject(new Error(`not under test: ${url}`));
+      return failSessions
+        ? Promise.reject(new Error("network down"))
+        : Promise.resolve({ data: { data: { sessions: [session] } } });
+    });
 
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText(/Couldn't load sessions/)).toBeTruthy();
-    expect(get).toHaveBeenCalledTimes(1);
+    expect(sessionCalls()).toBe(1);
 
-    get.mockResolvedValueOnce({ data: { data: { sessions: [session] } } });
+    failSessions = false;
     fireEvent.press(screen.getByText("Try again"));
 
-    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(sessionCalls()).toBe(2));
     expect(await screen.findByText("Kickoff")).toBeTruthy();
   });
 
@@ -163,5 +190,39 @@ describe("DashboardScreen", () => {
       expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/sessions");
       expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/assignments");
     });
+  });
+
+  it("shows the unread badge and opens the inbox", async () => {
+    // The dashboard is the one destination in every role's tab bar, which is
+    // why the bell lives here (spec D3 — a sidebar-only entry buries the badge).
+    useSessionStore.setState(noSeason);
+    mockUnreadCount(3);
+
+    renderWithProviders(<DashboardScreen />);
+
+    expect(await screen.findByLabelText("Notifications, 3 unread")).toBeTruthy();
+    expect(screen.getByText("3")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Notifications, 3 unread"));
+    expect(mockPush).toHaveBeenCalledWith("/notifications");
+  });
+
+  it("caps the badge at 9+", async () => {
+    useSessionStore.setState(noSeason);
+    mockUnreadCount(42);
+
+    renderWithProviders(<DashboardScreen />);
+
+    expect(await screen.findByText("9+")).toBeTruthy();
+  });
+
+  it("renders no badge at zero unread", async () => {
+    useSessionStore.setState(noSeason);
+    mockUnreadCount(0);
+
+    renderWithProviders(<DashboardScreen />);
+
+    expect(await screen.findByLabelText("Notifications")).toBeTruthy();
+    expect(screen.queryByText("0")).toBeNull();
   });
 });
