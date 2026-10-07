@@ -322,3 +322,36 @@ describe("shared prefixes keep the not_found envelope (ruling X5)", () => {
     expect(res.body.error.code).toBe("not_found");
   });
 });
+
+describe("export rate limit (10 per 15 minutes per user, R88)", () => {
+  it("answers the eleventh export with 429 in the envelope, keyed per user", async () => {
+    const limited = await createTestUser("ex-limited", "MENTOR");
+    const other = await createTestUser("ex-unlimited", "MENTOR");
+    const limitedToken = await login(app, limited.email);
+    const otherToken = await login(app, other.email);
+
+    const hit = (token: string) =>
+      request(app)
+        .get("/api/v1/reports/engagement/export")
+        .set("authorization", `Bearer ${token}`)
+        .buffer(true)
+        .parse((r, cb) => {
+          const chunks: Buffer[] = [];
+          r.on("data", (c: Buffer) => chunks.push(c));
+          r.on("end", () => cb(null, Buffer.concat(chunks)));
+        });
+
+    for (let i = 0; i < 10; i += 1) {
+      expect((await hit(limitedToken)).status).toBe(200);
+    }
+    const eleventh = await request(app)
+      .get("/api/v1/reports/engagement/export")
+      .set("authorization", `Bearer ${limitedToken}`);
+    expect(eleventh.status).toBe(429);
+    expect(eleventh.headers["content-type"]).toContain("application/json");
+    expect(eleventh.body.error.code).toBe("too_many_requests");
+
+    // A different user is a different bucket.
+    expect((await hit(otherToken)).status).toBe(200);
+  });
+});
