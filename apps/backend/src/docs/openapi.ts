@@ -318,6 +318,19 @@ export const openApiDocument = {
         required: ["text"],
         properties: { text: { type: "string", minLength: 1, maxLength: 20000, description: "Plain text. At least one word regardless of `forumMinWords`, so an empty post cannot unlock the feed." } },
       },
+      AddForumCommentRequest: {
+        type: "object",
+        required: ["body"],
+        properties: { body: { type: "string", minLength: 1, maxLength: 5000, description: "Plain text; trimmed." } },
+      },
+      ForumCommentsPage: {
+        type: "object",
+        required: ["comments", "nextCursor"],
+        properties: {
+          comments: { type: "array", items: { $ref: "#/components/schemas/ForumComment" } },
+          nextCursor: { type: ["integer", "null"] },
+        },
+      },
       Error: errorResponse,
       UserRole: { type: "string", enum: ["SUPER", "ADMIN", "LEADER", "STUDENT", "MENTOR"] },
       SeasonStatus: { type: "string", enum: ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] },
@@ -4253,6 +4266,67 @@ export const openApiDocument = {
         responses: {
           200: ok({ $ref: "#/components/schemas/ForumOwnResponse" }, "The posted response."),
           400: conflict("`bad_request` or `too_few_words`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/assignments/{id}/forum/posts/{publicId}/comments": {
+      get: {
+        tags: ["Forum"],
+        summary: "A post's comments",
+        description:
+          "Oldest first, numeric cursor. The thread inlines only the first three per post. Same gates as the feed: assignment 404 first, then the audience (403), then the post must be a real (non-DRAFT) post inside the caller's audience, and a student must have posted their own response (403 `post_first` — a rule, not an error condition). `canDelete` is authoritative; the client must not re-derive it.",
+        parameters: [
+          idParam,
+          publicIdParam,
+          { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 20 } },
+        ],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/ForumCommentsPage" }, "One page of comments."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` or `post_first`."),
+          404: errRef("NotFound"),
+        },
+      },
+      post: {
+        tags: ["Forum"],
+        summary: "Comment on a post",
+        description:
+          "Allowed for a student in the post author's group who has posted their own response first (403 `post_first` otherwise), for the LEADER of that group and for the season ADMIN / SUPER without posting anything. A MENTOR stays read-only. The post must belong to the assignment in the path (404 otherwise). No notification is sent (no forum `NotificationType`; a cutover task). **No moderation beyond comment deletion exists** — there is no way to hide a post or report one (plan 14, D-14.4).",
+        parameters: [idParam, publicIdParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/AddForumCommentRequest" } } },
+        },
+        responses: {
+          201: ok(
+            { type: "object", required: ["comment"], properties: { comment: { $ref: "#/components/schemas/ForumComment" } } },
+            "The new comment.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` or `post_first`."),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/forum/comments/{commentId}": {
+      delete: {
+        tags: ["Forum"],
+        summary: "Remove a comment",
+        description:
+          "The comment's author, SUPER, the season's ADMIN, or the LEADER of the post author's group (new: in v1 the staff power was unreachable from any UI). The post's own author may not remove someone else's comment. Hard delete — there is no `deletedAt` column. The only moderation lever that exists; see plan 14 D-14.4.",
+        parameters: [{ name: "commentId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          200: ok(
+            { type: "object", required: ["deleted"], properties: { deleted: { type: "boolean", enum: [true] } } },
+            "Removed.",
+          ),
+          400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
