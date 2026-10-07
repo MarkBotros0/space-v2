@@ -65,6 +65,7 @@ describe("navFor", () => {
         ["/notes", "My notes", "notes"],
         ["/users", "Users", "users"],
         ["/reports", "Reports", "reports"],
+        ["/notifications", "Notifications", "notifications"],
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
@@ -87,6 +88,7 @@ describe("navFor", () => {
         ["/assignments", "Assignments", "assignments"],
         ["/quizzes", "Quizzes", "quizzes"],
         ["/reports", "Reports", "reports"],
+        ["/notifications", "Notifications", "notifications"],
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
@@ -106,6 +108,7 @@ describe("navFor", () => {
         ["/calendar", "Calendar", "calendar"],
         ["/submissions", "Submissions", "submissions"],
         ["/quizzes", "Quizzes", "quizzes"],
+        ["/notifications", "Notifications", "notifications"],
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
@@ -127,6 +130,7 @@ describe("navFor", () => {
         ["/attendance", "Attendance", "attendance"],
         ["/history", "History", "history"],
         ["/profile", "Profile", "profile"],
+        ["/notifications", "Notifications", "notifications"],
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
@@ -143,6 +147,7 @@ describe("navFor", () => {
         ["/dashboard", "Dashboard", "dashboard"],
         ["/students", "Students", "students"],
         ["/reports", "Reports", "reports"],
+        ["/notifications", "Notifications", "notifications"],
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
@@ -161,6 +166,7 @@ describe("navFor", () => {
         ["/calendar", "Events", "events"],
         ["/history", "My History", "history"],
         ["/profile", "Profile", "profile"],
+        ["/notifications", "Notifications", "notifications"],
         ["/settings", "Settings", "settings"],
       ],
       tabs: [

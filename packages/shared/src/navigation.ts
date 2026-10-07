@@ -30,6 +30,7 @@ export type NavIconName =
   | "alumni"
   | "dropped"
   | "notes"
+  | "notifications"
   | "quizzes"
   | "more"
   | "settings";
@@ -62,6 +63,7 @@ const SUPER: RoleNav = {
     { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/users", label: "Users", icon: "users" },
     { href: "/reports", label: "Reports", icon: "reports" },
+    { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
@@ -84,6 +86,7 @@ const ADMIN: RoleNav = {
     { href: "/assignments", label: "Assignments", icon: "assignments" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/reports", label: "Reports", icon: "reports" },
+    { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
@@ -103,6 +106,7 @@ const LEADER: RoleNav = {
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/submissions", label: "Submissions", icon: "submissions" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
+    { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
@@ -127,6 +131,7 @@ const STUDENT: RoleNav = {
     { href: "/attendance", label: "Attendance", icon: "attendance" },
     { href: "/history", label: "History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
+    { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
@@ -143,6 +148,7 @@ const MENTOR: RoleNav = {
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/students", label: "Students", icon: "students" },
     { href: "/reports", label: "Reports", icon: "reports" },
+    { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
@@ -161,6 +167,7 @@ const ALUMNI: RoleNav = {
     { href: "/calendar", label: "Events", icon: "events" },
     { href: "/history", label: "My History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
+    { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [

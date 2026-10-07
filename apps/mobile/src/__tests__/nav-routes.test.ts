@@ -18,13 +18,13 @@ describe("navHref", () => {
 describe("moreItemsFor", () => {
   it("is the sidebar minus the tabs, in sidebar order (v1 extraItemsFor)", () => {
     expect(moreItemsFor(navByRole.STUDENT).map((i) => i.label)).toEqual([
-      "Current Season", "Attendance", "History", "Profile", "Settings",
+      "Current Season", "Attendance", "History", "Profile", "Notifications", "Settings",
     ]);
     expect(moreItemsFor(navByRole.ADMIN).map((i) => i.label)).toEqual([
-      "My Season", "My notes", "Assignments", "Quizzes", "Reports", "Settings",
+      "My Season", "My notes", "Assignments", "Quizzes", "Reports", "Notifications", "Settings",
     ]);
     expect(moreItemsFor(navFor({ role: "STUDENT", graduationYear: 2024 })).map((i) => i.label)).toEqual([
-      "Settings",
+      "Notifications", "Settings",
     ]);
   });
 });
