@@ -123,9 +123,16 @@ describe("GET /api/v1/sessions/:id/video-quiz", () => {
     // property read, so an undefined-but-present key still fails.
     expect(JSON.stringify(res.body)).not.toMatch(/correctIndex/);
     for (const q of res.body.data.questions) {
-      expect(Object.keys(q).sort()).toEqual(
-        ["answered", "atSeconds", "id", "isCorrect", "options", "points", "prompt", "selectedIndex"],
-      );
+      expect(Object.keys(q).sort()).toEqual([
+        "answered",
+        "atSeconds",
+        "id",
+        "isCorrect",
+        "options",
+        "points",
+        "prompt",
+        "selectedIndex",
+      ]);
     }
   });
 
@@ -202,6 +209,29 @@ describe("POST /api/v1/sessions/:id/video-quiz/answers", () => {
     expect(skip.status).toBe(409);
     expect(skip.body.error.code).toBe("out_of_order");
     expect(await db.sessionVideoQuestionResponse.count({ where: { questionId: q3 } })).toBe(0);
+  });
+
+  it("never moves furthestSeconds backward when an earlier question is answered late (spec 13 R57)", async () => {
+    // The player reported 60s of progress before q1 (atSeconds 30) was
+    // answered. Answering q1 now must not drag the high-water mark to 30.
+    const up = await request(app)
+      .put(`/api/v1/sessions/${sessionId}/video-quiz/progress`)
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ furthestSeconds: 60 });
+    expect(up.body.data.furthestSeconds).toBe(60);
+
+    const res = await request(app)
+      .post(`/api/v1/sessions/${sessionId}/video-quiz/answers`)
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ questionId: q1, selectedIndex: 0 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.furthestSeconds).toBe(60);
+    const row = await db.sessionVideoProgress.findUnique({
+      where: { sessionId_studentUserId: { sessionId, studentUserId: studentId } },
+      select: { furthestSeconds: true },
+    });
+    expect(row?.furthestSeconds).toBe(60);
   });
 
   it("replays a recorded answer instead of throwing on the unique constraint", async () => {
@@ -480,12 +510,14 @@ describe("video question authoring", () => {
 
   it("404s an unknown question on PATCH and DELETE", async () => {
     for (const call of [
-      request(app).patch("/api/v1/video-questions/987654321").send({
-        atSeconds: 1,
-        prompt: "space-v2-test",
-        options: ["a", "b"],
-        correctIndex: 0,
-      }),
+      request(app)
+        .patch("/api/v1/video-questions/987654321")
+        .send({
+          atSeconds: 1,
+          prompt: "space-v2-test",
+          options: ["a", "b"],
+          correctIndex: 0,
+        }),
       request(app).delete("/api/v1/video-questions/987654321"),
     ]) {
       const res = await call.set("authorization", `Bearer ${adminToken}`);
@@ -541,9 +573,9 @@ describe("GET /api/v1/sessions/:id/video-quiz/results", () => {
     const asAdmin = await request(app)
       .get(`/api/v1/sessions/${sessionId}/video-quiz/results`)
       .set("authorization", `Bearer ${adminToken}`);
-    expect(
-      asAdmin.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId),
-    ).toContain(outsider.id);
+    expect(asAdmin.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId)).toContain(
+      outsider.id,
+    );
   });
 
   it("refuses a student outright", async () => {
