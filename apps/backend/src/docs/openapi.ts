@@ -104,6 +104,7 @@ export const openApiDocument = {
     { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
     { name: "Submissions", description: "Submissions and their files" },
     { name: "Quizzes", description: "Quiz authoring, attempts and grading" },
+    { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
   ],
   security: [{ bearerAuth: [] }],
   components: {
@@ -148,6 +149,46 @@ export const openApiDocument = {
       QuizKind: { type: "string", enum: ["PAPER", "ONLINE"] },
       QuizQuestionType: { type: "string", enum: ["MCQ", "ESSAY"] },
       QuizAttemptStatus: { type: "string", enum: ["IN_PROGRESS", "SUBMITTED", "GRADED"] },
+      NoteVisibility: {
+        type: "string",
+        enum: ["LEADERS", "MENTORS", "ADMINS"],
+        description: "Matched by EQUALITY against the reader's role, not a ladder: an ADMIN does not read a LEADERS note.",
+      },
+      NoteSummary: {
+        type: "object",
+        required: ["id", "body", "visibility", "followUpFlagged", "createdAt", "updatedAt", "edited", "authorId", "authorName", "authorRole", "seasonId", "seasonTitle", "canEdit"],
+        properties: {
+          id: { type: "integer" },
+          body: { type: "string", description: "PLAIN TEXT, never HTML. The column holds v1's TipTap HTML; the API strips it on read." },
+          visibility: { $ref: "#/components/schemas/NoteVisibility" },
+          followUpFlagged: { type: "boolean" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+          edited: { type: "boolean", description: "Server-derived: updatedAt is more than a second after createdAt." },
+          authorId: { type: "integer" },
+          authorName: { type: "string" },
+          authorRole: { $ref: "#/components/schemas/UserRole" },
+          seasonId: { type: ["integer", "null"] },
+          seasonTitle: { type: ["string", "null"] },
+          canEdit: { type: "boolean", description: "Server-derived: the caller is the author. SUPER is not exempt." },
+        },
+      },
+      AuthoredNote: {
+        allOf: [
+          { $ref: "#/components/schemas/NoteSummary" },
+          {
+            type: "object",
+            required: ["student"],
+            properties: {
+              student: {
+                type: "object",
+                required: ["id", "name", "email"],
+                properties: { id: { type: "integer" }, name: { type: "string" }, email: { type: "string" } },
+              },
+            },
+          },
+        ],
+      },
       CreateQuizRequest: {
         type: "object",
         required: ["seasonId", "title", "kind"],
@@ -2250,6 +2291,69 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
           409: conflict("`not_active`."),
+        },
+      },
+    },
+
+    "/api/v1/students/{id}/notes": {
+      get: {
+        tags: ["Notes"],
+        summary: "Notes about one student, narrowed to what the caller may read",
+        description:
+          "Pastoral records \u2014 sensitive. Two gates, in order: the caller must be able to view the student (`canViewStudent`), then the visibility rule is applied **in the query**, so a hidden note never leaves the database. Visibility is **equality**, not a ladder: a LEADER reads LEADERS notes, a MENTOR MENTORS, an ADMIN ADMINS, SUPER reads all, and every author reads their own regardless of visibility. An ADMIN therefore does not read a LEADERS note. A STUDENT receives `403 forbidden` \u2014 never an empty list, even for their own notes. `body` is plain text, not the HTML the column holds. Newest first, cursor-paged (`nextCursor` is opaque; pass it back as `cursor`). Rate-limited; each read writes a server-side audit line (viewer id, student id, count \u2014 never a body).",
+        parameters: [
+          idParam,
+          { name: "cursor", in: "query", schema: { type: "string" } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["notes", "nextCursor"],
+              properties: {
+                notes: { type: "array", items: { $ref: "#/components/schemas/NoteSummary" } },
+                nextCursor: { type: ["string", "null"] },
+              },
+            },
+            "A page of visible notes.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+
+    "/api/v1/me/notes": {
+      get: {
+        tags: ["Notes"],
+        summary: "Notes the caller wrote",
+        description:
+          "Open to every authoring role (SUPER, ADMIN, LEADER, MENTOR); a STUDENT receives `403 forbidden`. Narrowed by author equality in the query. Optional `studentId` filters to one student. `body` is plain text. Cursor-paged, newest first. Rate-limited.",
+        parameters: [
+          { name: "studentId", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "cursor", in: "query", schema: { type: "string" } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["notes", "nextCursor"],
+              properties: {
+                notes: { type: "array", items: { $ref: "#/components/schemas/AuthoredNote" } },
+                nextCursor: { type: ["string", "null"] },
+              },
+            },
+            "A page of the caller's own notes.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          429: errRef("TooManyRequests"),
         },
       },
     },
