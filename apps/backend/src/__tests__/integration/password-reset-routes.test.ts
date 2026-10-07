@@ -45,6 +45,14 @@ beforeEach(() => {
 });
 
 /** The request route answers BEFORE it mints (Decision 9), so poll for the row. */
+async function waitForMail() {
+  const deadline = Date.now() + 10_000;
+  while (mockSendPasswordResetEmail.mock.calls.length === 0) {
+    if (Date.now() > deadline) throw new Error("password-reset mail was never handed to the mailer");
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+
 async function waitForResetRows(userId: number, count: number) {
   const deadline = Date.now() + 10_000;
   for (;;) {
@@ -81,6 +89,8 @@ describe("POST /api/v1/auth/forgot-password", () => {
     const ttl = rows[0]!.expiresAt.getTime() - rows[0]!.createdAt.getTime();
     expect(Math.abs(ttl - 60 * 60 * 1000)).toBeLessThan(5_000);
 
+    // The row is committed before the mail is handed over, so wait for the call too.
+    await waitForMail();
     const call = mockSendPasswordResetEmail.mock.calls[0] as [string, string, Date];
     expect(call[0]).toBe(known.email);
     expect(call[1]).toMatch(/^[0-9a-f]{64}$/); // raw: 32 random bytes as hex
