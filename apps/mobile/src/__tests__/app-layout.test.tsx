@@ -207,3 +207,7 @@ it("maps /users to its directory index and hides users/new (Plan 10)", () => {
   expect(routeNameForHref("/seasons")).toBe("seasons/index"); // Plan 6's entry survives
   expect(DETAIL_ROUTE_NAMES).toContain("users/new");
 });
+
+it("declares the JPC event detail route hidden from the tab bar (Plan 14)", () => {
+  expect(DETAIL_ROUTE_NAMES).toContain("event/[id]");
+});

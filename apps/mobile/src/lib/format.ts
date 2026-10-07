@@ -66,3 +66,20 @@ export function formatOrgDue(day: string | null, time: string | null): string {
   if (day == null) return "No due date";
   return time == null ? formatDayKey(day) : `${formatDayKey(day)}, ${formatWallTime(time)}`;
 }
+
+/**
+ * e.g. "Jul 1, 2099 – Jul 5, 2099 · 6:30 PM" — a JPC event's when-label, built
+ * only from the server's org-clock strings (`dayKey`, `endDayKey`, `time`;
+ * ruling X13). `date`/`endDate` are never formatted on the device, so an
+ * org-midnight event cannot move to the previous day west of the org zone.
+ */
+export function formatEventWhen(event: {
+  dayKey: string;
+  endDayKey: string | null;
+  time: string | null;
+}): string {
+  const days = event.endDayKey
+    ? `${formatDayKey(event.dayKey)} – ${formatDayKey(event.endDayKey)}`
+    : formatDayKey(event.dayKey);
+  return event.time !== null ? `${days} · ${formatWallTime(event.time)}` : days;
+}

@@ -15,11 +15,9 @@ import { screen } from "@testing-library/react-native";
 import { renderWithProviders } from "./helpers/render";
 import { listRouteNames, readRouteSource } from "./helpers/routes";
 
-import EventsScreen from "../../app/(app)/events";
 import ReportsScreen from "../../app/(app)/reports";
 
 const PLACEHOLDER_SCREENS: Array<[string, ComponentType, string]> = [
-  ["events", EventsScreen, "JPC Events"],
   ["reports", ReportsScreen, "Reports"],
 ];
 
