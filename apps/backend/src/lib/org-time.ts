@@ -159,3 +159,27 @@ export function isOrgMidnight(date: Date): boolean {
   const p = orgWallClock(date);
   return p.hour === 0 && p.minute === 0 && p.second === 0;
 }
+
+/**
+ * A calendar day in the organisation's zone — "Mar 1, 2020".
+ *
+ * Used for spreadsheet column headers and filenames, which the SERVER writes
+ * and no client can reformat. Ruling C2: every wall-clock derivation resolves
+ * against one configured organisation timezone, never the host's incidental
+ * one and never the reader's device.
+ *
+ * The YEAR is deliberate. v1 formatted these as `MMM d` (reports-query.ts:106,
+ * season-export.ts:106), so sessions from different years collapsed onto the
+ * same label and a mentor's all-season chart interleaved them silently
+ * (R15, R68, spec D12).
+ */
+const dayFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: config.orgTimezone,
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
+export function formatDayInOrgTime(date: Date): string {
+  return dayFormatter.format(date);
+}
