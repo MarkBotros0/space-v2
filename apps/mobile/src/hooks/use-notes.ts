@@ -1,9 +1,16 @@
 import {
   useInfiniteQuery,
+  useMutation,
+  useQueryClient,
   type InfiniteData,
   type UseInfiniteQueryResult,
 } from "@tanstack/react-query";
-import { authoredNoteListResponseSchema } from "@space/shared";
+import {
+  authoredNoteListResponseSchema,
+  noteListResponseSchema,
+  noteSummarySchema,
+  type NoteVisibility,
+} from "@space/shared";
 import type { z } from "zod";
 
 import { apiClient } from "../lib/api-client";
@@ -42,5 +49,43 @@ export function useAuthoredNotes(
     },
     getNextPageParam: (last) => last.nextCursor,
     enabled,
+  });
+}
+
+export type NotePage = z.infer<typeof noteListResponseSchema>;
+
+/** Every page of one student's notes, following nextCursor (R41). */
+export function useStudentNotes(
+  studentId: number | null,
+  enabled: boolean,
+): UseInfiniteQueryResult<InfiniteData<NotePage>> {
+  return useInfiniteQuery({
+    queryKey: queryKeys.notes.byStudent(studentId),
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const res = await apiClient.get(withCursor(`/api/v1/students/${studentId}/notes`, pageParam));
+      return noteListResponseSchema.parse(res.data.data);
+    },
+    getNextPageParam: (last) => last.nextCursor,
+    enabled: enabled && studentId !== null,
+  });
+}
+
+export function useCreateNote(studentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      body: string;
+      visibility: NoteVisibility;
+      followUpFlagged: boolean;
+    }) => {
+      const res = await apiClient.post(`/api/v1/students/${studentId}/notes`, input);
+      return noteSummarySchema.parse(res.data.data.note);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notes.byStudent(studentId) });
+      // The author's own list gained a row too.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notes.authored() });
+    },
   });
 }
