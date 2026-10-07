@@ -14,13 +14,16 @@ jest.mock("../hooks/use-session", () => ({ useLogin: () => mockLogin }));
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
+let mockSearchParams: Record<string, string | undefined> = {};
 jest.mock("expo-router", () => ({
   useRouter: () => ({ replace: mockReplace, push: mockPush }),
+  useLocalSearchParams: () => mockSearchParams,
 }));
 
 describe("LoginScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSearchParams = {};
   });
 
   it("navigates to /dashboard on a successful login", async () => {
@@ -61,5 +64,31 @@ describe("LoginScreen", () => {
     renderWithProviders(<LoginScreen />);
     fireEvent.press(screen.getByText("I have an invite code"));
     expect(mockPush).toHaveBeenCalledWith("/accept-invite");
+  });
+
+  it("returns to a check-in deep link after signing in (spec 04 R56)", async () => {
+    mockSearchParams = { returnTo: "/checkin/AbC123XyZ0" };
+    mockLogin.mockResolvedValue(undefined);
+
+    renderWithProviders(<LoginScreen />);
+    fireEvent.changeText(screen.getByLabelText("Email"), "sara@jpc.test");
+    fireEvent.changeText(screen.getByLabelText("Password"), "hunter2");
+    fireEvent.press(screen.getByText("Sign in"));
+
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/checkin/[token]", params: { token: "AbC123XyZ0" } }),
+    );
+  });
+
+  it("ignores any other returnTo — no open redirect", async () => {
+    mockSearchParams = { returnTo: "https://evil.example/phish" };
+    mockLogin.mockResolvedValue(undefined);
+
+    renderWithProviders(<LoginScreen />);
+    fireEvent.changeText(screen.getByLabelText("Email"), "sara@jpc.test");
+    fireEvent.changeText(screen.getByLabelText("Password"), "hunter2");
+    fireEvent.press(screen.getByText("Sign in"));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard"));
   });
 });
