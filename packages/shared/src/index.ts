@@ -22,3 +22,4 @@ export * from "./event";
 export * from "./video-time";
 export * from "./youtube";
 export * from "./reports";
+export * from "./dashboard";
