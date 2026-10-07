@@ -2325,6 +2325,83 @@ export const openApiDocument = {
           429: errRef("TooManyRequests"),
         },
       },
+      post: {
+        tags: ["Notes"],
+        summary: "Write a note about a student",
+        description:
+          "Writer gate, independent of the read path: SUPER and MENTOR for any student; ADMIN if the student is enrolled in a season they administer; LEADER if the student's `SeasonEnrollment.groupId` is a group they lead; STUDENT never (including about themselves). `body` is **plain text in both directions**: the API escapes and paragraph-wraps it for storage (the column is still rendered raw by v1) and strips tags on read, so no live markup is ever stored or returned. `visibility` and `followUpFlagged` are immutable after creation. `authorUserId` always comes from the session. `seasonId` is optional; omitted, it defaults to the student's most recent ACTIVE enrollment, and when given it must be a season the student is enrolled in (`400 season_not_enrolled`). A flagged note notifies that season's admins (`MENTOR_FOLLOWUP`); the notification **deliberately carries no excerpt of the note** (title and link only), and a notification failure never fails the write.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["body", "visibility"],
+                properties: {
+                  body: { type: "string", minLength: 2, maxLength: 20000, description: "Plain text." },
+                  visibility: { $ref: "#/components/schemas/NoteVisibility" },
+                  followUpFlagged: { type: "boolean", default: false },
+                  seasonId: { type: "integer", minimum: 1 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok(
+            { type: "object", required: ["note"], properties: { note: { $ref: "#/components/schemas/NoteSummary" } } },
+            "The created note.",
+          ),
+          400: conflict("`bad_request` or `season_not_enrolled`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+
+    "/api/v1/notes/{id}": {
+      patch: {
+        tags: ["Notes"],
+        summary: "Correct a note's body (author only)",
+        description:
+          "Author equality and nothing else: **SUPER is not exempt**. Body only \u2014 `visibility`, `followUpFlagged` and `seasonId` are immutable, and extra fields are ignored. The body has the same 2\u201320000 bound as create (v1 validated nothing). `body` is plain text in both directions. The response's `edited` becomes true.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["body"],
+                properties: { body: { type: "string", minLength: 2, maxLength: 20000, description: "Plain text." } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            { type: "object", required: ["note"], properties: { note: { $ref: "#/components/schemas/NoteSummary" } } },
+            "The updated note.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Notes"],
+        summary: "Delete a note (not available)",
+        description:
+          "Always `501 delete_unavailable`; nothing is deleted. v1's delete was a hard delete with no UI caller; soft delete needs a `deletedAt` column, which needs a migration the shared database cannot take while v1 writes to it. Correct a note by editing it.",
+        parameters: [idParam],
+        responses: {
+          401: errRef("Unauthorized"),
+          501: conflict("`delete_unavailable`."),
+        },
+      },
     },
 
     "/api/v1/me/notes": {

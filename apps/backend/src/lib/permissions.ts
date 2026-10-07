@@ -421,3 +421,51 @@ export async function canEditNote(user: SessionUser, noteId: number): Promise<bo
   if (!note) return false;
   return note.authorUserId === user.userId;
 }
+
+/**
+ * May this caller write a note about this student?
+ *
+ * Two deliberate divergences from v1's canWriteNote
+ * (jpc-space/src/lib/auth/permissions.ts:405-427):
+ *
+ * 1. ADMIN resolves through SeasonEnrollment, not StudentProfile.activeSeasonId
+ *    (spec D12, R47/R48). v1's gate meant an admin lost the ability to write
+ *    about a student the moment that student's active-season pointer moved,
+ *    while canViewStudent — which checks enrolments — still let them open the
+ *    page. "Why can't I write a note about this student I can clearly see" is
+ *    a support question with a code answer.
+ * 2. LEADER resolves through SeasonEnrollment.groupId, not GroupStudent
+ *    (ruling C9, R49/R50). GroupStudent.studentUserId is @unique across the
+ *    whole database, so it holds one group per student for all time; asking it
+ *    here follows a student's CURRENT group across every season and refuses
+ *    any student who has no GroupStudent row at all.
+ *
+ * SUPER and MENTOR write about any student with no scope check — v1's R46,
+ * kept. It matches canReadAllStudents, and spec §4 item 7 records the
+ * consequence plainly: one compromised mentor account reaches every pastoral
+ * record in the product.
+ */
+export async function canWriteNote(user: SessionUser, studentUserId: number): Promise<boolean> {
+  if (isSuper(user) || isMentor(user)) return true;
+
+  if (user.role === "ADMIN") {
+    if (user.seasonAdminIds.length === 0) return false;
+    const enrollment = await db.seasonEnrollment.findFirst({
+      where: { studentUserId, seasonId: { in: user.seasonAdminIds } },
+      select: { id: true },
+    });
+    return enrollment !== null;
+  }
+
+  if (user.role === "LEADER") {
+    if (user.groupLeaderIds.length === 0) return false;
+    const enrollment = await db.seasonEnrollment.findFirst({
+      where: { studentUserId, groupId: { in: user.groupLeaderIds } },
+      select: { id: true },
+    });
+    return enrollment !== null;
+  }
+
+  // STUDENT can never write a note, including about themselves (R51).
+  return false;
+}

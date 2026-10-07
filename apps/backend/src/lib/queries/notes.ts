@@ -11,7 +11,7 @@ import { noteVisibilityWhere } from "../permissions";
  * The row shape both list functions select. Kept in one place so the two
  * projections cannot drift into disagreeing about which columns travel.
  */
-const NOTE_SELECT = {
+export const NOTE_SELECT = {
   id: true,
   body: true,
   visibility: true,
