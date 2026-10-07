@@ -1,4 +1,5 @@
 // apps/mobile/src/components/NotificationPreferences.tsx
+import { useState } from "react";
 import { Switch, View } from "react-native";
 import type { NotificationPreferences as Prefs } from "@space/shared";
 
@@ -6,8 +7,10 @@ import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
 } from "../hooks/use-notifications";
+import { enablePush, type PushStatus } from "../lib/push";
+import { useSessionStore } from "../store/session";
 import { useTheme } from "../theme";
-import { Card, ErrorState, LoadingState, Text } from "../ui";
+import { Button, Card, ErrorState, LoadingState, Text } from "../ui";
 
 /**
  * One row per notification type — six, not v1's five.
@@ -53,8 +56,22 @@ const ORDER: (keyof Prefs)[] = [
   "mentorFollowup",
 ];
 
+/** One honest sentence per push state. Names the three types that would push
+ *  (PUSH_NOTIFICATION_TYPES) rather than promising all six. */
+const PUSH_COPY: Record<PushStatus | "idle", string> = {
+  idle: "Get alerted when a session moves, or when your work or a quiz is graded.",
+  registered: "Push is on for this device.",
+  unavailable: "This device is ready for push. Delivery switches on when the server migration lands.",
+  denied: "Notifications are off for JPC Space in your phone's settings.",
+  not_configured: "Push isn't set up for this build of the app yet.",
+  failed: "Couldn't set up push. Try again.",
+};
+
 export function NotificationPreferences() {
   const theme = useTheme();
+  const pushToken = useSessionStore((s) => s.pushToken);
+  const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
+  const [enabling, setEnabling] = useState(false);
   const { data, isPending, isError, refetch } = useNotificationPreferences();
   const update = useUpdateNotificationPreferences();
 
@@ -102,6 +119,24 @@ export function NotificationPreferences() {
           />
         </View>
       ))}
+      <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.xs }}>
+        <Text variant="body">Push notifications</Text>
+        <Text variant="caption" color={theme.colors.neutral[600]}>
+          {PUSH_COPY[pushStatus ?? (pushToken ? "unavailable" : "idle")]}
+        </Text>
+        <Button
+          title={pushToken ? "Push enabled on this device" : "Enable push notifications"}
+          variant="secondary"
+          loading={enabling}
+          disabled={pushToken !== null}
+          onPress={() => {
+            setEnabling(true);
+            void enablePush()
+              .then(({ status }) => setPushStatus(status))
+              .finally(() => setEnabling(false));
+          }}
+        />
+      </View>
     </Card>
   );
 }

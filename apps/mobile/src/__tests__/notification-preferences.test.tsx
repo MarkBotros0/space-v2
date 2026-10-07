@@ -5,6 +5,8 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn() },
 }));
 
+jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
+
 import { apiClient } from "../lib/api-client";
 import { renderWithProviders } from "./helpers/render";
 
