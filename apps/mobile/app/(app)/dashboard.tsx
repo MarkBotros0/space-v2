@@ -1,89 +1,46 @@
-import { isAssignmentOutstanding, type SessionListItem, type StudentAssignmentListItem } from "@space/shared";
-
-import { NotificationBell } from "../../src/components/NotificationBell";
-import { formatDate, formatSessionTime } from "../../src/lib/format";
-import { useStudentAssignments } from "../../src/hooks/use-assignments";
-import { useSeasonSessions } from "../../src/hooks/use-sessions";
+import { AlumniDashboard } from "../../src/components/dashboard/AlumniDashboard";
+import { DashboardFrame } from "../../src/components/dashboard/DashboardFrame";
+import { MentorDashboard } from "../../src/components/dashboard/MentorDashboard";
+import { SeasonStaffDashboard } from "../../src/components/dashboard/SeasonStaffDashboard";
+import { StudentDashboard } from "../../src/components/dashboard/StudentDashboard";
+import { SuperDashboard } from "../../src/components/dashboard/SuperDashboard";
+import { dashboardBranchFor } from "../../src/lib/dashboard-branch";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
+import { LoadingState } from "../../src/ui";
 
-function SessionRow({ session }: { session: SessionListItem }) {
-  const theme = useTheme();
-
-  return (
-    <Card style={{ marginBottom: theme.spacing.sm }}>
-      <Text variant="heading">{session.title}</Text>
-      <Text variant="label" color={theme.colors.neutral[600]}>
-        {formatDate(session.startsAt)} · {formatSessionTime(session.startsAt)}
-      </Text>
-    </Card>
-  );
-}
-
-function AssignmentsSummary({ rows }: { rows: StudentAssignmentListItem[] }) {
-  const theme = useTheme();
-  // "To do" = outstanding per the one shared definition (C5, spec 19 D15).
-  // Overdue is the server's flag (C4); this counts rows, it derives nothing.
-  const todo = rows.filter((a) => isAssignmentOutstanding(a.status));
-  const overdue = todo.filter((a) => a.isOverdue);
-
-  return (
-    <Card style={{ marginBottom: theme.spacing.sm }}>
-      <Text variant="heading">Assignments</Text>
-      <Text variant="label" color={theme.colors.neutral[600]}>
-        {`${todo.length} to do · ${overdue.length} overdue`}
-      </Text>
-    </Card>
-  );
-}
-
+/**
+ * Home — one route, one branch per audience (spec 19 §9, Phase 0 D1). Each
+ * branch owns its queries, its loading/error/empty states and its
+ * pull-to-refresh; every branch keeps Plan 13's bell via DashboardFrame.
+ * The old per-screen assignment card is gone on purpose: its counts are now the
+ * server's (spec 19 D15).
+ */
 export default function DashboardScreen() {
-  // `activeSeasonId` is null whenever the signed-in user has no active
-  // season (not yet enrolled anywhere, or between seasons) — that's a
-  // distinct, expected state from "has a season but it has no sessions yet",
-  // so it gets its own EmptyState message below rather than falling through
-  // to a loading spinner that would never resolve.
-  const seasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
-
-  const { data, isPending, isError, refetch, isRefetching } = useSeasonSessions(seasonId);
   const role = useSessionStore((s) => s.user?.role ?? null);
-  const isStudent = role === "STUDENT";
-  const assignments = useStudentAssignments(isStudent ? seasonId : null);
+  const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
 
-  const handleRefresh = () => {
-    // Refetching a disabled query would still attempt the fetch (React
-    // Query's `enabled` only gates the automatic run, not a manual one) —
-    // guard both so pulling to refresh with no active season (or as staff,
-    // for the student-only assignments query) can't fire a request built
-    // from a null id.
-    if (seasonId === null) return;
-    void refetch();
-    if (isStudent) void assignments.refetch();
-  };
-
-  return (
-    <Screen edges={["top", "left", "right"]} onRefresh={handleRefresh} refreshing={isRefetching}>
-      <NotificationBell />
-      {assignments.data ? <AssignmentsSummary rows={assignments.data} /> : null}
-      {seasonId === null ? (
-        <EmptyState
-          title="No active season"
-          message="You don't have an active season right now, so there are no sessions to show."
-        />
-      ) : isPending ? (
+  // The (app) layout only mounts for a signed-in user; this covers the frame
+  // between boot and the session landing in the store.
+  if (role === null) {
+    return (
+      <DashboardFrame>
         <LoadingState />
-      ) : isError ? (
-        <ErrorState message="Couldn't load sessions. Check your connection and try again." onRetry={refetch} />
-      ) : data.length === 0 ? (
-        <EmptyState title="No sessions" message="This season doesn't have any sessions yet." />
-      ) : (
-        <>
-          {data.map((session) => (
-            <SessionRow key={session.id} session={session} />
-          ))}
-        </>
-      )}
-    </Screen>
-  );
+      </DashboardFrame>
+    );
+  }
+
+  switch (dashboardBranchFor({ role, graduationYear })) {
+    case "SUPER":
+      return <SuperDashboard />;
+    case "ADMIN":
+      return <SeasonStaffDashboard role="ADMIN" />;
+    case "LEADER":
+      return <SeasonStaffDashboard role="LEADER" />;
+    case "MENTOR":
+      return <MentorDashboard />;
+    case "STUDENT":
+      return <StudentDashboard />;
+    case "ALUMNI":
+      return <AlumniDashboard />;
+  }
 }
