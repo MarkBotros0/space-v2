@@ -2798,6 +2798,39 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/me/notification-preferences": {
+      get: {
+        tags: ["Me"],
+        summary: "Your notification preferences (all six)",
+        description:
+          "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email now, push at cutover); the in-app inbox row is always written.",
+        responses: {
+          200: ok(
+            { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
+            "The caller's preferences.",
+          ),
+          401: errRef("Unauthorized"),
+        },
+      },
+      put: {
+        tags: ["Me"],
+        summary: "Replace your notification preferences",
+        description:
+          "PUT, not PATCH: the body must carry all six keys, so a partial body is `400 bad_request`. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferences" } } },
+        },
+        responses: {
+          200: ok(
+            { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
+            "What was stored.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+        },
+      },
+    },
     "/api/v1/me/notes": {
       get: {
         tags: ["Notes"],
