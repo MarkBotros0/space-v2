@@ -114,6 +114,7 @@ export const openApiDocument = {
     { name: "Notifications", description: "The caller's own notification inbox: list, unread count, explicit mark-read" },
     { name: "Video quiz", description: "Interactive session-video questions: student view, ordered answers, progress (authoring and results below)" },
     { name: "Forum", description: "Forum assignments: the group thread, the post that unlocks it, and comments" },
+    { name: "Events", description: "JPC events: one token-derived visibility rule, a bounded window, SUPER-only writes (event photos are deferred while uploads are disabled)" },
     { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
   ],
   security: [{ bearerAuth: [] }],
@@ -172,6 +173,69 @@ export const openApiDocument = {
           correctIndex: { type: "integer" },
           points: { type: "integer" },
           responseCount: { type: "integer", description: "Recorded answers (all, not only correct ones)." },
+        },
+      },
+      JpcEventListItem: {
+        type: "object",
+        description: "Every day and time here is computed on the server in the organisation timezone; the client never derives a day from `date`.",
+        required: ["id", "title", "date", "endDate", "dayKey", "endDayKey", "time", "allDay", "url", "visibility", "seasonId", "seasonCode"],
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          date: { type: "string", format: "date-time", description: "The stored instant — for ordering only." },
+          endDate: { type: ["string", "null"], format: "date-time" },
+          dayKey: { type: "string", description: "`YYYY-MM-DD`, the organisation day `date` falls on." },
+          endDayKey: { type: ["string", "null"] },
+          time: { type: ["string", "null"], description: "Organisation wall-clock `HH:mm`; null exactly when `allDay`." },
+          allDay: { type: "boolean", description: "Server-derived: `date` is midnight on the organisation clock (there is no column)." },
+          url: { type: ["string", "null"] },
+          visibility: { type: "string", enum: ["ALL", "ALUMNI_ONLY", "SEASON"] },
+          seasonId: { type: ["integer", "null"] },
+          seasonCode: { type: ["string", "null"] },
+        },
+      },
+      JpcEventDetail: {
+        description: "A list item plus the fields v1 never displayed (it has no event detail page).",
+        allOf: [
+          { $ref: "#/components/schemas/JpcEventListItem" },
+          {
+            type: "object",
+            required: ["description", "seasonTitle", "canManage"],
+            properties: {
+              description: { type: ["string", "null"] },
+              seasonTitle: { type: ["string", "null"] },
+              canManage: { type: "boolean", description: "Drives the UI; the gate is enforced server-side regardless." },
+            },
+          },
+        ],
+      },
+      CreateJpcEventRequest: {
+        type: "object",
+        description: "Wall-clock fields in the organisation timezone — the request carries no zone and the server composes the instant.",
+        required: ["title", "day", "visibility"],
+        properties: {
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          day: { type: "string", description: "`YYYY-MM-DD`." },
+          time: { type: ["string", "null"], description: "`HH:mm`; null (default) means all-day, stored as organisation midnight." },
+          endDay: { type: ["string", "null"], description: "`YYYY-MM-DD`, on or after `day`; stored at organisation midnight." },
+          description: { type: ["string", "null"], maxLength: 2000 },
+          url: { type: ["string", "null"], format: "uri" },
+          visibility: { type: "string", enum: ["ALL", "ALUMNI_ONLY", "SEASON"] },
+          seasonId: { type: ["integer", "null"], description: "Required when `visibility` is SEASON; ignored (nulled) otherwise." },
+        },
+      },
+      UpdateJpcEventRequest: {
+        type: "object",
+        description: "Every field optional. The patch is merged onto the stored row (read back as wall-clock fields) and both refinements re-run against the merged result.",
+        properties: {
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          day: { type: "string" },
+          time: { type: ["string", "null"] },
+          endDay: { type: ["string", "null"] },
+          description: { type: ["string", "null"], maxLength: 2000 },
+          url: { type: ["string", "null"], format: "uri" },
+          visibility: { type: "string", enum: ["ALL", "ALUMNI_ONLY", "SEASON"] },
+          seasonId: { type: ["integer", "null"] },
         },
       },
       VideoQuizResults: {
@@ -4325,6 +4389,101 @@ export const openApiDocument = {
           200: ok(
             { type: "object", required: ["deleted"], properties: { deleted: { type: "boolean", enum: [true] } } },
             "Removed.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/events": {
+      get: {
+        tags: ["Events"],
+        summary: "List events",
+        description:
+          "**Visibility is derived from the token and cannot be widened by a parameter.** ALL: everyone. ALUMNI_ONLY: alumni (a STUDENT with a graduation year) and every non-student role. SEASON: the seasons the caller holds (a student's active season, an admin's seasons, a leader's groups' seasons); a MENTOR holds none, as in v1. SUPER sees everything, orphans included; no other role sees events on a soft-deleted season. The window is on `(endDate ?? date)`; when `from`/`to` are omitted it defaults to `[now - 30d, now + 365d]`. `upcoming=true` starts the window at today's organisation midnight (not combinable with `from`), `limit` (1-20) caps `events`, and `total` is counted before the cap. `allDay`, `dayKey` and `time` are server-derived against the organisation timezone. Event photo endpoints are deliberately absent while uploads are disabled.",
+        parameters: [
+          { name: "from", in: "query", schema: { type: "string", format: "date-time" } },
+          { name: "to", in: "query", schema: { type: "string", format: "date-time" } },
+          { name: "upcoming", in: "query", schema: { type: "boolean" } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 20 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["events", "total"],
+              properties: {
+                events: { type: "array", items: { $ref: "#/components/schemas/JpcEventListItem" } },
+                total: { type: "integer", minimum: 0 },
+              },
+            },
+            "Events ordered by date, then id.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+        },
+      },
+      post: {
+        tags: ["Events"],
+        summary: "Create an event (SUPER only)",
+        description:
+          "SUPER only, checked before the body is read; an ADMIN is refused. The server composes the instant in the organisation timezone from `day`/`time`; `time: null` is all-day. The season is nulled unless visibility is SEASON. v1 returns only `{ success: true }`; this returns the detail.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/CreateJpcEventRequest" } } },
+        },
+        responses: {
+          201: ok({ $ref: "#/components/schemas/JpcEventDetail" }, "The created event."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/events/{id}": {
+      get: {
+        tags: ["Events"],
+        summary: "Event detail",
+        description:
+          "v1 has no event detail page. The same visibility predicate as the list applies to the row; an event the caller may not see is 404, not 403, so it cannot be told from one that does not exist.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/JpcEventDetail" }, "The event."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Events"],
+        summary: "Update an event (SUPER only)",
+        description:
+          "A true partial, unlike v1 (whose update reuses the create schema). `createdById` is not touched. Visibility leaving SEASON detaches the season.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/UpdateJpcEventRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/JpcEventDetail" }, "The updated event."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Events"],
+        summary: "Delete an event (SUPER only)",
+        description:
+          "A hard delete — the model has no `deletedAt`, so a deleted event is unrecoverable. Its stored photo, if any, is left behind exactly as v1 leaves it; the blob lifecycle belongs with the CMS work. A stale id is 404, not a raw database error.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", required: ["deleted"], properties: { deleted: { type: "boolean", enum: [true] } } },
+            "Deleted.",
           ),
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),

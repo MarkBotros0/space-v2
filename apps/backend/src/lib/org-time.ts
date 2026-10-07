@@ -143,3 +143,19 @@ export function orgWallClockToInstant(day: string, time: string | null): Date {
     millisecond: 0,
   });
 }
+
+/**
+ * Is this instant midnight on the organisation's clock?
+ *
+ * Midnight is v1's only encoding of "all-day" — there is no `allDay` column and
+ * adding one is a migration (ruling C1). v1 re-derived this in three separate
+ * files with `getHours() !== 0 || getMinutes() !== 0`, each in the *viewer's*
+ * timezone, against an instant the *server* had composed (spec 15 R19/R20), so
+ * an all-day event stopped reading as all-day for anyone in another zone.
+ * Ruling C2/X13: one zone, server-side, once. Plan 5's
+ * `orgWallClockToInstant(day, null)` produces exactly these instants.
+ */
+export function isOrgMidnight(date: Date): boolean {
+  const p = orgWallClock(date);
+  return p.hour === 0 && p.minute === 0 && p.second === 0;
+}
