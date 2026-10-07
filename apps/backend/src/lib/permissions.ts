@@ -692,3 +692,43 @@ export function reportScopeFor(user: SessionUser): ReportScope | null {
 export function canExportSeasonWorkbook(user: SessionUser, seasonId: number): boolean {
   return isAdminOfSeason(user, seasonId);
 }
+
+/**
+ * Whose submissions sit in this caller's review queue.
+ *
+ * Extracted verbatim from `GET /api/v1/submissions` so the dashboard's
+ * "pending review" / "reviewed" counts are computed over exactly the rows the
+ * tile opens (spec 19 D11). A second hand-written scope would let the count
+ * and the queue disagree.
+ *
+ * A LEADER's scope cannot be one Prisma filter: the constraint is "the
+ * student's enrolment *in this assignment's season* names a group I lead",
+ * which relates two branches of the query. The pairs are resolved first and
+ * expanded into an OR, bounded by the leader's own roster (C9).
+ *
+ * Returns null when the queue is empty by construction (a STUDENT, or a leader
+ * with no enrolments in their groups).
+ */
+export async function submissionQueueScopeFor(
+  user: SessionUser,
+): Promise<Prisma.SubmissionWhereInput | null> {
+  if (isSuper(user) || isMentor(user)) return {};
+  if (user.role === "ADMIN") return { assignment: { seasonId: { in: user.seasonAdminIds } } };
+  if (user.role !== "LEADER") return null;
+
+  const groups = await db.group.findMany({
+    where: { id: { in: user.groupLeaderIds } },
+    select: { id: true },
+  });
+  const enrollments = await db.seasonEnrollment.findMany({
+    where: { groupId: { in: groups.map((g) => g.id) } },
+    select: { studentUserId: true, seasonId: true },
+  });
+  if (enrollments.length === 0) return null;
+  return {
+    OR: enrollments.map((e) => ({
+      studentUserId: e.studentUserId,
+      assignment: { seasonId: e.seasonId },
+    })),
+  };
+}

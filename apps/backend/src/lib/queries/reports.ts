@@ -316,8 +316,19 @@ export async function buildEngagementSummary(
   };
 }
 
-/** score ascending, then studentUserId, then seasonId — total and stable. */
-function byScoreThenId(a: ScoredReportRow, b: ScoredReportRow): number {
+/** The fields the at-risk order reads — satisfied by report rows and EngagementRow alike. */
+export interface ScoreOrderKey {
+  score: number;
+  studentUserId: number;
+  seasonId: number;
+}
+
+/**
+ * score ascending, then studentUserId, then seasonId — total and stable.
+ * Exported so the dashboard's at-risk preview (spec 19 §8) sorts exactly as
+ * the Reports list does; one order, two screens.
+ */
+export function byScoreThenId(a: ScoreOrderKey, b: ScoreOrderKey): number {
   return a.score - b.score || a.studentUserId - b.studentUserId || a.seasonId - b.seasonId;
 }
 

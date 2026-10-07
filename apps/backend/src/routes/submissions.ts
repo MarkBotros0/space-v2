@@ -9,10 +9,14 @@ import { config } from "../lib/config";
 import { createNotificationsBulk } from "../lib/notifications";
 import { bestEffort } from "../lib/best-effort";
 import { parseId } from "../lib/parse-id";
-import { canAccessSeason, canReviewSubmission, canViewSubmission } from "../lib/permissions";
+import {
+  canAccessSeason,
+  canReviewSubmission,
+  canViewSubmission,
+  submissionQueueScopeFor,
+} from "../lib/permissions";
 import { newPublicId } from "../lib/public-id";
 import { isLate, studentCanSeeAssignment } from "../lib/queries/assignments";
-import { isMentor, isSuper } from "../lib/rbac";
 import { FileNotFoundError, buildStorageKey, getStorage } from "../lib/storage";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
@@ -91,30 +95,7 @@ submissionsRouter.get("/", async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
   const { pendingOnly, seasonId, cursor, limit } = parsed.data;
 
-  let scope: Prisma.SubmissionWhereInput | null = null;
-  if (isSuper(user) || isMentor(user)) {
-    scope = {};
-  } else if (user.role === "ADMIN") {
-    scope = { assignment: { seasonId: { in: user.seasonAdminIds } } };
-  } else if (user.role === "LEADER") {
-    const groups = await db.group.findMany({
-      where: { id: { in: user.groupLeaderIds } },
-      select: { id: true, seasonId: true },
-    });
-    const enrollments = await db.seasonEnrollment.findMany({
-      where: { groupId: { in: groups.map((g) => g.id) } },
-      select: { studentUserId: true, seasonId: true },
-    });
-    scope =
-      enrollments.length === 0
-        ? null
-        : {
-            OR: enrollments.map((e) => ({
-              studentUserId: e.studentUserId,
-              assignment: { seasonId: e.seasonId },
-            })),
-          };
-  }
+  const scope = await submissionQueueScopeFor(user);
   if (scope === null) return apiOk(res, { items: [], nextCursor: null });
 
   // AND rather than spreading, so the scope's own `assignment` constraint (the

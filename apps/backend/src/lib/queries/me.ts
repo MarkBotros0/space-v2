@@ -5,6 +5,7 @@ import { costMinutesFor, streakFrom, type AttendanceBudget } from "../attendance
 import { orgDayKey } from "../org-time";
 import { isAlumnus } from "../rbac";
 import { computeAttendanceBudget } from "./attendance-budget";
+import { loadSeasonProgress } from "./sessions";
 
 /*
  * The student's own reads. Every function takes the SessionUser and reads
@@ -137,7 +138,7 @@ export async function loadMySeason(user: SessionUser, now: Date = new Date()): P
   });
   if (!season) return null;
 
-  const [enrollment, upcoming, totalSessions, completedSessions] = await Promise.all([
+  const [enrollment, upcoming, progress] = await Promise.all([
     // Ruling C9: the group for THIS season comes from the enrollment. v1 read
     // GroupStudent with no season filter (R31/R88) and could show last
     // season's group beside this season's progress.
@@ -163,8 +164,7 @@ export async function loadMySeason(user: SessionUser, now: Date = new Date()): P
       take: UPCOMING_LIMIT,
       select: { id: true, title: true, startsAt: true, location: true },
     }),
-    db.session.count({ where: { seasonId } }),
-    db.session.count({ where: { seasonId, startsAt: { lte: now } } }),
+    loadSeasonProgress(seasonId, now),
   ]);
 
   const group = enrollment?.group ?? null;
@@ -180,10 +180,12 @@ export async function loadMySeason(user: SessionUser, now: Date = new Date()): P
 
   return {
     ...season,
+    // Plan 11's contract keeps its names and its 0 for an empty season; the
+    // count itself is the shared definition (spec 19 §7).
     progress: {
-      completedSessions,
-      totalSessions,
-      pct: totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0,
+      completedSessions: progress.sessionsHeld,
+      totalSessions: progress.sessionsTotal,
+      pct: progress.pct ?? 0,
     },
     group: group
       ? {

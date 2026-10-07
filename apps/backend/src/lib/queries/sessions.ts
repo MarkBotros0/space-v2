@@ -1,5 +1,6 @@
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
+import { isSessionInProgress, progressFrom, type ProgressFigures } from "../dashboard-figures";
 import { orgDayKey, orgWallTime } from "../org-time";
 import type { CalendarScope } from "../permissions";
 
@@ -153,4 +154,63 @@ export async function loadAttendanceRoster(
       lateMinutes: a?.lateMinutes ?? null,
     };
   });
+}
+
+/**
+ * Sessions held (`startsAt <= now`) over sessions scheduled — the ONE
+ * definition of season progress (spec 19 §7; D12: sessions, never weeks).
+ * Plan 11's `GET /me/season` and the dashboard both call it.
+ */
+export async function loadSeasonProgress(seasonId: number, now: Date): Promise<ProgressFigures> {
+  const [held, total] = await Promise.all([
+    db.session.count({ where: { seasonId, startsAt: { lte: now } } }),
+    db.session.count({ where: { seasonId } }),
+  ]);
+  return progressFrom(held, total);
+}
+
+export interface CurrentOrNextSession {
+  id: number;
+  title: string;
+  startsAt: Date;
+  durationMinutes: number;
+  location: string | null;
+  youtubeUrl: string | null;
+  isInProgress: boolean;
+}
+
+const CARD_SESSION_SELECT = {
+  id: true,
+  title: true,
+  startsAt: true,
+  durationMinutes: true,
+  location: true,
+  youtubeUrl: true,
+} as const;
+
+/**
+ * D13: the session happening now, else the next one. v1 took the first
+ * session with `startsAt >= now`, so the session a student needs to check in
+ * to vanished from Home the minute it started (R21, R64). Two bounded reads.
+ */
+export async function loadCurrentOrNextSession(
+  seasonId: number,
+  now: Date,
+): Promise<CurrentOrNextSession | null> {
+  const [latestStarted, next] = await Promise.all([
+    db.session.findFirst({
+      where: { seasonId, startsAt: { lte: now } },
+      orderBy: [{ startsAt: "desc" }, { id: "desc" }],
+      select: CARD_SESSION_SELECT,
+    }),
+    db.session.findFirst({
+      where: { seasonId, startsAt: { gt: now } },
+      orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+      select: CARD_SESSION_SELECT,
+    }),
+  ]);
+  if (latestStarted && isSessionInProgress(latestStarted.startsAt, latestStarted.durationMinutes, now)) {
+    return { ...latestStarted, isInProgress: true };
+  }
+  return next ? { ...next, isInProgress: false } : null;
 }
