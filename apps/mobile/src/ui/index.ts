@@ -18,3 +18,5 @@ export type { EmptyStateProps, ErrorStateProps } from "./states";
 
 export { FormField } from "./Form";
 export type { FormFieldProps } from "./Form";
+export { Sheet } from "./Sheet";
+export type { SheetProps } from "./Sheet";

@@ -25,15 +25,15 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const superSession = {
-  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const, avatarPath: null },
+  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const, avatarPath: null, hasPassword: true },
   scopes: emptyScopes,
 };
 const mentorSession = {
-  user: { id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const, avatarPath: null },
+  user: { id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const, avatarPath: null, hasPassword: true },
   scopes: emptyScopes,
 };
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "stu@jpc.test", role: "STUDENT" as const, avatarPath: null },
+  user: { id: 9, name: "Test student", email: "stu@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
   scopes: { ...emptyScopes, activeSeasonId: 7 },
 };
 
@@ -186,4 +186,18 @@ describe("DroppedScreen", () => {
     expect(await screen.findByText(/isn't available for your role/)).toBeTruthy();
     expect(get).not.toHaveBeenCalled();
   });
+});
+
+it("offers SUPER — and only SUPER — a way to create a student", async () => {
+  get.mockResolvedValue(page([activeRow]));
+  useSessionStore.setState(superSession);
+  const { unmount } = renderWithProviders(<StudentsScreen />);
+  fireEvent.press(await screen.findByText("New student"));
+  expect(mockPush).toHaveBeenCalledWith("/students/new");
+  unmount();
+
+  useSessionStore.setState(mentorSession);
+  renderWithProviders(<StudentsScreen />);
+  await screen.findByText("Sara Student");
+  expect(screen.queryByText("New student")).toBeNull();
 });

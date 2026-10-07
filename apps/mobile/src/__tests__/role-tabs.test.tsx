@@ -20,6 +20,7 @@ const user = (role: "STUDENT" | "ADMIN" | "LEADER") => ({
   email: "a@b.test",
   role,
   avatarPath: null,
+  hasPassword: true,
 });
 
 beforeEach(() => useSessionStore.getState().clear());

@@ -67,7 +67,7 @@ export async function verifyAccessToken(token: string): Promise<SessionUser | nu
   }
 }
 
-function hashToken(raw: string): string {
+export function hashToken(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
 }
 
@@ -125,4 +125,32 @@ export async function revokeRefreshToken(rawToken: string): Promise<void> {
     where: { tokenHash: hashToken(rawToken), revokedAt: null },
     data: { revokedAt: new Date() },
   });
+}
+/**
+ * Revoke every live refresh token a user holds. C7's note — "a role change
+ * does not revoke a live token; the mitigation is TTL" — stops being a
+ * mitigation and becomes a revocation here: role change, deactivation,
+ * password change and logout-all all call this in (or right after) the write
+ * that changes the user's authority. `exceptTokenHash` spares the caller's
+ * own session (password change only).
+ *
+ * Accepts any client exposing `refreshToken` so it runs inside a
+ * db.$transaction as well as standalone.
+ */
+export type DbWriter = Pick<typeof db, "refreshToken">;
+
+export async function revokeAllRefreshTokensForUser(
+  client: DbWriter,
+  userId: number,
+  exceptTokenHash?: string,
+): Promise<number> {
+  const result = await client.refreshToken.updateMany({
+    where: {
+      userId,
+      revokedAt: null,
+      ...(exceptTokenHash ? { tokenHash: { not: exceptTokenHash } } : {}),
+    },
+    data: { revokedAt: new Date() },
+  });
+  return result.count;
 }

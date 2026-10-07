@@ -98,6 +98,7 @@ export const openApiDocument = {
     { name: "Me", description: "The authenticated user" },
     { name: "Seasons", description: "Seasons and their sub-resources" },
     { name: "Groups", description: "Group detail" },
+    { name: "Users", description: "SUPER-only user administration: list, detail, role change, activation, invites" },
     { name: "Students", description: "Student lists, role-shaped detail, profile edits and enrollment transitions" },
     { name: "Sessions", description: "Sessions, attendance, and check-in" },
     { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
@@ -556,6 +557,48 @@ export const openApiDocument = {
           students: { type: "array", items: { $ref: "#/components/schemas/GroupMember" } },
           canManage: { type: "boolean", description: "isAdminOfSeason for the caller." },
         },
+      },
+
+      InviteState: {
+        type: "object",
+        required: ["issuedAt", "expiresAt", "usedAt", "invitedByName"],
+        description: "Invite metadata. There is no token field, ever: the code travels in the invite email only.",
+        properties: {
+          issuedAt: { type: "string", format: "date-time" },
+          expiresAt: { type: "string", format: "date-time" },
+          usedAt: { type: ["string", "null"], format: "date-time" },
+          invitedByName: { type: ["string", "null"] },
+        },
+      },
+
+      UserListItem: {
+        type: "object",
+        required: ["id", "name", "email", "role", "graduationYear", "lastLoginAt", "deletedAt", "status"],
+        properties: {
+          id: { type: "integer" },
+          name: { type: "string" },
+          email: { type: "string", format: "email" },
+          role: { $ref: "#/components/schemas/UserRole" },
+          graduationYear: { type: ["integer", "null"] },
+          lastLoginAt: { type: ["string", "null"], format: "date-time" },
+          deletedAt: { type: ["string", "null"], format: "date-time" },
+          status: {
+            type: "string",
+            enum: ["active", "invited", "pending", "inactive"],
+            description: "Derived server-side: inactive (soft-deleted) > active (has a password or has logged in) > invited (live unaccepted invite) > pending.",
+          },
+        },
+      },
+
+      UserDetail: {
+        allOf: [
+          { $ref: "#/components/schemas/UserListItem" },
+          {
+            type: "object",
+            required: ["invite"],
+            properties: { invite: { oneOf: [{ $ref: "#/components/schemas/InviteState" }, { type: "null" }] } },
+          },
+        ],
       },
 
       StudentListItem: {
@@ -1106,11 +1149,107 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/auth/accept-invite": {
+      post: {
+        tags: ["Auth"],
+        summary: "Accept an invite and set a first password",
+        description:
+          "Anonymous: possession of the invite code is the authorization, behind its own rate limiter (20 / 15 min per IP). The code is looked up by SHA-256 digest only. Consumed atomically (single use); sets a bcrypt cost-12 password hash. An invite activates an account, it never resets one: a target that already has a password, or is deactivated, is refused. **Every failure is the same `400 invalid_invite` body** (unknown, used, expired, already-activated or deactivated target) so the endpoint is not an existence oracle. Shape violations (missing token, password under 8 characters or over 72 bytes) are `400 bad_request`.",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token", "password"],
+                properties: {
+                  token: { type: "string", minLength: 16, maxLength: 128, description: "The code from the invite email." },
+                  password: { type: "string", minLength: 8, description: "At most 72 bytes (bcrypt)." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } }, "Activated; sign in with the new password."),
+          400: conflict("`bad_request` (malformed body) or `invalid_invite` (any invite failure)."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+
+    "/api/v1/auth/forgot-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Request a password-reset code",
+        description:
+          "Anonymous, behind its own rate limiter (10 / 15 min per IP). **Always answers `{ ok: true }`** for a well-formed body, whether or not the address exists, and the work runs after the response is sent, so neither the body nor the timing reveals the account. A malformed email is `400 bad_request`. Behind the response: nothing is minted for an unknown or deactivated account, or when no mail transport is configured; a second request for the same account within 60 s is ignored; a new code expires the previous one (one live reset per user). The code is v1's format (32 random bytes as 64 hex characters), stored only as its SHA-256 digest, valid for 60 minutes, and is delivered by email only.",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { type: "object", required: ["email"], properties: { email: { type: "string", format: "email" } } },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } }, "Acknowledged."),
+          400: errRef("BadRequest"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+
+    "/api/v1/auth/reset-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Complete a password reset",
+        description:
+          "Anonymous: possession of the code is the authorization (20 / 15 min per IP). Tokens minted by v1 are accepted (same format and storage). The password is validated before the code is looked at, so a weak password consumes nothing. **Every code failure is the same `400 invalid_reset_token`** (unknown, used, expired, or deleted account). On success, in one transaction: a bcrypt cost-12 hash is written, the code is consumed (single use), every other outstanding reset code and live invite is expired, and every refresh token of the account is revoked. A never-activated account may reset, which activates it.",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token", "password"],
+                properties: {
+                  token: { type: "string", minLength: 16, maxLength: 256 },
+                  password: { type: "string", minLength: 8, description: "At most 72 bytes (bcrypt)." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } }, "Password set; sign in."),
+          400: conflict("`bad_request` (malformed body) or `invalid_reset_token`."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+
+    "/api/v1/auth/logout-all": {
+      post: {
+        tags: ["Auth"],
+        summary: "Revoke every refresh token you hold",
+        description:
+          "Authenticated (Bearer). Revokes all of the caller's live refresh tokens, including the current device's: the lost-phone lever. Access tokens already issued live out their 15-minute TTL.",
+        responses: {
+          200: ok({ type: "object", required: ["revoked"], properties: { revoked: { type: "integer", minimum: 0 } } }, "Number of sessions revoked."),
+          401: errRef("Unauthorized"),
+        },
+      },
+    },
+
     "/api/v1/me": {
       get: {
         tags: ["Me"],
         summary: "The authenticated user and their scopes",
-        description: "Scopes come from the token's claims, not a fresh database read — they are what this token was minted with.",
+        description: "Scopes come from the token's claims, not a fresh database read — they are what this token was minted with. `user` is null when the row is soft-deleted (or gone).",
         responses: {
           200: ok(
             {
@@ -1124,6 +1263,7 @@ export const openApiDocument = {
                     email: { type: "string", format: "email" },
                     role: { $ref: "#/components/schemas/UserRole" },
                     avatarPath: { type: ["string", "null"] },
+                    hasPassword: { type: "boolean", description: "False for an invited account that has never set a password." },
                   },
                 },
                 scopes: {
@@ -1143,6 +1283,88 @@ export const openApiDocument = {
             "The current user.",
           ),
           401: errRef("Unauthorized"),
+        },
+      },
+      patch: {
+        tags: ["Me"],
+        summary: "Update your own display name",
+        description:
+          "Self-scoped: the subject is the token, never the body. A body carrying `userId` (or any unknown key) is a 400. The name is trimmed, 2-120 characters. Returns the updated user.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name"],
+                additionalProperties: false,
+                properties: { name: { type: "string", minLength: 2, maxLength: 120 } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                user: {
+                  type: "object",
+                  properties: {
+                    id: { type: "integer" },
+                    name: { type: "string" },
+                    email: { type: "string", format: "email" },
+                    role: { $ref: "#/components/schemas/UserRole" },
+                    avatarPath: { type: ["string", "null"] },
+                    hasPassword: { type: "boolean" },
+                  },
+                },
+              },
+            },
+            "The updated user.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+        },
+      },
+    },
+
+    "/api/v1/me/password": {
+      post: {
+        tags: ["Me"],
+        summary: "Change your password and evict other sessions",
+        description:
+          "Verifies `currentPassword`, writes a bcrypt cost-12 hash and revokes every refresh token of the caller in one transaction, **except** the one whose raw value is sent as `refreshToken` (this device). Omit `refreshToken` and every session is revoked. A wrong current password is `400 incorrect_password` (deliberately not 401, which the mobile client reads as an expired access token). An invited account with no password is `409 no_password`. Rate limited (10 / 15 min per IP); 429 uses the standard envelope. New password: 8+ characters, at most 72 bytes. Also expires any outstanding password-reset codes.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["currentPassword", "newPassword"],
+                additionalProperties: false,
+                properties: {
+                  currentPassword: { type: "string", minLength: 1 },
+                  newPassword: { type: "string", minLength: 8 },
+                  refreshToken: { type: "string", description: "The caller's own refresh token, spared from the sweep." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["ok", "sessionsRevoked"],
+              properties: { ok: { type: "boolean", example: true }, sessionsRevoked: { type: "integer", minimum: 0 } },
+            },
+            "Changed.",
+          ),
+          400: conflict("`bad_request` (malformed body) or `incorrect_password`."),
+          401: errRef("Unauthorized"),
+          409: conflict("`no_password`."),
+          429: errRef("TooManyRequests"),
         },
       },
     },
@@ -1579,6 +1801,214 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/users": {
+      get: {
+        tags: ["Users"],
+        summary: "User list (SUPER only)",
+        description:
+          "Cursor-paginated and filtered in the database. `status` is derived server-side (inactive, active, invited, pending); the password hash never leaves the server. `q` matches name or email, case-insensitive. `cursor` is the last row's id; `total` is the whole population under the current filters.",
+        parameters: [
+          { name: "q", in: "query", schema: { type: "string" } },
+          { name: "role", in: "query", schema: { $ref: "#/components/schemas/UserRole" } },
+          { name: "status", in: "query", schema: { type: "string", enum: ["active", "invited", "pending", "inactive"] } },
+          { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                users: { type: "array", items: { $ref: "#/components/schemas/UserListItem" } },
+                nextCursor: { type: ["integer", "null"] },
+                total: { type: "integer" },
+              },
+            },
+            "One page of users.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+      post: {
+        tags: ["Users"],
+        summary: "Create a user and issue their invite (SUPER only)",
+        description:
+          "Creation and invitation are one operation. The account is created with a NULL password hash (there is no default password anywhere) and an invite is minted in the same transaction; the code goes out by email after commit, best-effort (a mail failure never rolls back the account, re-send from `POST /users/{id}/invite`). The response never carries the code. LEADER, ADMIN and MENTOR require a graduationYear. A STUDENT gets a StudentProfile. Creating a SUPER requires `confirmSuper: true`, otherwise `400 confirm_super_required` (a SUPER grant can never be a mis-tapped picker item).",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "email", "role"],
+                properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
+                  email: { type: "string", format: "email" },
+                  role: { $ref: "#/components/schemas/UserRole" },
+                  graduationYear: { type: ["integer", "null"], minimum: 1990 },
+                  confirmSuper: { type: "boolean", description: "Must be true when `role` is SUPER." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: ok({ type: "object", required: ["userId"], properties: { userId: { type: "integer" } } }, "Created."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          409: conflict("`email_taken`."),
+        },
+      },
+    },
+
+    "/api/v1/users/invites/pending": {
+      get: {
+        tags: ["Users"],
+        summary: "Count accounts a bulk invite would reach (SUPER only)",
+        description:
+          "\"Pending\" means: not deleted, no password, never signed in, and no live **v2** invite. A live v1 plaintext invite still counts as pending, because v2 can never accept it. The client hides the bulk button at zero.",
+        responses: {
+          200: ok({ type: "object", required: ["pending"], properties: { pending: { type: "integer", minimum: 0 } } }, "The count."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+      post: {
+        tags: ["Users"],
+        summary: "Send invites to pending accounts, one bounded batch (SUPER only)",
+        description:
+          "Processes at most 20 pending accounts per request, oldest id first; call again for the rest (`remaining`). Each account gets its own short transaction that row-locks the user and re-checks eligibility, so a double-tap or two SUPERs racing skip rather than re-mint (`skipped`). Mail goes out after the commits with a small concurrency pool. A mail failure expires the invite just minted, so that person stays pending and the next call retries them (`failed`). Refused with 503 `email_not_configured` when no mail transport is configured, so no invites are minted that nobody can receive. No response ever carries an invite code. Rate limited to 30 requests per hour.",
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["sent", "skipped", "failed", "remaining"],
+              properties: {
+                sent: { type: "integer", minimum: 0 },
+                skipped: { type: "integer", minimum: 0 },
+                failed: { type: "integer", minimum: 0 },
+                remaining: { type: "integer", minimum: 0 },
+              },
+            },
+            "Batch counters.",
+          ),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          429: errRef("TooManyRequests"),
+          503: { description: "`email_not_configured`.", content: { "application/json": { schema: errorResponse } } },
+        },
+      },
+    },
+
+    "/api/v1/users/{id}": {
+      get: {
+        tags: ["Users"],
+        summary: "User detail with invite metadata (SUPER only)",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/UserDetail" }, "The user."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Users"],
+        summary: "Edit a user's name, role and graduation year (SUPER only)",
+        description:
+          "A full replace of `{ name, role, graduationYear }` (email is not editable; unknown keys are refused). LEADER, ADMIN and MENTOR require a graduationYear (alumni-only roles).\n\n**A role change is a revocation.** In one transaction: a demoted ADMIN loses their SeasonAdmin rows, a demoted LEADER their GroupLeader rows, a user landing on STUDENT gets a StudentProfile, and every live refresh token of the target is revoked — so the old claims cannot be re-minted. Access tokens already issued live out their 15-minute TTL.\n\nGuards: changing your own role is `409 cannot_change_own_role` (renaming yourself is fine); granting SUPER needs `confirmSuper: true` (`400 confirm_super_required`); demoting the only active SUPER is `409 last_super` (the active SUPER rows are locked FOR UPDATE inside the transaction, so two concurrent demotions cannot both pass). Answers with the same `UserDetail` GET returns.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "role", "graduationYear"],
+                additionalProperties: false,
+                properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
+                  role: { $ref: "#/components/schemas/UserRole" },
+                  graduationYear: { type: ["integer", "null"], minimum: 1990 },
+                  confirmSuper: { type: "boolean", description: "Must be true for a role change to SUPER." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/UserDetail" }, "The updated user."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`cannot_change_own_role` or `last_super`."),
+        },
+      },
+    },
+
+    "/api/v1/users/{id}/invite": {
+      post: {
+        tags: ["Users"],
+        summary: "Issue (or re-issue) an invite (SUPER only)",
+        description:
+          "Mints a fresh invite and expires the target's previous live one (one live invite per user), then emails the code. The response is the invite metadata only; the code is never returned. Refused explicitly: an already-activated target is `409 already_activated`, a deactivated one `409 user_deleted`.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/InviteState" }, "The new invite's metadata."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`already_activated` or `user_deleted`."),
+        },
+      },
+    },
+
+    "/api/v1/users/{id}/deactivate": {
+      post: {
+        tags: ["Users"],
+        summary: "Deactivate a user (SUPER only)",
+        description:
+          "Soft-deletes the user and revokes every live refresh token in the same transaction. Refused for yourself (`400 cannot_deactivate_self`) and for the only active SUPER (`409 last_super`, serialised with row locks).",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", required: ["deletedAt"], properties: { deletedAt: { type: "string", format: "date-time" } } },
+            "Deactivated.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`last_super`."),
+        },
+      },
+    },
+
+    "/api/v1/users/{id}/reactivate": {
+      post: {
+        tags: ["Users"],
+        summary: "Reactivate a deactivated user (SUPER only)",
+        description: "Also clears a student profile's deletion stamp (set by `DELETE /students/{id}`).",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", required: ["deletedAt"], properties: { deletedAt: { type: "null" } } },
+            "Reactivated.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+
     "/api/v1/students": {
       get: {
         tags: ["Students"],
@@ -1613,7 +2043,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Create a student",
         description:
-          "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported, and the account has no login path until an invite mints credentials (Plan 9) — the same state v1's CSV import produces. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment and points `activeSeasonId` at the same season, so the two definitions of \"in this season\" agree (D1). Empty strings are stored as null.",
+          "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported. The account is created with no password and an invite is minted in the same transaction and emailed after commit (best-effort — a mail failure never fails the create; the code never appears in any response). The student sets a password by accepting the invite. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment and points `activeSeasonId` at the same season, so the two definitions of \"in this season\" agree (D1). Empty strings are stored as null.",
         requestBody: {
           required: true,
           content: {
@@ -1700,6 +2130,63 @@ export const openApiDocument = {
           409: conflict("`email_taken` or `not_enrolled`."),
         },
       },
+      delete: {
+        tags: ["Students"],
+        summary: "Soft-delete a student (SUPER only)",
+        description:
+          "SUPER only. One transaction stamps `User.deletedAt` and `StudentProfile.deletedAt` and revokes every refresh token. Nothing cascades: enrollments, attendance, submissions and notes survive as history. Reversible only through `POST /users/{id}/reactivate`. `not_found` covers a non-student, an unknown id and an already-deleted student. Writes a server-side audit line (ids only).",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", properties: { id: { type: "integer" }, deletedAt: { type: "string", format: "date-time" } } },
+            "Deleted.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+
+    "/api/v1/students/{id}/graduate": {
+      post: {
+        tags: ["Students"],
+        summary: "Graduate a student (SUPER only)",
+        description:
+          "SUPER only (R55). Body `{ graduationYear }`, 1990 through the current year, evaluated per request. In one transaction: sets `graduationYear`, completes **every** ACTIVE enrollment (v1 completed only the one the profile pointed at), and clears `activeSeasonId`. WITHDRAWN and COMPLETED enrollments are untouched; `role` stays STUDENT. Irreversible: a second graduation is 409 `already_graduated`. `not_found` covers a non-student or deleted id. Writes a server-side audit line (ids only).",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["graduationYear"],
+                properties: { graduationYear: { type: "integer", minimum: 1990 } },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                id: { type: "integer" },
+                graduationYear: { type: "integer" },
+                enrollmentsCompleted: { type: "integer" },
+              },
+            },
+            "Graduated.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`already_graduated`."),
+        },
+      },
     },
 
     "/api/v1/students/{id}/enrollments": {
@@ -1736,7 +2223,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Complete or drop an enrollment",
         description:
-          "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The only transitions are ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`) and ACTIVE \u2192 COMPLETED (sets completedAt). ACTIVE is not accepted in the body: there is no re-activation. A non-ACTIVE row is 409 `not_active`. The row is transitioned in place and never deleted.",
+          "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The only transitions are ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`) and ACTIVE \u2192 COMPLETED (sets completedAt). ACTIVE is not accepted in the body: there is no re-activation. A non-ACTIVE row is 409 `not_active`. The row is transitioned in place and never deleted. Writes a server-side audit line (actor and subject ids only).",
         parameters: [
           idParam,
           { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },

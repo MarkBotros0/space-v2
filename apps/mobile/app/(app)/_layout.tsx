@@ -7,11 +7,11 @@ import { useSessionStore } from "../../src/store/session";
 
 /**
  * Hrefs whose route is a directory (`x/index.tsx`) because the destination
- * has child routes (ruling X7): `students` (alumni, dropped) and `seasons`
- * (Plan 6's `seasons/[code]/…`). Without the mapping the tab bar looks for
+ * has child routes (ruling X7): `students` (alumni, dropped), `seasons`
+ * (Plan 6's `seasons/[code]/…`) and `users` (`users/new`, Plan 17's `users/import`). Without the mapping the tab bar looks for
  * a file named "seasons" and silently omits the tab.
  */
-const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons"]);
+const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons", "users"]);
 
 /**
  * href → route name (the `name` prop `Tabs.Screen` expects, which is the
@@ -71,7 +71,11 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "quiz/[id]/grade",
   "quiz/new",
   "quiz/[id]/edit",
-  "student/[id]",
+  "student/[id]/index",
+  "student/[id]/edit",
+  "students/new",
+  "users/new",
+  "user/[id]",
 ];
 
 /**

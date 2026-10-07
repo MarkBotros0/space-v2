@@ -51,6 +51,7 @@
         "LOCAL_UPLOADS_DIR",
         "MAX_UPLOAD_BYTES",
         "ENABLE_API_DOCS",
+        "MOBILE_APP_SCHEME",
         "ORG_TIMEZONE"
       ]
     },

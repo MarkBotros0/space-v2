@@ -33,6 +33,10 @@ const envSchema = z.object({
   // Hard ceiling on a single upload. multer buffers the whole file in memory
   // before the per-assignment maxFileSizeMb check can run, so this bounds what
   // one request can allocate. 25 MB.
+  // Invite acceptance window. 168h = 7 days, deliberately longer than v1's 72h
+  // default: the invite is delivered to email and typed into a phone, and v1's
+  // TTL never mattered because no invite was ever acceptable (spec 11 D1).
+  INVITE_TOKEN_TTL_HOURS: z.coerce.number().int().positive().default(168),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(25 * 1024 * 1024),
   // Accept file uploads on POST /api/v1/submissions/:publicId/files.
   //
@@ -53,6 +57,14 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  // URL scheme the mobile app registers (apps/mobile/app.json "scheme").
+  // Password-reset emails link to <scheme>://reset-password?token=… (Plan 10
+  // Decision 10). A custom-scheme link is never fetched over HTTP, so the
+  // token never reaches a proxy log, a CDN log or a Referer header.
+  MOBILE_APP_SCHEME: z
+    .string()
+    .regex(/^[a-z][a-z0-9+.-]*$/, "must be a bare URL scheme, e.g. spacev2")
+    .default("spacev2"),
 });
 
 /**
@@ -93,5 +105,7 @@ export const config = {
   localUploadsDir: parsed.data.LOCAL_UPLOADS_DIR,
   maxUploadBytes: parsed.data.MAX_UPLOAD_BYTES,
   enableUploads: parsed.data.ENABLE_UPLOADS,
+  inviteTokenTtlHours: parsed.data.INVITE_TOKEN_TTL_HOURS,
   enableApiDocs: parsed.data.ENABLE_API_DOCS,
+  mobileAppScheme: parsed.data.MOBILE_APP_SCHEME,
 } as const;

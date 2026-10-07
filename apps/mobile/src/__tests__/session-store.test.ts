@@ -2,7 +2,7 @@ import { navByRole } from "@space/shared";
 
 import { useSessionStore } from "../store/session";
 
-const user = { id: 1, name: "A", email: "a@b.test", role: "STUDENT" as const, avatarPath: null };
+const user = { id: 1, name: "A", email: "a@b.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true };
 const scopes = {
   seasonAdminIds: [],
   groupLeaderIds: [],

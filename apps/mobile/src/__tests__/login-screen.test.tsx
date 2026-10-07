@@ -13,7 +13,10 @@ const mockLogin = jest.fn();
 jest.mock("../hooks/use-session", () => ({ useLogin: () => mockLogin }));
 
 const mockReplace = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ replace: mockReplace }) }));
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ replace: mockReplace, push: mockPush }),
+}));
 
 describe("LoginScreen", () => {
   beforeEach(() => {
@@ -52,5 +55,11 @@ describe("LoginScreen", () => {
     // user typed, so a wrong password is a one-tap retry, not a re-fill.
     expect(screen.getByLabelText("Email").props.value).toBe("sara@jpc.test");
     expect(screen.getByLabelText("Password").props.value).toBe("wrong");
+  });
+
+  it("links to the accept-invite screen", () => {
+    renderWithProviders(<LoginScreen />);
+    fireEvent.press(screen.getByText("I have an invite code"));
+    expect(mockPush).toHaveBeenCalledWith("/accept-invite");
   });
 });

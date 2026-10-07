@@ -188,11 +188,22 @@ describe("AppLayout tab shell", () => {
     expect(routeNameForHref("/calendar")).toBe("calendar");
   });
 
-  it("declares student/[id] hidden from the tab bar", () => {
+  it("declares student/[id]/index hidden from the tab bar (directory form, ruling X7)", () => {
     useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
     render(<AppLayout />);
-    const detail = mockScreens.find((s) => s.name === "student/[id]");
+    const detail = mockScreens.find((s) => s.name === "student/[id]/index");
     expect(detail).toBeDefined();
     expect(detail?.href).toBeNull();
   });
+});
+
+it("declares students/new and student/[id]/edit hidden from the tab bar", () => {
+  expect(DETAIL_ROUTE_NAMES).toEqual(expect.arrayContaining(["students/new", "student/[id]/edit"]));
+});
+
+it("maps /users to its directory index and hides users/new (Plan 10)", () => {
+  expect(routeNameForHref("/users")).toBe("users/index");
+  expect(routeNameForHref("/students")).toBe("students/index");
+  expect(routeNameForHref("/seasons")).toBe("seasons/index"); // Plan 6's entry survives
+  expect(DETAIL_ROUTE_NAMES).toContain("users/new");
 });

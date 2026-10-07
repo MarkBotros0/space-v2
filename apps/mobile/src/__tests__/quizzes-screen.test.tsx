@@ -12,14 +12,14 @@ import QuizzesScreen from "../../app/(app)/quizzes";
 const get = apiClient.get as jest.Mock;
 
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const, avatarPath: null },
+  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
 // activeSeasonId is null for every staff role on a real device (it is the
 // student profile pointer) — the fixture says so, and the staff season comes
 // from GET /api/v1/seasons via useCurrentSeasonId (ruling X8).
 const leaderSession = {
-  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null },
+  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null, hasPassword: true },
   scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
 };
 
@@ -175,7 +175,7 @@ describe("QuizzesScreen — staff", () => {
 });
 describe("QuizzesScreen — authoring entry points (Task 11)", () => {
   const adminSession = {
-    user: { id: 2, name: "Test admin", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null },
+    user: { id: 2, name: "Test admin", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
     scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
   };
 
