@@ -19,6 +19,7 @@ export type NavIconName =
   | "calendar"
   | "events"
   | "assignments"
+  | "attendance"
   | "submissions"
   | "history"
   | "profile"
@@ -112,6 +113,10 @@ const STUDENT: RoleNav = {
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/assignments", label: "Assignments", icon: "assignments" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
+    // Spec 04 D14: v1 reached /student/attendance only from the dashboard's
+    // budget tile; the budget it explains must have a home of its own. STUDENT
+    // sidebar only — it surfaces in More. Not ALUMNI (no active season).
+    { href: "/attendance", label: "Attendance", icon: "attendance" },
     { href: "/history", label: "History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/settings", label: "Settings", icon: "settings" },

@@ -17,6 +17,7 @@ const GLYPHS: Record<NavIconName, IoniconName> = {
   calendar: "calendar",
   events: "megaphone",
   assignments: "document-text",
+  attendance: "checkmark-done-circle",
   submissions: "cloud-upload",
   history: "time",
   profile: "person-circle",
