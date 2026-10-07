@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("react-native-qrcode-svg", () => "QRCode");
+jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "12" }),
@@ -72,7 +73,7 @@ it("shows a student the org-time header and their attendance, and no staff cards
   // Server-derived day and wall-clock time (X13) — not the device's reading of startsAt.
   expect(screen.getByText("Mar 15, 2099 · 8:00 PM · 90 min")).toBeTruthy();
   expect(screen.getByText("Your attendance: Late (10 min)")).toBeTruthy();
-  expect(screen.queryByText("Check-in")).toBeNull();
+  expect(screen.getByText("Check-in isn't open right now.")).toBeTruthy();
   expect(screen.queryByText("Edit session")).toBeNull();
   expect(screen.queryByText("Mark attendance")).toBeNull();
   expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/quizzes");
