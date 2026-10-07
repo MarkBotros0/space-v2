@@ -105,3 +105,108 @@ export async function loadStudentVideoQuiz(
     nextQuestionId,
   };
 }
+
+export interface VideoQuizResultRowData {
+  studentUserId: number;
+  studentName: string | null;
+  groupId: number | null;
+  groupName: string | null;
+  answeredCount: number;
+  questionCount: number;
+  earnedPoints: number;
+  totalPoints: number;
+  completedAt: Date | null;
+}
+
+export interface VideoQuizResultsData {
+  questionCount: number;
+  totalPoints: number;
+  rows: VideoQuizResultRowData[];
+}
+
+/**
+ * Who answered what on a session's video quiz.
+ *
+ * A new capability: v1 renders no student's video-quiz result anywhere, for any
+ * role. The only aggregate it shows is `responseCount` per question, which
+ * counts answers rather than correct ones and is not broken down by student
+ * (spec 13 R74/R76). The data has always been there, one grouped query away.
+ *
+ * The population is `SeasonEnrollment`, not "whoever has a response row", so a
+ * student who has answered nothing still appears — the same rule the assignment
+ * tracker uses, and the reason a leader can see who has not started.
+ * `restrictToGroupIds` narrows the roster for a leader; the rows carry names.
+ */
+export async function loadVideoQuizResults(
+  sessionId: number,
+  restrictToGroupIds?: number[],
+): Promise<VideoQuizResultsData | null> {
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    select: { seasonId: true },
+  });
+  if (!session) return null;
+
+  const questions = await db.sessionVideoQuestion.findMany({
+    where: { sessionId },
+    select: { id: true, points: true },
+  });
+  const pointsByQuestion = new Map(questions.map((q) => [q.id, q.points]));
+  const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
+
+  const enrollments = await db.seasonEnrollment.findMany({
+    where: {
+      seasonId: session.seasonId,
+      status: "ACTIVE",
+      ...(restrictToGroupIds ? { groupId: { in: restrictToGroupIds } } : {}),
+    },
+    select: {
+      studentUserId: true,
+      groupId: true,
+      group: { select: { name: true } },
+      studentUser: { select: { name: true } },
+    },
+  });
+  const studentIds = enrollments.map((e) => e.studentUserId);
+
+  const [responses, progress] = await Promise.all([
+    db.sessionVideoQuestionResponse.findMany({
+      where: { question: { sessionId }, studentUserId: { in: studentIds } },
+      select: { studentUserId: true, questionId: true, isCorrect: true },
+    }),
+    db.sessionVideoProgress.findMany({
+      where: { sessionId, studentUserId: { in: studentIds } },
+      select: { studentUserId: true, completedAt: true },
+    }),
+  ]);
+
+  const tally = new Map<number, { answered: number; earned: number }>();
+  for (const r of responses) {
+    const entry = tally.get(r.studentUserId) ?? { answered: 0, earned: 0 };
+    entry.answered += 1;
+    if (r.isCorrect) entry.earned += pointsByQuestion.get(r.questionId) ?? 0;
+    tally.set(r.studentUserId, entry);
+  }
+  const completedBy = new Map(progress.map((p) => [p.studentUserId, p.completedAt]));
+
+  return {
+    questionCount: questions.length,
+    totalPoints,
+    rows: enrollments
+      .map((e) => {
+        const entry = tally.get(e.studentUserId) ?? { answered: 0, earned: 0 };
+        return {
+          studentUserId: e.studentUserId,
+          studentName: e.studentUser.name,
+          groupId: e.groupId,
+          groupName: e.group?.name ?? null,
+          answeredCount: entry.answered,
+          questionCount: questions.length,
+          earnedPoints: entry.earned,
+          totalPoints,
+          completedAt: completedBy.get(e.studentUserId) ?? null,
+        };
+      })
+      .sort((a, b) => (a.studentName ?? "").localeCompare(b.studentName ?? "")),
+  };
+}

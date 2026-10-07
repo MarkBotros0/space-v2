@@ -57,6 +57,13 @@ const idParam = {
   schema: { type: "integer", minimum: 1 },
 } as const;
 
+const questionIdParam = {
+  name: "questionId",
+  in: "path",
+  required: true,
+  schema: { type: "integer", minimum: 1 },
+} as const;
+
 const publicIdParam = {
   name: "publicId",
   in: "path",
@@ -141,6 +148,57 @@ export const openApiDocument = {
       },
     },
     schemas: {
+      VideoQuestionInput: {
+        type: "object",
+        required: ["atSeconds", "prompt", "options", "correctIndex"],
+        properties: {
+          atSeconds: { type: "integer", minimum: 0, maximum: 86400 },
+          prompt: { type: "string", minLength: 2, maxLength: 500 },
+          options: { type: "array", minItems: 2, maxItems: 6, items: { type: "string", minLength: 1, maxLength: 200 } },
+          correctIndex: { type: "integer", minimum: 0, description: "Must be a valid index into `options`." },
+          points: { type: "integer", minimum: 1, maximum: 100, default: 1 },
+        },
+      },
+      VideoQuestionAdmin: {
+        type: "object",
+        description: "The authoring row. **Carries `correctIndex`** — never request it from a student screen.",
+        required: ["id", "atSeconds", "prompt", "options", "correctIndex", "points", "responseCount"],
+        properties: {
+          id: { type: "integer" },
+          atSeconds: { type: "integer" },
+          prompt: { type: "string" },
+          options: { type: "array", items: { type: "string" } },
+          correctIndex: { type: "integer" },
+          points: { type: "integer" },
+          responseCount: { type: "integer", description: "Recorded answers (all, not only correct ones)." },
+        },
+      },
+      VideoQuizResults: {
+        type: "object",
+        required: ["questionCount", "totalPoints", "rows"],
+        properties: {
+          questionCount: { type: "integer" },
+          totalPoints: { type: "integer" },
+          rows: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["studentUserId", "studentName", "groupId", "groupName", "answeredCount", "questionCount", "earnedPoints", "totalPoints", "completedAt"],
+              properties: {
+                studentUserId: { type: "integer" },
+                studentName: { type: ["string", "null"] },
+                groupId: { type: ["integer", "null"] },
+                groupName: { type: ["string", "null"] },
+                answeredCount: { type: "integer" },
+                questionCount: { type: "integer" },
+                earnedPoints: { type: "integer" },
+                totalPoints: { type: "integer" },
+                completedAt: { type: ["string", "null"], format: "date-time" },
+              },
+            },
+          },
+        },
+      },
       StudentVideoQuiz: {
         type: "object",
         description:
@@ -4155,6 +4213,118 @@ export const openApiDocument = {
             },
             "The stored progress.",
           ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-questions": {
+      get: {
+        tags: ["Video quiz"],
+        summary: "List video questions with the answer key",
+        description:
+          "Season ADMIN of the session's season, or SUPER — a group LEADER or MENTOR is refused (403). **This list carries `correctIndex` for every question and must never be requested by a student screen**; v1's equivalent authorized nothing and relied on the admin page being the only caller. Ordered by `atSeconds`, then `id`.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["questions"],
+              properties: { questions: { type: "array", items: { $ref: "#/components/schemas/VideoQuestionAdmin" } } },
+            },
+            "The questions.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      post: {
+        tags: ["Video quiz"],
+        summary: "Add a video question",
+        description:
+          "Same gate as the list, checked **before** the body is validated. No check that the session has a `youtubeUrl` or that `atSeconds` fits the video (the length is not stored); the client guards that. `createdById` records who first authored the question.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/VideoQuestionInput" } } },
+        },
+        responses: {
+          201: ok(
+            { type: "object", required: ["question"], properties: { question: { $ref: "#/components/schemas/VideoQuestionAdmin" } } },
+            "The created question.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/video-questions/{questionId}": {
+      patch: {
+        tags: ["Video quiz"],
+        summary: "Edit a video question and re-grade",
+        description:
+          "Full replacement of the authored fields (same body as create). **`regradedCount` exists because an edit rewrites history:** when the correct index or the options change, every recorded answer is re-evaluated in the same transaction (an index the shrunken options no longer contain can never be right) and the number whose verdict flipped is returned. `pointsChanged` is true when `points` moved — points are not stored on a response, so nothing is re-graded, but every earned score changed.",
+        parameters: [questionIdParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/VideoQuestionInput" } } },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["question", "regradedCount", "pointsChanged"],
+              properties: {
+                question: { $ref: "#/components/schemas/VideoQuestionAdmin" },
+                regradedCount: { type: "integer", minimum: 0 },
+                pointsChanged: { type: "boolean" },
+              },
+            },
+            "The updated question and the re-grade outcome.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Video quiz"],
+        summary: "Delete a video question",
+        description:
+          "**`responsesRemoved` counts destroyed student work:** the database cascade deletes every recorded answer to the question, so the client should warn with the `responseCount` it already holds and confirm with this number. `SessionVideoProgress` rows are deliberately left alone (v1 does the same; there is no soft-delete column).",
+        parameters: [questionIdParam],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["deleted", "responsesRemoved"],
+              properties: { deleted: { type: "boolean", const: true }, responsesRemoved: { type: "integer", minimum: 0 } },
+            },
+            "Deleted.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-quiz/results": {
+      get: {
+        tags: ["Video quiz"],
+        summary: "Every student's video-quiz result",
+        description:
+          "Staff with a scope in the session's season (SUPER and season ADMIN: every ACTIVE student; a LEADER: their own groups' ACTIVE students — the same roster as attendance; a MENTOR is refused). One row per ACTIVE enrolment, including students who have answered nothing. New capability: v1 shows no student's video-quiz result to anybody.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/VideoQuizResults" }, "The results."),
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
