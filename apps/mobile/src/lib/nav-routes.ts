@@ -10,6 +10,7 @@ import type { NavItem, RoleNav } from "@space/shared";
  */
 const NAV_ROUTES: Readonly<Record<string, Href>> = {
   "/assignments": "/assignments",
+  "/attendance": "/attendance",
   "/calendar": "/calendar",
   "/dashboard": "/dashboard",
   "/events": "/events",

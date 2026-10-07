@@ -30,7 +30,7 @@ describe("MoreScreen", () => {
 
     renderWithProviders(<MoreScreen />);
 
-    for (const label of ["Current Season", "History", "Profile", "Settings"]) {
+    for (const label of ["Current Season", "Attendance", "History", "Profile", "Settings"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
     // Already tabs: never duplicated in More.

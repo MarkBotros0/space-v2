@@ -18,7 +18,7 @@ describe("navHref", () => {
 describe("moreItemsFor", () => {
   it("is the sidebar minus the tabs, in sidebar order (v1 extraItemsFor)", () => {
     expect(moreItemsFor(navByRole.STUDENT).map((i) => i.label)).toEqual([
-      "Current Season", "History", "Profile", "Settings",
+      "Current Season", "Attendance", "History", "Profile", "Settings",
     ]);
     expect(moreItemsFor(navByRole.ADMIN).map((i) => i.label)).toEqual([
       "My Season", "My notes", "Assignments", "Quizzes", "Reports", "Settings",

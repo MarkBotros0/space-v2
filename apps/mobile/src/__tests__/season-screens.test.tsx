@@ -171,25 +171,6 @@ describe("SeasonScreen (workspace)", () => {
       }),
     );
   });
-
-  it("renders for a STUDENT from the pinned season, read-only, without the seasons list (G21)", async () => {
-    useSessionStore.setState(studentSession);
-    get.mockResolvedValue({ data: { data: detail } });
-
-    renderWithProviders(<SeasonScreen />);
-
-    expect(await screen.findByText("Spring 2026")).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/seasons/7");
-    expect(get).not.toHaveBeenCalledWith("/api/v1/seasons");
-    expect(screen.queryByText("Save changes")).toBeNull();
-  });
-
-  it("shows a student with no season an empty state, not a spinner", async () => {
-    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null }, { id: 9 }));
-    renderWithProviders(<SeasonScreen />);
-    expect(await screen.findByText("No season")).toBeTruthy();
-    expect(get).not.toHaveBeenCalled();
-  });
 });
 
 describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => {

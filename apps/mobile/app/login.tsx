@@ -1,16 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { AccessibilityInfo, View } from "react-native";
 import { loginRequestSchema, type LoginRequest } from "@space/shared";
 
 import { useLogin } from "../src/hooks/use-session";
+import { returnHrefFor } from "../src/lib/return-to";
 import { useTheme } from "../src/theme";
 import { Button, FormField, Screen, Text } from "../src/ui";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const login = useLogin();
   const theme = useTheme();
 
@@ -37,7 +39,9 @@ export default function LoginScreen() {
     setError(null);
     try {
       await login(values.email, values.password);
-      router.replace("/dashboard");
+      // Spec 04 R56: a check-in link that needed a login lands back on itself.
+      // returnHrefFor admits only that one typed shape (Decision 7).
+      router.replace(returnHrefFor(returnTo) ?? "/dashboard");
     } catch {
       setError("Incorrect email or password.");
     }

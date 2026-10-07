@@ -124,6 +124,7 @@ describe("navFor", () => {
         ["/calendar", "Calendar", "calendar"],
         ["/assignments", "Assignments", "assignments"],
         ["/quizzes", "Quizzes", "quizzes"],
+        ["/attendance", "Attendance", "attendance"],
         ["/history", "History", "history"],
         ["/profile", "Profile", "profile"],
         ["/settings", "Settings", "settings"],

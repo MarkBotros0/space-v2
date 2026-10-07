@@ -4,6 +4,7 @@ import QRCode from "react-native-qrcode-svg";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { AttendanceRosterRow, MyAttendance, SessionDetail } from "@space/shared";
 
+import { StudentCheckInCard } from "../../../../src/components/check-in/StudentCheckInCard";
 import { SessionQuizzesCard } from "../../../../src/components/SessionQuizzesCard";
 import { useAttendanceRoster } from "../../../../src/hooks/use-attendance";
 import { useCheckInState, useRegenerateCheckIn } from "../../../../src/hooks/use-check-in";
@@ -11,6 +12,7 @@ import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../../../s
 import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
+import { useSessionStore } from "../../../../src/store/session";
 import { useTheme } from "../../../../src/theme";
 import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
 
@@ -143,6 +145,7 @@ function LiveCheckInRoster({ detail }: { detail: SessionDetail }) {
 function SessionDetailBody({ id }: { id: number }) {
   const theme = useTheme();
   const router = useRouter();
+  const role = useSessionStore((s) => s.user?.role ?? null);
   const { data, isPending, isError, refetch, isRefetching } = useSessionDetail(id);
 
   if (isPending) {
@@ -182,11 +185,13 @@ function SessionDetailBody({ id }: { id: number }) {
         />
       ) : null}
 
-      {/* Student check-in (scanner / enter code) is Plan 11 (ruling X15). */}
       {data.canManageCheckIn ? (
         <CheckInConsole detail={data} />
       ) : data.canMarkAttendance ? (
         <LiveCheckInRoster detail={data} />
+      ) : role === "STUDENT" ? (
+        // Spec 04 §9 row 3: students get the check-in action (Plan 11, G2).
+        <StudentCheckInCard detail={data} />
       ) : null}
 
       {data.canMarkAttendance ? <SessionQuizzesCard sessionId={data.id} /> : null}

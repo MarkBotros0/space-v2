@@ -5,17 +5,10 @@ import type { NavItem } from "@space/shared";
 import { NavIcon } from "../../src/components/NavIcon";
 import { useLogout } from "../../src/hooks/use-session";
 import { moreItemsFor, navHref } from "../../src/lib/nav-routes";
+import { initialsOf } from "../../src/lib/initials";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
 import { Button, Card, Screen, Text } from "../../src/ui";
-
-/** v1: first letters of the first two words of the name, else the role's initial. */
-function initialsFor(name: string | null, role: string): string {
-  const trimmed = name?.trim() || null;
-  if (!trimmed) return role.charAt(0).toUpperCase();
-  const parts = trimmed.split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
-}
 
 function MoreRow({ item }: { item: NavItem }) {
   const theme = useTheme();
@@ -70,7 +63,7 @@ export default function MoreScreen() {
               backgroundColor: theme.colors.neutral[100],
             }}
           >
-            <Text variant="heading">{initialsFor(user.name, user.role)}</Text>
+            <Text variant="heading">{initialsOf(user.name, user.role.charAt(0).toUpperCase())}</Text>
           </View>
           <View style={{ flex: 1 }}>
             {user.name ? <Text variant="heading">{user.name}</Text> : null}

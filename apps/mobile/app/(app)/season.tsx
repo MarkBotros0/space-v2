@@ -5,6 +5,7 @@ import type { SeasonDetail } from "@space/shared";
 
 import { useCurrentSeasonId, useSeasonDetail } from "../../src/hooks/use-seasons";
 import { useUpdateSeason, type UpdateSeasonInput } from "../../src/hooks/use-season-writes";
+import { StudentSeason } from "../../src/components/season/StudentSeason";
 import { apiErrorMessage } from "../../src/lib/api-error";
 import { formatDate } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
@@ -14,10 +15,8 @@ import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text
 /**
  * The current-season workspace (v1 /admin/season, /student/season).
  *
- * Renders for ADMIN (with the allowlisted edit) and for STUDENT (read-only —
- * the server already narrows `groups` to the student's own). The richer
- * student content (upcoming sessions, group card with leaders) is Plan 11; a
- * route for any season other than the current one is Plan 6 (ruling X15).
+ * Staff body (ADMIN with the allowlisted edit). The student branch is
+ * `StudentSeason` (Plan 11); a route for any season other than the current one is Plan 6 (ruling X15).
  */
 function EditSeason({ season }: { season: SeasonDetail }) {
   const theme = useTheme();
@@ -52,7 +51,7 @@ function EditSeason({ season }: { season: SeasonDetail }) {
   );
 }
 
-export default function SeasonScreen() {
+function StaffSeason() {
   const theme = useTheme();
   const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
@@ -117,4 +116,12 @@ export default function SeasonScreen() {
       {body}
     </Screen>
   );
+}
+
+export default function SeasonScreen() {
+  const role = useSessionStore((s) => s.user?.role ?? null);
+  // Two components rather than one with branches: the student half reads
+  // GET /me/season and the staff half reads useCurrentSeasonId +
+  // GET /seasons/:id — different hooks, so dispatch before any are called.
+  return role === "STUDENT" ? <StudentSeason /> : <StaffSeason />;
 }

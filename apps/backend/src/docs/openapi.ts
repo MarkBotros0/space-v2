@@ -1136,6 +1136,138 @@ export const openApiDocument = {
           },
         },
       },
+      SeasonHistoryRow: {
+        type: "object",
+        additionalProperties: false,
+        description: "A past enrollment — attendance % and curriculum ONLY (spec 02 R34: no submissions, feedback or notes, by design).",
+        properties: {
+          seasonId: { type: "integer" },
+          title: { type: "string" },
+          startDate: { type: "string", format: "date-time" },
+          endDate: { type: "string", format: "date-time" },
+          groupName: { type: ["string", "null"] },
+          attendancePct: { type: "integer", minimum: 0, maximum: 100 },
+          curriculum: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                sessionId: { type: "integer" },
+                title: { type: "string" },
+                startsAt: { type: "string", format: "date-time" },
+                dayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-calendar day (ruling X13)." },
+              },
+            },
+          },
+        },
+      },
+      MySeason: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          code: { type: "string" },
+          title: { type: "string" },
+          description: { type: ["string", "null"] },
+          status: { $ref: "#/components/schemas/SeasonStatus" },
+          startDate: { type: "string", format: "date-time" },
+          endDate: { type: "string", format: "date-time" },
+          progress: {
+            type: "object",
+            description: "Session-based (R29): completed = startsAt <= now.",
+            properties: {
+              completedSessions: { type: "integer" },
+              totalSessions: { type: "integer" },
+              pct: { type: "integer", minimum: 0, maximum: 100 },
+            },
+          },
+          group: {
+            type: ["object", "null"],
+            description: "From this season's SeasonEnrollment (ruling C9). Leaders carry email; peers never do (R89).",
+            properties: {
+              id: { type: "integer" },
+              name: { type: "string" },
+              description: { type: ["string", "null"] },
+              leaders: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" }, email: { type: "string" } } } },
+              members: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" }, isYou: { type: "boolean" } } } },
+            },
+          },
+          upcoming: {
+            type: "array",
+            maxItems: 3,
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "integer" },
+                title: { type: "string" },
+                startsAt: { type: "string", format: "date-time" },
+                dayKey: { type: "string" },
+                location: { type: ["string", "null"] },
+              },
+            },
+          },
+        },
+      },
+      MyProfile: {
+        type: "object",
+        additionalProperties: false,
+        description: "The caller's own profile. Never carries staff-only notes (spec 06 R23).",
+        properties: {
+          name: { type: "string" },
+          email: { type: "string" },
+          avatarPath: { type: ["string", "null"] },
+          graduationYear: { type: ["integer", "null"], description: "Non-null = alumnus; the profile is then read-only." },
+          activeSeasonTitle: { type: ["string", "null"] },
+          university: { type: ["string", "null"] },
+          year: { type: ["string", "null"] },
+          phone: { type: ["string", "null"] },
+          dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "A calendar date." },
+          spiritualBackground: { type: ["string", "null"] },
+          gifts: { type: ["string", "null"] },
+        },
+      },
+      MyAttendance: {
+        type: "object",
+        properties: {
+          season: {
+            type: ["object", "null"],
+            properties: {
+              id: { type: "integer" },
+              title: { type: "string" },
+              absenceBudgetMinutes: { type: "integer" },
+              absenceWeightMinutes: { type: "integer" },
+            },
+          },
+          budget: {
+            type: ["object", "null"],
+            properties: {
+              minutesUsed: { type: "integer" },
+              budgetMinutes: { type: "integer" },
+              budgetPct: { type: "integer", minimum: 0, maximum: 100 },
+              remainingPct: { type: "integer", minimum: 0, maximum: 100, description: "max(0, 100 − budgetPct) — 'Absence budget left' (spec 19 D14)." },
+              absentCount: { type: "integer" },
+              lateCount: { type: "integer" },
+            },
+          },
+          streak: { type: "integer", minimum: 0, description: "Consecutive attended past sessions; ABSENT breaks it, unmarked is skipped." },
+          sessions: {
+            type: "array",
+            description: "Past sessions, newest first.",
+            items: {
+              type: "object",
+              properties: {
+                sessionId: { type: "integer" },
+                title: { type: "string" },
+                startsAt: { type: "string", format: "date-time" },
+                dayKey: { type: "string" },
+                status: { oneOf: [{ $ref: "#/components/schemas/AttendanceStatus" }, { type: "null" }] },
+                checkedInAt: { type: ["string", "null"], format: "date-time" },
+                lateMinutes: { type: ["integer", "null"] },
+                costMinutes: { type: ["integer", "null"] },
+              },
+            },
+          },
+        },
+      },
     },
   },
 
@@ -1427,6 +1559,83 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/me/season-history": {
+      get: {
+        tags: ["Me"],
+        summary: "The caller's past seasons (students and alumni)",
+        description: "Self only. A current student's active season is excluded; an alumnus sees every enrollment. Soft-deleted seasons are hidden.",
+        responses: {
+          200: ok({ type: "object", properties: { seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonHistoryRow" } } } }, "Past seasons, most recent enrollment first."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/me/season": {
+      get: {
+        tags: ["Me"],
+        summary: "The caller's current season — progress, group, next sessions (students)",
+        responses: {
+          200: ok({ type: "object", properties: { season: { oneOf: [{ $ref: "#/components/schemas/MySeason" }, { type: "null" }] } } }, "Null when the student has no active season."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/me/attendance": {
+      get: {
+        tags: ["Me"],
+        summary: "The caller's absence budget, streak and past-session attendance (students)",
+        responses: {
+          200: ok({ $ref: "#/components/schemas/MyAttendance" }, "Empty shape (season null) when there is no active season."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/me/profile": {
+      get: {
+        tags: ["Me"],
+        summary: "The caller's own student profile (students and alumni)",
+        responses: {
+          200: ok({ type: "object", properties: { profile: { $ref: "#/components/schemas/MyProfile" } } }, "The profile."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Me"],
+        summary: "Edit the caller's own StudentProfile columns (students; alumni are read-only)",
+        description: "PATCH: absent = untouched, '' or null = cleared. Any key outside university/year/phone/dateOfBirth/spiritualBackground/gifts is refused 403 forbidden_field — name is PATCH /me, email is staff-only.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  university: { type: ["string", "null"], maxLength: 160 },
+                  year: { type: ["string", "null"], maxLength: 40 },
+                  phone: { type: ["string", "null"], maxLength: 60 },
+                  dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+                  spiritualBackground: { type: ["string", "null"], maxLength: 4000 },
+                  gifts: { type: ["string", "null"], maxLength: 2000 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok({ type: "object", properties: { profile: { $ref: "#/components/schemas/MyProfile" } } }, "The updated profile."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
     "/api/v1/me/password": {
       post: {
         tags: ["Me"],
@@ -2195,7 +2404,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Edit a student's profile",
         description:
-          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The student may edit name, email, university, year, phone, dateOfBirth, spiritualBackground and gifts, never `notes` or `activeSeasonId`. ADMIN (of a season with an ACTIVE enrollment for the student) adds `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
+          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The subject may edit university, year, phone, dateOfBirth, spiritualBackground and gifts only (never `name` — that is PATCH /me — nor `email`, `notes` or `activeSeasonId`). ADMIN (of a season with an ACTIVE enrollment for the student) adds `name`, `email` and `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -2828,7 +3037,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Student self check-in",
         description:
-          "Marks the caller PRESENT, or LATE with the elapsed minutes if check-in opened earlier. Check-in hard-stops three hours after opening even if never explicitly closed.",
+          "Marks the caller PRESENT, or LATE with the whole minutes elapsed since the session's start (ruling C3 — not since check-in opened). Check-in hard-stops three hours after opening even if never explicitly closed.",
         requestBody: {
           required: true,
           content: {
@@ -2847,7 +3056,7 @@ export const openApiDocument = {
               type: "object",
               properties: {
                 status: { type: "string", enum: ["PRESENT", "LATE"] },
-                minutesLate: { type: "integer" },
+                minutesLate: { type: "integer", description: "Whole minutes after Session.startsAt; 0 when on time." },
               },
             },
             "Checked in.",

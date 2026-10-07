@@ -74,21 +74,22 @@ studentsRouter.get("/:id", async (req, res) => {
  * schema runs (a schema parse cannot distinguish "sent null" from "absent"
  * after the fact for refusal purposes — and refusal must name the key).
  *
- * - The subject edits their own identity and contact fields (R22) but never
+ * - The subject edits their own StudentProfile columns only — the same six
+ *   PATCH /me/profile accepts (Plan 11 Decision 1). `name` belongs to
+ *   PATCH /me and `email` is staff-only (spec 18 D2/D8: changing a login
+ *   identifier without verification is an account-takeover primitive). Never
  *   `notes` or `activeSeasonId` (R23). v1 silently dropped those from a
  *   self-edit (R24); an API that pretends a write worked teaches clients to
  *   trust it, so this refuses with `forbidden_field` instead.
- * - ADMIN adds `notes`. NOT `activeSeasonId`: repointing a student's season
- *   is the same unscoped power v1's create leaked to every admin (§4.3), and
- *   it follows creation to SUPER in v2.
+ * - ADMIN adds `name`, `email` and `notes`. NOT `activeSeasonId`: repointing
+ *   a student's season is the same unscoped power v1's create leaked to
+ *   every admin (§4.3), and it follows creation to SUPER in v2.
  * - SUPER: everything (allowlist `null` = unchecked).
  */
-// Plan 11 Task 4 later removes "name" and "email" from SELF_EDITABLE (spec
-// 18 D8) and re-spreads ADMIN_EDITABLE so staff keep them.
 const SELF_EDITABLE = new Set([
-  "name", "email", "university", "year", "phone", "dateOfBirth", "spiritualBackground", "gifts",
+  "university", "year", "phone", "dateOfBirth", "spiritualBackground", "gifts",
 ]);
-const ADMIN_EDITABLE = new Set([...SELF_EDITABLE, "notes"]);
+const ADMIN_EDITABLE = new Set([...SELF_EDITABLE, "name", "email", "notes"]);
 
 studentsRouter.post("/", async (req, res) => {
   const user = requireUser(req);

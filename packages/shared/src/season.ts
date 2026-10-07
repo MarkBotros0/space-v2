@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { seasonStatusSchema } from "./enums";
+import { isoDaySchema } from "./org-time";
 
 // Response shapes for the mobile client.
 //
@@ -128,3 +129,86 @@ export const seasonRefResponseSchema = z.object({ id: z.number(), code: z.string
 export type SeasonRefResponse = z.infer<typeof seasonRefResponseSchema>;
 
 export const seasonDeletedResponseSchema = z.object({ deleted: z.literal(true) });
+
+// ---------------------------------------------------------------------------
+// Student self-service — Plan 11
+// ---------------------------------------------------------------------------
+
+export const seasonHistoryCurriculumItemSchema = z.object({
+  sessionId: z.number(),
+  title: z.string(),
+  startsAt: z.string(),
+  dayKey: isoDaySchema,
+});
+
+/**
+ * One past enrollment (spec 02 R33–R41). `.strict()` on purpose: R34 is a
+ * privacy rule — history carries attendance % and curriculum ONLY. A
+ * submissions/feedback/notes field arriving here fails the parse instead of
+ * being silently stripped.
+ */
+export const seasonHistoryRowSchema = z
+  .object({
+    seasonId: z.number(),
+    title: z.string(),
+    startDate: z.string(),
+    endDate: z.string(),
+    groupName: z.string().nullable(),
+    attendancePct: z.number().int().min(0).max(100),
+    curriculum: z.array(seasonHistoryCurriculumItemSchema),
+  })
+  .strict();
+export type SeasonHistoryRow = z.infer<typeof seasonHistoryRowSchema>;
+
+export const seasonHistoryResponseSchema = z.object({ seasons: z.array(seasonHistoryRowSchema) });
+
+/** v1 showed leaders' emails to their students (spec 05 R89). */
+export const mySeasonLeaderSchema = z.object({ id: z.number(), name: z.string(), email: z.string() });
+
+/** Peers: name only — never an email (R89). Strict so an address cannot slip in. */
+export const mySeasonMemberSchema = z
+  .object({ id: z.number(), name: z.string(), isYou: z.boolean() })
+  .strict();
+
+export const mySeasonGroupSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  leaders: z.array(mySeasonLeaderSchema),
+  members: z.array(mySeasonMemberSchema),
+});
+
+export const mySeasonUpcomingSessionSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  startsAt: z.string(),
+  dayKey: isoDaySchema,
+  location: z.string().nullable(),
+});
+
+/**
+ * `GET /api/v1/me/season` — the student's current season page (v1
+ * app/student/season/page.tsx), every figure server-derived (C4).
+ */
+export const mySeasonSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  status: seasonStatusSchema,
+  startDate: z.string(),
+  endDate: z.string(),
+  /** R29: session-based, not calendar-based — completed = startsAt <= now. */
+  progress: z.object({
+    completedSessions: z.number().int().min(0),
+    totalSessions: z.number().int().min(0),
+    pct: z.number().int().min(0).max(100),
+  }),
+  /** From SeasonEnrollment.groupId for THIS season (C9), not GroupStudent. */
+  group: mySeasonGroupSchema.nullable(),
+  /** R30: the next three sessions, `startsAt >= now`, ascending. */
+  upcoming: z.array(mySeasonUpcomingSessionSchema).max(3),
+});
+export type MySeason = z.infer<typeof mySeasonSchema>;
+
+export const mySeasonResponseSchema = z.object({ season: mySeasonSchema.nullable() });
