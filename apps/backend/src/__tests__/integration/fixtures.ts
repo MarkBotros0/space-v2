@@ -149,6 +149,17 @@ export async function cleanupTestData(): Promise<void> {
     await db.sessionVideoProgress.deleteMany({ where: { session: inSeasons } });
     await db.sessionVideoQuestion.deleteMany({ where: { session: inSeasons } });
     await db.forumComment.deleteMany({ where: { submission: { assignment: inSeasons } } });
+    // Quiz graph. Quiz.season is onDelete: Cascade so season.deleteMany below
+    // would usually reach these, but QuizGrade.studentUserId and
+    // QuizAttempt.studentUserId are onDelete: Restrict against User - if the
+    // cascade ever fails to fire, user.deleteMany at the end of this function
+    // throws a foreign-key error and strands test rows in a database
+    // jpc-space is live against. Explicit, like every other line here.
+    await db.quizAnswer.deleteMany({ where: { attempt: { quiz: inSeasons } } });
+    await db.quizAttempt.deleteMany({ where: { quiz: inSeasons } });
+    await db.quizGrade.deleteMany({ where: { quiz: inSeasons } });
+    await db.quizQuestion.deleteMany({ where: { quiz: inSeasons } });
+    await db.quiz.deleteMany({ where: inSeasons });
     await db.attendance.deleteMany({ where: { session: inSeasons } });
     await db.submissionFile.deleteMany({
       where: { submission: { assignment: inSeasons } },
