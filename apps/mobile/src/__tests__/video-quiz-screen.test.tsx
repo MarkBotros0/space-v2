@@ -1,7 +1,13 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
-  apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+  apiClient: {
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    patch: jest.fn(),
+    delete: jest.fn(),
+  },
 }));
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "12" }),
@@ -70,12 +76,26 @@ const quiz = {
 };
 
 const studentSession = {
-  user: { id: 9, name: "S", email: "s@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 9,
+    name: "S",
+    email: "s@jpc.test",
+    role: "STUDENT" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
 
 const adminSession = {
-  user: { id: 2, name: "A", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 2,
+    name: "A",
+    email: "a@jpc.test",
+    role: "ADMIN" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
 };
 
@@ -103,6 +123,27 @@ describe("student video quiz", () => {
     // The authoring read carries correctIndex for every question. A student
     // screen must never issue it, whatever the server would answer.
     expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/video-questions");
+  });
+
+  it("refuses a payload that leaks correctIndex instead of rendering the quiz", async () => {
+    // The answer-key split's client half: studentVideoQuizSchema is .strict(),
+    // so a backend that starts selecting the key fails at the boundary.
+    const leaky = {
+      ...quiz,
+      questions: [{ ...question(1, 30), correctIndex: 0 }, question(2, 60)],
+    };
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/sessions/12"
+        ? Promise.resolve({ data: { data: sessionDetail } })
+        : Promise.resolve({ data: { data: leaky } }),
+    );
+
+    renderWithProviders(<SessionDetailScreen />);
+
+    expect(
+      await screen.findByText("Couldn't load the video quiz.", {}, { timeout: 5000 }),
+    ).toBeTruthy();
+    expect(screen.queryByText("0 / 2 points")).toBeNull();
   });
 
   it("opens the question modal at the barrier and posts the answer", async () => {
@@ -153,9 +194,7 @@ describe("student video quiz", () => {
     renderWithProviders(<SessionDetailScreen />);
 
     expect(await screen.findByText("Watch on YouTube")).toBeTruthy();
-    expect(
-      screen.getByText("This session's video link can't be played in the app."),
-    ).toBeTruthy();
+    expect(screen.getByText("This session's video link can't be played in the app.")).toBeTruthy();
   });
 
   it("shows a completed quiz without a barrier", async () => {
