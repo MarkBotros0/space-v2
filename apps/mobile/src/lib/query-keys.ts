@@ -151,4 +151,24 @@ export const queryKeys = {
     attendance: (seasonId: number | null) => [...queryKeys.me.all, "attendance", { seasonId }] as const,
     profile: () => [...queryKeys.me.all, "profile"] as const,
   },
+  videoQuiz: {
+    all: ["video-quiz"] as const,
+    forSession: (sessionId: number) => [...queryKeys.videoQuiz.all, "student", sessionId] as const,
+    questions: (sessionId: number) => [...queryKeys.videoQuiz.all, "admin", sessionId] as const,
+    results: (sessionId: number) => [...queryKeys.videoQuiz.all, "results", sessionId] as const,
+  },
+  forum: {
+    all: ["forum"] as const,
+    thread: (assignmentId: number) => [...queryKeys.forum.all, "thread", assignmentId] as const,
+    comments: (assignmentId: number, postPublicId: string) =>
+      [...queryKeys.forum.all, "comments", assignmentId, postPublicId] as const,
+  },
+  events: {
+    all: ["events"] as const,
+    list: () => [...queryKeys.events.all, "list"] as const,
+    // Plan 16's UpcomingEventsCard (spec 19 §7). Under `all`, so every event
+    // write's prefix invalidation refreshes the dashboards too.
+    upcoming: (limit: number) => [...queryKeys.events.all, "upcoming", limit] as const,
+    detail: (id: number) => [...queryKeys.events.all, "detail", id] as const,
+  },
 } as const;

@@ -11,8 +11,11 @@ import { orgDayKey, orgWallTime } from "../org-time";
  * question — a student who moves to a new season's group loses the old row, and
  * every past season then reports them as ungrouped. SeasonEnrollment.groupId is
  * the per-season fact.
+ *
+ * Exported for the forum gates, which ask the same per-season question about a
+ * post's author and its reader (ruling C9).
  */
-async function groupIdInSeason(studentUserId: number, seasonId: number): Promise<number | null> {
+export async function groupIdInSeason(studentUserId: number, seasonId: number): Promise<number | null> {
   const enrollment = await db.seasonEnrollment.findUnique({
     where: { studentUserId_seasonId: { studentUserId, seasonId } },
     select: { groupId: true },

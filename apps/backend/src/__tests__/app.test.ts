@@ -44,3 +44,15 @@ describe("CORS", () => {
     },
   );
 });
+
+describe("routers mounted on the shared /api/v1 prefix (ruling X5)", () => {
+  it("leaves an unknown /api/v1 path a not_found 404, not a 401", async () => {
+    // forumRouter and videoQuizRouter mount at /api/v1. If either ever gains a
+    // router-wide `use(requireAuth)`, this anonymous request is refused with
+    // 401 before it can reach the catch-all, and the envelope CLAUDE.md
+    // promises for unknown paths is gone.
+    const res = await request(createApp()).get("/api/v1/space-v2-no-such-route");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+});

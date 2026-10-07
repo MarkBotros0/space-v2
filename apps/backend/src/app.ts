@@ -18,6 +18,9 @@ import { quizzesRouter } from "./routes/quizzes";
 import { seasonEngagementRouter, studentEngagementRouter } from "./routes/engagement";
 import { myNotesRouter, notesRouter, studentNotesRouter } from "./routes/notes";
 import { notificationsRouter } from "./routes/notifications";
+import { eventsRouter } from "./routes/events";
+import { forumRouter } from "./routes/forum";
+import { videoQuizRouter } from "./routes/video-quiz";
 import { docsRouter } from "./routes/docs";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
@@ -59,6 +62,13 @@ export function createApp(): Express {
   app.use("/api/v1/me", meRouter);
   app.use("/api/v1/notifications", notificationsRouter);
   app.use("/api/v1/users", usersRouter);
+  // forum + video-quiz: mounted at the version root because their paths span
+  // two parents each. They carry no router-level middleware (per-route
+  // requireAuth, ruling X5), so a request that matches none of their routes
+  // falls straight through to the prefixed routers and the catch-all 404.
+  app.use("/api/v1", forumRouter);
+  app.use("/api/v1", videoQuizRouter);
+  app.use("/api/v1/events", eventsRouter);
   app.use("/api/v1/seasons", seasonsRouter);
   app.use("/api/v1/groups", groupsRouter);
   app.use("/api/v1/sessions", sessionsRouter);

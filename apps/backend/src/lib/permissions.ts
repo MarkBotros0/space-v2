@@ -2,6 +2,7 @@ import { db } from "../db/client";
 import type { Prisma } from "../generated/prisma/client";
 
 import type { SessionUser } from "./auth/tokens";
+import { groupIdInSeason, studentCanSeeAssignment } from "./queries/assignments";
 import { isAdminOfSeason, isLeaderOfGroup, isMentor, isSuper } from "./rbac";
 
 export async function canAccessSeason(user: SessionUser, seasonId: number): Promise<boolean> {
@@ -468,4 +469,179 @@ export async function canWriteNote(user: SessionUser, studentUserId: number): Pr
 
   // STUDENT can never write a note, including about themselves (R51).
   return false;
+}
+
+/**
+ * Authoring interactive video questions on a session.
+ *
+ * Season-scoped ADMIN + SUPER only — not a group LEADER, not a MENTOR. Ported
+ * from v1's `canManageSessionVideo`, which is one of the gates v1 got right;
+ * what v1 lacked was any gate on the *reads*, one of which carries the answer
+ * key for every question (spec 13 R68/R73).
+ */
+export async function canManageSessionVideo(
+  user: SessionUser,
+  sessionId: number,
+): Promise<boolean> {
+  if (isSuper(user)) return true;
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    select: { seasonId: true },
+  });
+  if (!session) return false;
+  return isAdminOfSeason(user, session.seasonId);
+}
+
+/**
+ * A student with a live place in this season.
+ *
+ * Deliberately stricter than `canAccessSeason`, whose student branch accepts
+ * any `SeasonEnrollment` row whatever its status. v1 gated the video answer and
+ * progress actions on that looser predicate while the page that rendered the
+ * player required `status: "ACTIVE"` — so a dropped or completed student could
+ * not open the page and could still answer (spec 13 R51, §10 D9). This is the
+ * rule v1 intended, made real.
+ *
+ * If alumni are ever meant to keep access to a past season's material, that is
+ * a separate named rule, not a side effect of a permissive gate.
+ */
+export async function hasActiveEnrollment(user: SessionUser, seasonId: number): Promise<boolean> {
+  if (user.role !== "STUDENT") return false;
+  const enrollment = await db.seasonEnrollment.findUnique({
+    where: { studentUserId_seasonId: { studentUserId: user.userId, seasonId } },
+    select: { status: true },
+  });
+  return enrollment?.status === "ACTIVE";
+}
+
+/**
+ * Who may comment on a forum post.
+ *
+ * v1's `canCommentOnForumSubmission` is the one gate in domain 14 that would
+ * have survived an API — it re-reads the target, re-checks the type and the
+ * flag, and compares live group membership. Two changes:
+ *
+ *  1. Membership resolves through `SeasonEnrollment`, not `GroupStudent`
+ *     (ruling C9). `GroupStudent.studentUserId` is `@unique` across the whole
+ *     database, so it answers "what group is this student in now" — the wrong
+ *     question for an assignment in a season they may since have left.
+ *  2. LEADER is admitted for groups they lead (spec 14 §10 D3). In v1 both
+ *     LEADER and MENTOR fall through to `return false`, so a leader cannot
+ *     participate in — or moderate — the discussion of their own group. That is
+ *     an omission by missing `if`, not a policy. MENTOR stays read-only.
+ *
+ * Also new: a DRAFT target is refused. v1 read only `assignmentId` from the
+ * target row, so a group-mate's unposted draft was a valid comment target for
+ * anyone who could name its sequential id (spec 14 R43).
+ */
+export async function canCommentOnForumSubmission(
+  user: SessionUser,
+  submissionId: number,
+): Promise<boolean> {
+  const sub = await db.submission.findUnique({
+    where: { id: submissionId },
+    select: {
+      studentUserId: true,
+      status: true,
+      assignment: { select: { seasonId: true, type: true, forumAllowComments: true } },
+    },
+  });
+  if (!sub) return false;
+  if (sub.assignment.type !== "FORUM" || !sub.assignment.forumAllowComments) return false;
+  if (sub.status === "DRAFT") return false;
+
+  if (isSuper(user)) return true;
+  if (isAdminOfSeason(user, sub.assignment.seasonId)) return true;
+
+  const authorGroupId = await groupIdInSeason(sub.studentUserId, sub.assignment.seasonId);
+  if (authorGroupId === null) return false;
+
+  if (user.role === "LEADER") return isLeaderOfGroup(user, authorGroupId);
+  if (user.role === "STUDENT") {
+    const mine = await groupIdInSeason(user.userId, sub.assignment.seasonId);
+    return mine !== null && mine === authorGroupId;
+  }
+  return false;
+}
+
+/**
+ * Who may remove a comment.
+ *
+ * v1: the author, SUPER, or an ADMIN of the assignment's season — but the
+ * delete control renders only for the viewer's own comments and no staff screen
+ * shows a thread at all, so the staff half of that rule has never been
+ * exercisable (spec 14 R49/R52/R53). LEADER is added for the same reason as
+ * above. The post's own author is NOT admitted for someone else's comment:
+ * owning a thread is not moderating it.
+ */
+export async function canDeleteForumComment(
+  user: SessionUser,
+  commentId: number,
+): Promise<boolean> {
+  const comment = await db.forumComment.findUnique({
+    where: { id: commentId },
+    select: {
+      authorUserId: true,
+      submission: {
+        select: { studentUserId: true, assignment: { select: { seasonId: true } } },
+      },
+    },
+  });
+  if (!comment) return false;
+  if (comment.authorUserId === user.userId) return true;
+  if (isSuper(user)) return true;
+
+  const seasonId = comment.submission.assignment.seasonId;
+  if (isAdminOfSeason(user, seasonId)) return true;
+
+  if (user.role === "LEADER") {
+    const authorGroupId = await groupIdInSeason(comment.submission.studentUserId, seasonId);
+    return authorGroupId !== null && isLeaderOfGroup(user, authorGroupId);
+  }
+  return false;
+}
+
+/**
+ * Whose posts this caller may read on a forum assignment.
+ *
+ * `groupIds: null` means every group in the season. The staff arm is new
+ * capability — v1 has no staff forum screen whatsoever, so nobody could see a
+ * thread to moderate it (spec 14 §10 D2/D3).
+ */
+export type ForumAudience =
+  | { kind: "student"; groupId: number | null }
+  | { kind: "staff"; groupIds: number[] | null };
+
+export async function forumAudienceFor(
+  user: SessionUser,
+  assignmentId: number,
+): Promise<ForumAudience | null> {
+  const assignment = await db.assignment.findFirst({
+    where: { id: assignmentId, deletedAt: null, type: "FORUM" },
+    select: { seasonId: true, isAllGroups: true, targets: { select: { groupId: true } } },
+  });
+  if (!assignment) return null;
+
+  if (isSuper(user) || isMentor(user) || isAdminOfSeason(user, assignment.seasonId)) {
+    return { kind: "staff", groupIds: null };
+  }
+
+  if (user.role === "LEADER") {
+    const scope = await staffScopeForSeason(user, assignment.seasonId);
+    if (scope === null || scope.kind !== "groups") return null;
+    return { kind: "staff", groupIds: scope.groupIds };
+  }
+
+  if (user.role !== "STUDENT") return null;
+  if (!(await hasActiveEnrollment(user, assignment.seasonId))) return null;
+  // The targeting rule v1 enforced only by refusing to render the page (R15),
+  // from the same helper the assignment reads use.
+  const targeted = await studentCanSeeAssignment(
+    user.userId,
+    assignment.seasonId,
+    assignment.isAllGroups,
+    assignment.targets.map((t) => t.groupId),
+  );
+  if (!targeted) return null;
+  return { kind: "student", groupId: await groupIdInSeason(user.userId, assignment.seasonId) };
 }

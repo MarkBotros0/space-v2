@@ -28,6 +28,18 @@ export function testEmail(label: string): string {
  * scale). Season codes are bounded at 40 (v1 R4), and duplication appends
  * "-<year>" to derived codes, so the fixture must leave room.
  */
+/**
+ * JpcEvent has no code or email column, so the prefix lives in its title.
+ *
+ * This matters more than it looks: `JpcEvent.season` is `onDelete: SetNull`, so
+ * deleting a test season does not remove its events — it nulls their `seasonId`
+ * and leaves the rows behind in a database jpc-space is live against. Every
+ * event fixture must go through this helper or `cleanupTestData` cannot find it.
+ */
+export function testEventTitle(label: string): string {
+  return `${TEST_PREFIX}${label}-${randomUUID()}`;
+}
+
 export function testSeasonCode(): string {
   return `${TEST_PREFIX}${randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
@@ -114,6 +126,8 @@ export async function login(app: Express, email: string): Promise<string> {
  * with a config or invocation that allows parallel workers.
  */
 export async function cleanupTestData(): Promise<void> {
+  await db.jpcEvent.deleteMany({ where: { title: { startsWith: TEST_PREFIX } } });
+
   const seasons = await db.season.findMany({
     where: { code: { startsWith: TEST_PREFIX } },
     select: { id: true },
@@ -123,6 +137,18 @@ export async function cleanupTestData(): Promise<void> {
   if (seasonIds.length > 0) {
     const inSeasons = { seasonId: { in: seasonIds } } as const;
 
+    // Video-quiz and forum rows cascade from Session and Submission, both of
+    // which are deleted below — but three of these tables hold onDelete:
+    // Restrict relations to User, so a row that survives its parent's delete
+    // makes the user delete at the end of this function throw and strands test
+    // fixtures in the shared database. Removing them explicitly first means the
+    // cleanup never depends on cascade ordering being right.
+    await db.sessionVideoQuestionResponse.deleteMany({
+      where: { question: { session: inSeasons } },
+    });
+    await db.sessionVideoProgress.deleteMany({ where: { session: inSeasons } });
+    await db.sessionVideoQuestion.deleteMany({ where: { session: inSeasons } });
+    await db.forumComment.deleteMany({ where: { submission: { assignment: inSeasons } } });
     await db.attendance.deleteMany({ where: { session: inSeasons } });
     await db.submissionFile.deleteMany({
       where: { submission: { assignment: inSeasons } },
