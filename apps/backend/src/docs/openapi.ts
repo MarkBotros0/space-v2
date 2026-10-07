@@ -2831,6 +2831,23 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/me/devices": {
+      post: {
+        tags: ["Me"],
+        summary: "Register this device for push (blocked on cutover)",
+        description:
+          "The request body is validated, then the endpoint answers `503 push_unavailable`: Expo push needs a device-token table, the database schema is frozen while v1 runs against it, and the table lands at cutover (see docs/superpowers/cutover/2026-08-24-notifications-push.md). The contract is fixed now so the client is built once; the client keeps the token locally and stops retrying this session.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/DeviceRegistration" } } },
+        },
+        responses: {
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          503: conflict("`push_unavailable` — push registration is not available until the cutover migration lands."),
+        },
+      },
+    },
     "/api/v1/me/notes": {
       get: {
         tags: ["Notes"],

@@ -107,3 +107,35 @@ describe("notification preferences", () => {
     expect((await request(app).get("/api/v1/me/notification-preferences")).status).toBe(401);
   });
 });
+
+describe("POST /api/v1/me/devices", () => {
+  it("answers 503 push_unavailable — there is no table to write to yet", async () => {
+    // The schema is frozen while v1 runs (ruling C1) and there is no
+    // DeviceToken model, so registration cannot be honoured. 503 rather than
+    // 404 or 501: the endpoint exists and the caller is entitled to it, the
+    // capability is switched off — the same shape as uploads_disabled.
+    const res = await request(app)
+      .post("/api/v1/me/devices")
+      .set("authorization", `Bearer ${prefsToken}`)
+      .send({ token: "ExponentPushToken[space-v2-test]", platform: "ios" });
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe("push_unavailable");
+  });
+
+  it("validates the body before answering, so the contract is exercised now", async () => {
+    const res = await request(app)
+      .post("/api/v1/me/devices")
+      .set("authorization", `Bearer ${prefsToken}`)
+      .send({ token: "t", platform: "web" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses an anonymous caller", async () => {
+    const res = await request(app)
+      .post("/api/v1/me/devices")
+      .send({ token: "t", platform: "ios" });
+    expect(res.status).toBe(401);
+  });
+});
