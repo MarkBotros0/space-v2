@@ -116,4 +116,17 @@ export const queryKeys = {
     attempts: (id: number | null) => [...queryKeys.quizzes.detail(id), "attempts"] as const,
     grades: (id: number | null) => [...queryKeys.quizzes.detail(id), "grades"] as const,
   },
+  /**
+   * The caller's own resources (/api/v1/me/*). Keys that the server resolves
+   * from the token's activeSeasonId carry it, so a refreshed token pointing at
+   * another season never serves the old season's cache.
+   */
+  me: {
+    all: ["me"] as const,
+    seasonHistory: (activeSeasonId: number | null) =>
+      [...queryKeys.me.all, "season-history", { activeSeasonId }] as const,
+    season: (seasonId: number | null) => [...queryKeys.me.all, "season", { seasonId }] as const,
+    attendance: (seasonId: number | null) => [...queryKeys.me.all, "attendance", { seasonId }] as const,
+    profile: () => [...queryKeys.me.all, "profile"] as const,
+  },
 } as const;
