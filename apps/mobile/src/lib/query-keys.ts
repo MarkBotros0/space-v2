@@ -21,6 +21,19 @@ import type { RecurrenceScope } from "@space/shared";
  * One small factory per domain, added as screens are wired up.
  */
 export const queryKeys = {
+  reports: {
+    all: ["reports"] as const,
+    // The scope is part of the key: two seasons' summaries are different
+    // cached documents, and invalidating `reports.all` catches both.
+    engagement: (seasonId: number | null) =>
+      [...queryKeys.reports.all, "engagement", { seasonId }] as const,
+    engagementStudents: (seasonId: number | null, band: string | null) =>
+      [...queryKeys.reports.all, "engagement", "students", { seasonId, band }] as const,
+    organisation: () => [...queryKeys.reports.all, "organisation"] as const,
+    // Nullable per this file's header convention — no -1 sentinel.
+    exportManifest: (seasonId: number | null) =>
+      [...queryKeys.reports.all, "export-manifest", { seasonId }] as const,
+  },
   notes: {
     all: ["notes"] as const,
     lists: () => [...queryKeys.notes.all, "list"] as const,
