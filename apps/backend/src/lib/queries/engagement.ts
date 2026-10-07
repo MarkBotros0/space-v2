@@ -1,7 +1,7 @@
 import type { EngagementRow } from "@space/shared";
 // Relative, not "@space/shared": this is a VALUE import, and tsc's rootDir here
-// is the repo root, so it emits without rewriting bare specifiers. A
-// require("@space/shared") at runtime resolves via node_modules back to the
+// is the repo root, so it emits without rewriting bare specifiers. A bare
+// specifier at runtime resolves via node_modules back to the
 // TypeScript source instead of the compiled sibling in dist/packages/shared/src/
 // and the built server dies with ERR_MODULE_NOT_FOUND (CLAUDE.md). Five levels
 // up from src/lib/queries/, not four — routes/ is one shallower.

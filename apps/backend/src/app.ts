@@ -23,6 +23,7 @@ import { forumRouter } from "./routes/forum";
 import { videoQuizRouter } from "./routes/video-quiz";
 import { docsRouter } from "./routes/docs";
 import { reportsRouter } from "./routes/reports";
+import { reportExportsRouter, seasonExportsRouter } from "./routes/exports";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -91,6 +92,15 @@ export function createApp(): Express {
   app.use("/api/v1/students", studentEngagementRouter);
   app.use("/api/v1/seasons", seasonEngagementRouter);
   app.use("/api/v1/reports", reportsRouter);
+  // Mounted alongside the reports router so /reports/engagement/export sits
+  // beside /reports/engagement. Express tries reportsRouter first; it defines
+  // no /engagement/export, so the request falls through.
+  app.use("/api/v1/reports", reportExportsRouter);
+  // Fall-through mounting after seasonsRouter: that router's /:id, /:id/groups,
+  // /:id/sessions and /:id/assignments cannot match /:id/exports/*, and keeping
+  // this domain's routes in this domain's file stops seasons.ts accumulating a
+  // fourth unrelated concern.
+  app.use("/api/v1/seasons", seasonExportsRouter);
 
   // Must be last: 404 catches anything unmatched above, the error handler
   // catches anything thrown (including JSON parse failures from express.json()).

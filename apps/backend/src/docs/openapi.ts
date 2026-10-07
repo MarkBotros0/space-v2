@@ -200,6 +200,50 @@ const organisationReportSchemaDoc = {
   },
 } as const;
 
+const xlsxResponse = {
+  description: "XLSX workbook (bytes). Every non-200 on this path is the JSON error envelope.",
+  headers: {
+    "Content-Disposition": {
+      schema: { type: "string" },
+      description:
+        'attachment; filename="<ascii fallback>"; filename*=UTF-8\'\'<percent-encoded>. ' +
+        "The filename is built by exportFilename() in packages/shared and carries the " +
+        "organisation-timezone day.",
+    },
+  },
+  content: {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+      schema: { type: "string", format: "binary" },
+    },
+  },
+} as const;
+
+const EXPORT_COMMON =
+  "Success is bytes plus Content-Disposition; every error is the JSON envelope, so a " +
+  "client can tell a 403 from a file. ENABLE_UPLOADS does NOT gate this endpoint — it " +
+  "reads database rows and touches no Storage driver. Rate-limited to 10 per 15 " +
+  "minutes per user; the 429 is `too_many_requests` in the envelope.";
+
+const exportManifestSchemaDoc = {
+  type: "object",
+  required: ["filename", "mimeType", "sheets", "estimatedBytes", "generatedAt", "scopeDescription"],
+  properties: {
+    filename: { type: "string" },
+    mimeType: { type: "string" },
+    sheets: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["name", "columnCount", "rowCount"],
+        properties: { name: { type: "string" }, columnCount: { type: "integer" }, rowCount: { type: "integer" } },
+      },
+    },
+    estimatedBytes: { type: "integer", description: "A heuristic, not a promise." },
+    generatedAt: { type: "string", format: "date-time" },
+    scopeDescription: { type: "string" },
+  },
+} as const;
+
 const idParam = {
   name: "id",
   in: "path",
@@ -4893,6 +4937,73 @@ export const openApiDocument = {
           200: ok(organisationReportSchemaDoc, "Organisation roll-up"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/reports/engagement/export": {
+      get: {
+        tags: ["Reports"],
+        summary: "Engagement export (XLSX) for the caller's permitted seasons",
+        description:
+          EXPORT_COMMON + "\n\n" +
+          "Roles: SUPER, ADMIN (their seasons) and MENTOR. MENTOR may take THIS export — " +
+          "it is the data v1 shows mentors on screen — and may not take the season " +
+          "workbook. Scope intersection is identical to /reports/engagement. " +
+          "`?format=csv` is refused with a legible 400: XLSX is the only format (D7).",
+        parameters: [
+          { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+          { name: "format", in: "query", required: false, schema: { type: "string", enum: ["xlsx"], default: "xlsx" } },
+        ],
+        responses: {
+          200: xlsxResponse,
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/exports/workbook": {
+      get: {
+        tags: ["Reports"],
+        summary: "Season workbook (XLSX): attendance, grades, assignments, key",
+        description:
+          EXPORT_COMMON + "\n\n" +
+          "Roles: SUPER, or an ADMIN of this season. MENTOR is REFUSED — a deliberate " +
+          "divergence from v1, whose only mentor protection was an unrendered button " +
+          "(spec D6 #3). A soft-deleted season is 404.\n\n" +
+          "`Submitted %` divides by the assignments assigned to that student (ruling C5), " +
+          "which CHANGES its value relative to v1 for any season with a group-targeted " +
+          "assignment. LATE attendance cells render \"L\": the recorded minutes are " +
+          "measured from the wrong instant and are withheld until the cutover backfill " +
+          "(ruling C3).",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        responses: {
+          200: xlsxResponse,
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/exports/manifest": {
+      get: {
+        tags: ["Reports"],
+        summary: "What the season workbook will contain, without building it",
+        description:
+          "Same gate as the workbook (a manifest a caller cannot act on is a size oracle). " +
+          "Returns the exact filename the workbook download will carry, the sheet list, an " +
+          "estimated byte size for a cellular-data warning, and a scope description. Not " +
+          "rate-limited: it builds nothing.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        responses: {
+          200: ok(exportManifestSchemaDoc, "Workbook manifest"),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
         },
       },
     },

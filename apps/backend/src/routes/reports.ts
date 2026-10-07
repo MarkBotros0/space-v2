@@ -2,8 +2,8 @@
 import { Router } from "express";
 
 // Relative, not "@space/shared": these are VALUE imports (Zod schemas), and
-// tsc's rootDir here is the repo root, so a bare specifier emits a
-// require("@space/shared") that resolves back to the TypeScript source at
+// tsc's rootDir here is the repo root, so a bare specifier is emitted as-is and
+// resolves back to the TypeScript source at
 // runtime and crashes the built server with ERR_MODULE_NOT_FOUND (CLAUDE.md).
 // Four levels up from src/routes/.
 import {
