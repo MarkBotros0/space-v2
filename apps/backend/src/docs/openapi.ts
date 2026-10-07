@@ -244,6 +244,94 @@ const exportManifestSchemaDoc = {
   },
 } as const;
 
+// Imports (Plan 17). Hand-authored like every response in this document.
+const importCellValuesDoc = {
+  type: "object",
+  description:
+    "The raw trimmed cell text of one row. Flat (no nested profile). Resubmitted verbatim on commit.",
+  properties: {
+    name: { type: "string" },
+    email: { type: "string" },
+    university: { type: "string", nullable: true },
+    year: { type: "string", nullable: true },
+    phone: { type: "string", nullable: true },
+    dateOfBirth: { type: "string", nullable: true, description: "Raw text as typed; YYYY-MM-DD is the only accepted form." },
+    spiritualBackground: { type: "string", nullable: true },
+    gifts: { type: "string", nullable: true },
+    notes: { type: "string", nullable: true },
+  },
+} as const;
+
+const studentImportPreviewDoc = {
+  type: "object",
+  properties: {
+    rows: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          rowNumber: { type: "integer", description: "The operator's own line number; the header is line 1. Not contiguous: blank lines keep their number." },
+          name: { type: "string" },
+          email: { type: "string" },
+          status: { type: "string", enum: ["new", "exists", "duplicate", "invalid", "previously_removed"] },
+          message: { type: "string", nullable: true },
+          values: importCellValuesDoc,
+        },
+      },
+    },
+    detectedColumns: { type: "array", items: { type: "string" } },
+    unrecognisedColumns: { type: "array", items: { type: "string" }, description: "Header cells that matched no alias, echoed as typed (trimmed)." },
+    delimiter: { type: "string", enum: ["comma", "tab"] },
+    counts: {
+      type: "object",
+      properties: {
+        new: { type: "integer" },
+        exists: { type: "integer" },
+        duplicate: { type: "integer" },
+        invalid: { type: "integer" },
+        previously_removed: { type: "integer" },
+        total: { type: "integer" },
+      },
+    },
+  },
+} as const;
+
+const importTemplateDoc = {
+  type: "object",
+  properties: {
+    columns: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          label: { type: "string" },
+          acceptedHeaders: { type: "array", items: { type: "string" } },
+          required: { type: "boolean" },
+          maxLength: { type: "integer", nullable: true },
+          target: { type: "string" },
+          note: { type: "string", nullable: true },
+        },
+      },
+    },
+    headerRow: { type: "string", description: "A ready-made tab-separated header line." },
+    maxRows: { type: "integer" },
+    maxPasteChars: { type: "integer" },
+    capabilities: {
+      type: "object",
+      properties: { pasteText: { type: "boolean" }, fileUpload: { type: "boolean", description: "Hard false until file intake lands with the CMS." } },
+    },
+  },
+} as const;
+
+const pastedSheetBodyDoc = {
+  type: "object",
+  required: ["text"],
+  properties: {
+    text: { type: "string", minLength: 1, maxLength: 262144 },
+    delimiter: { type: "string", enum: ["comma", "tab", "auto"], default: "auto" },
+  },
+} as const;
+
 const idParam = {
   name: "id",
   in: "path",
@@ -310,6 +398,7 @@ export const openApiDocument = {
     { name: "Forum", description: "Forum assignments: the group thread, the post that unlocks it, and comments" },
     { name: "Events", description: "JPC events: one token-derived visibility rule, a bounded window, SUPER-only writes (event photos are deferred while uploads are disabled)" },
     { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
+    { name: "Imports", description: "Paste-first bulk entry: SUPER student importer and season-scoped group importer (preview, then commit)" },
   ],
   security: [{ bearerAuth: [] }],
   components: {
@@ -5110,6 +5199,39 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/imports/students/preview": {
+      post: {
+        tags: ["Imports"],
+        summary: "Preview a pasted student sheet (SUPER only)",
+        description:
+          "SUPER only, deliberately (spec D3) - not an oversight. Body is `{ text, delimiter? }`: **pasted text, not multipart**. An import sheet is read once, parsed in memory and never stored, so it is not an 'upload' and is not gated by `ENABLE_UPLOADS`. " +
+          "Every row is classified against the file and the live database: `new`, `exists` (email matched case-insensitively), `duplicate` (repeated earlier in the paste), `invalid` (fails the same validation as `POST /students`), or `previously_removed` (v2's addition: the address belongs to a soft-deleted user, who is never resurrected). " +
+          "`unrecognisedColumns` echoes header cells that matched no alias. Each row carries its `values` so the client can resubmit them; the commit re-derives every status itself and trusts none of this. " +
+          "Limits: 2000 rows, 256 KB of text. 400 `bad_request` carries the operator-facing parse message. Rate limited (429).",
+        requestBody: { required: true, content: { "application/json": { schema: pastedSheetBodyDoc } } },
+        responses: {
+          200: ok(studentImportPreviewDoc, "Row-by-row classification."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          413: conflict("`payload_too_large`."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/imports/students/template": {
+      get: {
+        tags: ["Imports"],
+        summary: "Student import column schema (SUPER only)",
+        description:
+          "The accepted columns as data, a copyable tab-separated header row, the caps, and `capabilities: { pasteText: true, fileUpload: false }` so the screen can say why there is no file picker.",
+        responses: {
+          200: ok(importTemplateDoc, "Template."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
         },
       },
     },
