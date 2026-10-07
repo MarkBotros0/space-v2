@@ -57,6 +57,15 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  // Cutover freeze (Plan 18, R5 -> R15). When "true", every non-GET/HEAD/OPTIONS
+  // request is refused with 503 read_only before its body is read, except the
+  // three auth endpoints that only write session bookkeeping. Defaults OFF.
+  // Hosting applies an env change only on a new deployment - flipping it is a
+  // redeploy, and the runbook says so.
+  READ_ONLY: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
   // URL scheme the mobile app registers (apps/mobile/app.json "scheme").
   // Password-reset emails link to <scheme>://reset-password?token=… (Plan 10
   // Decision 10). A custom-scheme link is never fetched over HTTP, so the
@@ -115,6 +124,7 @@ export const config = {
   enableUploads: parsed.data.ENABLE_UPLOADS,
   inviteTokenTtlHours: parsed.data.INVITE_TOKEN_TTL_HOURS,
   enableApiDocs: parsed.data.ENABLE_API_DOCS,
+  readOnly: parsed.data.READ_ONLY,
   mobileAppScheme: parsed.data.MOBILE_APP_SCHEME,
   importBodyLimit: parsed.data.IMPORT_BODY_LIMIT,
   importPreviewRateLimit: parsed.data.IMPORT_PREVIEW_RATE_LIMIT,
