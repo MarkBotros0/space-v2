@@ -23,6 +23,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 /** Staff list. Parses the staff arm specifically — see the student hook below. */
@@ -128,6 +129,8 @@ export function useSaveAnswers(id: number) {
 export function useSubmitAttempt(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async () => {
       const res = await apiClient.post(`/api/v1/quizzes/${id}/attempt/submit`);
       return studentQuizDetailSchema.parse(res.data.data);
@@ -162,6 +165,8 @@ export interface GradeEntryInput {
 export function useSaveQuizGrades(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (entries: GradeEntryInput[]) => {
       const res = await apiClient.post(`/api/v1/quizzes/${id}/grades`, { entries });
       return quizGradeSheetSchema.parse(res.data.data);
@@ -190,6 +195,8 @@ export function useQuizAttempts(
 export function useGradeEssays(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (input: {
       attemptId: number;
       awards: { questionId: number; points: number }[];
@@ -210,6 +217,8 @@ export function useGradeEssays(id: number) {
 export function useReopenAttempt(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (studentUserId: number) => {
       const res = await apiClient.post(`/api/v1/quizzes/${id}/attempts/reopen`, {
         studentUserId,

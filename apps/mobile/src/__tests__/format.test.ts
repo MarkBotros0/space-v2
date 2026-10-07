@@ -1,4 +1,6 @@
 import {
+  firstName,
+  formatEventWhen,
   formatDate,
   formatDayKey,
   formatDueDate,
@@ -72,5 +74,29 @@ describe("formatWallTime / formatOrgDue (server org-clock values, no zone conver
     expect(formatOrgDue("2099-04-01", "23:59")).toBe("Apr 1, 2099, 11:59 PM");
     expect(formatOrgDue("2099-04-01", null)).toBe("Apr 1, 2099");
     expect(formatOrgDue(null, null)).toBe("No due date");
+  });
+});
+
+describe("firstName (spec 19 D21 — one formatter for STUDENT and ALUMNI)", () => {
+  it("takes the first whitespace-separated token of the trimmed name", () => {
+    expect(firstName("  Sara   Mansour ")).toBe("Sara");
+  });
+  it("falls back to 'there' on null AND on empty (v1 rendered 'Welcome back, ')", () => {
+    expect(firstName(null)).toBe("there");
+    expect(firstName("   ")).toBe("there");
+  });
+});
+
+describe("formatEventWhen (spec 19 R11, X13 — server day keys and wall time only)", () => {
+  it("shows the day and the org wall time", () => {
+    expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe("Mar 5, 2099 · 6:30 PM");
+  });
+  it("omits the time for an all-day event and collapses a same-day range", () => {
+    expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: "2099-03-05", time: null })).toBe("Mar 5, 2099");
+  });
+  it("shows a multi-day range", () => {
+    expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: "2099-03-07", time: null })).toBe(
+      "Mar 5, 2099 – Mar 7, 2099",
+    );
   });
 });

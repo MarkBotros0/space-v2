@@ -6,6 +6,7 @@ import {
   addWeeksInOrgTime,
   formatInOrgTime,
   fromOrgWallClock,
+  isOrgMidnight,
   orgDayKey,
   orgWallClock,
   orgWallClockToInstant,
@@ -94,5 +95,27 @@ describe("orgWallTime / orgWallClockToInstant (Plan 5 — due dates, C2)", () =>
   it("refuses a malformed day or time instead of composing garbage", () => {
     expect(() => orgWallClockToInstant("2099-3-10", "23:59")).toThrow(RangeError);
     expect(() => orgWallClockToInstant("2099-03-10", "24:00")).toThrow(RangeError);
+  });
+});
+
+// Every date below is in January, when Africa/Cairo is UTC+2 with no DST in
+// force, so the assertions do not depend on Egypt's (reinstated, revisable)
+// summer-time rule. If config.orgTimezone changes, these change with it.
+describe("isOrgMidnight (Plan 14 — all-day events)", () => {
+  it("recognises midnight in the organisation's zone, not the host's", () => {
+    expect(isOrgMidnight(new Date("2099-01-14T22:00:00.000Z"))).toBe(true);
+    expect(isOrgMidnight(new Date("2099-01-15T00:00:00.000Z"))).toBe(false);
+  });
+
+  it("agrees with Plan 5's composer: a null time is org midnight, a time is not", () => {
+    expect(isOrgMidnight(orgWallClockToInstant("2099-01-20", null))).toBe(true);
+    const instant = orgWallClockToInstant("2099-01-20", "09:05");
+    expect(isOrgMidnight(instant)).toBe(false);
+    expect(orgDayKey(instant)).toBe("2099-01-20");
+    expect(orgWallTime(instant)).toBe("09:05");
+  });
+
+  it("is not fooled by a non-zero second", () => {
+    expect(isOrgMidnight(new Date("2099-01-14T22:00:01.000Z"))).toBe(false);
   });
 });

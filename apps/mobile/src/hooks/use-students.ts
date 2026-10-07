@@ -32,6 +32,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 async function fetchStudentsPage(
@@ -100,6 +101,8 @@ export function useStudentDetail(
 export function useCreateStudent(): UseMutationResult<CreateStudentResponse, Error, CreateStudentBody> {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (body) => {
       const res = await apiClient.post("/api/v1/students", body);
       return createStudentResponseSchema.parse(res.data.data);
@@ -135,6 +138,8 @@ export function useGraduateStudent(): UseMutationResult<
 > {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async ({ id, graduationYear }) => {
       const res = await apiClient.post(`/api/v1/students/${id}/graduate`, { graduationYear });
       return graduateStudentResponseSchema.parse(res.data.data);
@@ -149,6 +154,8 @@ export function useGraduateStudent(): UseMutationResult<
 export function useDeleteStudent(): UseMutationResult<StudentDeletedResponse, Error, { id: number }> {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async ({ id }) => {
       const res = await apiClient.delete(`/api/v1/students/${id}`);
       return studentDeletedResponseSchema.parse(res.data.data);
@@ -169,6 +176,8 @@ export function useDropEnrollment(): UseMutationResult<
 > {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async ({ studentId, seasonId, dropReason }) => {
       const res = await apiClient.patch(`/api/v1/students/${studentId}/enrollments/${seasonId}`, {
         status: "WITHDRAWN",

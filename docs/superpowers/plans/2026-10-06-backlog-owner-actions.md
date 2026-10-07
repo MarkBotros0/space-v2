@@ -129,7 +129,32 @@ These are operations on the live database, not code:
   cannot be met before cutover; the inbox and badge half is proven, the push
   half moves to Plan 18 M10.
 
-## 9. Still to build
+## 9. Plans 14, 15 and 16 (video/forum/events, reports/exports, dashboards)
 
-Plans 14 to 18 are not started: video/forum/events, reports and exports,
-role dashboards, imports, cutover.
+- **Dev-client build needed for video quizzes:** `react-native-webview`
+  does not run in Expo Go. Device checks: player stops at each question and
+  cannot be dismissed, resume after killing the app, admin adds a question at
+  `2:30` and sees the re-grade line, forum post-to-unlock, events on the
+  calendar for every role.
+- **Reports/exports device checks:** mentor `/reports` and engagement export,
+  admin season workbook, admin 403 on another admin's season, leader and
+  student see no tab, the 11th export in 15 minutes shows "Too many exports",
+  airplane mode mid-download leaves no partial file, band donut colours.
+  `expo-file-system` and `expo-sharing` were added without
+  `expo install --check`.
+- **Dashboards device checks:** student with and without an active season,
+  alumnus, admin, leader, mentor, super, the bell, pull-to-refresh, airplane
+  mode, and the timezone check (ruling X13).
+- Dependencies added across these plans: `react-native-webview`,
+  `react-native-youtube-iframe`, `expo-file-system`, `expo-sharing`
+  (mobile) and `exceljs` (backend). Run `npx expo install --check` once on an
+  unrestricted machine.
+- Cutover deferrals (forum `hiddenAt`, video duration, export audit table,
+  report defect fixes that need a column) are recorded in the Plan 18 file.
+- One mobile test (`video-quiz-screen`, "renders the player and the score")
+  timed out once under heavy parallel load and passes alone; watch for it if
+  CI is ever added.
+
+## 10. Still to build
+
+Plans 17 and 18 (imports, cutover).

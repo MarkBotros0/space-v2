@@ -3,6 +3,7 @@ import { useLocalSearchParams } from "expo-router";
 import type { AssignmentDetail, MySubmissionSummary } from "@space/shared";
 
 import { AssignmentStaffPanel } from "../../../../src/components/assignment-staff-panel";
+import { ForumThread } from "../../../../src/components/ForumThread";
 import { useAssignmentDetail } from "../../../../src/hooks/use-assignments";
 import {
   useEnsureSubmission,
@@ -134,7 +135,23 @@ export default function AssignmentDetailScreen() {
               {data.description}
             </Text>
           ) : null}
-          {isStudent ? <SubmissionSection detail={data} /> : <AssignmentStaffPanel detail={data} />}
+          {/* The FORUM branch replaces the student's submission editor entirely —
+              a forum assignment can never carry file attachments, and its
+              response IS the submission. Staff keep the authoring panel and
+              read the thread below it (own === null). MENTOR reads every group
+              (the API answers 200, read-only), so it gets the thread too. */}
+          {isStudent ? (
+            data.type === "FORUM" ? (
+              <ForumThread assignmentId={data.id} />
+            ) : (
+              <SubmissionSection detail={data} />
+            )
+          ) : (
+            <>
+              <AssignmentStaffPanel detail={data} />
+              {data.type === "FORUM" ? <ForumThread assignmentId={data.id} /> : null}
+            </>
+          )}
         </>
       )}
     </Screen>

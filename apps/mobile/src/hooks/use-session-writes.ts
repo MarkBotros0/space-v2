@@ -11,6 +11,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 /**
@@ -28,6 +29,8 @@ function useInvalidateSessionData() {
 export function useCreateSession() {
   const invalidate = useInvalidateSessionData();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (body: CreateSessionInput) => {
       const res = await apiClient.post("/api/v1/sessions", body);
       return sessionCreatedResponseSchema.parse(res.data.data);
@@ -39,6 +42,8 @@ export function useCreateSession() {
 export function useUpdateSession(id: number) {
   const invalidate = useInvalidateSessionData();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (body: UpdateSessionInput) => {
       const res = await apiClient.patch(`/api/v1/sessions/${id}`, body);
       return sessionUpdatedResponseSchema.parse(res.data.data);
@@ -50,6 +55,8 @@ export function useUpdateSession(id: number) {
 export function useDeleteSession(id: number) {
   const invalidate = useInvalidateSessionData();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (body: { scope: RecurrenceScope; force: boolean }) => {
       // Plan 3's DELETE reads a JSON body; axios sends one on DELETE only via `data`.
       const res = await apiClient.delete(`/api/v1/sessions/${id}`, { data: body });

@@ -18,7 +18,12 @@ import { quizzesRouter } from "./routes/quizzes";
 import { seasonEngagementRouter, studentEngagementRouter } from "./routes/engagement";
 import { myNotesRouter, notesRouter, studentNotesRouter } from "./routes/notes";
 import { notificationsRouter } from "./routes/notifications";
+import { eventsRouter } from "./routes/events";
+import { forumRouter } from "./routes/forum";
+import { videoQuizRouter } from "./routes/video-quiz";
 import { docsRouter } from "./routes/docs";
+import { reportsRouter } from "./routes/reports";
+import { reportExportsRouter, seasonExportsRouter } from "./routes/exports";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -59,6 +64,13 @@ export function createApp(): Express {
   app.use("/api/v1/me", meRouter);
   app.use("/api/v1/notifications", notificationsRouter);
   app.use("/api/v1/users", usersRouter);
+  // forum + video-quiz: mounted at the version root because their paths span
+  // two parents each. They carry no router-level middleware (per-route
+  // requireAuth, ruling X5), so a request that matches none of their routes
+  // falls straight through to the prefixed routers and the catch-all 404.
+  app.use("/api/v1", forumRouter);
+  app.use("/api/v1", videoQuizRouter);
+  app.use("/api/v1/events", eventsRouter);
   app.use("/api/v1/seasons", seasonsRouter);
   app.use("/api/v1/groups", groupsRouter);
   app.use("/api/v1/sessions", sessionsRouter);
@@ -79,6 +91,16 @@ export function createApp(): Express {
   // definition single (ruling C4).
   app.use("/api/v1/students", studentEngagementRouter);
   app.use("/api/v1/seasons", seasonEngagementRouter);
+  app.use("/api/v1/reports", reportsRouter);
+  // Mounted alongside the reports router so /reports/engagement/export sits
+  // beside /reports/engagement. Express tries reportsRouter first; it defines
+  // no /engagement/export, so the request falls through.
+  app.use("/api/v1/reports", reportExportsRouter);
+  // Fall-through mounting after seasonsRouter: that router's /:id, /:id/groups,
+  // /:id/sessions and /:id/assignments cannot match /:id/exports/*, and keeping
+  // this domain's routes in this domain's file stops seasons.ts accumulating a
+  // fourth unrelated concern.
+  app.use("/api/v1/seasons", seasonExportsRouter);
 
   // Must be last: 404 catches anything unmatched above, the error handler
   // catches anything thrown (including JSON parse failures from express.json()).

@@ -11,8 +11,11 @@ import { orgDayKey, orgWallTime } from "../org-time";
  * question — a student who moves to a new season's group loses the old row, and
  * every past season then reports them as ungrouped. SeasonEnrollment.groupId is
  * the per-season fact.
+ *
+ * Exported for the forum gates, which ask the same per-season question about a
+ * post's author and its reader (ruling C9).
  */
-async function groupIdInSeason(studentUserId: number, seasonId: number): Promise<number | null> {
+export async function groupIdInSeason(studentUserId: number, seasonId: number): Promise<number | null> {
   const enrollment = await db.seasonEnrollment.findUnique({
     where: { studentUserId_seasonId: { studentUserId, seasonId } },
     select: { groupId: true },
@@ -185,10 +188,27 @@ export async function studentCanSeeAssignment(
   return groupId !== null && targetGroupIds.includes(groupId);
 }
 
-export async function listAssignmentsForStudent(
+/**
+ * The student list row plus two server-derived facts the dashboard needs:
+ * the org-calendar due day (X13) and `isLate` (D16). Kept off
+ * StudentAssignmentRow so `GET /seasons/:id/assignments` — which returns those
+ * rows as-is — does not change shape.
+ */
+export interface StudentAssignmentStateRow extends StudentAssignmentRow {
+  dueOrgDay: string | null;
+  isLate: boolean;
+}
+
+/**
+ * Every assignment targeted at this student in this season, with their state.
+ * The ONE query behind both the student list and the student dashboard, so
+ * the two cannot disagree about which assignments a student was given (C9).
+ */
+export async function listAssignmentStatesForStudent(
   studentUserId: number,
   seasonId: number | null,
-): Promise<StudentAssignmentRow[]> {
+  now: Date = new Date(),
+): Promise<StudentAssignmentStateRow[]> {
   if (!seasonId) return [];
 
   const groupId = await groupIdInSeason(studentUserId, seasonId);
@@ -209,23 +229,33 @@ export async function listAssignmentsForStudent(
       dueAt: true,
       submissions: {
         where: { studentUserId },
-        select: { status: true, reviewedAt: true },
+        select: { status: true, reviewedAt: true, submittedAt: true },
       },
     },
   });
 
-  const now = new Date();
   return assignments.map((a) => {
     const sub = a.submissions[0];
     return {
       id: a.id,
       title: a.title,
       dueAt: a.dueAt,
+      dueOrgDay: a.dueAt ? orgDayKey(a.dueAt) : null,
       isOverdue: isOverdue(a.dueAt, now),
+      isLate: isLate(sub?.submittedAt ?? null, a.dueAt),
       status: sub?.status ?? "PENDING",
       reviewedAt: sub?.reviewedAt ?? null,
     };
   });
+}
+
+export async function listAssignmentsForStudent(
+  studentUserId: number,
+  seasonId: number | null,
+): Promise<StudentAssignmentRow[]> {
+  const rows = await listAssignmentStatesForStudent(studentUserId, seasonId);
+  // The list endpoint's wire shape is unchanged: drop the dashboard-only fields.
+  return rows.map(({ dueOrgDay: _day, isLate: _late, ...row }) => row);
 }
 
 export interface AssignmentTrackerRowData {

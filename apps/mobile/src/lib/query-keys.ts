@@ -21,6 +21,19 @@ import type { RecurrenceScope } from "@space/shared";
  * One small factory per domain, added as screens are wired up.
  */
 export const queryKeys = {
+  reports: {
+    all: ["reports"] as const,
+    // The scope is part of the key: two seasons' summaries are different
+    // cached documents, and invalidating `reports.all` catches both.
+    engagement: (seasonId: number | null) =>
+      [...queryKeys.reports.all, "engagement", { seasonId }] as const,
+    engagementStudents: (seasonId: number | null, band: string | null) =>
+      [...queryKeys.reports.all, "engagement", "students", { seasonId, band }] as const,
+    organisation: () => [...queryKeys.reports.all, "organisation"] as const,
+    // Nullable per this file's header convention — no -1 sentinel.
+    exportManifest: (seasonId: number | null) =>
+      [...queryKeys.reports.all, "export-manifest", { seasonId }] as const,
+  },
   notes: {
     all: ["notes"] as const,
     lists: () => [...queryKeys.notes.all, "list"] as const,
@@ -150,5 +163,35 @@ export const queryKeys = {
     season: (seasonId: number | null) => [...queryKeys.me.all, "season", { seasonId }] as const,
     attendance: (seasonId: number | null) => [...queryKeys.me.all, "attendance", { seasonId }] as const,
     profile: () => [...queryKeys.me.all, "profile"] as const,
+  },
+  videoQuiz: {
+    all: ["video-quiz"] as const,
+    forSession: (sessionId: number) => [...queryKeys.videoQuiz.all, "student", sessionId] as const,
+    questions: (sessionId: number) => [...queryKeys.videoQuiz.all, "admin", sessionId] as const,
+    results: (sessionId: number) => [...queryKeys.videoQuiz.all, "results", sessionId] as const,
+  },
+  forum: {
+    all: ["forum"] as const,
+    thread: (assignmentId: number) => [...queryKeys.forum.all, "thread", assignmentId] as const,
+    comments: (assignmentId: number, postPublicId: string) =>
+      [...queryKeys.forum.all, "comments", assignmentId, postPublicId] as const,
+  },
+  dashboard: {
+    // Every dashboard query sits under `all`, so one invalidation after any
+    // dashboard-moving mutation refreshes whichever variant is mounted
+    // (spec 19 §7 "Invalidation").
+    all: ["dashboard"] as const,
+    // The season is part of the key: a staff user's current season, or the
+    // student's token season — a refreshed token pointing elsewhere never
+    // serves the old season's figures. null for the mentor.
+    me: (seasonId: number | null) => [...queryKeys.dashboard.all, "me", { seasonId }] as const,
+  },
+  events: {
+    all: ["events"] as const,
+    list: () => [...queryKeys.events.all, "list"] as const,
+    // Plan 16's UpcomingEventsCard (spec 19 §7). Under `all`, so every event
+    // write's prefix invalidation refreshes the dashboards too.
+    upcoming: (limit: number) => [...queryKeys.events.all, "upcoming", limit] as const,
+    detail: (id: number) => [...queryKeys.events.all, "detail", id] as const,
   },
 } as const;

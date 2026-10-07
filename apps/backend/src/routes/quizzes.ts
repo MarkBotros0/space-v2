@@ -9,7 +9,7 @@ import { parseId } from "../lib/parse-id";
 import { createNotificationsBulk } from "../lib/notifications";
 import { bestEffort } from "../lib/best-effort";
 import { canAccessSeason, canGradeQuiz, canManageQuiz } from "../lib/permissions";
-import { visibleStudentIdsForQuiz } from "../lib/quiz-scope";
+import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../lib/quiz-scope";
 import { isAdminOfSeason } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
@@ -297,26 +297,8 @@ quizzesRouter.get("/", async (req, res) => {
     },
   });
   const page = rows.slice(0, limit);
-  const quizIds = page.map((q) => q.id);
 
-  // ONE definition of "graded", computed once, server-side (ruling C4; spec
-  // D10). PAPER: a grade row with a real score. ONLINE: an attempt that reached
-  // GRADED — v1's dashboards never consulted QuizAttempt at all, so every ONLINE
-  // quiz read as permanently pending (R114).
-  const [paperGraded, onlineGraded] = await Promise.all([
-    db.quizGrade.groupBy({
-      by: ["quizId"],
-      where: { quizId: { in: quizIds }, studentUserId: { in: studentIds }, score: { not: null } },
-      _count: { _all: true },
-    }),
-    db.quizAttempt.groupBy({
-      by: ["quizId"],
-      where: { quizId: { in: quizIds }, studentUserId: { in: studentIds }, status: "GRADED" },
-      _count: { _all: true },
-    }),
-  ]);
-  const paperBy = new Map(paperGraded.map((g) => [g.quizId, g._count._all]));
-  const onlineBy = new Map(onlineGraded.map((g) => [g.quizId, g._count._all]));
+  const gradedBy = await countGradedByQuiz(page, studentIds);
 
   return apiOk(res, {
     items: page.map((q) => ({
@@ -331,7 +313,7 @@ quizzesRouter.get("/", async (req, res) => {
       sessionDate: q.session?.startsAt ?? null,
       seasonId: q.seasonId,
       seasonCode: q.season.code,
-      gradedCount: (q.kind === "PAPER" ? paperBy.get(q.id) : onlineBy.get(q.id)) ?? 0,
+      gradedCount: gradedBy.get(q.id) ?? 0,
       studentCount: studentIds.length,
     })),
     nextCursor: rows.length > limit ? (page[page.length - 1]?.id ?? null) : null,

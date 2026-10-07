@@ -50,8 +50,209 @@ function conflict(description: string) {
   return { description, content: { "application/json": { schema: errorResponse } } };
 }
 
+// Reports (Plan 15). Hand-authored like every response in this document.
+const intField = { type: "integer" } as const;
+const reportScopeDoc = {
+  type: "object",
+  required: ["seasonIds", "seasons", "truncated", "label"],
+  properties: {
+    seasonIds: { type: "array", items: intField },
+    seasons: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["id", "code", "title"],
+        properties: { id: intField, code: { type: "string" }, title: { type: "string" } },
+      },
+    },
+    truncated: { type: "boolean" },
+    label: { type: "string" },
+  },
+} as const;
+const engagementReportRowDoc = {
+  type: "object",
+  required: [
+    "score", "attendancePct", "submissionPct", "attendanceTotal", "attendancePresent",
+    "submissionsExpected", "submissionsCompleted", "studentUserId", "name", "email",
+    "seasonId", "seasonTitle", "band",
+  ],
+  properties: {
+    score: intField,
+    attendancePct: intField,
+    submissionPct: intField,
+    attendanceTotal: intField,
+    attendancePresent: intField,
+    submissionsExpected: intField,
+    submissionsCompleted: intField,
+    studentUserId: intField,
+    name: { type: "string" },
+    email: { type: "string" },
+    seasonId: intField,
+    seasonTitle: { type: "string" },
+    band: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "AT_RISK"] },
+  },
+} as const;
+const engagementSummarySchemaDoc = {
+  type: "object",
+  required: [
+    "scope", "attendanceTrend", "completion", "bands", "atRisk", "atRiskTotal",
+    "cohortSize", "enrollmentCount", "generatedAt", "exportDay",
+  ],
+  properties: {
+    scope: reportScopeDoc,
+    attendanceTrend: {
+      type: "array",
+      items: {
+        type: "object",
+        required: [
+          "sessionId", "seasonId", "seasonTitle", "title", "startsAt", "dayKey",
+          "presentCount", "expectedCount", "pct",
+        ],
+        properties: {
+          sessionId: intField,
+          seasonId: intField,
+          seasonTitle: { type: "string" },
+          title: { type: "string" },
+          startsAt: { type: "string", format: "date-time" },
+          dayKey: { type: "string", example: "2026-08-24" },
+          presentCount: intField,
+          expectedCount: intField,
+          pct: { type: ["integer", "null"], minimum: 0, maximum: 100 },
+        },
+      },
+    },
+    completion: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["assignmentId", "seasonId", "title", "targeting", "completed", "expected", "completionRate"],
+        properties: {
+          assignmentId: intField,
+          seasonId: intField,
+          title: { type: "string" },
+          targeting: { type: "string", enum: ["all_groups", "targeted"] },
+          completed: intField,
+          expected: intField,
+          completionRate: { type: ["integer", "null"], minimum: 0, maximum: 100 },
+        },
+      },
+    },
+    bands: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["band", "count"],
+        properties: { band: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "AT_RISK"] }, count: intField },
+      },
+    },
+    atRisk: { type: "array", maxItems: 10, items: engagementReportRowDoc },
+    atRiskTotal: intField,
+    cohortSize: intField,
+    enrollmentCount: intField,
+    generatedAt: { type: "string", format: "date-time" },
+    exportDay: { type: "string", example: "2026-08-24" },
+  },
+} as const;
+const engagementStudentPageSchemaDoc = {
+  type: "object",
+  required: ["scope", "rows", "nextCursor", "total"],
+  properties: {
+    scope: reportScopeDoc,
+    rows: { type: "array", items: engagementReportRowDoc },
+    nextCursor: { type: ["string", "null"] },
+    total: intField,
+  },
+} as const;
+const organisationReportSchemaDoc = {
+  type: "object",
+  required: ["totalStudentsNotGraduated", "totalAlumni", "activeSeasonCount", "seasons", "alumniByYear", "generatedAt"],
+  properties: {
+    totalStudentsNotGraduated: intField,
+    totalAlumni: intField,
+    activeSeasonCount: intField,
+    seasons: {
+      type: "array",
+      items: {
+        type: "object",
+        required: [
+          "seasonId", "code", "program", "year", "title", "status",
+          "activeCount", "completedCount", "withdrawnCount", "leaderCount",
+        ],
+        properties: {
+          seasonId: intField,
+          code: { type: "string" },
+          program: { type: "string" },
+          year: intField,
+          title: { type: "string" },
+          status: { type: "string" },
+          activeCount: intField,
+          completedCount: intField,
+          withdrawnCount: intField,
+          leaderCount: intField,
+        },
+      },
+    },
+    alumniByYear: {
+      type: "array",
+      items: { type: "object", required: ["year", "count"], properties: { year: intField, count: intField } },
+    },
+    generatedAt: { type: "string", format: "date-time" },
+  },
+} as const;
+
+const xlsxResponse = {
+  description: "XLSX workbook (bytes). Every non-200 on this path is the JSON error envelope.",
+  headers: {
+    "Content-Disposition": {
+      schema: { type: "string" },
+      description:
+        'attachment; filename="<ascii fallback>"; filename*=UTF-8\'\'<percent-encoded>. ' +
+        "The filename is built by exportFilename() in packages/shared and carries the " +
+        "organisation-timezone day.",
+    },
+  },
+  content: {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+      schema: { type: "string", format: "binary" },
+    },
+  },
+} as const;
+
+const EXPORT_COMMON =
+  "Success is bytes plus Content-Disposition; every error is the JSON envelope, so a " +
+  "client can tell a 403 from a file. ENABLE_UPLOADS does NOT gate this endpoint — it " +
+  "reads database rows and touches no Storage driver. Rate-limited to 10 per 15 " +
+  "minutes per user; the 429 is `too_many_requests` in the envelope.";
+
+const exportManifestSchemaDoc = {
+  type: "object",
+  required: ["filename", "mimeType", "sheets", "estimatedBytes", "generatedAt", "scopeDescription"],
+  properties: {
+    filename: { type: "string" },
+    mimeType: { type: "string" },
+    sheets: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["name", "columnCount", "rowCount"],
+        properties: { name: { type: "string" }, columnCount: { type: "integer" }, rowCount: { type: "integer" } },
+      },
+    },
+    estimatedBytes: { type: "integer", description: "A heuristic, not a promise." },
+    generatedAt: { type: "string", format: "date-time" },
+    scopeDescription: { type: "string" },
+  },
+} as const;
+
 const idParam = {
   name: "id",
+  in: "path",
+  required: true,
+  schema: { type: "integer", minimum: 1 },
+} as const;
+
+const questionIdParam = {
+  name: "questionId",
   in: "path",
   required: true,
   schema: { type: "integer", minimum: 1 },
@@ -105,6 +306,9 @@ export const openApiDocument = {
     { name: "Submissions", description: "Submissions and their files" },
     { name: "Quizzes", description: "Quiz authoring, attempts and grading" },
     { name: "Notifications", description: "The caller's own notification inbox: list, unread count, explicit mark-read" },
+    { name: "Video quiz", description: "Interactive session-video questions: student view, ordered answers, progress (authoring and results below)" },
+    { name: "Forum", description: "Forum assignments: the group thread, the post that unlocks it, and comments" },
+    { name: "Events", description: "JPC events: one token-derived visibility rule, a bounded window, SUPER-only writes (event photos are deferred while uploads are disabled)" },
     { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
   ],
   security: [{ bearerAuth: [] }],
@@ -140,6 +344,251 @@ export const openApiDocument = {
       },
     },
     schemas: {
+      VideoQuestionInput: {
+        type: "object",
+        required: ["atSeconds", "prompt", "options", "correctIndex"],
+        properties: {
+          atSeconds: { type: "integer", minimum: 0, maximum: 86400 },
+          prompt: { type: "string", minLength: 2, maxLength: 500 },
+          options: { type: "array", minItems: 2, maxItems: 6, items: { type: "string", minLength: 1, maxLength: 200 } },
+          correctIndex: { type: "integer", minimum: 0, description: "Must be a valid index into `options`." },
+          points: { type: "integer", minimum: 1, maximum: 100, default: 1 },
+        },
+      },
+      VideoQuestionAdmin: {
+        type: "object",
+        description: "The authoring row. **Carries `correctIndex`** — never request it from a student screen.",
+        required: ["id", "atSeconds", "prompt", "options", "correctIndex", "points", "responseCount"],
+        properties: {
+          id: { type: "integer" },
+          atSeconds: { type: "integer" },
+          prompt: { type: "string" },
+          options: { type: "array", items: { type: "string" } },
+          correctIndex: { type: "integer" },
+          points: { type: "integer" },
+          responseCount: { type: "integer", description: "Recorded answers (all, not only correct ones)." },
+        },
+      },
+      JpcEventListItem: {
+        type: "object",
+        description: "Every day and time here is computed on the server in the organisation timezone; the client never derives a day from `date`.",
+        required: ["id", "title", "date", "endDate", "dayKey", "endDayKey", "time", "allDay", "url", "visibility", "seasonId", "seasonCode"],
+        properties: {
+          id: { type: "integer" },
+          title: { type: "string" },
+          date: { type: "string", format: "date-time", description: "The stored instant — for ordering only." },
+          endDate: { type: ["string", "null"], format: "date-time" },
+          dayKey: { type: "string", description: "`YYYY-MM-DD`, the organisation day `date` falls on." },
+          endDayKey: { type: ["string", "null"] },
+          time: { type: ["string", "null"], description: "Organisation wall-clock `HH:mm`; null exactly when `allDay`." },
+          allDay: { type: "boolean", description: "Server-derived: `date` is midnight on the organisation clock (there is no column)." },
+          url: { type: ["string", "null"] },
+          visibility: { type: "string", enum: ["ALL", "ALUMNI_ONLY", "SEASON"] },
+          seasonId: { type: ["integer", "null"] },
+          seasonCode: { type: ["string", "null"] },
+        },
+      },
+      JpcEventDetail: {
+        description: "A list item plus the fields v1 never displayed (it has no event detail page).",
+        allOf: [
+          { $ref: "#/components/schemas/JpcEventListItem" },
+          {
+            type: "object",
+            required: ["description", "seasonTitle", "canManage"],
+            properties: {
+              description: { type: ["string", "null"] },
+              seasonTitle: { type: ["string", "null"] },
+              canManage: { type: "boolean", description: "Drives the UI; the gate is enforced server-side regardless." },
+            },
+          },
+        ],
+      },
+      CreateJpcEventRequest: {
+        type: "object",
+        description: "Wall-clock fields in the organisation timezone — the request carries no zone and the server composes the instant.",
+        required: ["title", "day", "visibility"],
+        properties: {
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          day: { type: "string", description: "`YYYY-MM-DD`." },
+          time: { type: ["string", "null"], description: "`HH:mm`; null (default) means all-day, stored as organisation midnight." },
+          endDay: { type: ["string", "null"], description: "`YYYY-MM-DD`, on or after `day`; stored at organisation midnight." },
+          description: { type: ["string", "null"], maxLength: 2000 },
+          url: { type: ["string", "null"], format: "uri" },
+          visibility: { type: "string", enum: ["ALL", "ALUMNI_ONLY", "SEASON"] },
+          seasonId: { type: ["integer", "null"], description: "Required when `visibility` is SEASON; ignored (nulled) otherwise." },
+        },
+      },
+      UpdateJpcEventRequest: {
+        type: "object",
+        description: "Every field optional. The patch is merged onto the stored row (read back as wall-clock fields) and both refinements re-run against the merged result.",
+        properties: {
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          day: { type: "string" },
+          time: { type: ["string", "null"] },
+          endDay: { type: ["string", "null"] },
+          description: { type: ["string", "null"], maxLength: 2000 },
+          url: { type: ["string", "null"], format: "uri" },
+          visibility: { type: "string", enum: ["ALL", "ALUMNI_ONLY", "SEASON"] },
+          seasonId: { type: ["integer", "null"] },
+        },
+      },
+      VideoQuizResults: {
+        type: "object",
+        required: ["questionCount", "totalPoints", "rows"],
+        properties: {
+          questionCount: { type: "integer" },
+          totalPoints: { type: "integer" },
+          rows: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["studentUserId", "studentName", "groupId", "groupName", "answeredCount", "questionCount", "earnedPoints", "totalPoints", "completedAt"],
+              properties: {
+                studentUserId: { type: "integer" },
+                studentName: { type: ["string", "null"] },
+                groupId: { type: ["integer", "null"] },
+                groupName: { type: ["string", "null"] },
+                answeredCount: { type: "integer" },
+                questionCount: { type: "integer" },
+                earnedPoints: { type: "integer" },
+                totalPoints: { type: "integer" },
+                completedAt: { type: ["string", "null"], format: "date-time" },
+              },
+            },
+          },
+        },
+      },
+      StudentVideoQuiz: {
+        type: "object",
+        description:
+          "The student's view of a session's video quiz. **`correctIndex` is absent from every question by design** (the answer-key split): the select list never reads it and the mobile schema is strict. It is returned only by the answer endpoint, for the question just answered.",
+        required: ["videoId", "youtubeUrl", "questions", "furthestSeconds", "completedAt", "earnedPoints", "totalPoints", "answeredCount", "nextQuestionId"],
+        properties: {
+          videoId: { type: ["string", "null"], description: "Resolved server-side from `Session.youtubeUrl`; null when missing or unparseable." },
+          youtubeUrl: { type: ["string", "null"] },
+          questions: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["id", "atSeconds", "prompt", "options", "points", "answered", "selectedIndex", "isCorrect"],
+              properties: {
+                id: { type: "integer" },
+                atSeconds: { type: "integer" },
+                prompt: { type: "string" },
+                options: { type: "array", items: { type: "string" } },
+                points: { type: "integer" },
+                answered: { type: "boolean" },
+                selectedIndex: { type: ["integer", "null"] },
+                isCorrect: { type: ["boolean", "null"] },
+              },
+            },
+          },
+          furthestSeconds: { type: "integer" },
+          completedAt: { type: ["string", "null"], format: "date-time" },
+          earnedPoints: { type: "integer" },
+          totalPoints: { type: "integer" },
+          answeredCount: { type: "integer" },
+          nextQuestionId: { type: ["integer", "null"], description: "The only question the server will accept an answer for next (earliest unanswered by `atSeconds`, `id` tiebreak); null when all are answered." },
+        },
+      },
+      SubmitVideoAnswerRequest: {
+        type: "object",
+        required: ["questionId", "selectedIndex"],
+        properties: {
+          questionId: { type: "integer", minimum: 1 },
+          selectedIndex: { type: "integer", minimum: 0, description: "Checked against the stored option count, not a client value." },
+        },
+      },
+      SubmitVideoAnswerResponse: {
+        type: "object",
+        required: ["isCorrect", "correctIndex", "furthestSeconds", "completedAt", "nextQuestionId"],
+        properties: {
+          isCorrect: { type: "boolean" },
+          correctIndex: { type: "integer", description: "Returned for the question just answered, and only then. Safe because the first answer is final." },
+          furthestSeconds: { type: "integer" },
+          completedAt: { type: ["string", "null"], format: "date-time" },
+          nextQuestionId: { type: ["integer", "null"] },
+        },
+      },
+      VideoProgressRequest: {
+        type: "object",
+        required: ["furthestSeconds"],
+        description: "There is no `completed` field: any extra key is ignored. Completion is derived by the server when the last question is answered.",
+        properties: { furthestSeconds: { type: "integer", minimum: 0, maximum: 86400 } },
+      },
+      ForumOwnResponse: {
+        type: "object",
+        description: "The caller's own post. With no submission row in existence (nothing creates one on read) `submissionPublicId` is null, `status` DRAFT and `posted` false.",
+        required: ["submissionPublicId", "text", "status", "wordCount", "posted", "feedback", "reviewedAt"],
+        properties: {
+          submissionPublicId: { type: ["string", "null"] },
+          text: { type: "string", description: "Plain text. Stored as HTML for v1's renderer and converted at this boundary in both directions." },
+          status: { $ref: "#/components/schemas/SubmissionStatus" },
+          wordCount: { type: "integer" },
+          posted: { type: "boolean" },
+          feedback: { type: ["string", "null"], description: "A reviewer's verdict, as plain text. v1's forum screen never rendered it." },
+          reviewedAt: { type: ["string", "null"], format: "date-time" },
+        },
+      },
+      ForumComment: {
+        type: "object",
+        required: ["id", "authorUserId", "authorDisplayName", "body", "createdAt", "canDelete"],
+        properties: {
+          id: { type: "integer" },
+          authorUserId: { type: "integer" },
+          authorDisplayName: { type: "string", description: "`name`, or the literal \"Group member\". Never an email address." },
+          body: { type: "string", description: "Plain text, rendered as plain text." },
+          createdAt: { type: "string", format: "date-time" },
+          canDelete: { type: "boolean", description: "Authoritative: computed from the same gate as DELETE. The client must not re-derive it." },
+        },
+      },
+      ForumPost: {
+        type: "object",
+        required: ["submissionPublicId", "studentUserId", "authorDisplayName", "text", "submittedAt", "commentCount", "comments", "canComment"],
+        properties: {
+          submissionPublicId: { type: "string" },
+          studentUserId: { type: "integer" },
+          authorDisplayName: { type: "string" },
+          text: { type: "string", description: "Plain text." },
+          submittedAt: { type: ["string", "null"], format: "date-time" },
+          commentCount: { type: "integer" },
+          comments: { type: "array", items: { $ref: "#/components/schemas/ForumComment" }, description: "The first three, oldest first. The rest come from the comments endpoint." },
+          canComment: { type: "boolean" },
+        },
+      },
+      ForumView: {
+        type: "object",
+        required: ["assignmentId", "dueAt", "own", "locked", "minWords", "allowComments", "groupId", "posts", "nextCursor"],
+        properties: {
+          assignmentId: { type: "integer" },
+          dueAt: { type: ["string", "null"], format: "date-time" },
+          own: { oneOf: [{ $ref: "#/components/schemas/ForumOwnResponse" }, { type: "null" }], description: "Null for a staff reader." },
+          locked: { type: "boolean", description: "A product mechanic, not an error: a student sees no peer's work until their own response is posted. Staff are never locked." },
+          minWords: { type: ["integer", "null"] },
+          allowComments: { type: "boolean" },
+          groupId: { type: ["integer", "null"], description: "Null for a staff reader seeing every group." },
+          posts: { type: "array", items: { $ref: "#/components/schemas/ForumPost" } },
+          nextCursor: { type: ["string", "null"], description: "The last returned post's `publicId`." },
+        },
+      },
+      SubmitForumResponseRequest: {
+        type: "object",
+        required: ["text"],
+        properties: { text: { type: "string", minLength: 1, maxLength: 20000, description: "Plain text. At least one word regardless of `forumMinWords`, so an empty post cannot unlock the feed." } },
+      },
+      AddForumCommentRequest: {
+        type: "object",
+        required: ["body"],
+        properties: { body: { type: "string", minLength: 1, maxLength: 5000, description: "Plain text; trimmed." } },
+      },
+      ForumCommentsPage: {
+        type: "object",
+        required: ["comments", "nextCursor"],
+        properties: {
+          comments: { type: "array", items: { $ref: "#/components/schemas/ForumComment" } },
+          nextCursor: { type: ["integer", "null"] },
+        },
+      },
       Error: errorResponse,
       UserRole: { type: "string", enum: ["SUPER", "ADMIN", "LEADER", "STUDENT", "MENTOR"] },
       SeasonStatus: { type: "string", enum: ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] },
@@ -1605,6 +2054,112 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/me/dashboard": {
+      get: {
+        tags: ["Me"],
+        summary: "The caller's role dashboard figures",
+        description: [
+          "A discriminated union on `variant` (spec 19 §7). Every figure is derived once, server-side (ruling C4); clients render, never recompute.",
+          "",
+          "- **STUDENT** (not graduated): the caller's own figures only — no cohort, no other student, no score (C8). Season from the token's `activeSeasonId`; `seasonId` is ignored. With no active season every field but `variant` is null.",
+          "- **SEASON_STAFF**: `seasonId` required. ADMIN must administer it, SUPER may name any, a LEADER gets `scope: \"groups\"` over the ACTIVE enrolments of the groups they lead in it. Attendance % starts at each student's enrolment and never exceeds 100; `atRisk` is the shared `isAtRisk` (either component below 60), not v1's 70 % rule; review counts use the review queue's own scope; ONLINE quiz drafts are counted as `drafts`.",
+          "- **MENTOR**: the eight most recent attendance marks, submissions and reviews across all seasons, merged and newest first (reviews at `reviewedAt`), excluding DRAFT work, graduated or deleted students and deleted assignments or seasons. The mentor's at-risk list is `GET /api/v1/reports/engagement`.",
+          "- An alumnus gets 403.",
+          "",
+          "`nextSession` is the session in progress (`isInProgress: true`) if there is one, else the next; `dayKey`/`time` are the organisation's calendar day and wall-clock time.",
+        ].join("\n"),
+        parameters: [
+          {
+            name: "seasonId",
+            in: "query",
+            required: false,
+            description: "Required for ADMIN, LEADER and SUPER; ignored for STUDENT and MENTOR.",
+            schema: { type: "integer", minimum: 1 },
+          },
+        ],
+        responses: {
+          200: ok(
+            {
+              oneOf: [
+                {
+                  type: "object",
+                  description: "variant STUDENT",
+                  properties: {
+                    variant: { const: "STUDENT" },
+                    season: { type: ["object", "null"] },
+                    progress: {
+                      type: ["object", "null"],
+                      properties: {
+                        sessionsHeld: { type: "integer" },
+                        sessionsTotal: { type: "integer" },
+                        pct: { type: ["integer", "null"] },
+                      },
+                    },
+                    nextSession: { type: ["object", "null"] },
+                    assignments: {
+                      type: ["object", "null"],
+                      properties: {
+                        outstandingCount: { type: "integer", description: "PENDING or DRAFT, targeted assignments only." },
+                        overdueCount: { type: "integer" },
+                        lateSubmittedCount: { type: "integer" },
+                        dueSoon: { type: "array", maxItems: 3, items: { type: "object" } },
+                      },
+                    },
+                  },
+                },
+                {
+                  type: "object",
+                  description: "variant SEASON_STAFF",
+                  properties: {
+                    variant: { const: "SEASON_STAFF" },
+                    scope: { enum: ["season", "groups"] },
+                    season: { type: "object" },
+                    groups: { type: "array", items: { type: "object" } },
+                    progress: { type: "object" },
+                    nextSession: { type: ["object", "null"] },
+                    cohort: {
+                      type: "object",
+                      properties: {
+                        studentCount: { type: "integer" },
+                        meanAttendancePct: { type: ["integer", "null"], description: "Mean over students with at least one past session; null when none." },
+                        atRiskTotal: { type: "integer" },
+                        atRisk: { type: "array", maxItems: 10, items: { type: "object" } },
+                      },
+                    },
+                    submissions: {
+                      type: "object",
+                      properties: { pendingReview: { type: "integer" }, reviewed: { type: "integer" } },
+                    },
+                    quizzes: {
+                      type: "object",
+                      properties: {
+                        total: { type: "integer" },
+                        pending: { type: "integer" },
+                        fullyGraded: { type: "integer" },
+                        drafts: { type: "integer" },
+                      },
+                    },
+                  },
+                },
+                {
+                  type: "object",
+                  description: "variant MENTOR",
+                  properties: {
+                    variant: { const: "MENTOR" },
+                    recentActivity: { type: "array", maxItems: 8, items: { type: "object" } },
+                  },
+                },
+              ],
+            },
+            "The caller's dashboard variant.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
     "/api/v1/me/season-history": {
       get: {
         tags: ["Me"],
@@ -3384,6 +3939,7 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+          409: conflict("`use_forum_endpoint` —A FORUM assignment is written only through `PUT /assignments/{id}/forum/response`."),
         },
       },
     },
@@ -3478,6 +4034,7 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+          409: conflict("`use_forum_endpoint` —A FORUM assignment is written only through `PUT /assignments/{id}/forum/response`."),
         },
       },
     },
@@ -4036,6 +4593,523 @@ export const openApiDocument = {
           403: conflict("`forbidden` or `student_not_in_scope`."),
           404: errRef("NotFound"),
           409: conflict("`wrong_quiz_kind`."),
+        },
+      },
+    },
+    "/api/v1/assignments/{id}/forum": {
+      get: {
+        tags: ["Forum"],
+        summary: "The forum thread",
+        description:
+          "Existence first: a missing, deleted or non-FORUM assignment is 404 for every caller, then the audience gate (403). A STUDENT sees their own response plus their own group's posted responses once they have posted; until then `locked` is true and `posts` is empty — a product mechanic, not an error. LEADER: the groups they lead; ADMIN/SUPER: the season; MENTOR: read-only across the season (a widening of v1, taken so that moderation is possible). An unposted draft is never served. **This read never creates the submission row** — `PUT .../forum/response` does. No email address or avatar appears anywhere in the payload. Moderation beyond comment deletion does not exist (plan 14 D-14.4).",
+        parameters: [
+          idParam,
+          { name: "cursor", in: "query", schema: { type: "string" }, description: "`nextCursor` of the previous page." },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 10 } },
+        ],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/ForumView" }, "The thread."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/assignments/{id}/forum/response": {
+      put: {
+        tags: ["Forum"],
+        summary: "Post (or re-post) the caller's response",
+        description:
+          "**This PUT creates the submission row** (ruling C6 forbids a read-time write, so a GET must not). One upsert writes the body, `status = SUBMITTED` and `submittedAt` together; re-posting overwrites and re-stamps. It is the only writer of a FORUM submission — the generic submission routes answer 409 `use_forum_endpoint`. STUDENT only, targeted and ACTIVE-enrolled. `text` is plain text and is stored as escaped HTML. `forumMinWords` is applied to the same word count the client shows (400 `too_few_words`), and at least one word is always required. **A late post is allowed on purpose**: a discussion that closes at a deadline stops being a discussion.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/SubmitForumResponseRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/ForumOwnResponse" }, "The posted response."),
+          400: conflict("`bad_request` or `too_few_words`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/assignments/{id}/forum/posts/{publicId}/comments": {
+      get: {
+        tags: ["Forum"],
+        summary: "A post's comments",
+        description:
+          "Oldest first, numeric cursor. The thread inlines only the first three per post. Same gates as the feed: assignment 404 first, then the audience (403), then the post must be a real (non-DRAFT) post inside the caller's audience, and a student must have posted their own response (403 `post_first` — a rule, not an error condition). `canDelete` is authoritative; the client must not re-derive it.",
+        parameters: [
+          idParam,
+          publicIdParam,
+          { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 20 } },
+        ],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/ForumCommentsPage" }, "One page of comments."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` or `post_first`."),
+          404: errRef("NotFound"),
+        },
+      },
+      post: {
+        tags: ["Forum"],
+        summary: "Comment on a post",
+        description:
+          "Allowed for a student in the post author's group who has posted their own response first (403 `post_first` otherwise), for the LEADER of that group and for the season ADMIN / SUPER without posting anything. A MENTOR stays read-only. The post must belong to the assignment in the path (404 otherwise). No notification is sent (no forum `NotificationType`; a cutover task). **No moderation beyond comment deletion exists** — there is no way to hide a post or report one (plan 14, D-14.4).",
+        parameters: [idParam, publicIdParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/AddForumCommentRequest" } } },
+        },
+        responses: {
+          201: ok(
+            { type: "object", required: ["comment"], properties: { comment: { $ref: "#/components/schemas/ForumComment" } } },
+            "The new comment.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: conflict("`forbidden` or `post_first`."),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/forum/comments/{commentId}": {
+      delete: {
+        tags: ["Forum"],
+        summary: "Remove a comment",
+        description:
+          "The comment's author, SUPER, the season's ADMIN, or the LEADER of the post author's group (new: in v1 the staff power was unreachable from any UI). The post's own author may not remove someone else's comment. Hard delete — there is no `deletedAt` column. The only moderation lever that exists; see plan 14 D-14.4.",
+        parameters: [{ name: "commentId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+        responses: {
+          200: ok(
+            { type: "object", required: ["deleted"], properties: { deleted: { type: "boolean", enum: [true] } } },
+            "Removed.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/events": {
+      get: {
+        tags: ["Events"],
+        summary: "List events",
+        description:
+          "**Visibility is derived from the token and cannot be widened by a parameter.** ALL: everyone. ALUMNI_ONLY: alumni (a STUDENT with a graduation year) and every non-student role. SEASON: the seasons the caller holds (a student's active season, an admin's seasons, a leader's groups' seasons); a MENTOR holds none, as in v1. SUPER sees everything, orphans included; no other role sees events on a soft-deleted season. The window is on `(endDate ?? date)`; when `from`/`to` are omitted it defaults to `[now - 30d, now + 365d]`. `upcoming=true` starts the window at today's organisation midnight (not combinable with `from`), `limit` (1-20) caps `events`, and `total` is counted before the cap. `allDay`, `dayKey` and `time` are server-derived against the organisation timezone. Event photo endpoints are deliberately absent while uploads are disabled.",
+        parameters: [
+          { name: "from", in: "query", schema: { type: "string", format: "date-time" } },
+          { name: "to", in: "query", schema: { type: "string", format: "date-time" } },
+          { name: "upcoming", in: "query", schema: { type: "boolean" } },
+          { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 20 } },
+        ],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["events", "total"],
+              properties: {
+                events: { type: "array", items: { $ref: "#/components/schemas/JpcEventListItem" } },
+                total: { type: "integer", minimum: 0 },
+              },
+            },
+            "Events ordered by date, then id.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+        },
+      },
+      post: {
+        tags: ["Events"],
+        summary: "Create an event (SUPER only)",
+        description:
+          "SUPER only, checked before the body is read; an ADMIN is refused. The server composes the instant in the organisation timezone from `day`/`time`; `time: null` is all-day. The season is nulled unless visibility is SEASON. v1 returns only `{ success: true }`; this returns the detail.",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/CreateJpcEventRequest" } } },
+        },
+        responses: {
+          201: ok({ $ref: "#/components/schemas/JpcEventDetail" }, "The created event."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/events/{id}": {
+      get: {
+        tags: ["Events"],
+        summary: "Event detail",
+        description:
+          "v1 has no event detail page. The same visibility predicate as the list applies to the row; an event the caller may not see is 404, not 403, so it cannot be told from one that does not exist.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/JpcEventDetail" }, "The event."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          404: errRef("NotFound"),
+        },
+      },
+      patch: {
+        tags: ["Events"],
+        summary: "Update an event (SUPER only)",
+        description:
+          "A true partial, unlike v1 (whose update reuses the create schema). `createdById` is not touched. Visibility leaving SEASON detaches the season.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/UpdateJpcEventRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/JpcEventDetail" }, "The updated event."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Events"],
+        summary: "Delete an event (SUPER only)",
+        description:
+          "A hard delete — the model has no `deletedAt`, so a deleted event is unrecoverable. Its stored photo, if any, is left behind exactly as v1 leaves it; the blob lifecycle belongs with the CMS work. A stale id is 404, not a raw database error.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", required: ["deleted"], properties: { deleted: { type: "boolean", enum: [true] } } },
+            "Deleted.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-quiz": {
+      get: {
+        tags: ["Video quiz"],
+        summary: "The student's video quiz",
+        description:
+          "STUDENT with an **ACTIVE** enrolment in the session's season only (staff use the authoring read) — 403 otherwise. **`correctIndex` is absent from this payload by design**: it travels to a student on exactly one path, the answer response for the question they just answered. `videoId` is resolved server-side so no client parses a URL; `nextQuestionId` is the barrier, derived once.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/StudentVideoQuiz" }, "The quiz and the caller's progress."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-quiz/answers": {
+      post: {
+        tags: ["Video quiz"],
+        summary: "Answer a video question",
+        description:
+          "Same gate as the read. **`out_of_order` (409) is the server-side barrier:** an answer is accepted only for the earliest unanswered question (`atSeconds` asc, `id` asc), which reproduces the ordering v1 enforced only inside its player component. It proves ordering, **not** that the video was watched — `furthestSeconds` is client-reported and no server can observe a YouTube playhead. The first answer is final; repeating a question replays the recorded verdict (200) instead of failing, including a double tap that loses the unique-index race. Completion is derived in the same transaction as the last answer. `furthestSeconds` only moves forward. A question belonging to another session is 404; an index outside the stored options is 400 `invalid_answer`.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/SubmitVideoAnswerRequest" } } },
+        },
+        responses: {
+          200: ok({ $ref: "#/components/schemas/SubmitVideoAnswerResponse" }, "The verdict and the new progress."),
+          400: conflict("`bad_request` or `invalid_answer`."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`out_of_order` — answer the earlier questions first."),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-quiz/progress": {
+      put: {
+        tags: ["Video quiz"],
+        summary: "Save playback progress",
+        description:
+          "Idempotent and monotone: `furthestSeconds` is `max(stored, sent)`, read and written in one transaction. **`completed` is not an accepted field** — a body carrying it is accepted but the key is ignored; completion is derived when the last question is answered, never asserted by the client.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/VideoProgressRequest" } } },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["furthestSeconds", "completedAt"],
+              properties: { furthestSeconds: { type: "integer" }, completedAt: { type: ["string", "null"], format: "date-time" } },
+            },
+            "The stored progress.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-questions": {
+      get: {
+        tags: ["Video quiz"],
+        summary: "List video questions with the answer key",
+        description:
+          "Season ADMIN of the session's season, or SUPER — a group LEADER or MENTOR is refused (403). **This list carries `correctIndex` for every question and must never be requested by a student screen**; v1's equivalent authorized nothing and relied on the admin page being the only caller. Ordered by `atSeconds`, then `id`.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["questions"],
+              properties: { questions: { type: "array", items: { $ref: "#/components/schemas/VideoQuestionAdmin" } } },
+            },
+            "The questions.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      post: {
+        tags: ["Video quiz"],
+        summary: "Add a video question",
+        description:
+          "Same gate as the list, checked **before** the body is validated. No check that the session has a `youtubeUrl` or that `atSeconds` fits the video (the length is not stored); the client guards that. `createdById` records who first authored the question.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/VideoQuestionInput" } } },
+        },
+        responses: {
+          201: ok(
+            { type: "object", required: ["question"], properties: { question: { $ref: "#/components/schemas/VideoQuestionAdmin" } } },
+            "The created question.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/video-questions/{questionId}": {
+      patch: {
+        tags: ["Video quiz"],
+        summary: "Edit a video question and re-grade",
+        description:
+          "Full replacement of the authored fields (same body as create). **`regradedCount` exists because an edit rewrites history:** when the correct index or the options change, every recorded answer is re-evaluated in the same transaction (an index the shrunken options no longer contain can never be right) and the number whose verdict flipped is returned. `pointsChanged` is true when `points` moved — points are not stored on a response, so nothing is re-graded, but every earned score changed.",
+        parameters: [questionIdParam],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/VideoQuestionInput" } } },
+        },
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["question", "regradedCount", "pointsChanged"],
+              properties: {
+                question: { $ref: "#/components/schemas/VideoQuestionAdmin" },
+                regradedCount: { type: "integer", minimum: 0 },
+                pointsChanged: { type: "boolean" },
+              },
+            },
+            "The updated question and the re-grade outcome.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+      delete: {
+        tags: ["Video quiz"],
+        summary: "Delete a video question",
+        description:
+          "**`responsesRemoved` counts destroyed student work:** the database cascade deletes every recorded answer to the question, so the client should warn with the `responseCount` it already holds and confirm with this number. `SessionVideoProgress` rows are deliberately left alone (v1 does the same; there is no soft-delete column).",
+        parameters: [questionIdParam],
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["deleted", "responsesRemoved"],
+              properties: { deleted: { type: "boolean", const: true }, responsesRemoved: { type: "integer", minimum: 0 } },
+            },
+            "Deleted.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/sessions/{id}/video-quiz/results": {
+      get: {
+        tags: ["Video quiz"],
+        summary: "Every student's video-quiz result",
+        description:
+          "Staff with a scope in the session's season (SUPER and season ADMIN: every ACTIVE student; a LEADER: their own groups' ACTIVE students — the same roster as attendance; a MENTOR is refused). One row per ACTIVE enrolment, including students who have answered nothing. New capability: v1 shows no student's video-quiz result to anybody.",
+        parameters: [idParam],
+        responses: {
+          200: ok({ $ref: "#/components/schemas/VideoQuizResults" }, "The results."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/reports/engagement": {
+      get: {
+        tags: ["Reports"],
+        summary: "Engagement summary for the caller's permitted seasons",
+        description:
+          "Charts, band counts and the capped at-risk list. The cohort is NOT included — " +
+          "see /api/v1/reports/engagement/students.\n\n" +
+          "Scope: `seasonId` may repeat. The requested ids are INTERSECTED with the " +
+          "caller's permitted set (SUPER/MENTOR: every non-deleted season; ADMIN: their " +
+          "seasonAdminIds); ids outside it are dropped silently and `scope.truncated` is " +
+          "set. LEADER and STUDENT are refused.\n\n" +
+          "Metrics: `attendanceTrend[].pct` divides by the roster as it stood at that " +
+          "session's instant, so it cannot exceed 100 and is `null` when nobody was " +
+          "enrolled yet. `completion[].completionRate` is a per-ASSIGNMENT figure and is " +
+          "not the same unit as a per-student submission percentage. A row's `band` is " +
+          "the at-risk answer: `AT_RISK` means either engagement component is below 60, " +
+          "and the at-risk list is exactly the rows in that band.\n\n" +
+          "Times: `startsAt` is a raw UTC instant (for ordering); `dayKey` is its " +
+          "organisation-calendar day (YYYY-MM-DD, ORG_TIMEZONE), which clients label by.",
+        parameters: [
+          { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+          { name: "from", in: "query", required: false, schema: { type: "string", format: "date-time" } },
+          { name: "to", in: "query", required: false, schema: { type: "string", format: "date-time" } },
+          { name: "trendLimit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 200, default: 26 } },
+        ],
+        responses: {
+          200: ok(engagementSummarySchemaDoc, "Engagement summary"),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/reports/engagement/students": {
+      get: {
+        tags: ["Reports"],
+        summary: "The engagement cohort, paged",
+        description:
+          "SEPARATELY GATED from the summary (same roles: SUPER, MENTOR, ADMIN; LEADER " +
+          "and STUDENT refused) and absent from the summary's payload on purpose — v1 " +
+          "shipped every student's name, email and scores to every screen (R34).\n\n" +
+          "One row per ACTIVE ENROLMENT, so a student in two in-scope seasons appears " +
+          "twice. Ordered by score ascending, then studentUserId, then seasonId. " +
+          "`cursor` is opaque; a malformed cursor restarts the list. `band` filters to " +
+          "one engagement band. Scope intersection is identical to the summary's.",
+        parameters: [
+          { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+          { name: "band", in: "query", required: false, schema: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "AT_RISK"] } },
+          { name: "cursor", in: "query", required: false, schema: { type: "string" } },
+          { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 200, default: 50 } },
+        ],
+        responses: {
+          200: ok(engagementStudentPageSchemaDoc, "One page of the cohort"),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/reports/organisation": {
+      get: {
+        tags: ["Reports"],
+        summary: "Organisation roll-up (SUPER only)",
+        description:
+          "Counts across the whole organisation; every other role is refused with 403.\n\n" +
+          "`totalStudentsNotGraduated` counts student ACCOUNTS (role STUDENT, no " +
+          "graduationYear, not deleted), not enrolments — the same population v1 " +
+          "labelled \"Current students\", renamed so the label stops overclaiming (D4). " +
+          "`withdrawnCount` is the WITHDRAWN enrolment status, displayed as \"Dropped\". " +
+          "Season rows carry `code` beside `seasonId` so a client can address the " +
+          "season detail route by code (D13).",
+        responses: {
+          200: ok(organisationReportSchemaDoc, "Organisation roll-up"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/reports/engagement/export": {
+      get: {
+        tags: ["Reports"],
+        summary: "Engagement export (XLSX) for the caller's permitted seasons",
+        description:
+          EXPORT_COMMON + "\n\n" +
+          "Roles: SUPER, ADMIN (their seasons) and MENTOR. MENTOR may take THIS export — " +
+          "it is the data v1 shows mentors on screen — and may not take the season " +
+          "workbook. Scope intersection is identical to /reports/engagement. " +
+          "`?format=csv` is refused with a legible 400: XLSX is the only format (D7).",
+        parameters: [
+          { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+          { name: "format", in: "query", required: false, schema: { type: "string", enum: ["xlsx"], default: "xlsx" } },
+        ],
+        responses: {
+          200: xlsxResponse,
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/exports/workbook": {
+      get: {
+        tags: ["Reports"],
+        summary: "Season workbook (XLSX): attendance, grades, assignments, key",
+        description:
+          EXPORT_COMMON + "\n\n" +
+          "Roles: SUPER, or an ADMIN of this season. MENTOR is REFUSED — a deliberate " +
+          "divergence from v1, whose only mentor protection was an unrendered button " +
+          "(spec D6 #3). A soft-deleted season is 404.\n\n" +
+          "`Submitted %` divides by the assignments assigned to that student (ruling C5), " +
+          "which CHANGES its value relative to v1 for any season with a group-targeted " +
+          "assignment. LATE attendance cells render \"L\": the recorded minutes are " +
+          "measured from the wrong instant and are withheld until the cutover backfill " +
+          "(ruling C3).",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        responses: {
+          200: xlsxResponse,
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/exports/manifest": {
+      get: {
+        tags: ["Reports"],
+        summary: "What the season workbook will contain, without building it",
+        description:
+          "Same gate as the workbook (a manifest a caller cannot act on is a size oracle). " +
+          "Returns the exact filename the workbook download will carry, the sheet list, an " +
+          "estimated byte size for a cellular-data warning, and a scope description. Not " +
+          "rate-limited: it builds nothing.",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+        responses: {
+          200: ok(exportManifestSchemaDoc, "Workbook manifest"),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
         },
       },
     },

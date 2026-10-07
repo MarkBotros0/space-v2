@@ -1,4 +1,6 @@
-import { QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryClient } from "@tanstack/react-query";
+
+import { queryKeys } from "./query-keys";
 
 /**
  * The one place React Query defaults are set — every screen's `useQuery`
@@ -12,9 +14,21 @@ import { QueryClient } from "@tanstack/react-query";
  * - `refetchOnWindowFocus: false` — "window focus" is a browser tab concept;
  *   it's meaningless on a mobile app and would otherwise do nothing useful
  *   while still being dead config to reason about.
+ * - a `MutationCache` that invalidates the dashboard queries after any
+ *   successful mutation tagged `DASHBOARD_META` (spec 19 D24).
  */
 export function createQueryClient(): QueryClient {
-  return new QueryClient({
+  const client: QueryClient = new QueryClient({
+    // Spec 19 D24: a mutation tagged DASHBOARD_META refreshes every role's
+    // Home. Keyed on meta, not on mutation keys, so the tag is visible at the
+    // hook that writes and greppable (Task 8's guard test reads it).
+    mutationCache: new MutationCache({
+      onSuccess: (_data, _variables, _context, mutation) => {
+        if (mutation.meta?.invalidatesDashboard === true) {
+          void client.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+        }
+      },
+    }),
     defaultOptions: {
       queries: {
         retry: 1,
@@ -23,4 +37,5 @@ export function createQueryClient(): QueryClient {
       },
     },
   });
+  return client;
 }

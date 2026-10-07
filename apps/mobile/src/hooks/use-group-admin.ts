@@ -16,6 +16,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 /** Roles that browse groups by season (D-16.16). LEADER/STUDENT keep Plan 2's MY_GROUPS_ROLES branch. */
@@ -98,6 +99,8 @@ export function useUpdateGroup(id: number) {
 export function useDeleteGroup() {
   const invalidate = useInvalidateGroupData();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (id: number) => {
       const res = await apiClient.delete(`/api/v1/groups/${id}`);
       return groupDeleteResponseSchema.parse(res.data.data);
@@ -109,6 +112,8 @@ export function useDeleteGroup() {
 export function useSaveGroupAssignments(seasonId: number) {
   const invalidate = useInvalidateGroupData();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (body: GroupAssignmentsRequest) => {
       const res = await apiClient.put(`/api/v1/seasons/${seasonId}/group-assignments`, body);
       return groupAssignmentsResponseSchema.parse(res.data.data);

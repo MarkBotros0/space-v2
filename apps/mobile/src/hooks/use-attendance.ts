@@ -8,6 +8,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 const rosterSchema = z.array(attendanceRosterRowSchema);
@@ -28,6 +29,8 @@ export function useAttendanceRoster(
 export function useSaveAttendance(sessionId: number) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (entries: AttendanceEntry[]) => {
       const res = await apiClient.post(`/api/v1/sessions/${sessionId}/attendance`, { entries });
       return saveAttendanceResponseSchema.parse(res.data.data);

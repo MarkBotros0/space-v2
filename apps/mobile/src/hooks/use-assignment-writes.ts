@@ -6,6 +6,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 /**
@@ -16,6 +17,8 @@ import { queryKeys } from "../lib/query-keys";
 export function useCreateAssignment() {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async ({ seasonId, body }: { seasonId: number; body: AssignmentWriteRequest }) => {
       const res = await apiClient.post(`/api/v1/seasons/${seasonId}/assignments`, body);
       return assignmentDetailSchema.parse(res.data.data);
@@ -31,6 +34,8 @@ export function useCreateAssignment() {
 export function useUpdateAssignment(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (body: AssignmentWriteRequest) => {
       const res = await apiClient.patch(`/api/v1/assignments/${id}`, body);
       return assignmentDetailSchema.parse(res.data.data);
@@ -47,6 +52,8 @@ export function useUpdateAssignment(id: number) {
 export function useDeleteAssignment() {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (id: number) => {
       const res = await apiClient.delete(`/api/v1/assignments/${id}`);
       return assignmentDeletedResponseSchema.parse(res.data.data);

@@ -35,3 +35,6 @@ export const notificationTypeSchema = z.enum([
   "QUIZ_GRADED",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
+
+export const jpcVisibilitySchema = z.enum(["ALL", "ALUMNI_ONLY", "SEASON"]);
+export type JpcVisibility = z.infer<typeof jpcVisibilitySchema>;

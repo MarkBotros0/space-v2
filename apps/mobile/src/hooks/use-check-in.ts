@@ -14,6 +14,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 /** Admin-only check-in state (D-16.9) — the console's token source after a restart. */
@@ -48,6 +49,8 @@ export function useRegenerateCheckIn(id: number) {
 export function useCheckIn(): UseMutationResult<CheckInResponse, Error, string> {
   const queryClient = useQueryClient();
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (token: string) => {
       const res = await apiClient.post("/api/v1/sessions/check-in", { token });
       return checkInResponseSchema.parse(res.data.data);

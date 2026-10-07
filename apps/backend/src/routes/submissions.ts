@@ -9,10 +9,14 @@ import { config } from "../lib/config";
 import { createNotificationsBulk } from "../lib/notifications";
 import { bestEffort } from "../lib/best-effort";
 import { parseId } from "../lib/parse-id";
-import { canAccessSeason, canReviewSubmission, canViewSubmission } from "../lib/permissions";
+import {
+  canAccessSeason,
+  canReviewSubmission,
+  canViewSubmission,
+  submissionQueueScopeFor,
+} from "../lib/permissions";
 import { newPublicId } from "../lib/public-id";
 import { isLate, studentCanSeeAssignment } from "../lib/queries/assignments";
-import { isMentor, isSuper } from "../lib/rbac";
 import { FileNotFoundError, buildStorageKey, getStorage } from "../lib/storage";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
@@ -91,30 +95,7 @@ submissionsRouter.get("/", async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
   const { pendingOnly, seasonId, cursor, limit } = parsed.data;
 
-  let scope: Prisma.SubmissionWhereInput | null = null;
-  if (isSuper(user) || isMentor(user)) {
-    scope = {};
-  } else if (user.role === "ADMIN") {
-    scope = { assignment: { seasonId: { in: user.seasonAdminIds } } };
-  } else if (user.role === "LEADER") {
-    const groups = await db.group.findMany({
-      where: { id: { in: user.groupLeaderIds } },
-      select: { id: true, seasonId: true },
-    });
-    const enrollments = await db.seasonEnrollment.findMany({
-      where: { groupId: { in: groups.map((g) => g.id) } },
-      select: { studentUserId: true, seasonId: true },
-    });
-    scope =
-      enrollments.length === 0
-        ? null
-        : {
-            OR: enrollments.map((e) => ({
-              studentUserId: e.studentUserId,
-              assignment: { seasonId: e.seasonId },
-            })),
-          };
-  }
+  const scope = await submissionQueueScopeFor(user);
   if (scope === null) return apiOk(res, { items: [], nextCursor: null });
 
   // AND rather than spreading, so the scope's own `assignment` constraint (the
@@ -238,12 +219,22 @@ submissionsRouter.patch("/:publicId", async (req, res) => {
 
   const sub = await db.submission.findUnique({
     where: { publicId: publicId ?? "" },
-    select: { id: true, studentUserId: true, assignment: { select: { dueAt: true } } },
+    select: { id: true, studentUserId: true, assignment: { select: { dueAt: true, type: true } } },
   });
   if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
   // Only the author may edit. Season admins and leaders can read a submission
   // (canViewSubmission) but must never rewrite a student's words.
   if (sub.studentUserId !== user.userId) throw new ForbiddenError();
+  // A forum post has exactly one writer (plan 14 D-14.1). A save would replace
+  // a posted body with unescaped text while the row stays SUBMITTED.
+  if (sub.assignment.type === "FORUM") {
+    return apiError(
+      res,
+      "use_forum_endpoint",
+      "Post forum responses through the forum endpoint.",
+      409,
+    );
+  }
 
   const parsed = updateSubmissionRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid submission body.", 400);
@@ -302,10 +293,23 @@ submissionsRouter.put("/by-assignment/:assignmentId", async (req, res) => {
     select: {
       seasonId: true,
       isAllGroups: true,
+      type: true,
       targets: { select: { groupId: true } },
     },
   });
   if (!assignment) return apiError(res, "not_found", "Assignment not found.", 404);
+  // A forum post has exactly one writer: PUT /assignments/:id/forum/response,
+  // which applies forumMinWords, refuses an empty post (it would unlock every
+  // peer's work) and stores escaped HTML. Creating the row here would let a
+  // client skip all three with a follow-up PATCH {submit:true} (plan 14 D-14.1).
+  if (assignment.type === "FORUM") {
+    return apiError(
+      res,
+      "use_forum_endpoint",
+      "Post forum responses through the forum endpoint.",
+      409,
+    );
+  }
 
   if (!(await canAccessSeason(user, assignment.seasonId))) {
     return apiError(res, "forbidden", "You don't have access to this.", 403);

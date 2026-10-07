@@ -12,6 +12,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
 /** What the create form sends — the request schema's input side. */
@@ -33,6 +34,8 @@ function useInvalidateQuiz(id: number | null) {
 export function useCreateQuiz() {
   const invalidate = useInvalidateQuiz(null);
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (body: CreateQuizInput) => {
       const res = await apiClient.post("/api/v1/quizzes", body);
       return quizCreatedResponseSchema.parse(res.data.data);
@@ -100,6 +103,8 @@ export function useReorderQuestions(id: number) {
 export function usePublishQuiz(id: number) {
   const invalidate = useInvalidateQuiz(id);
   return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (publish: boolean) => {
       const res = await apiClient.post(`/api/v1/quizzes/${id}/publish`, { publish });
       return publishQuizResponseSchema.parse(res.data.data);

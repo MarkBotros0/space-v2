@@ -1,4 +1,4 @@
-import { format, isValid, parse, parseISO } from "date-fns";
+import { format, formatDistanceToNowStrict, isValid, parse, parseISO } from "date-fns";
 
 // Every timestamp that crosses the wire (`dueAt`, `submittedAt`,
 // `reviewedAt`, `checkedInAt`, session start times, ...) is a JSON ISO
@@ -65,4 +65,43 @@ export function formatWallTime(time: string | null): string {
 export function formatOrgDue(day: string | null, time: string | null): string {
   if (day == null) return "No due date";
   return time == null ? formatDayKey(day) : `${formatDayKey(day)}, ${formatWallTime(time)}`;
+}
+
+/**
+ * e.g. "Jul 1, 2099 – Jul 5, 2099 · 6:30 PM" — a JPC event's when-label, built
+ * only from the server's org-clock strings (`dayKey`, `endDayKey`, `time`;
+ * ruling X13). `date`/`endDate` are never formatted on the device, so an
+ * org-midnight event cannot move to the previous day west of the org zone.
+ */
+export function formatEventWhen(event: {
+  dayKey: string;
+  endDayKey: string | null;
+  time: string | null;
+}): string {
+  const days =
+    event.endDayKey && event.endDayKey !== event.dayKey
+      ? `${formatDayKey(event.dayKey)} – ${formatDayKey(event.endDayKey)}`
+      : formatDayKey(event.dayKey);
+  return event.time !== null ? `${days} · ${formatWallTime(event.time)}` : days;
+}
+
+/**
+ * The greeting's first name (spec 19 D21): first whitespace token of the
+ * trimmed name, "there" when the name is null OR empty. v1's student and
+ * alumni pages disagreed on exactly this.
+ */
+export function firstName(name: string | null | undefined): string {
+  const first = (name ?? "").trim().split(/\s+/)[0];
+  return first ? first : "there";
+}
+
+/**
+ * "2 hours ago" — a RELATIVE label from an instant. The one thing the device
+ * clock is good for (spec 19 D23); it buckets nothing by day.
+ */
+export function formatTimeAgo(iso: string | null): string {
+  if (iso == null) return PLACEHOLDER;
+  const date = parseISO(iso);
+  if (!isValid(date)) return PLACEHOLDER;
+  return formatDistanceToNowStrict(date, { addSuffix: true });
 }
