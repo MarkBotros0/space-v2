@@ -317,6 +317,8 @@ export default function ReportsScreen() {
                     // phone's calendar day.
                     label: formatDayKey(p.dayKey),
                     pct: p.pct,
+                    // One line per season (REG-117).
+                    series: { key: String(p.seasonId), label: p.seasonTitle },
                   }))}
                 />
                 {summary.data.attendanceTrend.length > 0 ? (
