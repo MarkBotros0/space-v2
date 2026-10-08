@@ -17,6 +17,7 @@ let seasonId: number;
 let assignmentId: number;
 let publicId: string;
 let studentUserId: number;
+let leaderUserId: number;
 let groupAId: number;
 let mentorToken: string;
 let ownerToken: string;
@@ -82,6 +83,7 @@ beforeAll(async () => {
   ownerToken = await login(app, owner.email);
   peerToken = await login(app, peer.email);
   leaderToken = await login(app, leader.email);
+  leaderUserId = leader.id;
   adminToken = await login(app, admin.email);
   mentorToken = await login(app, mentor.email);
 });
@@ -347,9 +349,10 @@ describe("POST /api/v1/submissions/:publicId/review", () => {
     expect(res.status).toBe(200);
     const row = await db.submission.findUnique({
       where: { publicId: pid },
-      select: { status: true, feedback: true, reviewedAt: true },
+      select: { status: true, feedback: true, reviewedAt: true, reviewedById: true },
     });
     expect(row).toMatchObject({ status: "REVIEWED", feedback: "Good work." });
+    expect(row?.reviewedById).toBe(leaderUserId);
     expect(row?.reviewedAt).not.toBeNull();
 
     const notified = await db.notification.count({
@@ -434,6 +437,19 @@ describe("GET /api/v1/submissions", () => {
       .set("authorization", `Bearer ${adminToken}`);
     expect(second.status).toBe(200);
     expect(second.body.data.items[0].publicId).not.toBe(first.body.data.items[0].publicId);
+  });
+
+  it("never returns a DRAFT to a reviewer, even with pendingOnly=false", async () => {
+    const draftPid = await seedSubmission("DRAFT", "Queue draft");
+    for (const token of [adminToken, leaderToken]) {
+      const res = await request(app)
+        .get("/api/v1/submissions?pendingOnly=false&limit=100")
+        .set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      const items = res.body.data.items as { publicId: string; status: string }[];
+      expect(items.some((i) => i.publicId === draftPid)).toBe(false);
+      expect(items.every((i) => i.status !== "DRAFT")).toBe(true);
+    }
   });
 
   it("refuses a student outright", async () => {

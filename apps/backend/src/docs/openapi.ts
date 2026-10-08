@@ -244,6 +244,181 @@ const exportManifestSchemaDoc = {
   },
 } as const;
 
+// Imports (Plan 17). Hand-authored like every response in this document.
+const importCellValuesDoc = {
+  type: "object",
+  description:
+    "The raw trimmed cell text of one row. Flat (no nested profile). Resubmitted verbatim on commit.",
+  properties: {
+    name: { type: "string" },
+    email: { type: "string" },
+    university: { type: "string", nullable: true },
+    year: { type: "string", nullable: true },
+    phone: { type: "string", nullable: true },
+    dateOfBirth: { type: "string", nullable: true, description: "Raw text as typed; YYYY-MM-DD is the only accepted form." },
+    spiritualBackground: { type: "string", nullable: true },
+    gifts: { type: "string", nullable: true },
+    notes: { type: "string", nullable: true },
+  },
+} as const;
+
+const studentImportPreviewDoc = {
+  type: "object",
+  properties: {
+    rows: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          rowNumber: { type: "integer", description: "The operator's own line number; the header is line 1. Not contiguous: blank lines keep their number." },
+          name: { type: "string" },
+          email: { type: "string" },
+          status: { type: "string", enum: ["new", "exists", "duplicate", "invalid", "previously_removed"] },
+          message: { type: "string", nullable: true },
+          values: importCellValuesDoc,
+        },
+      },
+    },
+    detectedColumns: { type: "array", items: { type: "string" } },
+    unrecognisedColumns: { type: "array", items: { type: "string" }, description: "Header cells that matched no alias, echoed as typed (trimmed)." },
+    delimiter: { type: "string", enum: ["comma", "tab"] },
+    counts: {
+      type: "object",
+      properties: {
+        new: { type: "integer" },
+        exists: { type: "integer" },
+        duplicate: { type: "integer" },
+        invalid: { type: "integer" },
+        previously_removed: { type: "integer" },
+        total: { type: "integer" },
+      },
+    },
+  },
+} as const;
+
+const importTemplateDoc = {
+  type: "object",
+  properties: {
+    columns: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          label: { type: "string" },
+          acceptedHeaders: { type: "array", items: { type: "string" } },
+          required: { type: "boolean" },
+          maxLength: { type: "integer", nullable: true },
+          target: { type: "string" },
+          note: { type: "string", nullable: true },
+        },
+      },
+    },
+    headerRow: { type: "string", description: "A ready-made tab-separated header line." },
+    maxRows: { type: "integer" },
+    maxPasteChars: { type: "integer" },
+    capabilities: {
+      type: "object",
+      properties: { pasteText: { type: "boolean" }, fileUpload: { type: "boolean", description: "Hard false until file intake lands with the CMS." } },
+    },
+  },
+} as const;
+
+const pastedSheetBodyDoc = {
+  type: "object",
+  required: ["text"],
+  properties: {
+    text: { type: "string", minLength: 1, maxLength: 262144 },
+    delimiter: { type: "string", enum: ["comma", "tab", "auto"], default: "auto" },
+  },
+} as const;
+
+const studentImportCommitBodyDoc = {
+  type: "object",
+  required: ["mode", "onExisting", "rows"],
+  properties: {
+    mode: { type: "string", enum: ["season", "alumni"] },
+    seasonId: { type: "integer", description: "Required when mode is `season`." },
+    graduationYear: { type: "integer", minimum: 1990, description: "Required when mode is `alumni`; not in the future (evaluated per request)." },
+    onExisting: { type: "string", enum: ["skip", "enroll"], description: "Required, no default. `enroll` is valid in season mode only." },
+    rows: {
+      type: "array",
+      minItems: 1,
+      maxItems: 2000,
+      items: {
+        type: "object",
+        required: ["rowNumber", "values"],
+        properties: { rowNumber: { type: "integer", minimum: 1 }, values: importCellValuesDoc },
+      },
+    },
+  },
+} as const;
+
+const studentImportResultDoc = {
+  type: "object",
+  properties: {
+    created: { type: "integer" },
+    skipped: { type: "integer" },
+    enrolled: { type: "integer" },
+    rows: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          rowNumber: { type: "integer" },
+          name: { type: "string" },
+          email: { type: "string" },
+          outcome: { type: "string", enum: ["created", "skipped", "enrolled"] },
+          message: { type: "string", nullable: true },
+          userId: { type: "integer", nullable: true },
+        },
+      },
+    },
+  },
+} as const;
+
+const groupImportPreviewDoc = {
+  type: "object",
+  properties: {
+    rows: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          rowNumber: { type: "integer" },
+          name: { type: "string", description: "Display only; never written." },
+          email: { type: "string" },
+          group: { type: "string" },
+          status: { type: "string", enum: ["assign", "unchanged", "no_student", "no_group", "invalid"] },
+          message: { type: "string", nullable: true },
+          studentUserId: { type: "integer", nullable: true },
+          groupId: { type: "integer", nullable: true },
+        },
+      },
+    },
+    delimiter: { type: "string", enum: ["comma", "tab"] },
+    counts: {
+      type: "object",
+      properties: {
+        assign: { type: "integer" },
+        unchanged: { type: "integer" },
+        no_student: { type: "integer" },
+        no_group: { type: "integer" },
+        invalid: { type: "integer" },
+        total: { type: "integer" },
+      },
+    },
+  },
+} as const;
+
+const groupImportResultDoc = {
+  type: "object",
+  properties: {
+    assigned: { type: "integer", description: "The number actually WRITTEN, not the number requested." },
+    skipped: { type: "integer" },
+    skippedStudentIds: { type: "array", items: { type: "integer" } },
+  },
+} as const;
+
 const idParam = {
   name: "id",
   in: "path",
@@ -287,6 +462,10 @@ export const openApiDocument = {
       "`Authorization: Bearer <accessToken>`. Access tokens last 15 minutes; rotate with",
       "`POST /api/v1/auth/refresh`, which also revokes the presented refresh token.",
       "",
+      "**Maintenance.** While `READ_ONLY` is on, every non-GET request except",
+      "`POST /api/v1/auth/login|refresh|logout` answers `503 read_only` with",
+      "`Retry-After: 600`.",
+      "",
       "**Timestamps** are ISO-8601 strings.",
     ].join("\n"),
   },
@@ -310,6 +489,7 @@ export const openApiDocument = {
     { name: "Forum", description: "Forum assignments: the group thread, the post that unlocks it, and comments" },
     { name: "Events", description: "JPC events: one token-derived visibility rule, a bounded window, SUPER-only writes (event photos are deferred while uploads are disabled)" },
     { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
+    { name: "Imports", description: "Paste-first bulk entry: SUPER student importer and season-scoped group importer (preview, then commit)" },
   ],
   security: [{ bearerAuth: [] }],
   components: {
@@ -5110,6 +5290,129 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/imports/students/preview": {
+      post: {
+        tags: ["Imports"],
+        summary: "Preview a pasted student sheet (SUPER only)",
+        description:
+          "SUPER only, deliberately (spec D3) - not an oversight. Body is `{ text, delimiter? }`: **pasted text, not multipart**. An import sheet is read once, parsed in memory and never stored, so it is not an 'upload' and is not gated by `ENABLE_UPLOADS`. " +
+          "Every row is classified against the file and the live database: `new`, `exists` (email matched case-insensitively), `duplicate` (repeated earlier in the paste), `invalid` (fails the same validation as `POST /students`), or `previously_removed` (v2's addition: the address belongs to a soft-deleted user, who is never resurrected). " +
+          "`unrecognisedColumns` echoes header cells that matched no alias. Each row carries its `values` so the client can resubmit them; the commit re-derives every status itself and trusts none of this. " +
+          "Limits: 2000 rows, 256 KB of text. 400 `bad_request` carries the operator-facing parse message. Rate limited (429).",
+        requestBody: { required: true, content: { "application/json": { schema: pastedSheetBodyDoc } } },
+        responses: {
+          200: ok(studentImportPreviewDoc, "Row-by-row classification."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          413: conflict("`payload_too_large`."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/imports/students/template": {
+      get: {
+        tags: ["Imports"],
+        summary: "Student import column schema (SUPER only)",
+        description:
+          "The accepted columns as data, a copyable tab-separated header row, the caps, and `capabilities: { pasteText: true, fileUpload: false }` so the screen can say why there is no file picker.",
+        responses: {
+          200: ok(importTemplateDoc, "Template."),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
+    "/api/v1/imports/students/commit": {
+      post: {
+        tags: ["Imports"],
+        summary: "Commit a student import (SUPER only)",
+        description:
+          "SUPER only. The body carries cell **values and a row number, never a status**: the server re-validates every row and re-runs the existence lookup inside the transaction, so a client cannot commit a row the server would have refused. " +
+          "**All-or-nothing**: any unimportable row answers `422 import_rows_invalid` naming the row numbers and nothing is written (deliberate divergence from v1, which committed row-by-row and left partial imports behind). " +
+          "**Idempotent by email**, matched case-insensitively and stored exactly as sent: a re-run creates nothing. In-paste repeats are skipped. " +
+          "`onExisting` is required. `skip` reproduces v1. `enroll` (season mode only) enrols an existing live STUDENT using the same rules as `POST /students/{id}/enrollments` (an existing enrolment of any status is left alone and reported `skipped`; `activeSeasonId` is set only when unset) and writes no other field. A soft-deleted or staff address is always skipped. " +
+          "Created accounts have no credential and no invite is sent. Outcomes are `created` / `skipped` / `enrolled`; there is no `failed`. " +
+          "404 `not_found` for a soft-deleted season; 409 `import_conflict` for a concurrent create (nothing was written; re-running is safe); 429.",
+        requestBody: { required: true, content: { "application/json": { schema: studentImportCommitBodyDoc } } },
+        responses: {
+          200: ok(studentImportResultDoc, "Per-row outcomes."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          409: conflict("`import_conflict`."),
+          413: conflict("`payload_too_large`."),
+          422: conflict("`import_rows_invalid`."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/imports/groups/preview": {
+      post: {
+        tags: ["Imports"],
+        summary: "Preview a pasted group-assignment sheet (season admin or SUPER)",
+        description:
+          "Gate is `isAdminOfSeason` on the **path** id (SUPER short-circuits), so preview and commit cannot target different seasons. Body `{ text, delimiter? }`, pasted text. Needs `email` and `group` columns; `name` is display only. " +
+          "Statuses: `assign`, `unchanged`, `no_student`, `no_group`, `invalid`. A **blank** group cell is `no_group`, not an unassign - there is no bulk unassign. " +
+          "The roster is resolved through an ACTIVE `SeasonEnrollment` (ruling C9), not `StudentProfile.activeSeasonId`, which is why a previewed `assign` is always written. " +
+          "The file is **refused** (`400 bad_request`) when two groups in the season share a case-insensitive name, rather than one silently winning.",
+        parameters: [idParam],
+        requestBody: { required: true, content: { "application/json": { schema: pastedSheetBodyDoc } } },
+        responses: {
+          200: ok(groupImportPreviewDoc, "Row-by-row classification."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          413: conflict("`payload_too_large`."),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/seasons/{id}/imports/groups/commit": {
+      post: {
+        tags: ["Imports"],
+        summary: "Commit resolved group assignments (season admin or SUPER)",
+        description:
+          "Body `{ assignments: [{ studentUserId, groupId }] }` (ids resolved by the preview; the write independently re-derives scope, so fabricated ids achieve nothing). One transaction through the same write as `PUT /seasons/{id}/group-assignments`. " +
+          "`assigned` is the number **written** and `skippedStudentIds` names the rest (not actively enrolled in this season) - a deliberate correction of v1 reporting the requested count. " +
+          "`400 group_outside_season` refuses the whole batch when any group is not in this season.",
+        parameters: [idParam],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["assignments"],
+                properties: {
+                  assignments: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 2000,
+                    items: {
+                      type: "object",
+                      required: ["studentUserId", "groupId"],
+                      properties: { studentUserId: { type: "integer" }, groupId: { type: "integer" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: ok(groupImportResultDoc, "What was written."),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+          413: conflict("`payload_too_large`."),
+          429: errRef("TooManyRequests"),
         },
       },
     },

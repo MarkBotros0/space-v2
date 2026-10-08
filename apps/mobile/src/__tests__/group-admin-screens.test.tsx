@@ -217,6 +217,24 @@ describe("/seasons/[code]/roster (G7)", () => {
     expect(await screen.findByText("Assigned 1, unassigned 1.")).toBeTruthy();
   });
 
+  it("offers Import groups to a season admin, pushing the importer route", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    mockParams = { code: "s7" };
+    routeGets();
+    renderWithProviders(<SeasonRosterScreen />);
+    fireEvent.press(await screen.findByText("Import groups"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/roster/import", params: { code: "s7" } });
+  });
+
+  it("does not offer Import groups to a caller who cannot administer the season", async () => {
+    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }));
+    mockParams = { code: "s7" };
+    routeGets({ "/api/v1/seasons/by-code/s7": { ...seasonDetail, canAdminister: false } });
+    renderWithProviders(<SeasonRosterScreen />);
+    await screen.findByText("Only this season's admins can manage its roster.");
+    expect(screen.queryByText("Import groups")).toBeNull();
+  });
+
   it("refuses a caller the server says does not administer the season (C4)", async () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }));
     mockParams = { code: "s7" };

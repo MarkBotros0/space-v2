@@ -138,6 +138,9 @@ export default function UsersScreen() {
     <Screen edges={["top", "left", "right"]} padded scroll={false}>
       <View style={{ gap: theme.spacing.sm, flex: 1 }}>
         <Button title="New user" onPress={() => router.push("/users/new")} />
+        {/* Spec 16 §9: the importer is reached from its parent list's header
+            action, as in v1 (super/users/page.tsx:59). */}
+        <Button title="Import students" variant="secondary" onPress={() => router.push("/users/import")} />
         <PendingInvitesCard />
         <Input
           label="Search"

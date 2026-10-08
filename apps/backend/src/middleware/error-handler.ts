@@ -11,6 +11,11 @@ function isBodyParseError(err: unknown): err is SyntaxError & { type?: string } 
   return err instanceof SyntaxError && (err as { type?: string }).type === "entity.parse.failed";
 }
 
+/** body-parser rejects a body over its `limit` with this `type`. */
+function isBodyTooLargeError(err: unknown): boolean {
+  return (err as { type?: string } | null)?.type === "entity.too.large";
+}
+
 /** Terminal error handler. Must be the last middleware mounted (Express
  * recognizes it as an error handler by its four-argument arity). Never
  * includes err.stack or err.message in the response body, regardless of
@@ -23,6 +28,14 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
 
   if (isBodyParseError(err)) {
     apiError(res, "bad_request", "Invalid JSON body.", 400);
+    return;
+  }
+
+  // An over-limit body is the client's error and must say so — without this it
+  // falls through to the generic 500 (the import routes accept up to
+  // config.importBodyLimit; every other route keeps the 100 KB default).
+  if (isBodyTooLargeError(err)) {
+    apiError(res, "payload_too_large", "Request body is too large.", 413);
     return;
   }
 

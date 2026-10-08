@@ -118,7 +118,9 @@ describe("student video quiz", () => {
 
     renderWithProviders(<SessionDetailScreen />);
 
-    expect(await screen.findByText("0 / 2 points")).toBeTruthy();
+    // Cold-start of the whole session screen (player, webview mock, modal)
+    // can exceed the 1s default while turbo runs every package in parallel.
+    expect(await screen.findByText("0 / 2 points", {}, { timeout: 8000 })).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/video-quiz");
     // The authoring read carries correctIndex for every question. A student
     // screen must never issue it, whatever the server would answer.

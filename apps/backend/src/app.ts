@@ -23,7 +23,9 @@ import { forumRouter } from "./routes/forum";
 import { videoQuizRouter } from "./routes/video-quiz";
 import { docsRouter } from "./routes/docs";
 import { reportsRouter } from "./routes/reports";
+import { importsRouter, seasonImportsRouter } from "./routes/imports";
 import { reportExportsRouter, seasonExportsRouter } from "./routes/exports";
+import { readOnlyGuard } from "./middleware/read-only";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -46,6 +48,17 @@ export function createApp(): Express {
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }),
   );
+  // Cutover freeze (Plan 18). Before every body parser and router: a refused
+  // write is never parsed, authenticated or sent to the database.
+  app.use(readOnlyGuard);
+  // The import routes parse their own bodies with a larger, explicit limit
+  // (routes/imports.ts -> importJsonParser). body-parser skips a body that is
+  // already parsed but NOT one that already failed, so these must run before
+  // the global 100 KB parser can reject a legal 256 KB paste. seasonImportsRouter
+  // defines only POST /:id/imports/groups/* and carries no router-level
+  // middleware, so every other /api/v1/seasons/* request falls through.
+  app.use("/api/v1/imports", importsRouter);
+  app.use("/api/v1/seasons", seasonImportsRouter);
   app.use(express.json());
   if (config.nodeEnv !== "test") {
     app.use(morgan("dev"));

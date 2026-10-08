@@ -9,7 +9,13 @@ import { sendInviteEmail } from "../lib/email";
 import { issueInvite, type IssuedInvite } from "../lib/invites";
 import { parseId } from "../lib/parse-id";
 import { canEditStudent, canViewStudent } from "../lib/permissions";
-import { listStudents, loadStudentDetail, type StudentDetailView } from "../lib/queries/students";
+import {
+  createStudentRows,
+  enrollStudentInSeason,
+  listStudents,
+  loadStudentDetail,
+  type StudentDetailView,
+} from "../lib/queries/students";
 import { isAdminOfSeason, isSuper } from "../lib/rbac";
 import {
   createEnrollmentRequestSchema,
@@ -124,36 +130,27 @@ studentsRouter.post("/", async (req, res) => {
   let invite: IssuedInvite;
   try {
     const result = await db.$transaction(async (tx) => {
-      const student = await tx.user.create({
-        data: {
-          email: body.email,
-          name: body.name,
-          role: "STUDENT", // forced, never an input (R14)
-          // D7: no password. v1's hard-coded ChangeMe123! and its plaintext
-          // log line (R16/R17) are deliberately not ported.
-          passwordHash: null,
-          studentProfile: {
-            create: {
-              // D1: pointer and enrollment agree by construction.
-              activeSeasonId: body.seasonId ?? null,
-              university: body.university ?? null,
-              year: body.year ?? null,
-              phone: body.phone ?? null,
-              dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-              spiritualBackground: body.spiritualBackground ?? null,
-              gifts: body.gifts ?? null,
-              notes: body.notes ?? null,
-            },
+      // One writer for these rows (D-16.8): the bulk importer calls exactly
+      // this function, so the two paths cannot drift apart the way v1's did.
+      // Plan 10's invite stays below, in the route — the importer never mints one.
+      const [student] = await createStudentRows(
+        tx,
+        [
+          {
+            name: body.name,
+            email: body.email,
+            university: body.university ?? null,
+            year: body.year ?? null,
+            phone: body.phone ?? null,
+            dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
+            spiritualBackground: body.spiritualBackground ?? null,
+            gifts: body.gifts ?? null,
+            notes: body.notes ?? null,
           },
-        },
-        select: { id: true, email: true },
-      });
-      if (body.seasonId != null) {
-        // The enrollment v1's form never created (R15).
-        await tx.seasonEnrollment.create({
-          data: { studentUserId: student.id, seasonId: body.seasonId, status: "ACTIVE" },
-        });
-      }
+        ],
+        body.seasonId != null ? { kind: "season", seasonId: body.seasonId } : { kind: "none" },
+      );
+      if (!student) throw new Error("createStudentRows returned no row for one input");
       // Plan 10 Decision 1 — spec 06 D7 / spec 11 §7: creation and
       // invitation are ONE operation, exactly as POST /users does it. The
       // invite is minted in this transaction (a rolled-back student can't
@@ -330,38 +327,22 @@ studentsRouter.post("/:id/enrollments", async (req, res) => {
 
   const student = await db.user.findFirst({
     where: { id, role: "STUDENT", deletedAt: null },
-    select: { id: true, studentProfile: { select: { activeSeasonId: true } } },
+    select: { id: true },
   });
   if (!student) return apiError(res, "not_found", "Student not found.", 404);
 
-  const existing = await db.seasonEnrollment.findUnique({
-    where: { studentUserId_seasonId: { studentUserId: id, seasonId } },
-    select: { id: true },
-  });
-  if (existing) {
-    // R2: one enrollment per student per season, EVER. A WITHDRAWN row is
-    // history, not an obstacle to clear — re-admission is a transition v1
-    // never had (R50) and is not invented here.
-    return apiError(res, "already_enrolled", "This student already has an enrollment in that season.", 409);
-  }
-
   try {
-    const enrollment = await db.$transaction(async (tx) => {
-      const row = await tx.seasonEnrollment.create({
-        // Entry is always ACTIVE (R47).
-        data: { studentUserId: id, seasonId, status: "ACTIVE" },
-        select: { id: true, seasonId: true, status: true },
-      });
-      // D1's reconciliation, applied conservatively: point an UNSET pointer
-      // at the new enrollment so the student is assignable on the roster
-      // (R11) — but never steal a pointer another season already holds.
-      if (student.studentProfile && student.studentProfile.activeSeasonId === null) {
-        await tx.studentProfile.update({
-          where: { userId: id },
-          data: { activeSeasonId: seasonId },
-        });
-      }
-      return row;
+    // R2 / R47 / D1 live in enrollStudentInSeason, which the bulk importer
+    // calls too (Plan 17 D-16.8): one enrolment per student per season, EVER
+    // (a WITHDRAWN row is history, not an obstacle); entry always ACTIVE; an
+    // UNSET profile pointer is pointed at the season, never stolen.
+    const outcome = await db.$transaction((tx) => enrollStudentInSeason(tx, id, seasonId));
+    if (outcome === "already_enrolled") {
+      return apiError(res, "already_enrolled", "This student already has an enrollment in that season.", 409);
+    }
+    const enrollment = await db.seasonEnrollment.findUniqueOrThrow({
+      where: { studentUserId_seasonId: { studentUserId: id, seasonId } },
+      select: { id: true, seasonId: true, status: true },
     });
     return apiOk(res, enrollment, 201);
   } catch (err) {

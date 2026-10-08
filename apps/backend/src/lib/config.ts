@@ -57,6 +57,15 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  // Cutover freeze (Plan 18, R5 -> R15). When "true", every non-GET/HEAD/OPTIONS
+  // request is refused with 503 read_only before its body is read, except the
+  // three auth endpoints that only write session bookkeeping. Defaults OFF.
+  // Hosting applies an env change only on a new deployment - flipping it is a
+  // redeploy, and the runbook says so.
+  READ_ONLY: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
   // URL scheme the mobile app registers (apps/mobile/app.json "scheme").
   // Password-reset emails link to <scheme>://reset-password?token=… (Plan 10
   // Decision 10). A custom-scheme link is never fetched over HTTP, so the
@@ -65,6 +74,14 @@ const envSchema = z.object({
     .string()
     .regex(/^[a-z][a-z0-9+.-]*$/, "must be a bare URL scheme, e.g. spacev2")
     .default("spacev2"),
+  // Body limit for the import routes only (routes/imports.ts). The global
+  // parser keeps body-parser's 100 KB default; a 256 KB paste and a 2000-row
+  // commit resubmitting every cell need more. Any body-parser size string.
+  IMPORT_BODY_LIMIT: z.string().default("2mb"),
+  // Import rate limits per 15 minutes (spec D18). Configurable so the
+  // integration suite, which commits ~22 times from one IP, can lift them.
+  IMPORT_PREVIEW_RATE_LIMIT: z.coerce.number().int().positive().default(30),
+  IMPORT_COMMIT_RATE_LIMIT: z.coerce.number().int().positive().default(10),
 });
 
 /**
@@ -107,5 +124,9 @@ export const config = {
   enableUploads: parsed.data.ENABLE_UPLOADS,
   inviteTokenTtlHours: parsed.data.INVITE_TOKEN_TTL_HOURS,
   enableApiDocs: parsed.data.ENABLE_API_DOCS,
+  readOnly: parsed.data.READ_ONLY,
   mobileAppScheme: parsed.data.MOBILE_APP_SCHEME,
+  importBodyLimit: parsed.data.IMPORT_BODY_LIMIT,
+  importPreviewRateLimit: parsed.data.IMPORT_PREVIEW_RATE_LIMIT,
+  importCommitRateLimit: parsed.data.IMPORT_COMMIT_RATE_LIMIT,
 } as const;

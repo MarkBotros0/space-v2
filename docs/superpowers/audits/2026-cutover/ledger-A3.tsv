@@ -1,0 +1,539 @@
+spec	rule	verdict	v2_citation	authority	note
+12-quizzes.md	R1	PRESERVED	apps/backend/src/routes/quizzes.ts:139	-	Create gated on isAdminOfSeason (SUPER short-circuits, role paired with claim per C7).
+12-quizzes.md	R2	PRESERVED	packages/shared/src/quiz.ts:248-253	-	createQuizRequestSchema keeps id, title 1-200, kind and maxScore 1-1000 bounds; sessionId now nullable.
+12-quizzes.md	R3	PRESERVED	packages/shared/src/quiz.ts:255-258	-	PAPER without maxScore refused by a schema refine, as v1 did after Zod.
+12-quizzes.md	R4	PRESERVED	apps/backend/src/routes/quizzes.ts:170	-	ONLINE stored with maxScore 0; a supplied maxScore for ONLINE is now rejected (quiz.ts:261-264) instead of zeroed.
+12-quizzes.md	R5	PRESERVED	apps/backend/src/routes/quizzes.ts:171	-	createdById stamped with the caller.
+12-quizzes.md	R6	DIVERGED	packages/shared/src/quiz.ts:250	12-quizzes.md D12	sessionId is nullable on create so a season-level quiz can be created deliberately.
+12-quizzes.md	R7	DIVERGED	apps/backend/src/routes/quizzes.ts:149-160	12-quizzes.md D12	Session must exist and belong to the season; otherwise 400 session_not_in_season.
+12-quizzes.md	R8	NA	-	-	revalidatePath bookkeeping for the Next.js cache; no v2 counterpart and no user-visible behaviour.
+12-quizzes.md	R9	PRESERVED	packages/shared/src/quiz.ts:241-264	12-quizzes.md D6	No window, limit or deadline field exists on create or the runner, per D6 do-not-invent.
+12-quizzes.md	R10	DROPPED	-	REG-51	No quiz delete endpoint in v2; v1 action was dead code (C12, spec D9).
+12-quizzes.md	R11	PRESERVED	apps/backend/src/routes/quizzes.ts:331-334	-	maxScore set to sum of question points, 0 when none.
+12-quizzes.md	R12	PRESERVED	apps/backend/src/routes/quizzes.ts:410	-	Recompute runs after add (410), update (450) and delete (486); publish and PAPER never recompute.
+12-quizzes.md	R13	DIVERGED	apps/backend/src/routes/quizzes.ts:378-386	12-quizzes.md D3	Question writes refused once any attempt exists, so the denominator cannot be rebased under graded attempts.
+12-quizzes.md	R14	DIVERGED	apps/backend/src/routes/quizzes.ts:399-412	UNNAMED: Plan 8 Task 3	Question write and maxScore recompute now share one transaction; no numbered decision found.
+12-quizzes.md	R15	PRESERVED	apps/backend/src/routes/quizzes.ts:367-370	-	Authoring gated by canManageQuiz (permissions.ts:263-268); returns 403 forbidden instead of throwing.
+12-quizzes.md	R16	PRESERVED	packages/shared/src/quiz.ts:285-291	-	Type, trimmed prompt 2-2000, points 1-100, up to 6 trimmed options 1-500, nullable correctIndex.
+12-quizzes.md	R17	PRESERVED	packages/shared/src/quiz.ts:293-296	-	MCQ needs at least 2 options; 6-option ceiling via array max(6).
+12-quizzes.md	R18	PRESERVED	packages/shared/src/quiz.ts:297-300	-	MCQ needs non-null correctIndex below options.length.
+12-quizzes.md	R19	PRESERVED	packages/shared/src/quiz.ts:301-303	-	ESSAY normalised to empty options and null correctIndex inside the schema transform.
+12-quizzes.md	R20	DIVERGED	apps/backend/src/routes/quizzes.ts:497-535	12-quizzes.md §7	Insert order is still the count, but a new reorder endpoint exists that v1 lacked.
+12-quizzes.md	R21	DIVERGED	apps/backend/src/routes/quizzes.ts:474-487	UNNAMED: Plan 8 Task 3	Delete renumbers survivors so order stays a position; spec called sparse order harmless, no decision found.
+12-quizzes.md	R22	DIVERGED	apps/backend/src/routes/quizzes.ts:378-386	12-quizzes.md D3	Add, edit, delete refused with quiz_has_attempts once any attempt exists; publish/unpublish still allowed.
+12-quizzes.md	R23	DIVERGED	apps/backend/src/routes/quizzes.ts:378-386	12-quizzes.md D3	Question delete blocked after attempts, so graded answers cannot cascade away.
+12-quizzes.md	R24	DIVERGED	apps/backend/src/routes/quizzes.ts:378-386	12-quizzes.md D3	correctIndex still positional, but option edits are frozen once attempts exist; pre-attempt edits re-point the key.
+12-quizzes.md	R25	DIVERGED	apps/backend/src/routes/quizzes.ts:371-377	UNNAMED: Plan 8 Task 3	Question writes on a PAPER quiz refused with wrong_quiz_kind 409; no numbered decision found.
+12-quizzes.md	R26	PRESERVED	apps/mobile/src/components/QuestionEditor.tsx:50-57	-	Editor validates with the shared schema before sending; server enforces the same rules.
+12-quizzes.md	R27	PRESERVED	apps/backend/src/routes/quizzes.ts:537-544	-	Publish goes through loadAuthorableQuiz (canManageQuiz); 403 instead of throw.
+12-quizzes.md	R28	PRESERVED	apps/backend/src/routes/quizzes.ts:554-556	-	Publishing a quiz with no questions returns 409 no_questions.
+12-quizzes.md	R29	PRESERVED	apps/backend/src/routes/quizzes.ts:560-567	-	Every MCQ must have an in-range correctIndex at publish.
+12-quizzes.md	R30	DIVERGED	apps/backend/src/routes/quizzes.ts:568-581	12-quizzes.md D4	Unpublish refused with quiz_has_graded_attempts when graded attempts exist; ungraded attempts do not block.
+12-quizzes.md	R31	PRESERVED	apps/backend/src/routes/quizzes.ts:584-587	-	publishedAt rewritten to new Date() on every publish, as v1.
+12-quizzes.md	R32	PRESERVED	apps/backend/src/routes/quizzes.ts:682	-	Student loader returns null (404) unless quiz is ONLINE and published.
+12-quizzes.md	R33	PRESERVED	apps/backend/src/routes/quizzes.ts:666-678	-	Student select omits correctIndex; typed mapper at 633-650 and shared student schema has no such field.
+12-quizzes.md	R34	PRESERVED	apps/backend/src/routes/quizzes.ts:644-649	-	Student gets own isCorrect and pointsAwarded per question, null until submit.
+12-quizzes.md	R35	PRESERVED	apps/backend/src/routes/quizzes.ts:795-803	-	Student outside season and missing quiz both return the same 404.
+12-quizzes.md	R36	PRESERVED	apps/backend/src/routes/quizzes.ts:53-55	-	PAPER rows start from QuizGrade so ungraded paper quizzes are invisible to the student.
+12-quizzes.md	R37	PRESERVED	apps/backend/src/routes/quizzes.ts:69-83	-	ONLINE listed once published, latest attempt left-joined; score only when GRADED (line 108).
+12-quizzes.md	R38	PRESERVED	apps/backend/src/routes/quizzes.ts:118	-	Merged list sorted by session date descending, null date treated as epoch 0.
+12-quizzes.md	R39	PRESERVED	apps/backend/src/routes/quizzes.ts:253-258	-	No season gives an empty list; season is from the token claim, refreshed by TTL, not a fresh profile read.
+12-quizzes.md	R40	DIVERGED	apps/backend/src/routes/quizzes.ts:573-581	12-quizzes.md D4	Unpublish with graded attempts refused, so graded results cannot vanish from the student.
+12-quizzes.md	R41	PRESERVED	apps/backend/src/routes/quizzes.ts:834-836	-	Starting an attempt requires role STUDENT.
+12-quizzes.md	R42	PRESERVED	apps/backend/src/routes/quizzes.ts:843-845	-	Quiz must be ONLINE and published; otherwise 409 quiz_not_published.
+12-quizzes.md	R43	PRESERVED	apps/backend/src/routes/quizzes.ts:846-848	-	canAccessSeason enforced; identity comes from the token so there is no vacuous userId comparison left.
+12-quizzes.md	R44	PRESERVED	apps/backend/src/routes/quizzes.ts:850-889	-	Latest IN_PROGRESS attempt is returned unchanged; start is idempotent.
+12-quizzes.md	R45	PRESERVED	apps/backend/src/routes/quizzes.ts:856-864	-	Latest attempt in any non-IN_PROGRESS status gives 409 attempt_closed; retake needs staff.
+12-quizzes.md	R46	PRESERVED	apps/backend/src/routes/quizzes.ts:871-883	-	First attempt created with attemptNumber 1 and default IN_PROGRESS status.
+12-quizzes.md	R47	PRESERVED	apps/backend/src/routes/quizzes.ts:856-864	-	Still no expiry or abandoned status; IN_PROGRESS persists. Mitigated by waiting row and reopen (D5).
+12-quizzes.md	R48	PRESERVED	apps/mobile/app/(app)/quiz/[id]/index.tsx:290-298	-	Attempt created only by the Start button's PUT mutation, never during a GET or render (C6).
+12-quizzes.md	R49	PRESERVED	apps/backend/src/routes/quizzes.ts:892-911	-	Attempt resolved from token user, must be IN_PROGRESS; v2 also requires role STUDENT (line 917).
+12-quizzes.md	R50	PRESERVED	apps/backend/src/routes/quizzes.ts:934-938	-	Answer for a question outside this quiz returns 400 question_not_in_quiz.
+12-quizzes.md	R51	DIVERGED	apps/backend/src/routes/quizzes.ts:946-949	12-quizzes.md §8	selectedIndex bounded by that question's option count, not a constant 5; out-of-range rejected.
+12-quizzes.md	R52	DIVERGED	apps/backend/src/routes/quizzes.ts:939-952	UNNAMED: Plan 8 Task 4	MCQ text and ESSAY selectedIndex now rejected with wrong_answer_type; no numbered decision found.
+12-quizzes.md	R53	PRESERVED	apps/backend/src/routes/quizzes.ts:955-969	-	Answers upserted on (attemptId, questionId), one row per question per attempt.
+12-quizzes.md	R54	PRESERVED	apps/backend/src/routes/quizzes.ts:965-966	-	Save updates only selectedIndex and text; isCorrect and pointsAwarded untouched.
+12-quizzes.md	R55	DIVERGED	apps/mobile/app/(app)/quiz/[id]/index.tsx:106-140	12-quizzes.md §9	Debounced batched PATCH with visible Saving/Saved/Not saved state and retry, instead of silent fire-and-forget.
+12-quizzes.md	R56	PRESERVED	apps/mobile/app/(app)/quiz/[id]/index.tsx:163-172	-	Submit flushes all pending answers first and aborts if the flush fails.
+12-quizzes.md	R57	PRESERVED	apps/backend/src/routes/quizzes.ts:667	-	Questions read order ascending everywhere; no randomisation or shuffle in v2.
+12-quizzes.md	R58	PRESERVED	apps/backend/src/routes/quizzes.ts:978-983	-	Submit needs STUDENT, own latest attempt and IN_PROGRESS status.
+12-quizzes.md	R59	PRESERVED	apps/backend/src/routes/quizzes.ts:1003-1013	-	Any unanswered MCQ or blank essay rejects the submit with 409 attempt_incomplete.
+12-quizzes.md	R60	PRESERVED	apps/backend/src/routes/quizzes.ts:1021-1022	-	MCQ awards full points or zero; no partial credit.
+12-quizzes.md	R61	PRESERVED	apps/backend/src/routes/quizzes.ts:1030-1035	-	isCorrect and pointsAwarded written to every MCQ answer inside the transaction.
+12-quizzes.md	R62	PRESERVED	apps/backend/src/routes/quizzes.ts:1016-1018	-	Scoring filters to MCQ only; essay answers keep null isCorrect and pointsAwarded.
+12-quizzes.md	R63	PRESERVED	apps/backend/src/routes/quizzes.ts:1038-1039	-	With any ESSAY: SUBMITTED with submittedAt and autoScore; manualScore and totalScore stay null.
+12-quizzes.md	R64	PRESERVED	apps/backend/src/routes/quizzes.ts:1040-1048	-	All-MCQ goes straight to GRADED, manualScore 0, totalScore autoScore, gradedById left null.
+12-quizzes.md	R65	PRESERVED	apps/backend/src/routes/quizzes.ts:1052-1064	-	Auto-graded path notifies QUIZ_GRADED; essay path notifies nobody (grader notification deferred, D14).
+12-quizzes.md	R66	PRESERVED	apps/backend/src/routes/quizzes.ts:1029-1050	-	Answer and attempt updates share one transaction; notification sits outside it.
+12-quizzes.md	R67	PRESERVED	apps/backend/src/routes/quizzes.ts:1214-1216	-	Essay grading gated by canGradeQuiz (staffScopeForSeason: SUPER, season admin, or leader with group in season).
+12-quizzes.md	R68	DIVERGED	apps/backend/src/routes/quizzes.ts:1230-1236	_DECISIONS.md C8	Grade refused with student_not_in_scope unless the student is in the caller's server-derived set.
+12-quizzes.md	R69	PRESERVED	apps/backend/src/routes/quizzes.ts:1238-1240	-	IN_PROGRESS attempts refused; GRADED attempts may be re-graded.
+12-quizzes.md	R70	DIVERGED	apps/backend/src/routes/quizzes.ts:1258-1264	12-quizzes.md D8	Award above question points rejected with score_exceeds_max instead of silently clamped.
+12-quizzes.md	R71	DIVERGED	apps/backend/src/routes/quizzes.ts:1253-1257	12-quizzes.md D8	Awards naming a non-essay question fail the exact-set check (awards_incomplete) instead of being skipped.
+12-quizzes.md	R72	DIVERGED	apps/backend/src/routes/quizzes.ts:1251-1257	UNNAMED: Plan 8 Task 5	Every essay must be sent exactly once, so a partial payload cannot lower the total; no numbered decision found.
+12-quizzes.md	R73	PRESERVED	apps/backend/src/routes/quizzes.ts:1266-1269	-	totalScore = (autoScore ?? 0) + manualScore, autoScore trusted as stored.
+12-quizzes.md	R74	PRESERVED	apps/backend/src/routes/quizzes.ts:1273-1290	-	GRADED, gradedById, gradedAt and answer updates written in one transaction.
+12-quizzes.md	R75	DIVERGED	apps/backend/src/routes/quizzes.ts:1292-1304	12-quizzes.md D8	Notify on first grade or score change only; a no-op re-grade is silent.
+12-quizzes.md	R76	PRESERVED	apps/backend/src/routes/quizzes.ts:1296-1303	-	Notification is outside the transaction and best-effort; failure does not fail the grade.
+12-quizzes.md	R77	PRESERVED	apps/mobile/app/(app)/quiz/[id]/grade.tsx:148-157	-	Client refuses unless every essay has a whole-number mark; server also bounds it (1258-1264).
+12-quizzes.md	R78	PRESERVED	apps/mobile/app/(app)/quiz/[id]/grade.tsx:211-213	-	Save marks button renders only when the attempt has essays; no auto-score override exists.
+12-quizzes.md	R79	DIVERGED	apps/backend/src/routes/quizzes.ts:1340-1352	12-quizzes.md D5	Reopen gated by canGradeQuiz so leaders can reopen, not admin-only.
+12-quizzes.md	R80	PRESERVED	apps/backend/src/routes/quizzes.ts:1368-1377	-	Reopen needs an existing attempt and refuses when the latest is IN_PROGRESS.
+12-quizzes.md	R81	PRESERVED	apps/backend/src/routes/quizzes.ts:1378-1386	-	New attempt at attemptNumber+1; earlier attempt and answers left intact.
+12-quizzes.md	R82	PRESERVED	apps/backend/src/routes/quizzes.ts:1374-1376	-	Only IN_PROGRESS refused, so SUBMITTED can be reopened; UI offers it for any non-IN_PROGRESS status (grade.tsx:214).
+12-quizzes.md	R83	DIVERGED	apps/mobile/app/(app)/quiz/[id]/grade.tsx:214-225	12-quizzes.md D5	Reopen button shown to every grader, no admin-only prop; server gate is canGradeQuiz.
+12-quizzes.md	R84	DIVERGED	apps/backend/src/routes/quizzes.ts:1362-1366	UNNAMED: Plan 8 Task 5	Reopen now requires ONLINE and published; otherwise 409 quiz_not_published. No numbered decision found.
+12-quizzes.md	R85	PRESERVED	apps/backend/src/routes/quizzes.ts:1509-1512	-	PAPER grade save gated by canGradeQuiz, so only SUPER, season admin or in-season leader pass.
+12-quizzes.md	R86	DIVERGED	apps/backend/src/routes/quizzes.ts:1509-1512	12-quizzes.md D1	One canGradeQuiz gate for every role, so an ADMIN of another season is refused.
+12-quizzes.md	R87	PRESERVED	packages/shared/src/quiz.ts:347-358	-	Entry schema: positive studentUserId, int score >= 0 or null, notes up to 1000 nullable.
+12-quizzes.md	R88	DIVERGED	apps/backend/src/routes/quizzes.ts:1537-1542	12-quizzes.md D7	Score above quiz maxScore rejected with score_exceeds_max.
+12-quizzes.md	R89	DIVERGED	apps/backend/src/routes/quizzes.ts:1554-1559	12-quizzes.md D7	Null score now clears the grade row, folded into the batch instead of a separate DELETE endpoint.
+12-quizzes.md	R90	PRESERVED	apps/backend/src/routes/quizzes.ts:1560-1575	-	Grade upserted on (quizId, studentUserId); one grade per student per quiz.
+12-quizzes.md	R91	PRESERVED	apps/backend/src/routes/quizzes.ts:1552-1575	-	gradedById and gradedAt stamped on create and update with one shared now.
+12-quizzes.md	R92	DIVERGED	apps/backend/src/routes/quizzes.ts:1580-1584	12-quizzes.md D8	Notify on first grade or changed score, not on missing gradedAt; no-op re-save is silent.
+12-quizzes.md	R93	DIVERGED	apps/backend/src/routes/quizzes.ts:1523-1536	12-quizzes.md D1	Every studentUserId validated against server-derived visible set; whole batch rejected with student_not_in_scope.
+12-quizzes.md	R94	DIVERGED	apps/backend/src/routes/quizzes.ts:1514-1518	12-quizzes.md D10	PAPER grade write against an ONLINE quiz refused with wrong_quiz_kind.
+12-quizzes.md	R95	DIVERGED	apps/backend/src/routes/quizzes.ts:1578	12-quizzes.md D1	Upserts and deletes run in one transaction after whole-batch validation; notifications follow, best-effort.
+12-quizzes.md	R96	DIVERGED	apps/backend/src/routes/quizzes.ts:1585-1596	UNNAMED: Plan 8 Task 6	Notifications batched through createNotificationsBulk; upserts still one statement per student. No numbered decision found.
+12-quizzes.md	R97	DIVERGED	apps/backend/src/routes/quizzes.ts:246-273	_DECISIONS.md C8	The list authorises inside the handler via visibleStudentIdsForQuiz; no unauthorised per-session query exists.
+12-quizzes.md	R98	DIVERGED	apps/backend/src/lib/quiz-scope.ts:54-77	12-quizzes.md D10	gradedCount computed once per kind: PAPER non-null scores, ONLINE GRADED attempts, over one student set.
+12-quizzes.md	R99	DROPPED	-	12-quizzes.md D13	listQuizzesForSeason was dead code; GET /quizzes replaces it, nothing ported.
+12-quizzes.md	R100	PRESERVED	apps/backend/src/routes/quizzes.ts:1415-1451	-	One row per in-scope student, deleted users excluded, ordered by name, left-joined to grade.
+12-quizzes.md	R101	DIVERGED	apps/backend/src/routes/quizzes.ts:1106-1111	12-quizzes.md D5	Latest attempt per student over all statuses; scored ones listed as items, in-progress ones moved to waiting.
+12-quizzes.md	R102	DIVERGED	apps/backend/src/routes/quizzes.ts:1185-1197	12-quizzes.md D5	Students with IN_PROGRESS or no attempt appear in a waiting list instead of vanishing.
+12-quizzes.md	R103	PRESERVED	apps/backend/src/routes/quizzes.ts:1168-1181	-	Grader attempts include correctIndex per question; separate from the student loader.
+12-quizzes.md	R104	PRESERVED	apps/backend/src/routes/quizzes.ts:1164-1182	-	Answers projected over the quiz's current questions; a missing answer shows null fields.
+12-quizzes.md	R105	DIVERGED	apps/backend/src/routes/quizzes.ts:1089-1096	_DECISIONS.md C8	Student set derived server-side from the caller; no studentUserIds parameter is accepted from the client.
+12-quizzes.md	R106	DIVERGED	apps/backend/src/lib/quiz-scope.ts:32-39	_DECISIONS.md C9	Leader scope is ACTIVE SeasonEnrollment.groupId in led groups, not GroupStudent; admin and SUPER get all ACTIVE enrolments.
+12-quizzes.md	R107	DIVERGED	apps/backend/src/routes/quizzes.ts:1209-1228	12-quizzes.md D12	Quiz addressed by its own id; no URL-session match is required or exists.
+12-quizzes.md	R108	DIVERGED	apps/backend/src/routes/quizzes.ts:253-270	12-quizzes.md §7	Single season per request, with students scoped to that season's led groups only.
+12-quizzes.md	R109	DIVERGED	apps/backend/src/routes/quizzes.ts:251-258	12-quizzes.md §9	Season comes from the seasonId query or the active season; no auto-pick by start date.
+12-quizzes.md	R110	DIVERGED	apps/backend/src/lib/quiz-scope.ts:25-42	12-quizzes.md D10	One canonical student set: ACTIVE SeasonEnrollment narrowed to the caller's scope.
+12-quizzes.md	R111	DIVERGED	apps/mobile/app/(app)/quizzes.tsx:160-165	12-quizzes.md D12	Staff rows route by quiz id, so a session-less quiz stays reachable.
+12-quizzes.md	R112	DIVERGED	apps/backend/src/routes/quizzes.ts:1087-1099	12-quizzes.md §7	List and attempts cursor-paged; the PAPER grade sheet (1405-1452) is still unbounded.
+12-quizzes.md	R113	PRESERVED	apps/backend/src/routes/quizzes.ts:808-813	-	Authoring detail with correctIndex is returned only after canGradeQuiz; students take the separate loader at 795-803.
+12-quizzes.md	R114	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:132-158	12-quizzes.md D10	Dashboard roll-up uses countGradedByQuiz, so an ONLINE quiz is pending only until attempts are GRADED.
+12-quizzes.md	R115	PRESERVED	apps/backend/src/lib/exports/season-workbook.ts:333-342	-	Export still reads QuizGrade only, so published ONLINE columns stay empty; drafts and maxScore 0 now excluded.
+12-quizzes.md	R116	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:279-285	17-reports.md D16	maxScore > 0 enforced in the query, so zero-point ONLINE quizzes never become columns.
+12-quizzes.md	R117	DIVERGED	apps/backend/src/lib/notifications.ts:62-99	REG-37	In-app row always written; preference governs email only (best-effort, failures swallowed).
+12-quizzes.md	R118	PRESERVED	apps/backend/src/routes/quizzes.ts:39	-	Every QUIZ_GRADED row links to /student/quizzes (v1's link, ruling X1); body strings still differ per site.
+12-quizzes.md	R119	DIVERGED	apps/backend/src/routes/quizzes.ts:866-884	12-quizzes.md D15	Start uses an upsert on the unique triple, so concurrent starts return the same attempt.
+12-quizzes.md	R120	DIVERGED	apps/backend/src/routes/quizzes.ts:988-1000	UNNAMED: Plan 8 Task 4	Answers re-read in the submitting request, but scoring is not inside the transaction; window narrowed, not closed.
+13-video-quizzes.md	R1	PRESERVED	apps/backend/src/routes/video-quiz.ts:314-316	-	Authoring gated by canManageSessionVideo (permissions.ts:482-493): SUPER or ADMIN of the session's season; leader and mentor refused.
+13-video-quizzes.md	R2	PRESERVED	apps/backend/src/routes/video-quiz.ts:314-319	-	Gate runs before body validation on create, so an unauthorised caller gets 403, not a validation message.
+13-video-quizzes.md	R3	PRESERVED	packages/shared/src/video-quiz.ts:13-20	-	atSeconds 0-86400, prompt 2-500, 2-6 options of 1-200, correctIndex int, points 1-100 default 1.
+13-video-quizzes.md	R4	PRESERVED	packages/shared/src/video-quiz.ts:21-24	-	correctIndex must be below options.length, reported on the correctIndex path.
+13-video-quizzes.md	R5	PRESERVED	apps/backend/src/routes/video-quiz.ts:334	-	createdById stamped on create only; update (369-377) never touches it.
+13-video-quizzes.md	R6	PRESERVED	apps/backend/src/routes/video-quiz.ts:346-353	-	Update and delete resolve the session from the question row and gate on that session.
+13-video-quizzes.md	R7	PRESERVED	apps/backend/src/routes/video-quiz.ts:369-377	-	Update rewrites all five authored fields every time; no partial update.
+13-video-quizzes.md	R8	DIVERGED	apps/backend/src/routes/video-quiz.ts:359-401	13-video-quizzes.md D5	Changing key or options re-grades recorded responses in the same transaction and returns regradedCount.
+13-video-quizzes.md	R9	DIVERGED	apps/backend/src/routes/video-quiz.ts:388-390	13-video-quizzes.md D5	Index beyond the shrunken options is re-graded as incorrect rather than stranded.
+13-video-quizzes.md	R10	PRESERVED	apps/backend/src/routes/video-quiz.ts:430-436	-	Hard delete with cascade kept (D6); response now returns responsesRemoved and the editor's two-press confirm names it.
+13-video-quizzes.md	R11	PRESERVED	apps/backend/src/routes/video-quiz.ts:427-429	-	Progress rows deliberately left untouched on delete; furthestSeconds and completedAt can outlive the question.
+13-video-quizzes.md	R12	NA	-	-	revalidatePath bookkeeping and client router.refresh; React Query invalidation replaces it, no behaviour.
+13-video-quizzes.md	R13	PRESERVED	apps/backend/src/lib/queries/video-quiz.ts:54-57	-	Shared atSeconds still allowed; id is the tiebreak so ordering is deterministic.
+13-video-quizzes.md	R14	PRESERVED	apps/backend/src/routes/video-quiz.ts:322-326	-	Server still never validates atSeconds against video length (duration not stored, REG-40); only the client guard exists.
+13-video-quizzes.md	R15	PRESERVED	apps/backend/src/routes/video-quiz.ts:326-335	-	Questions bound to sessionId, no video id column; editing the URL re-points them as in v1.
+13-video-quizzes.md	R16	PRESERVED	apps/backend/src/routes/sessions.ts:343-361	-	Series-scope edit still writes the same youtubeUrl to every sibling while questions stay per-session.
+13-video-quizzes.md	R17	PRESERVED	apps/mobile/app/(app)/session/[id]/index.tsx:168-195	-	Editor shows whenever youtubeUrl is non-null; parseYouTubeId is not consulted on the authoring side.
+13-video-quizzes.md	R18	PRESERVED	apps/backend/src/routes/video-quiz.ts:322-326	-	Create checks no youtubeUrl on the session, as in v1; the mobile render branch is the only condition.
+13-video-quizzes.md	R19	PRESERVED	packages/shared/src/video-time.ts:9-18	-	Floors to whole seconds, clamps negatives, h:mm:ss from an hour else m:ss.
+13-video-quizzes.md	R20	DIVERGED	packages/shared/src/video-time.ts:10	13-video-quizzes.md D8	Non-finite input returns 0:00 instead of NaN:NaN.
+13-video-quizzes.md	R21	PRESERVED	packages/shared/src/video-time.ts:41-45	-	Input trimmed; empty gives null; more than three colon parts gives null.
+13-video-quizzes.md	R22	PRESERVED	packages/shared/src/video-time.ts:46-48	-	Components must be digits only, rejecting fractions, Infinity and text.
+13-video-quizzes.md	R23	DIVERGED	packages/shared/src/video-time.ts:46	13-video-quizzes.md D8	Empty components now rejected by the digits-only pattern; : and 1: no longer parse.
+13-video-quizzes.md	R24	DIVERGED	packages/shared/src/video-time.ts:20,46	13-video-quizzes.md D8	Hex and exponent literals rejected by the explicit digit pattern.
+13-video-quizzes.md	R25	PRESERVED	packages/shared/src/video-time.ts:52-58	-	Minutes and seconds below 60 in two- and three-part forms; leading component unbounded apart from the overall max.
+13-video-quizzes.md	R26	PRESERVED	packages/shared/src/video-time.ts:50-51	-	Single part is plain seconds with no under-60 rule; 90 is 90 seconds.
+13-video-quizzes.md	R27	DIVERGED	packages/shared/src/video-time.ts:60	13-video-quizzes.md D8	Overall maximum enforced where the input is parsed, not a round trip later.
+13-video-quizzes.md	R28	DIVERGED	apps/mobile/src/components/VideoQuestionsEditor.tsx:107-111	13-video-quizzes.md D8	Timestamp error shown on the field with a hint instead of a generic unhighlighted message.
+13-video-quizzes.md	R29	PRESERVED	packages/shared/src/video-time.ts:9-18	-	Format round-trips through parse; 90 is still accepted and redisplays as 1:30.
+13-video-quizzes.md	R30	DIVERGED	packages/shared/src/youtube.ts:206-234	13-video-quizzes.md D7	Rewritten as URL parsing with anchored 11-char ids, not four unanchored regexes.
+13-video-quizzes.md	R31	PRESERVED	packages/shared/src/youtube.ts:221-233	-	watch?v=, youtu.be/, /embed/ and /shorts/ forms all still yield the id, now on allowed hosts only.
+13-video-quizzes.md	R32	DIVERGED	packages/shared/src/youtube.ts:186-193	13-video-quizzes.md D7	/live/, /v/ and a bare 11-character id now parse; playlist-only and short ids still return null.
+13-video-quizzes.md	R33	DIVERGED	packages/shared/src/youtube.ts:175-184,218-219	13-video-quizzes.md D7	Host allowlist added; non-YouTube hosts return null.
+13-video-quizzes.md	R34	DIVERGED	packages/shared/src/youtube.ts:168,222,233	13-video-quizzes.md D7	Id must match the whole value, so a 12-character token fails instead of truncating.
+13-video-quizzes.md	R35	PRESERVED	packages/shared/src/youtube.ts:206-234	-	Parser returns only the id; t= and start= offsets discarded and the player is given no start.
+13-video-quizzes.md	R36	PRESERVED	packages/shared/src/session.ts:113	-	Session youtubeUrl still only z.string().url(); D7(c) save-time YouTube validation not implemented.
+13-video-quizzes.md	R37	DIVERGED	apps/mobile/src/components/VideoQuizPlayer.tsx:39-51,204-206	13-video-quizzes.md D11	Unparseable URL or failed load shows a Video unavailable message with Watch on YouTube, not a silent link.
+13-video-quizzes.md	R38	PRESERVED	apps/mobile/app/(app)/session/[id]/index.tsx:184-189	-	A session with a video but zero questions shows only a Watch on YouTube button.
+13-video-quizzes.md	R39	PRESERVED	apps/backend/src/lib/queries/video-quiz.ts:73-80	-	Barrier is the earliest unanswered question, derived once server-side as nextQuestionId (C4) and used by the player (73-75).
+13-video-quizzes.md	R40	PRESERVED	apps/mobile/src/components/VideoQuizPlayer.tsx:195-201	-	Seek target capped at barrier; with no unanswered question the cap is the full duration.
+13-video-quizzes.md	R41	PRESERVED	apps/mobile/src/components/VideoQuizPlayer.tsx:195-201	-	Forward seeks clamped to the barrier; backward seeking free.
+13-video-quizzes.md	R42	DIVERGED	apps/mobile/src/components/VideoQuizPlayer.tsx:17-18,106-127	13-video-quizzes.md D11	Poll every 400 ms with 0.75 s tolerance (bridge latency); pauses, snaps to barrier and opens modal.
+13-video-quizzes.md	R43	PRESERVED	apps/mobile/src/components/VideoQuizPlayer.tsx:230-235	-	Native controls hidden (controls false, no fullscreen); custom bar is the only scrubber.
+13-video-quizzes.md	R44	DROPPED	-	UNAUTHORISED	Player never seeks to min(furthestSeconds, barrier) on ready; furthest is saved but playback restarts at 0 on reopen.
+13-video-quizzes.md	R45	DIVERGED	apps/mobile/src/components/VideoQuizPlayer.tsx:284-292	13-video-quizzes.md D15	Modal gets an explicit Leave the quiz exit and back button routes to it; no silent dismissal.
+13-video-quizzes.md	R46	PRESERVED	apps/mobile/src/components/VideoQuizPlayer.tsx:189-193	-	Continue closes the modal and resumes playback; answer buttons replaced by feedback after answering.
+13-video-quizzes.md	R47	DIVERGED	apps/backend/src/routes/video-quiz.ts:140-143	13-video-quizzes.md D1	Server rejects an answer to any question other than the earliest unanswered (409 out_of_order).
+13-video-quizzes.md	R48	DIVERGED	packages/shared/src/video-quiz.ts:118-120	13-video-quizzes.md D3	Progress contract has no completed flag; completion cannot be asserted by a client.
+13-video-quizzes.md	R49	DIVERGED	apps/mobile/src/components/VideoQuizPlayer.tsx:129-145	13-video-quizzes.md D1	Progress saved every 15 s while playing, on pause, on backgrounding and unmount; treated as advisory.
+13-video-quizzes.md	R50	PRESERVED	apps/backend/src/routes/video-quiz.ts:63-66	-	Answering needs role STUDENT (hasActiveEnrollment returns false otherwise) and season access.
+13-video-quizzes.md	R51	DIVERGED	apps/backend/src/lib/permissions.ts:508-515	13-video-quizzes.md D9	Answer and progress gated on an ACTIVE enrolment, so dropped or completed students are refused.
+13-video-quizzes.md	R52	DIVERGED	apps/backend/src/routes/video-quiz.ts:99-112	UNNAMED: Plan 14 Task 3	Role/enrolment check precedes the question lookup, closing the id oracle; no numbered decision found.
+13-video-quizzes.md	R53	PRESERVED	apps/backend/src/routes/video-quiz.ts:114-117	-	selectedIndex checked against the row's options.length, never the client.
+13-video-quizzes.md	R54	PRESERVED	apps/backend/src/routes/video-quiz.ts:122-138	-	An existing response is replayed (verdict plus correctIndex) with no write; one answer per question.
+13-video-quizzes.md	R55	PRESERVED	apps/backend/src/routes/video-quiz.ts:145	-	isCorrect = selectedIndex equals correctIndex, evaluated once and stored.
+13-video-quizzes.md	R56	PRESERVED	apps/backend/src/routes/video-quiz.ts:150-177	-	Response insert and progress upsert in one transaction.
+13-video-quizzes.md	R57	DIVERGED	apps/backend/src/routes/video-quiz.ts:163-168	13-video-quizzes.md D4	furthestSeconds written with Math.max so it never regresses.
+13-video-quizzes.md	R58	DIVERGED	apps/backend/src/routes/video-quiz.ts:146,169-170	13-video-quizzes.md D3	Answering the last question now sets completedAt server-side.
+13-video-quizzes.md	R59	DIVERGED	apps/backend/src/routes/video-quiz.ts:178-197	13-video-quizzes.md D14	P2002 from a double submit is caught and the recorded response returned.
+13-video-quizzes.md	R60	PRESERVED	apps/backend/src/routes/video-quiz.ts:130-137	-	correctIndex returned on submit and on replay, safe because the first answer is final.
+13-video-quizzes.md	R61	DIVERGED	packages/shared/src/video-quiz.ts:118-120	13-video-quizzes.md D3	furthestSeconds int 0-86400 kept; the completed boolean is removed from the request.
+13-video-quizzes.md	R62	PRESERVED	apps/backend/src/routes/video-quiz.ts:238	-	furthestSeconds stored as the maximum of existing and submitted values.
+13-video-quizzes.md	R63	PRESERVED	apps/backend/src/routes/video-quiz.ts:170,241-247	-	completedAt is write-once; no endpoint clears or overwrites it.
+13-video-quizzes.md	R64	DIVERGED	apps/backend/src/routes/video-quiz.ts:233-248	UNNAMED: Plan 14 Task 3	Progress read-and-upsert now runs inside a transaction; no numbered decision found.
+13-video-quizzes.md	R65	DIVERGED	apps/backend/src/routes/video-quiz.ts:146,170	13-video-quizzes.md D3	Completion derived on the last answer; no ENDED-event dependency.
+13-video-quizzes.md	R66	PRESERVED	apps/backend/src/routes/video-quiz.ts:217-248	-	Progress needs only a session and active enrolment; no check that a video or questions exist.
+13-video-quizzes.md	R67	PRESERVED	apps/backend/src/routes/video-quiz.ts:63-66	-	Student writes reject every non-STUDENT role; no preview-as-student for staff.
+13-video-quizzes.md	R68	PRESERVED	apps/backend/src/routes/video-quiz.ts:284-303	-	Admin read lists questions by atSeconds with correctIndex and responseCount, now behind canManageSessionVideo.
+13-video-quizzes.md	R69	PRESERVED	apps/backend/src/lib/queries/video-quiz.ts:58	-	Student select omits correctIndex; shared student schema is strict with no such field (video-quiz.ts:51-62).
+13-video-quizzes.md	R70	PRESERVED	apps/backend/src/lib/queries/video-quiz.ts:60-63,86-89	-	Own responses joined per question: answered, selectedIndex, isCorrect, null when unanswered.
+13-video-quizzes.md	R71	PRESERVED	apps/backend/src/lib/queries/video-quiz.ts:71-105	-	earnedPoints, totalPoints and answeredCount computed per read and stored nowhere.
+13-video-quizzes.md	R72	PRESERVED	apps/backend/src/routes/video-quiz.ts:150-177	-	Only response and progress rows are written; no grade or attempt row for a video quiz.
+13-video-quizzes.md	R73	DIVERGED	apps/backend/src/routes/video-quiz.ts:63,293,314	_DECISIONS.md C8	Each endpoint authorises in the handler; the answer-key read is gated by canManageSessionVideo.
+13-video-quizzes.md	R74	DIVERGED	apps/backend/src/routes/video-quiz.ts:439-461	13-video-quizzes.md D10	New results endpoint lists per-student answered, points and completion, leader-narrowed to their groups.
+13-video-quizzes.md	R75	PRESERVED	apps/backend/src/lib/queries/video-quiz.ts:51-68	-	Question and response reads remain unpaginated; results roster also unbounded.
+13-video-quizzes.md	R76	PRESERVED	apps/backend/src/lib/queries/video-quiz.ts:140-211	-	No engagement, dashboard or export code reads the video tables; only the new results query does.
+13-video-quizzes.md	R77	NA	-	-	prisma/seed.ts creates no video rows; a v1 seed fact with no v2 behaviour.
+13-video-quizzes.md	R78	DIVERGED	apps/mobile/src/components/VideoQuizPlayer.tsx:154-165	13-video-quizzes.md D2	Client reads getDuration on ready and flags a question past the end; the server does not validate.
+13-video-quizzes.md	R79	DIVERGED	apps/mobile/src/components/VideoQuizPlayer.tsx:221-223	13-video-quizzes.md D2	A deadlocked question shows an explicit error telling the student to ask their leader.
+13-video-quizzes.md	R80	PRESERVED	apps/backend/src/lib/queries/video-quiz.ts:57,79	-	Same-timestamp questions fire in id order; each answer advances nextQuestionId to the next.
+13-video-quizzes.md	R81	DIVERGED	apps/mobile/src/components/VideoQuizPlayer.tsx:147-152,237	13-video-quizzes.md D11	onError handler and 15 s load timeout switch to a Watch on YouTube fallback.
+13-video-quizzes.md	R82	PRESERVED	apps/mobile/src/components/VideoQuizPlayer.tsx:116-122	-	atSeconds 0 allowed (shared video-quiz.ts:15); first poll tick opens the modal before playback.
+13-video-quizzes.md	R83	PRESERVED	apps/backend/src/lib/queries/video-quiz.ts:100-101	-	No timezone logic in the domain; completedAt is a raw instant and atSeconds a duration.
+14-forum.md	R1	PRESERVED	apps/mobile/app/(app)/assignment/[id]/index.tsx:143-153	-	Forum surface selected by assignment type FORUM; server refuses non-FORUM via loadForumAssignment (queries/forum.ts:36-49).
+14-forum.md	R2	DIVERGED	apps/backend/src/lib/queries/forum.ts:102-131	14-forum.md D1	View takes no submission id; own response looked up by (assignment, caller) and may not exist yet.
+14-forum.md	R3	DIVERGED	apps/backend/src/lib/queries/forum.ts:105-107	14-forum.md D1	Own row derived from assignment plus caller, never echoed from client input.
+14-forum.md	R4	PRESERVED	apps/backend/src/lib/queries/forum.ts:109-118	-	Missing row degrades to DRAFT, empty text, locked feed rather than an error.
+14-forum.md	R5	DIVERGED	apps/backend/src/routes/forum.ts:132-137	14-forum.md D14	Post addressed by publicId nested under its assignment; comment delete still uses the comment id behind a gate.
+14-forum.md	R6	PRESERVED	apps/backend/src/routes/forum.ts:98-112	-	One upsert writes text, status SUBMITTED and submittedAt; posting is submitting.
+14-forum.md	R7	DIVERGED	apps/backend/src/routes/forum.ts:70-80	14-forum.md D5	Post requires role STUDENT and a forum audience (active enrolment and targeting), not identity alone.
+14-forum.md	R8	PRESERVED	apps/backend/src/routes/forum.ts:74-75	-	Post refused with 404 unless the assignment exists, is undeleted and is FORUM.
+14-forum.md	R9	PRESERVED	apps/backend/src/routes/forum.ts:85-94	-	countWords must reach forumMinWords (null as 0); 400 too_few_words otherwise.
+14-forum.md	R10	PRESERVED	packages/shared/src/forum.ts:148-157	-	countWords carried verbatim: strips tags, nbsp and named entities; numeric entities still count as words.
+14-forum.md	R11	DIVERGED	packages/shared/src/forum.ts:104-106	14-forum.md D8	Text must have at least one character after trim whatever forumMinWords; client also uses Math.max(1, min).
+14-forum.md	R12	PRESERVED	apps/backend/src/routes/forum.ts:95-96	-	Due date not enforced; late posts allowed, now written down as a rule (D5, D-14.7).
+14-forum.md	R13	PRESERVED	apps/backend/src/routes/forum.ts:98-112	-	Re-post overwrites text and stamps a new submittedAt; button reads Update response once posted.
+14-forum.md	R14	PRESERVED	apps/backend/src/lib/queries/forum.ts:183	-	Feed sorted submittedAt descending (id tiebreak), so an edit still moves a post to the top.
+14-forum.md	R15	DIVERGED	apps/backend/src/lib/permissions.ts:615-647	14-forum.md D5	Post re-checks season enrolment and assignment targeting server-side through forumAudienceFor.
+14-forum.md	R16	PRESERVED	apps/backend/src/routes/forum.ts:65-123	-	Posting notifies nobody; no notification type exists (D13 deferred under C1).
+14-forum.md	R17	PRESERVED	apps/backend/src/routes/submissions.ts:305-312	-	Generic submission writers refuse FORUM and the forum screen has no file control.
+14-forum.md	R18	NA	-	-	revalidatePath calls on a Next.js cache; React Query invalidation replaces them.
+14-forum.md	R19	PRESERVED	apps/backend/src/lib/queries/forum.ts:142-143	-	Student feed locked with empty posts until own response is posted; UI shows Post to unlock.
+14-forum.md	R20	DIVERGED	apps/backend/src/lib/queries/forum.ts:145-164	_DECISIONS.md C9	Audience is ACTIVE SeasonEnrollment peers in the viewer's group for the assignment's season, not GroupStudent.
+14-forum.md	R21	PRESERVED	apps/backend/src/lib/queries/forum.ts:148	-	Student with no group in the season gets an empty feed.
+14-forum.md	R22	PRESERVED	apps/backend/src/lib/queries/forum.ts:155-182	-	A group of one yields no peer ids and therefore an empty posts list.
+14-forum.md	R23	PRESERVED	apps/backend/src/lib/queries/forum.ts:176-182	-	Peer posts filtered to non-DRAFT and non-null text, so unposted drafts are never served.
+14-forum.md	R24	DIVERGED	apps/backend/src/lib/queries/forum.ts:155-164	_DECISIONS.md C9	Membership resolved per assignment season via SeasonEnrollment, not live GroupStudent; moves no longer leak across groups.
+14-forum.md	R25	PRESERVED	apps/backend/src/lib/queries/forum.ts:183	-	Peer posts ordered by submittedAt descending.
+14-forum.md	R26	DIVERGED	apps/backend/src/lib/queries/forum.ts:194-205,253-262	14-forum.md D7	Feed carries three inline comments per post; the rest come from a paged comments endpoint, oldest first.
+14-forum.md	R27	DIVERGED	apps/backend/src/lib/queries/forum.ts:184-185	14-forum.md D7	Posts cursor-paged by publicId (limit up to 50) and comments paged separately.
+14-forum.md	R28	DIVERGED	apps/backend/src/lib/queries/forum.ts:219	_DECISIONS.md C11	Post body converted from stored HTML to plain text at the API boundary and rendered as text.
+14-forum.md	R29	PRESERVED	apps/backend/src/lib/queries/forum.ts:279	-	Comment body served and rendered as plain text, never parsed as HTML.
+14-forum.md	R30	DIVERGED	apps/backend/src/lib/queries/forum.ts:16-19	14-forum.md D6	Blank name shows Group member; email is never selected in the forum module.
+14-forum.md	R31	DROPPED	-	D-14.6	Forum payload carries no avatar, so the per-author avatar lookup is gone; D-14.6 drops avatars and emails.
+14-forum.md	R32	PRESERVED	apps/mobile/src/components/ForumThread.tsx:146	-	Comment block hidden when forumAllowComments is false; server also refuses comments (permissions.ts:550).
+14-forum.md	R33	DIVERGED	apps/mobile/app/(app)/assignment/[id]/index.tsx:127-131	14-forum.md D10	Forum assignment screen shows the org-clock due date like a standard one.
+14-forum.md	R34	DIVERGED	apps/mobile/src/components/ForumThread.tsx:33-37	14-forum.md D9	Reviewer feedback and reviewedAt are selected and rendered to the post's author.
+14-forum.md	R35	PRESERVED	packages/shared/src/forum.ts:109-111	-	Comment body trimmed, 1 to 5000 characters; 400 bad_request otherwise.
+14-forum.md	R36	PRESERVED	apps/backend/src/routes/forum.ts:201-203	-	Comment gated by canCommentOnForumSubmission; returns 403 instead of throwing.
+14-forum.md	R37	PRESERVED	apps/backend/src/lib/permissions.ts:550	-	Gate false unless assignment is FORUM and forumAllowComments is true.
+14-forum.md	R38	PRESERVED	apps/backend/src/lib/permissions.ts:553-554	-	SUPER and ADMIN of the season may comment (after type, flag and non-DRAFT checks).
+14-forum.md	R39	DIVERGED	apps/backend/src/lib/permissions.ts:560-562	_DECISIONS.md C9	Student may comment only when their season group equals the author's, via SeasonEnrollment not GroupStudent.
+14-forum.md	R40	DIVERGED	apps/backend/src/lib/permissions.ts:559	14-forum.md D3	LEADER may comment on posts by students in groups they lead; MENTOR still cannot.
+14-forum.md	R41	PRESERVED	apps/backend/src/routes/forum.ts:205-214	-	Student's own non-DRAFT response on the same assignment required before commenting; staff bypass.
+14-forum.md	R42	PRESERVED	apps/backend/src/routes/forum.ts:207-210	-	Own-row check keyed by the (assignmentId, user) unique pair for the target's assignment.
+14-forum.md	R43	DIVERGED	apps/backend/src/lib/permissions.ts:551	14-forum.md D14	DRAFT target refused, and the post is resolved nested under its assignment by publicId.
+14-forum.md	R44	PRESERVED	apps/backend/src/lib/permissions.ts:560-562	-	Commenting on own post still permitted by the gate; the feed excludes self (queries/forum.ts:160) so no UI path.
+14-forum.md	R45	PRESERVED	apps/backend/src/routes/forum.ts:218-227	-	Single unconditional insert after the gates; no rate limit or duplicate detection.
+14-forum.md	R46	PRESERVED	apps/backend/src/routes/forum.ts:216-217	-	Commenting notifies nobody; no forum NotificationType exists (D13 deferred under C1).
+14-forum.md	R47	PRESERVED	apps/backend/src/routes/forum.ts:246-265	-	Router exposes only create and delete for comments; no edit endpoint.
+14-forum.md	R48	PRESERVED	apps/mobile/src/components/ForumThread.tsx:251-255	-	Still no post delete or hide; screen says removing a whole response isn't supported yet (D2 items 3-4 deferred).
+14-forum.md	R49	PRESERVED	apps/backend/src/lib/permissions.ts:591-595	-	Comment deletable by its author, SUPER or ADMIN of the assignment's season.
+14-forum.md	R50	DIVERGED	apps/backend/src/lib/permissions.ts:597-600	14-forum.md D3	LEADER may delete comments on posts by students in groups they lead; MENTOR still cannot.
+14-forum.md	R51	PRESERVED	apps/backend/src/routes/forum.ts:261-263	-	Hard delete of the comment row; no tombstone or audit record.
+14-forum.md	R52	DIVERGED	apps/backend/src/lib/queries/forum.ts:229-230	14-forum.md D2	canDelete computed by the server gate and rendered, so staff removal power is exercisable from the UI.
+14-forum.md	R53	DIVERGED	apps/backend/src/lib/permissions.ts:615-647	14-forum.md D3	Staff audience added: SUPER, mentor and season admin see all groups, leaders their groups; thread shown on assignment screen.
+14-forum.md	R54	PRESERVED	apps/backend/src/routes/submissions.ts:178-214	-	Submission detail unchanged: no assignment type or comments; staff read the thread on the assignment screen instead.
+14-forum.md	R55	PRESERVED	apps/backend/src/routes/submissions.ts:100-106	-	Review queue filters on status only, so forum posts still appear as ordinary work.
+14-forum.md	R56	DIVERGED	apps/backend/src/lib/queries/forum.ts:105-128	14-forum.md D9	Review still allowed on forum posts (submissions.ts:346-380) but the author now reads the feedback.
+14-forum.md	R57	DIVERGED	apps/backend/src/lib/permissions.ts:577-602	14-forum.md D2	Staff read and comment removal added; post hide and student report deferred (REG-39), still no filter or audit.
+14-forum.md	R58	PRESERVED	apps/backend/src/routes/forum.ts:98	-	Timestamps are server new Date() and default now(); no timezone logic in the domain.
+15-events.md	R1	PRESERVED	apps/backend/src/routes/events.ts:140,174,227	-	Create, update and delete all require SUPER (isSuper) and nothing else.
+15-events.md	R2	NA	-	-	v1 server-action throw versus return-shape split; v2 answers every refusal as a 403 envelope.
+15-events.md	R3	PRESERVED	apps/backend/src/routes/events.ts:138-140	-	The write gate is enforced in each handler, before parsing, not by which screen renders the control.
+15-events.md	R4	PRESERVED	packages/shared/src/event.ts:63	-	Title trimmed, 1 to 200 characters.
+15-events.md	R5	DIVERGED	packages/shared/src/event.ts:64-65	D-15.6	Start is an org day (YYYY-MM-DD) plus optional HH:mm, not a free-form coerced date string.
+15-events.md	R6	DIVERGED	packages/shared/src/event.ts:66	D-15.6	End is an optional org day string, nullable, not a coerced date.
+15-events.md	R7	PRESERVED	packages/shared/src/event.ts:69	-	visibility must be one of ALL, ALUMNI_ONLY, SEASON with no server default.
+15-events.md	R8	PRESERVED	packages/shared/src/event.ts:67	-	Description nullable, up to 2000; the form sends empty as null (EventForm.tsx:58).
+15-events.md	R9	PRESERVED	packages/shared/src/event.ts:68	-	url nullable and must parse as a URL; not restricted to http(s); empty sent as null.
+15-events.md	R10	PRESERVED	packages/shared/src/event.ts:70	-	seasonId positive integer or null.
+15-events.md	R11	DIVERGED	packages/shared/src/event.ts:81-87	D-15.6	End must be on or after start, compared as org days; same-day equal allowed, time of day no longer compared.
+15-events.md	R12	PRESERVED	packages/shared/src/event.ts:88-94	-	SEASON visibility requires a seasonId; re-run against the merged row on PATCH (events.ts:198).
+15-events.md	R13	PRESERVED	apps/backend/src/routes/events.ts:148,202	-	seasonId forced to null whenever visibility is not SEASON.
+15-events.md	R14	DIVERGED	apps/mobile/src/components/EventForm.tsx:86-95	UNNAMED: Plan 14 Task 6	Form shows one error per field using the shared schema; API returns a generic 400. No numbered decision found.
+15-events.md	R15	DIVERGED	apps/backend/src/routes/events.ts:162	D-15.6	Server composes the instant from day and time in the organisation zone (orgWallClockToInstant).
+15-events.md	R16	PRESERVED	apps/backend/src/routes/events.ts:160-162	-	Missing time stores org midnight, still the only all-day encoding (no allDay column).
+15-events.md	R17	DIVERGED	apps/backend/src/routes/events.ts:164	D-15.6	End is a day only, stored at org midnight; an end time can no longer be supplied or silently dropped.
+15-events.md	R18	DIVERGED	apps/mobile/src/components/EventForm.tsx:101	UNNAMED: Plan 14 Task 6	A missing date fails the required day field and the error attaches to that input; no numbered decision found.
+15-events.md	R19	DIVERGED	apps/backend/src/routes/events.ts:66-74	D-15.6	allDay derived once on the server in the org zone and sent on the wire; client reads a boolean.
+15-events.md	R20	DIVERGED	apps/backend/src/routes/events.ts:162,184-188	D-15.6	Instant composed and read back in one zone (org), so edit round-trips cannot flip all-day.
+15-events.md	R21	PRESERVED	apps/backend/src/routes/events.ts:136-170	-	No recurrence anywhere in the events routes or contract.
+15-events.md	R22	DROPPED	-	D-15.7	Event photo upload not built; uploads are off and imagePath is never written by v2.
+15-events.md	R23	DROPPED	-	D-15.7	MIME check on event photos not built with the photo path.
+15-events.md	R24	DROPPED	-	D-15.7	5 MB photo limit not built; no photo upload endpoint exists.
+15-events.md	R25	DROPPED	-	D-15.7	Photo extension-from-MIME rule not built; no photo upload.
+15-events.md	R26	DROPPED	-	D-15.7	Photo storage key scheme not built; no photo upload.
+15-events.md	R27	DROPPED	-	D-15.7	Photo-before-row write ordering not built; no photo upload.
+15-events.md	R28	DROPPED	-	D-15.7	Photo replace/remove semantics not built; imagePath is not touched by update.
+15-events.md	R29	DROPPED	-	D-15.7	Blob cleanup on replacement moot; v2 never writes or replaces photos.
+15-events.md	R30	DROPPED	-	D-15.7	Event delete leaves any existing photo blob; no photo handling exists in v2.
+15-events.md	R31	DROPPED	-	D-15.7	imageUrl not in the event contract (event.ts:43-48); nothing resolves photo URLs.
+15-events.md	R32	DIVERGED	apps/backend/src/routes/events.ts:45-49	D-15.7	imagePath is never selected, so no event photo path crosses the wire or can be fetched ungated.
+15-events.md	R33	PRESERVED	apps/backend/src/routes/events.ts:136-170	-	Event writes notify nobody; no notification is created on create, update or delete.
+15-events.md	R34	PRESERVED	apps/backend/src/routes/events.ts:165,207-209	-	createdById set on create only; update leaves it untouched.
+15-events.md	R35	PRESERVED	apps/backend/src/routes/events.ts:235-236	-	Delete remains a hard delete (no deletedAt column).
+15-events.md	R36	DIVERGED	apps/backend/src/routes/events.ts:231-233	15-events.md §10 item 11	Delete and update read the row first and answer 404 not_found instead of a raw P2025.
+15-events.md	R37	PRESERVED	apps/mobile/app/(app)/event/[id].tsx:125-136	-	Delete needs a second Really delete? press; nothing server-side beyond the SUPER gate.
+15-events.md	R38	DIVERGED	apps/mobile/src/hooks/use-events.ts:60-71	UNNAMED: Plan 14 Task 6	Every write invalidates the whole events query subtree, covering all surfaces; no numbered decision found.
+15-events.md	R39	NA	-	-	v1 server-action return shape and router.refresh; v2 returns the row and React Query refreshes.
+15-events.md	R40	DIVERGED	apps/backend/src/lib/queries/events.ts:51-70	D-15.4	One filter derived from the token replaces listJpcEvents and its two caller-supplied knobs.
+15-events.md	R41	PRESERVED	apps/backend/src/lib/queries/events.ts:56	-	ALL events included for every non-SUPER caller; SUPER is unfiltered.
+15-events.md	R42	DIVERGED	apps/backend/src/lib/queries/events.ts:57-59	D-15.2	ALUMNI_ONLY included for alumni and every non-student role, derived from the token.
+15-events.md	R43	DIVERGED	apps/backend/src/lib/queries/events.ts:51-70	D-15.4	No page passes a literal; eligibility is derived server-side from the caller.
+15-events.md	R44	DIVERGED	apps/backend/src/lib/queries/events.ts:57	D-15.4	Single formula (alumnus or non-student) now used by every surface including the card.
+15-events.md	R45	DIVERGED	apps/backend/src/lib/queries/events.ts:57-59	D-15.2	Alumni (role STUDENT with graduationYear) now see ALUMNI_ONLY events; also REG-41.
+15-events.md	R46	DIVERGED	apps/mobile/src/components/EventForm.tsx:37-42	D-15.2	Label reads Alumni & staff everywhere, matching the predicate.
+15-events.md	R47	PRESERVED	apps/backend/src/lib/queries/events.ts:61-68	-	SEASON events included only for the viewer's season ids (SUPER unfiltered).
+15-events.md	R48	PRESERVED	apps/backend/src/lib/queries/events.ts:62	-	SEASON branch omitted from the OR when the viewer has no season ids.
+15-events.md	R49	DIVERGED	apps/backend/src/lib/queries/events.ts:15-32	_DECISIONS.md C7	Same union of active, admin and led-group seasons, but each claim paired with its role; SUPER sees all.
+15-events.md	R50	PRESERVED	apps/backend/src/lib/queries/events.ts:22-26	-	One group query, issued only for a LEADER with groupLeaderIds.
+15-events.md	R51	PRESERVED	apps/backend/src/lib/queries/events.ts:15-32	-	MENTOR holds no season claims, so sees no SEASON events (REG-42 defers widening).
+15-events.md	R52	DIVERGED	apps/backend/src/lib/queries/events.ts:63-67	15-events.md §10 item 4	SEASON events on soft-deleted seasons are hidden; status is not gated, so archived seasons' events stay visible.
+15-events.md	R53	PRESERVED	apps/backend/src/lib/queries/events.ts:54	-	SUPER filter is empty, so SUPER still sees events on soft-deleted seasons and orphans.
+15-events.md	R54	PRESERVED	apps/backend/src/lib/queries/events.ts:54,63-67	-	SEASON event with null seasonId matches nobody's relation filter and remains visible only to SUPER.
+15-events.md	R55	DIVERGED	apps/backend/src/routes/events.ts:108,127	D-15.4	Handlers always apply eventVisibilityFilter(user); no caller supplies scoping arguments.
+15-events.md	R56	PRESERVED	apps/backend/src/routes/events.ts:112	-	Ordered by date ascending with id as tiebreak.
+15-events.md	R57	DIVERGED	apps/backend/src/routes/events.ts:98-108	D-15.5	Default window now minus 30 days to plus 365 days; from, to, upcoming and limit supported.
+15-events.md	R58	DIVERGED	packages/shared/src/event.ts:11-55	UNNAMED: Plan 14 Task 5	List drops description, imagePath and createdById; detail adds description, seasonTitle, canManage. No numbered decision found.
+15-events.md	R59	PRESERVED	apps/backend/src/routes/events.ts:79,87	-	Season code and title come from the joined season, null for non-SEASON events.
+15-events.md	R60	DIVERGED	apps/backend/src/routes/events.ts:45-49	D-15.7	No per-row photo URL resolution; imagePath never selected.
+15-events.md	R61	NA	-	-	Duplicated scoping literal in the v1 manager page; v2 has a single server-side filter.
+15-events.md	R62	PRESERVED	apps/mobile/src/components/EventForm.tsx:107-115	-	Season chips list only seasons from useSeasons; an event on an unlisted (e.g. deleted) season shows no selected chip.
+15-events.md	R63	DIVERGED	apps/backend/src/routes/events.ts:72-73	D-15.6	Day bucket is the server's org dayKey, not the viewer's local date.
+15-events.md	R64	PRESERVED	apps/mobile/src/lib/day-groups.ts:52	-	Calendar still groups an event on its start day only; endDayKey is shown in the label, not as a span.
+15-events.md	R65	DIVERGED	apps/mobile/app/(app)/calendar.tsx:134-139	D-15.6	Calendar lists events inside an org-day window rather than from the viewer's local start of today.
+15-events.md	R66	PRESERVED	apps/mobile/app/(app)/calendar.tsx:138-140	-	Calendar re-filters events on start day, so an in-progress multi-day event drops out while the dashboard card still shows it.
+15-events.md	R67	DIVERGED	apps/mobile/app/(app)/calendar.tsx:62	D-15.6	Event rows show the server's org time or All day, not a bare JPC event label.
+15-events.md	R68	DIVERGED	apps/mobile/app/(app)/calendar.tsx:64-66	15-events.md §10 item 12	SEASON events show their season code; ALUMNI_ONLY lock/amber styling not reproduced.
+15-events.md	R69	NA	-	-	v1 super-calendar chip colour palette; no event colouring exists on mobile and no behaviour depends on it.
+15-events.md	R70	DIVERGED	apps/mobile/app/(app)/event/[id].tsx:178-190	15-events.md §7	New event detail screen shows description, season and an Open link button; v1 had no detail page.
+15-events.md	R71	PRESERVED	apps/mobile/app/(app)/calendar.tsx:102,148	-	Calendar empty state shown only when both sessions and events are empty.
+15-events.md	R72	NA	-	-	v1 month-grid anchor derived from sessions; v2 renders day-grouped agenda windows with no anchor month.
+15-events.md	R73	DIVERGED	apps/mobile/app/(app)/calendar.tsx:75-105	D-15.1	Alumni calendar is the shared pinned-season calendar with sessions plus events, not an events-only card.
+15-events.md	R74	PRESERVED	apps/backend/src/routes/events.ts:100-118	-	upcoming filters on (endDate ?? date) from org start of today; dashboards take the first UPCOMING_EVENTS_LIMIT = 4.
+15-events.md	R75	DIVERGED	apps/mobile/src/components/dashboard/UpcomingEventsCard.tsx:26-27	REG-60	Card shows a No upcoming events empty state instead of rendering nothing.
+15-events.md	R76	PRESERVED	apps/mobile/src/lib/format.ts:76-86	-	Time omitted for all-day events and a same-day range collapses to one date.
+15-events.md	R77	PRESERVED	apps/mobile/src/components/dashboard/UpcomingEventsCard.tsx:36-39	-	Whole card row opens the external link when url is set.
+15-events.md	R78	PRESERVED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:181	-	UpcomingEventsCard is rendered on the alumni, mentor, staff, student and super dashboards.
+15-events.md	R79	DIVERGED	apps/mobile/src/components/dashboard/SuperDashboard.tsx:61	REG-60	SUPER tile reads total from the same events endpoint as the card, so the two cannot disagree.
+15-events.md	R80	PRESERVED	apps/mobile/src/components/EventForm.tsx:61,107-121	-	Season picker only for SEASON visibility; an empty choice fails the seasonId rule.
+15-events.md	R81	DIVERGED	apps/mobile/src/components/EventForm.tsx:86-92	UNNAMED: Plan 14 Task 6	Client validates with the server's shared schema, so the 200-character title cap is enforced on the device.
+15-events.md	R82	DIVERGED	apps/mobile/app/(app)/event/[id].tsx:103-114	D-15.6	Edit form seeded from the server's org day and time, so editing from another zone cannot shift the event.
+15-events.md	R83	NA	-	-	v1 client-side find() on a list; v2 edit screen loads the event by id and shows not-found or error states.
+16-imports.md	R1	DROPPED	-	REG-48	Extension gate gone; intake is pasted text only, no .csv or .xlsx file picker.
+16-imports.md	R2	DROPPED	-	REG-48	No filename or parser-branch selection exists; paste is parsed as delimited text only.
+16-imports.md	R3	DIVERGED	packages/shared/src/import.ts:21	D-16.10	5 MB file ceiling replaced by 256 KB pasted text, checked client-side and in the body schema.
+16-imports.md	R4	DIVERGED	apps/mobile/app/(app)/users/import.tsx:102-105	D-16.10	Client checks the paste length independently; accept attribute dropped with the file picker.
+16-imports.md	R5	PRESERVED	packages/shared/src/import.ts:294-297	-	One text body per import request; nothing batches several pastes.
+16-imports.md	R6	DROPPED	-	REG-48	No workbook, so no first-worksheet rule applies.
+16-imports.md	R7	PRESERVED	apps/backend/src/lib/imports/delimited.ts:186-190	-	Every cell stays a raw string, so leading plus and zeros in phone numbers survive.
+16-imports.md	R8	DIVERGED	apps/backend/src/lib/imports/delimited.ts:3-18	D-16.15	XLSX path with number coercion no longer exists, so format-dependent mangling cannot occur.
+16-imports.md	R9	DROPPED	-	REG-48	cellText flattening of ExcelJS cell shapes has no counterpart; pasted cells are plain strings.
+16-imports.md	R10	DROPPED	-	REG-48	Hyperlink-versus-text cell ambiguity cannot occur with pasted text.
+16-imports.md	R11	PRESERVED	apps/backend/src/lib/imports/delimited.ts:171-172	-	Line 1 is the header; data rows numbered from 2; no headerless option.
+16-imports.md	R12	PRESERVED	apps/backend/src/lib/imports/students.ts:65-67	-	Header match is trim plus lowercase exact equality; vocabulary gains student alias per D-16.13.
+16-imports.md	R13	PRESERVED	apps/backend/src/lib/imports/students.ts:64-70	-	Columns recorded by true index; empty header cell skipped without shifting later columns.
+16-imports.md	R14	PRESERVED	apps/backend/src/routes/imports.ts:135-136	-	ImportParseError message surfaced verbatim as 400; other errors go to terminal handler. One error class now.
+16-imports.md	R15	PRESERVED	apps/backend/src/lib/imports/students.ts:85-89	-	Name and email headers required; whole file refused. Message wording changed; student accepted as name alias.
+16-imports.md	R16	PRESERVED	packages/shared/src/import.ts:57-75	-	Alias table copied verbatim, same seven optional profile columns and labels.
+16-imports.md	R17	DIVERGED	apps/backend/src/lib/imports/students.ts:70-79	D-16.22	First duplicate header wins uniformly, instead of v1 last-wins for name and email.
+16-imports.md	R18	DIVERGED	apps/backend/src/lib/imports/students.ts:82	D-16.12	Unrecognised headers collected and returned as unrecognisedColumns, then shown on the mobile preview.
+16-imports.md	R19	PRESERVED	apps/backend/src/lib/imports/students.ts:97	-	detectedColumns is Name, Email, then matched profile labels in sheet order; shown on mobile.
+16-imports.md	R20	DIVERGED	apps/backend/src/lib/imports/delimited.ts:171-175	UNNAMED: Plan 17 Task 2	Blank test covers every cell, so a row with only an unrecognised column is no longer skipped.
+16-imports.md	R21	PRESERVED	apps/backend/src/lib/imports/students.ts:108-123	-	Cells trimmed; empty optional cell becomes null rather than empty string.
+16-imports.md	R22	DIVERGED	apps/backend/src/lib/imports/students.ts:259-298	D-16.14	Fifth status previously_removed added; order invalid, duplicate, then existence pass kept.
+16-imports.md	R23	PRESERVED	apps/backend/src/lib/imports/students.ts:199-201	-	Invalid on short name or bad email; message names only the first failing field.
+16-imports.md	R24	DIVERGED	apps/backend/src/lib/imports/students.ts:174-202	D-16.9	Preview now applies the commit schema's maxima, so over-long values show invalid up front.
+16-imports.md	R25	DIVERGED	apps/backend/src/lib/imports/students.ts:276-281	D-16.6	In-file duplicate detection is case-insensitive via normaliseEmail.
+16-imports.md	R26	PRESERVED	apps/backend/src/lib/imports/students.ts:286	-	One batched existence lookup after the row loop; no N+1.
+16-imports.md	R27	PRESERVED	apps/backend/src/lib/imports/students.ts:232-245	-	Lookup still ignores deletedAt; removed users are reported distinctly as previously_removed.
+16-imports.md	R28	DIVERGED	apps/backend/src/lib/imports/students.ts:239-244	D-16.6	Existence matched on lower(email); stored value unchanged. Agrees with group importer now.
+16-imports.md	R29	PRESERVED	apps/backend/src/routes/imports.ts:116-126	-	Preview takes only the paste; existence stays global, never season-scoped.
+16-imports.md	R30	PRESERVED	apps/backend/src/lib/imports/students.ts:300-308	-	Counts tallied from final statuses; total is rows.length, excluding skipped blank rows.
+16-imports.md	R31	PRESERVED	packages/shared/src/import.ts:148-161	-	Every parsed row echoed in full with values; client holds them for resubmission per D-16.4.
+16-imports.md	R32	PRESERVED	apps/mobile/app/(app)/users/import.tsx:119-137	-	Commit posts rows held in screen state; server retains nothing between preview and commit.
+16-imports.md	R33	PRESERVED	apps/mobile/app/(app)/users/import.tsx:68-76	-	Only new rows sent by default; existing rows also sent only when enrol-existing is confirmed.
+16-imports.md	R34	DIVERGED	apps/backend/src/lib/imports/students.ts:425-438	D-16.4	Commit re-validates and re-derives status itself; client status is not accepted.
+16-imports.md	R35	PRESERVED	packages/shared/src/import.ts:219	-	Batch bounded 1 to 2000 rows with no chunking.
+16-imports.md	R36	PRESERVED	packages/shared/src/import.ts:235-251	-	Discriminated union of season and alumni with year 1990 to current year.
+16-imports.md	R37	PRESERVED	apps/backend/src/routes/imports.ts:147-160	-	Target comes from the request mode and applies uniformly to every row.
+16-imports.md	R38	DIVERGED	packages/shared/src/import.ts:227-233	UNNAMED: Plan 17 Task 1	Graduation year ceiling evaluated per parse, fixing v1 boot-time CURRENT_YEAR capture.
+16-imports.md	R39	PRESERVED	apps/backend/src/routes/imports.ts:152-156	-	Season mode re-reads the season with deletedAt null and refuses with 404 if gone.
+16-imports.md	R40	PRESERVED	apps/backend/src/routes/imports.ts:92-109	-	Liveness only, no scope check; safe because endpoints stay SUPER-only (spec D3).
+16-imports.md	R41	DIVERGED	apps/backend/src/lib/imports/students.ts:174-202	D-16.9	Commit validates with the student create schema; maxima differ from v1 (60/160/40/4000/2000/4000).
+16-imports.md	R42	DIVERGED	apps/backend/src/routes/imports.ts:165-174	D-16.5	Invalid row aborts whole batch with 422 import_rows_invalid listing row numbers; no per-row failed.
+16-imports.md	R43	DIVERGED	apps/backend/src/lib/imports/students.ts:466-481	D-16.6	Existence rechecked inside transaction, case-insensitive, still no deletedAt filter; hit is skipped.
+16-imports.md	R44	DIVERGED	apps/backend/src/lib/imports/students.ts:472-489	D-16.7	Skip by default and never updates profile; opt-in enroll adds enrolment for existing students.
+16-imports.md	R45	DIVERGED	apps/backend/src/lib/imports/students.ts:464-542	D-16.5	Whole commit is one all-or-nothing transaction instead of v1 sequential per-row loop.
+16-imports.md	R46	DIVERGED	apps/backend/src/lib/queries/students.ts:404-455	D-16.8	User, profile and enrolment written in batch via shared student write path, still atomic.
+16-imports.md	R47	PRESERVED	apps/backend/src/lib/queries/students.ts:410-412	-	Role forced to STUDENT, passwordHash null; account cannot sign in until invited.
+16-imports.md	R48	PRESERVED	apps/backend/src/lib/queries/students.ts:411-452	-	Season mode sets activeSeasonId and ACTIVE enrolment; alumni mode sets graduationYear and neither.
+16-imports.md	R49	PRESERVED	apps/backend/src/lib/queries/students.ts:431-455	-	No GroupStudent row and no enrolment groupId written by the student importer.
+16-imports.md	R50	DIVERGED	apps/backend/src/lib/imports/students.ts:181-189	D-16.11	Date of birth must be YYYY-MM-DD and a real date; bad value fails the row, stored as UTC midnight.
+16-imports.md	R51	PRESERVED	apps/backend/src/lib/imports/students.ts:123	-	Empty profile cells become null, never empty strings.
+16-imports.md	R52	DIVERGED	apps/backend/src/routes/imports.ts:175-188	D-16.5	P2002 race rolls back whole batch and answers 409 import_conflict, not a silent skip.
+16-imports.md	R53	DIVERGED	apps/backend/src/routes/imports.ts:132-136	D-16.18	Unexpected errors roll back and surface as 500; emails never logged.
+16-imports.md	R54	DIVERGED	apps/backend/src/lib/imports/students.ts:544-553	D-16.5	Per-row outcomes plus tallies kept; failed removed, enrolled and rowNumber added. Still nothing durable.
+16-imports.md	R55	PRESERVED	apps/mobile/app/(app)/users/import.tsx:156-158	-	No invites or notifications sent; result screen says so explicitly. No bulk-invite button yet (REG-28).
+16-imports.md	R56	PRESERVED	apps/backend/src/lib/imports/groups.ts:23-46	-	Email and group required, name optional and display-only.
+16-imports.md	R57	PRESERVED	apps/backend/src/lib/imports/groups.ts:113-116	-	Row skipped when both email and group blank; name-only row is skipped.
+16-imports.md	R58	PRESERVED	apps/backend/src/lib/imports/groups.ts:118-155	-	Five statuses, classified in v1 order.
+16-imports.md	R59	PRESERVED	apps/backend/src/lib/imports/groups.ts:118-121	-	Invalid only on a bad email; name never validated.
+16-imports.md	R60	PRESERVED	apps/backend/src/lib/imports/groups.ts:81-86	-	Roster matched by lower-cased email.
+16-imports.md	R61	DIVERGED	apps/backend/src/lib/imports/groups.ts:65-79	C9	Roster resolved through ACTIVE SeasonEnrollment, not the activeSeasonId pointer.
+16-imports.md	R62	PRESERVED	apps/backend/src/lib/imports/groups.ts:122-126	-	Email not on the roster gives no_student with the v1 message.
+16-imports.md	R63	PRESERVED	apps/backend/src/lib/imports/groups.ts:127-134	-	Blank group cell gives no_group, No group specified.
+16-imports.md	R64	PRESERVED	apps/backend/src/lib/imports/groups.ts:78,93-102	-	Groups matched by trimmed lower-cased name among this season's groups only.
+16-imports.md	R65	DIVERGED	apps/backend/src/lib/imports/groups.ts:93-102	D-16.19	Case-insensitively duplicate group names refuse the file instead of last one winning.
+16-imports.md	R66	PRESERVED	apps/backend/src/lib/imports/groups.ts:135-143	-	Unknown group gives no_group echoing the name; wording slightly reworded.
+16-imports.md	R67	PRESERVED	apps/backend/src/lib/imports/groups.ts:145-153	-	Student already in the named group is unchanged; mobile commits only assign rows.
+16-imports.md	R68	PRESERVED	apps/backend/src/lib/imports/groups.ts:155	-	Everything else is assign carrying resolved studentUserId and groupId.
+16-imports.md	R69	PRESERVED	apps/backend/src/lib/imports/groups.ts:127-134	-	Blank group cell is no_group, never an unassign; D-16.19 item 4 keeps this, bulk unassign unbuilt.
+16-imports.md	R70	DIVERGED	apps/backend/src/lib/imports/groups.ts:75-76,145	C9	unchanged tested against SeasonEnrollment.groupId for this season, not a GroupStudent lookup.
+16-imports.md	R71	PRESERVED	apps/backend/src/lib/imports/groups.ts:158-161	-	Counts tallied over the five statuses plus total.
+16-imports.md	R72	PRESERVED	apps/mobile/app/(app)/seasons/[code]/roster/import.tsx:99-101	-	Commit posts only resolved studentUserId and groupId pairs from assign rows.
+16-imports.md	R73	PRESERVED	apps/backend/src/routes/imports.ts:274-286	-	Ids not tied to a preview, but write re-derives scope, so exposure stays bounded (D-16.20).
+16-imports.md	R74	PRESERVED	apps/backend/src/routes/imports.ts:283-285	-	Commit delegates to assignStudentsToGroups, the helper the roster grid also uses.
+16-imports.md	R75	PRESERVED	apps/backend/src/lib/queries/groups.ts:365-371	-	Any target group outside the season refuses the whole batch with 400 group_outside_season.
+16-imports.md	R76	DIVERGED	apps/backend/src/lib/queries/groups.ts:376-381	D-16.19	Ineligible students still skipped but now reported in skippedStudentIds; eligibility via enrolment (C9).
+16-imports.md	R77	PRESERVED	apps/backend/src/lib/queries/groups.ts:388-389	-	Deletes every existing GroupStudent for the user, unscoped, then creates new membership.
+16-imports.md	R78	DIVERGED	apps/backend/src/lib/queries/groups.ts:390-393	C9	Enrolment is updated with groupId only; never created or resurrected as v1 upsert did.
+16-imports.md	R79	PRESERVED	apps/backend/src/routes/imports.ts:283-286	-	Group commit runs in one transaction, all apply or none; timeout 30s rather than 20s.
+16-imports.md	R80	DIVERGED	apps/backend/src/routes/imports.ts:287-291	D-16.19	assigned is the count actually written; skipped and skippedStudentIds returned.
+16-imports.md	R81	PRESERVED	apps/backend/src/routes/imports.ts:285	-	2000-row cap kept with bounded transaction timeout (30s). Mapped to shared import.ts:381.
+16-imports.md	R82	PRESERVED	apps/backend/src/lib/imports/students.ts:464-542	-	No notification code anywhere in the import modules or routes.
+16-imports.md	R83	DROPPED	apps/mobile/src/hooks/use-import.ts:56-67	UNAUTHORISED	Neither commit mutation invalidates users, roster or group caches, so lists stay stale after import.
+16-imports.md	R84	DIVERGED	apps/backend/src/routes/imports.ts:68-72	D-16.21	Preview and commit rate-limited; concurrent same-paste race answers 409 import_conflict and rolls back.
+17-reports.md	R1	DIVERGED	apps/backend/src/lib/queries/reports.ts:46-73	D-17.4	Empty request means the caller's permitted seasons, not every season; requested ids are intersected with permitted scope.
+17-reports.md	R2	PRESERVED	apps/backend/src/lib/queries/reports.ts:113-126	-	Empty season set returns empty trend, completion, bands and at-risk instead of throwing.
+17-reports.md	R3	DIVERGED	apps/backend/src/routes/reports.ts:44-51	D-17.4	Gate now sits on the route via reportScopeFor, with scope resolution by intersection beneath it.
+17-reports.md	R4	PRESERVED	apps/backend/src/lib/queries/reports.ts:132-141	-	from and to narrow only the attendance trend session window; other figures stay full-history.
+17-reports.md	R5	DIVERGED	packages/shared/src/reports.ts:85-86	D-17.12	from and to are now accepted by the endpoint and implemented rather than left dead.
+17-reports.md	R6	DIVERGED	apps/mobile/app/(app)/reports.tsx:53-106	UNNAMED: Plan 15 Task 8	Mobile screen adds a season picker; the only filter control, replacing the fixed per-page scope.
+17-reports.md	R7	PRESERVED	apps/backend/src/lib/queries/reports.ts:226-228	-	Completion and engagement cover full history; only the trend takes a date window.
+17-reports.md	R8	DIVERGED	apps/backend/src/lib/queries/reports.ts:137-146	D-17.12	Trend shows the most recent N past sessions (default 26) ascending, not every past session.
+17-reports.md	R9	DIVERGED	apps/backend/src/lib/queries/reports.ts:192-223	D-17.3	Present plus late kept in the numerator; denominator is the roster at that session's instant.
+17-reports.md	R10	DIVERGED	apps/backend/src/lib/queries/reports.ts:154-164	D-17.11	Enrolments fetched once for all seasons with enrolledAt and droppedAt; no per-season count loop.
+17-reports.md	R11	DIVERGED	apps/backend/src/lib/queries/reports.ts:199-204	D-17.3	Denominator is the historical roster at startsAt, not today's active count.
+17-reports.md	R12	DIVERGED	apps/backend/src/lib/queries/reports.ts:205-207	D-17.3	Numerator restricted to the same eligible set, so pct cannot exceed 100 and the contract enforces it.
+17-reports.md	R13	DIVERGED	apps/backend/src/lib/queries/reports.ts:221	D-17.13	Empty roster gives null pct instead of 0; the chart skips the point.
+17-reports.md	R14	PRESERVED	apps/backend/src/lib/queries/reports.ts:170-175	-	Trend counts PRESENT and LATE together and never reads lateMinutes.
+17-reports.md	R15	DIVERGED	apps/backend/src/lib/queries/reports.ts:215	X13	Point carries an org-zone dayKey; mobile formats it with year, so years no longer collapse.
+17-reports.md	R16	DIVERGED	packages/shared/src/reports.ts:129-144	UNNAMED: Plan 15 Task 1	Points carry seasonId and title, but the mobile chart still draws one interleaved line.
+17-reports.md	R17	DIVERGED	apps/backend/src/lib/queries/reports.ts:166-176	D-17.11	Only present marks on windowed sessions fetched, two columns; unused count dropped.
+17-reports.md	R18	PRESERVED	apps/backend/src/lib/queries/reports.ts:226-228	-	One row per live assignment in scope, ordered by createdAt ascending.
+17-reports.md	R19	PRESERVED	apps/backend/src/lib/queries/reports.ts:243-249	-	Submitted means any non-DRAFT submission on the assignment.
+17-reports.md	R20	DIVERGED	apps/backend/src/lib/queries/reports.ts:263-269	C9	Expected is ACTIVE enrolments of the season, narrowed by enrolment group when targeted; GroupStudent not used.
+17-reports.md	R21	DIVERGED	apps/backend/src/lib/queries/reports.ts:258-262	C9	Targeted denominator is per-season enrolment group, not the global single GroupStudent membership.
+17-reports.md	R22	DIVERGED	apps/backend/src/lib/queries/reports.ts:284-288	D-17.13	Targeted assignment with no targets has expected 0 and null completion rate, not 0 percent.
+17-reports.md	R23	DIVERGED	apps/backend/src/lib/queries/reports.ts:270-275	C5	Numerator intersected with expected set, so completion cannot exceed 100.
+17-reports.md	R24	DIVERGED	apps/backend/src/lib/queries/reports.ts:226-250	D-17.11	Targeting resolved in memory from one enrolment fetch; no per-assignment count queries.
+17-reports.md	R25	PRESERVED	apps/backend/src/lib/queries/reports.ts:226-228	-	No due-date clause; future-due assignments still count against the cohort.
+17-reports.md	R26	DIVERGED	apps/backend/src/lib/queries/reports.ts:277-289	C5	Bar renamed completionRate; per-student submission percentage comes from domain 9 alone (D-17.1).
+17-reports.md	R27	PRESERVED	apps/backend/src/lib/queries/engagement.ts:55-58	-	One row per ACTIVE enrolment in scope; enrollmentCount reported beside cohortSize.
+17-reports.md	R28	PRESERVED	apps/backend/src/lib/queries/reports.ts:293	-	Scores taken verbatim from domain 9 aggregation, now batched for the whole scope.
+17-reports.md	R29	DIVERGED	apps/backend/src/lib/queries/reports.ts:90-102	D-17.11	One batched engagement call replaces four sequential queries per enrolment.
+17-reports.md	R30	DIVERGED	packages/shared/src/reports.ts:53-58	D-17.2	AT_RISK tested first via isAtRisk; remaining bands cut score at 80 and 60, so low is below 60.
+17-reports.md	R31	PRESERVED	apps/backend/src/lib/queries/reports.ts:88,295-304	-	Four bands seeded High, Medium, Low, At risk and emitted including zero counts.
+17-reports.md	R32	PRESERVED	apps/backend/src/lib/queries/reports.ts:296,312-313	-	Band counts remain per enrolment; cohortSize and enrollmentCount both returned and shown.
+17-reports.md	R33	DIVERGED	apps/backend/src/lib/queries/reports.ts:298,307-308	D-17.2	At-risk list is the AT_RISK band, score ascending with id tiebreak, capped at 10 plus atRiskTotal.
+17-reports.md	R34	DIVERGED	apps/backend/src/routes/reports.ts:70-87	D-17.5	Summary omits the cohort; paged cohort endpoint is separately gated.
+17-reports.md	R35	DIVERGED	apps/mobile/app/(app)/reports.tsx:33-35	_DECISIONS.md D1	At-risk row opens the single flat student route; no role-specific base string.
+17-reports.md	R36	DIVERGED	apps/mobile/app/(app)/reports.tsx:38-40	D-17.21	Name shown without email fallback because User.name is not nullable.
+17-reports.md	R37	DIVERGED	apps/mobile/app/(app)/reports.tsx:250-255	UNNAMED: Plan 15 Task 8	Empty state when no enrolments and no trend points; completion rows no longer count.
+17-reports.md	R38	DIVERGED	apps/backend/src/lib/exports/engagement-workbook.ts:36-46	D-17.7	Same six columns in order plus Band; delivered as XLSX, CSV not ported.
+17-reports.md	R39	DIVERGED	apps/backend/src/lib/exports/engagement-workbook.ts:50	D-17.7	One row per enrolment, now sorted by score ascending instead of arbitrary order.
+17-reports.md	R40	DROPPED	-	REG-45	CSV quoting path gone; exceljs writes cells, so JSON-style escaping defect cannot occur.
+17-reports.md	R41	DROPPED	-	REG-45	LF join and missing BOM belong to the dropped CSV; XLSX has no such encoding issue.
+17-reports.md	R42	DIVERGED	packages/shared/src/reports.ts:326-336	D-17.16	Filename is scope slug plus org-zone day, built by one shared function, not epoch milliseconds.
+17-reports.md	R43	PRESERVED	apps/backend/src/routes/exports.ts:98-99	-	Malformed season ids fail validation with 400 bad_request; parameter renamed seasonId and repeatable.
+17-reports.md	R44	DIVERGED	apps/backend/src/lib/queries/reports.ts:50-61	D-17.4	Requested ids outside scope are silently dropped and flagged truncated, not 403.
+17-reports.md	R45	PRESERVED	apps/backend/src/lib/permissions.ts:667-676	-	SUPER and MENTOR get all seasons, ADMIN own seasonAdminIds, others refused; SUPER widening is D-17.6.
+17-reports.md	R46	PRESERVED	apps/backend/src/routes/exports.ts:101-111	-	Unknown season id on the export still yields a header-only workbook with 200; code comment claims fixed.
+17-reports.md	R47	NA	-	-	v1 route location only; v2 serves everything under /api/v1 with no external contract.
+17-reports.md	R48	DIVERGED	apps/backend/src/routes/exports.ts:48-53	D-17.18	Export rate-limited per user, 10 per 15 minutes, and logged via logExport.
+17-reports.md	R49	PRESERVED	apps/backend/src/lib/queries/organisation-report.ts:19-39	-	Roll-up takes no arguments and covers the whole database.
+17-reports.md	R50	PRESERVED	apps/backend/src/routes/reports.ts:98-100	-	SUPER-only gate retained on the single endpoint calling the roll-up.
+17-reports.md	R51	DIVERGED	apps/backend/src/lib/queries/organisation-report.ts:60-70	17-reports.md D4	Same population, renamed totalStudentsNotGraduated and labelled Student accounts on mobile.
+17-reports.md	R52	PRESERVED	apps/backend/src/lib/queries/organisation-report.ts:63-70	-	Alumni are STUDENT users with a graduationYear; the two totals partition non-deleted students.
+17-reports.md	R53	PRESERVED	apps/backend/src/lib/queries/organisation-report.ts:34-38	-	Live seasons ordered by year descending then program ascending.
+17-reports.md	R54	PRESERVED	apps/backend/src/lib/queries/organisation-report.ts:74-81	-	Per-season ACTIVE, COMPLETED, WITHDRAWN tallies; field renamed withdrawnCount, UI label still Dropped.
+17-reports.md	R55	DIVERGED	apps/backend/src/lib/queries/organisation-report.ts:43-48	D-17.11	Status tally by groupBy in the database instead of loading every enrolment row.
+17-reports.md	R56	PRESERVED	apps/backend/src/lib/queries/organisation-report.ts:54-57,83-88	-	Leader count is the distinct set of leaders across the season's groups.
+17-reports.md	R57	DIVERGED	apps/backend/src/lib/queries/organisation-report.ts:29-33,72	D-17.11	Alumni by year via one groupBy, sorted year descending, not a per-alumnus fetch.
+17-reports.md	R58	NA	-	-	Unreachable null guard in v1 tally; groupBy approach has no equivalent and no visible behaviour.
+17-reports.md	R59	PRESERVED	apps/backend/src/lib/queries/organisation-report.ts:95	-	Active season count taken from the already-fetched season list.
+17-reports.md	R60	DIVERGED	apps/mobile/app/(app)/reports.tsx:144-160	D-17.20	Pie replaced by ranked bars listing every season, including those with zero active.
+17-reports.md	R61	PRESERVED	apps/backend/src/routes/reports.ts:89-103	-	Roll-up kept as its own endpoint sharing no metric with the engagement report.
+17-reports.md	R62	DIVERGED	packages/shared/src/reports.ts:254-263	17-reports.md D13	Rows carry season code; mobile roll-up shows no season links, so no broken links either.
+17-reports.md	R63	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:76-80,193-196	D-17.14	Attendance, Grades, Assignments kept with creator JPC Space; fourth Key sheet added.
+17-reports.md	R64	PRESERVED	apps/backend/src/lib/exports/season-workbook.ts:81-87,122-128	-	Student, Email, Group lead each sheet, one column per item, final percentage column.
+17-reports.md	R65	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:306-314	D-17.23	ACTIVE enrolments only, sorted with a pinned en collator instead of host default.
+17-reports.md	R66	PRESERVED	apps/backend/src/lib/exports/season-workbook.ts:297-312	-	Group column is the enrolment's group name, empty when none.
+17-reports.md	R67	PRESERVED	apps/backend/src/lib/exports/workbook-style.ts:85-112	-	Navy header fill, bold white text, frozen row and three columns, widths 22/28/22 kept.
+17-reports.md	R68	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:85,319-321	C2	Past sessions ascending; header day formatted in the organisation zone with year.
+17-reports.md	R69	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:96-109	D-17.10	P and A kept, blank for no record; LATE always prints L, minutes withheld.
+17-reports.md	R70	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:101-108	C3	Defective lateMinutes no longer exported; field not even selected. Returns at cutover (REG-59).
+17-reports.md	R71	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:96-109	D-17.10	Attendance cells are now all strings, so mixed-type column issue disappears.
+17-reports.md	R72	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:110-115	C4	Attendance % read from engagement computation, whose denominator starts at enrolment.
+17-reports.md	R73	PRESERVED	apps/backend/src/lib/exports/season-workbook.ts:114	-	Workbook percentage is the engagement attendancePct by construction, so the two agree.
+17-reports.md	R74	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:279-285	D-17.22	Unpublished ONLINE quizzes excluded from columns; paper quizzes kept.
+17-reports.md	R75	PRESERVED	apps/backend/src/lib/exports/season-workbook.ts:137-146	-	Grade cell is the raw score; null or missing grade is blank.
+17-reports.md	R76	PRESERVED	apps/backend/src/lib/exports/season-workbook.ts:143-150	-	Average is rounded unweighted mean of percentages; blank when nothing graded.
+17-reports.md	R77	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:279-285	D-17.22	Zero-max quizzes get no column at all instead of printing and being excluded.
+17-reports.md	R78	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:176-181	D-17.15	Targeting honoured per student via enrolment group; unassigned shows n/a.
+17-reports.md	R79	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:16-21,182-185	D-17.15	Status labels kept; no submission is blank rather than an em dash.
+17-reports.md	R80	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:166,187	C5	Submitted % read from engagement (assigned-to-student denominator); header names the denominator.
+17-reports.md	R81	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:289-293	17-reports.md D14	Soft-deleted or unknown season returns null, route answers 404.
+17-reports.md	R82	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:24,181-185	D-17.15	n/a, blank and status now distinguish not assigned from nothing submitted.
+17-reports.md	R83	DIVERGED	apps/backend/src/routes/exports.ts:156-160	D-17.17	Workbook written straight to the response stream, no second buffer copy.
+17-reports.md	R84	DIVERGED	apps/backend/src/routes/exports.ts:68-80	D-17.16	Filename sanitised with ASCII fallback plus RFC 5987 form; stem built by shared function.
+17-reports.md	R85	DIVERGED	apps/backend/src/lib/permissions.ts:692-694	D-17.6	Workbook allowed for SUPER or admin of that season; MENTOR refused. Season id in path.
+17-reports.md	R86	DIVERGED	apps/backend/src/routes/exports.ts:135-141	D-17.6	Endpoint enforces the mentor refusal itself; hidden button in ExportMenu is only a courtesy.
+17-reports.md	R87	NA	-	-	v1 web redirect for unauthenticated requests; bearer-token API answers 401 envelope instead.
+17-reports.md	R88	DIVERGED	apps/backend/src/routes/exports.ts:48-53,113-119	D-17.18	Under /api/v1, rate-limited per user and audited to an application log line (REG-44).
+17-reports.md	R89	DIVERGED	apps/backend/src/lib/exports/season-workbook.ts:62-69,359	C4	Ten queries, still constant in cohort size; five extra buy percentages equal to the report's.
+17-reports.md	R90	DIVERGED	apps/mobile/src/lib/report-colors.ts:26-34	D-17.19	Colours come from theme tokens with an explicit semantic band map, not a flat hex mirror.
+17-reports.md	R91	DIVERGED	apps/mobile/src/lib/report-colors.ts:26-34	D-17.19	Band colours keyed by enum, not applied by array index modulo.
+17-reports.md	R92	PRESERVED	apps/mobile/src/lib/report-colors.ts:26-34	-	High green, Medium teal, Low amber, At risk red survive as an explicit map.
+17-reports.md	R93	DIVERGED	apps/mobile/app/(app)/reports.tsx:144-168	D-17.20	Season and alumni pies replaced by ranked bars and a plain list, no implied severity colours.
+17-reports.md	R94	PRESERVED	apps/mobile/src/components/charts/TrendLine.tsx:68	-	Line is teal-700, bars teal, grid neutral-200; single series, all from theme tokens.
+17-reports.md	R95	DIVERGED	apps/mobile/src/lib/report-colors.ts:17-18	D-17.19	All chart colours are theme-aware; no hover tooltips on a touch screen.
+17-reports.md	R96	PRESERVED	apps/mobile/src/lib/report-colors.ts:20-25	-	No chart is coloured by attendance status; the palette-index trap is documented in code.
+17-reports.md	R97	DIVERGED	apps/mobile/app/(app)/reports.tsx:298-305	D-17.20	Slice labels moved out of the donut into a list beneath it, so nothing overlaps.
+17-reports.md	R98	DIVERGED	apps/mobile/src/components/charts/TrendLine.tsx:27	D-17.20	Chart sizing is svg viewBox with 160 default height, not Recharts 240 pixels.
+17-reports.md	R99	NA	-	-	ChartLegend was unused dead code in v1 (C12); no counterpart needed.
+17-reports.md	R100	DIVERGED	apps/backend/src/lib/queries/reports.ts:107-111	C2	Instant boundary still new Date(), but every day label and export day uses the org zone.
+17-reports.md	R101	DIVERGED	apps/backend/src/lib/queries/reports.ts:215	X13	Server sends org-zone dayKey; client labels without timezone conversion, so readers see the org day.
+17-reports.md	R102	DIVERGED	apps/backend/src/lib/org-time.ts:177-185	C2	One configured organisation timezone buckets days; per-season zone deferred (REG-53).
+17-reports.md	R103	DIVERGED	apps/mobile/app/(app)/reports.tsx:53-106	_DECISIONS.md D1	No redirect to newest season; one reports route with a season picker over permitted seasons.
+17-reports.md	R104	DIVERGED	apps/backend/src/lib/queries/reports.ts:63-70	_DECISIONS.md D1	Admin with no seasons gets a No seasons scope and an empty state, not a redirect.
+17-reports.md	R105	DIVERGED	apps/mobile/app/(app)/reports.tsx:182-200	_DECISIONS.md D1	Per-season report reachable from the Reports tab picker, not only by redirect or typed URL.
+17-reports.md	R106	DIVERGED	apps/backend/src/lib/permissions.ts:667-673	D-17.6	SUPER is granted the engagement report that v1 pages denied but its export served.
+17-reports.md	R107	PRESERVED	apps/backend/src/routes/reports.ts:98-100	-	Organisation roll-up gated to SUPER; mobile renders its section only for SUPER (reports.tsx:231).
+17-reports.md	R108	PRESERVED	apps/backend/src/lib/permissions.ts:673-674	-	ADMIN limited to own seasonAdminIds, SUPER unrestricted, via the scope intersection.
+17-reports.md	R109	PRESERVED	apps/backend/src/lib/permissions.ts:675	-	LEADER gets null scope and an explicit 403; no leader nav entry or screen branch.
+17-reports.md	R110	PRESERVED	apps/backend/src/routes/reports.ts:44-48	-	STUDENT likewise refused explicitly with 403; reports screen shows not-available state (reports.tsx:202-207).

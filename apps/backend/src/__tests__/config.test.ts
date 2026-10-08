@@ -25,6 +25,13 @@ const REQUIRED = {
 };
 
 describe("config", () => {
+  it("READ_ONLY defaults to false, parses 'true', and treats '' as unset", () => {
+    expect(loadConfig({ ...REQUIRED }).readOnly).toBe(false);
+    expect(loadConfig({ ...REQUIRED, READ_ONLY: "true" }).readOnly).toBe(true);
+    expect(loadConfig({ ...REQUIRED, READ_ONLY: "" }).readOnly).toBe(false);
+    expect(() => loadConfig({ ...REQUIRED, READ_ONLY: "yes" })).toThrow(/Invalid environment/);
+  });
+
   it("exposes the validated environment", () => {
     const config = loadConfig({ ...REQUIRED, PORT: "4000" });
     expect(config.databaseUrl).toBe(REQUIRED.DATABASE_URL);

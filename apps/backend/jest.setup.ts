@@ -21,3 +21,14 @@ process.env.AUTH_SECRET ||= "unit-test-placeholder-secret";
 // covered separately by src/__tests__/upload-guard.test.ts, which overrides
 // config directly.
 process.env.ENABLE_UPLOADS = "true";
+
+// Forced off so a developer's .env with READ_ONLY=true cannot turn every
+// write test into a 503. The frozen path is covered by read-only.test.ts.
+process.env.READ_ONLY = "false";
+
+// The imports suite commits ~22 times and previews ~30 times from one IP in
+// one run; the production limits (10 / 30 per 15 min) would 429 it halfway.
+// The limiter's own behaviour is covered by import-limits.test.ts, which
+// builds a limit-1 instance directly.
+process.env.IMPORT_COMMIT_RATE_LIMIT = "1000";
+process.env.IMPORT_PREVIEW_RATE_LIMIT = "1000";

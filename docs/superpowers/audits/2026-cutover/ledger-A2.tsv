@@ -1,0 +1,502 @@
+spec	rule	verdict	v2_citation	authority	note
+06-students.md	R1	PRESERVED	apps/backend/src/lib/queries/students.ts:129	-	Student reads filter role STUDENT; detail and handlers do the same.
+06-students.md	R2	PRESERVED	apps/backend/prisma/schema.prisma:355	-	Schema copy keeps unique (studentUserId, seasonId).
+06-students.md	R3	PRESERVED	apps/backend/prisma/schema.prisma:330	-	GroupStudent.studentUserId still globally unique; schema frozen under C1.
+06-students.md	R4	PRESERVED	apps/backend/src/lib/queries/students.ts:326-328	-	Current-group badge read from GroupStudent with no season filter, labelled advisory.
+06-students.md	R5	PRESERVED	apps/backend/src/lib/queries/students.ts:310	-	Enrollment history groupName comes from SeasonEnrollment.groupId.
+06-students.md	R6	PRESERVED	apps/backend/src/lib/queries/groups.ts:210-213	-	Reassignment overwrites enrollment groupId in place; GroupStudent badge can still disagree with history.
+06-students.md	R7	PRESERVED	apps/backend/src/lib/queries/students.ts:276-278	-	All enrollments listed regardless of status, newest enrolledAt first.
+06-students.md	R8	PRESERVED	apps/backend/src/routes/students.ts:364-407	-	Only manual drop/complete transitions exist; nothing ends enrollments at season end (D10 not adopted).
+06-students.md	R9	DIVERGED	apps/backend/src/lib/queries/students.ts:491-494	06-students.md D1	Enrolling now sets activeSeasonId when unset; pointer and enrollment no longer fully independent.
+06-students.md	R10	PRESERVED	apps/backend/src/lib/queries/students.ts:38-46	-	ADMIN list scoped by SeasonEnrollment in seasonAdminIds.
+06-students.md	R11	DIVERGED	apps/backend/src/lib/queries/groups.ts:273-281	C9	Season roster built from ACTIVE enrollments, not activeSeasonId.
+06-students.md	R12	DIVERGED	apps/backend/src/lib/queries/groups.ts:344-378	C9	Assignment eligibility is ACTIVE enrollment; ineligible students skipped but now reported back.
+06-students.md	R13	DIVERGED	apps/backend/src/lib/queries/students.ts:436-455	06-students.md D1	Creation with seasonId writes pointer and enrollment together.
+06-students.md	R14	PRESERVED	apps/backend/src/lib/queries/students.ts:404-445	-	User plus StudentProfile created together; role forced STUDENT, not an input.
+06-students.md	R15	DIVERGED	apps/backend/src/lib/queries/students.ts:447-455	06-students.md D1	Optional seasonId on create now creates the ACTIVE enrollment.
+06-students.md	R16	DIVERGED	apps/backend/src/lib/queries/students.ts:412	06-students.md D7	No shared password; passwordHash null, credentials arrive by invite (Plan 10 Decision 1).
+06-students.md	R17	DIVERGED	apps/backend/src/routes/students.ts:173-182	06-students.md D7	Nothing credential-bearing logged; failure log names user id only.
+06-students.md	R18	PRESERVED	apps/backend/src/routes/students.ts:126-127	-	Duplicate email answers 409 email_taken; race loser also 409 via P2002 catch at :167-169.
+06-students.md	R19	PRESERVED	apps/backend/src/routes/students.ts:121-127	-	Uniqueness check has no deletedAt filter; soft-deleted address stays reserved, per code comment.
+06-students.md	R20	PRESERVED	packages/shared/src/student.ts:188-203	-	Same bounds; activeSeasonId replaced on create by seasonId; dateOfBirth now ISO datetime.
+06-students.md	R21	PRESERVED	apps/mobile/src/lib/student-form.ts:93-101	-	Client validates against the shared schema, so v1 client-side gap does not exist; phone and DOB still unformatted.
+06-students.md	R22	DIVERGED	apps/backend/src/routes/students.ts:95-98	REG-12	Student self-edit cannot change email; six profile columns only, name via PATCH /me.
+06-students.md	R23	PRESERVED	apps/backend/src/routes/students.ts:205-212	-	notes and activeSeasonId never in subject's allowlist; checked in route against raw keys.
+06-students.md	R24	DIVERGED	apps/backend/src/routes/students.ts:205-212	06-students.md §8	Self-posted notes refused with 403 forbidden_field instead of silent no-op; only spec section 8 table records it.
+06-students.md	R25	PRESERVED	apps/backend/src/routes/me.ts:187-203	-	Own-profile PATCH excludes notes and activeSeasonId at the API; the admin-only fieldset does not exist for students.
+06-students.md	R26	PRESERVED	packages/shared/src/student.ts:18-23	-	Empty string coerced to null; absent stays untouched for PATCH.
+06-students.md	R27	PRESERVED	apps/backend/src/routes/students.ts:195-199	-	Missing student returns 404 not_found before the write; upsert covers missing profile.
+06-students.md	R28	DIVERGED	apps/mobile/app/(app)/students/index.tsx:6-24	06-students.md §9	One /students list for SUPER ADMIN MENTOR plus scoped LEADER; v1 had no leader list.
+06-students.md	R29	PRESERVED	apps/backend/src/lib/queries/students.ts:129-132	-	Base filter role STUDENT, not deleted, graduationYear null for active list.
+06-students.md	R30	DIVERGED	apps/backend/src/lib/queries/students.ts:36-57	C9	SUPER/MENTOR all, ADMIN by enrollment kept; LEADER now by enrollment groupId; STUDENT gets 403.
+06-students.md	R31	PRESERVED	apps/backend/src/lib/queries/students.ts:38-46	-	ADMIN scope ignores enrollment status; "ever enrolled in my seasons".
+06-students.md	R32	PRESERVED	apps/backend/src/lib/queries/students.ts:37	-	SUPER and MENTOR scope is all non-deleted non-graduated students.
+06-students.md	R33	PRESERVED	apps/backend/src/lib/queries/students.ts:59-68	-	Search on name, email, university case-insensitive, ANDed with scope at :127-138.
+06-students.md	R34	DIVERGED	apps/backend/src/lib/queries/students.ts:146-162	06-students.md D14	Cursor pagination and separate total replace the 200-row cap.
+06-students.md	R35	DROPPED	-	UNAUTHORISED	Season filter exists in API only; no group filter, no sort keys in API or StudentList.tsx; no decision recorded.
+06-students.md	R36	PRESERVED	apps/backend/src/lib/queries/students.ts:89-102	-	Row shape kept; photoPath dropped per spec 06 section 8; groupName renamed currentGroupName.
+06-students.md	R37	NA	-	-	Per-row storage URL resolution is a v1 render mechanism; v2 returns avatarPath only, avatar display deferred (REG-07).
+06-students.md	R38	PRESERVED	apps/backend/src/lib/queries/students.ts:132	-	Alumni are role STUDENT with graduationYear not null.
+06-students.md	R39	PRESERVED	apps/backend/src/lib/queries/students.ts:114-122	-	Alumni scope SUPER/MENTOR all, ADMIN ever-enrolled, empty scope returns early; LEADER 403.
+06-students.md	R40	PRESERVED	apps/backend/src/lib/queries/students.ts:143	-	Ordered graduationYear desc then name asc.
+06-students.md	R41	DIVERGED	apps/backend/src/lib/queries/students.ts:132-162	06-students.md D14	Alumni list now has search and cursor pagination.
+06-students.md	R42	PRESERVED	apps/backend/src/lib/queries/students.ts:132	-	not-null filter guarantees graduationYear; contract field is nullable anyway (student.ts:50).
+06-students.md	R43	PRESERVED	apps/backend/src/lib/queries/students.ts:172-229	-	Dropped list is enrollment-keyed via droppedEnrollment.enrollmentId.
+06-students.md	R44	DIVERGED	apps/backend/src/lib/queries/students.ts:184-187	06-students.md D12	Dropped list now filters role STUDENT and deletedAt null.
+06-students.md	R45	DIVERGED	apps/backend/src/lib/queries/students.ts:176-191	06-students.md §7	Dropped list SUPER and ADMIN only; MENTOR refused to protect drop reasons.
+06-students.md	R46	PRESERVED	apps/backend/src/lib/queries/students.ts:196-225	-	Ordered droppedAt desc; row carries season title instead of program/year; dropReason returned.
+06-students.md	R47	PRESERVED	apps/backend/src/lib/queries/students.ts:488-490	-	Every enrollment creation path writes ACTIVE.
+06-students.md	R48	DIVERGED	apps/backend/src/routes/students.ts:447-451	REG-21	Graduation completes all ACTIVE enrollments, not only the pointed-at one.
+06-students.md	R49	PRESERVED	apps/backend/src/routes/students.ts:387-391	-	Drop refuses non-ACTIVE with 409 not_active.
+06-students.md	R50	PRESERVED	apps/backend/src/routes/students.ts:387-391	-	No transition out of terminal states; schema rejects ACTIVE (student.ts:243-244).
+06-students.md	R51	DIVERGED	apps/backend/src/lib/queries/groups.ts:188-215	06-students.md D2	Group writes update groupId only; never delete/recreate enrollment, history preserved.
+06-students.md	R52	PRESERVED	apps/backend/src/routes/groups.ts:204	-	Group delete nulls enrollment groupId, leaves status alone.
+06-students.md	R53	PRESERVED	apps/backend/src/lib/permissions.ts:20-26	-	Student season access still matches any enrollment incl. WITHDRAWN; spec D11 not adopted, possible defect.
+06-students.md	R54	PRESERVED	apps/backend/src/routes/students.ts:393-398	-	completedAt and droppedAt written on transition; v2 additionally returns both in history.
+06-students.md	R55	PRESERVED	apps/backend/src/routes/students.ts:422-424	-	Graduation SUPER-only.
+06-students.md	R56	PRESERVED	apps/backend/src/routes/students.ts:434-455	-	One transaction sets graduationYear, completes enrollments, clears activeSeasonId.
+06-students.md	R57	PRESERVED	apps/backend/src/lib/rbac.ts:11-13	-	Graduation leaves role STUDENT; isAlumnus and navFor (navigation.ts:195-197) use graduationYear.
+06-students.md	R58	PRESERVED	packages/shared/src/student.ts:262-275	-	Integer 1990..current year; upper bound now evaluated per call, fixing module-load capture.
+06-students.md	R59	PRESERVED	apps/mobile/src/components/GraduateStudentSheet.tsx:22-34	-	Sheet defaults to current year and validates with shared schema.
+06-students.md	R60	DIVERGED	apps/backend/src/routes/students.ts:447-451	REG-21	All ACTIVE enrollments completed whether or not activeSeasonId is set.
+06-students.md	R61	PRESERVED	apps/backend/src/routes/students.ts:442-446	-	Graduation irreversible; second graduation refused 409 already_graduated.
+06-students.md	R62	PRESERVED	apps/backend/src/lib/queries/students.ts:132	-	Active and alumni lists are the same query split on graduationYear.
+06-students.md	R63	PRESERVED	apps/mobile/src/lib/student-actions.ts:49	-	Graduate control only for SUPER while graduationYear null.
+06-students.md	R64	PRESERVED	apps/backend/src/routes/students.ts:378-380	-	Drop gated by isAdminOfSeason on the enrollment's season.
+06-students.md	R65	DIVERGED	apps/backend/src/routes/students.ts:375-380	C8	Season gate runs before enrollment lookup, so existence is not leaked to refused callers.
+06-students.md	R66	PRESERVED	packages/shared/src/student.ts:247	-	dropReason max 500, empty string stored as null.
+06-students.md	R67	PRESERVED	apps/backend/src/routes/students.ts:393-398	-	Drop writes status/droppedAt/dropReason only; no pointer clear, no GroupStudent removal, no notification.
+06-students.md	R68	DIVERGED	apps/mobile/src/lib/student-actions.ts:51	Plan 10 Decision 6	Drop button shown only for ACTIVE rows in seasons the viewer administers.
+06-students.md	R69	PRESERVED	apps/backend/src/lib/queries/students.ts:249-251	-	Detail resolves role STUDENT not deleted; handler returns 404 at students.ts:74.
+06-students.md	R70	DIVERGED	apps/backend/src/routes/students.ts:68-71	C8	canViewStudent gate lives in the handler, not call-site convention.
+06-students.md	R71	DIVERGED	apps/backend/src/routes/students.ts:57-61	06-students.md D3	Detail payload narrows to public/private/internal arms by role.
+06-students.md	R72	PRESERVED	apps/backend/src/lib/queries/students.ts:276-317	-	All enrollments newest first with season fields and historic group; LEADER sees scoped rows only.
+06-students.md	R73	DROPPED	-	UNAUTHORISED	No per-student attendance history endpoint; Plan 7 defers it with no later plan and no REG row.
+06-students.md	R74	DROPPED	-	UNAUTHORISED	Per-enrollment attendance percentage absent from detail; engagement gives active-season only (engagement.ts:149-157); no register row.
+06-students.md	R75	DIVERGED	apps/backend/src/lib/queries/engagement.ts:149-157	REG-61	Single engagement definition with enrolledAt-based denominator replaces divergent per-screen percentages.
+06-students.md	R76	DIVERGED	apps/backend/src/lib/queries/engagement.ts:54-125	REG-61	Constant-query cohort computation replaces two queries per enrollment.
+06-students.md	R77	DROPPED	-	UNAUTHORISED	No per-student submissions list on student detail; Plan 7 defers without a home; no register row.
+06-students.md	R78	DIVERGED	apps/backend/src/routes/notes.ts:72-106	09-notes.md D5	Notes served by separate paginated endpoint filtered in the query, not fetched unfiltered.
+06-students.md	R79	PRESERVED	apps/backend/src/lib/permissions.ts:380-387	-	SUPER all; others own notes or visibility equal to their role.
+06-students.md	R80	DROPPED	-	REG-06	Student documents deferred with uploads.
+06-students.md	R81	PRESERVED	apps/backend/src/lib/queries/students.ts:94	-	List and detail use avatarPath; photoPath not returned.
+06-students.md	R82	PRESERVED	apps/backend/src/lib/queries/engagement.ts:171	-	Engagement score is 0.5 attendance plus 0.5 submission, via /students/:id/engagement for ACTIVE season.
+06-students.md	R83	PRESERVED	apps/backend/src/routes/students.ts:40-76	-	List and detail GET handlers perform no writes.
+06-students.md	R84	DROPPED	-	06-students.md D13	getStudentSeasonAccess has no v2 counterpart; D13 recommends dropping it.
+06-students.md	R85	DIVERGED	apps/backend/src/routes/students.ts:474-497	06-students.md D13	Soft delete kept as reachable DELETE /students/:id; photo and document actions deferred (REG-05, REG-06).
+06-students.md	R86	DIVERGED	apps/backend/src/routes/students.ts:483-492	Plan 10 Decision 3	User and StudentProfile stamped in one transaction.
+06-students.md	R87	PRESERVED	apps/backend/src/routes/students.ts:474-497	-	Soft delete cascades nothing; only token revocation added.
+06-students.md	R88	DIVERGED	apps/backend/src/routes/users.ts:390-408	Plan 10 Decision 3	SUPER reactivate clears deletedAt on user and profile.
+06-students.md	R89	DROPPED	-	REG-05	Photo upload deferred with uploads.
+06-students.md	R90	DROPPED	-	REG-06	Document upload deferred with uploads.
+06-students.md	R91	DROPPED	-	REG-06	Document delete deferred with uploads; no v2 route exists.
+07-assignments.md	R1	PRESERVED	packages/shared/src/assignment.ts:174	-	Title required, 2 to 160 characters.
+07-assignments.md	R2	PRESERVED	packages/shared/src/assignment.ts:175	-	Description optional nullable, max 20000.
+07-assignments.md	R3	DIVERGED	apps/backend/src/lib/assignment-writes.ts:59	REG-19	Due date sent as org-calendar day plus wall time; server composes the instant in org timezone.
+07-assignments.md	R4	DIVERGED	apps/backend/src/lib/assignment-writes.ts:32-40	REG-20	sessionId must belong to the assignment's season, else 400 invalid_session.
+07-assignments.md	R5	PRESERVED	packages/shared/src/assignment.ts:185	-	type defaults to STANDARD.
+07-assignments.md	R6	PRESERVED	packages/shared/src/assignment.ts:186	-	forumMinWords 0 to 2000 when supplied.
+07-assignments.md	R7	PRESERVED	packages/shared/src/assignment.ts:187	-	forumAllowComments defaults false.
+07-assignments.md	R8	PRESERVED	packages/shared/src/assignment.ts:188	-	maxFileSizeMb 1 to 100 when supplied.
+07-assignments.md	R9	PRESERVED	packages/shared/src/assignment.ts:16	-	Six MIME categories, default empty array (line 189).
+07-assignments.md	R10	PRESERVED	apps/mobile/src/components/assignment-form.tsx:65	-	Null maxFileSizeMb means no files; form derives acceptsFiles from it.
+07-assignments.md	R11	DIVERGED	packages/shared/src/assignment.ts:195-196	REG-20	isAllGroups and groupIds now validated by the schema instead of read raw.
+07-assignments.md	R12	DIVERGED	apps/backend/src/lib/assignment-writes.ts:41-46	REG-20	Every groupId must belong to the assignment's season, else 400 invalid_group.
+07-assignments.md	R13	DIVERGED	packages/shared/src/assignment.ts:207-214	REG-20	Specific-groups with none chosen is rejected with 400.
+07-assignments.md	R14	PRESERVED	packages/shared/src/assignment.ts:233-235	-	FORUM keeps forumMinWords and forces maxFileSizeMb to null.
+07-assignments.md	R15	PRESERVED	packages/shared/src/assignment.ts:236	-	FORUM forces allowedMimeCategories to empty.
+07-assignments.md	R16	PRESERVED	packages/shared/src/assignment.ts:233-234	-	STANDARD forces forumMinWords null and forumAllowComments false.
+07-assignments.md	R17	PRESERVED	apps/backend/src/routes/assignments.ts:144-161	-	Update uses the same normalising schema, so switching type discards the other type's config.
+07-assignments.md	R18	PRESERVED	apps/mobile/src/components/assignment-form.tsx:76-95	-	Client validates with the same shared schema (max 160 included), so the client/server gap is closed.
+07-assignments.md	R19	PRESERVED	packages/shared/src/assignment.ts:171	-	Picked due date defaults to 23:59; existing value pre-fills (assignment-form.tsx:59).
+07-assignments.md	R20	PRESERVED	apps/mobile/src/components/due-date-field.tsx:70	-	Time picker steps in 15 minutes (honoured on iOS only).
+07-assignments.md	R21	PRESERVED	apps/mobile/src/components/assignment-form.tsx:44	-	forumMinWords defaults 50; cleared falls back to 0 (line 87).
+07-assignments.md	R22	PRESERVED	apps/mobile/src/components/assignment-form.tsx:47	-	maxFileSizeMb defaults 10 when file uploads ticked without a value (line 91).
+07-assignments.md	R23	PRESERVED	apps/mobile/src/components/assignment-form.tsx:49	-	New assignments default targetMode all.
+07-assignments.md	R24	PRESERVED	apps/mobile/src/components/assignment-form.tsx:94	-	Targeting everyone sends empty groupIds, discarding picked groups.
+07-assignments.md	R25	PRESERVED	apps/mobile/src/components/assignment-form.tsx:249-251	-	File-upload card not rendered for FORUM.
+07-assignments.md	R26	PRESERVED	apps/backend/src/lib/queries/assignments.ts:216-224	-	No publish flag or visibility filter; assignment visible once the create transaction commits.
+07-assignments.md	R27	PRESERVED	apps/backend/src/lib/queries/assignments.ts:216-224	-	dueAt absent from the student visibility where clause.
+07-assignments.md	R28	PRESERVED	apps/backend/src/lib/queries/assignments.ts:216-224	-	Visible when in season, not deleted, and isAllGroups or targeting the student's group.
+07-assignments.md	R29	DIVERGED	apps/backend/src/lib/queries/assignments.ts:18-24	C9	Student group resolved per season via SeasonEnrollment, not GroupStudent.
+07-assignments.md	R30	PRESERVED	apps/backend/src/lib/queries/assignments.ts:220-223	-	No group means only isAllGroups assignments; targeted branch omitted from OR.
+07-assignments.md	R31	DIVERGED	apps/backend/src/lib/queries/assignments.ts:214	C9	Visibility now consults SeasonEnrollment.groupId.
+07-assignments.md	R32	PRESERVED	apps/backend/src/lib/queries/assignments.ts:212	-	No season id returns empty list.
+07-assignments.md	R33	PRESERVED	apps/mobile/app/(app)/assignments.tsx:138-148	-	Student list passes activeSeasonId from session scopes.
+07-assignments.md	R34	DIVERGED	apps/backend/src/routes/assignments.ts:39	07-assignments.md §10.7	Detail gated by canAccessSeason (any enrolled season), not active season only.
+07-assignments.md	R35	PRESERVED	apps/backend/src/routes/assignments.ts:53-63	-	Targeting re-checked server-side for students; 403 instead of redirect.
+07-assignments.md	R36	PRESERVED	apps/backend/src/lib/permissions.ts:8-28	-	API detail gates season with canAccessSeason, matching v1's API route.
+07-assignments.md	R37	PRESERVED	apps/backend/src/lib/queries/assignments.ts:56	-	Soft-deleted excluded from staff list, detail load and student list.
+07-assignments.md	R38	PRESERVED	apps/backend/src/routes/assignments.ts:33-37	-	Missing or soft-deleted assignment returns 404.
+07-assignments.md	R39	PRESERVED	packages/shared/src/navigation.ts:101-120	-	LEADER and MENTOR navs have no Assignments entry; API still lets them read.
+07-assignments.md	R40	PRESERVED	apps/backend/src/lib/queries/assignments.ts:57	-	Ordered dueAt asc then createdAt desc in staff and student lists.
+07-assignments.md	R41	PRESERVED	apps/backend/src/lib/queries/assignments.ts:63	-	submissionCount counts non-DRAFT submissions.
+07-assignments.md	R42	DIVERGED	apps/backend/src/lib/queries/assignments.ts:79-85	C9	expectedCount counts ACTIVE enrollments in both branches, season- and status-filtered.
+07-assignments.md	R43	DIVERGED	apps/backend/src/lib/queries/assignments.ts:372	07-assignments.md §10.8	Tracker submittedCount excludes DRAFT, agreeing with the list.
+07-assignments.md	R44	PRESERVED	apps/backend/src/lib/queries/assignments.ts:246	-	Student status is own submission status or synthetic PENDING.
+07-assignments.md	R45	DIVERGED	apps/backend/src/lib/assignment-writes.ts:59	REG-19	Deadline composed in org timezone, not the author's browser zone.
+07-assignments.md	R46	DIVERGED	apps/backend/src/lib/queries/assignments.ts:402-403	C2	Server returns org-zone day and time; client does not format dueAt in device zone.
+07-assignments.md	R47	DIVERGED	apps/backend/src/lib/queries/assignments.ts:33-35	C4	isOverdue derived once server-side and sent on the contract.
+07-assignments.md	R48	DIVERGED	apps/mobile/app/(app)/assignments.tsx:16-24	C4	Student badge uses server isOverdue flag, not client isPast.
+07-assignments.md	R49	PRESERVED	apps/backend/src/routes/submissions.ts:236-243	-	Submit after dueAt succeeds; no server due-date check (spec 10.3 keeps it non-enforcing).
+07-assignments.md	R50	PRESERVED	apps/backend/src/lib/queries/assignments.ts:37-39	-	Lateness derived at read, never persisted.
+07-assignments.md	R51	PRESERVED	apps/backend/src/routes/forum.ts:93-95	-	Forum post path has no due-date branch, per code comment.
+07-assignments.md	R52	PRESERVED	apps/mobile/app/(app)/assignment/[id]/index.tsx:65	-	Client-only lock on submitted work, keyed on status; server does not enforce.
+07-assignments.md	R53	DIVERGED	apps/backend/src/lib/queries/assignments.ts:322-330	C9	Tracker roster from ACTIVE enrollments for both branches, not GroupStudent.
+07-assignments.md	R54	DROPPED	-	UNAUTHORISED	Tracker sorts by student name only (assignments.ts:363); v1 group-then-student order lost; no decision found.
+07-assignments.md	R55	PRESERVED	apps/backend/src/lib/queries/assignments.ts:356-360	-	No submission yields PENDING and null submissionPublicId.
+07-assignments.md	R56	PRESERVED	apps/backend/src/lib/queries/assignments.ts:37-39	-	isLate false when either timestamp missing.
+07-assignments.md	R57	NA	-	-	v1 helper return convention; endpoint answers 404 for a missing assignment (assignments.ts:117).
+07-assignments.md	R58	DIVERGED	apps/backend/src/routes/assignments.ts:102-106	07-assignments.md §10.4	Tracker excludes soft-deleted assignments.
+07-assignments.md	R59	DIVERGED	apps/backend/src/routes/assignments.ts:108-111	07-assignments.md §10.1	Tracker gated by staffScopeForSeason, leaders narrowed to their groups.
+07-assignments.md	R60	PRESERVED	apps/backend/src/lib/assignment-writes.ts:96-110	-	Create fans out ASSIGNMENT_CREATED to every targeted student (seasons.ts:552-556).
+07-assignments.md	R61	DIVERGED	apps/backend/src/lib/assignment-writes.ts:78-88	C9	Recipients from ACTIVE enrollments, de-duplicated; same population as tracker.
+07-assignments.md	R62	DIVERGED	apps/backend/src/lib/assignment-writes.ts:107	C2	Notification body time formatted in org timezone, omitted when no due date.
+07-assignments.md	R63	PRESERVED	apps/backend/src/lib/assignment-writes.ts:108	-	Link stays v1 path /student/assignments/:id; target derived on read.
+07-assignments.md	R64	DIVERGED	apps/backend/src/lib/notifications.ts:52-100	REG-37	Opt-out suppresses email only; in-app row is always written.
+07-assignments.md	R65	PRESERVED	apps/backend/src/routes/seasons.ts:552-556	-	Fan-out runs after the create transaction commits.
+07-assignments.md	R66	DIVERGED	apps/backend/src/routes/assignments.ts:173-177	REG-17	Edit notifies students newly targeted; delete notifies nobody.
+07-assignments.md	R67	PRESERVED	packages/shared/src/assignment.ts:243-251	-	Update is a full replace, no partial update.
+07-assignments.md	R68	PRESERVED	apps/backend/src/routes/assignments.ts:163-164	-	Update never writes seasonId.
+07-assignments.md	R69	PRESERVED	apps/backend/src/routes/assignments.ts:164-170	-	Targets deleted and recreated inside the update transaction.
+07-assignments.md	R70	PRESERVED	packages/shared/src/assignment.ts:238	-	Defect fixed: duplicate group ids collapse so recreate cannot hit the unique constraint.
+07-assignments.md	R71	PRESERVED	apps/backend/src/routes/assignments.ts:164	-	updatedById stamped on every update.
+07-assignments.md	R72	PRESERVED	apps/backend/src/routes/assignments.ts:129-171	-	No existing-submissions check before an edit.
+07-assignments.md	R73	PRESERVED	apps/backend/src/lib/queries/assignments.ts:216-224	-	Narrowing targeting hides assignment from students; mobile warns via orphanedWorkCount (assignment-form.tsx:101).
+07-assignments.md	R74	DIVERGED	apps/backend/src/routes/assignments.ts:173-177	REG-17	Retargeting now notifies newly targeted students.
+07-assignments.md	R75	PRESERVED	apps/backend/src/routes/assignments.ts:202-205	-	Delete is soft: deletedAt and updatedById stamped.
+07-assignments.md	R76	PRESERVED	apps/backend/src/routes/assignments.ts:202-205	-	Targets and submissions not cascaded; delete is refused while submissions exist (REG-18).
+07-assignments.md	R77	DIVERGED	apps/backend/src/routes/submissions.ts:107	07-assignments.md §10.4	Review queue excludes soft-deleted assignments.
+07-assignments.md	R78	NA	-	-	Post-delete redirect to season list is a Next.js navigation mechanism; API returns deleted true.
+07-assignments.md	R79	DIVERGED	apps/backend/src/routes/assignments.ts:189-193	07-assignments.md §10.4	Edit and delete gates filter deletedAt null.
+07-assignments.md	R80	DIVERGED	apps/backend/src/routes/assignments.ts:184-215	REG-18	Delete is reachable (staff panel) and refused with 409 has_submissions.
+07-assignments.md	R81	DIVERGED	apps/backend/src/routes/submissions.ts:281-342	C6	GET detail writes nothing; draft created by explicit idempotent PUT by-assignment.
+07-assignments.md	R82	PRESERVED	apps/backend/src/routes/submissions.ts:329-335	-	Draft creation idempotent on the unique key, via a real upsert.
+07-assignments.md	R83	DIVERGED	apps/backend/src/routes/assignments.ts:28-88	C6	Opening an assignment no longer creates a DRAFT; tracker counts exclude drafts.
+07-assignments.md	R84	PRESERVED	apps/backend/src/routes/seasons.ts:538-550	-	Create transactional across assignment and targets.
+07-assignments.md	R85	PRESERVED	apps/backend/src/routes/assignments.ts:162-171	-	Update transactional across field update, target delete and recreate.
+07-assignments.md	R86	PRESERVED	apps/backend/src/lib/assignment-writes.ts:101-110	-	Fan-out outside transaction and swallowed; now logged via bestEffort.
+07-assignments.md	R87	DIVERGED	apps/backend/src/lib/queries/assignments.ts:37-39	C4	submittedAt after dueAt derived once server-side (isLate) and carried on the contract.
+07-assignments.md	R88	PRESERVED	apps/mobile/app/(app)/assignments.tsx:16-24	-	Overdue label reached only after REVIEWED, RETURNED, SUBMITTED and DRAFT checks.
+08-submissions.md	R1	DIVERGED	apps/backend/src/routes/submissions.ts:281-336	C6	Row created by an explicit idempotent PUT by-assignment, not by opening the page.
+08-submissions.md	R2	PRESERVED	apps/backend/src/routes/submissions.ts:327-333	-	Existing row returned untouched, else created DRAFT with fresh publicId.
+08-submissions.md	R3	PRESERVED	apps/backend/src/routes/submissions.ts:327-333	-	Race handled by an upsert on the natural unique key instead of catch-and-reread.
+08-submissions.md	R4	PRESERVED	apps/backend/prisma/schema.prisma:534	-	Unique (assignmentId, studentUserId) enforced by the database.
+08-submissions.md	R5	PRESERVED	apps/backend/src/lib/public-id.ts:6-28	-	10 chars over the 62-char alphabet via node:crypto; gates still run per route.
+08-submissions.md	R6	PRESERVED	apps/backend/src/routes/submissions.ts:490-494	-	Fresh publicId used only as storage-key prefix, not stored; endpoint dormant while uploads are off.
+08-submissions.md	R58	DIVERGED	apps/backend/src/routes/assignments.ts:28-88	C6	GET assignment detail reads the submission but writes nothing.
+08-submissions.md	R59	DIVERGED	apps/backend/src/routes/submissions.ts:327-333	C6	Real upsert on the unique key replaces read-then-create-then-catch.
+08-submissions.md	R60	DIVERGED	apps/backend/src/routes/forum.ts:65-113	D-14.1	Forum post creates the submission itself via PUT forum/response; no pre-existing stub needed.
+08-submissions.md	R61	DIVERGED	apps/backend/src/routes/submissions.ts:281-336	C6	No phantom DRAFT on viewing; PENDING until the student explicitly starts (assignments.ts:246).
+08-submissions.md	R7	PRESERVED	apps/backend/src/routes/submissions.ts:226-228	-	Student writes load the row and reject non-author with ForbiddenError; missing row is 404.
+08-submissions.md	R8	DIVERGED	apps/backend/src/routes/submissions.ts:249-262	08-submissions.md D3	Saving text no longer touches status, so reviewed work is not demoted to DRAFT.
+08-submissions.md	R9	PRESERVED	apps/backend/src/routes/submissions.ts:242-247	-	Submit writes text, SUBMITTED and submittedAt=now; resubmit overwrites submittedAt (D2 not applied).
+08-submissions.md	R10	PRESERVED	apps/backend/src/lib/queries/assignments.ts:37-39	-	Lateness never persisted; derived at read via shared isLate.
+08-submissions.md	R11	PRESERVED	apps/backend/src/lib/queries/assignments.ts:38	-	Null dueAt or submittedAt yields not late.
+08-submissions.md	R12	PRESERVED	apps/backend/src/routes/submissions.ts:512-545	-	Blob deleted first with failure swallowed, then row; owner only.
+08-submissions.md	R13	PRESERVED	apps/backend/src/routes/submissions.ts:512-545	-	File removal checks ownership only; no status or due-date condition.
+08-submissions.md	R14	DIVERGED	apps/mobile/app/(app)/assignment/[id]/index.tsx:66	08-submissions.md D11	Editor open only for DRAFT or RETURNED; SUBMITTED locks regardless of due date.
+08-submissions.md	R15	PRESERVED	apps/backend/src/routes/submissions.ts:216-263	-	PATCH checks neither status nor dueAt; student can edit or resubmit after review via API (D2 not applied).
+08-submissions.md	R16	PRESERVED	apps/backend/src/routes/submissions.ts:512-545	-	No route deletes a Submission; only file delete exists.
+08-submissions.md	R17	DROPPED	-	UNAUTHORISED	Mobile Submit button never disabled for empty text; server accepts empty submit (shared submission.ts:12); no decision.
+08-submissions.md	R18	PRESERVED	apps/backend/src/routes/submissions.ts:242-262	-	submittedAt never cleared; saves no longer demote status.
+08-submissions.md	R19	PRESERVED	apps/mobile/app/(app)/assignment/[id]/index.tsx:70	-	Student writes never clear feedback; shown whenever non-null.
+08-submissions.md	R20	DROPPED	-	UNAUTHORISED	Review writes feedback, status, reviewedAt (submissions.ts:378-384) but never reviewedById; field unrecorded, possible defect.
+08-submissions.md	R21	DIVERGED	apps/backend/src/routes/submissions.ts:382	08-submissions.md D11	returnForRevision now produces RETURNED.
+08-submissions.md	R22	PRESERVED	apps/backend/src/lib/permissions.ts:174-205	-	Single canReviewSubmission gate; strictly narrower than canViewSubmission so both hold.
+08-submissions.md	R23	DIVERGED	apps/backend/src/routes/submissions.ts:388-399	REG-37	Student notified on every review but title reworded (Plan 13) and opt-out governs email only.
+08-submissions.md	R24	PRESERVED	packages/shared/src/submission.ts:28-31	-	Feedback max 20000, empty allowed; D10 non-empty rule not applied.
+08-submissions.md	R25	DIVERGED	apps/backend/src/routes/submissions.ts:373-378	08-submissions.md D10	Never-submitted DRAFT cannot be marked REVIEWED (409); can be returned for revision.
+08-submissions.md	R26	PRESERVED	apps/backend/src/routes/submissions.ts:378-401	-	Feedback visible immediately; notification sent in same call.
+08-submissions.md	R28	PRESERVED	packages/shared/src/submission.ts:28-31	-	Review contract has feedback only; no grade or score.
+08-submissions.md	R29	DROPPED	-	UNAUTHORISED	Review screen always says "Mark reviewed"; no "Update review" re-review signal (submission/[publicId].tsx:43); no decision.
+08-submissions.md	R30	PRESERVED	apps/backend/src/routes/submissions.ts:476-481	-	Upload does not require the assignment to declare a size limit (D4 not applied); dormant behind ENABLE_UPLOADS.
+08-submissions.md	R31	PRESERVED	apps/backend/src/routes/submissions.ts:475-478	-	Per-file maxFileSizeMb check, no count cap; dormant behind ENABLE_UPLOADS.
+08-submissions.md	R32	PRESERVED	apps/backend/src/routes/submissions.ts:476	-	Null maxFileSizeMb skips size check; dormant behind ENABLE_UPLOADS.
+08-submissions.md	R33	PRESERVED	apps/backend/src/routes/submissions.ts:432-439	-	Six categories mapped to MIME regexes; dormant behind ENABLE_UPLOADS.
+08-submissions.md	R34	PRESERVED	apps/backend/src/routes/submissions.ts:441-444	-	Empty category list allows everything.
+08-submissions.md	R35	PRESERVED	apps/backend/src/routes/submissions.ts:446	-	Unknown category matches nothing via optional chaining.
+08-submissions.md	R36	PRESERVED	apps/backend/src/routes/submissions.ts:479-481	-	Client-declared mimetype trusted; empty type stored as octet-stream at line 502.
+08-submissions.md	R37	PRESERVED	apps/backend/src/lib/storage/index.ts:38-47	-	Key submissions/YYYY/MM/{publicId}-{safe name}, UTC date parts, 80-char name.
+08-submissions.md	R38	PRESERVED	apps/backend/src/routes/submissions.ts:490-505	-	Blob written before the row; no compensation on row failure.
+08-submissions.md	R39	PRESERVED	apps/backend/src/routes/submissions.ts:62	-	Files ordered by uploadedAt ascending.
+08-submissions.md	R40	PRESERVED	apps/backend/src/routes/submissions.ts:242-247	-	Submit writes only text, status, submittedAt; attached files carry over.
+08-submissions.md	R41	PRESERVED	apps/backend/prisma/schema.prisma:542	-	SubmissionFile cascade unchanged; no delete path exists to exercise it.
+08-submissions.md	R42	DIVERGED	apps/backend/src/routes/submissions.ts:49-59	08-submissions.md D7	storagePath no longer on the wire; files addressed by id.
+08-submissions.md	R43	PRESERVED	apps/mobile/app/(app)/submission/[publicId].tsx:78-89	-	Mobile screens list no attachments or download link; backend adds scoped GET files/:fileId (submissions.ts:564).
+08-submissions.md	R44	DIVERGED	apps/backend/src/lib/permissions.ts:723-733	C9	Leader queue built from enrollments naming their groups; no enrollments returns empty.
+08-submissions.md	R45	DROPPED	-	UNAUTHORISED	GET /submissions?pendingOnly=false returns DRAFT rows to reviewers (submissions.ts:108); mobile hardcodes pendingOnly true; privacy filter lost at API.
+08-submissions.md	R46	DIVERGED	apps/backend/src/routes/submissions.ts:97-113	08-submissions.md D12	Optional seasonId filter and cursor paging; default is not the active season.
+08-submissions.md	R47	DROPPED	-	UNAUTHORISED	Queue ordered by id desc (submissions.ts:114); v1 status-then-recency order not kept; moot only while pendingOnly true.
+08-submissions.md	R48	DIVERGED	apps/backend/src/routes/submissions.ts:133-149	C9	Group per row from enrollment in the assignment's season, not current GroupStudent.
+08-submissions.md	R49	DROPPED	-	UNAUTHORISED	Detail contract has no group field (submission.ts:42-74); group shown on queue rows only.
+08-submissions.md	R50	PRESERVED	apps/backend/src/routes/submissions.ts:182-189	-	Unknown publicId is 404; authorization runs after load, so existence distinguishable.
+08-submissions.md	R51	DROPPED	-	UNAUTHORISED	Queue screen shows no pending/late header counts; only per-row Late (submissions.tsx:26); no decision found.
+08-submissions.md	R52	DIVERGED	apps/backend/src/routes/submissions.ts:87-176	08-submissions.md D12	Queue now cursor-paginated (limit up to 100).
+08-submissions.md	R53	PRESERVED	apps/backend/src/routes/assignments.ts:39-63	-	Student reaches submission via the assignment, gated by season access and targeting.
+08-submissions.md	R54	DROPPED	-	UNAUTHORISED	Submission text and feedback returned raw (submissions.ts:194-195) and shown as plain text; C11 sanitise-on-read not applied here.
+08-submissions.md	R55	PRESERVED	apps/backend/src/lib/queries/engagement.ts:121	-	Submission % counts SUBMITTED, REVIEWED, RETURNED.
+08-submissions.md	R56	PRESERVED	apps/backend/src/lib/exports/season-workbook.ts:15-20	-	Export uses four status labels incl. Returned.
+08-submissions.md	R57	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:166-205	REG-60	Mentor feed is merged attendance and submission activity, bounded and live-assignment only.
+09-notes.md	R1	PRESERVED	packages/shared/src/note.ts:74	-	Body 2 to 20000 characters on create.
+09-notes.md	R2	PRESERVED	packages/shared/src/note.ts:14	-	Visibility restricted to LEADERS, MENTORS, ADMINS.
+09-notes.md	R3	PRESERVED	packages/shared/src/note.ts:76	-	followUpFlagged defaults false.
+09-notes.md	R4	DIVERGED	apps/backend/src/routes/notes.ts:159-166	09-notes.md D12	Default season is newest ACTIVE enrollment, not activeSeasonId; null when none.
+09-notes.md	R5	PRESERVED	apps/backend/src/routes/notes.ts:141-158	-	Season snapshotted at write and immutable; an explicit season must be one the student is enrolled in.
+09-notes.md	R6	DIVERGED	apps/backend/src/routes/notes.ts:174	09-notes.md D1	Plain text on the wire; escaped and paragraph-wrapped on write, tags stripped on read.
+09-notes.md	R7	PRESERVED	packages/shared/src/note.ts:74	-	Server min(2) does not trim, so whitespace-only bodies pass; only mobile trims (student/[id]/index.tsx:213).
+09-notes.md	R8	PRESERVED	apps/backend/src/routes/notes.ts:134-136	-	Write requires canWriteNote else 403, gated independently of read.
+09-notes.md	R9	PRESERVED	apps/backend/src/routes/notes.ts:172	-	authorUserId from the session, never from input.
+09-notes.md	R10	PRESERVED	apps/backend/src/routes/notes.ts:213	-	Create returns the new note (including id) with 201.
+09-notes.md	R11	NA	-	-	Next.js revalidatePath calls; React Query invalidation replaces them.
+09-notes.md	R12	DIVERGED	apps/mobile/app/(app)/student/[id]/index.tsx:208-217	09-notes.md D3	Single composer offers all three visibilities; no hard-coded MENTORS composer.
+09-notes.md	R13	PRESERVED	apps/backend/src/routes/notes.ts:184	-	Notify only when flagged and season non-null; mobile composer always sends false (index.tsx:220) so unreachable from app.
+09-notes.md	R14	PRESERVED	apps/backend/src/routes/notes.ts:185-188	-	Recipients are that season's SeasonAdmin rows only.
+09-notes.md	R15	PRESERVED	apps/backend/src/routes/notes.ts:195	-	Title names the student with "a student" fallback.
+09-notes.md	R16	DIVERGED	apps/backend/src/routes/notes.ts:196-202	09-notes.md D2	Notification body is generic; no note excerpt leaves the system.
+09-notes.md	R17	DIVERGED	apps/backend/src/lib/email.ts:105	09-notes.md D2	No note text in the notification; email body also escaped via escapeHtml.
+09-notes.md	R18	PRESERVED	apps/backend/src/routes/notes.ts:206	-	Every recipient gets v1 link /admin/students/:id; target derived on read (notification-target.ts:153).
+09-notes.md	R19	DIVERGED	apps/backend/src/lib/notifications.ts:52-100	REG-37	mentorFollowup opt-out suppresses email only; in-app row always written.
+09-notes.md	R20	PRESERVED	apps/backend/src/routes/notes.ts:168-210	-	Note written first; notification best-effort outside any transaction.
+09-notes.md	R21	PRESERVED	apps/backend/src/routes/notes.ts:216-264	-	No notification on update; flag immutable; delete unavailable.
+09-notes.md	R22	PRESERVED	apps/mobile/app/(app)/student/[id]/index.tsx:157	-	followUpFlagged shown only as a badge; no queue (deferred, REG-33).
+09-notes.md	R23	PRESERVED	apps/backend/src/lib/permissions.ts:417-424	-	Edit is author equality; SUPER not exempt.
+09-notes.md	R24	PRESERVED	apps/backend/src/routes/notes.ts:233-239	-	Update writes body only; visibility, flag, season immutable.
+09-notes.md	R25	PRESERVED	packages/shared/src/note.ts:82-84	-	Defect fixed: update applies the same 2 to 20000 bound as create.
+09-notes.md	R26	PRESERVED	apps/backend/src/lib/queries/notes.ts:46-48	-	Body overwritten in place with no history; updatedAt now surfaced as edited flag.
+09-notes.md	R27	PRESERVED	apps/backend/src/routes/notes.ts:221-222	-	Missing note answers 404 not_found.
+09-notes.md	R28	DIVERGED	apps/backend/src/routes/notes.ts:258-264	09-notes.md D4	Delete declared and refused with 501 delete_unavailable for everyone.
+09-notes.md	R29	DIVERGED	apps/backend/src/routes/notes.ts:245-264	09-notes.md D4	No hard delete shipped; soft delete awaits a deletedAt migration.
+09-notes.md	R30	DIVERGED	apps/backend/src/routes/notes.ts:258-264	09-notes.md D4	Delete of any id, including missing, returns 501.
+09-notes.md	R31	PRESERVED	apps/mobile/src/hooks/use-notes.ts:74	-	No mobile hook or control edits or deletes notes; PATCH exists on API only (D4 UI not shipped).
+09-notes.md	R32	PRESERVED	apps/backend/src/lib/permissions.ts:381	-	SUPER reads every note.
+09-notes.md	R33	PRESERVED	apps/backend/src/lib/permissions.ts:382-386	-	Author always reads own notes.
+09-notes.md	R34	PRESERVED	apps/backend/src/lib/permissions.ts:76-80	-	Visibility matched to viewer role by equality.
+09-notes.md	R35	PRESERVED	apps/backend/src/lib/permissions.ts:386-387	-	Anything not own or role-matched is excluded by the query.
+09-notes.md	R36	PRESERVED	apps/backend/src/lib/permissions.ts:76-80	-	ADMIN still cannot read LEADERS or MENTORS notes; composer copy corrected (D3 deferral, REG-34).
+09-notes.md	R37	PRESERVED	apps/backend/src/lib/permissions.ts:76-80	-	Visibility not a hierarchy; MENTOR cannot read LEADERS notes.
+09-notes.md	R38	DIVERGED	apps/backend/src/lib/queries/notes.ts:95-111	09-notes.md D5	Notes served from own endpoint with visibility applied in the query; absent from student detail.
+09-notes.md	R39	DIVERGED	apps/backend/src/routes/notes.ts:94-102	09-notes.md D5	canViewStudent and visibility scope both enforced in the handler path.
+09-notes.md	R40	DIVERGED	apps/backend/src/routes/notes.ts:81-83	09-notes.md D6	Students refused notes outright (403); StudentProfile.notes only in internal arm (student.ts:123-125).
+09-notes.md	R41	DIVERGED	apps/backend/src/lib/queries/notes.ts:95-118	09-notes.md §7	Cursor pagination replaces the 100-row cap.
+09-notes.md	R42	PRESERVED	apps/backend/src/lib/queries/notes.ts:63-64	-	Permitted readers see author name and role.
+09-notes.md	R43	PRESERVED	apps/backend/src/lib/queries/notes.ts:132-136	-	Authored-notes list narrowed to authorUserId = viewer.
+09-notes.md	R44	DIVERGED	apps/backend/src/routes/notes.ts:108-119	09-notes.md D14	GET /me/notes open to SUPER ADMIN LEADER MENTOR; nav entries added (navigation.ts:63,85,105,158).
+09-notes.md	R45	DIVERGED	apps/mobile/app/(app)/student/[id]/index.tsx:197-225	09-notes.md D13	No student picker; notes composed from a student's own detail screen, gated by canWriteNote.
+09-notes.md	R46	PRESERVED	apps/backend/src/lib/permissions.ts:450	-	SUPER and MENTOR may write about any student.
+09-notes.md	R47	DIVERGED	apps/backend/src/lib/permissions.ts:452-459	09-notes.md D12	ADMIN write gate uses any enrollment in their seasons, not activeSeasonId.
+09-notes.md	R48	DIVERGED	apps/backend/src/lib/permissions.ts:452-459	09-notes.md D12	Admin can write about enrolled students with no active-season pointer.
+09-notes.md	R49	DIVERGED	apps/backend/src/lib/permissions.ts:461-468	C9	LEADER gate uses SeasonEnrollment.groupId, not GroupStudent.
+09-notes.md	R50	DIVERGED	apps/backend/src/lib/permissions.ts:461-468	C9	Write right follows enrollment group per season, not current global group.
+09-notes.md	R51	PRESERVED	apps/backend/src/lib/permissions.ts:470-471	-	STUDENT can never write a note.
+09-notes.md	R52	PRESERVED	packages/shared/src/note.ts:75	-	Any permitted writer may choose any of the three visibilities.
+09-notes.md	R53	PRESERVED	apps/backend/src/lib/queries/engagement.ts:171	-	Score is round(0.5 attendance + 0.5 submission), hard-coded.
+09-notes.md	R54	PRESERVED	apps/backend/src/lib/queries/engagement.ts:97	-	Attendance counts PRESENT and LATE alike; percentage rounded.
+09-notes.md	R55	DIVERGED	apps/backend/src/lib/queries/engagement.ts:149-153	REG-61	Denominator counts past sessions from the student's enrolledAt.
+09-notes.md	R56	DIVERGED	packages/shared/src/note.ts:141-145	REG-61	Percent still 0 with no inputs but isAtRisk guards zero denominators, so day-one cohorts not flagged.
+09-notes.md	R57	PRESERVED	apps/backend/src/lib/queries/engagement.ts:121	-	Numerator counts SUBMITTED, REVIEWED, RETURNED; DRAFT not done.
+09-notes.md	R58	PRESERVED	apps/backend/src/lib/queries/engagement.ts:103-111	-	Denominator is non-deleted assignments that are all-groups or target the student's group.
+09-notes.md	R59	DIVERGED	apps/backend/src/lib/queries/engagement.ts:159-163	C9	Student's group taken from SeasonEnrollment.groupId, not GroupStudent.
+09-notes.md	R60	PRESERVED	apps/backend/src/lib/queries/engagement.ts:103-111	-	Due dates ignored; no date clause in the assignment query.
+09-notes.md	R61	PRESERVED	apps/backend/src/lib/queries/engagement.ts:113-125	-	Completion tracked as a set per student-assignment pair; unique key makes first-row ambiguity moot.
+09-notes.md	R62	PRESERVED	apps/backend/src/lib/queries/engagement.ts:168-169	-	submissionPct 0 when no assignments expected.
+09-notes.md	R63	PRESERVED	apps/backend/src/lib/queries/engagement.ts:48-193	-	Engagement never reads EngagementNote.
+09-notes.md	R64	DIVERGED	apps/backend/src/routes/engagement.ts:53-70	C8	Engagement endpoint gated by canViewStudent and season scope before computing.
+09-notes.md	R65	PRESERVED	apps/backend/src/lib/attendance-budget.ts:35	-	minutesUsed = absent x weight + sum of lateMinutes.
+09-notes.md	R66	PRESERVED	apps/backend/src/lib/attendance-budget.ts:38-43	-	budgetPct rounded and capped at 100; zero budget handled.
+09-notes.md	R67	PRESERVED	apps/backend/src/lib/attendance-budget.ts:12-14	-	Budget still consumes raw lateMinutes; v1-era rows keep checkInOpenAt basis (C3 accepted).
+09-notes.md	R68	DIVERGED	apps/mobile/app/(app)/profile.tsx:182	19-dashboards.md D14	Student sees "Absence budget left" with server-sent remainingPct, honestly labelled.
+09-notes.md	R69	PRESERVED	apps/backend/src/lib/attendance-budget.ts:71-78	-	Streak counts back from latest past session; ABSENT breaks, unrecorded skipped.
+09-notes.md	R70	PRESERVED	apps/backend/src/lib/queries/me.ts:276-278	-	Streak uncapped, over all past sessions; reuses the one session query.
+09-notes.md	R71	DIVERGED	packages/shared/src/note.ts:141-145	REG-61	Budget-based at-risk function not ported; single isAtRisk definition used.
+09-notes.md	R72	DROPPED	-	C12	Dead code with no callers is not a specification; budget-based at-risk list not ported.
+09-notes.md	R73	DIVERGED	packages/shared/src/note.ts:141-145	REG-61	Component-wise predicate kept as the one definition; mentor dashboard defers at-risk to reports.
+09-notes.md	R74	DIVERGED	apps/backend/src/lib/queries/reports.ts:298-308	REG-61	Reports at-risk list uses band AT_RISK from isAtRisk, capped at 10 with total.
+09-notes.md	R75	DIVERGED	packages/shared/src/reports.ts:53-58	REG-61	Bands: AT_RISK first, then HIGH 80, MEDIUM 60, else LOW; thresholds differ from v1.
+09-notes.md	R76	DIVERGED	packages/shared/src/note.ts:125-145	REG-61	One at-risk predicate and server-supplied lists; screen computes no threshold (reports.tsx:45).
+09-notes.md	R77	DIVERGED	apps/backend/src/lib/exports/engagement-workbook.ts:40-62	REG-45	Engagement export is XLSX not CSV; one row per active enrollment with band added.
+09-notes.md	R78	PRESERVED	apps/backend/src/lib/queries/engagement.ts:48-193	-	No stored score; recomputed per request (materialising deferred, REG-32).
+09-notes.md	R79	DIVERGED	apps/backend/src/lib/queries/engagement.ts:54-125	REG-61	Constant five-query cohort computation replaces four round-trips per student.
+09-notes.md	R80	DIVERGED	apps/backend/src/routes/engagement.ts:134-178	REG-61	Cohort endpoint replaces per-student fan-out.
+09-notes.md	R81	DIVERGED	apps/backend/src/lib/queries/reports.ts:428	REG-61	Reports use one computeEngagementForSeasons call, not a sequential loop.
+09-notes.md	R82	NA	-	-	computeEngagementBulk was dead code; v2's cohort function is the replacement.
+09-notes.md	R83	PRESERVED	apps/backend/src/routes/engagement.ts:75-79	-	No active season yields 404 no_season and the mobile card is omitted.
+09-notes.md	R84	DIVERGED	apps/backend/src/lib/queries/students.ts:244-250	REG-61	Student detail drops per-season attendance queries; sub-resources are separate endpoints.
+09-notes.md	R85	DIVERGED	apps/backend/src/routes/engagement.ts:53-70	C8	Score is gated at the endpoint, not by which page renders it.
+09-notes.md	R86	PRESERVED	apps/backend/src/routes/engagement.ts:96-109	-	Student arm omits composite score; profile stat deferred (REG-11).
+09-notes.md	R87	DIVERGED	apps/mobile/app/(app)/profile.tsx:182	19-dashboards.md D14	Student-facing figure is labelled absence budget left, not Attendance.
+09-notes.md	R88	DIVERGED	apps/backend/src/routes/exports.ts:82-120	REG-45	XLSX export by SUPER MENTOR ADMIN with same scope rules; no CSV.
+09-notes.md	R89	PRESERVED	apps/backend/src/lib/queries/engagement.ts:81	-	Past-session comparison is an instant check against server now; day bucketing uses org time.
+09-notes.md	R90	DIVERGED	apps/backend/src/lib/queries/notes.ts:59-60	C2	Timestamps sent as ISO and formatted on the client, not in server timezone.
+10-notifications.md	R1	PRESERVED	apps/backend/src/lib/notifications.ts:19-26	-	PREF_FIELD is a full Record over the six NotificationType values.
+10-notifications.md	R2	DIVERGED	packages/shared/src/notification.ts:44-55	10-notifications.md D1	Wire row adds a derived route-independent target beside the raw link.
+10-notifications.md	R3	PRESERVED	apps/backend/src/lib/notifications.ts:76-80	-	Producers still write v1 role-prefixed link paths verbatim.
+10-notifications.md	R4	DIVERGED	apps/backend/src/lib/notification-target.ts:141-156	10-notifications.md D1	Role-prefixed links resolve to flat targets server-side, so role mismatch no longer bounces.
+10-notifications.md	R5	PRESERVED	apps/backend/src/lib/notifications.ts:19-26	-	Each type maps to its NotificationPreference column.
+10-notifications.md	R6	PRESERVED	apps/backend/src/lib/notifications.ts:66-68	-	No preference row means opted in.
+10-notifications.md	R7	PRESERVED	apps/backend/src/lib/notifications.ts:68	-	Only literal false suppresses.
+10-notifications.md	R8	DIVERGED	apps/backend/src/lib/notifications.ts:70-82	REG-37	Opted-out recipient still gets the in-app row; only email suppressed.
+10-notifications.md	R9	DIVERGED	apps/backend/src/lib/notifications.ts:84	REG-37	Preference now governs outbound channels only, not the in-app record.
+10-notifications.md	R10	PRESERVED	apps/backend/src/lib/notifications.ts:62-64	-	All preferences fetched in one query, filtered in memory.
+10-notifications.md	R11	DIVERGED	apps/backend/src/lib/notifications.ts:70-82	REG-37	No early return when all opt out; rows are written regardless.
+10-notifications.md	R12	PRESERVED	apps/backend/src/lib/notifications.ts:65	-	prefField indexed from the full Record, so quizGraded typechecks.
+10-notifications.md	R13	NA	-	-	v1 single-recipient createNotification has no v2 counterpart; callers use the bulk function with one id.
+10-notifications.md	R14	PRESERVED	apps/backend/src/lib/notifications.ts:60	-	Empty recipient list is a no-op.
+10-notifications.md	R15	PRESERVED	apps/backend/src/lib/notifications.ts:70-82	-	Single createMany, no dedupe against prior rows; recipient ids de-duplicated within a call (line 59).
+10-notifications.md	R16	PRESERVED	apps/backend/src/lib/notifications.ts:52-100	-	No read of prior notifications; no rate limit.
+10-notifications.md	R17	PRESERVED	apps/backend/src/lib/notifications.ts:59	-	Acting user not excluded; quiz self-notify at quizzes.ts:1055.
+10-notifications.md	R18	PRESERVED	apps/backend/src/routes/notifications.ts:83	-	Fan-out shares createdAt; inbox now orders by id desc to stay stable.
+10-notifications.md	R19	PRESERVED	apps/backend/src/lib/notifications.ts:84-96	-	Every written notification attempts an email unless the recipient opted out.
+10-notifications.md	R20	PRESERVED	apps/backend/src/lib/notifications.ts:92-96	-	Email never awaited; fire-and-forget allSettled.
+10-notifications.md	R21	PRESERVED	apps/backend/src/lib/notifications.ts:92-96	-	Per-recipient send failures still swallowed unlogged; only unconfigured transport warns once.
+10-notifications.md	R22	DIVERGED	apps/backend/src/lib/email.ts:120-132	10-notifications.md D9	Unconfigured transport returns early with one warning instead of throwing.
+10-notifications.md	R23	PRESERVED	apps/backend/src/lib/email.ts:120-132	-	Unconfigured deploy sends no notification mail; now logs a one-time warning.
+10-notifications.md	R24	DIVERGED	apps/backend/src/lib/email.ts:170	10-notifications.md D9	Invite and reset check isEmailConfigured and warn instead of hard-failing.
+10-notifications.md	R25	PRESERVED	apps/backend/src/lib/email.ts:35-43	-	Transporter cached after first construction.
+10-notifications.md	R26	PRESERVED	apps/backend/src/lib/email.ts:45-47	-	From is JPC Space plus the Gmail user.
+10-notifications.md	R27	PRESERVED	apps/backend/src/lib/email.ts:142	-	Subject JPC Space dash title; body falls back to the default sentence (line 101).
+10-notifications.md	R28	DIVERGED	apps/backend/src/lib/email.ts:137	REG-38	Link still AUTH_URL plus stored link; button lost after cutover per register.
+10-notifications.md	R29	DIVERGED	apps/backend/src/lib/email.ts:98-109	10-notifications.md D8	Title, body and link escaped through escapeHtml.
+10-notifications.md	R30	PRESERVED	apps/backend/src/routes/notifications.ts:19-27	-	List returns the seven display fields newest first, plus derived target.
+10-notifications.md	R31	PRESERVED	apps/backend/src/routes/notifications.ts:83	-	No unread-first grouping; ordering by id desc.
+10-notifications.md	R32	NA	-	-	v1 bell popover limit of 8; mobile bell is a count badge only (NotificationBell.tsx:47).
+10-notifications.md	R33	DIVERGED	apps/backend/src/routes/notifications.ts:75-102	10-notifications.md D3	Cursor-paged inbox (default 20) replaces the 100-row cap.
+10-notifications.md	R34	PRESERVED	apps/backend/src/routes/notifications.ts:77	-	userId from token in the where clause itself.
+10-notifications.md	R35	PRESERVED	apps/backend/src/routes/notifications.ts:94-96	-	Unread count is a separate count on userId and readAt null.
+10-notifications.md	R36	DIVERGED	apps/backend/src/routes/notifications.ts:113-119	10-notifications.md D11	Lightweight unread-count endpoint, polled every 60s by the badge hook.
+10-notifications.md	R37	DIVERGED	apps/backend/src/routes/notifications.ts:91-96	10-notifications.md D11	Unread count is a real count, not a filter over fetched rows.
+10-notifications.md	R38	PRESERVED	apps/mobile/src/components/NotificationBell.tsx:47	-	Badge shows 9+ above nine.
+10-notifications.md	R39	DIVERGED	packages/shared/src/notification.ts:58-66	10-notifications.md D3	Cursor pagination and unreadOnly filter added.
+10-notifications.md	R40	PRESERVED	apps/backend/src/routes/notifications.ts:70-77	-	One inbox endpoint scoped to the caller's own id for all roles.
+10-notifications.md	R41	NA	-	-	Per-role inbox href switch is a Next.js routing mechanism; flat /notifications route serves all roles.
+10-notifications.md	R42	PRESERVED	apps/backend/src/routes/notifications.ts:142-150	-	updateMany on userId and readAt null, ids added only when supplied.
+10-notifications.md	R43	PRESERVED	apps/backend/src/routes/notifications.ts:143-146	-	Ownership enforced by the where clause, not by trusting ids.
+10-notifications.md	R44	PRESERVED	apps/backend/src/routes/notifications.ts:145	-	readAt null filter keeps readAt stable once set.
+10-notifications.md	R45	PRESERVED	apps/backend/src/routes/notifications.ts:135-151	-	Mark-read with all flag marks every unread row.
+10-notifications.md	R46	PRESERVED	apps/mobile/app/(app)/notifications.tsx:102	-	Mark all clears every unread row, not just those displayed.
+10-notifications.md	R47	DIVERGED	apps/backend/src/routes/notifications.ts:121-151	10-notifications.md D2	Single-id marking now reachable through ids on POST /read.
+10-notifications.md	R48	DIVERGED	apps/mobile/app/(app)/notifications.tsx:75	10-notifications.md D2	Pressing an unread notification marks it read via explicit write.
+10-notifications.md	R49	PRESERVED	apps/backend/src/routes/notifications.ts:70-103	-	List endpoint performs no write (ruling C6).
+10-notifications.md	R50	PRESERVED	apps/mobile/app/(app)/notifications.tsx:75	-	Viewing the inbox does not clear the badge; only press or mark all does.
+10-notifications.md	R51	PRESERVED	apps/backend/src/routes/notifications.ts:142-151	-	Mark-read with nothing unread updates zero rows and returns marked 0.
+10-notifications.md	R52	NA	-	-	Next.js revalidatePath and router.refresh; React Query invalidation (use-notifications.ts:84) replaces them.
+10-notifications.md	R53	PRESERVED	apps/backend/src/routes/notifications.ts:70-152	-	No delete or retention path; deferred as REG-36.
+10-notifications.md	R54	PRESERVED	apps/backend/src/routes/me.ts:274-286	-	Preferences upsert keyed on session user; target never an input.
+10-notifications.md	R55	PRESERVED	apps/backend/src/routes/me.ts:274	-	Any authenticated role may set its own preferences.
+10-notifications.md	R56	DIVERGED	apps/backend/src/routes/me.ts:274-286	10-notifications.md §5	PUT requires all six keys including quizGraded; spec section 5 only.
+10-notifications.md	R57	DIVERGED	apps/backend/src/routes/me.ts:274-286	10-notifications.md §5	QUIZ_GRADED now opt-out-able via the sixth key.
+10-notifications.md	R58	PRESERVED	apps/backend/src/routes/me.ts:256-262	-	No row returns all-true defaults.
+10-notifications.md	R59	PRESERVED	apps/backend/src/routes/me.ts:274-286	-	Row created lazily on first save only.
+10-notifications.md	R60	DIVERGED	apps/mobile/src/components/NotificationPreferences.tsx:36-39	10-notifications.md D12	Help text corrected to two consecutive absences.
+10-notifications.md	R61	NA	-	-	Layout revalidation is a Next.js mechanism.
+10-notifications.md	R62	DIVERGED	apps/backend/src/lib/assignment-writes.ts:96-110	C2	Same title and link; due time frozen in org timezone instead of server locale.
+10-notifications.md	R63	DIVERGED	apps/backend/src/routes/notes.ts:184-206	09-notes.md D2	Same recipients and link; body is generic with no note excerpt.
+10-notifications.md	R64	DIVERGED	apps/backend/src/routes/notes.ts:196-202	09-notes.md D2	No note content in the notification regardless of visibility.
+10-notifications.md	R65	PRESERVED	apps/backend/src/routes/notes.ts:185-188	-	Author not excluded from season-admin recipients.
+10-notifications.md	R66	DROPPED	-	UNAUTHORISED	Review title reworded (reviewed or returned) at submissions.ts:390-393; v1 Feedback ready wording not kept; no decision found.
+10-notifications.md	R67	DIVERGED	apps/backend/src/routes/sessions.ts:371-383	C2	Body time in org zone; title wording also changed, only the time part has a ruling.
+10-notifications.md	R68	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:58-75	-	Title, body and two links unchanged; recipients still via GroupStudent, C9 not applied here.
+10-notifications.md	R69	DIVERGED	apps/backend/src/routes/quizzes.ts:1055-1062	10-notifications.md D7	Quiz graded notifications keep link and title but now carry explanatory bodies.
+10-notifications.md	R70	DIVERGED	apps/backend/src/routes/quizzes.ts:1586-1597	10-notifications.md D7	Paper grading notifies on first grade or score change, one bulk send.
+10-notifications.md	R71	DIVERGED	apps/backend/src/routes/quizzes.ts:1290-1302	10-notifications.md D7	Essay grading notifies only when score changed.
+10-notifications.md	R72	PRESERVED	apps/backend/src/routes/quizzes.ts:1051-1062	-	Self-notify on online submit only when quiz has no essay questions.
+10-notifications.md	R73	PRESERVED	apps/backend/src/routes/submissions.ts:386-399	-	Notifications written after the business write commits.
+10-notifications.md	R74	PRESERVED	apps/backend/src/routes/submissions.ts:386-399	-	Rolled-back writes cannot leave orphan notifications.
+10-notifications.md	R75	DIVERGED	apps/backend/src/lib/best-effort.ts:115-121	10-notifications.md D6	Notification failures caught and logged; business write reports success.
+10-notifications.md	R76	DIVERGED	apps/backend/src/lib/best-effort.ts:115-121	10-notifications.md D6	Notification-table failures are logged, no longer user-visible false failures.
+10-notifications.md	R77	DIVERGED	apps/backend/src/routes/quizzes.ts:1580-1597	10-notifications.md D7	Paper grading sends one bulk notification after the writes.
+10-notifications.md	R78	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:23-77	-	Low-attendance fan-out still sequential per student; other producers use bulk.
+10-notifications.md	R79	DIVERGED	apps/backend/src/lib/assignment-writes.ts:107	C2	Frozen strings now use the organisation timezone, not host locale.
+10-notifications.md	R80	PRESERVED	packages/shared/src/notification.ts:44-55	-	Payload carries no timezone; createdAt is the only machine-readable time.
+10-notifications.md	R81	PRESERVED	packages/shared/src/notification.ts:54	-	createdAt ISO sent for client-side relative times; frozen strings are org-zone.
+11-invites-users.md	R1	PRESERVED	apps/backend/src/lib/auth/tokens.ts:20	-	Single role per user carried in token claims; five-value userRoleSchema reused by user contracts.
+11-invites-users.md	R2	PRESERVED	packages/shared/src/user.ts:9-13	-	ALUMNI_ONLY_ROLES is LEADER, ADMIN, MENTOR; same list as v1 roles.ts.
+11-invites-users.md	R3	PRESERVED	packages/shared/src/user.ts:80-86	-	Alumni-only role without graduationYear yields a field-scoped issue on both create and update schemas.
+11-invites-users.md	R4	PRESERVED	packages/shared/src/user.ts:66-87	-	Check is still one-directional; demotion does not clear graduationYear and SUPER may carry a year.
+11-invites-users.md	R5	PRESERVED	apps/backend/src/routes/students.ts:412-432	-	Setting graduationYear on a student still makes an alumnus with role STUDENT.
+11-invites-users.md	R6	PRESERVED	apps/backend/src/lib/rbac.ts:11-13	-	isAlumnus is role STUDENT with non-null graduationYear; no alumnus role.
+11-invites-users.md	R7	PRESERVED	apps/backend/src/lib/auth/scopes.ts:12	-	seasonAdminIds still all SeasonAdmin rows with no season deletedAt or status filter.
+11-invites-users.md	R8	PRESERVED	apps/backend/src/lib/auth/scopes.ts:13	-	groupLeaderIds still all GroupLeader rows with no season filter.
+11-invites-users.md	R9	DIVERGED	apps/backend/src/lib/rbac.ts:32-39	_DECISIONS.md C7	isAdminOfSeason and isLeaderOfGroup now require the matching role as well as the claim.
+11-invites-users.md	R10	PRESERVED	apps/backend/src/lib/auth/scopes.ts:14	-	activeSeasonId read from StudentProfile; null for non-students.
+11-invites-users.md	R11	NA	-	-	Web Auth.js JWT refresh does not exist in v2; mobile only.
+11-invites-users.md	R12	PRESERVED	apps/backend/src/lib/auth/tokens.ts:92-94	-	Claims re-derived from database on refresh; 900s access token bounds staleness.
+11-invites-users.md	R13	PRESERVED	apps/backend/src/lib/invites.ts:45	-	24 random bytes as 32 base64url chars, about 192 bits; alphabet differs but strength matches.
+11-invites-users.md	R14	PRESERVED	apps/backend/src/lib/invites.ts:76	-	INVITABLE_USER_WHERE is not deleted, null hash, null lastLoginAt, unchanged.
+11-invites-users.md	R15	DIVERGED	apps/backend/src/routes/users.ts:443-455	11-invites-users.md D2	Created users have null passwordHash and an invite in the same transaction, so they are invitable.
+11-invites-users.md	R16	PRESERVED	apps/backend/src/lib/invites.ts:149-150	-	Bulk silently skips ids no longer pending and reports skipped; single-user path now refuses explicitly.
+11-invites-users.md	R17	DIVERGED	apps/backend/src/lib/invites.ts:137-142	Plan 10 Decision 12	No id array; server picks one bounded batch of 20 pending users per call.
+11-invites-users.md	R18	PRESERVED	apps/backend/src/lib/invites.ts:147-158	-	Sequential per-user loop, per-user failure caught, logged and counted; partial result is by design.
+11-invites-users.md	R19	DIVERGED	apps/backend/src/lib/invites.ts:49-52	11-invites-users.md D5	Issuing expires prior live invites so one live invite per user.
+11-invites-users.md	R20	PRESERVED	apps/backend/src/lib/invites.ts:85-95	-	Bulk excludes users holding a live v2 invite; single-user resend always issues, as v1.
+11-invites-users.md	R21	DIVERGED	apps/backend/src/lib/invites.ts:40-58	11-invites-users.md D4	issueInvite is internal, callers are SUPER-gated routes, and raw code never reaches a response.
+11-invites-users.md	R22	DIVERGED	apps/backend/src/lib/config.ts:39	Plan 09 Decision 3	Default TTL 168 hours not 72; invalid env fails at boot instead of silent fallback.
+11-invites-users.md	R23	DIVERGED	apps/backend/src/lib/invites.ts:45-55	11-invites-users.md D5	Only SHA-256 digest stored; v1 plaintext rows can never match.
+11-invites-users.md	R24	DIVERGED	apps/backend/src/lib/email.ts:163-194	11-invites-users.md D10	Email carries a code to type into the app, not a URL query token.
+11-invites-users.md	R25	PRESERVED	apps/backend/src/routes/users.ts:472-479	-	Single-send mail failure logged and swallowed after commit; bulk path additionally expires the minted invite.
+11-invites-users.md	R26	DIVERGED	packages/shared/src/user.ts:123-126	11-invites-users.md D8	Schema validates password before token lookup (kept) but uses shared passwordSchema with 72-byte cap.
+11-invites-users.md	R27	DIVERGED	apps/backend/src/routes/auth.ts:114-128	11-invites-users.md D5	Unknown, used and expired all return one invalid_invite 400; oracle closed.
+11-invites-users.md	R28	PRESERVED	apps/backend/src/routes/auth.ts:138-146	-	Single-use: usedAt stamped in the same transaction that writes the password.
+11-invites-users.md	R29	PRESERVED	apps/backend/src/routes/auth.ts:138-146	-	Password write and usedAt stamp in one $transaction; guarded updateMany also closes the race.
+11-invites-users.md	R30	PRESERVED	apps/backend/src/routes/auth.ts:133	-	Accept hashes at bcrypt cost 12.
+11-invites-users.md	R31	DIVERGED	apps/backend/src/routes/auth.ts:129-131	11-invites-users.md D4	Invite refused when target already has a password or is deactivated.
+11-invites-users.md	R32	PRESERVED	apps/backend/src/routes/auth.ts:108-119	-	Accept is anonymous by design; token possession is the authorization, now rate limited to 20 per 15 min.
+11-invites-users.md	R33	DIVERGED	apps/backend/src/routes/auth.ts:138-146	11-invites-users.md D6	Accept consumes only its own token, but no other invites remain live and no password existed before; refresh tokens untouched.
+11-invites-users.md	R34	DIVERGED	apps/backend/src/routes/auth.ts:104-150	11-invites-users.md D1	POST /auth/accept-invite and mobile accept-invite screen now exist; the flow works.
+11-invites-users.md	R35	PRESERVED	apps/backend/src/routes/users.ts:32-39	-	Every users route gated by canManageUsers (SUPER) returning 403.
+11-invites-users.md	R36	PRESERVED	packages/shared/src/user.ts:89-102	-	Name 2-120, email format, role enum, graduationYear 1990..current year nullable.
+11-invites-users.md	R37	DIVERGED	packages/shared/src/user.ts:61-73	11-invites-users.md R37 fix	Current year evaluated per call, not at module load.
+11-invites-users.md	R38	PRESERVED	packages/shared/src/user.ts:94	-	graduationYear defaults to null when omitted on create.
+11-invites-users.md	R39	DIVERGED	apps/backend/src/routes/users.ts:460-465	11-invites-users.md D2	Pre-check kept; P2002 race now mapped to friendly 409 email_taken.
+11-invites-users.md	R40	PRESERVED	apps/backend/src/routes/users.ts:432-433	-	Duplicate check ignores deletedAt, so a deactivated user email stays taken; reactivate is the recovery.
+11-invites-users.md	R41	DIVERGED	apps/backend/src/routes/users.ts:440-449	11-invites-users.md D2	No temp password; passwordHash null and invite minted; ChangeMe123! not ported.
+11-invites-users.md	R42	DIVERGED	apps/backend/src/routes/users.ts:471-479	11-invites-users.md D2	No password exists to log; logs carry user id and error only.
+11-invites-users.md	R43	DIVERGED	apps/mobile/app/(app)/users/new.tsx:13-84	11-invites-users.md D2	Create screen shows no temp password; none exists.
+11-invites-users.md	R44	DIVERGED	apps/backend/src/routes/users.ts:443-455	11-invites-users.md D2	New account is not loginable until invite accepted, and is invitable.
+11-invites-users.md	R45	PRESERVED	apps/backend/src/routes/users.ts:450	-	STUDENT create also creates empty StudentProfile.
+11-invites-users.md	R46	DIVERGED	apps/backend/src/routes/users.ts:319-325	11-invites-users.md D3	Promotion to STUDENT upserts a StudentProfile.
+11-invites-users.md	R47	PRESERVED	apps/backend/src/routes/users.ts:254-256	-	PATCH gated on SUPER inside the handler.
+11-invites-users.md	R48	PRESERVED	packages/shared/src/user.ts:112-120	-	Update accepts name, role, graduationYear only; strict refuses email.
+11-invites-users.md	R49	DIVERGED	apps/backend/src/routes/users.ts:287-294	11-invites-users.md D7	SUPER stays assignable but needs confirmSuper true on create and on role change.
+11-invites-users.md	R50	DIVERGED	apps/backend/src/routes/users.ts:280-284	11-invites-users.md D7	Self role change refused with 409 cannot_change_own_role.
+11-invites-users.md	R51	DIVERGED	apps/backend/src/routes/users.ts:299-306	11-invites-users.md D7	Last active SUPER cannot be demoted or deactivated; rows locked FOR UPDATE.
+11-invites-users.md	R52	DIVERGED	apps/backend/src/routes/users.ts:270-274	CLAUDE.md response envelope	Missing id returns 404 not_found; soft-deleted targets are still editable, as v1.
+11-invites-users.md	R53	DIVERGED	apps/backend/src/routes/users.ts:308-316	11-invites-users.md D3	Demotion deletes SeasonAdmin or GroupLeader rows for ADMIN or LEADER; MENTOR has none.
+11-invites-users.md	R54	DIVERGED	apps/backend/src/routes/users.ts:333-337	11-invites-users.md D3	Role change revokes all refresh tokens; existing access token lives up to 900s.
+11-invites-users.md	R55	DIVERGED	packages/shared/src/user.ts:89-120	Plan 09 Decision 9	Client and server share one Zod schema; no independent re-implementation.
+11-invites-users.md	R56	DIVERGED	apps/backend/src/routes/users.ts:377-379	11-invites-users.md D6	Soft delete plus all refresh tokens revoked; scope rows still not removed.
+11-invites-users.md	R57	DIVERGED	apps/backend/src/routes/users.ts:359-363	11-invites-users.md D7	Self deactivation returns explicit 400 cannot_deactivate_self.
+11-invites-users.md	R58	DIVERGED	apps/backend/src/routes/users.ts:359-363	11-invites-users.md D7	Handler returns a typed error, so UI can tell no-op from success.
+11-invites-users.md	R59	PRESERVED	apps/backend/src/routes/users.ts:399-407	-	Reactivate clears deletedAt only; hash, scope rows and role intact; also clears profile deletedAt.
+11-invites-users.md	R60	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:42-49	-	Leader and admin recipient lookups still ignore user deletedAt; deactivated staff still notified. Likely defect.
+11-invites-users.md	R61	DIVERGED	apps/backend/src/routes/users.ts:377-379	11-invites-users.md D6	Refresh revoked and login refused; already issued access token valid up to 900s.
+11-invites-users.md	R62	PRESERVED	apps/backend/src/routes/users.ts:377	-	No route hard-deletes a user; grep for user delete found none outside generated client.
+11-invites-users.md	R63	NA	-	-	Describes dormant onDelete clauses; schema frozen (C1) and no hard delete exists.
+11-invites-users.md	R64	DIVERGED	packages/shared/src/user.ts:21-26	11-invites-users.md D8	One passwordSchema: min 8 and max 72 bytes; no complexity or breach check, as v1.
+11-invites-users.md	R65	DIVERGED	packages/shared/src/user.ts:21-26	11-invites-users.md D8	Single shared constant replaces four independent copies.
+11-invites-users.md	R66	DIVERGED	apps/backend/src/routes/me.ts:130	11-invites-users.md D8	Accept, reset and change-password all use cost 12; no user created with cost 10 hash.
+11-invites-users.md	R67	PRESERVED	apps/backend/src/routes/auth.ts:171-180	-	Forgot-password returns identical ok body on every path.
+11-invites-users.md	R68	PRESERVED	apps/backend/src/lib/auth/password-reset.ts:75-84	-	Mail failure logged and swallowed; response unchanged.
+11-invites-users.md	R69	DIVERGED	apps/backend/src/routes/auth.ts:176-179	Plan 10 Decision 9	Lookup and SMTP run after the response is sent, removing the timing channel.
+11-invites-users.md	R70	PRESERVED	apps/backend/src/lib/auth/password-reset.ts:66	-	Soft-deleted user gets no reset email; also refused at completion.
+11-invites-users.md	R71	PRESERVED	apps/backend/src/lib/auth/password-reset.ts:44	-	32 random bytes as 64 hex chars.
+11-invites-users.md	R72	PRESERVED	apps/backend/src/lib/auth/password-reset.ts:48	-	Stored as SHA-256 digest via hashToken.
+11-invites-users.md	R73	PRESERVED	apps/backend/src/lib/auth/password-reset.ts:12	-	1 hour TTL from shared constant, no env override.
+11-invites-users.md	R74	PRESERVED	apps/backend/src/lib/invites.ts:46-47	-	TTLs are UTC instant arithmetic, no calendar maths.
+11-invites-users.md	R75	DIVERGED	apps/backend/src/routes/users.ts:177-206	11-invites-users.md D10	Invite email states real expiry and detail panel returns issued, expiry and used dates.
+11-invites-users.md	R76	DIVERGED	apps/backend/src/lib/auth/password-reset.ts:19-49	11-invites-users.md D5	New reset request expires prior live tokens; plus 60s per-account cooldown.
+11-invites-users.md	R77	DIVERGED	apps/backend/src/routes/auth.ts:189-203	11-invites-users.md D5	Password checked first (kept); unknown, used and expired collapse to one invalid_reset_token code.
+11-invites-users.md	R78	DIVERGED	apps/backend/src/routes/auth.ts:199-202	11-invites-users.md D5	Reasons no longer distinguishable by the token holder.
+11-invites-users.md	R79	DIVERGED	apps/backend/src/lib/auth/password-reset.ts:110-125	11-invites-users.md D6	Reset revokes all refresh tokens and expires other reset and invite tokens.
+11-invites-users.md	R80	NA	-	-	No redirect or query string; JSON API and screens, so no token re-emission.
+11-invites-users.md	R81	PRESERVED	apps/backend/src/routes/users.ts:53-57	-	Activated is hash or lastLoginAt, now derived once in deriveStatus.
+11-invites-users.md	R82	PRESERVED	apps/backend/src/routes/users.ts:53-57	-	Four states in same precedence: inactive, active, invited, pending.
+11-invites-users.md	R83	DIVERGED	apps/backend/src/routes/users.ts:440-455	11-invites-users.md D2	UI-created users are invited not activated, so Invited and No invite states are reachable.
+11-invites-users.md	R84	DIVERGED	apps/backend/src/routes/users.ts:144-156	Plan 09 Task 2	Cursor pagination, filters, ordered by name; deactivated no longer sorted first.
+11-invites-users.md	R85	DIVERGED	apps/backend/src/routes/users.ts:59-62	Plan 09 Task 2	Hash still selected in-process but reduced to status before the response.
+11-invites-users.md	R86	DIVERGED	apps/backend/src/routes/users.ts:158-162	Plan 09 Task 2	Live invites queried only for the current page ids.
+11-invites-users.md	R87	PRESERVED	apps/mobile/app/(app)/users/index.tsx:60-72	-	Bulk button driven by pending count endpoint; hidden at zero.
+11-invites-users.md	R88	DIVERGED	apps/backend/src/routes/users.ts:152-167	Plan 09 Task 2	Total returned by server count, not computed from an unbounded array.
+11-invites-users.md	R89	DIVERGED	apps/backend/src/lib/email.ts:163-175	11-invites-users.md D2	Unconfigured transport warns once and skips instead of throwing.
+11-invites-users.md	R90	DIVERGED	apps/backend/src/lib/email.ts:149-162	11-invites-users.md D10	Inviter name no longer in the email; nothing user-controlled is interpolated.
+11-invites-users.md	R91	DIVERGED	apps/backend/src/lib/email.ts:149-162	11-invites-users.md D10	Email delivers a code to enter in app; mobile accept screen takes code input.

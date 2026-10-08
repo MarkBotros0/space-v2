@@ -130,6 +130,20 @@ it("writes the in-app row even for an opted-out recipient, and suppresses only t
   expect(recipients.map((r) => r.userId).sort()).toEqual([adminId, leaderId].sort());
 });
 
+it("does not notify a deactivated leader or admin", async () => {
+  await db.notification.deleteMany({ where: { userId: { in: [leaderId, adminId] } } });
+  await db.user.updateMany({ where: { id: { in: [leaderId, adminId] } }, data: { deletedAt: new Date() } });
+  try {
+    await flagLowAttendance(secondSessionId, [{ studentUserId: studentId, status: "ABSENT" }]);
+    const count = await db.notification.count({
+      where: { userId: { in: [leaderId, adminId] }, type: "LOW_ATTENDANCE_FLAG" },
+    });
+    expect(count).toBe(0);
+  } finally {
+    await db.user.updateMany({ where: { id: { in: [leaderId, adminId] } }, data: { deletedAt: null } });
+  }
+});
+
 it("reports what it wrote and whose channels it suppressed", async () => {
   // v1 returned void, so a producer could not tell the caller how many people
   // were actually notified (§6; 03-sessions.md R17 needs this number).
