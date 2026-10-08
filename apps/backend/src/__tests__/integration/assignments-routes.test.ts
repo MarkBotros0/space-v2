@@ -324,6 +324,17 @@ describe("GET /api/v1/assignments/:id/tracker", () => {
     expect(res.body.data.submittedCount).toBe(0);
   });
 
+  it("orders rows by group name, then student name (REG-84, v1 order)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/assignments/${allGroupsAssignmentId}/tracker`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(res.status).toBe(200);
+    const rows = res.body.data.rows as { groupName: string | null; name: string | null }[];
+    const pairs = rows.map((r) => `${r.groupName}/${r.name}`);
+    // Name-only order would put "Test moved" first and "Test student" last.
+    expect(pairs).toEqual(["Group A/Test student", "Group B/Test moved", "Group B/Test other"]);
+  });
+
   it("narrows the roster to a leader's own groups", async () => {
     // The leader leads Group B. The all-groups assignment covers the whole
     // season, but they may only see their own students' names and addresses.

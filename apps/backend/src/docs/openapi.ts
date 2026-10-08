@@ -4062,7 +4062,7 @@ export const openApiDocument = {
         tags: ["Assignments"],
         summary: "Who was given this assignment, and what they have done about it",
         description:
-          "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.",
+          "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/AssignmentTracker" }, "The tracker."),
