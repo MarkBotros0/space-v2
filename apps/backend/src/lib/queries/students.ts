@@ -488,7 +488,6 @@ export async function loadStudentDetail(
           dateOfBirth: true,
           spiritualBackground: true,
           gifts: true,
-          notes: true,
           activeSeasonId: true,
           activeSeason: { select: { title: true, code: true } },
         },
@@ -497,6 +496,19 @@ export async function loadStudentDetail(
     },
   });
   if (!row) return null;
+
+  // REG-97: the staff-only note is read ONLY for the internal arm, in its own
+  // query, so no other view ever holds the column in memory — a later edit that
+  // spreads the profile row cannot leak what was never selected.
+  const internalNotes =
+    view === "internal"
+      ? ((
+          await db.studentProfile.findUnique({
+            where: { userId: studentUserId },
+            select: { notes: true },
+          })
+        )?.notes ?? null)
+      : null;
 
   const enrollments = await db.seasonEnrollment.findMany({
     where: { studentUserId },
@@ -582,7 +594,7 @@ export async function loadStudentDetail(
   };
   if (view === "private") return { ...base, profile: privateProfile };
 
-  return { ...base, profile: { ...privateProfile, notes: p?.notes ?? null } };
+  return { ...base, profile: { ...privateProfile, notes: internalNotes } };
 }
 
 export interface NewStudentInput {
