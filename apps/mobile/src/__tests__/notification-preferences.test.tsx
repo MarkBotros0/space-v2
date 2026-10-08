@@ -64,6 +64,27 @@ describe("NotificationPreferences", () => {
     );
   });
 
+  it("flips the switch instantly, before the server answers (REG-80)", async () => {
+    let resolvePut: (v: unknown) => void = () => {};
+    put.mockReturnValue(new Promise((r) => { resolvePut = r; }));
+    renderWithProviders(<NotificationPreferences />);
+
+    fireEvent(await screen.findByLabelText("Quiz graded"), "valueChange", false);
+    await waitFor(() => expect(screen.getByLabelText("Quiz graded").props.value).toBe(false));
+    expect(put).toHaveBeenCalled();
+    resolvePut({ data: { data: { preferences: { ...allTrue, quizGraded: false } } } });
+    await waitFor(() => expect(screen.getByLabelText("Quiz graded").props.value).toBe(false));
+  });
+
+  it("rolls the switch back when the save fails (REG-80)", async () => {
+    put.mockRejectedValue(new Error("500"));
+    renderWithProviders(<NotificationPreferences />);
+
+    fireEvent(await screen.findByLabelText("Quiz graded"), "valueChange", false);
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByLabelText("Quiz graded").props.value).toBe(true));
+  });
+
   it("explains what turning one off actually does", async () => {
     // Spec D4: the in-app row is always written now; the switch governs
     // outbound channels. Saying so is the difference between a setting and a

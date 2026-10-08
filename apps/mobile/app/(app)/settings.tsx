@@ -43,6 +43,12 @@ export default function SettingsScreen() {
 
   if (!user) return null; // the (app) layout redirects before this renders
 
+  // v1 settings-form.tsx:148 — Save stays off until the name differs, and
+  // here also until it is one the server will take (2–120 characters).
+  const trimmedName = name.trim();
+  const nameChanged = trimmedName !== user.name.trim();
+  const nameValid = trimmedName.length >= 2 && trimmedName.length <= 120;
+
   const saveName = () => {
     setNameSaved(false);
     const trimmed = name.trim();
@@ -129,7 +135,12 @@ export default function SettingsScreen() {
                 Saved.
               </Text>
             ) : null}
-            <Button title="Save name" onPress={saveName} loading={updateProfile.isPending} />
+            <Button
+              title="Save name"
+              onPress={saveName}
+              loading={updateProfile.isPending}
+              disabled={!nameChanged || !nameValid}
+            />
           </View>
         </Card>
 

@@ -100,6 +100,21 @@ describe("SettingsScreen", () => {
     await waitFor(() => expect(useSessionStore.getState().user?.name).toBe("New Name"));
   });
 
+  it("keeps Save name disabled until the name is changed and valid (REG-80)", () => {
+    useSessionStore.setState(sessionFor("STUDENT"));
+    renderWithProviders(<SettingsScreen />);
+    const save = () => screen.getByText("Save name");
+    const disabled = () => screen.getByRole("button", { name: "Save name" }).props.accessibilityState?.disabled;
+    expect(disabled()).toBe(true);
+    fireEvent.changeText(screen.getByLabelText("Name"), "N");
+    expect(disabled()).toBe(true);
+    fireEvent.changeText(screen.getByLabelText("Name"), "New Name");
+    expect(disabled()).toBe(false);
+    fireEvent.changeText(screen.getByLabelText("Name"), "  " + (useSessionStore.getState().user?.name ?? "") + "  ");
+    expect(disabled()).toBe(true);
+    expect(save()).toBeTruthy();
+  });
+
   it("changes the password, sending the stored refresh token so this device survives", async () => {
     useSessionStore.setState(sessionFor("STUDENT"));
     post.mockResolvedValue({ data: { data: { ok: true, sessionsRevoked: 2 } } });

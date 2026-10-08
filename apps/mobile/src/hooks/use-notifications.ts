@@ -105,6 +105,21 @@ export function useUpdateNotificationPreferences() {
       const res = await apiClient.put("/api/v1/me/notification-preferences", preferences);
       return notificationPreferencesResponseSchema.parse(res.data.data).preferences;
     },
+    // Optimistic (v1 settings-form.tsx togglePref; REG-80): flip now, restore the
+    // snapshot if the save fails, then re-read so a raced toggle can't stay wrong.
+    onMutate: async (next) => {
+      const key = queryKeys.notifications.preferences();
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<NotificationPreferences>(key);
+      queryClient.setQueryData(key, next);
+      return { previous };
+    },
+    onError: (_err, _next, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.notifications.preferences(), context.previous);
+      }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.preferences() });
+    },
     onSuccess: (preferences) => {
       queryClient.setQueryData(queryKeys.notifications.preferences(), preferences);
     },

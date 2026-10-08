@@ -115,7 +115,6 @@ export function NotificationPreferences() {
             accessibilityLabel={LABELS[key].label}
             value={data[key]}
             onValueChange={(value) => toggle(key, value)}
-            disabled={update.isPending}
           />
         </View>
       ))}
