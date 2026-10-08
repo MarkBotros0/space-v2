@@ -36,6 +36,7 @@ import { makeScopes, makeUser } from "./helpers/session";
 // independently of the layout — is what keeps that list honest.
 type CapturedScreen = { name: string; title?: string; href?: string | null };
 let mockScreens: CapturedScreen[] = [];
+let mockSegments: string[] = ["(app)", "dashboard"];
 
 jest.mock("expo-router", () => {
   const { Text } = require("react-native");
@@ -51,6 +52,7 @@ jest.mock("expo-router", () => {
   Tabs.Screen = TabsScreen;
   return {
     Tabs,
+    useSegments: () => mockSegments,
     Redirect: ({ href }: { href: string }) => <Text testID="redirect">{href}</Text>,
   };
 });
@@ -74,6 +76,7 @@ const TOTAL_ROUTES = ALL_ROUTE_NAMES.length + DETAIL_ROUTE_NAMES.length;
 beforeEach(() => {
   useSessionStore.getState().clear();
   mockScreens = [];
+  mockSegments = ["(app)", "dashboard"];
 });
 
 describe("AppLayout tab shell", () => {
@@ -102,6 +105,27 @@ describe("AppLayout tab shell", () => {
     expect(visible.map((s) => s.name)).toEqual(ADMIN_VISIBLE_NAMES);
     expect(hidden).toHaveLength(TOTAL_ROUTES - navByRole.ADMIN.tabs.length);
     expect(visible.map((s) => s.name)).not.toEqual(STUDENT_VISIBLE_NAMES);
+  });
+
+  it("redirects an alumnus away from a student-only destination, but not a student (REG-81)", () => {
+    mockSegments = ["(app)", "assignments"];
+    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ graduationYear: 2024 }));
+    render(<AppLayout />);
+    expect(screen.getByTestId("redirect")).toHaveTextContent("/dashboard");
+    expect(mockScreens).toHaveLength(0);
+  });
+
+  it("lets an alumnus reach their own destinations and a student reach assignments (REG-81)", () => {
+    mockSegments = ["(app)", "history"];
+    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ graduationYear: 2024 }));
+    const { unmount } = render(<AppLayout />);
+    expect(screen.queryByTestId("redirect")).toBeNull();
+    unmount();
+
+    mockSegments = ["(app)", "assignments"];
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    render(<AppLayout />);
+    expect(screen.queryByTestId("redirect")).toBeNull();
   });
 
   it("renders the redirect and no Tabs.Screen when anonymous", () => {
