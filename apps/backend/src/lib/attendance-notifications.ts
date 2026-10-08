@@ -40,11 +40,11 @@ export async function flagLowAttendance(
     if (!membership) continue;
 
     const leaders = await db.groupLeader.findMany({
-      where: { groupId: membership.groupId },
+      where: { groupId: membership.groupId, user: { deletedAt: null } },
       select: { userId: true },
     });
     const admins = await db.seasonAdmin.findMany({
-      where: { seasonId: session.seasonId },
+      where: { seasonId: session.seasonId, user: { deletedAt: null } },
       select: { userId: true },
     });
     const adminIds = admins.map((a) => a.userId);
