@@ -153,6 +153,12 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
 
   const onReady = useCallback((): void => {
     setReady(true);
+    // v1 interactive-video-player.tsx:127-129: reopen where the student got to, never past the barrier.
+    const resumeTo = Math.min(furthestRef.current, barrierRef.current);
+    if (resumeTo > 0) {
+      playerRef.current?.seekTo(resumeTo, true);
+      setCurrent(resumeTo);
+    }
     void playerRef.current
       ?.getDuration()
       .then((d) => {

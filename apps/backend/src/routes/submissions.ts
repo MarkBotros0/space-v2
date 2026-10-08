@@ -20,6 +20,7 @@ import { isLate, studentCanSeeAssignment } from "../lib/queries/assignments";
 import { FileNotFoundError, buildStorageKey, getStorage } from "../lib/storage";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
+  htmlToPlainText,
   reviewSubmissionRequestSchema,
   submissionQueueQuerySchema,
   updateSubmissionRequestSchema,
@@ -96,28 +97,55 @@ submissionsRouter.get("/", async (req, res) => {
   const { pendingOnly, seasonId, cursor, limit } = parsed.data;
 
   const scope = await submissionQueueScopeFor(user);
-  if (scope === null) return apiOk(res, { items: [], nextCursor: null });
+  if (scope === null) {
+    return apiOk(res, { items: [], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null });
+  }
 
   // AND rather than spreading, so the scope's own `assignment` constraint (the
   // ADMIN case) cannot be silently overwritten by the filters below it. A
   // scope clause that disappears here is a data leak, not a lost filter.
-  const where: Prisma.SubmissionWhereInput = {
+  //
+  // A DRAFT is the student's private work-in-progress: never visible to a
+  // reviewer, whatever pendingOnly says. `reachable` is everything the caller
+  // may see; `where` additionally applies pendingOnly. The header counts use
+  // `reachable` so they do not move as the list is filtered (REG-89).
+  const reachable: Prisma.SubmissionWhereInput = {
     AND: [
       scope,
       { assignment: { deletedAt: null } },
-      // A DRAFT is the student's private work-in-progress: never visible to a
-      // reviewer, whatever pendingOnly says.
-      pendingOnly ? { status: "SUBMITTED" as const } : { status: { not: "DRAFT" as const } },
+      { status: { not: "DRAFT" as const } },
       ...(seasonId ? [{ assignment: { seasonId } }] : []),
     ],
   };
+  const where: Prisma.SubmissionWhereInput = pendingOnly
+    ? { AND: [reachable, { status: "SUBMITTED" as const }] }
+    : reachable;
 
-  // One extra row tells us whether another page exists without a second count
-  // query. Ordered by id so the cursor is stable even when two submissions
-  // share a submittedAt.
+  // Lateness compares two columns, which Prisma cannot express in a filter, so
+  // the header's three numbers come from one narrow select (v1 counted the same
+  // way, over its whole unpaginated list).
+  const countRows = await db.submission.findMany({
+    where: reachable,
+    select: { status: true, submittedAt: true, assignment: { select: { dueAt: true } } },
+  });
+  const counts = {
+    pending: countRows.filter((r) => r.status === "SUBMITTED").length,
+    total: countRows.length,
+    late: countRows.filter((r) => isLate(r.submittedAt, r.assignment.dueAt)).length,
+  };
+
+  // v1's order (REG-89): status ascending (SUBMITTED, REVIEWED, RETURNED — the
+  // enum's declaration order, so what needs a verdict comes first), then most
+  // recently submitted. id is the final tiebreak so the cursor is stable when
+  // two submissions share a submittedAt.
+  // One extra row tells us whether another page exists without a second count.
   const rows = await db.submission.findMany({
     where,
-    orderBy: { id: "desc" },
+    orderBy: [
+      { status: "asc" },
+      { submittedAt: { sort: "desc", nulls: "last" } },
+      { id: "desc" },
+    ],
     take: limit + 1,
     ...(cursor ? { cursor: { publicId: cursor }, skip: 1 } : {}),
     select: {
@@ -173,6 +201,7 @@ submissionsRouter.get("/", async (req, res) => {
         groupName: enrollment?.group?.name ?? null,
       };
     }),
+    counts,
     nextCursor: rows.length > limit ? (page[page.length - 1]?.publicId ?? null) : null,
   });
 });
@@ -189,12 +218,26 @@ submissionsRouter.get("/:publicId", async (req, res) => {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
+  // The student's group in this assignment's season, from the enrolment
+  // (ruling C9) — v1's detail named it.
+  const enrollment = await db.seasonEnrollment.findUnique({
+    where: {
+      studentUserId_seasonId: {
+        studentUserId: sub.studentUserId,
+        seasonId: sub.assignment.seasonId,
+      },
+    },
+    select: { groupId: true, group: { select: { name: true } } },
+  });
+
   return apiOk(res, {
     id: sub.id,
     publicId: sub.publicId,
     status: sub.status,
-    text: sub.text,
-    feedback: sub.feedback,
+    // Ruling C11 / REG-90: stored values may be v1 TipTap HTML (or anything a
+    // client once wrote); the wire carries plain text only.
+    text: sub.text === null ? null : htmlToPlainText(sub.text),
+    feedback: sub.feedback === null ? null : htmlToPlainText(sub.feedback),
     submittedAt: sub.submittedAt,
     reviewedAt: sub.reviewedAt,
     isLate: isLate(sub.submittedAt, sub.assignment.dueAt),
@@ -206,6 +249,8 @@ submissionsRouter.get("/:publicId", async (req, res) => {
     studentUserId: sub.studentUserId,
     studentName: sub.studentUser.name,
     studentEmail: sub.studentUser.email,
+    groupId: enrollment?.groupId ?? null,
+    groupName: enrollment?.group?.name ?? null,
     files: sub.files,
     // Told to the client rather than left for it to discover by receiving a
     // 503: an assignment declaring maxFileSizeMb is telling the student a file
@@ -242,6 +287,20 @@ submissionsRouter.patch("/:publicId", async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid submission body.", 400);
 
   if (parsed.data.submit) {
+    // REG-85: v1's form disabled Submit for blank text with no attached file.
+    // That rule now lives on the server, where a client cannot skip it. A DRAFT
+    // save of blank text stays legal.
+    if (htmlToPlainText(parsed.data.text) === "") {
+      const attached = await db.submissionFile.count({ where: { submissionId: sub.id } });
+      if (attached === 0) {
+        return apiError(
+          res,
+          "empty_submission",
+          "Write a response or attach a file before submitting.",
+          400,
+        );
+      }
+    }
     const now = new Date();
     await db.submission.update({
       where: { id: sub.id },
@@ -392,9 +451,12 @@ submissionsRouter.post("/:publicId/review", async (req, res) => {
   await bestEffort("notify:SUBMISSION_REVIEWED", () =>
     createNotificationsBulk([sub.studentUserId], {
       type: "SUBMISSION_REVIEWED",
+      // REG-91: v1's exact wording for a verdict (submission-actions.ts:196).
+      // v1 had no "returned" state, so that one keeps its own v2 title. Neither
+      // carries the feedback text — the body is left empty on purpose.
       title: parsed.data.returnForRevision
         ? `${sub.assignment.title} was returned for revision`
-        : `${sub.assignment.title} was reviewed`,
+        : `Feedback ready on "${sub.assignment.title}"`,
       // v1's exact link (submission-actions.ts:197; ruling X1): the assignment,
       // not the list.
       link: `/student/assignments/${sub.assignmentId}`,

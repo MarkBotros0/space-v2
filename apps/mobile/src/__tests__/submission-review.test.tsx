@@ -24,7 +24,7 @@ const detail = {
   submittedAt: "2099-03-30T10:00:00.000Z", reviewedAt: null, isLate: true,
   assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: "2099-03-29T00:00:00.000Z",
   assignmentDescription: null, seasonCode: "S26",
-  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test",
+  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test", groupId: null, groupName: null,
   files: [], canUploadFiles: false, canReview: true,
 };
 
@@ -52,6 +52,25 @@ it("shows the work, the late flag from the contract, and records a review", asyn
     }),
   );
   await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+});
+
+it("says Update review, with the earlier feedback in the field, when redoing a review (REG-87)", async () => {
+  get.mockResolvedValue({
+    data: { data: { ...detail, status: "REVIEWED", reviewedAt: "2099-03-31T10:00:00.000Z", feedback: "Good work." } },
+  });
+  post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: false } } });
+
+  renderWithProviders(<SubmissionReviewScreen />);
+
+  expect(await screen.findByText("Update review")).toBeTruthy();
+  expect(screen.queryByText("Mark reviewed")).toBeNull();
+  expect(screen.getByText("Update feedback")).toBeTruthy();
+  expect(screen.getByLabelText("Feedback").props.value).toBe("Good work.");
+  fireEvent.changeText(screen.getByLabelText("Feedback"), "Even better.");
+  fireEvent.press(screen.getByText("Update review"));
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith("/api/v1/submissions/aaa1111111/review", { feedback: "Even better." }),
+  );
 });
 
 it("returns for revision with the flag set", async () => {
@@ -89,4 +108,10 @@ it("hides the verdict controls when the contract says this caller cannot review"
   expect(await screen.findByText("the student's work")).toBeTruthy();
   expect(screen.queryByText("Mark reviewed")).toBeNull();
   expect(screen.queryByLabelText("Feedback")).toBeNull();
+});
+
+it("names the student's group beside them on the detail (REG-89)", async () => {
+  get.mockResolvedValue({ data: { data: { ...detail, groupId: 3, groupName: "Group A" } } });
+  renderWithProviders(<SubmissionReviewScreen />);
+  expect(await screen.findByText("Test student · Group A")).toBeTruthy();
 });

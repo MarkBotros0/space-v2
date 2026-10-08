@@ -315,6 +315,39 @@ describe("ReportsScreen — the numbers it renders", () => {
     ).toBeTruthy();
   });
 
+  it("draws one line per season instead of one interleaved line (REG-117)", async () => {
+    useSessionStore.setState(sessionFor("MENTOR"));
+    const [first, second] = summary.attendanceTrend;
+    const interleaved = {
+      ...summary,
+      attendanceTrend: [
+        first!,
+        { ...second!, seasonId: 8, seasonTitle: "Autumn 2099" },
+        { ...first!, sessionId: 3, dayKey: "2099-09-01", pct: 60 },
+        { ...second!, sessionId: 4, seasonId: 8, seasonTitle: "Autumn 2099", dayKey: "2099-09-08", pct: 40 },
+      ],
+    };
+    get.mockImplementation((url: string) => {
+      if (url.startsWith("/api/v1/reports/engagement/students")) {
+        return Promise.resolve({
+          data: { data: { scope: summary.scope, rows: [row], nextCursor: null, total: 34 } },
+        });
+      }
+      if (url.startsWith("/api/v1/reports/engagement")) return Promise.resolve({ data: { data: interleaved } });
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+
+    renderWithProviders(<ReportsScreen />);
+
+    expect(
+      await screen.findByLabelText(
+        "Attendance trend, 2 seasons. Spring 2099: 2 sessions, from 80% to 60%. Autumn 2099: 2 sessions, from 50% to 40%",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("● Spring 2099")).toBeTruthy();
+    expect(screen.getByText("● Autumn 2099")).toBeTruthy();
+  });
+
   it("shows the method note, from the shared constant", async () => {
     useSessionStore.setState(sessionFor("MENTOR"));
     mockEndpoints();

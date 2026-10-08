@@ -39,7 +39,7 @@ const submissionDetail = {
   submittedAt: null, reviewedAt: null, isLate: false,
   assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: null,
   assignmentDescription: null, seasonCode: "S26",
-  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test",
+  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test", groupId: null, groupName: null,
   files: [], canUploadFiles: false, canReview: false,
 };
 
@@ -114,6 +114,42 @@ describe("submission editor", () => {
         submit: true,
       }),
     );
+  });
+
+  it("disables Submit while the text is empty and nothing is attached (REG-85)", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: { ...detailNoSubmission, mySubmission: draftSummary } } })
+        : Promise.resolve({ data: { data: { ...submissionDetail, text: "" } } }),
+    );
+    renderWithProviders(<AssignmentDetailScreen />);
+
+    const input = await screen.findByLabelText("Your answer");
+    const submitDisabled = () => screen.getByRole("button", { name: "Submit" }).props.accessibilityState?.disabled;
+    expect(submitDisabled()).toBe(true);
+    fireEvent.changeText(input, "   ");
+    expect(submitDisabled()).toBe(true);
+    fireEvent.changeText(input, "an answer");
+    expect(submitDisabled()).toBe(false);
+  });
+
+  it("lets Submit through with no text when a file is already attached (REG-85)", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: { ...detailNoSubmission, mySubmission: draftSummary } } })
+        : Promise.resolve({
+            data: {
+              data: {
+                ...submissionDetail,
+                text: "",
+                files: [{ id: 5, originalName: "essay.pdf", mimeType: "application/pdf", sizeBytes: 1200 }],
+              },
+            },
+          }),
+    );
+    renderWithProviders(<AssignmentDetailScreen />);
+    await screen.findByLabelText("Your answer");
+    expect(screen.getByRole("button", { name: "Submit" }).props.accessibilityState?.disabled).toBeFalsy();
   });
 
   it("surfaces a malformed save response as an error instead of trusting it", async () => {

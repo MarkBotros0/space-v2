@@ -271,7 +271,11 @@ usersRouter.patch("/:id", async (req, res) => {
       where: { id },
       select: { id: true, role: true, deletedAt: true },
     });
-    if (!target) return { fail: ["not_found", "User not found.", 404] as const };
+    // REG-104: a deactivated account is not an edit target. GET and reactivate
+    // still reach it; only this write refuses.
+    if (!target || target.deletedAt !== null) {
+      return { fail: ["not_found", "User not found.", 404] as const };
+    }
 
     const roleChanged = body.role !== target.role;
 

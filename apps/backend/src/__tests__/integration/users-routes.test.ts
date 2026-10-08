@@ -319,3 +319,29 @@ describe("PATCH /api/v1/users/:id — response parity with GET", () => {
     expect(patched.body.data).toEqual(fetched.body.data);
   });
 });
+
+describe("PATCH /api/v1/users/:id — soft-deleted target (REG-104)", () => {
+  it("404s a deactivated user, while GET and reactivate still work", async () => {
+    const target = await createTestUser("patch-deleted", "STUDENT");
+    await db.user.update({ where: { id: target.id }, data: { deletedAt: new Date() } });
+
+    const patched = await request(app)
+      .patch(`/api/v1/users/${target.id}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Should not apply", role: "STUDENT", graduationYear: null });
+    expect(patched.status).toBe(404);
+    expect(patched.body.error.code).toBe("not_found");
+    const row = await db.user.findUnique({ where: { id: target.id }, select: { name: true } });
+    expect(row?.name).toBe("Test patch-deleted");
+
+    const fetched = await request(app)
+      .get(`/api/v1/users/${target.id}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(fetched.status).toBe(200);
+
+    const back = await request(app)
+      .post(`/api/v1/users/${target.id}/reactivate`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(back.status).toBe(200);
+  });
+});

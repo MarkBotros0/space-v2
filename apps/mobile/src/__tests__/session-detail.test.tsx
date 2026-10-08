@@ -197,6 +197,52 @@ it("refreshes the leader's roster every 10 seconds while check-in is open", asyn
   }
 });
 
+it("lists who has checked in on the admin console and refreshes it while open (REG-78)", async () => {
+  jest.useFakeTimers();
+  try {
+    useSessionStore.setState(admin());
+    routeGets({
+      detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: true },
+      checkIn: checkInState({ state: "open", isOpen: true, checkInToken: "tokABC" }),
+      roster: [
+        { studentUserId: 1, name: "Ada", email: "a@x.org", groupName: "G1", status: "PRESENT", notes: null, lateMinutes: null },
+        { studentUserId: 2, name: "Bo", email: "b@x.org", groupName: "G1", status: null, notes: null, lateMinutes: null },
+      ],
+    });
+    const rosterCalls = () => get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12/attendance").length;
+
+    renderWithProviders(<SessionDetailScreen />);
+    expect(await screen.findByText("Code: tokABC")).toBeTruthy();
+    expect(await screen.findByText("Ada")).toBeTruthy();
+    expect(screen.getByText("Present")).toBeTruthy();
+    expect(screen.getByText("Not checked in")).toBeTruthy();
+    expect(screen.getByText("1 of 2 checked in")).toBeTruthy();
+    await waitFor(() => expect(rosterCalls()).toBe(1));
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+    await waitFor(() => expect(rosterCalls()).toBe(2));
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it("hides the console from a SUPER who is not an admin of the season, keeping a read-only roster (REG-79)", async () => {
+  useSessionStore.setState(makeSession("SUPER", { seasonAdminIds: [99] }, { id: 1 }));
+  routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
+  renderWithProviders(<SessionDetailScreen />);
+  expect(await screen.findByText("Check-in is closed")).toBeTruthy();
+  expect(screen.queryByText("Open check-in")).toBeNull();
+  expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/check-in");
+});
+
+it("shows a SUPER who administers the season the console (REG-79)", async () => {
+  useSessionStore.setState(makeSession("SUPER", { seasonAdminIds: [7] }, { id: 1 }));
+  routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
+  renderWithProviders(<SessionDetailScreen />);
+  expect(await screen.findByText("Open check-in")).toBeTruthy();
+});
+
 it("shows staff the session's quizzes (G18; v1 leader/sessions/[id])", async () => {
   useSessionStore.setState(leader());
   routeGets({

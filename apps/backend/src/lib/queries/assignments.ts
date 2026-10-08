@@ -280,6 +280,13 @@ export interface AssignmentTrackerData {
   rows: AssignmentTrackerRowData[];
 }
 
+function compareNullsLast(a: string | null, b: string | null): number {
+  if (a === b) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return a.localeCompare(b);
+}
+
 /**
  * Who was given this assignment and what they have done about it.
  *
@@ -360,7 +367,15 @@ export async function loadAssignmentTracker(
         submissionPublicId: sub?.publicId ?? null,
       };
     })
-    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    // v1's order (REG-84): group name, then student name. A student with no
+    // group sorts after every named group; name ties fall back to id so the
+    // order is deterministic.
+    .sort(
+      (a, b) =>
+        compareNullsLast(a.groupName, b.groupName) ||
+        compareNullsLast(a.name, b.name) ||
+        a.studentUserId - b.studentUserId,
+    );
 
   return {
     assignmentId: assignment.id,

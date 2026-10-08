@@ -13,7 +13,9 @@ import {
   createStudentRows,
   enrollStudentInSeason,
   listStudents,
+  loadStudentAttendanceHistory,
   loadStudentDetail,
+  loadStudentSubmissions,
   type StudentDetailView,
 } from "../lib/queries/students";
 import { isAdminOfSeason, isSuper } from "../lib/rbac";
@@ -73,6 +75,50 @@ studentsRouter.get("/:id", async (req, res) => {
   const detail = await loadStudentDetail(id, detailViewFor(user, id), user);
   if (!detail) return apiError(res, "not_found", "Student not found.", 404);
   return apiOk(res, detail);
+});
+
+/**
+ * The two history sub-resources (REG-83, v1's student record). Staff only — a
+ * student gets neither, their own record included — and row-scoped by the same
+ * rule as the detail's enrolments plus the narrower submission/attendance
+ * gates (see canReadEnrollmentHistory). 403 before 404, as the detail does, so
+ * an out-of-scope id and a missing one look the same to a scoped caller.
+ */
+async function resolveHistoryTarget(
+  req: Parameters<typeof requireUser>[0],
+  res: Parameters<typeof apiError>[0],
+): Promise<{ user: SessionUser; id: number } | null> {
+  const user = requireUser(req);
+  const id = parseId(req.params.id);
+  if (id === null) {
+    apiError(res, "bad_request", "Invalid student id.", 400);
+    return null;
+  }
+  if (user.role === "STUDENT" || !(await canViewStudent(user, id))) {
+    apiError(res, "forbidden", "You don't have access to this.", 403);
+    return null;
+  }
+  const exists = await db.user.findFirst({
+    where: { id, role: "STUDENT", deletedAt: null },
+    select: { id: true },
+  });
+  if (!exists) {
+    apiError(res, "not_found", "Student not found.", 404);
+    return null;
+  }
+  return { user, id };
+}
+
+studentsRouter.get("/:id/attendance", async (req, res) => {
+  const target = await resolveHistoryTarget(req, res);
+  if (!target) return;
+  return apiOk(res, { history: await loadStudentAttendanceHistory(target.user, target.id) });
+});
+
+studentsRouter.get("/:id/submissions", async (req, res) => {
+  const target = await resolveHistoryTarget(req, res);
+  if (!target) return;
+  return apiOk(res, { submissions: await loadStudentSubmissions(target.user, target.id) });
 });
 
 /**

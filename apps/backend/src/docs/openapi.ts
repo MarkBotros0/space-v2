@@ -1422,6 +1422,36 @@ export const openApiDocument = {
           completedAt: { type: ["string", "null"], format: "date-time" },
           droppedAt: { type: ["string", "null"], format: "date-time" },
           dropReason: { type: ["string", "null"], description: "Always null for MENTOR and LEADER." },
+          attendancePct: {
+            type: ["integer", "null"],
+            description:
+              "Whole-number % of the season's past sessions (from the student's own enrolment date) marked PRESENT or LATE — the engagement formula, any enrolment status (REG-83). Staff only: null in the student's own view and for a season outside the caller's scope (an ADMIN's other seasons, a LEADER's other groups).",
+          },
+        },
+      },
+      StudentAttendanceHistoryItem: {
+        type: "object",
+        properties: {
+          sessionId: { type: "integer" },
+          sessionTitle: { type: "string" },
+          startsAt: { type: "string", format: "date-time" },
+          seasonId: { type: "integer" },
+          seasonTitle: { type: "string" },
+          status: { type: "string", enum: ["PRESENT", "ABSENT", "LATE"] },
+        },
+      },
+      StudentSubmissionItem: {
+        type: "object",
+        properties: {
+          publicId: { type: "string" },
+          assignmentId: { type: "integer" },
+          assignmentTitle: { type: "string" },
+          status: { $ref: "#/components/schemas/SubmissionStatus" },
+          isLate: { type: "boolean" },
+          submittedAt: { type: ["string", "null"], format: "date-time" },
+          reviewedAt: { type: ["string", "null"], format: "date-time" },
+          seasonId: { type: "integer" },
+          seasonTitle: { type: "string" },
         },
       },
       StudentDetail: {
@@ -1753,8 +1783,8 @@ export const openApiDocument = {
           id: { type: "integer" },
           publicId: { type: "string" },
           status: { $ref: "#/components/schemas/SubmissionStatus" },
-          text: { type: ["string", "null"] },
-          feedback: { type: ["string", "null"] },
+          text: { type: ["string", "null"], description: "Plain text: stored HTML is converted on read (ruling C11, REG-90)." },
+          feedback: { type: ["string", "null"], description: "Plain text, as `text`." },
           submittedAt: { type: ["string", "null"], format: "date-time" },
           reviewedAt: { type: ["string", "null"], format: "date-time" },
           isLate: {
@@ -1770,6 +1800,8 @@ export const openApiDocument = {
           studentUserId: { type: "integer" },
           studentName: { type: ["string", "null"] },
           studentEmail: { type: "string", format: "email" },
+          groupId: { type: ["integer", "null"], description: "The student's group in this assignment's season, from their enrolment (ruling C9)." },
+          groupName: { type: ["string", "null"] },
           files: { type: "array", items: { $ref: "#/components/schemas/SubmissionFile" } },
           canUploadFiles: {
             type: "boolean",
@@ -1805,6 +1837,16 @@ export const openApiDocument = {
         type: "object",
         properties: {
           items: { type: "array", items: { $ref: "#/components/schemas/SubmissionQueueItem" } },
+          counts: {
+            type: "object",
+            description:
+              "v1's header numbers over everything the caller's scope (and `seasonId`) reaches, ignoring `pendingOnly` and paging. DRAFTs never count.",
+            properties: {
+              pending: { type: "integer", description: "Status SUBMITTED." },
+              total: { type: "integer", description: "Every non-DRAFT submission in scope." },
+              late: { type: "integer", description: "Submitted after the assignment's due date." },
+            },
+          },
           nextCursor: {
             type: ["string", "null"],
             description: "Pass as `cursor` for the next page. Null on the last page.",
@@ -3008,7 +3050,7 @@ export const openApiDocument = {
         tags: ["Users"],
         summary: "Edit a user's name, role and graduation year (SUPER only)",
         description:
-          "A full replace of `{ name, role, graduationYear }` (email is not editable; unknown keys are refused). LEADER, ADMIN and MENTOR require a graduationYear (alumni-only roles).\n\n**A role change is a revocation.** In one transaction: a demoted ADMIN loses their SeasonAdmin rows, a demoted LEADER their GroupLeader rows, a user landing on STUDENT gets a StudentProfile, and every live refresh token of the target is revoked — so the old claims cannot be re-minted. Access tokens already issued live out their 15-minute TTL.\n\nGuards: changing your own role is `409 cannot_change_own_role` (renaming yourself is fine); granting SUPER needs `confirmSuper: true` (`400 confirm_super_required`); demoting the only active SUPER is `409 last_super` (the active SUPER rows are locked FOR UPDATE inside the transaction, so two concurrent demotions cannot both pass). Answers with the same `UserDetail` GET returns.",
+          "A full replace of `{ name, role, graduationYear }` (email is not editable; unknown keys are refused). LEADER, ADMIN and MENTOR require a graduationYear (alumni-only roles).\n\n**A role change is a revocation.** In one transaction: a demoted ADMIN loses their SeasonAdmin rows, a demoted LEADER their GroupLeader rows, a user landing on STUDENT gets a StudentProfile, and every live refresh token of the target is revoked — so the old claims cannot be re-minted. Access tokens already issued live out their 15-minute TTL.\n\nGuards: changing your own role is `409 cannot_change_own_role` (renaming yourself is fine); granting SUPER needs `confirmSuper: true` (`400 confirm_super_required`); demoting the only active SUPER is `409 last_super` (the active SUPER rows are locked FOR UPDATE inside the transaction, so two concurrent demotions cannot both pass). Answers with the same `UserDetail` GET returns.\n\nA soft-deleted (deactivated) target is `404 not_found` (REG-104); GET and reactivate still reach it.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -3106,6 +3148,9 @@ export const openApiDocument = {
         parameters: [
           { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
           { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
+          { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`, the GroupStudent pointer) is this group; `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
+          { name: "sort", in: "query", description: "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)", schema: { type: "string", enum: ["name", "university", "season", "group"] } },
+          { name: "dir", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "asc" } },
           { name: "q", in: "query", schema: { type: "string", maxLength: 120 } },
           { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
           { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
@@ -3166,6 +3211,44 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/students/{id}/attendance": {
+      get: {
+        tags: ["Students"],
+        summary: "A student's attendance history (staff only)",
+        description:
+          "v1's student record listed the 100 most recent attendance marks across seasons (REG-83). Staff only — STUDENT, the subject included, gets 403. Row scope follows the underlying gates: SUPER and MENTOR every season; ADMIN only seasons they administer; LEADER only seasons whose enrolment names one of their groups (C9). Newest session first. 403 before 404.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", properties: { history: { type: "array", items: { $ref: "#/components/schemas/StudentAttendanceHistoryItem" } } } },
+            "The history.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/students/{id}/submissions": {
+      get: {
+        tags: ["Students"],
+        summary: "A student's submissions (staff only)",
+        description:
+          "v1's student record listed the student's 100 most recent submissions (REG-83). Same staff-only gate and row scope as the attendance history. Newest first; a DRAFT is never listed (the student's private work in progress, hidden from every reviewer surface). Link a row to `GET /submissions/{publicId}`.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", properties: { submissions: { type: "array", items: { $ref: "#/components/schemas/StudentSubmissionItem" } } } },
+            "The submissions.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
     "/api/v1/students/{id}": {
       get: {
         tags: ["Students"],
@@ -3793,6 +3876,8 @@ export const openApiDocument = {
       get: {
         tags: ["Sessions"],
         summary: "Session detail",
+        description:
+          "A student sees the session only with an ACTIVE enrolment in its season; any other student (withdrawn, completed, never enrolled) gets 404 not_found, as v1 did (REG-77). Staff scoping unchanged (403 outside scope).",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/SessionDetail" }, "The session."),
@@ -4048,7 +4133,7 @@ export const openApiDocument = {
         tags: ["Assignments"],
         summary: "Who was given this assignment, and what they have done about it",
         description:
-          "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.",
+          "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/AssignmentTracker" }, "The tracker."),
@@ -4065,7 +4150,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "A reviewer's queue",
         description:
-          "Staff only. Scoped to the caller: a LEADER sees submissions from students enrolled in a group they lead **in that assignment's own season**; an ADMIN sees their seasons; SUPER and MENTOR see everything.\n\nv1's equivalent was unscoped and unpaginated — every submission the reader could reach, in one response. Cursor-paged here, ordered newest first.",
+          "Staff only. Scoped to the caller: a LEADER sees submissions from students enrolled in a group they lead **in that assignment's own season**; an ADMIN sees their seasons; SUPER and MENTOR see everything.\n\nv1's equivalent was unscoped and unpaginated — every submission the reader could reach, in one response. Cursor-paged here, in v1's order (REG-89): status ascending (SUBMITTED first, then REVIEWED, RETURNED), then most recently submitted. The response carries `counts` for the header.",
         parameters: [
           {
             name: "pendingOnly",
@@ -4129,7 +4214,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "Record a verdict",
         description:
-          "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort — a mail failure does not report the review as failed.",
+          "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort (title `Feedback ready on \"<assignment>\"` as in v1; `<assignment> was returned for revision` when returned; no body) — a mail failure does not report the review as failed.",
         parameters: [{ name: "publicId", in: "path", required: true, schema: { type: "string" } }],
         requestBody: {
           required: true,
@@ -4175,7 +4260,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "Submission detail",
         description:
-          "Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's submission.",
+          "Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's submission. `text` and `feedback` are plain text (stored HTML is converted on read, ruling C11); `groupId`/`groupName` name the student's group in the assignment's season.",
         parameters: [publicIdParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/SubmissionDetail" }, "The submission."),
@@ -4188,7 +4273,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "Save a draft or submit",
         description:
-          "**Author only** — reading and writing are different rights, so a season admin who can read this submission still cannot edit it. `submit: true` sets status SUBMITTED and stamps `submittedAt`; omitting it returns the row to DRAFT, so saving a draft after submitting un-submits it.",
+          "**Author only** — reading and writing are different rights, so a season admin who can read this submission still cannot edit it. `submit: true` sets status SUBMITTED and stamps `submittedAt`; omitting it returns the row to DRAFT, so saving a draft after submitting un-submits it.\n\nSubmitting blank text with no attached file is `400 empty_submission` (v1's rule, REG-85); saving a blank draft stays legal.",
         parameters: [publicIdParam],
         requestBody: {
           required: true,
@@ -4613,7 +4698,7 @@ export const openApiDocument = {
         tags: ["Quizzes"],
         summary: "Submit the open attempt",
         description:
-          "STUDENT only. Every question must be answered (409 `attempt_incomplete`; an essay must be non-blank). MCQs are scored all-or-nothing against the key, in the same request. A quiz with an ESSAY becomes `SUBMITTED` with `autoScore` set and no `totalScore` (a human must grade it, and nobody is notified). An all-MCQ quiz becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification (link `/student/quizzes`, v1's format) is created best-effort. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail`, now with `isCorrect`/`pointsAwarded` per MCQ but never the key.",
+          "STUDENT only. Every question must be answered (409 `attempt_incomplete`; an essay must be non-blank). MCQs are scored all-or-nothing against the key, read, scored and written inside ONE transaction that holds a row lock on the attempt (REG-111) — a concurrent answer save or second submit waits and then gets 409 `attempt_closed`. A quiz with an ESSAY becomes `SUBMITTED` with `autoScore` set and no `totalScore` (a human must grade it, and nobody is notified). An all-MCQ quiz becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification (link `/student/quizzes`, v1's format) is created best-effort. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail`, now with `isCorrect`/`pointsAwarded` per MCQ but never the key.",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The submitted attempt."),

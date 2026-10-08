@@ -3,6 +3,10 @@ import type { RecurrenceScope } from "@space/shared";
 
 import { useTheme } from "../theme";
 import { Button, Input } from "../ui";
+import { ChoiceChips } from "./ChoiceChips";
+import { TimePicker } from "./TimePicker";
+
+export type SessionType = "inperson" | "online";
 
 export interface SessionFormValues {
   title: string;
@@ -11,6 +15,8 @@ export interface SessionFormValues {
   /** Org wall-clock time, "HH:mm". */
   time: string;
   durationMinutes: string;
+  /** In-person shows/sends the location, online the YouTube link (v1 session-form.tsx). */
+  sessionType: SessionType;
   location: string;
   youtubeUrl: string;
   description: string;
@@ -19,8 +25,9 @@ export interface SessionFormValues {
 export const emptySessionValues: SessionFormValues = {
   title: "",
   day: "",
-  time: "",
+  time: "18:00",
   durationMinutes: "90",
+  sessionType: "inperson",
   location: "",
   youtubeUrl: "",
   description: "",
@@ -40,11 +47,14 @@ export function sessionWriteFields(v: SessionFormValues) {
     startDay: v.day.trim(),
     startTime: v.time.trim(),
     durationMinutes: Number(v.durationMinutes),
-    location: orNull(v.location),
-    youtubeUrl: orNull(v.youtubeUrl),
+    location: v.sessionType === "inperson" ? orNull(v.location) : null,
+    youtubeUrl: v.sessionType === "online" ? orNull(v.youtubeUrl) : null,
     description: orNull(v.description),
   };
 }
+
+/** v1 edit: a session with a YouTube link is online, anything else in-person. */
+export const sessionTypeFor = (youtubeUrl: string | null): SessionType => (youtubeUrl ? "online" : "inperson");
 
 export function SessionFields({
   values,
@@ -55,16 +65,15 @@ export function SessionFields({
   onChange: (next: SessionFormValues) => void;
   errors: Record<string, string>;
 }) {
-  const set = (key: keyof SessionFormValues) => (text: string) => onChange({ ...values, [key]: text });
+  const set = (key: "title" | "day" | "durationMinutes" | "location" | "youtubeUrl" | "description") => (text: string) => onChange({ ...values, [key]: text });
   return (
     <>
       <Input label="Title" value={values.title} onChangeText={set("title")} error={errors.title} />
       <Input label="Day (YYYY-MM-DD)" value={values.day} onChangeText={set("day")} autoCapitalize="none" error={errors.startDay} />
-      <Input
-        label="Start time (HH:mm)"
+      <TimePicker
+        label="Start time"
         value={values.time}
-        onChangeText={set("time")}
-        autoCapitalize="none"
+        onChange={(time) => onChange({ ...values, time })}
         error={errors.startTime ?? errors.startsAt}
       />
       <Input
@@ -74,8 +83,20 @@ export function SessionFields({
         keyboardType="number-pad"
         error={errors.durationMinutes}
       />
-      <Input label="Location" value={values.location} onChangeText={set("location")} error={errors.location} />
-      <Input label="YouTube URL" value={values.youtubeUrl} onChangeText={set("youtubeUrl")} autoCapitalize="none" error={errors.youtubeUrl} />
+      <ChoiceChips
+        label="Session type"
+        options={[
+          { value: "inperson", label: "In-person" },
+          { value: "online", label: "Online" },
+        ]}
+        value={values.sessionType}
+        onChange={(sessionType) => onChange({ ...values, sessionType })}
+      />
+      {values.sessionType === "inperson" ? (
+        <Input label="Location" value={values.location} onChangeText={set("location")} error={errors.location} />
+      ) : (
+        <Input label="YouTube link" value={values.youtubeUrl} onChangeText={set("youtubeUrl")} autoCapitalize="none" error={errors.youtubeUrl} />
+      )}
       <Input label="Description" value={values.description} onChangeText={set("description")} multiline error={errors.description} />
     </>
   );

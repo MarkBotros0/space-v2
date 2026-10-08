@@ -17,6 +17,7 @@ const row = (seasonId: number, status: EnrollmentHistoryItem["status"]): Enrollm
   completedAt: null,
   droppedAt: null,
   dropReason: null,
+  attendancePct: null,
 });
 
 const student = { graduationYear: null, enrollments: [row(7, "ACTIVE"), row(8, "ACTIVE"), row(9, "WITHDRAWN")] };

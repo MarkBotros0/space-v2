@@ -1,16 +1,19 @@
 import type {
   EnrollmentHistoryItem,
+  StudentAttendanceHistoryItem,
   StudentDetailInternal,
   StudentDetailPrivate,
   StudentDetailPublic,
   StudentListItem,
   StudentListQuery,
+  StudentSubmissionItem,
 } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
-import { canReadAllStudents, isMentor, isSuper } from "../rbac";
+import { isLate } from "./assignments";
+import { canReadAllStudents, isAdminOfSeason, isMentor, isSuper } from "../rbac";
 
 export interface StudentListResult {
   students: StudentListItem[];
@@ -101,6 +104,68 @@ function toListItem(u: ListRow): StudentListItem {
   };
 }
 
+/**
+ * REG-82: v1's sort keys, server-side. `name` and the unsorted defaults are
+ * plain column orders. The other three sort by a value on a related row, and
+ * Prisma cannot place NULLs in a relation order — which matters, because v1
+ * compared lowercased strings with a missing value as "" (first ascending,
+ * last descending), the opposite of Postgres's default. Those keys are
+ * therefore sorted in memory (below), exactly where v1 sorted them.
+ */
+function columnOrderBy(query: StudentListQuery): Prisma.UserOrderByWithRelationInput[] {
+  if (query.sort === "name") return [{ name: query.dir }, { id: "asc" }];
+  return query.status === "alumni"
+    ? [{ graduationYear: "desc" }, { name: "asc" }, { id: "asc" }] // R40
+    : [{ name: "asc" }, { id: "asc" }]; // R34's order, without its cap
+}
+
+type RelatedSort = "university" | "season" | "group";
+
+const SORT_KEY_SELECT = {
+  id: true,
+  name: true,
+  studentProfile: { select: { university: true, activeSeason: { select: { title: true } } } },
+  groupStudentMembership: { select: { group: { select: { name: true } } } },
+} as const;
+
+/** Every matching id in v1's order for a related-row sort key, then paged by id. */
+async function listByRelatedSort(
+  where: Prisma.UserWhereInput,
+  sort: RelatedSort,
+  dir: "asc" | "desc",
+  query: StudentListQuery,
+): Promise<StudentListResult> {
+  const keyed = await db.user.findMany({ where, select: SORT_KEY_SELECT });
+  const keyOf = (u: (typeof keyed)[number]): string =>
+    (sort === "university"
+      ? u.studentProfile?.university
+      : sort === "season"
+        ? u.studentProfile?.activeSeason?.title
+        : u.groupStudentMembership?.group.name
+    )?.toLowerCase() ?? "";
+  const sign = dir === "asc" ? 1 : -1;
+  keyed.sort(
+    (a, b) =>
+      sign * keyOf(a).localeCompare(keyOf(b)) ||
+      (a.name ?? "").localeCompare(b.name ?? "") ||
+      a.id - b.id,
+  );
+
+  const start = query.cursor === undefined ? 0 : keyed.findIndex((u) => u.id === query.cursor) + 1;
+  const pageIds = keyed.slice(start, start + query.limit).map((u) => u.id);
+  const rows = await db.user.findMany({ where: { id: { in: pageIds } }, select: LIST_SELECT });
+  const byId = new Map(rows.map((r) => [r.id, r] as const));
+  const page = pageIds.flatMap((id) => {
+    const row = byId.get(id);
+    return row ? [row] : [];
+  });
+  return {
+    students: page.map(toListItem),
+    nextCursor: start + query.limit < keyed.length ? (page[page.length - 1]?.id ?? null) : null,
+    total: keyed.length,
+  };
+}
+
 /** Returns null when the caller may not read this surface at all → 403. */
 export async function listStudents(
   user: SessionUser,
@@ -134,14 +199,21 @@ export async function listStudents(
       // Season filter through enrollments, any status (C9; matches the ADMIN
       // scope's "ever enrolled" meaning).
       ...(query.seasonId ? [{ seasonEnrollments: { some: { seasonId: query.seasonId } } }] : []),
+      // REG-82: v1's group select filtered on the group the row displays, i.e.
+      // the advisory GroupStudent pointer; "none" is its "Unassigned".
+      ...(query.groupId === undefined
+        ? []
+        : query.groupId === "none"
+          ? [{ groupStudentMembership: { is: null } }]
+          : [{ groupStudentMembership: { groupId: query.groupId } }]),
       searchFilter(query.q),
     ],
   };
 
-  const orderBy: Prisma.UserOrderByWithRelationInput[] =
-    query.status === "alumni"
-      ? [{ graduationYear: "desc" }, { name: "asc" }, { id: "asc" }] // R40
-      : [{ name: "asc" }, { id: "asc" }]; // R34's order, without its cap
+  if (query.sort !== undefined && query.sort !== "name") {
+    return listByRelatedSort(where, query.sort, query.dir, query);
+  }
+  const orderBy = columnOrderBy(query);
 
   const [rows, total] = await Promise.all([
     db.user.findMany({
@@ -228,6 +300,159 @@ async function listDroppedEnrollments(
   };
 }
 
+/**
+ * Which of a student's enrolments a caller may read attendance and submissions
+ * for (REG-83). The same rows each underlying gate admits: SUPER and MENTOR
+ * read every season; an ADMIN the seasons they administer (canViewSubmission,
+ * attendanceScopeFor); a LEADER the seasons whose ENROLLMENT names one of their
+ * groups (ruling C9). Narrower than the detail's enrolment list on purpose — an
+ * ADMIN may see that a student attended another season, not what they handed in.
+ * A STUDENT has no such surface, themselves included.
+ */
+function canReadEnrollmentHistory(
+  user: SessionUser,
+  e: { seasonId: number; groupId: number | null },
+): boolean {
+  if (isSuper(user) || isMentor(user)) return true;
+  if (user.role === "ADMIN") return isAdminOfSeason(user, e.seasonId);
+  if (user.role === "LEADER") return e.groupId !== null && user.groupLeaderIds.includes(e.groupId);
+  return false;
+}
+
+/** The season ids of this student's enrolments the caller may read history for. */
+async function readableSeasonIds(user: SessionUser, studentUserId: number): Promise<number[]> {
+  const enrollments = await db.seasonEnrollment.findMany({
+    where: { studentUserId },
+    select: { seasonId: true, groupId: true },
+  });
+  return enrollments.filter((e) => canReadEnrollmentHistory(user, e)).map((e) => e.seasonId);
+}
+
+/**
+ * Per-enrolment attendance % in two queries (v1 ran two per enrolment, R76).
+ * The formula is Plan 12's engagement one, so the history figure and the
+ * dashboard figure for the same season agree: past sessions from the student's
+ * own enrolment date; PRESENT and LATE both count.
+ */
+async function attendancePctByEnrollment(
+  studentUserId: number,
+  enrollments: { id: number; seasonId: number; enrolledAt: Date }[],
+): Promise<Map<number, number>> {
+  const result = new Map<number, number>();
+  if (enrollments.length === 0) return result;
+
+  const sessions = await db.session.findMany({
+    where: { seasonId: { in: enrollments.map((e) => e.seasonId) }, startsAt: { lte: new Date() } },
+    select: { id: true, seasonId: true, startsAt: true },
+  });
+  const present = new Set(
+    (
+      await db.attendance.findMany({
+        where: {
+          studentUserId,
+          sessionId: { in: sessions.map((x) => x.id) },
+          status: { in: ["PRESENT", "LATE"] },
+        },
+        select: { sessionId: true },
+      })
+    ).map((a) => a.sessionId),
+  );
+
+  for (const e of enrollments) {
+    const eligible = sessions.filter(
+      (x) => x.seasonId === e.seasonId && x.startsAt.getTime() >= e.enrolledAt.getTime(),
+    );
+    const attended = eligible.filter((x) => present.has(x.id)).length;
+    result.set(e.id, eligible.length > 0 ? Math.round((attended / eligible.length) * 100) : 0);
+  }
+  return result;
+}
+
+const HISTORY_LIMIT = 100; // v1's `take: 100` on both lists
+
+/** `GET /students/:id/attendance` — newest sessions first, across readable seasons. */
+export async function loadStudentAttendanceHistory(
+  user: SessionUser,
+  studentUserId: number,
+): Promise<StudentAttendanceHistoryItem[]> {
+  const seasonIds = await readableSeasonIds(user, studentUserId);
+  if (seasonIds.length === 0) return [];
+  const rows = await db.attendance.findMany({
+    where: { studentUserId, session: { seasonId: { in: seasonIds } } },
+    orderBy: [{ session: { startsAt: "desc" } }, { id: "desc" }],
+    take: HISTORY_LIMIT,
+    select: {
+      status: true,
+      session: {
+        select: {
+          id: true,
+          title: true,
+          startsAt: true,
+          seasonId: true,
+          season: { select: { title: true } },
+        },
+      },
+    },
+  });
+  return rows.map((a) => ({
+    sessionId: a.session.id,
+    sessionTitle: a.session.title,
+    startsAt: a.session.startsAt.toISOString(),
+    seasonId: a.session.seasonId,
+    seasonTitle: a.session.season.title,
+    status: a.status,
+  }));
+}
+
+/**
+ * `GET /students/:id/submissions` — newest first across readable seasons.
+ * Never a DRAFT: that is the student's private work in progress, hidden from
+ * every reviewer surface (the queue, canReviewSubmission's callers), and v1's
+ * list showing it was the same leak by another door.
+ */
+export async function loadStudentSubmissions(
+  user: SessionUser,
+  studentUserId: number,
+): Promise<StudentSubmissionItem[]> {
+  const seasonIds = await readableSeasonIds(user, studentUserId);
+  if (seasonIds.length === 0) return [];
+  const rows = await db.submission.findMany({
+    where: {
+      studentUserId,
+      status: { not: "DRAFT" },
+      assignment: { seasonId: { in: seasonIds }, deletedAt: null },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: HISTORY_LIMIT,
+    select: {
+      publicId: true,
+      status: true,
+      submittedAt: true,
+      reviewedAt: true,
+      assignment: {
+        select: {
+          id: true,
+          title: true,
+          dueAt: true,
+          seasonId: true,
+          season: { select: { title: true } },
+        },
+      },
+    },
+  });
+  return rows.map((r) => ({
+    publicId: r.publicId,
+    assignmentId: r.assignment.id,
+    assignmentTitle: r.assignment.title,
+    status: r.status,
+    isLate: isLate(r.submittedAt, r.assignment.dueAt),
+    submittedAt: r.submittedAt?.toISOString() ?? null,
+    reviewedAt: r.reviewedAt?.toISOString() ?? null,
+    seasonId: r.assignment.seasonId,
+    seasonTitle: r.assignment.season.title,
+  }));
+}
+
 export type StudentDetailView = "public" | "private" | "internal";
 export type StudentDetail = StudentDetailPublic | StudentDetailPrivate | StudentDetailInternal;
 
@@ -263,7 +488,6 @@ export async function loadStudentDetail(
           dateOfBirth: true,
           spiritualBackground: true,
           gifts: true,
-          notes: true,
           activeSeasonId: true,
           activeSeason: { select: { title: true, code: true } },
         },
@@ -272,6 +496,19 @@ export async function loadStudentDetail(
     },
   });
   if (!row) return null;
+
+  // REG-97: the staff-only note is read ONLY for the internal arm, in its own
+  // query, so no other view ever holds the column in memory — a later edit that
+  // spreads the profile row cannot leak what was never selected.
+  const internalNotes =
+    view === "internal"
+      ? ((
+          await db.studentProfile.findUnique({
+            where: { userId: studentUserId },
+            select: { notes: true },
+          })
+        )?.notes ?? null)
+      : null;
 
   const enrollments = await db.seasonEnrollment.findMany({
     where: { studentUserId },
@@ -299,6 +536,16 @@ export async function loadStudentDetail(
       ? enrollments.filter((e) => e.groupId !== null && user.groupLeaderIds.includes(e.groupId))
       : enrollments;
 
+  // REG-83: the percentage is a staff figure. The subject's own view carries
+  // null, and so does any season outside the caller's attendance scope.
+  const pctByEnrollment =
+    view === "private"
+      ? new Map<number, number>()
+      : await attendancePctByEnrollment(
+          studentUserId,
+          scoped.filter((e) => canReadEnrollmentHistory(user, e)),
+        );
+
   const history: EnrollmentHistoryItem[] = scoped.map((e) => ({
     enrollmentId: e.id,
     seasonId: e.seasonId,
@@ -314,6 +561,7 @@ export async function loadStudentDetail(
     droppedAt: e.droppedAt?.toISOString() ?? null,
     // Free-text personal data: withheld from the narrow roles.
     dropReason: view === "public" ? null : e.dropReason,
+    attendancePct: pctByEnrollment.get(e.id) ?? null,
   }));
 
   const p = row.studentProfile;
@@ -346,7 +594,7 @@ export async function loadStudentDetail(
   };
   if (view === "private") return { ...base, profile: privateProfile };
 
-  return { ...base, profile: { ...privateProfile, notes: p?.notes ?? null } };
+  return { ...base, profile: { ...privateProfile, notes: internalNotes } };
 }
 
 export interface NewStudentInput {

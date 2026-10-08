@@ -23,24 +23,25 @@ function statusLine(sub: SubmissionDetail): string {
   return "Draft";
 }
 
-function Verdict({ publicId }: { publicId: string }) {
+function Verdict({ publicId, initialFeedback, alreadyReviewed }: { publicId: string; initialFeedback: string; alreadyReviewed: boolean }) {
   const theme = useTheme();
   const router = useRouter();
   const review = useReviewSubmission(publicId);
-  const [feedback, setFeedback] = useState("");
+  const [feedback, setFeedback] = useState(initialFeedback);
 
   const submit = (returnForRevision: boolean) =>
     review.mutate({ feedback, returnForRevision }, { onSuccess: () => router.back() });
 
   return (
     <Card style={{ marginTop: theme.spacing.md }}>
+      <Text variant="heading">{alreadyReviewed ? "Update feedback" : "Add feedback"}</Text>
       <Input label="Feedback" value={feedback} onChangeText={setFeedback} multiline numberOfLines={6} />
       {review.isError ? (
         <Text variant="caption" color={theme.colors.error[700]}>
           Couldn't record the review. It may not have been submitted yet.
         </Text>
       ) : null}
-      <Button title="Mark reviewed" onPress={() => submit(false)} loading={review.isPending} />
+      <Button title={alreadyReviewed ? "Update review" : "Mark reviewed"} onPress={() => submit(false)} loading={review.isPending} />
       <Button
         title="Return for revision"
         variant="secondary"
@@ -70,7 +71,7 @@ export default function SubmissionReviewScreen() {
         <>
           <Text variant="title">{data.assignmentTitle}</Text>
           <Text variant="label" color={theme.colors.neutral[600]}>
-            {data.studentName ?? "Unnamed"}
+            {`${data.studentName ?? data.studentEmail}${data.groupName ? ` · ${data.groupName}` : ""}`}
           </Text>
           <Text variant="label" color={theme.colors.neutral[600]}>
             {statusLine(data)}
@@ -85,7 +86,14 @@ export default function SubmissionReviewScreen() {
             </Card>
           ) : null}
           {/* C4: the flag drives the UI; the server gate is what protects the write. */}
-          {data.canReview ? <Verdict publicId={data.publicId} /> : null}
+          {data.canReview ? (
+            <Verdict
+              key={data.publicId}
+              publicId={data.publicId}
+              initialFeedback={data.feedback ?? ""}
+              alreadyReviewed={data.reviewedAt !== null}
+            />
+          ) : null}
         </>
       )}
     </Screen>

@@ -157,10 +157,32 @@ describe("GET /api/v1/sessions/:id", () => {
     });
   });
 
-  it("returns 403 for a user with no access to the season", async () => {
+  it("returns 404 for a student with no enrolment (REG-77, v1 behaviour)", async () => {
     const res = await request(app)
       .get(`/api/v1/sessions/${sessionId}`)
       .set("authorization", `Bearer ${outsiderToken}`);
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 for a student whose enrolment is not ACTIVE (REG-77)", async () => {
+    const dropped = await createTestUser("dropped", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { seasonId, studentUserId: dropped.id, status: "WITHDRAWN" },
+    });
+    const droppedToken = await login(app, dropped.email);
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${droppedToken}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
+  });
+
+  it("returns 403 for a non-student with no access to the season", async () => {
+    const stranger = await createTestUser("stranger-admin", "ADMIN");
+    const strangerToken = await login(app, stranger.email);
+    const res = await request(app)
+      .get(`/api/v1/sessions/${sessionId}`)
+      .set("authorization", `Bearer ${strangerToken}`);
     expect(res.status).toBe(403);
   });
 

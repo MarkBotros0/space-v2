@@ -5,6 +5,7 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
 import { apiClient } from "../lib/api-client";
+import { deviceTodayKey } from "../lib/calendar-grid";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -238,5 +239,88 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
     expect(await screen.findByText("In window")).toBeTruthy();
     expect(screen.getByText("Kickoff")).toBeTruthy();
     expect(screen.queryByText("Out of window")).toBeNull();
+  });
+});
+
+describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)", () => {
+  const kickoff = session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01");
+  function serveStudent() {
+    useSessionStore.setState(studentSession);
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/events")
+        ? Promise.resolve({ data: { data: { events: [], total: 0 } } })
+        : Promise.resolve({ data: { data: { sessions: [kickoff, session(2, "Week two", "2099-03-12T18:00:00.000Z", "2099-03-12")] } } }),
+    );
+  }
+
+  it("cues upcoming days with in-N-days wording and an Upcoming badge", async () => {
+    serveStudent();
+    renderWithProviders(<CalendarScreen />);
+    expect(await screen.findByText("Kickoff")).toBeTruthy();
+    expect(screen.getAllByText(/^in \d+ days$/).length).toBe(2);
+    // The badge on the card, plus the legend swatch of the same name.
+    expect(screen.getAllByText("Upcoming").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByLabelText("Calendar legend")).toBeTruthy();
+  });
+
+  it("shows a Monday-first month grid anchored on the next session, dimming days outside the month", async () => {
+    serveStudent();
+    renderWithProviders(<CalendarScreen />);
+    await screen.findByText("Kickoff");
+
+    fireEvent.press(screen.getByLabelText("Month"));
+    expect(screen.getByText("March 2099")).toBeTruthy();
+    // 1 Mar 2099 is a Sunday: the grid opens on Monday 23 Feb, dimmed as out-of-month.
+    const feb = screen.getByLabelText("Feb 23, 2099, nothing scheduled");
+    expect(feb.props.style.opacity ?? feb.props.style?.[0]?.opacity).toBe(0.4);
+    const mar1 = screen.getByLabelText("Mar 1, 2099, 1 scheduled");
+
+    fireEvent.press(mar1);
+    expect(screen.getByText("Kickoff")).toBeTruthy();
+    expect(screen.queryByText("Week two")).toBeNull();
+
+    fireEvent.press(screen.getByLabelText("Mar 12, 2099, 1 scheduled"));
+    expect(screen.getByText("Week two")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Next month"));
+    expect(screen.getByText("April 2099")).toBeTruthy();
+  });
+
+  it("lists a week's seven days and steps by week", async () => {
+    serveStudent();
+    renderWithProviders(<CalendarScreen />);
+    await screen.findByText("Kickoff");
+
+    fireEvent.press(screen.getByLabelText("Week"));
+    expect(screen.getByText("Feb 23 – Mar 1")).toBeTruthy();
+    expect(screen.getByText("Sun, Mar 1")).toBeTruthy();
+    expect(screen.getByText("Kickoff")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("Next week"));
+    expect(screen.getByText("Mar 2 – 8")).toBeTruthy();
+    expect(screen.queryByText("Kickoff")).toBeNull();
+    expect(screen.getAllByText("Nothing scheduled")).toHaveLength(7);
+  });
+
+  it("reads a staff Month from GET /sessions with the visible days, padded a day each side", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    const today = deviceTodayKey();
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/events")
+        ? Promise.resolve({ data: { data: { events: [], total: 0 } } })
+        : Promise.resolve({
+            data: { data: { sessions: [{ ...session(1, "Today's class", `${today}T12:00:00.000Z`, today)  }], from: "x", to: "y", fromDayKey: today, toDayKey: today } },
+          }),
+    );
+    renderWithProviders(<CalendarScreen />);
+    await screen.findByText("Today's class");
+
+    fireEvent.press(screen.getByLabelText("Month"));
+    await waitFor(() =>
+      expect(get).toHaveBeenCalledWith("/api/v1/sessions", {
+        params: { from: expect.stringMatching(/T00:00:00\.000Z$/), to: expect.stringMatching(/T00:00:00\.000Z$/) },
+      }),
+    );
+    expect(await screen.findByLabelText(/, 1 scheduled$/)).toBeTruthy();
   });
 });

@@ -79,9 +79,11 @@ describe("AssignmentDetailScreen (staff)", () => {
     // One definition of "submitted" (spec §10 item 8): the server's count.
     expect(await screen.findByText("1 of 2 submitted")).toBeTruthy();
     expect(screen.getByText("Sara Student")).toBeTruthy();
-    expect(screen.getByText("Group A · Submitted · Late")).toBeTruthy();
+    // Grouped under a header (REG-84), so the row no longer repeats the group.
+    expect(screen.getByText("Group A (2)")).toBeTruthy();
+    expect(screen.getByText("Submitted · Late")).toBeTruthy();
     expect(screen.getByText("noname@jpc.test")).toBeTruthy();
-    expect(screen.getByText("Group A · Not started")).toBeTruthy();
+    expect(screen.getByText("Not started")).toBeTruthy();
     expect(screen.queryByText("Your submission")).toBeNull();
     expect(screen.queryByText("Start working")).toBeNull();
   });

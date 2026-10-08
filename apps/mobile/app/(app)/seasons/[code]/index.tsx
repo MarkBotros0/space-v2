@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { SeasonDetail } from "@space/shared";
 
+import { EditSeason } from "../../../../src/components/season/EditSeason";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useSeasonSessions } from "../../../../src/hooks/use-sessions";
 import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
@@ -93,6 +94,7 @@ export default function SeasonDetailScreen() {
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
   const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isAdmin = useSessionStore((s) => s.user?.role === "ADMIN");
   const detail = useSeasonByCode(code);
 
   let body: ReactNode;
@@ -132,6 +134,7 @@ export default function SeasonDetailScreen() {
           )}
         </Card>
         <SessionsCard seasonId={s.id} />
+        {isAdmin && s.canAdminister ? <EditSeason season={s} /> : null}
       </>
     );
   }

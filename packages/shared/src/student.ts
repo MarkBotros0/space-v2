@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { enrollmentStatusSchema, seasonStatusSchema } from "./enums";
+import {
+  attendanceStatusSchema,
+  enrollmentStatusSchema,
+  seasonStatusSchema,
+  submissionStatusSchema,
+} from "./enums";
 import { isoDaySchema } from "./org-time";
 
 // Wire shapes — timestamps travel as ISO strings (see the note in season.ts).
@@ -79,10 +84,30 @@ export type StudentListResponse = z.infer<typeof studentListResponseSchema>;
 export const studentListStatusSchema = z.enum(["active", "alumni", "dropped"]);
 export type StudentListStatus = z.infer<typeof studentListStatusSchema>;
 
+/** v1's four sort keys on the students list (students-list.tsx `SortKey`). */
+export const studentListSortSchema = z.enum(["name", "university", "season", "group"]);
+export type StudentListSort = z.infer<typeof studentListSortSchema>;
+
 export const studentListQuerySchema = z.object({
   status: studentListStatusSchema.default("active"),
   /** "has an enrollment in this season" — resolved through SeasonEnrollment (C9). */
   seasonId: z.coerce.number().int().positive().optional(),
+  /**
+   * Filter by the group the row DISPLAYS (`currentGroupName`, the advisory
+   * GroupStudent pointer), as v1's group select did; `none` is v1's
+   * "Unassigned". ANDed with scope (REG-82). Ignored for `status=dropped`,
+   * whose rows are enrollments.
+   */
+  groupId: z
+    .union([z.literal("none"), z.coerce.number().int().positive()])
+    .optional(),
+  /**
+   * Sort key (REG-82). Absent keeps each list's own default order — name for
+   * active, graduation year for alumni. A missing value sorts as "" like v1:
+   * first ascending, last descending. Ignored for `status=dropped`.
+   */
+  sort: studentListSortSchema.optional(),
+  dir: z.enum(["asc", "desc"]).default("asc"),
   /** Matches name, email or university, case-insensitive, ANDed with scope (R33). */
   q: z.string().trim().max(120).optional(),
   /** Row id of the last row of the previous page (enrollment id when status=dropped). */
@@ -140,6 +165,14 @@ export const enrollmentHistoryItemSchema = z.object({
   droppedAt: z.string().nullable(),
   /** Free-text personal data — always null in the public (LEADER/MENTOR) shape. */
   dropReason: z.string().nullable(),
+  /**
+   * Whole-number % of this season's past sessions (from the student's own
+   * enrolment date) marked PRESENT or LATE — the Plan 12 engagement formula,
+   * for every enrolment status (REG-83). Staff-only: null for the student's
+   * own view, and null for a season outside the caller's attendance scope
+   * (an ADMIN's other seasons).
+   */
+  attendancePct: z.number().int().nullable(),
 });
 export type EnrollmentHistoryItem = z.infer<typeof enrollmentHistoryItemSchema>;
 
@@ -160,6 +193,43 @@ const studentDetailBase = z.object({
    */
   enrollments: z.array(enrollmentHistoryItemSchema),
 });
+
+/** One row of `GET /students/:id/attendance` (REG-83), newest session first. */
+export const studentAttendanceHistoryItemSchema = z.object({
+  sessionId: z.number(),
+  sessionTitle: z.string(),
+  startsAt: z.string(),
+  seasonId: z.number(),
+  seasonTitle: z.string(),
+  status: attendanceStatusSchema,
+});
+export type StudentAttendanceHistoryItem = z.infer<typeof studentAttendanceHistoryItemSchema>;
+
+/** `GET /students/:id/attendance` — staff only; the 100 most recent marks. */
+export const studentAttendanceHistorySchema = z.object({
+  history: z.array(studentAttendanceHistoryItemSchema),
+});
+export type StudentAttendanceHistory = z.infer<typeof studentAttendanceHistorySchema>;
+
+/** One row of `GET /students/:id/submissions` (REG-83), newest first, never a DRAFT. */
+export const studentSubmissionItemSchema = z.object({
+  publicId: z.string(),
+  assignmentId: z.number(),
+  assignmentTitle: z.string(),
+  status: submissionStatusSchema,
+  isLate: z.boolean(),
+  submittedAt: z.string().nullable(),
+  reviewedAt: z.string().nullable(),
+  seasonId: z.number(),
+  seasonTitle: z.string(),
+});
+export type StudentSubmissionItem = z.infer<typeof studentSubmissionItemSchema>;
+
+/** `GET /students/:id/submissions` — staff only; the 100 most recent. */
+export const studentSubmissionsSchema = z.object({
+  submissions: z.array(studentSubmissionItemSchema),
+});
+export type StudentSubmissions = z.infer<typeof studentSubmissionsSchema>;
 
 export const studentDetailPublicSchema = studentDetailBase.extend({
   profile: studentProfilePublicSchema,

@@ -47,7 +47,7 @@ const submissionFor = (status: "REVIEWED" | "SUBMITTED", isLate: boolean, feedba
   reviewedAt: status === "REVIEWED" ? "2099-03-31T10:00:00.000Z" : null,
   isLate, assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: null,
   assignmentDescription: null, seasonCode: "S26", studentUserId: 9,
-  studentName: "Test student", studentEmail: "s@jpc.test",
+  studentName: "Test student", studentEmail: "s@jpc.test", groupId: null, groupName: null,
   files: [], canUploadFiles: false, canReview: false,
 });
 

@@ -1,8 +1,9 @@
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, useSegments } from "expo-router";
 import type { NavItem } from "@space/shared";
 import { ALL_NAV_HREFS } from "@space/shared";
 
 import { NavIcon } from "../../src/components/NavIcon";
+import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { useSessionStore } from "../../src/store/session";
 
 /**
@@ -95,11 +96,18 @@ export default function AppLayout() {
   // user's role/scopes change. navFor() returns module-level constants, so
   // Object.is holds across calls with the same inputs and this can't loop.
   const nav = useSessionStore((s) => s.nav());
+  const isAlumnus = useSessionStore((s) => s.user?.role === "STUDENT" && s.scopes?.graduationYear != null);
+  const segments = useSegments();
 
   // The boot gate (Task 6, app/_layout.tsx) has already resolved "idle" and
   // "restoring" by the time this mounts — the only unauthenticated status
   // this can see is "anonymous".
   if (status === "anonymous") return <Redirect href="/login" />;
+
+  // v1 role-layout.tsx: an alumnus is kept out of the active-student area and sent
+  // to the read-only portal (here: Home). Reaching a student-only destination by
+  // deep link or stale navigation state lands here (REG-81).
+  if (isAlumnus && isBlockedForAlumni(segments)) return <Redirect href="/dashboard" />;
 
   const tabs: NavItem[] = nav?.tabs ?? [];
   const tabByRouteName = new Map(tabs.map((tab) => [routeNameForHref(tab.href), tab]));

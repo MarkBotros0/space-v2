@@ -1,6 +1,7 @@
 import {
   MIME_CATEGORY_LABELS,
   configLabel,
+  groupTrackerRows,
   targetLabel,
   trackerStatusLabel,
 } from "../lib/assignment-labels";
@@ -53,4 +54,16 @@ describe("configLabel", () => {
     );
     expect(configLabel({ ...standard, type: "FORUM" })).toBe("Forum · at least 0 words");
   });
+});
+
+describe("groupTrackerRows", () => {
+  const row = (id: number, groupId: number | null, groupName: string | null) =>
+    ({ studentUserId: id, name: null, email: `${id}@x`, groupId, groupName, status: "PENDING", isLate: false,
+       submittedAt: null, reviewedAt: null, submissionPublicId: null }) as const;
+
+  it("makes one section per consecutive group, with No group for unplaced students", () => {
+    const out = groupTrackerRows([row(1, 3, "Group A"), row(2, 3, "Group A"), row(3, 4, "Group B"), row(4, null, null)]);
+    expect(out.map((g) => [g.groupName, g.rows.length])).toEqual([["Group A", 2], ["Group B", 1], ["No group", 1]]);
+  });
+  it("is empty for no rows", () => expect(groupTrackerRows([])).toEqual([]));
 });
