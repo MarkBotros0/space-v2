@@ -1,5 +1,10 @@
 // Assignment wording shared by the staff list, detail and tracker (Plan 5).
-import type { AssignmentDetail, AssignmentStudentStatus, MimeCategory } from "@space/shared";
+import type {
+  AssignmentDetail,
+  AssignmentStudentStatus,
+  AssignmentTrackerRow,
+  MimeCategory,
+} from "@space/shared";
 
 /** v1's labels, verbatim (`assignment-form.tsx:24-31`). */
 export const MIME_CATEGORY_LABELS: Record<MimeCategory, string> = {
@@ -66,4 +71,25 @@ export function configLabel(
       ? "any type"
       : d.allowedMimeCategories.map((c) => MIME_CATEGORY_LABELS[c]).join(", ");
   return `Standard · files up to ${d.maxFileSizeMb} MB (${types})`;
+}
+
+export interface TrackerGroup {
+  groupId: number | null;
+  groupName: string;
+  rows: AssignmentTrackerRow[];
+}
+
+/**
+ * Buckets the tracker's rows by group for section headers (REG-84). The server
+ * orders rows group then student, so consecutive rows with one groupId are one
+ * section; the no-group rows come last and are headed "No group".
+ */
+export function groupTrackerRows(rows: AssignmentTrackerRow[]): TrackerGroup[] {
+  const groups: TrackerGroup[] = [];
+  for (const row of rows) {
+    const last = groups[groups.length - 1];
+    if (last && last.groupId === row.groupId) last.rows.push(row);
+    else groups.push({ groupId: row.groupId, groupName: row.groupName ?? "No group", rows: [row] });
+  }
+  return groups;
 }

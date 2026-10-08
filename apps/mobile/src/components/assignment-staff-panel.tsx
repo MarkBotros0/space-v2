@@ -7,7 +7,7 @@ import { useAssignmentTracker } from "../hooks/use-assignments";
 import { useDeleteAssignment } from "../hooks/use-assignment-writes";
 import { useSeasonGroups } from "../hooks/use-groups";
 import { apiErrorMessage } from "../lib/api-error";
-import { configLabel, targetLabel, trackerStatusLabel } from "../lib/assignment-labels";
+import { configLabel, groupTrackerRows, targetLabel, trackerStatusLabel } from "../lib/assignment-labels";
 import { useSessionStore } from "../store/session";
 import { useTheme } from "../theme";
 import { Button, Card, ErrorState, LoadingState, Text } from "../ui";
@@ -71,7 +71,7 @@ function TrackerRowView({ row }: { row: AssignmentTrackerRow }) {
   const theme = useTheme();
   const router = useRouter();
   const publicId = row.submissionPublicId;
-  const line = `${row.groupName ? `${row.groupName} · ` : ""}${trackerStatusLabel(row.status)}${row.isLate ? " · Late" : ""}`;
+  const line = `${trackerStatusLabel(row.status)}${row.isLate ? " · Late" : ""}`;
 
   const content = (
     <View style={{ paddingVertical: theme.spacing.xs }}>
@@ -116,7 +116,16 @@ function TrackerCard({ assignmentId }: { assignmentId: number }) {
               No students are targeted by this assignment.
             </Text>
           ) : (
-            tracker.data.rows.map((row) => <TrackerRowView key={row.studentUserId} row={row} />)
+            groupTrackerRows(tracker.data.rows).map((group) => (
+              <View key={group.groupId ?? "none"} style={{ marginTop: theme.spacing.sm }}>
+                <Text variant="label" accessibilityRole="header">
+                  {`${group.groupName} (${group.rows.length})`}
+                </Text>
+                {group.rows.map((row) => (
+                  <TrackerRowView key={row.studentUserId} row={row} />
+                ))}
+              </View>
+            ))
           )}
         </>
       )}
