@@ -116,26 +116,33 @@ export interface GroupWriteInput {
   studentIds: number[];
 }
 
+/** The one answer for a taken group name — the pre-check and the constraint race both give it. */
+export const GROUP_NAME_TAKEN = {
+  code: "name_taken",
+  message: "A group in this season already has that name.",
+} as const;
+
 /** A refusal a caller can act on, or null when the input is acceptable. */
 export async function validateGroupWrite(
   seasonId: number,
   input: GroupWriteInput,
   excludeGroupId?: number,
 ): Promise<{ code: string; message: string } | null> {
-  // v1 has no uniqueness on group name within a season, and the CSV importer
-  // matches groups *by name* — so two groups called "Tuesday" silently make the
-  // import assign everyone to whichever one it found last. A real constraint
-  // needs a migration (ruling C1); this is the check that can be made now.
-  const clash = await db.group.findFirst({
-    where: {
-      seasonId,
-      name: input.name,
-      ...(excludeGroupId ? { id: { not: excludeGroupId } } : {}),
-    },
-    select: { id: true },
-  });
-  if (clash) {
-    return { code: "name_taken", message: "A group in this season already has that name." };
+  // The CSV importer matches groups *by name*, so two groups called "Tuesday"
+  // would make an import assign everyone to whichever one it found last. The
+  // database carries the exact-match constraint (M2, Group_seasonId_name_key);
+  // case- and whitespace-insensitivity lives here (D-13.10), using the same
+  // lower(btrim(...)) the M2 repair used so every stored row obeys it.
+  // Raw SQL, not `mode: "insensitive"`: that compiles to ILIKE, where `_` and
+  // `%` in a name are wildcards, and cannot trim the stored side.
+  const clash = await db.$queryRaw<{ id: number }[]>`
+    SELECT "id" FROM "Group"
+     WHERE "seasonId" = ${seasonId}
+       AND lower(btrim("name")) = lower(btrim(${input.name}))
+       AND "id" <> ${excludeGroupId ?? 0}
+     LIMIT 1`;
+  if (clash.length > 0) {
+    return GROUP_NAME_TAKEN;
   }
 
   if (input.leaderIds.length > 0) {

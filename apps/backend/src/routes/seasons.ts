@@ -14,6 +14,7 @@ import {
 } from "../lib/queries/assignments";
 import {
   assignStudentsToGroups,
+  GROUP_NAME_TAKEN,
   GroupOutsideSeasonError,
   listGroupsForSeason,
   listSeasonRoster,
@@ -453,24 +454,33 @@ seasonsRouter.post("/:id/groups", requireAuth, async (req, res) => {
   const refusal = await validateGroupWrite(seasonId, parsed.data);
   if (refusal) return apiError(res, refusal.code, refusal.message, 409);
 
-  const group = await db.$transaction(async (tx) => {
-    const created = await tx.group.create({
-      data: {
-        seasonId,
-        name: parsed.data.name,
-        description: parsed.data.description ?? null,
-      },
-      select: { id: true },
-    });
-    if (parsed.data.leaderIds.length > 0) {
-      await tx.groupLeader.createMany({
-        data: parsed.data.leaderIds.map((userId) => ({ groupId: created.id, userId })),
-        skipDuplicates: true,
+  let group: { id: number };
+  try {
+    group = await db.$transaction(async (tx) => {
+      const created = await tx.group.create({
+        data: {
+          seasonId,
+          name: parsed.data.name,
+          description: parsed.data.description ?? null,
+        },
+        select: { id: true },
       });
+      if (parsed.data.leaderIds.length > 0) {
+        await tx.groupLeader.createMany({
+          data: parsed.data.leaderIds.map((userId) => ({ groupId: created.id, userId })),
+          skipDuplicates: true,
+        });
+      }
+      await setGroupStudents(tx, seasonId, created.id, parsed.data.studentIds);
+      return created;
+    });
+  } catch (err) {
+    // A concurrent create slipped past validateGroupWrite and hit M2's index.
+    if (isUniqueViolation(err)) {
+      return apiError(res, GROUP_NAME_TAKEN.code, GROUP_NAME_TAKEN.message, 409);
     }
-    await setGroupStudents(tx, seasonId, created.id, parsed.data.studentIds);
-    return created;
-  });
+    throw err;
+  }
 
   return apiOk(res, { id: group.id }, 201);
 });

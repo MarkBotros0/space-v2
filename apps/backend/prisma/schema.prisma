@@ -309,6 +309,7 @@ model Group {
   assignmentTargets AssignmentTarget[]
 
   @@unique([id, seasonId]) // M1 — target for GroupStudent's composite FK
+  @@unique([seasonId, name]) // M2 — exact match; case-insensitivity lives in the endpoint (D-13.10)
   @@index([seasonId])
 }
 

@@ -224,6 +224,61 @@ describe("POST /api/v1/seasons/:id/groups and PATCH /api/v1/groups/:id", () => {
     expect(res.body.error.code).toBe("name_taken");
   });
 
+  it("refuses a name that differs only in case or surrounding space (M2, D-13.10)", async () => {
+    const res = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "  GROUP a " });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("name_taken");
+  });
+
+  it("does not treat LIKE wildcards in a name as a clash", async () => {
+    const res = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Group _" });
+    expect(res.status).toBe(201);
+  });
+
+  it("stores the trimmed name", async () => {
+    const res = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "  Padded name  " });
+    expect(res.status).toBe(201);
+    const row = await db.group.findUnique({ where: { id: res.body.data.id }, select: { name: true } });
+    expect(row?.name).toBe("Padded name");
+  });
+
+  it("refuses a rename onto another group's name in a different case", async () => {
+    const res = await request(app)
+      .patch(`/api/v1/groups/${groupBId}`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "GROUP A", leaderIds: [], studentIds: [] });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("name_taken");
+  });
+
+  it("answers the same 409 when a concurrent create slips past the check (database constraint)", async () => {
+    const send = () =>
+      request(app)
+        .post(`/api/v1/seasons/${seasonId}/groups`)
+        .set("authorization", `Bearer ${superToken}`)
+        .send({ name: "Race group" });
+    const results = await Promise.all([send(), send(), send(), send()]);
+    const statuses = results.map((r) => r.status).sort();
+    expect(statuses.filter((c) => c === 201)).toHaveLength(1);
+    expect(statuses.filter((c) => c === 409)).toHaveLength(3);
+    for (const r of results.filter((x) => x.status === 409)) {
+      expect(r.body.error.code).toBe("name_taken");
+    }
+  });
+
+  it("is also enforced by the database: an exact duplicate insert fails with P2002", async () => {
+    await expect(db.group.create({ data: { seasonId, name: "Group A" } })).rejects.toMatchObject({ code: "P2002" });
+  });
+
   it("preserves enrolment history when the roster changes", async () => {
     // v1's group form deleted and recreated the enrolment, resetting status,
     // droppedAt and dropReason — a withdrawn student silently came back as

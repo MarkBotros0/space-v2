@@ -4,7 +4,9 @@ import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import { canAccessGroup } from "../lib/permissions";
+import { isUniqueViolation } from "../lib/prisma-errors";
 import {
+  GROUP_NAME_TAKEN,
   listMyGroups,
   loadGroupImpact,
   setGroupStudents,
@@ -58,22 +60,30 @@ groupsRouter.patch("/:id", async (req, res) => {
   const refusal = await validateGroupWrite(group.seasonId, parsed.data, id);
   if (refusal) return apiError(res, refusal.code, refusal.message, 409);
 
-  await db.$transaction(async (tx) => {
-    await tx.group.update({
-      where: { id },
-      data: { name: parsed.data.name, description: parsed.data.description ?? null },
-    });
-    await tx.groupLeader.deleteMany({
-      where: { groupId: id, userId: { notIn: parsed.data.leaderIds } },
-    });
-    if (parsed.data.leaderIds.length > 0) {
-      await tx.groupLeader.createMany({
-        data: parsed.data.leaderIds.map((userId) => ({ groupId: id, userId })),
-        skipDuplicates: true,
+  try {
+    await db.$transaction(async (tx) => {
+      await tx.group.update({
+        where: { id },
+        data: { name: parsed.data.name, description: parsed.data.description ?? null },
       });
+      await tx.groupLeader.deleteMany({
+        where: { groupId: id, userId: { notIn: parsed.data.leaderIds } },
+      });
+      if (parsed.data.leaderIds.length > 0) {
+        await tx.groupLeader.createMany({
+          data: parsed.data.leaderIds.map((userId) => ({ groupId: id, userId })),
+          skipDuplicates: true,
+        });
+      }
+      await setGroupStudents(tx, group.seasonId, id, parsed.data.studentIds);
+    });
+  } catch (err) {
+    // A concurrent rename slipped past validateGroupWrite and hit M2's index.
+    if (isUniqueViolation(err)) {
+      return apiError(res, GROUP_NAME_TAKEN.code, GROUP_NAME_TAKEN.message, 409);
     }
-    await setGroupStudents(tx, group.seasonId, id, parsed.data.studentIds);
-  });
+    throw err;
+  }
 
   return apiOk(res, { id });
 });

@@ -2700,7 +2700,7 @@ export const openApiDocument = {
           404: errRef("NotFound"),
           409: {
             description:
-              "`name_taken`, `invalid_leader` (a named leader lacks the LEADER role) or `not_enrolled` (a named student is not in this season).",
+              "`name_taken` (the name matches another group's in this season ignoring case and surrounding space; also the answer if a concurrent request wins the race to the database's unique index), `invalid_leader` (a named leader lacks the LEADER role) or `not_enrolled` (a named student is not in this season).",
             content: { "application/json": { schema: errorResponse } },
           },
         },
@@ -2912,7 +2912,7 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
           409: {
-            description: "`name_taken`, `invalid_leader` or `not_enrolled`.",
+            description: "`name_taken` (case- and space-insensitive within the season), `invalid_leader` or `not_enrolled`.",
             content: { "application/json": { schema: errorResponse } },
           },
         },
