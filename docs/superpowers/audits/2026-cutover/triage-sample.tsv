@@ -1,0 +1,446 @@
+spec	rule	ledger_verdict	stage	result
+04-attendance.md	R1	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R2	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R3	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R4	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R5	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R6	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R7	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R8	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R9	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R10	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R11	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R12	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R13	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R14	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R15	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R16	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R17	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R18	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R19	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R20	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R21	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R23	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R24	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R25	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R26	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R27	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R34	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R35	PRESERVED	A five-domain 100%	FIXED:citation
+04-attendance.md	R36	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R37	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R38	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R39	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R40	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R42	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R43	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R46	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R47	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R48	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R49	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R50	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R52	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R53	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R57	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R58	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R59	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R60	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R61	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R62	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R64	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R65	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R66	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R67	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R68	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R70	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R73	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R75	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R76	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R77	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R78	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R79	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R80	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R81	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R82	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R83	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R84	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R85	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R87	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R88	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R89	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R90	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R91	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R92	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R93	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R94	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R95	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R96	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R97	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R100	PRESERVED	A five-domain 100%	OK
+04-attendance.md	R102	PRESERVED	A five-domain 100%	OK
+05-groups.md	R1	PRESERVED	A five-domain 100%	OK
+05-groups.md	R2	PRESERVED	A five-domain 100%	OK
+05-groups.md	R3	PRESERVED	A five-domain 100%	OK
+05-groups.md	R4	PRESERVED	A five-domain 100%	OK
+05-groups.md	R7	PRESERVED	A five-domain 100%	OK
+05-groups.md	R8	PRESERVED	A five-domain 100%	OK
+05-groups.md	R9	PRESERVED	A five-domain 100%	OK
+05-groups.md	R11	PRESERVED	A five-domain 100%	OK
+05-groups.md	R12	PRESERVED	A five-domain 100%	OK
+05-groups.md	R13	PRESERVED	A five-domain 100%	OK
+05-groups.md	R16	PRESERVED	A five-domain 100%	OK
+05-groups.md	R19	PRESERVED	A five-domain 100%	OK
+05-groups.md	R22	PRESERVED	A five-domain 100%	OK
+05-groups.md	R23	PRESERVED	A five-domain 100%	OK
+05-groups.md	R24	PRESERVED	A five-domain 100%	OK
+05-groups.md	R26	PRESERVED	A five-domain 100%	OK
+05-groups.md	R27	PRESERVED	A five-domain 100%	OK
+05-groups.md	R28	PRESERVED	A five-domain 100%	OK
+05-groups.md	R29	PRESERVED	A five-domain 100%	OK
+05-groups.md	R31	PRESERVED	A five-domain 100%	OK
+05-groups.md	R32	PRESERVED	A five-domain 100%	OK
+05-groups.md	R35	PRESERVED	A five-domain 100%	OK
+05-groups.md	R36	PRESERVED	A five-domain 100%	OK
+05-groups.md	R37	PRESERVED	A five-domain 100%	OK
+05-groups.md	R39	PRESERVED	A five-domain 100%	OK
+05-groups.md	R41	PRESERVED	A five-domain 100%	OK
+05-groups.md	R42	PRESERVED	A five-domain 100%	OK
+05-groups.md	R43	PRESERVED	A five-domain 100%	OK
+05-groups.md	R47	PRESERVED	A five-domain 100%	OK
+05-groups.md	R49	PRESERVED	A five-domain 100%	OK
+05-groups.md	R50	PRESERVED	A five-domain 100%	OK
+05-groups.md	R53	PRESERVED	A five-domain 100%	OK
+05-groups.md	R54	PRESERVED	A five-domain 100%	OK
+05-groups.md	R59	PRESERVED	A five-domain 100%	FIXED:citation
+05-groups.md	R61	PRESERVED	A five-domain 100%	OK
+05-groups.md	R62	PRESERVED	A five-domain 100%	OK
+05-groups.md	R64	PRESERVED	A five-domain 100%	OK
+05-groups.md	R66	PRESERVED	A five-domain 100%	OK
+05-groups.md	R67	PRESERVED	A five-domain 100%	OK
+05-groups.md	R69	PRESERVED	A five-domain 100%	OK
+05-groups.md	R72	PRESERVED	A five-domain 100%	OK
+05-groups.md	R73	PRESERVED	A five-domain 100%	OK
+05-groups.md	R77	PRESERVED	A five-domain 100%	OK
+05-groups.md	R83	PRESERVED	A five-domain 100%	OK
+05-groups.md	R85	PRESERVED	A five-domain 100%	OK
+05-groups.md	R86	PRESERVED	A five-domain 100%	OK
+05-groups.md	R87	PRESERVED	A five-domain 100%	OK
+05-groups.md	R89	PRESERVED	A five-domain 100%	OK
+05-groups.md	R93	PRESERVED	A five-domain 100%	OK
+05-groups.md	R94	PRESERVED	A five-domain 100%	OK
+05-groups.md	R95	PRESERVED	A five-domain 100%	OK
+05-groups.md	R98	PRESERVED	A five-domain 100%	OK
+05-groups.md	R99	PRESERVED	A five-domain 100%	OK
+05-groups.md	R100	PRESERVED	A five-domain 100%	OK
+05-groups.md	R103	PRESERVED	A five-domain 100%	OK
+05-groups.md	R104	PRESERVED	A five-domain 100%	OK
+05-groups.md	R105	PRESERVED	A five-domain 100%	OK
+05-groups.md	R107	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R2	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R3	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R4	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R5	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R6	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R7	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R9	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R10	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R11	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R12	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R13	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R15	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R16	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R18	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R19	PRESERVED	A five-domain 100%	FIXED:citation
+08-submissions.md	R22	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R24	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R26	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R28	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R30	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R31	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R32	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R33	PRESERVED	A five-domain 100%	FIXED:citation
+08-submissions.md	R34	PRESERVED	A five-domain 100%	FIXED:citation
+08-submissions.md	R35	PRESERVED	A five-domain 100%	FIXED:citation
+08-submissions.md	R36	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R37	PRESERVED	A five-domain 100%	FIXED:citation
+08-submissions.md	R38	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R39	PRESERVED	A five-domain 100%	FIXED:citation
+08-submissions.md	R40	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R41	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R43	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R50	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R53	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R55	PRESERVED	A five-domain 100%	OK
+08-submissions.md	R56	PRESERVED	A five-domain 100%	OK
+09-notes.md	R1	PRESERVED	A five-domain 100%	OK
+09-notes.md	R2	PRESERVED	A five-domain 100%	OK
+09-notes.md	R3	PRESERVED	A five-domain 100%	OK
+09-notes.md	R5	PRESERVED	A five-domain 100%	OK
+09-notes.md	R7	PRESERVED	A five-domain 100%	OK
+09-notes.md	R8	PRESERVED	A five-domain 100%	OK
+09-notes.md	R9	PRESERVED	A five-domain 100%	OK
+09-notes.md	R10	PRESERVED	A five-domain 100%	OK
+09-notes.md	R13	PRESERVED	A five-domain 100%	OK
+09-notes.md	R14	PRESERVED	A five-domain 100%	OK
+09-notes.md	R15	PRESERVED	A five-domain 100%	OK
+09-notes.md	R18	PRESERVED	A five-domain 100%	OK
+09-notes.md	R20	PRESERVED	A five-domain 100%	OK
+09-notes.md	R21	PRESERVED	A five-domain 100%	OK
+09-notes.md	R22	PRESERVED	A five-domain 100%	OK
+09-notes.md	R23	PRESERVED	A five-domain 100%	OK
+09-notes.md	R24	PRESERVED	A five-domain 100%	OK
+09-notes.md	R25	PRESERVED	A five-domain 100%	OK
+09-notes.md	R26	PRESERVED	A five-domain 100%	OK
+09-notes.md	R27	PRESERVED	A five-domain 100%	OK
+09-notes.md	R31	PRESERVED	A five-domain 100%	OK
+09-notes.md	R32	PRESERVED	A five-domain 100%	FIXED:citation
+09-notes.md	R33	PRESERVED	A five-domain 100%	OK
+09-notes.md	R34	PRESERVED	A five-domain 100%	FIXED:citation
+09-notes.md	R35	PRESERVED	A five-domain 100%	OK
+09-notes.md	R36	PRESERVED	A five-domain 100%	FIXED:citation
+09-notes.md	R37	PRESERVED	A five-domain 100%	FIXED:citation
+09-notes.md	R42	PRESERVED	A five-domain 100%	OK
+09-notes.md	R43	PRESERVED	A five-domain 100%	OK
+09-notes.md	R46	PRESERVED	A five-domain 100%	OK
+09-notes.md	R51	PRESERVED	A five-domain 100%	OK
+09-notes.md	R52	PRESERVED	A five-domain 100%	OK
+09-notes.md	R53	PRESERVED	A five-domain 100%	OK
+09-notes.md	R54	PRESERVED	A five-domain 100%	OK
+09-notes.md	R57	PRESERVED	A five-domain 100%	OK
+09-notes.md	R58	PRESERVED	A five-domain 100%	OK
+09-notes.md	R60	PRESERVED	A five-domain 100%	OK
+09-notes.md	R61	PRESERVED	A five-domain 100%	OK
+09-notes.md	R62	PRESERVED	A five-domain 100%	OK
+09-notes.md	R63	PRESERVED	A five-domain 100%	OK
+09-notes.md	R65	PRESERVED	A five-domain 100%	OK
+09-notes.md	R66	PRESERVED	A five-domain 100%	OK
+09-notes.md	R67	PRESERVED	A five-domain 100%	OK
+09-notes.md	R69	PRESERVED	A five-domain 100%	OK
+09-notes.md	R70	PRESERVED	A five-domain 100%	FIXED:citation
+09-notes.md	R78	PRESERVED	A five-domain 100%	OK
+09-notes.md	R83	PRESERVED	A five-domain 100%	OK
+09-notes.md	R86	PRESERVED	A five-domain 100%	OK
+09-notes.md	R89	PRESERVED	A five-domain 100%	FIXED:note
+11-invites-users.md	R1	PRESERVED	A five-domain 100%	FIXED:citation
+11-invites-users.md	R2	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R3	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R4	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R5	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R6	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R7	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R8	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R10	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R12	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R13	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R14	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R16	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R18	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R20	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R25	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R28	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R29	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R30	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R32	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R35	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R36	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R38	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R40	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R45	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R47	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R48	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R59	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R60	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R62	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R67	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R68	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R70	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R71	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R72	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R73	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R74	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R81	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R82	PRESERVED	A five-domain 100%	OK
+11-invites-users.md	R87	PRESERVED	A five-domain 100%	OK
+02-seasons.md	R7	PRESERVED	B seeded 10% (seed 20261008)	OK
+02-seasons.md	R11	PRESERVED	B seeded 10% (seed 20261008)	OK
+02-seasons.md	R20	PRESERVED	B seeded 10% (seed 20261008)	OK
+02-seasons.md	R35	PRESERVED	B seeded 10% (seed 20261008)	OK
+02-seasons.md	R36	PRESERVED	B seeded 10% (seed 20261008)	OK
+02-seasons.md	R61	PRESERVED	B seeded 10% (seed 20261008)	OK
+02-seasons.md	R71	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R2	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R5	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R10	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R15	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R19	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R34	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R38	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R41	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R43	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R52	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R72	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R90	PRESERVED	B seeded 10% (seed 20261008)	OK
+03-sessions.md	R96	PRESERVED	B seeded 10% (seed 20261008)	OK
+06-students.md	R20	PRESERVED	B seeded 10% (seed 20261008)	OK
+06-students.md	R55	PRESERVED	B seeded 10% (seed 20261008)	OK
+06-students.md	R64	PRESERVED	B seeded 10% (seed 20261008)	OK
+07-assignments.md	R7	PRESERVED	B seeded 10% (seed 20261008)	OK
+07-assignments.md	R14	PRESERVED	B seeded 10% (seed 20261008)	OK
+07-assignments.md	R20	PRESERVED	B seeded 10% (seed 20261008)	OK
+07-assignments.md	R36	PRESERVED	B seeded 10% (seed 20261008)	OK
+07-assignments.md	R39	PRESERVED	B seeded 10% (seed 20261008)	OK
+07-assignments.md	R65	PRESERVED	B seeded 10% (seed 20261008)	OK
+10-notifications.md	R14	PRESERVED	B seeded 10% (seed 20261008)	OK
+10-notifications.md	R21	PRESERVED	B seeded 10% (seed 20261008)	OK
+10-notifications.md	R34	PRESERVED	B seeded 10% (seed 20261008)	OK
+10-notifications.md	R42	PRESERVED	B seeded 10% (seed 20261008)	OK
+10-notifications.md	R44	PRESERVED	B seeded 10% (seed 20261008)	OK
+10-notifications.md	R45	PRESERVED	B seeded 10% (seed 20261008)	OK
+10-notifications.md	R81	PRESERVED	B seeded 10% (seed 20261008)	OK
+12-quizzes.md	R12	PRESERVED	B seeded 10% (seed 20261008)	OK
+12-quizzes.md	R32	PRESERVED	B seeded 10% (seed 20261008)	OK
+12-quizzes.md	R58	PRESERVED	B seeded 10% (seed 20261008)	OK
+12-quizzes.md	R61	PRESERVED	B seeded 10% (seed 20261008)	OK
+12-quizzes.md	R78	PRESERVED	B seeded 10% (seed 20261008)	OK
+13-video-quizzes.md	R31	PRESERVED	B seeded 10% (seed 20261008)	FIXED:citation
+13-video-quizzes.md	R43	PRESERVED	B seeded 10% (seed 20261008)	OK
+13-video-quizzes.md	R54	PRESERVED	B seeded 10% (seed 20261008)	OK
+14-forum.md	R4	PRESERVED	B seeded 10% (seed 20261008)	OK
+14-forum.md	R21	PRESERVED	B seeded 10% (seed 20261008)	OK
+14-forum.md	R44	PRESERVED	B seeded 10% (seed 20261008)	OK
+15-events.md	R4	PRESERVED	B seeded 10% (seed 20261008)	OK
+15-events.md	R7	PRESERVED	B seeded 10% (seed 20261008)	OK
+15-events.md	R12	PRESERVED	B seeded 10% (seed 20261008)	OK
+15-events.md	R78	PRESERVED	B seeded 10% (seed 20261008)	OK
+16-imports.md	R7	PRESERVED	B seeded 10% (seed 20261008)	OK
+16-imports.md	R57	PRESERVED	B seeded 10% (seed 20261008)	OK
+16-imports.md	R66	PRESERVED	B seeded 10% (seed 20261008)	OK
+16-imports.md	R67	PRESERVED	B seeded 10% (seed 20261008)	OK
+17-reports.md	R46	PRESERVED	B seeded 10% (seed 20261008)	OK
+17-reports.md	R76	PRESERVED	B seeded 10% (seed 20261008)	OK
+18-settings.md	R12	PRESERVED	B seeded 10% (seed 20261008)	OK
+19-dashboards.md	R42	PRESERVED	B seeded 10% (seed 20261008)	OK
+10-notifications.md	R1	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R5	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R6	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R10	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R12	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R17	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R19	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R20	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R23	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R25	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R26	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R30	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R31	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R40	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R43	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R50	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R54	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R59	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R72	PRESERVED	C 50% extension (citation failed in spec)	OK
+10-notifications.md	R80	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R1	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R3	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R4	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R6	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R14	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R16	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R18	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R19	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R21	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R25	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R36	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R39	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R40	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R50	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R53	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R55	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R56	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R66	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R68	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R69	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R70	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R75	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R80	PRESERVED	C 50% extension (citation failed in spec)	OK
+13-video-quizzes.md	R82	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R3	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R8	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R9	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R10	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R13	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R16	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R33	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R34	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R35	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R37	PRESERVED	C 50% extension (citation failed in spec)	FIXED:citation
+15-events.md	R54	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R56	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R64	PRESERVED	C 50% extension (citation failed in spec)	OK
+15-events.md	R77	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R2	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R4	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R7	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R14	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R45	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R49	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R53	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R61	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R67	PRESERVED	C 50% extension (citation failed in spec)	FIXED:citation
+17-reports.md	R73	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R75	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R92	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R94	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R96	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R107	PRESERVED	C 50% extension (citation failed in spec)	OK
+17-reports.md	R110	PRESERVED	C 50% extension (citation failed in spec)	OK
+18-settings.md	R3	PRESERVED	C 50% extension (citation failed in spec)	OK
+18-settings.md	R7	PRESERVED	C 50% extension (citation failed in spec)	OK
+18-settings.md	R14	PRESERVED	C 50% extension (citation failed in spec)	OK
+18-settings.md	R16	PRESERVED	C 50% extension (citation failed in spec)	OK
+18-settings.md	R17	PRESERVED	C 50% extension (citation failed in spec)	OK
+18-settings.md	R32	PRESERVED	C 50% extension (citation failed in spec)	OK
+18-settings.md	R40	PRESERVED	C 50% extension (citation failed in spec)	OK
+18-settings.md	R41	PRESERVED	C 50% extension (citation failed in spec)	OK
+11-invites-users.md	R33	DIVERGED	A five-domain 100% (DIVERGED, errata)	FIXED:note+verdict
+04-attendance.md	R101	NA	NA 100% (five domains)	RECLASSIFIED
+05-groups.md	R25	NA	NA 100% (five domains)	OK
+05-groups.md	R30	NA	NA 100% (five domains)	OK
+05-groups.md	R58	NA	NA 100% (five domains)	OK
+05-groups.md	R76	NA	NA 100% (five domains)	OK
+05-groups.md	R80	NA	NA 100% (five domains)	OK
+05-groups.md	R90	NA	NA 100% (five domains)	OK
+05-groups.md	R96	NA	NA 100% (five domains)	OK
+05-groups.md	R102	NA	NA 100% (five domains)	OK
+05-groups.md	R106	NA	NA 100% (five domains)	OK
+09-notes.md	R11	NA	NA 100% (five domains)	OK
+09-notes.md	R82	NA	NA 100% (five domains)	OK
+11-invites-users.md	R11	NA	NA 100% (five domains)	OK
+11-invites-users.md	R63	NA	NA 100% (five domains)	OK
+11-invites-users.md	R80	NA	NA 100% (five domains)	OK
+03-sessions.md	R85	NA	NA extra (spec text re-read)	OK
+10-notifications.md	R32	NA	NA extra (spec text re-read)	OK
+15-events.md	R72	NA	NA extra (spec text re-read)	OK
+15-events.md	R69	NA	NA extra (spec text re-read)	OK
+06-students.md	R37	NA	NA extra (spec text re-read)	OK
+17-reports.md	R99	NA	NA extra (spec text re-read)	OK
+19-dashboards.md	R9	NA	NA extra (spec text re-read)	OK
+15-events.md	R2	NA	NA extra (spec text re-read)	OK
+10-notifications.md	R13	NA	NA extra (spec text re-read)	OK
+07-assignments.md	R57	NA	NA extra (spec text re-read)	OK
+18-settings.md	R4	NA	NA extra (spec text re-read)	OK
+18-settings.md	R5	NA	NA extra (spec text re-read)	OK
+17-reports.md	R47	NA	NA extra (spec text re-read)	OK
+07-assignments.md	R52	PRESERVED	E known erratum (sweep agents)	FIXED:citation
+10-notifications.md	R4	DIVERGED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+10-notifications.md	R75	DIVERGED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+10-notifications.md	R76	DIVERGED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+13-video-quizzes.md	R30	DIVERGED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+13-video-quizzes.md	R32	DIVERGED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+13-video-quizzes.md	R33	DIVERGED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+13-video-quizzes.md	R34	DIVERGED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+13-video-quizzes.md	R35	PRESERVED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+15-events.md	R70	DIVERGED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+15-events.md	R82	DIVERGED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+18-settings.md	R8	PRESERVED	D automated citation-range check (all PRESERVED/DIVERGED rows)	FIXED:citation
+12-quizzes.md	R9	PRESERVED	E known erratum (sweep agents)	FIXED:authority
