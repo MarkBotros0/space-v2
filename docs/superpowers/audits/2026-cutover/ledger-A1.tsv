@@ -1,1 +1,512 @@
 spec	rule	verdict	v2_citation	authority	note
+02-seasons.md	R1	PRESERVED	apps/backend/prisma/schema.prisma:244	-	Season.code is @unique and addressed via /seasons/by-code/:code.
+02-seasons.md	R2	PRESERVED	packages/shared/src/season.ts:82	-	Empty code defaults to program plus year before slugify.
+02-seasons.md	R3	PRESERVED	packages/shared/src/season.ts:43-51	-	Slugify ported verbatim; applied in write schema and duplicate route.
+02-seasons.md	R4	PRESERVED	packages/shared/src/season.ts:54-56	-	2-40 chars and format regex enforced on the slug.
+02-seasons.md	R5	DIVERGED	apps/backend/src/routes/seasons.ts:148-149	REG-57	Taken code answers 409 code_taken instead of a field-level form error.
+02-seasons.md	R6	PRESERVED	apps/backend/src/routes/seasons.ts:190	-	Update clash check excludes the row itself via NOT id.
+02-seasons.md	R7	PRESERVED	apps/backend/src/routes/seasons.ts:147-148	-	Uniqueness check has no deletedAt filter; deleted season keeps its code.
+02-seasons.md	R8	PRESERVED	apps/backend/src/routes/seasons.ts:195-197	-	PATCH rewrites code; no alias or redirect; mobile re-routes to the new code.
+02-seasons.md	R9	DROPPED	apps/mobile/app/(app)/seasons/index.tsx:25-58	UNAUTHORISED	No keystroke auto-fill of code; empty code defaults server-side, edit form shows slug preview only.
+02-seasons.md	R10	PRESERVED	apps/backend/src/routes/seasons.ts:155	-	Title derived program plus year on create, update (197) and duplicate (326).
+02-seasons.md	R11	PRESERVED	packages/shared/src/season.ts:64-74	-	Bounds and 180/90 defaults match.
+02-seasons.md	R12	PRESERVED	packages/shared/src/season.ts:87-89	-	End before start rejected; equal allowed.
+02-seasons.md	R13	PRESERVED	packages/shared/src/season.ts:67-68	-	ISO datetime strings accepted on the wire.
+02-seasons.md	R14	PRESERVED	apps/mobile/app/(app)/seasons/[code]/edit.tsx:47-52	-	Client parses with the shared schema and keeps first issue per field; server returns generic 400.
+02-seasons.md	R15	PRESERVED	apps/mobile/app/(app)/seasons/[code]/edit.tsx:42	-	Client sends null for blank description; server stores empty string if sent (seasons.ts:158 only coalesces null).
+02-seasons.md	R16	PRESERVED	packages/shared/src/season.ts:69	-	Status is a stored enum column, not derived from dates.
+02-seasons.md	R17	PRESERVED	apps/backend/src/routes/seasons.ts:203	-	Status written unconditionally, no state machine (Plan 6 D-16.4).
+02-seasons.md	R18	PRESERVED	apps/mobile/app/(app)/seasons/index.tsx:38	-	Create form sends status DRAFT.
+02-seasons.md	R19	PRESERVED	apps/backend/src/routes/seasons.ts:152-168	-	No scheduler or auto-transition found in apps/backend; writes are explicit routes only.
+02-seasons.md	R20	PRESERVED	apps/backend/src/routes/seasons.ts:332	-	Duplicate forces DRAFT.
+02-seasons.md	R21	DIVERGED	apps/backend/src/routes/seasons.ts:162-163	02-seasons.md D1	Create now persists absence budget and weight minutes.
+02-seasons.md	R22	PRESERVED	apps/mobile/src/hooks/use-seasons.ts:52-58	-	Latest-start ACTIVE season else latest of any, defined once (spec 02 D11).
+02-seasons.md	R23	PRESERVED	apps/backend/src/lib/queries/sessions.ts:94	-	Active-scope feed filters season ACTIVE and not deleted.
+02-seasons.md	R24	DROPPED	-	UNAUTHORISED	List ordered year desc then title (seasons.ts:80), not status asc then startDate desc; no decision found.
+02-seasons.md	R25	PRESERVED	apps/backend/src/routes/seasons.ts:68	-	List filters deletedAt null; detail loader and by-code do too (queries/seasons.ts:32).
+02-seasons.md	R26	PRESERVED	apps/backend/src/lib/auth/scopes.ts:14-20	-	activeSeasonId read from StudentProfile into token claims.
+02-seasons.md	R27	DIVERGED	apps/backend/src/lib/queries/me.ts:134-139	REG-13	Soft-deleted season no longer shown to its students (Plan 11 Decision 4).
+02-seasons.md	R28	PRESERVED	apps/backend/src/lib/queries/me.ts:132	-	Null activeSeasonId returns null; screen shows empty state.
+02-seasons.md	R29	PRESERVED	apps/backend/src/lib/queries/sessions.ts:164-168	-	Progress is sessions held over sessions total; zero when none (me.ts:188).
+02-seasons.md	R30	PRESERVED	apps/backend/src/lib/queries/me.ts:161-166	-	Next three sessions from now ascending.
+02-seasons.md	R31	DIVERGED	apps/backend/src/lib/queries/me.ts:142-160	C9	Group resolved through SeasonEnrollment for the active season, not global GroupStudent.
+02-seasons.md	R32	DIVERGED	apps/backend/src/routes/students.ts:447-453	REG-21	Graduation completes all ACTIVE enrolments and clears activeSeasonId.
+02-seasons.md	R33	PRESERVED	apps/backend/src/lib/queries/me.ts:45-51	-	One row per enrolment, enrolledAt desc, any status.
+02-seasons.md	R34	PRESERVED	apps/backend/src/lib/queries/me.ts:52-56	-	Only season, group, sessions and attendance selected; shared schema is strict.
+02-seasons.md	R35	PRESERVED	apps/backend/src/lib/queries/me.ts:41-49	-	Current student excludes active season; alumnus sees all.
+02-seasons.md	R36	PRESERVED	apps/backend/src/lib/queries/me.ts:99	-	PRESENT plus LATE over all sessions, rounded, 0 when none.
+02-seasons.md	R37	PRESERVED	apps/backend/src/lib/queries/me.ts:97-99	-	Denominator is all current sessions; retroactive, accepted as spec 02 D14.
+02-seasons.md	R38	DIVERGED	apps/backend/src/lib/queries/me.ts:48	REG-13	Soft-deleted seasons hidden from history.
+02-seasons.md	R39	PRESERVED	apps/mobile/app/(app)/history.tsx:33-58	-	Curriculum ascending by start, collapsed until tapped.
+02-seasons.md	R40	PRESERVED	apps/mobile/app/(app)/history.tsx:31-32	-	Every row badged Participated regardless of status.
+02-seasons.md	R41	PRESERVED	apps/mobile/app/(app)/history.tsx:92-98	-	Empty history renders an empty state.
+02-seasons.md	R42	PRESERVED	packages/shared/src/season.ts:14	-	program and year carried on season contract; schema index unchanged.
+02-seasons.md	R43	DIVERGED	apps/mobile/app/(app)/seasons/index.tsx:174-178	REG-54	Program is a filter chip row with years as headings; programs sorted by localeCompare.
+02-seasons.md	R44	PRESERVED	apps/mobile/app/(app)/seasons/index.tsx:177	-	Program filter is exact string equality (Plan 6 D-16.5).
+02-seasons.md	R45	DIVERGED	apps/mobile/app/(app)/seasons/index.tsx:174-177	REG-54	No by-program route, so no 404 on empty; filter only offers existing programs.
+02-seasons.md	R46	DIVERGED	apps/mobile/app/(app)/seasons/index.tsx:178	REG-54	No by-year route; years are grouping headings from the loaded list.
+02-seasons.md	R47	DIVERGED	apps/mobile/app/(app)/seasons/index.tsx:178-206	REG-54	No separate by-program or by-year ordering; list order year desc.
+02-seasons.md	R48	PRESERVED	apps/backend/src/routes/seasons.ts:268	-	Soft delete sets deletedAt and updatedById.
+02-seasons.md	R49	DIVERGED	apps/backend/src/routes/seasons.ts:252-263	REG-56	Delete refused with season_in_use while enrolments or sessions exist.
+02-seasons.md	R50	PRESERVED	apps/backend/src/routes/seasons.ts:266-269	-	Delete cascades to no child rows, only clears activeSeasonId pointers.
+02-seasons.md	R51	DIVERGED	apps/backend/src/routes/seasons.ts:265-267	REG-56	activeSeasonId cleared on delete; SeasonAdmin rows still not removed.
+02-seasons.md	R52	PRESERVED	apps/backend/src/routes/seasons.ts:238-271	-	No un-delete route exists in seasons router.
+02-seasons.md	R53	PRESERVED	apps/mobile/app/(app)/seasons/[code]/edit.tsx:82	-	After delete the screen replaces to /seasons.
+02-seasons.md	R54	PRESERVED	apps/backend/src/routes/seasons.ts:276	-	Duplicate is SUPER only.
+02-seasons.md	R55	PRESERVED	packages/shared/src/season.ts:117	-	Year bounds validated by schema before the source is read (route 280-285).
+02-seasons.md	R56	PRESERVED	apps/backend/src/routes/seasons.ts:323-337	-	Copies program, description, budgets; forces DRAFT; input year, code, dates.
+02-seasons.md	R57	PRESERVED	apps/backend/src/routes/seasons.ts:342-349	-	Groups cloned with name and description only.
+02-seasons.md	R58	PRESERVED	apps/backend/src/routes/seasons.ts:361-377	-	Sessions cloned with shifted startsAt and listed fields.
+02-seasons.md	R59	PRESERVED	apps/backend/src/routes/seasons.ts:379-398	-	Non-deleted assignments cloned with shifted dueAt and remapped session.
+02-seasons.md	R60	PRESERVED	apps/backend/src/routes/seasons.ts:399-409	-	Targets copied only for non-all-groups and remappable groups.
+02-seasons.md	R61	PRESERVED	apps/backend/src/routes/seasons.ts:285-306	-	Select is the whole copy contract; nothing else cloned.
+02-seasons.md	R62	PRESERVED	apps/backend/src/routes/seasons.ts:318-319	-	Single start-date offset applied to sessions and non-null dueAt.
+02-seasons.md	R63	PRESERVED	apps/backend/src/routes/seasons.ts:331	-	endDate taken verbatim; no check that cloned sessions fit.
+02-seasons.md	R64	PRESERVED	apps/backend/src/routes/seasons.ts:310-315	-	Default code program plus year, slugified, validated, uniqueness checked.
+02-seasons.md	R65	DIVERGED	apps/backend/src/routes/seasons.ts:351-372	C10	Duplicate mints a fresh recurrenceGroupId per cloned series.
+02-seasons.md	R66	DIVERGED	apps/backend/src/routes/seasons.ts:285-286	02-seasons.md D6	Source lookup now requires deletedAt null.
+02-seasons.md	R67	PRESERVED	apps/backend/src/routes/seasons.ts:322	-	Whole clone inside one transaction.
+02-seasons.md	R68	PRESERVED	apps/backend/src/routes/seasons.ts:335-336	-	Season and assignments carry actor ids (also 394-395).
+02-seasons.md	R69	DROPPED	apps/mobile/app/(app)/seasons/index.tsx:64-66	UNAUTHORISED	Duplicate form starts blank; no year+1 or one-year date shift defaults.
+02-seasons.md	R70	PRESERVED	apps/backend/src/routes/seasons.ts:164-165	-	Create sets both ids; update 206 and 232; delete 268 set updatedById.
+02-seasons.md	R71	PRESERVED	apps/backend/src/routes/seasons.ts:108-112	-	Unknown or deleted code 404s before the access check.
+02-seasons.md	R72	PRESERVED	apps/backend/src/lib/queries/seasons.ts:74	-	studentCount still counts every enrolment incl. withdrawn (spec 02 D7 not applied).
+02-seasons.md	R73	PRESERVED	apps/backend/src/lib/queries/seasons.ts:49-80	-	Groups by name asc; null leader names filtered out.
+02-seasons.md	R74	DIVERGED	apps/backend/src/lib/queries/seasons.ts:47-48	C8	Students see only their own group in season detail.
+02-seasons.md	R75	DROPPED	-	UNAUTHORISED	No auto-redirect for an admin with one season; current-season picker used instead.
+02-seasons.md	R76	PRESERVED	apps/mobile/app/(app)/season.tsx:70-71	-	No-season state shown with message instead of an empty list.
+02-seasons.md	R77	PRESERVED	apps/backend/src/routes/seasons.ts:70	-	ADMIN list scoped by seasonAdminIds claim.
+03-sessions.md	R1	PRESERVED	apps/backend/src/routes/sessions.ts:176	-	Create requires isAdminOfSeason; SUPER passes through rbac.
+03-sessions.md	R2	PRESERVED	packages/shared/src/session.ts:101	-	Title 2 to 120 characters.
+03-sessions.md	R3	DIVERGED	apps/backend/src/routes/sessions.ts:49-55	X13	Start is ISO datetime or org day plus time, not any Date-parsable string.
+03-sessions.md	R4	PRESERVED	packages/shared/src/session.ts:111	-	Duration integer 15 to 600.
+03-sessions.md	R5	PRESERVED	packages/shared/src/session.ts:112	-	Location optional, max 200.
+03-sessions.md	R6	PRESERVED	packages/shared/src/session.ts:113	-	youtubeUrl must parse as URL only, not YouTube-specific.
+03-sessions.md	R7	PRESERVED	packages/shared/src/session.ts:114	-	Description optional, max 2000.
+03-sessions.md	R8	PRESERVED	apps/mobile/app/(app)/session/[id]/index.tsx:233	-	No end column; screen shows start and duration only.
+03-sessions.md	R9	DIVERGED	packages/shared/src/session.ts:143	Plan 3 Task 4	repeatWeeks above 26 refused not clamped; plan text, not a numbered decision.
+03-sessions.md	R10	PRESERVED	apps/backend/src/routes/sessions.ts:187	-	recurrenceGroupId only when repeatWeeks above 1, else null.
+03-sessions.md	R11	PRESERVED	apps/backend/src/routes/sessions.ts:185-187	-	Free string id via newPublicId; nothing parses it (nanoid avoided, CLAUDE.md).
+03-sessions.md	R12	PRESERVED	apps/backend/src/routes/sessions.ts:184	-	First occurrence is submitted start; others one calendar week apart.
+03-sessions.md	R13	DIVERGED	apps/backend/src/lib/org-time.ts:84-87	X13	Spacing in organisation timezone, not server local zone.
+03-sessions.md	R14	DIVERGED	packages/shared/src/session.ts:143	Plan 3 Task 4	Count below 1 refused by schema (min 1) instead of single occurrence; plan text only.
+03-sessions.md	R15	PRESERVED	apps/backend/src/routes/sessions.ts:189-205	-	All occurrences created in one transaction.
+03-sessions.md	R16	PRESERVED	apps/backend/src/routes/sessions.ts:192-202	-	Same fields on every occurrence; only startsAt varies.
+03-sessions.md	R17	PRESERVED	apps/backend/src/routes/sessions.ts:207	-	Returns first occurrence id (plus recurrenceGroupId); sibling ids not returned.
+03-sessions.md	R18	PRESERVED	apps/backend/src/routes/sessions.ts:183-205	-	No overlap or uniqueness check on startsAt.
+03-sessions.md	R19	PRESERVED	apps/backend/src/routes/sessions.ts:180-183	-	No season-range check; comment notes it is deliberately un-ported.
+03-sessions.md	R20	PRESERVED	apps/backend/src/routes/sessions.ts:192-202	-	Create data never sets check-in token or timestamps.
+03-sessions.md	R21	PRESERVED	apps/mobile/app/(app)/session/new.tsx:40-43	-	Server cap 120 kept; client now validates with the shared schema before sending.
+03-sessions.md	R22	DROPPED	apps/mobile/src/components/SessionForm.tsx:77-78	UNAUTHORISED	Form shows location and YouTube fields together; no in-person or online exclusivity.
+03-sessions.md	R23	DROPPED	-	UNAUTHORISED	No session-type concept in the v2 form; fields are independent.
+03-sessions.md	R24	DROPPED	apps/mobile/src/components/SessionForm.tsx:19-27	UNAUTHORISED	Duration default 90 kept but time starts blank, no 18:00 default.
+03-sessions.md	R25	DROPPED	apps/mobile/src/components/SessionForm.tsx:63-69	UNAUTHORISED	Start time is free text HH:mm, no 15-minute picker.
+03-sessions.md	R26	DIVERGED	apps/mobile/src/components/SessionForm.tsx:31-47	X13	Form sends org wall-clock day and time; server composes instant, device zone unused.
+03-sessions.md	R27	DIVERGED	apps/backend/src/routes/sessions.ts:303	X13	Edit pre-fill uses server orgWallTime, not viewer local reading.
+03-sessions.md	R28	PRESERVED	apps/mobile/app/(app)/session/new.tsx:57-63	-	Repeat control on create only; update schema has no repeatWeeks.
+03-sessions.md	R29	PRESERVED	apps/mobile/app/(app)/session/[id]/edit.tsx:62	-	Scope control tied to isSeries (recurrenceGroupId set); default scope one.
+03-sessions.md	R30	DROPPED	apps/mobile/app/(app)/session/new.tsx:47	UNAUTHORISED	Create lands on session detail not calendar; edit goes back (edit.tsx:79).
+03-sessions.md	R31	PRESERVED	apps/backend/src/routes/sessions.ts:331	-	Missing session answers not_found envelope, no throw.
+03-sessions.md	R32	PRESERVED	apps/backend/src/routes/sessions.ts:332-359	-	Gate uses stored seasonId; update data never writes seasonId.
+03-sessions.md	R33	DIVERGED	apps/backend/src/routes/sessions.ts:78-82	C10	Sibling lookup also filtered by anchor seasonId.
+03-sessions.md	R34	PRESERVED	apps/backend/src/routes/sessions.ts:75-77	-	Siblings loaded only with a recurrenceGroupId and scope not one.
+03-sessions.md	R35	PRESERVED	apps/backend/src/routes/sessions.ts:75-77	-	Scope one targets anchor only.
+03-sessions.md	R36	PRESERVED	apps/backend/src/routes/sessions.ts:83-85	-	Scope all returns whole series including past.
+03-sessions.md	R37	PRESERVED	apps/backend/src/routes/sessions.ts:83-85	-	Future uses startsAt greater or equal to anchor, includes anchor.
+03-sessions.md	R38	PRESERVED	apps/backend/src/routes/sessions.ts:340-342	-	Targets chosen from stored startsAt before the move (Plan 6 D-16.8).
+03-sessions.md	R39	PRESERVED	apps/backend/src/routes/sessions.ts:342-359	-	Scope one anchor gets stored plus delta, equal to submitted start.
+03-sessions.md	R40	PRESERVED	apps/backend/src/routes/sessions.ts:342-359	-	Every target shifted by the same delta, spacing preserved.
+03-sessions.md	R41	PRESERVED	apps/backend/src/routes/sessions.ts:351-362	-	Series update in one transaction.
+03-sessions.md	R42	PRESERVED	apps/backend/src/routes/sessions.ts:343-349	-	Same non-date fields written to every target.
+03-sessions.md	R43	PRESERVED	apps/backend/src/routes/sessions.ts:351-362	-	Update path contains only update calls, no create or delete.
+03-sessions.md	R44	PRESERVED	apps/backend/src/routes/sessions.ts:343-349	-	Update data never touches recurrenceGroupId.
+03-sessions.md	R45	PRESERVED	apps/backend/src/routes/sessions.ts:364	-	Notification fires iff delta is non-zero.
+03-sessions.md	R46	PRESERVED	apps/backend/src/routes/sessions.ts:365-368	-	Recipients are ACTIVE enrolments of the anchor season, no group narrowing.
+03-sessions.md	R47	PRESERVED	apps/backend/src/routes/sessions.ts:371-383	-	One bulk notification per edit.
+03-sessions.md	R48	DIVERGED	apps/backend/src/routes/sessions.ts:376-378	C2	Title quotes new title; time formatted in org timezone not server locale.
+03-sessions.md	R49	PRESERVED	apps/backend/src/routes/sessions.ts:380	-	Link stays /student/calendar per ruling X1.
+03-sessions.md	R50	DIVERGED	apps/backend/src/lib/notifications.ts:62-82	REG-37	In-app row always written; preference suppresses email only.
+03-sessions.md	R51	PRESERVED	apps/backend/src/lib/notifications.ts:90-96	-	Email loop is void Promise.allSettled, not awaited.
+03-sessions.md	R52	PRESERVED	apps/backend/src/routes/sessions.ts:369-384	-	Notification after commit and best-effort; failure leaves schedule changed (logged).
+03-sessions.md	R53	PRESERVED	packages/shared/src/session.ts:156	-	Delete scope defaults to one.
+03-sessions.md	R54	DIVERGED	apps/backend/src/routes/sessions.ts:398	C12	Missing session returns 404 not_found; delete redesigned not ported.
+03-sessions.md	R55	PRESERVED	apps/backend/src/routes/sessions.ts:399-401	-	Delete requires isAdminOfSeason on stored season.
+03-sessions.md	R56	DIVERGED	apps/backend/src/routes/sessions.ts:408	C10	Same resolveSeriesTargets as update, now season-fenced.
+03-sessions.md	R57	PRESERVED	apps/backend/src/routes/sessions.ts:431	-	Hard deleteMany; Session has no deletedAt.
+03-sessions.md	R58	PRESERVED	apps/backend/src/routes/sessions.ts:425-433	-	Attendance and progress removed with session; assignments and quizzes detach via SetNull FK.
+03-sessions.md	R59	DIVERGED	apps/backend/src/routes/sessions.ts:412-423	REG-58	Delete refused with has_student_records unless force; series preview endpoint exists.
+03-sessions.md	R60	DIVERGED	apps/backend/src/routes/sessions.ts:389-434	C12	Dead v1 action replaced by designed delete with guard and UI (edit.tsx:84-94).
+03-sessions.md	R61	PRESERVED	apps/backend/src/routes/sessions.ts:545	-	Existing token reused, minted only when null.
+03-sessions.md	R62	PRESERVED	apps/backend/src/routes/sessions.ts:548	-	Open sets checkInOpenAt now and clears checkInClosedAt.
+03-sessions.md	R63	PRESERVED	apps/backend/src/routes/sessions.ts:570	-	Close sets checkInClosedAt only.
+03-sessions.md	R64	PRESERVED	apps/backend/src/routes/sessions.ts:677-678	-	Regenerate replaces token only; timestamps untouched.
+03-sessions.md	R65	PRESERVED	apps/backend/src/routes/sessions.ts:539	-	Open, close (564) and regenerate (673) require isAdminOfSeason, not leaders.
+03-sessions.md	R66	PRESERVED	apps/backend/src/lib/check-in.ts:14-35	-	Open iff opened, not closed, within three hours; one derivation.
+03-sessions.md	R67	DIVERGED	apps/backend/src/lib/check-in.ts:1-13	04-attendance.md D8	Detail checkInOpen now uses the same three-hour derivation as redemption.
+03-sessions.md	R68	DIVERGED	apps/mobile/app/(app)/session/[id]/index.tsx:79	REG-10	QR encodes the bare token; in-app scanner accepts both forms.
+03-sessions.md	R69	PRESERVED	apps/backend/prisma/schema.prisma:376	-	checkInToken is @unique across sessions.
+03-sessions.md	R70	PRESERVED	apps/backend/src/lib/queries/sessions.ts:70-79	-	Per-season list unwindowed, ordered startsAt ascending.
+03-sessions.md	R71	PRESERVED	apps/backend/src/lib/queries/sessions.ts:58	-	attendanceMarked true iff any attendance row exists.
+03-sessions.md	R72	PRESERVED	apps/backend/src/lib/queries/sessions.ts:69-72	-	includeCheckInToken still defaults to true; callers must opt out.
+03-sessions.md	R73	PRESERVED	apps/backend/src/routes/seasons.ts:487-489	-	Season list gives token to every non-student incl leaders and mentors; range list narrows (sessions.ts:248).
+03-sessions.md	R74	PRESERVED	apps/backend/src/lib/queries/sessions.ts:94	-	Active scope filters season ACTIVE and not deleted.
+03-sessions.md	R75	DIVERGED	apps/backend/src/routes/sessions.ts:216-256	Plan 6 D-16.7	Range list is windowed; token only for seasons caller administers.
+03-sessions.md	R76	DIVERGED	apps/backend/src/routes/sessions.ts:285-287	C8	Session detail now authorised with canAccessSeason before returning.
+03-sessions.md	R77	PRESERVED	apps/backend/src/routes/sessions.ts:297-320	-	Detail adds description and youtubeUrl, omits attendanceMarked.
+03-sessions.md	R78	PRESERVED	apps/backend/src/lib/permissions.ts:21-27	-	Student passes with active season or any enrolment row in that season.
+03-sessions.md	R79	PRESERVED	apps/backend/src/lib/permissions.ts:12-18	-	Leader may open sessions of any season where they lead a group.
+03-sessions.md	R80	PRESERVED	apps/backend/src/lib/permissions.ts:8-31	-	canAccessSeason admits SUPER, MENTOR, season admins, leaders, enrolled students.
+03-sessions.md	R81	PRESERVED	apps/mobile/app/(app)/calendar.tsx:78-79	-	Student calendar reads pinned active season only; token withheld (seasons.ts:488).
+03-sessions.md	R82	PRESERVED	apps/mobile/app/(app)/calendar.tsx:92-98	-	No active season shows empty state without a session query.
+03-sessions.md	R83	PRESERVED	apps/backend/src/lib/permissions.ts:239-249	-	Leader seasons are the union of seasons of groups they lead.
+03-sessions.md	R84	PRESERVED	apps/mobile/app/(app)/calendar.tsx:196-212	-	Leader leading nothing sees empty state.
+03-sessions.md	R85	NA	-	-	v1 N+1 query shape; v2 uses one query (permissions.ts:241), same visible result.
+03-sessions.md	R86	DIVERGED	apps/mobile/app/(app)/calendar.tsx:166-186	Plan 6 D-16.16	Admin calendar uses season switcher instead of v1 redirect.
+03-sessions.md	R87	PRESERVED	apps/backend/src/lib/permissions.ts:224-237	-	Admin scoped to seasonAdminIds, SUPER unscoped.
+03-sessions.md	R88	PRESERVED	apps/backend/src/lib/permissions.ts:228-231	-	Per-season admin calendar requires isAdminOfSeason else forbidden.
+03-sessions.md	R89	DROPPED	apps/mobile/app/(app)/calendar.tsx:51-52	UNAUTHORISED	No five-colour palette or legend; season title shown as a label only.
+03-sessions.md	R90	PRESERVED	apps/mobile/app/(app)/calendar.tsx:92-98	-	Alumnus has no active season so sees JPC events only.
+03-sessions.md	R91	PRESERVED	apps/mobile/app/(app)/calendar.tsx:200-205	-	Mentor gets not-available state; calendarScopeFor forbids (permissions.ts:253).
+03-sessions.md	R92	DIVERGED	apps/backend/src/lib/queries/events.ts:58	REG-41	Alumni now see ALUMNI_ONLY events; staff still do.
+03-sessions.md	R93	DROPPED	apps/mobile/app/(app)/calendar.tsx:122-155	UNAUTHORISED	No Upcoming/Week/Month toggle; one day-grouped list with Earlier/Later paging.
+03-sessions.md	R94	DROPPED	apps/mobile/app/(app)/calendar.tsx:35	UNAUTHORISED	No week grid, so no Monday week start.
+03-sessions.md	R95	DROPPED	apps/mobile/app/(app)/calendar.tsx:125	UNAUTHORISED	No anchor month; window starts at today and pages by cursor.
+03-sessions.md	R96	PRESERVED	apps/mobile/app/(app)/calendar.tsx:102	-	Empty state only when sessions and events are both empty.
+03-sessions.md	R97	DIVERGED	apps/mobile/src/lib/day-groups.ts:51-55	X13	Days bucketed by server org-zone dayKey, not viewer local date.
+03-sessions.md	R98	DIVERGED	apps/backend/src/routes/sessions.ts:234	Plan 6 D-16.7	Default window starts at org midnight today; past reachable by Earlier paging.
+03-sessions.md	R99	PRESERVED	apps/mobile/src/lib/day-groups.ts:51-55	-	Sessions and events interleaved by instant under day headings.
+03-sessions.md	R100	DROPPED	apps/mobile/app/(app)/calendar.tsx:37	UNAUTHORISED	Day heading is a formatted date; no Today or in-N-days wording.
+03-sessions.md	R101	DROPPED	-	UNAUTHORISED	No month view, so no dimming of out-of-month days.
+03-sessions.md	R102	DROPPED	apps/mobile/app/(app)/calendar.tsx:40-53	UNAUTHORISED	Session cards have no today/past/teal colour coding.
+03-sessions.md	R103	DIVERGED	apps/mobile/app/(app)/calendar.tsx:43	D1	One /session/[id] route for every role (REG-01 cites D1).
+03-sessions.md	R104	DROPPED	apps/mobile/app/(app)/calendar.tsx:40-53	UNAUTHORISED	No Today / Attendance marked / pending / Upcoming badge on cards.
+03-sessions.md	R105	PRESERVED	apps/backend/prisma/schema.prisma:368	-	Only startsAt instant stored; no timezone column (C1).
+03-sessions.md	R106	DIVERGED	apps/backend/src/lib/org-time.ts:106-130	C2	Wall clock authored and rendered in one org timezone server-side.
+03-sessions.md	R107	DIVERGED	apps/backend/src/routes/sessions.ts:180-184	X13	Recurrence spacing and first occurrence both use the org zone.
+03-sessions.md	R108	DIVERGED	apps/mobile/src/lib/day-groups.ts:51-55	C2	Client no longer compares instant with local date; server dayKey.
+03-sessions.md	R109	PRESERVED	apps/backend/src/lib/queries/me.ts:162	-	Instant-to-instant comparisons kept (startsAt gte now, lte now).
+04-attendance.md	R1	PRESERVED	packages/shared/src/enums.ts:11	-	Status vocabulary is PRESENT, ABSENT, LATE (Prisma enum schema.prisma:44-48).
+04-attendance.md	R2	PRESERVED	apps/backend/prisma/schema.prisma:446	-	status non-nullable; unmarked is absence of a row.
+04-attendance.md	R3	PRESERVED	apps/backend/src/lib/queries/sessions.ts:152	-	Roster synthesises null status; student screen shows No record (attendance.tsx:17).
+04-attendance.md	R4	PRESERVED	apps/backend/prisma/schema.prisma:456	-	Unique on sessionId plus studentUserId; writes use upsert (sessions.ts:495).
+04-attendance.md	R5	PRESERVED	apps/backend/src/routes/sessions.ts:142	-	Scan yields PRESENT or LATE only; manual save accepts all three.
+04-attendance.md	R6	PRESERVED	apps/backend/src/routes/sessions.ts:463-466	-	Save requires attendanceScopeFor non-null, else 403.
+04-attendance.md	R7	PRESERVED	packages/shared/src/attendance.ts:6-13	-	Entry bounds: notes max 500, lateMinutes int 0 to 600.
+04-attendance.md	R8	PRESERVED	apps/backend/src/routes/sessions.ts:468-469	-	Whole array parsed first; any invalid entry rejects with 400, no write.
+04-attendance.md	R9	PRESERVED	apps/backend/src/routes/sessions.ts:493-516	-	All upserts in one transaction.
+04-attendance.md	R10	PRESERVED	apps/backend/src/routes/sessions.ts:502	-	lateMinutes nulled unless LATE on update; create at 511.
+04-attendance.md	R11	PRESERVED	apps/backend/src/routes/sessions.ts:503-504	-	Update sets markedById and markedAt now.
+04-attendance.md	R12	PRESERVED	apps/backend/src/routes/sessions.ts:506-513	-	Create omits markedAt; schema default now applies (schema.prisma:450).
+04-attendance.md	R13	PRESERVED	apps/backend/src/routes/sessions.ts:499	-	notes always overwritten with notes ?? null.
+04-attendance.md	R14	PRESERVED	apps/backend/src/routes/sessions.ts:497-505	-	Save never touches checkedInAt.
+04-attendance.md	R15	PRESERVED	apps/backend/src/routes/sessions.ts:518-522	-	flagLowAttendance runs after commit, best-effort; failure cannot roll back.
+04-attendance.md	R16	PRESERVED	apps/mobile/src/lib/attendance-entries.ts:29-30	-	Only touched rows are sent; untouched students keep their row.
+04-attendance.md	R17	PRESERVED	apps/mobile/app/(app)/session/[id]/attendance.tsx:115-118	-	Client refuses empty batch; server schema accepts empty array (attendance.ts:17).
+04-attendance.md	R18	PRESERVED	apps/mobile/src/lib/attendance-entries.ts:7-12	-	Client floors and clamps lateMinutes to non-negative before send.
+04-attendance.md	R19	PRESERVED	apps/mobile/app/(app)/session/[id]/attendance.tsx:109-141	-	Mark-all buttons set every row to one status.
+04-attendance.md	R20	PRESERVED	apps/backend/src/lib/queries/sessions.ts:125-130	-	Roster from SeasonEnrollment with status ACTIVE for the session season.
+04-attendance.md	R21	PRESERVED	apps/backend/src/lib/queries/sessions.ts:129	-	Group scoping is a groupIds filter argument on the enrolment query.
+04-attendance.md	R22	DIVERGED	apps/backend/src/routes/sessions.ts:476-489	C8	Write path now rejects students outside the leader's groups; narrowing no longer presentational.
+04-attendance.md	R23	PRESERVED	apps/backend/src/routes/sessions.ts:449-452	-	Season-wide scope passes no groupIds, so admins see whole roster.
+04-attendance.md	R24	PRESERVED	apps/backend/src/lib/queries/sessions.ts:136	-	Ordered by group name then student name ascending.
+04-attendance.md	R25	PRESERVED	apps/backend/src/lib/queries/sessions.ts:145-155	-	Row carries status, notes, lateMinutes or nulls.
+04-attendance.md	R26	PRESERVED	apps/backend/src/lib/queries/sessions.ts:125-143	-	Two queries joined in memory.
+04-attendance.md	R27	PRESERVED	apps/backend/src/routes/sessions.ts:453	-	Unknown session answers 404 not_found.
+04-attendance.md	R28	DIVERGED	apps/backend/src/routes/sessions.ts:458-466	04-attendance.md D7	No separate override endpoint; one save path with the same gate.
+04-attendance.md	R29	DIVERGED	packages/shared/src/attendance.ts:6-13	04-attendance.md D7	Single entry schema serves all marking; same bounds.
+04-attendance.md	R30	DIVERGED	apps/backend/src/routes/sessions.ts:503-513	04-attendance.md D7	One save path; markedAt set on update, defaulted on create.
+04-attendance.md	R31	DIVERGED	apps/backend/src/routes/sessions.ts:497-505	04-attendance.md D7	Save never clears checkedInAt, same effect as v1 override.
+04-attendance.md	R32	DIVERGED	apps/mobile/src/lib/attendance-entries.ts:31	04-attendance.md D7	Console override gone; save path resends stored notes so none are erased.
+04-attendance.md	R33	DIVERGED	apps/backend/src/routes/sessions.ts:520-522	04-attendance.md D7	Every save, including single ABSENT, runs the low-attendance flag.
+04-attendance.md	R34	PRESERVED	apps/backend/src/routes/sessions.ts:99-101	-	checkInToken unique; sole scan lookup key.
+04-attendance.md	R35	PRESERVED	apps/backend/src/lib/public-id.ts:18-29	-	Token from newPublicId, same alphabet and length.
+04-attendance.md	R36	PRESERVED	apps/backend/src/routes/sessions.ts:545	-	Minted lazily on first open.
+04-attendance.md	R37	PRESERVED	apps/backend/src/routes/sessions.ts:545	-	Reopen reuses existing token.
+04-attendance.md	R38	PRESERVED	apps/backend/src/routes/sessions.ts:99-101	-	Lookup carries no student or group component; one token per session.
+04-attendance.md	R39	PRESERVED	apps/backend/src/routes/sessions.ts:568-571	-	Close writes only checkInClosedAt; token unchanged.
+04-attendance.md	R40	PRESERVED	apps/backend/src/routes/sessions.ts:677-678	-	Regenerate replaces token only, window state untouched.
+04-attendance.md	R41	DIVERGED	apps/mobile/app/(app)/session/[id]/index.tsx:79	REG-10	QR payload is the bare token; scanner still accepts v1 URLs (attendance.ts:36).
+04-attendance.md	R42	PRESERVED	apps/backend/src/routes/sessions.ts:263-266	-	Session detail omits token; season list withholds it from students (seasons.ts:488).
+04-attendance.md	R43	PRESERVED	apps/backend/src/routes/seasons.ts:487-489	-	GET /seasons/:id/sessions still gives token to every non-student incl MENTOR; contrast sessions.ts:248.
+04-attendance.md	R44	DIVERGED	apps/backend/src/routes/sessions.ts:246-248	C8	Calendar range list withholds token unless caller administers that season, so leaders get none.
+04-attendance.md	R45	DIVERGED	apps/backend/src/routes/sessions.ts:248	C8	SUPER calendar now goes through the per-season token mask.
+04-attendance.md	R46	PRESERVED	apps/backend/src/routes/sessions.ts:548	-	Open sets checkInOpenAt now and clears closedAt; reopen supported.
+04-attendance.md	R47	PRESERVED	apps/backend/src/routes/sessions.ts:570	-	Close sets checkInClosedAt; openAt stays.
+04-attendance.md	R48	PRESERVED	apps/backend/src/routes/sessions.ts:539	-	Open, close (564), regenerate (673) need isAdminOfSeason; leaders refused.
+04-attendance.md	R49	PRESERVED	apps/backend/src/lib/check-in.ts:30	-	More than three hours since open yields closed even with closedAt null.
+04-attendance.md	R50	PRESERVED	apps/backend/src/lib/check-in.ts:27-32	-	Expiry derived at read time only; nothing writes closedAt at three hours.
+04-attendance.md	R51	DIVERGED	apps/backend/src/lib/check-in.ts:34-36	04-attendance.md D8	One derivation; clients render server checkInOpen instead of recomputing.
+04-attendance.md	R52	PRESERVED	apps/mobile/app/(app)/session/[id]/index.tsx:81-83	-	Console shows closing time while open, from server expiresAtTime.
+04-attendance.md	R53	PRESERVED	apps/backend/src/routes/sessions.ts:545-548	-	Pressing Open on an expired window restamps openAt and reuses the token.
+04-attendance.md	R54	DIVERGED	apps/backend/src/routes/sessions.ts:311	04-attendance.md D8	Detail checkInOpen now uses the three-hour derivation.
+04-attendance.md	R55	DIVERGED	apps/backend/src/lib/check-in.ts:14	04-attendance.md D8	Three-hour rule is one named constant CHECK_IN_WINDOW_MS.
+04-attendance.md	R56	DIVERGED	apps/mobile/app/checkin/[token].tsx:32-36	REG-04	Anonymous user sent to login with returnTo, back to token screen.
+04-attendance.md	R57	PRESERVED	apps/backend/src/routes/sessions.ts:93-122	-	No role gate on scan; enrolment check is the only guard (REG-09 defers).
+04-attendance.md	R58	PRESERVED	apps/backend/src/routes/sessions.ts:117	-	Attendance written for the caller user id, never an input id.
+04-attendance.md	R59	PRESERVED	apps/backend/src/routes/sessions.ts:109-129	-	Same precedence and five codes invalid_token, not_open, closed, not_enrolled, already_checked_in.
+04-attendance.md	R60	PRESERVED	apps/backend/src/routes/sessions.ts:116-122	-	Enrolment must exist for season and be ACTIVE.
+04-attendance.md	R61	PRESERVED	apps/backend/src/routes/sessions.ts:128-130	-	Idempotency keyed on checkedInAt not null.
+04-attendance.md	R62	PRESERVED	apps/backend/src/routes/sessions.ts:128-130	-	Second scan writes nothing, returns already_checked_in; current status not included in body.
+04-attendance.md	R63	DIVERGED	apps/backend/src/routes/sessions.ts:132-141	C3	Lateness measured from session startsAt, not check-in open time (REG-15).
+04-attendance.md	R64	PRESERVED	apps/backend/src/routes/sessions.ts:142	-	LATE if minutes above zero else PRESENT; zero threshold.
+04-attendance.md	R65	PRESERVED	apps/backend/src/routes/sessions.ts:146-154	-	Create writes status, checkedInAt, lateMinutes, markedById self, markedAt now.
+04-attendance.md	R66	PRESERVED	apps/backend/src/routes/sessions.ts:155-159	-	Update overwrites status, checkedInAt, lateMinutes; markedBy and notes untouched (D5 not applied).
+04-attendance.md	R67	PRESERVED	apps/backend/src/routes/sessions.ts:93-163	-	Scan path sends no notification.
+04-attendance.md	R68	PRESERVED	apps/backend/src/routes/sessions.ts:124-160	-	Reads then single upsert, no transaction or serialisation.
+04-attendance.md	R69	DIVERGED	apps/mobile/app/checkin/[token].tsx:38-43	REG-14	Opening a link never writes; Check in press does.
+04-attendance.md	R70	PRESERVED	apps/mobile/app/checkin/[token].tsx:23-62	-	Standalone route outside (app) shell; only server checks guard it.
+04-attendance.md	R71	DIVERGED	apps/mobile/src/lib/check-in-result.ts:27-33	C3	After-session-start wording is now true because lateness is from start.
+04-attendance.md	R72	DIVERGED	apps/mobile/src/components/check-in/StudentCheckInCard.tsx:29-36	REG-14	Scanner posts the token directly; no navigate-then-write page.
+04-attendance.md	R73	PRESERVED	apps/mobile/src/components/check-in/StudentCheckInCard.tsx:55-60	-	Controls shown only when server checkInOpen true, else not-open text.
+04-attendance.md	R74	DROPPED	apps/backend/src/lib/permissions.ts:21-27	UNAUTHORISED	Session detail admits any enrolment row, not only ACTIVE; no 404 for inactive enrolees.
+04-attendance.md	R75	PRESERVED	apps/backend/src/routes/sessions.ts:520-522	-	Flag only from the save path, never scan.
+04-attendance.md	R76	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:12-15	-	No ABSENT entry returns immediately.
+04-attendance.md	R77	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:17-21	-	Unknown session returns silently.
+04-attendance.md	R78	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:24-32	-	Two most recent rows in season at or before this start, newest first.
+04-attendance.md	R79	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:33-34	-	Needs two rows both ABSENT; consecutive recorded rows (D12 not applied).
+04-attendance.md	R80	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:36-40	-	Group via global GroupStudent, contradicting C9 and spec 04 D9; likely defect.
+04-attendance.md	R81	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:40	-	No GroupStudent row skips student entirely, admins unnotified (D9 not applied).
+04-attendance.md	R82	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:42-53	-	Admins plus group leaders, leader-admins de-duplicated.
+04-attendance.md	R83	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:66-74	-	Admin and leader get different v1-format links (ruling X1).
+04-attendance.md	R84	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:58	-	Title uses student name with A student fallback.
+04-attendance.md	R85	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:23-77	-	Still sequential per absent student; D13 batching not applied.
+04-attendance.md	R86	DIVERGED	apps/backend/src/lib/notifications.ts:62-82	REG-37	In-app notification always written; lowAttendanceFlag preference gates email only.
+04-attendance.md	R87	PRESERVED	apps/backend/src/lib/attendance-notifications.ts:23-77	-	No dedupe or cooldown; re-saving re-sends.
+04-attendance.md	R88	PRESERVED	apps/backend/src/lib/attendance-budget.ts:35	-	minutesUsed is absent count times weight plus summed lateMinutes.
+04-attendance.md	R89	PRESERVED	apps/backend/src/lib/queries/attendance-budget.ts:32	-	Null lateMinutes sum contributes zero.
+04-attendance.md	R90	PRESERVED	apps/backend/src/lib/attendance-budget.ts:38-43	-	budgetPct rounded and capped at 100; zero budget guarded.
+04-attendance.md	R91	PRESERVED	apps/backend/src/lib/queries/attendance-budget.ts:19-27	-	All season rows counted regardless of session date.
+04-attendance.md	R92	PRESERVED	apps/backend/src/lib/queries/me.ts:234-238	-	Unknown or deleted season yields null season and budget.
+04-attendance.md	R93	PRESERVED	apps/backend/src/lib/queries/me.ts:230-232	-	Student only, active season; none gives empty state and no query (attendance.tsx:62-69).
+04-attendance.md	R94	PRESERVED	apps/backend/src/lib/queries/me.ts:242-244	-	Past sessions only, newest first.
+04-attendance.md	R95	PRESERVED	apps/backend/src/lib/attendance-budget.ts:56-64	-	Cost is weight for ABSENT, row minutes for LATE.
+04-attendance.md	R96	PRESERVED	apps/mobile/app/(app)/attendance.tsx:93-95	-	States Absent equals N min and Late equals actual minutes.
+04-attendance.md	R97	PRESERVED	apps/mobile/app/(app)/session/[id]/index.tsx:120-124	-	Leader roster polls every 10s only while check-in open.
+04-attendance.md	R98	DROPPED	apps/mobile/app/(app)/session/[id]/index.tsx:41-107	UNAUTHORISED	Admin console shows QR and controls but no live roster of checked-in students.
+04-attendance.md	R99	DIVERGED	apps/backend/src/lib/queries/sessions.ts:125-130	C9	Leader live roster uses SeasonEnrollment scoped by leader groups, same source as marking.
+04-attendance.md	R100	PRESERVED	apps/mobile/app/(app)/session/[id]/index.tsx:129	-	Leader sees open or closed label, no controls.
+04-attendance.md	R101	NA	-	-	v1 prop plumbing (checkInBaseUrl); v2 SUPER passes isAdminOfSeason so the console renders (index.tsx:249).
+04-attendance.md	R102	PRESERVED	apps/mobile/app/(app)/session/[id]/index.tsx:75-79	-	QR rendered only while window open.
+05-groups.md	R1	PRESERVED	apps/backend/prisma/schema.prisma:330	-	GroupStudent.studentUserId still @unique standalone; one group database-wide.
+05-groups.md	R2	PRESERVED	apps/backend/src/lib/queries/groups.ts:208	-	Existing membership deleted before create (also 388), not caught on violation.
+05-groups.md	R3	PRESERVED	apps/backend/src/lib/queries/groups.ts:208	-	GroupStudent delete is unscoped; other season enrolment groupId pointer survives (C9).
+05-groups.md	R4	PRESERVED	apps/backend/src/lib/queries/groups.ts:210-213	-	Enrolment groupId written by form path and bulk assign (390-393).
+05-groups.md	R5	DIVERGED	apps/backend/src/lib/permissions.ts:49-55	C9	Membership and access now resolve through SeasonEnrollment.groupId.
+05-groups.md	R6	DIVERGED	apps/backend/src/lib/permissions.ts:150-160	C9	Submission and group consumers resolve group per season via enrolment.
+05-groups.md	R7	PRESERVED	apps/backend/src/routes/students.ts:447-453	-	Graduation completes enrolments and clears activeSeasonId; GroupStudent row not deleted.
+05-groups.md	R8	PRESERVED	apps/backend/src/routes/students.ts:393-400	-	Drop updates enrolment status only; membership untouched.
+05-groups.md	R9	PRESERVED	apps/backend/src/routes/students.ts:261	-	Profile activeSeasonId edit writes StudentProfile only; GroupStudent untouched.
+05-groups.md	R10	DIVERGED	apps/backend/src/lib/queries/groups.ts:68-73	C9	studentCount counts ACTIVE enrolments; detail roster (groups.ts:118) still GroupStudent based.
+05-groups.md	R11	PRESERVED	apps/backend/src/routes/seasons.ts:443-445	-	Group create requires isAdminOfSeason on target season.
+05-groups.md	R12	PRESERVED	packages/shared/src/group.ts:38	-	Name trimmed, 2 to 80 characters.
+05-groups.md	R13	PRESERVED	packages/shared/src/group.ts:39	-	Description max 2000; mobile sends null for blank (GroupForm.tsx:66).
+05-groups.md	R14	DIVERGED	packages/shared/src/group.ts:40-41	05-groups.md §10 item 2	leaderIds and studentIds validated with caps plus eligibility checks.
+05-groups.md	R15	DIVERGED	apps/backend/src/lib/queries/groups.ts:129-139	REG-64	Endpoint rejects duplicate group name in season (name_taken); no DB index.
+05-groups.md	R16	PRESERVED	packages/shared/src/group.ts:40-41	-	No capacity field; only per-request array caps of 20 leaders and 500 students.
+05-groups.md	R17	DIVERGED	apps/backend/src/lib/queries/groups.ts:141-153	05-groups.md §10 item 2	Leaders must hold LEADER role (soft-deleted not checked).
+05-groups.md	R18	DIVERGED	apps/backend/src/lib/queries/groups.ts:155-168	05-groups.md §10 item 2	Students must be enrolled in this season; picker is the season roster.
+05-groups.md	R19	PRESERVED	apps/backend/src/routes/seasons.ts:466-469	-	Leaders inserted with skipDuplicates (also groups.ts:70-73).
+05-groups.md	R20	DIVERGED	apps/backend/src/lib/queries/groups.ts:205-214	05-groups.md §10 item 3	Duplicate studentIds do not throw; per-student delete then create is idempotent.
+05-groups.md	R21	DIVERGED	apps/backend/src/lib/queries/groups.ts:173-214	05-groups.md §10 item 3	Enrolment updated in place, status and history preserved, no recreate.
+05-groups.md	R22	PRESERVED	apps/backend/src/lib/queries/groups.ts:205	-	Empty studentIds writes no enrolment rows.
+05-groups.md	R23	PRESERVED	apps/backend/src/routes/seasons.ts:456-473	-	Create runs in one transaction.
+05-groups.md	R24	PRESERVED	apps/backend/src/routes/seasons.ts:475	-	Returns new group id with 201.
+05-groups.md	R25	NA	-	-	Next revalidatePath calls have no v2 counterpart; React Query refetches.
+05-groups.md	R26	PRESERVED	apps/backend/src/routes/seasons.ts:438-476	-	Group create notifies nobody.
+05-groups.md	R27	PRESERVED	apps/backend/src/routes/groups.ts:48-49	-	Missing group answers 404 not_found envelope.
+05-groups.md	R28	PRESERVED	apps/backend/src/routes/groups.ts:48-53	-	Authorised against stored group seasonId.
+05-groups.md	R29	PRESERVED	apps/backend/src/routes/groups.ts:62-65	-	Update writes name and description only; group cannot change season.
+05-groups.md	R30	NA	-	-	assignedAt never read (R105); v2 diffs leaders (groups.ts:66-73) with no user-visible difference.
+05-groups.md	R31	PRESERVED	apps/backend/src/routes/groups.ts:66-68	-	Empty leaderIds removes all leaders without confirmation.
+05-groups.md	R32	PRESERVED	apps/backend/src/lib/queries/groups.ts:194-214	-	Removed students handled separately from listed; listed ones rewritten, same outcome.
+05-groups.md	R33	DIVERGED	apps/backend/src/lib/queries/groups.ts:197-200	05-groups.md §10 item 7	Removed students get enrolment groupId nulled.
+05-groups.md	R34	DIVERGED	apps/backend/src/lib/queries/groups.ts:205-214	05-groups.md §10 item 3	Add path updates enrolment in place; unscoped GroupStudent delete kept.
+05-groups.md	R35	PRESERVED	apps/backend/src/routes/groups.ts:61-76	-	Update in one interactive transaction.
+05-groups.md	R36	PRESERVED	apps/backend/src/routes/groups.ts:78	-	Returns only the id; no counts of students moved.
+05-groups.md	R37	PRESERVED	apps/backend/src/routes/groups.ts:43-79	-	Edit sends no notification.
+05-groups.md	R38	DIVERGED	apps/backend/src/routes/groups.ts:156-158	C12	Delete of missing group returns 404; delete redesigned not ported.
+05-groups.md	R39	PRESERVED	apps/backend/src/routes/groups.ts:160-163	-	Delete requires isAdminOfSeason on stored season.
+05-groups.md	R40	DIVERGED	apps/backend/src/routes/groups.ts:193-208	Plan 6 D-16.13	Same cleanup plus targets, all seasons' pointers, and a sole-target guard.
+05-groups.md	R41	PRESERVED	apps/backend/src/routes/groups.ts:206	-	Hard delete; Group has no deletedAt.
+05-groups.md	R42	PRESERVED	apps/backend/src/routes/groups.ts:201-209	-	Students left unassigned, not blocked; ids now returned as orphanedStudentIds.
+05-groups.md	R43	PRESERVED	apps/backend/src/routes/groups.ts:204	-	Enrolment pointers nulled for every season explicitly.
+05-groups.md	R44	DIVERGED	apps/backend/src/routes/groups.ts:194-199	Plan 6 D-16.13	Delete refused with group_has_sole_targets instead of silently orphaning assignments.
+05-groups.md	R45	DIVERGED	apps/backend/src/routes/groups.ts:167-171	Plan 6 D-16.13	GET impact gives counts before delete; confirmation exists.
+05-groups.md	R46	DIVERGED	apps/backend/src/routes/groups.ts:179-188	C12	Dead v1 action replaced by designed delete with endpoint.
+05-groups.md	R47	PRESERVED	apps/backend/src/routes/seasons.ts:575-585	-	Bulk assign requires isAdminOfSeason on the season.
+05-groups.md	R48	DIVERGED	packages/shared/src/group.ts:118-129	05-groups.md §10 item 8	Cap 500 not 2000; null groupId still unassigns.
+05-groups.md	R49	PRESERVED	apps/backend/src/routes/seasons.ts:606-627	-	Empty array writes nothing and succeeds with zero counts.
+05-groups.md	R50	PRESERVED	apps/backend/src/lib/queries/groups.ts:365-371	-	Any group outside the season refuses the whole batch.
+05-groups.md	R51	DIVERGED	apps/backend/src/lib/queries/groups.ts:319-336	C9	Eligibility is ACTIVE enrolment of live STUDENT, not activeSeasonId.
+05-groups.md	R52	DIVERGED	apps/backend/src/lib/queries/groups.ts:377-381	Plan 6 D-16.12	Ineligible students skipped but reported in skippedStudentIds.
+05-groups.md	R53	PRESERVED	apps/backend/src/lib/queries/groups.ts:388-389	-	Unscoped membership delete then create for assigned students.
+05-groups.md	R54	PRESERVED	apps/backend/src/lib/queries/groups.ts:390-393	-	Enrolment groupId updated only; status and history survive.
+05-groups.md	R55	DIVERGED	apps/backend/src/lib/queries/groups.ts:351-356	C9	Assign no longer creates an enrolment; unknown or inactive students skipped.
+05-groups.md	R56	DIVERGED	apps/backend/src/routes/seasons.ts:624-625	05-groups.md §10 item 8	Transaction timeout 30s with 500-row cap.
+05-groups.md	R57	DIVERGED	apps/backend/src/lib/queries/groups.ts:357-358	Plan 6 D-16.12	Response reports assigned, unassigned and skipped counts.
+05-groups.md	R58	NA	-	-	Next revalidatePath has no v2 counterpart.
+05-groups.md	R59	PRESERVED	apps/backend/src/lib/auth/scopes.ts:12	-	groupLeaderIds is every GroupLeader.groupId for the user, no role filter.
+05-groups.md	R60	DIVERGED	apps/backend/src/lib/auth/tokens.ts:96	C7	Scopes reloaded on each token issue and refresh, not only at sign-in.
+05-groups.md	R61	PRESERVED	apps/backend/src/lib/auth/tokens.ts:96	-	issueSession calls loadScopes; 900s access TTL bounds staleness.
+05-groups.md	R62	PRESERVED	apps/backend/prisma/schema.prisma:321	-	GroupLeader composite key; many leaders and many groups per user.
+05-groups.md	R63	DIVERGED	apps/backend/src/lib/rbac.ts:37-39	C7	isLeaderOfGroup now also requires role LEADER.
+05-groups.md	R64	PRESERVED	apps/backend/src/lib/permissions.ts:94-103	-	staffScopeForSeason passes SUPER, season admin and leaders with a group in season.
+05-groups.md	R65	DIVERGED	apps/backend/src/lib/rbac.ts:37-39	C7	Group access via claim requires LEADER role; stray row grants nothing.
+05-groups.md	R66	PRESERVED	apps/backend/src/lib/permissions.ts:34	-	canAccessGroup true for SUPER and MENTOR for every group.
+05-groups.md	R67	PRESERVED	apps/mobile/app/(app)/groups.tsx:122-127	-	Mentor gets not-available screen but API still admits mentor (permissions.ts:34).
+05-groups.md	R68	DIVERGED	apps/backend/src/lib/permissions.ts:44-56	C9	Student access via enrolment groupId for that group's season.
+05-groups.md	R69	PRESERVED	apps/backend/src/lib/queries/groups.ts:104-108	-	Season groups ordered by name, no pagination.
+05-groups.md	R70	DIVERGED	apps/backend/src/lib/queries/groups.ts:26-50	C8	Narrowing by role is inside the query function, not caller's choice.
+05-groups.md	R71	DIVERGED	apps/backend/src/lib/queries/groups.ts:68-73	C9	studentCount counts ACTIVE enrolments in the group's season.
+05-groups.md	R72	PRESERVED	apps/backend/src/lib/queries/groups.ts:80	-	leaderNames filters falsy names; count unaffected.
+05-groups.md	R73	PRESERVED	apps/backend/src/lib/queries/groups.ts:75-84	-	List row has leader names and student count only.
+05-groups.md	R74	DIVERGED	apps/backend/src/routes/groups.ts:102-104	C8	Group detail authorised by canAccessGroup before load.
+05-groups.md	R75	DIVERGED	apps/backend/src/routes/groups.ts:131-143	C8	Ordered by name; students receive id and name but no email.
+05-groups.md	R76	NA	-	-	v1 URL season-code cross-check; v2 group detail is id-only and returns its own seasonCode.
+05-groups.md	R77	PRESERVED	apps/backend/src/routes/groups.ts:86-94	-	All live LEADER users by name, now gated to season admins.
+05-groups.md	R78	DIVERGED	apps/backend/src/lib/queries/groups.ts:273-283	Plan 6 D-16.11	Student picker is the season roster of ACTIVE enrolments, not global.
+05-groups.md	R79	DIVERGED	apps/mobile/src/components/GroupForm.tsx:100-105	Plan 6 D-16.11	Picker now shows current group and other-season group per student.
+05-groups.md	R80	NA	-	-	Select-helper query has no v2 counterpart; chips use the season groups list.
+05-groups.md	R81	DIVERGED	apps/backend/src/lib/queries/groups.ts:273-283	C9	Roster from ACTIVE enrolments of live STUDENT users, not activeSeasonId.
+05-groups.md	R82	DIVERGED	apps/backend/src/lib/queries/groups.ts:286-304	Plan 6 D-16.11	Other-season group reported as otherSeasonGroup instead of unassigned.
+05-groups.md	R83	PRESERVED	apps/backend/src/lib/queries/groups.ts:273-296	-	Two queries joined in memory; early return when no enrolments.
+05-groups.md	R84	DIVERGED	apps/backend/src/routes/groups.ts:30-34	C8	My groups served by gated endpoint, narrowed in listMyGroups.
+05-groups.md	R85	PRESERVED	apps/backend/src/lib/queries/groups.ts:245-249	-	No season or status filter; ordering now year desc then name.
+05-groups.md	R86	PRESERVED	apps/backend/src/routes/groups.ts:114-121	-	Leader sees students with id, name, email ordered by name via group detail.
+05-groups.md	R87	PRESERVED	apps/backend/src/lib/queries/groups.ts:243	-	Leader with no groups gets empty list without a group query.
+05-groups.md	R88	DIVERGED	apps/backend/src/lib/queries/me.ts:142-160	C9	Student group card resolved per active season via enrolment.
+05-groups.md	R89	PRESERVED	apps/backend/src/lib/queries/me.ts:153-155	-	Leaders carry email; peers name only (mySeasonMemberSchema strict).
+05-groups.md	R90	NA	-	-	v1 incidental unordered relations; v2 orders leaders and members by name (me.ts:154,176).
+05-groups.md	R91	DIVERGED	apps/mobile/app/(app)/groups.tsx:56-101	Plan 6 D-16.16	Season switcher replaces v1 redirect to newest season.
+05-groups.md	R92	DIVERGED	apps/mobile/app/(app)/groups.tsx:118-121	Plan 6 D-16.16	SUPER reaches the season groups view.
+05-groups.md	R93	PRESERVED	apps/mobile/src/components/GroupForm.tsx:70-74	-	Server cap 80 retained; client now validates with the shared schema.
+05-groups.md	R94	PRESERVED	packages/shared/src/group.ts:39	-	Description cap 2000 matches client and server.
+05-groups.md	R95	PRESERVED	packages/shared/src/group.ts:40-41	-	Zero leaders and zero students valid; arrays default empty.
+05-groups.md	R96	NA	-	-	v1 string-to-number casts; v2 holds numeric ids (GroupForm.tsx:17) and Zod validates.
+05-groups.md	R97	DROPPED	apps/mobile/app/(app)/group/new.tsx:25	UNAUTHORISED	Create lands on the new group detail; edit returns to /groups (edit.tsx:33), not both to list.
+05-groups.md	R98	PRESERVED	apps/mobile/src/components/GroupForm.tsx:100-105	-	Warning present, now names the current group per student plus footer text.
+05-groups.md	R99	PRESERVED	apps/mobile/src/components/GroupForm.tsx:70-74	-	First issue per field mapped onto inputs from the shared schema.
+05-groups.md	R100	PRESERVED	apps/mobile/app/(app)/seasons/[code]/roster/index.tsx:72-74	-	Grid sends only changed rows.
+05-groups.md	R101	DIVERGED	apps/mobile/app/(app)/seasons/[code]/roster/index.tsx:80-87	Plan 6 D-16.12	Message reports server-written counts and skipped students.
+05-groups.md	R102	NA	-	-	v1 sentinel string; v2 uses a null option directly (roster/index.tsx:97).
+05-groups.md	R103	PRESERVED	apps/mobile/app/(app)/seasons/[code]/roster/index.tsx:54-59	-	Separate empty states for no students and no groups.
+05-groups.md	R104	PRESERVED	apps/mobile/app/(app)/seasons/[code]/roster/index.tsx:102-129	-	Roster unpaginated (REG-55); every student rendered with all group chips.
+05-groups.md	R105	PRESERVED	apps/backend/src/lib/queries/groups.ts:87-94	-	List select reads no group timestamps.
+05-groups.md	R106	NA	-	-	No time-shaped rule in v2 group code; no enrolment is created by group writes.
+05-groups.md	R107	PRESERVED	apps/backend/src/routes/groups.ts:97-146	-	Group GET handlers perform no writes (C6).
+18-settings.md	R1	DIVERGED	apps/mobile/app/(app)/settings.tsx:22-24	REG-01	Six per-role settings pages collapse into one /settings route (one route per destination).
+18-settings.md	R2	PRESERVED	apps/mobile/app/(app)/settings.tsx:22-44	-	Page takes no props or role argument and has no gate.
+18-settings.md	R3	PRESERVED	apps/mobile/app/(app)/settings.tsx:14-21	-	Screen never branches by role; only hasPassword account state (136).
+18-settings.md	R4	NA	-	-	v1 per-area layout allowedRoles; v2 endpoints are self-scoped behind requireAuth (me.ts:85-86).
+18-settings.md	R5	NA	-	-	v1 superset URL access by area; v2 has a single route reachable by every role.
+18-settings.md	R6	DIVERGED	apps/mobile/app/(app)/settings.tsx:22-24	REG-01	Alumnus and student share /settings; no separate /alumni/settings.
+18-settings.md	R7	PRESERVED	packages/shared/src/navigation.ts:67	-	Settings in every role sidebar and in no tabs array.
+18-settings.md	R8	PRESERVED	apps/mobile/src/lib/nav-routes.ts:55-58	-	More lists sidebar items that are not tabs, so Settings appears there.
+18-settings.md	R9	DIVERGED	apps/mobile/app/(app)/profile.tsx:251-267	REG-16	Mentor has no More tab; Profile tab shows a card with Settings button.
+18-settings.md	R10	DIVERGED	apps/mobile/app/(app)/profile.tsx:190-192	18-settings.md D9	No avatar menu; student Profile has an Open settings button.
+18-settings.md	R11	DIVERGED	packages/shared/src/navigation.ts:158	REG-16	Mentor Profile tab now points at a real account screen.
+18-settings.md	R12	PRESERVED	apps/backend/src/routes/me.ts:63	-	Settings reads own user row by token id plus own preferences (258).
+18-settings.md	R13	NA	-	-	v1 null coercion with empty form; v2 screen returns null and layout redirects (settings.tsx:44).
+18-settings.md	R14	PRESERVED	apps/backend/src/routes/me.ts:262	-	No preference row returns all-true defaults.
+18-settings.md	R15	DIVERGED	packages/shared/src/notification.ts:127-145	18-settings.md D5	One six-key default constant; quizGraded exposed, enforced by satisfies.
+18-settings.md	R16	PRESERVED	apps/backend/src/routes/me.ts:256-262	-	Preferences read gated by requireAuth, own row only.
+18-settings.md	R17	PRESERVED	apps/backend/src/routes/me.ts:256-263	-	GET writes nothing (findUnique only).
+18-settings.md	R18	PRESERVED	apps/backend/src/routes/me.ts:96-98	-	Name write targets token userId; no target parameter.
+18-settings.md	R19	DIVERGED	packages/shared/src/user.ts:141-145	18-settings.md D7	Name trimmed, 2 to 120 with custom messages instead of Zod defaults.
+18-settings.md	R20	DIVERGED	apps/mobile/app/(app)/settings.tsx:120-126	18-settings.md D8	Email shown read-only with truthful caption; students cannot change email (REG-12).
+18-settings.md	R21	DIVERGED	packages/shared/src/user.ts:142	18-settings.md D7	Name trimmed server-side before validation and write.
+18-settings.md	R22	DROPPED	apps/mobile/app/(app)/settings.tsx:132	UNAUTHORISED	Save name button always enabled; no unchanged-name disable guard.
+18-settings.md	R23	NA	-	-	v1 revalidatePath plus router.refresh; v2 returns updated row and folds it into store (use-me.ts:15-24).
+18-settings.md	R24	PRESERVED	apps/backend/src/routes/me.ts:63-69	-	Name read from database on /me, token not relied on; store refreshed after edit.
+18-settings.md	R25	PRESERVED	apps/backend/src/routes/me.ts:105-107	-	Password change operates on token userId only.
+18-settings.md	R26	DIVERGED	packages/shared/src/user.ts:21-27	11-invites-users.md D8	New password min 8 plus 72-byte max; confirm check is client-side only (settings.tsx:74).
+18-settings.md	R27	PRESERVED	apps/backend/src/routes/me.ts:118-121	-	No passwordHash refused with 409 no_password; screen hides form (settings.tsx:136).
+18-settings.md	R28	DIVERGED	apps/backend/src/routes/me.ts:123-130	11-invites-users.md D8	bcryptjs compare plus hash at cost 12, not 10.
+18-settings.md	R29	DIVERGED	apps/backend/src/routes/me.ts:133-141	18-settings.md D1	Password change revokes other refresh tokens and expires live reset tokens in one transaction.
+18-settings.md	R30	NA	-	-	v1 revalidatePath omission; no v2 equivalent.
+18-settings.md	R31	DIVERGED	apps/backend/src/routes/me.ts:34	18-settings.md §7	Password endpoint rate limited 10 per 15 minutes; spec recommendation, not a numbered decision.
+18-settings.md	R32	PRESERVED	apps/mobile/app/(app)/settings.tsx:78-93	-	Fields cleared on success, errors mapped to inputs, button disabled until all three filled (169).
+18-settings.md	R33	PRESERVED	apps/backend/src/routes/me.ts:274-287	-	Preferences upsert keyed on token userId, no target id.
+18-settings.md	R34	DIVERGED	apps/backend/src/routes/me.ts:277-280	18-settings.md D6	PUT parsed against notificationPreferencesSchema; invalid returns 400.
+18-settings.md	R35	DROPPED	apps/mobile/src/hooks/use-notifications.ts:108-110	UNAUTHORISED	Toggles update on server success, not optimistically (setQueryData in onSuccess); optimistic flip and revert dropped.
+18-settings.md	R36	DIVERGED	apps/backend/src/routes/seasons.ts:162-163	02-seasons.md D1	Create persists absence budget fields.
+18-settings.md	R37	NA	-	-	Observation about literal duplication; v2 holds 180 and 90 in schema.prisma:254 and season.ts:73 with no mobile or attendance literal.
+18-settings.md	R38	DIVERGED	apps/backend/src/routes/me.ts:96-98	REG-12	Name has one editor, PATCH /me; student self-edit excludes name and email.
+18-settings.md	R39	PRESERVED	apps/backend/src/routes/me.ts:96-98	-	Settings writes record no actor or audit row (no updatedById on User).
+18-settings.md	R40	PRESERVED	apps/mobile/app/(app)/settings.tsx:28-31	-	Each settings write has exactly one caller in the screen.
+18-settings.md	R41	PRESERVED	apps/mobile/app/(app)/settings.tsx:175	-	NotificationPreferences component has one caller; quizGraded toggle now exposed.
+19-dashboards.md	R1	PRESERVED	apps/mobile/src/lib/dashboard-branch.ts:10	-	Alumnus is STUDENT with graduationYear; one dashboard route picks the branch per role.
+19-dashboards.md	R2	DIVERGED	apps/mobile/app/(app)/dashboard.tsx:32	REG-01	Edge path-prefix gating replaced by one role-driven route; server enforces row-scoped authorization.
+19-dashboards.md	R3	DROPPED	-	UNAUTHORISED	No alumnus redirect found in (app)/_layout.tsx; alumni reaching student destinations is not blocked client-side.
+19-dashboards.md	R4	DIVERGED	apps/mobile/src/components/dashboard/SuperDashboard.tsx:37	REG-60	SUPER gets its own dashboard, not the unscoped admin one.
+19-dashboards.md	R5	PRESERVED	apps/mobile/src/components/dashboard/UpcomingEventsCard.tsx:26	-	Upcoming events card rendered on all dashboard branches.
+19-dashboards.md	R6	DIVERGED	apps/backend/src/lib/queries/events.ts:58	REG-41	ALUMNI_ONLY events visible to alumni, reversing v1 inversion.
+19-dashboards.md	R7	PRESERVED	apps/backend/src/lib/queries/events.ts:64	-	SEASON events scoped to viewer seasons; mentor has none per REG-42.
+19-dashboards.md	R8	PRESERVED	apps/backend/src/lib/queries/events.ts:82	-	Window filter uses endDate fallback and org-zone start of day, capped list.
+19-dashboards.md	R9	NA	-	-	v1 in-memory fetch-all-then-filter mechanism; v2 filters in the query.
+19-dashboards.md	R10	DIVERGED	apps/mobile/src/components/dashboard/UpcomingEventsCard.tsx:26	19-dashboards.md D19	Card shows an empty state instead of rendering nothing.
+19-dashboards.md	R11	PRESERVED	apps/mobile/src/components/dashboard/UpcomingEventsCard.tsx:26	-	Event label formatting with time omission and external link handled by formatEventWhen.
+19-dashboards.md	R12	PRESERVED	apps/mobile/src/components/dashboard/SuperDashboard.tsx:50	-	Seasons tile shown; counts non-deleted seasons of any status.
+19-dashboards.md	R13	DIVERGED	apps/mobile/src/components/dashboard/SuperDashboard.tsx:38	17-reports.md D4	Tile relabelled as student accounts not graduated; population definition documented.
+19-dashboards.md	R14	PRESERVED	apps/mobile/src/components/dashboard/SuperDashboard.tsx:44	-	Alumni tile counts graduated students.
+19-dashboards.md	R15	DIVERGED	apps/mobile/src/components/dashboard/SuperDashboard.tsx:59	19-dashboards.md D19	Upcoming events tile uses the same visibility and window as the card.
+19-dashboards.md	R16	DIVERGED	apps/mobile/src/components/dashboard/SuperDashboard.tsx:42	REG-01	Tiles link to flat v2 routes instead of /super paths.
+19-dashboards.md	R17	PRESERVED	apps/mobile/src/components/dashboard/SuperDashboard.tsx:37	-	Tiles always render numbers including zero.
+19-dashboards.md	R18	DIVERGED	apps/mobile/src/hooks/use-seasons.ts:52	X8	Staff current season resolved by shared rule, not v1 two-step lookup.
+19-dashboards.md	R19	PRESERVED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:165	-	No-season state shown with empty figures.
+19-dashboards.md	R20	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	C9	Roster derived from SeasonEnrollment, not activeSeasonId pointer.
+19-dashboards.md	R21	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:33	19-dashboards.md D13	Next session includes one in progress.
+19-dashboards.md	R22	DIVERGED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:36	19-dashboards.md D12	Labelled Session N of M instead of Week.
+19-dashboards.md	R23	PRESERVED	apps/backend/src/lib/dashboard-figures.ts:26	-	Progress percent rounded, null when no sessions.
+19-dashboards.md	R24	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	19-dashboards.md D3	Attendance percent computed once by server engagement scoring.
+19-dashboards.md	R25	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	REG-60	Denominator limited to sessions since enrolment.
+19-dashboards.md	R26	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	REG-60	Only held sessions count toward attendance numerator.
+19-dashboards.md	R27	DIVERGED	apps/backend/src/lib/dashboard-figures.ts:51	C5	Pending uses targeted assignments with submission status, per ruling.
+19-dashboards.md	R28	DIVERGED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:20	19-dashboards.md D6	No inline roster on dashboard; students reached via list.
+19-dashboards.md	R29	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	19-dashboards.md D5	Mean attendance excludes students with no sessions; null when none.
+19-dashboards.md	R30	DIVERGED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:21	19-dashboards.md D2	Single at-risk threshold definition replaces colour bands.
+19-dashboards.md	R31	DIVERGED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:21	19-dashboards.md D2	One at-risk definition across roles.
+19-dashboards.md	R32	DIVERGED	apps/backend/src/lib/dashboard-figures.ts:93	19-dashboards.md D10	Quiz rollup computed on server, roster-scoped, drafts excluded.
+19-dashboards.md	R33	PRESERVED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:49	-	Quizzes pending tile shown; panel hidden without quizzes.
+19-dashboards.md	R34	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	19-dashboards.md D11	Submission counts scoped to cohort.
+19-dashboards.md	R35	DIVERGED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:20	19-dashboards.md D6	No roster on dashboard.
+19-dashboards.md	R36	DIVERGED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:63	REG-01	Links go to flat v2 destinations.
+19-dashboards.md	R37	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	19-dashboards.md D7	Leader dashboard uses season staff loader, not groupLeaderIds ordering.
+19-dashboards.md	R38	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	19-dashboards.md D7	Season is the staff current season, not first group.
+19-dashboards.md	R39	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	C9	Cohort from SeasonEnrollment, not GroupStudent.
+19-dashboards.md	R40	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:88	19-dashboards.md D7	Figures scoped to leader cohort and season.
+19-dashboards.md	R41	DIVERGED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:21	19-dashboards.md D7	Shared server formulas with v2 definitions.
+19-dashboards.md	R42	PRESERVED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:165	-	Empty state shown with no season or groups.
+19-dashboards.md	R43	DIVERGED	apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:63	REG-01	Links go to flat v2 destinations.
+19-dashboards.md	R44	DIVERGED	apps/mobile/src/lib/dashboard-invalidation.ts:11	19-dashboards.md D24	Mutation meta invalidates dashboard queries for all roles.
+19-dashboards.md	R45	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:162	19-dashboards.md D17	At-risk cohort is active non-graduated enrolled students.
+19-dashboards.md	R46	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:171	19-dashboards.md D17	Engagement scored in batched queries, not per-student fan-out.
+19-dashboards.md	R47	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:171	REG-61	Single at-risk definition replaces v1 component test.
+19-dashboards.md	R48	DIVERGED	apps/mobile/src/components/dashboard/MentorDashboard.tsx:55	19-dashboards.md D17	Card titled At risk, not Flagged for follow-up.
+19-dashboards.md	R49	DIVERGED	apps/mobile/src/components/dashboard/MentorDashboard.tsx:66	19-dashboards.md D17	Empty state reads Nobody at risk.
+19-dashboards.md	R50	DIVERGED	apps/mobile/src/components/dashboard/MentorDashboard.tsx:56	19-dashboards.md D17	Rows show at-risk figures per v2 contract.
+19-dashboards.md	R51	DIVERGED	apps/backend/src/lib/dashboard-figures.ts:123	19-dashboards.md D18	Activity filtered to cohort and merged.
+19-dashboards.md	R52	DIVERGED	apps/backend/src/lib/dashboard-figures.ts:123	19-dashboards.md D18	Submissions filtered for deleted rows.
+19-dashboards.md	R53	DIVERGED	apps/backend/src/lib/dashboard-figures.ts:123	19-dashboards.md D18	Activity merged into one time-ordered feed.
+19-dashboards.md	R54	DIVERGED	apps/backend/src/lib/dashboard-figures.ts:123	19-dashboards.md D18	Reviewed rows ordered by review time.
+19-dashboards.md	R55	DIVERGED	apps/mobile/src/components/dashboard/MentorDashboard.tsx:98	19-dashboards.md D18	Activity rows link to flat shared destinations, no forbidden dead end.
+19-dashboards.md	R56	DIVERGED	apps/mobile/src/components/dashboard/MentorDashboard.tsx:98	19-dashboards.md D18	Single merged activity feed with empty state.
+19-dashboards.md	R57	DIVERGED	apps/mobile/src/components/dashboard/MentorDashboard.tsx:55	REG-01	No quick links; tab bar replaces them.
+19-dashboards.md	R58	NA	-	-	Server-side redirect for non-alumni; v2 uses branch selection and token role.
+19-dashboards.md	R59	DIVERGED	apps/mobile/src/lib/format.ts:93	19-dashboards.md D22	Greeting falls back to there for empty names.
+19-dashboards.md	R60	PRESERVED	apps/mobile/src/components/dashboard/AlumniDashboard.tsx:29	-	Header shows JPCS Alumnus and class year.
+19-dashboards.md	R61	PRESERVED	apps/mobile/src/components/dashboard/AlumniDashboard.tsx:34	-	View my history action routes to history.
+19-dashboards.md	R62	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:54	19-dashboards.md D22	Season and title resolved together on server.
+19-dashboards.md	R63	PRESERVED	apps/mobile/src/components/dashboard/StudentDashboard.tsx:78	-	Not enrolled yet state with welcome subtitle.
+19-dashboards.md	R64	DIVERGED	apps/backend/src/lib/queries/dashboard.ts:33	19-dashboards.md D13	Next session includes one in progress.
+19-dashboards.md	R65	DIVERGED	apps/backend/src/lib/dashboard-figures.ts:51	C5	Assignments targeted via enrolment, missing submission pending.
+19-dashboards.md	R66	PRESERVED	packages/shared/src/assignment.ts:277	-	Pending means PENDING or DRAFT; RETURNED is not pending.
+19-dashboards.md	R67	DIVERGED	apps/mobile/src/components/dashboard/StudentDashboard.tsx:22	19-dashboards.md D15	Subtitle drops this week wording.
+19-dashboards.md	R68	DIVERGED	apps/mobile/src/components/dashboard/StudentDashboard.tsx:91	19-dashboards.md D12	Session N of M with complete suffix.
+19-dashboards.md	R69	DIVERGED	apps/mobile/src/components/dashboard/StudentDashboard.tsx:107	19-dashboards.md D14	Absence budget left, server-computed.
+19-dashboards.md	R70	PRESERVED	apps/mobile/src/components/dashboard/StudentDashboard.tsx:113	-	Streak tile from shared streak computation.
+19-dashboards.md	R71	DIVERGED	apps/mobile/src/components/dashboard/StudentDashboard.tsx:22	19-dashboards.md D15	Outstanding count from shared predicate.
+19-dashboards.md	R72	DIVERGED	apps/mobile/src/components/dashboard/StudentDashboard.tsx:132	19-dashboards.md D16	Late submissions count from server summary.
+19-dashboards.md	R73	DIVERGED	apps/mobile/src/components/dashboard/StudentDashboard.tsx:183	19-dashboards.md D15	Due soon list from server summary.
+19-dashboards.md	R74	DIVERGED	apps/mobile/src/components/dashboard/StudentDashboard.tsx:171	19-dashboards.md D13	Stream link only while session is running.
+19-dashboards.md	R75	DIVERGED	apps/mobile/src/lib/format.ts:93	C2	Organisation timezone governs comparisons and labels.
