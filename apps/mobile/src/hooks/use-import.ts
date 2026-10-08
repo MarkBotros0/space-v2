@@ -1,5 +1,5 @@
 // apps/mobile/src/hooks/use-import.ts
-import { useMutation, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
 import {
   groupImportPreviewSchema,
   groupImportResultSchema,
@@ -58,10 +58,17 @@ export function useStudentImportCommit(): UseMutationResult<
   unknown,
   StudentImportCommitInput
 > {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input) => {
       const res = await apiClient.post("/api/v1/imports/students/commit", input);
       return studentImportResultSchema.parse(res.data.data);
+    },
+    // New users, new enrolments and (via enrolment) group rosters all moved.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });
     },
   });
 }
@@ -81,11 +88,17 @@ export function useGroupImportPreview(
 export function useGroupImportCommit(
   seasonId: number | null,
 ): UseMutationResult<GroupImportResult, unknown, GroupImportCommitInput> {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input) => {
       if (seasonId === null) throw new Error("No season.");
       const res = await apiClient.post(`/api/v1/seasons/${seasonId}/imports/groups/commit`, input);
       return groupImportResultSchema.parse(res.data.data);
+    },
+    // groups.all covers bySeason and roster(seasonId); students carry their group.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
     },
   });
 }
