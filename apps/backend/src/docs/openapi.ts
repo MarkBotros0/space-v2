@@ -1422,6 +1422,36 @@ export const openApiDocument = {
           completedAt: { type: ["string", "null"], format: "date-time" },
           droppedAt: { type: ["string", "null"], format: "date-time" },
           dropReason: { type: ["string", "null"], description: "Always null for MENTOR and LEADER." },
+          attendancePct: {
+            type: ["integer", "null"],
+            description:
+              "Whole-number % of the season's past sessions (from the student's own enrolment date) marked PRESENT or LATE — the engagement formula, any enrolment status (REG-83). Staff only: null in the student's own view and for a season outside the caller's scope (an ADMIN's other seasons, a LEADER's other groups).",
+          },
+        },
+      },
+      StudentAttendanceHistoryItem: {
+        type: "object",
+        properties: {
+          sessionId: { type: "integer" },
+          sessionTitle: { type: "string" },
+          startsAt: { type: "string", format: "date-time" },
+          seasonId: { type: "integer" },
+          seasonTitle: { type: "string" },
+          status: { type: "string", enum: ["PRESENT", "ABSENT", "LATE"] },
+        },
+      },
+      StudentSubmissionItem: {
+        type: "object",
+        properties: {
+          publicId: { type: "string" },
+          assignmentId: { type: "integer" },
+          assignmentTitle: { type: "string" },
+          status: { $ref: "#/components/schemas/SubmissionStatus" },
+          isLate: { type: "boolean" },
+          submittedAt: { type: ["string", "null"], format: "date-time" },
+          reviewedAt: { type: ["string", "null"], format: "date-time" },
+          seasonId: { type: "integer" },
+          seasonTitle: { type: "string" },
         },
       },
       StudentDetail: {
@@ -3118,6 +3148,9 @@ export const openApiDocument = {
         parameters: [
           { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
           { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
+          { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`, the GroupStudent pointer) is this group; `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
+          { name: "sort", in: "query", description: "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)", schema: { type: "string", enum: ["name", "university", "season", "group"] } },
+          { name: "dir", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "asc" } },
           { name: "q", in: "query", schema: { type: "string", maxLength: 120 } },
           { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
           { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
@@ -3178,6 +3211,44 @@ export const openApiDocument = {
       },
     },
 
+    "/api/v1/students/{id}/attendance": {
+      get: {
+        tags: ["Students"],
+        summary: "A student's attendance history (staff only)",
+        description:
+          "v1's student record listed the 100 most recent attendance marks across seasons (REG-83). Staff only — STUDENT, the subject included, gets 403. Row scope follows the underlying gates: SUPER and MENTOR every season; ADMIN only seasons they administer; LEADER only seasons whose enrolment names one of their groups (C9). Newest session first. 403 before 404.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", properties: { history: { type: "array", items: { $ref: "#/components/schemas/StudentAttendanceHistoryItem" } } } },
+            "The history.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
+    "/api/v1/students/{id}/submissions": {
+      get: {
+        tags: ["Students"],
+        summary: "A student's submissions (staff only)",
+        description:
+          "v1's student record listed the student's 100 most recent submissions (REG-83). Same staff-only gate and row scope as the attendance history. Newest first; a DRAFT is never listed (the student's private work in progress, hidden from every reviewer surface). Link a row to `GET /submissions/{publicId}`.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", properties: { submissions: { type: "array", items: { $ref: "#/components/schemas/StudentSubmissionItem" } } } },
+            "The submissions.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
     "/api/v1/students/{id}": {
       get: {
         tags: ["Students"],

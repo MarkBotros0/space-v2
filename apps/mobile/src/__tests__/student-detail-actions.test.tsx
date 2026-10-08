@@ -37,6 +37,7 @@ const enrollment = (seasonId: number, title: string, status: "ACTIVE" | "WITHDRA
   completedAt: null,
   droppedAt: null,
   dropReason: null,
+  attendancePct: null,
 });
 
 const base = {

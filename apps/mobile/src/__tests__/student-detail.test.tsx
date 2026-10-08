@@ -45,6 +45,7 @@ const enrollment = {
   completedAt: null,
   droppedAt: "2099-06-01T00:00:00.000Z",
   dropReason: "Moved away",
+  attendancePct: null,
 };
 
 const base = {

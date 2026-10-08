@@ -31,7 +31,7 @@ const enrollment = (seasonId: number, title: string) => ({
   enrollmentId: 500 + seasonId, seasonId, seasonCode: `S${seasonId}`, seasonTitle: title,
   seasonStatus: "ACTIVE" as const, startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
   groupName: null, status: "ACTIVE" as const, enrolledAt: "2099-01-01T00:00:00.000Z",
-  completedAt: null, droppedAt: null, dropReason: null,
+  completedAt: null, droppedAt: null, dropReason: null, attendancePct: null,
 });
 
 const detail = {
