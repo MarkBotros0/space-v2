@@ -29,6 +29,10 @@ Mobile-first rebuild of JPC Space (`D:\Projects\JPC\jpc-space` is v1 and still r
   (same value as v1), audience `jpc-mobile`, 900s TTL, subject `String(userId)`.
 - **Prisma 7 generates to `src/generated/prisma`.** Never import `@prisma/client`.
 - **No `process.env` outside `src/lib/config.ts`.**
+- `apps/backend/prisma.cutover.config.ts` is the one file outside
+  `src/lib/config.ts` that reads an environment variable (`DATABASE_URL`, via
+  `prisma/config`'s `env()`). It is a Prisma CLI config for the cutover
+  runbook, is never imported by the app, and never loads `.env`.
 - `.npmrc` sets `shamefully-hoist=true` — Metro cannot resolve pnpm's nested symlinks.
 - **No `@/` path alias in either app.** The backend can't use one because `tsc`
   won't rewrite path aliases with `rootDir: "../.."` (needed so it can also
