@@ -155,6 +155,34 @@ These are operations on the live database, not code:
   timed out once under heavy parallel load and passes alone; watch for it if
   CI is ever added.
 
-## 10. Still to build
+## 10. Plans 17 and 18 (imports, cutover prep)
 
-Plans 17 and 18 (imports, cutover).
+- **Imports:** device-check the student import (SUPER, Users screen) and the
+  group import (season admin, Roster screen): paste, preview, commit, re-paste
+  creates zero duplicates. Paste-only by design; file intake waits for the CMS.
+- **Cutover register needs your signature.** The parity audit
+  (`docs/superpowers/audits/2026-cutover/`) ledgered all 1550 spec rules.
+  `DROPPED.md` holds the seeded entries plus 48 PROPOSED, unsigned entries
+  (REG-70 to REG-117) covering 87 rules v2 drops or changes with no recorded
+  decision. Read, accept or reject each; nothing in Plan 18 Part 2 (the
+  migrations) may start until you sign. Rows for the four defects fixed after
+  the audit (08-R45, 08-R20, 11-R60, 16-R83) can be withdrawn once re-checked.
+- **The audit could not read the v1 repo** (not in the build environment).
+  Run Plan 18 Task 1.6 (page parity, 104 v1 pages) and the migrations `diff -r`
+  on a machine that has `jpc-space`.
+- **Open product decisions found by the audit:** PATCH `/users/:id` editing a
+  soft-deleted user (11-R52); scope rows left behind on deactivation
+  (11-R53/R56); export of an unknown season id returns a header-only workbook
+  (17-R46); MENTOR refused the dropped-students list (06-R45); withdrawn
+  students opening a session (04-R74); alumni not blocked client-side from
+  student destinations (19-R3); lost per-student history/percentage/submission
+  lists (06-R73/R74/R77).
+- **READ_ONLY mode** (`READ_ONLY=true`) is merged but off by default. Deploy
+  `main` with it unset, then record the deployed SHA as `PRE_CUTOVER_SHA` in the
+  audit README (Plan 18 Task 2.0b Step 6).
+- **Not started, and yours to run:** Plan 18 Part 2 (migration authoring, after
+  you sign) and Part 3 (the production runbook R1-R21).
+
+## 11. Still to build
+
+Nothing in Plans 1-17. Plan 18 Parts 2 and 3 wait on the signature above.
