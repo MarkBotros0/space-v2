@@ -103,16 +103,18 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
         />
       ) : null}
       {error ? <Text variant="label" color={theme.colors.error[500]}>{error}</Text> : null}
+      <Text variant="heading">Checked in</Text>
+      <LiveRoster detail={detail} emptyText="No students are enrolled yet." />
     </Card>
   );
 }
 
 /**
- * Group leaders (canMarkAttendance && !canManageCheckIn): who has checked in,
- * read-only — v1 /leader/sessions/[id]. The roster endpoint narrows to the
- * leader's own groups server-side.
+ * Who has checked in, polled every 10s while check-in is open (v1's
+ * check-in-attendance-list.tsx:58 router.refresh). The roster endpoint narrows
+ * a leader to their own groups server-side.
  */
-function LiveCheckInRoster({ detail }: { detail: SessionDetail }) {
+function LiveRoster({ detail, emptyText }: { detail: SessionDetail; emptyText: string }) {
   const theme = useTheme();
   const roster = useAttendanceRoster(detail.id);
   const { refetch } = roster;
@@ -123,24 +125,33 @@ function LiveCheckInRoster({ detail }: { detail: SessionDetail }) {
     return () => clearInterval(timer);
   }, [detail.checkInOpen, refetch]);
 
+  if (roster.isPending) return <LoadingState />;
+  if (roster.isError) return <ErrorState message="Couldn't load the roster." onRetry={() => void refetch()} />;
+  if (roster.data.length === 0) {
+    return <Text variant="body" color={theme.colors.neutral[600]}>{emptyText}</Text>;
+  }
+  const checkedIn = roster.data.filter((r) => r.status !== null).length;
+  return (
+    <>
+      <Text variant="label">{`${checkedIn} of ${roster.data.length} checked in`}</Text>
+      {roster.data.map((row) => (
+        <View key={row.studentUserId} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text variant="body">{row.name ?? row.email}</Text>
+          <Text variant="label" color={theme.colors.neutral[600]}>{rosterStatus(row)}</Text>
+        </View>
+      ))}
+    </>
+  );
+}
+
+/** Group leaders, and a SUPER who is not this season's admin: who has checked in, read-only — v1 /leader/sessions/[id]. */
+function LiveCheckInRoster({ detail }: { detail: SessionDetail }) {
+  const theme = useTheme();
   return (
     <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
       <Text variant="heading">Check-in</Text>
       <Text variant="label">{detail.checkInOpen ? "Check-in is open" : "Check-in is closed"}</Text>
-      {roster.isPending ? (
-        <LoadingState />
-      ) : roster.isError ? (
-        <ErrorState message="Couldn't load the roster." onRetry={() => void refetch()} />
-      ) : roster.data.length === 0 ? (
-        <Text variant="body" color={theme.colors.neutral[600]}>No students in your groups.</Text>
-      ) : (
-        roster.data.map((row) => (
-          <View key={row.studentUserId} style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text variant="body">{row.name ?? row.email}</Text>
-            <Text variant="label" color={theme.colors.neutral[600]}>{rosterStatus(row)}</Text>
-          </View>
-        ))
-      )}
+      <LiveRoster detail={detail} emptyText="No students in your groups." />
     </Card>
   );
 }
@@ -207,6 +218,7 @@ function SessionDetailBody({ id }: { id: number }) {
   const theme = useTheme();
   const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
+  const seasonAdminIds = useSessionStore((s) => s.scopes?.seasonAdminIds);
   const { data, isPending, isError, refetch, isRefetching } = useSessionDetail(id);
 
   if (isPending) {
@@ -223,6 +235,11 @@ function SessionDetailBody({ id }: { id: number }) {
       </Screen>
     );
   }
+
+  // v1 showed the console only to an admin OF the season; the API also lets any
+  // SUPER through (isAdminOfSeason), so the app narrows it (REG-79).
+  const showConsole =
+    data.canManageCheckIn && (role !== "SUPER" || (seasonAdminIds ?? []).includes(data.seasonId));
 
   return (
     <Screen edges={["top", "left", "right"]} scroll onRefresh={() => void refetch()} refreshing={isRefetching}>
@@ -246,7 +263,7 @@ function SessionDetailBody({ id }: { id: number }) {
         />
       ) : null}
 
-      {data.canManageCheckIn ? (
+      {showConsole ? (
         <CheckInConsole detail={data} />
       ) : data.canMarkAttendance ? (
         <LiveCheckInRoster detail={data} />
