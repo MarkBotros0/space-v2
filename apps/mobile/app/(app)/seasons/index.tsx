@@ -10,6 +10,7 @@ import {
   useDuplicateSeason,
 } from "../../../src/hooks/use-season-writes";
 import { apiErrorMessage } from "../../../src/lib/api-error";
+import { addYearsIso, autoSeasonCode } from "../../../src/lib/season-defaults";
 import { useSessionStore } from "../../../src/store/session";
 import { useTheme } from "../../../src/theme";
 import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../src/ui";
@@ -30,7 +31,22 @@ function NewSeasonForm() {
   const [year, setYear] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  // v1 season-form.tsx:97-105: the code follows program + year until it is edited by hand.
+  const [codeTouched, setCodeTouched] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const onProgram = (value: string) => {
+    setProgram(value);
+    if (!codeTouched) setCode(autoSeasonCode(value, year));
+  };
+  const onYear = (value: string) => {
+    setYear(value);
+    if (!codeTouched) setCode(autoSeasonCode(program, value));
+  };
+  const onCode = (value: string) => {
+    setCodeTouched(true);
+    setCode(value);
+  };
 
   const submit = () => {
     setMessage(null);
@@ -46,9 +62,9 @@ function NewSeasonForm() {
   return (
     <Card style={{ marginBottom: theme.spacing.md, gap: theme.spacing.sm }}>
       <Text variant="heading">New season</Text>
-      <Input label="Code" value={code} onChangeText={setCode} autoCapitalize="none" />
-      <Input label="Program" value={program} onChangeText={setProgram} />
-      <Input label="Year" value={year} onChangeText={setYear} keyboardType="number-pad" />
+      <Input label="Code" value={code} onChangeText={onCode} autoCapitalize="none" />
+      <Input label="Program" value={program} onChangeText={onProgram} />
+      <Input label="Year" value={year} onChangeText={onYear} keyboardType="number-pad" />
       {/* ISO text for now — a native date picker is polish, not this plan. */}
       <Input label="Start date" value={startDate} onChangeText={setStartDate} autoCapitalize="none" />
       <Input label="End date" value={endDate} onChangeText={setEndDate} autoCapitalize="none" />
@@ -61,15 +77,28 @@ function NewSeasonForm() {
 function DuplicateForm({ source }: { source: SeasonListItem }) {
   const theme = useTheme();
   const duplicate = useDuplicateSeason(source.id);
-  const [year, setYear] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // v1 duplicate-season-dialog.tsx:63-87: next year, dates one year on, code following the year.
+  const nextYear = source.year + 1;
+  const [year, setYear] = useState(String(nextYear));
+  const [code, setCode] = useState(autoSeasonCode(source.program, nextYear));
+  const [codeTouched, setCodeTouched] = useState(false);
+  const [startDate, setStartDate] = useState(addYearsIso(source.startDate, 1));
+  const [endDate, setEndDate] = useState(addYearsIso(source.endDate, 1));
   const [message, setMessage] = useState<string | null>(null);
+
+  const onYear = (value: string) => {
+    setYear(value);
+    if (!codeTouched) setCode(autoSeasonCode(source.program, value));
+  };
+  const onCode = (value: string) => {
+    setCodeTouched(true);
+    setCode(value);
+  };
 
   const submit = () => {
     setMessage(null);
     duplicate.mutate(
-      { year: Number(year), startDate, endDate },
+      { year: Number(year), code: code.trim() === "" ? undefined : code, startDate, endDate },
       {
         onSuccess: (created) => setMessage(`Created ${created.code}.`),
         onError: (err) => setMessage(apiErrorMessage(err, "Couldn't duplicate the season.")),
@@ -79,7 +108,8 @@ function DuplicateForm({ source }: { source: SeasonListItem }) {
 
   return (
     <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-      <Input label="Copy year" value={year} onChangeText={setYear} keyboardType="number-pad" />
+      <Input label="Copy year" value={year} onChangeText={onYear} keyboardType="number-pad" />
+      <Input label="Copy code" value={code} onChangeText={onCode} autoCapitalize="none" />
       <Input label="Copy start date" value={startDate} onChangeText={setStartDate} autoCapitalize="none" />
       <Input label="Copy end date" value={endDate} onChangeText={setEndDate} autoCapitalize="none" />
       {message ? <Text variant="label">{message}</Text> : null}
