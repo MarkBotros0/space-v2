@@ -54,7 +54,9 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
 
     fireEvent.changeText(screen.getByLabelText("Title"), "Kickoff");
     fireEvent.changeText(screen.getByLabelText("Day (YYYY-MM-DD)"), "2099-07-03");
-    fireEvent.changeText(screen.getByLabelText("Start time (HH:mm)"), "19:30");
+    // 18:00 default -> hour later (19:00) -> :30
+    fireEvent.press(screen.getByLabelText("Later hour"));
+    fireEvent.press(screen.getByLabelText("30"));
     fireEvent.changeText(screen.getByLabelText("Repeat weekly for (weeks)"), "3");
     fireEvent.press(screen.getByText("Create session"));
 
@@ -76,12 +78,45 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
 
   it("validates with the server's schema before sending", async () => {
     renderWithProviders(<NewSessionScreen />);
-    fireEvent.changeText(screen.getByLabelText("Title"), "Kickoff");
     fireEvent.changeText(screen.getByLabelText("Day (YYYY-MM-DD)"), "2099-07-03");
-    fireEvent.changeText(screen.getByLabelText("Start time (HH:mm)"), "25:00");
     fireEvent.press(screen.getByText("Create session"));
-    expect(screen.getByLabelText("Start time (HH:mm)").props.accessibilityHint).toMatch(/HH:mm/);
+    expect(screen.getByLabelText("Title").props.accessibilityHint).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it("defaults the start to 18:00 and picks on a 15-minute grid (REG-73)", () => {
+    renderWithProviders(<NewSessionScreen />);
+    expect(screen.getByLabelText("Start time 18:00")).toBeTruthy();
+    expect(screen.getAllByRole("radio").filter((r) => /^\d\d$/.test(r.props.accessibilityLabel ?? "")).map((r) => r.props.accessibilityLabel)).toEqual(["00", "15", "30", "45"]);
+    fireEvent.press(screen.getByLabelText("45"));
+    expect(screen.getByLabelText("Start time 18:45")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Later hour"));
+    fireEvent.press(screen.getByLabelText("Later hour"));
+    fireEvent.press(screen.getByLabelText("Later hour"));
+    fireEvent.press(screen.getByLabelText("Later hour"));
+    fireEvent.press(screen.getByLabelText("Later hour"));
+    fireEvent.press(screen.getByLabelText("Later hour"));
+    expect(screen.getByLabelText("Start time 00:45")).toBeTruthy();
+  });
+
+  it("shows location for in-person and the YouTube link for online, sending only the chosen one (REG-73)", async () => {
+    post.mockResolvedValue({ data: { data: { id: 56, recurrenceGroupId: null } } });
+    renderWithProviders(<NewSessionScreen />);
+    expect(screen.getByLabelText("Location")).toBeTruthy();
+    expect(screen.queryByLabelText("YouTube link")).toBeNull();
+    fireEvent.changeText(screen.getByLabelText("Location"), "Hall A");
+    fireEvent.press(screen.getByLabelText("Online"));
+    expect(screen.queryByLabelText("Location")).toBeNull();
+    fireEvent.changeText(screen.getByLabelText("YouTube link"), "https://youtube.com/watch?v=abc");
+    fireEvent.changeText(screen.getByLabelText("Title"), "Remote");
+    fireEvent.changeText(screen.getByLabelText("Day (YYYY-MM-DD)"), "2099-07-03");
+    fireEvent.press(screen.getByText("Create session"));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(
+        "/api/v1/sessions",
+        expect.objectContaining({ location: null, youtubeUrl: "https://youtube.com/watch?v=abc", startTime: "18:00" }),
+      ),
+    );
   });
 
   it("explains a missing season instead of rendering a dead form", () => {
@@ -117,13 +152,14 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
     renderWithProviders(<EditSessionScreen />);
 
     expect((await screen.findByLabelText("Day (YYYY-MM-DD)")).props.value).toBe("2099-03-15");
-    expect(screen.getByLabelText("Start time (HH:mm)").props.value).toBe("20:00");
+    expect(screen.getByLabelText("Start time 20:00")).toBeTruthy();
+    expect(screen.getByLabelText("Location")).toBeTruthy(); // no YouTube link -> in-person
 
     fireEvent.press(screen.getByText("This and following"));
     expect(await screen.findByText("This affects 2 sessions, 1 with attendance recorded.")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/series", { params: { scope: "future" } });
 
-    fireEvent.changeText(screen.getByLabelText("Start time (HH:mm)"), "19:00");
+    fireEvent.press(screen.getByLabelText("Earlier hour"));
     fireEvent.press(screen.getByText("Save changes"));
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/sessions/12", {

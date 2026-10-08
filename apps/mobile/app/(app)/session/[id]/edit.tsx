@@ -8,7 +8,7 @@ import {
   type UpdateSessionInput,
 } from "@space/shared";
 
-import { ScopeSelector, SessionFields, sessionWriteFields, type SessionFormValues } from "../../../../src/components/SessionForm";
+import { ScopeSelector, SessionFields, sessionTypeFor, sessionWriteFields, type SessionFormValues } from "../../../../src/components/SessionForm";
 import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
 import { useDeleteSession, useSessionSeries, useUpdateSession } from "../../../../src/hooks/use-session-writes";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
@@ -55,6 +55,7 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
     day: detail.dayKey,
     time: detail.startTime,
     durationMinutes: String(detail.durationMinutes),
+    sessionType: sessionTypeFor(detail.youtubeUrl),
     location: detail.location ?? "",
     youtubeUrl: detail.youtubeUrl ?? "",
     description: detail.description ?? "",
