@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { canViewNote, noteVisibilityWhere } from "../../lib/permissions";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(60000);
@@ -173,5 +174,33 @@ describe("a student never receives the profile notes or pastoral notes (REG-97)"
     for (const path of ["/api/v1/me", "/api/v1/me/profile"]) {
       expectNoSecrets(await as(alumnusToken).get(path));
     }
+  });
+});
+
+describe("the pastoral-note surfaces refuse a student outright (REG-97)", () => {
+  it.each([
+    ["student", () => studentToken],
+    ["alumnus", () => alumnusToken],
+  ])("%s gets 403 and no body from every note route", async (_label, token) => {
+    const list = await as(token()).get(`/api/v1/students/${studentId}/notes`);
+    const mine = await as(token()).get("/api/v1/me/notes");
+    const edit = await as(token()).patch(`/api/v1/notes/${noteId}`, { body: "<p>x</p>" });
+    for (const res of [list, mine, edit]) {
+      expect(res.status).toBe(403);
+      expectNoSecrets(res);
+    }
+  });
+
+  it("the shared visibility rule is closed for a student, even about themselves", async () => {
+    const student = {
+      userId: studentId,
+      role: "STUDENT" as const,
+      seasonAdminIds: [],
+      groupLeaderIds: [],
+      activeSeasonId: seasonId,
+      graduationYear: null,
+    };
+    expect(noteVisibilityWhere(student)).toBeNull();
+    expect(await canViewNote(student, noteId)).toBe(false);
   });
 });

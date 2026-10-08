@@ -265,3 +265,65 @@ describe("GET /api/v1/students/:id/submissions (REG-83)", () => {
     expect((await get(`/api/v1/students/${s2}/submissions`, leaderToken)).status).toBe(403);
   });
 });
+
+describe("history scope when the student is in a season through a different group (REG-83)", () => {
+  it("shows a LEADER and an ADMIN of other seasons nothing from it, and SUPER everything", async () => {
+    const seasonCId = (await createTestSeason()).id;
+    const otherGroup = await db.group.create({
+      data: { seasonId: seasonCId, name: "Group C" },
+      select: { id: true },
+    });
+    await db.seasonEnrollment.create({
+      data: {
+        studentUserId: s1,
+        seasonId: seasonCId,
+        groupId: otherGroup.id,
+        status: "ACTIVE",
+        enrolledAt: at("1999-06-01T00:00:00.000Z"),
+      },
+    });
+    const sessionC = await db.session.create({
+      data: {
+        seasonId: seasonCId,
+        title: "C past",
+        startsAt: at("2000-05-01T10:00:00.000Z"),
+        durationMinutes: 60,
+        checkInToken: newPublicId(),
+      },
+      select: { id: true },
+    });
+    await db.attendance.create({
+      data: { sessionId: sessionC.id, studentUserId: s1, status: "PRESENT", markedById: s1 },
+    });
+    const asgC = await db.assignment.create({
+      data: { seasonId: seasonCId, title: "C essay", isAllGroups: true },
+      select: { id: true },
+    });
+    await db.submission.create({
+      data: {
+        assignmentId: asgC.id,
+        studentUserId: s1,
+        publicId: newPublicId(),
+        status: "SUBMITTED",
+        text: "c",
+        submittedAt: at("2000-05-02T00:00:00.000Z"),
+      },
+    });
+
+    const attendanceFor = async (token: string) =>
+      (await get(`/api/v1/students/${s1}/attendance`, token)).body.data.history.map(
+        (h: { sessionTitle: string }) => h.sessionTitle,
+      );
+    const submissionsFor = async (token: string) =>
+      (await get(`/api/v1/students/${s1}/submissions`, token)).body.data.submissions.map(
+        (s: { assignmentTitle: string }) => s.assignmentTitle,
+      );
+
+    expect(await attendanceFor(superToken)).toContain("C past");
+    expect(await submissionsFor(superToken)).toContain("C essay");
+    for (const token of [leaderToken, adminToken]) {
+      expect(await attendanceFor(token)).not.toContain("C past");
+      expect(await submissionsFor(token)).not.toContain("C essay");
+    }
+  });
+});

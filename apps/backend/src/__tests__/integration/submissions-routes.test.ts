@@ -624,3 +624,52 @@ describe("review notification wording (REG-91)", () => {
     expect(n?.title).toBe("Returned wording was returned for revision");
   });
 });
+
+describe("who may review (REG-88 scoping)", () => {
+  it("refuses an admin of another season, a leader of another group, and an author who administers the season", async () => {
+    const pid = await seedSubmission("SUBMITTED", "Scoped review");
+
+    const otherSeason = await createTestSeason();
+    const otherAdmin = await createTestUser("other-admin", "ADMIN");
+    await db.seasonAdmin.create({ data: { seasonId: otherSeason.id, userId: otherAdmin.id } });
+
+    const otherLeader = await createTestUser("other-leader", "LEADER");
+    await db.group.create({
+      data: { seasonId, name: "Group B", leaders: { create: { userId: otherLeader.id } } },
+    });
+
+    // An ADMIN of this season whose own work it is: the author guard must win.
+    const selfAdmin = await createTestUser("self-admin", "ADMIN");
+    await db.seasonAdmin.create({ data: { seasonId, userId: selfAdmin.id } });
+    const asg = await db.assignment.create({
+      data: { seasonId, title: "Self admin work", isAllGroups: true },
+      select: { id: true },
+    });
+    const ownPid = newPublicId();
+    await db.submission.create({
+      data: {
+        assignmentId: asg.id,
+        studentUserId: selfAdmin.id,
+        publicId: ownPid,
+        status: "SUBMITTED",
+        text: "mine",
+        submittedAt: new Date(),
+      },
+    });
+
+    const review = async (email: string, target: string) =>
+      request(app)
+        .post(`/api/v1/submissions/${target}/review`)
+        .set("authorization", `Bearer ${await login(app, email)}`)
+        .send({ feedback: "no" });
+
+    expect((await review(otherAdmin.email, pid)).status).toBe(403);
+    expect((await review(otherLeader.email, pid)).status).toBe(403);
+    expect((await review(selfAdmin.email, ownPid)).status).toBe(403);
+    const untouched = await db.submission.findMany({
+      where: { publicId: { in: [pid, ownPid] } },
+      select: { status: true },
+    });
+    expect(untouched.map((u) => u.status)).toEqual(["SUBMITTED", "SUBMITTED"]);
+  });
+});
