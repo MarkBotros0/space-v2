@@ -228,9 +228,9 @@ Owner-approved fixes from the cutover register are on `claude/audit-fixes`
 - **REG-72 admin one-season redirect.** The season edit card moved to
   `/seasons/[code]` as a result.
 
-### Register entries still awaiting a decision (15)
+### Register entries accepted as-is (15)
 
-Unsigned and undecided in `DROPPED.md`; nothing was changed for them.
+karen accepted all 15 on 2026-10-08 (thread reply, on the recommendation); recorded in `DROPPED.md`. No code change.
 
 | Id | Entry |
 |---|---|
