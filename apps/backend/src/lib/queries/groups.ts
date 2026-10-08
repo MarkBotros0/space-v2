@@ -180,10 +180,9 @@ export async function validateGroupWrite(
  * history". The roster grid upserts only groupId and preserves all of it. This
  * is the roster grid's semantics; the form's are not reproduced.
  *
- * GroupStudent is still maintained alongside, because v1 reads it and both
- * systems are live against one database — dropping it here would break v1's
- * pages, not just v2's. It is written as a mirror of the enrolment, never as
- * the source of truth (ruling C9).
+ * GroupStudent is still maintained alongside, as a per-season mirror of the
+ * enrolment (Plan 18 M1: unique on (seasonId, studentUserId)), never as the
+ * source of truth (ruling C9).
  */
 export async function setGroupStudents(
   tx: Prisma.TransactionClient,
@@ -203,10 +202,9 @@ export async function setGroupStudents(
   });
 
   for (const studentUserId of studentIds) {
-    // GroupStudent.studentUserId is unique across the whole database, so an
-    // existing row anywhere has to go before this one can be written.
-    await tx.groupStudent.deleteMany({ where: { studentUserId } });
-    await tx.groupStudent.create({ data: { groupId, studentUserId } });
+    // Per-season membership (Plan 18 M1): replace only THIS season's row.
+    await tx.groupStudent.deleteMany({ where: { studentUserId, seasonId } });
+    await tx.groupStudent.create({ data: { groupId, studentUserId, seasonId } });
     await tx.seasonEnrollment.update({
       where: { studentUserId_seasonId: { studentUserId, seasonId } },
       data: { groupId },
@@ -266,9 +264,9 @@ export interface SeasonRosterRow {
  * `StudentProfile.activeSeasonId` (spec 05 R81), which hides an enrolled
  * student whose pointer has moved on. The group shown is this season's, from
  * `SeasonEnrollment.groupId`; `otherSeasonGroup` is the student's GroupStudent
- * row in a DIFFERENT season's group — the membership an assignment here will
- * remove (GroupStudent.studentUserId is globally unique, spec 05 R1). v1
- * reported such a student as plain "unassigned" (R82).
+ * row in a DIFFERENT season's group — informational since Plan 18 M1 (an
+ * assignment here no longer removes it). v1 reported such a student as plain
+ * "unassigned" (R82).
  */
 export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRow[]> {
   const enrolments = await db.seasonEnrollment.findMany({
@@ -286,9 +284,12 @@ export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRo
   const elsewhere = await db.groupStudent.findMany({
     where: {
       studentUserId: { in: enrolments.map((e) => e.studentUserId) },
-      group: { seasonId: { not: seasonId } },
+      seasonId: { not: seasonId },
     },
     select: { studentUserId: true, group: { select: { name: true, season: { select: { code: true } } } } },
+    // Oldest first: a student can now sit in several other seasons' groups
+    // and the Map below keeps the last (most recent) one.
+    orderBy: { seasonId: "asc" },
   });
   const elsewhereBy = new Map(
     elsewhere.map((g) => [g.studentUserId, { groupName: g.group.name, seasonCode: g.group.season.code }]),
@@ -379,14 +380,12 @@ export async function assignStudentsToGroups(
       skippedStudentIds.push(a.studentUserId);
       continue;
     }
-    // GroupStudent.studentUserId is @unique STANDALONE (schema.prisma:330): a
-    // student is in at most one group across the whole database, so the
-    // existing row — whichever season's group it is — has to go first. The
-    // fix is a composite key, which is a migration (Plan 18). Meanwhile the
-    // per-season truth is SeasonEnrollment.groupId below, and every v2 read
-    // uses that (C9).
-    await tx.groupStudent.deleteMany({ where: { studentUserId: a.studentUserId } });
-    await tx.groupStudent.create({ data: { groupId: a.groupId, studentUserId: a.studentUserId } });
+    // Per-season membership (Plan 18 M1): only THIS season's row is replaced;
+    // the student's groups in other seasons are untouched.
+    await tx.groupStudent.deleteMany({ where: { studentUserId: a.studentUserId, seasonId } });
+    await tx.groupStudent.create({
+      data: { groupId: a.groupId, studentUserId: a.studentUserId, seasonId },
+    });
     await tx.seasonEnrollment.update({
       where: { studentUserId_seasonId: { studentUserId: a.studentUserId, seasonId } },
       data: { groupId: a.groupId },
@@ -415,7 +414,7 @@ export async function unassignStudentsFromGroups(
       skippedStudentIds.push(studentUserId);
       continue;
     }
-    await tx.groupStudent.deleteMany({ where: { studentUserId, group: { seasonId } } });
+    await tx.groupStudent.deleteMany({ where: { studentUserId, seasonId } });
     await tx.seasonEnrollment.update({
       where: { studentUserId_seasonId: { studentUserId, seasonId } },
       data: { groupId: null },

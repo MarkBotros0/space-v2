@@ -119,7 +119,7 @@ describe("/group/new", () => {
     fireEvent.press(await screen.findByLabelText("Karim"));
     fireEvent.press(await screen.findByLabelText("Omar"));
     // Omar is currently in another season's group — the form says so before saving.
-    expect(screen.getByText("In Old (s1) — saving moves them here.")).toBeTruthy();
+    expect(screen.getByText("In Old (s1) — that stays as it is; saving adds them here.")).toBeTruthy();
     fireEvent.press(screen.getByText("Create group"));
 
     await waitFor(() =>
@@ -201,7 +201,7 @@ describe("/seasons/[code]/roster (G7)", () => {
     put.mockResolvedValue({ data: { data: { assigned: 1, unassigned: 1, skippedStudentIds: [] } } });
     renderWithProviders(<SeasonRosterScreen />);
 
-    expect(await screen.findByText("Also in Old (s1) — assigning here moves them.")).toBeTruthy();
+    expect(await screen.findByText("Also in Old (s1) — that stays as it is.")).toBeTruthy();
     fireEvent.press(await screen.findByLabelText("Sara: Unassigned"));
     fireEvent.press(screen.getByLabelText("Omar: Group B"));
     // Pressing a row back to its original group drops it from the batch.

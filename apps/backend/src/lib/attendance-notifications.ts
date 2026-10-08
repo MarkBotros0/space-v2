@@ -34,7 +34,7 @@ export async function flagLowAttendance(
     if (!recent.every((r) => r.status === AttendanceStatus.ABSENT)) continue;
 
     const membership = await db.groupStudent.findUnique({
-      where: { studentUserId },
+      where: { seasonId_studentUserId: { seasonId: session.seasonId, studentUserId } },
       select: { groupId: true },
     });
     if (!membership) continue;

@@ -70,6 +70,36 @@ function searchFilter(q: string | undefined): Prisma.UserWhereInput {
   };
 }
 
+/**
+ * Advisory current group (C9). Since Plan 18 M1 a student can hold one
+ * GroupStudent row per season, so "the" group is a choice: the one in their
+ * active season, else their most recent membership (v1 showed the single row
+ * it allowed, which for an alumnus was their last group).
+ */
+const MEMBERSHIP_SELECT = {
+  seasonId: true,
+  enrolledAt: true,
+  group: { select: { id: true, name: true } },
+} as const;
+
+interface MembershipRow {
+  seasonId: number;
+  enrolledAt: Date;
+  group: { id: number; name: string };
+}
+
+function currentGroupOf(
+  memberships: readonly MembershipRow[],
+  activeSeasonId: number | null | undefined,
+): { id: number; name: string } | null {
+  const inActive = activeSeasonId == null ? undefined : memberships.find((m) => m.seasonId === activeSeasonId);
+  if (inActive) return inActive.group;
+  const latest = [...memberships].sort(
+    (a, b) => b.enrolledAt.getTime() - a.enrolledAt.getTime() || b.seasonId - a.seasonId,
+  )[0];
+  return latest?.group ?? null;
+}
+
 const LIST_SELECT = {
   id: true,
   name: true,
@@ -80,11 +110,12 @@ const LIST_SELECT = {
     select: {
       university: true,
       year: true,
+      activeSeasonId: true,
       activeSeason: { select: { title: true } },
     },
   },
   // Advisory current group — the one question GroupStudent may answer (C9).
-  groupStudentMembership: { select: { group: { select: { name: true } } } },
+  groupStudentMemberships: { select: MEMBERSHIP_SELECT },
 } as const;
 
 type ListRow = Prisma.UserGetPayload<{ select: typeof LIST_SELECT }>;
@@ -99,7 +130,7 @@ function toListItem(u: ListRow): StudentListItem {
     year: u.studentProfile?.year ?? null,
     graduationYear: u.graduationYear,
     activeSeasonTitle: u.studentProfile?.activeSeason?.title ?? null,
-    currentGroupName: u.groupStudentMembership?.group.name ?? null,
+    currentGroupName: currentGroupOf(u.groupStudentMemberships, u.studentProfile?.activeSeasonId)?.name ?? null,
     droppedEnrollment: null,
   };
 }
@@ -124,8 +155,10 @@ type RelatedSort = "university" | "season" | "group";
 const SORT_KEY_SELECT = {
   id: true,
   name: true,
-  studentProfile: { select: { university: true, activeSeason: { select: { title: true } } } },
-  groupStudentMembership: { select: { group: { select: { name: true } } } },
+  studentProfile: {
+    select: { university: true, activeSeasonId: true, activeSeason: { select: { title: true } } },
+  },
+  groupStudentMemberships: { select: MEMBERSHIP_SELECT },
 } as const;
 
 /** Every matching id in v1's order for a related-row sort key, then paged by id. */
@@ -141,7 +174,7 @@ async function listByRelatedSort(
       ? u.studentProfile?.university
       : sort === "season"
         ? u.studentProfile?.activeSeason?.title
-        : u.groupStudentMembership?.group.name
+        : currentGroupOf(u.groupStudentMemberships, u.studentProfile?.activeSeasonId)?.name
     )?.toLowerCase() ?? "";
   const sign = dir === "asc" ? 1 : -1;
   keyed.sort(
@@ -199,13 +232,15 @@ export async function listStudents(
       // Season filter through enrollments, any status (C9; matches the ADMIN
       // scope's "ever enrolled" meaning).
       ...(query.seasonId ? [{ seasonEnrollments: { some: { seasonId: query.seasonId } } }] : []),
-      // REG-82: v1's group select filtered on the group the row displays, i.e.
-      // the advisory GroupStudent pointer; "none" is its "Unassigned".
+      // REG-82: v1's group select filtered on the advisory GroupStudent
+      // pointer; "none" is its "Unassigned". With per-season memberships
+      // (Plan 18 M1) "in group G" is membership of G itself, and "none" means
+      // no membership in any season.
       ...(query.groupId === undefined
         ? []
         : query.groupId === "none"
-          ? [{ groupStudentMembership: { is: null } }]
-          : [{ groupStudentMembership: { groupId: query.groupId } }]),
+          ? [{ groupStudentMemberships: { none: {} } }]
+          : [{ groupStudentMemberships: { some: { groupId: query.groupId } } }]),
       searchFilter(query.q),
     ],
   };
@@ -492,7 +527,7 @@ export async function loadStudentDetail(
           activeSeason: { select: { title: true, code: true } },
         },
       },
-      groupStudentMembership: { select: { group: { select: { id: true, name: true } } } },
+      groupStudentMemberships: { select: MEMBERSHIP_SELECT },
     },
   });
   if (!row) return null;
@@ -571,9 +606,7 @@ export async function loadStudentDetail(
     email: row.email,
     avatarPath: row.avatarPath,
     graduationYear: row.graduationYear,
-    currentGroup: row.groupStudentMembership?.group
-      ? { id: row.groupStudentMembership.group.id, name: row.groupStudentMembership.group.name }
-      : null,
+    currentGroup: currentGroupOf(row.groupStudentMemberships, row.studentProfile?.activeSeasonId),
     enrollments: history,
   };
   const publicProfile = {

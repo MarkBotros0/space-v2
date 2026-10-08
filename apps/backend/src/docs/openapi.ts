@@ -1225,7 +1225,7 @@ export const openApiDocument = {
           groupName: { type: ["string", "null"] },
           otherSeasonGroup: {
             type: ["object", "null"],
-            description: "The student's current group in ANOTHER season. Assigning them here removes it (GroupStudent is globally unique).",
+            description: "The student's group in another season (the most recent one, if several). Informational: assigning them here leaves it untouched (GroupStudent is unique per season, not globally).",
             properties: { groupName: { type: "string" }, seasonCode: { type: "string" } },
           },
         },
@@ -1386,7 +1386,7 @@ export const openApiDocument = {
           year: { type: ["string", "null"] },
           graduationYear: { type: ["integer", "null"] },
           activeSeasonTitle: { type: ["string", "null"] },
-          currentGroupName: { type: ["string", "null"], description: "Advisory: from GroupStudent, the one question that table may answer (C9)." },
+          currentGroupName: { type: ["string", "null"], description: "Advisory, from GroupStudent (C9): the group in the student's active season, else their most recent membership (a student can hold one membership per season since Plan 18 M1)." },
           droppedEnrollment: {
             description: "Non-null only on `status=dropped` rows, which are enrollment-keyed — key rows on `enrollmentId`, not the user id.",
             oneOf: [
@@ -1465,7 +1465,7 @@ export const openApiDocument = {
           avatarPath: { type: ["string", "null"] },
           graduationYear: { type: ["integer", "null"] },
           currentGroup: {
-            description: "Advisory current group (GroupStudent).",
+            description: "Advisory current group (GroupStudent): the active season's group, else the most recent membership.",
             oneOf: [{ type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } }, { type: "null" }],
           },
           enrollments: { type: "array", items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }, description: "`enrolledAt` descending. For a LEADER only the rows naming one of their groups." },
@@ -3148,7 +3148,7 @@ export const openApiDocument = {
         parameters: [
           { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
           { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
-          { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`, the GroupStudent pointer) is this group; `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
+          { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`, the GroupStudent pointer) is this group (membership of that group in any season since Plan 18 M1); `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
           { name: "sort", in: "query", description: "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)", schema: { type: "string", enum: ["name", "university", "season", "group"] } },
           { name: "dir", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "asc" } },
           { name: "q", in: "query", schema: { type: "string", maxLength: 120 } },

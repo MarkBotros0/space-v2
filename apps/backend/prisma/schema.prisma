@@ -120,7 +120,7 @@ model User {
   seasonAdminAssignments     SeasonAdmin[] @relation("SeasonAdminUser")
   seasonAdminAssignmentsMade SeasonAdmin[] @relation("SeasonAdminAssignedBy")
   groupLeaderAssignments     GroupLeader[]
-  groupStudentMembership     GroupStudent?
+  groupStudentMemberships    GroupStudent[]
 
   invitesReceived     InviteToken[]        @relation("InviteUser")
   invitesIssued       InviteToken[]        @relation("InviteIssuedBy")
@@ -308,6 +308,7 @@ model Group {
   seasonEnrollments SeasonEnrollment[]
   assignmentTargets AssignmentTarget[]
 
+  @@unique([id, seasonId]) // M1 — target for GroupStudent's composite FK
   @@index([seasonId])
 }
 
@@ -326,12 +327,15 @@ model GroupLeader {
 // `studentUserId` is unique standalone — a student belongs to at most one current group.
 model GroupStudent {
   groupId       Int
-  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  studentUserId Int      @unique
+  group         Group    @relation(fields: [groupId, seasonId], references: [id, seasonId], onDelete: Cascade)
+  studentUserId Int
   studentUser   User     @relation(fields: [studentUserId], references: [id], onDelete: Restrict)
+  // M1 — denormalised from Group.seasonId; the composite FK keeps it honest.
+  seasonId      Int
   enrolledAt    DateTime @default(now())
 
   @@id([groupId, studentUserId])
+  @@unique([seasonId, studentUserId]) // the real rule: one group per student per season
   @@index([groupId])
 }
 

@@ -10,6 +10,7 @@ const app = createApp();
 
 let seasonId: number;
 let otherSeasonCode: string;
+let otherSeasonId: number;
 let groupOneId: number;
 let groupTwoId: number;
 let foreignGroupId: number;
@@ -28,6 +29,7 @@ beforeAll(async () => {
   seasonId = season.id;
   const other = await createTestSeason();
   otherSeasonCode = other.code;
+  otherSeasonId = other.id;
 
   const admin = await createTestUser("admin", "ADMIN");
   const superUser = await createTestUser("super", "SUPER");
@@ -55,11 +57,11 @@ beforeAll(async () => {
 
   // A: in Group One this season.
   await db.seasonEnrollment.create({ data: { seasonId, studentUserId: a.id, groupId: groupOneId, status: "ACTIVE" } });
-  await db.groupStudent.create({ data: { groupId: groupOneId, studentUserId: a.id } });
+  await db.groupStudent.create({ data: { groupId: groupOneId, studentUserId: a.id, seasonId } });
   // B: unassigned here, but currently in ANOTHER season's group (spec 05 R82).
   await db.seasonEnrollment.create({ data: { seasonId, studentUserId: b.id, status: "ACTIVE" } });
   await db.seasonEnrollment.create({ data: { seasonId: other.id, studentUserId: b.id, groupId: foreignGroupId, status: "ACTIVE" } });
-  await db.groupStudent.create({ data: { groupId: foreignGroupId, studentUserId: b.id } });
+  await db.groupStudent.create({ data: { groupId: foreignGroupId, studentUserId: b.id, seasonId: other.id } });
   // Withdrawn and soft-deleted students are not on the roster (C9 + live users only).
   await db.seasonEnrollment.create({ data: { seasonId, studentUserId: withdrawn.id, status: "WITHDRAWN" } });
   await db.seasonEnrollment.create({ data: { seasonId, studentUserId: removed.id, status: "ACTIVE" } });
@@ -130,12 +132,12 @@ describe("PUT /api/v1/seasons/:id/group-assignments (D-16.12)", () => {
       select: { groupId: true, status: true },
     });
     expect(a).toEqual({ groupId: groupTwoId, status: "ACTIVE" });
-    expect(await db.groupStudent.findUnique({ where: { studentUserId: studentAId }, select: { groupId: true } }))
+    expect(await db.groupStudent.findUnique({ where: { seasonId_studentUserId: { seasonId, studentUserId: studentAId } }, select: { groupId: true } }))
       .toEqual({ groupId: groupTwoId });
 
     // Unassigning B here must NOT touch B's membership in the other season's
     // group: only this season's GroupStudent row is removed.
-    expect(await db.groupStudent.findUnique({ where: { studentUserId: studentBId }, select: { groupId: true } }))
+    expect(await db.groupStudent.findUnique({ where: { seasonId_studentUserId: { seasonId: otherSeasonId, studentUserId: studentBId } }, select: { groupId: true } }))
       .toEqual({ groupId: foreignGroupId });
 
     expect(await db.groupStudent.count({ where: { studentUserId: withdrawnId } })).toBe(0);
@@ -147,15 +149,18 @@ describe("PUT /api/v1/seasons/:id/group-assignments (D-16.12)", () => {
     expect(w).toEqual({ groupId: null, status: "WITHDRAWN" });
   });
 
-  it("assigning a student who sits in another season's group moves their GroupStudent row (R1, Plan 18 item)", async () => {
+  it("assigning a student who sits in another season's group KEEPS that membership (R1, Plan 18 M1)", async () => {
     const res = await request(app)
       .put(`/api/v1/seasons/${seasonId}/group-assignments`)
       .set("authorization", `Bearer ${adminToken}`)
       .send({ assignments: [{ studentUserId: studentBId, groupId: groupOneId }] });
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ assigned: 1, unassigned: 0, skippedStudentIds: [] });
-    expect(await db.groupStudent.findUnique({ where: { studentUserId: studentBId }, select: { groupId: true } }))
-      .toEqual({ groupId: groupOneId });
+    const rows = await db.groupStudent.findMany({
+      where: { studentUserId: studentBId },
+      select: { groupId: true },
+    });
+    expect(rows.map((r) => r.groupId).sort()).toEqual([foreignGroupId, groupOneId].sort());
   });
 
   it("refuses the WHOLE batch when any group is outside the season — nothing partial lands", async () => {

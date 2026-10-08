@@ -97,7 +97,7 @@ beforeAll(async () => {
   });
   const moved = await createTestUser("moved", "STUDENT");
   movedUserId = moved.id;
-  await db.groupStudent.create({ data: { groupId: laterGroup.id, studentUserId: moved.id } });
+  await db.groupStudent.create({ data: { groupId: laterGroup.id, studentUserId: moved.id, seasonId: laterSeason.id } });
   await db.seasonEnrollment.create({
     data: { seasonId, studentUserId: moved.id, groupId: groupBId, status: "ACTIVE" },
   });

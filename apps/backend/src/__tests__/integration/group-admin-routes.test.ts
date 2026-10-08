@@ -43,7 +43,7 @@ beforeAll(async () => {
     const s = await createTestUser(label, "STUDENT");
     studentIds.push(s.id);
     await db.seasonEnrollment.create({ data: { seasonId, studentUserId: s.id, groupId, status: "ACTIVE" } });
-    await db.groupStudent.create({ data: { groupId, studentUserId: s.id } });
+    await db.groupStudent.create({ data: { groupId, studentUserId: s.id, seasonId } });
   }
 
   soleAssignmentId = (

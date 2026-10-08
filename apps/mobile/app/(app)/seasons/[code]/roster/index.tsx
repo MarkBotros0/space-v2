@@ -107,7 +107,7 @@ function RosterGrid({ seasonId }: { seasonId: number }) {
             <Text variant="body">{label}</Text>
             {r.otherSeasonGroup ? (
               <Text variant="caption" color={theme.colors.neutral[600]}>
-                {`Also in ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — assigning here moves them.`}
+                {`Also in ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — that stays as it is.`}
               </Text>
             ) : null}
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs }}>

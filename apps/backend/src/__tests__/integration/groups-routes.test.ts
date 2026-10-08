@@ -182,7 +182,7 @@ describe("POST /api/v1/seasons/:id/groups and PATCH /api/v1/groups/:id", () => {
     expect(enrollment?.groupId).toBe(res.body.data.id);
     // GroupStudent is mirrored because v1 still reads it against this database.
     const mirror = await db.groupStudent.findUnique({
-      where: { studentUserId: s1.id },
+      where: { seasonId_studentUserId: { seasonId, studentUserId: s1.id } },
       select: { groupId: true },
     });
     expect(mirror?.groupId).toBe(res.body.data.id);

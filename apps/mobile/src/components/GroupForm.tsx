@@ -101,7 +101,7 @@ export function GroupForm({
           r.groupId !== null && r.groupId !== groupId
             ? `Now in ${r.groupName ?? "another group"} — saving moves them here.`
             : r.groupId === null && r.otherSeasonGroup
-              ? `In ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — saving moves them here.`
+              ? `In ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — that stays as it is; saving adds them here.`
               : null;
         return (
           <CheckRow

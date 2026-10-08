@@ -54,7 +54,7 @@ beforeAll(async () => {
   await db.studentProfile.create({ data: { userId: s1, university: "Zeta U", activeSeasonId: seasonAId } });
   await db.studentProfile.create({ data: { userId: s2, university: "Alpha U" } });
   await db.studentProfile.create({ data: { userId: s3 } });
-  await db.groupStudent.create({ data: { groupId: groupAId, studentUserId: s1 } });
+  await db.groupStudent.create({ data: { groupId: groupAId, studentUserId: s1, seasonId: seasonAId } });
 
   const old = at("1999-01-01T00:00:00.000Z");
   await db.seasonEnrollment.createMany({
@@ -125,6 +125,30 @@ describe("GET /api/v1/students — group filter and sort keys (REG-82)", () => {
 
     const none = await get(`/api/v1/students?q=${PFX}&groupId=none`, superToken);
     expect(ids(none).sort()).toEqual([s2, s3].sort());
+  });
+
+  it("shows the active season's group when a student also holds an older season's group (Plan 18 M1)", async () => {
+    const older = await db.group.create({
+      data: { seasonId: seasonBId, name: `${PFX}older-group` },
+      select: { id: true },
+    });
+    await db.groupStudent.create({
+      data: { groupId: older.id, studentUserId: s1, seasonId: seasonBId, enrolledAt: new Date() },
+    });
+    try {
+      const list = await get(`/api/v1/students?q=${PFX}`, superToken);
+      const row = list.body.data.students.find((s: { id: number }) => s.id === s1);
+      expect(row.currentGroupName).toBe("Group A");
+
+      const detail = await get(`/api/v1/students/${s1}`, superToken);
+      expect(detail.body.data.currentGroup).toMatchObject({ id: groupAId });
+
+      const inOlder = await get(`/api/v1/students?q=${PFX}&groupId=${older.id}`, superToken);
+      expect(ids(inOlder)).toEqual([s1]);
+    } finally {
+      await db.groupStudent.deleteMany({ where: { groupId: older.id } });
+      await db.group.delete({ where: { id: older.id } });
+    }
   });
 
   it("keeps the group filter inside the caller's scope", async () => {
