@@ -4615,7 +4615,7 @@ export const openApiDocument = {
         tags: ["Quizzes"],
         summary: "Submit the open attempt",
         description:
-          "STUDENT only. Every question must be answered (409 `attempt_incomplete`; an essay must be non-blank). MCQs are scored all-or-nothing against the key, in the same request. A quiz with an ESSAY becomes `SUBMITTED` with `autoScore` set and no `totalScore` (a human must grade it, and nobody is notified). An all-MCQ quiz becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification (link `/student/quizzes`, v1's format) is created best-effort. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail`, now with `isCorrect`/`pointsAwarded` per MCQ but never the key.",
+          "STUDENT only. Every question must be answered (409 `attempt_incomplete`; an essay must be non-blank). MCQs are scored all-or-nothing against the key, read, scored and written inside ONE transaction that holds a row lock on the attempt (REG-111) — a concurrent answer save or second submit waits and then gets 409 `attempt_closed`. A quiz with an ESSAY becomes `SUBMITTED` with `autoScore` set and no `totalScore` (a human must grade it, and nobody is notified). An all-MCQ quiz becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification (link `/student/quizzes`, v1's format) is created best-effort. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail`, now with `isCorrect`/`pointsAwarded` per MCQ but never the key.",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The submitted attempt."),

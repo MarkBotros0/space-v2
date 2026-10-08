@@ -910,6 +910,22 @@ async function resolveOpenAttempt(
   return attempt;
 }
 
+/**
+ * Lock the attempt row and return its CURRENT status (REG-111 / R120). The
+ * pre-transaction status check in resolveOpenAttempt is only a fast refusal;
+ * this is the authoritative one. Both the answer save and the submit take this
+ * lock first, so a save can never land between submit's read of the answers and
+ * its commit, and two submits cannot both score the same attempt.
+ */
+async function lockAttemptStatus(
+  tx: Prisma.TransactionClient,
+  attemptId: number,
+): Promise<string | null> {
+  const rows = await tx.$queryRaw<{ status: string }[]>`
+    SELECT "status"::text AS "status" FROM "QuizAttempt" WHERE "id" = ${attemptId} FOR UPDATE`;
+  return rows[0]?.status ?? null;
+}
+
 quizzesRouter.patch("/:id/attempt", async (req, res) => {
   const user = requireUser(req);
   const id = parseId(req.params.id);
@@ -952,9 +968,10 @@ quizzesRouter.patch("/:id/attempt", async (req, res) => {
     }
   }
 
-  await db.$transaction(
-    parsed.data.answers.map((answer) =>
-      db.quizAnswer.upsert({
+  const closed = await db.$transaction(async (tx) => {
+    if ((await lockAttemptStatus(tx, attempt.id)) !== "IN_PROGRESS") return true;
+    for (const answer of parsed.data.answers) {
+      await tx.quizAnswer.upsert({
         where: { attemptId_questionId: { attemptId: attempt.id, questionId: answer.questionId } },
         create: {
           attemptId: attempt.id,
@@ -964,12 +981,18 @@ quizzesRouter.patch("/:id/attempt", async (req, res) => {
         },
         // isCorrect and pointsAwarded are untouched — saving never grades (R54).
         update: { selectedIndex: answer.selectedIndex, text: answer.text },
-      }),
-    ),
-  );
+      });
+    }
+    return false;
+  });
+  if (closed) return apiError(res, "attempt_closed", "This attempt is closed.", 409);
 
   return apiOk(res, { saved: parsed.data.answers.length });
 });
+
+type SubmitOutcome =
+  | { fail: [code: string, message: string, status: 409] }
+  | { hasEssays: boolean };
 
 quizzesRouter.post("/:id/attempt/submit", async (req, res) => {
   const user = requireUser(req);
@@ -985,55 +1008,63 @@ quizzesRouter.post("/:id/attempt/submit", async (req, res) => {
   const quiz = await db.quiz.findUnique({ where: { id }, select: { title: true } });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
 
-  const [questions, answers] = await Promise.all([
-    db.quizQuestion.findMany({
-      where: { quizId: id },
-      select: { id: true, type: true, points: true, correctIndex: true },
-    }),
-    // Read INSIDE the request that scores them, unlike v1, which read the
-    // answers off the attempt, validated, and then opened a transaction that
-    // scored from the stale in-memory copy (R120).
-    db.quizAnswer.findMany({
-      where: { attemptId: attempt.id },
-      select: { questionId: true, selectedIndex: true, text: true },
-    }),
-  ]);
-  const answerBy = new Map(answers.map((a) => [a.questionId, a]));
-
-  // R59: one unanswered question rejects the whole submit.
-  for (const q of questions) {
-    const a = answerBy.get(q.id);
-    const answered =
-      q.type === "MCQ"
-        ? a?.selectedIndex !== null && a?.selectedIndex !== undefined
-        : Boolean(a?.text && a.text.trim().length > 0);
-    if (!answered) {
-      return apiError(res, "attempt_incomplete", "Answer every question before submitting.", 409);
+  // REG-111 / R120: read, validate, score and write all inside ONE transaction
+  // that holds the attempt row lock (see lockAttemptStatus), so the answers
+  // scored are exactly the answers committed with the status change.
+  const outcome = await db.$transaction(async (tx): Promise<SubmitOutcome> => {
+    if ((await lockAttemptStatus(tx, attempt.id)) !== "IN_PROGRESS") {
+      return { fail: ["attempt_closed", "This attempt is closed.", 409] };
     }
-  }
 
-  let autoScore = 0;
-  const scored = questions
-    .filter((q) => q.type === "MCQ")
-    .map((q) => {
-      // R60: full points or nothing. No partial credit, no negative marking,
-      // no per-option weighting anywhere in this domain.
-      const isCorrect = answerBy.get(q.id)?.selectedIndex === q.correctIndex;
-      const pointsAwarded = isCorrect ? q.points : 0;
-      autoScore += pointsAwarded;
-      return { questionId: q.id, isCorrect, pointsAwarded };
-    });
-  const hasEssays = questions.some((q) => q.type === "ESSAY");
-  const now = new Date();
+    const [questions, answers] = await Promise.all([
+      tx.quizQuestion.findMany({
+        where: { quizId: id },
+        select: { id: true, type: true, points: true, correctIndex: true },
+      }),
+      tx.quizAnswer.findMany({
+        where: { attemptId: attempt.id },
+        select: { questionId: true, selectedIndex: true, text: true },
+      }),
+    ]);
+    const answerBy = new Map(answers.map((a) => [a.questionId, a]));
 
-  await db.$transaction([
-    ...scored.map((s) =>
-      db.quizAnswer.update({
+    // R59: one unanswered question rejects the whole submit.
+    for (const q of questions) {
+      const a = answerBy.get(q.id);
+      const answered =
+        q.type === "MCQ"
+          ? a?.selectedIndex !== null && a?.selectedIndex !== undefined
+          : Boolean(a?.text && a.text.trim().length > 0);
+      if (!answered) {
+        return {
+          fail: [
+            "attempt_incomplete", "Answer every question before submitting.", 409,
+          ],
+        };
+      }
+    }
+
+    let autoScore = 0;
+    const scored = questions
+      .filter((q) => q.type === "MCQ")
+      .map((q) => {
+        // R60: full points or nothing. No partial credit, no negative marking,
+        // no per-option weighting anywhere in this domain.
+        const isCorrect = answerBy.get(q.id)?.selectedIndex === q.correctIndex;
+        const pointsAwarded = isCorrect ? q.points : 0;
+        autoScore += pointsAwarded;
+        return { questionId: q.id, isCorrect, pointsAwarded };
+      });
+    const hasEssays = questions.some((q) => q.type === "ESSAY");
+    const now = new Date();
+
+    for (const s of scored) {
+      await tx.quizAnswer.update({
         where: { attemptId_questionId: { attemptId: attempt.id, questionId: s.questionId } },
         data: { isCorrect: s.isCorrect, pointsAwarded: s.pointsAwarded },
-      }),
-    ),
-    db.quizAttempt.update({
+      });
+    }
+    await tx.quizAttempt.update({
       where: { id: attempt.id },
       data: hasEssays
         ? { status: "SUBMITTED", submittedAt: now, autoScore }
@@ -1046,8 +1077,11 @@ quizzesRouter.post("/:id/attempt/submit", async (req, res) => {
             gradedAt: now,
             // gradedById stays null: nobody graded it (R64).
           },
-    }),
-  ]);
+    });
+    return { hasEssays };
+  });
+  if ("fail" in outcome) return apiError(res, outcome.fail[0], outcome.fail[1], outcome.fail[2]);
+  const { hasEssays } = outcome;
 
   if (!hasEssays) {
     // Best-effort, outside the transaction (spec D6). A mail failure must not

@@ -867,6 +867,47 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     expect((await quizGradedCount()) - before).toBe(1);
   });
 
+  it("scores exactly once when submits race, and a save never lands after scoring (REG-111)", async () => {
+    const built = await buildPublishedQuiz({ withEssay: false });
+    const before = await quizGradedCount();
+    await request(app)
+      .put(`/api/v1/quizzes/${built.quizId}/attempt`)
+      .set("authorization", `Bearer ${studentToken}`);
+    await request(app)
+      .patch(`/api/v1/quizzes/${built.quizId}/attempt`)
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ answers: [{ questionId: built.mcqId, selectedIndex: 1, text: null }] });
+
+    const results = await Promise.all([
+      ...[0, 1, 2, 3].map(() =>
+        request(app)
+          .post(`/api/v1/quizzes/${built.quizId}/attempt/submit`)
+          .set("authorization", `Bearer ${studentToken}`),
+      ),
+      request(app)
+        .patch(`/api/v1/quizzes/${built.quizId}/attempt`)
+        .set("authorization", `Bearer ${studentToken}`)
+        .send({ answers: [{ questionId: built.mcqId, selectedIndex: 0, text: null }] }),
+    ]);
+    const submits = results.slice(0, 4);
+    expect(submits.filter((r) => r.status === 200)).toHaveLength(1);
+    expect(submits.filter((r) => r.status === 409)).toHaveLength(3);
+    expect((await quizGradedCount()) - before).toBe(1);
+
+    // Whatever order the lock serialised them in, the stored answer and the
+    // stored score agree: nothing was saved after scoring without being scored.
+    const attempt = await db.quizAttempt.findFirst({
+      where: { quizId: built.quizId, studentUserId: ownStudentId },
+      select: { id: true, totalScore: true },
+    });
+    const answer = await db.quizAnswer.findFirst({
+      where: { attemptId: attempt?.id },
+      select: { isCorrect: true, pointsAwarded: true },
+    });
+    expect(answer?.isCorrect).not.toBeNull();
+    expect(attempt?.totalScore).toBe(answer?.pointsAwarded);
+  });
+
   it("refuses a second submit and a save after submit (R49, R58)", async () => {
     const built = await buildPublishedQuiz({ withEssay: false });
     await request(app)
