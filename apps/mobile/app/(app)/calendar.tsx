@@ -24,7 +24,7 @@ import { groupCalendarByDay } from "../../src/lib/day-groups";
 import { formatDayKey } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
-import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
+import { Button, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
 /**
  * Day-grouped sessions and JPC events. Every day, time and order comes from the

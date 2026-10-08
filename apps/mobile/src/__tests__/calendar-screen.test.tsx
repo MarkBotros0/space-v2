@@ -5,6 +5,7 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
 import { apiClient } from "../lib/api-client";
+import { deviceTodayKey } from "../lib/calendar-grid";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -303,7 +304,6 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
 
   it("reads a staff Month from GET /sessions with the visible days, padded a day each side", async () => {
     useSessionStore.setState(makeSession("SUPER"));
-    const { deviceTodayKey } = jest.requireActual("../lib/calendar-grid") as typeof import("../lib/calendar-grid");
     const today = deviceTodayKey();
     get.mockImplementation((url: string) =>
       url.startsWith("/api/v1/events")
