@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import type { SubmissionStatus } from "../../generated/prisma/enums";
 import { db } from "../../db/client";
 import { formatDayInOrgTime } from "../org-time";
+import { attendanceCellFor } from "./attendance-cell";
 import { computeEngagementForSeasons } from "../queries/engagement";
 import {
   COLLATOR,
@@ -26,7 +27,8 @@ const NOT_ASSIGNED = "n/a";
 const KEY_SYMBOLS: Array<[string, string]> = [
   ["P", "Present"],
   ["A", "Absent"],
-  ["L", "Late — see the note about recorded minutes below"],
+  ["number", "Late — minutes after the session's start"],
+  ["L", "Late, with no minutes recorded"],
   ["(blank)", "No record for this student and session / assignment"],
   [NOT_ASSIGNED, "This assignment was not assigned to this student"],
 ];
@@ -82,7 +84,7 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
     "Student",
     "Email",
     "Group",
-    ...sessions.map((s) => `${formatDayInOrgTime(s.startsAt)} · ${s.title}`),
+    ...sessions.map((s) => `${formatDayInOrgTime(s.startsAt)} · ${s.title} (minutes late from start)`),
     "Attendance %",
   ];
   attendance.addRow(attHeader);
@@ -96,16 +98,7 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
     const cells = sessions.map((_, i) => {
       const record = attendanceBySession[i]!.get(student.studentUserId);
       if (!record) return "";
-      if (record.status === "PRESENT") return "P";
-      if (record.status === "ABSENT") return "A";
-      // Ruling C3. v1 printed `lateMinutes ?? "L"` — minutes measured from when
-      // an admin opened check-in rather than from session.startsAt, with no
-      // threshold, exported to a spreadsheet where a reader sorts and averages
-      // them as "minutes late" (R69, R70). There is no column distinguishing
-      // v1-era rows from v2-era ones and adding one is a migration (C1), so the
-      // workbook cannot annotate per cell — it withholds the number instead.
-      // The Key sheet says so. Restored at cutover after the backfill.
-      return "L";
+      return attendanceCellFor(record.status, record.lateMinutes);
     });
     // Read, not recomputed: the same attendancePct the report shows, whose
     // denominator starts at this student's enrolledAt (domain 9 R55, spec D8).
@@ -323,10 +316,7 @@ async function loadSeasonExportData(seasonId: number) {
       id: true,
       title: true,
       startsAt: true,
-      // lateMinutes is deliberately NOT selected. Nothing in v2 renders it, and
-      // not fetching it is the cheapest possible guarantee that nobody
-      // "restores" the cell by reaching for a field that is already in hand.
-      attendance: { select: { studentUserId: true, status: true } },
+      attendance: { select: { studentUserId: true, status: true, lateMinutes: true } },
     },
   });
 

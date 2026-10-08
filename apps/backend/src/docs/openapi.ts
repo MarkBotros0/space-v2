@@ -3975,7 +3975,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Mark attendance",
         description:
-          "Upserts every entry in one transaction. `lateMinutes` is stored only when `status` is LATE; any other status clears it, and an omitted `notes` clears the column.",
+          "Upserts every entry in one transaction. `lateMinutes` is stored only when `status` is LATE; any other status clears it, and an omitted `notes` clears the column. The row's `lateBasis` becomes MANUAL when the leader typed the minutes (or the row was never scanned); a scanned row whose minutes come back unchanged keeps SESSION_START.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -4035,7 +4035,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Student self check-in",
         description:
-          "Marks the caller PRESENT, or LATE with the whole minutes elapsed since the session's start (ruling C3 — not since check-in opened). Check-in hard-stops three hours after opening even if never explicitly closed.",
+          "Marks the caller PRESENT, or LATE with the whole minutes elapsed since the session's start (ruling C3 — not since check-in opened). A scan at or within the season's `lateThresholdMinutes` (default 0) is PRESENT; past it the full elapsed minutes are charged. The row is labelled `lateBasis: SESSION_START`. Check-in hard-stops three hours after opening even if never explicitly closed.",
         requestBody: {
           required: true,
           content: {
@@ -5345,9 +5345,9 @@ export const openApiDocument = {
           "(spec D6 #3). A soft-deleted season is 404.\n\n" +
           "`Submitted %` divides by the assignments assigned to that student (ruling C5), " +
           "which CHANGES its value relative to v1 for any season with a group-targeted " +
-          "assignment. LATE attendance cells render \"L\": the recorded minutes are " +
-          "measured from the wrong instant and are withheld until the cutover backfill " +
-          "(ruling C3).",
+          "assignment. LATE attendance cells show the minutes late, measured from the session's start (ruling C3; " +
+          "rows recorded before the cutover were recomputed by migration M3), or \"L\" when a late " +
+          "row has no minutes. Each session column header ends \"(minutes late from start)\".",
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
         responses: {
           200: xlsxResponse,

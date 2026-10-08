@@ -5,6 +5,7 @@ import { AttendanceStatus } from "../generated/prisma/enums";
 import { apiOk, apiError } from "../lib/api-response";
 import { flagLowAttendance } from "../lib/attendance-notifications";
 import { CHECK_IN_WINDOW_MS, checkInState, isCheckInOpen } from "../lib/check-in";
+import { lateBasisForSave } from "../lib/late-basis";
 import { createNotificationsBulk } from "../lib/notifications";
 import { bestEffort } from "../lib/best-effort";
 import {
@@ -105,6 +106,7 @@ sessionsRouter.post("/check-in", async (req, res) => {
       startsAt: true,
       checkInOpenAt: true,
       checkInClosedAt: true,
+      season: { select: { lateThresholdMinutes: true } },
     },
   });
   if (!session) return apiError(res, "invalid_token", "Check-in token is invalid.", 404);
@@ -132,15 +134,15 @@ sessionsRouter.post("/check-in", async (req, res) => {
 
   // Ruling C3: lateness is measured from the session's START — not from when
   // an admin pressed "Open check-in" (spec 04 R63, D1), which made a punctual
-  // student LATE whenever the console opened early. The threshold is zero
-  // until Plan 18 M3 adds `Season.lateThresholdMinutes` (C3 over spec 04 D1's
-  // 15-minute grace). Rows v1 writes still mean "minutes since opening";
-  // C3 accepts that divergence and Plan 18 M3 backfills it.
-  const minutesLate = Math.max(
-    0,
-    Math.floor((now.getTime() - session.startsAt.getTime()) / 60_000),
-  );
-  const status: "PRESENT" | "LATE" = minutesLate > 0 ? "LATE" : "PRESENT";
+  // student LATE whenever the console opened early. A scan within the
+  // season's `lateThresholdMinutes` (zero by ruling C3, over spec 04 D1's
+  // 15-minute grace) is on time; past it, the full elapsed minutes are
+  // charged. The threshold acts here, at write time, so the budget keeps one
+  // definition of lateness (C4).
+  const elapsed = Math.max(0, Math.floor((now.getTime() - session.startsAt.getTime()) / 60_000));
+  const isLate = elapsed > session.season.lateThresholdMinutes;
+  const minutesLate = isLate ? elapsed : 0;
+  const status: "PRESENT" | "LATE" = isLate ? "LATE" : "PRESENT";
 
   await db.attendance.upsert({
     where: { sessionId_studentUserId: { sessionId: session.id, studentUserId: user.userId } },
@@ -150,6 +152,7 @@ sessionsRouter.post("/check-in", async (req, res) => {
       status,
       checkedInAt: now,
       lateMinutes: status === "LATE" ? minutesLate : null,
+      lateBasis: "SESSION_START",
       markedById: user.userId,
       markedAt: now,
     },
@@ -157,6 +160,7 @@ sessionsRouter.post("/check-in", async (req, res) => {
       status,
       checkedInAt: now,
       lateMinutes: status === "LATE" ? minutesLate : null,
+      lateBasis: "SESSION_START",
     },
   });
 
@@ -496,6 +500,14 @@ sessionsRouter.post("/:id/attendance", async (req, res) => {
     }
   }
 
+  // What each row already holds decides its lateBasis (M3): a scanned row's
+  // minutes were measured from the session start; anything typed is MANUAL.
+  const existingRows = await db.attendance.findMany({
+    where: { sessionId, studentUserId: { in: parsed.data.entries.map((e) => e.studentUserId) } },
+    select: { studentUserId: true, checkedInAt: true, lateMinutes: true },
+  });
+  const existingBy = new Map(existingRows.map((r) => [r.studentUserId, r] as const));
+
   // One transaction so a partially-saved roster is impossible: either every
   // student in this batch is marked, or none is.
   await db.$transaction(
@@ -503,6 +515,7 @@ sessionsRouter.post("/:id/attendance", async (req, res) => {
       db.attendance.upsert({
         where: { sessionId_studentUserId: { sessionId, studentUserId: e.studentUserId } },
         update: {
+          lateBasis: "MANUAL",
           status: e.status,
           notes: e.notes ?? null,
           // Lateness is meaningless unless the status is LATE, and leaving a
@@ -517,6 +530,7 @@ sessionsRouter.post("/:id/attendance", async (req, res) => {
           status: e.status,
           notes: e.notes ?? null,
           lateMinutes: e.status === AttendanceStatus.LATE ? (e.lateMinutes ?? null) : null,
+          lateBasis: "MANUAL",
           markedById: user.userId,
         },
       }),

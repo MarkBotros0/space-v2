@@ -181,6 +181,73 @@ describe("POST /api/v1/sessions/:id/attendance", () => {
     });
   });
 
+  it("labels typed minutes MANUAL (M3)", async () => {
+    await request(app)
+      .post(`/api/v1/sessions/${sessionId}/attendance`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ entries: [{ studentUserId, status: "LATE", lateMinutes: 12 }] });
+    const row = await db.attendance.findUnique({
+      where: { sessionId_studentUserId: { sessionId, studentUserId } },
+      select: { lateBasis: true },
+    });
+    expect(row?.lateBasis).toBe("MANUAL");
+  });
+
+  it("keeps SESSION_START for a checked-in row re-saved with its own minutes, and flips it when the leader changes them (M3)", async () => {
+    const checkedInAt = new Date();
+    await db.attendance.update({
+      where: { sessionId_studentUserId: { sessionId, studentUserId } },
+      data: { status: "LATE", lateMinutes: 7, lateBasis: "SESSION_START", checkedInAt },
+    });
+    const save = (lateMinutes: number) =>
+      request(app)
+        .post(`/api/v1/sessions/${sessionId}/attendance`)
+        .set("authorization", `Bearer ${adminToken}`)
+        .send({ entries: [{ studentUserId, status: "LATE", lateMinutes }] });
+    const basis = async () =>
+      (await db.attendance.findUnique({
+        where: { sessionId_studentUserId: { sessionId, studentUserId } },
+        select: { lateBasis: true },
+      }))?.lateBasis;
+
+    await save(7); // the form round-trips the computed value untouched
+    expect(await basis()).toBe("SESSION_START");
+    await save(9); // the leader overrode it
+    expect(await basis()).toBe("MANUAL");
+  });
+
+  it("leaves a checked-in row's basis alone on a PRESENT/ABSENT save, and labels a hand-marked one MANUAL (M3)", async () => {
+    await db.attendance.update({
+      where: { sessionId_studentUserId: { sessionId, studentUserId } },
+      data: { status: "LATE", lateMinutes: 7, lateBasis: "SESSION_START", checkedInAt: new Date() },
+    });
+    await request(app)
+      .post(`/api/v1/sessions/${sessionId}/attendance`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ entries: [{ studentUserId, status: "ABSENT" }] });
+    expect(
+      (await db.attendance.findUnique({
+        where: { sessionId_studentUserId: { sessionId, studentUserId } },
+        select: { lateBasis: true },
+      }))?.lateBasis,
+    ).toBe("SESSION_START");
+
+    await db.attendance.update({
+      where: { sessionId_studentUserId: { sessionId, studentUserId } },
+      data: { checkedInAt: null, lateBasis: "UNKNOWN" },
+    });
+    await request(app)
+      .post(`/api/v1/sessions/${sessionId}/attendance`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ entries: [{ studentUserId, status: "PRESENT" }] });
+    expect(
+      (await db.attendance.findUnique({
+        where: { sessionId_studentUserId: { sessionId, studentUserId } },
+        select: { lateBasis: true },
+      }))?.lateBasis,
+    ).toBe("MANUAL");
+  });
+
   it("clears lateMinutes when the status is not LATE", async () => {
     const res = await request(app)
       .post(`/api/v1/sessions/${sessionId}/attendance`)

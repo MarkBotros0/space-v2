@@ -160,26 +160,25 @@ describe("buildSeasonWorkbook", () => {
     ]);
   });
 
-  it("prints 'L' for a LATE cell and never the recorded minutes (ruling C3)", async () => {
+  it("prints the minutes late for a LATE cell with minutes (ruling C3, D-17.10 restored)", async () => {
     const result = (await buildSeasonWorkbook(seasonId))!;
     const rows = sheetRows(result.workbook, "Attendance");
     const alice = rows.find((r) => r[0] === "Test wb-alice")!;
     // Columns: Student, Email, Group, <session 1>, <session 2>, Attendance %.
     expect(alice[3]).toBe("P");
-    // v1 printed 12 here — minutes measured from when an admin pressed the
-    // check-in button, not from the session start, exported to a spreadsheet
-    // where a reader treats it as minutes late (R69, R70). Withheld until the
-    // cutover backfill.
-    expect(alice[4]).toBe("L");
-    expect(alice[4]).not.toBe(12);
+    // M3 recomputed every checked-in row from the session start and labelled
+    // the rest, so the number is one series again and the column header says
+    // what it measures.
+    expect(alice[4]).toBe(12);
   });
 
-  it("keeps the session columns a single cell type (R71)", async () => {
+  it("keeps the session columns to letters, plus a number only for a LATE cell (R71, M3)", async () => {
     const result = (await buildSeasonWorkbook(seasonId))!;
     const rows = sheetRows(result.workbook, "Attendance");
     for (const row of rows.slice(1)) {
       for (const cell of row.slice(3, -1)) {
-        expect(typeof cell).toBe("string");
+        if (typeof cell === "number") expect(cell).toBeGreaterThanOrEqual(0);
+        else expect(["P", "A", "L", ""]).toContain(cell);
       }
     }
   });
@@ -191,8 +190,8 @@ describe("buildSeasonWorkbook", () => {
       "Student",
       "Email",
       "Group",
-      "Mar 1, 2020 · Opening",
-      "Mar 8, 2020 · Week two",
+      "Mar 1, 2020 · Opening (minutes late from start)",
+      "Mar 8, 2020 · Week two (minutes late from start)",
       "Attendance %",
     ]);
     // v1's header was `MMM d` with no year, so sessions from different seasons
@@ -287,11 +286,11 @@ describe("buildSeasonWorkbook", () => {
       .map((c) => String(c ?? ""))
       .join("\n");
     expect(key).toContain("n/a");
-    expect(key).toContain("Late arrivals show as");
+    expect(key).toContain("Late cells show minutes after the session's start");
     // A legend row inside a data sheet breaks sorting and filtering — the two
     // things an operator opens a spreadsheet to do.
     const attendanceCells = sheetRows(result.workbook, "Attendance").flat().map(String);
-    expect(attendanceCells.some((c) => c.includes("Late arrivals show as"))).toBe(false);
+    expect(attendanceCells.some((c) => c.includes("Late cells show minutes"))).toBe(false);
   });
 });
 

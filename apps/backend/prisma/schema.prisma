@@ -69,6 +69,13 @@ enum NotificationType {
   QUIZ_GRADED
 }
 
+// M3 — what a stored lateMinutes was measured from.
+enum LateBasis {
+  SESSION_START
+  MANUAL
+  UNKNOWN
+}
+
 enum JpcVisibility {
   ALL
   ALUMNI_ONLY
@@ -253,6 +260,9 @@ model Season {
 
   absenceBudgetMinutes Int @default(180)
   absenceWeightMinutes Int @default(90)
+  // M3 — C3's grace period: a check-in at or under this many minutes after the
+  // start is PRESENT. Zero by ruling; raising it is a product decision.
+  lateThresholdMinutes Int @default(0)
 
   createdById Int?
   createdBy   User?     @relation("SeasonCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -455,6 +465,9 @@ model Attendance {
   markedAt      DateTime         @default(now())
   checkedInAt   DateTime?
   lateMinutes   Int?
+  // M3 — the value lateMinutes held before the cutover recompute, kept one release.
+  lateMinutesLegacy Int?
+  lateBasis     LateBasis        @default(UNKNOWN)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 

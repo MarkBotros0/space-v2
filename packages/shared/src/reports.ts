@@ -368,6 +368,6 @@ export const REPORT_METRIC_NOTES: readonly string[] = [
   "Submission % counts only assignments assigned to that student — all-groups assignments plus those targeting their group for this season. An assignment a student was never given does not count against them.",
   "The per-session attendance figure divides by the students enrolled at the time of that session, not by today's roster, so it cannot exceed 100%.",
   "“At risk” means either component is below 60%. A student who has stopped attending but is still submitting is at risk, even though the combined score may look healthy.",
-  "Late arrivals show as “L”. Recorded minutes are withheld because the older system measured them from when staff opened check-in rather than from the session start; they return once the historic records have been corrected.",
+  "Late cells show minutes after the session's start. Rows recorded before the cutover were recomputed from the check-in time; rows typed in by a leader are shown as entered. A late row with no minutes shows “L”.",
   "Blank means no record. “n/a” on the Assignments sheet means the assignment was not assigned to that student.",
 ] as const;

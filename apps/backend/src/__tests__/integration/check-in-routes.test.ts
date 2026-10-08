@@ -278,9 +278,61 @@ describe("lateness is measured from the session start, not from opening (ruling 
     expect(res.body.data).toEqual({ status: "LATE", minutesLate: 20 });
     const row = await db.attendance.findUnique({
       where: { sessionId_studentUserId: { sessionId: started.id, studentUserId } },
-      select: { status: true, lateMinutes: true },
+      select: { status: true, lateMinutes: true, lateBasis: true },
     });
-    expect(row).toEqual({ status: "LATE", lateMinutes: 20 });
+    expect(row).toEqual({ status: "LATE", lateMinutes: 20, lateBasis: "SESSION_START" });
+  });
+
+  describe("with a season grace period (M3, C3)", () => {
+    const scanAt = async (minutesAfterStart: number) => {
+      const started = await db.session.create({
+        data: {
+          seasonId,
+          title: `Started ${minutesAfterStart} minutes ago`,
+          // +5s so floor() lands on the whole minute however slow the round-trip is.
+          startsAt: new Date(Date.now() - minutesAfterStart * 60_000 - 5_000),
+          durationMinutes: 90,
+        },
+        select: { id: true },
+      });
+      const open = await request(app)
+        .post(`/api/v1/sessions/${started.id}/check-in-open`)
+        .set("authorization", `Bearer ${adminToken}`);
+      const res = await request(app)
+        .post("/api/v1/sessions/check-in")
+        .set("authorization", `Bearer ${studentToken}`)
+        .send({ token: open.body.data.checkInToken });
+      const row = await db.attendance.findUnique({
+        where: { sessionId_studentUserId: { sessionId: started.id, studentUserId } },
+        select: { status: true, lateMinutes: true, lateBasis: true },
+      });
+      return { res, row };
+    };
+
+    beforeAll(async () => {
+      await db.season.update({ where: { id: seasonId }, data: { lateThresholdMinutes: 10 } });
+    });
+    afterAll(async () => {
+      await db.season.update({ where: { id: seasonId }, data: { lateThresholdMinutes: 0 } });
+    });
+
+    it("keeps a scan inside the grace period PRESENT, with the basis labelled", async () => {
+      const { res, row } = await scanAt(5);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual({ status: "PRESENT", minutesLate: 0 });
+      expect(row).toEqual({ status: "PRESENT", lateMinutes: null, lateBasis: "SESSION_START" });
+    });
+
+    it("charges the full elapsed minutes once past the grace period, not the excess", async () => {
+      const { res, row } = await scanAt(12);
+      expect(res.body.data).toEqual({ status: "LATE", minutesLate: 12 });
+      expect(row).toEqual({ status: "LATE", lateMinutes: 12, lateBasis: "SESSION_START" });
+    });
+
+    it("treats exactly the threshold as on time", async () => {
+      const { res } = await scanAt(10);
+      expect(res.body.data.status).toBe("PRESENT");
+    });
   });
 
   it("marks a scan before the start PRESENT even when check-in opened half an hour earlier", async () => {
