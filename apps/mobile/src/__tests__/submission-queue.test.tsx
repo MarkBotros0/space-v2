@@ -90,3 +90,19 @@ it("keeps the tab an empty state for a student, without a request", async () => 
   expect(await screen.findByText(/isn't available for your role/i)).toBeTruthy();
   expect(get).not.toHaveBeenCalled();
 });
+
+it("shows v1's header counts, omitting late when there are none", async () => {
+  get.mockResolvedValueOnce({
+    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 4, total: 9, late: 2 }, nextCursor: null } },
+  });
+  renderWithProviders(<SubmissionsScreen />);
+  expect(await screen.findByText("4 pending review · 9 total · 2 late")).toBeTruthy();
+});
+
+it("leaves the late count out of the header when zero", async () => {
+  get.mockResolvedValueOnce({
+    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 1, total: 3, late: 0 }, nextCursor: null } },
+  });
+  renderWithProviders(<SubmissionsScreen />);
+  expect(await screen.findByText("1 pending review · 3 total")).toBeTruthy();
+});

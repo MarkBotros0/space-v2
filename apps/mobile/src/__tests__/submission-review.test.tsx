@@ -109,3 +109,9 @@ it("hides the verdict controls when the contract says this caller cannot review"
   expect(screen.queryByText("Mark reviewed")).toBeNull();
   expect(screen.queryByLabelText("Feedback")).toBeNull();
 });
+
+it("names the student's group beside them on the detail (REG-89)", async () => {
+  get.mockResolvedValue({ data: { data: { ...detail, groupId: 3, groupName: "Group A" } } });
+  renderWithProviders(<SubmissionReviewScreen />);
+  expect(await screen.findByText("Test student · Group A")).toBeTruthy();
+});

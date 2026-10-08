@@ -31,6 +31,7 @@ function QueueRow({ item }: { item: SubmissionQueueItem }) {
 }
 
 export default function SubmissionsScreen() {
+  const theme = useTheme();
   const role = useSessionStore((s) => s.user?.role ?? null);
   // STUDENT gets 403 from GET /submissions; no user means nothing to ask for.
   const isStaff = role !== null && role !== "STUDENT";
@@ -46,9 +47,16 @@ export default function SubmissionsScreen() {
   }
 
   const items = data?.pages.flatMap((page) => page.items) ?? [];
+  // Counts ignore paging and pendingOnly, so any page carries the same figures.
+  const counts = data?.pages[0]?.counts;
 
   return (
     <Screen edges={["top", "left", "right"]} onRefresh={() => void refetch()} refreshing={isRefetching}>
+      {counts ? (
+        <Text variant="label" color={theme.colors.neutral[600]}>
+          {`${counts.pending} pending review · ${counts.total} total${counts.late > 0 ? ` · ${counts.late} late` : ""}`}
+        </Text>
+      ) : null}
       {isPending ? (
         <LoadingState />
       ) : isError ? (

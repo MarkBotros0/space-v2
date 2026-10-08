@@ -71,7 +71,7 @@ export default function SubmissionReviewScreen() {
         <>
           <Text variant="title">{data.assignmentTitle}</Text>
           <Text variant="label" color={theme.colors.neutral[600]}>
-            {data.studentName ?? "Unnamed"}
+            {`${data.studentName ?? data.studentEmail}${data.groupName ? ` · ${data.groupName}` : ""}`}
           </Text>
           <Text variant="label" color={theme.colors.neutral[600]}>
             {statusLine(data)}
