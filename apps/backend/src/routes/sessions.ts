@@ -20,6 +20,7 @@ import {
   calendarScopeFor,
   canAccessSeason,
   canMarkAttendance,
+  hasActiveEnrollment,
 } from "../lib/permissions";
 import { listSessionsInRange, loadAttendanceRoster } from "../lib/queries/sessions";
 import { newPublicId } from "../lib/public-id";
@@ -282,7 +283,14 @@ sessionsRouter.get("/:id", async (req, res) => {
   });
   if (!session) return apiError(res, "not_found", "Session not found.", 404);
 
-  if (!(await canAccessSeason(user, session.seasonId))) {
+  // REG-77 (v1 student/sessions/[id]/page.tsx): a student sees the session only
+  // with an ACTIVE enrolment, and is told 404 — not 403 — otherwise. This is
+  // stricter than canAccessSeason, whose student branch admits any enrolment row.
+  if (user.role === "STUDENT") {
+    if (!(await hasActiveEnrollment(user, session.seasonId))) {
+      return apiError(res, "not_found", "Session not found.", 404);
+    }
+  } else if (!(await canAccessSeason(user, session.seasonId))) {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 

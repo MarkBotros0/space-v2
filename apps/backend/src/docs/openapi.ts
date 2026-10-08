@@ -3793,6 +3793,8 @@ export const openApiDocument = {
       get: {
         tags: ["Sessions"],
         summary: "Session detail",
+        description:
+          "A student sees the session only with an ACTIVE enrolment in its season; any other student (withdrawn, completed, never enrolled) gets 404 not_found, as v1 did (REG-77). Staff scoping unchanged (403 outside scope).",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/SessionDetail" }, "The session."),
