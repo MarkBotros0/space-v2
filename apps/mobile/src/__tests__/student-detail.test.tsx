@@ -1,11 +1,12 @@
-import { screen } from "@testing-library/react-native";
+import { fireEvent, screen } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
 }));
+const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "21" }),
-  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -133,5 +134,59 @@ describe("StudentDetailScreen", () => {
     renderWithProviders(<StudentDetailScreen />);
 
     expect(await screen.findByText(/Couldn't load this student/)).toBeTruthy();
+  });
+});
+
+describe("StudentDetailScreen history (REG-83)", () => {
+  const ok = (data: unknown) => Promise.resolve({ data: { data } });
+  function serve(session: typeof superSession) {
+    useSessionStore.setState(session);
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/students/21")
+        return ok({ ...base, enrollments: [{ ...enrollment, attendancePct: 83 }], profile: internalProfile });
+      if (url === "/api/v1/students/21/attendance")
+        return ok({
+          history: [
+            { sessionId: 1, sessionTitle: "Week 4", startsAt: "2099-04-01T16:00:00.000Z", seasonId: 7, seasonTitle: "Spring 2099", status: "LATE" },
+          ],
+        });
+      if (url === "/api/v1/students/21/submissions")
+        return ok({
+          submissions: [
+            { publicId: "abc123defg", assignmentId: 41, assignmentTitle: "Essay one", status: "SUBMITTED", isLate: true,
+              submittedAt: "2099-04-02T10:00:00.000Z", reviewedAt: null, seasonId: 7, seasonTitle: "Spring 2099" },
+          ],
+        });
+      if (url.includes("/engagement") || url.includes("/notes")) return Promise.reject(new Error("skip"));
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+  }
+
+  it("shows the enrolment percentage, attendance history and submissions to staff", async () => {
+    serve(superSession);
+    renderWithProviders(<StudentDetailScreen />);
+
+    expect(await screen.findByText("83% attendance")).toBeTruthy();
+    expect(await screen.findByText("Week 4 · Late")).toBeTruthy();
+    expect(await screen.findByText("Essay one · Submitted · Late")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Essay one · Submitted · Late"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
+  });
+
+  it("never asks a student's own record for the staff-only history", async () => {
+    const studentSession = {
+      user: { id: 21, name: "Sara Student", email: "sara@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
+      scopes: { ...emptyScopes, activeSeasonId: 7 },
+    };
+    useSessionStore.setState(studentSession);
+    get.mockResolvedValue({
+      data: { data: { ...base, profile: { ...publicProfile, phone: null, dateOfBirth: null, spiritualBackground: null } } },
+    });
+    renderWithProviders(<StudentDetailScreen />);
+    await screen.findByText("Sara Student");
+    expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/attendance");
+    expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/submissions");
+    expect(screen.queryByText(/% attendance/)).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import {
   dateOnlyFromIso,
   type EnrollmentHistoryItem,
@@ -12,9 +12,15 @@ import { DropEnrollmentSheet } from "../../../../src/components/DropEnrollmentSh
 import { GraduateStudentSheet } from "../../../../src/components/GraduateStudentSheet";
 import { isNoSeasonError, useStudentEngagement } from "../../../../src/hooks/use-engagement";
 import { flattenNotePages, useCreateNote, useStudentNotes } from "../../../../src/hooks/use-notes";
-import { useDeleteStudent, useStudentDetail, type StudentDetail } from "../../../../src/hooks/use-students";
+import {
+  useDeleteStudent,
+  useStudentAttendanceHistory,
+  useStudentDetail,
+  useStudentSubmissions,
+  type StudentDetail,
+} from "../../../../src/hooks/use-students";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
-import { formatDate, formatDayKey } from "../../../../src/lib/format";
+import { formatDate, formatDateTime, formatDayKey } from "../../../../src/lib/format";
 import { studentActionsFor } from "../../../../src/lib/student-actions";
 import { useSessionStore } from "../../../../src/store/session";
 import { useTheme } from "../../../../src/theme";
@@ -58,6 +64,81 @@ function ProfileCard({ detail }: { detail: StudentDetail }) {
   );
 }
 
+const ATTENDANCE_LABEL = { PRESENT: "Present", ABSENT: "Absent", LATE: "Late" } as const;
+
+const SUBMISSION_STATUS_LABEL = {
+  DRAFT: "Draft",
+  SUBMITTED: "Submitted",
+  REVIEWED: "Reviewed",
+  RETURNED: "Returned",
+} as const;
+
+/** v1's Attendance tab (REG-83): the student's marks across seasons, newest first. */
+function AttendanceHistoryCard({ studentId, enabled }: { studentId: number; enabled: boolean }) {
+  const theme = useTheme();
+  const { data, isPending, isError, refetch } = useStudentAttendanceHistory(studentId, enabled);
+  if (!enabled) return null;
+  return (
+    <Card style={{ marginTop: theme.spacing.md }}>
+      <Text variant="heading">Attendance history</Text>
+      {isPending ? (
+        <LoadingState />
+      ) : isError ? (
+        <ErrorState message="Couldn't load attendance." onRetry={() => void refetch()} />
+      ) : data.history.length === 0 ? (
+        <Text variant="body" color={theme.colors.neutral[600]}>
+          No attendance yet. Records appear here as sessions are marked.
+        </Text>
+      ) : (
+        data.history.map((a) => (
+          <View key={a.sessionId} style={{ paddingVertical: theme.spacing.xs }}>
+            <Text variant="body">{`${a.sessionTitle} · ${ATTENDANCE_LABEL[a.status]}`}</Text>
+            <Text variant="caption" color={theme.colors.neutral[600]}>
+              {`${formatDateTime(a.startsAt)} · ${a.seasonTitle}`}
+            </Text>
+          </View>
+        ))
+      )}
+    </Card>
+  );
+}
+
+/** v1's Submissions tab (REG-83): each row opens the review screen. */
+function StudentSubmissionsCard({ studentId, enabled }: { studentId: number; enabled: boolean }) {
+  const theme = useTheme();
+  const router = useRouter();
+  const { data, isPending, isError, refetch } = useStudentSubmissions(studentId, enabled);
+  if (!enabled) return null;
+  return (
+    <Card style={{ marginTop: theme.spacing.md }}>
+      <Text variant="heading">Submissions</Text>
+      {isPending ? (
+        <LoadingState />
+      ) : isError ? (
+        <ErrorState message="Couldn't load submissions." onRetry={() => void refetch()} />
+      ) : data.submissions.length === 0 ? (
+        <Text variant="body" color={theme.colors.neutral[600]}>
+          No submissions yet.
+        </Text>
+      ) : (
+        data.submissions.map((s) => (
+          <Pressable
+            key={s.publicId}
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: "/submission/[publicId]", params: { publicId: s.publicId } })}
+            style={{ paddingVertical: theme.spacing.xs }}
+          >
+            <Text variant="body">{`${s.assignmentTitle} · ${SUBMISSION_STATUS_LABEL[s.status]}${s.isLate ? " · Late" : ""}`}</Text>
+            <Text variant="caption" color={theme.colors.neutral[600]}>
+              {s.submittedAt ? `${s.seasonTitle} · submitted ${formatDate(s.submittedAt)}` : s.seasonTitle}
+            </Text>
+          </Pressable>
+        ))
+      )}
+    </Card>
+  );
+}
+
 function EnrollmentRow({ item, onDrop }: { item: EnrollmentHistoryItem; onDrop: (() => void) | null }) {
   const theme = useTheme();
   return (
@@ -66,6 +147,12 @@ function EnrollmentRow({ item, onDrop }: { item: EnrollmentHistoryItem; onDrop: 
       <Text variant="label" color={theme.colors.neutral[600]}>
         {[enrollmentStatusLabel(item.status), item.groupName].filter(Boolean).join(" · ")}
       </Text>
+      {/* Staff-only: null in the student's own view (REG-83). */}
+      {item.attendancePct !== null ? (
+        <Text variant="label" color={theme.colors.neutral[600]}>
+          {`${item.attendancePct}% attendance`}
+        </Text>
+      ) : null}
       {item.dropReason ? (
         <Text variant="caption" color={theme.colors.neutral[600]}>
           {item.dropReason}
@@ -405,6 +492,8 @@ export default function StudentDetailScreen() {
                 )}
               </Card>
               <EngagementCard studentId={id} enabled={role !== null && role !== "STUDENT"} />
+              <AttendanceHistoryCard studentId={id} enabled={role !== null && role !== "STUDENT"} />
+              <StudentSubmissionsCard studentId={id} enabled={role !== null && role !== "STUDENT"} />
               <NotesSection studentId={id} enabled={role !== null && role !== "STUDENT"} />
 
               {actions.canGraduate ? (

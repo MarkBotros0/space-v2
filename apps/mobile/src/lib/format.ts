@@ -27,6 +27,11 @@ export function formatDate(iso: string | null): string {
   return formatIso(iso, "MMM d, yyyy");
 }
 
+/** e.g. "Wed, Apr 1, 2026 · 6:00 PM" — when a marked session started. */
+export function formatDateTime(iso: string | null): string {
+  return formatIso(iso, "EEE, MMM d, yyyy · h:mm a");
+}
+
 /** e.g. "Apr 1, 2026" — an assignment's due date, rendered as a calendar day (no time). */
 export function formatDueDate(iso: string | null): string {
   return formatIso(iso, "MMM d, yyyy");
