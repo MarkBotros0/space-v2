@@ -1,0 +1,22 @@
+spec	rule	ledger_verdict	v1_source_checked	result
+04-attendance.md	R74	DROPPED	src/app/student/sessions/[id]/page.tsx:29-33	agrees (404 unless ACTIVE enrolment)
+04-attendance.md	R98	DROPPED	src/app/admin/season/[code]/sessions/[id]/page.tsx:65-80	agrees (ACTIVE enrolment roster, name order)
+04-attendance.md	R101	NA	admin/season/[code]/page.tsx:20 requireRole ADMIN; super page passes no checkInBaseUrl	agrees with spec; SUPER non-admin has no console in v1 (v2 differs: see 04-R101 correction REG-79)
+18-settings.md	R4	NA	src/app/{role}/layout.tsx allowedRoles; settings pages have no requireRole	agrees
+18-settings.md	R5	NA	layouts: admin SUPER+ADMIN, leader SUPER+ADMIN+LEADER, mentor SUPER+MENTOR, super SUPER	agrees
+19-dashboards.md	R3	DROPPED	components/layout/role-layout.tsx:25-29	agrees (alumnus redirected to /alumni/dashboard)
+19-dashboards.md	R58	NA	app/alumni/dashboard/page.tsx:15	agrees (non-alumnus to /login)
+17-reports.md	R87	NA	app/api/reports/export/route.ts:8	agrees (getCurrentUserOrRedirect)
+08-submissions.md	R45	DROPPED	lib/submissions-query.ts:126	agrees (SUBMITTED/REVIEWED/RETURNED only)
+08-submissions.md	R54	DROPPED	components/ui/rich-text-view.tsx:11-31	agrees (14 tags, a:href/target/rel, http/https/mailto)
+08-submissions.md	R20	DROPPED	lib/submission-actions.ts:178-191	agrees (v1 writes reviewedById)
+08-submissions.md	R29	DROPPED	components/assignments/submission-review-form.tsx:59	agrees (Update review label exists in v1)
+10-notifications.md	R66	DROPPED	lib/submission-actions.ts:196	agrees (Feedback ready on "<title>")
+02-seasons.md	R24	DROPPED	app/super/seasons/page.tsx:20; app/admin/season/page.tsx:28	agrees (status asc, startDate desc)
+02-seasons.md	R75	DROPPED	app/admin/season/page.tsx:42	agrees (redirect when exactly one season)
+07-assignments.md	R54	DROPPED	lib/assignments-query.ts:144,153	agrees (group name then student name)
+03-sessions.md	R22	DROPPED	components/sessions/session-form.tsx:213	agrees (in-person/online type exists in v1)
+03-sessions.md	R24	DROPPED	components/sessions/session-form.tsx:96-97	agrees (18:00 and 90 min defaults)
+03-sessions.md	R30	DROPPED	components/sessions/session-form.tsx:125,138	agrees (create to calendar, edit to detail)
+18-settings.md	R22	DROPPED	components/settings/settings-form.tsx:148	agrees (save disabled when name unchanged)
+05-groups.md	R97	DROPPED	components/groups/group-form.tsx:107	agrees on v1 (group form pushes to season groups list)

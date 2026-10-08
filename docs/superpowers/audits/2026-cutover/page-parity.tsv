@@ -1,1 +1,105 @@
 v1_page	v2_route	status	owner
+.	index.tsx	BUILT	main (redirect to /dashboard or /login)
+login	login.tsx	BUILT	main; P9 T9 invite link; P10 T10 forgot link; P11 T11 returnTo
+forgot-password	forgot-password.tsx	BUILT	P10 T5 (backend), T10
+reset-password	reset-password.tsx	BUILT	P10 T5, T10 +REG-24
+forbidden	-	DROP	REG-01
+dev/design-system	-	DROP	REG-02
+checkin/[token]	checkin/[token].tsx	BUILT	P11 T11 (deep link), T10 (in-app scanner on session/[id]) +REG-04 +REG-14
+admin/dashboard	(app)/dashboard.tsx	BUILT	P16 T7 (ADMIN branch) +REG-60
+admin/calendar	(app)/calendar.tsx	BUILT	P4 T2; P6 T9; P14 T10
+admin/groups	(app)/groups.tsx	BUILT	P6 T8 (ADMIN/SUPER branch)
+admin/assignments	(app)/assignments.tsx	BUILT	P5 T7 (staff branch)
+admin/quizzes	(app)/quizzes.tsx	BUILT	P8 T8
+admin/reports	(app)/reports.tsx	BUILT	P15 T8
+admin/more	(app)/more.tsx	BUILT	P1 T6
+admin/notifications	(app)/notifications.tsx	BUILT	P13 T7
+admin/settings	(app)/settings.tsx	BUILT	P9 T6; P13 T9, T10
+admin/season	(app)/season.tsx	BUILT	P4 T3; P6 T6
+admin/season/[code]	(app)/seasons/[code]/index.tsx	BUILT	P6 T6
+admin/season/[code]/assignments	(app)/assignments.tsx	BUILT	P5 T7
+admin/season/[code]/assignments/[id]	(app)/assignment/[id]/index.tsx	BUILT	P5 T8 (staff branch + tracker)
+admin/season/[code]/assignments/[id]/edit	(app)/assignment/[id]/edit.tsx	BUILT	P5 T9
+admin/season/[code]/assignments/new	(app)/assignment/new.tsx	BUILT	P5 T9
+admin/season/[code]/calendar	(app)/calendar.tsx	BUILT	P6 T9 (season switcher)
+admin/season/[code]/calendar/new	(app)/session/new.tsx	BUILT	P6 T7
+admin/season/[code]/groups	(app)/groups.tsx	BUILT	P6 T8
+admin/season/[code]/groups/[id]	(app)/group/[id]/index.tsx	BUILT	P2 T2; P6 T5 (move), T8
+admin/season/[code]/groups/[id]/edit	(app)/group/[id]/edit.tsx	BUILT	P6 T8
+admin/season/[code]/groups/new	(app)/group/new.tsx	BUILT	P6 T8
+admin/season/[code]/quizzes/[quizId]/edit	(app)/quiz/[id]/edit.tsx	BUILT	P8 T11 (+ quiz/new.tsx)
+admin/season/[code]/quizzes/[quizId]/grade	(app)/quiz/[id]/grade.tsx	BUILT	P8 T10
+admin/season/[code]/reports	(app)/reports.tsx	BUILT	P15 T8
+admin/season/[code]/roster	(app)/seasons/[code]/roster/index.tsx	BUILT	P6 T8
+admin/season/[code]/roster/import	(app)/seasons/[code]/roster/import.tsx	BUILT	P17 T6b
+admin/season/[code]/sessions/[id]	(app)/session/[id]/index.tsx	BUILT	P4 T4; P6 T7; P14 T5; P8 T11b
+admin/season/[code]/sessions/[id]/attendance	(app)/session/[id]/attendance.tsx	BUILT	P2 T5
+admin/season/[code]/sessions/[id]/edit	(app)/session/[id]/edit.tsx	BUILT	P6 T7
+admin/students	(app)/students/index.tsx	BUILT	P7 T6
+admin/students/alumni	(app)/students/alumni.tsx	BUILT	P7 T6
+admin/students/dropped	(app)/students/dropped.tsx	BUILT	P7 T6
+admin/students/[id]	(app)/student/[id]/index.tsx	BUILT	P7 T7; P10 T7; P12 T6
+alumni/calendar	(app)/calendar.tsx	BUILT	P14 T10; P6 T9
+alumni/dashboard	(app)/dashboard.tsx	BUILT	P16 T7 (ALUMNI branch)
+alumni/history	(app)/history.tsx	BUILT	P11 T6
+alumni/more	(app)/more.tsx	BUILT	P1 T6
+alumni/notifications	(app)/notifications.tsx	BUILT	P13 T7
+alumni/profile	(app)/profile.tsx	BUILT	P11 T8 (read-only) +REG-07
+alumni/settings	(app)/settings.tsx	BUILT	P9 T6
+leader/calendar	(app)/calendar.tsx	BUILT	P6 T9 (all led seasons)
+leader/dashboard	(app)/dashboard.tsx	BUILT	P16 T7 (LEADER branch) +REG-60
+leader/groups	(app)/groups.tsx	BUILT	P2 T2
+leader/more	(app)/more.tsx	BUILT	P1 T6
+leader/notifications	(app)/notifications.tsx	BUILT	P13 T7
+leader/quizzes	(app)/quizzes.tsx	BUILT	P8 T8
+leader/sessions/[id]	(app)/session/[id]/index.tsx	BUILT	P4 T4 (read-only roster); P6 T7 (quiz card); P8 T11b
+leader/sessions/[id]/attendance	(app)/session/[id]/attendance.tsx	BUILT	P2 T5
+leader/sessions/[id]/quiz/[quizId]	(app)/quiz/[id]/grade.tsx	BUILT	P8 T10 +REG-52
+leader/settings	(app)/settings.tsx	BUILT	P9 T6
+leader/students/[id]	(app)/student/[id]/index.tsx	BUILT	P7 T7; P10 T7; P12 T6
+leader/submissions	(app)/submissions.tsx	BUILT	P2 T3
+leader/submissions/[publicId]	(app)/submission/[publicId].tsx	BUILT	P2 T4
+mentor/dashboard	(app)/dashboard.tsx	BUILT	P16 T7 (MENTOR branch) +REG-60
+mentor/notes	(app)/notes.tsx	BUILT	P12 T5
+mentor/notifications	(app)/notifications.tsx	BUILT	P13 T7
+mentor/reports	(app)/reports.tsx	BUILT	P15 T8
+mentor/settings	(app)/settings.tsx	BUILT	P9 T6
+mentor/students	(app)/students/index.tsx	BUILT	P7 T6
+mentor/students/[id]	(app)/student/[id]/index.tsx	BUILT	P7 T7; P12 T6
+student/assignments	(app)/assignments.tsx	BUILT	P1 T1
+student/assignments/[id]	(app)/assignment/[id]/index.tsx	BUILT	P1 T2–T4; P5 T6 (move); P14 T8 (FORUM)
+student/attendance	(app)/attendance.tsx	BUILT	P11 T7
+student/calendar	(app)/calendar.tsx	BUILT	P4 T2; P6 T9; P14 T10
+student/dashboard	(app)/dashboard.tsx	BUILT	P1 T5; P16 T7 (STUDENT branch) +REG-60
+student/history	(app)/history.tsx	BUILT	P11 T6
+student/more	(app)/more.tsx	BUILT	P1 T6
+student/notifications	(app)/notifications.tsx	BUILT	P13 T7
+student/profile	(app)/profile.tsx	BUILT	P11 T8 +REG-07 +REG-11 +REG-12
+student/quizzes	(app)/quizzes.tsx	BUILT	P8 T8
+student/quizzes/[quizId]	(app)/quiz/[id]/index.tsx	BUILT	P8 T9
+student/season	(app)/season.tsx	BUILT	P4 T3; P11 T9 (student branch)
+student/sessions/[id]	(app)/session/[id]/index.tsx	BUILT	P4 T4; P11 T10 (check-in); P14 T5
+student/settings	(app)/settings.tsx	BUILT	P9 T6
+super/calendar	(app)/calendar.tsx	BUILT	P6 T9 (all ACTIVE seasons, windowed)
+super/dashboard	(app)/dashboard.tsx	BUILT	P16 T7 (SUPER branch) +REG-60
+super/events	(app)/events.tsx	BUILT	P14 T10 (+ event/[id].tsx)
+super/more	(app)/more.tsx	BUILT	P1 T6
+super/notifications	(app)/notifications.tsx	BUILT	P13 T7
+super/reports	(app)/reports.tsx	BUILT	P15 T4, T5, T8
+super/seasons	(app)/seasons/index.tsx	BUILT	P4 T3; P6 T5 (move)
+super/seasons/[code]	(app)/seasons/[code]/index.tsx	BUILT	P6 T6
+super/seasons/[code]/edit	(app)/seasons/[code]/edit.tsx	BUILT	P6 T6 (identity + status + delete)
+super/seasons/new	(app)/seasons/index.tsx	BUILT	P4 T3 (inline "New season" form)
+super/seasons/program/[program]	(app)/seasons/index.tsx	BUILT	P6 T6 (program filter) +REG-54
+super/seasons/year/[year]	(app)/seasons/index.tsx	BUILT	P4 T3 (year grouping) +REG-54
+super/settings	(app)/settings.tsx	BUILT	P9 T6
+super/students	(app)/students/index.tsx	BUILT	P7 T6
+super/students/alumni	(app)/students/alumni.tsx	BUILT	P7 T6
+super/students/dropped	(app)/students/dropped.tsx	BUILT	P7 T6
+super/students/[id]	(app)/student/[id]/index.tsx	BUILT	P7 T7; P10 T7 (graduate/drop sheets, delete) +REG-21
+super/students/[id]/edit	(app)/student/[id]/edit.tsx	BUILT	P10 T8
+super/students/new	(app)/students/new.tsx	BUILT	P10 T8
+super/users	(app)/users/index.tsx	BUILT	P9 T7; P10 T9 (move, bulk invite card) +REG-22
+super/users/[id]/edit	(app)/user/[id].tsx	BUILT	P9 T8
+super/users/import	(app)/users/import.tsx	BUILT	P17 T6
+super/users/new	(app)/users/new.tsx	BUILT	P10 T9 +REG-25

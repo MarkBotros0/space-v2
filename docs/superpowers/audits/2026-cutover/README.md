@@ -96,7 +96,27 @@ figure; every per-spec count matches the plan's table.
 
 Task 1.3's row-count check uses 1550.
 
-## Environment limitation: v1 is not available
+## v1 now available (2026-10-08)
+
+v1 is cloned read-only at `/home/user/jpc-space` (shallow, HEAD `1915c97`). The limitation below
+described the earlier environment; it is lifted for the checks run here and still applies to the
+ledger rows not re-checked.
+
+| Check | Result |
+|---|---|
+| Page universe (`find src/app -name page.tsx`) | 104, identical to the matrix's v1 column (no diff) |
+| `page-parity.tsv` | 104 rows: 102 BUILT (map to 50 distinct v2 route files, every file exists on `main` and is a real screen, not a placeholder; shared-route pages share a role-branched file), 2 DROP (`forbidden` REG-01, `dev/design-system` REG-02). MISSING: none. Every REG id cited exists in `DROPPED.md`. |
+| `diff -rq` v1 `prisma/migrations` vs `apps/backend/prisma/migrations` | identical (no output) |
+| `diff` v1 `prisma/schema.prisma` vs `apps/backend/prisma/schema.prisma` | identical (no output) |
+| Ledger spot-check vs v1 source | 21 rows (security/authorization first: 04-R74, R98, R101; 18-R4, R5; 19-R3, R58; 17-R87; 08-R45, R54, R20, R29; plus behaviour drops) in `v1-spotcheck.tsv`: 21 agree, 0 disagree; nothing appended to `triage-corrections.tsv`. |
+
+Notes: the `BUILT` status in `page-parity.tsv` means "route file present on `main` with Plans 1-17
+merged" (the matrix's `PLAN` rows are now built); the owner column still names the plan task that
+built it. Several v2 files serve many v1 pages by role branch (calendar, dashboard, more, settings,
+etc.); existence and non-placeholder were checked, per-branch behaviour was not re-tested here. The
+2 `+REG` page notes are carried in the owner column.
+
+## Environment limitation (historical): v1 was not available
 
 The v1 repository (`jpc-space`) is **not present in the environment where this
 scaffold was produced**. Any v1 `file:line` citation (in `DROPPED.md`, in a
@@ -115,7 +135,8 @@ directories must be run on a machine that has v1, read-only.
 - `DROPPED.md` - the register (drops, deferrals, divergences), seeded with
   REG-01 to REG-69 from the plan's "Register seed"; the `Rule / page`, `Who
   signed` and `Date` cells are empty until Task 1.5.
-- `page-parity.tsv` - header only; Task 1.6 fills in the 104 v1 pages.
+- `page-parity.tsv` - Task 1.6: one row per v1 page (104), see "v1 now available" below.
+- `v1-spotcheck.tsv` - 21 ledger rows re-checked against real v1 source (2026-10-08).
 
 ## Ledger columns
 
