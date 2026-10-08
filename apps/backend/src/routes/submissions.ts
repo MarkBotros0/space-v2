@@ -383,6 +383,7 @@ submissionsRouter.post("/:publicId/review", async (req, res) => {
       feedback: parsed.data.feedback,
       status: parsed.data.returnForRevision ? "RETURNED" : "REVIEWED",
       reviewedAt: now,
+      reviewedById: user.userId,
     },
   });
 

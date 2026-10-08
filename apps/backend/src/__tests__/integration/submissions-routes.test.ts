@@ -17,6 +17,7 @@ let seasonId: number;
 let assignmentId: number;
 let publicId: string;
 let studentUserId: number;
+let leaderUserId: number;
 let groupAId: number;
 let mentorToken: string;
 let ownerToken: string;
@@ -82,6 +83,7 @@ beforeAll(async () => {
   ownerToken = await login(app, owner.email);
   peerToken = await login(app, peer.email);
   leaderToken = await login(app, leader.email);
+  leaderUserId = leader.id;
   adminToken = await login(app, admin.email);
   mentorToken = await login(app, mentor.email);
 });
@@ -347,9 +349,10 @@ describe("POST /api/v1/submissions/:publicId/review", () => {
     expect(res.status).toBe(200);
     const row = await db.submission.findUnique({
       where: { publicId: pid },
-      select: { status: true, feedback: true, reviewedAt: true },
+      select: { status: true, feedback: true, reviewedAt: true, reviewedById: true },
     });
     expect(row).toMatchObject({ status: "REVIEWED", feedback: "Good work." });
+    expect(row?.reviewedById).toBe(leaderUserId);
     expect(row?.reviewedAt).not.toBeNull();
 
     const notified = await db.notification.count({
