@@ -64,6 +64,8 @@ function SubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summa
   // Local edits win once typing starts; before that, the server's text shows.
   const value = text ?? sub.text ?? "";
   const editable = sub.status === "DRAFT" || sub.status === "RETURNED";
+  // v1 student-submission-form.tsx:158 — and the server's 400 empty_submission rule.
+  const nothingToSubmit = value.trim() === "" && sub.files.length === 0;
 
   return (
     <Card style={{ marginTop: theme.spacing.md }}>
@@ -95,6 +97,7 @@ function SubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summa
             title="Submit"
             onPress={() => save.mutate({ text: value, submit: true })}
             loading={save.isPending}
+            disabled={nothingToSubmit}
           />
         </>
       ) : null}
