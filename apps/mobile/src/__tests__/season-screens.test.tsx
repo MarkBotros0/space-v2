@@ -4,7 +4,8 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 const mockPush = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
+const mockReplace = jest.fn();
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush, replace: mockReplace }) }));
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
@@ -180,11 +181,23 @@ describe("SeasonsScreen (non-SUPER)", () => {
 });
 
 describe("SeasonScreen (workspace)", () => {
+  it("takes an ADMIN with exactly one season straight into it (REG-72)", async () => {
+    useSessionStore.setState(adminSession);
+    get.mockResolvedValue({ data: { data: { seasons: [seasonRow(7, 2026, "ACTIVE", "Spring 2026")] } } });
+    renderWithProviders(<SeasonScreen />);
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s7" } }),
+    );
+  });
+
   it("renders an ADMIN's current season with counts, groups and the edit section", async () => {
     useSessionStore.setState(adminSession);
     get.mockImplementation((url: string) =>
       url === "/api/v1/seasons"
-        ? Promise.resolve({ data: { data: { seasons: [seasonRow(7, 2026, "ACTIVE", "Spring 2026")] } } })
+        ? Promise.resolve({ data: { data: { seasons: [
+            seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
+            seasonRow(6, 2025, "ARCHIVED", "Spring 2025"),
+          ] } } })
         : Promise.resolve({ data: { data: detail } }),
     );
     patch.mockResolvedValue({ data: { data: { id: 7, code: "s7" } } });
@@ -192,6 +205,7 @@ describe("SeasonScreen (workspace)", () => {
     renderWithProviders(<SeasonScreen />);
 
     expect(await screen.findByText("Spring 2026")).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalled();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7");
     expect(screen.getByText("3 sessions · 12 students")).toBeTruthy();
     expect(screen.getByText("Group A")).toBeTruthy();

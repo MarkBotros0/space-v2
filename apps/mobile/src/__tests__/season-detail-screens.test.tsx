@@ -78,6 +78,8 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     renderWithProviders(<SeasonDetailScreen />);
     expect(await screen.findByText("Roster")).toBeTruthy();
     expect(screen.queryByText("Edit season")).toBeNull();
+    // REG-72: the admin's own edit lives here now that /season redirects a one-season admin.
+    expect(screen.getByText("Save changes")).toBeTruthy();
   });
 
   it("is read-only when the server says the caller does not administer the season (C4)", async () => {
