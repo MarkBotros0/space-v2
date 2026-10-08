@@ -52,6 +52,14 @@ export function formatDayKey(dayKey: string | null): string {
   return format(date, "MMM d, yyyy");
 }
 
+/** e.g. "Mon, Mar 2" — an org-day key as a week-row heading; same no-zone rule as formatDayKey. */
+export function formatWeekdayDay(dayKey: string | null): string {
+  if (dayKey == null) return PLACEHOLDER;
+  const date = parse(dayKey, "yyyy-MM-dd", new Date());
+  if (!isValid(date)) return PLACEHOLDER;
+  return format(date, "EEE, MMM d");
+}
+
 /**
  * e.g. "11:59 PM" — an organisation wall-clock time ("23:59") from the server.
  * Pure text arithmetic, no Date and no timezone: the server already resolved
