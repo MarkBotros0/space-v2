@@ -54,6 +54,25 @@ it("shows the work, the late flag from the contract, and records a review", asyn
   await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
 });
 
+it("says Update review, with the earlier feedback in the field, when redoing a review (REG-87)", async () => {
+  get.mockResolvedValue({
+    data: { data: { ...detail, status: "REVIEWED", reviewedAt: "2099-03-31T10:00:00.000Z", feedback: "Good work." } },
+  });
+  post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: false } } });
+
+  renderWithProviders(<SubmissionReviewScreen />);
+
+  expect(await screen.findByText("Update review")).toBeTruthy();
+  expect(screen.queryByText("Mark reviewed")).toBeNull();
+  expect(screen.getByText("Update feedback")).toBeTruthy();
+  expect(screen.getByLabelText("Feedback").props.value).toBe("Good work.");
+  fireEvent.changeText(screen.getByLabelText("Feedback"), "Even better.");
+  fireEvent.press(screen.getByText("Update review"));
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith("/api/v1/submissions/aaa1111111/review", { feedback: "Even better." }),
+  );
+});
+
 it("returns for revision with the flag set", async () => {
   get.mockResolvedValue({ data: { data: detail } });
   post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: true } } });
