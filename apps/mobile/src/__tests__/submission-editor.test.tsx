@@ -39,7 +39,7 @@ const submissionDetail = {
   submittedAt: null, reviewedAt: null, isLate: false,
   assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: null,
   assignmentDescription: null, seasonCode: "S26",
-  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test",
+  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test", groupId: null, groupName: null,
   files: [], canUploadFiles: false, canReview: false,
 };
 

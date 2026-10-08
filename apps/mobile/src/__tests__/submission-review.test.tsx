@@ -24,7 +24,7 @@ const detail = {
   submittedAt: "2099-03-30T10:00:00.000Z", reviewedAt: null, isLate: true,
   assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: "2099-03-29T00:00:00.000Z",
   assignmentDescription: null, seasonCode: "S26",
-  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test",
+  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test", groupId: null, groupName: null,
   files: [], canUploadFiles: false, canReview: true,
 };
 

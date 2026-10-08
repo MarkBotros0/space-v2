@@ -30,10 +30,10 @@ beforeEach(() => {
 it("lists the pending queue and loads the next page from the cursor", async () => {
   get
     .mockResolvedValueOnce({
-      data: { data: { items: [queueItem("aaa1111111", "Essay one")], nextCursor: "aaa1111111" } },
+      data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: "aaa1111111" } },
     })
     .mockResolvedValueOnce({
-      data: { data: { items: [queueItem("bbb2222222", "Essay two")], nextCursor: null } },
+      data: { data: { items: [queueItem("bbb2222222", "Essay two")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
     });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -52,7 +52,7 @@ it("lists the pending queue and loads the next page from the cursor", async () =
 
 it("labels a late hand-in from the contract flag", async () => {
   get.mockResolvedValue({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one", true)], nextCursor: null } },
+    data: { data: { items: [queueItem("aaa1111111", "Essay one", true)], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
   });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -62,7 +62,7 @@ it("labels a late hand-in from the contract flag", async () => {
 
 it("navigates to the review screen on press", async () => {
   get.mockResolvedValue({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one")], nextCursor: null } },
+    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
   });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -75,7 +75,7 @@ it("navigates to the review screen on press", async () => {
 });
 
 it("shows 'All caught up' for an empty queue", async () => {
-  get.mockResolvedValue({ data: { data: { items: [], nextCursor: null } } });
+  get.mockResolvedValue({ data: { data: { items: [], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } } });
 
   renderWithProviders(<SubmissionsScreen />);
 

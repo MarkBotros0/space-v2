@@ -1753,8 +1753,8 @@ export const openApiDocument = {
           id: { type: "integer" },
           publicId: { type: "string" },
           status: { $ref: "#/components/schemas/SubmissionStatus" },
-          text: { type: ["string", "null"] },
-          feedback: { type: ["string", "null"] },
+          text: { type: ["string", "null"], description: "Plain text: stored HTML is converted on read (ruling C11, REG-90)." },
+          feedback: { type: ["string", "null"], description: "Plain text, as `text`." },
           submittedAt: { type: ["string", "null"], format: "date-time" },
           reviewedAt: { type: ["string", "null"], format: "date-time" },
           isLate: {
@@ -1770,6 +1770,8 @@ export const openApiDocument = {
           studentUserId: { type: "integer" },
           studentName: { type: ["string", "null"] },
           studentEmail: { type: "string", format: "email" },
+          groupId: { type: ["integer", "null"], description: "The student's group in this assignment's season, from their enrolment (ruling C9)." },
+          groupName: { type: ["string", "null"] },
           files: { type: "array", items: { $ref: "#/components/schemas/SubmissionFile" } },
           canUploadFiles: {
             type: "boolean",
@@ -1805,6 +1807,16 @@ export const openApiDocument = {
         type: "object",
         properties: {
           items: { type: "array", items: { $ref: "#/components/schemas/SubmissionQueueItem" } },
+          counts: {
+            type: "object",
+            description:
+              "v1's header numbers over everything the caller's scope (and `seasonId`) reaches, ignoring `pendingOnly` and paging. DRAFTs never count.",
+            properties: {
+              pending: { type: "integer", description: "Status SUBMITTED." },
+              total: { type: "integer", description: "Every non-DRAFT submission in scope." },
+              late: { type: "integer", description: "Submitted after the assignment's due date." },
+            },
+          },
           nextCursor: {
             type: ["string", "null"],
             description: "Pass as `cursor` for the next page. Null on the last page.",
@@ -4067,7 +4079,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "A reviewer's queue",
         description:
-          "Staff only. Scoped to the caller: a LEADER sees submissions from students enrolled in a group they lead **in that assignment's own season**; an ADMIN sees their seasons; SUPER and MENTOR see everything.\n\nv1's equivalent was unscoped and unpaginated — every submission the reader could reach, in one response. Cursor-paged here, ordered newest first.",
+          "Staff only. Scoped to the caller: a LEADER sees submissions from students enrolled in a group they lead **in that assignment's own season**; an ADMIN sees their seasons; SUPER and MENTOR see everything.\n\nv1's equivalent was unscoped and unpaginated — every submission the reader could reach, in one response. Cursor-paged here, in v1's order (REG-89): status ascending (SUBMITTED first, then REVIEWED, RETURNED), then most recently submitted. The response carries `counts` for the header.",
         parameters: [
           {
             name: "pendingOnly",
@@ -4131,7 +4143,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "Record a verdict",
         description:
-          "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort — a mail failure does not report the review as failed.",
+          "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort (title `Feedback ready on \"<assignment>\"` as in v1; `<assignment> was returned for revision` when returned; no body) — a mail failure does not report the review as failed.",
         parameters: [{ name: "publicId", in: "path", required: true, schema: { type: "string" } }],
         requestBody: {
           required: true,
@@ -4177,7 +4189,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "Submission detail",
         description:
-          "Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's submission.",
+          "Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's submission. `text` and `feedback` are plain text (stored HTML is converted on read, ruling C11); `groupId`/`groupName` name the student's group in the assignment's season.",
         parameters: [publicIdParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/SubmissionDetail" }, "The submission."),
@@ -4190,7 +4202,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "Save a draft or submit",
         description:
-          "**Author only** — reading and writing are different rights, so a season admin who can read this submission still cannot edit it. `submit: true` sets status SUBMITTED and stamps `submittedAt`; omitting it returns the row to DRAFT, so saving a draft after submitting un-submits it.",
+          "**Author only** — reading and writing are different rights, so a season admin who can read this submission still cannot edit it. `submit: true` sets status SUBMITTED and stamps `submittedAt`; omitting it returns the row to DRAFT, so saving a draft after submitting un-submits it.\n\nSubmitting blank text with no attached file is `400 empty_submission` (v1's rule, REG-85); saving a blank draft stays legal.",
         parameters: [publicIdParam],
         requestBody: {
           required: true,

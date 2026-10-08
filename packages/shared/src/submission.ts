@@ -61,6 +61,12 @@ export const submissionDetailSchema = z.object({
   studentUserId: z.number(),
   studentName: z.string().nullable(),
   studentEmail: z.string(),
+  /**
+   * The student's group in THIS assignment's season, from their enrolment
+   * (ruling C9) — v1's detail named it, v2's dropped it (REG-89).
+   */
+  groupId: z.number().nullable(),
+  groupName: z.string().nullable(),
   files: z.array(submissionFileSummarySchema),
   /**
    * Whether uploading a new file would currently succeed. `false` while
@@ -97,8 +103,25 @@ export type SubmissionQueueItem = z.infer<typeof submissionQueueItemSchema>;
  * privacy problem and a payload problem, so this one is scoped to the caller's
  * own students and returns a page at a time.
  */
+/**
+ * v1's queue header: "N pending review · M total · K late" (REG-89). Counted
+ * over everything the caller's scope (and the seasonId filter) reaches,
+ * ignoring `pendingOnly` and paging, so the header does not change as the list
+ * is filtered or scrolled. DRAFTs are never counted.
+ */
+export const submissionQueueCountsSchema = z.object({
+  /** Status SUBMITTED — awaiting a verdict. */
+  pending: z.number().int().nonnegative(),
+  /** Every non-DRAFT submission in scope. */
+  total: z.number().int().nonnegative(),
+  /** Submitted after the assignment's due date. */
+  late: z.number().int().nonnegative(),
+});
+export type SubmissionQueueCounts = z.infer<typeof submissionQueueCountsSchema>;
+
 export const submissionQueueSchema = z.object({
   items: z.array(submissionQueueItemSchema),
+  counts: submissionQueueCountsSchema,
   /** Cursor for the next page; null when this is the last one. */
   nextCursor: z.string().nullable(),
 });
