@@ -183,6 +183,73 @@ These are operations on the live database, not code:
 - **Not started, and yours to run:** Plan 18 Part 2 (migration authoring, after
   you sign) and Part 3 (the production runbook R1-R21).
 
-## 11. Still to build
+## 11. Audit-fixes branch (`claude/audit-fixes`): follow-ups and decisions
+
+Owner-approved fixes from the cutover register are on `claude/audit-fixes`
+(backend REG-77, 82-85, 89-91, 97, 104, 111; mobile REG-70, 72-76, 78-85, 87,
+89, 92, 117). Nothing in this section blocks merging that branch.
+
+### Fix after cutover (decision sheet: FIX AFTER CUTOVER)
+
+- **REG-71** - the seasons list is ordered newest year first then title, not by
+  status then start date (v1 `src/app/super/seasons/page.tsx:20`). No authority
+  was found for the v2 ordering. Ruled: fix after cutover.
+- **REG-116** - Reports screen: one season picker is the only filter, empty
+  states replace redirects for admins with no seasons, completion rows no
+  longer count towards emptiness, and an at-risk row opens the single flat
+  student route. Ruled: fix after cutover.
+
+### Open owner decisions
+
+1. **Attendance remarks shown to students.** `GET /sessions/:id` and
+   `GET /me/attendance` return the attendance `notes` (remark) to the student
+   it is about. The REG-97 privacy rule covers the profile notes and pastoral
+   notes only, so these were left as they are. Decide whether a student should
+   see staff remarks on their own attendance.
+2. **Submission text and feedback sanitisation.** Submission text/feedback is
+   sanitised on the read side only; the stored value is the raw input. Decide
+   whether it should also be sanitised on write.
+
+### Judgement calls made during the audit fixes (confirm or reverse)
+
+- **ADMIN-scoped attendance and submissions endpoints.**
+  `GET /students/:id/attendance` and `/submissions` are staff-only: SUPER and
+  MENTOR see every season, an ADMIN only the seasons they administer, a LEADER
+  only seasons whose enrolment names one of their groups; a student gets 403,
+  themselves included. Drafts are never listed.
+- **In-memory sorts.** The students list sort keys (name, university, season,
+  group) are applied in memory over the scoped set rather than in SQL.
+- **Calendar "today" uses the device date.** It needs a server-supplied today
+  (organisation time zone) to be correct for a device with a wrong clock or zone.
+- **Calendar events window** is limited to today minus 30 days through plus 365
+  days.
+- **Group filter fetches groups per season.** The students group filter loads
+  the groups of each season separately rather than via one endpoint.
+- **REG-72 admin one-season redirect.** The season edit card moved to
+  `/seasons/[code]` as a result.
+
+### Register entries still awaiting a decision (15)
+
+Unsigned and undecided in `DROPPED.md`; nothing was changed for them.
+
+| Id | Entry |
+|---|---|
+| REG-95 | One session detail route serves every role |
+| REG-98 | One /students list serves SUPER, ADMIN, MENTOR and a group-scoped LEADER |
+| REG-99 | Dropped-students list limited to SUPER and ADMIN (authorisation-bearing) |
+| REG-100 | Notes lists page by cursor instead of a fixed 100-row cap |
+| REG-101 | Notification preferences require all six keys; quiz-graded can be switched off |
+| REG-102 | Users admin list: cursor paging, filters, name ordering, server-side total |
+| REG-103 | Year ceilings evaluated per request, not frozen at server start |
+| REG-105 | Quiz authoring: shared transaction, renumbering, paper-quiz refusal, reorder endpoint |
+| REG-106 | Quiz answers validated against the question |
+| REG-107 | Quiz taking autosaves in debounced batches with a visible state |
+| REG-108 | Essay grading sends every essay once; reopening needs online and published |
+| REG-109 | Grading notifications sent in one batch |
+| REG-110 | Quiz lists: one season per request, leader-scoped, cursor paged |
+| REG-112 | Video quiz answering checks role and enrolment first; transactional progress |
+| REG-113 | Event form validates on the device with the server schema |
+
+## 12. Still to build
 
 Nothing in Plans 1-17. Plan 18 Parts 2 and 3 wait on the signature above.
