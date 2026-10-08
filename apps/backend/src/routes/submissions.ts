@@ -105,7 +105,9 @@ submissionsRouter.get("/", async (req, res) => {
     AND: [
       scope,
       { assignment: { deletedAt: null } },
-      ...(pendingOnly ? [{ status: "SUBMITTED" as const }] : []),
+      // A DRAFT is the student's private work-in-progress: never visible to a
+      // reviewer, whatever pendingOnly says.
+      pendingOnly ? { status: "SUBMITTED" as const } : { status: { not: "DRAFT" as const } },
       ...(seasonId ? [{ assignment: { seasonId } }] : []),
     ],
   };
