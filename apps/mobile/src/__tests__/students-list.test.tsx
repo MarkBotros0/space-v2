@@ -201,3 +201,47 @@ it("offers SUPER — and only SUPER — a way to create a student", async () => 
   await screen.findByText("Sara Student");
   expect(screen.queryByText("New student")).toBeNull();
 });
+
+describe("StudentsScreen filter and sort (REG-82)", () => {
+  const groups = [
+    { id: 3, name: "Group A", description: null, studentCount: 2, leaderNames: [], seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099" },
+  ];
+  const seasons = [
+    { id: 7, code: "s7", title: "Spring 2099", program: "JPC", year: 2099, status: "ACTIVE", startDate: "2099-01-01", endDate: "2099-06-01" },
+  ];
+  function serve() {
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/seasons") return Promise.resolve({ data: { data: { seasons } } });
+      if (url === "/api/v1/seasons/7/groups") return Promise.resolve({ data: { data: { groups } } });
+      return Promise.resolve(page([activeRow]));
+    });
+  }
+
+  it("sends groupId, sort and dir to the list endpoint", async () => {
+    useSessionStore.setState(superSession);
+    serve();
+    renderWithProviders(<StudentsScreen />);
+    await screen.findByText("Sara Student");
+
+    fireEvent.press(screen.getByText("Filter and sort"));
+    fireEvent.press(await screen.findByLabelText("Group A · Spring 2099"));
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=3"));
+
+    fireEvent.press(screen.getByLabelText("No group"));
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none"));
+
+    fireEvent.press(screen.getByLabelText("University"));
+    fireEvent.press(await screen.findByLabelText("Descending"));
+    await waitFor(() =>
+      expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none&sort=university&dir=desc"),
+    );
+  });
+
+  it("offers no filter on the dropped list, whose rows are enrollments", async () => {
+    useSessionStore.setState(superSession);
+    serve();
+    renderWithProviders(<DroppedScreen />);
+    await waitFor(() => expect(get).toHaveBeenCalled());
+    expect(screen.queryByText("Filter and sort")).toBeNull();
+  });
+});

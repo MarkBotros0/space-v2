@@ -14,7 +14,9 @@ import {
   studentDetailInternalSchema,
   studentDetailPrivateSchema,
   studentDetailPublicSchema,
+  studentAttendanceHistorySchema,
   studentListResponseSchema,
+  studentSubmissionsSchema,
   updateStudentResponseSchema,
   type CreateStudentBody,
   type CreateStudentResponse,
@@ -24,8 +26,11 @@ import {
   type StudentDetailInternal,
   type StudentDetailPrivate,
   type StudentDetailPublic,
+  type StudentAttendanceHistory,
   type StudentListResponse,
+  type StudentListSort,
   type StudentListStatus,
+  type StudentSubmissions,
   type UpdateStudentBody,
   type UpdateStudentResponse,
   type UserRole,
@@ -35,13 +40,28 @@ import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
+/** The list's group filter and sort (REG-82); null leaves each to the server's default. */
+export interface StudentListView {
+  groupId: number | "none" | null;
+  sort: StudentListSort | null;
+  dir: "asc" | "desc";
+}
+
+export const DEFAULT_STUDENT_VIEW: StudentListView = { groupId: null, sort: null, dir: "asc" };
+
 async function fetchStudentsPage(
   status: StudentListStatus,
   q: string,
+  view: StudentListView,
   cursor: number | null,
 ): Promise<StudentListResponse> {
   const params = new URLSearchParams({ status });
   if (q) params.set("q", q);
+  if (view.groupId !== null) params.set("groupId", String(view.groupId));
+  if (view.sort !== null) {
+    params.set("sort", view.sort);
+    params.set("dir", view.dir);
+  }
   if (cursor !== null) params.set("cursor", String(cursor));
   const res = await apiClient.get(`/api/v1/students?${params.toString()}`);
   return studentListResponseSchema.parse(res.data.data);
@@ -53,10 +73,15 @@ async function fetchStudentsPage(
  * front — asking anyway would render an error state where a calm "not for
  * your role" empty state belongs.
  */
-export function useStudentList(status: StudentListStatus, q: string, enabled: boolean) {
+export function useStudentList(
+  status: StudentListStatus,
+  q: string,
+  enabled: boolean,
+  view: StudentListView = DEFAULT_STUDENT_VIEW,
+) {
   return useInfiniteQuery({
-    queryKey: queryKeys.students.list(status, q),
-    queryFn: ({ pageParam }) => fetchStudentsPage(status, q, pageParam),
+    queryKey: queryKeys.students.list(status, q, view),
+    queryFn: ({ pageParam }) => fetchStudentsPage(status, q, view, pageParam),
     initialPageParam: null as number | null,
     getNextPageParam: (last) => last.nextCursor,
     enabled,
@@ -96,6 +121,38 @@ export function useStudentDetail(
   });
 }
 
+/**
+ * GET /students/:id/attendance — staff only (REG-83). `enabled` is the role
+ * gate: a STUDENT viewing their own record is refused, so the screen must not ask.
+ */
+export function useStudentAttendanceHistory(
+  id: number | null,
+  enabled: boolean,
+): UseQueryResult<StudentAttendanceHistory> {
+  return useQuery({
+    queryKey: queryKeys.students.attendance(id),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/students/${id}/attendance`);
+      return studentAttendanceHistorySchema.parse(res.data.data);
+    },
+    enabled: enabled && id !== null,
+  });
+}
+
+/** GET /students/:id/submissions — staff only (REG-83); never a DRAFT. */
+export function useStudentSubmissions(
+  id: number | null,
+  enabled: boolean,
+): UseQueryResult<StudentSubmissions> {
+  return useQuery({
+    queryKey: queryKeys.students.submissions(id),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/students/${id}/submissions`);
+      return studentSubmissionsSchema.parse(res.data.data);
+    },
+    enabled: enabled && id !== null,
+  });
+}
 
 /** POST /students — the server mints and mails the invite (Plan 10 Decision 1). */
 export function useCreateStudent(): UseMutationResult<CreateStudentResponse, Error, CreateStudentBody> {

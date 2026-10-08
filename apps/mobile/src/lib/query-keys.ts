@@ -98,11 +98,23 @@ export const queryKeys = {
   students: {
     all: ["students"] as const,
     lists: () => [...queryKeys.students.all, "list"] as const,
-    list: (status: string, q: string) => [...queryKeys.students.lists(), { status, q }] as const,
+    list: (
+      status: string,
+      q: string,
+      view: { groupId: number | "none" | null; sort: string | null; dir: "asc" | "desc" } = {
+        groupId: null,
+        sort: null,
+        dir: "asc",
+      },
+    ) => [...queryKeys.students.lists(), { status, q, ...view }] as const,
     details: () => [...queryKeys.students.all, "detail"] as const,
     // number | null, like sessions.bySeason: a null key can never collide
     // with a real student's cached detail (no -1 sentinel).
     detail: (id: number | null) => [...queryKeys.students.details(), { id }] as const,
+    /** GET /students/:id/attendance (REG-83) — under details(), so student writes refresh it. */
+    attendance: (id: number | null) => [...queryKeys.students.details(), "attendance", { id }] as const,
+    /** GET /students/:id/submissions (REG-83). */
+    submissions: (id: number | null) => [...queryKeys.students.details(), "submissions", { id }] as const,
   },
   seasons: {
     all: ["seasons"] as const,

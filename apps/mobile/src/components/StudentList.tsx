@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 import { Pressable } from "react-native";
-import type { StudentListItem, StudentListStatus, UserRole } from "@space/shared";
+import type { StudentListItem, StudentListSort, StudentListStatus, UserRole } from "@space/shared";
 
-import { useStudentList } from "../hooks/use-students";
+import { useAllGroups } from "../hooks/use-groups";
+import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
 import { formatDate } from "../lib/format";
 import { useSessionStore } from "../store/session";
 import { useTheme } from "../theme";
+import { ChoiceChips } from "./ChoiceChips";
 import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../ui";
 
 function subtitleFor(status: StudentListStatus, item: StudentListItem): string {
@@ -52,6 +54,62 @@ function StudentRow({ status, item }: { status: StudentListStatus; item: Student
   );
 }
 
+const SORT_OPTIONS = [
+  { value: "default", label: "Default" },
+  { value: "name", label: "Name" },
+  { value: "university", label: "University" },
+  { value: "season", label: "Season" },
+  { value: "group", label: "Group" },
+] as const;
+
+const DIR_OPTIONS = [
+  { value: "asc", label: "Ascending" },
+  { value: "desc", label: "Descending" },
+] as const;
+
+/** v1's group select and sort controls (REG-82), server-side here. Dropped rows are enrollments, so no filter. */
+function StudentFilters({
+  view,
+  onChange,
+}: {
+  view: StudentListView;
+  onChange: (view: StudentListView) => void;
+}) {
+  const { groups } = useAllGroups(true);
+  const groupOptions = [
+    { value: "all", label: "All groups" },
+    { value: "none", label: "No group" },
+    ...groups.map((g) => ({ value: String(g.id), label: `${g.name} · ${g.seasonTitle}` })),
+  ];
+  const groupValue = view.groupId === null ? "all" : String(view.groupId);
+  return (
+    <>
+      <ChoiceChips
+        label="Group"
+        options={groupOptions}
+        value={groupValue}
+        onChange={(v) =>
+          onChange({ ...view, groupId: v === "all" ? null : v === "none" ? "none" : Number(v) })
+        }
+      />
+      <ChoiceChips
+        label="Sort by"
+        options={SORT_OPTIONS}
+        value={view.sort ?? "default"}
+        onChange={(v) => onChange({ ...view, sort: v === "default" ? null : (v as StudentListSort) })}
+      />
+      {view.sort !== null ? (
+        <ChoiceChips
+          label="Order"
+          options={DIR_OPTIONS}
+          value={view.dir}
+          onChange={(dir) => onChange({ ...view, dir })}
+        />
+      ) : null}
+    </>
+  );
+}
+
 export interface StudentListProps {
   status: StudentListStatus;
   /** Mirrors the endpoint's per-surface role gate — the screen never asks for a 403. */
@@ -67,6 +125,8 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
   const allowed = role !== null && allowedRoles.includes(role);
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
+  const [view, setView] = useState<StudentListView>(DEFAULT_STUDENT_VIEW);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const {
     data,
     isPending,
@@ -76,7 +136,7 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useStudentList(status, q, allowed);
+  } = useStudentList(status, q, allowed, view);
 
   if (!allowed) {
     return (
@@ -103,6 +163,16 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
         returnKeyType="search"
         onSubmitEditing={() => setQ(search.trim())}
       />
+      {status !== "dropped" ? (
+        <>
+          <Button
+            title={filtersOpen ? "Hide filters" : "Filter and sort"}
+            variant="ghost"
+            onPress={() => setFiltersOpen((open) => !open)}
+          />
+          {filtersOpen ? <StudentFilters view={view} onChange={setView} /> : null}
+        </>
+      ) : null}
       {isPending ? (
         <LoadingState />
       ) : isError ? (
@@ -113,7 +183,13 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
       ) : students.length === 0 ? (
         <EmptyState
           title={title}
-          message={q ? "No students match your search." : "Nothing here yet."}
+          message={
+            q
+              ? "No students match your search."
+              : view.groupId !== null
+                ? "No students are in that group."
+                : "Nothing here yet."
+          }
         />
       ) : (
         <>
