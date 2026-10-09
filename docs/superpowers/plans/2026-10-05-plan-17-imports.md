@@ -4906,7 +4906,7 @@ export function ImportRowCard({ row }: { row: PreviewRow }) {
 
 - [ ] **Step 6: Write the screen**
 
-> **v1 parity 2026-10-09:** In `apps/mobile/app/(app)/users/import.tsx`: delete the unrecognised-columns warning block (`:213-220`, R18), the `onExisting` state, the enrol control and its confirmation (`:69-73`, `:125`, R44); the result step renders `failed` rows and the `failed` tally (R54); the size check (`:102-105`) keeps reading `IMPORT_MAX_PASTE_CHARS`, so it moves to 5 MB with the shared constant (R4). The `.csv/.xlsx` picker filter returns only with file intake (OWNER-CALL R1).
+> **v1 parity 2026-10-09:** In `apps/mobile/app/(app)/users/import.tsx`: delete the unrecognised-columns warning block (`:213-220`, R18), the `onExisting` state, the enrol control and its confirmation (`:69-73`, `:125`, R44); the result step renders `failed` rows and the `failed` tally (R54); the size check (`:102-105`) keeps reading `IMPORT_MAX_PASTE_CHARS`, so it moves to 5 MB with the shared constant (R4). The `.csv/.xlsx` picker filter returns only with file intake (R1 — deferred with `ENABLE_UPLOADS` until the CMS move; *v1 parity 2026-10-09; owner decision 2026-10-10: was "OWNER-CALL R1"*).
 
 ```tsx
 // apps/mobile/app/(app)/users/import.tsx
@@ -6089,10 +6089,18 @@ and reporting it as success — is not ported: such a row classifies `no_group` 
 this season are named "X". Rename one of them, then import again." This row-level refusal is what
 replaces Plan 18's `@@unique([seasonId, name])` (M2), which 05-R15 drops.
 
-**Awaiting owner (not changed):**
-- 16-R1 (REG-48) — file intake (.csv/.xlsx picker, multipart route) stays off with the uploads/CMS freeze; D-16.2, D-16.3 and "Not in scope" bullet 1 unchanged.
-- 16-R2 (REG-48) — extension selects the parser; only if R1 is restored.
-- 16-R6 (REG-48) — only the first worksheet of an .xlsx is read; only if R1 is restored.
-- 16-R9 (REG-48) — `cellText` flattening of ExcelJS cells (D-16.2 still forbids porting it); only if R1 is restored.
-- 16-R10 (REG-48) — hyperlinked email cells resolve to the link target; only if R1 is restored.
-- 16-R65, last-wins half — confirm that refusing the ambiguous row (above) rather than v1's silent last-wins is acceptable; if the owner wants strict v1, delete the ambiguity branch in Task 5 Step 3 and nothing replaces M2.
+**Resolved (owner 2026-10-10): stays deferred with the uploads switch until the CMS lands; port v1's rules then.**
+A spreadsheet that is read in memory and never stored still counts as an upload, so file intake
+stays behind `ENABLE_UPLOADS` (off) with the rest of the uploads/CMS freeze. D-16.2, D-16.3 and
+"Not in scope" bullet 1 are unchanged. The v1 rules to port when the CMS lands
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "Awaiting owner (not changed)")*:
+- 16-R1 (REG-48) — file intake (.csv/.xlsx picker, multipart route).
+- 16-R2 (REG-48) — extension selects the parser.
+- 16-R6 (REG-48) — only the first worksheet of an .xlsx is read.
+- 16-R9 (REG-48) — `cellText` flattening of ExcelJS cells (D-16.2 still forbids porting it until then).
+- 16-R10 (REG-48) — hyperlinked email cells resolve to the link target.
+
+**Resolved (owner 2026-10-10): 16-R65, last-wins half — the row-level refusal stays.** A row whose
+group name matches several groups in the season classifies `no_group` with the rename message
+(D-16.19.1; Task 5 Steps 1 and 3), rather than v1's silent last-wins; nothing replaces M2
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "Awaiting owner — confirm the refusal, or delete the ambiguity branch in Task 5 Step 3 for strict v1")*.

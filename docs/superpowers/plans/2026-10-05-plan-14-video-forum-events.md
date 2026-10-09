@@ -7520,9 +7520,11 @@ event), so v2 keeps alumni visibility and REG-41 stands. The parts of those rows
 about who sees ALUMNI_ONLY still apply: v1's labels (R46), the lock icon and chip changes (R68),
 and the alumnus calendar showing only the events card (R73).
 
-**Awaiting owner (not changed):** 15 R22–R29 (event photo upload: optional photo, jpeg/png/webp
+**Resolved (owner 2026-10-10): stays deferred with the uploads switch until the CMS lands; port v1's rules then.**
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "Awaiting owner (not changed)")* 15 R22–R29 (event photo upload: optional photo, jpeg/png/webp
 MIME, 5 MB cap, extension from MIME subtype, key `events/YYYY/MM/{uuid}-event.{ext}`, written
 before the row outside a transaction, cannot be removed, old blob never deleted —
 `src/lib/jpc-event-actions.ts:44-60,81-96,121-136`). They conflict with `space-v2/CLAUDE.md`
-"Uploads are switched off"; D-15.7 still defers `POST/DELETE /events/:id/photo`. When the CMS
+"Uploads are switched off"; D-15.7 still defers `POST/DELETE /events/:id/photo`, which stays
+behind `ENABLE_UPLOADS` (off) like every upload route. When the CMS
 lands, port v1's rules as they are.

@@ -1,30 +1,30 @@
-# Plan 13 — Notifications Completed + Push Implementation Plan
+# Plan 13 — Notifications Completed + Push Implementation Plan — push **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Finish domain 10 — a device can read its own notification inbox,
 mark all its notifications read as an **explicit** write, and set v1's five notification
-preferences (`quizGraded` stays stored but is not settable, as in v1) — and take the mobile push story as far as the frozen schema
-allows.
+preferences (`quizGraded` stays stored but is not settable, as in v1). Mobile push is not
+part of this plan *(v1 parity 2026-10-09; owner decision 2026-10-10: was "— and take the mobile push story as far as the frozen schema
+allows"; v1 has no push, and the owner will add push later on Firebase)*.
 
 **Architecture:** Two file-disjoint workstreams over one new contract module.
 Backend: `packages/shared/src/notification.ts` defines the wire shapes; a new
-`apps/backend/src/routes/notifications.ts` serves the inbox; preferences and the
-device-registration endpoint extend `routes/me.ts`; `lib/notifications.ts`
+`apps/backend/src/routes/notifications.ts` serves the inbox; preferences extend
+`routes/me.ts` *(v1 parity 2026-10-09; owner decision 2026-10-10: was "preferences and the device-registration endpoint")*; `lib/notifications.ts`
 keeps v1's opt-out filter (no row, no email for an opted-out recipient) and gains a
 written/suppressed return *(v1 parity 2026-10-09: was "gains the D4 channel split")*; two new libs —
 `lib/notification-target.ts` (the D1 link parser) and `lib/best-effort.ts` (the
 D6 helper) — are shared by every producer. Mobile: one new screen
 `app/(app)/notifications.tsx` reached from a sidebar entry in every role's nav
 plus an unread-badged bell in the shared screen header on every screen, as v1's
-app shell (jpc-space `src/components/layout/app-shell.tsx:55-57`) *(v1 parity 2026-10-09: was "bell on the dashboard")*, hooks in
-`src/hooks/use-notifications.ts`, and an Expo push permission/token lifecycle
-that has nowhere on the server to register yet.
+app shell (jpc-space `src/components/layout/app-shell.tsx:55-57`) *(v1 parity 2026-10-09: was "bell on the dashboard")*, and hooks in
+`src/hooks/use-notifications.ts` *(v1 parity 2026-10-09; owner decision 2026-10-10: was "…, and an Expo push permission/token lifecycle that has nowhere on the server to register yet")*.
 
 **Tech Stack:** Express 5, Prisma 7 (`src/generated/prisma`), Zod 3, jest +
 supertest integration suite against the shared staging DB; Expo SDK 54 /
 expo-router 6 (typed routes), React Query 5, Zustand 5, RNTL 13 via
-`renderWithProviders`, `expo-notifications`.
+`renderWithProviders` *(v1 parity 2026-10-09; owner decision 2026-10-10: was "…, `expo-notifications`")*.
 
 **Spec:** `docs/superpowers/specs/domains/10-notifications.md` (81 rules; §10
 D1–D12), `docs/superpowers/specs/domains/_DECISIONS.md` (C1, C6, C8 bind; C11
@@ -33,7 +33,7 @@ and C12 also touched), scope from
 
 ---
 
-## THE SCHEMA VERDICT — read this before Task 5
+## THE SCHEMA VERDICT — read this before Task 2 *(v1 parity 2026-10-09; owner decision 2026-10-10: was "before Task 5")*
 
 `apps/backend/prisma/schema.prisma` was read directly. What is actually there:
 
@@ -43,74 +43,54 @@ and C12 also touched), scope from
 | `NotificationPreference` (`:609-623`) | `id`, `userId @unique`, six `Boolean @default(true)` — `assignmentCreated`, `submissionReviewed`, `sessionRescheduled`, `lowAttendanceFlag`, `mentorFollowup`, `quizGraded` — plus `createdAt`/`updatedAt`. **No** per-channel column, no push master switch. |
 | `NotificationType` (`:63-70`) | Exactly six values, as the spec states. |
 
-**There is no device-token storage anywhere in the schema.** A grep for
-`token`/`device`/`push`/`expo` across all 773 lines returns `InviteToken`,
-`RefreshToken` (`tokenHash` — a bcrypt-style hash of a refresh credential),
-`PasswordResetToken`, and `Session.checkInToken`. Not one of them can hold an
-Expo push token without overloading a column that means something else, and
-**C1 forbids exactly that** ("Do not work around a missing column by
-overloading an existing one").
+**Push is withdrawn, so nothing in this plan needs a new table.** The
+earlier text found no device-token storage in the schema, made push delivery
+"BLOCKED ON CUTOVER" (spec D5 option (a)), and shipped everything except the
+row: `deviceRegistrationSchema`, `PUSH_NOTIFICATION_TYPES` + `shouldPush`,
+`POST /api/v1/me/devices` answering `503 push_unavailable`, the client
+permission/token flow, and a `DeviceToken` migration doc. v1 never had push
+(no device or push model in `jpc-space/prisma/schema.prisma`, no push code in
+`src/`; notifications are in-app plus email), and the owner will build push
+later on Firebase under its own plan, so all of it is withdrawn here and in
+Plan 18 (M10, Task 2b.10, M5's `pushEnabled`) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "Decision: push delivery is BLOCKED ON CUTOVER … the migration, written out ready to apply")*.
+The scaffolding already built from the earlier text is listed for removal in
+the Revision 2026-10-09 table, row 7.
 
-**Decision: push delivery is BLOCKED ON CUTOVER (spec D5 option (a)).** This
-plan ships everything push needs *except* the row:
+The inbox, mark-all-read, preferences, D1, D6, D8 and the whole mobile
+surface ship without a migration.
 
-- the wire contract (`deviceRegistrationSchema`) and the type policy
-  (`PUSH_NOTIFICATION_TYPES` + `shouldPush`), both tested;
-- `POST /api/v1/me/devices`, mounted and documented, answering
-  `503 push_unavailable` — the same honest-unavailability shape the repo
-  already uses for `uploads_disabled` (`CLAUDE.md`, "API surface");
-- the client permission flow and token lifecycle, which work end-to-end up to
-  that 503;
-- **the migration, written out ready to apply**, in
-  `docs/superpowers/cutover/2026-08-24-notifications-push.md` (Task 5). It is
-  a doc, not a file under `apps/backend/prisma/` — nothing in this plan touches
-  `prisma/`.
-
-Nothing else in the plan is blocked on it. The inbox, mark-read, preferences,
-D1, D6, D8 and the whole mobile surface ship without a migration.
-
-Two further consequences of the frozen schema, recorded here so they are not
+One further consequence of the frozen schema, recorded here so it is not
 rediscovered mid-task:
 
-- **A push master switch would also be a new column.** D5 item 3 wants one.
-  There is none. Until cutover the master switch is the OS permission itself —
-  revoking notification permission on the device is the off switch — and the
-  six existing per-type booleans gate which types would push. Do not invent a
-  seventh preference column and do not overload `quizGraded`.
 - **`link` cannot become `entityType`/`entityId` columns** (D1). Producers keep
   writing v1's exact path strings so v1 — still in production, same database —
   keeps working, and the API derives a route-independent `target` from the
-  string in **one** tested function (Task 2). Task 5's cutover doc carries the
-  column addition and the backfill.
+  string in **one** tested function (Task 2). Plan 18's M4 (the columns and
+  backfill) is withdrawn for v1 parity, so the string stays after cutover.
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: the "push master switch would also be a new column" bullet is withdrawn with push; was "Task 5's cutover doc carries the column addition and the backfill")*
 
 ---
 
-## THE TWO DELIBERATE BEHAVIOUR CHANGES — reviewable in one place (item 1 withdrawn 2026-10-09)
+## THE TWO DELIBERATE BEHAVIOUR CHANGES — reviewable in one place (item 1 withdrawn 2026-10-09; item 2 withdrawn 2026-10-10)
 
 **1. Withdrawn — the preference keeps v1's semantics (Task 2).** v1 filters an
 opted-out recipient out before the insert (jpc-space `src/lib/notifications.ts:56-94`,
 spec R8/R9/R11): one switch governs every channel, so "off" means no in-app row
-and no email — and, at cutover, no push. `createNotificationsBulk` keeps that
+and no email *(v1 parity 2026-10-09; owner decision 2026-10-10: was "— and, at cutover, no push")*. `createNotificationsBulk` keeps that
 filter; it only adds the dedupe and the written/suppressed counts. Spec D4's
 channel split is **not** implemented, v1's inbox and v2's inbox show the same
 rows for an opted-out user, and
 `apps/backend/src/__tests__/integration/notifications.test.ts:110-123` keeps
 pinning the v1 behaviour. *(v1 parity 2026-10-09: was "D4 — the in-app row is always written; preference governs email/push only")*
 
-**2. Push covers three types, not the spec's five (Task 1).**
-`10-notifications.md` D5 item 2 proposes pushing `SESSION_RESCHEDULED`,
-`SUBMISSION_REVIEWED`, `QUIZ_GRADED`, `LOW_ATTENDANCE_FLAG` and
-`MENTOR_FOLLOWUP`, then withdraws `LOW_ATTENDANCE_FLAG` in its own next
-sentence (04's D7/D12 unsettled, and R87 gives the flag no dedupe, so it can
-burst). The roadmap sizes this plan at "the 2–3 interruptive types only".
-`PUSH_NOTIFICATION_TYPES` therefore ships as **`SESSION_RESCHEDULED`,
-`SUBMISSION_REVIEWED`, `QUIZ_GRADED`** — the three where the recipient is
-actively waiting. `MENTOR_FOLLOWUP` stays excluded. In v1 that was because R63
-put the first 140 characters of a pastoral note into the body. Plan 12 removed
-the excerpt: v2's body is a fixed sentence. But the title still reads "Follow-up
-flagged for <student name>". A named young person flagged for pastoral
-follow-up must not appear on a lock screen that anyone near the phone can read
-(R64, D8). Adding a type later is one array entry plus one test line.
+**2. Withdrawn — there is no push, so there is no push type list (Task 1).**
+The earlier text narrowed spec D5 item 2's five push types to three
+(`SESSION_RESCHEDULED`, `SUBMISSION_REVIEWED`, `QUIZ_GRADED`) as
+`PUSH_NOTIFICATION_TYPES`. v1 sends no push and the owner will add push later
+on Firebase, so the list, `shouldPush` and their test are withdrawn; the
+Firebase plan decides which types push, and should keep the lock-screen
+reasoning for `MENTOR_FOLLOWUP` (the title names a student flagged for
+pastoral follow-up, R64, D8) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "Push covers three types, not the spec's five")*.
 
 ---
 
@@ -176,9 +156,9 @@ since Plan 5's move; and Plan 1's `/more`. The typed pathnames
 re-create it here.
 
 **Execution shape:** Task 1 first (coordinator — both streams consume the
-contracts). Then two agents in parallel: **backend** Tasks 2 → 3 → 4 → 5
-(sequential, same files), **mobile** Tasks 6 → 7 → 8 → 9 → 10 (sequential,
-same files). Task 11 is the coordinator's closing gate. The two streams share
+contracts). Then two agents in parallel: **backend** Tasks 2 → 3 → 4
+(sequential, same files), **mobile** Tasks 6 → 7 → 8 → 9 (sequential,
+same files) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "2 → 3 → 4 → 5" and "6 → … → 10"; Tasks 5 and 10 are withdrawn)*. Task 11 is the coordinator's closing gate. The two streams share
 no file except `packages/shared/src/index.ts`, which Task 1 finishes.
 
 ---
@@ -204,9 +184,9 @@ no file except `packages/shared/src/index.ts`, which Task 1 finishes.
   `notificationPreferencesSchema` → `NotificationPreferences`;
   `notificationPreferencesResponseSchema`;
   `notificationPreferencesUpdateSchema` → `NotificationPreferencesUpdate` (v1's five settable keys);
-  `DEFAULT_NOTIFICATION_PREFERENCES`; `PUSH_NOTIFICATION_TYPES`;
-  `shouldPush(type)`; `devicePlatformSchema` → `DevicePlatform`;
-  `DEVICE_PLATFORM_TO_DB`; `deviceRegistrationSchema` → `DeviceRegistration`.
+  `DEFAULT_NOTIFICATION_PREFERENCES`
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was also `PUSH_NOTIFICATION_TYPES`; `shouldPush(type)`; `devicePlatformSchema` → `DevicePlatform`;
+  `DEVICE_PLATFORM_TO_DB`; `deviceRegistrationSchema` → `DeviceRegistration` — withdrawn with push)*.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -214,18 +194,14 @@ no file except `packages/shared/src/index.ts`, which Task 1 finishes.
 // packages/shared/src/__tests__/notification-contracts.test.ts
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
-  DEVICE_PLATFORM_TO_DB,
   NOTIFICATION_PREFERENCE_KEYS,
   NOTIFICATION_PREFERENCE_KEY_BY_TYPE,
-  PUSH_NOTIFICATION_TYPES,
-  deviceRegistrationSchema,
   markReadRequestSchema,
   NOTIFICATION_INBOX_LIMIT,
   notificationPreferencesSchema,
   notificationPreferencesUpdateSchema,
   notificationSchema,
   notificationTypeSchema,
-  shouldPush,
 } from "../index";
 
 describe("notificationTypeSchema", () => {
@@ -325,40 +301,12 @@ describe("notificationSchema", () => {
     ).toBe(true);
   });
 });
-
-describe("push policy", () => {
-  it("pushes only the three types the recipient is actively waiting on", () => {
-    expect([...PUSH_NOTIFICATION_TYPES].sort()).toEqual([
-      "QUIZ_GRADED",
-      "SESSION_RESCHEDULED",
-      "SUBMISSION_REVIEWED",
-    ]);
-    expect(shouldPush("SESSION_RESCHEDULED")).toBe(true);
-    // The highest-volume fan-out in the system (spec D5 item 2).
-    expect(shouldPush("ASSIGNMENT_CREATED")).toBe(false);
-    // Can burst (04 R87, no dedupe) and is deferred until 04's D7/D12 settle.
-    expect(shouldPush("LOW_ATTENDANCE_FLAG")).toBe(false);
-    // Names a student flagged for pastoral follow-up — never on a lock screen (R64).
-    expect(shouldPush("MENTOR_FOLLOWUP")).toBe(false);
-  });
-});
-
-describe("deviceRegistrationSchema", () => {
-  it("takes a token and a platform, and no user id", () => {
-    expect(deviceRegistrationSchema.safeParse({ token: "ExponentPushToken[x]", platform: "ios" }).success).toBe(
-      true,
-    );
-    expect(
-      deviceRegistrationSchema.safeParse({ token: "t", platform: "ios", userId: 3 }).success,
-    ).toBe(false);
-    expect(deviceRegistrationSchema.safeParse({ token: "t", platform: "web" }).success).toBe(false);
-  });
-
-  it("maps the lowercase wire platform to Plan 18 M10's DevicePlatform enum", () => {
-    expect(DEVICE_PLATFORM_TO_DB).toEqual({ ios: "IOS", android: "ANDROID" });
-  });
-});
 ```
+
+> **v1 parity 2026-10-09; owner decision 2026-10-10:** the `push policy` and `deviceRegistrationSchema` describes and their four imports
+> (`DEVICE_PLATFORM_TO_DB`, `PUSH_NOTIFICATION_TYPES`, `deviceRegistrationSchema`, `shouldPush`) are
+> withdrawn with push. Built code to change: `packages/shared/src/__tests__/notification-contracts.test.ts:4,7,8,14`
+> (imports) and `:130-161` (the two describes).
 
 - [ ] **Step 2: Run it to see it fail**
 
@@ -537,53 +485,6 @@ export const notificationPreferencesUpdateSchema = notificationPreferencesSchema
   quizGraded: true,
 });
 export type NotificationPreferencesUpdate = z.infer<typeof notificationPreferencesUpdateSchema>;
-
-/**
- * Which types warrant an interruptive push (spec D5 item 2, narrowed).
- *
- * ASSIGNMENT_CREATED is the highest-volume fan-out in the system and is not
- * time-critical. LOW_ATTENDANCE_FLAG can burst (04 R87 gives it no dedupe) and
- * waits on 04's D7/D12. MENTOR_FOLLOWUP names a student flagged for pastoral
- * follow-up in its title, which must never reach a lock screen (R64, D8) —
- * Plan 12 removed v1's note excerpt from the body, but the name remains.
- */
-export const PUSH_NOTIFICATION_TYPES = [
-  "SESSION_RESCHEDULED",
-  "SUBMISSION_REVIEWED",
-  "QUIZ_GRADED",
-] as const satisfies readonly NotificationType[];
-
-export function shouldPush(type: NotificationType): boolean {
-  return (PUSH_NOTIFICATION_TYPES as readonly NotificationType[]).includes(type);
-}
-
-/**
- * The wire spelling of a device platform — lowercase, matching
- * react-native's `Platform.OS`. Plan 18's M10 stores it as the Postgres enum
- * `DevicePlatform { IOS ANDROID }`; the server maps at the write
- * (`DEVICE_PLATFORM_TO_DB`, below), so the wire contract never changes.
- */
-export const devicePlatformSchema = z.enum(["ios", "android"]);
-export type DevicePlatform = z.infer<typeof devicePlatformSchema>;
-
-/** Wire → database enum value, for the cutover upsert (Task 5's doc, Plan 18 M10). */
-export const DEVICE_PLATFORM_TO_DB = {
-  ios: "IOS",
-  android: "ANDROID",
-} as const satisfies Record<DevicePlatform, string>;
-
-/**
- * Device registration (spec D5). The row this writes does not exist yet — the
- * schema is frozen and there is no DeviceToken model — so the endpoint answers
- * 503 until cutover. The contract is fixed now so the client is built once.
- */
-export const deviceRegistrationSchema = z
-  .object({
-    token: z.string().min(1).max(200),
-    platform: devicePlatformSchema,
-  })
-  .strict();
-export type DeviceRegistration = z.infer<typeof deviceRegistrationSchema>;
 ```
 
 > **v1 parity 2026-10-09:** the block above now carries v1's list (`NOTIFICATION_INBOX_LIMIT = 100`,
@@ -593,6 +494,10 @@ export type DeviceRegistration = z.infer<typeof deviceRegistrationSchema>;
 > `ids` arm of `markReadRequestSchema`; add the update schema. v1 to match: jpc-space
 > `src/app/(notifications)/notifications-page.tsx:14-27`, `src/lib/notification-actions.ts:8-12`,
 > `src/lib/settings-actions.ts:58-73`.
+>
+> **v1 parity 2026-10-09; owner decision 2026-10-10:** the block also no longer carries `PUSH_NOTIFICATION_TYPES`, `shouldPush`,
+> `devicePlatformSchema`, `DEVICE_PLATFORM_TO_DB` or `deviceRegistrationSchema` (push withdrawn; v1 has
+> none). Built code to delete: `packages/shared/src/notification.ts:151-196`.
 
 - [ ] **Step 5: Export it**
 
@@ -852,7 +757,7 @@ exactly as they are — `PREF_FIELD`'s `satisfies` is a v2 improvement over v1's
 export interface BulkNotificationResult {
   /** Rows written. One per distinct recipient who has not opted out. */
   written: number;
-  /** Recipients skipped entirely (no row, no email, later no push) by their preference. */
+  /** Recipients skipped entirely (no row, no email) by their preference. */
   suppressed: number;
 }
 
@@ -861,8 +766,8 @@ export interface BulkNotificationResult {
  *
  * v1 semantics (jpc-space src/lib/notifications.ts:56-94, spec R8/R9/R11): an
  * opted-out recipient is filtered out **before** the insert, so the one
- * preference switch governs every channel — no in-app row, no email, and at
- * cutover no push. If every recipient opted out, nothing is written.
+ * preference switch governs every channel — no in-app row, no email. If every
+ * recipient opted out, nothing is written.
  *
  * Returns counts because v1 returned void and the caller could not learn what
  * happened (§6); domain 3's session write response needs the number
@@ -923,8 +828,13 @@ export async function createNotificationsBulk(
 > (v1 `jpc-space/src/lib/notifications.ts:56-94`). The code built from the earlier text must change:
 > `apps/backend/src/lib/notifications.ts:62-100` (`createNotificationsBulk`) — drop the always-write
 > branch and the `mailTargets` split, filter before the insert, early-return when nothing is left; also
-> delete the "Divergence from v1, ruled in spec D4" doc comment. Push (Task 5 / cutover) follows the same
-> filtered list. *(v1 parity 2026-10-09: was "row always written; preference gates email only (D4 split)")*
+> delete the "Divergence from v1, ruled in spec D4" doc comment *(v1 parity 2026-10-09; owner decision 2026-10-10: was "Push (Task 5 / cutover) follows the same filtered list" — push is withdrawn)*. *(v1 parity 2026-10-09: was "row always written; preference gates email only (D4 split)")*
+>
+> **v1 parity 2026-10-09; owner decision 2026-10-10 — the email's "Open" button stays.** `sendNotificationEmail` keeps v1's "View in
+> JPC Space" button and paste-able link (jpc-space `src/lib/email.ts:66-73,142-143,149`), but after
+> cutover it is built as an app link to the notification's target, derived with
+> `parseNotificationLink(payload.link)`, instead of `AUTH_URL + link`. That change is Plan 18
+> Task 2b.4's; nothing here drops the button.
 
 - [ ] **Step 6: Confirm Plan 12's mail escaping is the only one (C11, ruling X2)**
 
@@ -1550,7 +1460,7 @@ its own user, declares its own `PASSWORD`, and has no second user. Extending it
 would mean undeclared `prefsUserId`/`prefsToken`/`otherUserId` (as an earlier
 draft did) or a redeclared `PASSWORD`. Plan 9 hit the same wall and created
 `me-settings-routes.test.ts`; this plan follows it with a fixture-based suite of
-its own, which Task 5 extends.
+its own *(v1 parity 2026-10-09; owner decision 2026-10-10: was ", which Task 5 extends" — Task 5 is withdrawn)*.
 
 **Interfaces:**
 - Consumes: `notificationPreferencesSchema`, `DEFAULT_NOTIFICATION_PREFERENCES`,
@@ -1771,249 +1681,22 @@ git add apps/backend && git commit -m "feat(backend): notification preferences r
 
 ---
 
-### Task 5: Push — the contract now, the table at cutover
+### Task 5: Push — the contract now, the table at cutover — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
-**Files:**
-- Create: `docs/superpowers/cutover/2026-08-24-notifications-push.md`
-- Modify: `apps/backend/src/routes/me.ts` (the device endpoint)
-- Modify: `apps/backend/src/docs/openapi.ts`
-- Test: `apps/backend/src/__tests__/integration/me-notifications-routes.test.ts` (extend — Task 4 created it)
-
-**Interfaces:**
-- Consumes: `deviceRegistrationSchema`, `DEVICE_PLATFORM_TO_DB`, `shouldPush`, `PUSH_NOTIFICATION_TYPES`
-  from shared (Task 1).
-- Produces: `POST /api/v1/me/devices` → `503 { error: { code: "push_unavailable" } }`
-  until the cutover migration lands. The mobile client (Task 10) treats that
-  code as "keep the token locally, stop retrying this session".
-
-- [ ] **Step 1: Write the failing test**
-
-Append to `me-notifications-routes.test.ts` (it already declares `prefsToken`):
-
-```ts
-describe("POST /api/v1/me/devices", () => {
-  it("answers 503 push_unavailable — there is no table to write to yet", async () => {
-    // The schema is frozen while v1 runs (ruling C1) and there is no
-    // DeviceToken model, so registration cannot be honoured. 503 rather than
-    // 404 or 501: the endpoint exists and the caller is entitled to it, the
-    // capability is switched off — the same shape as uploads_disabled.
-    const res = await request(app)
-      .post("/api/v1/me/devices")
-      .set("authorization", `Bearer ${prefsToken}`)
-      .send({ token: "ExponentPushToken[space-v2-test]", platform: "ios" });
-
-    expect(res.status).toBe(503);
-    expect(res.body.error.code).toBe("push_unavailable");
-  });
-
-  it("validates the body before answering, so the contract is exercised now", async () => {
-    const res = await request(app)
-      .post("/api/v1/me/devices")
-      .set("authorization", `Bearer ${prefsToken}`)
-      .send({ token: "t", platform: "web" });
-
-    expect(res.status).toBe(400);
-  });
-
-  it("refuses an anonymous caller", async () => {
-    const res = await request(app)
-      .post("/api/v1/me/devices")
-      .send({ token: "t", platform: "ios" });
-    expect(res.status).toBe(401);
-  });
-});
-```
-
-- [ ] **Step 2: (Coordinator) run — expect FAIL.**
-
-- [ ] **Step 3: Implement the endpoint**
-
-In `routes/me.ts` (import `deviceRegistrationSchema` alongside the others):
-
-```ts
-/**
- * Register this device for push.
- *
- * BLOCKED ON CUTOVER. Expo push needs a device token per user, which is a new
- * table (`DeviceToken`: userId, token @unique, platform, lastSeenAt) — and the
- * schema is frozen while v1 runs against the same database (ruling C1). There
- * is no existing column that legitimately holds an Expo push token, and C1
- * forbids overloading one that means something else.
- *
- * So the contract ships and the write does not. The body is validated first,
- * so a client integration error surfaces as a 400 today rather than at
- * cutover; a well-formed registration gets 503 and the client keeps the token
- * locally.
- *
- * To finish this at cutover: apply the migration in
- * docs/superpowers/cutover/2026-08-24-notifications-push.md, then replace the
- * 503 below with the upsert described there (it maps the lowercase wire
- * platform to the DevicePlatform enum with DEVICE_PLATFORM_TO_DB). Nothing
- * else changes — not the route, not the request contract, not the client.
- */
-meRouter.post("/devices", requireAuth, async (req, res) => {
-  const parsed = deviceRegistrationSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid device registration.", 400);
-
-  return apiError(
-    res,
-    "push_unavailable",
-    "Push notifications aren't available yet.",
-    503,
-  );
-});
-```
-
-`requireUser` is deliberately not called — nothing user-scoped happens yet.
-`requireAuth` still runs so an anonymous caller gets 401, which is the
-behaviour the endpoint will keep.
-
-- [ ] **Step 4: Write the cutover document**
-
-Create `docs/superpowers/cutover/2026-08-24-notifications-push.md` (the
-directory is new — this is the first entry in the "migration thaw" list the
-roadmap's Plan 18 step 2 will execute):
-
-````markdown
-# Cutover — notifications: push device tokens, and the `link` columns
-
-Written 2026-08-24 during Plan 13. **Do not apply while jpc-space is still
-writing to this database** (`_DECISIONS.md` C1). Both migrations are additive
-and neither breaks v1, but `prisma/migrations/` is a verbatim copy of v1's and
-must stay that way until v1 stops.
-
-## 1. Device tokens (unblocks push)
-
-This section is written to match **Plan 18's M10 exactly** (Plan 18 Task 2.10
-adopts this doc's SQL and deletes the duplicate — so the two must not differ).
-`platform` is a Postgres enum, not free text:
-
-```prisma
-enum DevicePlatform { IOS ANDROID }
-
-model DeviceToken {
-  id         Int            @id @default(autoincrement())
-  userId     Int
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token      String         @unique           // Expo push token — a credential; never log it
-  platform   DevicePlatform
-  lastSeenAt DateTime       @default(now())
-  createdAt  DateTime       @default(now())
-
-  @@index([userId])
-  @@index([lastSeenAt])
-}
-```
-
-and on `User`, alongside `notifications` / `notificationPreference`:
-
-```prisma
-  deviceTokens DeviceToken[]
-```
-
-SQL:
-
-```sql
-CREATE TYPE "DevicePlatform" AS ENUM ('IOS', 'ANDROID');
-CREATE TABLE "DeviceToken" (
-  "id"         SERIAL PRIMARY KEY,
-  "userId"     INTEGER NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
-  "token"      TEXT NOT NULL,
-  "platform"   "DevicePlatform" NOT NULL,
-  "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE UNIQUE INDEX "DeviceToken_token_key" ON "DeviceToken"("token");
-CREATE INDEX "DeviceToken_userId_idx" ON "DeviceToken"("userId");
-CREATE INDEX "DeviceToken_lastSeenAt_idx" ON "DeviceToken"("lastSeenAt");
-```
-
-**Wire vs. column.** The request body keeps the lowercase wire value
-(`"ios" | "android"`, `deviceRegistrationSchema` — what `Platform.OS` returns),
-and the server maps it at the write with `DEVICE_PLATFORM_TO_DB` from
-`packages/shared/src/notification.ts`. The client never learns the column's
-spelling, so nothing on the device changes at cutover.
-
-`token` is unique rather than `(userId, token)`: a device handed to a second
-user must move, not accumulate — the upsert below re-points it.
-
-Then replace the 503 in `apps/backend/src/routes/me.ts`'s `POST /devices` with:
-
-```ts
-  const user = requireUser(req);
-  // Lowercase wire value → DevicePlatform enum (see "Wire vs. column" above).
-  const platform = DEVICE_PLATFORM_TO_DB[parsed.data.platform];
-  await db.deviceToken.upsert({
-    where: { token: parsed.data.token },
-    update: { userId: user.userId, platform, lastSeenAt: new Date() },
-    create: { userId: user.userId, token: parsed.data.token, platform },
-  });
-  return apiOk(res, { registered: true });
-```
-
-and add `DELETE /api/v1/me/devices/:token` — `deleteMany({ where: { token, userId: user.userId } })`,
-scoped to the caller so a token string is not a delete primitive for anyone
-holding it.
-
-Dispatch, to be written then, in `apps/backend/src/lib/push.ts`, called from
-`createNotificationsBulk` beside the mail fan-out and behind the same
-best-effort seam:
-
-- recipients = the filtered `targets` (opted-out users already removed, as v1
-  — the same set that gets the row and the mail; a type the user turned off
-  must not push either);
-- gated on `shouldPush(payload.type)` (`packages/shared/src/notification.ts`,
-  three types today);
-- one batched POST to `https://exp.host/--/api/v2/push/send`, `Promise.allSettled`,
-  never awaited into the request;
-- drop tokens Expo reports as `DeviceNotRegistered`.
-
-## 2. `Notification` target columns (spec D1)
-
-Plan 18's M4 owns this migration (an uppercase Postgres enum
-`NotificationEntityType` plus `entityId`). What this plan fixes for it is the
-**mapping** and the **closed set of shapes**:
-
-| Wire `entityType` (this plan) | Column value (M4) |
-|---|---|
-| `assignment` | `ASSIGNMENT` |
-| `quiz` | `QUIZ` |
-| `calendar` | `CALENDAR` |
-| `student` | `STUDENT` |
-
-The backfill must map exactly the five link shapes in
-`NOTIFICATION_LINK_PATTERNS` (`apps/backend/src/lib/notification-target.ts`)
-— `/student/assignments/:id`, `/student/quizzes`, `/student/calendar`,
-`/admin/students/:id`, `/leader/students/:id` — and its result must equal
-`parseNotificationLink`'s on a sample. The API keeps serving the lowercase wire
-values after M4 (it maps the column back), so no client changes. After the
-backfill, producers stop writing `link` and the parser becomes the backfill's
-only remaining caller.
-
-## 3. Also blocked on this migration (from the same spec)
-
-- A push master switch on `NotificationPreference` (D5 item 3) — until then the
-  OS permission is the master switch.
-- `08-submissions.md` D14's submit→leader notification, which needs a new
-  `NotificationType` enum value.
-- D10's retention rule: hard-delete read notifications older than 180 days, as
-  a scheduled job. Nothing has ever deleted a `Notification` (R53) and the
-  100-row ceiling that hid the growth goes away with pagination.
-````
-
-- [ ] **Step 5: OpenAPI, same commit** — `POST /api/v1/me/devices`, request
-`DeviceRegistration`, documented responses `503 push_unavailable` (with the
-reason: the table lands at cutover) and `400 bad_request`.
-
-- [ ] **Step 6: (Coordinator) run the suite** →
-`cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern me-notifications-routes` → PASS.
-Run `pnpm turbo lint typecheck test:unit build --filter=@space/backend` → clean.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add apps/backend docs && git commit -m "feat(backend): device registration contract, push blocked on cutover with the migration written"
-```
+v1 never sent push: there is no device or push model in
+`jpc-space/prisma/schema.prisma` and no push code in `src/`; notifications are
+in-app plus email. The owner will add push later on Firebase, under its own
+plan, so this task is withdrawn: no `POST /api/v1/me/devices`, no
+`503 push_unavailable` stub, no `DeviceRegistration` OpenAPI entry, no device
+tests in `me-notifications-routes.test.ts`, and no
+`docs/superpowers/cutover/2026-08-24-notifications-push.md`. That doc's §1
+(`DeviceToken`) goes with Plan 18's M10, its §2 (`Notification` target
+columns) was already withdrawn with M4, and its §3 items go with push (the
+master switch) or were withdrawn for v1 parity (M5's new types; v1 never
+deletes a notification, R53). In-app notifications and email are unaffected
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "the device contract now, the `DeviceToken` migration written for cutover")*.
+The endpoint, test and doc already built are removed with the parity code
+changes — Revision 2026-10-09 table, row 7.
 
 ---
 
@@ -2906,8 +2589,8 @@ git add apps/mobile && git commit -m "feat(mobile): unread notification bell in 
 - Consumes: `useNotificationPreferences`, `useUpdateNotificationPreferences`
   (Task 6); `NOTIFICATION_PREFERENCE_KEYS`, `type NotificationPreferences` from
   `@space/shared`.
-- Produces: `<NotificationPreferences />`, used by the settings screen (and by
-  the push section in Task 10).
+- Produces: `<NotificationPreferences />`, used by the settings screen
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and by the push section in Task 10")*.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3157,469 +2840,16 @@ git add apps/mobile && git commit -m "feat(mobile): v1's five notification prefe
 
 ---
 
-### Task 10: Mobile — Expo push permission and token lifecycle
-
-Push **delivery** is blocked on cutover (see the header). What ships here is
-everything on the device: the dependency, the config, the permission prompt
-behind an explicit control, the token, its storage, its clearing on logout, and
-an honest message for each state push can be in.
-
-**Files:**
-- Modify: `apps/mobile/package.json` (via `npx expo install`, not by hand)
-- Modify: `apps/mobile/app.json` (plugin entry; `extra.eas.projectId` per Step 0)
-- Create: `apps/mobile/src/lib/app-config.ts` (the one reader of `Constants.expoConfig.extra` for push)
-- Create: `apps/mobile/src/lib/push.ts`
-- Modify: `apps/mobile/src/lib/token-storage.ts`
-- Modify: `apps/mobile/src/store/session.ts`
-- Modify: `apps/mobile/src/components/NotificationPreferences.tsx` (the push row)
-- Modify: `apps/mobile/src/__tests__/notification-preferences.test.tsx`, `apps/mobile/src/__tests__/settings-screen.test.tsx` (mock `../lib/push` so `expo-notifications` never loads in those suites)
-- Test: `apps/mobile/src/__tests__/push.test.ts` (new),
-  `apps/mobile/src/__tests__/session-store.test.ts` (extend)
-
-**Interfaces:**
-- Consumes: `apiClient`, `useSessionStore`, `Constants` from `expo-constants`.
-- Produces: `easProjectId(): string | null` (`src/lib/app-config.ts`);
-  `PushTokenResult = { kind: "token"; token: string } | { kind: "denied" } | { kind: "not_configured" } | { kind: "failed" }`;
-  `requestPushToken(): Promise<PushTokenResult>`;
-  `registerPushToken(token: string): Promise<"registered" | "unavailable" | "failed">`;
-  `PushStatus = "registered" | "unavailable" | "denied" | "not_configured" | "failed"`;
-  `enablePush(): Promise<{ token: string | null; status: PushStatus }>`;
-  session store gains `pushToken: string | null` and `setPushToken`;
-  `token-storage` gains `savePushToken` / `loadPushToken`, and `clearSession`
-  clears the push token too.
-
-**Configuration rule.** CLAUDE.md's "no `process.env` outside
-`src/lib/config.ts`" is the backend's rule; the mobile equivalent here is that
-build configuration is read from the Expo app config through
-`Constants.expoConfig.extra`, in **one** module (`src/lib/app-config.ts`), and
-never from `process.env`. The EAS project id is not a secret — it is
-committed in `app.json` like `apiBaseUrl`.
-
-- [ ] **Step 0: Prerequisite — the EAS project id ([USER] step, then commit)**
-
-`getExpoPushTokenAsync` needs an EAS project id, and `app.json` has none
-(`extra` holds only `apiBaseUrl`). Creating one needs the owner's Expo account,
-so it is a **[USER]** step, not something an agent can do:
-
-```bash
-cd apps/mobile
-npx eas-cli@latest login          # the account that will own the app
-npx eas-cli@latest init           # creates the EAS project; writes expo.extra.eas.projectId (and expo.owner) into app.json
-```
-
-Confirm `app.json` now contains, under `"expo"`:
-
-```json
-    "extra": {
-      "apiBaseUrl": "http://localhost:4000",
-      "eas": { "projectId": "<the UUID eas init printed>" }
-    },
-```
-
-and commit it with this task. **If the owner has not done this when the task
-runs, proceed anyway**: nothing below requires the id to exist. Without it,
-`easProjectId()` returns `null`, `requestPushToken` reports
-`{ kind: "not_configured" }` without calling the token service, the settings
-row says so in plain words, and device checklist item 7 (Task 11) has an
-explicit expected result for that case. The missing id is never reported as
-"denied".
-
-- [ ] **Step 1: Install the dependency**
-
-Run: `cd apps/mobile && npx expo install expo-notifications`
-
-`expo install` picks the version matching Expo SDK 54 — do **not** hand-write a
-version into `package.json`. Then `pnpm install` at the root so the workspace
-lockfile is consistent (`.npmrc` sets `shamefully-hoist=true`; Metro needs it).
-
-In `apps/mobile/app.json`, add the plugin:
-
-```json
-    "plugins": ["expo-router", "expo-secure-store", "expo-notifications"],
-```
-
-One fact to record rather than work around: push does not work in Expo Go on
-Android (SDK 53+ removed it), so a development build is required to see a real
-notification.
-
-- [ ] **Step 2: Write the failing tests**
-
-```ts
-// apps/mobile/src/__tests__/push.test.ts
-//
-// Every jest.mock factory below closes over mock* consts LAZILY — inside an
-// arrow that runs at call time. jest.mock is hoisted above these declarations,
-// so a factory that read `mockGetPermissions` directly (an earlier draft did:
-// `getPermissionsAsync: mockGetPermissions`) would hit the temporal dead zone
-// when push.ts is imported.
-const mockGetPermissions = jest.fn();
-const mockRequestPermissions = jest.fn();
-const mockGetToken = jest.fn();
-const mockEasProjectId = jest.fn();
-const mockPost = jest.fn();
-const mockSavePushToken = jest.fn();
-
-jest.mock("expo-notifications", () => ({
-  getPermissionsAsync: (...a: unknown[]) => mockGetPermissions(...a),
-  requestPermissionsAsync: (...a: unknown[]) => mockRequestPermissions(...a),
-  getExpoPushTokenAsync: (...a: unknown[]) => mockGetToken(...a),
-}));
-jest.mock("../lib/app-config", () => ({
-  easProjectId: () => mockEasProjectId(),
-}));
-jest.mock("../lib/api-client", () => ({
-  apiClient: { post: (...a: unknown[]) => mockPost(...a) },
-}));
-jest.mock("../lib/token-storage", () => ({
-  savePushToken: (...a: unknown[]) => mockSavePushToken(...a),
-}));
-
-import { enablePush, registerPushToken, requestPushToken } from "../lib/push";
-import { useSessionStore } from "../store/session";
-
-const unavailable = {
-  isAxiosError: true,
-  response: { status: 503, data: { error: { code: "push_unavailable" } } },
-};
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  useSessionStore.setState(useSessionStore.getInitialState(), true);
-  mockEasProjectId.mockReturnValue("test-project");
-});
-
-describe("requestPushToken", () => {
-  it("returns the token when permission is already granted, without prompting again", async () => {
-    mockGetPermissions.mockResolvedValue({ status: "granted" });
-    mockGetToken.mockResolvedValue({ data: "ExponentPushToken[abc]" });
-
-    await expect(requestPushToken()).resolves.toEqual({ kind: "token", token: "ExponentPushToken[abc]" });
-    expect(mockRequestPermissions).not.toHaveBeenCalled();
-    expect(mockGetToken).toHaveBeenCalledWith({ projectId: "test-project" });
-  });
-
-  it("prompts once when permission is undetermined", async () => {
-    mockGetPermissions.mockResolvedValue({ status: "undetermined" });
-    mockRequestPermissions.mockResolvedValue({ status: "granted" });
-    mockGetToken.mockResolvedValue({ data: "ExponentPushToken[abc]" });
-
-    await expect(requestPushToken()).resolves.toEqual({ kind: "token", token: "ExponentPushToken[abc]" });
-    expect(mockRequestPermissions).toHaveBeenCalledTimes(1);
-  });
-
-  it("reports denial, and never asks for a token", async () => {
-    mockGetPermissions.mockResolvedValue({ status: "undetermined" });
-    mockRequestPermissions.mockResolvedValue({ status: "denied" });
-
-    await expect(requestPushToken()).resolves.toEqual({ kind: "denied" });
-    expect(mockGetToken).not.toHaveBeenCalled();
-  });
-
-  it("reports not_configured — distinct from denied — when the build has no EAS project id", async () => {
-    mockEasProjectId.mockReturnValue(null);
-    mockGetPermissions.mockResolvedValue({ status: "granted" });
-
-    await expect(requestPushToken()).resolves.toEqual({ kind: "not_configured" });
-    expect(mockGetToken).not.toHaveBeenCalled();
-  });
-
-  it("reports failed rather than throwing when the token service fails", async () => {
-    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
-    mockGetPermissions.mockResolvedValue({ status: "granted" });
-    mockGetToken.mockRejectedValue(new Error("network"));
-
-    await expect(requestPushToken()).resolves.toEqual({ kind: "failed" });
-    warn.mockRestore();
-  });
-});
-
-describe("registerPushToken", () => {
-  it("treats 503 push_unavailable as expected, not as an error", async () => {
-    // The server has nowhere to store it until the cutover migration; the
-    // client keeps the token locally and stops asking.
-    mockPost.mockRejectedValue(unavailable);
-
-    await expect(registerPushToken("ExponentPushToken[abc]")).resolves.toBe("unavailable");
-  });
-
-  it("reports success when the server accepts the token", async () => {
-    mockPost.mockResolvedValue({ data: { data: { registered: true } } });
-
-    await expect(registerPushToken("ExponentPushToken[abc]")).resolves.toBe("registered");
-    expect(mockPost).toHaveBeenCalledWith("/api/v1/me/devices", {
-      token: "ExponentPushToken[abc]",
-      platform: expect.stringMatching(/^(ios|android)$/),
-    });
-  });
-});
-
-describe("enablePush", () => {
-  it("stores the token in the session store and in secure storage", async () => {
-    mockGetPermissions.mockResolvedValue({ status: "granted" });
-    mockGetToken.mockResolvedValue({ data: "ExponentPushToken[abc]" });
-    mockPost.mockRejectedValue(unavailable);
-
-    const result = await enablePush();
-
-    expect(result).toEqual({ token: "ExponentPushToken[abc]", status: "unavailable" });
-    expect(useSessionStore.getState().pushToken).toBe("ExponentPushToken[abc]");
-    expect(mockSavePushToken).toHaveBeenCalledWith("ExponentPushToken[abc]");
-  });
-
-  it("reports denial without touching storage", async () => {
-    mockGetPermissions.mockResolvedValue({ status: "undetermined" });
-    mockRequestPermissions.mockResolvedValue({ status: "denied" });
-
-    expect(await enablePush()).toEqual({ token: null, status: "denied" });
-    expect(mockSavePushToken).not.toHaveBeenCalled();
-  });
-
-  it("reports not_configured without touching storage or the server", async () => {
-    mockEasProjectId.mockReturnValue(null);
-    mockGetPermissions.mockResolvedValue({ status: "granted" });
-
-    expect(await enablePush()).toEqual({ token: null, status: "not_configured" });
-    expect(mockSavePushToken).not.toHaveBeenCalled();
-    expect(mockPost).not.toHaveBeenCalled();
-  });
-});
-```
-
-Add to `src/__tests__/session-store.test.ts`:
-
-```ts
-it("drops the push token on clear", () => {
-  useSessionStore.setState({ pushToken: "ExponentPushToken[abc]" });
-  useSessionStore.getState().clear();
-  expect(useSessionStore.getState().pushToken).toBeNull();
-});
-```
-
-- [ ] **Step 3: Run to see it fail**
-
-Run: `cd apps/mobile && pnpm jest src/__tests__/push.test.ts src/__tests__/session-store.test.ts`
-Expected: FAIL — `../lib/push` and `../lib/app-config` do not exist and the store has no `pushToken`.
-
-- [ ] **Step 4: Extend the store and the token storage**
-
-In `src/store/session.ts`, add to `SessionState`:
-
-```ts
-  /**
-   * This device's Expo push token, once the user has enabled push. Held here
-   * so a screen can tell whether push is on without re-reading SecureStore,
-   * and cleared on sign-out because the token identifies a (user, device)
-   * pair, not a device.
-   */
-  pushToken: string | null;
-  setPushToken: (token: string | null) => void;
-```
-
-and to the store body: `pushToken: null,`,
-`setPushToken: (pushToken) => set({ pushToken }),`, and add `pushToken: null`
-to the object `clear()` sets.
-
-In `src/lib/token-storage.ts`, beside `ACCESS_KEY`/`REFRESH_KEY`:
-
-```ts
-const PUSH_KEY = "space.pushToken";
-
-export async function savePushToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(PUSH_KEY, token);
-}
-
-export async function loadPushToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(PUSH_KEY);
-}
-```
-
-and add `await SecureStore.deleteItemAsync(PUSH_KEY);` as the last line of
-`clearSession()`. (No existing test counts `deleteItemAsync` calls — verified;
-`api-client.test.ts` mocks `token-storage` wholesale.)
-
-- [ ] **Step 5: Write the config reader and the push library**
-
-```ts
-// apps/mobile/src/lib/app-config.ts
-import Constants from "expo-constants";
-
-/**
- * The EAS project id from app.json's `expo.extra.eas.projectId` (Task 10
- * Step 0), or null when this build has none. The one place push reads build
- * configuration — never process.env.
- */
-export function easProjectId(): string | null {
-  const extra = Constants.expoConfig?.extra as { eas?: { projectId?: unknown } } | undefined;
-  const id = extra?.eas?.projectId;
-  return typeof id === "string" && id.length > 0 ? id : null;
-}
-```
-
-```ts
-// apps/mobile/src/lib/push.ts
-import axios from "axios";
-import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
-
-import { apiClient } from "./api-client";
-import { easProjectId } from "./app-config";
-import { savePushToken } from "./token-storage";
-import { useSessionStore } from "../store/session";
-
-export type PushTokenResult =
-  | { kind: "token"; token: string }
-  | { kind: "denied" }
-  | { kind: "not_configured" }
-  | { kind: "failed" };
-
-export type PushStatus = "registered" | "unavailable" | "denied" | "not_configured" | "failed";
-
-/**
- * Ask for notification permission (once) and get this device's Expo token.
- *
- * Called from an explicit control in settings, never from an effect on app
- * start: a permission prompt that appears at a moment the user did not ask for
- * is the fastest way to get it denied permanently.
- *
- * Never throws. Each way it can come back empty is reported as itself — an
- * earlier draft folded "this build has no EAS project id" into "denied", which
- * told the user they had refused something they had accepted.
- */
-export async function requestPushToken(): Promise<PushTokenResult> {
-  const existing = await Notifications.getPermissionsAsync();
-  let status = existing.status;
-  if (status !== "granted") {
-    status = (await Notifications.requestPermissionsAsync()).status;
-  }
-  if (status !== "granted") return { kind: "denied" };
-
-  const projectId = easProjectId();
-  if (projectId === null) return { kind: "not_configured" };
-
-  try {
-    const token = await Notifications.getExpoPushTokenAsync({ projectId });
-    return { kind: "token", token: token.data };
-  } catch (err) {
-    // The error, never a token (there is none) — and never log a token anywhere.
-    console.warn("[push] could not obtain an Expo push token:", err instanceof Error ? err.message : err);
-    return { kind: "failed" };
-  }
-}
-
-/**
- * Hand the token to the API.
- *
- * `503 push_unavailable` is the expected answer until the cutover migration
- * adds the DeviceToken table (see
- * docs/superpowers/cutover/2026-08-24-notifications-push.md). It is a state,
- * not an error: the caller keeps the token and stops retrying.
- */
-export async function registerPushToken(token: string): Promise<"registered" | "unavailable" | "failed"> {
-  try {
-    await apiClient.post("/api/v1/me/devices", {
-      token,
-      platform: Platform.OS === "ios" ? "ios" : "android",
-    });
-    return "registered";
-  } catch (err) {
-    if (axios.isAxiosError(err) && err.response?.status === 503) return "unavailable";
-    return "failed";
-  }
-}
-
-/** Permission → token → store → server, in one call for the settings control. */
-export async function enablePush(): Promise<{ token: string | null; status: PushStatus }> {
-  const result = await requestPushToken();
-  if (result.kind !== "token") return { token: null, status: result.kind };
-
-  useSessionStore.getState().setPushToken(result.token);
-  await savePushToken(result.token);
-
-  const status = await registerPushToken(result.token);
-  return { token: result.token, status };
-}
-```
-
-- [ ] **Step 6: Surface it in settings**
-
-In `NotificationPreferences.tsx`, add the imports
-
-```tsx
-import { useState } from "react";
-
-import { enablePush, type PushStatus } from "../lib/push";
-import { useSessionStore } from "../store/session";
-import { Button } from "../ui";
-```
-
-(merge `Button` into the existing `../ui` import), add at the top of the
-component, **before** the `isPending`/`isError` early returns (hooks first):
-
-```tsx
-  const pushToken = useSessionStore((s) => s.pushToken);
-  const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
-  const [enabling, setEnabling] = useState(false);
-```
-
-and below the five switches, inside the `Card`:
-
-```tsx
-      <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.xs }}>
-        <Text variant="body">Push notifications</Text>
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          {PUSH_COPY[pushStatus ?? (pushToken ? "unavailable" : "idle")]}
-        </Text>
-        <Button
-          title={pushToken ? "Push enabled on this device" : "Enable push notifications"}
-          variant="secondary"
-          loading={enabling}
-          disabled={pushToken !== null}
-          onPress={() => {
-            setEnabling(true);
-            void enablePush()
-              .then(({ status }) => setPushStatus(status))
-              .finally(() => setEnabling(false));
-          }}
-        />
-      </View>
-```
-
-with, at module level:
-
-```tsx
-/** One honest sentence per push state. Names the three types that would push
- *  (PUSH_NOTIFICATION_TYPES) rather than promising all six. */
-const PUSH_COPY: Record<PushStatus | "idle", string> = {
-  idle: "Get alerted when a session moves, or when your work or a quiz is graded.",
-  registered: "Push is on for this device.",
-  unavailable: "This device is ready for push. Delivery switches on when the server migration lands.",
-  denied: "Notifications are off for JPC Space in your phone's settings.",
-  not_configured: "Push isn't set up for this build of the app yet.",
-  failed: "Couldn't set up push. Try again.",
-};
-```
-
-Then keep `expo-notifications` out of every suite that renders this component.
-At the top of `notification-preferences.test.tsx` **and** Plan 9's
-`settings-screen.test.tsx`, with the other mocks:
-
-```tsx
-jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
-```
-
-- [ ] **Step 7: Run everything mobile**
-
-Run: `cd apps/mobile && pnpm jest` → PASS.
-Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
-If any other suite now fails to transform `expo-notifications`, it imports
-`src/lib/push.ts` transitively — add the same `jest.mock("../lib/push", …)`
-line to it; never import the real module into a unit suite.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add apps/mobile && git commit -m "feat(mobile): expo push permission flow and token lifecycle (delivery blocked on cutover)"
-```
+### Task 10: Mobile — Expo push permission and token lifecycle — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
+
+v1 has no push, and the owner will add push later on Firebase, so the Expo
+client is withdrawn: no `expo-notifications` dependency or `app.json` plugin,
+no `src/lib/push.ts` / `src/lib/app-config.ts` (`easProjectId`), no EAS
+project-id step, no `pushToken` in the session store or `token-storage`, and
+no "Push notifications" row in `NotificationPreferences` — the settings
+section is v1's five toggles only (Task 9) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "the dependency, the config, the permission prompt and token lifecycle, and the push row")*.
+The client code already built is removed with the parity code changes —
+Revision 2026-10-09 table, row 7.
 
 ---
 
@@ -3689,39 +2919,25 @@ pointed at it, signed in as a staging student:
    off, kill the app, reopen → still off.
    *(v1 parity 2026-10-09: items 1, 2, 4, 6 were "bell on dashboard", "pages of 20",
    "badge drops on open", "six toggles incl. quizGraded")*
-7. Settings → "Enable push notifications" → the OS prompt appears. Accept it.
-   The expected result depends on Task 10 Step 0:
-   - **`extra.eas.projectId` present (dev build):** the button changes to
-     "Push enabled on this device" and the caption reads "This device is ready
-     for push. Delivery switches on when the server migration lands."
-     (registration answered `503 push_unavailable` by design).
-   - **No project id:** the caption reads "Push isn't set up for this build of
-     the app yet.", the button stays enabled, and nothing is stored. It must
-     **not** say notifications are off — that copy is reserved for a real
-     denial.
-   - Decline the prompt on a second device/simulator → "Notifications are off
-     for JPC Space in your phone's settings."
+7. ~~Settings → "Enable push notifications"~~ — withdrawn with Task 10 *(v1 parity 2026-10-09; owner decision 2026-10-10)*;
+   Settings shows no push row.
 
 - [ ] **Step 4: Report**
 
-Report: suite counts, all nine mutation outcomes, device checklist results
-(including which branch of item 7 applied), and — explicitly — whether the
-reviewer accepts the remaining deliberate behaviour change in the header (the
-three-type push list — itself awaiting the owner's call on whether push stays).
+Report: suite counts, all nine mutation outcomes and device checklist results
+(items 1–6). Both header behaviour changes are withdrawn, so there is none
+left for the reviewer to accept.
 *(v1 parity 2026-10-09: was "the two … changes (D4's channel split, and the three-type push list)")*
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "including which branch of item 7 applied … the three-type push list")*
 
-**Roadmap drift — state it in the report.** The roadmap's done criterion for
-this plan reads "a review recorded on one device produces a push on the
-student's device". That cannot be met before cutover: push delivery needs the
-`DeviceToken` table, which ruling C1 forbids until v1 stops (THE SCHEMA
-VERDICT, above). What this plan can and does prove is the half that is not
-blocked: *a review recorded on one device produces an inbox row and an
-unread-badge increment on the student's device, and opening the inbox never
-writes (C6)* — device checklist items 1–4. The push half moves to Plan 18's
-M10 verification ("the endpoint stops returning 503 and upserts on `token`",
-plus one real push to a registered dev build). This plan does not edit the
-roadmap (out of scope for this pass); the coordinator should amend its Plan 13
-done criterion to the sentence above and point the push half at Plan 18 M10.
+**Roadmap drift — resolved.** The roadmap's done criterion for this plan read
+"a review recorded on one device produces a push on the student's device".
+Push is withdrawn (owner decision 2026-10-10: push will be built later on
+Firebase), so the criterion is now the half this plan proves: *a review
+recorded on one device produces an inbox row and an unread-badge increment on
+the student's device, and opening the inbox never writes (C6)* — device
+checklist items 1–4. The roadmap is amended to match; there is no push half
+for Plan 18 *(v1 parity 2026-10-09; owner decision 2026-10-10: was "the push half moves to Plan 18's M10 verification")*.
 
 ---
 
@@ -3787,8 +3003,12 @@ built from the earlier text must be changed to match. Full classification:
 | 4 | 10-notifications R47, R48 | - | Only "mark all read" exists; opening a notification just navigates and it stays unread (`src/lib/notification-actions.ts:8-18` — single-id action never called; `src/components/layout/notification-bell.tsx:133-139`; `notifications-page.tsx:75-81`) | `apps/backend/src/routes/notifications.ts:135-151` (`ids` form); `apps/mobile/app/(app)/notifications.tsx:75` (markRead on press) | Goal; Task 1 `markReadRequestSchema` + test; Task 3 title, router POST /read; Task 6 `MarkReadInput`/`useMarkRead`; Task 7 `handlePress` + Step 5 note; Task 11 mutation 4, device item 4 |
 | 5 | 10-notifications R36 | - | The bell with unread count is in the app shell on every page for every role (`src/components/layout/app-shell.tsx:55-57`) | `apps/mobile/src/components/dashboard/DashboardFrame.tsx:4,23` → shared header (`apps/mobile/src/ui/Screen.tsx` or `apps/mobile/app/(app)/_layout.tsx:125`) | Architecture; Task 7 rationale item 2; Task 8 title, bell doc comment, Step 4 + note; Task 11 device item 1 |
 | 6 | 10-notifications R56, R57; 18-settings R15 | REG-101 | Five preference toggles and a five-field action; `quizGraded` cannot be switched off (`src/app/(settings)/settings-page.tsx:7-13`, `src/lib/settings-actions.ts:58-73`, `src/components/settings/settings-form.tsx:27-53`) | `apps/backend/src/routes/me.ts:274-286` (PUT takes five keys, leaves `quizGraded`); `apps/mobile/src/components/NotificationPreferences.tsx:44-54` (remove the sixth row); shared default constant `notification.ts:139-146` stays | Goal; Task 1 Interfaces, Step 1 test, Step 4 `notificationPreferencesUpdateSchema`; Task 4 tests, Step 3 code + note, Step 4, commit; Task 6 `useUpdateNotificationPreferences`; Task 9 title, tests, component, note, commit; Task 10 Step 6 "five switches"; Task 11 device item 6 |
+| 7 | 10-notifications D5 (push), R28 (email link); 18-settings D3 | - | v1 has no push: no device or push model (`prisma/schema.prisma`), no push code in `src/`; notifications are in-app plus email (`src/lib/notifications.ts:56-94`, `src/lib/email.ts:135-159`). Owner decision 2026-10-10: push will be built later on Firebase | Remove the push scaffolding: `packages/shared/src/notification.ts:151-196` (`PUSH_NOTIFICATION_TYPES`, `shouldPush`, `devicePlatformSchema`, `DEVICE_PLATFORM_TO_DB`, `deviceRegistrationSchema`); `packages/shared/src/__tests__/notification-contracts.test.ts:4,7,8,14,130-161`; `apps/backend/src/routes/me.ts:9,292-322` (`POST /me/devices`); `apps/backend/src/docs/openapi.ts:818-825,3652-3668` (and "push at cutover" in `:3624`); `apps/backend/src/__tests__/integration/me-notifications-routes.test.ts:111-141`; `apps/mobile/src/lib/push.ts` (delete); `apps/mobile/src/lib/app-config.ts` (delete — `push.ts` is its only consumer); `apps/mobile/src/__tests__/push.test.ts` (delete); `apps/mobile/src/store/session.ts:16-23,34-35,38` (`pushToken`); `apps/mobile/src/__tests__/session-store.test.ts:65-69`; `apps/mobile/src/lib/token-storage.ts:6,21-27,32`; `apps/mobile/src/components/NotificationPreferences.tsx:2,10,11,13 (Button),59-68,72-74,94 ("and push"),121-138`; `apps/mobile/src/__tests__/notification-preferences.test.tsx:8` and `settings-screen.test.tsx:18` (`jest.mock("../lib/push")`); `apps/mobile/app.json:13` (plugin) and `apps/mobile/package.json:28` (`pnpm --filter @space/mobile remove expo-notifications`, which also updates `pnpm-lock.yaml`); `docs/superpowers/cutover/2026-08-24-notifications-push.md` (delete). Push wording in `apps/backend/src/lib/notifications.ts:41-43` and `__tests__/integration/notifications.test.ts:115` goes with row 1 | Title; Goal; Architecture; Tech Stack; Schema verdict; header item 2 (withdrawn); Execution shape; Task 1 Interfaces, Step 1 tests, Step 4 contract; Task 2 `BulkNotificationResult`, doc comment, Step 5 note (email "Open" button stays, as an app link — Plan 18 Task 2b.4); Task 4 rationale; Task 5 (withdrawn); Task 9 Produces; Task 10 (withdrawn); Task 11 device item 7, report, roadmap drift |
 
-**Awaiting owner (not changed):** Mobile push notifications (Expo push, the planned `DeviceToken`
-table, `POST /me/devices`, Task 5 and Task 10, header item 2's three-type list) — v1 never had push;
-whether push stays in v2 is an open owner call. Nothing about push was removed; where push is
-mentioned it now follows the v1 opt-out filter (an opted-out type does not push either).
+**Resolved (owner 2026-10-10):** mobile push is withdrawn — the owner will add notifications
+later with Firebase, under its own plan. Expo push, the planned `DeviceToken` table,
+`POST /me/devices`, Task 5, Task 10 and header item 2's three-type list are withdrawn in place
+(marked *(v1 parity 2026-10-09; owner decision 2026-10-10)*), with Plan 18's M10, Task 2b.10 and M5's `pushEnabled`. The
+already-built push scaffolding is removed with the parity code changes (row 7). In-app
+notifications and email are unaffected; the email's "Open" button stays, built as an app link to
+the notification's target (Plan 18 Task 2b.4).

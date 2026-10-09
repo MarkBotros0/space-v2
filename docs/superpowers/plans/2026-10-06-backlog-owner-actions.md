@@ -216,6 +216,26 @@ they are v1-parity changes written into the plans *(v1 parity 2026-10-09: was
    sanitised on the read side only; the stored value is the raw input. Decide
    whether it should also be sanitised on write.
 
+### Owner decisions recorded 2026-10-10
+
+Applied to the plans in place, marked *(v1 parity 2026-10-09; owner decision 2026-10-10)*.
+
+1. **Push notifications: withdrawn; the owner will add them later with Firebase.**
+   Plan 13 Tasks 5 and 10 and Plan 18 M10, Task 2b.10 and M5's `pushEnabled`
+   are withdrawn. The Expo push code already built (`POST /me/devices`,
+   `lib/push.ts`, `expo-notifications`, …) is removed with the parity code
+   changes (Plan 13 Revision 2026-10-09, row 7). The push items in section 8
+   (`eas init`, the push prompt, the cutover migration) no longer apply.
+2. **Uploads: a spreadsheet read in memory and never stored still counts as an
+   upload.** Spreadsheet file intake (16-R1, R2, R6, R9, R10, REG-48) and
+   event photos (15-R22..R29) stay off with `ENABLE_UPLOADS` until the CMS
+   move; v1's rules are ported then (Plans 17 and 14).
+3. **The notification email's "Open" button points at the app.** v1's "View in
+   JPC Space" button and paste-able link stay, built as `AUTH_URL` + the app
+   path of the notification's target (Plan 18 Task 2b.4; REG-38).
+4. **Import rows whose group name matches several groups in the season keep
+   the row-level refusal** (Plan 17 D-16.19.1, Task 5).
+
 ### Judgement calls made during the audit fixes (confirm or reverse)
 
 - **ADMIN-scoped attendance and submissions endpoints.**

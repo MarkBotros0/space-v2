@@ -28,11 +28,10 @@ between each.
   and the register (drops, deferrals, divergences) is signed by the user,
   because a rule discovered late is a migration discovered late.
 - **Part 2 — Migration thaw.** Four required migration folders (M1, M3, M12,
-  M13) plus two held for the owner's push decision (M5 reduced to
-  `pushEnabled`, M10), each authored **now**, each applied **only** in Part 3.
-  M2, M4, M5's notification types, M7, M8, M9, M14, M15, M16 and the M17 data
-  script are withdrawn for v1 parity, and M6 and M11 were already withdrawn
-  (see their tasks) *(v1 parity 2026-10-09: was "fourteen folders, thirteen
+  M13), each authored **now**, each applied **only** in Part 3.
+  M2, M4, M5 (its notification types, and its `pushEnabled` column), M7, M8, M9, M10, M14, M15, M16 and the M17 data
+  script are withdrawn — for v1 parity, and for M10 and `pushEnabled` because the owner will build push later on Firebase — and M6 and M11 were already withdrawn
+  (see their tasks) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "plus two held for the owner's push decision (M5 reduced to `pushEnabled`, M10)")* *(v1 parity 2026-10-09: was "fourteen folders, thirteen
   required, one optional M14, plus optional M17")*. Authored means: written to `apps/backend/prisma/migrations-cutover/`,
   generated offline with `prisma migrate diff` between two schema *files* —
   never against the database — and rehearsed against a restored copy. Part 2
@@ -89,7 +88,8 @@ Plan 18 is always last and consumes all of Plans 1–17:
 After the v1-parity revision, the rows above that name M2, M4, M5's four
 types, M7, M8, M9, M14, M15, M16, M17 or the credential sweep are no longer
 consumed: those migrations are withdrawn *(v1 parity 2026-10-09: was "every
-row consumed")*. M10 and M5's `pushEnabled` are held for the owner.
+row consumed")*. The rows that name M10 or Plan 13's cutover doc are not consumed
+either: M10 and M5's `pushEnabled` are withdrawn *(v1 parity 2026-10-09; owner decision 2026-10-10: was "held for the owner")*.
 
 ---
 
@@ -199,15 +199,11 @@ diff -r /home/mark/projects/JPC/jpc-space/prisma/migrations \
   lists `--from-schema`, `--to-schema`, `--from-config-datasource`,
   `--exit-code` and `--config`. If any is missing, stop and re-derive every
   command in Part 2 from the printed help — do not guess a flag.
-- [ ] **`docs/superpowers/cutover/2026-08-24-notifications-push.md` is
-  reconciled.** Plan 13 instructs its implementer to write the `DeviceToken` and
-  `Notification.entityType`/`entityId` migrations into that file. If it exists,
-  **M10 below is a reconciliation of it, not a second authoring** — diff them,
-  keep whichever is more correct, and delete the duplicate. If it does not
-  exist, author it here. A second `DeviceToken` migration is exactly the drift
-  this plan exists to close. The doc's `entityType`/`entityId` half is not
-  authored at all: M4 is withdrawn *(v1 parity 2026-10-09: was "M4 and M10 are
-  a reconciliation of it")*.
+- [ ] ~~**`docs/superpowers/cutover/2026-08-24-notifications-push.md` is
+  reconciled.**~~ — withdrawn: M10 and M4 are both withdrawn, so the doc has
+  nothing to reconcile. It exists on `main` (Plan 13's earlier Task 5) and is
+  deleted with Plan 13's push scaffolding (Plan 13 Revision 2026-10-09, row 7)
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "M10 below is a reconciliation of it, not a second authoring")*.
 - [ ] **A restorable copy of the production database exists and has been
   restored at least once**, into a separate database the team may destroy. Part
   2's rehearsal (Task 2.18) runs there. Nothing in Part 2 is credible without
@@ -224,8 +220,9 @@ Stated because each of these has been mistaken for cutover work before:
 - It is **not** a feature plan. No new screen or destination is built here.
   Part 2b changes only code a migration forces (a key that changes shape, a
   column that needs its writer) plus the smallest UI each new column needs to
-  be reachable (the push master switch, if the owner grants push)
-  *(v1 parity 2026-10-09: was "a preference toggle, a staff Hide post button")*.
+  be reachable — after the v1-parity revision, none
+  *(v1 parity 2026-10-09: was "a preference toggle, a staff Hide post button")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "(the push master switch, if the owner grants push)")*.
   Task 2b.P is the one exception: v1-parity fixes that no other plan owns. If the parity
   audit finds a missing screen, that is a finding and a follow-up plan, not a
   task appended to this one. Plans 5, 6, 10, 11 and 16 exist precisely because the
@@ -759,9 +756,11 @@ are cashed.
 **The set, after the 2026-10-09 v1-parity revision.** Four required migration
 folders — M1 (per-season `GroupStudent`, C9 data loss), M3 (historic lateness
 recomputed from the session start, C3), M12 (v1 plaintext invite codes
-voided) and M13 (`sessionsValidFrom`, C7) — plus two **held for the owner's
-push decision** in `optional/`: M5 (reduced to the `pushEnabled` column) and
-M10 (`DeviceToken`). Every other migration added behaviour v1 never had and is
+voided) and M13 (`sessionsValidFrom`, C7). There is no `optional/` set any more:
+M5's `pushEnabled` and M10 (`DeviceToken`) were held for the owner's push
+decision and are withdrawn — the owner will build push later on Firebase
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "plus two held for the owner's push decision in `optional/`")*.
+Every other migration added behaviour v1 never had and is
 withdrawn in place, keeping its number: M2, M4, M5's four notification types,
 M7, M8, M9, M14, M15, M16 and the M17 data script (each task below says what v1
 does instead) *(v1 parity 2026-10-09: was "thirteen required M1–M5, M7–M10,
@@ -786,7 +785,7 @@ why C1 exists.
 **Files** (all on the `cutover-code` branch unless marked *main*):
 - Modify: `apps/backend/prisma/schema.prisma` — **on `cutover-code` only**; `main`'s copy stays frozen until R11
 - Create: `apps/backend/prisma.cutover.config.ts` (Prisma CLI config — cutover only)
-- Create: `apps/backend/prisma/migrations-cutover/required/` and `apps/backend/prisma/migrations-cutover/optional/`
+- Create: `apps/backend/prisma/migrations-cutover/required/` *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and `…/optional/`" — no optional migration remains)*
 - Create: `apps/backend/prisma/migrations-cutover/README.md`
 - ~~Create: `apps/backend/prisma/CONSTRAINTS.md`~~ — not needed: only M7 and M14 added Prisma-invisible objects and both are withdrawn *(v1 parity 2026-10-09: was "Create CONSTRAINTS.md")*
 - Modify: `CLAUDE.md` (one line under "Hard constraints")
@@ -885,9 +884,9 @@ npx prisma migrate diff \
   `migration.sql` in a transaction of its own. Every folder below whose task
   says "atomic" begins with `BEGIN;` and ends with `COMMIT;`, so a failure
   half-way leaves nothing applied (Task 2.18 Step 6 proves it). There is no
-  exception any more: M5's `ALTER TYPE … ADD VALUE` is withdrawn, so its
-  remaining `pushEnabled` column is an ordinary atomic folder (Task 2.5)
-  *(v1 parity 2026-10-09: was "M5 is the exception, no explicit transaction")*.
+  exception any more: M5 is withdrawn entirely (Task 2.5)
+  *(v1 parity 2026-10-09: was "M5 is the exception, no explicit transaction")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "its remaining `pushEnabled` column is an ordinary atomic folder")*.
 
 - [ ] **Step 5: Backup copies live in their own schema.** Every "keep a copy
   first" step in this plan writes to a Postgres schema named `cutover_backup`,
@@ -905,10 +904,12 @@ npx prisma migrate diff \
   > These migrations are **not applied by any tooling**. Prisma does not read
   > this directory. `required/` is moved into `prisma/migrations/` by hand,
   > once, by the operator, inside the cutover window, after v1 has stopped
-  > writing and a backup has been verified. `optional/` is moved only if the
-  > user approved that migration at the go/no-go gate. Do not move either
+  > writing and a backup has been verified. Do not move it
   > early. Do not run `prisma migrate dev`, `prisma db push` or
   > `prisma migrate reset` against the shared database at any time.
+
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: the README's `optional/` sentence is withdrawn — was "`optional/` is moved only if the user
+  approved that migration at the go/no-go gate. Do not move either early.")*
 
 - [ ] **Step 7: No `prisma/CONSTRAINTS.md`.** Prisma's schema language
   cannot express `CHECK` constraints or partial/functional indexes, and
@@ -923,8 +924,7 @@ npx prisma migrate diff \
 > entries). Delete it on the branch.
 
 - [ ] **Step 8: Number and place the folders** — the timestamps fix the apply
-  order, and the optional migration sorts **last** so leaving it out never
-  leaves a gap that a later `migrate deploy` would fill out of order:
+  order:
 
 ```text
 migrations-cutover/
@@ -934,23 +934,24 @@ migrations-cutover/
     20261101000003_m3_late_recompute/migration.sql             (+ rollback.sql)
     20261101000012_m12_void_v1_invites/migration.sql           (one-way data step; no rollback.sql)
     20261101000013_m13_sessions_valid_from/migration.sql       (+ rollback.sql)
-  optional/                                                    (held: owner's push decision)
-    20261101000097_m5_push_enabled/migration.sql               (+ rollback.sql)
-    20261101000098_m10_device_token/migration.sql              (+ rollback.sql)
 ```
 
-  Order matters: M1 precedes every producer that writes `GroupStudent`; M5
-  precedes M10 (the dispatcher reads `pushEnabled`). The `02`, `04`, `06`,
-  `07`, `08`, `09`, `11`, `14`, `15`, `16` and `99` slots stay empty
-  (withdrawn), and there is no `scripts/m17-normalise.ts`. M5 and M10 sort last
-  in `optional/` so that leaving them out never leaves a gap
+  Order matters: M1 precedes every producer that writes `GroupStudent`. The
+  `02`, `04`, `05`, `06`, `07`, `08`, `09`, `10`, `11`, `14`, `15`, `16`, `97`,
+  `98` and `99` slots stay empty (withdrawn), and there is no
+  `scripts/m17-normalise.ts`
   *(v1 parity 2026-10-09: was "thirteen required folders, optional M14, the
-  M17 script; M4 precedes M5; M12 precedes M14")*.
+  M17 script; M4 precedes M5; M12 precedes M14")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "optional/ holding 97_m5_push_enabled and 98_m10_device_token; M5 precedes M10")*.
 
 > **v1 parity 2026-10-09:** `cutover-code` already holds `required/…m2_group_name_unique`
 > (commit `18941ab`) and a WIP `required/20261101000003_m3_late_basis` (commit
 > `4d47c9d`). Revert `18941ab` (Task 2.2) and rework `4d47c9d` as Task 2.3 /
 > Task 2b.3 now describe (folder renamed `m3_late_recompute`).
+
+> **v1 parity 2026-10-09; owner decision 2026-10-10:** `cutover-code` also holds `apps/backend/prisma/migrations-cutover/optional/.gitkeep`
+> and the README's `optional/` sentence. Delete both on the branch; no M5 or M10 folder was ever
+> committed there.
 
 ### Task 2.0b: v2 read-only mode (merged to `main` and deployed before R1)
 
@@ -1567,13 +1568,14 @@ producer/reader changes are withdrawn with it. Producers keep writing v1's
 link shapes after cutover *(v1 parity 2026-10-09: was "entityType/entityId
 columns + backfill; producers stop writing link")*.
 
-The notification email's "Open" button, which Task 2b.4 also covered, is
-**not** decided here: it awaits the owner (Task 2b.4). The folder slot
+The notification email's "Open" button, which Task 2b.4 also covered, stays
+and points at the app (owner decision 2026-10-10; Task 2b.4)
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "not decided here: it awaits the owner")*. The folder slot
 `20261101000004` stays empty.
 
 ---
 
-### Task 2.5 — M5: the `NotificationType` enum grows — **WITHDRAWN** (v1 parity 2026-10-09), except `pushEnabled`, held for the owner
+### Task 2.5 — M5: the `NotificationType` enum grows — **WITHDRAWN** (v1 parity 2026-10-09); its `pushEnabled` column — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
 v1 has six notification types and six preference booleans
 (`jpc-space/prisma/schema.prisma:63-70`, `:609-621`). It sends no notice to a
@@ -1590,32 +1592,12 @@ spec-12 per-spec pass (Plan 8): v2 already sends a `QUIZ_GRADED`-typed
 "You can retake" notification on reopen
 (`apps/backend/src/routes/quizzes.ts:1426-1433`) that v1 never sent.
 
-**What remains — awaiting owner.** `NotificationPreference.pushEnabled`, the
-push master switch (`18-settings.md` D3, Plan 9), exists only for M10's push
-dispatch. v1 never sent push. Whether the mobile app gets push is the owner's
-call (see Task 2.10); until then this column is authored but **held** in
-`optional/` and moved at R10 only if the owner grants push. If the owner
-declines, it is withdrawn with M10.
-
-```prisma
-model NotificationPreference {
-  pushEnabled        Boolean @default(true)   // the master switch (M10's pair) — held for the owner
-}
-```
-
-```sql
--- migration.sql — M5 (optional/20261101000097_m5_push_enabled). Atomic.
-BEGIN;
-ALTER TABLE "NotificationPreference" ADD COLUMN "pushEnabled" BOOLEAN NOT NULL DEFAULT true;
-COMMIT;
--- rollback.sql: ALTER TABLE "NotificationPreference" DROP COLUMN "pushEnabled";
-```
-
-**Backfill:** none; the default is the backfill. **Rows that violate today:**
-none. **Verification:** the preference matrix test covers seven columns
-(`notificationPreferencesSchema`'s six plus `pushEnabled`).
-
-**Code that changes with it:** Task 2b.5 (reduced to the master switch).
+**`pushEnabled` — withdrawn (owner decision 2026-10-10).** The push master
+switch (`18-settings.md` D3, Plan 9) existed only for M10's dispatch. v1 never
+sent push and the owner will build push later on Firebase, so the column is
+not authored, there is no `optional/20261101000097_m5_push_enabled` folder,
+and Task 2b.5 has nothing left. M5 is withdrawn entirely; the folder slots
+`20261101000005` and `20261101000097` stay empty *(v1 parity 2026-10-09; owner decision 2026-10-10: was "`pushEnabled` authored but held in `optional/` for the owner")*.
 
 ---
 
@@ -1703,80 +1685,21 @@ whether it stays. The folder slot `20261101000009` stays empty.
 
 ---
 
-### Task 2.10 — M10: `DeviceToken`, and push stops returning 503
+### Task 2.10 — M10: `DeviceToken`, and push stops returning 503 — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
-> **v1 parity 2026-10-09 — awaiting owner.** v1 never sent push: there is no
-> device or push model in `jpc-space/prisma/schema.prisma` and no web push in
-> `src/`; notifications are in-app plus email only. The parity classification
-> marks M10 (and Task 2b.10, and M5's `pushEnabled`) as not-v1, but a mobile
-> app without push is a product call, so it is **not withdrawn**: the owner
-> decides whether push is an explicit exception to parity. Until then M10 is
-> authored but **held** in `optional/20261101000098_m10_device_token` and
-> moved at R10 only on the owner's yes (R9). If the owner declines, M10, M5's
-> `pushEnabled`, Task 2b.5's remainder and Task 2b.10 are withdrawn, and Plan
-> 13's mobile token flow and `503 push_unavailable` stub fall with them
-> (per-spec 10 D5).
-
-**Unfreezes:** `10-notifications.md` D5 item 1 (`:635-654`),
-`18-settings.md` D3 (`:459`), Plan 13 Task 5 ("BLOCKED ON CUTOVER"). Plan 13
-ships the entire mobile permission and token lifecycle against a
-`POST /api/v1/me/devices` that validates the body and then answers
-`503 push_unavailable`, because there is nowhere to put an Expo token and
-`10-notifications.md` D5 explicitly **refuses** reusing an existing column.
-
-**Reconcile, do not re-author.** Plan 13 Task 5 Step 4 wrote
-`docs/superpowers/cutover/2026-08-24-notifications-push.md`, whose §1 was
-written to match this task exactly. Diff its model and SQL against the block
-below; they must be identical. If they differ, this task's text wins only
-where Plan 13's doc contradicts `names.md`'s pins (`devicePlatformSchema`
-lowercase wire, `DEVICE_PLATFORM_TO_DB = { ios: "IOS", android: "ANDROID" }`);
-otherwise adopt the doc's and record the difference. Then the doc gains a line
-"Applied by Plan 18 M10 — see that plan" and is not used again.
-
-**Prisma model** (plus `deviceTokens DeviceToken[]` on `User`):
-
-```prisma
-enum DevicePlatform { IOS ANDROID }   // values = DEVICE_PLATFORM_TO_DB's targets
-
-model DeviceToken {
-  id         Int            @id @default(autoincrement())
-  userId     Int
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token      String         @unique           // Expo push token — a credential; never log it
-  platform   DevicePlatform
-  lastSeenAt DateTime       @default(now())
-  createdAt  DateTime       @default(now())
-
-  @@index([userId])
-  @@index([lastSeenAt])
-}
-```
-
-**Wire vs column.** The request body keeps the lowercase wire value
-(`devicePlatformSchema` = `"ios" | "android"`, what `Platform.OS` returns); the
-server maps it at the write with `DEVICE_PLATFORM_TO_DB`. The client never
-learns the column's spelling, so nothing on the device changes at cutover.
-
-The master switch (`NotificationPreference.pushEnabled`) is added by **M5**, not
-here — one migration per table keeps the rollbacks independent.
-
-**Backfill:** none. Tokens arrive from devices after the app is pointed at v2.
-Push is therefore **not** part of the soak's success criteria at R17 — the
-population starts at zero and fills over days.
-
-**Rows that violate today:** none — new table.
-
-**Verification:** the endpoint stops returning 503 and upserts on `token`;
-`DELETE /me/devices/:token` revokes the caller's row only; two users
-registering the same physical device results in the token moving, not
-duplicating; a dispatch to a token Expo reports `DeviceNotRegistered` deletes
-it; **no push token is ever logged** (Task 2b.10's grep).
-
-**Rollback:** `DROP TABLE "DeviceToken"; DROP TYPE "DevicePlatform";` and the
-endpoint returns to 503, which the mobile client already handles (Plan 13 Task
-10 — "keep the token locally, stop retrying this session").
-
-**Code that changes with it:** Task 2b.10.
+v1 never sent push: there is no device or push model in
+`jpc-space/prisma/schema.prisma` and no push code in `src/`; notifications
+are in-app plus email only. The 2026-10-09 revision held M10 for the owner's
+call on whether push is an exception to parity; the owner has ruled that push
+will be added later on Firebase, under its own plan. So M10 is withdrawn: no
+`DevicePlatform` enum, no `DeviceToken` table, no
+`optional/20261101000098_m10_device_token` folder, no R9 push decision, no
+soak metric, and Task 2b.10 is withdrawn with it. Plan 13's Task 5 and
+Task 10 are withdrawn the same day, and the already-built
+`POST /me/devices` → `503 push_unavailable` stub and the mobile token flow
+are removed (Plan 13 Revision 2026-10-09, row 7). A Firebase plan will
+choose its own storage; nothing here pre-empts it. The folder slots
+`20261101000010` and `20261101000098` stay empty *(v1 parity 2026-10-09; owner decision 2026-10-10: was "authored but held in `optional/`, moved at R10 only on the owner's yes")*.
 
 ---
 
@@ -2043,14 +1966,12 @@ DATABASE_URL="$REHEARSAL_DATABASE_URL" npx prisma migrate status --config prisma
 # expect all 18 v1 migrations applied, none failed, none pending
 ```
 
-- [ ] **Step 3: Apply.** Stage the folders exactly as R10 will (required, plus
-  `optional/` if M5 + M10 are being rehearsed for the owner's push decision —
-  rehearse **both** variants), apply, and time each:
+- [ ] **Step 3: Apply.** Stage the folders exactly as R10 will (required only
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "plus `optional/` if M5 + M10 are being rehearsed … rehearse both variants")*), apply, and time each:
 
 ```bash
 cd apps/backend
 cp -r prisma/migrations-cutover/required/. prisma/migrations/
-cp -r prisma/migrations-cutover/optional/. prisma/migrations/          # only for the "with push (M5 + M10)" run
 time DATABASE_URL="$REHEARSAL_DATABASE_URL" npx prisma migrate deploy --config prisma.cutover.config.ts
 git checkout -- prisma/migrations && git clean -fd prisma/migrations   # un-stage; the real move is R10's
 ```
@@ -2059,8 +1980,8 @@ git checkout -- prisma/migrations && git clean -fd prisma/migrations   # un-stag
   not from a guess. The index builds in M1 are the ones that scale with row
   count *(v1 parity 2026-10-09: was "with M14" variant; "M1 and M14" index
   builds)*.
-- [ ] **Step 4: Run every verification query** from M1, M3, M12 and M13 (and
-  M5/M10 in the push variant) and record the actual numbers. These become the
+- [ ] **Step 4: Run every verification query** from M1, M3, M12 and M13
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and M5/M10 in the push variant")* and record the actual numbers. These become the
   expected values at R12. The backfill-equivalence script
   (`scripts/cutover-equivalence.ts`, comparing M4's link backfill with
   `parseNotificationLink` and M7's `allDay` with `isOrgMidnight`) is withdrawn
@@ -2106,8 +2027,8 @@ DATABASE_URL="$REHEARSAL_DATABASE_URL" npx prisma migrate diff \
   this before the window is scheduled.**
 
 **Done for Part 2:** four folders under `migrations-cutover/required/` (M1,
-M3, M12, M13) and two under `optional/` held for the owner's push decision (M5
-`pushEnabled`, M10), each with `migration.sql` and (except M12's one-way data
+M3, M12, M13) and none under `optional/`
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "and two under `optional/` held for the owner's push decision (M5 `pushEnabled`, M10)")*, each with `migration.sql` and (except M12's one-way data
 step) `rollback.sql`; Task 2.0b's read-only mode on `main` and deployed; a
 rehearsal report with real numbers; `main`'s `schema.prisma` **unmodified**;
 and no migration applied to the shared database *(v1 parity 2026-10-09: was
@@ -2129,9 +2050,9 @@ long-lived `cutover-code` branch (Task 2.0 Step 1) and merged at R11.
 **Rules for every task below.**
 - One commit per migration: the schema delta, `migration.sql`, `rollback.sql`,
   the code, the tests and the OpenAPI change together. Order of commits =
-  migration order; M5's and M10's commits (held for the owner's push
-  decision) are last so they can be dropped *(v1 parity 2026-10-09: was
-  "M14's and M17's commits are last")*.
+  migration order *(v1 parity 2026-10-09: was
+  "M14's and M17's commits are last")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "M5's and M10's commits (held for the owner's push decision) are last so they can be dropped")*.
 - Tests are written failing first, against the rehearsal copy
   (`DATABASE_URL="$REHEARSAL_DATABASE_URL"`), never against the shared
   database — the shared database does not have these columns until R10.
@@ -2274,7 +2195,7 @@ season.lateThresholdMinutes; lateBasis on check-in and attendance save")*.
 > `KEY_SYMBOLS` "number" row.
 - [ ] **Step 3: Run → PASS.** Commit with M3's folder.
 
-### Task 2b.4 — M4 consumers: producers write the entity, not a v1 path — **WITHDRAWN** (v1 parity 2026-10-09); the email "Open" button awaits the owner
+### Task 2b.4 — M4 consumers: producers write the entity, not a v1 path — **WITHDRAWN** (v1 parity 2026-10-09); the email "Open" button becomes an app link (owner decision 2026-10-10)
 
 **Withdrawn.** With M4 withdrawn (Task 2.4), producers keep writing v1's link
 shapes (`link: "/student/assignments/<id>"`, `QUIZ_GRADED_LINK`, …, ruling X1)
@@ -2284,28 +2205,69 @@ no `TO_COLUMN` table and no "no producer writes a path" grep *(v1 parity
 2026-10-09: was "producers write entityType/entityId and link: null; read from
 columns")*.
 
-**Awaiting owner — the notification email's "Open" button.** v1's
-notification email carries a "View in JPC Space" button and a paste-able link,
+**Resolved (owner 2026-10-10) — the notification email's "Open" button points
+at the app.** v1's notification email carries a "View in JPC Space" button
+and a paste-able link ("Or paste this link into your browser"), both
 `AUTH_URL` + the notification's `link`, when `AUTH_URL` is set
 (`jpc-space/src/lib/email.ts:142-143,149`; button markup `:66-73`). v2 builds
-the same today (`apps/backend/src/lib/email.ts:136-137`). After R21 that link
-points at v1's decommissioned web host, which is a broken flow. The two
-options, neither applied until the owner rules:
+the same today (`apps/backend/src/lib/email.ts:136-137`). After R14/R21 that
+URL is a v1 web page that no longer exists. v2 keeps v1's button, its label
+and the paste-able link (spec 10 R28), but builds the URL as an **app link to
+the notification's target** instead of `AUTH_URL + link`. Because M4 is
+withdrawn, the target is derived from the stored v1 link with the existing
+`parseNotificationLink` (`apps/backend/src/lib/notification-target.ts:37`),
+exactly as `GET /notifications` does *(v1 parity 2026-10-09; owner decision 2026-10-10: was "awaiting owner — drop the button (REG-38) or point it at the app")*.
 
-1. **Drop the button at cutover** (the earlier text of this task; register
-   REG-38): the call site passes no link,
-   `sendNotificationEmail(u.email, payload.title, payload.body ?? null, null)`,
-   and Plan 12's `buildNotificationHtml` already omits the button when the
-   link is null.
-2. **Keep v1's button, pointed at the app** (v1 parity, spec 10 R28): build
-   the URL from `parseNotificationLink(link)` as an app deep link / universal
-   link to the same destination, so "open the item from the email" survives.
-   Needs a universal-link host (see REG-10).
+**The app-link base is `config.authUrl` (`AUTH_URL`)** — no new config value.
+It is the public base URL whose host Plan 11 registers for https universal
+links (iOS `associatedDomains` + `apple-app-site-association`) and Android app
+links (`intentFilters` with `autoVerify` + `assetlinks.json`) in
+`apps/mobile/app.json` (Plan 11 Decision 8 and Task 11; its Revision row 3
+names the check-in QR `<AUTH_URL>/checkin/<token>`). The https form is used,
+not the `spacev2://` scheme: v1's paste-into-your-browser link has to be an
+https URL, and mail clients do not reliably make a custom scheme clickable.
+When `AUTH_URL` is unset, or the link parses to no target, there is no button
+(Plan 12's `buildNotificationHtml` already omits it for a null link), as v1
+omits it without `AUTH_URL`.
 
-> **v1 parity 2026-10-09:** until the owner chooses, `email.ts:136-137` is left
-> as it is; R9 records the choice.
+**Files:**
+- Modify: `packages/shared/src/notification.ts` — add
+  `notificationAppPath(target: NotificationTarget | null): string | null`, the
+  same six destinations as mobile's `routeForTarget`
+  (`apps/mobile/src/lib/notification-route.ts:27-44`): `/assignment/<id>`,
+  `/assignments`, `/quizzes`, `/calendar`, `/student/<id>`, `/students`.
+- Modify: `apps/backend/src/lib/email.ts:136-137` (`sendNotificationEmail`).
+- Modify: `apps/mobile/app.json` — widen Plan 11's universal/app-link path
+  list from `/checkin/*` to also cover `/assignment/*`, `/assignments`,
+  `/quizzes`, `/calendar`, `/student/*` and `/students` (and the host's
+  association files with it). expo-router resolves an incoming link by path,
+  so these open the same screens an inbox tap opens.
+- Tests: shared `notification-contracts.test.ts`; backend `email-html.test.ts`.
 
-### Task 2b.5 — M5 consumers: four new notification types, their preferences, and the push switch — **WITHDRAWN** (v1 parity 2026-10-09) except the push switch, held for the owner
+- [ ] **Step 1: Failing tests.** For each of v1's five link shapes
+  (`NOTIFICATION_LINK_PATTERNS`), `notificationAppPath(parseNotificationLink(link))`
+  is the path of the route `routeForTarget` returns for the same target; with
+  `AUTH_URL=https://host`, a `/student/assignments/42` notification renders
+  `https://host/assignment/42` as both the button `href` and the paste-able
+  link, labelled "View in JPC Space"; an unparseable link or an unset
+  `AUTH_URL` renders no button.
+- [ ] **Step 2: Implement.** In `sendNotificationEmail`:
+
+```ts
+  const appUrl = (config.authUrl ?? "").replace(/\/$/, "");
+  // v1: AUTH_URL + link (jpc-space src/lib/email.ts:142-143). v2: an app link
+  // to the same destination, derived from the stored v1 link (M4 is withdrawn).
+  const path = notificationAppPath(parseNotificationLink(link));
+  const viewLink = appUrl && path ? `${appUrl}${path}` : null;
+```
+
+- [ ] **Step 3: Run → PASS.** No migration is involved; commit it on
+  `cutover-code` so it merges at R11, which keeps v1's working web link in
+  the email while v1 still serves. The device checklist for the R16 app build
+  includes tapping a notification email's button on a phone with the app
+  installed.
+
+### Task 2b.5 — M5 consumers: four new notification types, their preferences, and the push switch — **WITHDRAWN** (v1 parity 2026-10-09); the push switch — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
 **Withdrawn.** The four new types' producers (submit → leaders, forum comment
 → author, essay attempt → graders, reopen → student), their `PREF_FIELD`
@@ -2315,23 +2277,11 @@ withdrawn with M5's types (Task 2.5): v1 sends none of these
 *(v1 parity 2026-10-09: was "four producers, PREF_FIELD entries, four toggles
 and a master switch")*.
 
-**Held for the owner (with M10).** Only the push master switch remains, and
-only if the owner grants push (Task 2.10):
-
-**Files:**
-- Modify: `packages/shared/src/notification.ts` (`notificationPreferencesSchema`,
-  `DEFAULT_NOTIFICATION_PREFERENCES` — add `pushEnabled`)
-- Modify: `apps/mobile/src/components/NotificationPreferences.tsx` (Plan 13
-  Task 9) — a "Push notifications" master switch
-- Tests: shared `notification.test.ts`,
-  `apps/mobile/src/__tests__/notification-preferences.test.tsx`
-
-- [ ] **Step 1: Failing tests.** The shared schema test's pinned key list gains
-  `pushEnabled`; the settings test finds the master switch by label.
-- [ ] **Step 2: Implement.** The mobile switch maps to `pushEnabled`, which
-  Task 2b.10's dispatcher reads. It ships in the app build released for R16,
-  only in the push variant.
-- [ ] **Step 3: Run → PASS.** Commit with M5's (`optional/`) folder.
+**The push master switch — withdrawn (owner decision 2026-10-10)** with M5's
+`pushEnabled` and M10 (Tasks 2.5, 2.10): no `pushEnabled` in
+`notificationPreferencesSchema` / `DEFAULT_NOTIFICATION_PREFERENCES`, no
+"Push notifications" master switch in `NotificationPreferences.tsx`, and the
+R16 app build carries none. Nothing is left in this task *(v1 parity 2026-10-09; owner decision 2026-10-10: was "held for the owner: the master switch, in the push variant only")*.
 
 ### Task 2b.7 — M7 consumers: `allDay`, event soft delete, cleanup order — **WITHDRAWN** (v1 parity 2026-10-09)
 
@@ -2357,79 +2307,15 @@ delete, role change, deactivate, reactivate or import, so there are no
 `AuditLog` rows and Plan 10's `lib/audit.ts` is not extended *(v1 parity
 2026-10-09: was "AuditLog row writes from 9 operations")*.
 
-### Task 2b.10 — M10 consumers: device registration and push dispatch
+### Task 2b.10 — M10 consumers: device registration and push dispatch — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
-> **v1 parity 2026-10-09 — awaiting owner.** Held with M10 (Task 2.10): v1
-> never sent push. This commit stays on `cutover-code` only if the owner grants
-> push as an explicit exception; otherwise it is dropped with M10.
-
-**Files:** Modify `apps/backend/src/routes/me.ts` (`POST /devices`, new
-`DELETE /devices/:token`); Create `apps/backend/src/lib/push.ts`; Modify
-`lib/notifications.ts` (call the dispatcher); `docs/openapi.ts`. Tests:
-`me-notifications-routes.test.ts` (Plan 13), new `__tests__/push.test.ts`.
-
-- [ ] **Step 1: Failing tests.** Plan 13's "answers 503 push_unavailable" case
-  becomes `200 { data: { registered: true } }` with a `DeviceToken` row
-  `platform: "IOS"`; a second user registering the same token moves it (one
-  row, new `userId`); `DELETE /me/devices/<token>` by another user deletes
-  nothing; `push.test.ts` mocks `global.fetch` and `db`, asserts one POST per
-  100 tokens, no call when `shouldPush(type)` is false or the user's
-  `pushEnabled` is false, and a `DeviceNotRegistered` ticket deletes that token.
-- [ ] **Step 2: Implement** the upsert and delete exactly as Plan 13's cutover
-  doc §1 gives them (`DEVICE_PLATFORM_TO_DB[parsed.data.platform]`;
-  `deleteMany({ where: { token, userId: user.userId } })`), and:
-
-```ts
-// apps/backend/src/lib/push.ts
-import { db } from "../db/client";
-import type { NotificationType } from "../generated/prisma/enums";
-import { shouldPush, type NotificationTarget } from "../../../../packages/shared/src/index";
-
-const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-const BATCH = 100;
-
-/** Best-effort Expo push. Never logs a token. Called behind bestEffort(). */
-export async function sendPush(
-  userIds: number[],
-  payload: { type: NotificationType; title: string; body?: string; target: NotificationTarget | null },
-): Promise<void> {
-  if (userIds.length === 0 || !shouldPush(payload.type)) return;
-  const off = new Set(
-    (await db.notificationPreference.findMany({
-      where: { userId: { in: userIds }, pushEnabled: false }, select: { userId: true },
-    })).map((p) => p.userId),
-  );
-  const tokens = (await db.deviceToken.findMany({
-    where: { userId: { in: userIds.filter((id) => !off.has(id)) } }, select: { token: true },
-  })).map((t) => t.token);
-
-  for (let i = 0; i < tokens.length; i += BATCH) {
-    const chunk = tokens.slice(i, i + BATCH);
-    const res = await fetch(EXPO_PUSH_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify(chunk.map((to) => ({ to, title: payload.title, body: payload.body, data: { target: payload.target } }))),
-    });
-    if (!res.ok) continue;
-    const json = (await res.json()) as { data?: { status: string; details?: { error?: string } }[] };
-    const dead = chunk.filter((_, k) => json.data?.[k]?.details?.error === "DeviceNotRegistered");
-    if (dead.length > 0) await db.deviceToken.deleteMany({ where: { token: { in: dead } } });
-  }
-}
-```
-
-  In `createNotificationsBulk`, after the mail fan-out:
-  `void bestEffort("push", () => sendPush(mailTargets, { type: payload.type, title: payload.title, body: payload.body, target: payload.target }));`
-  (`mailTargets` = targets minus per-type opt-outs — the same set mail uses).
-  OpenAPI: `POST /me/devices` → 200; add `DELETE /me/devices/{token}`.
-
-> **v1 parity 2026-10-09:** with Task 2b.4 withdrawn, `CreateNotificationInput`
-> keeps `link` and has no `target`; pass
-> `target: parseNotificationLink(payload.link ?? null)` (Plan 13
-> `lib/notification-target.ts`) to `sendPush` instead of `payload.target`.
-- [ ] **Step 3: Run → PASS.** Leak grep:
-  `grep -rn "console\.\|logger\." apps/backend/src/lib/push.ts apps/backend/src/routes/me.ts` → no line interpolates a token.
-  Commit with M10's folder. Update Plan 13's cutover doc with "Applied by Plan 18 M10".
+Withdrawn with M10 (Task 2.10): v1 never sent push, and the owner will build
+push later on Firebase. No `DeviceToken` upsert, no
+`DELETE /me/devices/:token`, no `apps/backend/src/lib/push.ts` Expo
+dispatcher, no call from `createNotificationsBulk`, and no "Applied by Plan 18
+M10" line in Plan 13's cutover doc (the doc is deleted). The existing
+`POST /me/devices` 503 stub does not go live; it is removed with Plan 13's
+push scaffolding (Plan 13 Revision 2026-10-09, row 7) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "upsert + delete + Expo dispatcher, held for the owner")*.
 
 ### Task 2b.12 — M12: the credential sweep script — **WITHDRAWN** (v1 parity 2026-10-09)
 
@@ -2538,9 +2424,9 @@ converting")*.
 ### Task 2b.18: Branch gate (coordinator)
 
 - [ ] `pnpm turbo lint typecheck test:unit build` green on `cutover-code`.
-- [ ] Full serial integration suite green against the rehearsal copy — twice:
-  with M5 + M10 and their Part 2b commits (the push variant), and without them
-  *(v1 parity 2026-10-09: was "with M14 + Task 2b.14, and without both")*.
+- [ ] Full serial integration suite green against the rehearsal copy
+  *(v1 parity 2026-10-09: was "with M14 + Task 2b.14, and without both")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "twice: with M5 + M10 and their Part 2b commits (the push variant), and without them")*.
 - [ ] After `pnpm --filter @space/backend build`, no emitted file requires the
   package by name (X12): `grep -rln 'require("@space/shared")' apps/backend/dist` → empty.
 - [ ] The branch SHA is recorded in `cutover-code.md` with the rehearsal date.
@@ -2692,9 +2578,9 @@ ones.
       with read-only mode present and **off** (Task 2.0b Step 6), and has been
       serving alongside v1: `curl -fsS "$V2_BASE_URL/health"` succeeds.
 - [ ] The mobile app build that R16 releases is built from `cutover-code`
-      (it carries Task 2b.5's push master switch only if the owner granted
-      push) and has passed the device checklist against the rehearsal backend
-      *(v1 parity 2026-10-09: was "Task 2b.5's preference toggles and Task 2b.16's hide action")*.
+      and has passed the device checklist against the rehearsal backend
+      *(v1 parity 2026-10-09: was "Task 2b.5's preference toggles and Task 2b.16's hide action")*
+      *(v1 parity 2026-10-09; owner decision 2026-10-10: was "it carries Task 2b.5's push master switch only if the owner granted push")*.
 
 ### R2 — Violating-row reports **[COORD]**
 
@@ -2823,20 +2709,15 @@ home. Rescheduling is cheap; a half-migrated shared database is not.**
 
 - [ ] Backup taken **and verified by restore** (R8).
 - [ ] v1 is confirmed quiescent; v2 answers writes with `503 read_only` (R5, R7).
-- [ ] The required set, and each optional migration being applied, was
+- [ ] The required set *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and each optional migration being applied")* was
       rehearsed on a fresh restore within the last 24 hours at the recorded
       `cutover-code` SHA, all verifications passing (R4).
 - [ ] The rollback procedure has been **executed** at least once (Task 2.18
       Step 6).
-- [ ] **Push decision, recorded (owner):** the owner grants push as an
-      explicit exception to v1 parity → `optional/` (M5 `pushEnabled`, M10)
-      is moved at R10 and Tasks 2b.5/2b.10 stay on the branch; or declines →
-      `optional/` is not moved, those two commits are reverted on the branch
-      and the branch is re-rehearsed **before** this gate (a revert after
-      rehearsal is a new SHA).
-- [ ] **Email "Open" button decision, recorded (owner):** drop it, or point it
-      at an app deep link (Task 2b.4).
-
+- ~~**Push decision, recorded (owner)**~~ and ~~**Email "Open" button decision,
+  recorded (owner)**~~ — both decided on 2026-10-10, so neither is a gate item:
+  push is withdrawn (Tasks 2.10, 2b.10), and the button is kept as an app link
+  (Task 2b.4) *(v1 parity 2026-10-09; owner decision 2026-10-10)*.
   *(v1 parity 2026-10-09: was "M4-unmapped-links no-go, M7 literal, M14 decision, M7 held-row list")*.
 - [ ] **No migration has been added to the set since the rehearsal** (D-13.17).
 - [ ] The user is present, and remains present, for R10 through R15.
@@ -2847,13 +2728,12 @@ home. Rescheduling is cheap; a half-migrated shared database is not.**
 
 From a checkout of `cutover-code` at the recorded SHA:
 
-- [ ] Move the **required** folders, and the two optional ones (M5, M10) only
-      if the owner granted push at R9 *(v1 parity 2026-10-09: was "the optional M14 folder")*:
+- [ ] Move the **required** folders *(v1 parity 2026-10-09: was "the optional M14 folder")*
+      *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and the two optional ones (M5, M10) only if the owner granted push at R9")*:
 
 ```bash
 cd apps/backend
 git mv prisma/migrations-cutover/required/* prisma/migrations/
-git mv prisma/migrations-cutover/optional/* prisma/migrations/   # ONLY if the owner granted push at R9 (M5 pushEnabled + M10)
 git commit -m "chore(db): move cutover migrations into prisma/migrations (Plan 18 R10)"
 ```
 
@@ -2900,7 +2780,7 @@ verifications"; the M7 per-row decisions with `VALIDATE CONSTRAINT` and the M17
 decision are withdrawn with M7 and M17.)*
 
 - [ ] **[COORD]** runs every verification query from the applied set (M1, M3,
-      M12, M13, and M5/M10 if moved) and compares to R4's recorded values. Any
+      M12, M13 — *v1 parity 2026-10-09; owner decision 2026-10-10: was "and M5/M10 if moved"*) and compares to R4's recorded values. Any
       material divergence is escalated **before** R14.
 - [ ] **[COORD]** produces the reconciliation figures for the user: the M3
       late-zero count, the before/after absence-budget deltas for five
@@ -2984,11 +2864,11 @@ Watch, do not change. Ship nothing but a fix for something on this list.
 | `503 read_only` responses | backend logs | any after R15 — the freeze did not lift |
 | Rows written per hour, per table | `pg_stat_user_tables` `n_tup_ins/upd` | any table at < 50% or > 200% of the pre-cutover hourly baseline |
 | `GroupStudent` unique violations | Postgres error log | any — the composite FK and unique should make them impossible |
-| Push registrations (only if the owner granted push) | `DeviceToken` row count | grows from zero; a flat zero after 48h means the client never reached the endpoint |
 | Backup freshness | backup job | anything other than daily and verified |
 
 *(v1 parity 2026-10-09: was "also null-entityType notifications, lateBasis UNKNOWN rows and AuditLog
 rows"; withdrawn with M4, M3's basis column and M9.)*
+*(v1 parity 2026-10-09; owner decision 2026-10-10: the "Push registrations — `DeviceToken` row count" metric is withdrawn with M10.)*
 
 - [ ] **Daily:** the table above *(v1 parity 2026-10-09: was "plus a scan of AuditLog")*.
 - [ ] **Daily:** confirm the automated backup ran **and restored**. The R8
@@ -3064,8 +2944,8 @@ contaminate its auth metrics, and so the soak measures one change at a time.
 - [ ] `_DECISIONS.md` gains a header noting that C1 was lifted on this date and
       which migrations discharged it (and that M6 and M11 were withdrawn, that
       M2, M4, M5's types, M7, M8, M9, M14, M15, M16 and M17 were withdrawn for
-      v1 parity on 2026-10-09, and whether the owner granted push — M5
-      `pushEnabled`, M10).
+      v1 parity on 2026-10-09, and that M5's `pushEnabled` and M10 were
+      withdrawn on 2026-10-10 because push will be built later on Firebase) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and whether the owner granted push")*.
 - [ ] The REG-69 follow-up is scheduled (drop `Attendance.lateMinutesLegacy`)
       *(v1 parity 2026-10-09: was "also drop Notification.link and the cutover_backup schema")*.
 
@@ -3214,10 +3094,12 @@ only to keep the rotation's 401 burst out of the soak's metrics.
 - **D-13.12 — Withdrawn (v1 parity 2026-10-09)** with M15 (it ruled M15
   backfills `pointsAwarded` but not `optionsSnapshot`).
 
-- **D-13.13 — The optional migrations are M5 (`pushEnabled`) and M10**, held
-  for the owner's push decision because v1 never sent push. They live in
-  `migrations-cutover/optional/`, sort last, and their code is in separate
-  commits *(v1 parity 2026-10-09: was "M14 is the only optional migration")*.
+- **D-13.13 — Withdrawn (owner decision 2026-10-10)**: there are no optional
+  migrations. M5's `pushEnabled` and M10 were the last two, held for the
+  owner's push decision; push will be built later on Firebase, so both are
+  withdrawn and `migrations-cutover/optional/` is not created
+  *(v1 parity 2026-10-09: was "M14 is the only optional migration")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "The optional migrations are M5 (`pushEnabled`) and M10")*.
 
 - **D-13.14 — Withdrawn (v1 parity 2026-10-09)** with M17: v1 keeps stored
   HTML and renders it sanitised (Task 2.17).
@@ -3270,12 +3152,10 @@ only to keep the rotation's 401 burst out of the soak's metrics.
       registered drop/deferral (Task 1.6's checks print nothing).
 - [ ] `UNVERIFIED` is zero.
 - [ ] **Every C1 deferral is discharged or registered.** Each required
-      migration is applied with its Part 2b code; M5/M10 are applied or
-      withdrawn on the owner's push decision; M6, M11 and the v1-parity
-      withdrawals are recorded; every "deferred to cutover" line in the eighteen specs and
+      migration is applied with its Part 2b code; M6, M11, M5/M10 (push,
+      owner 2026-10-10) and the v1-parity withdrawals are recorded *(v1 parity 2026-10-09; owner decision 2026-10-10: was "M5/M10 are applied or withdrawn on the owner's push decision")*; every "deferred to cutover" line in the eighteen specs and
       the seventeen other plans resolves to a migration or a register row.
-- [ ] `prisma/migrations-cutover/required/` is empty (and `optional/` too, or
-      holds only a declined M5/M10); `prisma/migrations/` holds v1's 18 plus the
+- [ ] `prisma/migrations-cutover/required/` is empty *(v1 parity 2026-10-09; owner decision 2026-10-10: was "(and `optional/` too, or holds only a declined M5/M10)")*; `prisma/migrations/` holds v1's 18 plus the
       applied set; `schema.prisma` on `main` matches the database
       (`migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`
       exits 0) *(v1 parity 2026-10-09: was "declined M14 … apart from CONSTRAINTS.md objects; CONSTRAINTS.md lists them")*.
@@ -3387,7 +3267,7 @@ path under `jpc-space/src/` unless it names `prisma/`. Rows marked
 |---|---|---|---|---|---|
 | REG-36 | DEFER | Notification retention (hard-delete read notifications older than 180 days, spec 10 D10) | Needs a scheduled job; v2 has no scheduler configured | Plan 13 cutover doc §3 | `lib/notifications.ts` (nothing deletes, R53) |
 | REG-37 | DIVERGE | The in-app notification row is always written; preferences govern email/push only | Spec 10 D4 | Plan 13 Task 2 | `lib/notifications.ts:56-96` (filters before insert, R8) |
-| REG-38 | DIVERGE | *(awaiting owner, v1 parity 2026-10-09)* Notification emails lose the "Open" button after cutover — or keep it, pointed at an app deep link (spec 10 R28) | The button linked `AUTH_URL` + a v1 web path; v1's web host is gone at R21 (Task 2b.4) | Task 2b.4 | `lib/email.ts:142-143,149` |
+| REG-38 | DIVERGE | *(resolved, owner 2026-10-10)* Notification emails keep v1's "View in JPC Space" button and paste-able link, built as an app link to the notification's target (`AUTH_URL` + the app path from `parseNotificationLink`) instead of `AUTH_URL` + the v1 web path (spec 10 R28) | v1's web host is gone at R21; the app link opens the same destination in the app (Task 2b.4) | Task 2b.4 | `lib/email.ts:66-73,142-143,149` |
 
 ### Plan 14 (video quizzes, forum, events)
 
@@ -3560,8 +3440,9 @@ migration restore v1, fix a genuine v1 defect, or add something v1 never had?).
 **Kept:** Task 2.0b read-only mode (platform), M1 + 2b.1 (C9 data loss), M3's
 recompute + `lateMinutesLegacy` (C3), 2b.3's numeric workbook cell (restores
 v1), M12's voiding of v1 plaintext invite codes (credential at rest), M13 +
-2b.13 (C7 stale-role hole); M6 and M11 stay withdrawn. **Held for the owner:**
-M10 + 2b.10 and M5's `pushEnabled` (push), the 2b.4 email "Open" button.
+2b.13 (C7 stale-role hole); M6 and M11 stay withdrawn. ~~**Held for the owner:**
+M10 + 2b.10 and M5's `pushEnabled` (push), the 2b.4 email "Open" button.~~
+Both decided by the owner on 2026-10-10 (rows 26 and 27, and "Resolved" below).
 **Withdrawn:** everything else, listed below. Parts 1 and 3 were trimmed to
 match (Task 2.0 folder list and `CONSTRAINTS.md`, Task 2.18's checks and
 equivalence script, R2/R9/R10/R12/R13/R17/R19/R21, RB-2, Decisions, Done means,
@@ -3594,13 +3475,19 @@ the register seed).
 | 23 | Plan 18 M16 + 2b.16 | — | no post hide; comment hard delete by author or season ADMIN/SUPER (`src/lib/forum-actions.ts:110-120`; `prisma/schema.prisma:513-537`) | none in Plan 18; flag the leader arm to Plan 14 | Task 2.16, 2b.16, R1 |
 | 24 | Plan 18 M17 + 2b.17 | REG-67 | stored HTML rendered as sanitised rich text (`src/components/ui/rich-text-view.tsx:1-11`) | none (never built) | Task 2.17, 2b.17, Task 2.0 Step 5, R12, RB-2, D-13.14, REG-67 |
 | 25 | `CONSTRAINTS.md` (knock-on of 16, 21) | — | — | delete `apps/backend/prisma/CONSTRAINTS.md` on `cutover-code` (`c917f60`) | Task 2.0 Files/Step 7, Task 2.18 Step 6, R11, D-13.9, Done means |
+| 26 | Plan 18 M10 + 2b.10; M5 `pushEnabled` + 2b.5 master switch | - | v1 never sent push: no device or push model (`prisma/schema.prisma`), no push code in `src/`; notifications are in-app plus email. Owner decision 2026-10-10: push will be built later on Firebase | none in Plan 18 (never built; `cutover-code` holds only `migrations-cutover/optional/.gitkeep` — delete it and the README's `optional/` sentence); the built Plan 13 scaffolding is listed in Plan 13's Revision row 7 | Architecture; "depends on" note; Prerequisites (cutover doc); What this plan is not; Part 2 intro; Task 2.0 Files, Steps 4, 6, 8 + note; Task 2.5 (withdrawn); Task 2.10 (withdrawn); Task 2.18 Steps 3, 4, Done for Part 2; Part 2b rules; Task 2b.5 (withdrawn); Task 2b.10 (withdrawn); Task 2b.18; R1; R9; R10; R12; R17 soak; R21; D-13.13; Done means |
+| 27 | 10-notifications R28 | REG-38 | "View in JPC Space" button + paste-able link, `AUTH_URL` + `link` (`src/lib/email.ts:66-73,142-143,149`). Owner decision 2026-10-10: keep it, pointed at the app | `apps/backend/src/lib/email.ts:136-137` (build `AUTH_URL` + `notificationAppPath(parseNotificationLink(link))`); new `notificationAppPath` in `packages/shared/src/notification.ts`; `apps/mobile/app.json` universal/app-link paths (Plan 11) | Task 2.4 last paragraph; Task 2b.4 (resolved, steps); R9; REG-38 seed row |
+
+**Resolved (owner 2026-10-10):**
+- Push (M10 + Task 2b.10, M5's `pushEnabled` + Task 2b.5's master switch) —
+  **withdrawn**: the owner will add notifications later with Firebase. Removed
+  from `optional/` (which is no longer created), R9, R10, R12, the R17 soak,
+  D-13.13 and Done means (row 26).
+- 10-notifications R28 / REG-38 — the notification email's "Open" button:
+  **kept, pointed at the app** — v1's "View in JPC Space" button and
+  paste-able link, built as `AUTH_URL` + the app path of the target that
+  `parseNotificationLink` derives (Task 2b.4, row 27).
 
 **Awaiting owner (not changed):**
-- Push (M10 + Task 2b.10, M5's `pushEnabled` + Task 2b.5's master switch) — v1
-  never sent push; classified not-v1, but a mobile app without push is a product
-  call. Held in `optional/`; decided at R9 (Task 2.10).
-- 10-notifications R28 / REG-38 — the notification email's "Open" button: drop
-  it at cutover, or keep v1's button pointed at an app deep link (Task 2b.4).
-  Decided at R9.
 - 11-invites-users R52b / REG-104 — applied (Task 2b.P Step 7), but the register
   marked REG-104 "fix before cutover"; the owner should confirm.
