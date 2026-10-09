@@ -4,7 +4,6 @@ import type {
   StudentDetailInternal,
   StudentDetailPrivate,
   StudentDetailPublic,
-  StudentDocumentItem,
   StudentListItem,
   StudentListQuery,
   StudentSubmissionItem,
@@ -14,7 +13,7 @@ import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { isLate } from "./assignments";
-import { canReadAllStudents, isMentor, isSuper } from "../rbac";
+import { canReadAllStudents, isAdminOfSeason, isMentor, isSuper } from "../rbac";
 
 export interface StudentListResult {
   students: StudentListItem[];
@@ -30,12 +29,12 @@ type StudentScope = { kind: "all" } | { kind: "ids"; ids: number[] };
  * SUPER and MENTOR read all (canReadAllStudents). ADMIN gets the distinct
  * students EVER enrolled in their seasons, regardless of enrollment status —
  * v1's semantics (R30/R31), kept: the list answers "ever mine", not
- * "currently mine".
+ * "currently mine". LEADER gets the distinct students whose ENROLLMENT names
+ * one of their groups — ruling C9; v1's (unreachable — no leader list page
+ * ever existed, R28) branch read GroupStudent instead, which forgets a
+ * leader's students the moment a later season reassigns them.
  *
- * null = this caller has no student-list surface at all → 403. That is
- * STUDENT and LEADER: v1 had no leader students list (06-students R28, no
- * `src/app/leader/students/page.tsx`) — a leader reaches their students
- * through My groups and the detail page (v1 parity 2026-10-09).
+ * null = this caller has no student-list surface at all (STUDENT) → 403.
  */
 async function studentListScope(user: SessionUser): Promise<StudentScope | null> {
   if (canReadAllStudents(user)) return { kind: "all" };
@@ -43,6 +42,15 @@ async function studentListScope(user: SessionUser): Promise<StudentScope | null>
     if (user.seasonAdminIds.length === 0) return { kind: "ids", ids: [] };
     const enrollments = await db.seasonEnrollment.findMany({
       where: { seasonId: { in: user.seasonAdminIds } },
+      select: { studentUserId: true },
+      distinct: ["studentUserId"],
+    });
+    return { kind: "ids", ids: enrollments.map((e) => e.studentUserId) };
+  }
+  if (user.role === "LEADER") {
+    if (user.groupLeaderIds.length === 0) return { kind: "ids", ids: [] };
+    const enrollments = await db.seasonEnrollment.findMany({
+      where: { groupId: { in: user.groupLeaderIds } },
       select: { studentUserId: true },
       distinct: ["studentUserId"],
     });
@@ -188,9 +196,9 @@ export async function listStudents(
       // are the same table filtered on the same column.
       { graduationYear: query.status === "alumni" ? { not: null } : null },
       ...(scope.kind === "ids" ? [{ id: { in: scope.ids } }] : []),
-      // v1's season select filtered on the season the row DISPLAYS — the
-      // student's active season (06-students R35; v1 parity 2026-10-09).
-      ...(query.seasonId ? [{ studentProfile: { activeSeasonId: query.seasonId } }] : []),
+      // Season filter through enrollments, any status (C9; matches the ADMIN
+      // scope's "ever enrolled" meaning).
+      ...(query.seasonId ? [{ seasonEnrollments: { some: { seasonId: query.seasonId } } }] : []),
       // REG-82: v1's group select filtered on the group the row displays, i.e.
       // the advisory GroupStudent pointer; "none" is its "Unassigned".
       ...(query.groupId === undefined
@@ -198,29 +206,9 @@ export async function listStudents(
         : query.groupId === "none"
           ? [{ groupStudentMembership: { is: null } }]
           : [{ groupStudentMembership: { groupId: query.groupId } }]),
-      // No search on the alumni list (06-students R41).
-      ...(query.status === "alumni" ? [] : [searchFilter(query.q)]),
+      searchFilter(query.q),
     ],
   };
-
-  // v1's alumni list shows every alumnus at once, with no search and no
-  // paging (06-students R41; v1 parity 2026-10-09): `q`, `limit` and `cursor`
-  // are ignored for it.
-  if (query.status === "alumni") {
-    if (query.sort !== undefined && query.sort !== "name") {
-      return listByRelatedSort(where, query.sort, query.dir, {
-        ...query,
-        cursor: undefined,
-        limit: Number.MAX_SAFE_INTEGER,
-      });
-    }
-    const rows = await db.user.findMany({
-      where,
-      orderBy: columnOrderBy(query),
-      select: LIST_SELECT,
-    });
-    return { students: rows.map(toListItem), nextCursor: null, total: rows.length };
-  }
 
   if (query.sort !== undefined && query.sort !== "name") {
     return listByRelatedSort(where, query.sort, query.dir, query);
@@ -314,42 +302,49 @@ async function listDroppedEnrollments(
 
 /**
  * Which of a student's enrolments a caller may read attendance and submissions
- * for (REG-83). v1 showed any staff viewer who passed canViewStudent the
- * student's whole record across EVERY enrolled season (06-students R73/R77,
- * `students-query.ts:323-385`; v1 parity 2026-10-09), so every staff role
- * reads every season here. The caller has already passed canViewStudent. A
- * STUDENT has no such surface, themselves included.
+ * for (REG-83). The same rows each underlying gate admits: SUPER and MENTOR
+ * read every season; an ADMIN the seasons they administer (canViewSubmission,
+ * attendanceScopeFor); a LEADER the seasons whose ENROLLMENT names one of their
+ * groups (ruling C9). Narrower than the detail's enrolment list on purpose — an
+ * ADMIN may see that a student attended another season, not what they handed in.
+ * A STUDENT has no such surface, themselves included.
  */
-function canReadEnrollmentHistory(user: SessionUser): boolean {
-  return user.role !== "STUDENT";
+function canReadEnrollmentHistory(
+  user: SessionUser,
+  e: { seasonId: number; groupId: number | null },
+): boolean {
+  if (isSuper(user) || isMentor(user)) return true;
+  if (user.role === "ADMIN") return isAdminOfSeason(user, e.seasonId);
+  if (user.role === "LEADER") return e.groupId !== null && user.groupLeaderIds.includes(e.groupId);
+  return false;
 }
 
 /** The season ids of this student's enrolments the caller may read history for. */
 async function readableSeasonIds(user: SessionUser, studentUserId: number): Promise<number[]> {
-  if (!canReadEnrollmentHistory(user)) return [];
   const enrollments = await db.seasonEnrollment.findMany({
     where: { studentUserId },
-    select: { seasonId: true },
+    select: { seasonId: true, groupId: true },
   });
-  return enrollments.map((e) => e.seasonId);
+  return enrollments.filter((e) => canReadEnrollmentHistory(user, e)).map((e) => e.seasonId);
 }
 
 /**
  * Per-enrolment attendance % in two queries (v1 ran two per enrolment, R76).
- * The formula is Plan 12's engagement one, so the history figure and the
- * dashboard figure for the same season agree: past sessions from the student's
- * own enrolment date; PRESENT and LATE both count.
+ * v1's formula (students-query.ts:346-358; 06-students R74): PRESENT + LATE
+ * over every started session of the season — no enrolment-date cut (that cut
+ * belongs to the engagement score only, Plan 12 ledger row 13). The numerator
+ * counts only those same started sessions, so it cannot exceed 100% (C5).
  */
 async function attendancePctByEnrollment(
   studentUserId: number,
-  enrollments: { id: number; seasonId: number; enrolledAt: Date }[],
+  enrollments: { id: number; seasonId: number }[],
 ): Promise<Map<number, number>> {
   const result = new Map<number, number>();
   if (enrollments.length === 0) return result;
 
   const sessions = await db.session.findMany({
     where: { seasonId: { in: enrollments.map((e) => e.seasonId) }, startsAt: { lte: new Date() } },
-    select: { id: true, seasonId: true, startsAt: true },
+    select: { id: true, seasonId: true },
   });
   const present = new Set(
     (
@@ -365,9 +360,7 @@ async function attendancePctByEnrollment(
   );
 
   for (const e of enrollments) {
-    const eligible = sessions.filter(
-      (x) => x.seasonId === e.seasonId && x.startsAt.getTime() >= e.enrolledAt.getTime(),
-    );
+    const eligible = sessions.filter((x) => x.seasonId === e.seasonId);
     const attended = eligible.filter((x) => present.has(x.id)).length;
     result.set(e.id, eligible.length > 0 ? Math.round((attended / eligible.length) * 100) : 0);
   }
@@ -411,10 +404,10 @@ export async function loadStudentAttendanceHistory(
 }
 
 /**
- * `GET /students/:id/submissions` — newest first across every enrolled season,
- * DRAFT rows included, as v1's student record listed them (06-students R77,
- * `students-query.ts:361-385`; v1 parity 2026-10-09). Only explicitly saved
- * drafts exist in v2 (view-created drafts are gone, 08 R58).
+ * `GET /students/:id/submissions` — newest first across readable seasons.
+ * Never a DRAFT: that is the student's private work in progress, hidden from
+ * every reviewer surface (the queue, canReviewSubmission's callers), and v1's
+ * list showing it was the same leak by another door.
  */
 export async function loadStudentSubmissions(
   user: SessionUser,
@@ -425,6 +418,7 @@ export async function loadStudentSubmissions(
   const rows = await db.submission.findMany({
     where: {
       studentUserId,
+      status: { not: "DRAFT" },
       assignment: { seasonId: { in: seasonIds }, deletedAt: null },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -455,25 +449,6 @@ export async function loadStudentSubmissions(
     reviewedAt: r.reviewedAt?.toISOString() ?? null,
     seasonId: r.assignment.seasonId,
     seasonTitle: r.assignment.season.title,
-  }));
-}
-
-/**
- * `GET /students/:id/documents` — v1's read-only list (06-students R80):
- * name, size, MIME type, upload time, newest first. Never the storage path.
- */
-export async function loadStudentDocuments(studentUserId: number): Promise<StudentDocumentItem[]> {
-  const rows = await db.studentDocument.findMany({
-    where: { studentUserId },
-    orderBy: [{ uploadedAt: "desc" }, { id: "desc" }],
-    select: { id: true, originalName: true, sizeBytes: true, mimeType: true, uploadedAt: true },
-  });
-  return rows.map((d) => ({
-    id: d.id,
-    originalName: d.originalName,
-    sizeBytes: d.sizeBytes,
-    mimeType: d.mimeType,
-    uploadedAt: d.uploadedAt.toISOString(),
   }));
 }
 
@@ -553,16 +528,16 @@ export async function loadStudentDetail(
     },
   });
 
-  // Every admitted role sees every enrolment row, as v1's leader detail did
-  // (06-students R71, `leader/students/[id]/page.tsx:35-42`; v1 parity
-  // 2026-10-09).
-  const scoped = enrollments;
+  // LEADER sees only the rows naming one of their groups (§7's "scoped
+  // season rows"); every other admitted role sees the full history.
+  const scoped =
+    user.role === "LEADER"
+      ? enrollments.filter((e) => e.groupId !== null && user.groupLeaderIds.includes(e.groupId))
+      : enrollments;
 
-  // REG-83: the percentage is a staff figure; the subject's own view carries null.
-  const pctByEnrollment =
-    view === "private" || !canReadEnrollmentHistory(user)
-      ? new Map<number, number>()
-      : await attendancePctByEnrollment(studentUserId, scoped);
+  // v1 (students-query.ts:346-358,452; 06-students R74): every season row
+  // the viewer sees carries its attendance %, the subject's own view included.
+  const pctByEnrollment = await attendancePctByEnrollment(studentUserId, scoped);
 
   const history: EnrollmentHistoryItem[] = scoped.map((e) => ({
     enrollmentId: e.id,

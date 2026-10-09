@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Linking, Pressable, View } from "react-native";
+import { Alert, Linking, Pressable, Switch, View } from "react-native";
 import {
   dateOnlyFromIso,
   type EnrollmentHistoryItem,
@@ -271,7 +271,8 @@ function NoteCard({ item }: { item: NoteSummary }) {
     <Card style={{ marginTop: theme.spacing.sm }}>
       <Text variant="body">{item.body}</Text>
       <Text variant="label" color={theme.colors.neutral[600]}>
-        {`${item.authorName} · ${formatDate(item.createdAt)}`}
+        {/* The server's org-day, so every reader sees one date, as v1 (R90). */}
+        {`${item.authorName} · ${formatDayKey(item.createdDayKey)}`}
       </Text>
       <Text variant="caption" color={theme.colors.neutral[600]}>
         {VISIBILITY_LABEL[item.visibility]}
@@ -301,6 +302,8 @@ function NoteComposer({ studentId }: { studentId: number }) {
   const theme = useTheme();
   const [body, setBody] = useState("");
   const [visibility, setVisibility] = useState<NoteVisibility>("LEADERS");
+  // v1's "Flag for admin follow-up" checkbox (note-form.tsx:29,75-98; R12).
+  const [followUp, setFollowUp] = useState(false);
   const create = useCreateNote(studentId);
 
   return (
@@ -331,16 +334,27 @@ function NoteComposer({ studentId }: { studentId: number }) {
           onPress={() => setVisibility(v)}
         />
       ))}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm }}>
+        <Switch
+          accessibilityLabel="Flag for admin follow-up"
+          value={followUp}
+          onValueChange={setFollowUp}
+        />
+        <Text variant="body">Flag for admin follow-up</Text>
+      </View>
       <Button
         title="Save note"
         loading={create.isPending}
         onPress={() => {
           if (body.trim().length < 2) return;
           create.mutate(
-            // followUpFlagged is sent explicitly rather than omitted so the
-            // request shape matches the contract's default exactly.
-            { body: body.trim(), visibility, followUpFlagged: false },
-            { onSuccess: () => setBody("") },
+            { body: body.trim(), visibility, followUpFlagged: followUp },
+            {
+              onSuccess: () => {
+                setBody("");
+                setFollowUp(false);
+              },
+            },
           );
         }}
       />

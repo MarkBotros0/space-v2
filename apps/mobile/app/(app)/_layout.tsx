@@ -4,8 +4,10 @@ import { ALL_NAV_HREFS } from "@space/shared";
 
 import { NavIcon } from "../../src/components/NavIcon";
 import { AppTopBar } from "../../src/components/UserMenu";
+import { NotificationBell } from "../../src/components/NotificationBell";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { useSessionStore } from "../../src/store/session";
+import { ScreenHeaderContext } from "../../src/ui";
 
 /**
  * Hrefs whose route is a directory (`x/index.tsx`) because the destination
@@ -127,10 +129,12 @@ export default function AppLayout() {
   ];
 
   // v1's top bar with the avatar/user menu on every screen, for every role
-  // (18-settings R9/R10, REG-16; Plan 11 Decision 2). The navigator's own
+  // (18-settings R9/R10, REG-16; Plan 11 Decision 2), and the bell on every
+  // screen (app-shell.tsx:55-57; 10-notifications R36): `Screen` renders it. The navigator's own
   // header stays off: AppTopBar owns the top inset.
   return (
     <AppTopBar>
+      <ScreenHeaderContext.Provider value={<NotificationBell />}>
       <Tabs screenOptions={{ headerShown: false }}>
         {orderedRouteNames.map((name) => {
           const tab = tabByRouteName.get(name);
@@ -152,6 +156,7 @@ export default function AppLayout() {
           );
         })}
       </Tabs>
+      </ScreenHeaderContext.Provider>
     </AppTopBar>
   );
 }

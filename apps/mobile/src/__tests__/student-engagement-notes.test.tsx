@@ -74,6 +74,7 @@ const note = {
   visibility: "LEADERS" as const,
   followUpFlagged: false,
   createdAt: "2099-03-01T18:00:00.000Z",
+  createdDayKey: "2099-03-02",
   updatedAt: "2099-03-01T18:00:00.000Z",
   edited: false,
   authorId: 1,
@@ -205,6 +206,33 @@ describe("student detail — notes", () => {
         followUpFlagged: false,
       }),
     );
+  });
+
+  it("sends the 'Flag for admin follow-up' toggle's value (v1 note-form.tsx; R12)", async () => {
+    mockAllEndpoints();
+    post.mockResolvedValue({ data: { data: { note } } });
+
+    renderWithProviders(<StudentDetailScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText("New note"), "space-v2-test flagged");
+    fireEvent(screen.getByLabelText("Flag for admin follow-up"), "valueChange", true);
+    fireEvent.press(screen.getByText("Save note"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/students/21/notes", {
+        body: "space-v2-test flagged",
+        visibility: "LEADERS",
+        followUpFlagged: true,
+      }),
+    );
+  });
+
+  it("dates a note with the server's org-day, not the device zone (R90)", async () => {
+    mockAllEndpoints();
+
+    renderWithProviders(<StudentDetailScreen />);
+
+    expect(await screen.findByText("Test super · Mar 2, 2099")).toBeTruthy();
   });
 
   it("warns, in the composer, that the audience is exactly one staff group", async () => {

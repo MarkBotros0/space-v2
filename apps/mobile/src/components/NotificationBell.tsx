@@ -9,9 +9,9 @@ import { NavIcon } from "./NavIcon";
 /**
  * The inbox's entry point and its badge.
  *
- * The tab shell has no header (`(app)/_layout.tsx` sets `headerShown: false`)
- * and every role's five tab slots are taken, so this sits on the dashboard —
- * the one href present in all six navs' `tabs`. Spec D3.
+ * Rendered at the top of every screen under the tab shell for every role —
+ * `(app)/_layout.tsx` provides it as the `Screen` header — as v1's app shell
+ * (app-shell.tsx:55-57; R36).
  *
  * The count comes from its own endpoint on a slow poll, not from a list fetch
  * and not from `GET /me` (spec D11): v1 paid for eight rows plus a count on

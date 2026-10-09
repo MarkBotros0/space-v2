@@ -1,5 +1,4 @@
 import {
-  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -10,34 +9,27 @@ import {
   notificationListResponseSchema,
   notificationPreferencesResponseSchema,
   unreadCountResponseSchema,
-  type NotificationItem,
   type NotificationPreferences,
+  type NotificationPreferencesUpdate,
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
-export type MarkReadInput = { ids: number[] } | { all: true };
+export type MarkReadInput = { all: true };
 
 /**
- * The inbox, paginated.
- *
- * v1 had no cursor and truncated at 100 rows with an unread count computed
- * over those rows, so past 100 the header was simply wrong (R33, R37, R39).
- * On a phone this is a FlatList and paging is not optional.
+ * The inbox: v1's one list of the newest 100 (notifications-page.tsx:14-27;
+ * R33, R39). No cursor, no unread filter. The unread count is a real count
+ * from the server, not a filter over the 100 rows.
  */
-export function useNotifications(unreadOnly = false) {
-  return useInfiniteQuery({
-    queryKey: queryKeys.notifications.list(unreadOnly),
-    initialPageParam: undefined as number | undefined,
-    queryFn: async ({ pageParam }) => {
-      const params = new URLSearchParams({ limit: "20" });
-      if (unreadOnly) params.set("unreadOnly", "true");
-      if (pageParam !== undefined) params.set("cursor", String(pageParam));
-      const res = await apiClient.get(`/api/v1/notifications?${params.toString()}`);
+export function useNotifications() {
+  return useQuery({
+    queryKey: queryKeys.notifications.list(),
+    queryFn: async () => {
+      const res = await apiClient.get("/api/v1/notifications");
       return notificationListResponseSchema.parse(res.data.data);
     },
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
 }
 
@@ -65,12 +57,8 @@ export function useUnreadCount(): UseQueryResult<number> {
  * Marking read is an explicit write, called from a user action — never from a
  * `useEffect` keyed on query data (ruling C6, spec D2).
  *
- * v1 changed read state from exactly one control and never on open (R48, R49).
- * Mobile users expect mark-on-open, which is a new write on a screen React
- * Query refetches on mount, on focus and on reconnect; wiring it to the query
- * resolving would fire it on every one of those. The endpoint is idempotent
- * (its `readAt: null` filter), which is what makes a repeat free rather than a
- * second timestamp.
+ * v1 changed read state from exactly one control — "Mark all read" — and
+ * never on open (R47, R48, R49); v2 does the same.
  */
 export function useMarkRead() {
   const queryClient = useQueryClient();
@@ -99,9 +87,9 @@ export function useNotificationPreferences(): UseQueryResult<NotificationPrefere
 export function useUpdateNotificationPreferences() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (preferences: NotificationPreferences) => {
-      // PUT with all six keys — the contract has no partial form, which is
-      // what keeps a client from silently leaving a key at its default.
+    mutationFn: async (preferences: NotificationPreferencesUpdate) => {
+      // PUT with v1's five keys (settings-actions.ts:58-73) — quizGraded is
+      // not settable in v1 and is never sent.
       const res = await apiClient.put("/api/v1/me/notification-preferences", preferences);
       return notificationPreferencesResponseSchema.parse(res.data.data).preferences;
     },
@@ -111,7 +99,8 @@ export function useUpdateNotificationPreferences() {
       const key = queryKeys.notifications.preferences();
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<NotificationPreferences>(key);
-      queryClient.setQueryData(key, next);
+      // The cache holds all six stored keys; keep quizGraded as it was.
+      if (previous) queryClient.setQueryData<NotificationPreferences>(key, { ...previous, ...next });
       return { previous };
     },
     onError: (_err, _next, context) => {
@@ -124,11 +113,4 @@ export function useUpdateNotificationPreferences() {
       queryClient.setQueryData(queryKeys.notifications.preferences(), preferences);
     },
   });
-}
-
-/** Flattened pages, for a FlatList's `data`. */
-export function flattenNotifications(
-  pages: { items: NotificationItem[] }[] | undefined,
-): NotificationItem[] {
-  return (pages ?? []).flatMap((p) => p.items);
 }

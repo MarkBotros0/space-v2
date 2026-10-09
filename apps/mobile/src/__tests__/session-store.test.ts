@@ -61,10 +61,4 @@ describe("session store", () => {
   it("has no nav when anonymous", () => {
     expect(useSessionStore.getState().nav()).toBeNull();
   });
-
-  it("drops the push token on clear", () => {
-    useSessionStore.setState({ pushToken: "ExponentPushToken[abc]" });
-    useSessionStore.getState().clear();
-    expect(useSessionStore.getState().pushToken).toBeNull();
-  });
 });

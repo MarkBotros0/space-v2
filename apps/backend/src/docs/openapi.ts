@@ -815,13 +815,16 @@ export const openApiDocument = {
           quizGraded: { type: "boolean" },
         },
       },
-      DeviceRegistration: {
+      NotificationPreferencesUpdate: {
         type: "object",
-        required: ["token", "platform"],
-        additionalProperties: false,
+        required: ["assignmentCreated", "submissionReviewed", "sessionRescheduled", "lowAttendanceFlag", "mentorFollowup"],
+        description: "v1's five settable keys. `quizGraded` is not settable (as in v1); if sent it is stripped and the stored value is left untouched.",
         properties: {
-          token: { type: "string", minLength: 1, maxLength: 200, description: "Expo push token. A credential; never log it." },
-          platform: { type: "string", enum: ["ios", "android"] },
+          assignmentCreated: { type: "boolean" },
+          submissionReviewed: { type: "boolean" },
+          sessionRescheduled: { type: "boolean" },
+          lowAttendanceFlag: { type: "boolean" },
+          mentorFollowup: { type: "boolean" },
         },
       },
       EngagementScore: {
@@ -888,13 +891,14 @@ export const openApiDocument = {
       },
       NoteSummary: {
         type: "object",
-        required: ["id", "body", "visibility", "followUpFlagged", "createdAt", "updatedAt", "edited", "authorId", "authorName", "authorRole", "seasonId", "seasonTitle", "canEdit"],
+        required: ["id", "body", "visibility", "followUpFlagged", "createdAt", "createdDayKey", "updatedAt", "edited", "authorId", "authorName", "authorRole", "seasonId", "seasonTitle", "canEdit"],
         properties: {
           id: { type: "integer" },
           body: { type: "string", description: "PLAIN TEXT, never HTML. The column holds v1's TipTap HTML; the API strips it on read." },
           visibility: { $ref: "#/components/schemas/NoteVisibility" },
           followUpFlagged: { type: "boolean" },
           createdAt: { type: "string", format: "date-time" },
+          createdDayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-timezone calendar day of createdAt (ruling X13; v1 rendered note dates on the server so every reader saw one date, 09-notes R90). Display this, not createdAt in the device zone." },
           updatedAt: { type: "string", format: "date-time" },
           edited: { type: "boolean", description: "Server-derived: updatedAt is more than a second after createdAt." },
           authorId: { type: "integer" },
@@ -3518,7 +3522,7 @@ export const openApiDocument = {
         tags: ["Notes"],
         summary: "Write a note about a student",
         description:
-          "Writer gate, independent of the read path: SUPER and MENTOR for any student; ADMIN if the student is enrolled in a season they administer; LEADER if the student's `SeasonEnrollment.groupId` is a group they lead; STUDENT never (including about themselves). `body` is **plain text in both directions**: the API escapes and paragraph-wraps it for storage (the column is still rendered raw by v1) and strips tags on read, so no live markup is ever stored or returned. `visibility` and `followUpFlagged` are immutable after creation. `authorUserId` always comes from the session. `seasonId` is optional; omitted, it defaults to the student's most recent ACTIVE enrollment, and when given it must be a season the student is enrolled in (`400 season_not_enrolled`). A flagged note notifies that season's admins (`MENTOR_FOLLOWUP`); the notification **deliberately carries no excerpt of the note** (title and link only), and a notification failure never fails the write.",
+          "Writer gate, independent of the read path: SUPER and MENTOR for any student; ADMIN only if the student's `StudentProfile.activeSeasonId` is a season they administer (none → 403, as v1); LEADER if the student's `SeasonEnrollment.groupId` is a group they lead; STUDENT never (including about themselves). `body` is **plain text in both directions**: the API escapes and paragraph-wraps it for storage (the column is still rendered raw by v1) and strips tags on read, so no live markup is ever stored or returned. `visibility` and `followUpFlagged` are immutable after creation. `authorUserId` always comes from the session. `seasonId` is optional; omitted, it defaults to the student's `StudentProfile.activeSeasonId` (null when unset, as v1), and when given it must be a season the student is enrolled in (`400 season_not_enrolled`). A flagged note notifies that season's admins (`MENTOR_FOLLOWUP`); the notification **deliberately carries no excerpt of the note** (title and link only), and a notification failure never fails the write.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -3598,26 +3602,19 @@ export const openApiDocument = {
         tags: ["Notifications"],
         summary: "The caller's notification inbox, newest first",
         description:
-          "Returns only the caller's own rows (the user id comes from the token, never a parameter). **Performs no write** — it never marks anything read, however often the client refetches (ruling C6); use `POST /notifications/read`. Ordered by id descending; `nextCursor` is the id of the last row of the page, or null at the end. `unreadCount` is a real count over all of the caller's unread rows, not a filter over the page. `target` is derived from the stored v1 link in one server-side function.",
-        parameters: [
-          { name: "cursor", in: "query", required: false, schema: { type: "integer", minimum: 1 }, description: "`nextCursor` of the previous page." },
-          { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
-          { name: "unreadOnly", in: "query", required: false, schema: { type: "string", enum: ["true", "false"], default: "false" } },
-        ],
+          "Returns only the caller's own rows (the user id comes from the token, never a parameter). **Performs no write** — it never marks anything read, however often the client refetches (ruling C6); use `POST /notifications/read`. One list of the newest 100 rows, createdAt descending (id descending as the tie-break), as v1 — no cursor, no paging and no read-state filter; the endpoint takes no query parameters. `unreadCount` is a real count over all of the caller's unread rows, not a filter over the page. `target` is derived from the stored v1 link in one server-side function.",
         responses: {
           200: ok(
             {
               type: "object",
-              required: ["items", "nextCursor", "unreadCount"],
+              required: ["items", "unreadCount"],
               properties: {
-                items: { type: "array", items: { $ref: "#/components/schemas/Notification" } },
-                nextCursor: { type: ["integer", "null"] },
+                items: { type: "array", maxItems: 100, items: { $ref: "#/components/schemas/Notification" } },
                 unreadCount: { type: "integer", minimum: 0 },
               },
             },
-            "One page of the inbox.",
+            "The newest 100 notifications.",
           ),
-          400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
         },
       },
@@ -3639,28 +3636,18 @@ export const openApiDocument = {
     "/api/v1/notifications/read": {
       post: {
         tags: ["Notifications"],
-        summary: "Mark notifications read (the explicit write)",
+        summary: "Mark all notifications read (the explicit write)",
         description:
-          "Body is exactly one of `{ ids: number[] }` (1–200) or `{ all: true }`; both together, an empty `ids`, or any other key (including `userId`) is `400 bad_request`. **`ids` is not an ownership assertion**: the update is scoped to the caller's own unread rows, so another user's id updates nothing and counts as zero. Idempotent — already-read rows are skipped and keep their original `readAt`; `marked` is the number of rows this call changed.",
+          "Body is exactly `{ all: true }` — mark-all is the only read write, as in v1 (opening a notification leaves it unread). Any other key (`ids`, `userId`, …) is `400 bad_request`. The update is scoped to the caller's own unread rows (the user id comes from the token). Idempotent — already-read rows are skipped and keep their original `readAt`; `marked` is the number of rows this call changed.",
         requestBody: {
           required: true,
           content: {
             "application/json": {
               schema: {
-                oneOf: [
-                  {
-                    type: "object",
-                    required: ["ids"],
-                    additionalProperties: false,
-                    properties: { ids: { type: "array", minItems: 1, maxItems: 200, items: { type: "integer", minimum: 1 } } },
-                  },
-                  {
-                    type: "object",
-                    required: ["all"],
-                    additionalProperties: false,
-                    properties: { all: { type: "boolean", enum: [true] } },
-                  },
-                ],
+                type: "object",
+                required: ["all"],
+                additionalProperties: false,
+                properties: { all: { type: "boolean", enum: [true] } },
               },
             },
           },
@@ -3680,7 +3667,7 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "Your notification preferences (all six)",
         description:
-          "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email now, push at cutover); the in-app inbox row is always written.",
+          "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. As in v1, one switch governs every channel: an opted-out user gets neither the in-app row nor the email.",
         responses: {
           200: ok(
             { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
@@ -3693,10 +3680,10 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "Replace your notification preferences",
         description:
-          "PUT, not PATCH: the body must carry all six keys, so a partial body is `400 bad_request`. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
+          "PUT, not PATCH: the body must carry v1's five settable keys, so a partial body is `400 bad_request`. `quizGraded` is not settable (as in v1): if sent it is stripped and the stored value stays. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
         requestBody: {
           required: true,
-          content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferences" } } },
+          content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferencesUpdate" } } },
         },
         responses: {
           200: ok(
@@ -3708,29 +3695,12 @@ export const openApiDocument = {
         },
       },
     },
-    "/api/v1/me/devices": {
-      post: {
-        tags: ["Me"],
-        summary: "Register this device for push (blocked on cutover)",
-        description:
-          "The request body is validated, then the endpoint answers `503 push_unavailable`: Expo push needs a device-token table, the database schema is frozen while v1 runs against it, and the table lands at cutover (see docs/superpowers/cutover/2026-08-24-notifications-push.md). The contract is fixed now so the client is built once; the client keeps the token locally and stops retrying this session.",
-        requestBody: {
-          required: true,
-          content: { "application/json": { schema: { $ref: "#/components/schemas/DeviceRegistration" } } },
-        },
-        responses: {
-          400: errRef("BadRequest"),
-          401: errRef("Unauthorized"),
-          503: conflict("`push_unavailable` — push registration is not available until the cutover migration lands."),
-        },
-      },
-    },
     "/api/v1/me/notes": {
       get: {
         tags: ["Notes"],
         summary: "Notes the caller wrote",
         description:
-          "Open to every authoring role (SUPER, ADMIN, LEADER, MENTOR); a STUDENT receives `403 forbidden`. Narrowed by author equality in the query. Optional `studentId` filters to one student. `body` is plain text. Cursor-paged, newest first. Rate-limited.",
+          "MENTOR only, as v1 (only MENTOR has a \"My notes\" page; 09-notes R44); every other role receives `403 forbidden`. Narrowed by author equality in the query. Optional `studentId` filters to one student. `body` is plain text. Cursor-paged, newest first. Rate-limited.",
         parameters: [
           { name: "studentId", in: "query", schema: { type: "integer", minimum: 1 } },
           { name: "cursor", in: "query", schema: { type: "string" } },
@@ -3749,6 +3719,36 @@ export const openApiDocument = {
             "A page of the caller's own notes.",
           ),
           400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/me/notes/students": {
+      get: {
+        tags: ["Notes"],
+        summary: "The mentor note composer's student picker",
+        description:
+          "MENTOR only (`403 forbidden` otherwise), as v1's /mentor/notes page. Every non-deleted STUDENT — alumni included — ordered by name, as `{ id, name, email }` (v1 src/app/mentor/notes/page.tsx:27-31; 09-notes R45). A read with no side effects. Rate-limited with the other note reads.",
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["students"],
+              properties: {
+                students: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["id", "name", "email"],
+                    properties: { id: { type: "integer" }, name: { type: "string" }, email: { type: "string" } },
+                  },
+                },
+              },
+            },
+            "Every non-deleted student, by name.",
+          ),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           429: errRef("TooManyRequests"),
