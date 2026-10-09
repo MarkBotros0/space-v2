@@ -24,7 +24,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBaseUrl": "http://localhost:4000"
+      "apiBaseUrl": "https://space-v2-be.vercel.app"
     }
   }
 }
