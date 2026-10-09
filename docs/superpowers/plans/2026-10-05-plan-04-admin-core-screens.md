@@ -47,9 +47,14 @@ reassigned, not dropped):
   session create/edit/delete screens; the **multi-season calendar** (SUPER
   across all ACTIVE seasons, LEADER across every led season, ADMIN season
   switcher — this plan's calendar shows one season, `useCurrentSeasonId()`'s);
-  check-in token regeneration; the program filter on `/seasons`.
+  check-in token regeneration. The `/seasons` list is grouped under program
+  headings, and the by-program and by-year views are built here (Task 4), as
+  v1 (`seasons-list.tsx:112-123`, `super/seasons/{program,year}/…/page.tsx`);
+  v1 has no program filter chip row. *(v1 parity 2026-10-09: was "program
+  filter on `/seasons` is Plan 6; list grouped by year")*
 - **Plan 11 (student self-service):** the student check-in scanner /
-  enter-code flow and the `/checkin/<token>` deep link; the full student
+  enter-code flow and the `/checkin/<token>` deep link (which this plan's
+  console QR now encodes as a full URL — Task 5 note, v1 parity 2026-10-09); the full student
   `/season` content (upcoming sessions, group card with leaders). This plan
   only guarantees `/season` renders correctly for a STUDENT.
 - **Not here, not yet assigned:** the session's quiz list on the leader's
@@ -1077,11 +1082,15 @@ describe("SeasonsScreen (SUPER)", () => {
     });
   });
 
-  it("lists seasons grouped by year with status badges", async () => {
+  // v1 parity 2026-10-09 (was "grouped by year"): v1 seasons-list.tsx:112-123 groups
+  // under program headings (localeCompare), seasons within a program by year desc.
+  it("lists seasons grouped by program, year desc, with status badges", async () => {
     renderWithProviders(<SeasonsScreen />);
     expect(await screen.findByText("Spring 2027")).toBeTruthy();
-    expect(screen.getByText("2027")).toBeTruthy();
-    expect(screen.getByText("2026")).toBeTruthy();
+    expect(screen.getByText("TEST")).toBeTruthy();
+    expect(screen.getByText("2 years")).toBeTruthy();
+    const titles = screen.getAllByText(/^Spring 20\d\d$/).map((n) => n.props.children);
+    expect(titles).toEqual(["Spring 2027", "Spring 2026"]);
     expect(screen.getByText("s8 · DRAFT")).toBeTruthy();
     expect(screen.getByText("s7 · ACTIVE")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
@@ -1446,7 +1455,16 @@ export default function SeasonsScreen() {
     );
   }
 
-  const years = seasons.data ? Array.from(new Set(seasons.data.map((s) => s.year))) : [];
+  // v1 parity 2026-10-09 (was "year headings"): v1 seasons-list.tsx:112-123 —
+  // program headings in localeCompare order, rows within a program year desc.
+  const programs = seasons.data
+    ? Array.from(new Set(seasons.data.map((s) => s.program)))
+        .sort((a, b) => a.localeCompare(b))
+        .map((program) => ({
+          program,
+          rows: seasons.data.filter((s) => s.program === program).sort((a, b) => b.year - a.year),
+        }))
+    : [];
 
   return (
     <Screen
@@ -1463,14 +1481,13 @@ export default function SeasonsScreen() {
       ) : seasons.data.length === 0 ? (
         <EmptyState title="No seasons" message="There are no seasons yet." />
       ) : (
-        years.map((year) => (
-          <View key={year} style={{ marginBottom: theme.spacing.md }}>
-            <Text variant="heading">{String(year)}</Text>
-            {seasons.data
-              .filter((s) => s.year === year)
-              .map((s) => (
-                <SeasonRow key={s.id} season={s} canWrite={isSuper} />
-              ))}
+        programs.map(({ program, rows }) => (
+          <View key={program} style={{ marginBottom: theme.spacing.md }}>
+            <Text variant="heading">{program}</Text>
+            <Text variant="caption">{`${rows.length} year${rows.length === 1 ? "" : "s"}`}</Text>
+            {rows.map((s) => (
+              <SeasonRow key={s.id} season={s} canWrite={isSuper} />
+            ))}
           </View>
         ))
       )}
@@ -1478,6 +1495,8 @@ export default function SeasonsScreen() {
   );
 }
 ```
+
+> **v1 parity 2026-10-09:** (a) Code clash is a field error: when a create or duplicate 409 carries `error.details.fieldErrors.code`, `NewSeasonForm` and `DuplicateForm` pass "Already in use." as the Code input's `error` while the top message stays "A season with that code already exists." (v2 `apps/mobile/app/(app)/seasons/index.tsx:57` and `:104`; v1 `src/lib/season-actions.ts:76-83`); the SUPER edit screen (Plan 6) does the same; add a test asserting the Code input's `accessibilityHint`. (b) Program headings are tappable and open the by-program view (v1 R45); the by-program screen lists that program's seasons year desc (v1 `src/app/super/seasons/program/[program]/page.tsx:27`). (c) **New work:** add `(app)/seasons/year/[year].tsx` — a non-integer `year` renders not-found, any integer is accepted (v1 `src/app/super/seasons/year/[year]/page.tsx:23-24`), seasons of that year ordered program asc and regrouped under program headings as above (`:27`). (d) Delete keeps one confirm step but uses v1's copy — title `Delete "<title>"?`, body "The season will be hidden from lists. Existing groups, sessions, and attendance are preserved.", confirm label "Delete" (v1 `src/components/seasons/delete-season-button.tsx:30-35`); the server never refuses (Plan 3). Current v2 grouping code to replace: `apps/mobile/app/(app)/seasons/index.tsx:204-236` (year headings + `ProgramFilter`).
 
 - [ ] **Step 4: `season.tsx`.**
 
@@ -2052,6 +2071,8 @@ only for the instant before data arrives; if lint or a reviewer prefers, wrap
 them in `<Screen edges={["top","left","right"]}>` exactly as the success branch
 does — the tests do not depend on it.)
 
+> **v1 parity 2026-10-09:** (a) **QR payload is the full URL** `<public base URL>/checkin/<token>`, not the bare token, so a phone camera opens check-in directly (v1 `src/app/admin/season/[code]/sessions/[id]/page.tsx:58-60`, `src/components/sessions/calendar-list.tsx:17`). Change `<QRCode value={token} …/>` (v2 `apps/mobile/app/(app)/session/[id]/index.tsx:79`) to that URL, the host coming from config (no hard-coded origin); the caption may keep showing the bare code. Universal/app links for `/checkin/*` must open the app's check-in screen — REG-10 is no longer deferred (Plan 11 owns the link handling; the in-app parser already accepts the URL form, `packages/shared/src/attendance.ts:36`). (b) **Admin console roster with override** (v1 `src/app/admin/season/[code]/sessions/[id]/page.tsx:65-80`, `src/components/sessions/check-in-attendance-list.tsx:40-80`): the console (not only the leader branch) shows the live roster of the season's ACTIVE enrolments **ordered by student name only** (v2 `apps/backend/src/lib/queries/sessions.ts:136` orders group name then student name — use a console-specific order or drop the group key), refreshed every 10 s while check-in is open, empty text "No students have scanned yet."; each row can be tapped to override the status (Present / Late / Absent). (c) The override writes one entry that keeps the stored `notes`/`lateMinutes` (KEEP-FIX R32 — v1 nulled them) and **does not call `flagLowAttendance`** (v1 `src/lib/attendance-actions.ts:193-232`, R33): add a console-override flag on `POST /sessions/:id/attendance` or a dedicated override route; v2 `apps/backend/src/routes/sessions.ts:529` currently flags on every save. The batch attendance screen keeps flagging (v1 R15). Add tests: QR value is the URL; console rows sort by name; override press posts one entry; the override path never reaches `flagLowAttendance`.
+
 - [ ] **Step 5:** Run `cd apps/mobile && pnpm jest src/__tests__/session-detail.test.tsx` → PASS;
 `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
 
@@ -2101,3 +2122,24 @@ Applied the cross-plan rulings and the 01–06 review:
 - **X11 / B4:** every session-store fixture carries `avatarPath: null`.
 - **S5 / S15:** query keys take `number | null` (no `-1` sentinel); every test that was described in prose ("write all three/four in full") is now written out; mutation 1 targets `useCurrentSeasonId`, and a newer non-ACTIVE season is in the fixture so the ACTIVE-preference mutation is catchable.
 - **G21:** a STUDENT case on `/season` proves the screen renders read-only from the pinned season.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 02-seasons R43 | REG-54 | `/seasons` grouped under program headings (localeCompare), seasons within a program year desc (`src/components/seasons/seasons-list.tsx:112-123`) | `apps/mobile/app/(app)/seasons/index.tsx:204-236` (year headings + `ProgramFilter`) | Scope bullet (Plan 6 list); Task 4 Step 1 test "grouped by program"; Task 4 Step 3 `programs` grouping code; Task 4 Step 3 parity note (b) |
+| 2 | 02-seasons R46 | REG-54 | By-year page 404s a non-integer year, accepts any integer (`src/app/super/seasons/year/[year]/page.tsx:23-24`) | new `apps/mobile/app/(app)/seasons/year/[year].tsx` (no route today; year only a heading at `seasons/index.tsx:208,227-229`) | Task 4 Step 3 parity note (c) — new work, no prior plan text |
+| 3 | 02-seasons R47 | REG-54 | By-program lists year desc (`program/[program]/page.tsx:27`); by-year lists program asc, regrouped by program (`year/[year]/page.tsx:27`) | `apps/mobile/app/(app)/seasons/index.tsx:178-206` (one list) + the two new screens | Task 4 Step 3 parity note (b)/(c) — new work |
+| 4 | 02-seasons R5 (form half), R49 (confirm copy) | REG-57, REG-56 | Code clash shows "Already in use." under Code plus top message (`src/lib/season-actions.ts:76-83`); delete has one confirm with `delete-season-button.tsx:30-35` copy | `apps/mobile/app/(app)/seasons/index.tsx:57`, `:104` (forms); delete button copy in `SeasonRow` | Task 4 Step 3 parity note (a), (d) |
+| 5 | 03-sessions R68, 04-attendance R41 | REG-10 | QR encodes `<AUTH_URL>/checkin/<token>` (`src/app/admin/season/[code]/sessions/[id]/page.tsx:58-60`; `calendar-list.tsx:17`) | `apps/mobile/app/(app)/session/[id]/index.tsx:79` (`value={token}`) + universal/app links | Scope bullet (Plan 11); Task 5 Step 4 parity note (a) |
+| 6 | 04-attendance R98 | - | Console live roster: season's ACTIVE enrolments by student name, 10 s refresh, tap a row to override Present/Late/Absent, empty "No students have scanned yet." (`sessions/[id]/page.tsx:65-80`; `check-in-attendance-list.tsx:40-80`) | `apps/mobile/app/(app)/session/[id]/index.tsx:106-145` (read-only roster); `apps/backend/src/lib/queries/sessions.ts:136` (group-then-name order) | Task 5 Step 4 parity note (b), (c) |
+| 7 | 04-attendance R33 | - | Console single-student override never calls `flagLowAttendance` (`src/lib/attendance-actions.ts:193-232`); batch form does | `apps/backend/src/routes/sessions.ts:529` (flags every save) | Task 5 Step 4 parity note (c) |
+
+KEEP-FIX kept: 04-attendance R32 — the override preserves stored notes/lateMinutes (v1 nulled them).
+
+**Awaiting owner (not changed):** none

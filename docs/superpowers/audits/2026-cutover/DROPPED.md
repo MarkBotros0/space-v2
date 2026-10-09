@@ -183,3 +183,23 @@ the fix.
 | 13 | Quiz submit scoring is re-read in the request but still runs outside the transaction: the double-submit window is narrowed, not closed | 12-R120 | REG-111. `apps/backend/src/routes/quizzes.ts:988-1000` |
 | 14 | Low-attendance flag resolves a student's group through the global `GroupStudent`, contradicting ruling C9; a student with no row is skipped and admins are not told | 04-R80, 04-R81 | Ledger rows are PRESERVED and say "likely defect". Plan 18's M1 and Task 2b.1 make `GroupStudent` season-scoped; confirm that task rewrites this consumer |
 | 15 | Student season access still matches any enrolment including WITHDRAWN (spec 06 D11 not adopted) | 06-R53 | Ledger says "possible defect" |
+
+## v1-parity ruling (2026-10-09) — signatures above need revisiting
+
+The owner ruled that v2 behaves exactly like v1, keeping a difference only where v1's behaviour is a
+defect (bug or security hole). Every DIVERGED / DROPPED ledger rule was re-classified against v1 and
+current v2 code in `v1-parity-classification.tsv` (Plan 18's own additions in
+`v1-parity-plan18-additions.tsv`). The plans now carry a "Revision 2026-10-09 — v1 parity" section
+and in-place edits. The rows below were signed on 2026-10-08 and are affected; they need re-signing.
+
+- **Reversed (every rule the row covers goes back to v1):** REG-10, REG-13, REG-17, REG-37, REG-38,
+  REG-39, REG-44, REG-54, REG-56, REG-57, REG-64, REG-76, REG-79, REG-82, REG-83, REG-88, REG-91,
+  REG-94, REG-95, REG-97, REG-98, REG-101, REG-102, REG-106, REG-107, REG-113, REG-115.
+- **Partly reversed (some rules revert, the defect-fix part stays — see the classification file):**
+  REG-01, REG-06, REG-12, REG-16, REG-20, REG-41, REG-45, REG-60, REG-61, REG-104, REG-105, REG-108,
+  REG-110, REG-114, REG-116.
+- **Awaiting owner:** REG-48 (spreadsheet file intake vs. uploads switched off until the CMS move),
+  and the event-photo rules 15-R22..R29 (same constraint).
+
+Rows not listed stand as signed: they are defect fixes, platform differences, or already match v1 at
+HEAD `4851210`.

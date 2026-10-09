@@ -111,7 +111,7 @@ v1 sources:
 - **D-16.2 — `GET /api/v1/seasons/by-code/:code`.** This is spec 02 §7's resolution step, and it never overloads `:id` (a numeric code is a legal slug). It is registered **before** every `/:id/*` route: otherwise `/by-code/roster` would match `/:id/roster`. Per spec D8, the API stays canonical on `id`. The detail screen keys its query by code, and every child screen calls id-addressed endpoints with the resolved `id`. After a SUPER renames the code, the edit screen `router.replace`s to the new code.
 - **D-16.3 — Season detail gains `absenceBudgetMinutes`, `absenceWeightMinutes`, `canAdminister`** (C4: the server says whether this caller administers the season). SUPER's PATCH is a full body whose budget fields *default* to 180/90 (Plan 3), so an edit form that did not carry the stored values would silently reset them. The fields are therefore required on the contract.
 - **D-16.4 — Status is a free four-way selector, v1 R17.** The SUPER edit screen shows DRAFT / ACTIVE / COMPLETED / ARCHIVED as one control, the same as v1's free `Select`. v2 adds no state machine, because v1 has none and spec 02 D11 says not to invent one here. DRAFT→ACTIVE→ARCHIVED is the expected path, and the control makes each step one tap.
-- **D-16.5 — Program filter is client-side** (G20). This diverges from spec 02 §7's `?program=`. The role-scoped list is tens of rows, and it is already loaded for the year grouping. The filter chips need the full program set anyway. A server parameter would cost a second request and add nothing. Program matching is exact string equality (v1 R44).
+- **D-16.5 — Seasons list grouped by program, plus SUPER by-program / by-year screens, as v1** (G20; spec 02 R43, R45, R47). `/seasons` renders the role-scoped list grouped under **program headings** sorted with `localeCompare`, the seasons inside each program sorted `year` desc (v1 `src/components/seasons/seasons-list.tsx:112-123`). There is no program filter chip row. Each program heading links to the by-program screen. SUPER also gets two screens, `seasons/program/[program].tsx` and `seasons/year/[year].tsx` (v1 `src/app/super/seasons/program/[program]/page.tsx`, `.../year/[year]/page.tsx`). By-program matches `program` by exact string (v1 R44), excludes deleted seasons and sorts `year` desc (v1 program page:27). By-year sorts `program` asc and regroups by program the way the list does (v1 year page:27). A non-integer year shows the not-found state, and so does a filter that matches no seasons (v1 program page:40, year page:24,41). Both read the already-loaded role-scoped list client-side; no `?program=` parameter is added. *(v1 parity 2026-10-09: was "client-side program filter chips over a year-grouped list; no by-program/by-year routes")*
 - **D-16.6 — Session wall clock, using Plan 5's split.**
   - `createSessionRequestSchema` and `updateSessionRequestSchema` accept **exactly one of** two forms. One is `startsAt`, an instant: Plan 3's original field, still accepted. The other is the pair `startDay` (`isoDaySchema`) + `startTime` (`wallTimeSchema`), which mirrors Plan 5's `dueDay`/`dueTime`.
   - The server converts the pair with Plan 5's `orgWallClockToInstant`.
@@ -119,13 +119,13 @@ v1 sources:
   - The edit form is pre-filled from those two fields. Nothing on the device converts zones.
 - **D-16.7 — `GET /api/v1/sessions` is windowed and role-scoped** (G17, spec 03 §7, §10 item 10).
   - *Query.* `?from&to&seasonId`, all optional.
-  - *Window.* With no window, the default is org-midnight today plus `SESSION_RANGE_DEFAULT_WEEKS` (8) calendar weeks. With only one bound, the other is 8 org-calendar weeks away. The span is at most `SESSION_RANGE_MAX_DAYS` (120); a longer or inverted window is `400 bad_request`.
+  - *Window.* The window is optional. With no `from`/`to`, the response holds **every** session of the scoped seasons, unbounded, ordered `startsAt` asc, as v1's SUPER calendar did (v1 `src/lib/sessions-query.ts:64-81`, spec 03 R75). With only `from`, the window is open-ended `[from, ∞)`. With only `to`, it is `(-∞, to)`. With both, it is `[from, to)`. There is no default 8-week window and no `SESSION_RANGE_MAX_DAYS` cap. Only an inverted window (`to <= from`) is `400 bad_request`. Week/Month views keep sending both bounds. *(v1 parity 2026-10-09: was "default org-midnight today + 8 weeks; one bound → 8 weeks; span ≤ 120 days")*
   - *Season set by role.*
     - SUPER: every ACTIVE, non-deleted season (v1 R23), or any one live season via `seasonId`.
     - ADMIN: their live seasons, or one of them via `seasonId`. A season outside the set is 403; the parameter is never a widener.
     - LEADER: every live season in which they lead a group (replacing v1's N+1). Same `seasonId` rule as ADMIN.
     - STUDENT and MENTOR: 403. Students keep Plan 4's pinned-season path.
-  - *Response.* `{ sessions, from, to, fromDayKey, toDayKey }`. The client pages with "Earlier" (`to = from`) and "Later" (`from = to`).
+  - *Response.* `{ sessions, from, to, fromDayKey, toDayKey, todayDayKey }`. `from`/`fromDayKey` and `to`/`toDayKey` are `null` on an open side. `todayDayKey` is the server-derived org day for today (C2). The Upcoming (agenda) view sends no bounds and shows only rows with `dayKey >= todayDayKey`: everything from the start of today onward, with no upper bound and no "Earlier"/"Later" paging. Past sessions are reached only through Week/Month (v1 `src/components/sessions/season-calendar.tsx:236-251`, spec 03 R98). *(v1 parity 2026-10-09: was "Upcoming is an 8-week window paged with Earlier (`to = from`) / Later (`from = to`)")*
   - *Check-in tokens.* `checkInToken` is served only on rows of seasons the caller administers (spec 04 §7 narrowing). Leaders get `null`.
 - **D-16.8 — `GET /api/v1/sessions/:id/series?scope=`** (spec 03 §7). It is admin-only. It reuses `resolveSeriesTargets`, so the preview and the write select the identical set (C10 fence included). It returns each target's `dayKey`, `startTime`, `isAnchor` and `attendanceCount`, plus the totals `attendanceCount` and `videoProgressCount` (the two things Plan 3's delete guards). "future" means the anchor and every sibling at or after its **stored** start, evaluated before any move. That is v1's semantics (spec 03 §10 item 3), and the preview and PATCH agree by construction.
 - **D-16.9 — Check-in endpoints use spec 04's names.**
@@ -139,10 +139,11 @@ v1 sources:
   - Rows are not pressable in this plan: Plan 8 (Task 11b) adds the press, opening `/quiz/[id]`, because typed routes forbid linking a route that does not exist yet.
 - **D-16.11 — Roster.**
   - *The endpoint.* `GET /seasons/:id/roster` returns the season's **ACTIVE enrolments of live STUDENT users** (C9; v1 used `activeSeasonId`, R81). Each row carries the per-season group from `SeasonEnrollment.groupId`.
-  - *Cross-season membership.* Each row also carries `otherSeasonGroup`, the student's `GroupStudent` membership in **another** season's group (spec 05 §8's `groupSeasonCode`, fixing R82's lie). That membership is what an assignment here will remove, because `GroupStudent.studentUserId` is globally unique (a Plan 18 item).
+  - *Cross-season membership.* The row carries **no** `otherSeasonGroup`. A student whose only `GroupStudent` membership is in another season's group shows as unassigned here, as in v1 (v1 `src/lib/groups-query.ts:151-155,161`, spec 05 R82). *(v1 parity 2026-10-09: was "each row carries `otherSeasonGroup`, shown as a caption on grid and form")*
+  - *Not the group form's picker.* The group form's student picker lists **every live STUDENT user** (`{ id, name, email }`, name asc), not this roster. v1 did this on purpose so an admin can enrol a new student while building a group (v1 `src/lib/groups-query.ts:112-121`, spec 05 R18/R78). The roster remains the source of the group's current members for pre-selection on edit. *(v1 parity 2026-10-09: was "the season roster is the group form's picker")*
   - *No pagination* (divergence from spec 05 §7). The group form must know a group's full membership to send its `studentIds`, and a season is hundreds of rows at most. The screen filters client-side with a search field.
 - **D-16.12 — `PUT /seasons/:id/group-assignments`.**
-  - *Request.* `{ assignments: [{ studentUserId, groupId | null }] }`: at most `GROUP_ASSIGNMENTS_MAX` (500, spec 05 §8), unique students.
+  - *Request.* `{ assignments: [{ studentUserId, groupId | null }] }`: at most `GROUP_ASSIGNMENTS_MAX` (**2000**, v1 `src/lib/group-actions.ts:183-190`, spec 05 R48), unique students. A null group unassigns. The writes are **batched** so 2000 rows finish inside the transaction (KEEP-FIX R56): one `deleteMany`, one `createMany` and one `updateMany` per target group in `assignStudentsToGroups` / `unassignStudentsFromGroups`, never a per-row loop. *(v1 parity 2026-10-09: was "at most 500 (spec 05 §8), written row by row")*
   - *Write.* Non-null entries go through **`assignStudentsToGroups(tx, seasonId, assignments)`**, with the exact signature and the two documented divergences Plan 17 relies on: (1) eligibility is an **ACTIVE** `SeasonEnrollment` of a live STUDENT, never `activeSeasonId`; (2) it returns what it **applied**. Null entries go through `unassignStudentsFromGroups`, which deletes only **this season's** `GroupStudent` row and nulls `SeasonEnrollment.groupId`.
   - *Failure.* Any group outside the season refuses the whole batch with `400 group_outside_season` (`GroupOutsideSeasonError`). Everything runs in one transaction.
   - *Response.* `{ assigned, unassigned, skippedStudentIds }`. That is Plan 17's `skippedStudentIds` form, not spec 05's `skipped: [{studentUserId, reason}]`, because the two writers must report alike.
@@ -151,9 +152,12 @@ v1 sources:
   - `DELETE /groups/:id` **refuses with `409 group_has_sole_targets`** while any live, non-all-groups assignment targets only this group. That is spec 05 §10 item 5's recommendation: otherwise the assignment becomes visible to nobody (R44).
   - Otherwise it deletes the group, leaders, memberships and target rows, and nulls **every** `SeasonEnrollment.groupId` pointing at the group, in one interactive transaction that re-checks the targets.
   - It returns `{ deleted: true, orphanedStudentIds }`. Spec 05's `untargetedAssignmentIds` is omitted because blocking makes it always empty.
-- **D-16.14 — Leader picker: `GET /api/v1/groups/leader-options`.** It is an interim read: live LEADER users, `{ id, name, email }`. Gate: new `isAdminOfAnySeason` predicate in `lib/rbac.ts` (C7: claims only through predicates). Spec 05 §7 wants the domain-11 `GET /users?role=` endpoint, which arrives with Plan 9, *after* this plan. Plan 9 may repoint `useLeaderOptions` to it and delete this route.
+- **D-16.14 — Leader picker: `GET /api/v1/groups/leader-options`.** It is an interim read: live LEADER users, `{ id, name, email }`. *(v1 parity 2026-10-09, spec 05 R18/R78:)* A sibling `GET /api/v1/groups/student-options` returns every live STUDENT user, `{ id, name, email }` name asc, for the group form, with the same gate (v1 `src/lib/groups-query.ts:112-121`). Gate: new `isAdminOfAnySeason` predicate in `lib/rbac.ts` (C7: claims only through predicates). Spec 05 §7 wants the domain-11 `GET /users?role=` endpoint, which arrives with Plan 9, *after* this plan. Plan 9 may repoint `useLeaderOptions` to it and delete this route.
 - **D-16.15 — Group detail gains `canManage`** (`isAdminOfSeason`, C4), which drives the Edit button. Plan 2's two fixtures gain the field.
-- **D-16.16 — `/groups` admin branch and calendar ADMIN branch share one season switcher.** `useStaffSeasonSelection` defaults to `pickCurrentSeasonId` (Plan 4, spec 19 D9) and lets the user pick any season from `useSeasons`. That replaces v1's redirects (R86, R91). SUPER uses the same branch on `/groups` (v1 rejected SUPER there, R92; not ported).
+- **D-16.16 — `/groups` admin branch and calendar ADMIN branch follow v1's redirect rules.**
+  - *Calendar (ADMIN).* There is **no season switcher**. The screen opens the newest ACTIVE administered season by `startDate` desc, or failing that the newest non-deleted one: `pickCurrentSeasonId` over the role-scoped list. It renders that season's full calendar. With none it shows "No active season found." Other seasons' calendars are reached from their season workspace (v1 `src/app/admin/calendar/page.tsx:16-40`, spec 03 R86). *(v1 parity 2026-10-09: was "ADMIN calendar has a SeasonSwitcher over all their seasons")*
+  - *`/groups` (ADMIN, SUPER).* The default season is the newest non-deleted administered season by `startDate` desc, with **no ACTIVE preference** (v1 `src/app/admin/groups/page.tsx:25-40`, spec 05 R91). `useStaffSeasonSelection` therefore takes the default picker as a parameter: `/groups` passes a `pickNewestSeasonId` (latest `startDate`, any status). The `SeasonSwitcher` stays on `/groups` only as the mobile stand-in for v1's per-season groups URL. `/groups` also accepts an optional `seasonId` param as the initial pick, so group create/edit can return to that season's list (R97). *(v1 parity 2026-10-09: was "both default to `pickCurrentSeasonId` (ACTIVE first) with a switcher")*
+  - SUPER uses the same branch on `/groups` (v1 rejected SUPER there, R92; not ported).
 - **D-16.17 — MENTOR on `/calendar` gets "not available for your role"** (spec 03 §9: not in the mentor nav, so it needs a graceful state).
 
 **Error codes this plan defines:** `group_outside_season` 400, `group_has_sole_targets` 409. It reuses `bad_request` 400, `forbidden` 403, `not_found` 404, and Plan 3's `has_student_records` / `season_in_use` / `code_taken`.
@@ -192,7 +196,7 @@ Task 10 (coordinator)           closing gate
 - Produces (exact names):
   - **Session contract changes:** `sessionListItemSchema.startTime`; `sessionDetailSchema.dayKey` and `.startTime`; `createSessionRequestSchema` / `updateSessionRequestSchema` accept `startDay` + `startTime`; `CreateSessionInput` and `UpdateSessionInput` (`z.input`).
   - **Session write responses:** `sessionCreatedResponseSchema`, `sessionUpdatedResponseSchema`, `sessionDeletedResponseSchema`.
-  - **Series and calendar range:** `sessionSeriesItemSchema` / `SessionSeriesItem`, `sessionSeriesResponseSchema` / `SessionSeries`; `SESSION_RANGE_DEFAULT_WEEKS`, `SESSION_RANGE_MAX_DAYS`, `sessionRangeQuerySchema`, `sessionRangeResponseSchema` / `SessionRange`.
+  - **Series and calendar range:** `sessionSeriesItemSchema` / `SessionSeriesItem`, `sessionSeriesResponseSchema` / `SessionSeries`; `sessionRangeQuerySchema` (v1 parity 2026-10-09: `SESSION_RANGE_DEFAULT_WEEKS` / `SESSION_RANGE_MAX_DAYS` dropped, R75), `sessionRangeResponseSchema` / `SessionRange`.
   - **Check-in and quizzes:** `checkInStateValueSchema`, `checkInStateSchema` / `CheckInStateResponse`; `sessionQuizItemSchema` / `SessionQuizItem`.
   - **Season and group detail fields:** `seasonDetailSchema` gains `absenceBudgetMinutes`, `absenceWeightMinutes`, `canAdminister`; `groupDetailSchema` gains `canManage`.
   - **Backend:** module-local `sessionStartFrom(body)` in `routes/sessions.ts`. It uses Plan 5's `orgWallClockToInstant` and defines no wall-clock helper of its own.
@@ -329,9 +333,11 @@ describe("groupAssignmentsRequestSchema (D-16.12)", () => {
       }).success,
     ).toBe(false);
   });
-  it("refuses more than 500 rows", () => {
-    const assignments = Array.from({ length: 501 }, (_, i) => ({ studentUserId: i + 1, groupId: null }));
-    expect(groupAssignmentsRequestSchema.safeParse({ assignments }).success).toBe(false);
+  // v1 parity 2026-10-09 (spec 05 R48): v1's cap of 2000, group-actions.ts:183-190.
+  it("accepts 2000 rows and refuses 2001", () => {
+    const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ studentUserId: i + 1, groupId: null }));
+    expect(groupAssignmentsRequestSchema.safeParse({ assignments: rows(2000) }).success).toBe(true);
+    expect(groupAssignmentsRequestSchema.safeParse({ assignments: rows(2001) }).success).toBe(false);
   });
 });
 ```
@@ -454,9 +460,10 @@ export const sessionSeriesResponseSchema = z.object({
 });
 export type SessionSeries = z.infer<typeof sessionSeriesResponseSchema>;
 
-/** GET /api/v1/sessions window (D-16.7). */
-export const SESSION_RANGE_DEFAULT_WEEKS = 8;
-export const SESSION_RANGE_MAX_DAYS = 120;
+/**
+ * GET /api/v1/sessions window (D-16.7). v1 parity 2026-10-09 (spec 03 R75):
+ * optional and uncapped — no SESSION_RANGE_DEFAULT_WEEKS / SESSION_RANGE_MAX_DAYS.
+ */
 
 /** Parses `req.query` — every value arrives as a string. */
 export const sessionRangeQuerySchema = z.object({
@@ -467,12 +474,14 @@ export const sessionRangeQuerySchema = z.object({
 
 export const sessionRangeResponseSchema = z.object({
   sessions: z.array(sessionListItemSchema),
-  /** The effective window, half-open [from, to). Page with to=from / from=to. */
-  from: z.string(),
-  to: z.string(),
-  /** Org-calendar days of the first and last instant in the window (X13) — for the header. */
-  fromDayKey: isoDaySchema,
-  toDayKey: isoDaySchema,
+  /** The effective window, half-open [from, to); null on an open side (v1 parity 2026-10-09, R75). */
+  from: z.string().nullable(),
+  to: z.string().nullable(),
+  /** Org-calendar days of the first and last instant in the window (X13); null on an open side. */
+  fromDayKey: isoDaySchema.nullable(),
+  toDayKey: isoDaySchema.nullable(),
+  /** The org's today (C2) — the Upcoming view shows rows with dayKey >= this (v1 R98). */
+  todayDayKey: isoDaySchema,
 });
 export type SessionRange = z.infer<typeof sessionRangeResponseSchema>;
 
@@ -568,17 +577,16 @@ export const seasonRosterRowSchema = z.object({
   /** This season's group, from SeasonEnrollment.groupId (C9). */
   groupId: z.number().nullable(),
   groupName: z.string().nullable(),
-  /**
-   * The student's current GroupStudent membership in ANOTHER season's group —
-   * which assigning them here removes, because GroupStudent is globally
-   * unique (spec 05 R1/R82; a Plan 18 item).
-   */
-  otherSeasonGroup: z.object({ groupName: z.string(), seasonCode: z.string() }).nullable(),
+  // v1 parity 2026-10-09 (spec 05 R82): no otherSeasonGroup — a student whose
+  // group is in another season shows as unassigned, as v1 groups-query.ts:151-161.
 });
 export type SeasonRosterRow = z.infer<typeof seasonRosterRowSchema>;
 
-/** v1 allowed 2000 and could not finish inside its own 20 s timeout (spec 05 R56). */
-export const GROUP_ASSIGNMENTS_MAX = 500;
+/**
+ * v1's cap, group-actions.ts:183-190 (v1 parity 2026-10-09, spec 05 R48). v1 could
+ * not finish 2000 inside its 20 s timeout (R56), so the writes are batched (Task 2 Step 6).
+ */
+export const GROUP_ASSIGNMENTS_MAX = 2000;
 
 export const groupAssignmentsRequestSchema = z.object({
   assignments: z
@@ -874,19 +882,17 @@ afterAll(async () => {
 });
 
 describe("GET /api/v1/seasons/:id/roster (D-16.11)", () => {
-  it("lists ACTIVE enrolments of live students with this season's group and any other-season group", async () => {
+  it("lists ACTIVE enrolments of live students with this season's group; another season's group reads as unassigned (v1 R82)", async () => {
     const res = await request(app)
       .get(`/api/v1/seasons/${seasonId}/roster`)
       .set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     const byId = new Map(res.body.data.roster.map((r: { userId: number }) => [r.userId, r]));
     expect([...byId.keys()].sort()).toEqual([studentAId, studentBId].sort());
-    expect(byId.get(studentAId)).toMatchObject({ groupId: groupOneId, groupName: "Group One", otherSeasonGroup: null });
-    expect(byId.get(studentBId)).toMatchObject({
-      groupId: null,
-      groupName: null,
-      otherSeasonGroup: { groupName: "Foreign Group", seasonCode: otherSeasonCode },
-    });
+    expect(byId.get(studentAId)).toMatchObject({ groupId: groupOneId, groupName: "Group One" });
+    // v1 parity 2026-10-09: studentB's Foreign Group membership is not reported.
+    expect(byId.get(studentBId)).toMatchObject({ groupId: null, groupName: null });
+    expect(byId.get(studentBId)).not.toHaveProperty("otherSeasonGroup");
   });
 
   it("is season-admin only — a leader in the season is refused (spec 05 §4)", async () => {
@@ -1178,7 +1184,6 @@ export interface SeasonRosterRow {
   email: string;
   groupId: number | null;
   groupName: string | null;
-  otherSeasonGroup: { groupName: string; seasonCode: string } | null;
 }
 
 /**
@@ -1187,10 +1192,9 @@ export interface SeasonRosterRow {
  * Population: ACTIVE enrolments of live STUDENT users (ruling C9). v1 used
  * `StudentProfile.activeSeasonId` (spec 05 R81), which hides an enrolled
  * student whose pointer has moved on. The group shown is this season's, from
- * `SeasonEnrollment.groupId`; `otherSeasonGroup` is the student's GroupStudent
- * row in a DIFFERENT season's group — the membership an assignment here will
- * remove (GroupStudent.studentUserId is globally unique, spec 05 R1). v1
- * reported such a student as plain "unassigned" (R82).
+ * `SeasonEnrollment.groupId`. A student whose only membership is in a
+ * DIFFERENT season's group reads as plain "unassigned", as v1 did (spec 05
+ * R82; v1 parity 2026-10-09).
  */
 export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRow[]> {
   const enrolments = await db.seasonEnrollment.findMany({
@@ -1203,26 +1207,12 @@ export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRo
     },
     orderBy: { studentUser: { name: "asc" } },
   });
-  if (enrolments.length === 0) return [];
-
-  const elsewhere = await db.groupStudent.findMany({
-    where: {
-      studentUserId: { in: enrolments.map((e) => e.studentUserId) },
-      group: { seasonId: { not: seasonId } },
-    },
-    select: { studentUserId: true, group: { select: { name: true, season: { select: { code: true } } } } },
-  });
-  const elsewhereBy = new Map(
-    elsewhere.map((g) => [g.studentUserId, { groupName: g.group.name, seasonCode: g.group.season.code }]),
-  );
-
   return enrolments.map((e) => ({
     userId: e.studentUserId,
     name: e.studentUser.name,
     email: e.studentUser.email,
     groupId: e.groupId,
     groupName: e.group?.name ?? null,
-    otherSeasonGroup: elsewhereBy.get(e.studentUserId) ?? null,
   }));
 }
 
@@ -1350,6 +1340,8 @@ export async function unassignStudentsFromGroups(
 
 (`Prisma` is already imported as a type in this file for `setGroupStudents`.)
 
+> **v1 parity 2026-10-09:** With `GROUP_ASSIGNMENTS_MAX` back at 2000 (spec 05 R48, v1 `src/lib/group-actions.ts:183-190`), the per-row loops above must be batched so a full batch finishes inside the transaction (KEEP-FIX R56). The code is now `apps/backend/src/lib/queries/groups.ts:360-426`. In `assignStudentsToGroups`, after the eligibility split, run one `groupStudent.deleteMany({ studentUserId: { in: eligibleIds } })` and one `groupStudent.createMany`, then one `seasonEnrollment.updateMany({ seasonId, studentUserId: { in: idsForGroup } }, { groupId })` per target group. In `unassignStudentsFromGroups`, run one `deleteMany` and one `updateMany` over the eligible ids. Eligibility, the skipped report and the counts are unchanged. Add a 2000-row case to `roster-routes`.
+
 - [ ] **Step 7: Roster routes.** In `routes/seasons.ts`, add these to the existing imports:
 - `groupAssignmentsRequestSchema` in the relative shared import;
 - `assignStudentsToGroups`, `GroupOutsideSeasonError`, `listSeasonRoster`, `unassignStudentsFromGroups` in the `../lib/queries/groups` import.
@@ -1417,7 +1409,7 @@ seasonsRouter.put("/:id/group-assignments", requireAuth, async (req, res) => {
           skippedStudentIds: [...assigned.skippedStudentIds, ...unassigned.skippedStudentIds],
         };
       },
-      // Four statements per student, 500 students max (spec 05 R56).
+      // Batched writes, 2000 students max (spec 05 R48/R56; v1 parity 2026-10-09).
       { timeout: 30_000 },
     );
     return apiOk(res, result);
@@ -1457,11 +1449,7 @@ Add `Request` to the `express` type import (Plan 3 already imports `type Respons
           email: { type: "string" },
           groupId: { type: ["integer", "null"], description: "This season's group, from SeasonEnrollment.groupId (C9)." },
           groupName: { type: ["string", "null"] },
-          otherSeasonGroup: {
-            type: ["object", "null"],
-            description: "The student's current group in ANOTHER season. Assigning them here removes it (GroupStudent is globally unique).",
-            properties: { groupName: { type: "string" }, seasonCode: { type: "string" } },
-          },
+          // v1 parity 2026-10-09 (spec 05 R82): no otherSeasonGroup.
         },
       },
       GroupAssignmentsRequest: {
@@ -1470,7 +1458,7 @@ Add `Request` to the `express` type import (Plan 3 already imports `type Respons
         properties: {
           assignments: {
             type: "array",
-            maxItems: 500,
+            maxItems: 2000,
             items: {
               type: "object",
               required: ["studentUserId", "groupId"],
@@ -1527,7 +1515,7 @@ Add `Request` to the `express` type import (Plan 3 already imports `type Respons
         tags: ["Groups"],
         summary: "Bulk-assign students to this season's groups",
         description:
-          "Season-admin only; at most 500 rows, each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
+          "Season-admin only; at most 2000 rows (v1's cap), each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
         parameters: [idParam],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GroupAssignmentsRequest" } } } },
         responses: {
@@ -1566,7 +1554,7 @@ Add `Request` to the `express` type import (Plan 3 already imports `type Respons
 
 **Interfaces:**
 - Consumes:
-  - Plan 5's `orgWallTime`, `orgWallClockToInstant`; Task 1's `sessionRangeQuerySchema`, `recurrenceScopeSchema`, `SESSION_RANGE_DEFAULT_WEEKS`, `SESSION_RANGE_MAX_DAYS`;
+  - Plan 5's `orgWallTime`, `orgWallClockToInstant`; Task 1's `sessionRangeQuerySchema`, `recurrenceScopeSchema` (v1 parity 2026-10-09: no range constants, R75);
   - Plan 3's `addWeeksInOrgTime`, `resolveSeriesTargets`;
   - Plan 4's `orgDayKey`;
   - `checkInState`, `CHECK_IN_WINDOW_MS` (`lib/check-in.ts`); `attendanceScopeFor`, `isAdminOfSeason`, `isSuper`, `newPublicId`.
@@ -1750,7 +1738,9 @@ describe("GET /api/v1/sessions — windowed, role-scoped (D-16.7, G17)", () => {
     expect(res.status).toBe(403);
   });
 
-  it("refuses an inverted or over-long window", async () => {
+  // v1 parity 2026-10-09 (spec 03 R75/R98): the window is optional and uncapped, as v1's
+  // listSessionsForAllActiveSeasons (sessions-query.ts:64-81); only an inverted window is refused.
+  it("refuses an inverted window, and accepts a long one", async () => {
     const inverted = await request(app)
       .get("/api/v1/sessions")
       .query({ from: WINDOW.to, to: WINDOW.from })
@@ -1760,27 +1750,25 @@ describe("GET /api/v1/sessions — windowed, role-scoped (D-16.7, G17)", () => {
       .get("/api/v1/sessions")
       .query({ from: "2099-01-01T00:00:00.000Z", to: "2099-06-01T00:00:00.000Z" })
       .set("authorization", `Bearer ${superToken}`);
-    expect(long.status).toBe(400);
+    expect(long.status).toBe(200);
   });
 
-  it("defaults to org-midnight today plus eight calendar weeks", async () => {
+  it("with no window returns every session of the scoped seasons, unbounded, plus the org today", async () => {
     const res = await request(app).get("/api/v1/sessions").set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
-    const from = new Date(res.body.data.from).getTime();
-    const to = new Date(res.body.data.to).getTime();
-    expect(from).toBeLessThanOrEqual(Date.now());
-    expect(Date.now() - from).toBeLessThan(25 * 3_600_000);
-    // Eight org-calendar weeks: 56 days, ± one DST hour.
-    expect(Math.abs(to - from - 56 * 86_400_000)).toBeLessThanOrEqual(3_600_000);
+    expect(res.body.data).toMatchObject({ from: null, to: null, fromDayKey: null, toDayKey: null });
+    expect(res.body.data.todayDayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(ids(res)).toEqual(expect.arrayContaining([sessionId, otherSessionId]));
   });
 
-  it("pages: a window given only `from` runs eight weeks forward", async () => {
+  it("a window given only `from` is open-ended", async () => {
     const res = await request(app)
       .get("/api/v1/sessions")
       .query({ from: WINDOW.from })
       .set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.from).toBe(WINDOW.from);
+    expect(res.body.data.to).toBeNull();
     expect(ids(res)).toEqual(expect.arrayContaining([sessionId]));
   });
 });
@@ -2005,11 +1993,14 @@ export async function listSessionsForSeason(
  */
 export async function listSessionsInRange(
   scope: CalendarScope,
-  window: { from: Date; to: Date },
+  window: { from: Date | null; to: Date | null },
   includeTokenFor: (seasonId: number) => boolean,
 ): Promise<SessionListRow[]> {
+  // v1 parity 2026-10-09 (spec 03 R75): either side may be open; no bounds = every session.
   const where: Prisma.SessionWhereInput = {
-    startsAt: { gte: window.from, lt: window.to },
+    ...(window.from || window.to
+      ? { startsAt: { ...(window.from ? { gte: window.from } : {}), ...(window.to ? { lt: window.to } : {}) } }
+      : {}),
     ...(scope.kind === "active"
       ? { season: { status: "ACTIVE", deletedAt: null } }
       : { seasonId: { in: scope.seasonIds } }),
@@ -2075,7 +2066,7 @@ export async function calendarScopeFor(
 (`isSuper` joins the existing `./rbac` import.)
 
 - [ ] **Step 4: Routes.** In `routes/sessions.ts`, make these import changes:
-- add to the relative shared import: `recurrenceScopeSchema`, `sessionRangeQuerySchema`, `SESSION_RANGE_DEFAULT_WEEKS`, `SESSION_RANGE_MAX_DAYS`;
+- add to the relative shared import: `recurrenceScopeSchema`, `sessionRangeQuerySchema` (v1 parity 2026-10-09: the range constants are gone, R75);
 - extend the `../lib/org-time` import with `addWeeksInOrgTime`, `orgDayKey`, `orgWallTime` (beside the `orgWallClockToInstant` Task 1 already imported);
 - extend the `../lib/check-in` import with `checkInState`, `CHECK_IN_WINDOW_MS`;
 - extend the `../lib/permissions` import with `calendarScopeFor`;
@@ -2086,9 +2077,9 @@ export async function calendarScopeFor(
 ```ts
 /**
  * The multi-season calendar (Plan 6 D-16.7, G17). The season set comes from
- * the role (calendarScopeFor); the window is required in practice — v1's
+ * the role (calendarScopeFor). The window is optional and uncapped, as v1's
  * super calendar was every session of every ACTIVE season, unbounded (spec
- * 03 R75). Day boundaries are org midnights (C2).
+ * 03 R75; v1 parity 2026-10-09). Day boundaries are org midnights (C2).
  */
 sessionsRouter.get("/", async (req, res) => {
   const user = requireUser(req);
@@ -2096,24 +2087,10 @@ sessionsRouter.get("/", async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid calendar window.", 400);
   const q = parsed.data;
 
-  let from: Date;
-  let to: Date;
-  if (q.from && q.to) {
-    from = new Date(q.from);
-    to = new Date(q.to);
-  } else if (q.from) {
-    from = new Date(q.from);
-    to = addWeeksInOrgTime(from, SESSION_RANGE_DEFAULT_WEEKS);
-  } else if (q.to) {
-    to = new Date(q.to);
-    from = addWeeksInOrgTime(to, -SESSION_RANGE_DEFAULT_WEEKS);
-  } else {
-    from = orgWallClockToInstant(orgDayKey(new Date()), null);
-    to = addWeeksInOrgTime(from, SESSION_RANGE_DEFAULT_WEEKS);
-  }
-  const span = to.getTime() - from.getTime();
-  if (span <= 0 || span > SESSION_RANGE_MAX_DAYS * 86_400_000) {
-    return apiError(res, "bad_request", `The window must be positive and at most ${SESSION_RANGE_MAX_DAYS} days.`, 400);
+  const from = q.from ? new Date(q.from) : null;
+  const to = q.to ? new Date(q.to) : null;
+  if (from && to && to.getTime() <= from.getTime()) {
+    return apiError(res, "bad_request", "The window must end after it starts.", 400);
   }
 
   const scope = await calendarScopeFor(user, q.seasonId ?? null);
@@ -2127,8 +2104,9 @@ sessionsRouter.get("/", async (req, res) => {
     sessions,
     from,
     to,
-    fromDayKey: orgDayKey(from),
-    toDayKey: orgDayKey(new Date(to.getTime() - 1)),
+    fromDayKey: from ? orgDayKey(from) : null,
+    toDayKey: to ? orgDayKey(new Date(to.getTime() - 1)) : null,
+    todayDayKey: orgDayKey(new Date()),
   });
 });
 ```
@@ -2749,6 +2727,11 @@ groupsRouter.delete("/:id", async (req, res) => {
 
 Add `import type { Request, Response } from "express";` (merge with the existing `Router` import).
 
+> **v1 parity 2026-10-09:** Group create/edit writes, in pre-plan code (commit 371404d) that this task does not otherwise touch, change in three places:
+> - Add `GET /groups/student-options` beside `leader-options`: live `role: "STUDENT"` users, `{ id, name, email }`, `orderBy: { name: "asc" }`, gate `isAdminOfAnySeason` (spec 05 R18/R78, v1 `src/lib/groups-query.ts:112-121`). Add it to OpenAPI in Step 7 and give it an integration case here.
+> - `validateGroupWrite` must accept any live role-STUDENT user, not only one already enrolled in the season. Drop the `not_enrolled` 409 at `apps/backend/src/lib/queries/groups.ts:155-168` (v1 `src/lib/group-actions.ts:55-76`, spec 05 R18). `setGroupStudents` (`groups.ts:210-213`) must **upsert** the enrolment: create an ACTIVE `SeasonEnrollment` with this `groupId` when none exists, otherwise set `groupId` only. Status, dates and drop reason are preserved (KEEP-FIX R21/R34). This is the group form's path only. `assignStudentsToGroups` (roster grid, Plan 17 importer) keeps refusing non-enrolled students (KEEP-FIX R51/R55; 16-imports R78).
+> - `groupWriteRequestSchema` (`packages/shared/src/group.ts:40-41`) keeps `int().positive()` on `leaderIds`/`studentIds` but drops `.max(20)` and `.max(500)`, so any number is accepted as in v1 (v1 `src/lib/group-actions.ts:16-19,49`, spec 05 R14).
+
 - [ ] **Step 6: Run.**
 - `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "group-admin-routes|groups-routes"` → PASS. Plan 2's `groups-routes` uses `toEqual` only on `leaders`/`students` arrays, so `canManage` does not disturb it.
 - `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
@@ -3090,18 +3073,31 @@ export interface StaffSeasonSelection {
 }
 
 /**
- * A staff screen's chosen season (Plan 6 D-16.16): defaults to the same
- * "current" season every staff screen uses (Plan 4's pickCurrentSeasonId,
- * ruling X8) and lets the user pick any season the role-scoped list holds.
- * Replaces v1's redirect-to-one-season pages (spec 03 R86, spec 05 R91).
- * A picked id that is no longer in the list falls back to the default.
+ * v1's /admin/groups redirect target (v1 parity 2026-10-09, spec 05 R91; v1
+ * src/app/admin/groups/page.tsx:25-40): the newest season by startDate, any status.
  */
-export function useStaffSeasonSelection(enabled: boolean): StaffSeasonSelection {
+export function pickNewestSeasonId(seasons: SeasonListItem[]): number | null {
+  const latestFirst = [...seasons].sort((a, b) => (a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0));
+  return latestFirst[0]?.id ?? null;
+}
+
+/**
+ * A staff screen's chosen season (Plan 6 D-16.16). The default is `pick`
+ * (Plan 4's pickCurrentSeasonId unless the screen passes v1's own rule, e.g.
+ * /groups passes pickNewestSeasonId), and `initialId` (a route param) wins
+ * when it is in the list. The user may then pick any season the role-scoped
+ * list holds. A picked id that is no longer in the list falls back to the default.
+ * v1 parity 2026-10-09: the ADMIN calendar no longer uses this (R86).
+ */
+export function useStaffSeasonSelection(
+  enabled: boolean,
+  opts: { pick?: (seasons: SeasonListItem[]) => number | null; initialId?: number | null } = {},
+): StaffSeasonSelection {
   const query = useSeasons(enabled);
-  const [picked, setPicked] = useState<number | null>(null);
+  const [picked, setPicked] = useState<number | null>(opts.initialId ?? null);
   const seasons = query.data ?? [];
   const seasonId =
-    picked !== null && seasons.some((s) => s.id === picked) ? picked : pickCurrentSeasonId(seasons);
+    picked !== null && seasons.some((s) => s.id === picked) ? picked : (opts.pick ?? pickCurrentSeasonId)(seasons);
 
   return {
     seasons,
@@ -3197,6 +3193,7 @@ Run the foundation test → PASS. Run `pnpm turbo lint typecheck test:unit --fil
 - Modify: `apps/mobile/app/(app)/seasons/index.tsx`
 - Replace: `apps/mobile/app/(app)/seasons/[code]/index.tsx`, `apps/mobile/app/(app)/seasons/[code]/edit.tsx`
 - Test: `apps/mobile/src/__tests__/season-detail-screens.test.tsx` (new), `apps/mobile/src/__tests__/season-screens.test.tsx` (append)
+- *(v1 parity 2026-10-09, spec 02 R45/R47)* Create: `apps/mobile/app/(app)/seasons/program/[program].tsx` and `apps/mobile/app/(app)/seasons/year/[year].tsx`, both SUPER-only. Append both to `DETAIL_ROUTE_NAMES` (X9) and run `routes:generate`.
 
 **Interfaces:**
 - Consumes:
@@ -3419,6 +3416,8 @@ describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => 
 
 Run: `cd apps/mobile && pnpm jest src/__tests__/season-detail-screens.test.tsx src/__tests__/season-screens.test.tsx`. Expected: FAIL.
 
+> **v1 parity 2026-10-09:** Replace the "filters by program" case with v1's grouping. Three cases are needed. (1) `/seasons` renders program headings in `localeCompare` order, with each program's seasons `year` desc, and has no "All programs" control. Pressing a program heading pushes `/seasons/program/[program]` (v1 `src/components/seasons/seasons-list.tsx:112-123`, spec 02 R43). (2) The by-program screen lists only the exact-match program (`"GBV"` ≠ `"gbv"`, v1 R44), `year` desc, and shows a not-found state for a program with no seasons (v1 `src/app/super/seasons/program/[program]/page.tsx:27,40`). (3) The by-year screen lists that year's seasons regrouped by program, `program` asc. It shows not-found for a year with no seasons or a non-integer year (v1 `.../year/[year]/page.tsx:24,27,41`). Spec 02 R45, R47.
+
 - [ ] **Step 2: Hooks.** Append to `src/hooks/use-seasons.ts`:
 
 ```ts
@@ -3510,6 +3509,8 @@ In `SeasonsScreen`, add `const [program, setProgram] = useState<string | null>(n
 ```
 
 In the success branch, render `<ProgramFilter programs={programs} value={program} onChange={setProgram} />` before the year groups, and iterate `visible` instead of `seasons.data` in the year filter.
+
+> **v1 parity 2026-10-09:** Edit 3 is reverted. Drop `ProgramFilter`, the `program` state and the year headings, now `apps/mobile/app/(app)/seasons/index.tsx:170-236`. Instead, group the list into program sections: a `Map` keyed by `program`, sections sorted `a.program.localeCompare(b.program)`, rows sorted `b.year - a.year`. Each section heading presses to `/seasons/program/[program]`. This matches v1 `src/components/seasons/seasons-list.tsx:112-123` (spec 02 R43). Extract that grouping as a shared helper. The new `seasons/program/[program].tsx` (exact `===` match, year desc) and `seasons/year/[year].tsx` (`Number.isInteger` check, program asc, regrouped with the same helper) both use it over `useSeasons`. Each shows `EmptyState` "Not found" when its filter matches nothing (v1 `program/[program]/page.tsx:27,40`; `year/[year]/page.tsx:24,27,41`; spec 02 R45, R47).
 
 - [ ] **Step 4: `seasons/[code]/index.tsx`** (replace the stub):
 
@@ -4222,7 +4223,8 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
         scope: "future",
       }),
     );
-    expect(mockBack).toHaveBeenCalled();
+    // v1 parity 2026-10-09 (spec 03 R30): edit returns to the session's detail, v1 session-form.tsx:138.
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "12" } });
   });
 
   it("hides the scope selector for a one-off session (spec 03 R29)", async () => {
@@ -4621,6 +4623,8 @@ export default function NewSessionScreen() {
 }
 ```
 
+> **v1 parity 2026-10-09:** On create success, go to the season's calendar, not to the new session's detail (v1 `src/components/sessions/session-form.tsx:125`, spec 03 R30). Edit `apps/mobile/app/(app)/session/new.tsx:47` to `router.replace` to `/calendar` with this `seasonId` selected (or to the season workspace's calendar once one exists). The Step 2 create test's expectation (`mockReplace` with `/session/[id]` `55`) changes to match.
+
 - [ ] **Step 6: `session/[id]/edit.tsx`** (replace the stub):
 
 ```tsx
@@ -4702,7 +4706,8 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
     }
     setErrors({});
     update.mutate(body, {
-      onSuccess: () => router.back(),
+      // v1 parity 2026-10-09 (spec 03 R30): v1 session-form.tsx:138 pushes the session's detail page.
+      onSuccess: () => router.replace({ pathname: "/session/[id]", params: { id: String(detail.id) } }),
       onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the session.")),
     });
   };
@@ -4796,6 +4801,8 @@ export default function EditSessionScreen() {
 - the quiz card is added.
 
 The leader's live roster is Plan 4's, unchanged.
+
+> **v1 parity 2026-10-09:** The QR must encode the full check-in URL `<public base URL>/checkin/<token>`, not the bare token. A phone's own camera then opens check-in directly (v1 `src/app/admin/season/[code]/sessions/[id]/page.tsx:58-60`, spec 03 R68, REG-10). Change `<QRCode value={token} …/>` below, now `apps/mobile/app/(app)/session/[id]/index.tsx:79`, to `value={checkInUrl(token)}`. The host comes from config, not a literal. The `Code:` caption keeps the bare token. The in-app scanner already accepts the URL form. Universal/app links for `/checkin/*` are un-deferred with REG-10 (Plan 11 owns that part).
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -5088,8 +5095,9 @@ const groupRow = (id: number, name: string, seasonId: number) => ({
   id, name, description: null, studentCount: 1, leaderNames: ["Lina"], seasonId, seasonCode: `s${seasonId}`, seasonTitle: `Season ${seasonId}`,
 });
 const roster = [
-  { userId: 21, name: "Sara", email: "sara@jpc.test", groupId: 3, groupName: "Group A", otherSeasonGroup: null },
-  { userId: 22, name: "Omar", email: "omar@jpc.test", groupId: null, groupName: null, otherSeasonGroup: { groupName: "Old", seasonCode: "s1" } },
+  // v1 parity 2026-10-09 (spec 05 R82): no otherSeasonGroup on roster rows.
+  { userId: 21, name: "Sara", email: "sara@jpc.test", groupId: 3, groupName: "Group A" },
+  { userId: 22, name: "Omar", email: "omar@jpc.test", groupId: null, groupName: null },
 ];
 const seasonDetail = {
   id: 7, code: "s7", title: "Season 7", program: "TEST", year: 2099, status: "ACTIVE",
@@ -5171,8 +5179,8 @@ describe("/group/new", () => {
     fireEvent.changeText(await screen.findByLabelText("Name"), "Group C");
     fireEvent.press(await screen.findByLabelText("Karim"));
     fireEvent.press(await screen.findByLabelText("Omar"));
-    // Omar is currently in another season's group — the form says so before saving.
-    expect(screen.getByText("In Old (s1) — saving moves them here.")).toBeTruthy();
+    // v1 parity 2026-10-09 (spec 05 R79): no per-student caption; one static helper line.
+    expect(screen.getByText("Adding a student here will move them out of any other group.")).toBeTruthy();
     fireEvent.press(screen.getByText("Create group"));
 
     await waitFor(() =>
@@ -5180,7 +5188,8 @@ describe("/group/new", () => {
         name: "Group C", description: null, leaderIds: [6], studentIds: [22],
       }),
     );
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "30" } });
+    // v1 parity 2026-10-09 (spec 05 R97): back to the season's group list, v1 group-form.tsx:107.
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/groups", params: { seasonId: "7" } });
   });
 
   it("validates the name with the server's schema", async () => {
@@ -5251,10 +5260,9 @@ describe("/seasons/[code]/roster (G7)", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { code: "s7" };
     routeGets();
-    put.mockResolvedValue({ data: { data: { assigned: 1, unassigned: 1, skippedStudentIds: [] } } });
+    put.mockResolvedValue({ data: { data: { assigned: 0, unassigned: 1, skippedStudentIds: [] } } });
     renderWithProviders(<SeasonRosterScreen />);
 
-    expect(await screen.findByText("Also in Old (s1) — assigning here moves them.")).toBeTruthy();
     fireEvent.press(await screen.findByLabelText("Sara: Unassigned"));
     fireEvent.press(screen.getByLabelText("Omar: Group B"));
     // Pressing a row back to its original group drops it from the batch.
@@ -5267,7 +5275,8 @@ describe("/seasons/[code]/roster (G7)", () => {
         assignments: [{ studentUserId: 21, groupId: null }],
       }),
     );
-    expect(await screen.findByText("Assigned 1, unassigned 1.")).toBeTruthy();
+    // v1 parity 2026-10-09 (spec 05 R101): v1 roster-grid.tsx:84-87's wording.
+    expect(await screen.findByText("Updated 1 student.")).toBeTruthy();
   });
 
   it("refuses a caller the server says does not administer the season (C4)", async () => {
@@ -5282,6 +5291,8 @@ describe("/seasons/[code]/roster (G7)", () => {
 ```
 
 Run: `cd apps/mobile && pnpm jest src/__tests__/group-admin-screens.test.tsx src/__tests__/groups-screens.test.tsx`. Expected: FAIL.
+
+> **v1 parity 2026-10-09:** Three changes to the cases above. (1) "/groups — ADMIN/SUPER season branch" must open the newest season by `startDate` whatever its status: here season 8 (DRAFT, 2099-09-01), so the first read is `/api/v1/seasons/8/groups`. It must also honour a `seasonId` param as the initial pick (v1 `src/app/admin/groups/page.tsx:25-40`, spec 05 R91). (2) The group-form cases read students from `/api/v1/groups/student-options` (every live student) instead of the roster. Add that URL to `routeGets` (spec 05 R18/R78). (3) The create/edit cases expect `mockReplace` with `{ pathname: "/groups", params: { seasonId: "7" } }` (spec 05 R97; the create case is already edited).
 
 - [ ] **Step 2: Hooks**
 
@@ -5442,11 +5453,12 @@ function CheckRow({ label, caption, checked, onPress }: { label: string; caption
 }
 
 /**
- * Create/edit a group (v1 group-form.tsx; spec 05 §9). Students are picked
- * from the season ROSTER (ACTIVE enrolments, C9), never the global student
- * table. The server validates leaders are LEADERs and students are enrolled
- * (Plan 2's validateGroupWrite) and returns name_taken / invalid_leader /
- * not_enrolled, shown verbatim via `message`. Saving REPLACES the group's
+ * Create/edit a group (v1 group-form.tsx; spec 05 §9). v1 parity 2026-10-09
+ * (spec 05 R18/R78): students are picked from EVERY live STUDENT user, as v1's
+ * listStudentsForPicker (groups-query.ts:112-121), and saving enrols any of
+ * them into the season. The server validates leaders are LEADERs (Plan 2's
+ * validateGroupWrite) and returns name_taken / invalid_leader, shown verbatim
+ * via `message`. Saving REPLACES the group's
  * leader and student lists (spec 05 R30) — the form says so.
  */
 export function GroupForm({
@@ -5509,23 +5521,16 @@ export function GroupForm({
   else
     studentList = roster.data
       .filter((r) => q === "" || (r.name ?? "").toLowerCase().includes(q) || r.email.toLowerCase().includes(q))
-      .map((r) => {
-        const caption =
-          r.groupId !== null && r.groupId !== groupId
-            ? `Now in ${r.groupName ?? "another group"} — saving moves them here.`
-            : r.groupId === null && r.otherSeasonGroup
-              ? `In ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — saving moves them here.`
-              : null;
-        return (
-          <CheckRow
-            key={r.userId}
-            label={r.name ?? r.email}
-            caption={caption}
-            checked={values.studentIds.includes(r.userId)}
-            onPress={() => setValues({ ...values, studentIds: toggle(values.studentIds, r.userId) })}
-          />
-        );
-      });
+      // v1 parity 2026-10-09 (spec 05 R79): name/email only, no per-student caption
+      // (v1 group-form.tsx:62-66); the one helper line below replaces them.
+      .map((r) => (
+        <CheckRow
+          key={r.userId}
+          label={r.name ?? r.email}
+          checked={values.studentIds.includes(r.userId)}
+          onPress={() => setValues({ ...values, studentIds: toggle(values.studentIds, r.userId) })}
+        />
+      ));
 
   return (
     <Card style={{ gap: theme.spacing.sm }}>
@@ -5540,6 +5545,9 @@ export function GroupForm({
       <Text variant="heading">Leaders</Text>
       {leaderList}
       <Text variant="heading">Students</Text>
+      <Text variant="caption" color={theme.colors.neutral[600]}>
+        Adding a student here will move them out of any other group.
+      </Text>
       <Input label="Search students" value={query} onChangeText={setQuery} autoCapitalize="none" />
       {studentList}
       <Text variant="caption" color={theme.colors.neutral[600]}>
@@ -5551,6 +5559,8 @@ export function GroupForm({
   );
 }
 ```
+
+> **v1 parity 2026-10-09:** The student picker must list **every live STUDENT user** (`{ id, name, email }`, name asc), not `useSeasonRoster(seasonId)` (v1 `src/lib/groups-query.ts:112-121`, spec 05 R18/R78). Add a global student-options read beside `GET /groups/leader-options`: `GET /groups/student-options`, behind the same `isAdminOfAnySeason` gate, with a `useStudentOptions(enabled)` hook. Iterate it in `studentList`, now `apps/mobile/src/components/GroupForm.tsx:93-115`. The edit screen keeps pre-selecting from the roster, i.e. the group's current members. The per-row captions at `GroupForm.tsx:100-105` are removed in the block above, and v1's single helper line is rendered instead (v1 `src/components/groups/group-form.tsx:62-66,148`, spec 05 R79). Backend side: see the Task 4 note on `validateGroupWrite` / `setGroupStudents`.
 
 - [ ] **Step 4: Screens.**
 
@@ -5581,7 +5591,8 @@ function NewGroupForm({ seasonId }: { seasonId: number }) {
       onSubmit={(body) => {
         setMessage(null);
         create.mutate(body, {
-          onSuccess: (ref) => router.replace({ pathname: "/group/[id]", params: { id: String(ref.id) } }),
+          // v1 parity 2026-10-09 (spec 05 R97): v1 group-form.tsx:107 returns to the season's groups.
+          onSuccess: () => router.replace({ pathname: "/groups", params: { seasonId: String(seasonId) } }),
           onError: (err) => setMessage(apiErrorMessage(err, "Couldn't create the group.")),
         });
       }}
@@ -5696,7 +5707,8 @@ function EditGroupLoaded({ detail, roster }: { detail: GroupDetail; roster: Seas
         onSubmit={(body) => {
           setMessage(null);
           update.mutate(body, {
-            onSuccess: () => router.back(),
+            // v1 parity 2026-10-09 (spec 05 R97): v1 group-form.tsx:107 returns to the season's groups.
+            onSuccess: () => router.replace({ pathname: "/groups", params: { seasonId: String(detail.seasonId) } }),
             onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the group.")),
           });
         }}
@@ -5764,14 +5776,15 @@ Plan 2's fixtures carry `canManage: false` (Task 5), so its leader and student c
 `groups.tsx` (replace; Plan 2's leader/student branch is kept verbatim as `MyGroups`):
 
 ```tsx
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import type { GroupListItem } from "@space/shared";
 
 import { SeasonSwitcher } from "../../src/components/SeasonSwitcher";
 import { SEASON_GROUPS_ROLES } from "../../src/hooks/use-group-admin";
 import { MY_GROUPS_ROLES, useMyGroups, useSeasonGroups } from "../../src/hooks/use-groups";
-import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
+import { pickNewestSeasonId, useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
+import { parsePositiveInt } from "../../src/lib/params";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
 import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
@@ -5816,13 +5829,18 @@ function MyGroups() {
 
 /**
  * ADMIN / SUPER — a season's groups with a season switcher (Plan 6
- * D-16.16; spec 05 §9). v1 forced one season with a redirect (R91) and
- * refused SUPER (R92); neither is ported.
+ * D-16.16; spec 05 §9). v1 parity 2026-10-09 (R91): the default is v1's
+ * redirect target, the newest administered season by startDate with no
+ * ACTIVE preference; the switcher stands in for v1's per-season URL.
+ * v1 refused SUPER (R92); that is not ported.
  */
 function SeasonGroups() {
   const theme = useTheme();
   const router = useRouter();
-  const selection = useStaffSeasonSelection(true);
+  // v1 parity 2026-10-09 (spec 05 R91/R97): newest-by-startDate default, and an
+  // optional `seasonId` param (sent by group create/edit) as the initial pick.
+  const { seasonId: seasonParam } = useLocalSearchParams<{ seasonId?: string }>();
+  const selection = useStaffSeasonSelection(true, { pick: pickNewestSeasonId, initialId: parsePositiveInt(seasonParam) });
   const groups = useSeasonGroups(selection.seasonId);
 
   let body;
@@ -5979,8 +5997,11 @@ function RosterGrid({ seasonId }: { seasonId: number }) {
         onSuccess: (result) => {
           setDraft({});
           const skipped = result.skippedStudentIds.length;
+          // v1 parity 2026-10-09 (spec 05 R101): v1's "Updated N student(s)." (roster-grid.tsx:84-87);
+          // N is what the server wrote (KEEP-FIX R57), the skipped note is KEEP-FIX R52.
+          const n = result.assigned + result.unassigned;
           setMessage(
-            `Assigned ${result.assigned}, unassigned ${result.unassigned}.` +
+            `Updated ${n} student${n === 1 ? "" : "s"}.` +
               (skipped > 0 ? ` ${skipped} skipped — no longer active in this season.` : ""),
           );
         },
@@ -6004,11 +6025,6 @@ function RosterGrid({ seasonId }: { seasonId: number }) {
         return (
           <Card key={r.userId} style={{ marginTop: theme.spacing.sm, gap: theme.spacing.xs }}>
             <Text variant="body">{label}</Text>
-            {r.otherSeasonGroup ? (
-              <Text variant="caption" color={theme.colors.neutral[600]}>
-                {`Also in ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — assigning here moves them.`}
-              </Text>
-            ) : null}
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs }}>
               {options.map((g) => {
                 const name = g?.name ?? ROSTER_UNASSIGNED_LABEL;
@@ -6166,6 +6182,8 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
 
 Run: `cd apps/mobile && pnpm jest src/__tests__/calendar-screen.test.tsx`. Expected: FAIL.
 
+> **v1 parity 2026-10-09:** Two of these cases change. (1) The ADMIN case drops the switcher. It asserts the newest ACTIVE season (`seasonId: 7`) is requested, that no `Season 8` control renders, and that an admin with no seasons sees "No active season found." (v1 `src/app/admin/calendar/page.tsx:16-40`, spec 03 R86). (2) The SUPER case drops the "Earlier"/"Later" presses and the window header. The Upcoming view requests `/api/v1/sessions` with no bounds and renders only rows with `dayKey >= todayDayKey`. The `range()` fixture gains `todayDayKey`, and its `to`/`toDayKey` may be `null` (v1 `src/components/sessions/season-calendar.tsx:236-251`, spec 03 R98). Mutation 20 in Task 10 changes with case (1).
+
 - [ ] **Step 2: Hook + helper.** Append to `src/hooks/use-sessions.ts` (add `sessionRangeResponseSchema, type SessionRange` to its shared import):
 
 ```ts
@@ -6176,10 +6194,11 @@ export interface SessionRangeParams {
 }
 
 /**
- * GET /api/v1/sessions (Plan 6 D-16.7): the role decides which seasons; the
- * window defaults server-side to org-midnight today + 8 calendar weeks. Pass
- * `from` (= the previous `to`) for "Later", `to` (= the previous `from`) for
- * "Earlier" — the server owns every org-day boundary (C2).
+ * GET /api/v1/sessions (Plan 6 D-16.7): the role decides which seasons. With
+ * no bounds the server returns every session, unbounded (v1 parity 2026-10-09,
+ * spec 03 R75). Week/Month pass both bounds. The Upcoming view passes none and
+ * filters on the server's `todayDayKey` (R98), so the server still owns every
+ * org-day boundary (C2).
  */
 export function useSessionRange(params: SessionRangeParams, enabled: boolean): UseQueryResult<SessionRange> {
   return useQuery({
@@ -6224,6 +6243,8 @@ export function groupSessionsByDay(sessions: SessionListItem[]): DayGroup[] {
 ```
 
 - [ ] **Step 3: `calendar.tsx`** (replace):
+
+> **v1 parity 2026-10-09:** In the block below, (a) `RangeSessions` (the Upcoming view, now `apps/mobile/app/(app)/calendar.tsx:200-247`) loses its window state and the "Earlier"/"Later" buttons. It calls `useSessionRange({ seasonId, from: null, to: null })` and renders `data.sessions.filter((s) => s.dayKey >= data.todayDayKey)`, which is everything from the start of today onward. Events get the same filter. `onOrgToday` reads `data.todayDayKey`. The empty state reads v1's "Nothing coming up" (v1 `season-calendar.tsx:236-251`, spec 03 R98). (b) `AdminCalendar` (now `calendar.tsx:294-314`) renders no `SeasonSwitcher`. It shows the `pickCurrentSeasonId` season's full calendar, or `EmptyState` "No active season found." when there is none (v1 `src/app/admin/calendar/page.tsx:16-40`, spec 03 R86).
 
 ```tsx
 import { useState, type ReactNode } from "react";
@@ -6426,7 +6447,7 @@ export default function CalendarScreen() {
   17. Mobile roster grid: send every row instead of `changes` → `group-admin-screens.test.tsx` "sends only the rows that changed" fails.
   18. Mobile `groups.tsx`: route ADMIN to `MyGroups` → "/groups — ADMIN/SUPER season branch" fails.
   19. Mobile `seasons/[code]/edit.tsx`: initialise `budget` to `"180"` instead of the stored value → "saves identity AND status … keeping the stored budgets" fails (240).
-  20. Mobile `calendar.tsx`: pass `seasonId={null}` from `AdminCalendar` → "gives ADMIN the current season through GET /sessions, with a season switcher" fails.
+  20. Mobile `calendar.tsx`: pass `seasonId={null}` from `AdminCalendar` → "gives ADMIN the current season through GET /sessions" fails. *(v1 parity 2026-10-09: the case no longer has a season switcher, R86)*
 
 - [ ] **Step 3: Build-output check** (X12): `grep -rn 'require("@space/shared")' apps/backend/dist/` → empty.
 
@@ -6447,13 +6468,13 @@ tmux kill-session -t space-v2-plan16
 
 - [ ] **Step 6: Device checklist** (staging, Expo Go).
 - **As SUPER:**
-  1. `/seasons`: filter by a program, then open a season by tapping it.
+  1. `/seasons`: seasons appear grouped under program headings, year desc within each. Open a program heading (by-program screen) and `/seasons/year/<year>`, then open a season by tapping it. *(v1 parity 2026-10-09: was "filter by a program")*
   2. Edit it: change status DRAFT → ACTIVE and save. The detail shows ACTIVE.
   3. Rename the code. The screen follows the new code, and the old link 404s with "Couldn't load this season".
   4. Delete an in-use season. It is refused with the server's message.
-  5. `/calendar`: shows several ACTIVE seasons' sessions with season labels; "Later" pages forward 8 weeks.
+  5. `/calendar`: shows several ACTIVE seasons' sessions with season labels; Upcoming lists everything from today onward with no paging, and past sessions show in Week/Month. *(v1 parity 2026-10-09: was ""Later" pages forward 8 weeks")*
 - **As ADMIN:**
-  1. `/calendar` shows the current season. Switch season and the list changes.
+  1. `/calendar` shows the newest ACTIVE season they administer, with no season picker. *(v1 parity 2026-10-09: was "Switch season and the list changes")*
   2. Season detail → New session: create a 3-week series at 19:30. The detail header reads "7:30 PM" on a phone set to a non-Cairo timezone (X13, observed for real).
   3. Edit → "This and following": the preview counts the right sessions. Save, and the calendar moves them.
   4. Delete a session with attendance: refused, then forced.
@@ -6493,7 +6514,7 @@ tmux kill-session -t space-v2-plan16
 
 ## Self-review against the brief and rulings
 
-- **G4:** `/seasons/[code]` via `by-code`, SUPER edit (identity + status + delete) — Tasks 2, 6. **G20:** program filter — Task 6. **G5:** session create/edit/delete, scope selector, series preview, `GET /sessions/:id/series` — Tasks 3, 7. **G6:** ADMIN/SUPER `/groups` branch, group new/edit, `DELETE /groups/:id` + `/impact` — Tasks 4, 8. **G7:** `GET /seasons/:id/roster`, `PUT /seasons/:id/group-assignments`, roster screen — Tasks 2, 8. **G17:** `GET /sessions` for SUPER/LEADER plus the ADMIN switcher — Tasks 3, 9. **G19:** `check-in-regenerate` + `GET /sessions/:id/check-in` — Tasks 3, 7. **G18 rest:** session quiz card — Tasks 3, 7.
+- **G4:** `/seasons/[code]` via `by-code`, SUPER edit (identity + status + delete) — Tasks 2, 6. **G20:** seasons grouped by program plus SUPER by-program / by-year screens — Task 6 *(v1 parity 2026-10-09: was "program filter")*. **G5:** session create/edit/delete, scope selector, series preview, `GET /sessions/:id/series` — Tasks 3, 7. **G6:** ADMIN/SUPER `/groups` branch, group new/edit, `DELETE /groups/:id` + `/impact` — Tasks 4, 8. **G7:** `GET /seasons/:id/roster`, `PUT /seasons/:id/group-assignments`, roster screen — Tasks 2, 8. **G17:** `GET /sessions` for SUPER/LEADER plus the ADMIN switcher — Tasks 3, 9. **G19:** `check-in-regenerate` + `GET /sessions/:id/check-in` — Tasks 3, 7. **G18 rest:** session quiz card — Tasks 3, 7.
 - **X5:** `seasonsRouter` is converted to per-route auth with a 404 guard test (Task 2, mutation 1). New routes on `sessionsRouter`/`groupsRouter` keep those routers' exclusive-prefix router-level auth.
 - **X7:** directory forms for `seasons/`, `seasons/[code]/`, `seasons/[code]/roster/`, `group/[id]/`, `session/[id]/`, guarded by `ambiguousRouteSiblings`.
 - **X9:** routes added only by appending to `DETAIL_ROUTE_NAMES`; `"group/[id]"` → `"group/[id]/index"` is a rename, and no count literal is touched.
@@ -6502,7 +6523,7 @@ tmux kill-session -t space-v2-plan16
 - **X13:**
   - org day/time are derived server-side (`dayKey`, `startTime`, `fromDayKey`/`toDayKey`, `expiresAtTime`);
   - writes carry `startDay`/`startTime` (Plan 5's split), converted by Plan 5's `orgWallClockToInstant`;
-  - the calendar default window starts at org midnight;
+  - the calendar's Upcoming view starts at the server's `todayDayKey` (v1 parity 2026-10-09: no default window, R75/R98);
   - mobile renders through `formatDayKey`/`formatWallTime` only.
 - **X14:** no migration, no schema edit, no `process.env`, no `@/`, no `@prisma/client`.
 - **Plan 5 reuse:** `isoDaySchema`, `wallTimeSchema`, `orgWallTime`, `orgWallClockToInstant`, `useSeasonGroups`, `queryKeys.groups.bySeason`, `formatWallTime` — none redefined.
@@ -6512,3 +6533,32 @@ tmux kill-session -t space-v2-plan16
 
 Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
 - Task 5's directory-href set is named `DIRECTORY_ROUTE_HREFS` (was `DIRECTORY_HREFS`) to match Plan 10 Task 9 and Plan 17 Step 0, which extend it; a note says they must keep `"seasons"`.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 02-seasons R43 | REG-54 (cancel) | `/seasons` grouped under program headings (`localeCompare`), seasons `year` desc within each (`src/components/seasons/seasons-list.tsx:112-123`) | `apps/mobile/app/(app)/seasons/index.tsx:170-236` (year headings + `ProgramFilter`) | D-16.5; Task 6 Files, Step 1 note, Step 3 note; Task 10 Step 6 SUPER 1; Self-review G20 |
+| 2 | 02-seasons R45 | REG-54 (cancel) | SUPER by-program / by-year pages; not-found when empty (`src/app/super/seasons/program/[program]/page.tsx:40`, `.../year/[year]/page.tsx:24,41`) | new `apps/mobile/app/(app)/seasons/program/[program].tsx`, `seasons/year/[year].tsx`; `seasons/index.tsx:174-177` | D-16.5; Task 6 Files, Step 1 note, Step 3 note |
+| 3 | 02-seasons R47 | REG-54 (cancel) | by-program sorts `year` desc; by-year sorts `program` asc and regroups by program (`program/[program]/page.tsx:27`, `year/[year]/page.tsx:27`) | the two new screens; `seasons/index.tsx:178-206` | D-16.5; Task 6 Step 1 note, Step 3 note |
+| 4 | 03-sessions R30 | - | create → season calendar; edit → session detail (`src/components/sessions/session-form.tsx:125,138`) | `apps/mobile/app/(app)/session/new.tsx:47`; `session/[id]/edit.tsx:79` | Task 7 Step 2 edit test (edited), Step 5 note, Step 6 code (edited) |
+| 5 | 03-sessions R68 | REG-10 (un-defer) | QR encodes `<AUTH_URL>/checkin/<token>` (`src/app/admin/season/[code]/sessions/[id]/page.tsx:58-60`) | `apps/mobile/app/(app)/session/[id]/index.tsx:79` | Task 7 Step 7 note |
+| 6 | 03-sessions R75 | - | SUPER calendar lists every session of every ACTIVE season, unbounded (`src/lib/sessions-query.ts:64-81`) | `apps/backend/src/routes/sessions.ts:216-256` (drop 8-week default and 120-day cap); `packages/shared/src/session.ts` range constants/response | D-16.7 Window; Task 1 Step 2 schema (edited); Task 3 Step 1 tests, Step 2 `listSessionsInRange`, Step 4 route (edited) |
+| 7 | 03-sessions R86 | - | ADMIN calendar opens newest ACTIVE administered season (else newest any), no picker; "No active season found." (`src/app/admin/calendar/page.tsx:16-40`) | `apps/mobile/app/(app)/calendar.tsx:294-314` (remove `SeasonSwitcher`) | D-16.16; Task 5 `useStaffSeasonSelection` doc; Task 9 Step 1 note, Step 3 note; Task 10 mutation 20, Step 6 ADMIN 1 |
+| 8 | 03-sessions R98 | - | agenda shows everything from start of today onward; past only via Week/Month (`src/components/sessions/season-calendar.tsx:236-251`) | `apps/mobile/app/(app)/calendar.tsx:200-247` (drop Earlier/Later, filter on `todayDayKey`) | D-16.7 Response; Task 1 Step 2 schema (edited); Task 9 Step 1 note, Step 2 doc, Step 3 note; Task 10 Step 6 SUPER 5; Self-review X13 |
+| 9 | 05-groups R14 | - | leader/student id arrays have no size limit (`src/lib/group-actions.ts:16-19,49,55-62`) | `packages/shared/src/group.ts:40-41` (drop `.max(20)`/`.max(500)`) | not found in plan text — new work (pre-plan commit 371404d); recorded as a Task 4 note |
+| 10 | 05-groups R18 | - | group form offers every live student; saving enrols them (`src/lib/groups-query.ts:112-121`; `src/lib/group-actions.ts:55-76`) | `apps/backend/src/lib/queries/groups.ts:155-168` (`validateGroupWrite`), `:210-213` (`setGroupStudents` upsert); `GroupForm.tsx:93-115` | D-16.11 picker bullet; D-16.14; Task 4 note; Task 8 Step 1 note, Step 3 doc + note |
+| 11 | 05-groups R48 | - | bulk roster save accepts up to 2000; null unassigns (`src/lib/group-actions.ts:183-190`) | `packages/shared/src/group.ts:118` (`GROUP_ASSIGNMENTS_MAX`); `apps/backend/src/lib/queries/groups.ts:360-426` (batch writes) | D-16.12; Task 1 Step 1 test + Step 4 schema (edited); Task 2 Step 6 note, Step 7 comment, Step 9 OpenAPI (edited) |
+| 12 | 05-groups R78 | - | group-form picker lists every live STUDENT, name asc (`src/lib/groups-query.ts:112-121`) | `apps/mobile/src/components/GroupForm.tsx` (picker source); new `GET /groups/student-options` | D-16.11; D-16.14; Task 4 note; Task 8 Step 3 note |
+| 13 | 05-groups R79 | - | picker shows name/email only; one static helper line (`src/components/groups/group-form.tsx:62-66,148`) | `apps/mobile/src/components/GroupForm.tsx:100-105` | Task 8 Step 1 create test (edited), Step 3 code (edited) |
+| 14 | 05-groups R82 | - | a student whose group is in another season shows as unassigned (`src/lib/groups-query.ts:151-155,161`) | `apps/backend/src/lib/queries/groups.ts:286-304`; `packages/shared/src/group.ts:113`; roster grid + form captions | D-16.11; Task 1 Step 4 schema; Task 2 Step 2 test, Step 6 code, Step 9 OpenAPI; Task 8 fixtures, roster code (all edited) |
+| 15 | 05-groups R91 | - | `/admin/groups` opens newest non-deleted administered season by startDate, no status filter (`src/app/admin/groups/page.tsx:25-40`) | `apps/mobile/app/(app)/groups.tsx:56-101`; `apps/mobile/src/hooks/use-seasons.ts:52-58` (`pickCurrentSeasonId` not used there) | D-16.16; Task 5 `pickNewestSeasonId` + `useStaffSeasonSelection` (edited); Task 8 Step 1 note, `groups.tsx` code (edited) |
+| 16 | 05-groups R97 | - | create and edit both return to the season's group list (`src/components/groups/group-form.tsx:107`) | `apps/mobile/app/(app)/group/new.tsx:25`; `group/[id]/edit.tsx:89` | D-16.16 (`seasonId` param); Task 8 Step 1 create test + note, Step 4 `new.tsx`/`edit.tsx` (edited) |
+| 17 | 05-groups R101 | - | after save the grid says "Updated N student(s)." (`src/components/groups/roster-grid.tsx:84-87`) | `apps/mobile/app/(app)/seasons/[code]/roster/index.tsx:80-87` | Task 8 Step 1 roster test, Step 4 roster code (edited) |
+
+**Awaiting owner (not changed):** none

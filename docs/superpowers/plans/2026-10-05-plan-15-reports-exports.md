@@ -5,9 +5,10 @@
 **Goal:** Every derived figure in domain 17 computed once on the server, from
 **one** definition per metric held in `packages/shared`, with the season scope
 resolved by intersection with the caller's permissions rather than by trusting
-the query string — and both exports delivered to a phone as a server-generated
-XLSX streamed under an `Authorization` header, written straight to disk by
-`expo-file-system` and handed to the OS share sheet.
+the query string — and both exports delivered to a phone as server-generated
+files (the engagement export as v1's CSV, the season workbook as XLSX)
+streamed under an `Authorization` header, written straight to disk by
+`expo-file-system` and handed to the OS share sheet. *(v1 parity 2026-10-09: was "both exports delivered as a server-generated XLSX")*
 
 v1 has three disagreeing computations of "submission %", an attendance
 percentage that can exceed 100, a cohort-wide personal-data export behind no
@@ -77,18 +78,16 @@ the divergence ledger below with the migration that discharges it.
 ## Not in scope
 
 - **No new screen route.** `/reports/students` (spec §9 row 2) is **not**
-  built. The paged cohort endpoint ships — it is the fix for R34 — and the
-  `/reports` screen pages through it inline with a "Show more" under the
-  at-risk card. Adding a second route file widens the roadmap's "mobile:
-  reports screen" to two screens for ten more rows.
-- **No link from the organisation roll-up's season rows.** The rows carry
-  `code` on the contract (fixing R62/D13 at the data layer). Plan 6 — earlier
-  in the execution order — builds the season detail route (spec 02 §9's
-  `/seasons/[code]`); wiring `{ pathname: "/seasons/[code]", params: { code } }`
-  onto each row is a one-line follow-up for Plan 16's SUPER dashboard, which
-  renders the same rows. It is left out here only to keep this plan's screen
-  test surface unchanged; typed routes will reject the link if Plan 6 named
-  the route differently, which is the point of not hard-coding it blind.
+  built. The paged cohort endpoint ships — it is the fix for R34 — but the
+  `/reports` screen shows only v1's capped at-risk list (10 rows, no total, no
+  pager; v1 `src/lib/reports-query.ts:169-172`). Adding a second route file
+  widens the roadmap's "mobile: reports screen" to two screens for ten more
+  rows. *(v1 parity 2026-10-09: was "the screen pages the cohort inline with a Show more")*
+- **Season rows in the organisation roll-up link to the season.** v1 links
+  each row (`src/app/super/reports/page.tsx:37`, by integer id, which 404s);
+  v2 wires `{ pathname: "/seasons/[code]", params: { code } }` onto each row of
+  the per-season table using the `code` the contract already carries (the
+  id-vs-code bug stays fixed, the link is restored). *(v1 parity 2026-10-09: was "no link from the season rows; left to Plan 16")*
 - **No student or leader surface.** Both are refused explicitly by the
   endpoints (R109, R110, D6 #4). A leader-scoped "my group's engagement"
   report is a reasonable future feature and must not arrive by accident.
@@ -147,8 +146,8 @@ report; it does not open the file.
   `GMAIL_APP_PASSWORD`, token, or password hash in a log line, a test, a
   fixture, an OpenAPI example, or a spreadsheet cell. The export audit line
   logs a user **id and role**, never an email; the workbooks contain student
-  emails by design (that is what they are for) and are therefore rate-limited
-  and gated.
+  emails by design (that is what they are for) and are therefore gated (not
+  rate-limited — v1 has no limit, `src/app/api/reports/export/route.ts:7-39`). *(v1 parity 2026-10-09: was "rate-limited and gated")*
 - **Integration fixtures:** every id/name/email/code carries the
   `space-v2-test-` prefix; every `deleteMany` filters on that prefix. Use
   `createTestSeason` / `createTestUser` / `login` / `cleanupTestData` from
@@ -236,25 +235,25 @@ argument rather than assertion.
 | 7 | `rawStudents` — every active student's name, email and scores — is returned to every caller including screens that render ten rows | The summary carries the capped at-risk list and counts only. The cohort is a separate, separately-gated, cursor-paged endpoint | spec D6 #2, R34 |
 | 8 | MENTOR may pull any season's full workbook; the only thing stopping them is that one page does not render the button | **MENTOR is refused the workbook** in the endpoint. MENTOR keeps the engagement export, which is data v1 shows them on screen | spec D6 #3, R85, R86 |
 | 9 | LEADER is excluded by the absence of a route | LEADER is refused **explicitly**, 403, before any query | spec D6 #4, R109 |
-| 10 | SUPER cannot open the cross-season engagement screen, but the CSV route hands SUPER exactly that data | SUPER gets the engagement view. The inconsistency resolves toward what the export already permits | spec D17, R45 vs R106 — **deliberate divergence** |
-| 11 | A soft-deleted season is fully exportable (`findUniqueOrThrow` on id alone) | `deletedAt: null` on the workbook's season lookup; `not_found` otherwise | spec D14, R81 |
-| 12 | Two export formats; the CSV quotes with `JSON.stringify` (JSON escaping, not RFC 4180), joins with bare LF, and writes no BOM | **One format: XLSX.** `?format=csv` returns a legible 400 rather than a 404 | spec D7, D10, R40, R41 |
+| 10 | SUPER cannot open the cross-season engagement screen, but the CSV route hands SUPER exactly that data | SUPER gets **no** cross-season engagement view: SUPER sees the organisation roll-up plus one season at a time (v1 `src/app/mentor/reports/page.tsx:10`, `src/app/admin/season/[code]/reports/page.tsx:21,24`). The engagement export keeps SUPER all-seasons (R45) *(v1 parity 2026-10-09: was "SUPER gets the cross-season engagement view")* | spec R45, R106 |
+| 11 | A soft-deleted season is fully exportable (`findUniqueOrThrow` on id alone) | As v1: the workbook is built for any season id, soft-deleted included (v1 `src/lib/season-export.ts:46-49`); an unknown id is still `not_found` 404 *(v1 parity 2026-10-09: was "`deletedAt: null` on the season lookup")* | R81 |
+| 12 | Two export formats; the CSV quotes with `JSON.stringify` (JSON escaping, not RFC 4180), joins with bare LF, and writes no BOM | **The engagement export is v1's CSV** — columns `Student, Email, Season, Attendance %, Submission %, Score`, one row per ACTIVE enrolment (v1 `src/lib/reports-query.ts:177-190`, `src/app/api/reports/export/route.ts:36-37`) — but quoted per RFC 4180 with a UTF-8 BOM (and CRLF), fixing R40/R41. The season workbook stays XLSX *(v1 parity 2026-10-09: was "One format: XLSX; `?format=csv` returns 400")* | R38–R41 |
 | 13 | The workbook is materialised as a `Buffer` and copied again into a `Uint8Array` | `workbook.xlsx.write(res)` — one materialisation, streamed | R83 |
-| 14 | `Content-Disposition` interpolates `Season.code` unescaped | Percent-encoded, with an ASCII fallback plus `filename*=UTF-8''…` | spec D16, R84 |
-| 15 | CSV filename is `engagement-<epoch-ms>.csv` | `engagement-<scope>-<yyyy-MM-dd>.xlsx`, built by **one** function in `packages/shared` that the server and the client both call | spec D16, R42 |
-| 16 | Unpublished ONLINE quizzes become columns of blanks; `maxScore = 0` quizzes print a score but are excluded from the average | Both are excluded from the workbook entirely | spec D16, R74, R77 |
-| 17 | A blank cell and an em dash both mean "no row"; nothing distinguishes "not applicable" from "missing" | Blank = "assigned, nothing submitted"; `n/a` = "not assigned to this student"; a **Key** sheet says so | spec D16, R82 |
-| 18 | The at-risk cap of 10 is invisible — a reader cannot tell whether ten is all of them | `atRiskTotal` is returned; the screen renders "10 of 34" | spec D16, R33 |
+| 14 | `Content-Disposition` interpolates `Season.code` unescaped | Filename stays v1's `<Season.code>-attendance-grades.xlsx` (v1 `src/app/api/season/export/route.ts:29`; no date, code not slugified), percent-encoded with an ASCII fallback plus `filename*=UTF-8''…` *(v1 parity 2026-10-09: was "`<slug>-attendance-grades-<org-day>.xlsx`")* | spec D16, R84 |
+| 15 | CSV filename is `engagement-<epoch-ms>.csv` | As v1: `engagement-<epoch-ms>.csv` (v1 `src/app/api/reports/export/route.ts:37`); the server's name travels in `Content-Disposition` and the client uses it *(v1 parity 2026-10-09: was "`engagement-<scope>-<yyyy-MM-dd>.xlsx`")* | R42 |
+| 16 | Unpublished ONLINE quizzes become columns of blanks; `maxScore = 0` quizzes print a score but are excluded from the average | As v1: every quiz in the season is a column, unpublished ONLINE and `maxScore = 0` included; `maxScore <= 0` is skipped only in `Average %` (v1 `src/lib/season-export.ts:79-88,141-148`) *(v1 parity 2026-10-09: was "both are excluded from the workbook entirely")* | R74, R77 |
+| 17 | A blank cell and an em dash both mean "no row"; nothing distinguishes "not applicable" from "missing" | As v1: em dash `—` = no submission (targeted or not), blank = no attendance/grade row; no `n/a`, no Key sheet (v1 `src/lib/season-export.ts:118,143,170`) *(v1 parity 2026-10-09: was "blank / `n/a` / a Key sheet")* | R78, R79, R82 |
+| 18 | The at-risk cap of 10 is invisible — a reader cannot tell whether ten is all of them | As v1: the list is composite `score < 60`, ascending, capped at 10, headed "Students at risk" with no total and no pager (v1 `src/lib/reports-query.ts:169-172`) *(v1 parity 2026-10-09: was "`atRiskTotal` returned; screen renders '10 of 34'")* | R33 |
 | 19 | Bucket counts count enrolments, not students, so the pie's total exceeds the headcount | `cohortSize` (distinct students) ships beside `enrollmentCount`; the donut is labelled "enrolments" whenever the scope spans more than one season | spec D16, R32 |
 | 20 | The engagement pie is semantic **by coincidence** — palette index order happens to line up with bucket seed order | An explicit `Record<EngagementBand, string>` keyed off the enum. Reordering the bands cannot repaint "High" red | spec D11, R92 |
-| 21 | Every date label is `format(startsAt, "MMM d")` on the server — no year, and the reader sees the server's calendar day | Chart data carries raw ISO instants and the client formats; the **workbook** (whose headers the server writes) formats in `config.orgTimezone`. Year added everywhere | ruling **C2**, spec D12, R15, R68, R100, R101 |
-| 22 | `ReportFilters.from`/`.to` exist and no caller passes them | Implemented, and joined by `trendLimit` — a windowed trend is what a phone needs | spec R4, R5, D9 |
-| 23 | `totalStudents` counts student accounts and is labelled "Current students" | Field renamed `totalStudentsNotGraduated`; the query is unchanged so nobody's headline number moves | spec D4, R51 |
+| 21 | Every date label is `format(startsAt, "MMM d")` on the server — no year, and the reader sees the server's calendar day | Chart data carries raw ISO instants plus the org-zone `dayKey`; the **workbook** (whose headers the server writes) formats in `config.orgTimezone`. Labels stay v1's `MMM d` — **no year** (v1 `src/lib/reports-query.ts:106`, `src/lib/season-export.ts:106`) *(v1 parity 2026-10-09: was "Year added everywhere")* | ruling **C2**, spec D12, R15, R68, R100, R101 |
+| 22 | `ReportFilters.from`/`.to` exist and no caller passes them | Implemented. `trendLimit` is optional with **no default**: absent, every past session in scope is plotted, as v1 (`src/lib/reports-query.ts:79-84`) *(v1 parity 2026-10-09: was "joined by `trendLimit` (default 26)")* | spec R4, R5, R8, D9 |
+| 23 | `totalStudents` counts student accounts and is labelled "Current students" | Field renamed `totalStudentsNotGraduated`; the query is unchanged and the label stays v1's "Current students" (v1 `src/app/super/reports/page.tsx:70`) *(v1 parity 2026-10-09: was label "Student accounts")* | spec D4, R51 |
 | 24 | `droppedCount` is a display rename of `WITHDRAWN` on the contract | `withdrawnCount` on the contract, "Dropped" on the label | spec §8, R54 |
-| 25 | Neither export is rate-limited and neither records who exported what | Both are rate-limited per **user** and both log an audit line. The table is a cutover task | spec D15, R48, R88 |
+| 25 | Neither export is rate-limited and neither records who exported what | **No rate limit**, as v1 (`src/app/api/reports/export/route.ts:7-39`, `src/app/api/season/export/route.ts:10-32`). Both still log a server-side audit line (not user-visible). The table is a cutover task *(v1 parity 2026-10-09: was "both rate-limited per user")* | spec D15, R48, R88 |
 | 26 | Both export routes answer an unauthenticated request with a **redirect** | 401 in the JSON envelope | spec §4, R87 |
 | 27 | `_count: { attendance: true }` is selected on every session and never read | Deleted | R17 |
-| 28 | Season links on the SUPER page point at `/super/seasons/<integer id>` and every one 404s | The contract carries `code` beside `id` | spec D13, R62 |
+| 28 | Season links on the SUPER page point at `/super/seasons/<integer id>` and every one 404s | The contract carries `code` beside `id`, and each season row links to `/seasons/[code]` (v1 `src/app/super/reports/page.tsx:37` linked every row) *(v1 parity 2026-10-09: was "no link rendered")* | spec D13, R62 |
 | 29 | `ChartLegend` is exported and never used; `computeEngagementBulk` is dead | Neither is ported | ruling **C12**, R99 |
 | 30 | The export header `"Student"` cannot be re-imported by v1's own student importer, which matches the exact string `"name"` | **The header does not change.** `"Student"` is right for a human reading a spreadsheet. The importer alias is domain 16's half | spec D8, D16 |
 
@@ -305,7 +304,7 @@ that student", and "any percentage that can exceed 100 is a bug, not a display
 quirk — clamp is not the fix, the denominator is." The workbook's column header
 becomes `Submitted % (assigned to student)` so a reader with a v1 file and a v2
 file side by side can tell which is which without reading this document, and
-the **Key** sheet spells out the change (D-17.14).
+the report notes call out the change. *(v1 parity 2026-10-09: was "the Key sheet spells out the change (D-17.14)" — there is no Key sheet, see D-17.14)*
 
 ### D-17.2 — The at-risk list and the `AT_RISK` band are the same set, by construction
 
@@ -315,37 +314,29 @@ reports screen instead bands the *composite* into High ≥ 80 / Medium ≥ 60 /
 Low ≥ 40 / At risk < 40 (R30) and lists `score < 60` as at-risk (R33). Those
 are three thresholds and two definitions on one screen.
 
-**Ruling.** `bandFor` in `packages/shared/src/reports.ts` evaluates
-`isAtRisk` **first**:
+**Ruling.** Reports keep v1's reports banding, which is by the **composite
+score** and independent of domain 9's `isAtRisk` (v1
+`src/lib/reports-query.ts:47-59`). `bandFor` in `packages/shared/src/reports.ts`:
 
 ```
-AT_RISK   when isAtRisk(score)                    — domain 9's one definition
 HIGH      when score.score >= 80
 MEDIUM    when score.score >= 60
-LOW       otherwise
+LOW       when score.score >= 40
+AT_RISK   otherwise (< 40)
 ```
 
-The at-risk list is then literally `rows.filter(r => r.band === "AT_RISK")`.
-Band membership and list membership cannot disagree because there is only one
-predicate. The row contract carries `band` and **not** a separate `atRisk`
-boolean — two fields meaning one thing is how this domain got into trouble.
+The at-risk **list** is v1's: rows with composite `score < 60`, sorted by
+score ascending, first 10 (v1 `src/lib/reports-query.ts:169-172`) — not
+`band === "AT_RISK"`. No total is shown and there is no pager; the card is
+headed "Students at risk". *(v1 parity 2026-10-09: was "`bandFor` evaluates `isAtRisk` first; list = AT_RISK band; LOW below 60")*
 
-**Reason.** Ruling C4 ("when two domains need the same derived value, it is
-defined in one place and both consume it") and spec D5 ("whatever threshold is
-chosen, the two screens must not be able to disagree"). Under v1 a student at
-55 attendance / 95 submissions is "Medium" on `/reports` and at-risk on
-`/mentor/dashboard`, reachable from the same tab bar.
+**Reason.** Owner ruling 2026-10-09: v2 behaves as v1 unless v1 is a defect.
+Two thresholds on one screen is a product choice, not a bug. Domain 9's
+`isAtRisk` keeps governing the screens Plan 12 owns; the reports page does not
+consume it.
 
-**Consequence to state out loud:** the AT_RISK slice of v2's donut will be
-**larger** than v1's, because a component-wise test catches students the
-composite hides. That is the intended behaviour, not a regression.
-
-**Edge case, decided:** a student with no past sessions *and* no targeted
-assignments has both denominators zero, `isAtRisk` returns false (Plan 12's
-guard, fixing R56), the composite is 0, and they band `LOW`. "Low" is a weak
-label for "no data yet", but inventing a fifth band changes the pie's category
-count and the contract; the Key sheet and the screen's method note say that a
-season with no activity bands everyone `LOW`.
+**Edge case:** a student with both denominators zero scores 0 and bands
+`AT_RISK` and appears in the at-risk list, as in v1. *(v1 parity 2026-10-09: was "bands `LOW`; Key sheet and method note explain")*
 
 ### D-17.3 — The attendance trend's denominator is historical, so the chart cannot exceed its own axis
 
@@ -400,11 +391,20 @@ seasons you asked for are not in your scope" without saying which.
 This also fixes R46: v1 answered an unknown season id with a **header-only CSV
 and HTTP 200**, which reads as "this season has no students".
 
+**Explicit out-of-scope season → 403, as v1.** When an ADMIN passes a
+`seasonId` that is not in `user.seasonAdminIds`, `GET /reports/engagement`,
+its `/students` page and the engagement export answer **403 forbidden**
+(v1 `src/app/api/reports/export/route.ts:19-22`). The check is membership in
+`seasonAdminIds` only — no database lookup precedes it — so it is no existence
+oracle. Ids inside the caller's set that are soft-deleted or unknown still drop
+out of the intersection. `resolvedScope.truncated` and the screen's "Some
+seasons you asked for aren't in your scope" warning are removed. *(v1 parity 2026-10-09: was "silently dropped, `truncated` set; not a 403")*
+
 ### D-17.5 — The summary and the cohort are different endpoints, and the cohort is paged
 
 **Ruling.** `GET /api/v1/reports/engagement` returns the charts, the band
-counts, the **capped** at-risk list (10), `atRiskTotal`, `cohortSize` and
-`enrollmentCount`. `GET /api/v1/reports/engagement/students` returns the full
+counts, the **capped** at-risk list (10, v1's `score < 60` set — D-17.2),
+`cohortSize` and `enrollmentCount`. *(v1 parity 2026-10-09: was "… plus `atRiskTotal`" — no total is shown, R33)* `GET /api/v1/reports/engagement/students` returns the full
 per-enrolment rows, cursor-paged, default 50, max 200, gated separately by the
 same `reportScopeFor`.
 
@@ -422,7 +422,7 @@ reconnect.
 
 ### D-17.6 — MENTOR is refused the season workbook; SUPER is granted the engagement report
 
-Two role changes, in opposite directions, both deliberate.
+Two role changes, in opposite directions, both deliberate. *(v1 parity 2026-10-09: the SUPER half is reverted — see below; the MENTOR half is unchanged by this revision)*
 
 **MENTOR loses the workbook.** v1's endpoint allows MENTOR any season's
 workbook (R85) and the only thing preventing it is that `/mentor/reports` does
@@ -432,13 +432,15 @@ nearer a leader's remit. `canExportSeasonWorkbook` is `isAdminOfSeason` and
 nothing else — which admits SUPER (it short-circuits inside `rbac.ts`) and the
 season's own ADMIN. Spec D6 #3.
 
-**SUPER gains the engagement report.** v1 gates `/mentor/reports` to MENTOR
-only (R106), so SUPER cannot open the cross-season engagement screen — while
-the CSV route hands SUPER exactly that data with no season parameter (R45) and
-`/admin/season/[code]/reports` shows SUPER any single season's version (R108).
-That is an artefact of a per-role page tree, not a policy.
-`packages/shared/src/navigation.ts:57` already puts `/reports` in SUPER's
-sidebar. Spec D17.
+**SUPER keeps v1's view: no cross-season engagement report.** v1 gates
+`/mentor/reports` to MENTOR only (`src/app/mentor/reports/page.tsx:10`), and
+SUPER sees one season at a time via `/admin/season/[code]/reports`
+(`src/app/admin/season/[code]/reports/page.tsx:21,24`) plus the organisation
+roll-up. So `GET /reports/engagement` (and its `/students` page) for SUPER
+**requires exactly one `seasonId`**; `/reports` for SUPER renders the
+organisation section plus a single-season engagement view with a season
+switcher (as the ADMIN one, R105). The engagement **export** keeps SUPER
+all-seasons, as v1's CSV route does (R45). *(v1 parity 2026-10-09: was "SUPER gains the cross-season engagement report (scope all)")*
 
 **Both are divergences from v1 and must be stated in the implementation
 report**, because someone diffing the two systems will otherwise read the
@@ -448,28 +450,35 @@ Full matrix, as implemented:
 
 | Endpoint | SUPER | MENTOR | ADMIN | LEADER | STUDENT |
 |---|---|---|---|---|---|
-| `GET /reports/engagement` | all seasons | all seasons | ∩ `seasonAdminIds` | **403** | **403** |
-| `GET /reports/engagement/students` | all seasons | all seasons | ∩ `seasonAdminIds` | **403** | **403** |
+| `GET /reports/engagement` | one `seasonId` required *(v1 parity 2026-10-09: was "all seasons")* | all seasons | ∩ `seasonAdminIds`; an explicit id outside it → **403** | **403** | **403** |
+| `GET /reports/engagement/students` | one `seasonId` required *(v1 parity 2026-10-09: was "all seasons")* | all seasons | ∩ `seasonAdminIds`; an explicit id outside it → **403** | **403** | **403** |
 | `GET /reports/organisation` | yes | **403** | **403** | **403** | **403** |
-| `GET /reports/engagement/export` | all seasons | all seasons | ∩ `seasonAdminIds` | **403** | **403** |
+| `GET /reports/engagement/export` | all seasons | all seasons | ∩ `seasonAdminIds`; an explicit id outside it → **403** | **403** | **403** |
 | `GET /seasons/:id/exports/workbook` | yes | **403** | own season only | **403** | **403** |
 | `GET /seasons/:id/exports/manifest` | yes | **403** | own season only | **403** | **403** |
 
-### D-17.7 — One export format. CSV is not ported
+### D-17.7 — The engagement export is v1's CSV; the season workbook is XLSX
 
-**Ruling.** Both exports are XLSX. `exportFormatSchema` is `z.enum(["xlsx"])`
-— a one-member enum on purpose, so `?format=csv` produces
-`bad_request` 400 with a message naming XLSX, rather than a 404 that reads as
-"the export is broken".
+**Ruling.** *(v1 parity 2026-10-09: was "Both exports are XLSX; `exportFormatSchema` is `z.enum(["xlsx"])`, `?format=csv` → 400")*
+The **engagement export is v1's CSV** (v1 `src/lib/reports-query.ts:177-190`,
+`src/app/api/reports/export/route.ts:12-37`): `text/csv; charset=utf-8`, header
+`Student,Email,Season,Attendance %,Submission %,Score` — exactly six columns,
+no `Band` — and one line per ACTIVE enrolment in the enrolment-query order (no
+sort, R39). Same roles and scope as v1 (SUPER/MENTOR all seasons with no
+`season` param, scoped ADMIN). `exportFormatSchema` accepts `csv` and
+`?format=csv` works; the mobile `ExportMenu` shares a `.csv` (`text/csv`,
+UTI `public.comma-separated-values-text`). The season workbook stays XLSX.
 
-**Reason.** Spec D7 + D10. v1's `toCsv` quotes with `JSON.stringify`, which
-emits `\"` for an embedded quote — no CSV parser accepts that — doubles
-backslashes, joins with bare LF, and writes no BOM, so Excel on Windows decodes
-the file as the system codepage and mangles every non-ASCII name. For this
-organisation's roster that is most of them. Fixing CSV means quoting, line
-endings, BOM, and a test with a quote and a non-Latin script; **or** we use the
-`exceljs` path that has to exist anyway for the workbook and get all of it
-free. One format, one MIME type, one UTI, one share flow, one code path.
+Two v1 CSV defects are **fixed** (KEEP-FIX R40, R41): cells are quoted per
+RFC 4180 (`"` doubled, no JSON escaping), and the body starts with a UTF-8 BOM
+with CRLF line endings, so Excel decodes Arabic names correctly.
+
+**Reason.** Owner ruling 2026-10-09 (REG-45 re-signed as reverted): v2 behaves
+as v1. v1's `toCsv` quotes with `JSON.stringify`, which emits `\"` for an
+embedded quote — no CSV parser accepts that — and writes no BOM, so Excel on
+Windows decodes the file as the system codepage and mangles every non-ASCII
+name; those two are data corruption and are fixed, the format itself is not
+changed.
 
 ### D-17.8 — Delivery on a phone: `downloadResumable` with an `Authorization` header, then the share sheet
 
@@ -527,8 +536,11 @@ organisation timezone read from config, "never the device's zone".
   `config.orgTimezone`.
 - The `startsAt <= now` boundary is an instant comparison and is
   zone-independent; it is unaffected either way.
-- **The year is added to every date label.** `MMM d` alone is ambiguous across
-  seasons (R15, R68) and this is the moment to fix it.
+- **Date labels stay v1's `MMM d`, no year.** The trend labels (v1
+  `src/lib/reports-query.ts:106`) and the workbook session headers
+  `"<MMM d> · <title>"` (v1 `src/lib/season-export.ts:106`) carry month and day
+  only; the day itself is still the org-zone day (C2). The client uses a
+  no-year variant of `formatDayKey`; `formatDayInOrgTime` drops the year. *(v1 parity 2026-10-09: was "The year is added to every date label")*
 
 **Reason.** C2 exists precisely so that "a student in a different timezone
 [does not see] a different deadline from their leader". A `?tz=` parameter
@@ -548,8 +560,8 @@ different things in the same column while both systems run. The workbook is the
 only surface in the product that exposes `lateMinutes` cell-by-cell (R69, R70).
 
 **Ruling.** Every `LATE` attendance cell renders the literal string `"L"`,
-matching the null fallback v1 already has. The minute count is **withheld**,
-and the Key sheet says why in one sentence an operator can act on.
+matching the null fallback v1 already has. The minute count is **withheld**.
+*(v1 parity 2026-10-09: was "and the Key sheet says why" — there is no Key sheet, D-17.14)*
 
 **Reason.** C3's closing line: "Reports must not present v1-era and v2-era
 `lateMinutes` as one series without saying so." There is no column that
@@ -602,7 +614,7 @@ Replaced, per spec D9's table:
 
 | v1 | v2 |
 |---|---|
-| `session.findMany` + JS filter over every attendance row in scope (R17) | one `attendance.findMany` bounded by the **trend window** (≤ `trendLimit` sessions), selecting two columns |
+| `session.findMany` + JS filter over every attendance row in scope (R17) | one `attendance.findMany` over the trend's sessions (every past session in scope unless `trendLimit` is passed — D-17.12), selecting two columns *(v1 parity 2026-10-09: was "bounded by the trend window (≤ `trendLimit` sessions)")* |
 | sequential `seasonEnrollment.count` per season (R10) | one `seasonEnrollment.findMany` over the scope, reused for the roster windows, the targeting map and the cohort size |
 | one `count` per assignment (R24) | in-memory set intersection against that same enrolment fetch |
 | four queries per enrolment (R29) | `computeEngagementForSeasons` — five, total |
@@ -622,13 +634,12 @@ a date window is precisely what the mobile screen needs, so this is "a feature
 to implement, not to remove".
 
 **Ruling.** `?from=` / `?to=` (ISO datetimes) narrow the attendance trend and
-nothing else — v1's intended semantics (R4). In addition, `?trendLimit=`
-(default **26**, max 200) takes the **most recent** N sessions in the window,
-ordered ascending for display. `resolvedScope.truncated` does not cover this;
-the trend carries no flag, because "most recent 26" is the documented default
-rather than a silent truncation.
-
-26 is one point per week for a two-term season and fits a 375 px axis.
+nothing else — v1's intended semantics (R4). `?trendLimit=` is **optional
+with no default** (max 200): when absent the trend has one point for every
+past session in scope, ascending, exactly as v1
+(`src/lib/reports-query.ts:79-84`); the query omits `take`. When passed it
+takes the most recent N sessions, ordered ascending for display. The mobile
+screen does not pass it. *(v1 parity 2026-10-09: was "`trendLimit` default 26 — most recent 26 sessions only")*
 
 **Implementation trap, called out because it is easy to write and hard to see:**
 the `to` bound and the `startsAt <= now` bound are both `lte` on the same
@@ -656,63 +667,54 @@ data. R22's case is the sharpest: a targeted assignment with no target rows
 shows "0 % submitted", which reads as total cohort failure and is actually a
 mis-configured assignment.
 
-### D-17.14 — The workbook grows a fourth sheet: `Key`
+### D-17.14 — The workbook keeps v1's three sheets (no `Key` sheet)
 
 **Question.** Spec D16 says keep one symbol for "no row" and put its meaning in
 a legend row. R63 says the workbook has exactly three sheets.
 
-**Ruling.** Four sheets: `Attendance`, `Grades`, `Assignments`, `Key`. A legend
-row inside a data sheet breaks sorting and filtering — the two things an
-operator opens a spreadsheet to do. The `Key` sheet carries:
-
-- the cell symbols (`P`, `A`, `L`, blank, `n/a`) and exactly what each means;
-- `REPORT_METRIC_NOTES` from `packages/shared` — the same sentences the mobile
-  screen's "How these numbers are calculated" disclosure renders, so the
-  spreadsheet and the app cannot describe the same metric differently;
-- the season, the scope, and the generation instant formatted in
-  `config.orgTimezone`.
-
-`REPORT_METRIC_NOTES` living in `packages/shared` and being rendered by both a
-Node XLSX builder and a React Native `<Text>` is the same C4 discipline applied
-to prose: one definition, two renderers.
-
-This is a **deliberate divergence from R63** and is recorded as such.
+**Ruling — withdrawn.** The workbook has exactly v1's three sheets,
+`Attendance`, `Grades`, `Assignments`, creator `JPC Space` (v1
+`src/lib/season-export.ts:101-105,129,157`). No `Key` sheet: remove
+`addKeySheet` and its call from both workbook builders. `REPORT_METRIC_NOTES`
+stays only as the mobile screen's method note. *(v1 parity 2026-10-09: was "Four sheets: Attendance, Grades, Assignments, Key — a deliberate divergence from R63")*
 
 ### D-17.15 — The Assignments sheet distinguishes "not assigned" from "nothing submitted"
 
-**Ruling.** Columns stay one per assignment in the season (a spreadsheet's
-column set must be uniform across rows). The cell is:
+**Ruling.** Columns stay one per assignment in the season, for every student.
+The cell is v1's (`src/lib/season-export.ts:15-20,168-173`):
 
 | Cell | Meaning |
 |---|---|
 | `Submitted` / `Reviewed` / `Returned` / `Draft` | the submission's status |
-| *(blank)* | assigned to this student, nothing submitted |
-| `n/a` | **not** assigned to this student |
+| `—` (em dash) | no submission — whether or not the assignment targets the student |
 
-`Submitted % (assigned to student)` divides by the non-`n/a` count — which is
-exactly domain 9's `submissionPct` (D-17.1), and is read from the engagement
-row rather than recomputed, so the two cannot drift.
+There is **no `n/a`** cell; a blank still means "no attendance/grade row" on the
+other sheets (v1 `src/lib/season-export.ts:118,143`). *(v1 parity 2026-10-09: was "blank = assigned, nothing submitted; `n/a` = not assigned")*
 
-**Reason.** Spec D16/R82: "a blank cell and an em dash both mean 'no row
-found'; there is no distinction between 'not applicable to this student' and
-'data missing'." v1's em dash is dropped because `—` and blank were the same
-claim; the em-dash glyph is reused for nothing.
+`Submitted % (assigned to student)` is unchanged by this revision (KEEP-FIX
+R80, ruling C5): it is domain 9's `submissionPct` (D-17.1), read from the
+engagement row rather than recomputed, so the two cannot drift.
+
+**Reason.** Owner ruling 2026-10-09: the cell symbols are v1's; only the
+percentage denominator (a defect) differs.
 
 ### D-17.16 — Filenames are built by one function that both sides call
 
-**Ruling.** `exportFilename(kind, scopeLabel, isoDay)` lives in
-`packages/shared/src/reports.ts`. The server uses it for
-`Content-Disposition`; the client uses it for the local cache filename it must
-choose **before** it can see a response header. They cannot diverge because
-there is one function.
+**Ruling.** `exportFilename(kind, …)` lives in `packages/shared/src/reports.ts`
+and returns v1's names: `engagement-${Date.now()}.csv` for the engagement
+export (v1 `src/app/api/reports/export/route.ts:37`) and
+`${Season.code}-attendance-grades.xlsx` for the workbook (v1
+`src/app/api/season/export/route.ts:29`; no date, code not slugified). The
+server sends its name in `Content-Disposition`; because the engagement name
+carries a timestamp, the client reads the header (or uses the same stamp)
+rather than computing its own. *(v1 parity 2026-10-09: was "`exportFilename(kind, scopeLabel, isoDay)` → `engagement-<scope>-<day>.xlsx` / `<slug>-attendance-grades-<day>.xlsx`")*
 
 `Content-Disposition` carries both an ASCII-sanitised `filename=` and an
 RFC 5987 `filename*=UTF-8''<percent-encoded>` (fixing R84's unescaped
 interpolation of `Season.code`).
 
 On a phone the filename is what the user sees in the share sheet and later in
-Files, and it is the only label the file will ever carry — so
-`engagement-<scope>-2026-08-24.xlsx`, never `engagement-1756012800000.csv`.
+Files — it is v1's `engagement-1756012800000.csv` and `gbv-2026-attendance-grades.xlsx`. *(v1 parity 2026-10-09: was "`engagement-<scope>-2026-08-24.xlsx`, never `engagement-1756012800000.csv`")*
 
 ### D-17.17 — The workbook streams, and nothing tries to send an envelope after the first byte
 
@@ -728,17 +730,13 @@ distinguish from a truncated download.
 inside `exceljs` is unavoidable without the streaming writer; the second copy
 is not.
 
-### D-17.18 — Rate limit per **user**, audit to the application log
+### D-17.18 — No rate limit; audit to the application log
 
-**Ruling.** `exportLimiter` — `windowMs: 15 * 60 * 1000, limit: 10` — mounted
-**after** `requireAuth` and keyed on `req.user.userId`, reusing
-`rateLimitHandler`'s `too_many_requests` 429 envelope.
+**Ruling.** **No rate limit on either export**, as v1
+(`src/app/api/reports/export/route.ts:7-39`, `src/app/api/season/export/route.ts:10-32`).
+Remove `exportLimiter` from both routes. *(v1 parity 2026-10-09: was "`exportLimiter` — 10 per 15 min per user, 429")*
 
-Keying on IP would bucket an entire office behind one NAT together, and would
-drag in express-rate-limit's IPv6 key normalisation for no benefit. Mounting
-after `requireAuth` guarantees the key exists.
-
-Every successful export logs one line:
+Every successful export logs one line (server-side only, not user-visible, so it stays — REG-44):
 
 ```json
 {"event":"export.completed","actorId":42,"actorRole":"ADMIN","kind":"season-workbook","seasonIds":[7],"rowCount":38}
@@ -777,20 +775,36 @@ chart surface is the tooltip (R95), and on mobile dark mode is the norm.
 
 **Question.** Spec D11 recommends `react-native-gifted-charts`.
 
-**Ruling.** **No chart dependency.** Three small components under
+**Ruling.** **No chart dependency.** Small components under
 `apps/mobile/src/components/charts/`, built on `react-native-svg` (already a
 dependency and already in the Jest transform allow-list from Plan 4):
 
 - `TrendLine` — polyline + dots, ~80 lines.
-- `BandDonut` — four `strokeDasharray` arcs on one circle, ~70 lines.
+- `BandDonut` — `strokeDasharray` arcs on one circle, ~70 lines; generalised
+  (or a sibling `PieDonut`) so it also draws the SUPER page's two pies.
 - `RankedBars` — plain `View`s with proportional widths. **Not SVG at all.**
+  Used for the per-assignment submission bars only.
 
-**Reason.** Of v1's four charts, §9 already replaces two with lists: the
+**v1 chart behaviour, kept** *(v1 parity 2026-10-09: was "seasons pie → ranked bar list; alumni → text list; no tooltips; 160 px")*:
+
+- The SUPER page draws **two pies**, as v1 (`src/app/super/reports/page.tsx:24-26,90-95,111-116`):
+  active members per season (slices for seasons with `activeCount > 0` only) and
+  alumni by graduation year, each coloured by the categorical palette in index
+  order (success, teal, warning, error, navy — theme tokens), plus v1's
+  per-season **table** (active / completed / dropped / leaders) listing every
+  season, each row linking to `/seasons/[code]` (R62).
+- Every pie/donut slice carries its name as an on-slice label (v1
+  `src/components/ui/charts.tsx:189-190`), the band donut included.
+- Every chart shows its value on press (tap-to-show tooltip on TrendLine
+  points, donut/pie slices and bars — press replaces v1's hover tooltip,
+  `src/components/ui/charts.tsx:72-80`); colours stay theme tokens.
+- Chart height defaults to **240** (v1 `src/components/ui/charts.tsx:27,54,119,172`)
+  in `TrendLine` and the donut/bar components.
+
+**Reason.** Of v1's four charts, §9 replaces one with a list: the
 submission bar chart becomes a horizontal bar list (free-text assignment titles
-will not fit an axis at 375 px) and the seasons pie becomes a ranked bar list
-(one labelled slice per season on a 240 px square is unreadable past four
-seasons, and the palette wraps back to green on the fifth — R93, R97). That
-leaves one line and one four-slice donut. Against that:
+will not fit an axis at 375 px). The seasons pie stays a pie (owner ruling
+2026-10-09). Against a library:
 
 - `react-native-gifted-charts` pulls `react-native-linear-gradient`, a native
   module that must be added to the dev client, for gradients we do not use;
@@ -812,7 +826,7 @@ to the email (R36). `User.name` is `String` **NOT NULL**
 renders the name directly. A `.nullable()` here would invent a case the
 database cannot produce, and every consumer would then carry a fallback for it.
 
-### D-17.22 — Unpublished and zero-max quizzes are excluded from the workbook
+### D-17.22 — Every season quiz is a workbook column, as v1
 
 `Quiz.publishedAt` is documented in the schema as the draft marker for ONLINE
 quizzes ("students only see published quizzes",
@@ -821,20 +835,22 @@ unpublished quiz becomes a column of blanks that reads as a cohort-wide failure
 to sit it. A `maxScore = 0` quiz prints its score but is excluded from the
 average (R77) — a denominator of zero is not a grade.
 
-**Ruling.** The workbook's quiz query filters
-`OR: [{ kind: "PAPER" }, { kind: "ONLINE", publishedAt: { not: null } }]` and
-`maxScore: { gt: 0 }`. Both exclusions are in the `where`, not in a JS filter,
-so the column never exists rather than existing and being ignored. Spec D16.
+**Ruling.** As v1 (`src/lib/season-export.ts:79-88,141-148`): the quiz query
+is `where: { seasonId }` — **no** `publishedAt` filter and **no**
+`maxScore: { gt: 0 }`. Every quiz, unpublished ONLINE and `maxScore = 0`
+included, gets a column with its scores; `Average %` skips quizzes with
+`maxScore <= 0`. *(v1 parity 2026-10-09: was "query filters PAPER-or-published ONLINE and `maxScore > 0`, so those columns never exist")*
 
-### D-17.23 — Season row ordering and collation are pinned
+### D-17.23 — Season row ordering follows v1's default collation
 
 v1 sorts workbook rows with `a.name.localeCompare(b.name)` and **no locale
 argument** (R65), so ordering across mixed scripts follows whatever collation
 the server's ICU default happens to be — which differs between a developer
 laptop and a container.
 
-**Ruling.** One module-level `new Intl.Collator("en", { sensitivity: "base" })`,
-reused. Two servers exporting the same season produce byte-identical row order.
+**Ruling — withdrawn.** Sort as v1 does: `a.name.localeCompare(b.name)`, no
+locale and no options (v1 `src/lib/season-export.ts:51-66`). Remove `COLLATOR`
+from `workbook-style.ts` and its use in `season-workbook.ts`. *(v1 parity 2026-10-09: was "pinned `Intl.Collator(en, base)`")*
 
 ### D-17.24 — The export header stays `"Student"`
 
@@ -909,6 +925,8 @@ file declares **no** percentage arithmetic of its own except `bandFor`, which
 delegates its only interesting branch to `isAtRisk`.
 
 - [ ] **Step 1: Write the failing test**
+
+> **v1 parity 2026-10-09:** Test expectations change (packages/shared/src/__tests__ report-schemas test): `bandFor` cases become v1's composite cuts — 80 → HIGH, 60 → MEDIUM, 40 → LOW, 39 → AT_RISK, and the 55/95/score-75 student is MEDIUM (D-17.2, v1 `src/lib/reports-query.ts:47-59`); `reportScopeQuerySchema.parse({}).trendLimit` is `undefined` (D-17.12); `exportFormatSchema` accepts `csv`; `exportFilename` returns `engagement-<Date.now()>.csv` and `<code>-attendance-grades.xlsx` with the code unslugified (D-17.16); `truncated` and `atRiskTotal` assertions are deleted.
 
 ```ts
 // packages/shared/src/__tests__/report-schemas.test.ts
@@ -1167,6 +1185,8 @@ function` on the first `bandFor` case. That message proves the test is bound to
 the real module rather than to a local helper.
 
 - [ ] **Step 3: Write the contracts**
+
+> **v1 parity 2026-10-09:** In `packages/shared/src/reports.ts` (built at :53-58) `bandFor` becomes `>=80 HIGH, >=60 MEDIUM, >=40 LOW, else AT_RISK` with no `isAtRisk` call (v1 `src/lib/reports-query.ts:47-59`); `reportScopeQuerySchema.trendLimit` loses `.default(26)` and becomes `.optional()` (:88; v1 `src/lib/reports-query.ts:79-84`); `resolvedScopeSchema.truncated` and the summary's `atRiskTotal` are removed (R33, R44); `exportFormatSchema` (:305) accepts `"csv"`, a `CSV_MIME = "text/csv"` / CSV UTI pair is added beside `XLSX_MIME`; `exportFilename` (:326-336) returns `engagement-${Date.now()}.csv` / `${code}-attendance-grades.xlsx` (v1 `src/app/api/reports/export/route.ts:37`, `src/app/api/season/export/route.ts:29`); the engagement CSV row type drops `band`. `REPORT_METRIC_NOTES` loses its Key-sheet role and the 'season with no activity bands LOW' sentence.
 
 ```ts
 // packages/shared/src/reports.ts
@@ -1700,6 +1720,8 @@ D-17.11 for why that is higher than spec §5's target and why the target is the
 wrong thing to optimise.
 
 - [ ] **Step 1: Write the failing integration test**
+
+> **v1 parity 2026-10-09:** Tests change: the 'drops a requested season … flags truncated' cases become 'ADMIN passing a seasonId outside seasonAdminIds is refused 403' (D-17.4, v1 `src/app/api/reports/export/route.ts:19-22`); the 'windows to the most recent trendLimit sessions' case keeps passing an explicit limit, and a new case asserts that with no `trendLimit` every past session is plotted (D-17.12); the at-risk cases assert v1's list — `score < 60`, ascending, max 10 — and drop every `atRiskTotal` assertion (D-17.2, v1 `src/lib/reports-query.ts:169-172`).
 
 This suite exercises the arithmetic directly against the staging database. The
 *authorization* is Task 5's; splitting them means a red test tells you which of
@@ -2348,6 +2370,8 @@ export async function computeEngagementForSeason(
 
 - [ ] **Step 4: The permissions fragment** *(hand to the coordinator; do not edit the file)*
 
+> **v1 parity 2026-10-09:** `reportScopeFor(SUPER)` for the engagement summary and its `/students` page requires exactly one `seasonId` (bad_request otherwise); the engagement export keeps SUPER all-seasons (D-17.6; v1 `src/app/mentor/reports/page.tsx:10`). v2 code: `apps/backend/src/lib/permissions.ts:667-673`.
+
 Append to `apps/backend/src/lib/permissions.ts`:
 
 ```ts
@@ -2400,6 +2424,8 @@ export function canExportSeasonWorkbook(user: SessionUser, seasonId: number): bo
 ```
 
 - [ ] **Step 5: Write the report aggregation**
+
+> **v1 parity 2026-10-09:** In `apps/backend/src/lib/queries/reports.ts`: `resolveReportScope` (:45-72) no longer drops out-of-scope ids silently — an explicit id outside an ADMIN's `seasonAdminIds` is a 403 raised before any query, and `truncated` is removed (R44); the session query (:137-146) omits `take` when `trendLimit` is absent (R8); the at-risk list (:298-308) becomes `rows.filter(r => r.score < 60).sort(by score asc).slice(0, 10)`, independent of `band`, and `atRiskTotal` is deleted (R33, v1 `src/lib/reports-query.ts:169-172`).
 
 ```ts
 // apps/backend/src/lib/queries/reports.ts
@@ -3183,6 +3209,8 @@ diagnosis.
 
 - [ ] **Step 1: Write the failing integration test**
 
+> **v1 parity 2026-10-09:** Route tests change: `scope.truncated` (around the 'drops the rest silently' case) becomes a 403 assertion for an ADMIN's explicit out-of-scope `seasonId` (R44); a SUPER call without `seasonId` to `/reports/engagement` is a 400 and with one season is 200 (R106); `atRiskTotal` is no longer asserted (R33); the malformed-`trendLimit` 400 stays, the default-26 assertion goes (R8).
+
 ```ts
 // apps/backend/src/__tests__/integration/reports-routes.test.ts
 import request from "supertest";
@@ -3413,6 +3441,8 @@ cd apps/backend && npx jest --config jest.integration.config.js --runInBand --te
 
 - [ ] **Step 3: Write the routes**
 
+> **v1 parity 2026-10-09:** `apps/backend/src/routes/reports.ts`: pass `trendLimit` through only when present (R8); return 403 `forbidden` for an ADMIN's explicit `seasonId` not in `seasonAdminIds` (membership check only, v1 `src/app/api/reports/export/route.ts:19-22`); SUPER's engagement summary/students require one `seasonId` (R106).
+
 ```ts
 // apps/backend/src/routes/reports.ts
 import { Router } from "express";
@@ -3537,6 +3567,8 @@ Order is not load-bearing here — `/api/v1/reports` collides with nothing — b
 keeping the mounts in one block keeps the file readable.
 
 - [ ] **Step 5: OpenAPI, same commit**
+
+> **v1 parity 2026-10-09:** OpenAPI: `trendLimit` has no default; document the ADMIN 403 and SUPER single-season rule; drop `truncated` and `atRiskTotal` from the response schema; the organisation roll-up's `totalStudentsNotGraduated` description says it is labelled "Current students" (R51).
 
 Add three paths to `apps/backend/src/docs/openapi.ts`, following the file's
 existing `ok(...)` / `errRef(...)` idiom. The prose is not decoration; these
@@ -3700,6 +3732,8 @@ API this code uses is the API v1's file is written against and a reader can diff
 the two.
 
 - [ ] **Step 2: Write the failing integration test**
+
+> **v1 parity 2026-10-09:** Workbook test expectations change: exactly three sheets `Attendance`, `Grades`, `Assignments` (no Key, R63); an unpublished ONLINE quiz and a `maxScore = 0` quiz each get a column, the latter excluded only from `Average %` (R74, R77, R116); an untargeted student's Assignments cell is `—`, a no-submission cell is `—`, never `n/a` or blank (R78, R79, R82); session headers read `MMM d · title` with no year (R68); a soft-deleted season still builds (R81); rows sorted by `localeCompare` (R65). The engagement-workbook test becomes a CSV test: six columns, no Band, enrolment order, RFC 4180 quoting with a `"` and a backslash in a name, a leading UTF-8 BOM, CRLF and an Arabic name (R38–R41).
 
 ```ts
 // apps/backend/src/__tests__/integration/season-workbook.test.ts
@@ -4025,6 +4059,8 @@ it meant minutes late.
 
 - [ ] **Step 3: Extend `org-time.ts`** *(Plan 3's file)*
 
+> **v1 parity 2026-10-09:** `formatDayInOrgTime` renders `MMM d` without the year, still in `config.orgTimezone` (v1 `src/lib/season-export.ts:106`; v2 `apps/backend/src/lib/exports/season-workbook.ts:85,319-321`).
+
 ```ts
 /**
  * A calendar day in the organisation's zone — "Mar 1, 2020".
@@ -4058,6 +4094,8 @@ definition is the drift C4 forbids; if it is missing, Plan 4 has not landed —
 stop.
 
 - [ ] **Step 4: Shared workbook styling**
+
+> **v1 parity 2026-10-09:** `workbook-style.ts` loses `addKeySheet` and `COLLATOR` (R63, R65).
 
 ```ts
 // apps/backend/src/lib/exports/workbook-style.ts
@@ -4137,6 +4175,8 @@ export function addKeySheet(workbook: ExcelJS.Workbook, ctx: KeySheetContext): v
 ```
 
 - [ ] **Step 5: The season workbook**
+
+> **v1 parity 2026-10-09:** `apps/backend/src/lib/exports/season-workbook.ts`: remove the Key sheet and `KEY_SYMBOLS` (:24-26, :193-196; v1 `src/lib/season-export.ts:101-105`); `quizWhere` (:279-285) becomes `{ seasonId }` only, the average keeps skipping `maxScore <= 0` (v1 `:79-88,141-148`); the season lookup (:289-293) drops `deletedAt: null` (unknown id still returns null → 404; v1 `:46-49`); sort with `a.name.localeCompare(b.name)` (:306-314; v1 `:51-66`); the Assignments cell (:176-185) is `SUBMISSION_LABEL[status]` or `"—"`, no `NOT_ASSIGNED` (v1 `:168-173`). `Submitted %` stays domain 9's (KEEP-FIX R80); `L` for LATE stays (D-17.10).
 
 ```ts
 // apps/backend/src/lib/exports/season-workbook.ts
@@ -4506,6 +4546,8 @@ async function loadSeasonExportData(seasonId: number) {
 
 - [ ] **Step 6: The engagement workbook (the CSV's replacement)**
 
+> **v1 parity 2026-10-09:** Replace `engagement-workbook.ts` with a CSV builder (e.g. `engagement-csv.ts`): header `Student,Email,Season,Attendance %,Submission %,Score` (no Band, :36-46), rows in the enrolment fetch order with the score sort at :50 dropped, RFC 4180 quoting, CRLF, leading UTF-8 BOM (v1 `src/lib/reports-query.ts:134-141,177-190`; KEEP-FIX R40/R41 for quoting and BOM).
+
 ```ts
 // apps/backend/src/lib/exports/engagement-workbook.ts
 import ExcelJS from "exceljs";
@@ -4637,6 +4679,8 @@ falls through. Same fall-through pattern Plan 12 uses for
 is what stops `seasons.ts` from accumulating four unrelated concerns.
 
 - [ ] **Step 1: Write the failing integration test**
+
+> **v1 parity 2026-10-09:** Export route tests change: `?format=csv` (and no format) returns `200 text/csv` with the six-column header (R38); the filename regex becomes `engagement-\d+\.csv` and the workbook's `<code>-attendance-grades.xlsx` (R42, R84); the 11th-export 429 test is deleted (R48, R88); an ADMIN's explicit out-of-scope `seasonId` is 403 (R44); a soft-deleted season's workbook is 200 (R81).
 
 ```ts
 // apps/backend/src/__tests__/integration/exports-routes.test.ts
@@ -4980,6 +5024,8 @@ cd apps/backend && npx jest --config jest.integration.config.js --runInBand --te
 
 - [ ] **Step 3: Confirm the shared rate-limit handler exists**
 
+> **v1 parity 2026-10-09:** The export routes no longer use a rate limiter (R48, R88); this step only matters if another route needs `rateLimitHandler`.
+
 ```bash
 grep -n "export const rateLimitHandler" apps/backend/src/lib/rate-limit.ts
 grep -rn "const rateLimitHandler" apps/backend/src/routes/
@@ -5028,6 +5074,8 @@ export function logExport(entry: ExportAuditEntry): void {
 ```
 
 - [ ] **Step 5: The export routes**
+
+> **v1 parity 2026-10-09:** `apps/backend/src/routes/exports.ts`: remove `exportLimiter` (:48-53) and its use on both routes (:84, :133); the engagement export (:82-120) serves `text/csv; charset=utf-8` from the CSV builder instead of the XLSX, accepts `?format=csv`, returns 403 for an ADMIN's out-of-scope `seasonId`; filenames from `exportFilename` per D-17.16 (:68-80, :145-149). `logExport` stays (REG-44).
 
 ```ts
 // apps/backend/src/routes/exports.ts
@@ -5254,6 +5302,8 @@ import { reportExportsRouter, seasonExportsRouter } from "./routes/exports";
 
 - [ ] **Step 7: OpenAPI, same commit**
 
+> **v1 parity 2026-10-09:** OpenAPI: engagement export 200 is `text/csv`; no 429 on either export; filenames as D-17.16.
+
 Three more paths. Each **must** state, in prose (the entries below do):
 
 - success is **bytes plus `Content-Disposition`**, and every error on the path
@@ -5451,6 +5501,8 @@ axis at 375 px) and the seasons pie is dropped entirely in favour of a ranked
 list (R93, R97).
 
 - [ ] **Step 1: Write the failing test**
+
+> **v1 parity 2026-10-09:** Screen test expectations change: MENTOR sees no season picker (R6); ADMIN opens on the newest administered season by `startDate` with a switcher and no All-seasons option (R103, KEEP-FIX R105) and is redirected to the admin dashboard when it has no live seasons (R104); SUPER sees the organisation section plus a single-season view (R106); the at-risk card reads "Students at risk", max 10, no "N of M" and no Show more (R33); the empty state shows only when trend, completion and enrolments are all empty (R37); "Current students" replaces "Student accounts" (R51); the truncated warning test is deleted (R44); trend labels have no year (R15); the SUPER section renders two pies and a season table whose rows link to `/seasons/[code]` (R60, R62, R93).
 
 ```tsx
 // apps/mobile/src/__tests__/reports-screen.test.tsx
@@ -5938,6 +5990,8 @@ export function bandColor(theme: Theme, band: EngagementBand): string {
 
 - [ ] **Step 5: The three chart primitives**
 
+> **v1 parity 2026-10-09:** Charts: `TrendLine` default height 240 (`apps/mobile/src/components/charts/TrendLine.tsx:46`, v1 `src/components/ui/charts.tsx:27`), same for the donut/bars; `BandDonut` gains on-slice labels and is generalised to draw the per-season and alumni pies coloured by palette index (theme tokens, index order); tap-to-show value tooltips on points, slices and bars (D-17.20; R93, R95, R97, R98).
+
 ```tsx
 // apps/mobile/src/components/charts/TrendLine.tsx
 import { View } from "react-native";
@@ -6172,6 +6226,8 @@ export function RankedBars({ bars }: { bars: RankedBar[] }) {
 
 - [ ] **Step 6: The hooks**
 
+> **v1 parity 2026-10-09:** `useEngagementStudents` is no longer used by the screen (no Show more, R33); hooks pass `trendLimit` only if set (R8).
+
 ```ts
 // apps/mobile/src/hooks/use-reports.ts
 import { useInfiniteQuery, useQuery, type UseQueryResult } from "@tanstack/react-query";
@@ -6263,6 +6319,8 @@ export function useOrganisationReport(enabled: boolean): UseQueryResult<Organisa
 ```
 
 - [ ] **Step 7: The screen**
+
+> **v1 parity 2026-10-09:** `apps/mobile/app/(app)/reports.tsx`: render `SeasonPicker` (:233) only for ADMIN and SUPER, never MENTOR (R6, KEEP-FIX R105); initialise `seasonId` (:182) for ADMIN to the newest administered non-deleted season by `startDate` (v1 `src/app/admin/reports/page.tsx:14-20`) and `router.replace` to the admin dashboard when the scope is empty (v1 :13,19); SUPER shows the organisation section plus a single-season engagement view (R106); delete the truncated warning (:235-239, R44); empty state (:250) becomes `attendanceTrend.length === 0 && completion.length === 0 && enrollmentCount === 0` (v1 `src/components/reports/reports-view.tsx:23-31`); at-risk heading "Students at risk", no count, Show more pager deleted (:263, :274-286); label "Current students" (:125, R51); OrganisationSection (:144-168) becomes a per-season pie (activeCount > 0 only) + alumni pie + per-season table linking each row to `/seasons/[code]` (R60, R62, R93); trend labels via a no-year `formatDayKey` variant (:318, :326, R15).
 
 Replace `apps/mobile/app/(app)/reports.tsx` entirely:
 
@@ -6720,6 +6778,8 @@ and a mismatched native module is a runtime crash on a device rather than a
 build error.
 
 - [ ] **Step 2: Write the failing unit tests**
+
+> **v1 parity 2026-10-09:** Download tests: the engagement export is a `.csv` with `text/csv` / CSV UTI and v1's `engagement-<epoch-ms>.csv` name; the workbook name is `gbv-2026-attendance-grades.xlsx` (no date); no 429 'Too many exports' case (R38, R42, R48, R84).
 
 ```ts
 // apps/mobile/src/__tests__/export-download.test.ts
@@ -7290,6 +7350,8 @@ export function useReportExport() {
 
 - [ ] **Step 6: `ExportMenu`**
 
+> **v1 parity 2026-10-09:** `ExportMenu` shares the engagement export as `.csv` (`text/csv`) and takes the filename from the response `Content-Disposition` (or the same `Date.now()` stamp) rather than `exportFilename("engagement", scopeLabel, exportDay)`; the workbook filename is `${code}-attendance-grades.xlsx` (D-17.16). Remove the rate-limit error copy.
+
 ```tsx
 // apps/mobile/src/components/ExportMenu.tsx
 import { View } from "react-native";
@@ -7455,6 +7517,8 @@ instead of printing the envelope and "passing" (ruling X6).
 
 - [ ] **Step 3: Mutation pass**
 
+> **v1 parity 2026-10-09:** Mutation 7 is inverted: the workbook is built for a soft-deleted season (R81), so the mutation is *adding* `deletedAt: null`, which must fail "builds a soft-deleted season, as v1". The optional band mutation is inverted too: reordering `bandFor` to evaluate `isAtRisk` first must fail the v1-cuts test (D-17.2).
+
 Eight mutations, **one at a time, restoring after each**. Each must make the
 named test fail. A mutation the suite survives is a test that is not testing
 what it claims.
@@ -7529,6 +7593,8 @@ though the composite says Medium"** must fail with `Received: "MEDIUM"`.
 
 - [ ] **Step 4: Manual device pass**
 
+> **v1 parity 2026-10-09:** Device pass changes: (1) MENTOR sees no picker and "Students at risk" with no "N of M"; (2) the engagement export is a `.csv` named `engagement-<epoch-ms>.csv` with six columns and opens in Excel with Arabic names intact; (3) the ADMIN lands on their newest season, the workbook has three sheets, untargeted cells read `—`; (6) no rate limit — the eleventh export succeeds.
+
 Backend running against staging, `apiClient` pointed at it:
 
 1. **As a MENTOR:** `/reports` shows the at-risk card first, with "N of M". No
@@ -7588,7 +7654,7 @@ judgement.
 - [ ] `packages/shared/src/reports.ts` exists and is exported from `index.ts`; `cd packages/shared && npx jest` is green.
 - [ ] `bandFor` is the only banding function in the repo: `grep -rn "score >= 80" packages apps --include=*.ts --include=*.tsx` returns exactly one hit.
 - [ ] `grep -rn "AT_RISK_PCT\|< 60" apps/mobile/src apps/mobile/app` returns **no** threshold comparison — the client never re-derives a band.
-- [ ] `exportFilename` is called from both `apps/backend/src/routes/exports.ts` and `apps/mobile/src/components/ExportMenu.tsx`.
+- [ ] `exportFilename` returns v1's names (`engagement-<epoch-ms>.csv`, `<code>-attendance-grades.xlsx`) and the client's saved file carries the server's name. *(v1 parity 2026-10-09: was "called from both routes/exports.ts and ExportMenu.tsx")*
 
 **Backend**
 - [ ] Six new endpoints answer under `/api/v1`: `reports/engagement`, `reports/engagement/students`, `reports/organisation`, `reports/engagement/export`, `seasons/:id/exports/workbook`, `seasons/:id/exports/manifest`.
@@ -7609,16 +7675,16 @@ judgement.
 - [ ] No `attendancePoint.pct` in any response exceeds 100 — asserted by a loop over the whole trend.
 - [ ] No `completionRate` exceeds 100, and a targeted assignment with no targets returns `null`.
 - [ ] `bands` always has four entries in `HIGH, MEDIUM, LOW, AT_RISK` order and their counts sum to `enrollmentCount`.
-- [ ] `atRiskTotal` equals the `AT_RISK` band count.
+- [ ] The at-risk list is every row with `score < 60`, ascending, at most 10; no `atRiskTotal` field exists. *(v1 parity 2026-10-09: was "`atRiskTotal` equals the `AT_RISK` band count")*
 
 **Exports**
-- [ ] Both export responses begin with the bytes `PK` and load through `ExcelJS.Workbook.xlsx.load`.
+- [ ] The season workbook begins with the bytes `PK` and loads through `ExcelJS.Workbook.xlsx.load`; the engagement export is `text/csv` beginning with a UTF-8 BOM and the header `Student,Email,Season,Attendance %,Submission %,Score`. *(v1 parity 2026-10-09: was "Both export responses begin with `PK`")*
 - [ ] Every failure on an export path is `application/json` in the `{ error: { code, message } }` envelope.
 - [ ] `Content-Disposition` carries both `filename="…"` and `filename*=UTF-8''…`.
-- [ ] The eleventh export within 15 minutes answers `429 too_many_requests`.
+- [ ] Neither export is rate-limited: `grep -rn "exportLimiter" apps/backend/src` is empty. *(v1 parity 2026-10-09: was "the eleventh export within 15 minutes answers 429")*
 - [ ] A successful export emits one `export.completed` log line containing no `@` character.
-- [ ] The season workbook has exactly the sheets `Attendance`, `Grades`, `Assignments`, `Key`; the engagement export has `Engagement`, `Key`.
-- [ ] `grep -rn "csv\|text/csv" apps/backend/src apps/mobile/src` returns only the `?format=csv` rejection message.
+- [ ] The season workbook has exactly the sheets `Attendance`, `Grades`, `Assignments`, as v1. *(v1 parity 2026-10-09: was "… plus `Key`; the engagement export has `Engagement`, `Key`")*
+- [ ] `?format=csv` on the engagement export returns 200 `text/csv` (no rejection message exists). *(v1 parity 2026-10-09: was "csv grep returns only the `?format=csv` rejection message")*
 
 **Mobile**
 - [ ] `apps/mobile/app/(app)/reports.tsx` no longer renders "This screen isn't built yet."; its entry is removed from `placeholder-screens.test.tsx` (no count is pinned there since Plan 1, ruling X9) and the suite is green.
@@ -7698,3 +7764,50 @@ order … 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 …):**
   `isAssignmentOutstanding` (`PENDING|DRAFT`). Task 3's Files line now says
   it keeps Plan 12's relative import rather than "fixing" it.
 - **X11:** the `sessionFor` fixture gains `hasPassword: true` (Plan 9's `MeUser`).
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 17-reports R30; 09-notes R75 | REG-61 | Bands by composite: HIGH ≥80, MEDIUM ≥60, LOW ≥40, AT_RISK <40 (`src/lib/reports-query.ts:47-59`) | `packages/shared/src/reports.ts:53-58` (`bandFor`, drop `isAtRisk`) | D-17.2; Task 1 Steps 1, 3; Task 10 Step 3 |
+| 2 | 17-reports R33; 09-notes R74 | REG-61 | At-risk list = composite score <60, ascending, top 10, no total (`src/lib/reports-query.ts:169-172`) | `apps/backend/src/lib/queries/reports.ts:298-308`; `apps/mobile/app/(app)/reports.tsx:263,274-286` | Not in scope; ledger 18; D-17.2; D-17.5; Task 1 Step 3; Task 3 Steps 1, 5; Task 5 Step 1; Task 8 Steps 1, 6, 7; Done means |
+| 3 | 17-reports R38, R39; 09-notes R77, R88 | REG-45 | Engagement export is CSV: Student, Email, Season, Attendance %, Submission %, Score; one row per ACTIVE enrolment, fetch order; SUPER/MENTOR all seasons, scoped ADMIN (`src/lib/reports-query.ts:134-141,177-190`; `src/app/api/reports/export/route.ts:12-37`) | `apps/backend/src/lib/exports/engagement-workbook.ts:36-62`; `apps/backend/src/routes/exports.ts:82-120`; `packages/shared/src/reports.ts:305`; ExportMenu | Header Goal; ledger 12; D-17.7; Task 1 Step 3; Task 6 Steps 2, 6; Task 7 Steps 1, 5, 7; Task 9 Steps 2, 6; Task 10 Step 4; Done means |
+| 4 | 17-reports R42 | - | Filename `engagement-<epoch-ms>.csv` (`src/app/api/reports/export/route.ts:37`) | `packages/shared/src/reports.ts:326-336`; ExportMenu | ledger 15; D-17.16; Task 1 Steps 1, 3; Task 9 Steps 2, 6 |
+| 5 | 17-reports R84 | - | Filename `<Season.code>-attendance-grades.xlsx` (`src/app/api/season/export/route.ts:29`) | `packages/shared/src/reports.ts:326-336`; `apps/backend/src/routes/exports.ts:145-149` | ledger 14; D-17.16; Task 7 Step 1 |
+| 6 | 17-reports R44 | - | ADMIN's explicit out-of-scope season → 403 (`src/app/api/reports/export/route.ts:19-22`) | `apps/backend/src/lib/queries/reports.ts:50-61`; `routes/reports.ts`; `routes/exports.ts`; `apps/mobile/app/(app)/reports.tsx:235-239` | D-17.4; D-17.6 matrix; Task 3 Steps 1, 5; Task 5 Steps 1, 3, 5; Task 7 Steps 1, 5; Task 8 Steps 1, 7 |
+| 7 | 17-reports R48, R88 | REG-44 | No rate limit on either export (`src/app/api/reports/export/route.ts:7-39`; `src/app/api/season/export/route.ts:10-32`) | `apps/backend/src/routes/exports.ts:48-53,84,133` | Global Constraints; ledger 25; D-17.18; Task 7 Steps 1, 3, 5, 7; Task 10 Step 4; Done means |
+| 8 | 17-reports R8 | - | Trend plots every past session in scope (`src/lib/reports-query.ts:79-84`) | `packages/shared/src/reports.ts:88`; `apps/backend/src/lib/queries/reports.ts:137-146` | ledger 22; D-17.11; D-17.12; Task 1 Steps 1, 3; Task 3 Steps 1, 5; Task 5 Steps 1, 3, 5; Task 8 Step 6 |
+| 9 | 17-reports R15, R68 | - | Date labels `MMM d`, no year (`src/lib/reports-query.ts:106`; `src/lib/season-export.ts:106`) | `apps/mobile/app/(app)/reports.tsx:318,326`; `apps/backend/src/lib/exports/season-workbook.ts:85,319-321` | ledger 21; D-17.9; Task 6 Steps 2, 3; Task 8 Steps 1, 7 |
+| 10 | 17-reports R51 | - | Headline labelled "Current students" (`src/app/super/reports/page.tsx:70`) | `apps/mobile/app/(app)/reports.tsx:125` | ledger 23; Task 5 Step 5; Task 8 Steps 1, 7 |
+| 11 | 17-reports R60, R93, R97 | - | Seasons pie (activeCount>0) + alumni pie, palette by index, on-slice labels, plus a per-season table of all seasons (`src/app/super/reports/page.tsx:24-26,90-95,111-128`; `src/components/ui/charts.tsx:189-193`) | `apps/mobile/app/(app)/reports.tsx:144-168,298-305` | D-17.20; Task 8 Steps 1, 5, 7 |
+| 12 | 17-reports R62 | - | Each season row links to the season (`src/app/super/reports/page.tsx:37`; id bug fixed by using `code`) | `apps/mobile/app/(app)/reports.tsx:144-160` | Not in scope; ledger 28; D-17.20; Task 8 Steps 1, 7 |
+| 13 | 17-reports R95 | - | Charts show a value tooltip (`src/components/ui/charts.tsx:72-80`) | `apps/mobile/src/components/charts/TrendLine.tsx`, BandDonut, RankedBars | D-17.20; Task 8 Step 5 |
+| 14 | 17-reports R98 | - | Chart cards 240 px tall (`src/components/ui/charts.tsx:27,54,119,172`) | `apps/mobile/src/components/charts/TrendLine.tsx:46` and donut/bars | D-17.20; Task 8 Step 5 |
+| 15 | 17-reports R63 | - | Exactly three sheets, creator JPC Space (`src/lib/season-export.ts:101-105,129,157`) | `apps/backend/src/lib/exports/season-workbook.ts:76-80,193-196`; `workbook-style.ts` `addKeySheet` | ledger 17; D-17.1; D-17.2; D-17.10; D-17.14; Task 6 Steps 2, 4, 5; Done means |
+| 16 | 17-reports R65 | - | Rows sorted `a.name.localeCompare(b.name)`, default collation (`src/lib/season-export.ts:51-66`) | `apps/backend/src/lib/exports/season-workbook.ts:306-314`; `workbook-style.ts` `COLLATOR` | D-17.23; Task 6 Steps 2, 4, 5 |
+| 17 | 17-reports R74, R77; 12-quizzes R116 | - | Every season quiz is a column; `maxScore 0` skipped only in the average (`src/lib/season-export.ts:79-88,141-148`) | `apps/backend/src/lib/exports/season-workbook.ts:279-285` | ledger 16; D-17.22; Task 6 Steps 2, 5 |
+| 18 | 17-reports R78, R79, R82 | - | Every assignment a column for everyone; status label or `—`; no `n/a` (`src/lib/season-export.ts:15-20,90-98,168-173`) | `apps/backend/src/lib/exports/season-workbook.ts:24,176-185` | ledger 17; D-17.15; Task 6 Steps 2, 5; Task 10 Step 4 |
+| 19 | 17-reports R81 | - | Workbook built for any season id, soft-deleted included (`src/lib/season-export.ts:46-49`) | `apps/backend/src/lib/exports/season-workbook.ts:289-293` | ledger 11; Task 6 Steps 2, 5; Task 7 Step 1; Task 10 Step 3 |
+| 20 | 17-reports R6 | REG-116 | No filter controls for MENTOR: fixed all-seasons scope (`src/components/reports/reports-view.tsx:33-44`; `src/app/mentor/reports/page.tsx:12`) | `apps/mobile/app/(app)/reports.tsx:53-106,233` | Task 8 Steps 1, 7; Task 10 Step 4 |
+| 21 | 17-reports R103 | REG-116 | ADMIN lands on newest season by `startDate` (`src/app/admin/reports/page.tsx:14-20`) | `apps/mobile/app/(app)/reports.tsx:182,233` | Task 8 Steps 1, 7; Task 10 Step 4 |
+| 22 | 17-reports R104 | REG-116 | ADMIN with no live seasons → admin dashboard (`src/app/admin/reports/page.tsx:13,19`) | `apps/backend/src/lib/queries/reports.ts:63-70`; `apps/mobile/app/(app)/reports.tsx:250-254` | Task 8 Steps 1, 7 |
+| 23 | 17-reports R37 | REG-116 | Empty state only when trend, submission rates and students all empty (`src/components/reports/reports-view.tsx:23-31`) | `apps/mobile/app/(app)/reports.tsx:250` | Task 8 Steps 1, 7 |
+| 24 | 17-reports R106 | - | SUPER has no cross-season engagement report; one season at a time plus the organisation roll-up (`src/app/mentor/reports/page.tsx:10`; `src/app/admin/season/[code]/reports/page.tsx:21,24`) | `apps/backend/src/lib/permissions.ts:667-673`; `apps/mobile/app/(app)/reports.tsx:185,233` | ledger 10; D-17.6; Task 3 Step 4; Task 5 Steps 1, 3; Task 8 Steps 1, 7 |
+
+Kept (KEEP-FIX, not reverted): RFC 4180 quoting and a UTF-8 BOM on the restored CSV (R40, R41);
+`Submitted %` over assignments targeted at the student (R80, C5); the org-zone day (R102, C2); an
+ADMIN season switcher defaulting to the newest season (R105); the server-side export audit log
+line (REG-44, not user-visible).
+
+**Cross-plan (v1 parity 2026-10-09):** Plan 16's revision (19-dashboards R15) adds
+`upcomingEventCount` to this plan's `GET /reports/organisation` response:
+`jpcEvent.count({ where: { date: { gte: now } } })`, any visibility, as v1's
+`super/dashboard/page.tsx`. Add it to the organisation contract in `packages/shared/src/reports.ts`,
+the handler and the OpenAPI entry together with Plan 16 Task 4 Step 3.
+
+**Awaiting owner (not changed):** none.

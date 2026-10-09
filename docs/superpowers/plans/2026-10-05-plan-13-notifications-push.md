@@ -3,19 +3,21 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Finish domain 10 — a device can read its own notification inbox,
-mark notifications read as an **explicit** write, and set all six notification
-preferences — and take the mobile push story as far as the frozen schema
+mark all its notifications read as an **explicit** write, and set v1's five notification
+preferences (`quizGraded` stays stored but is not settable, as in v1) — and take the mobile push story as far as the frozen schema
 allows.
 
 **Architecture:** Two file-disjoint workstreams over one new contract module.
 Backend: `packages/shared/src/notification.ts` defines the wire shapes; a new
 `apps/backend/src/routes/notifications.ts` serves the inbox; preferences and the
 device-registration endpoint extend `routes/me.ts`; `lib/notifications.ts`
-gains the D4 channel split and a written/suppressed return; two new libs —
+keeps v1's opt-out filter (no row, no email for an opted-out recipient) and gains a
+written/suppressed return *(v1 parity 2026-10-09: was "gains the D4 channel split")*; two new libs —
 `lib/notification-target.ts` (the D1 link parser) and `lib/best-effort.ts` (the
 D6 helper) — are shared by every producer. Mobile: one new screen
 `app/(app)/notifications.tsx` reached from a sidebar entry in every role's nav
-plus an unread-badged bell on the dashboard, hooks in
+plus an unread-badged bell in the shared screen header on every screen, as v1's
+app shell (jpc-space `src/components/layout/app-shell.tsx:55-57`) *(v1 parity 2026-10-09: was "bell on the dashboard")*, hooks in
 `src/hooks/use-notifications.ts`, and an Expo push permission/token lifecycle
 that has nowhere on the server to register yet.
 
@@ -65,7 +67,7 @@ plan ships everything push needs *except* the row:
   `prisma/`.
 
 Nothing else in the plan is blocked on it. The inbox, mark-read, preferences,
-D1, D4, D6, D8 and the whole mobile surface ship without a migration.
+D1, D6, D8 and the whole mobile surface ship without a migration.
 
 Two further consequences of the frozen schema, recorded here so they are not
 rediscovered mid-task:
@@ -83,31 +85,17 @@ rediscovered mid-task:
 
 ---
 
-## THE TWO DELIBERATE BEHAVIOUR CHANGES — reviewable in one place
+## THE TWO DELIBERATE BEHAVIOUR CHANGES — reviewable in one place (item 1 withdrawn 2026-10-09)
 
-**1. D4 — the preference stops suppressing the in-app row (Task 2).** Today
-(v1 R8, and v2's `createNotificationsBulk` verbatim) an opted-out recipient
-gets *no row and no email*: the notification is not hidden, it is never
-recorded. The spec's D4 recommendation is to split the semantics — the in-app
-row is history and is **always** written; the preference governs outbound
-channels only (email now, push at cutover). This plan implements the split.
-
-Two consequences a reviewer must accept or reject explicitly:
-
-- The shared database means **v1's own inbox will start showing rows to users
-  who opted out there**. v1 renders `where: { userId }` with no preference
-  filter (`notifications-page.tsx:14-27`), so a row written by v2 for an
-  opted-out user is visible in the old web app too. The spec anticipates this
-  ("it makes an opted-out user's inbox non-empty where v1's was empty") and
-  still recommends the split.
-- `apps/backend/src/__tests__/integration/notifications.test.ts:110-123`
-  currently pins the old semantics. Task 2 rewrites that case. That is the
-  test changing because the behaviour changed on purpose — not a test being
-  loosened to fit.
-
-If the reviewer rejects the split, the revert is small: restore the
-`targets = userIds.filter(...)` line in `createNotificationsBulk`, restore the
-old test, and note in the report that "off" means "no record".
+**1. Withdrawn — the preference keeps v1's semantics (Task 2).** v1 filters an
+opted-out recipient out before the insert (jpc-space `src/lib/notifications.ts:56-94`,
+spec R8/R9/R11): one switch governs every channel, so "off" means no in-app row
+and no email — and, at cutover, no push. `createNotificationsBulk` keeps that
+filter; it only adds the dedupe and the written/suppressed counts. Spec D4's
+channel split is **not** implemented, v1's inbox and v2's inbox show the same
+rows for an opted-out user, and
+`apps/backend/src/__tests__/integration/notifications.test.ts:110-123` keeps
+pinning the v1 behaviour. *(v1 parity 2026-10-09: was "D4 — the in-app row is always written; preference governs email/push only")*
 
 **2. Push covers three types, not the spec's five (Task 1).**
 `10-notifications.md` D5 item 2 proposes pushing `SESSION_RESCHEDULED`,
@@ -173,8 +161,8 @@ follow-up must not appear on a lock screen that anyone near the phone can read
 - Rulings that bind here: **C1** (frozen schema), **C6** (a GET never writes),
   **C8** (row-scoped at the API, payload narrowed), **C11** (escape on every
   mail interpolation), **C12** (dead v1 code is not a specification — v1's
-  unreachable `markNotificationReadAction` gets one endpoint, designed, not two
-  ported).
+  unreachable `markNotificationReadAction` is not ported: mark-all is the only
+  read write, as v1's UI — *v1 parity 2026-10-09: was "gets one endpoint, designed, not two ported"*).
 
 **Prerequisites (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → **13**):** Plan 9's settings
 screen (`app/(app)/settings.tsx`, Task 9 adds a section to it) and its
@@ -209,12 +197,13 @@ no file except `packages/shared/src/index.ts`, which Task 1 finishes.
   type `NotificationType`; `notificationEntityTypeSchema` →
   `NotificationEntityType`; `notificationTargetSchema` → `NotificationTarget`;
   `notificationSchema` → `NotificationItem`;
-  `notificationListQuerySchema` → `NotificationListQuery`;
+  `NOTIFICATION_INBOX_LIMIT` (v1's 100; replaces `notificationListQuerySchema` — *v1 parity 2026-10-09: was "cursor/limit/unreadOnly query"*);
   `notificationListResponseSchema`; `unreadCountResponseSchema`;
   `markReadRequestSchema` → `MarkReadRequest`; `markReadResponseSchema`;
   `NOTIFICATION_PREFERENCE_KEY_BY_TYPE`; `NOTIFICATION_PREFERENCE_KEYS`;
   `notificationPreferencesSchema` → `NotificationPreferences`;
   `notificationPreferencesResponseSchema`;
+  `notificationPreferencesUpdateSchema` → `NotificationPreferencesUpdate` (v1's five settable keys);
   `DEFAULT_NOTIFICATION_PREFERENCES`; `PUSH_NOTIFICATION_TYPES`;
   `shouldPush(type)`; `devicePlatformSchema` → `DevicePlatform`;
   `DEVICE_PLATFORM_TO_DB`; `deviceRegistrationSchema` → `DeviceRegistration`.
@@ -231,8 +220,9 @@ import {
   PUSH_NOTIFICATION_TYPES,
   deviceRegistrationSchema,
   markReadRequestSchema,
-  notificationListQuerySchema,
+  NOTIFICATION_INBOX_LIMIT,
   notificationPreferencesSchema,
+  notificationPreferencesUpdateSchema,
   notificationSchema,
   notificationTypeSchema,
   shouldPush,
@@ -276,47 +266,32 @@ describe("notificationPreferencesSchema", () => {
     });
   });
 
-  it("refuses a partial body — PUT carries all six keys", () => {
-    expect(notificationPreferencesSchema.safeParse({ assignmentCreated: false }).success).toBe(
-      false,
-    );
-    expect(notificationPreferencesSchema.safeParse(DEFAULT_NOTIFICATION_PREFERENCES).success).toBe(
-      true,
+  it("refuses a partial body — PUT carries v1's five keys and never sets quizGraded", () => {
+    expect(
+      notificationPreferencesUpdateSchema.safeParse({ assignmentCreated: false }).success,
+    ).toBe(false);
+    // v1 settings-actions.ts:58-73: five fields; quizGraded is stripped, not written.
+    expect(notificationPreferencesUpdateSchema.parse(DEFAULT_NOTIFICATION_PREFERENCES)).not.toHaveProperty(
+      "quizGraded",
     );
   });
 });
 
 describe("markReadRequestSchema", () => {
-  it("accepts either ids or all: true, never both, never a userId", () => {
-    expect(markReadRequestSchema.safeParse({ ids: [1, 2, 3] }).success).toBe(true);
+  it("accepts only all: true — v1 has mark-all and nothing else (R47)", () => {
     expect(markReadRequestSchema.safeParse({ all: true }).success).toBe(true);
+    expect(markReadRequestSchema.safeParse({ ids: [1, 2, 3] }).success).toBe(false);
     expect(markReadRequestSchema.safeParse({ ids: [1], all: true }).success).toBe(false);
     // Accepting a recipient id from a client is how this domain's one safe
     // property (everything is self-service — spec §4) would be lost.
-    expect(markReadRequestSchema.safeParse({ ids: [1], userId: 2 }).success).toBe(false);
-    expect(markReadRequestSchema.safeParse({ ids: [] }).success).toBe(false);
+    expect(markReadRequestSchema.safeParse({ all: true, userId: 2 }).success).toBe(false);
     expect(markReadRequestSchema.safeParse({ all: false }).success).toBe(false);
-  });
-
-  it("bounds the id batch", () => {
-    expect(markReadRequestSchema.safeParse({ ids: Array.from({ length: 201 }, (_, i) => i + 1) }).success).toBe(
-      false,
-    );
   });
 });
 
-describe("notificationListQuerySchema", () => {
-  it("coerces query strings and defaults to a 20-row page", () => {
-    expect(notificationListQuerySchema.parse({})).toEqual({ limit: 20, unreadOnly: false });
-    expect(notificationListQuerySchema.parse({ cursor: "41", limit: "50", unreadOnly: "true" })).toEqual({
-      cursor: 41,
-      limit: 50,
-      unreadOnly: true,
-    });
-  });
-
-  it("caps the page at 50", () => {
-    expect(notificationListQuerySchema.safeParse({ limit: "500" }).success).toBe(false);
+describe("NOTIFICATION_INBOX_LIMIT", () => {
+  it("is v1's 100 (notifications-page.tsx:17; R33)", () => {
+    expect(NOTIFICATION_INBOX_LIMIT).toBe(100);
   });
 });
 
@@ -466,20 +441,16 @@ export const notificationSchema = z.object({
 });
 export type NotificationItem = z.infer<typeof notificationSchema>;
 
-export const notificationListQuerySchema = z.object({
-  /** Id of the last row of the previous page; the list is ordered by id desc. */
-  cursor: z.coerce.number().int().positive().optional(),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-  unreadOnly: z
-    .enum(["true", "false"])
-    .default("false")
-    .transform((v) => v === "true"),
-});
-export type NotificationListQuery = z.infer<typeof notificationListQuerySchema>;
+/**
+ * v1's inbox is one list of the newest 100 rows, createdAt desc, with no
+ * cursor and no read-state filter (jpc-space
+ * src/app/(notifications)/notifications-page.tsx:14-27; spec R33, R39).
+ * GET /notifications takes no query parameters.
+ */
+export const NOTIFICATION_INBOX_LIMIT = 100;
 
 export const notificationListResponseSchema = z.object({
   items: z.array(notificationSchema),
-  nextCursor: z.number().int().nullable(),
   /**
    * Rides along so the common case — open the inbox, render the badge — is one
    * request. It is a real `count`, not a filter over the page: v1 counted
@@ -494,14 +465,11 @@ export const unreadCountResponseSchema = z.object({
 });
 
 /**
- * One endpoint for both v1 actions — the single-id one was dead code (R47) and
- * C12 says dead code is not a specification. `.strict()` on both arms is what
- * refuses `{ ids, all }` together and refuses a client-supplied `userId`.
+ * Mark-all only, as v1: the single-id action was dead code (R47) and opening a
+ * notification leaves it unread (R48). `.strict()` refuses `ids` and a
+ * client-supplied `userId`.
  */
-export const markReadRequestSchema = z.union([
-  z.object({ ids: z.array(z.number().int().positive()).min(1).max(200) }).strict(),
-  z.object({ all: z.literal(true) }).strict(),
-]);
+export const markReadRequestSchema = z.object({ all: z.literal(true) }).strict();
 export type MarkReadRequest = z.infer<typeof markReadRequestSchema>;
 
 export const markReadResponseSchema = z.object({
@@ -560,6 +528,17 @@ export const notificationPreferencesResponseSchema = z.object({
 });
 
 /**
+ * What PUT accepts: v1's five settable keys (jpc-space
+ * src/lib/settings-actions.ts:58-73). `quizGraded` is not settable in v1 and
+ * stays untouched by the write; Zod's default strip drops it if a client sends
+ * it. GET still returns all six stored values.
+ */
+export const notificationPreferencesUpdateSchema = notificationPreferencesSchema.omit({
+  quizGraded: true,
+});
+export type NotificationPreferencesUpdate = z.infer<typeof notificationPreferencesUpdateSchema>;
+
+/**
  * Which types warrant an interruptive push (spec D5 item 2, narrowed).
  *
  * ASSIGNMENT_CREATED is the highest-volume fan-out in the system and is not
@@ -607,6 +586,14 @@ export const deviceRegistrationSchema = z
 export type DeviceRegistration = z.infer<typeof deviceRegistrationSchema>;
 ```
 
+> **v1 parity 2026-10-09:** the block above now carries v1's list (`NOTIFICATION_INBOX_LIMIT = 100`,
+> no `notificationListQuerySchema`, no `nextCursor`), mark-all-only `markReadRequestSchema`, and the
+> five-key `notificationPreferencesUpdateSchema`. Built code to change:
+> `packages/shared/src/notification.ts:58-66` (cursor/limit/unreadOnly query, `nextCursor`) and the
+> `ids` arm of `markReadRequestSchema`; add the update schema. v1 to match: jpc-space
+> `src/app/(notifications)/notifications-page.tsx:14-27`, `src/lib/notification-actions.ts:8-12`,
+> `src/lib/settings-actions.ts:58-73`.
+
 - [ ] **Step 5: Export it**
 
 In `packages/shared/src/index.ts`, add after the `submission` line:
@@ -628,7 +615,7 @@ git add packages/shared && git commit -m "feat(shared): notification wire contra
 
 ---
 
-### Task 2: Delivery library — D4 channel split, D1 target parser, D6 helper
+### Task 2: Delivery library — v1 opt-out filter + counts, D1 target parser, D6 helper
 
 **Files:**
 - Create: `apps/backend/src/lib/notification-target.ts`
@@ -637,7 +624,7 @@ git add packages/shared && git commit -m "feat(shared): notification wire contra
 - Modify: every producer call site of `createNotificationsBulk` / `flagLowAttendance` in `apps/backend/src/routes/` (Step 7 enumerates them by plan)
 - Test: `apps/backend/src/__tests__/notification-target.test.ts` (new, unit),
   `apps/backend/src/__tests__/best-effort.test.ts` (new, unit),
-  `apps/backend/src/__tests__/integration/notifications.test.ts` (rewrite the opt-out case, add one)
+  `apps/backend/src/__tests__/integration/notifications.test.ts` (keep the opt-out case, add two)
 
 **Not in this task, deliberately:** mail escaping. Plan 12 already routes every
 notification email through its exported `buildNotificationHtml`
@@ -854,7 +841,7 @@ export async function bestEffort(label: string, fn: () => Promise<unknown>): Pro
 }
 ```
 
-- [ ] **Step 5: Split the channels in `createNotificationsBulk` (D4)**
+- [ ] **Step 5: Dedupe and count in `createNotificationsBulk`, keeping v1's opt-out filter** *(v1 parity 2026-10-09: was "Split the channels … (D4)")*
 
 Replace the body of `apps/backend/src/lib/notifications.ts`'s
 `createNotificationsBulk` (keep `CreateNotificationInput` and `PREF_FIELD`
@@ -863,24 +850,19 @@ exactly as they are — `PREF_FIELD`'s `satisfies` is a v2 improvement over v1's
 
 ```ts
 export interface BulkNotificationResult {
-  /** Rows written. One per distinct recipient, always — see below. */
+  /** Rows written. One per distinct recipient who has not opted out. */
   written: number;
-  /** Recipients whose *outbound* channels were suppressed by their preference. */
+  /** Recipients skipped entirely (no row, no email, later no push) by their preference. */
   suppressed: number;
 }
 
 /**
  * Fan out one notification to many recipients.
  *
- * Divergence from v1, ruled in spec D4: the in-app row is the user's history
- * and is **always** written. v1 filtered opted-out recipients out before the
- * insert (R8), so "off" meant "no record" — a user who only wanted the emails
- * to stop had to give up their inbox too, and with push arriving that single
- * boolean would be governing three channels. Here the preference governs
- * outbound channels only: email now, push at cutover.
- *
- * Consequence, accepted deliberately: v1 renders the same table with no
- * preference filter, so an opted-out user's v1 inbox stops being empty.
+ * v1 semantics (jpc-space src/lib/notifications.ts:56-94, spec R8/R9/R11): an
+ * opted-out recipient is filtered out **before** the insert, so the one
+ * preference switch governs every channel — no in-app row, no email, and at
+ * cutover no push. If every recipient opted out, nothing is written.
  *
  * Returns counts because v1 returned void and the caller could not learn what
  * happened (§6); domain 3's session write response needs the number
@@ -893,16 +875,19 @@ export async function createNotificationsBulk(
   // Deduped: producers resolve recipients from more than one join table
   // (attendance-notifications.ts reads GroupLeader and SeasonAdmin), and
   // createMany has no skipDuplicates and no constraint to trip (R15).
-  const targets = [...new Set(userIds)];
-  if (targets.length === 0) return { written: 0, suppressed: 0 };
+  const recipients = [...new Set(userIds)];
+  if (recipients.length === 0) return { written: 0, suppressed: 0 };
 
   const prefs = await db.notificationPreference.findMany({
-    where: { userId: { in: targets } },
+    where: { userId: { in: recipients } },
   });
   const prefField = PREF_FIELD[payload.type];
   // A user with no preference row has not opted out — defaults are all true
   // (R6). Only the literal `false` suppresses (R7).
   const optedOut = new Set(prefs.filter((p) => p[prefField] === false).map((p) => p.userId));
+  // v1 (notifications.ts:74-75): opted-out users are dropped before the insert.
+  const targets = recipients.filter((id) => !optedOut.has(id));
+  if (targets.length === 0) return { written: 0, suppressed: optedOut.size };
 
   await db.notification.createMany({
     data: targets.map((userId) => ({
@@ -918,24 +903,28 @@ export async function createNotificationsBulk(
     })),
   });
 
-  const mailTargets = targets.filter((id) => !optedOut.has(id));
-  if (mailTargets.length > 0) {
-    const users = await db.user.findMany({
-      where: { id: { in: mailTargets } },
-      select: { email: true },
-    });
-    // Fire-and-forget: mail must never delay or fail the request that
-    // triggered it. allSettled so one bad address cannot reject the batch.
-    void Promise.allSettled(
-      users.map((u) =>
-        sendNotificationEmail(u.email, payload.title, payload.body ?? null, payload.link ?? null),
-      ),
-    );
-  }
+  const users = await db.user.findMany({
+    where: { id: { in: targets } },
+    select: { email: true },
+  });
+  // Fire-and-forget: mail must never delay or fail the request that
+  // triggered it. allSettled so one bad address cannot reject the batch.
+  void Promise.allSettled(
+    users.map((u) =>
+      sendNotificationEmail(u.email, payload.title, payload.body ?? null, payload.link ?? null),
+    ),
+  );
 
   return { written: targets.length, suppressed: optedOut.size };
 }
 ```
+
+> **v1 parity 2026-10-09:** the block above now filters opted-out recipients before `createMany`
+> (v1 `jpc-space/src/lib/notifications.ts:56-94`). The code built from the earlier text must change:
+> `apps/backend/src/lib/notifications.ts:62-100` (`createNotificationsBulk`) — drop the always-write
+> branch and the `mailTargets` split, filter before the insert, early-return when nothing is left; also
+> delete the "Divergence from v1, ruled in spec D4" doc comment. Push (Task 5 / cutover) follows the same
+> filtered list. *(v1 parity 2026-10-09: was "row always written; preference gates email only (D4 split)")*
 
 - [ ] **Step 6: Confirm Plan 12's mail escaping is the only one (C11, ruling X2)**
 
@@ -1005,15 +994,20 @@ and must not be edited here — unchanged. Concretely, the two sites already on
   await bestEffort("notify:SUBMISSION_REVIEWED", () =>
     createNotificationsBulk([sub.studentUserId], {
       type: "SUBMISSION_REVIEWED",
-      title: parsed.data.returnForRevision
-        ? `${sub.assignment.title} was returned for revision`
-        : `${sub.assignment.title} was reviewed`,
+      // v1's exact title (submission-actions.ts:196). v1 has no return-for-revision
+      // action, so there is no second title (v1 parity 2026-10-09).
+      title: `Feedback ready on "${sub.assignment.title}"`,
       // v1's exact link (submission-actions.ts:197; ruling X1). main already
       // writes it — this step changes only the error handling.
       link: `/student/assignments/${sub.assignmentId}`,
     }),
   );
 ```
+
+> **v1 parity 2026-10-09:** title is v1's single `Feedback ready on "<title>"`
+> (jpc-space `src/lib/submission-actions.ts:193-198`). Remove the `returnForRevision` ternary at
+> `apps/backend/src/routes/submissions.ts:451-464` together with Plan 2's return-for-revision action
+> (08-submissions R21). *(v1 parity 2026-10-09: was "'<title> was returned for revision' / '<title> was reviewed'")*
 
 2. `routes/sessions.ts` — `await flagLowAttendance(sessionId, parsed.data.entries);`
    becomes:
@@ -1036,50 +1030,54 @@ around the `MENTOR_FOLLOWUP` fan-out becomes
 
 Import `bestEffort` from `../lib/best-effort` in every route file touched.
 
-- [ ] **Step 8: Rewrite the opt-out integration case (D4) and add one**
+- [ ] **Step 8: Keep v1's opt-out integration case and add a counting case** *(v1 parity 2026-10-09: was "Rewrite the opt-out integration case (D4) and add one")*
 
-In `apps/backend/src/__tests__/integration/notifications.test.ts`, replace the
-`"respects an opt-out on NotificationPreference"` case (`:110-123`) with:
+In `apps/backend/src/__tests__/integration/notifications.test.ts`, **keep** the
+`"respects an opt-out on NotificationPreference"` case (`:110-123`) — it pins
+v1's semantics (no row for an opted-out recipient; jpc-space
+`src/lib/notifications.ts:62-75`) — and add after it:
 
 ```ts
-it("writes the in-app row even for an opted-out recipient, and suppresses only their outbound channels", async () => {
-  // BEHAVIOUR CHANGE, spec D4: v1 filtered opted-out recipients out before the
-  // insert (R8), so "off" meant "no record" and the user lost their history to
-  // stop the emails. The row is now always written; the preference governs
-  // email (and push at cutover). This test is the old one, inverted on
-  // purpose — see the plan header.
-  await db.notification.deleteMany({ where: { userId: { in: [leaderId, adminId] } } });
+it("reports what it wrote and whom it skipped", async () => {
+  // v1 returned void, so a producer could not tell the caller how many people
+  // were actually notified (§6; 03-sessions.md R17 needs this number).
   await db.notificationPreference.upsert({
     where: { userId: leaderId },
     update: { lowAttendanceFlag: false },
     create: { userId: leaderId, lowAttendanceFlag: false },
   });
-
-  await flagLowAttendance(secondSessionId, [{ studentUserId: studentId, status: "ABSENT" }]);
-
-  const recipients = await db.notification.findMany({
-    where: { userId: { in: [leaderId, adminId] }, type: "LOW_ATTENDANCE_FLAG" },
-    select: { userId: true },
-  });
-  expect(recipients.map((r) => r.userId).sort()).toEqual([adminId, leaderId].sort());
-});
-
-it("reports what it wrote and whose channels it suppressed", async () => {
-  // v1 returned void, so a producer could not tell the caller how many people
-  // were actually notified (§6; 03-sessions.md R17 needs this number).
   const result = await createNotificationsBulk([leaderId, adminId, leaderId], {
     type: "LOW_ATTENDANCE_FLAG",
     title: "space-v2-test counting probe",
     body: "b",
     link: `/admin/students/${studentId}`,
   });
-  // leaderId appears twice and is deduped; leaderId is opted out from the case above.
-  expect(result).toEqual({ written: 2, suppressed: 1 });
+  // leaderId appears twice and is deduped; leaderId is opted out, so only
+  // adminId gets a row (v1 R8 — no row, no email for an opted-out user).
+  expect(result).toEqual({ written: 1, suppressed: 1 });
+});
+
+it("writes nothing when every recipient opted out (v1 R11)", async () => {
+  const result = await createNotificationsBulk([leaderId], {
+    type: "LOW_ATTENDANCE_FLAG",
+    title: "space-v2-test all-opted-out probe",
+    body: "b",
+    link: `/admin/students/${studentId}`,
+  });
+  expect(result).toEqual({ written: 0, suppressed: 1 });
+  expect(
+    await db.notification.count({ where: { title: "space-v2-test all-opted-out probe" } }),
+  ).toBe(0);
 });
 ```
 
+> **v1 parity 2026-10-09:** if the inverted case ("writes the in-app row even for an opted-out
+> recipient…") was built into `apps/backend/src/__tests__/integration/notifications.test.ts`, restore
+> the original opt-out case (no row for the opted-out leader) and replace the `{ written: 2, suppressed: 1 }`
+> expectation with the two cases above.
+
 Add `import { createNotificationsBulk } from "../../lib/notifications";` at the
-top. The second case depends on the first having created the opt-out row —
+top. The last case depends on the counting case having created the opt-out row —
 keep them adjacent and in this order (the suite is already order-dependent
 through its shared `beforeAll`).
 
@@ -1093,12 +1091,12 @@ prefix-global and safe only under `--runInBand`).
 - [ ] **Step 10: Commit**
 
 ```bash
-git add apps/backend && git commit -m "feat(backend): notification channel split, v1 link-shape parser, best-effort producers"
+git add apps/backend && git commit -m "feat(backend): notification counts, v1 link-shape parser, best-effort producers"
 ```
 
 ---
 
-### Task 3: Inbox endpoints — list, unread count, explicit mark-read
+### Task 3: Inbox endpoints — list, unread count, explicit mark-all-read
 
 **Files:**
 - Create: `apps/backend/src/routes/notifications.ts`
@@ -1107,14 +1105,15 @@ git add apps/backend && git commit -m "feat(backend): notification channel split
 - Test: `apps/backend/src/__tests__/integration/notifications-routes.test.ts` (new)
 
 **Interfaces:**
-- Consumes: `notificationListQuerySchema`, `notificationListResponseSchema`'s
+- Consumes: `NOTIFICATION_INBOX_LIMIT`, `notificationListResponseSchema`'s
   shape, `markReadRequestSchema`, `unreadCountResponseSchema`'s shape from
   shared (Task 1); `parseNotificationLink` (Task 2); `requireAuth`,
   `requireUser`, `apiOk`, `apiError`.
 - Produces: `notificationsRouter` mounted at `/api/v1/notifications`;
-  `GET /` → `{ data: { items, nextCursor, unreadCount } }`;
+  `GET /` → `{ data: { items, unreadCount } }` (newest 100, no query params);
   `GET /unread-count` → `{ data: { unreadCount } }`;
-  `POST /read` → `{ data: { marked } }`.
+  `POST /read` with `{ all: true }` only → `{ data: { marked } }`.
+  *(v1 parity 2026-10-09: was "cursor-paged list with unreadOnly; POST /read takes ids or all")*
 
 - [ ] **Step 1: Write the failing integration tests**
 
@@ -1347,6 +1346,16 @@ describe("POST /api/v1/notifications/read", () => {
 });
 ```
 
+> **v1 parity 2026-10-09:** the tests above still pin the cursor/unreadOnly list and the `ids` form
+> of mark-read. Change them to v1 (R33, R39, R47): drop `"pages by cursor, newest first"` and
+> `"filters to unread when asked"`, add one that seeds 101 rows and expects exactly 100 back,
+> newest `createdAt` first, with no `nextCursor` key; replace `"marks the given ids and reports the count"`
+> with a 400 for `{ ids: [...] }`; rewrite the idempotency and C8 cases on `{ all: true }` (Bob's
+> `all: true` leaves Alice's rows unread). Built code to change:
+> `apps/backend/src/routes/notifications.ts:70-102` (list) and `:135-151` (POST /read),
+> `apps/backend/src/__tests__/integration/notifications-routes.test.ts`; v1 to match:
+> jpc-space `src/app/(notifications)/notifications-page.tsx:14-27`, `src/lib/notification-actions.ts:8-12`.
+
 - [ ] **Step 2: (Coordinator runs it) — expect FAIL**
 
 Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern notifications-routes`
@@ -1364,7 +1373,7 @@ import { parseNotificationLink } from "../lib/notification-target";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
   markReadRequestSchema,
-  notificationListQuerySchema,
+  NOTIFICATION_INBOX_LIMIT,
 } from "../../../../packages/shared/src/index";
 
 export const notificationsRouter = Router();
@@ -1415,10 +1424,9 @@ function toWire(row: Row) {
  * applied after the rows are fetched and never as a request parameter. Ruling
  * C8.
  *
- * Ordered by `id` desc rather than v1's `createdAt` desc: a fan-out written by
- * one `createMany` gives every row the same `createdAt` (R18), which makes a
- * createdAt cursor ambiguous exactly where the pages are densest. Insertion
- * order is the same order for every row that matters and it is unique.
+ * v1's list (notifications-page.tsx:14-27; R33, R39): the newest 100 rows,
+ * createdAt desc, one list, no cursor and no read-state filter. `id` desc is
+ * the tie-break for a fan-out written by one `createMany` (same createdAt, R18).
  *
  * This endpoint writes nothing. v1 never marked on render either (R48, R49) —
  * but v2's client refetches on mount, on focus and on reconnect, so if it did,
@@ -1427,23 +1435,12 @@ function toWire(row: Row) {
 notificationsRouter.get("/", async (req, res) => {
   const user = requireUser(req);
 
-  const parsed = notificationListQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { cursor, limit, unreadOnly } = parsed.data;
-
-  const where = { userId: user.userId, ...(unreadOnly ? { readAt: null } : {}) };
-
-  // One extra row tells us whether another page exists without a second count
-  // query — the same shape as the submissions queue.
   const rows = await db.notification.findMany({
-    where,
-    orderBy: { id: "desc" },
-    take: limit + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    where: { userId: user.userId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: NOTIFICATION_INBOX_LIMIT,
     select: LIST_SELECT,
   });
-
-  const page = rows.slice(0, limit);
 
   // A real count, not a filter over the page: v1 counted unread by filtering
   // the 100 rows it had already fetched, so past 100 the header silently
@@ -1453,8 +1450,7 @@ notificationsRouter.get("/", async (req, res) => {
   });
 
   return apiOk(res, {
-    items: page.map(toWire),
-    nextCursor: rows.length > limit ? (page[page.length - 1]?.id ?? null) : null,
+    items: rows.map(toWire),
     unreadCount,
   });
 });
@@ -1476,31 +1472,23 @@ notificationsRouter.get("/unread-count", async (req, res) => {
 });
 
 /**
- * Mark read — the explicit write.
+ * Mark all read — the explicit write, and the only one (v1
+ * notification-actions.ts:8-12). v1's single-id action was exported and never
+ * called (R47) and opening a notification leaves it unread (R48), so there is
+ * no `ids` form.
  *
- * One endpoint, not v1's two: its single-id action was exported and never
- * called (R47), and ruling C12 says unreachable code is not a specification.
- *
- * The `userId` clause is the whole security model here. `ids` is
- * client-supplied and is NOT an ownership assertion — a forged id updates zero
- * rows only because the `where` narrows it (R43, spec §4). Never reduce this
- * to `updateMany({ where: { id: { in: ids } } })`.
- *
- * `readAt: null` keeps repeats free and keeps `readAt` stable once set (R44),
- * which is what makes the client's debounced batching safe.
+ * The `userId` clause is the whole security model here (R43, spec §4).
+ * `readAt: null` keeps repeats free and keeps `readAt` stable once set (R44).
  */
 notificationsRouter.post("/read", async (req, res) => {
   const user = requireUser(req);
 
   const parsed = markReadRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid mark-read body.", 400);
-  const body = parsed.data;
-
   const result = await db.notification.updateMany({
     where: {
       userId: user.userId,
       readAt: null,
-      ...("ids" in body ? { id: { in: body.ids } } : {}),
     },
     data: { readAt: new Date() },
   });
@@ -1530,13 +1518,12 @@ this step "fixed" it again — nothing to change.
 - [ ] **Step 5: OpenAPI, same commit**
 
 Add to `src/docs/openapi.ts`, house style (prose `description` on each path,
-components for the shapes): `GET /notifications` (query `cursor`, `limit`
-1–50 default 20, `unreadOnly`; response `items`/`nextCursor`/`unreadCount`;
+components for the shapes): `GET /notifications` (no query parameters; the
+newest 100 rows, createdAt desc; response `items`/`unreadCount`;
 description states that it performs no write — ruling C6),
-`GET /notifications/unread-count`, `POST /notifications/read` (request is the
-`ids | all` union; `bad_request` 400 documented; description states that ids
-are not an ownership assertion), plus `Notification` and `NotificationTarget`
-schemas.
+`GET /notifications/unread-count`, `POST /notifications/read` (request is
+`{ all: true }` only; `bad_request` 400 documented), plus `Notification` and
+`NotificationTarget` schemas. *(v1 parity 2026-10-09: was "cursor/limit/unreadOnly query; ids | all union")*
 
 - [ ] **Step 6: (Coordinator) run the suite**
 
@@ -1635,13 +1622,13 @@ describe("notification preferences", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.preferences.assignmentCreated).toBe(false);
-    // v1 could not turn this one off from any surface: its input type declared
-    // five fields and the form rendered five toggles, so the column kept its
-    // default forever (R56, R57).
-    expect(res.body.data.preferences.quizGraded).toBe(false);
+    // v1 parity (settings-actions.ts:58-73, R56/R57): PUT sets v1's five keys
+    // only. A quizGraded in the body is stripped, so the column keeps its
+    // default.
+    expect(res.body.data.preferences.quizGraded).toBe(true);
 
     const row = await db.notificationPreference.findUnique({ where: { userId: prefsUserId } });
-    expect(row?.quizGraded).toBe(false);
+    expect(row?.quizGraded).toBe(true);
   });
 
   it("updates the existing row rather than creating a second", async () => {
@@ -1659,7 +1646,7 @@ describe("notification preferences", () => {
     expect(rows[0]?.mentorFollowup).toBe(true);
   });
 
-  it("refuses a partial body — PUT replaces all six", async () => {
+  it("refuses a partial body — PUT replaces v1's five", async () => {
     const res = await request(app)
       .put("/api/v1/me/notification-preferences")
       .set("authorization", `Bearer ${prefsToken}`)
@@ -1693,7 +1680,7 @@ describe("notification preferences", () => {
 ```ts
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
-  notificationPreferencesSchema,
+  notificationPreferencesUpdateSchema,
 } from "../../../../packages/shared/src/index";
 ```
 
@@ -1708,13 +1695,9 @@ const PREFERENCE_SELECT = {
 } as const;
 
 /**
- * The caller's own notification preferences — all six keys.
- *
- * v1 read the sixth column from the database and dropped it on the floor while
- * projecting to a five-field type (§5, R56), which is why `quizGraded` could
- * never be turned off. The contract is derived from the enum
- * (packages/shared/src/notification.ts), so a seventh type would be a compile
- * error rather than a silently unreachable toggle.
+ * The caller's own notification preferences — all six stored keys. Only
+ * v1's five are settable (PUT below); `quizGraded` is read back so the
+ * contract stays derived from the enum.
  *
  * No row means opted in to everything (R6) — the row is created lazily, on
  * first save, and most users have none (R59).
@@ -1729,9 +1712,10 @@ meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
 });
 
 /**
- * Replace them. PUT, not PATCH: the body carries all six keys, so there is no
- * way for a client that has not been updated to leave a new key at its default
- * without saying so.
+ * Replace them. PUT, not PATCH: the body carries v1's five settable keys
+ * (jpc-space settings-actions.ts:58-73). `quizGraded` is not settable in v1,
+ * so it is stripped and left untouched (R56, R57). *(v1 parity 2026-10-09:
+ * was "the body carries all six keys")*
  *
  * The target row is never an input (R54) — `user.userId` comes from the
  * verified token, so one user cannot write another's preferences no matter
@@ -1740,9 +1724,9 @@ meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
 meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
-  const parsed = notificationPreferencesSchema.safeParse(req.body);
+  const parsed = notificationPreferencesUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
-    return apiError(res, "bad_request", "All six notification preferences are required.", 400);
+    return apiError(res, "bad_request", "All five notification preferences are required.", 400);
   }
 
   const preferences = await db.notificationPreference.upsert({
@@ -1756,19 +1740,24 @@ meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
 });
 ```
 
-Merge `DEFAULT_NOTIFICATION_PREFERENCES` and `notificationPreferencesSchema`
+Merge `DEFAULT_NOTIFICATION_PREFERENCES` and `notificationPreferencesUpdateSchema`
 into `me.ts`'s existing relative shared import (Plan 9 created it for
 `changePasswordRequestSchema`/`updateProfileRequestSchema`) rather than adding
 a second import statement; `apiError` is already imported (Plan 9).
 
-Note on `.safeParse`: `notificationPreferencesSchema` is a plain (non-strict)
-object, so an extra `userId` key in the body parses and is discarded rather
+Note on `.safeParse`: `notificationPreferencesUpdateSchema` is a plain (non-strict)
+object, so an extra `userId` (or `quizGraded`) key in the body parses and is discarded rather
 than 400ing. That is deliberate and the cross-user test above pins the
 outcome; the request schema on the *mark-read* path is `.strict()` because
 there the extra key would be adjacent to a real id array.
 
+> **v1 parity 2026-10-09:** built code to change — `apps/backend/src/routes/me.ts:274-286` parses
+> the six-key schema and writes `quizGraded`; switch to `notificationPreferencesUpdateSchema` (five
+> keys) so `quizGraded` is left untouched, and update the matching case in
+> `me-notifications-routes.test.ts`. v1 to match: jpc-space `src/lib/settings-actions.ts:58-73`.
+
 - [ ] **Step 4: OpenAPI, same commit** — both paths, the six-key
-`NotificationPreferences` schema, and a description recording that a user with
+`NotificationPreferences` response schema and the five-key PUT body, and a description recording that a user with
 no row is opted in to everything.
 
 - [ ] **Step 5: (Coordinator) run the suites** →
@@ -1777,7 +1766,7 @@ no row is opted in to everything.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/backend && git commit -m "feat(backend): notification preferences read/replace, all six keys"
+git add apps/backend && git commit -m "feat(backend): notification preferences read/replace, v1's five settable keys"
 ```
 
 ---
@@ -1970,8 +1959,9 @@ Dispatch, to be written then, in `apps/backend/src/lib/push.ts`, called from
 `createNotificationsBulk` beside the mail fan-out and behind the same
 best-effort seam:
 
-- recipients = targets minus `optedOut` (the same set the mail branch uses — a
-  type the user turned off must not push either);
+- recipients = the filtered `targets` (opted-out users already removed, as v1
+  — the same set that gets the row and the mail; a type the user turned off
+  must not push either);
 - gated on `shouldPush(payload.type)` (`packages/shared/src/notification.ts`,
   three types today);
 - one batched POST to `https://exp.host/--/api/v2/push/send`, `Promise.allSettled`,
@@ -2041,11 +2031,11 @@ git add apps/backend docs && git commit -m "feat(backend): device registration c
   `markReadResponseSchema`, `notificationPreferencesResponseSchema`,
   `type NotificationItem`, `type NotificationTarget`,
   `type NotificationPreferences`.
-- Produces: `queryKeys.notifications.{all, lists(), list(unreadOnly), unreadCount(), preferences()}`;
-  `useNotifications(unreadOnly?: boolean)`;
+- Produces: `queryKeys.notifications.{all, lists(), list(), unreadCount(), preferences()}`;
+  `useNotifications()` (one `useQuery`, v1's newest 100 — no paging, no unread filter);
   `useUnreadCount(): UseQueryResult<number>`;
   `useMarkRead(): UseMutationResult<{ marked: number }, unknown, MarkReadInput>` where
-  `MarkReadInput = { ids: number[] } | { all: true }`;
+  `MarkReadInput = { all: true }` *(v1 parity 2026-10-09: was "infinite query with unreadOnly; ids | all")*;
   `useNotificationPreferences(): UseQueryResult<NotificationPreferences>`;
   `useUpdateNotificationPreferences()`;
   `routeForTarget(target: NotificationTarget | null): NotificationRoute | null`.
@@ -2162,7 +2152,7 @@ same `queryKeys` object:
     lists: () => [...queryKeys.notifications.all, "list"] as const,
     // The unread-only inbox is a different server query, so it gets its own
     // cache entry rather than being filtered out of the full one.
-    list: (unreadOnly: boolean) => [...queryKeys.notifications.lists(), { unreadOnly }] as const,
+    list: () => [...queryKeys.notifications.lists()] as const,
     unreadCount: () => [...queryKeys.notifications.all, "unread-count"] as const,
     preferences: () => [...queryKeys.notifications.all, "preferences"] as const,
   },
@@ -2173,7 +2163,6 @@ same `queryKeys` object:
 ```ts
 // apps/mobile/src/hooks/use-notifications.ts
 import {
-  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -2184,34 +2173,27 @@ import {
   notificationListResponseSchema,
   notificationPreferencesResponseSchema,
   unreadCountResponseSchema,
-  type NotificationItem,
   type NotificationPreferences,
+  type NotificationPreferencesUpdate,
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
-export type MarkReadInput = { ids: number[] } | { all: true };
+export type MarkReadInput = { all: true };
 
 /**
- * The inbox, paginated.
- *
- * v1 had no cursor and truncated at 100 rows with an unread count computed
- * over those rows, so past 100 the header was simply wrong (R33, R37, R39).
- * On a phone this is a FlatList and paging is not optional.
+ * The inbox: v1's one list of the newest 100 (notifications-page.tsx:14-27;
+ * R33, R39). No cursor, no unread filter. The unread count is a real count
+ * from the server, not a filter over the 100 rows.
  */
-export function useNotifications(unreadOnly = false) {
-  return useInfiniteQuery({
-    queryKey: queryKeys.notifications.list(unreadOnly),
-    initialPageParam: undefined as number | undefined,
-    queryFn: async ({ pageParam }) => {
-      const params = new URLSearchParams({ limit: "20" });
-      if (unreadOnly) params.set("unreadOnly", "true");
-      if (pageParam !== undefined) params.set("cursor", String(pageParam));
-      const res = await apiClient.get(`/api/v1/notifications?${params.toString()}`);
+export function useNotifications() {
+  return useQuery({
+    queryKey: queryKeys.notifications.list(),
+    queryFn: async () => {
+      const res = await apiClient.get("/api/v1/notifications");
       return notificationListResponseSchema.parse(res.data.data);
     },
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
 }
 
@@ -2239,12 +2221,9 @@ export function useUnreadCount(): UseQueryResult<number> {
  * Marking read is an explicit write, called from a user action — never from a
  * `useEffect` keyed on query data (ruling C6, spec D2).
  *
- * v1 changed read state from exactly one control and never on open (R48, R49).
- * Mobile users expect mark-on-open, which is a new write on a screen React
- * Query refetches on mount, on focus and on reconnect; wiring it to the query
- * resolving would fire it on every one of those. The endpoint is idempotent
- * (its `readAt: null` filter), which is what makes a repeat free rather than a
- * second timestamp.
+ * v1 changed read state from exactly one control — "Mark all read" — and
+ * never on open (R47, R48, R49); v2 does the same. *(v1 parity 2026-10-09: was
+ * "mobile marks one read on open")*
  */
 export function useMarkRead() {
   const queryClient = useQueryClient();
@@ -2273,9 +2252,9 @@ export function useNotificationPreferences(): UseQueryResult<NotificationPrefere
 export function useUpdateNotificationPreferences() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (preferences: NotificationPreferences) => {
-      // PUT with all six keys — the contract has no partial form, which is
-      // what keeps a client from silently leaving a key at its default.
+    mutationFn: async (preferences: NotificationPreferencesUpdate) => {
+      // PUT with v1's five keys (settings-actions.ts:58-73) — quizGraded is
+      // not settable in v1 and is never sent.
       const res = await apiClient.put("/api/v1/me/notification-preferences", preferences);
       return notificationPreferencesResponseSchema.parse(res.data.data).preferences;
     },
@@ -2284,14 +2263,13 @@ export function useUpdateNotificationPreferences() {
     },
   });
 }
-
-/** Flattened pages, for a FlatList's `data`. */
-export function flattenNotifications(
-  pages: { items: NotificationItem[] }[] | undefined,
-): NotificationItem[] {
-  return (pages ?? []).flatMap((p) => p.items);
-}
 ```
+
+> **v1 parity 2026-10-09:** built code to change — `apps/mobile/src/hooks/use-notifications.ts:25-41`
+> (infinite query, `limit 20`, `unreadOnly`, `cursor` → one `useQuery` with no params),
+> `MarkReadInput` and `useMarkRead` (mark-all only), `useUpdateNotificationPreferences` (five keys),
+> `flattenNotifications` removed; `apps/mobile/src/lib/query-keys.ts` drops the `unreadOnly` key part.
+> and drops `useInfiniteQuery` from its imports.
 
 - [ ] **Step 6: Run the tests**
 
@@ -2320,10 +2298,10 @@ So this task does **both** halves:
    `DETAIL_ROUTE_NAMES` edit, no second source of truth. Every role including
    MENTOR gets an entry — MENTOR has no `/more` tab, so a "put it behind More"
    answer would leave one role unable to reach their own inbox.
-2. **A bell with an unread badge on the dashboard** (Task 8), because a
-   sidebar-only entry buries the badge and, as the spec puts it, the badge is
-   the entire point. `/dashboard` is the one href in every one of the six navs'
-   `tabs`, so this reaches every role in one tap.
+2. **A bell with an unread badge in the shared screen header, on every
+   screen** (Task 8), as v1's app shell renders it on every page for every role
+   (jpc-space `src/components/layout/app-shell.tsx:55-57`). *(v1 parity
+   2026-10-09: was "a bell on the dashboard only")*
 
 **Files:**
 - Create: `apps/mobile/app/(app)/notifications.tsx`
@@ -2338,7 +2316,7 @@ So this task does **both** halves:
 - Test: `apps/mobile/src/__tests__/notifications-screen.test.tsx` (new)
 
 **Interfaces:**
-- Consumes: `useNotifications`, `useMarkRead`, `flattenNotifications` (Task 6),
+- Consumes: `useNotifications`, `useMarkRead` (Task 6),
   `routeForTarget` (Task 6), `formatDate` from `../../src/lib/format`.
 - Produces: the `/notifications` route; nothing else imports this screen.
 
@@ -2569,11 +2547,7 @@ import { useRouter } from "expo-router";
 import { FlatList, Pressable } from "react-native";
 import type { NotificationItem } from "@space/shared";
 
-import {
-  flattenNotifications,
-  useMarkRead,
-  useNotifications,
-} from "../../src/hooks/use-notifications";
+import { useMarkRead, useNotifications } from "../../src/hooks/use-notifications";
 import { formatDate } from "../../src/lib/format";
 import { routeForTarget } from "../../src/lib/notification-route";
 import { useTheme } from "../../src/theme";
@@ -2630,17 +2604,14 @@ function NotificationRow({
 export default function NotificationsScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage } =
-    useNotifications();
+  const { data, isPending, isError, refetch, isRefetching } = useNotifications();
   const markRead = useMarkRead();
 
-  const items = flattenNotifications(data?.pages);
+  const items = data?.items ?? [];
 
   const handlePress = (item: NotificationItem) => {
-    // Explicit: the user tapped. Already-read rows are skipped so a re-open
-    // costs nothing (the endpoint is idempotent anyway — R44).
-    if (item.readAt === null) markRead.mutate({ ids: [item.id] });
-
+    // v1 (notification-bell.tsx:133-139, notifications-page.tsx:75-81):
+    // opening a notification only navigates; it stays unread (R48).
     const route = routeForTarget(item.target);
     if (route) router.push(route);
   };
@@ -2676,10 +2647,6 @@ export default function NotificationsScreen() {
           data={items}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => <NotificationRow item={item} onPress={handlePress} />}
-          onEndReachedThreshold={0.5}
-          onEndReached={() => {
-            if (hasNextPage) void fetchNextPage();
-          }}
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
           style={{ marginTop: theme.spacing.sm }}
@@ -2696,6 +2663,15 @@ branch is a plain `View`, which is what a list wants. Check `Button`'s prop
 names in `src/ui/Button.tsx` and `theme.colors.brand.navy` in
 `src/theme/tokens.ts` before relying on them; use whatever the files actually
 export.
+
+> **v1 parity 2026-10-09:** built code to change — `apps/mobile/app/(app)/notifications.tsx:75`
+> (remove the `markRead.mutate({ ids: [item.id] })` on press; keep only "Mark all read" at `:102`)
+> and the `fetchNextPage`/`onEndReached` paging. In Step 1's test, rewrite
+> `"marks one read and navigates on an explicit tap"` to assert `post` is **not** called and the
+> route is pushed, drop `"does not re-mark a notification that is already read"`, drop
+> `nextCursor` from the mocked responses, and keep a "Mark all read" → `{ all: true }` case.
+> v1 to match: jpc-space `src/components/layout/notification-bell.tsx:133-139`,
+> `src/app/(notifications)/notifications-page.tsx:14-81`.
 
 - [ ] **Step 6: Run the screen test and the guards**
 
@@ -2719,7 +2695,7 @@ git add apps/mobile packages/shared && git commit -m "feat(mobile): notification
 
 ---
 
-### Task 8: Mobile — the unread bell on the dashboard
+### Task 8: Mobile — the unread bell in the shared header, on every screen
 
 **Files:**
 - Create: `apps/mobile/src/components/NotificationBell.tsx`
@@ -2841,9 +2817,9 @@ import { NavIcon } from "./NavIcon";
 /**
  * The inbox's entry point and its badge.
  *
- * The tab shell has no header (`(app)/_layout.tsx` sets `headerShown: false`)
- * and every role's five tab slots are taken, so this sits on the dashboard —
- * the one href present in all six navs' `tabs`. Spec D3.
+ * Rendered in the shared screen header so it is on every screen for every
+ * role, as v1's app shell (app-shell.tsx:55-57). *(v1 parity 2026-10-09: was
+ * "sits on the dashboard only")*
  *
  * The count comes from its own endpoint on a slow poll, not from a list fetch
  * and not from `GET /me` (spec D11): v1 paid for eight rows plus a count on
@@ -2891,10 +2867,19 @@ than the literal `"#ffffff"` for the badge text.)
 
 - [ ] **Step 4: Mount it**
 
-In `apps/mobile/app/(app)/dashboard.tsx`, render `<NotificationBell />` as the
-first child inside `Screen`, above the season/sessions conditional. It manages
-its own query and renders regardless of `activeSeasonId` — an inbox is not
+Render `<NotificationBell />` from the shared screen header so every screen
+under `(app)` shows it, as v1's app shell does for every page and role
+(jpc-space `src/components/layout/app-shell.tsx:55-57`). It manages its own
+query and renders regardless of `activeSeasonId` — an inbox is not
 season-scoped.
+
+> **v1 parity 2026-10-09:** built code to change — the bell is mounted only in
+> `apps/mobile/src/components/dashboard/DashboardFrame.tsx:4,23`. Move it into the shared header
+> (`apps/mobile/src/ui/Screen.tsx`, or a header set in `apps/mobile/app/(app)/_layout.tsx:125`, which
+> today has `headerShown: false`) and remove it from `DashboardFrame`. Move the bell cases out of
+> `apps/mobile/src/__tests__/dashboard.test.tsx:562+` into a test that renders a non-dashboard screen
+> and finds the bell. The `/unread-count` endpoint and 60 s poll stay. *(v1 parity 2026-10-09: was
+> "render it as the first child of dashboard.tsx")*
 
 - [ ] **Step 5: Run the tests**
 
@@ -2904,12 +2889,12 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/mobile && git commit -m "feat(mobile): unread notification bell on the dashboard"
+git add apps/mobile && git commit -m "feat(mobile): unread notification bell in the shared header"
 ```
 
 ---
 
-### Task 9: Mobile — the six preference toggles
+### Task 9: Mobile — v1's five preference toggles
 
 **Files:**
 - Create: `apps/mobile/src/components/NotificationPreferences.tsx`
@@ -2958,7 +2943,7 @@ beforeEach(() => {
 });
 
 describe("NotificationPreferences", () => {
-  it("renders a switch for all six types — including the one v1 could never set", async () => {
+  it("renders v1's five switches — quizGraded has none", async () => {
     renderWithProviders(<NotificationPreferences />);
 
     expect(await screen.findByLabelText("Assignment created")).toBeTruthy();
@@ -2966,9 +2951,9 @@ describe("NotificationPreferences", () => {
     expect(screen.getByLabelText("Session rescheduled")).toBeTruthy();
     expect(screen.getByLabelText("Low attendance flag")).toBeTruthy();
     expect(screen.getByLabelText("Mentor follow-up")).toBeTruthy();
-    // R56/R57: v1's form rendered five toggles and its action spread a
-    // five-field object, so this column kept its default forever.
-    expect(screen.getByLabelText("Quiz graded")).toBeTruthy();
+    // v1 parity (settings-page.tsx:7-13, settings-form.tsx:27-53; R56/R57):
+    // v1's form rendered five toggles; quizGraded is not settable.
+    expect(screen.queryByLabelText("Quiz graded")).toBeNull();
   });
 
   it("states the real low-attendance threshold — two, not three (spec D12)", async () => {
@@ -2978,25 +2963,25 @@ describe("NotificationPreferences", () => {
     expect(await screen.findByText(/two consecutive/i)).toBeTruthy();
   });
 
-  it("PUTs all six keys when one is toggled off", async () => {
+  it("PUTs v1's five keys when one is toggled off", async () => {
     renderWithProviders(<NotificationPreferences />);
 
-    fireEvent(await screen.findByLabelText("Quiz graded"), "valueChange", false);
+    fireEvent(await screen.findByLabelText("Mentor follow-up"), "valueChange", false);
 
+    const { quizGraded: _notSettable, ...fiveTrue } = allTrue;
     await waitFor(() =>
       expect(put).toHaveBeenCalledWith("/api/v1/me/notification-preferences", {
-        ...allTrue,
-        quizGraded: false,
+        ...fiveTrue,
+        mentorFollowup: false,
       }),
     );
   });
 
   it("explains what turning one off actually does", async () => {
-    // Spec D4: the in-app row is always written now; the switch governs
-    // outbound channels. Saying so is the difference between a setting and a
-    // surprise.
+    // v1 semantics (notifications.ts:56-94, R8/R9): off means no inbox row and
+    // no email. Saying so is the difference between a setting and a surprise.
     renderWithProviders(<NotificationPreferences />);
-    expect(await screen.findByText(/still appear in your inbox/i)).toBeTruthy();
+    expect(await screen.findByText(/not in your inbox/i)).toBeTruthy();
   });
 });
 ```
@@ -3011,7 +2996,7 @@ Expected: FAIL — the component does not exist.
 ```tsx
 // apps/mobile/src/components/NotificationPreferences.tsx
 import { Switch, View } from "react-native";
-import type { NotificationPreferences as Prefs } from "@space/shared";
+import type { NotificationPreferencesUpdate } from "@space/shared";
 
 import {
   useNotificationPreferences,
@@ -3021,13 +3006,13 @@ import { useTheme } from "../theme";
 import { Card, ErrorState, LoadingState, Text } from "../ui";
 
 /**
- * One row per notification type — six, not v1's five.
- *
- * The labels are keyed off the preference column names so a key that exists in
- * the contract but not here is a compile error (`Record<keyof Prefs, ...>`),
- * which is the UI half of the fix for R56/R57.
+ * One row per settable type — v1's five (settings-page.tsx:7-13). `quizGraded`
+ * is stored but not settable in v1, so it has no row (R56/R57).
+ * *(v1 parity 2026-10-09: was "six, not v1's five")*
  */
-const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
+type SettableKey = keyof NotificationPreferencesUpdate;
+
+const LABELS: Record<SettableKey, { label: string; help: string }> = {
   assignmentCreated: {
     label: "Assignment created",
     help: "When new work is set for you.",
@@ -3049,17 +3034,12 @@ const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
     label: "Mentor follow-up",
     help: "When a mentor flags a student for follow-up.",
   },
-  quizGraded: {
-    label: "Quiz graded",
-    help: "When a quiz you took has been graded.",
-  },
 };
 
-const ORDER: (keyof Prefs)[] = [
+const ORDER: SettableKey[] = [
   "assignmentCreated",
   "submissionReviewed",
   "sessionRescheduled",
-  "quizGraded",
   "lowAttendanceFlag",
   "mentorFollowup",
 ];
@@ -3074,19 +3054,18 @@ export function NotificationPreferences() {
     return <ErrorState message="Couldn't load your notification settings." onRetry={refetch} />;
   }
 
-  const toggle = (key: keyof Prefs, value: boolean) => {
-    // PUT replaces all six: there is no partial form of this contract, which
-    // is exactly what stops a client from leaving a key at its default without
-    // saying so.
-    update.mutate({ ...data, [key]: value });
+  const toggle = (key: SettableKey, value: boolean) => {
+    // PUT carries v1's five keys; quizGraded is never sent (R56).
+    const { quizGraded: _notSettable, ...settable } = data;
+    update.mutate({ ...settable, [key]: value });
   };
 
   return (
     <Card>
       <Text variant="heading">Notifications</Text>
       <Text variant="body" color={theme.colors.neutral[600]}>
-        Turning one off stops the emails and push for that kind of notification. They will still
-        appear in your inbox — that is your history.
+        Turning one off stops that kind of notification entirely — not in your inbox, not by
+        email.
       </Text>
       {ORDER.map((key) => (
         <View
@@ -3117,6 +3096,13 @@ export function NotificationPreferences() {
   );
 }
 ```
+
+> **v1 parity 2026-10-09:** built code to change — `apps/mobile/src/components/NotificationPreferences.tsx:44-54`
+> renders a sixth "Quiz graded" row and PUTs six keys; remove the row and send the five settable
+> keys (the shared default constant `packages/shared/src/notification.ts:139-146` stays). Help copy
+> changes from "They will still appear in your inbox" to the v1 semantics above (no row, no email).
+> v1 to match: jpc-space `src/app/(settings)/settings-page.tsx:7-13`,
+> `src/components/settings/settings-form.tsx:27-53`.
 
 - [ ] **Step 4: Mount it in settings**
 
@@ -3166,7 +3152,7 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/mobile && git commit -m "feat(mobile): six notification preference toggles in settings"
+git add apps/mobile && git commit -m "feat(mobile): v1's five notification preference toggles in settings"
 ```
 
 ---
@@ -3575,7 +3561,7 @@ component, **before** the `isPending`/`isError` early returns (hooks first):
   const [enabling, setEnabling] = useState(false);
 ```
 
-and below the six switches, inside the `Card`:
+and below the five switches, inside the `Card`:
 
 ```tsx
       <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.xs }}>
@@ -3661,7 +3647,7 @@ the one checked by inspection).
 3. **C8, write.** Remove `userId: user.userId` from `POST /read`'s `where`
    → `"CANNOT mark another user's notification"` fails.
 4. **C6, client.** In `app/(app)/notifications.tsx`, add
-   `useEffect(() => { if (items.length) markRead.mutate({ ids: items.map((i) => i.id) }); }, [items]);`
+   `useEffect(() => { if (items.length) markRead.mutate({ all: true }); }, [items]);`
    → `"writes NOTHING when the inbox is merely read"` fails.
 5. **R56/R57.** Delete `quizGraded` from `notificationPreferencesSchema` →
    the shared derived-keys test fails **and** `tsc` fails on the `satisfies`.
@@ -3680,23 +3666,29 @@ the one checked by inspection).
    `/students/${studentUserId}` → `notes-routes.test.ts` "notifies season
    admins on a flagged note WITHOUT quoting it" fails on the link assertion,
    and `parseNotificationLink` of the new value is `null`. Restore.
+9. **v1 opt-out (R8, R11).** In `createNotificationsBulk`, write rows for
+   `recipients` instead of the filtered `targets` → `"respects an opt-out on
+   NotificationPreference"` and `"writes nothing when every recipient opted
+   out"` fail. *(v1 parity 2026-10-09: added)*
 
 - [ ] **Step 3: Device checklist (manual, dev build or Expo Go)**
 
 Backend running (`pnpm --filter @space/backend dev`), `apiClient` base URL
 pointed at it, signed in as a staging student:
 
-1. Dashboard shows the bell; with seeded unread rows the badge shows the count,
-   capped at `9+`.
-2. Tap the bell → the inbox lists rows newest first; scrolling past 20 loads
-   another page.
+1. Every screen (not only the dashboard) shows the bell in its header; with
+   seeded unread rows the badge shows the count, capped at `9+`.
+2. Tap the bell → the inbox lists the newest 100 rows, newest first, in one
+   list with no paging (v1 R33).
 3. Background the app and return → the badge refreshes; **the unread count does
    not change** (nothing was marked by looking).
 4. Tap a `SUBMISSION_REVIEWED` row → it opens the assignment and the badge
-   drops by one.
+   does **not** change — opening does not mark read (v1 R48).
 5. "Mark all read" → badge clears; pull to refresh → still clear.
-6. Settings → six toggles; turn `quizGraded` off, kill the app, reopen → still
-   off (the column v1 could never write).
+6. Settings → five toggles (no "Quiz graded", as v1); turn "Mentor follow-up"
+   off, kill the app, reopen → still off.
+   *(v1 parity 2026-10-09: items 1, 2, 4, 6 were "bell on dashboard", "pages of 20",
+   "badge drops on open", "six toggles incl. quizGraded")*
 7. Settings → "Enable push notifications" → the OS prompt appears. Accept it.
    The expected result depends on Task 10 Step 0:
    - **`extra.eas.projectId` present (dev build):** the button changes to
@@ -3712,10 +3704,11 @@ pointed at it, signed in as a staging student:
 
 - [ ] **Step 4: Report**
 
-Report: suite counts, all eight mutation outcomes, device checklist results
+Report: suite counts, all nine mutation outcomes, device checklist results
 (including which branch of item 7 applied), and — explicitly — whether the
-reviewer accepts the two deliberate behaviour changes in the header (D4's
-channel split, and the three-type push list).
+reviewer accepts the remaining deliberate behaviour change in the header (the
+three-type push list — itself awaiting the owner's call on whether push stays).
+*(v1 parity 2026-10-09: was "the two … changes (D4's channel split, and the three-type push list)")*
 
 **Roadmap drift — state it in the report.** The roadmap's done criterion for
 this plan reads "a review recorded on one device produces a push on the
@@ -3778,3 +3771,24 @@ order … 7 → 8 → 9 → 10 → 11 → 12 → 13 …):**
 - **Nav pin:** Task 7 Step 4 also updates Plan 1's `nav-routes.test.ts`, whose
   exact STUDENT / ADMIN / alumni `/more` lists (as Plans 11 and 12 left them)
   would otherwise fail on the new "Notifications" sidebar entry.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 10-notifications R8, R9, R11; 03-sessions R50; 04-attendance R86; 07-assignments R64; 08-submissions R23 (delivery half); 09-notes R19; 12-quizzes R117 | REG-37 (cancelled) | An opted-out recipient is filtered out before the insert: no in-app row, no email; one switch governs every channel; nothing written if all opted out (`src/lib/notifications.ts:56-94`, filter `:74-75`) | `apps/backend/src/lib/notifications.ts:62-100` (`createNotificationsBulk`); `apps/backend/src/__tests__/integration/notifications.test.ts:110-123` | Goal/Architecture; header "behaviour change" item 1 (withdrawn); Task 2 title, Files, Step 5 code, Step 8 tests; Task 5 cutover doc push-dispatch recipients; Task 9 help copy + test; Task 11 mutation 9 and report |
+| 2 | 08-submissions R21 (title), R23 (title) | REG-91 | Every review notifies `Feedback ready on "<title>"`; there is no return-for-revision (`src/lib/submission-actions.ts:178-198`) | `apps/backend/src/routes/submissions.ts:451-464` (drop the `returnForRevision` ternary with Plan 2's action) | Task 2 Step 7 producer snippet 1 |
+| 3 | 10-notifications R33, R39 | - | Inbox is one list of the newest 100, createdAt desc; no cursor, no read-state filter (`src/app/(notifications)/notifications-page.tsx:14-27`) | `packages/shared/src/notification.ts:58-66`; `apps/backend/src/routes/notifications.ts:70-102`; `apps/mobile/src/hooks/use-notifications.ts:25-41`; `apps/mobile/app/(app)/notifications.tsx` paging | Task 1 Interfaces, Step 1 tests, Step 4 contract; Task 3 Interfaces, Step 1 note, Step 3 router, Step 5 OpenAPI; Task 6 Interfaces, Step 4 keys, Step 5 hooks; Task 7 screen; Task 11 device item 2 |
+| 4 | 10-notifications R47, R48 | - | Only "mark all read" exists; opening a notification just navigates and it stays unread (`src/lib/notification-actions.ts:8-18` — single-id action never called; `src/components/layout/notification-bell.tsx:133-139`; `notifications-page.tsx:75-81`) | `apps/backend/src/routes/notifications.ts:135-151` (`ids` form); `apps/mobile/app/(app)/notifications.tsx:75` (markRead on press) | Goal; Task 1 `markReadRequestSchema` + test; Task 3 title, router POST /read; Task 6 `MarkReadInput`/`useMarkRead`; Task 7 `handlePress` + Step 5 note; Task 11 mutation 4, device item 4 |
+| 5 | 10-notifications R36 | - | The bell with unread count is in the app shell on every page for every role (`src/components/layout/app-shell.tsx:55-57`) | `apps/mobile/src/components/dashboard/DashboardFrame.tsx:4,23` → shared header (`apps/mobile/src/ui/Screen.tsx` or `apps/mobile/app/(app)/_layout.tsx:125`) | Architecture; Task 7 rationale item 2; Task 8 title, bell doc comment, Step 4 + note; Task 11 device item 1 |
+| 6 | 10-notifications R56, R57; 18-settings R15 | REG-101 | Five preference toggles and a five-field action; `quizGraded` cannot be switched off (`src/app/(settings)/settings-page.tsx:7-13`, `src/lib/settings-actions.ts:58-73`, `src/components/settings/settings-form.tsx:27-53`) | `apps/backend/src/routes/me.ts:274-286` (PUT takes five keys, leaves `quizGraded`); `apps/mobile/src/components/NotificationPreferences.tsx:44-54` (remove the sixth row); shared default constant `notification.ts:139-146` stays | Goal; Task 1 Interfaces, Step 1 test, Step 4 `notificationPreferencesUpdateSchema`; Task 4 tests, Step 3 code + note, Step 4, commit; Task 6 `useUpdateNotificationPreferences`; Task 9 title, tests, component, note, commit; Task 10 Step 6 "five switches"; Task 11 device item 6 |
+
+**Awaiting owner (not changed):** Mobile push notifications (Expo push, the planned `DeviceToken`
+table, `POST /me/devices`, Task 5 and Task 10, header item 2's three-type list) — v1 never had push;
+whether push stays in v2 is an open owner call. Nothing about push was removed; where push is
+mentioned it now follows the v1 opt-out filter (an opted-out type does not push either).

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A leader sees their groups, works a cursor-paged review queue, records a verdict or returns work for revision, and marks a session's attendance.
+**Goal:** A leader sees their groups, works the review queue (every submitted, reviewed or returned hand-in in one list, as v1), marks work reviewed with feedback, and marks a session's attendance. *(v1 parity 2026-10-09: was "cursor-paged pending queue; verdict or return for revision")*
 
 **Architecture:** Four destinations over existing endpoints. `/groups` and
 `/submissions` replace placeholders; `group/[id]`, `submission/[publicId]`
@@ -45,9 +45,9 @@ edited anywhere (ruling X9).
 Backend endpoints consumed (all exist on `main`, verified against the route files):
 - `GET /api/v1/groups` → `{ data: { groups: GroupListItem[] } }` — the caller's own groups. **LEADER and STUDENT only**: `listMyGroups` returns `[]` for ADMIN/SUPER/MENTOR by design (`lib/queries/groups.ts`).
 - `GET /api/v1/groups/:id` → `{ data: GroupDetail }` — `email` present for staff, absent for students
-- `GET /api/v1/submissions?pendingOnly=&seasonId=&cursor=&limit=` → `{ data: { items: SubmissionQueueItem[], nextCursor } }` (STUDENT gets 403)
+- `GET /api/v1/submissions?pendingOnly=&seasonId=&cursor=&limit=` → `{ data: { items: SubmissionQueueItem[], nextCursor } }` (STUDENT gets 403). The queue screen asks with `pendingOnly=false` and shows the whole reachable list — SUBMITTED, REVIEWED and RETURNED, never DRAFT, status then recency — with no paging UI, as v1 (`src/lib/submissions-query.ts:123-147`, `src/app/leader/submissions/page.tsx:12`). *(v1 parity 2026-10-09: was "pendingOnly=true, cursor pages with Load more")*
 - `GET /api/v1/submissions/:publicId` → `{ data: SubmissionDetail }` (`canReview` drives the UI)
-- `POST /api/v1/submissions/:publicId/review` body `{ feedback, returnForRevision? }` → `{ data: { reviewed: true, returnedForRevision: boolean } }`; 409 `not_submitted` for a never-submitted DRAFT
+- `POST /api/v1/submissions/:publicId/review` body `{ feedback }` → `{ data: { reviewed: true } }`; always sets REVIEWED, whatever the current status (a DRAFT included) — v1 has one reviewer action and no status precondition (`src/lib/submission-actions.ts:167-191`). Nothing sets RETURNED; existing RETURNED rows are only read and labelled. *(v1 parity 2026-10-09: was "`returnForRevision?` → RETURNED; 409 `not_submitted` for a DRAFT")*
 - `GET /api/v1/sessions/:id/attendance` → `{ data: { roster: AttendanceRosterRow[] } }` — server-scoped to the leader's groups
 - `POST /api/v1/sessions/:id/attendance` body `{ entries: [{ studentUserId, status, notes?, lateMinutes? }] }` → `{ data: { saved: number } }` — **`saved` is the count of entries written** (`routes/sessions.ts`: `apiOk(res, { saved: parsed.data.entries.length })`). The upsert writes `notes: e.notes ?? null` and nulls `lateMinutes` unless `LATE`, so **an entry that omits `notes` erases the stored note** — the screen always resends the row's current note.
 
@@ -76,7 +76,7 @@ session detail screen and its link to attendance are Plan 4's.
 
 **Interfaces:**
 - Consumes: `DETAIL_ROUTE_NAMES` (Plan 1 Task 0), `attendanceStatusSchema` from `./enums`.
-- Produces: routes `/group/[id]`, `/submission/[publicId]`, `/session/[id]/attendance` in the typed tree; `attendanceRosterRowSchema` (+ `AttendanceRosterRow = z.infer<…>` replacing the bare interface); `saveAttendanceResponseSchema` (`{ saved: number }`); `reviewSubmissionResponseSchema` (`{ reviewed: true, returnedForRevision: boolean }`); `queryKeys.groups.all / mine() / detail(id: number | null)`, `queryKeys.attendance.all / roster(sessionId: number | null)`, `queryKeys.submissions.queues() / queue(filters)`.
+- Produces: routes `/group/[id]`, `/submission/[publicId]`, `/session/[id]/attendance` in the typed tree; `attendanceRosterRowSchema` (+ `AttendanceRosterRow = z.infer<…>` replacing the bare interface); `saveAttendanceResponseSchema` (`{ saved: number }`); `reviewSubmissionResponseSchema` (`{ reviewed: true }` — v1 parity 2026-10-09, was `+ returnedForRevision`); `queryKeys.groups.all / mine() / detail(id: number | null)`, `queryKeys.attendance.all / roster(sessionId: number | null)`, `queryKeys.submissions.queues() / queue(filters)`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -115,10 +115,9 @@ describe("saveAttendanceResponseSchema", () => {
 });
 
 describe("reviewSubmissionResponseSchema", () => {
+  // v1 parity 2026-10-09 (was "{ reviewed, returnedForRevision }"): one action, REVIEWED only.
   it("parses the review route's payload", () => {
-    expect(
-      reviewSubmissionResponseSchema.parse({ reviewed: true, returnedForRevision: false }),
-    ).toEqual({ reviewed: true, returnedForRevision: false });
+    expect(reviewSubmissionResponseSchema.parse({ reviewed: true })).toEqual({ reviewed: true });
   });
 });
 ```
@@ -180,7 +179,6 @@ Append to `packages/shared/src/submission.ts`:
 /** `POST /submissions/:publicId/review` success payload. */
 export const reviewSubmissionResponseSchema = z.object({
   reviewed: z.literal(true),
-  returnedForRevision: z.boolean(),
 });
 export type ReviewSubmissionResponse = z.infer<typeof reviewSubmissionResponseSchema>;
 ```
@@ -858,6 +856,8 @@ export default function SubmissionsScreen() {
 (`PENDING` is a module constant so the query key's `filters` object is
 referentially stable across renders.)
 
+> **v1 parity 2026-10-09:** (a) the queue shows **SUBMITTED, REVIEWED and RETURNED** work (never DRAFT — the API's exclusion stays), in v1's status-then-recency order (v1 `src/lib/submissions-query.ts:126-127`): request `pendingOnly: false` (or drop the param) instead of `PENDING` — v2 `apps/mobile/app/(app)/submissions.tsx:10`. (b) v1 loads **every row in one list** (`src/lib/submissions-query.ts:123-147`, `src/app/leader/submissions/page.tsx:12`): either the API returns the whole reachable list (drop cursor/limit at v2 `apps/backend/src/routes/submissions.ts:142-150`) or the hook auto-fetches every page until `nextCursor` is null before rendering; remove the "Load more" button (v2 `submissions.tsx:71-78`). (c) Empty state reads "No submissions yet" / "Submissions from students in your groups will appear here." (v1 `src/components/assignments/leader-queue-list.tsx:72-75`), not "All caught up". Rewrite Step 1's tests to match: the first request URL is `pendingOnly=false`, the "loads the next page" test becomes "shows every page without a Load more button", the empty test expects "No submissions yet", and add a REVIEWED row to the list fixture. Spec 08 D12 (cursor paging) no longer applies to this screen. *(was "pending-only, cursor pages, Load more")*
+
 - [ ] **Step 4: Delete the placeholder row, run**
 
 Delete `["submissions", SubmissionsScreen, "Submissions"]` and its import
@@ -926,7 +926,7 @@ beforeEach(() => {
 
 it("shows the work, the late flag from the contract, and records a review", async () => {
   get.mockResolvedValue({ data: { data: detail } });
-  post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: false } } });
+  post.mockResolvedValue({ data: { data: { reviewed: true } } });
 
   renderWithProviders(<SubmissionReviewScreen />);
 
@@ -944,25 +944,33 @@ it("shows the work, the late flag from the contract, and records a review", asyn
   await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
 });
 
-it("returns for revision with the flag set", async () => {
+// v1 parity 2026-10-09 (was "returns for revision" + "409 not_submitted" tests): v1
+// submission-actions.ts:167-191 has one action, no status precondition.
+it("offers one verdict only — no return-for-revision", async () => {
   get.mockResolvedValue({ data: { data: detail } });
-  post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: true } } });
 
   renderWithProviders(<SubmissionReviewScreen />);
-  fireEvent.changeText(await screen.findByLabelText("Feedback"), "Another pass, please.");
-  fireEvent.press(screen.getByText("Return for revision"));
 
-  await waitFor(() =>
-    expect(post).toHaveBeenCalledWith("/api/v1/submissions/aaa1111111/review", {
-      feedback: "Another pass, please.",
-      returnForRevision: true,
-    }),
-  );
+  expect(await screen.findByText("Mark reviewed")).toBeTruthy();
+  expect(screen.queryByText("Return for revision")).toBeNull();
 });
 
-it("stays on the screen and says why when the server refuses (409 not_submitted)", async () => {
+it("marks a never-submitted DRAFT reviewed (v1 R25)", async () => {
   get.mockResolvedValue({ data: { data: { ...detail, status: "DRAFT", submittedAt: null } } });
-  post.mockRejectedValue({ response: { status: 409, data: { error: { code: "not_submitted", message: "x" } } } });
+  post.mockResolvedValue({ data: { data: { reviewed: true } } });
+
+  renderWithProviders(<SubmissionReviewScreen />);
+  fireEvent.press(await screen.findByText("Mark reviewed"));
+
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith("/api/v1/submissions/aaa1111111/review", { feedback: "" }),
+  );
+  await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+});
+
+it("stays on the screen and says why when the server refuses", async () => {
+  get.mockResolvedValue({ data: { data: detail } });
+  post.mockRejectedValue({ response: { status: 500, data: { error: { code: "internal_error", message: "x" } } } });
 
   renderWithProviders(<SubmissionReviewScreen />);
   fireEvent.press(await screen.findByText("Mark reviewed"));
@@ -991,12 +999,11 @@ Run → FAIL.
 export function useReviewSubmission(publicId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { feedback: string; returnForRevision?: boolean }) => {
-      const body: { feedback: string; returnForRevision?: boolean } = {
+    // v1 parity 2026-10-09 (was "+ returnForRevision?"): body is { feedback } only.
+    mutationFn: async (input: { feedback: string }) => {
+      const res = await apiClient.post(`/api/v1/submissions/${publicId}/review`, {
         feedback: input.feedback,
-      };
-      if (input.returnForRevision) body.returnForRevision = true;
-      const res = await apiClient.post(`/api/v1/submissions/${publicId}/review`, body);
+      });
       return reviewSubmissionResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {
@@ -1030,7 +1037,8 @@ import {
 /** Same wording as Plan 1's submissionStatusLine, so student and reviewer read the same words. */
 function statusLine(sub: SubmissionDetail): string {
   if (sub.status === "REVIEWED") return "Reviewed";
-  if (sub.status === "RETURNED") return "Returned for revision";
+  // v1 parity 2026-10-09 (was "Returned for revision"): legacy rows only; v1 badge label.
+  if (sub.status === "RETURNED") return "Returned";
   if (sub.status === "SUBMITTED") return sub.isLate ? "Submitted late" : "Submitted";
   return "Draft";
 }
@@ -1041,24 +1049,18 @@ function Verdict({ publicId }: { publicId: string }) {
   const review = useReviewSubmission(publicId);
   const [feedback, setFeedback] = useState("");
 
-  const submit = (returnForRevision: boolean) =>
-    review.mutate({ feedback, returnForRevision }, { onSuccess: () => router.back() });
+  const submit = () => review.mutate({ feedback }, { onSuccess: () => router.back() });
 
   return (
     <Card style={{ marginTop: theme.spacing.md }}>
       <Input label="Feedback" value={feedback} onChangeText={setFeedback} multiline numberOfLines={6} />
       {review.isError ? (
         <Text variant="caption" color={theme.colors.error[700]}>
-          Couldn't record the review. It may not have been submitted yet.
+          Couldn't record the review.
         </Text>
       ) : null}
-      <Button title="Mark reviewed" onPress={() => submit(false)} loading={review.isPending} />
-      <Button
-        title="Return for revision"
-        variant="secondary"
-        onPress={() => submit(true)}
-        loading={review.isPending}
-      />
+      {/* v1 parity 2026-10-09: one action (v1 submission-actions.ts:167-191); no "Return for revision". */}
+      <Button title="Mark reviewed" onPress={submit} loading={review.isPending} />
     </Card>
   );
 }
@@ -1573,17 +1575,17 @@ git add apps/mobile && git commit -m "feat(mobile): attendance marking screen"
 
 - [ ] **Step 1:** `pnpm turbo lint typecheck test:unit` at the root → green.
 - [ ] **Step 2: Mutation pass** (one at a time, restore after each; each must fail at least one test):
-  1. In `useSubmissionQueue`, ignore `pageParam` (always fetch page one) → the pagination test's `toHaveBeenLastCalledWith` must fail.
+  1. In `useSubmissionQueue`, stop fetching after page one → the "shows every page" test must fail. *(v1 parity 2026-10-09: was "ignore `pageParam` → pagination test")*
   2. In `buildAttendanceEntries`, iterate every roster row with a status instead of `marks` → "keeps a never-touched row out" must fail.
   3. In `buildAttendanceEntries`, drop `notes: row.notes` → "carries the stored note through" must fail.
   4. In the review screen, render `<Verdict>` unconditionally → the `canReview: false` test must fail.
   5. In `useSaveAttendance`, return `res.data.data` unparsed and change `saveAttendanceResponseSchema` to `z.boolean()` for `saved` → `leader-contracts.test.ts` must fail.
   6. In `groups.tsx`, query `GET /groups` for every role → the admin "not-yet state, no request" test must fail.
 - [ ] **Step 3: Device checklist** — as a leader on staging: groups tab shows
-their groups and members' emails; queue pages with >25 pending items; a
-verdict removes the row from the pending queue without manual refresh;
-return-for-revision flips the student's screen (check with the Plan 1 student
-flow) to editable `RETURNED`. Attendance has no in-app entry point until
+their groups and members' emails; the queue shows every submitted, reviewed and returned item in one list, with no Load more (v1 parity 2026-10-09); a
+verdict flips the row to Reviewed in the queue without manual refresh and
+the student sees the feedback (check with the Plan 1 student flow); there is
+no return-for-revision (v1 parity 2026-10-09). Attendance has no in-app entry point until
 Plan 4's session detail, so open it by deep link —
 `npx uri-scheme open "spacev2://session/<id>/attendance" --ios` (or
 `--android`) — mark, set minutes on a LATE row, save; reopen and confirm the
@@ -1618,3 +1620,20 @@ results, and any divergence from this plan.
   review, attendance) now has full code; the review screen handles a 409
   without navigating away; sentinel query keys (`-1`) replaced with `null`.
 - Device checklist reaches attendance via deep link (no entry point until Plan 4).
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 08-submissions R21 | - | Reviewer has one action (mark reviewed); nothing ever sets RETURNED (`src/lib/submission-actions.ts:178-191`; `prisma/seed.ts:446`) | `apps/backend/src/routes/submissions.ts:434-466` (`returnForRevision` → RETURNED); `packages/shared/src/submission.ts:21-30,159` (request/response schemas); `apps/mobile/app/(app)/submission/[publicId].tsx:21,32-46`; `useReviewSubmission` | Goal; endpoint contract (review line); Task 1 `reviewSubmissionResponseSchema` + test + Produces line; Task 4 tests, mutation, `statusLine`, `Verdict`; Task 6 device checklist |
+| 2 | 08-submissions R25 | - | A reviewer may mark a never-submitted DRAFT reviewed — no status precondition (`src/lib/submission-actions.ts:167-191`) | `apps/backend/src/routes/submissions.ts:434-436` (409 `not_submitted`) and its integration test | Endpoint contract (review line); Task 4 test "marks a never-submitted DRAFT reviewed" (replaces the 409 test) |
+| 3 | 08-submissions R45 | REG-88 | Queue lists SUBMITTED, REVIEWED and RETURNED (never DRAFT), status then recency (`src/lib/submissions-query.ts:126`) | `apps/mobile/app/(app)/submissions.tsx:10` (`pendingOnly: true`) | Endpoint contract (queue line); Task 3 Step 3 parity note (a), (c); Task 6 checklist |
+| 4 | 08-submissions R52 | - | Leader queue loads every row in one list (`src/lib/submissions-query.ts:123-147`; `src/app/leader/submissions/page.tsx:12`) | `apps/backend/src/routes/submissions.ts:142-150` (cursor/limit) or the hook; `apps/mobile/app/(app)/submissions.tsx:71-78` ("Load more") | Goal; endpoint contract (queue line); Task 3 Step 3 parity note (b); Task 6 mutation 1 and checklist |
+
+**Awaiting owner (not changed):** none
+

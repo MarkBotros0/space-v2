@@ -56,7 +56,7 @@ later is assumed):
 
 **Consumed later by:** Plan 13 (its Step 7 producer table row "15" is
 `notifyAssignmentCreated` in `lib/assignment-writes.ts` — one call site, used
-by both create and edit); Plan 14 (must import `isoDaySchema`/`wallTimeSchema`
+by create only; edits notify nobody as v1, *v1 parity 2026-10-09*); Plan 14 (must import `isoDaySchema`/`wallTimeSchema`
 from `packages/shared/src/org-time.ts` and `orgWallTime`/`orgWallClockToInstant`
 from `lib/org-time.ts` instead of defining them — see Open decisions); Plan 6
 (reuses `useSeasonGroups`); Plan 16 (staff dashboard links into `/assignments`).
@@ -95,18 +95,16 @@ Existing codes reused: `bad_request` 400, `forbidden` 403, `not_found` 404.
 | v1 behaviour | Plan 5 | Authority |
 |---|---|---|
 | `isAllGroups`/`groupIds` read off the raw body, unchecked (R11, R12) | In the Zod schema; every id must be a group of the path's season | spec §10 item 6, C8 |
-| "Specific groups" with no groups saved, targets nobody (R13) | 400 | spec §10 item 6 (deliberate) |
 | `sessionId` from any season accepted (R4) | 400 `invalid_session` | spec §4 item 4, C8 |
 | Due instant composed in the author's browser zone (R45) | `dueDay`+`dueTime` composed server-side in `ORG_TIMEZONE`; reads carry `dueOrgDay`/`dueOrgTime` | C2, C4, X13; spec §10 item 3 |
 | Duplicate group id on update throws mid-transaction (R70) | Deduplicated in the schema | spec §8 |
 | Recipients for targeted assignments from `GroupStudent` (R61) | From ACTIVE `SeasonEnrollment` rows in the targeted groups — the same population as the tracker | C9 |
-| No notification on edit (R66, R74) | Students **newly** targeted by an edit get `ASSIGNMENT_CREATED`; nobody is notified twice | spec §10 item 5 ("a bug fix rather than a divergence") |
 | Update gate ignores `deletedAt` (R79) | PATCH/DELETE on a soft-deleted row → 404 | spec §7, §10 item 4 |
 | `softDeleteAssignmentAction` unreachable, cascades nothing, strands submissions (R75–R80) | `DELETE` designed: soft delete, **refused while any `Submission` row exists** (`has_submissions`, no force); 200 `{ deleted: true }` (envelope) rather than §7's 204 | C12, spec §10 item 4 |
 | `/admin/assignments` refuses SUPER (§10 item 12) | Staff branch admits SUPER and ADMIN to author; LEADER/MENTOR read-only | spec §10 item 12 |
 | Two "submitted" counts (R41 vs R43) | Detail shows the tracker's `submittedCount` (non-DRAFT), same as the list | spec §10 item 8 (already on the contract) |
 
-Unchanged from v1 on purpose: no publish flag (R26); due date never enforced
+Unchanged from v1 on purpose: "Specific groups" with no group chosen saves an assignment that targets nobody, notifies nobody and has expected count 0 — with no publish flag this is how an admin parks one (`src/lib/assignment-actions.ts:73`, R13) *(v1 parity 2026-10-09: was "400 — deliberate divergence, spec §10 item 6")*; editing, retargeting or deleting an assignment notifies nobody — newly targeted students are added silently (`src/lib/assignment-actions.ts:101-139,141-162`, `:128-133`; R66, R74) *(v1 parity 2026-10-09: was "students newly targeted by an edit get ASSIGNMENT_CREATED")*; no publish flag (R26); due date never enforced
 (R49, §10 item 3 "keep it non-enforcing"); editing allowed after submissions
 exist (R72) — the edit screen warns when narrowing would hide started work
 (§10 item 5); FORUM/STANDARD coercion (R14–R17); audit columns stamped (R71,
@@ -249,12 +247,12 @@ describe("assignmentWriteRequestSchema", () => {
     });
   });
 
-  it("refuses 'specific groups' with none chosen — deliberate divergence from R13", () => {
-    const result = assignmentWriteRequestSchema.safeParse({ ...valid, isAllGroups: false });
-    expect(result.success).toBe(false);
-    expect(result.success ? null : result.error.issues[0]?.message).toBe(
-      "Choose at least one group, or target the whole season.",
-    );
+  // v1 parity 2026-10-09 (was "refuses … deliberate divergence from R13"): v1
+  // assignment-actions.ts:73 saves it, targeting nobody.
+  it("accepts 'specific groups' with none chosen, as v1 (R13)", () => {
+    const result = assignmentWriteRequestSchema.parse({ ...valid, isAllGroups: false });
+    expect(result.isAllGroups).toBe(false);
+    expect(result.groupIds).toEqual([]);
   });
 
   it("collapses duplicate group ids (closes R70) and drops them when targeting everyone (R24)", () => {
@@ -399,21 +397,9 @@ const assignmentWriteBase = z.object({
 
 type AssignmentWriteParsed = z.infer<typeof assignmentWriteBase>;
 
-/**
- * Deliberate divergence from v1: "specific groups" with an empty list is
- * rejected rather than silently accepted. v1 wrote an assignment that targeted
- * nobody, notified nobody and had an expected count of zero — indistinguishable
- * from a save that worked.
- */
-function refineTargeting(value: AssignmentWriteParsed, ctx: z.RefinementCtx): void {
-  if (!value.isAllGroups && value.groupIds.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["groupIds"],
-      message: "Choose at least one group, or target the whole season.",
-    });
-  }
-}
+// v1 parity 2026-10-09: no targeting refinement (was `refineTargeting`, a 400 for
+// "specific groups" with none chosen). v1 assignment-actions.ts:73 saves it: it
+// targets nobody, notifies nobody, expected count 0 — how an admin parks one (R13).
 
 /**
  * The type-driven coercion v1 applied in its action bodies (R14–R17), hoisted
@@ -447,9 +433,7 @@ function normalizeAssignmentWrite(value: AssignmentWriteParsed) {
  * "leave the due date alone" the same request. `seasonId` is not a field —
  * create takes it from the path and update can never change it (R68).
  */
-export const assignmentWriteRequestSchema = assignmentWriteBase
-  .superRefine(refineTargeting)
-  .transform(normalizeAssignmentWrite);
+export const assignmentWriteRequestSchema = assignmentWriteBase.transform(normalizeAssignmentWrite);
 
 /** What a client sends. */
 export type AssignmentWriteRequest = z.input<typeof assignmentWriteRequestSchema>;
@@ -991,13 +975,12 @@ describe("POST /api/v1/seasons/:id/assignments", () => {
     expect(res.body.error.code).toBe("invalid_session");
   });
 
-  it("refuses 'specific groups' with none chosen, and a 161-character title", async () => {
+  // v1 parity 2026-10-09 (was "refuses 'specific groups' with none chosen"): v1 R13 saves it.
+  it("saves 'specific groups' with none chosen (targets nobody), and refuses a 161-character title", async () => {
     const empty = await create({ isAllGroups: false, groupIds: [] });
-    expect(empty.status).toBe(400);
-    expect(empty.body.error).toEqual({
-      code: "bad_request",
-      message: "groupIds: Choose at least one group, or target the whole season.",
-    });
+    expect(empty.status).toBe(201);
+    const emptyId = empty.body.data.id as number;
+    expect(await notificationsFor(studentAId, emptyId)).toHaveLength(0);
     const long = await create({ title: "x".repeat(161) });
     expect(long.status).toBe(400);
     expect(long.body.error.code).toBe("bad_request");
@@ -1110,8 +1093,8 @@ export async function targetedStudentIds(
 }
 
 /**
- * The single ASSIGNMENT_CREATED producer (create, and students newly targeted
- * by an edit). Runs after the write has committed (R65). Title and link are
+ * The single ASSIGNMENT_CREATED producer (create only — an edit notifies
+ * nobody, v1 R66/R74; v1 parity 2026-10-09). Runs after the write has committed (R65). Title and link are
  * v1's exact strings (`assignment-actions.ts:87,91`; ruling X1); the body's
  * time is the organisation's wall clock (C2), not the host's toLocaleString.
  */
@@ -1295,7 +1278,7 @@ and add `post` to the existing `"/api/v1/seasons/{id}/assignments"` object:
 - Test: extend `apps/backend/src/__tests__/integration/assignment-writes-routes.test.ts`
 
 **Interfaces:**
-- Consumes: `updateAssignmentRequestSchema` (Task 1); `assignmentColumns`, `validateAssignmentRefs`, `targetedStudentIds`, `notifyAssignmentCreated`, `bodyErrorMessage` (Task 3); `assignmentDetailPayload`, `loadAssignmentById` (Task 2); `canManageAssignment`.
+- Consumes: `updateAssignmentRequestSchema` (Task 1); `assignmentColumns`, `validateAssignmentRefs`, `bodyErrorMessage` (Task 3) — not `targetedStudentIds`/`notifyAssignmentCreated`, since an edit notifies nobody (v1 parity 2026-10-09); `assignmentDetailPayload`, `loadAssignmentById` (Task 2); `canManageAssignment`.
 - Produces: `PATCH /api/v1/assignments/:id` (body `AssignmentWriteRequest`) → `200 { data: AssignmentDetail }`; errors `bad_request`, `invalid_group`, `invalid_session` 400, `forbidden` 403, `not_found` 404.
 
 - [ ] **Step 1: Failing tests.** Append to the suite:
@@ -1346,7 +1329,9 @@ describe("PATCH /api/v1/assignments/:id", () => {
     });
   });
 
-  it("notifies only students NEWLY targeted by an edit — nobody twice (spec §10 item 5)", async () => {
+  // v1 parity 2026-10-09 (was "notifies only students NEWLY targeted by an edit"):
+  // v1 assignment-actions.ts:101-139 — edits and retargeting notify nobody (R66, R74).
+  it("notifies nobody on edit, even students newly targeted (v1 R66, R74)", async () => {
     const made = await create({ title: "Retarget", isAllGroups: false, groupIds: [groupAId] });
     const id = made.body.data.id as number;
     expect(await notificationsFor(studentAId, id)).toHaveLength(1);
@@ -1354,13 +1339,12 @@ describe("PATCH /api/v1/assignments/:id", () => {
 
     const widened = await patch(id, { title: "Retarget", isAllGroups: false, groupIds: [groupAId, groupBId] });
     expect(widened.status).toBe(200);
-    expect(await notificationsFor(studentBId, id)).toHaveLength(1); // newly targeted
-    expect(await notificationsFor(studentAId, id)).toHaveLength(1); // not re-notified
+    expect(await notificationsFor(studentBId, id)).toHaveLength(0); // added silently
+    expect(await notificationsFor(studentAId, id)).toHaveLength(1);
 
-    // Groups A+B already cover every ACTIVE enrollee: going whole-season adds nobody.
     await patch(id, { title: "Retarget", isAllGroups: true });
     expect(await notificationsFor(studentAId, id)).toHaveLength(1);
-    expect(await notificationsFor(studentBId, id)).toHaveLength(1);
+    expect(await notificationsFor(studentBId, id)).toHaveLength(0);
     expect(await notificationsFor(withdrawnId, id)).toHaveLength(0);
   });
 
@@ -1425,8 +1409,6 @@ Run the suite → the new cases FAIL.
 import {
   assignmentColumns,
   bodyErrorMessage,
-  notifyAssignmentCreated,
-  targetedStudentIds,
   validateAssignmentRefs,
 } from "../lib/assignment-writes";
 import { updateAssignmentRequestSchema } from "../../../../packages/shared/src/index";
@@ -1438,9 +1420,8 @@ and register after the tracker handler:
 /**
  * Full replace (spec 07 R67): the body is the whole assignment. Targeting is
  * deleted and recreated inside the same transaction as the field update (R69,
- * R85). Students newly brought into scope get ASSIGNMENT_CREATED — v1 told
- * nobody (R74), which spec §10 item 5 calls a bug; students already targeted
- * are never notified again.
+ * R85). Nobody is notified — students newly brought into scope are added
+ * silently, as v1 (R66, R74). v1 parity 2026-10-09: was "notify newly targeted".
  */
 assignmentsRouter.patch("/:id", async (req, res) => {
   const user = requireUser(req);
@@ -1466,14 +1447,6 @@ assignmentsRouter.patch("/:id", async (req, res) => {
   const refusal = await validateAssignmentRefs(existing.seasonId, body);
   if (refusal) return apiError(res, refusal.code, refusal.message, 400);
 
-  const before = new Set(
-    await targetedStudentIds(
-      existing.seasonId,
-      existing.isAllGroups,
-      existing.targets.map((t) => t.groupId),
-    ),
-  );
-
   const columns = assignmentColumns(body);
   await db.$transaction(async (tx) => {
     // seasonId and createdById are never written here (R68).
@@ -1486,11 +1459,8 @@ assignmentsRouter.patch("/:id", async (req, res) => {
     }
   });
 
-  const after = await targetedStudentIds(existing.seasonId, body.isAllGroups, body.groupIds);
-  await notifyAssignmentCreated(
-    { id, title: body.title, dueAt: columns.dueAt },
-    after.filter((studentId) => !before.has(studentId)),
-  );
+  // v1 parity 2026-10-09 (was "notify students newly targeted"): v1
+  // assignment-actions.ts:101-139,128-133 — an edit notifies nobody (R66, R74).
 
   const detail = await loadAssignmentById(id);
   if (!detail) return apiError(res, "not_found", "Assignment not found.", 404);
@@ -1507,7 +1477,7 @@ Run the suite → PASS.
         tags: ["Assignments"],
         summary: "Replace an assignment",
         description:
-          "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). Students newly targeted by the edit get ASSIGNMENT_CREATED (same text and link as create); students already targeted are not notified again. Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
+          "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). An edit notifies nobody — students newly targeted are added silently, as v1 (R66, R74). Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -1523,7 +1493,7 @@ Run the suite → PASS.
       },
 ```
 
-- [ ] **Step 4: Commit** — `git add apps/backend && git commit -m "feat(backend): full-replace assignment edit; notify newly targeted students"`
+- [ ] **Step 4: Commit** — `git add apps/backend && git commit -m "feat(backend): full-replace assignment edit"` *(v1 parity 2026-10-09: was "…; notify newly targeted students")*
 
 ---
 
@@ -2139,7 +2109,7 @@ export function useStaffAssignments(
   });
 }
 
-/** GET /assignments/:id/tracker — season admins see everyone, a leader their own groups. */
+/** GET /assignments/:id/tracker — season admins and SUPER only (v1 parity 2026-10-09; was "+ leaders, own groups"). */
 export function useAssignmentTracker(id: number | null): UseQueryResult<AssignmentTracker> {
   return useQuery({
     queryKey: queryKeys.assignments.tracker(id),
@@ -2567,6 +2537,8 @@ export default function AssignmentsScreen() {
 student branch verbatim and change only: the imports, the two new components,
 and the `if (!isStudent)` return.)
 
+> **v1 parity 2026-10-09:** the quoted student `statusLabel`/`AssignmentRow` must follow v1 `src/app/student/assignments/page.tsx:17-41,98-104` (spec 07 R48), as Plan 1 Task 1 Step 5 now says: a not-started overdue row shows "Due <org day, MMM d>" in the error tone instead of "Overdue", and an upcoming row's due line ends " · in N days", both from server-derived values. v2 code: `apps/mobile/app/(app)/assignments.tsx:16-24`. The staff branch below is unchanged by this row.
+
 - [ ] **Step 3:** Run `cd apps/mobile && pnpm jest src/__tests__/assignments-staff-screen.test.tsx src/__tests__/assignments-screen.test.tsx` → PASS; `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
 
 - [ ] **Step 4: Commit** — `git add apps/mobile && git commit -m "feat(mobile): staff assignments list for the current season"`
@@ -2726,12 +2698,15 @@ describe("AssignmentDetailScreen (staff)", () => {
     expect(screen.getByText("Delete assignment")).toBeTruthy(); // disarmed again
   });
 
-  it("gives a LEADER the tracker but no edit or delete (canManage is false)", async () => {
+  // v1 parity 2026-10-09 (was "gives a LEADER the tracker"): v1 shows it to season admins and SUPER only.
+  it("gives a LEADER no tracker and no edit or delete (canManage is false)", async () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }));
     serve({ canManage: false });
     renderWithProviders(<AssignmentDetailScreen />);
 
-    expect(await screen.findByText("1 of 2 submitted")).toBeTruthy();
+    expect(await screen.findByText("Assigned to: Group A")).toBeTruthy();
+    expect(get).not.toHaveBeenCalledWith("/api/v1/assignments/55/tracker");
+    expect(screen.queryByText("1 of 2 submitted")).toBeNull();
     expect(screen.queryByText("Edit")).toBeNull();
     expect(screen.queryByText("Delete assignment")).toBeNull();
   });
@@ -2769,12 +2744,14 @@ import { useTheme } from "../theme";
 import { Button, Card, ErrorState, LoadingState, Text } from "../ui";
 
 /**
- * Roles GET /assignments/:id/tracker answers: SUPER and season ADMINs with
- * the whole roster, LEADERs narrowed to their own groups. It refuses MENTOR
- * and STUDENT, so the screen does not ask on their behalf. This decides only
- * whether to ask; the server is the gate.
+ * Roles GET /assignments/:id/tracker answers: SUPER and admins of the
+ * assignment's season only, as v1 (assignments/[id]/page.tsx:27,30 —
+ * requireRole ADMIN/SUPER + canEditSeason). It refuses LEADER, MENTOR and
+ * STUDENT, so the screen does not ask on their behalf. This decides only
+ * whether to ask; the server is the gate (C8).
+ * v1 parity 2026-10-09: was "LEADERs too, narrowed to their own groups".
  */
-const TRACKER_ROLES: ReadonlySet<UserRole> = new Set<UserRole>(["SUPER", "ADMIN", "LEADER"]);
+const TRACKER_ROLES: ReadonlySet<UserRole> = new Set<UserRole>(["SUPER", "ADMIN"]);
 
 function ManageActions({ detail }: { detail: AssignmentDetail }) {
   const theme = useTheme();
@@ -2901,11 +2878,13 @@ export function AssignmentStaffPanel({ detail }: { detail: AssignmentDetail }) {
         {detail.sessionTitle ? <Text variant="label">{`Linked session: ${detail.sessionTitle}`}</Text> : null}
       </Card>
       {detail.canManage ? <ManageActions detail={detail} /> : null}
-      {role !== null && TRACKER_ROLES.has(role) ? <TrackerCard assignmentId={detail.id} /> : null}
+      {role !== null && TRACKER_ROLES.has(role) && detail.canManage ? <TrackerCard assignmentId={detail.id} /> : null}
     </>
   );
 }
 ```
+
+> **v1 parity 2026-10-09:** the server must enforce the same gate (C8): `GET /assignments/:id/tracker` answers only `isAdminOfSeason` (SUPER passes) and returns 403 to LEADER/MENTOR — v2 `apps/backend/src/routes/assignments.ts:108-111` currently admits leaders via `staffScopeForSeason` narrowed to their groups (pre-plan commit 7728472). Match v1 `src/lib/assignments-query.ts:127-129` and `src/app/admin/season/[code]/assignments/[id]/page.tsx:27,30`; add an integration test that a LEADER gets 403.
 
 - [ ] **Step 3: Wire it into the detail screen.** In `apps/mobile/app/(app)/assignment/[id]/index.tsx`:
 replace the `formatDueDate` import with
@@ -3186,7 +3165,9 @@ describe("NewAssignmentScreen", () => {
     );
   });
 
-  it("refuses 'specific groups' with none ticked, using the shared schema's words, without calling the API", async () => {
+  // v1 parity 2026-10-09 (was "refuses 'specific groups' with none ticked"): v1
+  // assignment-actions.ts:73 saves it, targeting nobody (R13).
+  it("saves 'specific groups' with none ticked, targeting nobody (v1 R13)", async () => {
     serve();
     renderWithProviders(<NewAssignmentScreen />);
 
@@ -3194,8 +3175,12 @@ describe("NewAssignmentScreen", () => {
     fireEvent.press(screen.getByLabelText("Specific groups"));
     fireEvent.press(screen.getByText("Create assignment"));
 
-    expect(await screen.findByText("Choose at least one group, or target the whole season.")).toBeTruthy();
-    expect(post).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(
+        "/api/v1/seasons/7/assignments",
+        expect.objectContaining({ isAllGroups: false, groupIds: [] }),
+      ),
+    );
   });
 
   it("shows the server's refusal verbatim and stays on the form", async () => {
@@ -3944,7 +3929,7 @@ Report the session name and log path.
   2. `notifyAssignmentCreated`: link `` `/assignments/${assignment.id}` `` → "notifies each targeted student once, with v1's exact link…" fails.
   3. `notifyAssignmentCreated`: body `` `Due ${assignment.dueAt.toLocaleString()}` `` → same test fails on the body (run with `TZ=UTC`: the host's 21:59 is not Cairo's 11:59 PM).
   4. POST: delete the `validateAssignmentRefs` call → "refuses another season's group with invalid_group…" and "…session with invalid_session" fail.
-  5. PATCH: notify `after` instead of `after.filter(…)` → "notifies only students NEWLY targeted by an edit" fails (Group A notified twice).
+  5. PATCH: call `notifyAssignmentCreated` for the targeted students → "notifies nobody on edit, even students newly targeted" fails. *(v1 parity 2026-10-09: was "notify `after` → NEWLY-targeted test")*
   6. PATCH: look the row up with `where: { id }` (no `deletedAt: null`) → "returns 404 for a soft-deleted assignment" fails.
   7. DELETE: drop `submissions: { none: {} }` from the `updateMany` → "refuses while any submission exists — even a draft" fails.
   8. `orgWallClockToInstant`: return `` new Date(`${day}T${time ?? "00:00"}:00.000Z`) `` → the org-time unit test and "composes the deadline on the org clock across DST" fail.
@@ -3952,7 +3937,7 @@ Report the session name and log path.
   10. `assignmentDetailPayload`: compute `dueOrgTime` with `detail.dueAt.toISOString().slice(11, 16)` → `assignments-routes` "returns detail for a SUPER…" fails (`"00:00"` ≠ `"02:00"`).
   11. Mobile `DueDateField`: `day: picked.toISOString().slice(0, 10)` instead of `format(picked, "yyyy-MM-dd")` → under `TZ=Pacific/Kiritimati pnpm jest src/__tests__/assignment-form-screens.test.tsx`, "creates a group-targeted assignment due at an org-clock time" fails (`2099-03-31`).
   12. Mobile `AssignmentForm.submit`: call `onSubmit` without `toAssignmentBody` validation (send the raw values) → "refuses 'specific groups' with none ticked…" fails.
-  13. Mobile `AssignmentStaffPanel`: render `ManageActions` regardless of `detail.canManage` → "gives a LEADER the tracker but no edit or delete" fails.
+  13. Mobile `AssignmentStaffPanel`: render `ManageActions` regardless of `detail.canManage` → "gives a LEADER no tracker and no edit or delete" fails.
   14. Mobile `TRACKER_ROLES`: add `"MENTOR"` → "never asks a MENTOR's device for the tracker" fails.
   15. Mobile `assignments.tsx`: pass `null` to `useStaffAssignments` → "lists the current season's assignments…" fails.
   16. `_layout.tsx`: restore `"assignment/[id]"` in place of `"assignment/[id]/index"` → `app-layout.test.tsx` fails (both the X7 assertion and the disk-derived "every route file is declared").
@@ -3969,7 +3954,7 @@ curl -fsS localhost:4000/api/docs.json | grep -c '"AssignmentWriteRequest"'   # 
 tmux kill-session -t space-v2-plan15-server
 ```
 
-- [ ] **Step 6: Device checklist** (Expo Go against staging, as a season ADMIN): `/assignments` (More → Assignments) lists the current season with org due days and "N/M submitted"; **New assignment** → pick a date and a time — the label shows them as picked; switch the phone to a far timezone (e.g. Kiritimati), create another with the same day/time — both show the same `Due …` label and the same `dueAt` in `/api/docs`'s try-it GET; target one group → a student in it sees the assignment and an in-app notification (v1's web inbox, opened on the same DB, links it to `/student/assignments/<id>` and the page loads); a student outside the group does not; FORUM hides file settings; edit → untick a group with a submitted student → the warning appears; save → detail reflects it; delete an untouched assignment → back on the list, gone; delete one a student opened → the server's "already started" message; as a LEADER, the detail shows the tracker for their group only and no Edit/Delete; as a MENTOR, no tracker. iOS: the inline date picker and time spinner close with **Done**; Android: each opens as a dialog.
+- [ ] **Step 6: Device checklist** (Expo Go against staging, as a season ADMIN): `/assignments` (More → Assignments) lists the current season with org due days and "N/M submitted"; **New assignment** → pick a date and a time — the label shows them as picked; switch the phone to a far timezone (e.g. Kiritimati), create another with the same day/time — both show the same `Due …` label and the same `dueAt` in `/api/docs`'s try-it GET; target one group → a student in it sees the assignment and an in-app notification (v1's web inbox, opened on the same DB, links it to `/student/assignments/<id>` and the page loads); a student outside the group does not; FORUM hides file settings; edit → untick a group with a submitted student → the warning appears; save → detail reflects it; delete an untouched assignment → back on the list, gone; delete one a student opened → the server's "already started" message; as a LEADER or MENTOR, the detail shows no tracker (the endpoint answers 403) and no Edit/Delete — v1 shows the tracker to season admins and SUPER only (v1 parity 2026-10-09; was "LEADER sees their groups' tracker"). iOS: the inline date picker and time spinner close with **Done**; Android: each opens as a dialog.
 
 - [ ] **Step 7:** Report suite counts, the sixteen mutation outcomes, checklist results, the tmux session names/log paths, and any divergence from this plan.
 
@@ -3981,6 +3966,23 @@ tmux kill-session -t space-v2-plan15-server
 2. **Later plans that name the old route file.** Plan 13 (prerequisites list) and Plan 14 (Task modifying `app/(app)/assignment/[id].tsx`, test imports of `…/assignment/[id]`) must use `app/(app)/assignment/[id]/index.tsx`. The pathname `/assignment/[id]` — and so Plan 13's `routeForTarget` — is unchanged. Plan 14's `AssignmentDetail` fixtures need `dueOrgDay`/`dueOrgTime`.
 3. **Description format (spec §10 item 10, still open).** The form edits `description` as plain text and stores it as typed; a v1-authored HTML description shows its markup when edited in the app. The clean fix is X3's `htmlToPlainText`/`plainTextToHtml` (`packages/shared/src/html-text.ts`), which Plan 12 creates after this plan; Plan 12 (or 13) should convert on load/save here. v1 renders a v2 plain-text description safely (sanitize-html) but collapses its line breaks.
 4. **Delete policy.** Refused on any `Submission` row (drafts included), no `force`, 200 `{ deleted: true }` instead of §7's 204 — chosen per §10 item 4's "blocking is the safe default". Relax later if admins need it.
-5. **Edit notifies newly targeted students** (spec §10 item 5) — a behaviour v1 never had (R66). Plan 13's `bestEffort` wrapping applies to the single `notifyAssignmentCreated` call site in `lib/assignment-writes.ts`, which serves both create and edit (its producer table names one row for Plan 5 — still accurate).
+5. **Edit notifies nobody**, as v1 (`src/lib/assignment-actions.ts:101-139,128-133`; R66, R74). Plan 13's `bestEffort` wrapping applies to the single `notifyAssignmentCreated` call site in `lib/assignment-writes.ts`, which serves create only (its producer table names one row for Plan 5 — still accurate). *(v1 parity 2026-10-09: was "edit notifies newly targeted students, spec §10 item 5")*
 6. **No SUPER nav entry for `/assignments`.** SUPER reaches it from the `/season` workspace's Assignments button (Plan 4) or a link; `packages/shared/src/navigation.ts` is unchanged. Add a sidebar entry if SUPERs author routinely.
 7. **Not changed here:** the student list still formats `dueAt` with the device's zone (Plan 1's `formatDueDate`); `studentAssignmentListItemSchema` has no `dueOrgDay`. A follow-up (Plan 11 or 18) can add it the same way. The staff list's per-row `expectedCount` N+1 (spec §7) is untouched.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 07-assignments R13 | REG-20 (this half) | "Specific groups" with no group chosen saves an assignment that targets nobody, notifies nobody, expected count 0 (`src/lib/assignment-actions.ts:73`) | `packages/shared/src/assignment.ts:207-214` (`refineTargeting`) | Divergence table row removed → "Unchanged from v1" paragraph; Task 1 schema test + `refineTargeting` removal + `assignmentWriteRequestSchema`; Task 3 create test; Task 9 form test ("saves 'specific groups' with none ticked") |
+| 2 | 07-assignments R48 | - | Not-started past-due row: red "Due MMM d" badge and dot; upcoming "Due MMM d, yyyy · in N days" (`src/app/student/assignments/page.tsx:17-41,98-104`) | `apps/mobile/app/(app)/assignments.tsx:16-24` | Task 7 Step 2 parity note (student branch; Plan 1 Task 1 owns the code) |
+| 3 | 07-assignments R59 | - | Only season admins and SUPER see an assignment's submission tracker (`src/lib/assignments-query.ts:127-129`; `src/app/admin/season/[code]/assignments/[id]/page.tsx:27,30`) | `apps/backend/src/routes/assignments.ts:108-111` (leaders admitted); tracker section in `assignment/[id]` | Task 6 `useAssignmentTracker` comment; Task 8 Step 1 LEADER test; Task 8 Step 2 `TRACKER_ROLES` + render gate + server-gate note; Task 10 mutation 13 and device checklist |
+| 4 | 07-assignments R66, R74 | REG-17 | Editing, retargeting or deleting notifies nobody; new groups' students are added silently (`src/lib/assignment-actions.ts:101-139,141-162`, `:128-133`) | `apps/backend/src/routes/assignments.ts:173-177` (`targetedStudentIds`/`notifyAssignmentCreated` in PATCH) | Header "Consumed later by"; divergence table row removed → "Unchanged from v1"; Task 3 `notifyAssignmentCreated` doc; Task 4 Consumes, test, imports, handler comment/body, OpenAPI, commit message; Task 10 mutation 5; Open decision 5 |
+
+**Awaiting owner (not changed):** none
+

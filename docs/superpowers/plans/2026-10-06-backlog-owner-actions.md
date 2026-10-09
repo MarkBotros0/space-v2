@@ -189,15 +189,21 @@ Owner-approved fixes from the cutover register are on `claude/audit-fixes`
 (backend REG-77, 82-85, 89-91, 97, 104, 111; mobile REG-70, 72-76, 78-85, 87,
 89, 92, 117). Nothing in this section blocks merging that branch.
 
-### Fix after cutover (decision sheet: FIX AFTER CUTOVER)
+### v1-parity work (was: Fix after cutover)
+
+Under the 2026-10-09 v1-parity ruling these are no longer "fix after cutover";
+they are v1-parity changes written into the plans *(v1 parity 2026-10-09: was
+"Ruled: fix after cutover")*.
 
 - **REG-71** - the seasons list is ordered newest year first then title, not by
   status then start date (v1 `src/app/super/seasons/page.tsx:20`). No authority
-  was found for the v2 ordering. Ruled: fix after cutover.
+  was found for the v2 ordering. Now Plan 18 Task 2b.P Step 1 (02-seasons R24:
+  `apps/backend/src/routes/seasons.ts:80` → status asc, startDate desc).
 - **REG-116** - Reports screen: one season picker is the only filter, empty
   states replace redirects for admins with no seasons, completion rows no
   longer count towards emptiness, and an at-risk row opens the single flat
-  student route. Ruled: fix after cutover.
+  student route. Now Plan 15 Task 8's v1-parity revision (17-reports R6, R37,
+  R103, R104; R35 and R105 stay as they are).
 
 ### Open owner decisions
 
@@ -253,3 +259,11 @@ karen accepted all 15 on 2026-10-08 (thread reply, on the recommendation); recor
 ## 12. Still to build
 
 Nothing in Plans 1-17. Plan 18 Parts 2 and 3 wait on the signature above.
+
+Plans 1–17 now carry "Revision 2026-10-09 — v1 parity" sections (the owner's
+ruling that v2 behaves exactly like v1 unless v1's behaviour is a defect); the
+code changes those revisions describe are **not built yet**. Plan 18's own
+revision withdraws most migrations, adds Task 2b.P (v1-parity fixes with no
+other owning plan) and holds push and the email "Open" button for your
+decision. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.

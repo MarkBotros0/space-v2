@@ -178,7 +178,11 @@ Silently leaving stale grades is the one option ruled out.
 **D-13.7 — YouTube parsing is rewritten, not ported, and lives in
 `packages/shared`.** v1's four unanchored regexes have no host check (R33) and
 no trailing boundary (R34), and reject `/live/` and `/v/` (R32) — which is what
-a premiere or streamed session produces. Enumerated in Task 1. **Domain 3's
+a premiere or streamed session produces. Enumerated in Task 1. **Parsing stays
+as permissive as v1's on a YouTube host** (R30, v1 `jpc-space/src/lib/youtube.ts:4-13`):
+after the host check, any form v1's four regexes found anywhere in the string
+(`?v=`/`&v=`, `youtu.be/`, `/embed/`, `/shorts/`, at any path depth or inside
+another query value) still parses, now with a trailing non-id boundary. *(v1 parity 2026-10-09: was "URL()-structured parse; v= top-level, prefix first segment only")* **Domain 3's
 save-time validation (spec 13 D7c) is flagged, not done here**: `routes/sessions.ts`
 is Plan 3's file, and this plan keeps its streams disjoint. The resolved
 `videoId` travels on this domain's own student payload instead.
@@ -213,20 +217,21 @@ assignment's season*". A verbatim port would give a moved student their new
 group's old threads and lose their own. Divergence forced by C9; spec 14 D4 asks
 for exactly this to be stated rather than left silent.
 
-**D-14.4 — Moderation: the minimum set ships, and the gap is a product risk.**
-Spec 14 D2/R57: v1 has no report, no flag, no hide, no lock, no rate limit, no
-audit, and no staff screen — so in production today **the only person who can
-remove a comment written by a young person is the person who wrote it**
-(R49's admin power has no UI, R52). On a phone, in a room with no adult present,
-that is worse than it was on a laptop. This plan ships items 1 and 2 of D2's
-list, which need no schema change:
-1. **Staff read** on threads — LEADER for groups they lead, ADMIN/SUPER across
-   the season, MENTOR read-only (spec 14 D3; a widening of v1, taken
-   deliberately because you cannot moderate what you cannot see).
-2. **Staff delete on comments, exposed in the UI**, using R49's existing gate
-   plus LEADER, with `canDelete` computed server-side per row so the affordance
-   cannot drift from the gate.
-**Deferred, and named as the residual risk:** there is still no way to hide a
+**D-14.4 — No moderation, as v1** (spec 14 R57; v1 `jpc-space/src/lib/forum-actions.ts`,
+whole file). v1 has no report, no flag, no hide, no lock, no rate limit, no
+audit and no staff forum screen, and v2 ports exactly that:
+1. **No staff read.** The only forum screen is the student's
+   (v1 `src/app/student/assignments/[id]/page.tsx:14,24`, R53): `forumAudienceFor`
+   answers for STUDENT only and the staff branch of `assignment/[id]/index.tsx`
+   renders no `ForumThread`.
+2. **Comment delete is author, SUPER or season ADMIN** (v1 `src/lib/forum-actions.ts:115-118`,
+   R50) — no LEADER. **The delete control renders only on the viewer's own
+   comments** (v1 `src/components/forum/forum-view.tsx:205`, R52); no
+   server-computed `canDelete`.
+3. **Commenting is SUPER, season ADMIN or same-group STUDENT** (v1
+   `src/lib/auth/permissions.ts:352`, R40) — LEADER and MENTOR cannot comment.
+*(v1 parity 2026-10-09: was "staff read, LEADER/staff comment delete in the UI, server-computed canDelete, LEADER comments")*
+**Owner backlog only (REG-39), not built:** there is no way to hide a
 *post* (R48). The only lever inside the frozen schema is reverting `status` to
 `DRAFT`, which overloads `DRAFT` further and collides with domain 8's D3 — not
 taken unilaterally. A `hiddenAt` column and a student-facing report/flag row are
@@ -234,34 +239,41 @@ taken unilaterally. A `hiddenAt` column and a student-facing report/flag row are
 contact the author. Report this to the product owner; do not let it be
 discovered in the field.
 
-**D-14.5 — An empty post cannot unlock the feed** (spec 14 D8). v1 passes
-`countWords("") >= 0` when `forumMinWords` is null or 0, so a student can post
-nothing, flip to `SUBMITTED`, and read everyone else's work. The shared schema
-requires at least one word regardless. New restriction, taken deliberately.
+**D-14.5 — The only word gate is `forumMinWords`, as v1** (R11; v1
+`jpc-space/src/lib/forum-actions.ts:36-39`, `src/components/forum/forum-view.tsx:50-52,102`).
+The post is accepted when `countWords(text) >= (forumMinWords ?? 0)`, so with a
+null or zero minimum an empty response can be posted and marked `SUBMITTED`,
+and the button is enabled. No `min(1)` and no 20,000 cap on the request schema
+(v1 had neither); the refusal message is v1's
+`"Please write at least N words (you have M)."`.
+*(v1 parity 2026-10-09: was "shared schema requires at least one word regardless; Math.max(1, minWords) on client")*
 
 **D-14.6 — No email, and no avatar, in a forum payload.** v1 falls back to the
 author's email address as their display name (R30) — these are young people's
 addresses, shown to every group-mate whose peer left `name` blank (spec 14 D6).
 v2 sends `authorDisplayName` = `name` or the literal `"Group member"`, and no
-`email` field exists on the contract. Avatars are omitted entirely: uploads are
-off (`ENABLE_UPLOADS=false`), the local driver's URL is the ungated
-`/api/uploads/...` path (spec 14 D12), and resolving N of them inside a feed
-query is the exact foot-gun D12 names. Deferred with the CMS.
+`email` field exists on the contract. **Avatars are shown, as v1** (R31; v1
+`jpc-space/src/lib/forum-query.ts:120-122,130-132`): every post and comment
+carries `authorAvatarUrl` (nullable), pointing at a gated, id-addressed avatar
+read endpoint — not v1's ungated `/api/uploads/...` path (spec 14 D12) and not
+resolved through the S3 driver's `url()` stub — and `ForumThread` renders it
+beside the name. Reading existing files is allowed with `ENABLE_UPLOADS=false`.
+*(v1 parity 2026-10-09: was "avatars omitted entirely, deferred with the CMS")*
 
 **D-14.7 — Late forum posts stay legal, and it is now a written rule.** v1's
 post action selects `assignment.dueAt` and never reads it (R12). Kept — a
 discussion that closes at a deadline stops being a discussion — but recorded
 here rather than left as an unused select (spec 14 D5).
 
-**D-14.8 — A forum post stays reviewable, and its author can finally read the
-feedback.** Spec 14 §10 D9: posting sets `SUBMITTED`, so a forum post enters the
-leader queue as ordinary work (R55) and `reviewSubmissionAction` has no type
-precondition (R56) — a reviewer can write feedback that the forum screen then
-never renders, because `loadForumView` does not select the column (R34). Of D9's
-two options, this plan takes "forum posts are reviewable work": leaving them in
-the queue matches what leaders already do, and the missing half is one field.
-`forumOwnResponseSchema` carries `feedback` and `reviewedAt`, and the screen
-renders them. The other half of D9 — showing the reviewer that they are looking
+**D-14.8 — A forum post stays reviewable, and the forum screen shows no
+feedback, as v1.** Spec 14 §10 D9: posting sets `SUBMITTED`, so a forum post
+enters the leader queue as ordinary work (R55) and `reviewSubmissionAction` has
+no type precondition (R56). v1's `loadForumView` never selects `feedback` and
+the forum screen never renders it (v1 `jpc-space/src/lib/forum-query.ts:54-57`,
+`src/components/forum/forum-view.tsx:24-27`, R34/R56) — ported as is:
+`forumOwnResponseSchema` carries no `feedback` / `reviewedAt`, and
+`ForumThread` renders no feedback block.
+*(v1 parity 2026-10-09: was "forumOwnResponseSchema carries feedback and reviewedAt; screen renders them")* The other half of D9 — showing the reviewer that they are looking
 at a discussion post, with its thread — is domain 8's screen and is **out of
 scope here**.
 
@@ -278,6 +290,11 @@ re-home that query and re-derive the season scope in a second place. The mobile
 calendar issues a second query for events and interleaves them client-side —
 exactly as `season-calendar.tsx:237-244` does today. Revisit if the two-request
 shape proves bad on device.
+**An alumnus gets no calendar** (R73; v1 `jpc-space/src/app/alumni/calendar/page.tsx:11,19`):
+v1's alumni Events page renders only the `UpcomingEventsCard` — no sessions, no
+session query — so v2's calendar tab, for an alumnus, renders only that card
+(the first four events with `(endDate ?? date) >=` today).
+*(v1 parity 2026-10-09: was "alumni get the shared pinned-season calendar with sessions plus events")*
 
 **D-15.2 — `ALUMNI_ONLY` becomes visible to alumni.** Spec 15 §10 item 2, the
 domain's headline defect: `UpcomingEventsCard` computes eligibility as
@@ -285,7 +302,13 @@ domain's headline defect: `UpcomingEventsCard` computes eligibility as
 `graduationYear` (`rbac.ts:isAlumnus`), so in shipped v1 `ALUMNI_ONLY` means
 *staff-only* — the inverse of its name, on the only two surfaces alumni have.
 v2's single server-side predicate includes the level when
-`isAlumnus(user) || user.role !== "STUDENT"`. The UI label must match.
+`isAlumnus(user) || user.role !== "STUDENT"`. This stays (REG-41): the v1
+parity review classified it KEEP-FIX (19-dashboards R6, a broken flow), and the
+coordinator ruled that it wins over the REVERT rows 15 R42/R44/R45 and 03 R92.
+**Only the labels revert to v1's**: form option **"Alumni only (leaders, admins)"**,
+manager badge **"Alumni only"** (`jpc-space/src/app/super/events/jpc-event-form.tsx:195`,
+`jpc-event-manager-client.tsx:114-115`, R46).
+*(v1 parity 2026-10-09: was label "Alumni & staff"; visibility unchanged)*
 
 **D-15.3 — The write gate is real, and stays real** (spec 15 R3, ruling C8). v1
 already enforces SUPER inside `createJpcEventAction`, not merely by page
@@ -305,8 +328,12 @@ observe.
 **D-15.5 — The window filters on `(endDate ?? date)`, and the server owns it**
 (items 5 and 10). One window, used by the list and the calendar, so a five-day
 retreat does not drop out of one surface while another still shows it. `from`
-and `to` are optional; omitted, the server defaults to `[now − 30d, now + 365d]`
-— the client never derives a calendar day (ruling C2).
+and `to` are optional; **omitted, every visible event is returned, ordered by
+`date` asc — no default window, no limit, as v1** (`jpc-space/src/lib/jpc-events-query.ts:43-69`,
+R57; remove the defaults at `apps/backend/src/routes/events.ts:103-108`). The
+upcoming card filters `(endDate ?? date) >=` start of today and takes the first
+four, as v1; `upcoming` / `limit` may stay only as an exact equivalent of that.
+*(v1 parity 2026-10-09: was "omitted, server defaults to [now − 30d, now + 365d]")*
 
 **D-15.6 — `allDay` is derived once, server-side, in the org timezone**
 (item 6, ruling C2). No column exists and none can be added (C1), so midnight
@@ -320,19 +347,34 @@ all-day), `endDay` — and the server composes the instant in the org zone
 `time` computed in the org zone, so the calendar buckets and labels by strings
 the server produced and a phone set to another zone shows the same day. This
 supersedes the earlier draft's "compose the ISO instant on the client".
+**The end has a time, as v1** (R6/R17; v1 `jpc-space/src/lib/jpc-event-actions.ts:17,36-38`,
+`src/app/super/events/jpc-event-form.tsx:129-151`): the write carries
+`endTime` (`HH:mm`, nullable) beside `endDay`; the server composes the end
+instant from `endDay` + `endTime` in the org zone; when `endDay` is null,
+`endTime` is ignored. Reads expose `endTime`. **End ≥ start compares the
+composed instants** (equal allowed), not days (R11; v1 `jpc-event-actions.ts:23-26`).
+*(v1 parity 2026-10-09: was "end is a day only, stored at org midnight; days compared")*
 
-**D-15.7 — Event photos are not built.** Uploads are off (`ENABLE_UPLOADS`
-defaults `false`), `imagePath` never crosses the wire, and `imageUrl` is absent
-from the contract. v1's photo lifecycle is broken in four ways (R27–R30) and its
+**D-15.7 — Event photo *upload* is not built; existing photos are shown, as v1.**
+Uploads are off (`ENABLE_UPLOADS` defaults `false`) and `imagePath` never
+crosses the wire — but every event carries `imageUrl` (nullable), as v1
+(`jpc-space/src/lib/jpc-events-query.ts:76`, R31), pointing at a new
+`GET /api/v1/events/:id/photo` gated on `eventVisibilityFilter` (reading
+existing files is allowed with uploads off; not `storage.url()`, KEEP-FIX R60),
+and the SUPER manager list shows the thumbnail and the edit form the current
+photo (`jpc-event-manager-client.tsx:100-102`, `jpc-event-form.tsx:171-182`).
+*(v1 parity 2026-10-09: was "imageUrl absent from the contract; GET photo deferred")*
+v1's photo lifecycle is broken in four ways (R27–R30) and its
 serving path is ungated (R32) — none of that is worth porting to a disabled
-capability. `POST/DELETE/GET /events/:id/photo` are **deferred to the CMS work**;
-when they land, the GET is gated on the same visibility predicate as the row,
+capability. `POST/DELETE /events/:id/photo` are **deferred to the CMS work**;
+the GET, built now, is gated on the same visibility predicate as the row,
 exactly as `submissions/:publicId/files/:fileId` already is.
 
 ## Out of scope, deliberately
 
 - **`GET /api/v1/calendar`** — see D-15.1.
-- **Event photo endpoints** — see D-15.7.
+- **Event photo upload/delete endpoints** — see D-15.7. (`GET /events/:id/photo`
+  is in scope since the v1 parity revision, R31.)
 - **The `UpcomingEventsCard` on all six dashboards** (spec 15 R78). The events
   data and hook (`useEvents()`, `queryKeys.events.list()`) land here;
   `dashboard.tsx` is left alone. The card is **Plan 16's** (role dashboards,
@@ -395,7 +437,7 @@ text rule — lives in `forum.ts` beside the forum contracts.
   `studentVideoQuestionSchema`, `studentVideoQuizSchema`/`StudentVideoQuiz`,
   `submitVideoAnswerRequestSchema`, `submitVideoAnswerResponseSchema`,
   `videoProgressRequestSchema`, `videoProgressResponseSchema`,
-  `videoQuizResultRowSchema`, `videoQuizResultsSchema`;
+  ~~`videoQuizResultRowSchema`, `videoQuizResultsSchema`~~ *(v1 parity 2026-10-09: removed, R74)*;
   `forumCommentSchema`, `forumPostSchema`, `forumOwnResponseSchema`,
   `forumViewSchema`/`ForumView`, `submitForumResponseRequestSchema`,
   `addForumCommentRequestSchema`, `forumFeedQuerySchema`, `forumCommentsQuerySchema`,
@@ -410,7 +452,7 @@ text rule — lives in `forum.ts` beside the forum contracts.
   (`isoDaySchema` / `wallTimeSchema` are **consumed** from Plan 5's
   `packages/shared/src/org-time.ts`, already exported by the index — not produced here);
   functions `formatTimestamp(totalSeconds: number): string`,
-  `parseTimestamp(input: string, maxSeconds?: number): number | null`,
+  `parseTimestamp(input: string): number | null` *(v1 parity 2026-10-09: was "optional maxSeconds parameter")*,
   `parseYouTubeId(raw: string): string | null`,
   `countWords(text: string): number` (in `forum.ts`).
   (Day labels on mobile use Plan 4's `formatDayKey` from `src/lib/format.ts`;
@@ -454,18 +496,19 @@ describe("parseTimestamp", () => {
     expect(parseTimestamp("  2:00  ")).toBe(120);
   });
 
-  it("rejects empty components instead of reading them as zero (v1 R23)", () => {
-    // Number("") is 0, so v1 parsed ":" as 0s, "1:" as 60s, ":30" as 30s,
-    // "::" as 0s and "1::" as 3600s. A typo became a valid timestamp.
-    for (const input of [":", "1:", ":30", "::", "1::"]) {
-      expect(parseTimestamp(input)).toBeNull();
-    }
+  it("reads empty components as zero, as v1 did (v1 R23)", () => {
+    // v1 parity 2026-10-09 (jpc-space src/lib/video-time.ts:21-30): Number("")
+    // is 0, so ":" is 0s, "1:" is 60s, ":30" is 30s.
+    expect(parseTimestamp(":")).toBe(0);
+    expect(parseTimestamp("1:")).toBe(60);
+    expect(parseTimestamp(":30")).toBe(30);
   });
 
-  it("rejects non-decimal numeric literals (v1 R24)", () => {
-    // Number() accepts both, so v1 read "0x10" as 16s and "1e3" as 1000s.
-    expect(parseTimestamp("0x10")).toBeNull();
-    expect(parseTimestamp("1e3")).toBeNull();
+  it("accepts what Number() accepts as a non-negative integer (v1 R24)", () => {
+    // v1 parity 2026-10-09 (jpc-space src/lib/video-time.ts:21-22): "0x10" is
+    // 16s and "1e3" is 1000s; fractions, negatives and words are still null.
+    expect(parseTimestamp("0x10")).toBe(16);
+    expect(parseTimestamp("1e3")).toBe(1000);
     expect(parseTimestamp("1.5")).toBeNull();
     expect(parseTimestamp("-1")).toBeNull();
     expect(parseTimestamp("abc")).toBeNull();
@@ -478,12 +521,11 @@ describe("parseTimestamp", () => {
     expect(parseTimestamp("1:1:1:1")).toBeNull();
   });
 
-  it("applies an upper bound where the input is parsed (v1 R27)", () => {
-    // v1 had none, so "9999:59" returned 599,999 and the rejection arrived a
-    // network round trip later in a different vocabulary.
-    expect(parseTimestamp("9999:59")).toBeNull();
-    expect(parseTimestamp("100", 60)).toBeNull();
-    expect(parseTimestamp("60", 60)).toBe(60);
+  it("applies no upper bound at parse time, as v1 (v1 R27)", () => {
+    // v1 parity 2026-10-09 (jpc-space src/lib/video-time.ts:15-30): the 86,400
+    // ceiling is enforced only by the authoring schema on the server
+    // (videoQuestionInputSchema atSeconds max, v1 video-quiz-actions.ts:17).
+    expect(parseTimestamp("9999:59")).toBe(599_999);
   });
 
   it("round-trips everything formatTimestamp emits", () => {
@@ -612,8 +654,6 @@ export function formatTimestamp(totalSeconds: number): string {
   return `${minutes}:${pad(seconds)}`;
 }
 
-const COMPONENT = /^\d+$/;
-
 /** The 24-hour ceiling the authoring schema enforces, kept in one place. */
 export const MAX_VIDEO_SECONDS = 86_400;
 
@@ -621,38 +661,32 @@ export const MAX_VIDEO_SECONDS = 86_400;
  * Parse `m:ss`, `h:mm:ss` or plain seconds. Null when the input is not a valid
  * timestamp.
  *
- * Rewritten rather than ported (spec 13 §10 D8). v1 converted each component
- * with `Number()`, which accepts the empty string as 0 (so ":" was 0s, "1:" was
- * 60s, ":30" was 30s — R23), accepts `0x10` and `1e3` (R24), and applied no
- * upper bound (R27), so the rejection surfaced a round trip later as the
- * action's generic "Please fix the highlighted fields." — with nothing
- * highlighted (R28).
+ * Ported verbatim from v1 (`jpc-space/src/lib/video-time.ts:15-30`): each
+ * component goes through `Number()` and must be a non-negative integer, so an
+ * empty component is 0 (R23) and `0x10` / `1e3` are accepted (R24). No upper
+ * bound here (R27) — the 86,400 ceiling is the authoring schema's, on the
+ * server. *(v1 parity 2026-10-09: was "digits-only components, empty rejected, maxSeconds bound at parse time")*
  *
  * Kept from v1: a single component is plain seconds with no `< 60` rule
- * ("90" is 90 seconds, R26) and the `m:ss` / `h:mm:ss` output format, because
- * admin muscle memory depends on both.
+ * ("90" is 90 seconds, R26) and the `m:ss` / `h:mm:ss` output format.
  */
-export function parseTimestamp(input: string, maxSeconds = MAX_VIDEO_SECONDS): number | null {
+export function parseTimestamp(input: string): number | null {
   const trimmed = input.trim();
   if (trimmed === "") return null;
 
   const parts = trimmed.split(":");
   if (parts.length > 3) return null;
-  if (!parts.every((p) => COMPONENT.test(p))) return null;
 
   const nums = parts.map((p) => Number(p));
-  let total: number;
-  if (nums.length === 1) {
-    total = nums[0] as number;
-  } else if (nums.length === 2) {
-    if ((nums[1] as number) >= 60) return null;
-    total = (nums[0] as number) * 60 + (nums[1] as number);
-  } else {
-    if ((nums[1] as number) >= 60 || (nums[2] as number) >= 60) return null;
-    total = (nums[0] as number) * 3600 + (nums[1] as number) * 60 + (nums[2] as number);
-  }
+  if (nums.some((n) => !Number.isInteger(n) || n < 0)) return null;
 
-  return total > maxSeconds ? null : total;
+  if (nums.length === 1) return nums[0] as number;
+  if (nums.length === 2) {
+    if ((nums[1] as number) >= 60) return null;
+    return (nums[0] as number) * 60 + (nums[1] as number);
+  }
+  if ((nums[1] as number) >= 60 || (nums[2] as number) >= 60) return null;
+  return (nums[0] as number) * 3600 + (nums[1] as number) * 60 + (nums[2] as number);
 }
 ```
 
@@ -728,6 +762,7 @@ export function parseYouTubeId(raw: string): string | null {
 }
 ```
 
+> **v1 parity 2026-10-09:** (R30) when the structured parse above returns null on an allowed host, fall back to v1's regex scan of the whole input — `[?&]v=`, `youtu\.be/`, `/embed/`, `/shorts/` (v1 `jpc-space/src/lib/youtube.ts:4-13`) — each followed by `([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])`, so `/attribution_link?u=/watch?v=ID` and `/x/embed/ID` parse as in v1. Edit `packages/shared/src/youtube.ts:54-66`; add those two forms to the "forms v1 accepted, kept" `it.each`. Host check (R33), boundary (R34) and `/live`, `/v`, bare id (R32) stay.
 
 Run the `video-time` and `youtube` suites → PASS (`forum-words` stays red until Step 5).
 
@@ -810,9 +845,10 @@ describe("videoProgressRequestSchema", () => {
 });
 
 describe("submitForumResponseRequestSchema", () => {
-  it("requires at least one word regardless of forumMinWords (spec 14 D8)", () => {
-    expect(submitForumResponseRequestSchema.safeParse({ text: "   " }).success).toBe(false);
-    expect(submitForumResponseRequestSchema.safeParse({ text: "" }).success).toBe(false);
+  it("has no length rule of its own — forumMinWords is the only gate, as v1 (R11)", () => {
+    // v1 parity 2026-10-09: jpc-space src/lib/forum-actions.ts:36-39.
+    expect(submitForumResponseRequestSchema.safeParse({ text: "   " }).success).toBe(true);
+    expect(submitForumResponseRequestSchema.safeParse({ text: "" }).success).toBe(true);
     expect(submitForumResponseRequestSchema.safeParse({ text: "one" }).success).toBe(true);
   });
 
@@ -1017,7 +1053,12 @@ export const videoProgressResponseSchema = z.object({
   completedAt: z.string().nullable(),
 });
 
-/** New capability — v1 shows no student's video-quiz result to anybody (R74). */
+/**
+ * v1 parity 2026-10-09 (R74): DELETE this schema and `videoQuizResultsSchema`
+ * below. v1 shows no student's video-quiz result to anybody
+ * (jpc-space src/components/sessions/video-questions-editor.tsx:75 shows only
+ * responseCount per question); the results read is removed.
+ */
 export const videoQuizResultRowSchema = z.object({
   studentUserId: z.number(),
   studentName: z.string().nullable(),
@@ -1088,9 +1129,10 @@ export const forumCommentSchema = z.object({
   body: z.string(),
   createdAt: z.string(),
   /**
-   * Computed server-side from the same gate the DELETE uses. v1's client
-   * re-derived it as `authorUserId === currentUserId`, which is why R49's
-   * SUPER/ADMIN removal power was unreachable from any UI (R52).
+   * v1 parity 2026-10-09 (R52, R31): DELETE `canDelete` — the client renders the
+   * delete control only when `authorUserId === currentUserId`, as v1
+   * (jpc-space src/components/forum/forum-view.tsx:205). ADD
+   * `authorAvatarUrl: z.string().nullable()` (D-14.6).
    */
   canDelete: z.boolean(),
 });
@@ -1101,12 +1143,18 @@ export const forumPostSchema = z.object({
   submissionPublicId: z.string(),
   studentUserId: z.number(),
   authorDisplayName: z.string(),
-  /** Plain text, converted from stored rich text at the API boundary (ruling C11). */
+  /**
+   * v1 parity 2026-10-09 (R28): sanitised HTML, not plain text — the stored body
+   * passed through v1's allow-list (jpc-space src/components/ui/rich-text-view.tsx:11-31:
+   * p br strong em s a ul ol li h2 h3 blockquote code pre; `a` keeps href/target/rel;
+   * schemes http/https/mailto only) and rendered as formatted rich text on device.
+   * Was "plain text via htmlToPlainText (ruling C11)". ADD `authorAvatarUrl` (R31).
+   */
   text: z.string(),
   submittedAt: z.string().nullable(),
-  /** v1 never computed this; without it a paginated comment list has no affordance. */
+  /** v1 parity 2026-10-09 (R26): DELETE — every comment is inlined, as v1. */
   commentCount: z.number(),
-  /** First page only. The rest come from the comments endpoint. */
+  /** Every comment on the post, `createdAt` asc (v1 forum-query.ts:101-110, R26). */
   comments: z.array(forumCommentSchema),
   canComment: z.boolean(),
 });
@@ -1114,6 +1162,9 @@ export type ForumPost = z.infer<typeof forumPostSchema>;
 
 export const forumOwnResponseSchema = z.object({
   /**
+   * v1 parity 2026-10-09 (R34/R56, D-14.8): DELETE `feedback` and `reviewedAt` —
+   * v1's forum screen never shows reviewer feedback (forum-query.ts:54-57).
+   *
    * Spec 14 §10 D9: posting sets SUBMITTED, which puts a forum post in the
    * leader review queue as ordinary work, and `reviewSubmissionAction` has no
    * type precondition — so a reviewer can write feedback on a discussion post
@@ -1153,21 +1204,19 @@ export const forumViewSchema = z.object({
   /** Which group's thread this is. Null for a staff reader seeing every group. */
   groupId: z.number().nullable(),
   posts: z.array(forumPostSchema),
+  /** v1 parity 2026-10-09 (R27): DELETE — every post in one response, as v1. */
   nextCursor: z.string().nullable(),
 });
 export type ForumView = z.infer<typeof forumViewSchema>;
 
 /**
- * `min(1)` after trimming, regardless of the assignment's `forumMinWords`
- * (spec 14 §10 D8). With a null or zero minimum, v1's `countWords("") >= 0`
- * passed on both client and server, so a student could post nothing, flip to
- * SUBMITTED, unlock the peer feed and read everyone else's work without
- * contributing. "Post to unlock" is a contribution mechanic.
- *
- * The 20,000 cap matches domain 7's `description`; v1 had no cap at all.
+ * No length rule here, as v1 (R11; jpc-space src/lib/forum-actions.ts:36-39):
+ * the only gate is the route's `countWords(text) >= (forumMinWords ?? 0)`, so
+ * with a null or zero minimum an empty response posts. v1 had no cap.
+ * *(v1 parity 2026-10-09: was "trim().min(1).max(20_000)")*
  */
 export const submitForumResponseRequestSchema = z.object({
-  text: z.string().trim().min(1, "Write at least one word.").max(20_000),
+  text: z.string(),
 });
 export type SubmitForumResponseRequest = z.infer<typeof submitForumResponseRequestSchema>;
 
@@ -1176,6 +1225,9 @@ export const addForumCommentRequestSchema = z.object({
 });
 export type AddForumCommentRequest = z.infer<typeof addForumCommentRequestSchema>;
 
+// v1 parity 2026-10-09 (R27, R26): DELETE forumFeedQuerySchema,
+// forumCommentsQuerySchema and forumCommentsPageSchema — the feed returns every
+// post (submittedAt desc) with every comment inline; there is no paging.
 export const forumFeedQuerySchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(10),
@@ -1262,12 +1314,21 @@ export const jpcEventListItemSchema = z.object({
    * Present so a SEASON chip can be badged with its season (spec 15 item 12) —
    * v1 styled SEASON identically to ALL, so nothing on the calendar
    * distinguished an organisation-wide event from a season-scoped one (R68).
+   * (v1 parity 2026-10-09: the calendar no longer shows it — R68.)
    */
   seasonCode: z.string().nullable(),
+  // v1 parity 2026-10-09 (R58, R31, R6): v1's single row shape for every role
+  // (jpc-space src/lib/jpc-events-query.ts:6-18,56-68) — ADD
+  //   description: z.string().nullable(), imageUrl: z.string().nullable(),
+  //   createdById: z.number().nullable(), seasonTitle: z.string().nullable(),
+  //   endTime: wallTimeSchema.nullable()
 });
 export type JpcEventListItem = z.infer<typeof jpcEventListItemSchema>;
 
 /**
+ * v1 parity 2026-10-09 (R58/R70): DELETE this schema — there is no detail
+ * screen and no detail read; the list row carries v1's full shape.
+ *
  * v1 has no event detail page anywhere (R70), so `description` and the season
  * were write-only data for every non-SUPER user. There is no `imageUrl`:
  * uploads are off and v1's photo path is ungated (spec 15 D7 in this plan).
@@ -1292,6 +1353,9 @@ const eventWriteBase = z.object({
   day: isoDaySchema,
   time: wallTimeSchema.nullable().default(null),
   endDay: isoDaySchema.nullable().default(null),
+  // v1 parity 2026-10-09 (R6/R17): the end has an optional time, as v1
+  // (jpc-space src/lib/jpc-event-actions.ts:17,36-38); ignored when endDay is null.
+  endTime: wallTimeSchema.nullable().default(null),
   description: z.string().max(2000).nullable().default(null),
   url: z.string().url().nullable().default(null),
   visibility: jpcVisibilitySchema,
@@ -1306,6 +1370,10 @@ export function refineEvent(
   v: { day: string; endDay: string | null; visibility: string; seasonId: number | null },
   ctx: z.RefinementCtx,
 ): void {
+  // v1 parity 2026-10-09 (R11): compare full date-times, end >= start (equal
+  // allowed), as v1 (jpc-space src/lib/jpc-event-actions.ts:23-26) — compare
+  // `${day}T${time ?? "00:00"}` with `${endDay}T${endTime ?? "00:00"}` (same org
+  // zone on both sides, so the strings order like the instants), not days only.
   if (v.endDay !== null && v.endDay < v.day) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -1341,7 +1409,8 @@ export const mergedEventSchema = eventWriteBase.superRefine(refineEvent);
 
 /**
  * The window bounds stored instants and carries no day semantics, so instants
- * are right here. Omitted, the server picks the default (D-15.5).
+ * are right here. Omitted, there is no bound — every visible event, as v1
+ * (D-15.5, R57). *(v1 parity 2026-10-09: was "omitted, the server picks the default")*
  */
 export const eventListQuerySchema = z
   .object({
@@ -1742,13 +1811,12 @@ describe("canCommentOnForumSubmission", () => {
     expect(await canCommentOnForumSubmission(groupMate, postSubmissionId)).toBe(true);
     expect(await canCommentOnForumSubmission(superUser, postSubmissionId)).toBe(true);
     expect(await canCommentOnForumSubmission(admin, postSubmissionId)).toBe(true);
-    // Widening, taken deliberately (spec 14 D3): in v1 LEADER falls through to
-    // `return false`, so a leader cannot join the discussion of a group they
-    // lead — an omission, not a policy.
-    expect(await canCommentOnForumSubmission(leaderA, postSubmissionId)).toBe(true);
   });
 
-  it("refuses another group's student, another group's leader, and a mentor", async () => {
+  it("refuses another group's student, every leader, and a mentor", async () => {
+    // v1 parity 2026-10-09 (R40): in v1 LEADER and MENTOR fall through to
+    // `return false` (jpc-space src/lib/auth/permissions.ts:352).
+    expect(await canCommentOnForumSubmission(leaderA, postSubmissionId)).toBe(false);
     expect(await canCommentOnForumSubmission(outsider, postSubmissionId)).toBe(false);
     expect(await canCommentOnForumSubmission(leaderB, postSubmissionId)).toBe(false);
     // MENTOR stays read-only, consistent with their posture elsewhere.
@@ -1815,14 +1883,15 @@ describe("canCommentOnForumSubmission", () => {
 });
 
 describe("canDeleteForumComment", () => {
-  it("admits the author, SUPER, the season ADMIN and the post author's LEADER", async () => {
+  it("admits the author, SUPER and the season ADMIN", async () => {
     expect(await canDeleteForumComment(groupMate, commentId)).toBe(true);
     expect(await canDeleteForumComment(superUser, commentId)).toBe(true);
     expect(await canDeleteForumComment(admin, commentId)).toBe(true);
-    expect(await canDeleteForumComment(leaderA, commentId)).toBe(true);
   });
 
-  it("refuses everyone else, including the post's own author", async () => {
+  it("refuses everyone else, including the post's own author and every leader", async () => {
+    // v1 parity 2026-10-09 (R50): jpc-space src/lib/forum-actions.ts:115-118.
+    expect(await canDeleteForumComment(leaderA, commentId)).toBe(false);
     expect(await canDeleteForumComment(author, commentId)).toBe(false);
     expect(await canDeleteForumComment(outsider, commentId)).toBe(false);
     expect(await canDeleteForumComment(leaderB, commentId)).toBe(false);
@@ -1842,6 +1911,9 @@ describe("forumAudienceFor", () => {
     expect(await forumAudienceFor(dropped, assignmentId)).toBeNull();
   });
 
+  // v1 parity 2026-10-09 (R53): the two staff cases below become "refuses
+  // LEADER, ADMIN, SUPER and MENTOR" → toBeNull() — v1's only forum screen is
+  // the student's (jpc-space src/app/student/assignments/[id]/page.tsx:14,24).
   it("gives a leader only the groups they lead in this season", async () => {
     expect(await forumAudienceFor(leaderA, assignmentId)).toEqual({
       kind: "staff",
@@ -1927,10 +1999,9 @@ export async function hasActiveEnrollment(user: SessionUser, seasonId: number): 
  *     (ruling C9). `GroupStudent.studentUserId` is `@unique` across the whole
  *     database, so it answers "what group is this student in now" — the wrong
  *     question for an assignment in a season they may since have left.
- *  2. LEADER is admitted for groups they lead (spec 14 §10 D3). In v1 both
- *     LEADER and MENTOR fall through to `return false`, so a leader cannot
- *     participate in — or moderate — the discussion of their own group. That is
- *     an omission by missing `if`, not a policy. MENTOR stays read-only.
+ *  2. LEADER and MENTOR cannot comment: in v1 both fall through to
+ *     `return false` (jpc-space src/lib/auth/permissions.ts:352, R40), ported
+ *     as is. *(v1 parity 2026-10-09: was "LEADER admitted for groups they lead")*
  *
  * Also new: a DRAFT target is refused. v1 read only `assignmentId` from the
  * target row, so a group-mate's unposted draft was a valid comment target for
@@ -1958,7 +2029,8 @@ export async function canCommentOnForumSubmission(
   const authorGroupId = await groupIdInSeason(sub.studentUserId, sub.assignment.seasonId);
   if (authorGroupId === null) return false;
 
-  if (user.role === "LEADER") return isLeaderOfGroup(user, authorGroupId);
+  // v1 parity 2026-10-09 (R40): no LEADER branch — LEADER and MENTOR cannot
+  // comment (jpc-space src/lib/auth/permissions.ts:352). Edit permissions.ts:559.
   if (user.role === "STUDENT") {
     const mine = await groupIdInSeason(user.userId, sub.assignment.seasonId);
     return mine !== null && mine === authorGroupId;
@@ -1972,8 +2044,8 @@ export async function canCommentOnForumSubmission(
  * v1: the author, SUPER, or an ADMIN of the assignment's season — but the
  * delete control renders only for the viewer's own comments and no staff screen
  * shows a thread at all, so the staff half of that rule has never been
- * exercisable (spec 14 R49/R52/R53). LEADER is added for the same reason as
- * above. The post's own author is NOT admitted for someone else's comment:
+ * exercisable (spec 14 R49/R52/R53). No LEADER, as v1 (forum-actions.ts:115-118,
+ * R50; *v1 parity 2026-10-09: was "LEADER added"*). The post's own author is NOT admitted for someone else's comment:
  * owning a thread is not moderating it.
  */
 export async function canDeleteForumComment(
@@ -1994,21 +2066,16 @@ export async function canDeleteForumComment(
   if (isSuper(user)) return true;
 
   const seasonId = comment.submission.assignment.seasonId;
-  if (isAdminOfSeason(user, seasonId)) return true;
-
-  if (user.role === "LEADER") {
-    const authorGroupId = await groupIdInSeason(comment.submission.studentUserId, seasonId);
-    return authorGroupId !== null && isLeaderOfGroup(user, authorGroupId);
-  }
-  return false;
+  // v1 parity 2026-10-09 (R50): no LEADER branch — author, SUPER or season
+  // ADMIN only (jpc-space src/lib/forum-actions.ts:115-118). Edit permissions.ts:597-600.
+  return isAdminOfSeason(user, seasonId);
 }
 
 /**
  * Whose posts this caller may read on a forum assignment.
  *
- * `groupIds: null` means every group in the season. The staff arm is new
- * capability — v1 has no staff forum screen whatsoever, so nobody could see a
- * thread to moderate it (spec 14 §10 D2/D3).
+ * Students only, as v1 — v1 has no staff forum screen (R53). *(v1 parity
+ * 2026-10-09: was "staff arm: SUPER/MENTOR/ADMIN all groups, LEADER their groups")*
  */
 export type ForumAudience =
   | { kind: "student"; groupId: number | null }
@@ -2024,16 +2091,10 @@ export async function forumAudienceFor(
   });
   if (!assignment) return null;
 
-  if (isSuper(user) || isMentor(user) || isAdminOfSeason(user, assignment.seasonId)) {
-    return { kind: "staff", groupIds: null };
-  }
-
-  if (user.role === "LEADER") {
-    const scope = await staffScopeForSeason(user, assignment.seasonId);
-    if (scope === null || scope.kind !== "groups") return null;
-    return { kind: "staff", groupIds: scope.groupIds };
-  }
-
+  // v1 parity 2026-10-09 (R53/R57): no staff arm — v1's only forum screen is
+  // the student's (jpc-space src/app/student/assignments/[id]/page.tsx:14,24).
+  // Remove permissions.ts:625-635; the `staff` variant of ForumAudience and every
+  // `audience.kind === "staff"` branch downstream (Tasks 6–7) go with it.
   if (user.role !== "STUDENT") return null;
   if (!(await hasActiveEnrollment(user, assignment.seasonId))) return null;
   // The targeting rule v1 enforced only by refusing to render the page (R15),
@@ -2108,7 +2169,7 @@ Append three factories inside `queryKeys` in
     all: ["video-quiz"] as const,
     forSession: (sessionId: number) => [...queryKeys.videoQuiz.all, "student", sessionId] as const,
     questions: (sessionId: number) => [...queryKeys.videoQuiz.all, "admin", sessionId] as const,
-    results: (sessionId: number) => [...queryKeys.videoQuiz.all, "results", sessionId] as const,
+    // v1 parity 2026-10-09 (R74): no `results` key — the results read is removed.
   },
   forum: {
     all: ["forum"] as const,
@@ -2834,6 +2895,8 @@ git add apps/backend && git commit -m "feat(backend): student video quiz with a 
 
 ### Task 4: Video quiz — authoring, re-grading, and the results nobody could see
 
+> **v1 parity 2026-10-09 (R74):** the results read is **not built**. v1 shows no student's video-quiz result to any admin surface — the editor shows only `{responseCount}` per question (`jpc-space/src/components/sessions/video-questions-editor.tsx:75`). Delete `GET /sessions/:id/video-quiz/results` and `loadVideoQuizResults` (`apps/backend/src/routes/video-quiz.ts:439-461` and its query), the results `describe` block in Step 1, Step 2, the results bullet in Step 3 and `VideoQuizResults` from Step 5's OpenAPI list.
+
 **Files:**
 - Modify: `apps/backend/src/routes/video-quiz.ts`
 - Modify: `apps/backend/src/lib/queries/video-quiz.ts` (add `loadVideoQuizResults`)
@@ -3079,6 +3142,8 @@ describe("GET /api/v1/sessions/:id/video-quiz/results", () => {
 Run the suite → the new cases FAIL.
 
 - [ ] **Step 2: `loadVideoQuizResults`**
+
+> **v1 parity 2026-10-09:** step removed (R74) — see the note under the Task 4 heading.
 
 Append to `apps/backend/src/lib/queries/video-quiz.ts`:
 
@@ -3328,7 +3393,7 @@ videoQuizRouter.patch("/video-questions/:questionId", requireAuth, async (req, r
   before and confirm after. **`SessionVideoProgress` is deliberately left
   alone** — v1 leaves it stale (R11) and there is no soft-delete column to do
   better with; note it in the OpenAPI description.
-- **`GET /sessions/:id/video-quiz/results`** — 404 on a missing session, then
+- ~~**`GET /sessions/:id/video-quiz/results`**~~ *(v1 parity 2026-10-09: removed, R74 — v1 has no results read)* — 404 on a missing session, then
   `staffScopeForSeason(user, session.seasonId)`; `null` → 403;
   `{ kind: "season" }` → `loadVideoQuizResults(sessionId)`;
   `{ kind: "groups", groupIds }` → `loadVideoQuizResults(sessionId, groupIds)`.
@@ -3552,8 +3617,8 @@ describe("student video quiz", () => {
   });
 
   it("falls back to a link when the URL does not resolve to a video", async () => {
-    // v1 renders a plain anchor and the entire quiz becomes unreachable with no
-    // message to anyone (spec 13 R37). The link stays; the silence does not.
+    // v1 parity 2026-10-09 (jpc-space src/app/student/sessions/[id]/page.tsx:47-49,76-90):
+    // only a "Watch recording" button to the raw URL, no title, no message (R37).
     get.mockImplementation((url: string) =>
       url === "/api/v1/sessions/12"
         ? Promise.resolve({ data: { data: { ...sessionDetail, youtubeUrl: "https://x.test/v" } } })
@@ -3564,10 +3629,11 @@ describe("student video quiz", () => {
 
     renderWithProviders(<SessionDetailScreen />);
 
-    expect(await screen.findByText("Watch on YouTube")).toBeTruthy();
+    expect(await screen.findByText("Watch recording")).toBeTruthy();
+    expect(screen.queryByText("Video unavailable")).toBeNull();
     expect(
-      screen.getByText("This session's video link can't be played in the app."),
-    ).toBeTruthy();
+      screen.queryByText("This session's video link can't be played in the app."),
+    ).toBeNull();
   });
 
   it("shows a completed quiz without a barrier", async () => {
@@ -3660,8 +3726,9 @@ describe("admin video question editor", () => {
 
     renderWithProviders(<SessionDetailScreen />);
     fireEvent.press(await screen.findByText("Add question"));
-    // ":30" is 30 seconds in v1 because Number("") is 0 — a typo that parsed.
-    fireEvent.changeText(screen.getByLabelText("Timestamp"), ":30");
+    // "1:60" — the trailing <60 rule v1 kept. (":30" is 30 seconds, as in v1 —
+    // v1 parity 2026-10-09, jpc-space src/lib/video-time.ts:21-30.)
+    fireEvent.changeText(screen.getByLabelText("Timestamp"), "1:60");
     fireEvent.changeText(screen.getByLabelText("Question"), "New prompt");
     fireEvent.changeText(screen.getByLabelText("Option 1"), "one");
     fireEvent.changeText(screen.getByLabelText("Option 2"), "two");
@@ -3816,15 +3883,16 @@ export function useVideoQuizResults(
 `apps/mobile/src/components/VideoQuizPlayer.tsx` — props
 `{ sessionId: number; quiz: StudentVideoQuiz }`. Behaviour, in full:
 
-1. **No video id → the fallback, with a message.** Render an `EmptyState`
-   titled "Video unavailable", message
-   `"This session's video link can't be played in the app."`, and a `Button`
-   "Watch on YouTube" calling `Linking.openURL(quiz.youtubeUrl)` when it is
-   non-null. v1 renders the bare link and says nothing (R37/R81); the message is
-   the addition.
+1. **No video id → only a link, as v1.** Render only a `Button`
+   "Watch recording" calling `Linking.openURL(quiz.youtubeUrl)` when it is
+   non-null — no title, no message (v1 `jpc-space/src/app/student/sessions/[id]/page.tsx:47-49,76-90`, R37).
+   Edit `VideoQuizPlayer.tsx:39-51,210-212`. *(v1 parity 2026-10-09: was "EmptyState 'Video unavailable' with message and 'Watch on YouTube' button")*
 2. **The player.** `<YoutubePlayer height={220} videoId={quiz.videoId} play={playing}
    initialPlayerParams={{ controls: false, modestbranding: true, rel: false, preventFullScreen: true }}
    onChangeState={...} onError={...} onReady={...} ref={playerRef} />`.
+   *(v1 parity 2026-10-09: the load-error / timeout fallback below (R81, kept) may
+   keep its "Video unavailable" message and button; only the no-id / no-questions
+   case of (1) is v1's bare link.)*
    Native controls are suppressed for the same reason v1 suppresses them: the
    custom bar is the only scrub affordance, so the client-side barrier holds for
    an ordinary user. `onError` sets an error flag that renders the same fallback
@@ -3863,11 +3931,12 @@ export function useVideoQuizResults(
    `lockedFraction` falls back to 1 and the badge is suppressed, so the student
    sees an ordinary player that simply never completes (R78/R79). The duration
    is **not** sent to the server — storing it is a schema change (C1).
-8. **Progress saves.** On pause, on `AppState` leaving `"active"`, and on
-   unmount, call `useSaveVideoProgress(sessionId).mutate(Math.floor(furthestRef.current))`.
-   Plus a 15-second interval while playing: v1 saves only on three edge events,
-   so closing the tab mid-play loses everything since the last pause (R49), and
-   on iOS a webview can be suspended before a handler runs.
+8. **Progress saves.** On pause (and ended), on `AppState` leaving `"active"`
+   (v1's `visibilitychange`), and on unmount, call
+   `useSaveVideoProgress(sessionId).mutate(Math.floor(furthestRef.current))` —
+   and nowhere else, as v1 (`jpc-space/src/components/sessions/interactive-video-player.tsx:154,163,198`, R49).
+   No interval: remove `PROGRESS_SAVE_MS` and the playing-interval effect
+   (`VideoQuizPlayer.tsx:19,129-135`). *(v1 parity 2026-10-09: was "plus a 15-second save interval while playing")*
 9. **The score card.** `{earnedPoints} / {totalPoints} points`, the answered
    count, and — when `completedAt` is non-null — a "Quiz complete" line.
 10. **The clock is injectable, and that is the only test seam.**
@@ -3883,6 +3952,8 @@ export function useVideoQuizResults(
     Export the component as a named export, `export function VideoQuizPlayer`.
 
 - [ ] **Step 5: `VideoQuestionsEditor`**
+
+> **v1 parity 2026-10-09 (R74):** drop `useVideoQuizResults` (Step 3 hook), `videoQuizResultsSchema`/`VideoQuizResults` imports, the results table below and `canSeeResults` in Step 6 — leaders see nothing; the editor shows only `{responseCount} answers recorded` per question (v1 `video-questions-editor.tsx:75`).
 
 `apps/mobile/src/components/VideoQuestionsEditor.tsx` — props
 `{ sessionId: number }`. Renders `useVideoQuestions(sessionId, true)` as `Card`
@@ -3900,6 +3971,10 @@ Three rules the form owns:
   "Please fix the highlighted fields.", and the editor discards `fieldErrors`
   entirely — so the admin is told to fix highlighted fields and nothing is
   highlighted (R28). The check belongs where the input is.
+  *(v1 parity 2026-10-09, R27: `parseTimestamp` no longer bounds the value, so a
+  value over 86,400 passes this check and is rejected by the server's
+  `videoQuestionInputSchema` `atSeconds` max — surface that 400 on the Timestamp
+  field's `accessibilityHint` rather than dropping it. v1: `src/lib/video-quiz-actions.ts:17`.)*
 - **Delete confirms with the real count.** First press flips the button title to
   `"Delete {responseCount} answers?"` (RN has no `window.confirm`, and the
   two-press pattern is what Plan 4 established); the second press calls the
@@ -3909,10 +3984,9 @@ Three rules the form owns:
   `"Points changed — every student's score for this question moved."` when
   `pointsChanged`. v1 tells the admin neither.
 
-Also render `useVideoQuizResults(sessionId, true)` beneath the editor as a
-simple table: student name, `answeredCount / questionCount`,
-`earnedPoints / totalPoints`, and a completion tick. This is the surface v1 has
-for nobody.
+~~Also render `useVideoQuizResults(sessionId, true)` beneath the editor as a
+results table.~~ No results table: v1 shows no student's result to anybody
+(`jpc-space/src/components/sessions/video-questions-editor.tsx:75`). *(v1 parity 2026-10-09: was "per-student results table beneath the editor")*
 
 - [ ] **Step 6: Wire both into `session/[id]/index.tsx`**
 
@@ -3940,15 +4014,15 @@ session-quiz card, add one section, driven by role and by the session's
 
 - STUDENT with a `youtubeUrl`: `LoadingState` / `ErrorState` (with `onRetry`
   wired to `quiz.refetch`) / `<VideoQuizPlayer sessionId={sessionId} quiz={quiz.data} />`.
-  When the quiz loads but `questions.length === 0`, render the plain
-  "Watch on YouTube" button and no player — same fallback as v1's
-  `hasInteractiveVideo` branch (R38), minus the silence.
+  When the quiz loads but `questions.length === 0`, render only a
+  "Watch recording" button opening `session.youtubeUrl` and no player — no
+  title, no message, exactly v1's `hasInteractiveVideo` branch (R38; v1
+  `jpc-space/src/app/student/sessions/[id]/page.tsx:47-49,76-90`). *(v1 parity 2026-10-09: was "plain 'Watch on YouTube' button, minus the silence")*
 - `canAuthorVideo` (SUPER, or ADMIN of the session's season):
-  `<VideoQuestionsEditor sessionId={sessionId} />`, which also renders the
-  results table. `canSeeResults` without `canAuthorVideo` (a LEADER): the
-  results table only — `useVideoQuizResults(sessionId, canSeeResults)` — and
-  never `useVideoQuestions`, whose payload carries the answer key. `user` and
-  `scopes` come from `useSessionStore`.
+  `<VideoQuestionsEditor sessionId={sessionId} />`. A LEADER gets nothing here
+  and never `useVideoQuestions`, whose payload carries the answer key; drop
+  `canSeeResults` from the block above. `user` and `scopes` come from
+  `useSessionStore`. *(v1 parity 2026-10-09: was "editor renders results table; LEADER sees results table only")*
 - No `youtubeUrl` at all: render nothing. Do not offer to author questions
   against a session with no video — v1 does exactly that and lets an admin
   build a full quiz that no student can ever reach (R17).
@@ -4168,6 +4242,9 @@ describe("PUT /api/v1/assignments/:id/forum/response", () => {
     expect(res.body.error.message).toContain("5");
   });
 
+  // v1 parity 2026-10-09 (R11): invert this case — with a null/zero minimum an
+  // empty response is accepted (200, status SUBMITTED), as v1
+  // (jpc-space src/lib/forum-actions.ts:36-39).
   it("refuses an empty response even when the minimum is zero (spec 14 D8)", async () => {
     const res = await request(app)
       .put(`/api/v1/assignments/${untargetedAssignmentId}/forum/response`)
@@ -4348,11 +4425,15 @@ describe("GET /api/v1/assignments/:id/forum", () => {
       .get(`/api/v1/assignments/${assignmentId}/forum`)
       .set("authorization", `Bearer ${studentAToken}`);
 
+    // v1 parity 2026-10-09 (R28): the body is v1-allow-list-sanitised HTML —
+    // assert `toBe(\`<p>${OWN_TEXT}</p>\`)` and that a stored <script>/onclick is stripped.
     expect(res.body.data.posts[0].text).toBe(OWN_TEXT);
     expect(res.body.data.posts[0].text).not.toContain("<p>");
     expect(JSON.stringify(res.body)).not.toContain("@jpc.test");
   });
 
+  // v1 parity 2026-10-09 (R53): this case and "gives an admin and a mentor every
+  // group" become one case asserting 403 for LEADER, ADMIN, SUPER and MENTOR.
   it("gives a leader their own group's thread and refuses another group's", async () => {
     // New capability: v1 has no staff forum screen at all (spec 14 R53).
     for (const token of [studentAToken, studentBToken]) {
@@ -4404,6 +4485,8 @@ describe("GET /api/v1/assignments/:id/forum", () => {
     expect(res.status).toBe(403);
   });
 
+  // v1 parity 2026-10-09 (R27): replace with "returns every post in one
+  // response, submittedAt desc" — no limit, no cursor (jpc-space src/lib/forum-query.ts:80-112).
   it("paginates instead of returning the whole thread (spec 14 D7)", async () => {
     const extras = await Promise.all(
       Array.from({ length: 3 }, (_, i) => createTestUser(`fbulk${i}`, "STUDENT")),
@@ -4508,6 +4591,8 @@ export async function loadForumAssignment(assignmentId: number): Promise<ForumAs
    student who wrote it (spec 14 R34, §10 D9). It goes through
    `htmlToPlainText` for the same reason the post body does — `feedback` is rich
    text in v1 too (ruling C11).
+
+> **v1 parity 2026-10-09:** (R34/R56) do **not** select or return `feedback` / `reviewedAt` — drop them from the missing-row default, the present-row map and the PUT response (`apps/backend/src/lib/queries/forum.ts:108,121-122`); v1 `forum-query.ts:54-57` never selects them. (R53) Staff audiences no longer exist, so every "Staff …" clause in steps 3–6 is dead and goes.
 3. **Locked** — `audience.kind === "student" && !own.posted`. Staff are never
    locked. Locked → return early with `posts: []` and `nextCursor: null`; the
    peer query never runs. Same short-circuit as v1 (R19), and the cheapest path.
@@ -4562,12 +4647,22 @@ export async function loadForumAssignment(assignmentId: number): Promise<ForumAs
    the cursor deterministic when two posts share a `submittedAt`. The cursor on
    the wire is the last row's `publicId`; resolve it to an id with one
    `findUnique` before the query, and treat an unresolvable cursor as no cursor.
-6. **Map.** `text: htmlToPlainText(p.text ?? "")` (ruling C11 on read — every
-   existing row is v1's HTML), `authorDisplayName: displayNameFor(...)`,
+
+> **v1 parity 2026-10-09:** (R27) no `take`, `cursor` or `skip` and no `nextCursor` — every post, `submittedAt` desc (v1 `jpc-space/src/lib/forum-query.ts:80-112`; edit `apps/backend/src/lib/queries/forum.ts:167-185,241`). (R26) no `take: 3` and no `_count` — every comment inline, `createdAt` asc (v1 `forum-query.ts:101-110`; `forum.ts:194-205`). (R31) also select `studentUser.avatarPath` / `authorUser.avatarPath` and map them to `authorAvatarUrl` via the gated avatar endpoint (D-14.6).
+6. **Map.** `text: sanitizeForumHtml(p.text ?? "")` — the stored HTML passed
+   through v1's allow-list (v1 `jpc-space/src/components/ui/rich-text-view.tsx:11-31`:
+   tags `p br strong em s a ul ol li h2 h3 blockquote code pre`, `a` keeps
+   `href`/`target`/`rel`, schemes `http`/`https`/`mailto`), replacing
+   `htmlToPlainText` at `apps/backend/src/lib/queries/forum.ts:219` (R28).
+   *(v1 parity 2026-10-09: was "htmlToPlainText — posts served and rendered as plain text")*
+   `authorDisplayName: displayNameFor(...)`,
    `commentCount: p._count.forumComments`, and per comment
    `canDelete: await canDeleteForumComment(user, c.id)` — the gate itself, not a
    client-side lookalike, which is the fix for the class of bug that left v1's
-   staff removal power unreachable (spec 14 R52). At most three comments per
+   staff removal power unreachable (spec 14 R52).
+   *(v1 parity 2026-10-09: drop `commentCount` (R26) and `canDelete` (R52) —
+   the client shows delete only on the viewer's own comments, v1
+   `forum-view.tsx:205`; edit `forum.ts:229-230`.)* At most three comments per
    post are inlined, so the per-row await is bounded; Task 7's
    `listForumComments` computes it the same way for the same reason. `canComment`
    per post is `assignment.forumAllowComments && (audience.kind === "student" ?
@@ -4620,7 +4715,9 @@ forumRouter.get("/assignments/:id/forum", requireAuth, async (req, res) => {
    (spec 14 D1/D5).
 4. Parse with `submitForumResponseRequestSchema` → 400.
 5. Word gate on the **plain text**, before wrapping, so the count the client
-   showed and the count the server applied are the same string:
+   showed and the count the server applied are the same string. This is the
+   **only** length gate, as v1 (R11, `forum-actions.ts:36-39`): an empty post
+   passes when the minimum is null or 0 *(v1 parity 2026-10-09)*:
 
 ```ts
   const words = countWords(parsed.data.text);
@@ -4657,7 +4754,7 @@ forumRouter.get("/assignments/:id/forum", requireAuth, async (req, res) => {
       status: "SUBMITTED",
       submittedAt: now,
     },
-    select: { publicId: true, status: true, feedback: true, reviewedAt: true },
+    select: { publicId: true, status: true, feedback: true, reviewedAt: true }, // v1 parity 2026-10-09 (R34): drop feedback/reviewedAt
   });
 
   return apiOk(res, {
@@ -4788,6 +4885,8 @@ git add apps/backend && git commit -m "feat(backend): forum thread read, the ups
 ---
 
 ### Task 7: Forum — comments, and the removal power that finally has a caller
+
+> **v1 parity 2026-10-09:** (R26) do **not** build `GET /assignments/:id/forum/posts/:publicId/comments`, `listForumComments` or `forumCommentsQuerySchema` / `forumCommentsPageSchema` — v1 inlines every comment (`jpc-space/src/lib/forum-query.ts:101-110`); remove `apps/backend/src/routes/forum.ts:253-262` and the "paginates a long comment list" test. (R40) LEADER cannot comment — invert "lets the group's leader comment without posting anything" to expect 403. (R50/R52/R53) staff never read a thread and LEADER cannot delete: "lets staff delete a comment they did not write" becomes "lets SUPER / the season ADMIN delete by id (no UI)" and a LEADER gets 403; no `canDelete` in the POST response. Step 5's OpenAPI states there is no moderation, as v1 (D-14.4).
 
 **Files:**
 - Modify: `apps/backend/src/routes/forum.ts`
@@ -5275,7 +5374,8 @@ describe("forum branch of the assignment screen", () => {
     expect(screen.getByText("Post to unlock the discussion")).toBeTruthy();
     expect(screen.getByText("0 / 5 words")).toBeTruthy();
     // v1's FORUM branch shows no due date at all (spec 14 R33).
-    expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
+    // v1 parity 2026-10-09 (R33): no due line on a FORUM assignment, as v1.
+    expect(screen.queryByText("Due Apr 1, 2099")).toBeNull();
     // Nothing was created by opening the screen (ruling C6).
     expect(put).not.toHaveBeenCalled();
   });
@@ -5437,6 +5537,8 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/forum-screen.test.tsx` → FAIL.
 
 - [ ] **Step 2: The hooks**
 
+> **v1 parity 2026-10-09:** (R26/R27) no `useForumComments` and no cursor on `useForumThread`; (R52) no `canDelete` in fixtures. Step 1's tests change with them: drop "fetches the rest of a post's comments on 'Show all comments'"; "renders peers…" asserts the delete control on the viewer's own comment and its absence on another's; the feedback assertion becomes `queryByText(...)` → null (R34); "blocks a short post" keeps `minWords: 5`; add a case that a zero-minimum view enables "Post response" on empty text (R11).
+
 ```ts
 // apps/mobile/src/hooks/use-forum.ts
 import {
@@ -5558,12 +5660,14 @@ Structure:
 
 1. `useForumThread(assignmentId, true)` → `LoadingState` / `ErrorState`
    (`onRetry` wired to `refetch`).
-2. **Due date** — *not rendered here.* v1's FORUM branch renders a badge and a
-   title and no due date at all, on the one assignment type where the field is
-   set and unused (spec 14 D10). Plan 5's `assignment/[id]/index.tsx` header
+2. **Due date** — *not rendered here, and not in the header either.* v1's FORUM
+   branch renders a "Forum" badge and the title and no due date at all
+   (`jpc-space/src/app/student/assignments/[id]/page.tsx:53-60`, R33), so Plan 5's
+   header `Due …` / `No due date` line is suppressed on FORUM (Step 4 note).
+   *(v1 parity 2026-10-09: was "Plan 5's header shows the forum's due date")*
+   Plan 5's `assignment/[id]/index.tsx` header
    already shows `Due {formatOrgDue(dueOrgDay, dueOrgTime)}` — the server's org
-   day (X13) — for every assignment type, so that is where the forum's due date
-   appears; a second, device-zone `formatDueDate(view.dueAt)` line here would
+   day (X13) — for every other assignment type; a second, device-zone `formatDueDate(view.dueAt)` line here would
    duplicate it (and break the test's `getByText("Due Apr 1, 2099")`).
 3. **Compose card**, rendered only when `view.own !== null` (a staff reader has
    no response of their own): a multiline `Input` labelled **Your response**
@@ -5572,12 +5676,11 @@ Structure:
    `countWords` — a divergent reimplementation is exactly how the button ends up
    enabled while the server refuses — and a `Button` titled
    `view.own.posted ? "Update response" : "Post response"`. The button is
-   disabled while `countWords(draft) < Math.max(1, view.minWords ?? 0)`; the
-   `Math.max(1, …)` is decision D-14.5 on the client side. Surface the
-   mutation's `error.response.data.error.message` verbatim beneath it. When
-   `view.own.feedback` is non-null, render it above the compose box as a
-   "Feedback from your leader" card with `formatDate(view.own.reviewedAt)` —
-   decision D-14.8.
+   disabled while `countWords(draft) < (view.minWords ?? 0)` — v1's gate
+   (`jpc-space/src/components/forum/forum-view.tsx:50-52,102`, R11; edit
+   `ForumThread.tsx:29`). Surface the mutation's `error.response.data.error.message`
+   verbatim beneath it. **No feedback block** (D-14.8, R34; remove
+   `ForumThread.tsx:33-40`). *(v1 parity 2026-10-09: was "Math.max(1, minWords) gate; 'Feedback from your leader' card")*
    **Plain text, one `Input`, no rich-text editor.** The post body is HTML in
    storage but the server converts in both directions (Task 1's helpers), so the
    editor domain 8 wants is not needed here and must not be bolted on — the
@@ -5588,6 +5691,8 @@ Structure:
    "You'll see everyone else's responses once you post yours." and no feed. It
    is the first thing a student sees and it is a mechanic, not a failure, so it
    gets a real empty state rather than a spinner or an error.
+> **v1 parity 2026-10-09:** (R31) each post and comment shows `authorAvatarUrl` beside `authorDisplayName` (v1 `forum-query.ts:120-122,130-132`). (R28) the post `text` is sanitised HTML rendered as formatted rich text with an RN HTML renderer limited to v1's 14-tag allow-list (v1 `rich-text-view.tsx:11-31,43`; `forum-view.tsx:191`). (R26/R27) every comment is inline and every post arrives at once: drop the "N more" / "Show all comments" / "More comments" controls, `useForumComments`, and the "Load more" button. (R52) item 6's delete control renders only when `comment.authorUserId === user.id`. (R53) item 7's moderation note goes — no staff reader exists.
+
 5. **Feed** — a `FlatList` of `Card`s: `authorDisplayName`, the post `text`,
    `formatDate(submittedAt)`, and the first comments with
    `{commentCount - comments.length} more` and a "Show all comments" press.
@@ -5612,6 +5717,8 @@ Structure:
    standing, rather than only in this plan.
 
 - [ ] **Step 4: Wire it into `assignment/[id]/index.tsx`**
+
+> **v1 parity 2026-10-09:** (R53) staff branch renders `AssignmentStaffPanel` only — no `ForumThread` and no `isMentor` (`assignment/[id]/index.tsx:155`). (R33) on a FORUM assignment the header shows a "Forum" badge and the title with no due line: guard the due `Text` at `assignment/[id]/index.tsx:130-134` with `data.type !== "FORUM"` (v1 `jpc-space/src/app/student/assignments/[id]/page.tsx:53-60`).
 
 Plan 5 Task 8 replaced this screen's default export with a role branch —
 `{isStudent ? <SubmissionSection detail={data} /> : <AssignmentStaffPanel detail={data} />}`.
@@ -6042,6 +6149,11 @@ describe("GET /api/v1/events — visibility derived from the token", () => {
   });
 });
 
+// v1 parity 2026-10-09 (R70): DELETE this describe with GET /events/:id —
+// v1 has no event detail (jpc-space season-calendar.tsx:374-380,458-487).
+// Add instead: GET /events with no from/to returns an event dated now − 400d
+// and one dated now + 800d (R57), and GET /events/:id/photo is 404 for a viewer
+// the visibility predicate excludes (R31).
 describe("GET /api/v1/events/:id", () => {
   it("serves the detail v1 has no page for", async () => {
     const res = await request(app)
@@ -6336,6 +6448,8 @@ const LIST_SELECT = {
 // they cannot see (spec 15 R32). The storage key never crosses this wire.
 ```
 
+> **v1 parity 2026-10-09:** (R57) with no `from`/`to`, apply **no** window — every visible event, `date` asc (v1 `jpc-events-query.ts:43-69`); delete the `now + 365d` / `now − 30d` defaults (`routes/events.ts:103-108`). (R58/R31) `LIST_SELECT` also selects `description`, `createdById`, `season.title` and whether `imagePath` is set; `toListItem` returns v1's single row shape with `description`, `createdById`, `seasonTitle`, `endTime` and `imageUrl: hasPhoto ? \`/api/v1/events/${id}/photo\` : null` (the key itself still never leaves the server). Add `GET /:id/photo`: `findFirst` with `eventVisibilityFilter` → 404, then stream the stored file (allowed with uploads off). (R70) drop `GET /:id` and the detail shape; POST/PATCH respond with the list row. (R14/R18/R81) on a failed parse, POST and PATCH return 400 with `message` = the **first** Zod issue's message (v1 `jpc-event-actions.ts:79,119`). (R6/R17/R11) compose `endDate = body.endDay ? orgWallClockToInstant(body.endDay, body.endTime) : null` (`routes/events.ts:164`) and refuse `endDate < date`.
+
 - **`GET /`** — parse `eventListQuerySchema` → 400 `bad_request`. Bounds:
   `to` defaults to `now + 365d`; `from` defaults to `now − 30d`, **or**, when
   `upcoming` is true, to the start of today in the org zone —
@@ -6397,9 +6511,9 @@ function toListItem(row: {
   // The body carries wall-clock fields and no zone; the org zone is the only
   // one that can apply. time === null → org midnight, v1's all-day encoding.
   const date = orgWallClockToInstant(body.day, body.time);
-  // An end is a day, not an instant: stored at org midnight of that day, as v1
-  // stores an all-day end.
-  const endDate = body.endDay ? orgWallClockToInstant(body.endDay, null) : null;
+  // v1 parity 2026-10-09 (R6/R17): the end is endDay + optional endTime, as v1
+  // (jpc-space src/lib/jpc-event-actions.ts:36-38); endTime alone is dropped.
+  const endDate = body.endDay ? orgWallClockToInstant(body.endDay, body.endTime) : null;
   // v1 force-nulls the season whenever visibility is not SEASON (R13); kept,
   // because a detached seasonId on an ALL event is unreachable data.
   const seasonId = body.visibility === "SEASON" ? body.seasonId : null;
@@ -6462,6 +6576,8 @@ git add apps/backend && git commit -m "feat(backend): JPC events with one token-
 ---
 
 ### Task 10: Events — the manager, the detail v1 never had, and the calendar merge
+
+> **v1 parity 2026-10-09 (R70):** there is **no event detail screen** — v1 has none (`jpc-space/src/components/sessions/season-calendar.tsx:374-380,458-487`, `upcoming-events-card.tsx:52-58`). Do not create (delete) `app/(app)/event/[id].tsx`, its `DETAIL_ROUTE_NAMES` entry and app-layout test, `useEventDetail` / `queryKeys.events.detail`, the "event detail screen" tests and Step 1. Event rows and cards call `Linking.openURL(event.url)` when `url` is set and are inert otherwise; SUPER edits in the manager list (`events.tsx`). The `jpcEventDetailSchema` consumer goes too.
 
 **Files:**
 - Create: `apps/mobile/src/hooks/use-events.ts`
@@ -6580,6 +6696,8 @@ describe("events screen", () => {
     );
   });
 
+  // v1 parity 2026-10-09 (R14/R18): invert — the request IS sent, and the
+  // server's 400 message renders once above the actions, not on the Time field.
   it("refuses a malformed time before any request", async () => {
     useSessionStore.setState(superSession);
     renderWithProviders(<EventsScreen />);
@@ -6613,6 +6731,8 @@ describe("events screen", () => {
     expect(await screen.findByText("No upcoming events")).toBeTruthy();
   });
 
+  // v1 parity 2026-10-09 (R70): replace with "opens the event's url with
+  // Linking, and does nothing for an event without one".
   it("navigates to the detail v1 has no page for", async () => {
     useSessionStore.setState(alumnusSession);
     renderWithProviders(<EventsScreen />);
@@ -6715,6 +6835,9 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
     expect(await screen.findByText("Kickoff")).toBeTruthy();
   });
 
+  // v1 parity 2026-10-09 (R73): an alumnus's calendar tab renders only the
+  // upcoming-events card — assert no sessions request is made and only events
+  // with (endDate ?? date) >= today appear (at most four).
   it("shows an alumnus with no season the org's events instead of an empty wall", async () => {
     useSessionStore.setState({ ...studentSession, scopes: { ...studentSession.scopes, activeSeasonId: null } });
     get.mockImplementation((url: string) =>
@@ -6779,6 +6902,9 @@ import { queryKeys } from "../lib/query-keys";
 
 /**
  * No `from`/`to` from the client.
+ *
+ * v1 parity 2026-10-09 (R57): no server default window any more — the read
+ * returns every visible event, as v1.
  *
  * The server defaults the window to [now − 30d, now + 365d]. Deriving calendar
  * bounds on the device would put a wall-clock decision on the wrong side of
@@ -6872,30 +6998,40 @@ export function useDeleteEvent() {
 
 **`events.tsx`** — one route, role branches inside, exactly as `/calendar` does:
 - `useEvents()` → `LoadingState` / `ErrorState` (`onRetry` → `refetch`) /
-  a list of pressable `Card`s pushing `/event/[id]`. Each card: title, the date
+  a list of `Card`s (v1 parity 2026-10-09, R70: not pushing `/event/[id]` — a
+  card opens `url` when set; SUPER gets Edit / Delete inline, as v1's manager). Each card: title, the date
   label — `formatDayKey(dayKey)`, or
   `formatDayKey(dayKey) + " – " + formatDayKey(endDayKey)` when
   `endDayKey` is set, plus `· {time}` **only when `time !== null`** — every
   piece comes from the server in the org zone (ruling X13); the client never
   formats `date`/`endDate` (device-zone `formatDate`/`formatSessionTime` would
   move an org-midnight event to the previous day west of Cairo), and never
-  tests hours itself. Then a visibility badge. A `SEASON` event is badged with its
+  tests hours itself. Then a visibility badge — `ALUMNI_ONLY` reads
+  **"Alumni only"** (v1 `jpc-event-manager-client.tsx:114-115`, R46). A `SEASON` event is badged with its
   `seasonCode`; v1 styles `SEASON` identically to `ALL`, so nothing on its
   calendar distinguishes an organisation-wide event from a season-scoped one
-  (spec 15 R68, item 12).
+  (spec 15 R68, item 12). For SUPER, each card also shows the photo thumbnail
+  from `imageUrl` when set (R31, v1 `jpc-event-manager-client.tsx:100-102`)
+  *(v1 parity 2026-10-09)*.
 - Empty → `EmptyState` "No upcoming events" / "Nothing is scheduled in the next
-  year." v1's card renders *nothing at all* in this case, so an alumnus with no
-  upcoming events sees a heading and blank space (R75).
+  year." — on this manager list only. **The `UpcomingEventsCard` renders nothing
+  at all when no event qualifies, as v1** (`jpc-space/src/components/events/upcoming-events-card.tsx:30`,
+  `src/app/alumni/calendar/page.tsx:13-21`, R75): return `null` at
+  `UpcomingEventsCard.tsx:26-27` (the alumnus's calendar tab, R73, shows that
+  card; the dashboards are Plan 16's). *(v1 parity 2026-10-09: was "an empty state rather than nothing")*
 - SUPER additionally gets a "New event" collapsible form at the top: `Input`s
   for **Title**, **Date** (`YYYY-MM-DD`), **Time** (optional `HH:mm`), **End
-  date** (optional), **Description**, **Link**, and a visibility selector; when
+  date** (optional), **End time** (optional `HH:mm` — R6, v1 `jpc-event-form.tsx:129-151`), **Description**, **Link**, the current photo when editing (R31, v1 `jpc-event-form.tsx:171-182`), and a visibility selector — the `ALUMNI_ONLY` option labelled **"Alumni only (leaders, admins)"** (R46, v1 `jpc-event-form.tsx:195`; `EventForm.tsx:40`) *(v1 parity 2026-10-09)*; when
   `SEASON` is chosen, a season picker appears (`useSeasons()` from Plan 4).
   **The form sends wall-clock fields, and the server composes the instant in
   the org zone** (D-15.6, ruling X13): `{ day, time, endDay }` with an empty
   Time sent as `time: null` (all-day) and an empty End date as `endDay: null`.
-  Before mutating, the form parses its values with `createJpcEventRequestSchema`;
-  a failed field sets that `Input`'s `accessibilityHint` to the issue message
-  (`"Use HH:mm."`, `"Use YYYY-MM-DD."`) and no request is sent. v1 posts naive
+  **No client-side schema validation, as v1** (R14/R18/R81; v1
+  `jpc-event-actions.ts:72,79,119`, `jpc-event-form.tsx:77-83`): the form sends
+  its values and shows the server's single first-issue `error.message` above the
+  actions — not per field (remove the `safeParse` / `firstErrorByField` at
+  `EventForm.tsx:86-95,101`). The server's 200-character title cap still
+  applies. *(v1 parity 2026-10-09: was "parse with createJpcEventRequestSchema on device; per-field hints; no request")* v1 posts naive
   strings and lets the server resolve them in *its host's* zone, which is why
   editing an event from another timezone silently moves it (R15/R20/R82); the
   earlier draft of this plan moved that resolution to the *device's* zone, which
@@ -6904,7 +7040,7 @@ export function useDeleteEvent() {
   never a crash and never a "not available" wall, because ALUMNI's nav labels
   `/calendar` "Events" and a mis-tap is likely.
 
-**`event/[id].tsx`** — `useEventDetail(Number(id))`: title, the same
+**`event/[id].tsx`** — *(v1 parity 2026-10-09: not built — R70, see the note under the Task 10 heading.)* `useEventDetail(Number(id))`: title, the same
 server-derived date label as the list card,
 `description`, `seasonTitle` when present, and an "Open link" `Button` calling
 `Linking.openURL(url)` when `url` is set. When `canManage`, an inline "Edit"
@@ -7019,18 +7155,23 @@ function CalendarDays({
                 ) : null}
               </Card>
             ) : (
+              // v1 parity 2026-10-09 (R67/R68/R70; v1 season-calendar.tsx:69-73,355-367,471,484):
+              // calendar icon, literal "JPC event" (no time), amber + lock for
+              // ALUMNI_ONLY and navy otherwise, no season caption, and the url
+              // (not a detail route). Now lives in
+              // apps/mobile/src/components/calendar/CalendarEntries.tsx:110-135.
               <Card
                 key={`e${entry.event.id}`}
-                style={{ marginTop: theme.spacing.sm }}
-                onPress={() => router.push({ pathname: "/event/[id]", params: { id: String(entry.event.id) } })}
+                style={{ marginTop: theme.spacing.sm, backgroundColor: eventTint(theme, entry.event).background }}
+                onPress={entry.event.url ? () => void Linking.openURL(entry.event.url as string) : undefined}
               >
-                <Text variant="body">{entry.event.title}</Text>
-                <Text variant="label" color={theme.colors.neutral[600]}>
-                  {entry.event.time ? `JPC event · ${formatWallTime(entry.event.time)}` : "JPC event · All day"}
+                <Text variant="body" color={eventTint(theme, entry.event).foreground}>
+                  {/* the app's lock icon before the title when ALUMNI_ONLY; a calendar icon in the time rail */}
+                  {entry.event.title}
                 </Text>
-                {entry.event.seasonCode ? (
-                  <Text variant="caption" color={theme.colors.neutral[600]}>{entry.event.seasonCode}</Text>
-                ) : null}
+                <Text variant="label" color={eventTint(theme, entry.event).foreground}>
+                  JPC event
+                </Text>
               </Card>
             ),
           )}
@@ -7040,6 +7181,8 @@ function CalendarDays({
   );
 }
 ```
+
+> **v1 parity 2026-10-09 (R73):** an alumnus does not reach `PinnedSeasonCalendar` — the calendar tab renders only the upcoming-events card for them (v1 `jpc-space/src/app/alumni/calendar/page.tsx:11,19`; `calendar.tsx:75-105`), with no session query. The season-less arm below stays for a current student with no season.
 
 (d) `PinnedSeasonCalendar` — call `useEvents()` beside the sessions query and
 let events fill a season-less calendar (an alumnus):
@@ -7087,9 +7230,9 @@ names (`fromDayKey`–`toDayKey`, inclusive, ISO strings compare correctly):
 
 The empty arm becomes `data.sessions.length === 0 && eventRows.length === 0`
 and the list arm `<CalendarDays sessions={data.sessions} events={eventRows} showSeason={showSeason} />`.
-(`useEvents()` reads the server's default window, today − 30 d to + 365 d;
-paging "Earlier" past that shows sessions without events. Recorded, not fixed:
-a windowed events read is the deferred `/api/v1/calendar`'s job, D-15.1.)
+(`useEvents()` reads every visible event — no server window since the v1
+parity revision, R57 — so paging "Earlier" or "Later" always finds its events.
+*(v1 parity 2026-10-09: was "server's default window, today − 30 d to + 365 d")*)
 
 The empty state appears only when **both** arrays are empty (v1 R71, kept).
 `grep -n "formatSessionTime\|formatDate(" "apps/mobile/app/(app)/calendar.tsx"` → still no output (X13).
@@ -7139,10 +7282,9 @@ testing what it claims.
   5. **Forum, the draft privacy rule.** Remove `NOT: { text: null }` **or**
      `status: { not: "DRAFT" }` from the peer query. → "never exposes an
      unposted peer's draft text" fails.
-  6. **Forum, delete rights.** Make `canDelete` on the wire
-     `c.authorUserId === user.userId` instead of the gate's answer. → "lets
-     staff delete a comment they did not write — and tells the client so" fails
-     on the `canDelete` assertion.
+  6. **Forum, delete rights.** Re-add the LEADER branch to
+     `canDeleteForumComment`. → the LEADER-gets-403 delete case fails.
+     *(v1 parity 2026-10-09: was "make canDelete author-only on the wire" — canDelete is gone, R52.)*
   7. **Events, the write gate.** Remove `isSuper(user)` from `POST /events`. →
      "refuses create, update and delete to an ADMIN" fails.
   8. **Events, the alumni rule.** Change `isAlumnus(user) || user.role !== "STUDENT"`
@@ -7196,8 +7338,9 @@ webview needs one):
   2. Kill the app mid-video and reopen: playback resumes near where it stopped.
   3. As an admin on the same session: add a question at a timestamp typed as
      `2:30`, see it in the list, change its correct answer and read the
-     "N recorded answers were re-graded" line, then check the results table
-     shows the student's score.
+     "N recorded answers were re-graded" line, then check the question's
+     `{responseCount} answers recorded` line counts the student's answer
+     *(v1 parity 2026-10-09: was "check the results table shows the student's score")*.
   4. As a student, open a **forum** assignment never opened before: the compose
      box and the locked feed render, posting unlocks the feed, and a group-mate
      on a second device sees the post and can comment. Confirm no email address
@@ -7323,3 +7466,63 @@ order … 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 …):**
   `StudentCheckInCard` (Plan 11 Task 10), whose scanner pulls the native module.
   Step 6 names Plan 11's branch among what to keep. Plan 11 also added to the
   header's consumed plans.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 13 R23, R24 | - | `parseTimestamp` converts each part with `Number()`; empty part is 0, `0x10`/`1e3` accepted (`src/lib/video-time.ts:21-30`) | `packages/shared/src/video-time.ts:20,46` (drop `COMPONENT`, port v1 verbatim) | Task 1 Step 1 video-time tests; Step 2 `parseTimestamp`; Task 5 editor ":30" test |
+| 2 | 13 R27 | - | No upper bound at parse time; 86,400 enforced only by the server action (`src/lib/video-time.ts:15-30`, `src/lib/video-quiz-actions.ts:17`) | `packages/shared/src/video-time.ts:40,60` (remove `maxSeconds`); editor surfaces the server 400 | Task 1 Produces, tests, impl; Task 5 Step 5 parse rule |
+| 3 | 13 R30 | - | Four unanchored regexes find `?v=`/`&v=`, `youtu.be/`, `/embed/`, `/shorts/` anywhere (`src/lib/youtube.ts:4-13`) | `packages/shared/src/youtube.ts:54-66` (regex fallback after host check, with boundary) | D-13.7; Task 1 Step 2 note |
+| 4 | 13 R37 | - | No video id / no questions → only a "Watch recording" button, no message (`src/app/student/sessions/[id]/page.tsx:47-49,76-90`) | `apps/mobile/src/components/VideoQuizPlayer.tsx:39-51,210-212`; session screen zero-question branch | Task 5 Step 4 items 1–2; Step 6 student bullet; fallback test |
+| 5 | 13 R49 | - | Progress saved on pause, hidden, unmount only (`src/components/sessions/interactive-video-player.tsx:154,163,198`) | `apps/mobile/src/components/VideoQuizPlayer.tsx:19,129-135` (remove interval) | Task 5 Step 4 item 8 |
+| 6 | 13 R74 | - | No surface shows any student's video-quiz result; editor shows `responseCount` only (`src/components/sessions/video-questions-editor.tsx:75`) | `apps/backend/src/routes/video-quiz.ts:439-461`, `loadVideoQuizResults`, `videoQuizResultsSchema`, `useVideoQuizResults`, `queryKeys.videoQuiz.results`, results table, `canSeeResults` | Task 1 schemas/Produces; Task 2 query keys; Task 4 heading note, Step 2, Step 3; Task 5 editor note, Step 5, Step 6; Task 11 device check 3 |
+| 7 | 14 R11 | - | Only gate is `countWords >= (forumMinWords ?? 0)`; empty post allowed when min is 0/null (`src/lib/forum-actions.ts:36-39`, `src/components/forum/forum-view.tsx:50-52,102`) | `packages/shared/src/forum.ts:104-106`; `apps/mobile/src/components/ForumThread.tsx:29` | D-14.5; Task 1 schema + schema test; Task 6 PUT step 5 + empty-post test; Task 8 Step 3 item 3 |
+| 8 | 14 R26 | - | Every comment inlined, `createdAt` asc (`src/lib/forum-query.ts:101-110`) | `apps/backend/src/lib/queries/forum.ts:194-205`; `routes/forum.ts:253-262`; `listForumComments`, `useForumComments`, "Show all comments" | Task 1 post schema + query schemas; Task 6 Step 2 note; Task 7 heading note; Task 8 notes |
+| 9 | 14 R27 | - | Feed loads every post, `submittedAt` desc, no paging (`src/lib/forum-query.ts:80-112`) | `apps/backend/src/lib/queries/forum.ts:167-185,241`; `forumFeedQuerySchema`; ForumThread "Load more" | Task 1 `forumViewSchema`, `forumFeedQuerySchema`; Task 6 pagination test + Step 2 note; Task 8 notes |
+| 10 | 14 R28 | - | Post bodies render as sanitised rich text: 14-tag allow-list `p br strong em s a ul ol li h2 h3 blockquote code pre`, `a[href,target,rel]`, schemes http/https/mailto (`src/components/ui/rich-text-view.tsx:11-31,43`; `forum-view.tsx:191`) | `apps/backend/src/lib/queries/forum.ts:219` (sanitise with v1's allow-list instead of `htmlToPlainText`); ForumThread renders with an RN HTML renderer limited to those tags | Task 1 `forumPostSchema.text`; Task 6 Step 2 item 6 + plain-text test; Task 8 Step 3 note |
+| 11 | 14 R31 | - | Each post and comment author's avatar shown (`src/lib/forum-query.ts:120-122,130-132`) | add `authorAvatarUrl` via a gated id-addressed avatar read endpoint (none exists in `apps/backend/src/routes`); render in ForumThread | D-14.6; Task 1 comment/post schema notes; Task 6 Step 2 note; Task 8 Step 3 note |
+| 12 | 14 R33 | - | FORUM header: "Forum" badge and title, no due date (`src/app/student/assignments/[id]/page.tsx:53-60`) | `apps/mobile/app/(app)/assignment/[id]/index.tsx:130-134` (guard with `type !== "FORUM"`) | Task 8 Step 3 item 2; Step 4 note; forum lock test |
+| 13 | 14 R34, R56 | - | Forum screen never shows reviewer feedback; posts stay reviewable (`src/lib/forum-query.ts:54-57`, `forum-view.tsx:24-27`) | `apps/backend/src/lib/queries/forum.ts:108,121-122`; `forumOwnResponseSchema`; `ForumThread.tsx:33-40` | D-14.8; Task 1 `forumOwnResponseSchema`; Task 6 Step 2 note + PUT select; Task 8 Step 3 item 3, Step 2 note |
+| 14 | 14 R40 | - | LEADER and MENTOR cannot comment (`src/lib/auth/permissions.ts:352`) | `apps/backend/src/lib/permissions.ts:559` (remove LEADER branch) | D-14.4 item 3; Task 2 `canCommentOnForumSubmission` doc, impl, test; Task 7 heading note |
+| 15 | 14 R50 | - | Comment delete: author, SUPER or season ADMIN only (`src/lib/forum-actions.ts:115-118`) | `apps/backend/src/lib/permissions.ts:597-600` | D-14.4 item 2; Task 2 `canDeleteForumComment` doc, impl, tests; Task 7 note; Task 11 mutation 6 |
+| 16 | 14 R52 | - | Delete control only on the viewer's own comments (`src/components/forum/forum-view.tsx:205`) | `apps/backend/src/lib/queries/forum.ts:229-230` (drop `canDelete`); ForumThread gates on `authorUserId === user.id` | D-14.4 item 2; Task 1 `forumCommentSchema`; Task 6 Step 2 item 6; Task 8 notes; Task 11 mutation 6 |
+| 17 | 14 R53, R57 | REG-39 | No staff forum surface, no moderation (`src/app/student/assignments/[id]/page.tsx:14,24`; `src/lib/forum-actions.ts` whole file) | `apps/backend/src/lib/permissions.ts:577-602,625-635` (student-only `forumAudienceFor`); `assignment/[id]/index.tsx:155` | D-14.4; Task 2 `forumAudienceFor` doc, impl, tests; Task 6 staff tests + Step 2 note; Task 7 note; Task 8 Step 3 item 7, Step 4 note |
+| 18 | 15 R6, R17 | - | Optional end date plus optional end time; end time alone dropped (`src/lib/jpc-event-actions.ts:17,36-38,73`; `src/app/super/events/jpc-event-form.tsx:129-151`) | `packages/shared/src/event.ts:66` (add `endTime`); `apps/backend/src/routes/events.ts:164`; `EventForm.tsx` | D-15.6; Task 1 `eventWriteBase` + list schema; Task 9 Step 5 note + POST compose; Task 10 Step 4 form |
+| 19 | 15 R11 | - | End ≥ start on full date-times, equal allowed (`src/lib/jpc-event-actions.ts:23-26`) | `packages/shared/src/event.ts:81-87` (`refineEvent`) | D-15.6; Task 1 `refineEvent` |
+| 20 | 15 R14, R18, R81 | REG-113 | No client validation; first Zod issue shown as one message (`src/lib/jpc-event-actions.ts:15,72,79,119`; `jpc-event-form.tsx:77-83`) | `apps/mobile/src/components/EventForm.tsx:86-95,101`; `routes/events.ts` create/patch error message | Task 9 Step 5 note; Task 10 Step 4 form + malformed-time test |
+| 21 | 15 R31 | - | Each event carries `imageUrl`; manager list thumbnail, edit form current photo (`src/lib/jpc-events-query.ts:76`; `jpc-event-manager-client.tsx:100-102`; `jpc-event-form.tsx:171-182`) | `packages/shared/src/event.ts:43-48` (add `imageUrl`); new `GET /api/v1/events/:id/photo` gated on `eventVisibilityFilter` (not `storage.url()`, KEEP-FIX R32/R60) | D-15.7; Out of scope; Task 1 list schema; Task 9 Step 5 note + test note; Task 10 Step 4 |
+| 22 | 15 R42, R44, R45; 03 R92 | REG-41 | **Resolved: 19-R6 KEEP-FIX wins; only labels/visual reverted.** v1's `role !== "STUDENT"` (`src/components/events/upcoming-events-card.tsx:23`) hides ALUMNI_ONLY from every alumnus, a broken flow, so v2 keeps `isAlumnus(user) \|\| role !== "STUDENT"` | none for visibility (`apps/backend/src/lib/queries/events.ts:57-59` stays); labels in row 23, visuals in rows 27 and 29 | D-15.2 (labels only); Task 9 predicate, test and Task 11 mutation 8 left as they were |
+| 23 | 15 R46 | - | Form option "Alumni only (leaders, admins)"; manager badge "Alumni only" (`jpc-event-form.tsx:195`; `jpc-event-manager-client.tsx:114-115`) | `apps/mobile/src/components/EventForm.tsx:40`; manager row badge | D-15.2; Task 10 Step 4 |
+| 24 | 15 R57 | - | Every event ever created, `date` asc, no window or limit (`src/lib/jpc-events-query.ts:43-69`) | `apps/backend/src/routes/events.ts:98-108` (remove −30d/+365d defaults) | D-15.5; Task 1 `eventListQuerySchema` doc; Task 9 Step 5 note + test note; Task 10 `useEvents` doc, Step 5(e) |
+| 25 | 15 R58 | REG-114 | One row shape for every role incl. `description`, `imageUrl`, `seasonTitle`, `createdById` (`src/lib/jpc-events-query.ts:6-18,56-68`) | `packages/shared/src/event.ts:11-55` | Task 1 list/detail schemas; Task 9 Step 5 note |
+| 26 | 15 R67 | - | Agenda event row: calendar icon, subtitle "JPC event", no time (`src/components/sessions/season-calendar.tsx:355-361,367`) | `apps/mobile/src/components/calendar/CalendarEntries.tsx:125-127` (was `calendar.tsx:62`) | Task 10 Step 5 calendar row code |
+| 27 | 15 R68 | - | Amber + lock for `ALUMNI_ONLY`, navy otherwise; SEASON same as ALL (`season-calendar.tsx:69-73,364,471,484`) | `CalendarEntries.tsx:128-133` (remove `seasonCode` chip; add lock icon — amber tint already exists at `:48-53`) | Task 10 Step 5 calendar row code; Task 1 `seasonCode` doc |
+| 28 | 15 R70 | REG-114 | No event detail page; event with `url` opens it, without is inert (`season-calendar.tsx:374-380,458-487`; `upcoming-events-card.tsx:52-58`) | delete `apps/mobile/app/(app)/event/[id].tsx`, its route registration, `useEventDetail`/`queryKeys.events.detail`, `GET /events/:id` (read) | Task 10 heading note, Step 1, Step 4 cards + detail, tests; Task 9 detail tests + Step 5 note; Task 1 detail schema |
+| 29 | 15 R73 | - | Alumni Events page = only the UpcomingEventsCard (`src/app/alumni/calendar/page.tsx:11,19`) | `apps/mobile/app/(app)/calendar.tsx:75-105` (alumnus → card only, no session query) | D-15.1; Task 10 Step 5(d) note; alumnus calendar test |
+| 30 | 15 R75 | REG-60 | Card renders nothing when no event qualifies (`upcoming-events-card.tsx:30`; `alumni/calendar/page.tsx:13-21`) | `apps/mobile/src/components/dashboard/UpcomingEventsCard.tsx:26-27` (return null; delete empty-state test) | Task 10 Step 4 empty bullet (the card's own test is Plan 16's) |
+
+**Ruling C11 must be amended.** Row 10 conflicts with `_DECISIONS.md` C11 as written ("Nothing
+renders as HTML"). v1 already sanitised forum post bodies with the allow-list above before
+rendering, so it is not the unsanitised-HTML defect C11 targets. C11 should read, for forum
+posts: "sanitise with v1's allow-list (`rich-text-view.tsx:11-31`)" rather than "nothing renders
+as HTML". Until it is amended, row 10 is blocked on that ruling.
+
+**Conflict with a KEEP-FIX row: resolved. 19-R6 KEEP-FIX wins; only labels/visual reverted.**
+The REVERT rows 15 R42/R44/R45 and 03 R92 contradicted `19-dashboards R6` (KEEP-FIX, REG-41).
+The coordinator ruled that v1's formula is a defect (no alumnus can ever see an ALUMNI_ONLY
+event), so v2 keeps alumni visibility and REG-41 stands. The parts of those rows that are not
+about who sees ALUMNI_ONLY still apply: v1's labels (R46), the lock icon and chip changes (R68),
+and the alumnus calendar showing only the events card (R73).
+
+**Awaiting owner (not changed):** 15 R22–R29 (event photo upload: optional photo, jpeg/png/webp
+MIME, 5 MB cap, extension from MIME subtype, key `events/YYYY/MM/{uuid}-event.{ext}`, written
+before the row outside a transaction, cannot be removed, old blob never deleted —
+`src/lib/jpc-event-actions.ts:44-60,81-96,121-136`). They conflict with `space-v2/CLAUDE.md`
+"Uploads are switched off"; D-15.7 still defers `POST/DELETE /events/:id/photo`. When the CMS
+lands, port v1's rules as they are.

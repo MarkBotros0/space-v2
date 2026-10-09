@@ -51,10 +51,17 @@ fixture code Task 3 needs). Then Task 3 (seasons) and Tasks 4–6 (sessions)
 are independent streams. Task 7 is the closing gate.
 
 **Error codes this plan defines** (Plans 4/6 surface them): `code_taken`
-409, `invalid_code` 400, `forbidden_field` 403, `season_in_use` 409,
+409, `invalid_code` 400, `forbidden_field` 403,
 `has_student_records` 409. D15 names the duplicate-code 409 `conflict`; this
 plan keeps the more specific `code_taken` (recorded divergence — the client
-needs to tell a code clash from any other conflict).
+needs to tell a code clash from any other conflict). As in v1
+(`season-actions.ts:76-83`), the code clash is a **field-level error on
+`code`**: the 409 body carries the top message "A season with that code
+already exists." plus `error.details.fieldErrors = { code: "Already in use." }`,
+and every season form (create, duplicate, SUPER edit) shows "Already in use."
+under the Code input alongside the top message. There is no `season_in_use`
+code — season delete never refuses (v1 R49). *(v1 parity 2026-10-09: was
+"code_taken only a generic message; season_in_use 409 on delete")*
 
 ---
 
@@ -154,10 +161,15 @@ describe("session write schemas", () => {
     ).toBe(true);
   });
 
-  it("refuses repeatWeeks outside 1..26 (v1 clamped silently)", () => {
-    expect(
-      createSessionRequestSchema.safeParse({ ...valid, seasonId: 1, repeatWeeks: 27 }).success,
-    ).toBe(false);
+  // v1 parity 2026-10-09 (was "refuses outside 1..26"): v1 session-actions.ts:53
+  // and recurrence.ts:10 clamp silently.
+  it("clamps repeatWeeks to 1..26 (v1 session-actions.ts:53)", () => {
+    const parse = (repeatWeeks: number) =>
+      createSessionRequestSchema.parse({ ...valid, seasonId: 1, repeatWeeks }).repeatWeeks;
+    expect(parse(27)).toBe(26);
+    expect(parse(0)).toBe(1);
+    expect(parse(-3)).toBe(1);
+    expect(createSessionRequestSchema.parse({ ...valid, seasonId: 1 }).repeatWeeks).toBe(1);
   });
 
   it("requires a scope on update", () => {
@@ -325,8 +337,9 @@ const sessionWriteBase = z.object({
 
 export const createSessionRequestSchema = sessionWriteBase.extend({
   seasonId: z.number().int().positive(),
-  /** Weekly siblings sharing one recurrenceGroupId. v1 clamped to 26 silently; refusing is honest. */
-  repeatWeeks: z.number().int().min(1).max(26).default(1),
+  /** Weekly siblings sharing one recurrenceGroupId. Clamped to 1..26 silently, absent = 1, as v1
+   *  (session-actions.ts:53, recurrence.ts:10). v1 parity 2026-10-09: was min(1).max(26) → 400. */
+  repeatWeeks: z.number().int().default(1).transform((n) => Math.max(1, Math.min(n, 26))),
 });
 export type CreateSessionBody = z.output<typeof createSessionRequestSchema>;
 
@@ -681,9 +694,12 @@ describe("season writes", () => {
       .send(seasonBody(first));
     expect(clash.status).toBe(409);
     expect(clash.body.error.code).toBe("code_taken");
+    // v1 parity 2026-10-09: v1 season-actions.ts:80-81 field error under Code.
+    expect(clash.body.error.message).toBe("A season with that code already exists.");
+    expect(clash.body.error.details).toEqual({ fieldErrors: { code: "Already in use." } });
   });
 
-  it("soft-deletes an empty season and clears student pointers to it", async () => {
+  it("soft-deletes an empty season and leaves student pointers to it (v1 R51)", async () => {
     const empty = await createTestSeason();
     const pointed = await createTestUser("pointed", "STUDENT");
     await db.studentProfile.create({ data: { userId: pointed.id, activeSeasonId: empty.id } });
@@ -697,7 +713,8 @@ describe("season writes", () => {
     const profile = await db.studentProfile.findUnique({
       where: { userId: pointed.id }, select: { activeSeasonId: true },
     });
-    expect(profile?.activeSeasonId).toBeNull();
+    // v1 parity 2026-10-09 (was "toBeNull"): v1 season-actions.ts:169-172 touches only the season row.
+    expect(profile?.activeSeasonId).toBe(empty.id);
 
     const again = await request(app)
       .delete(`/api/v1/seasons/${empty.id}`)
@@ -705,22 +722,21 @@ describe("season writes", () => {
     expect(again.status).toBe(404);
   });
 
-  it("blocks deleting a season with enrollments or sessions (decision on spec 02 D4)", async () => {
-    // `seasonId` (the suite's main season) has an enrollment from beforeAll.
-    const blocked = await request(app)
-      .delete(`/api/v1/seasons/${seasonId}`)
-      .set("authorization", `Bearer ${superToken}`);
-    expect(blocked.status).toBe(409);
-    expect(blocked.body.error.code).toBe("season_in_use");
-
+  // v1 parity 2026-10-09 (was "blocks deleting … 409 season_in_use"): v1
+  // season-actions.ts:163-177 soft-deletes whatever the season contains.
+  it("soft-deletes a season with sessions and enrollments (v1 R49)", async () => {
     const withSession = await createTestSeason();
+    const enrolled = await createTestUser("enrolled", "STUDENT");
+    await db.seasonEnrollment.create({ data: { seasonId: withSession.id, studentUserId: enrolled.id } });
     await db.session.create({
       data: { seasonId: withSession.id, title: "S", startsAt: new Date("2099-02-01T18:00:00.000Z"), durationMinutes: 60 },
     });
-    const blocked2 = await request(app)
+    const gone = await request(app)
       .delete(`/api/v1/seasons/${withSession.id}`)
       .set("authorization", `Bearer ${superToken}`);
-    expect(blocked2.status).toBe(409);
+    expect(gone.status).toBe(200);
+    const row = await db.season.findUnique({ where: { id: withSession.id }, select: { deletedAt: true } });
+    expect(row?.deletedAt).not.toBeNull();
   });
 
   it("refuses delete by an ADMIN even of their own season (D3)", async () => {
@@ -743,8 +759,16 @@ three handlers after the existing `GET "/:id"`:
 ```ts
 const ADMIN_EDITABLE = new Set<string>(SEASON_ADMIN_EDITABLE_FIELDS);
 
+// v1 parity 2026-10-09 (was "generic message only"): v1 season-actions.ts:76-83 also
+// returns fieldErrors { code: "Already in use." }, shown under the Code input.
 const codeTaken = (res: Response) =>
-  apiError(res, "code_taken", "A season with that code already exists.", 409);
+  res.status(409).json({
+    error: {
+      code: "code_taken",
+      message: "A season with that code already exists.",
+      details: { fieldErrors: { code: "Already in use." } },
+    },
+  });
 
 seasonsRouter.post("/", async (req, res) => {
   const user = requireUser(req);
@@ -855,29 +879,11 @@ seasonsRouter.delete("/:id", async (req, res) => {
   const existing = await db.season.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
   if (!existing) return apiError(res, "not_found", "Season not found.", 404);
 
-  // Product decision on spec 02 D4 (recorded in the Revision note): v1
-  // checked nothing and stranded children. v2 refuses while the season has
-  // ANY enrollment or session — archive it (status ARCHIVED) instead. D4's
-  // `force` escape hatch is not offered: a soft-deleted season with sessions
-  // stays reachable by id everywhere (R50), which is the state D4 objects to.
-  const [enrollments, sessions] = await Promise.all([
-    db.seasonEnrollment.count({ where: { seasonId: id } }),
-    db.session.count({ where: { seasonId: id } }),
-  ]);
-  if (enrollments > 0 || sessions > 0) {
-    return apiError(
-      res,
-      "season_in_use",
-      "This season has sessions or enrollments; archive it instead.",
-      409,
-    );
-  }
-
-  // R51: v1 left StudentProfile.activeSeasonId pointing at the deleted row.
-  await db.$transaction([
-    db.studentProfile.updateMany({ where: { activeSeasonId: id }, data: { activeSeasonId: null } }),
-    db.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } }),
-  ]);
+  // v1 parity 2026-10-09 (was "409 season_in_use on any enrollment/session; clear
+  // activeSeasonId"): v1 season-actions.ts:163-177 soft-deletes whatever the season
+  // contains (R49) and touches only the season row (R51) — students keep their
+  // activeSeasonId, SeasonAdmin rows stay. The confirm step lives on the client.
+  await db.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } });
   return apiOk(res, { deleted: true });
 });
 ```
@@ -958,7 +964,7 @@ and `patch` + `delete` to the existing `"/api/v1/seasons/{id}"` object:
         tags: ["Seasons"],
         summary: "Soft-delete a season",
         description:
-          "SUPER only. Refused with 409 `season_in_use` while the season has any enrollment or session — archive it instead (decision on spec 02 D4). On success clears every StudentProfile.activeSeasonId pointing at it, in the same transaction.",
+          "SUPER only. Soft-deletes the season whatever it contains (v1 season-actions.ts:163-177, R49); touches only the season row — StudentProfile.activeSeasonId and SeasonAdmin rows are left as they are (R51). The client asks for one confirmation first.",
         parameters: [idParam],
         responses: {
           200: ok({ type: "object", properties: { deleted: { type: "boolean" } } }, "Deleted."),
@@ -966,7 +972,6 @@ and `patch` + `delete` to the existing `"/api/v1/seasons/{id}"` object:
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
-          409: conflict("`season_in_use`."),
         },
       },
 ```
@@ -987,7 +992,7 @@ and `patch` + `delete` to the existing `"/api/v1/seasons/{id}"` object:
 
 **What ports and what diverges** (v1 `duplicateSeasonAction`, `season-actions.ts:199-362`; spec 02 R54–R69):
 - Ported: SUPER-only (R54); copies `program`, `description`, both budget fields from the source and takes `year`, `code`, `startDate`, `endDate` from input, status forced `DRAFT` (R56, R20); title `'<program> <year>'`; groups copied **name/description only — no leaders, no students** (R57, R61); sessions copied with `startsAt` shifted by the single offset `newStart − source.startDate` (R58, R62); non-deleted assignments copied with `dueAt` shifted by the same offset (null stays null) and **`sessionId` remapped through a `sessionIdMap`** to the cloned session (R59); targets remapped through `groupIdMap`, only when not `isAllGroups`, unmappable ones dropped (R60); code default `slugify(code || '<source.program> <year>')`, validated, uniqueness-checked (R64); one transaction (R67); duplicating user as assignment `createdById`/`updatedById` (R68). The date shift stays a fixed instant offset (v1); it is not recurrence, so X13 does not apply.
-- Diverges: (1) **fresh recurrence ids** — one new id per source `recurrenceGroupId` (spec 02 D5, ruling C10); (2) the source must not be soft-deleted (D6 — v1 duplicated deleted seasons); (3) 409 on the unique-index race (D15).
+- Diverges: (1) **fresh recurrence ids** — one new id per source `recurrenceGroupId` (spec 02 D5, ruling C10); (3) 409 on the unique-index race (D15). The source lookup has **no `deletedAt` filter**, as v1 (`season-actions.ts:210-211`, R66): a soft-deleted season can be duplicated. *(v1 parity 2026-10-09: was "(2) source must not be soft-deleted, 404")*
 - The duplicate sheet's copy ("leaders and students are not copied", D6) is Plan 6's.
 
 - [ ] **Step 1: Failing test.** Append to `seasons-routes.test.ts`:
@@ -1126,14 +1131,15 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
     expect(res.body.error.code).toBe("code_taken");
   });
 
-  it("refuses to duplicate a soft-deleted season (spec 02 D6)", async () => {
+  // v1 parity 2026-10-09 (was "refuses … 404"): v1 season-actions.ts:210-211 has no deletedAt filter.
+  it("duplicates a soft-deleted season (v1 R66)", async () => {
     const source = await createTestSeason();
     await db.season.update({ where: { id: source.id }, data: { deletedAt: new Date() } });
     const res = await request(app)
       .post(`/api/v1/seasons/${source.id}/duplicate`)
       .set("authorization", `Bearer ${superToken}`)
       .send({ year: 2100, code: testSeasonCode(), startDate: "2100-01-01T00:00:00.000Z", endDate: "2100-12-31T00:00:00.000Z" });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(201);
   });
 
   it("is SUPER-only", async () => {
@@ -1164,9 +1170,10 @@ seasonsRouter.post("/:id/duplicate", async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid duplicate body.", 400);
   const input = parsed.data;
 
-  // D6: v1 had no deletedAt guard here and would clone a deleted season.
+  // v1 parity 2026-10-09 (was "deletedAt: null → 404"): v1 season-actions.ts:210-211
+  // has no deletedAt filter (R66), so a soft-deleted source duplicates too.
   const source = await db.season.findFirst({
-    where: { id: sourceId, deletedAt: null },
+    where: { id: sourceId },
     select: {
       program: true, description: true, startDate: true,
       absenceBudgetMinutes: true, absenceWeightMinutes: true,
@@ -1310,7 +1317,7 @@ seasonsRouter.post("/:id/duplicate", async (req, res) => {
         tags: ["Seasons"],
         summary: "Duplicate a season's structure",
         description:
-          "SUPER only. Creates a DRAFT season copying program, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is 404.",
+          "SUPER only. Creates a DRAFT season copying program, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is duplicated like any other (v1 season-actions.ts:210-211).",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -1497,7 +1504,7 @@ sessionsRouter.post("/", async (req, res) => {
         tags: ["Sessions"],
         summary: "Create a session or weekly series",
         description:
-          "Season-admin power. `repeatWeeks` (1–26; v1 clamped silently, v2 refuses) creates that many sessions one calendar week apart **in the organisation timezone** (ORG_TIMEZONE), so the wall-clock time holds across DST; they share a fresh recurrenceGroupId. Creation lives here with `seasonId` in the body, not under /seasons/:id, so the season and session write workstreams never share a route file — do not move it.",
+          "Season-admin power. `repeatWeeks` (clamped silently to 1–26, absent = 1, as v1 session-actions.ts:53) creates that many sessions one calendar week apart **in the organisation timezone** (ORG_TIMEZONE), so the wall-clock time holds across DST; they share a fresh recurrenceGroupId. Creation lives here with `seasonId` in the body, not under /seasons/:id, so the season and session write workstreams never share a route file — do not move it.",
         requestBody: {
           required: true,
           content: {
@@ -1513,7 +1520,7 @@ sessionsRouter.post("/", async (req, res) => {
                   location: { type: ["string", "null"], maxLength: 200 },
                   youtubeUrl: { type: ["string", "null"], format: "uri" },
                   description: { type: ["string", "null"], maxLength: 2000 },
-                  repeatWeeks: { type: "integer", minimum: 1, maximum: 26, default: 1 },
+                  repeatWeeks: { type: "integer", default: 1, description: "Clamped to 1–26 (v1)." },
                 },
               },
             },
@@ -2106,13 +2113,16 @@ divergence from this plan.
 - **Placeholders removed (S11, X16):** Task 5's two elided tests and Task 6's
   four prose tests are written out; PATCH/DELETE season handlers, duplicate,
   create, delete handlers and every OpenAPI entry are given as code.
-- Season delete: recorded decision on D4 — refuse on any enrollment or
-  session (`season_in_use`), clear `StudentProfile.activeSeasonId` pointers in
-  the same transaction; ADMIN cannot delete (D3).
+- Season delete: soft-deletes whatever the season contains and touches only
+  the season row, as v1 (`season-actions.ts:163-177`, R49/R51); ADMIN cannot
+  delete (D3). *(v1 parity 2026-10-09: was "refuse on enrollment/session
+  (`season_in_use`), clear activeSeasonId pointers")*
 - Session delete also guards `SessionVideoProgress` (code renamed
   `has_student_records`); cascades/set-nulls documented in OpenAPI.
 - `isUniqueViolation` (`lib/prisma-errors.ts`) replaces the unverified
-  `Prisma` value-import step; `code_taken` vs D15's `conflict` recorded.
+  `Prisma` value-import step; `code_taken` vs D15's `conflict` recorded;
+  `code_taken` carries `details.fieldErrors.code = "Already in use."` as v1
+  (`season-actions.ts:76-83`). *(v1 parity 2026-10-09: was "generic message only")*
 - Closing gate greps all of `dist/` (X12) and adds the X6 health check.
 - Header states dependencies per the execution order.
 
@@ -2122,3 +2132,21 @@ relation would make season delete raise P2003 — this delete is a soft delete
 
 Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
 - Header gains a forward note: Plan 6 adds the `startDay`/`startTime` alternative to `startsAt` on session writes; `startsAt` stays accepted, so nothing here changes.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 02-seasons R5 | REG-57 | Taken code → "A season with that code already exists." plus field error `code: "Already in use."` under the Code input (`src/lib/season-actions.ts:76-83`) | `apps/backend/src/routes/seasons.ts:148-149` (`codeTaken` helper, used by create/PATCH/duplicate); mobile forms are Plan 4/6 (`apps/mobile/app/(app)/seasons/index.tsx:57`, `:104`, SUPER edit screen) | Header "Error codes" paragraph; Task 2 duplicate-code test; Task 3 `codeTaken` helper; Revision 2026-10-05 `code_taken` bullet |
+| 2 | 02-seasons R49 | REG-56 | Delete soft-deletes after one confirm, whatever the season contains (`src/lib/season-actions.ts:163-177`) | `apps/backend/src/routes/seasons.ts:252-263` (count + `season_in_use`) | Header "Error codes"; Task 3 delete tests ("soft-deletes a season with sessions and enrollments"); delete handler; OpenAPI delete entry; Revision 2026-10-05 season-delete bullet |
+| 3 | 02-seasons R51 | REG-56 | Soft delete touches only the season row; `StudentProfile.activeSeasonId` and `SeasonAdmin` rows stay (`src/lib/season-actions.ts:169-172`) | `apps/backend/src/routes/seasons.ts:265-267` (`studentProfile.updateMany` in the transaction) | Task 3 delete test (pointer kept); delete handler; OpenAPI delete entry; Revision 2026-10-05 season-delete bullet |
+| 4 | 02-seasons R66 | - | Duplicate's source lookup has no `deletedAt` filter (`src/lib/season-actions.ts:210-211`) | `apps/backend/src/routes/seasons.ts:285-286` (`deletedAt: null` → 404) | Task 3 duplicate "Diverges" list; duplicate test "duplicates a soft-deleted season"; duplicate handler `findFirst`; OpenAPI duplicate description |
+| 5 | 03-sessions R9, R14 | REG-94 | `repeatWeeks` clamped silently to 1–26, absent = 1; a count below 1 yields one occurrence (`src/lib/session-actions.ts:53`, `src/lib/recurrence.ts:10`) | `packages/shared/src/session.ts:143` (`.min(1).max(26)` → 400) | Task 1 test "clamps repeatWeeks"; Task 1 `createSessionRequestSchema`; Task 4 OpenAPI description and `repeatWeeks` property |
+
+**Awaiting owner (not changed):** none
+
