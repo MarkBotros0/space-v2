@@ -30,7 +30,8 @@
     "ios": {
       "associatedDomains": [
         "applinks:space-v2-be.vercel.app"
-      ]
+      ],
+      "bundleIdentifier": "com.jpc.space"
     },
     "android": {
       "intentFilters": [
@@ -49,7 +50,8 @@
             "DEFAULT"
           ]
         }
-      ]
+      ],
+      "package": "com.jpc.space"
     }
   }
 }
