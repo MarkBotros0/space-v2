@@ -25,13 +25,20 @@
     },
     "extra": {
       "apiBaseUrl": "https://space-v2-be.vercel.app",
-      "publicBaseUrl": "https://space-v2-be.vercel.app"
+      "publicBaseUrl": "https://space-v2-be.vercel.app",
+      "router": {},
+      "eas": {
+        "projectId": "2c90b65f-1080-4d6c-9050-3ec9b8a57c91"
+      }
     },
     "ios": {
       "associatedDomains": [
         "applinks:space-v2-be.vercel.app"
       ],
-      "bundleIdentifier": "com.jpc.space"
+      "bundleIdentifier": "com.jpc.space",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "intentFilters": [
@@ -51,7 +58,11 @@
           ]
         }
       ],
-      "package": "com.jpc.space"
-    }
+      "package": "com.jpc.space",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "owner": "markbotros.aigorithm"
   }
 }
