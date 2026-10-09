@@ -160,16 +160,18 @@ export function DayEntries({ entries, ctx }: { entries: CalendarEntry[]; ctx: Ca
   );
 }
 
-/** What the colours mean: the season palette when several share the view, else today/upcoming/past. */
+/**
+ * The season palette legend, shown only when several seasons share the view
+ * (a colour map is supplied). v1 parity 2026-10-09 (03-sessions R89): v1
+ * season-calendar.tsx:190-198 renders no legend without a colour map.
+ */
 export function Legend({ slots }: { slots: Record<string, number> | null }) {
   const theme = useTheme();
-  const items: { label: string; tint: Tint }[] = slots
-    ? Object.entries(slots).map(([code, slot]) => ({ label: code, tint: seasonTint(theme, slot) }))
-    : [
-        { label: "Today", tint: toneTint(theme, "today") },
-        { label: "Upcoming", tint: toneTint(theme, "upcoming") },
-        { label: "Past", tint: toneTint(theme, "past") },
-      ];
+  if (slots === null) return null;
+  const items: { label: string; tint: Tint }[] = Object.entries(slots).map(([code, slot]) => ({
+    label: code,
+    tint: seasonTint(theme, slot),
+  }));
   return (
     <View
       accessibilityLabel="Calendar legend"

@@ -44,7 +44,8 @@ export default function NewSessionScreen() {
     }
     setErrors({});
     create.mutate(body, {
-      onSuccess: (created) => router.replace({ pathname: "/session/[id]", params: { id: String(created.id) } }),
+      // v1 parity 2026-10-09 (spec 03 R30): v1 session-form.tsx:125 goes to the season's calendar.
+      onSuccess: () => router.replace({ pathname: "/calendar", params: { seasonId: String(seasonId) } }),
       onError: (err) => setMessage(apiErrorMessage(err, "Couldn't create the session.")),
     });
   };
