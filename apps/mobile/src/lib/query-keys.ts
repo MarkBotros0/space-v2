@@ -101,7 +101,13 @@ export const queryKeys = {
     list: (
       status: string,
       q: string,
-      view: { groupId: number | "none" | null; sort: string | null; dir: "asc" | "desc" } = {
+      view: {
+        seasonId: number | null;
+        groupId: number | "none" | null;
+        sort: string | null;
+        dir: "asc" | "desc";
+      } = {
+        seasonId: null,
         groupId: null,
         sort: null,
         dir: "asc",
@@ -115,6 +121,8 @@ export const queryKeys = {
     attendance: (id: number | null) => [...queryKeys.students.details(), "attendance", { id }] as const,
     /** GET /students/:id/submissions (REG-83). */
     submissions: (id: number | null) => [...queryKeys.students.details(), "submissions", { id }] as const,
+    /** GET /students/:id/documents (06-students R80) — SUPER/ADMIN. */
+    documents: (id: number | null) => [...queryKeys.students.details(), "documents", { id }] as const,
   },
   seasons: {
     all: ["seasons"] as const,

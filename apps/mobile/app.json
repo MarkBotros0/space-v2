@@ -24,7 +24,32 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBaseUrl": "https://space-v2-be.vercel.app"
+      "apiBaseUrl": "https://space-v2-be.vercel.app",
+      "publicBaseUrl": "https://space-v2-be.vercel.app"
+    },
+    "ios": {
+      "associatedDomains": [
+        "applinks:space-v2-be.vercel.app"
+      ]
+    },
+    "android": {
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "space-v2-be.vercel.app",
+              "pathPrefix": "/checkin/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     }
   }
 }

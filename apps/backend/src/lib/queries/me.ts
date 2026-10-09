@@ -45,7 +45,8 @@ export async function loadSeasonHistory(user: SessionUser): Promise<SeasonHistor
   const enrollments = await db.seasonEnrollment.findMany({
     where: {
       studentUserId: user.userId,
-      season: { deletedAt: null }, // spec 02 D2 (diverges from v1 R38)
+      // No season.deletedAt filter: v1 lists deleted seasons too (02-seasons
+      // R38; v1 parity 2026-10-09).
       ...(excludeSeasonId !== null ? { seasonId: { not: excludeSeasonId } } : {}),
     },
     orderBy: { enrolledAt: "desc" },
@@ -132,8 +133,9 @@ export async function loadMySeason(user: SessionUser, now: Date = new Date()): P
   if (seasonId === null) return null; // R28
 
   const season = await db.season.findFirst({
-    // Spec 02 D2: v1 R27 showed a soft-deleted season to its students.
-    where: { id: seasonId, deletedAt: null },
+    // No deletedAt filter — a soft-deleted active season stays visible to its
+    // students, as v1 (02-seasons R27; v1 parity 2026-10-09).
+    where: { id: seasonId },
     select: { id: true, code: true, title: true, description: true, status: true, startDate: true, endDate: true },
   });
   if (!season) return null;
@@ -232,7 +234,8 @@ export async function loadMyAttendance(user: SessionUser, now: Date = new Date()
   if (user.activeSeasonId === null) return none; // R93
 
   const season = await db.season.findFirst({
-    where: { id: user.activeSeasonId, deletedAt: null },
+    // No deletedAt filter (02-seasons R27; v1 parity 2026-10-09).
+    where: { id: user.activeSeasonId },
     select: { id: true, title: true, absenceBudgetMinutes: true, absenceWeightMinutes: true },
   });
   if (!season) return none;

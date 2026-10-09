@@ -13,6 +13,7 @@ import { useCheckInState, useRegenerateCheckIn } from "../../../../src/hooks/use
 import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../../../src/hooks/use-session-detail";
 import { useStudentVideoQuiz } from "../../../../src/hooks/use-video-quiz";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
+import { checkInUrlFor } from "../../../../src/lib/app-config";
 import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { useSessionStore } from "../../../../src/store/session";
@@ -76,7 +77,8 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
         <>
           {token ? (
             <View style={{ alignItems: "center", gap: theme.spacing.sm }}>
-              <QRCode value={token} size={220} />
+              {/* v1's full check-in URL (03-sessions R68); the typed code below stays the bare token. */}
+              <QRCode value={checkInUrlFor(token)} size={220} />
               <Text variant="caption">{`Code: ${token}`}</Text>
               {checkIn.data?.expiresAtTime ? (
                 <Text variant="caption">{`Closes at ${formatWallTime(checkIn.data.expiresAtTime)}`}</Text>

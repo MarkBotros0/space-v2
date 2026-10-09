@@ -90,7 +90,11 @@ export type StudentListSort = z.infer<typeof studentListSortSchema>;
 
 export const studentListQuerySchema = z.object({
   status: studentListStatusSchema.default("active"),
-  /** "has an enrollment in this season" — resolved through SeasonEnrollment (C9). */
+  /**
+   * The student's ACTIVE season (`StudentProfile.activeSeasonId`) — the season
+   * the row displays, as v1's season filter was (06-students R35). For
+   * `status=dropped` it is the dropped enrollment's season.
+   */
   seasonId: z.coerce.number().int().positive().optional(),
   /**
    * Filter by the group the row DISPLAYS (`currentGroupName`, the advisory
@@ -108,7 +112,11 @@ export const studentListQuerySchema = z.object({
    */
   sort: studentListSortSchema.optional(),
   dir: z.enum(["asc", "desc"]).default("asc"),
-  /** Matches name, email or university, case-insensitive, ANDed with scope (R33). */
+  /**
+   * Matches name, email or university, case-insensitive, ANDed with scope (R33).
+   * Ignored for `status=alumni`, which v1 listed whole, with no search and no
+   * paging (06-students R41): `q`, `cursor` and `limit` do not apply there.
+   */
   q: z.string().trim().max(120).optional(),
   /** Row id of the last row of the previous page (enrollment id when status=dropped). */
   cursor: z.coerce.number().int().positive().optional(),
@@ -163,14 +171,13 @@ export const enrollmentHistoryItemSchema = z.object({
   enrolledAt: z.string(),
   completedAt: z.string().nullable(),
   droppedAt: z.string().nullable(),
-  /** Free-text personal data — always null in the public (LEADER/MENTOR) shape. */
+  /** Free-text personal data — null in the public shape (no caller receives it today, R71). */
   dropReason: z.string().nullable(),
   /**
    * Whole-number % of this season's past sessions (from the student's own
    * enrolment date) marked PRESENT or LATE — the Plan 12 engagement formula,
    * for every enrolment status (REG-83). Staff-only: null for the student's
-   * own view, and null for a season outside the caller's attendance scope
-   * (an ADMIN's other seasons).
+   * own view.
    */
   attendancePct: z.number().int().nullable(),
 });
@@ -185,8 +192,8 @@ const studentDetailBase = z.object({
   /** Advisory current group (GroupStudent — the one question it may answer, C9/R4). */
   currentGroup: z.object({ id: z.number(), name: z.string() }).nullable(),
   /**
-   * Enrollment history, `enrolledAt desc`. For a LEADER, only the rows whose
-   * group is one of theirs (spec 06 §7: "the scoped season rows").
+   * Enrollment history, `enrolledAt desc` — every row, for every admitted
+   * viewer, as v1 (06-students R71).
    * Sub-resources (attendance, submissions, notes, documents, engagement) are
    * NOT fields of this schema — they become their own endpoints in later
    * plans (spec 06 §7's split).
@@ -211,7 +218,7 @@ export const studentAttendanceHistorySchema = z.object({
 });
 export type StudentAttendanceHistory = z.infer<typeof studentAttendanceHistorySchema>;
 
-/** One row of `GET /students/:id/submissions` (REG-83), newest first, never a DRAFT. */
+/** One row of `GET /students/:id/submissions` (REG-83), newest first, DRAFT included (06-students R77). */
 export const studentSubmissionItemSchema = z.object({
   publicId: z.string(),
   assignmentId: z.number(),
@@ -230,6 +237,25 @@ export const studentSubmissionsSchema = z.object({
   submissions: z.array(studentSubmissionItemSchema),
 });
 export type StudentSubmissions = z.infer<typeof studentSubmissionsSchema>;
+
+/**
+ * One row of `GET /students/:id/documents` — SUPER/ADMIN only, read-only, no
+ * download link (v1's Documents tab, 06-students R80; v1 parity 2026-10-09).
+ */
+export const studentDocumentItemSchema = z.object({
+  id: z.number(),
+  originalName: z.string(),
+  sizeBytes: z.number(),
+  mimeType: z.string(),
+  uploadedAt: z.string(),
+});
+export type StudentDocumentItem = z.infer<typeof studentDocumentItemSchema>;
+
+/** `GET /students/:id/documents` — newest first. */
+export const studentDocumentsSchema = z.object({
+  documents: z.array(studentDocumentItemSchema),
+});
+export type StudentDocuments = z.infer<typeof studentDocumentsSchema>;
 
 export const studentDetailPublicSchema = studentDetailBase.extend({
   profile: studentProfilePublicSchema,
@@ -417,12 +443,14 @@ export function dateOnlyFromIso(iso: string | null): string | null {
 // ---------------------------------------------------------------------------
 
 /**
- * The StudentProfile columns a student edits about themselves — and nothing
- * else (Plan 11 Decision 1). `User.name` is Plan 9's PATCH /me; `User.email`
- * is staff-only (spec 18 D8); `notes` and `activeSeasonId` never (R23).
- * routes/students.ts's SELF_EDITABLE is narrowed to this same set.
+ * The fields a student edits about themselves on their profile form: their
+ * name plus six StudentProfile columns, as v1's student form (Plan 11
+ * Decision 1; `student-actions.ts:24,103-121`; 18-settings R38). `User.email`
+ * is staff-only (spec 18 D8, REG-12 KEEP-FIX). routes/students.ts's
+ * SELF_EDITABLE is this same set.
  */
 export const OWN_PROFILE_FIELDS = [
+  "name",
   "university",
   "year",
   "phone",
@@ -433,13 +461,27 @@ export const OWN_PROFILE_FIELDS = [
 export type OwnProfileField = (typeof OWN_PROFILE_FIELDS)[number];
 
 /**
+ * Keys a self-edit may send that are dropped without complaint, as v1's
+ * updateStudentProfileAction ignored them (06-students R24; v1 parity
+ * 2026-10-09). Students still never read `notes`.
+ */
+export const OWN_PROFILE_DROPPED_FIELDS = ["notes", "activeSeasonId"] as const;
+
+/**
  * PATCH semantics: absent = untouched, "" or null = cleared (R26). `.strict()`
- * makes name/email/notes/activeSeasonId a parse failure (spec 06 §8: "a type
- * error rather than a runtime no-op"); the route refuses them by name first.
- * The mobile form validates with THIS schema before sending.
+ * makes any other key — `email` above all — a parse failure; the route refuses
+ * it by name first. `notes`/`activeSeasonId` parse and are stripped from the
+ * output (R24). The mobile form validates with THIS schema before sending.
  */
 export const updateOwnProfileInputSchema = z
   .object({
+    /** Same rule and messages as PATCH /me (Plan 9). */
+    name: z
+      .string()
+      .trim()
+      .min(2, "At least 2 characters.")
+      .max(120, "At most 120 characters.")
+      .optional(),
     university: emptyToNull(160),
     year: emptyToNull(40),
     phone: emptyToNull(60),
@@ -451,8 +493,11 @@ export const updateOwnProfileInputSchema = z
       .pipe(isoDaySchema.nullish()),
     spiritualBackground: emptyToNull(4000),
     gifts: emptyToNull(2000),
+    notes: z.unknown().optional(),
+    activeSeasonId: z.unknown().optional(),
   })
-  .strict();
+  .strict()
+  .transform(({ notes: _notes, activeSeasonId: _activeSeasonId, ...rest }) => rest);
 export type UpdateOwnProfileInput = z.input<typeof updateOwnProfileInputSchema>;
 
 /**

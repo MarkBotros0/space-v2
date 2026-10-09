@@ -19,6 +19,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { useSessionStore } from "../store/session";
 
 /*
  * The student's own reads (Plan 11). Every endpoint resolves its subject from
@@ -85,6 +86,10 @@ export function useUpdateStudentProfile(): UseMutationResult<MyProfile, Error, U
     },
     onSuccess: (profile) => {
       queryClient.setQueryData(queryKeys.me.profile(), profile);
+      // The profile form renames the student too (v1 parity, 18-settings R38):
+      // fold the server's name into the session so the header menu agrees.
+      const { user, scopes, setSession } = useSessionStore.getState();
+      if (user && scopes && user.name !== profile.name) setSession({ ...user, name: profile.name }, scopes);
     },
   });
 }
