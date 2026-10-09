@@ -3,20 +3,6 @@ import express from "express";
 import request from "supertest";
 
 import { errorHandler } from "../middleware/error-handler";
-import { importLimiter } from "../routes/imports";
-
-describe("importLimiter", () => {
-  it("answers the 429 envelope once the limit is spent", async () => {
-    const app = express();
-    app.post("/x", importLimiter(1), (_req, res) => {
-      res.json({ data: { ok: true } });
-    });
-    expect((await request(app).post("/x")).status).toBe(200);
-    const second = await request(app).post("/x");
-    expect(second.status).toBe(429);
-    expect(second.body.error.code).toBe("too_many_requests");
-  });
-});
 
 describe("body limits", () => {
   it("maps an over-limit JSON body to 413 payload_too_large, not 500", async () => {

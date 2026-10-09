@@ -26,7 +26,7 @@ beforeEach(() => jest.clearAllMocks());
 
 describe("import commit invalidation", () => {
   it("a student import commit refreshes users, students and group rosters", async () => {
-    post.mockResolvedValue({ data: { data: { created: 1, skipped: 0, enrolled: 1, rows: [] } } });
+    post.mockResolvedValue({ data: { data: { created: 1, skipped: 0, failed: 0, rows: [] } } });
     const { wrapper, invalidated } = setup();
     const { result } = renderHook(() => useStudentImportCommit(), { wrapper });
     await act(() => result.current.mutateAsync({} as never));
