@@ -7,7 +7,13 @@ import { parseId } from "../lib/parse-id";
 import { createNotificationsBulk } from "../lib/notifications";
 import { bestEffort } from "../lib/best-effort";
 import { canEditNote, canViewStudent, canWriteNote } from "../lib/permissions";
-import { listAuthoredNotes, listNotesForStudent, NOTE_SELECT, toNoteSummary } from "../lib/queries/notes";
+import {
+  listAuthoredNotes,
+  listNoteStudentOptions,
+  listNotesForStudent,
+  NOTE_SELECT,
+  toNoteSummary,
+} from "../lib/queries/notes";
 import { rateLimitHandler } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
@@ -107,8 +113,9 @@ studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, r
 
 myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
   const user = requireUser(req);
-  // Only the four roles that can author have anything to list (R46–R49, R51).
-  if (user.role === "STUDENT") {
+  // v1 parity (jpc-space src/app/mentor/notes/page.tsx:21 requireRole MENTOR;
+  // 09-notes R44): only MENTOR has a "my notes" page.
+  if (user.role !== "MENTOR") {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
@@ -116,6 +123,21 @@ myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
 
   return apiOk(res, await listAuthoredNotes(user, parsed.data));
+});
+
+/**
+ * The mentor composer's student picker (v1 src/app/mentor/notes/page.tsx:27-31;
+ * 09-notes R45): every non-deleted STUDENT, alumni included, ordered by name,
+ * as `{ id, name, email }` only. MENTOR only, like the page it serves — and a
+ * MENTOR may already read and write about any student (canReadAllStudents,
+ * canWriteNote R46), so the list discloses nothing beyond that.
+ */
+myNotesRouter.get("/notes/students", requireAuth, noteReadLimiter, async (req, res) => {
+  const user = requireUser(req);
+  if (user.role !== "MENTOR") {
+    return apiError(res, "forbidden", "You don't have access to this.", 403);
+  }
+  return apiOk(res, { students: await listNoteStudentOptions() });
 });
 
 studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
@@ -138,7 +160,7 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   const parsed = createNoteRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid note body.", 400);
 
-  // R4: default the season from the student's enrolment. R5 records that v1
+  // R4: default the season from the student's active season. R5 records that v1
   // never maintains this afterwards — a note keeps pointing at the season it
   // was written in, which is the right behaviour for a dated record and is
   // kept. When the caller names a season it must be one this student is
@@ -157,12 +179,12 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
     }
     seasonId = enrollment.seasonId;
   } else {
-    const active = await db.seasonEnrollment.findFirst({
-      where: { studentUserId, status: "ACTIVE" },
-      orderBy: { enrolledAt: "desc" },
-      select: { seasonId: true },
+    // v1 (note-actions.ts:46-54, R4): the student's StudentProfile.activeSeasonId.
+    const profile = await db.studentProfile.findUnique({
+      where: { userId: studentUserId },
+      select: { activeSeasonId: true },
     });
-    seasonId = active?.seasonId ?? null;
+    seasonId = profile?.activeSeasonId ?? null;
   }
 
   const created = await db.engagementNote.create({

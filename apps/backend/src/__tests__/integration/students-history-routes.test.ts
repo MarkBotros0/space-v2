@@ -166,11 +166,11 @@ describe("GET /api/v1/students — group filter and sort keys (REG-82)", () => {
   });
 });
 
-describe("GET /api/v1/students/:id — per-enrolment attendance percentage (REG-83)", () => {
+describe("GET /api/v1/students/:id — per-enrolment attendance percentage (v1 06-students R74)", () => {
   const pctBySeason = (res: { body: { data: { enrollments: { seasonId: number; attendancePct: number | null }[] } } }) =>
     Object.fromEntries(res.body.data.enrollments.map((e) => [e.seasonId, e.attendancePct]));
 
-  it("gives SUPER and MENTOR a percentage for every enrolment (past sessions, from enrolment)", async () => {
+  it("gives SUPER and MENTOR a percentage for every enrolment (every started session)", async () => {
     for (const token of [superToken, mentorToken]) {
       const res = await get(`/api/v1/students/${s1}`, token);
       expect(res.status).toBe(200);
@@ -180,17 +180,35 @@ describe("GET /api/v1/students/:id — per-enrolment attendance percentage (REG-
     }
   });
 
-  it("scopes the percentage like the rows: admin only for their season, leader only their group's", async () => {
+  it("computes it for every row the viewer sees — admin of A sees B's figure too (v1)", async () => {
     const admin = await get(`/api/v1/students/${s1}`, adminToken);
-    expect(pctBySeason(admin)).toEqual({ [seasonAId]: 50, [seasonBId]: null });
+    expect(pctBySeason(admin)).toEqual({ [seasonAId]: 50, [seasonBId]: 100 });
     const leader = await get(`/api/v1/students/${s1}`, leaderToken);
-    expect(pctBySeason(leader)).toEqual({ [seasonAId]: 50 });
+    expect(pctBySeason(leader)[seasonAId]).toBe(50);
   });
 
-  it("is staff-only: the student's own view carries null", async () => {
+  it("is shown on the student's own view too, as v1", async () => {
     const res = await get(`/api/v1/students/${s1}`, s1Token);
     expect(res.status).toBe(200);
-    expect(pctBySeason(res)).toEqual({ [seasonAId]: null, [seasonBId]: null });
+    expect(pctBySeason(res)).toEqual({ [seasonAId]: 50, [seasonBId]: 100 });
+  });
+
+  it("does not cut the denominator at enrolledAt — that cut is the engagement score's only", async () => {
+    // Enrolled between "A past one" (PRESENT) and "A past two" (ABSENT): v1
+    // still divides by both started sessions (students-query.ts:346-358).
+    await db.seasonEnrollment.updateMany({
+      where: { studentUserId: s1, seasonId: seasonAId },
+      data: { enrolledAt: at("2000-01-15T00:00:00.000Z") },
+    });
+    try {
+      const res = await get(`/api/v1/students/${s1}`, superToken);
+      expect(pctBySeason(res)[seasonAId]).toBe(50);
+    } finally {
+      await db.seasonEnrollment.updateMany({
+        where: { studentUserId: s1, seasonId: seasonAId },
+        data: { enrolledAt: at("1999-01-01T00:00:00.000Z") },
+      });
+    }
   });
 });
 

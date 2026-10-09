@@ -330,20 +330,21 @@ async function readableSeasonIds(user: SessionUser, studentUserId: number): Prom
 
 /**
  * Per-enrolment attendance % in two queries (v1 ran two per enrolment, R76).
- * The formula is Plan 12's engagement one, so the history figure and the
- * dashboard figure for the same season agree: past sessions from the student's
- * own enrolment date; PRESENT and LATE both count.
+ * v1's formula (students-query.ts:346-358; 06-students R74): PRESENT + LATE
+ * over every started session of the season — no enrolment-date cut (that cut
+ * belongs to the engagement score only, Plan 12 ledger row 13). The numerator
+ * counts only those same started sessions, so it cannot exceed 100% (C5).
  */
 async function attendancePctByEnrollment(
   studentUserId: number,
-  enrollments: { id: number; seasonId: number; enrolledAt: Date }[],
+  enrollments: { id: number; seasonId: number }[],
 ): Promise<Map<number, number>> {
   const result = new Map<number, number>();
   if (enrollments.length === 0) return result;
 
   const sessions = await db.session.findMany({
     where: { seasonId: { in: enrollments.map((e) => e.seasonId) }, startsAt: { lte: new Date() } },
-    select: { id: true, seasonId: true, startsAt: true },
+    select: { id: true, seasonId: true },
   });
   const present = new Set(
     (
@@ -359,9 +360,7 @@ async function attendancePctByEnrollment(
   );
 
   for (const e of enrollments) {
-    const eligible = sessions.filter(
-      (x) => x.seasonId === e.seasonId && x.startsAt.getTime() >= e.enrolledAt.getTime(),
-    );
+    const eligible = sessions.filter((x) => x.seasonId === e.seasonId);
     const attended = eligible.filter((x) => present.has(x.id)).length;
     result.set(e.id, eligible.length > 0 ? Math.round((attended / eligible.length) * 100) : 0);
   }
@@ -536,15 +535,9 @@ export async function loadStudentDetail(
       ? enrollments.filter((e) => e.groupId !== null && user.groupLeaderIds.includes(e.groupId))
       : enrollments;
 
-  // REG-83: the percentage is a staff figure. The subject's own view carries
-  // null, and so does any season outside the caller's attendance scope.
-  const pctByEnrollment =
-    view === "private"
-      ? new Map<number, number>()
-      : await attendancePctByEnrollment(
-          studentUserId,
-          scoped.filter((e) => canReadEnrollmentHistory(user, e)),
-        );
+  // v1 (students-query.ts:346-358,452; 06-students R74): every season row
+  // the viewer sees carries its attendance %, the subject's own view included.
+  const pctByEnrollment = await attendancePctByEnrollment(studentUserId, scoped);
 
   const history: EnrollmentHistoryItem[] = scoped.map((e) => ({
     enrollmentId: e.id,

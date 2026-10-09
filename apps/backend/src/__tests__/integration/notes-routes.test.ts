@@ -13,6 +13,7 @@ const app = createApp();
 
 let seasonId: number;
 let studentUserId: number;
+let unseasonedStudentId: number;
 let adminUserId: number;
 let mentorsNoteId: number;
 let adminsNoteId: number;
@@ -39,6 +40,12 @@ beforeAll(async () => {
   const superUser = await createTestUser("note-super", "SUPER");
   studentUserId = student.id;
   adminUserId = admin.id;
+  // v1 files a note under StudentProfile.activeSeasonId (R4) and gates an
+  // ADMIN on it (R47/R48), so the subject carries one.
+  await db.studentProfile.create({ data: { userId: student.id, activeSeasonId: seasonId } });
+  // Enrolled in the admin's season, but with no StudentProfile at all.
+  const unseasoned = await createTestUser("note-unseasoned", "STUDENT");
+  unseasonedStudentId = unseasoned.id;
 
   const groupA = await db.group.create({
     data: { seasonId, name: "Group A", leaders: { create: { userId: insideLeader.id } } },
@@ -55,6 +62,9 @@ beforeAll(async () => {
   // same season who simply does not lead THIS student.
   await db.seasonEnrollment.create({
     data: { seasonId, studentUserId: student.id, groupId: groupA.id, status: "ACTIVE" },
+  });
+  await db.seasonEnrollment.create({
+    data: { seasonId, studentUserId: unseasoned.id, groupId: groupA.id, status: "ACTIVE" },
   });
   expect(groupB.id).not.toBe(groupA.id);
 
@@ -267,18 +277,17 @@ describe("GET /api/v1/me/notes", () => {
     expect(res.body.data.notes[0].student).toMatchObject({ id: studentUserId });
   });
 
-  it("works for an ADMIN too — v1 had no authored-notes surface for them (R44)", async () => {
-    const res = await request(app)
-      .get("/api/v1/me/notes")
-      .set("authorization", `Bearer ${adminToken}`);
-    expect(res.status).toBe(200);
-    expect(res.body.data.notes.map((n: { id: number }) => n.id)).toContain(adminsNoteId);
+  it("refuses every role but MENTOR — only MENTOR has a my-notes page, as v1 (R44)", async () => {
+    for (const token of [adminToken, superToken, insideLeaderToken]) {
+      const res = await request(app).get("/api/v1/me/notes").set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+    }
   });
 
   it("filters to one student with ?studentId", async () => {
     const res = await request(app)
       .get(`/api/v1/me/notes?studentId=${studentUserId}`)
-      .set("authorization", `Bearer ${superToken}`);
+      .set("authorization", `Bearer ${mentorToken}`);
     expect(res.status).toBe(200);
     expect(
       res.body.data.notes.every((n: { student: { id: number } }) => n.student.id === studentUserId),
@@ -290,6 +299,38 @@ describe("GET /api/v1/me/notes", () => {
       .get("/api/v1/me/notes")
       .set("authorization", `Bearer ${studentToken}`);
     expect(res.status).toBe(403);
+  });
+});
+
+describe("GET /api/v1/me/notes/students — the mentor composer's picker (R45)", () => {
+  it("lists every non-deleted STUDENT by name, id/name/email only", async () => {
+    const res = await request(app)
+      .get("/api/v1/me/notes/students")
+      .set("authorization", `Bearer ${mentorToken}`);
+
+    expect(res.status).toBe(200);
+    const students: { id: number; name: string; email: string }[] = res.body.data.students;
+    const ids = students.map((s) => s.id);
+    expect(ids).toEqual(expect.arrayContaining([studentUserId, unseasonedStudentId]));
+    expect(Object.keys(students[0] ?? {}).sort()).toEqual(["email", "id", "name"]);
+  });
+
+  it("leaves out a deleted student", async () => {
+    const gone = await createTestUser("note-deleted-student", "STUDENT");
+    await db.user.update({ where: { id: gone.id }, data: { deletedAt: new Date() } });
+    const res = await request(app)
+      .get("/api/v1/me/notes/students")
+      .set("authorization", `Bearer ${mentorToken}`);
+    expect(res.body.data.students.map((s: { id: number }) => s.id)).not.toContain(gone.id);
+  });
+
+  it("refuses every role but MENTOR", async () => {
+    for (const token of [adminToken, superToken, insideLeaderToken, studentToken]) {
+      const res = await request(app)
+        .get("/api/v1/me/notes/students")
+        .set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+    }
   });
 });
 
@@ -325,7 +366,7 @@ describe("POST /api/v1/students/:id/notes", () => {
       select: { authorUserId: true, seasonId: true, body: true },
     });
     // authorUserId comes from the session, never from input (R9), and the
-    // season defaults from the student's enrolment (R4).
+    // season defaults from StudentProfile.activeSeasonId (v1 note-actions.ts:46-54, R4).
     expect(row.authorUserId).toBe(res.body.data.note.authorId);
     expect(row.seasonId).toBe(seasonId);
     expect(row.body).toBe("<p>space-v2-test wrote a note</p>");
@@ -366,15 +407,31 @@ describe("POST /api/v1/students/:id/notes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("lets an ADMIN write about an enrolled student even with no activeSeasonId (D12)", async () => {
-    // v1's gate read StudentProfile.activeSeasonId, so an admin could OPEN a
-    // student they could not write about (R47/R48). This student has an
-    // enrolment in the admin's season and no StudentProfile row at all.
+  it("lets an ADMIN write about a student whose activeSeasonId is their season (R47)", async () => {
     const res = await request(app)
       .post(`/api/v1/students/${studentUserId}/notes`)
       .set("authorization", `Bearer ${adminToken}`)
       .send({ body: "space-v2-test admin note", visibility: "ADMINS" });
     expect(res.status).toBe(201);
+  });
+
+  it("refuses an ADMIN when the student has no activeSeasonId, even if enrolled (v1 R48)", async () => {
+    // v1 permissions.ts:410-417: the student's active season, or nothing.
+    const res = await request(app)
+      .post(`/api/v1/students/${unseasonedStudentId}/notes`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ body: "space-v2-test admin note", visibility: "ADMINS" });
+    expect(res.status).toBe(403);
+  });
+
+  it("files a note with no season when the student has no activeSeasonId (v1 R4)", async () => {
+    const res = await request(app)
+      .post(`/api/v1/students/${unseasonedStudentId}/notes`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ body: "space-v2-test unseasoned note", visibility: "ADMINS" });
+    expect(res.status).toBe(201);
+    expect(res.body.data.note.seasonId).toBeNull();
+    expect(res.body.data.note.createdDayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it("rejects a seasonId the student is not enrolled in", async () => {

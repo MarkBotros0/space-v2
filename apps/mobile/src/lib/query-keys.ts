@@ -38,6 +38,10 @@ export const queryKeys = {
     all: ["notes"] as const,
     lists: () => [...queryKeys.notes.all, "list"] as const,
     authored: () => [...queryKeys.notes.lists(), "authored"] as const,
+    // v1's ?student filter on /mentor/notes (R45); null = all students.
+    authoredFor: (studentId: number | null) => [...queryKeys.notes.authored(), { studentId }] as const,
+    // The mentor composer's picker (GET /me/notes/students).
+    studentOptions: () => [...queryKeys.notes.all, "student-options"] as const,
     // Nullable per this file's header convention — no -1 sentinel.
     byStudent: (studentId: number | null) => [...queryKeys.notes.lists(), { studentId }] as const,
   },
