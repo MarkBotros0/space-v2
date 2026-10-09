@@ -78,9 +78,8 @@ export const queryKeys = {
   notifications: {
     all: ["notifications"] as const,
     lists: () => [...queryKeys.notifications.all, "list"] as const,
-    // The unread-only inbox is a different server query, so it gets its own
-    // cache entry rather than being filtered out of the full one.
-    list: (unreadOnly: boolean) => [...queryKeys.notifications.lists(), { unreadOnly }] as const,
+    // v1's one inbox list (newest 100) — no unread-only variant (R39).
+    list: () => [...queryKeys.notifications.lists()] as const,
     unreadCount: () => [...queryKeys.notifications.all, "unread-count"] as const,
     preferences: () => [...queryKeys.notifications.all, "preferences"] as const,
   },

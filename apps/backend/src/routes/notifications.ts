@@ -7,7 +7,7 @@ import { parseNotificationLink } from "../lib/notification-target";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
   markReadRequestSchema,
-  notificationListQuerySchema,
+  NOTIFICATION_INBOX_LIMIT,
 } from "../../../../packages/shared/src/index";
 
 export const notificationsRouter = Router();
@@ -58,10 +58,9 @@ function toWire(row: Row) {
  * applied after the rows are fetched and never as a request parameter. Ruling
  * C8.
  *
- * Ordered by `id` desc rather than v1's `createdAt` desc: a fan-out written by
- * one `createMany` gives every row the same `createdAt` (R18), which makes a
- * createdAt cursor ambiguous exactly where the pages are densest. Insertion
- * order is the same order for every row that matters and it is unique.
+ * v1's list (notifications-page.tsx:14-27; R33, R39): the newest 100 rows,
+ * createdAt desc, one list, no cursor and no read-state filter. `id` desc is
+ * the tie-break for a fan-out written by one `createMany` (same createdAt, R18).
  *
  * This endpoint writes nothing. v1 never marked on render either (R48, R49) —
  * but v2's client refetches on mount, on focus and on reconnect, so if it did,
@@ -70,23 +69,12 @@ function toWire(row: Row) {
 notificationsRouter.get("/", async (req, res) => {
   const user = requireUser(req);
 
-  const parsed = notificationListQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { cursor, limit, unreadOnly } = parsed.data;
-
-  const where = { userId: user.userId, ...(unreadOnly ? { readAt: null } : {}) };
-
-  // One extra row tells us whether another page exists without a second count
-  // query — the same shape as the submissions queue.
   const rows = await db.notification.findMany({
-    where,
-    orderBy: { id: "desc" },
-    take: limit + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    where: { userId: user.userId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: NOTIFICATION_INBOX_LIMIT,
     select: LIST_SELECT,
   });
-
-  const page = rows.slice(0, limit);
 
   // A real count, not a filter over the page: v1 counted unread by filtering
   // the 100 rows it had already fetched, so past 100 the header silently
@@ -96,8 +84,7 @@ notificationsRouter.get("/", async (req, res) => {
   });
 
   return apiOk(res, {
-    items: page.map(toWire),
-    nextCursor: rows.length > limit ? (page[page.length - 1]?.id ?? null) : null,
+    items: rows.map(toWire),
     unreadCount,
   });
 });
@@ -119,31 +106,23 @@ notificationsRouter.get("/unread-count", async (req, res) => {
 });
 
 /**
- * Mark read — the explicit write.
+ * Mark all read — the explicit write, and the only one (v1
+ * notification-actions.ts:8-12). v1's single-id action was exported and never
+ * called (R47) and opening a notification leaves it unread (R48), so there is
+ * no `ids` form.
  *
- * One endpoint, not v1's two: its single-id action was exported and never
- * called (R47), and ruling C12 says unreachable code is not a specification.
- *
- * The `userId` clause is the whole security model here. `ids` is
- * client-supplied and is NOT an ownership assertion — a forged id updates zero
- * rows only because the `where` narrows it (R43, spec §4). Never reduce this
- * to `updateMany({ where: { id: { in: ids } } })`.
- *
- * `readAt: null` keeps repeats free and keeps `readAt` stable once set (R44),
- * which is what makes the client's debounced batching safe.
+ * The `userId` clause is the whole security model here (R43, spec §4).
+ * `readAt: null` keeps repeats free and keeps `readAt` stable once set (R44).
  */
 notificationsRouter.post("/read", async (req, res) => {
   const user = requireUser(req);
 
   const parsed = markReadRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid mark-read body.", 400);
-  const body = parsed.data;
-
   const result = await db.notification.updateMany({
     where: {
       userId: user.userId,
       readAt: null,
-      ...("ids" in body ? { id: { in: body.ids } } : {}),
     },
     data: { readAt: new Date() },
   });

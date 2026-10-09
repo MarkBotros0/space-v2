@@ -9,6 +9,7 @@ export type { InputProps } from "./Input";
 
 export { Screen } from "./Screen";
 export type { ScreenEdge, ScreenProps } from "./Screen";
+export { ScreenHeaderContext } from "./ScreenHeader";
 
 export { Text } from "./Text";
 export type { TextProps, TextVariant } from "./Text";

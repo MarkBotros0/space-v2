@@ -815,13 +815,16 @@ export const openApiDocument = {
           quizGraded: { type: "boolean" },
         },
       },
-      DeviceRegistration: {
+      NotificationPreferencesUpdate: {
         type: "object",
-        required: ["token", "platform"],
-        additionalProperties: false,
+        required: ["assignmentCreated", "submissionReviewed", "sessionRescheduled", "lowAttendanceFlag", "mentorFollowup"],
+        description: "v1's five settable keys. `quizGraded` is not settable (as in v1); if sent it is stripped and the stored value is left untouched.",
         properties: {
-          token: { type: "string", minLength: 1, maxLength: 200, description: "Expo push token. A credential; never log it." },
-          platform: { type: "string", enum: ["ios", "android"] },
+          assignmentCreated: { type: "boolean" },
+          submissionReviewed: { type: "boolean" },
+          sessionRescheduled: { type: "boolean" },
+          lowAttendanceFlag: { type: "boolean" },
+          mentorFollowup: { type: "boolean" },
         },
       },
       EngagementScore: {
@@ -3539,26 +3542,19 @@ export const openApiDocument = {
         tags: ["Notifications"],
         summary: "The caller's notification inbox, newest first",
         description:
-          "Returns only the caller's own rows (the user id comes from the token, never a parameter). **Performs no write** — it never marks anything read, however often the client refetches (ruling C6); use `POST /notifications/read`. Ordered by id descending; `nextCursor` is the id of the last row of the page, or null at the end. `unreadCount` is a real count over all of the caller's unread rows, not a filter over the page. `target` is derived from the stored v1 link in one server-side function.",
-        parameters: [
-          { name: "cursor", in: "query", required: false, schema: { type: "integer", minimum: 1 }, description: "`nextCursor` of the previous page." },
-          { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
-          { name: "unreadOnly", in: "query", required: false, schema: { type: "string", enum: ["true", "false"], default: "false" } },
-        ],
+          "Returns only the caller's own rows (the user id comes from the token, never a parameter). **Performs no write** — it never marks anything read, however often the client refetches (ruling C6); use `POST /notifications/read`. One list of the newest 100 rows, createdAt descending (id descending as the tie-break), as v1 — no cursor, no paging and no read-state filter; the endpoint takes no query parameters. `unreadCount` is a real count over all of the caller's unread rows, not a filter over the page. `target` is derived from the stored v1 link in one server-side function.",
         responses: {
           200: ok(
             {
               type: "object",
-              required: ["items", "nextCursor", "unreadCount"],
+              required: ["items", "unreadCount"],
               properties: {
-                items: { type: "array", items: { $ref: "#/components/schemas/Notification" } },
-                nextCursor: { type: ["integer", "null"] },
+                items: { type: "array", maxItems: 100, items: { $ref: "#/components/schemas/Notification" } },
                 unreadCount: { type: "integer", minimum: 0 },
               },
             },
-            "One page of the inbox.",
+            "The newest 100 notifications.",
           ),
-          400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
         },
       },
@@ -3580,28 +3576,18 @@ export const openApiDocument = {
     "/api/v1/notifications/read": {
       post: {
         tags: ["Notifications"],
-        summary: "Mark notifications read (the explicit write)",
+        summary: "Mark all notifications read (the explicit write)",
         description:
-          "Body is exactly one of `{ ids: number[] }` (1–200) or `{ all: true }`; both together, an empty `ids`, or any other key (including `userId`) is `400 bad_request`. **`ids` is not an ownership assertion**: the update is scoped to the caller's own unread rows, so another user's id updates nothing and counts as zero. Idempotent — already-read rows are skipped and keep their original `readAt`; `marked` is the number of rows this call changed.",
+          "Body is exactly `{ all: true }` — mark-all is the only read write, as in v1 (opening a notification leaves it unread). Any other key (`ids`, `userId`, …) is `400 bad_request`. The update is scoped to the caller's own unread rows (the user id comes from the token). Idempotent — already-read rows are skipped and keep their original `readAt`; `marked` is the number of rows this call changed.",
         requestBody: {
           required: true,
           content: {
             "application/json": {
               schema: {
-                oneOf: [
-                  {
-                    type: "object",
-                    required: ["ids"],
-                    additionalProperties: false,
-                    properties: { ids: { type: "array", minItems: 1, maxItems: 200, items: { type: "integer", minimum: 1 } } },
-                  },
-                  {
-                    type: "object",
-                    required: ["all"],
-                    additionalProperties: false,
-                    properties: { all: { type: "boolean", enum: [true] } },
-                  },
-                ],
+                type: "object",
+                required: ["all"],
+                additionalProperties: false,
+                properties: { all: { type: "boolean", enum: [true] } },
               },
             },
           },
@@ -3621,7 +3607,7 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "Your notification preferences (all six)",
         description:
-          "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email now, push at cutover); the in-app inbox row is always written.",
+          "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. As in v1, one switch governs every channel: an opted-out user gets neither the in-app row nor the email.",
         responses: {
           200: ok(
             { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
@@ -3634,10 +3620,10 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "Replace your notification preferences",
         description:
-          "PUT, not PATCH: the body must carry all six keys, so a partial body is `400 bad_request`. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
+          "PUT, not PATCH: the body must carry v1's five settable keys, so a partial body is `400 bad_request`. `quizGraded` is not settable (as in v1): if sent it is stripped and the stored value stays. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
         requestBody: {
           required: true,
-          content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferences" } } },
+          content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferencesUpdate" } } },
         },
         responses: {
           200: ok(
@@ -3646,23 +3632,6 @@ export const openApiDocument = {
           ),
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
-        },
-      },
-    },
-    "/api/v1/me/devices": {
-      post: {
-        tags: ["Me"],
-        summary: "Register this device for push (blocked on cutover)",
-        description:
-          "The request body is validated, then the endpoint answers `503 push_unavailable`: Expo push needs a device-token table, the database schema is frozen while v1 runs against it, and the table lands at cutover (see docs/superpowers/cutover/2026-08-24-notifications-push.md). The contract is fixed now so the client is built once; the client keeps the token locally and stops retrying this session.",
-        requestBody: {
-          required: true,
-          content: { "application/json": { schema: { $ref: "#/components/schemas/DeviceRegistration" } } },
-        },
-        responses: {
-          400: errRef("BadRequest"),
-          401: errRef("Unauthorized"),
-          503: conflict("`push_unavailable` — push registration is not available until the cutover migration lands."),
         },
       },
     },

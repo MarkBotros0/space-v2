@@ -3,8 +3,10 @@ import type { NavItem } from "@space/shared";
 import { ALL_NAV_HREFS } from "@space/shared";
 
 import { NavIcon } from "../../src/components/NavIcon";
+import { NotificationBell } from "../../src/components/NotificationBell";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { useSessionStore } from "../../src/store/session";
+import { ScreenHeaderContext } from "../../src/ui";
 
 /**
  * Hrefs whose route is a directory (`x/index.tsx`) because the destination
@@ -121,7 +123,10 @@ export default function AppLayout() {
     ...DETAIL_ROUTE_NAMES,
   ];
 
+  // The bell on every screen, for every role, as v1's app shell
+  // (app-shell.tsx:55-57; 10-notifications R36): `Screen` renders this node.
   return (
+    <ScreenHeaderContext.Provider value={<NotificationBell />}>
     <Tabs screenOptions={{ headerShown: false }}>
       {orderedRouteNames.map((name) => {
         const tab = tabByRouteName.get(name);
@@ -143,5 +148,6 @@ export default function AppLayout() {
         );
       })}
     </Tabs>
+    </ScreenHeaderContext.Provider>
   );
 }

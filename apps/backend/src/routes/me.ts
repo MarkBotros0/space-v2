@@ -6,8 +6,7 @@ import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   OWN_PROFILE_FIELDS,
   changePasswordRequestSchema,
-  deviceRegistrationSchema,
-  notificationPreferencesSchema,
+  notificationPreferencesUpdateSchema,
   updateOwnProfileInputSchema,
   updateProfileRequestSchema,
 } from "../../../../packages/shared/src/index";
@@ -263,9 +262,9 @@ meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
 });
 
 /**
- * Replace them. PUT, not PATCH: the body carries all six keys, so there is no
- * way for a client that has not been updated to leave a new key at its default
- * without saying so.
+ * Replace them. PUT, not PATCH: the body carries v1's five settable keys
+ * (jpc-space settings-actions.ts:58-73). `quizGraded` is not settable in v1,
+ * so it is stripped and left untouched (R56, R57).
  *
  * The target row is never an input (R54) — `user.userId` comes from the
  * verified token, so one user cannot write another's preferences no matter
@@ -274,9 +273,9 @@ meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
 meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
-  const parsed = notificationPreferencesSchema.safeParse(req.body);
+  const parsed = notificationPreferencesUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
-    return apiError(res, "bad_request", "All six notification preferences are required.", 400);
+    return apiError(res, "bad_request", "All five notification preferences are required.", 400);
   }
 
   const preferences = await db.notificationPreference.upsert({
@@ -287,38 +286,6 @@ meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
   });
 
   return apiOk(res, { preferences });
-});
-
-/**
- * Register this device for push.
- *
- * BLOCKED ON CUTOVER. Expo push needs a device token per user, which is a new
- * table (`DeviceToken`: userId, token @unique, platform, lastSeenAt) — and the
- * schema is frozen while v1 runs against the same database (ruling C1). There
- * is no existing column that legitimately holds an Expo push token, and C1
- * forbids overloading one that means something else.
- *
- * So the contract ships and the write does not. The body is validated first,
- * so a client integration error surfaces as a 400 today rather than at
- * cutover; a well-formed registration gets 503 and the client keeps the token
- * locally.
- *
- * To finish this at cutover: apply the migration in
- * docs/superpowers/cutover/2026-08-24-notifications-push.md, then replace the
- * 503 below with the upsert described there (it maps the lowercase wire
- * platform to the DevicePlatform enum with DEVICE_PLATFORM_TO_DB). Nothing
- * else changes — not the route, not the request contract, not the client.
- */
-meRouter.post("/devices", requireAuth, async (req, res) => {
-  const parsed = deviceRegistrationSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid device registration.", 400);
-
-  return apiError(
-    res,
-    "push_unavailable",
-    "Push notifications aren't available yet.",
-    503,
-  );
 });
 
 /**
