@@ -16,18 +16,12 @@ export const updateSubmissionRequestSchema = z.object({
 export type UpdateSubmissionRequest = z.infer<typeof updateSubmissionRequestSchema>;
 
 /**
- * A reviewer's verdict.
- *
- * `returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 has
- * `RETURNED` in its vocabulary with no producer anywhere except the seed
- * script, while four call sites read it — it is the state a reviewer needs when
- * the work is not finished, and without it the only way back to editable was
- * v1's accidental one, where saving a draft silently demoted a reviewed
- * submission and dropped it out of the queue.
+ * A reviewer's verdict. v1 parity 2026-10-09 (R21): one action — it always
+ * sets REVIEWED, whatever the current status (v1 submission-actions.ts:167-191).
+ * Nothing sets RETURNED; legacy RETURNED rows are only read and labelled.
  */
 export const reviewSubmissionRequestSchema = z.object({
   feedback: z.string().max(20000),
-  returnForRevision: z.boolean().optional(),
 });
 export type ReviewSubmissionRequest = z.infer<typeof reviewSubmissionRequestSchema>;
 
@@ -156,6 +150,5 @@ export type SaveSubmissionResponse = z.infer<typeof saveSubmissionResponseSchema
 /** `POST /submissions/:publicId/review` success payload. */
 export const reviewSubmissionResponseSchema = z.object({
   reviewed: z.literal(true),
-  returnedForRevision: z.boolean(),
 });
 export type ReviewSubmissionResponse = z.infer<typeof reviewSubmissionResponseSchema>;

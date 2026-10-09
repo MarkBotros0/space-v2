@@ -164,6 +164,9 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
         id: allGroupsAssignmentId,
         title: "Open To All",
         dueAt: expect.any(String),
+        // v1 parity 2026-10-09 (R48): the org day and v1's "in N" distance, server-derived.
+        dueOrgDay: "2099-04-01",
+        dueDistance: expect.stringMatching(/^\d+ years$/),
         isOverdue: false,
         status: "PENDING",
         reviewedAt: null,
@@ -335,15 +338,14 @@ describe("GET /api/v1/assignments/:id/tracker", () => {
     expect(pairs).toEqual(["Group A/Test student", "Group B/Test moved", "Group B/Test other"]);
   });
 
-  it("narrows the roster to a leader's own groups", async () => {
-    // The leader leads Group B. The all-groups assignment covers the whole
-    // season, but they may only see their own students' names and addresses.
+  // v1 parity 2026-10-09 (07-assignments R59): v1 shows the tracker to season
+  // admins and SUPER only (assignments-query.ts:127-129).
+  it("refuses a leader, even of a targeted group (v1 R59)", async () => {
     const res = await request(app)
       .get(`/api/v1/assignments/${allGroupsAssignmentId}/tracker`)
       .set("authorization", `Bearer ${leaderToken}`);
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.rows.every((r: { groupId: number }) => r.groupId === groupBId)).toBe(true);
+    expect(res.status).toBe(403);
     expect(JSON.stringify(res.body)).not.toContain("space-v2-test-student");
   });
 

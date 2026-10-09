@@ -279,13 +279,13 @@ describe("POST /api/v1/seasons/:id/assignments", () => {
     expect(res.body.error.code).toBe("invalid_session");
   });
 
-  it("refuses 'specific groups' with none chosen, and a 161-character title", async () => {
+  // v1 parity 2026-10-09 (R13): v1 assignment-actions.ts:73 saves it, targeting nobody.
+  it("saves 'specific groups' with none chosen (targets nobody), and refuses a 161-character title", async () => {
     const empty = await create({ isAllGroups: false, groupIds: [] });
-    expect(empty.status).toBe(400);
-    expect(empty.body.error).toEqual({
-      code: "bad_request",
-      message: "groupIds: Choose at least one group, or target the whole season.",
-    });
+    expect(empty.status).toBe(201);
+    const emptyId = empty.body.data.id as number;
+    expect(await notificationsFor(studentAId, emptyId)).toHaveLength(0);
+    expect(await notificationsFor(studentBId, emptyId)).toHaveLength(0);
     const long = await create({ title: "x".repeat(161) });
     expect(long.status).toBe(400);
     expect(long.body.error.code).toBe("bad_request");
@@ -347,7 +347,9 @@ describe("PATCH /api/v1/assignments/:id", () => {
     });
   });
 
-  it("notifies only students NEWLY targeted by an edit — nobody twice (spec §10 item 5)", async () => {
+  // v1 parity 2026-10-09 (was "notifies only students NEWLY targeted by an edit"):
+  // v1 assignment-actions.ts:101-139 — edits and retargeting notify nobody (R66, R74).
+  it("notifies nobody on edit, even students newly targeted (v1 R66, R74)", async () => {
     const made = await create({ title: "Retarget", isAllGroups: false, groupIds: [groupAId] });
     const id = made.body.data.id as number;
     expect(await notificationsFor(studentAId, id)).toHaveLength(1);
@@ -355,13 +357,12 @@ describe("PATCH /api/v1/assignments/:id", () => {
 
     const widened = await patch(id, { title: "Retarget", isAllGroups: false, groupIds: [groupAId, groupBId] });
     expect(widened.status).toBe(200);
-    expect(await notificationsFor(studentBId, id)).toHaveLength(1); // newly targeted
+    expect(await notificationsFor(studentBId, id)).toHaveLength(0); // added silently
     expect(await notificationsFor(studentAId, id)).toHaveLength(1); // not re-notified
 
-    // Groups A+B already cover every ACTIVE enrollee: going whole-season adds nobody.
     await patch(id, { title: "Retarget", isAllGroups: true });
     expect(await notificationsFor(studentAId, id)).toHaveLength(1);
-    expect(await notificationsFor(studentBId, id)).toHaveLength(1);
+    expect(await notificationsFor(studentBId, id)).toHaveLength(0);
     expect(await notificationsFor(withdrawnId, id)).toHaveLength(0);
   });
 

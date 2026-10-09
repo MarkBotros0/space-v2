@@ -110,12 +110,12 @@ describe("assignmentWriteRequestSchema", () => {
     });
   });
 
-  it("refuses 'specific groups' with none chosen — deliberate divergence from R13", () => {
-    const result = assignmentWriteRequestSchema.safeParse({ ...valid, isAllGroups: false });
-    expect(result.success).toBe(false);
-    expect(result.success ? null : result.error.issues[0]?.message).toBe(
-      "Choose at least one group, or target the whole season.",
-    );
+  // v1 parity 2026-10-09 (was "refuses … deliberate divergence from R13"): v1
+  // assignment-actions.ts:73 saves it, targeting nobody.
+  it("accepts 'specific groups' with none chosen, as v1 (R13)", () => {
+    const result = assignmentWriteRequestSchema.parse({ ...valid, isAllGroups: false });
+    expect(result.isAllGroups).toBe(false);
+    expect(result.groupIds).toEqual([]);
   });
 
   it("collapses duplicate group ids (closes R70) and drops them when targeting everyone (R24)", () => {

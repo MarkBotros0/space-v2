@@ -88,8 +88,8 @@ export async function targetedStudentIds(
 }
 
 /**
- * The single ASSIGNMENT_CREATED producer (create, and students newly targeted
- * by an edit). Runs after the write has committed (R65). Title and link are
+ * The single ASSIGNMENT_CREATED producer — create only (an edit notifies
+ * nobody, v1 R66/R74; v1 parity 2026-10-09). Runs after the write has committed (R65). Title and link are
  * v1's exact strings (`assignment-actions.ts:87,91`; ruling X1); the body's
  * time is the organisation's wall clock (C2), not the host's toLocaleString.
  */

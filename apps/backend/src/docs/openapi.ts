@@ -1620,6 +1620,16 @@ export const openApiDocument = {
           id: { type: "integer" },
           title: { type: "string" },
           dueAt: { type: ["string", "null"], format: "date-time" },
+          dueOrgDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Org-calendar day of `dueAt`; null when there is no due date.",
+          },
+          dueDistance: {
+            type: ["string", "null"],
+            description:
+              "How far off the deadline is while still ahead (\"3 days\", \"5 hours\") — v1's `formatDistanceToNowStrict`, derived server-side. Null when there is no due date or it has passed.",
+          },
           status: {
             oneOf: [
               { $ref: "#/components/schemas/SubmissionStatus" },
@@ -1750,7 +1760,7 @@ export const openApiDocument = {
             type: "array",
             items: { type: "integer" },
             default: [],
-            description: "Required non-empty when `isAllGroups` is false; every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
+            description: "May be empty when `isAllGroups` is false — the assignment then targets nobody, as v1 (R13). Every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
           },
         },
       },
@@ -4097,7 +4107,7 @@ export const openApiDocument = {
         tags: ["Assignments"],
         summary: "Replace an assignment",
         description:
-          "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). Students newly targeted by the edit get ASSIGNMENT_CREATED (same text and link as create); students already targeted are not notified again. Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
+          "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). An edit notifies nobody — newly targeted students are added silently, as v1 (R66, R74). Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -4133,7 +4143,7 @@ export const openApiDocument = {
         tags: ["Assignments"],
         summary: "Who was given this assignment, and what they have done about it",
         description:
-          "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
+          "Season admins of the assignment's season and SUPER only, as v1; LEADER and MENTOR get 403. The rows carry every student's name and email.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/AssignmentTracker" }, "The tracker."),
@@ -4214,7 +4224,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "Record a verdict",
         description:
-          "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort (title `Feedback ready on \"<assignment>\"` as in v1; `<assignment> was returned for revision` when returned; no body) — a mail failure does not report the review as failed.",
+          "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\nOne action, as v1: it always sets `REVIEWED`, whatever the current status (a never-submitted DRAFT included — v1 has no status precondition). Nothing sets `RETURNED`; existing RETURNED rows are only read.\n\nThe student is notified, best-effort (title `Feedback ready on \"<assignment>\"` as in v1; no body) — a mail failure does not report the review as failed.",
         parameters: [{ name: "publicId", in: "path", required: true, schema: { type: "string" } }],
         requestBody: {
           required: true,
@@ -4225,7 +4235,6 @@ export const openApiDocument = {
                 required: ["feedback"],
                 properties: {
                   feedback: { type: "string", maxLength: 20000 },
-                  returnForRevision: { type: "boolean" },
                 },
               },
             },
@@ -4237,7 +4246,6 @@ export const openApiDocument = {
               type: "object",
               properties: {
                 reviewed: { type: "boolean" },
-                returnedForRevision: { type: "boolean" },
               },
             },
             "Recorded.",
@@ -4246,11 +4254,6 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
-          409: {
-            description:
-              "`not_submitted` — a DRAFT that was never submitted cannot be marked REVIEWED. It can still be returned for revision.",
-            content: { "application/json": { schema: errorResponse } },
-          },
         },
       },
     },

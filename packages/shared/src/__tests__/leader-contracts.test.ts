@@ -31,9 +31,8 @@ describe("saveAttendanceResponseSchema", () => {
 });
 
 describe("reviewSubmissionResponseSchema", () => {
+  // v1 parity 2026-10-09 (was "{ reviewed, returnedForRevision }"): one action, REVIEWED only.
   it("parses the review route's payload", () => {
-    expect(
-      reviewSubmissionResponseSchema.parse({ reviewed: true, returnedForRevision: false }),
-    ).toEqual({ reviewed: true, returnedForRevision: false });
+    expect(reviewSubmissionResponseSchema.parse({ reviewed: true })).toEqual({ reviewed: true });
   });
 });
