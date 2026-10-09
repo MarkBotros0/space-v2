@@ -42,3 +42,26 @@ export function useSaveAttendance(sessionId: number) {
     },
   });
 }
+
+/**
+ * The check-in console's single-student override (v1 manualOverrideAction).
+ * `consoleOverride` tells the server to skip the low-attendance flag, as v1
+ * did (v1 parity 2026-10-09, spec 04 R33); the batch screen above still flags.
+ */
+export function useOverrideAttendance(sessionId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: DASHBOARD_META,
+    mutationFn: async (entry: AttendanceEntry) => {
+      const res = await apiClient.post(`/api/v1/sessions/${sessionId}/attendance`, {
+        entries: [entry],
+        consoleOverride: true,
+      });
+      return saveAttendanceResponseSchema.parse(res.data.data);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.attendance.roster(sessionId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+    },
+  });
+}

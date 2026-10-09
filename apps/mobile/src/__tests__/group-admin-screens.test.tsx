@@ -35,8 +35,8 @@ const groupRow = (id: number, name: string, seasonId: number) => ({
   id, name, description: null, studentCount: 1, leaderNames: ["Lina"], seasonId, seasonCode: `s${seasonId}`, seasonTitle: `Season ${seasonId}`,
 });
 const roster = [
-  { userId: 21, name: "Sara", email: "sara@jpc.test", groupId: 3, groupName: "Group A", otherSeasonGroup: null },
-  { userId: 22, name: "Omar", email: "omar@jpc.test", groupId: null, groupName: null, otherSeasonGroup: { groupName: "Old", seasonCode: "s1" } },
+  { userId: 21, name: "Sara", email: "sara@jpc.test", groupId: 3, groupName: "Group A" },
+  { userId: 22, name: "Omar", email: "omar@jpc.test", groupId: null, groupName: null },
 ];
 const seasonDetail = {
   id: 7, code: "s7", title: "Season 7", program: "TEST", year: 2099, status: "ACTIVE",
@@ -52,6 +52,14 @@ function routeGets(extra: Record<string, unknown> = {}) {
       "/api/v1/seasons/8/groups": { groups: [groupRow(9, "Autumn group", 8)] },
       "/api/v1/seasons/7/roster": { roster },
       "/api/v1/seasons/by-code/s7": seasonDetail,
+      // v1 parity 2026-10-09 (spec 05 R18/R78): the form picks from every live student.
+      "/api/v1/groups/student-options": {
+        students: [
+          { id: 21, name: "Sara", email: "sara@jpc.test" },
+          { id: 22, name: "Omar", email: "omar@jpc.test" },
+          { id: 23, name: "Nadia", email: "nadia@jpc.test" },
+        ],
+      },
       "/api/v1/groups/leader-options": { leaders: [{ id: 5, name: "Lina", email: "lina@jpc.test" }, { id: 6, name: "Karim", email: "karim@jpc.test" }] },
       "/api/v1/groups/3": {
         id: 3, name: "Group A", description: null, seasonId: 7, seasonCode: "s7", seasonTitle: "Season 7",
@@ -72,31 +80,42 @@ beforeEach(() => {
 });
 
 describe("/groups — ADMIN/SUPER season branch (G6, D-16.16)", () => {
-  it("lists the current season's groups and switches season", async () => {
+  // v1 parity 2026-10-09 (spec 05 R91): v1 admin/groups/page.tsx:25-40 opens the newest
+  // season by startDate whatever its status — here season 8 (DRAFT, Sep).
+  it("opens the newest season's groups (any status) and switches season", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7, 8] }));
     routeGets();
     renderWithProviders(<GroupsScreen />);
 
-    expect(await screen.findByText("Group A")).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/groups");
+    expect(await screen.findByText("Autumn group")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/seasons/8/groups");
     expect(get).not.toHaveBeenCalledWith("/api/v1/groups");
 
-    fireEvent.press(screen.getByText("Season 8"));
-    expect(await screen.findByText("Autumn group")).toBeTruthy();
+    fireEvent.press(screen.getByText("Season 7"));
+    expect(await screen.findByText("Group A")).toBeTruthy();
 
     fireEvent.press(screen.getByText("New group"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/new", params: { seasonId: "8" } });
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/new", params: { seasonId: "7" } });
     fireEvent.press(screen.getByText("Roster"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/roster", params: { code: "s8" } });
-    fireEvent.press(screen.getByText("Autumn group"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "9" } });
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/roster", params: { code: "s7" } });
+    fireEvent.press(screen.getByText("Group A"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "3" } });
+  });
+
+  it("selects the season named by a seasonId param (group create/edit returning, R97)", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7, 8] }));
+    mockParams = { seasonId: "7" };
+    routeGets();
+    renderWithProviders(<GroupsScreen />);
+    expect(await screen.findByText("Group A")).toBeTruthy();
+    expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/8/groups");
   });
 
   it("serves SUPER too (v1 rejected SUPER here, spec 05 R92 — not ported)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets();
     renderWithProviders(<GroupsScreen />);
-    expect(await screen.findByText("Group A")).toBeTruthy();
+    expect(await screen.findByText("Autumn group")).toBeTruthy();
   });
 
   it("gives MENTOR a graceful state and fetches nothing (spec 05 §9)", async () => {
@@ -108,7 +127,7 @@ describe("/groups — ADMIN/SUPER season branch (G6, D-16.16)", () => {
 });
 
 describe("/group/new", () => {
-  it("creates a group with picked leaders and students and opens it", async () => {
+  it("creates a group from every live student and returns to the season's groups", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { seasonId: "7" };
     routeGets();
@@ -117,17 +136,25 @@ describe("/group/new", () => {
 
     fireEvent.changeText(await screen.findByLabelText("Name"), "Group C");
     fireEvent.press(await screen.findByLabelText("Karim"));
-    fireEvent.press(await screen.findByLabelText("Omar"));
-    // Omar is currently in another season's group — the form says so before saving.
-    expect(screen.getByText("In Old (s1) — saving moves them here.")).toBeTruthy();
+    // Nadia is not on the season roster: v1's picker lists every live student (spec 05 R78).
+    fireEvent.press(await screen.findByLabelText("Nadia"));
+    // v1 group-form.tsx:148's single helper line, no per-student caption (spec 05 R79).
+    expect(
+      screen.getByText(
+        "Students enrolled in this group for the current season. Adding a student here will move them out of any other group.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/saving moves them here/)).toBeNull();
     fireEvent.press(screen.getByText("Create group"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/groups", {
-        name: "Group C", description: null, leaderIds: [6], studentIds: [22],
+        name: "Group C", description: null, leaderIds: [6], studentIds: [23],
       }),
     );
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "30" } });
+    expect(get).toHaveBeenCalledWith("/api/v1/groups/student-options");
+    // v1 parity 2026-10-09 (spec 05 R97): v1 group-form.tsx:107 returns to the season's groups.
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/groups", params: { seasonId: "7" } });
   });
 
   it("validates the name with the server's schema", async () => {
@@ -158,6 +185,8 @@ describe("/group/[id]/edit", () => {
         name: "Group A", description: null, leaderIds: [5], studentIds: [21, 22],
       }),
     );
+    // v1 parity 2026-10-09 (spec 05 R97).
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/groups", params: { seasonId: "7" } });
   });
 
   it("shows the delete impact, and the server's refusal while an assignment targets only this group", async () => {
@@ -201,8 +230,9 @@ describe("/seasons/[code]/roster (G7)", () => {
     put.mockResolvedValue({ data: { data: { assigned: 1, unassigned: 1, skippedStudentIds: [] } } });
     renderWithProviders(<SeasonRosterScreen />);
 
-    expect(await screen.findByText("Also in Old (s1) — assigning here moves them.")).toBeTruthy();
+    // v1 parity 2026-10-09 (spec 05 R82): no other-season caption.
     fireEvent.press(await screen.findByLabelText("Sara: Unassigned"));
+    expect(screen.queryByText(/Also in/)).toBeNull();
     fireEvent.press(screen.getByLabelText("Omar: Group B"));
     // Pressing a row back to its original group drops it from the batch.
     fireEvent.press(screen.getByLabelText("Omar: Group A"));
@@ -214,7 +244,8 @@ describe("/seasons/[code]/roster (G7)", () => {
         assignments: [{ studentUserId: 21, groupId: null }],
       }),
     );
-    expect(await screen.findByText("Assigned 1, unassigned 1.")).toBeTruthy();
+    // v1 parity 2026-10-09 (spec 05 R101): v1 roster-grid.tsx:84-87's wording, N = rows written.
+    expect(await screen.findByText("Updated 2 students.")).toBeTruthy();
   });
 
   it("offers Import groups to a season admin, pushing the importer route", async () => {

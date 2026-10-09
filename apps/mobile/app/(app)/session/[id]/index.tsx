@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
-import { Linking, View } from "react-native";
+import { Linking, Pressable, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import type { AttendanceRosterRow, MyAttendance, SessionDetail } from "@space/shared";
+import type { AttendanceEntry, AttendanceRosterRow, AttendanceStatus, MyAttendance, SessionDetail } from "@space/shared";
 
 import { StudentCheckInCard } from "../../../../src/components/check-in/StudentCheckInCard";
 import { SessionQuizzesCard } from "../../../../src/components/SessionQuizzesCard";
 import { VideoQuestionsEditor, VideoQuizResultsTable } from "../../../../src/components/VideoQuestionsEditor";
 import { VideoQuizPlayer } from "../../../../src/components/VideoQuizPlayer";
-import { useAttendanceRoster } from "../../../../src/hooks/use-attendance";
+import { useAttendanceRoster, useOverrideAttendance } from "../../../../src/hooks/use-attendance";
 import { useCheckInState, useRegenerateCheckIn } from "../../../../src/hooks/use-check-in";
 import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../../../src/hooks/use-session-detail";
 import { useStudentVideoQuiz } from "../../../../src/hooks/use-video-quiz";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
-import { checkInUrlFor } from "../../../../src/lib/app-config";
+import { checkInUrl } from "../../../../src/lib/check-in-url";
 import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { useSessionStore } from "../../../../src/store/session";
@@ -77,8 +77,8 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
         <>
           {token ? (
             <View style={{ alignItems: "center", gap: theme.spacing.sm }}>
-              {/* v1's full check-in URL (03-sessions R68); the typed code below stays the bare token. */}
-              <QRCode value={checkInUrlFor(token)} size={220} />
+              {/* v1 parity 2026-10-09 (03 R68, 04 R41): the full URL, as v1, so a phone camera opens check-in. */}
+              <QRCode value={checkInUrl(token)} size={220} />
               <Text variant="caption">{`Code: ${token}`}</Text>
               {checkIn.data?.expiresAtTime ? (
                 <Text variant="caption">{`Closes at ${formatWallTime(checkIn.data.expiresAtTime)}`}</Text>
@@ -106,20 +106,81 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
       ) : null}
       {error ? <Text variant="label" color={theme.colors.error[500]}>{error}</Text> : null}
       <Text variant="heading">Checked in</Text>
-      <LiveRoster detail={detail} emptyText="No students are enrolled yet." />
+      {/* v1 check-in-attendance-list.tsx: the season's ACTIVE enrolments by name, tap to override (04 R98). */}
+      <LiveRoster detail={detail} emptyText="No students have scanned yet." console />
     </Card>
   );
+}
+
+/** v1's override choices, in v1's order (check-in-attendance-list.tsx:43-47). */
+const OVERRIDE_STATUSES: { status: AttendanceStatus; label: string }[] = [
+  { status: "PRESENT", label: "Present" },
+  { status: "LATE", label: "Late" },
+  { status: "ABSENT", label: "Absent" },
+];
+
+/**
+ * The console's single-student override (v1 manualOverrideAction). One entry,
+ * flagged `consoleOverride` so the server skips the low-attendance flag (04 R33,
+ * v1 parity 2026-10-09). It resends the stored notes and lateness so a status
+ * tap erases neither (KEEP-FIX 04 R32 — v1 nulled them).
+ */
+export function overrideEntry(row: AttendanceRosterRow, status: AttendanceStatus): AttendanceEntry {
+  const entry: AttendanceEntry = { studentUserId: row.studentUserId, status, notes: row.notes };
+  if (status === "LATE") entry.lateMinutes = row.lateMinutes;
+  return entry;
+}
+
+function OverrideChoices({ sessionId, row, onDone }: { sessionId: number; row: AttendanceRosterRow; onDone: () => void }) {
+  const theme = useTheme();
+  const save = useOverrideAttendance(sessionId);
+  const [error, setError] = useState<string | null>(null);
+  const label = row.name ?? row.email;
+  return (
+    <View style={{ gap: theme.spacing.xs, paddingVertical: theme.spacing.xs }}>
+      <Text variant="label">{`Override attendance · ${label}`}</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs }}>
+        {OVERRIDE_STATUSES.map((o) => (
+          <Button
+            key={o.status}
+            title={o.label}
+            variant="secondary"
+            accessibilityLabel={`${label}: ${o.label}`}
+            disabled={save.isPending}
+            onPress={() => {
+              setError(null);
+              save.mutate(
+                overrideEntry(row, o.status),
+                {
+                  onSuccess: onDone,
+                  onError: (err) => setError(apiErrorMessage(err, "Couldn't save attendance.")),
+                },
+              );
+            }}
+          />
+        ))}
+      </View>
+      {error ? <Text variant="label" color={theme.colors.error[500]}>{error}</Text> : null}
+    </View>
+  );
+}
+
+/** Roster rows by student name only — v1's console order (sessions/[id]/page.tsx:79; 04 R98). */
+function byStudentName(a: AttendanceRosterRow, b: AttendanceRosterRow): number {
+  return (a.name ?? "").localeCompare(b.name ?? "");
 }
 
 /**
  * Who has checked in, polled every 10s while check-in is open (v1's
  * check-in-attendance-list.tsx:58 router.refresh). The roster endpoint narrows
- * a leader to their own groups server-side.
+ * a leader to their own groups server-side. In the admin console (`console`)
+ * rows sort by name and each can be tapped to override the status (04 R98).
  */
-function LiveRoster({ detail, emptyText }: { detail: SessionDetail; emptyText: string }) {
+function LiveRoster({ detail, emptyText, console = false }: { detail: SessionDetail; emptyText: string; console?: boolean }) {
   const theme = useTheme();
   const roster = useAttendanceRoster(detail.id);
   const { refetch } = roster;
+  const [editing, setEditing] = useState<number | null>(null);
 
   useEffect(() => {
     if (!detail.checkInOpen) return undefined;
@@ -132,21 +193,33 @@ function LiveRoster({ detail, emptyText }: { detail: SessionDetail; emptyText: s
   if (roster.data.length === 0) {
     return <Text variant="body" color={theme.colors.neutral[600]}>{emptyText}</Text>;
   }
-  const checkedIn = roster.data.filter((r) => r.status !== null).length;
+  const rows = console ? [...roster.data].sort(byStudentName) : roster.data;
+  const checkedIn = rows.filter((r) => r.status !== null).length;
   return (
     <>
-      <Text variant="label">{`${checkedIn} of ${roster.data.length} checked in`}</Text>
-      {roster.data.map((row) => (
-        <View key={row.studentUserId} style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <Text variant="body">{row.name ?? row.email}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>{rosterStatus(row)}</Text>
+      <Text variant="label">{`${checkedIn} of ${rows.length} checked in`}</Text>
+      {rows.map((row) => (
+        <View key={row.studentUserId}>
+          <Pressable
+            disabled={!console}
+            accessibilityRole={console ? "button" : undefined}
+            accessibilityLabel={console ? `Edit ${row.name ?? row.email}` : undefined}
+            onPress={() => setEditing((cur) => (cur === row.studentUserId ? null : row.studentUserId))}
+            style={{ flexDirection: "row", justifyContent: "space-between" }}
+          >
+            <Text variant="body">{row.name ?? row.email}</Text>
+            <Text variant="label" color={theme.colors.neutral[600]}>{rosterStatus(row)}</Text>
+          </Pressable>
+          {console && editing === row.studentUserId ? (
+            <OverrideChoices sessionId={detail.id} row={row} onDone={() => setEditing(null)} />
+          ) : null}
         </View>
       ))}
     </>
   );
 }
 
-/** Group leaders, and a SUPER who is not this season's admin: who has checked in, read-only — v1 /leader/sessions/[id]. */
+/** Group leaders: who has checked in, read-only — v1 /leader/sessions/[id]. */
 function LiveCheckInRoster({ detail }: { detail: SessionDetail }) {
   const theme = useTheme();
   return (
@@ -220,7 +293,6 @@ function SessionDetailBody({ id }: { id: number }) {
   const theme = useTheme();
   const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
-  const seasonAdminIds = useSessionStore((s) => s.scopes?.seasonAdminIds);
   const { data, isPending, isError, refetch, isRefetching } = useSessionDetail(id);
 
   if (isPending) {
@@ -238,10 +310,10 @@ function SessionDetailBody({ id }: { id: number }) {
     );
   }
 
-  // v1 showed the console only to an admin OF the season; the API also lets any
-  // SUPER through (isAdminOfSeason), so the app narrows it (REG-79).
-  const showConsole =
-    data.canManageCheckIn && (role !== "SUPER" || (seasonAdminIds ?? []).includes(data.seasonId));
+  // v1 parity 2026-10-09 (03-sessions R103): v1's SUPER calendar opens the admin
+  // session page, where canEditSeason admits any SUPER — so a SUPER gets the
+  // console (super/calendar/page.tsx:36; admin/season/[code]/sessions/[id]/page.tsx:39-42).
+  const showConsole = data.canManageCheckIn;
 
   return (
     <Screen edges={["top", "left", "right"]} scroll onRefresh={() => void refetch()} refreshing={isRefetching}>

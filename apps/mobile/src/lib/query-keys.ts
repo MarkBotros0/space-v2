@@ -159,6 +159,8 @@ export const queryKeys = {
     bySeason: (seasonId: number | null) => [...queryKeys.groups.all, "season", { seasonId }] as const,
     impact: (id: number | null) => [...queryKeys.groups.all, "impact", { id }] as const,
     leaderOptions: () => [...queryKeys.groups.all, "leaderOptions"] as const,
+    /** Every live student — the group form's picker (spec 05 R18/R78). Under groups.all: a group save enrols. */
+    studentOptions: () => [...queryKeys.groups.all, "studentOptions"] as const,
     /**
      * Under groups.all ON PURPOSE: every group write (create, edit, delete,
      * bulk assign) can change any roster row — GroupStudent is globally unique

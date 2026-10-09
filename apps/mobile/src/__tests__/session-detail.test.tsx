@@ -97,6 +97,8 @@ it("lets a season admin open check-in and shows the QR from the open response", 
   await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/check-in-open"));
   expect(await screen.findByText("Code: tok123")).toBeTruthy();
   expect(await screen.findByText("Close check-in")).toBeTruthy();
+  // v1 parity 2026-10-09 (03 R68, 04 R41): the QR holds v1's full check-in URL, not the bare token.
+  expect(screen.UNSAFE_getByProps({ size: 220 }).props.value).toMatch(/^.*\/checkin\/tok123$/);
 });
 
 it("recovers an open session's QR from GET /check-in — not the season-wide list (D-16.9)", async () => {
@@ -230,20 +232,48 @@ it("lists who has checked in on the admin console and refreshes it while open (R
   }
 });
 
-it("hides the console from a SUPER who is not an admin of the season, keeping a read-only roster (REG-79)", async () => {
+// v1 parity 2026-10-09 (03-sessions R103): v1's SUPER opens the admin session page,
+// where canEditSeason admits any SUPER, so a SUPER gets the console.
+it("shows any SUPER the console, administered season or not (03 R103)", async () => {
   useSessionStore.setState(makeSession("SUPER", { seasonAdminIds: [99] }, { id: 1 }));
   routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
   renderWithProviders(<SessionDetailScreen />);
-  expect(await screen.findByText("Check-in is closed")).toBeTruthy();
-  expect(screen.queryByText("Open check-in")).toBeNull();
-  expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/check-in");
+  expect(await screen.findByText("Open check-in")).toBeTruthy();
+  expect(screen.queryByText("Check-in is closed")).toBeNull();
 });
 
-it("shows a SUPER who administers the season the console (REG-79)", async () => {
-  useSessionStore.setState(makeSession("SUPER", { seasonAdminIds: [7] }, { id: 1 }));
-  routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
+// v1 parity 2026-10-09 (04-attendance R98, R33; KEEP-FIX R32): v1 check-in-attendance-list.tsx.
+it("sorts the console roster by name and overrides one student without the low-attendance flag", async () => {
+  useSessionStore.setState(admin());
+  routeGets({
+    detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true },
+    roster: [
+      { studentUserId: 2, name: "Zed", email: "z@x.org", groupName: "A group", status: null, notes: "Kept note", lateMinutes: 7 },
+      { studentUserId: 1, name: "Ada", email: "a@x.org", groupName: "Z group", status: "PRESENT", notes: null, lateMinutes: null },
+    ],
+  });
+  post.mockResolvedValue({ data: { data: { saved: 1 } } });
   renderWithProviders(<SessionDetailScreen />);
-  expect(await screen.findByText("Open check-in")).toBeTruthy();
+
+  expect(await screen.findByText("Zed")).toBeTruthy();
+  const names = screen.getAllByText(/^(Ada|Zed)$/).map((n) => n.props.children);
+  expect(names).toEqual(["Ada", "Zed"]);
+
+  fireEvent.press(screen.getByLabelText("Edit Zed"));
+  fireEvent.press(screen.getByLabelText("Zed: Late"));
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/attendance", {
+      entries: [{ studentUserId: 2, status: "LATE", notes: "Kept note", lateMinutes: 7 }],
+      consoleOverride: true,
+    }),
+  );
+});
+
+it("says \"No students have scanned yet.\" on an empty console roster", async () => {
+  useSessionStore.setState(admin());
+  routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true }, roster: [] });
+  renderWithProviders(<SessionDetailScreen />);
+  expect(await screen.findByText("No students have scanned yet.")).toBeTruthy();
 });
 
 it("shows staff the session's quizzes (G18; v1 leader/sessions/[id])", async () => {
