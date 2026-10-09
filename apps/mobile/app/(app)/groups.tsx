@@ -1,4 +1,5 @@
-import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import type { GroupListItem } from "@space/shared";
 
@@ -6,6 +7,8 @@ import { SeasonSwitcher } from "../../src/components/SeasonSwitcher";
 import { SEASON_GROUPS_ROLES } from "../../src/hooks/use-group-admin";
 import { MY_GROUPS_ROLES, useMyGroups, useSeasonGroups } from "../../src/hooks/use-groups";
 import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
+import { pickNewestSeasonId } from "../../src/hooks/use-seasons";
+import { parsePositiveInt } from "../../src/lib/params";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
 import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
@@ -49,14 +52,26 @@ function MyGroups() {
 }
 
 /**
- * ADMIN / SUPER — a season's groups with a season switcher (Plan 6
- * D-16.16; spec 05 §9). v1 forced one season with a redirect (R91) and
- * refused SUPER (R92); neither is ported.
+ * ADMIN / SUPER — a season's groups (Plan 6 D-16.16; spec 05 §9). The default
+ * is v1's /admin/groups redirect target: the newest season by startDate, any
+ * status (R91; v1 parity 2026-10-09 — was ACTIVE first). The switcher stands
+ * in for v1's per-season groups URL, and a `seasonId` param (group create/edit
+ * returning, R97) selects that season. v1 refused SUPER (R92); not ported.
  */
 function SeasonGroups() {
   const theme = useTheme();
   const router = useRouter();
-  const selection = useStaffSeasonSelection(true);
+  const { seasonId: rawSeasonId } = useLocalSearchParams<{ seasonId?: string }>();
+  const paramSeasonId = parsePositiveInt(rawSeasonId);
+  const selection = useStaffSeasonSelection(true, {
+    pickDefault: pickNewestSeasonId,
+    initialSeasonId: paramSeasonId,
+  });
+  const { setSeasonId } = selection;
+  // The tab stays mounted, so a return with a new param must re-select.
+  useEffect(() => {
+    if (paramSeasonId !== null) setSeasonId(paramSeasonId);
+  }, [paramSeasonId, setSeasonId]);
   const groups = useSeasonGroups(selection.seasonId);
 
   let body;

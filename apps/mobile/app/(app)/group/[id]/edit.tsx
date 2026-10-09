@@ -70,8 +70,6 @@ function EditGroupLoaded({ detail, roster }: { detail: GroupDetail; roster: Seas
   return (
     <>
       <GroupForm
-        seasonId={detail.seasonId}
-        groupId={detail.id}
         initial={{
           name: detail.name,
           description: detail.description ?? "",
@@ -86,7 +84,8 @@ function EditGroupLoaded({ detail, roster }: { detail: GroupDetail; roster: Seas
         onSubmit={(body) => {
           setMessage(null);
           update.mutate(body, {
-            onSuccess: () => router.back(),
+            // v1 parity 2026-10-09 (spec 05 R97): v1 group-form.tsx:107 returns to the season's groups.
+            onSuccess: () => router.replace({ pathname: "/groups", params: { seasonId: String(detail.seasonId) } }),
             onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the group.")),
           });
         }}
