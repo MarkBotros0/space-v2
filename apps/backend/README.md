@@ -60,9 +60,7 @@ read outside that file). See `.env.example` for the full list.
 | `ENABLE_UPLOADS` | No | **`false`** | Accept file uploads. Off while file handling moves to a CMS — see below. |
 | `READ_ONLY` | No | `false` | Cutover freeze: `true` refuses every non-GET request except `POST /api/v1/auth/login\|refresh\|logout` with `503 read_only` (`Retry-After: 600`). Applied only on a new deployment. |
 | `ENABLE_API_DOCS` | No | `true` | Serves Swagger UI at `/api/docs` and the OpenAPI document at `/api/docs.json`. Set `false` to withhold them. |
-| `IMPORT_BODY_LIMIT` | No | `2mb` | JSON body limit for the import routes only; every other route keeps the 100 KB default. |
-| `IMPORT_PREVIEW_RATE_LIMIT` | No | `30` | Import preview requests per 15 minutes per IP. |
-| `IMPORT_COMMIT_RATE_LIMIT` | No | `10` | Import commit requests per 15 minutes per IP. |
+| `IMPORT_BODY_LIMIT` | No | `12mb` | JSON body limit for the import routes only; every other route keeps the 100 KB default. |
 
 **When `GMAIL_USER`/`GMAIL_APP_PASSWORD` are unset:** `sendNotificationEmail`
 becomes a no-op (it logs a one-time warning and returns) — in-app

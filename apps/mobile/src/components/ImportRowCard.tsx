@@ -12,7 +12,6 @@ const STATUS_LABEL: Record<ImportRowStatus, string> = {
   exists: "Skip · already here",
   duplicate: "Skip · repeated",
   invalid: "Invalid",
-  previously_removed: "Skip · removed",
 };
 
 /**

@@ -1,8 +1,6 @@
 // packages/shared/src/import.ts
 import { z } from "zod";
 
-import { createStudentRequestSchema } from "./student";
-
 // ---------------------------------------------------------------------------
 // Limits
 // ---------------------------------------------------------------------------
@@ -11,14 +9,11 @@ import { createStudentRequestSchema } from "./student";
 export const IMPORT_MAX_ROWS = 2000;
 
 /**
- * 256 KB of pasted text. This REPLACES v1's 5 MB file ceiling (R3), which was
- * a file-size limit checked after the whole file had already reached the
- * server. 5 MB of text is not a realistic paste, it is a request body; 256 KB
- * comfortably holds 2000 rows with eight populated columns. The client checks
- * it before spending a request and the server checks it again, because a
- * client-side limit is a courtesy and not a control.
+ * v1's 5 MB import ceiling (`jpc-space/src/lib/student-import-actions.ts:18`,
+ * R3/R4, v1 parity 2026-10-09). The client checks it before spending a
+ * request and the server checks it again.
  */
-export const IMPORT_MAX_PASTE_CHARS = 256 * 1024;
+export const IMPORT_MAX_PASTE_CHARS = 5 * 1024 * 1024;
 
 /**
  * Per-cell ceiling on the RAW value echoed back for resubmission. Deliberately
@@ -90,28 +85,17 @@ export const IMPORT_FIELD_LABELS: Readonly<Record<ImportProfileFieldKey, string>
 // ---------------------------------------------------------------------------
 
 /**
- * v1 has four (`student-import.ts:9`). `previously_removed` is v2's fifth
- * (spec D6 / D-16.14): the existence lookup deliberately does NOT filter
- * `deletedAt` — un-deleted matching would let an import resurrect an account
- * somebody removed on purpose — but reporting a soft-deleted row as "Already
- * in the system" is a lie the operator cannot act on.
+ * v1's four (`student-import.ts:9`, R22 / D-16.14). A soft-deleted user's
+ * address reads `exists` "Already in the system." and is never resurrected.
  */
-export const importRowStatusSchema = z.enum([
-  "new",
-  "exists",
-  "duplicate",
-  "invalid",
-  "previously_removed",
-]);
+export const importRowStatusSchema = z.enum(["new", "exists", "duplicate", "invalid"]);
 export type ImportRowStatus = z.infer<typeof importRowStatusSchema>;
 
 const cell = z.string().max(IMPORT_MAX_CELL_CHARS);
 
 /**
  * The RAW trimmed cell text of one row, exactly as the preview read it. Flat,
- * not v1's nested `profile` object (D-16.10) — flatness is what lets
- * `studentImportRowSchema` be derived from the student create schema instead
- * of restated.
+ * not v1's nested `profile` object (D-16.10).
  *
  * These values are echoed to the client and resubmitted on commit (D-16.4),
  * so they must survive being invalid: a 300-character name is exactly what
@@ -131,18 +115,36 @@ export const importCellValuesSchema = z.object({
 });
 export type ImportCellValues = z.infer<typeof importCellValuesSchema>;
 
+/** Trimmed text; an empty cell becomes `null` (never stored as ""). */
+const optionalImportText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .nullish()
+    .transform((v) => (v === undefined || v === null || v === "" ? null : v));
+
 /**
- * ONE definition of "is this row importable", used by the preview classifier
- * and by the commit (D-16.9, fixing spec D12/R24).
+ * The COMMIT validator, with v1's import bounds
+ * (`jpc-space/src/lib/student-import.ts:71-87`, R41, v1 parity 2026-10-09):
+ * name 2–120, phone 50, university 200, year 50, date of birth 40, spiritual
+ * background / gifts / notes 2000. The preview checks only name and email
+ * (R24, D-16.9); a row failing this at commit is reported `failed`.
  *
- * Derived, not restated: `createStudentRequestSchema` is the student domain's
- * own create contract, so an imported student and a form-created student
- * accept exactly the same data and there is no second set of maxima to drift.
- * `seasonId` is omitted because the target comes from the commit's mode and
- * applies to every row uniformly (spec R37) — a single paste can never mix
- * seasons.
+ * `dateOfBirth` arrives here already normalised to `YYYY-MM-DDT00:00:00.000Z`
+ * by the backend's D-16.11 check (KEEP-FIX R50).
  */
-export const studentImportRowSchema = createStudentRequestSchema.omit({ seasonId: true });
+export const studentImportRowSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().email(),
+  phone: optionalImportText(50),
+  university: optionalImportText(200),
+  year: optionalImportText(50),
+  dateOfBirth: z.string().max(40).datetime({ offset: true }).nullish(),
+  spiritualBackground: optionalImportText(2000),
+  gifts: optionalImportText(2000),
+  notes: optionalImportText(2000),
+});
 export type StudentImportRow = z.output<typeof studentImportRowSchema>;
 
 export const studentImportPreviewRowSchema = z.object({
@@ -165,7 +167,6 @@ export const studentImportCountsSchema = z.object({
   exists: z.number(),
   duplicate: z.number(),
   invalid: z.number(),
-  previously_removed: z.number(),
   /** Blank rows skipped by R20 are excluded, exactly as v1 excludes them. */
   total: z.number(),
 });
@@ -174,12 +175,6 @@ export const studentImportPreviewSchema = z.object({
   rows: z.array(studentImportPreviewRowSchema),
   /** "Name", "Email", then each matched profile column's label, in sheet order (R19). */
   detectedColumns: z.array(z.string()),
-  /**
-   * v2's addition (spec D11 / D-16.12). v1 silently ignores an unknown header
-   * (R18), so `Phone No` or `Uni` vanishes without a word. Echoed as typed,
-   * trimmed — matching trims too, so whitespace alone never causes a miss.
-   */
-  unrecognisedColumns: z.array(z.string()),
   /** What auto-sniffing chose, so the screen can say "read as tab-separated". */
   delimiter: z.enum(["comma", "tab"]),
   counts: studentImportCountsSchema,
@@ -189,20 +184,6 @@ export type StudentImportPreview = z.infer<typeof studentImportPreviewSchema>;
 // ---------------------------------------------------------------------------
 // Student importer — commit
 // ---------------------------------------------------------------------------
-
-/**
- * `skip` reproduces v1 exactly (R44). `enroll` is spec D4's fix for the
- * domain's highest-value gap: a returning student bulk-imported into a new
- * season currently ends the import with their old activeSeasonId and no new
- * enrolment, and the operator's only signal is a "Skip · exists" badge.
- *
- * `enroll` writes TWO things and nothing else — the SeasonEnrollment and the
- * activeSeasonId pointer. It never touches a User or profile field, because a
- * mode that overwrote profile data from a spreadsheet is how a stale export
- * erases a year of pastoral notes.
- */
-export const importOnExistingSchema = z.enum(["skip", "enroll"]);
-export type ImportOnExisting = z.infer<typeof importOnExistingSchema>;
 
 /**
  * What the client posts per row. Cell VALUES only — no `status`. v1 posted
@@ -236,28 +217,22 @@ export const studentImportCommitInputSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("season"),
     seasonId: z.number().int().positive(),
-    onExisting: importOnExistingSchema,
     rows: commitRowsSchema,
   }),
   z.object({
     mode: z.literal("alumni"),
     graduationYear: graduationYearSchema,
-    // Alumni mode creates no enrolment at all (spec R48), so there is nothing
-    // for `enroll` to mean. Narrowing the literal here is what makes that a
-    // 400 rather than a silently ignored field.
-    onExisting: z.literal("skip"),
     rows: commitRowsSchema,
   }),
 ]);
 export type StudentImportCommitInput = z.output<typeof studentImportCommitInputSchema>;
 
 /**
- * `failed` does not exist. The commit is all-or-nothing (D-16.5): a row that
- * cannot be written aborts the whole request with `422 import_rows_invalid`
- * and nothing is written, so no result can contain a failure. `enrolled` is
- * `onExisting: "enroll"` landing on an existing student.
+ * v1's three (`student-import.ts:176`, R42/R54): the commit is a per-row loop
+ * (D-16.5), so an invalid or failing row is reported `failed` and the import
+ * carries on. An existing user is always `skipped` (R44).
  */
-export const importCommitOutcomeSchema = z.enum(["created", "skipped", "enrolled"]);
+export const importCommitOutcomeSchema = z.enum(["created", "skipped", "failed"]);
 
 export const studentImportResultRowSchema = z.object({
   /**
@@ -276,7 +251,7 @@ export type StudentImportResultRow = z.infer<typeof studentImportResultRowSchema
 export const studentImportResultSchema = z.object({
   created: z.number(),
   skipped: z.number(),
-  enrolled: z.number(),
+  failed: z.number(),
   rows: z.array(studentImportResultRowSchema),
 });
 export type StudentImportResult = z.infer<typeof studentImportResultSchema>;
