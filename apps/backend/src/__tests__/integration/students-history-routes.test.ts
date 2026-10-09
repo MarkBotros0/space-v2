@@ -130,8 +130,8 @@ describe("GET /api/v1/students — group filter and sort keys (REG-82)", () => {
   it("keeps the group filter inside the caller's scope", async () => {
     const res = await get(`/api/v1/students?q=${PFX}&groupId=${groupAId}`, adminToken);
     expect(ids(res)).toEqual([s1]);
-    const leaderNone = await get(`/api/v1/students?q=${PFX}&groupId=none`, leaderToken);
-    expect(ids(leaderNone)).toEqual([]); // the leader's only student has a group
+    // A LEADER has no students list at all (06-students R28).
+    expect((await get(`/api/v1/students?q=${PFX}&groupId=none`, leaderToken)).status).toBe(403);
   });
 
   it("sorts by name, university, season or group, either direction", async () => {
@@ -230,11 +230,12 @@ describe("GET /api/v1/students/:id/attendance (REG-83)", () => {
     });
   });
 
-  it("narrows an ADMIN to their seasons and a LEADER to the seasons naming their group", async () => {
+  it("shows an ADMIN and a LEADER every enrolled season, as v1 (06-students R73)", async () => {
     for (const token of [adminToken, leaderToken]) {
       const res = await get(`/api/v1/students/${s1}/attendance`, token);
       expect(res.status).toBe(200);
       expect(res.body.data.history.map((h: { seasonId: number }) => h.seasonId)).toEqual([
+        seasonBId,
         seasonAId,
         seasonAId,
       ]);
@@ -254,26 +255,27 @@ describe("GET /api/v1/students/:id/attendance (REG-83)", () => {
 });
 
 describe("GET /api/v1/students/:id/submissions (REG-83)", () => {
-  it("lists a student's submitted work newest first, never a draft, with the late flag", async () => {
+  it("lists a student's work newest first, drafts included as v1 (06-students R77), with the late flag", async () => {
     const res = await get(`/api/v1/students/${s1}/submissions`, superToken);
     expect(res.status).toBe(200);
     const subs = res.body.data.submissions;
     expect(subs.map((s: { assignmentTitle: string }) => s.assignmentTitle)).toEqual([
+      "A draft",
       "B essay",
       "A late essay",
     ]);
-    expect(subs[1]).toMatchObject({ status: "SUBMITTED", isLate: true, seasonId: seasonAId });
-    expect(subs[0]).toMatchObject({ status: "REVIEWED", isLate: false });
-    expect(JSON.stringify(res.body)).not.toContain("A draft");
+    expect(subs[0]).toMatchObject({ status: "DRAFT" });
+    expect(subs[2]).toMatchObject({ status: "SUBMITTED", isLate: true, seasonId: seasonAId });
+    expect(subs[1]).toMatchObject({ status: "REVIEWED", isLate: false });
   });
 
-  it("applies the same row scope as submission detail: admin their season, leader their group's", async () => {
+  it("shows an ADMIN and a LEADER every enrolled season (06-students R77)", async () => {
     for (const token of [adminToken, leaderToken]) {
       const res = await get(`/api/v1/students/${s1}/submissions`, token);
       expect(res.status).toBe(200);
       expect(
         res.body.data.submissions.map((s: { assignmentTitle: string }) => s.assignmentTitle),
-      ).toEqual(["A late essay"]);
+      ).toEqual(["A draft", "B essay", "A late essay"]);
     }
   });
 
@@ -285,7 +287,7 @@ describe("GET /api/v1/students/:id/submissions (REG-83)", () => {
 });
 
 describe("history scope when the student is in a season through a different group (REG-83)", () => {
-  it("shows a LEADER and an ADMIN of other seasons nothing from it, and SUPER everything", async () => {
+  it("shows a LEADER and an ADMIN of other seasons that season too, as v1 (06-students R73/R77)", async () => {
     const seasonCId = (await createTestSeason()).id;
     const otherGroup = await db.group.create({
       data: { seasonId: seasonCId, name: "Group C" },
@@ -340,8 +342,35 @@ describe("history scope when the student is in a season through a different grou
     expect(await attendanceFor(superToken)).toContain("C past");
     expect(await submissionsFor(superToken)).toContain("C essay");
     for (const token of [leaderToken, adminToken]) {
-      expect(await attendanceFor(token)).not.toContain("C past");
-      expect(await submissionsFor(token)).not.toContain("C essay");
+      expect(await attendanceFor(token)).toContain("C past");
+      expect(await submissionsFor(token)).toContain("C essay");
+    }
+  });
+});
+
+describe("GET /api/v1/students/:id/documents (06-students R80)", () => {
+  it("lists documents newest first for SUPER and the student's ADMIN, without the storage path", async () => {
+    await db.studentDocument.createMany({
+      data: [
+        { studentUserId: s1, originalName: "older.pdf", storagePath: "x/older.pdf", mimeType: "application/pdf", sizeBytes: 2048, uploadedAt: at("2000-01-01T00:00:00.000Z") },
+        { studentUserId: s1, originalName: "newer.png", storagePath: "x/newer.png", mimeType: "image/png", sizeBytes: 1024, uploadedAt: at("2000-02-01T00:00:00.000Z") },
+      ],
+    });
+    for (const token of [superToken, adminToken]) {
+      const res = await get(`/api/v1/students/${s1}/documents`, token);
+      expect(res.status).toBe(200);
+      expect(res.body.data.documents.map((d: { originalName: string }) => d.originalName)).toEqual([
+        "newer.png",
+        "older.pdf",
+      ]);
+      expect(res.body.data.documents[0]).toMatchObject({ sizeBytes: 1024, mimeType: "image/png" });
+      expect(JSON.stringify(res.body)).not.toContain("storagePath");
+    }
+  });
+
+  it("refuses MENTOR, LEADER and the student", async () => {
+    for (const token of [mentorToken, leaderToken, s1Token]) {
+      expect((await get(`/api/v1/students/${s1}/documents`, token)).status).toBe(403);
     }
   });
 });
