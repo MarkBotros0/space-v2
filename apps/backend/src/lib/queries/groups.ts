@@ -118,25 +118,12 @@ export interface GroupWriteInput {
 
 /** A refusal a caller can act on, or null when the input is acceptable. */
 export async function validateGroupWrite(
-  seasonId: number,
   input: GroupWriteInput,
-  excludeGroupId?: number,
 ): Promise<{ code: string; message: string } | null> {
-  // v1 has no uniqueness on group name within a season, and the CSV importer
-  // matches groups *by name* — so two groups called "Tuesday" silently make the
-  // import assign everyone to whichever one it found last. A real constraint
-  // needs a migration (ruling C1); this is the check that can be made now.
-  const clash = await db.group.findFirst({
-    where: {
-      seasonId,
-      name: input.name,
-      ...(excludeGroupId ? { id: { not: excludeGroupId } } : {}),
-    },
-    select: { id: true },
-  });
-  if (clash) {
-    return { code: "name_taken", message: "A group in this season already has that name." };
-  }
+  // No name check: v1 parity 2026-10-09 (spec 05 R15, Plan 18 Task 2b.P Step 6) —
+  // v1 allows two groups with one name in a season (group-actions.ts:17,44,105;
+  // no unique on Group.name). The importer's ambiguity refusal lives in Plan 17
+  // (D-16.19.1).
 
   if (input.leaderIds.length > 0) {
     // A GroupLeader row populates the groupLeaderIds claim, and isLeaderOfGroup
@@ -153,17 +140,16 @@ export async function validateGroupWrite(
   }
 
   if (input.studentIds.length > 0) {
-    // Enrolled in *this* season. v1's group form checked nothing here, so it
-    // could enrol a student in a season they were never admitted to.
-    const enrolled = await db.seasonEnrollment.findMany({
-      where: { seasonId, studentUserId: { in: input.studentIds } },
-      select: { studentUserId: true },
+    // v1 parity 2026-10-09 (spec 05 R18): v1's group form offers every live
+    // student and saving enrols them into the season (group-actions.ts:55-76).
+    // Any live role-STUDENT user is accepted; setGroupStudents creates the
+    // missing enrolment. A non-student or deleted id is still refused.
+    const eligible = await db.user.findMany({
+      where: { id: { in: input.studentIds }, role: "STUDENT", deletedAt: null },
+      select: { id: true },
     });
-    if (enrolled.length !== new Set(input.studentIds).size) {
-      return {
-        code: "not_enrolled",
-        message: "Every student must already be enrolled in this season.",
-      };
+    if (eligible.length !== new Set(input.studentIds).size) {
+      return { code: "invalid_student", message: "Every student must be a live user with the student role." };
     }
   }
 
@@ -202,16 +188,23 @@ export async function setGroupStudents(
     where: { groupId, studentUserId: { notIn: studentIds } },
   });
 
-  for (const studentUserId of studentIds) {
-    // GroupStudent.studentUserId is unique across the whole database, so an
-    // existing row anywhere has to go before this one can be written.
-    await tx.groupStudent.deleteMany({ where: { studentUserId } });
-    await tx.groupStudent.create({ data: { groupId, studentUserId } });
-    await tx.seasonEnrollment.update({
-      where: { studentUserId_seasonId: { studentUserId, seasonId } },
-      data: { groupId },
-    });
-  }
+  if (studentIds.length === 0) return;
+  const ids = [...new Set(studentIds)];
+  // GroupStudent.studentUserId is unique across the whole database, so an
+  // existing row anywhere has to go before this one can be written.
+  await tx.groupStudent.deleteMany({ where: { studentUserId: { in: ids } } });
+  await tx.groupStudent.createMany({ data: ids.map((studentUserId) => ({ groupId, studentUserId })) });
+  // v1 parity 2026-10-09 (spec 05 R18): a picked student with no enrolment in
+  // this season is enrolled (ACTIVE) as v1's form did. An existing enrolment
+  // keeps its status, dates and drop reason — only groupId moves (KEEP-FIX R21/R34).
+  await tx.seasonEnrollment.updateMany({
+    where: { seasonId, studentUserId: { in: ids } },
+    data: { groupId },
+  });
+  await tx.seasonEnrollment.createMany({
+    data: ids.map((studentUserId) => ({ studentUserId, seasonId, groupId, status: "ACTIVE" as const })),
+    skipDuplicates: true,
+  });
 }
 
 /**
@@ -256,19 +249,18 @@ export interface SeasonRosterRow {
   email: string;
   groupId: number | null;
   groupName: string | null;
-  otherSeasonGroup: { groupName: string; seasonCode: string } | null;
 }
 
 /**
- * The season's roster for the bulk-assign grid and the group form (D-16.11).
+ * The season's roster for the bulk-assign grid and the group form's
+ * pre-selection (D-16.11).
  *
  * Population: ACTIVE enrolments of live STUDENT users (ruling C9). v1 used
  * `StudentProfile.activeSeasonId` (spec 05 R81), which hides an enrolled
  * student whose pointer has moved on. The group shown is this season's, from
- * `SeasonEnrollment.groupId`; `otherSeasonGroup` is the student's GroupStudent
- * row in a DIFFERENT season's group — the membership an assignment here will
- * remove (GroupStudent.studentUserId is globally unique, spec 05 R1). v1
- * reported such a student as plain "unassigned" (R82).
+ * `SeasonEnrollment.groupId`. v1 parity 2026-10-09 (spec 05 R82): a student
+ * whose only membership is another season's group shows as unassigned, as v1
+ * groups-query.ts:151-155,161.
  */
 export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRow[]> {
   const enrolments = await db.seasonEnrollment.findMany({
@@ -281,18 +273,6 @@ export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRo
     },
     orderBy: { studentUser: { name: "asc" } },
   });
-  if (enrolments.length === 0) return [];
-
-  const elsewhere = await db.groupStudent.findMany({
-    where: {
-      studentUserId: { in: enrolments.map((e) => e.studentUserId) },
-      group: { seasonId: { not: seasonId } },
-    },
-    select: { studentUserId: true, group: { select: { name: true, season: { select: { code: true } } } } },
-  });
-  const elsewhereBy = new Map(
-    elsewhere.map((g) => [g.studentUserId, { groupName: g.group.name, seasonCode: g.group.season.code }]),
-  );
 
   return enrolments.map((e) => ({
     userId: e.studentUserId,
@@ -300,7 +280,6 @@ export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRo
     email: e.studentUser.email,
     groupId: e.groupId,
     groupName: e.group?.name ?? null,
-    otherSeasonGroup: elsewhereBy.get(e.studentUserId) ?? null,
   }));
 }
 
@@ -373,26 +352,39 @@ export async function assignStudentsToGroups(
   const eligible = await eligibleStudentIds(tx, seasonId, [...new Set(assignments.map((a) => a.studentUserId))]);
 
   const skippedStudentIds: number[] = [];
-  let assigned = 0;
+  const applied: { studentUserId: number; groupId: number }[] = [];
   for (const a of assignments) {
-    if (!eligible.has(a.studentUserId)) {
-      skippedStudentIds.push(a.studentUserId);
-      continue;
-    }
-    // GroupStudent.studentUserId is @unique STANDALONE (schema.prisma:330): a
-    // student is in at most one group across the whole database, so the
-    // existing row — whichever season's group it is — has to go first. The
-    // fix is a composite key, which is a migration (Plan 18). Meanwhile the
-    // per-season truth is SeasonEnrollment.groupId below, and every v2 read
-    // uses that (C9).
-    await tx.groupStudent.deleteMany({ where: { studentUserId: a.studentUserId } });
-    await tx.groupStudent.create({ data: { groupId: a.groupId, studentUserId: a.studentUserId } });
-    await tx.seasonEnrollment.update({
-      where: { studentUserId_seasonId: { studentUserId: a.studentUserId, seasonId } },
-      data: { groupId: a.groupId },
-    });
-    assigned += 1;
+    if (eligible.has(a.studentUserId)) applied.push(a);
+    else skippedStudentIds.push(a.studentUserId);
   }
+  // v1 parity 2026-10-09 (spec 05 R48/R56): up to 2000 rows, so the writes are
+  // batched — one deleteMany, one createMany, one updateMany per target group.
+  // GroupStudent.studentUserId is @unique STANDALONE (schema.prisma:330): a
+  // student is in at most one group across the whole database, so the existing
+  // row — whichever season's group it is — has to go first. The per-season
+  // truth is SeasonEnrollment.groupId, and every v2 read uses that (C9).
+  if (applied.length > 0) {
+    // The importer's input is not unique per student; the last row wins, as the
+    // former row-by-row loop did.
+    const finalGroup = new Map<number, number>();
+    for (const a of applied) finalGroup.set(a.studentUserId, a.groupId);
+    const ids = [...finalGroup.keys()];
+    await tx.groupStudent.deleteMany({ where: { studentUserId: { in: ids } } });
+    await tx.groupStudent.createMany({
+      data: ids.map((studentUserId) => ({ groupId: finalGroup.get(studentUserId)!, studentUserId })),
+    });
+    const byGroup = new Map<number, number[]>();
+    for (const [studentUserId, groupId] of finalGroup) {
+      byGroup.set(groupId, [...(byGroup.get(groupId) ?? []), studentUserId]);
+    }
+    for (const [groupId, studentIds] of byGroup) {
+      await tx.seasonEnrollment.updateMany({
+        where: { seasonId, studentUserId: { in: studentIds } },
+        data: { groupId },
+      });
+    }
+  }
+  const assigned = applied.length;
   return { assigned, skippedStudentIds };
 }
 
@@ -408,20 +400,17 @@ export async function unassignStudentsFromGroups(
   studentIds: number[],
 ): Promise<{ unassigned: number; skippedStudentIds: number[] }> {
   const eligible = await eligibleStudentIds(tx, seasonId, studentIds);
-  const skippedStudentIds: number[] = [];
-  let unassigned = 0;
-  for (const studentUserId of studentIds) {
-    if (!eligible.has(studentUserId)) {
-      skippedStudentIds.push(studentUserId);
-      continue;
-    }
-    await tx.groupStudent.deleteMany({ where: { studentUserId, group: { seasonId } } });
-    await tx.seasonEnrollment.update({
-      where: { studentUserId_seasonId: { studentUserId, seasonId } },
+  const skippedStudentIds = studentIds.filter((id) => !eligible.has(id));
+  const ids = studentIds.filter((id) => eligible.has(id));
+  // Batched (spec 05 R48/R56; v1 parity 2026-10-09).
+  if (ids.length > 0) {
+    await tx.groupStudent.deleteMany({ where: { studentUserId: { in: ids }, group: { seasonId } } });
+    await tx.seasonEnrollment.updateMany({
+      where: { seasonId, studentUserId: { in: ids } },
       data: { groupId: null },
     });
-    unassigned += 1;
   }
+  const unassigned = ids.length;
   return { unassigned, skippedStudentIds };
 }
 

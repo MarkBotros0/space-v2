@@ -9,7 +9,6 @@ jest.setTimeout(60000);
 const app = createApp();
 
 let seasonId: number;
-let otherSeasonCode: string;
 let groupOneId: number;
 let groupTwoId: number;
 let foreignGroupId: number;
@@ -27,7 +26,6 @@ beforeAll(async () => {
   const season = await createTestSeason();
   seasonId = season.id;
   const other = await createTestSeason();
-  otherSeasonCode = other.code;
 
   const admin = await createTestUser("admin", "ADMIN");
   const superUser = await createTestUser("super", "SUPER");
@@ -76,18 +74,22 @@ afterAll(async () => {
 });
 
 describe("GET /api/v1/seasons/:id/roster (D-16.11)", () => {
-  it("lists ACTIVE enrolments of live students with this season's group and any other-season group", async () => {
+  // v1 parity 2026-10-09 (spec 05 R82): a student whose group is in another
+  // season reads as unassigned, as v1 groups-query.ts:151-155,161.
+  it("lists ACTIVE enrolments of live students with this season's group; another season's group reads as unassigned (v1 R82)", async () => {
     const res = await request(app)
       .get(`/api/v1/seasons/${seasonId}/roster`)
       .set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     const byId = new Map(res.body.data.roster.map((r: { userId: number }) => [r.userId, r]));
     expect([...byId.keys()].sort()).toEqual([studentAId, studentBId].sort());
-    expect(byId.get(studentAId)).toMatchObject({ groupId: groupOneId, groupName: "Group One", otherSeasonGroup: null });
-    expect(byId.get(studentBId)).toMatchObject({
+    expect(byId.get(studentAId)).toMatchObject({ groupId: groupOneId, groupName: "Group One" });
+    expect(byId.get(studentBId)).toEqual({
+      userId: studentBId,
+      name: expect.anything(),
+      email: expect.any(String),
       groupId: null,
       groupName: null,
-      otherSeasonGroup: { groupName: "Foreign Group", seasonCode: otherSeasonCode },
     });
   });
 
@@ -194,6 +196,26 @@ describe("PUT /api/v1/seasons/:id/group-assignments (D-16.12)", () => {
     expect(first.body.data.assigned).toBe(1);
     expect(second.body.data.assigned).toBe(1);
     expect(await db.groupStudent.count({ where: { studentUserId: studentAId } })).toBe(1);
+  });
+
+  // v1 parity 2026-10-09 (spec 05 R48): v1's cap of 2000 (group-actions.ts:183-190);
+  // the batched writes finish a full batch (KEEP-FIX R56).
+  it("accepts a full batch of 2000 rows and refuses 2001", async () => {
+    const filler = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({ studentUserId: 2_100_000_000 + i, groupId: null }));
+    const full = await request(app)
+      .put(`/api/v1/seasons/${seasonId}/group-assignments`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ assignments: [{ studentUserId: studentAId, groupId: groupTwoId }, ...filler(1999)] });
+    expect(full.status).toBe(200);
+    expect(full.body.data.assigned).toBe(1);
+    expect(full.body.data.skippedStudentIds).toHaveLength(1999);
+
+    const over = await request(app)
+      .put(`/api/v1/seasons/${seasonId}/group-assignments`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ assignments: filler(2001) });
+    expect(over.status).toBe(400);
   });
 
   it("refuses a leader, a duplicate student, and a malformed body", async () => {

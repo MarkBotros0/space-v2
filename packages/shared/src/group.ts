@@ -37,8 +37,9 @@ export type GroupListItem = z.infer<typeof groupListItemSchema>;
 export const groupWriteRequestSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters.").max(80),
   description: z.string().max(2000).nullish(),
-  leaderIds: z.array(z.number().int().positive()).max(20).default([]),
-  studentIds: z.array(z.number().int().positive()).max(500).default([]),
+  // v1 parity 2026-10-09 (spec 05 R14): no size cap, as v1 group-actions.ts:16-19,49.
+  leaderIds: z.array(z.number().int().positive()).default([]),
+  studentIds: z.array(z.number().int().positive()).default([]),
 });
 export type GroupWriteRequest = z.infer<typeof groupWriteRequestSchema>;
 
@@ -82,6 +83,14 @@ export const leaderOptionSchema = z.object({
 });
 export type LeaderOption = z.infer<typeof leaderOptionSchema>;
 
+/**
+ * GET /groups/student-options — every live STUDENT user, name asc, for the
+ * group form's picker (v1 groups-query.ts:112-121; v1 parity 2026-10-09, spec
+ * 05 R18/R78). Saving the form enrols a picked student who is not yet in the season.
+ */
+export const studentOptionSchema = leaderOptionSchema;
+export type StudentOption = z.infer<typeof studentOptionSchema>;
+
 /** GET /groups/:id/impact — the confirmation v1 never had (spec 05 R45, D-16.13). */
 export const groupImpactSchema = z.object({
   /** ACTIVE enrolments that would lose their group. */
@@ -105,17 +114,16 @@ export const seasonRosterRowSchema = z.object({
   /** This season's group, from SeasonEnrollment.groupId (C9). */
   groupId: z.number().nullable(),
   groupName: z.string().nullable(),
-  /**
-   * The student's current GroupStudent membership in ANOTHER season's group —
-   * which assigning them here removes, because GroupStudent is globally
-   * unique (spec 05 R1/R82; a Plan 18 item).
-   */
-  otherSeasonGroup: z.object({ groupName: z.string(), seasonCode: z.string() }).nullable(),
+  // v1 parity 2026-10-09 (spec 05 R82): no otherSeasonGroup — a student whose
+  // group is in another season shows as unassigned, as v1 groups-query.ts:151-155.
 });
 export type SeasonRosterRow = z.infer<typeof seasonRosterRowSchema>;
 
-/** v1 allowed 2000 and could not finish inside its own 20 s timeout (spec 05 R56). */
-export const GROUP_ASSIGNMENTS_MAX = 500;
+/**
+ * v1's cap, group-actions.ts:183-190 (v1 parity 2026-10-09, spec 05 R48). v1 could
+ * not finish 2000 inside its own 20 s timeout (R56); v2 batches the writes.
+ */
+export const GROUP_ASSIGNMENTS_MAX = 2000;
 
 export const groupAssignmentsRequestSchema = z.object({
   assignments: z

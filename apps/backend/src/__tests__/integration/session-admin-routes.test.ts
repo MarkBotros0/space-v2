@@ -168,37 +168,40 @@ describe("GET /api/v1/sessions — windowed, role-scoped (D-16.7, G17)", () => {
     expect(res.status).toBe(403);
   });
 
-  it("refuses an inverted or over-long window", async () => {
+  it("refuses an inverted window", async () => {
     const inverted = await request(app)
       .get("/api/v1/sessions")
       .query({ from: WINDOW.to, to: WINDOW.from })
       .set("authorization", `Bearer ${superToken}`);
     expect(inverted.status).toBe(400);
+  });
+
+  // v1 parity 2026-10-09 (spec 03 R75): no cap — v1's super calendar was unbounded.
+  it("accepts a window longer than 120 days", async () => {
     const long = await request(app)
       .get("/api/v1/sessions")
       .query({ from: "2099-01-01T00:00:00.000Z", to: "2099-06-01T00:00:00.000Z" })
       .set("authorization", `Bearer ${superToken}`);
-    expect(long.status).toBe(400);
+    expect(long.status).toBe(200);
+    expect(ids(long)).toEqual(expect.arrayContaining([sessionId]));
   });
 
-  it("defaults to org-midnight today plus eight calendar weeks", async () => {
-    const res = await request(app).get("/api/v1/sessions").set("authorization", `Bearer ${superToken}`);
+  it("with no bounds returns every session of the scoped seasons, unbounded (v1 R75)", async () => {
+    const res = await request(app).get("/api/v1/sessions").set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
-    const from = new Date(res.body.data.from).getTime();
-    const to = new Date(res.body.data.to).getTime();
-    expect(from).toBeLessThanOrEqual(Date.now());
-    expect(Date.now() - from).toBeLessThan(25 * 3_600_000);
-    // Eight org-calendar weeks: 56 days, ± one DST hour.
-    expect(Math.abs(to - from - 56 * 86_400_000)).toBeLessThanOrEqual(3_600_000);
+    expect(res.body.data).toMatchObject({ from: null, to: null, fromDayKey: null, toDayKey: null });
+    expect(res.body.data.todayDayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(ids(res)).toEqual(expect.arrayContaining([sessionId]));
   });
 
-  it("pages: a window given only `from` runs eight weeks forward", async () => {
+  it("a window given only `from` is open-ended", async () => {
     const res = await request(app)
       .get("/api/v1/sessions")
       .query({ from: WINDOW.from })
       .set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.from).toBe(WINDOW.from);
+    expect(res.body.data.to).toBeNull();
     expect(ids(res)).toEqual(expect.arrayContaining([sessionId]));
   });
 });
