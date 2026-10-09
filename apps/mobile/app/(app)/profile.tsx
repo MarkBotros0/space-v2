@@ -20,6 +20,7 @@ import { Button, Card, ErrorState, Input, LoadingState, Screen, Text } from "../
 const EDGES = ["top", "left", "right"] as const;
 
 const FIELD_LABELS: Record<OwnProfileField, string> = {
+  name: "Name",
   university: "University",
   year: "Year",
   phone: "Phone",
@@ -33,6 +34,7 @@ type FormValues = Record<OwnProfileField, string>;
 
 function toFormValues(p: MyProfile): FormValues {
   return {
+    name: p.name,
     university: p.university ?? "",
     year: p.year ?? "",
     phone: p.phone ?? "",
@@ -92,7 +94,7 @@ function ProfileForm({ profile }: { profile: MyProfile }) {
 
   const save = () => {
     setMessage(null);
-    const body: UpdateOwnProfileInput = values;
+    const body: UpdateOwnProfileInput = { ...values, name: values.name.trim() };
     // The SAME schema the server runs — v1's client and server copies had
     // drifted (spec 06 R21); here they cannot.
     const parsed = updateOwnProfileInputSchema.safeParse(body);
@@ -125,7 +127,7 @@ function ProfileForm({ profile }: { profile: MyProfile }) {
           onChangeText={(text) => setValues((v) => ({ ...v, [field]: text }))}
           error={errors[field]}
           multiline={MULTILINE.has(field)}
-          autoCapitalize={field === "dateOfBirth" ? "none" : "sentences"}
+          autoCapitalize={field === "dateOfBirth" ? "none" : field === "name" ? "words" : "sentences"}
           keyboardType={field === "phone" ? "phone-pad" : "default"}
         />
       ))}
@@ -139,10 +141,9 @@ function ProfileForm({ profile }: { profile: MyProfile }) {
   );
 }
 
-/** v1 /student/profile — the six own columns editable, nothing else (Decision 1). */
+/** v1 /student/profile — name and the six own columns editable (Decision 1). */
 function StudentProfile() {
   const theme = useTheme();
-  const router = useRouter();
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const profile = useMyProfile(true);
   const attendance = useMyAttendance(activeSeasonId);
@@ -178,19 +179,13 @@ function StudentProfile() {
       <IdentityCard name={p.name} email={p.email} badge="Student" />
       {budget !== null ? (
         <View style={{ flexDirection: "row", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-          {/* v1 labelled this "Attendance" (spec 09 R68); it is the budget LEFT (spec 19 D14). */}
-          <Stat label="Absence budget left" value={`${budget.remainingPct}%`} />
+          {/* v1's label (student/profile/page.tsx:88-91, spec 09 R68/R87; v1 parity 2026-10-09). */}
+          <Stat label="Attendance" value={`${budget.remainingPct}%`} />
           <Stat label="Streak" value={String(attendance.data?.streak ?? 0)} />
         </View>
       ) : null}
+      {/* Name is edited on this form, as v1 (Decision 1; v1 parity 2026-10-09) — no "Open settings" card. */}
       <ProfileForm profile={p} />
-      <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-        <Text variant="heading">Name and email</Text>
-        <Text variant="body" color={theme.colors.neutral[600]}>
-          Change your name in Settings. To change your email, contact the JPC team.
-        </Text>
-        <Button title="Open settings" variant="secondary" onPress={() => router.push("/settings")} />
-      </Card>
     </Screen>
   );
 }
@@ -249,9 +244,10 @@ function AlumniProfile() {
 
 /**
  * Every non-student role (Decision 2). MENTOR has Profile as a TAB but no More
- * tab, so this card is their only route to Settings and to signing out on a
- * phone (spec 18 R9, R11 — v1's /mentor/profile never existed). Reads only the
- * session store: no student endpoint is called.
+ * tab; this card (spec 18 R11 — v1's /mentor/profile never existed) sits
+ * beside the header avatar menu, which is v1's route to Settings and Sign out
+ * for every role (R9/R10). Reads only the session store: no student endpoint
+ * is called.
  */
 function AccountProfile() {
   const theme = useTheme();
