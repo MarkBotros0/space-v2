@@ -24,7 +24,32 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBaseUrl": "http://localhost:4000"
+      "apiBaseUrl": "http://localhost:4000",
+      "publicBaseUrl": "https://replace-with-auth-url-host.invalid"
+    },
+    "ios": {
+      "associatedDomains": [
+        "applinks:replace-with-auth-url-host.invalid"
+      ]
+    },
+    "android": {
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "replace-with-auth-url-host.invalid",
+              "pathPrefix": "/checkin/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     }
   }
 }
