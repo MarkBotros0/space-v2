@@ -54,31 +54,31 @@ If any of these is missing when this plan starts, **stop** — do not stub it an
 
 | # | v1 behaviour (spec 19 rule) | v2 | Ruling |
 |---|---|---|---|
-| 1 | Admin/leader "attendance below 70 %" callout and 70/85 colour tiers (R30, R31) | The callout is the `isAtRisk` preview (either component < `AT_RISK_PCT` = 60, zero-denominator guarded). Ring and rows render neutral; the only red is "at risk". The flagged set grows (submission-only risk now shows) | D2, X17 |
-| 2 | Per-student attendance divides by every past session, can exceed 100 (R24–R26) | `attendancePct` from Plan 12's engagement row: denominator starts at `enrolledAt`, past sessions only | D3 |
-| 3 | Per-student "pending" = season assignments − completed, untargeted (R27) | Not shown. At-risk rows show "N of M submitted" from the engagement row (C5) | D4 |
+| 1 | Admin/leader "attendance below 70 %" callout and 70/85 colour tiers (R30, R31, R41) | **v1, kept:** a red callout "Students below 70% attendance" lists the names of every roster student with `attendancePct < 70` (`attendanceTotal > 0`), hidden when none; the list comes from the server (no client threshold). The season/group average and every roster row's attendance are coloured red < 70, amber < 85, green otherwise by one shared `ATTENDANCE_TIERS` helper (`jpc-space/src/app/admin/dashboard/page.tsx:132-138`, `:270-276`, `:364-377`; leader identical, `leader/dashboard/page.tsx:90-134`). The `isAtRisk` preview card leaves the admin/leader Home *(v1 parity 2026-10-09: was "isAtRisk preview as the callout; neutral ring and rows, no tiers")* | v1 parity (R30, R31, R41) |
+| 2 | Per-student attendance divides by every past session, can exceed 100 (R24–R26) | `attendancePct` from Plan 12's engagement row: denominator starts at `enrolledAt`, past sessions only. Each restored roster row (row 5) shows it, rendered "—" when `attendanceTotal = 0` (v1's `null`, `admin/dashboard/page.tsx:91-96`, `:270-276`) *(v1 parity 2026-10-09: was "per-student attendance shown only on at-risk rows")* | D3 (R25/R26 kept as fixes); R24 v1 parity |
+| 3 | Per-student "pending" = season assignments − completed, untargeted (R27) | The restored roster column (row 5) shows "{n} pending" when > 0, with `n = submissionsExpected − submissionsCompleted` computed **server-side** from the engagement row (targeted, C5) (`admin/dashboard/page.tsx:281-285`) *(v1 parity 2026-10-09: was "Not shown; at-risk rows show N of M submitted")* | D4 (targeted formula kept, R27); column restored with R35 |
 | 4 | Mean attendance counts "no data" as 0 % (R29) | `meanAttendancePct` over students with `attendanceTotal > 0`, else `null` ("—") | D5 |
-| 5 | Full unpaged roster on Home (R35) | At-risk preview (≤ 10) + "View all" | D6, X17 |
+| 5 | Full unpaged roster on Home (R35) | **v1, kept:** an "All students" card lists every roster student (name, attendance % with tiers, pending), sorted `attendancePct` asc with `attendanceTotal = 0` rows last (R28), each row → `/student/[id]`, "View all" → `/students` (leader `/groups`), empty "No students enrolled" (leader "No students yet") (`admin/dashboard/page.tsx:101-102`, `:225-293`). Rows come from the same `computeEngagementForSeasons` call (constant query count) *(v1 parity 2026-10-09: was "At-risk preview (≤ 10) + View all")* | v1 parity (R28, R35, R41) |
 | 6 | Leader: `groups[0]`'s season, `GroupStudent` flattened (R37–R40) | Season from `useCurrentSeasonId`; groups from `staffScopeForSeason`; students = ACTIVE `SeasonEnrollment` in those groups; every group named | D7, C9 |
 | 7 | Admin roster = `StudentProfile.activeSeasonId` (R20) | ACTIVE `SeasonEnrollment` | D8, C9 |
 | 8 | Quiz "pending" never reads `QuizAttempt`, counts drafts (R32) | Plan 8's per-kind graded count over `visibleStudentIdsForQuiz`; unpublished ONLINE quizzes reported as `drafts` | D10 |
 | 9 | Review counts = every submission in the season (R34) | The review queue's own scope, so the tile equals the queue it opens; a leader sees their students only | D11 |
-| 10 | "Week N of M" counts sessions (R22, R68) | "Session N of M", "K sessions to go" | D12 |
-| 11 | "Next session" hides the one in progress; "Watch recording" on future sessions (R21, R64, R74) | The session in progress (`isInProgress: true`) else the next; "Join stream" only while in progress | D13 |
-| 12 | Student "Absence budget" tile inverts on the page (R69) | `remainingPct` from `GET /me/attendance`, labelled "Absence budget left" | D14 |
+| 10 | "Week N of M" counts sessions (R22, R68) | **v1, kept:** staff hero "{n} students · Week {held} of {total}" (week part omitted when total = 0) plus the "Progress" tile "{pct ?? 0}%" / "Week {held}/{total}"; student ring "{pct ?? 0}% done" with "Week N of M · K week(s) to go" or "· complete" (`admin/dashboard/page.tsx:55-56`, `:156`, `:171`; `student/dashboard/page.tsx:69-72`, `:132-159`). The count stays sessions held/total *(v1 parity 2026-10-09: was "Session N of M, K sessions to go, no Progress tile or %")* | v1 parity (R22, R68) |
+| 11 | "Next session" hides the one in progress; "Watch recording" on future sessions (R21, R64, R74) | **v1, kept:** next = first session with `startsAt >= now`, `startsAt` asc (no `isInProgress`); the card reads "Next session" and shows day · time · "{durationMinutes} min" · location, a device-computed relative badge ("in 3 hours", D23), and "Watch recording" whenever `youtubeUrl` is set (`admin/dashboard/page.tsx:43-54`, `:183-222`; `student/dashboard/page.tsx:42-53`, `:200-243`) *(v1 parity 2026-10-09: was "in-progress session first; Happening now; Join stream only while live")* | v1 parity (R21, R64, R74) |
+| 12 | Student "Absence budget" tile inverts on the page (R69) | `remainingPct` from `GET /me/attendance` (server value, C4), labelled **"Absence budget"** with caption "this season", → `/attendance` (`student/dashboard/page.tsx:85-87`, `:163-168`) *(v1 parity 2026-10-09: was "labelled Absence budget left")* | v1 parity (R69) |
 | 13 | Outstanding = `PENDING \| DRAFT` (R66) — Plan 1 had briefly used `+ RETURNED` | `isAssignmentOutstanding`, server-side | D15, C5 |
-| 14 | Late count re-derives `submittedAt > dueAt`, untargeted (R72) | Exported `isLate`, targeted assignments only | D16 |
-| 15 | Mentor "Flagged for follow-up", 4N fan-out, cohort = has `activeSeasonId` (R45–R49) | "At risk" from `GET /reports/engagement` (same cache as Reports), "10 of N" | D17 |
-| 16 | Mentor activity: two unmerged lists, reviews by `submittedAt`, no filters, links to `/forbidden` (R51–R55) | One merged feed ≤ 8, `at` desc, reviews at `reviewedAt`, no DRAFT, no soft-deleted student/assignment/season, no graduated student; links to `/student/[id]` and `/submission/[publicId]` | D18 |
-| 17 | Events card renders nothing when empty; filter in host zone, in memory (R8–R10) | Server window + cap; `EmptyState` | D19 |
-| 18 | SUPER "Upcoming events" tile counts `date >= now` with no visibility (R15) | `total` from the same `GET /events?upcoming=true` response as the card; caption states the 12-month window | D19 |
-| 19 | SUPER "Students" label | "Students (not graduated)"; "Seasons" stays all non-deleted, any status (`seasons.length`) | D20 |
-| 20 | Alumni redirect to `/login`; greetings disagree on empty names (R58, R59) | `/me/dashboard` answers an alumnus 403; one `firstName` formatter, "there" on null **and** empty | D21 |
-| 21 | Student greeting "all caught up **this week**" while counting the season (R67) | "You're all caught up" | R67 (copy fix) |
+| 14 | Late count re-derives `submittedAt > dueAt`, untargeted (R72) | **v1, kept:** banner "{n} assignment{s} submitted late this season" counting every turned-in submission of the student on any live season assignment with `isLate` (not only targeted rows) (`student/dashboard/page.tsx:57-68`, `:79-81`, `:190-197`); the comparison is the exported `isLate` *(v1 parity 2026-10-09: was "isLate over targeted assignments; You submitted N assignments late")* | v1 parity (R72) |
+| 15 | Mentor "Flagged for follow-up", 4N fan-out, cohort = has `activeSeasonId` (R45–R49) | List from `GET /reports/engagement` (same cache as Reports; cohort fix R45 kept), `isAtRisk`, score asc, ≤ 10, **no "N of M" caption**; card titled "Flagged for follow-up" with an "All students" link → `/students`; empty "Nobody flagged" / "All students above the 60% engagement threshold." (`mentor/dashboard/page.tsx:57-64`, `:108-122`) *(v1 parity 2026-10-09: was "At risk heading, 10 of N caption, Nobody at risk copy")* | D17 (R45 kept); v1 parity (R47–R49) |
+| 16 | Mentor activity: two unmerged lists, reviews by `submittedAt`, no filters, links to `/forbidden` (R51–R55) | **v1, kept:** two blocks — the 4 newest attendance marks (`markedAt` desc), then the 4 newest submissions with status SUBMITTED \| REVIEWED (`submittedAt` desc, RETURNED excluded), one row per submission labelled "received feedback on" (REVIEWED) or "submitted", timed at `submittedAt`; graduated students included (`mentor/dashboard/page.tsx:67-91`, `:161-210`). Kept as fixes: soft-deleted student/assignment/season rows stay out; links go to `/student/[id]` and `/submission/[publicId]` (R55) *(v1 parity 2026-10-09: was "one merged feed ≤ 8, reviews at reviewedAt, RETURNED in, graduated out")* | v1 parity (R51–R54); R55 fix |
+| 17 | Events card renders nothing when empty; filter in host zone, in memory (R8–R10) | Server window + cap; **when no event qualifies the card renders nothing** (returns `null`, no heading) (`jpc-space/src/components/events/upcoming-events-card.tsx:30`); loading/error states stay (no v1 equivalent for a client fetch) *(v1 parity 2026-10-09: was "Server window + cap; EmptyState")* | D19; v1 parity (R10) |
+| 18 | SUPER "Upcoming events" tile counts `date >= now` with no visibility (R15) | **v1, kept:** the tile is a separate server count `jpcEvent.count({ where: { date: { gte: now } } })` — all visibilities, no upper bound, no `endDate` — served as `upcomingEventCount` on `GET /reports/organisation`, no caption (`super/dashboard/page.tsx:18`, `:33-34`). The card below keeps its own window *(v1 parity 2026-10-09: was "total from the card's GET /events response; 12-month caption")* | v1 parity (R15) |
+| 19 | SUPER "Students" label | **v1, kept:** label "Students" (value stays `totalStudentsNotGraduated`, same population, `super/dashboard/page.tsx:16`, `:30`); "Seasons" stays all non-deleted, any status (`seasons.length`) *(v1 parity 2026-10-09: was "Students (not graduated)")* | v1 parity (R13) |
+| 20 | Alumni redirect to `/login`; greetings disagree on empty names (R58, R59) | `/me/dashboard` answers an alumnus 403. **Greetings as v1:** alumni "Welcome back, {first}" with `name.trim().split(/\s+/)[0]`, "there" only when the name is null; student "Hi, {first} 👋" with `name.split(" ")[0]` (`alumni/dashboard/page.tsx:21`, `:33`; `student/dashboard/page.tsx:88`, `:93-95`) *(v1 parity 2026-10-09: was "one firstName formatter, there on null and empty; Welcome back for students")* | D21; v1 parity (R59) |
+| 21 | Student greeting "all caught up **this week**" while counting the season (R67) | **v1, kept:** "{n} assignment needs / assignments need your attention." else "You're all caught up this week." (trailing periods) (`student/dashboard/page.tsx:98-101`) *(v1 parity 2026-10-09: was "You're all caught up (no this week, no period)")* | v1 parity (R67) |
 
 **Not taken (recorded):** spec D19's suggestion that MENTOR see SEASON events — Plan 14 deliberately kept v1 parity (`jpc-space/src/lib/jpc-events-query.ts:24-37`), so the mentor's card still lacks SEASON events. Open decision, below.
 
-**Handed to Plan 18 (deferred by C1, named per spec §10 "Deferred to cutover"):** the C3 `lateMinutes` backfill and threshold column (they move the student's "Absence budget left" tile); the materialised engagement score (spec 09 D10), needed only if the cohort call is slow at real cohort sizes.
+**Handed to Plan 18 (deferred by C1, named per spec §10 "Deferred to cutover"):** the C3 `lateMinutes` backfill and threshold column (they move the student's "Absence budget" tile *(v1 parity 2026-10-09: was "Absence budget left")*); the materialised engagement score (spec 09 D10), needed only if the cohort call is slow at real cohort sizes.
 
 ---
 
@@ -110,6 +110,8 @@ If any of these is missing when this plan starts, **stop** — do not stub it an
   - `seasonProgressSchema`/`SeasonProgress`, `dashboardSessionSchema`/`DashboardSession`, `dashboardSeasonSchema`, `staffCohortSummarySchema`, `reviewCountsSchema`, `quizRollupSchema`, `staffSeasonDashboardSchema`/`StaffSeasonDashboard`, `dashboardDueItemSchema`/`DashboardDueItem`, `studentAssignmentSummarySchema`, `studentDashboardSchema`/`StudentDashboard`, `activityItemSchema`/`ActivityItem`, `mentorDashboardSchema`/`MentorDashboard`, `dashboardSchema`/`Dashboard`
 
 - [ ] **Step 1: Write the failing test**
+
+> **v1 parity 2026-10-09:** Update this test to the reverted contracts in Step 2: the mentor fixture becomes `{ variant: "MENTOR", recentAttendance: [], recentSubmissions: [] }` and the cap test asserts each list refuses a 5th item (v1 shows 4 + 4, `jpc-space/src/app/mentor/dashboard/page.tsx:161-210`); add a case for `attendanceTier` (69 → low, 70 → mid, 84 → mid, 85 → ok, `admin/dashboard/page.tsx:132-138`, `:270-276`); `RECENT_ACTIVITY_LIMIT` becomes 4 per block.
 
 ```ts
 // packages/shared/src/__tests__/dashboard.test.ts
@@ -182,6 +184,8 @@ describe("dashboardSchema", () => {
 Run: `cd packages/shared && pnpm exec jest src/__tests__/dashboard.test.ts` → FAIL (exports missing).
 
 - [ ] **Step 2: Write the module**
+
+> **v1 parity 2026-10-09:** Edit the contracts (v2 `packages/shared/src/dashboard.ts:67`, `:82-84`, `:131`, mentor schema): (a) `dashboardSessionSchema` drops `isInProgress` — next session is the first `startsAt >= now` (R21/R64, `admin/dashboard/page.tsx:43-54`); (b) add `ATTENDANCE_TIERS = { low: 70, mid: 85 } as const` and `attendanceTier(pct): "low" | "mid" | "ok"` (R30); (c) `staffCohortSummarySchema` replaces `atRiskTotal`/`atRisk` with `roster: z.array({ studentUserId, name, attendancePct: int | null (null when attendanceTotal = 0), pending: int })` sorted `attendancePct` asc, nulls last, uncapped (R24, R27, R28, R35, `admin/dashboard/page.tsx:91-102`) and `belowThreshold: z.array({ studentUserId, name })` = roster rows with `attendancePct < 70` (R31, `:364-377`); `meanAttendancePct` stays (R29 KEEP-FIX); (d) `studentAssignmentSummarySchema.lateSubmittedCount` is documented as "turned-in submissions on every live season assignment, `isLate`", not targeted only (R72, `student/dashboard/page.tsx:57-68`); `overdueCount` is no longer rendered (R71) and may be dropped; (e) `activityItemSchema`/`recentActivity` are replaced by `recentAttendance: z.array(attendanceActivitySchema).max(4)` and `recentSubmissions: z.array(submissionActivitySchema).max(4)`, where a submission item carries `kind: "submitted" | "reviewed"` taken from its status (SUBMITTED / REVIEWED) and `at = submittedAt` (R53, R54, `mentor/dashboard/page.tsx:79-91`, `:195-207`).
 
 ```ts
 // packages/shared/src/dashboard.ts
@@ -407,6 +411,8 @@ a database (`pnpm test:unit` needs none, CLAUDE.md).
 
 - [ ] **Step 1: Write the failing test**
 
+> **v1 parity 2026-10-09:** Delete the `isSessionInProgress` cases (no caller once the next session is `startsAt >= now`, R21) and the `mergeActivity (D18)` cases (two unmerged blocks, R53). In the `summarizeStudentAssignments` case, `lateSubmittedCount` is no longer derived from the targeted rows: it takes a separate input (see Step 2).
+
 ```ts
 // apps/backend/src/__tests__/dashboard-figures.test.ts
 import {
@@ -532,6 +538,8 @@ describe("mergeActivity (D18)", () => {
 Run: `cd apps/backend && pnpm exec jest src/__tests__/dashboard-figures.test.ts` → FAIL (module missing).
 
 - [ ] **Step 2: Write the module**
+
+> **v1 parity 2026-10-09:** Remove `isSessionInProgress`, `mergeActivity` and `ActivityRow` (v2 `apps/backend/src/lib/dashboard-figures.ts:123-127`). `summarizeStudentAssignments` stops computing `lateSubmittedCount` from targeted rows (`dashboard-figures.ts:65`); the count comes from Task 4's untargeted query (R72, `jpc-space/src/app/student/dashboard/page.tsx:57-68`, `:79-81`). Add `rosterRowsFrom(rows)`: map each engagement row to `{ studentUserId, name, attendancePct: attendanceTotal > 0 ? attendancePct : null, pending: max(0, submissionsExpected − submissionsCompleted) }`, sort `attendancePct ?? 101` asc then `studentUserId` (R24, R27, R28; `admin/dashboard/page.tsx:91-102`).
 
 ```ts
 // apps/backend/src/lib/dashboard-figures.ts
@@ -934,6 +942,8 @@ export async function listAssignmentsForStudent(
 
 - [ ] **Step 5: Season progress and the current-or-next session**
 
+> **v1 parity 2026-10-09:** `loadCurrentOrNextSession` becomes `loadNextSession(seasonId, now)`: one `findFirst({ where: { seasonId, startsAt: { gte: now } }, orderBy: [{ startsAt: "asc" }, { id: "asc" }] })`, no `isInProgress`, no latest-started read (v2 `apps/backend/src/lib/queries/sessions.ts:179-215`; v1 `jpc-space/src/app/admin/dashboard/page.tsx:43-54`, `student/dashboard/page.tsx:42-53`). `CurrentOrNextSession` loses `isInProgress`. `loadSeasonProgress` is unchanged.
+
 Append to `apps/backend/src/lib/queries/sessions.ts` (imports: `isSessionInProgress`, `progressFrom`, `type ProgressFigures` from `../dashboard-figures`):
 
 ```ts
@@ -1058,6 +1068,8 @@ git add apps/backend && git commit -m "refactor(backend): extract queue scope, g
 Variant rules (spec 19 §7, verbatim): STUDENT (not graduated) → `STUDENT`, season from the **token's** `activeSeasonId`, any `?seasonId=` ignored (D22). Alumnus → **403 `forbidden`**. ADMIN/SUPER/LEADER → `SEASON_STAFF`, `?seasonId=` **required** (400 `bad_request` if missing or malformed), gated by `staffScopeForSeason` (403 when null — an ADMIN outside `seasonAdminIds`, a LEADER with no group in that season), 404 `not_found` only when a season the caller may name does not exist or is soft-deleted. MENTOR → `MENTOR`, `?seasonId=` ignored.
 
 - [ ] **Step 1: Write the failing integration suite**
+
+> **v1 parity 2026-10-09:** Update the integration expectations: STUDENT — `nextSession` is the first future session (`isInProgress` gone; the live session has `startsAt < now`, so next = the 2099 session; progress stays 3 of 4), and `lateSubmittedCount` counts a late submission on a live season assignment the student was **not** targeted by (R72). SEASON_STAFF — assert `cohort.roster` (every cohort row, sorted, null attendance last) and `cohort.belowThreshold` instead of `atRisk`/`atRiskTotal`. MENTOR (L1428-1447) — rename the case to "two blocks: 4 newest marks, 4 newest SUBMITTED|REVIEWED by submittedAt"; the graduated student's mark **is** included (R51, `mentor/dashboard/page.tsx:67-78`), RETURNED and DRAFT rows are excluded, a REVIEWED row is timed at `submittedAt` (R52, R54); deleted-season/assignment/student rows stay excluded (kept).
 
 Fixture arithmetic, so every expected number below can be checked by hand.
 Season S has four sessions: two in 2020, one **live** (started 10 minutes ago,
@@ -1453,6 +1465,8 @@ Expected: FAIL — every `/api/v1/me/dashboard` case 404s (`not_found`); only th
 
 - [ ] **Step 3: The assembly**
 
+> **v1 parity 2026-10-09:** In this block (v2 `apps/backend/src/lib/queries/dashboard.ts`): (1) call `loadNextSession` and drop `isInProgress` from `toDashboardSession` (`dashboard.ts:33-44`, `:70`, `:123`); (2) STUDENT: add one count — `db.submission.findMany({ where: { studentUserId, status: { in: ["SUBMITTED","REVIEWED","RETURNED"] }, submittedAt: { not: null }, assignment: { seasonId, deletedAt: null, dueAt: { not: null } } }, select: { submittedAt, assignment: { dueAt } } })` filtered with the exported `isLate` → `lateSubmittedCount` (R72, `jpc-space/src/app/student/dashboard/page.tsx:57-68`); (3) SEASON_STAFF: replace `atRiskAll` (`dashboard.ts:142-155`) with `roster = rosterRowsFrom(rows)` and `belowThreshold = roster.filter(r => r.attendancePct !== null && r.attendancePct < ATTENDANCE_TIERS.low)` (R31, R35, `admin/dashboard/page.tsx:101-102`, `:364-377`); same for the leader scope (R41); (4) MENTOR: `FEED_STUDENT` drops `graduationYear: null` (`dashboard.ts:163`, R51); the submission read is `status: { in: ["SUBMITTED","REVIEWED"] }`, `submittedAt` desc, take 4, the `reviewedRows` read is deleted (`dashboard.ts:187-222`, R52, R54); attendance read takes 4; return `{ variant: "MENTOR", recentAttendance, recentSubmissions }` with no merge (`dashboard.ts:252-273`, R53; v1 `mentor/dashboard/page.tsx:67-91`, `:161-210`). Soft-delete filters stay. (5) SUPER tile: add `upcomingEventCount = db.jpcEvent.count({ where: { date: { gte: now } } })` (no visibility, no upper bound) to Plan 15's `GET /reports/organisation` (`organisationReportSchema` + its loader) — new work owned here (R15, `jpc-space/src/app/super/dashboard/page.tsx:18`).
+
 ```ts
 // apps/backend/src/lib/queries/dashboard.ts
 import { db } from "../../db/client";
@@ -1792,6 +1806,8 @@ Run: `pnpm --filter @space/backend build && ! grep -rn 'require("@space/shared")
 
 - [ ] **Step 6: OpenAPI, same commit**
 
+> **v1 parity 2026-10-09:** Mirror the Step 2/3 contract changes in the OpenAPI document: no `isInProgress`; `cohort.roster`/`cohort.belowThreshold` instead of `atRisk`/`atRiskTotal`; MENTOR `recentAttendance`/`recentSubmissions` (each `maxItems: 4`) instead of `recentActivity`; `upcomingEventCount` on `/reports/organisation`.
+
 In `apps/backend/src/docs/openapi.ts`, add after the `"/api/v1/me"` entry:
 
 ```ts
@@ -1932,6 +1948,8 @@ git add apps/backend && git commit -m "feat(backend): GET /me/dashboard — stud
   - `DASHBOARD_META` (the mutation tag Task 8 applies)
 
 - [ ] **Step 1: Failing tests**
+
+> **v1 parity 2026-10-09:** Replace the `firstName` cases: alumni `firstName("  Nour Adel ")` → "Nour", `firstName(null)` → "there", and an empty/blank name returns `""` (v1 `alumni/dashboard/page.tsx:21`); add `studentFirstName("Sara Mansour")` → "Sara" using `name.split(" ")[0]`, "there" only on null (`student/dashboard/page.tsx:88`) (R59).
 
 ```ts
 // apps/mobile/src/__tests__/dashboard-branch.test.ts
@@ -2152,6 +2170,8 @@ export function useMentorDashboard(): UseQueryResult<MentorDashboard> {
 
 - [ ] **Step 4: Format helpers**
 
+> **v1 parity 2026-10-09:** `firstName` becomes `name == null ? "there" : name.trim().split(/\s+/)[0]` (no empty fallback), and a second helper `studentFirstName(name)` = `name == null ? "there" : name.split(" ")[0]` serves the student greeting (v2 `apps/mobile/src/lib/format.ts:93-100`; v1 `alumni/dashboard/page.tsx:21`, `student/dashboard/page.tsx:88`) (R59). Also add `formatTimeUntil(iso)` (= `formatDistanceToNowStrict(date, { addSuffix: true })` on a future instant) for the next-session badge and the "Due in …" label (D23); `formatTimeAgo` can serve both if it is renamed `formatRelative`.
+
 Add `formatDistanceToNowStrict` to the `date-fns` import in `apps/mobile/src/lib/format.ts` and append:
 
 ```ts
@@ -2279,6 +2299,8 @@ git add apps/mobile && git commit -m "feat(mobile): dashboard hooks per variant,
 
 - [ ] **Step 1: Failing test**
 
+> **v1 parity 2026-10-09:** Replace the case "renders an EmptyState, not nothing, when no event qualifies (v1 R10)" with "renders nothing when no event qualifies (v1 R10)": `expect(screen.queryByText("Upcoming events")).toBeNull()` and no "No upcoming events" text (v1 `jpc-space/src/components/events/upcoming-events-card.tsx:30`).
+
 ```tsx
 // apps/mobile/src/__tests__/upcoming-events-card.test.tsx
 import { fireEvent, screen } from "@testing-library/react-native";
@@ -2364,6 +2386,8 @@ describe("UpcomingEventsCard (spec 19 R5–R11, D19)", () => {
 Run: `cd apps/mobile && pnpm jest src/__tests__/upcoming-events-card.test.tsx` → FAIL (module missing).
 
 - [ ] **Step 2: The components**
+
+> **v1 parity 2026-10-09:** In `UpcomingEventsCard`, return `null` (before the `Card`) when `query.data?.events.length === 0`; delete the `EmptyState` arm (v2 `apps/mobile/src/components/dashboard/UpcomingEventsCard.tsx:25-27`; v1 `upcoming-events-card.tsx:30`). Loading and error arms stay.
 
 ```tsx
 // apps/mobile/src/components/dashboard/UpcomingEventsCard.tsx
@@ -2560,6 +2584,8 @@ three bell cases are **kept**, re-pointed at an ALUMNI session (the branch
 with the fewest requests).
 
 - [ ] **Step 1: Replace the test file (failing first)**
+
+> **v1 parity 2026-10-09:** Update the expectations to v1 copy and layout: STUDENT — "Hi, Sara 👋", "2 assignments need your attention.", "Week 3 of 4 · 1 week to go" with "75% done", `Absence budget: 42%`, `Assignments: 2` with caption "pending" (no overdue caption), banner "1 assignment submitted late this season", "Next session" with "… · {durationMinutes} min · Hall" and a relative badge, "Watch recording" opens `youtubeUrl` (fixture session in the future), due-soon labels "Due Jan 5, 2020" (overdue) / "Due in …" and a "See all" → `/assignments` (R59, R64, R67–R69, R71–R74). ADMIN — hero "{n} students · Week 3 of 4", a "Progress" tile "75%" / "Week 3/4", an "All students" card listing every roster row (tap → `/student/[id]`, "View all" → `/students`), the "Students below 70% attendance" callout, an Assignments panel with "View all" → `/assignments`, a Quizzes panel "View all" → `/quizzes`; no at-risk preview, no "1 of 12" (R21, R22, R30, R31, R35, R36). LEADER — the same layout, "Group average attendance", "View all" → `/groups`, "Pending review" → `/submissions` (R41, R43). MENTOR — heading "Flagged for follow-up", "All students" → `/students`, no "1 of 34", empty "Nobody flagged" / "All students above the 60% engagement threshold.", activity as two blocks (marks then submissions), quick links Students / My notes / Reports / Settings (R47–R49, R53, R57). SUPER — `Students: 40`, `Upcoming events: <organisation.upcomingEventCount>` with no caption (R13, R15).
 
 ```tsx
 // apps/mobile/src/__tests__/dashboard.test.tsx
@@ -3062,6 +3088,8 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/dashboard.test.tsx` → FAIL (br
 
 - [ ] **Step 2: STUDENT branch**
 
+> **v1 parity 2026-10-09:** `StudentDashboard` (v2 `apps/mobile/src/components/dashboard/StudentDashboard.tsx`): greeting `Hi, ${studentFirstName(name)} 👋` (`:63`, R59); subtitle strings "… your attention." / "You're all caught up this week." (`:22-29`, R67); hero `${pct ?? 0}% done` ring plus "Week N of M · K week(s) to go" / "· complete" (`:84-96`, R68); budget tile label "Absence budget", caption "this season" (`:107`, R69 — not "Attendance"); tile "Assignments", caption "pending", no overdue caption (`:120-129`, R71); banner `${n} assignment${n !== 1 ? "s" : ""} submitted late this season` (`:132-142`, R72); next-session card label "Next session" always, adds "{durationMinutes} min", the location and a relative badge from `startsAt` (`:146-170`, R64); "Watch recording" whenever `youtubeUrl` is set, no `isInProgress` (`:170-177`, R74); due-soon label: overdue → `Due ${formatDayKey(dueOrgDay)}` (error colour), otherwise `Due in ${relative from dueAt}` (warning colour), none when `dueAt` is null, plus "See all" → `/assignments` (`:30-34`, `:180-202`, R73). v1: `jpc-space/src/app/student/dashboard/page.tsx:69-101`, `:132-288`.
+
 ```tsx
 // apps/mobile/src/components/dashboard/StudentDashboard.tsx
 import { useRouter } from "expo-router";
@@ -3266,6 +3294,8 @@ closure narrowing only; the branch already rendered because it is non-null.)
 
 - [ ] **Step 3: ALUMNI branch**
 
+> **v1 parity 2026-10-09:** Alumni greeting uses the reverted `firstName` (no empty fallback) (R59, `jpc-space/src/app/alumni/dashboard/page.tsx:21`, `:33`).
+
 ```tsx
 // apps/mobile/src/components/dashboard/AlumniDashboard.tsx
 import { useRouter } from "expo-router";
@@ -3307,6 +3337,8 @@ export function AlumniDashboard() {
 ```
 
 - [ ] **Step 4: ADMIN / LEADER branch**
+
+> **v1 parity 2026-10-09:** `SeasonStaffDashboard` (v2 `apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx`), ADMIN and LEADER alike (R41): hero "{studentCount} students · Week {held} of {total}" (week part omitted when total = 0) and the season/group average coloured by `attendanceTier` (`:33-39`, R22, R30); a stat row Students → `/students` (leader `/groups`), "Progress" `{pct ?? 0}%` / "Week N/M", Quizzes pending → `/quizzes` (`:42-59`, R22); next-session card "Next session", day · time · "{durationMinutes} min" · location, a relative badge, "Watch recording" when `youtubeUrl` is set (`:62-81`, R21); replace the at-risk card (`:83-129`) with an "All students" card over `cohort.roster` — name, attendance % in its tier colour ("—" omitted when null), "{pending} pending" badge when > 0, row → `/student/[id]`, "View all" → `/students` (leader `/groups`), empty "No students enrolled" (leader "No students yet") (R24, R27, R28, R35); an "Assignments" panel (Pending review / Reviewed) with "View all" → `/assignments` for ADMIN, `/submissions` for LEADER (R36, R43); a "Quizzes" panel with "View all" → `/quizzes` (R36); and last, when `cohort.belowThreshold` is non-empty, a red callout "Students below 70% attendance" with the names joined by ", " (R31). v1: `jpc-space/src/app/admin/dashboard/page.tsx:132-377`, `leader/dashboard/page.tsx:90-145`, `:168`, `:256`.
 
 ```tsx
 // apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx
@@ -3486,6 +3518,8 @@ export function SeasonStaffDashboard({ role }: { role: "ADMIN" | "LEADER" }) {
 
 - [ ] **Step 5: MENTOR branch**
 
+> **v1 parity 2026-10-09:** `MentorDashboard` (v2 `apps/mobile/src/components/dashboard/MentorDashboard.tsx`): heading "Flagged for follow-up" with an "All students" link → `/students` (`:55-56`, R48); delete the "{n} of {atRiskTotal}" caption (`:70-73`, R47; `isAtRisk`, score order and the cap of 10 stay); empty state title "Nobody flagged", message "All students above the 60% engagement threshold." (`:64-68`, R49); "Recent activity" renders `recentAttendance` then `recentSubmissions` as two blocks, a submission row reading "{name} received feedback on {title}" (REVIEWED) or "{name} submitted {title}", time from `submittedAt` (`:97-124`, R53, R54); add a quick-links card Students → `/students`, My notes → `/notes`, Reports → `/reports`, Settings → `/settings` in place of the "No quick links" comment (`:126`, R57). v1: `jpc-space/src/app/mentor/dashboard/page.tsx:57-226`.
+
 ```tsx
 // apps/mobile/src/components/dashboard/MentorDashboard.tsx
 import { useRouter } from "expo-router";
@@ -3607,6 +3641,8 @@ export function MentorDashboard() {
 ```
 
 - [ ] **Step 6: SUPER branch**
+
+> **v1 parity 2026-10-09:** `SuperDashboard` (v2 `apps/mobile/src/components/dashboard/SuperDashboard.tsx`): tile label "Students" (`:40`, R13); the "Upcoming events" tile shows `org.data.upcomingEventCount` (Task 4 Step 3 item 5) with no caption, instead of `events.data.total` + "From today, next 12 months" (`:58-64`, R15). v1: `jpc-space/src/app/super/dashboard/page.tsx:16-34`.
 
 ```tsx
 // apps/mobile/src/components/dashboard/SuperDashboard.tsx
@@ -3883,6 +3919,8 @@ Health: `pnpm --filter @space/backend start` in tmux (`tmux new -d -s space-v2-a
 
 - [ ] **Step 2: Mutation pass**
 
+> **v1 parity 2026-10-09:** Mutations 4, 6, 7, 8, 14 and 17 target removed or reverted code. Replace them with: 4 — `loadNextSession`: use `gt` instead of `gte` → a session starting exactly now disappears (STUDENT case); 6 — `rosterRowsFrom`: sort nulls first → SEASON_STAFF roster order fails; 7 — `loadMentorDashboard`: re-add `RETURNED` → MENTOR case fails; 8 — re-add `graduationYear: null` → the graduated mark disappears, MENTOR fails; 14 — `UpcomingEventsCard`: render the EmptyState again → "renders nothing" fails; 17 — `StudentDashboard`: hide "Watch recording" for future sessions → STUDENT case fails.
+
 Apply one at a time; each must break at least the named test; restore after each.
 
 1. `meanAttendancePct`: drop the `attendanceTotal > 0` filter → `dashboard.test.ts` (shared) "averages only students who have had a session" and "is null" fail.
@@ -3908,6 +3946,8 @@ Apply one at a time; each must break at least the named test; restore after each
 
 - [ ] **Step 3: Device checklist (Expo Go or a dev build, backend running, staging accounts)**
 
+> **v1 parity 2026-10-09:** Checklist items 1, 2, 5, 7 and 8 now read: STUDENT "Hi, {first} 👋", "Week N of M" with "% done", "Absence budget", Assignments pending, late banner, "Next session" with duration and relative badge, "Watch recording" when a link exists, due-soon "Due in …" and "See all"; item 2 "Assignments pending drops"; ADMIN full "All students" roster with tier colours, "Students below 70% attendance" callout when any, Assignments "View all" → `/assignments`; MENTOR "Flagged for follow-up" equals the Reports at-risk list (first 10), two activity blocks, quick links; SUPER events tile equals the count of events dated from now on, any visibility (v1 `super/dashboard/page.tsx:18`).
+
 1. STUDENT with an active season: greeting, "Session N of M", budget left %, streak, To do / overdue, late banner (if any), next session; during a live session "Happening now" and "Join stream"; due-soon rows open the assignment; Absence budget tile opens `/attendance`.
 2. Submit an assignment from the detail screen, go back to Home: To do drops without a manual refresh (D24).
 3. STUDENT with no active season: "Not enrolled yet" → Complete your profile opens `/profile`.
@@ -3931,16 +3971,52 @@ Report: suite counts, the twenty mutation outcomes, device checklist results, an
 - **Shared (`packages/shared/src/dashboard.ts`):** `DASHBOARD_AT_RISK_PREVIEW`, `DUE_SOON_LIMIT`, `UPCOMING_EVENTS_LIMIT`, `RECENT_ACTIVITY_LIMIT`, `meanAttendancePct`, `seasonProgressSchema`, `dashboardSessionSchema`, `dashboardSeasonSchema`, `staffCohortSummarySchema`, `reviewCountsSchema`, `quizRollupSchema`, `staffSeasonDashboardSchema`, `dashboardDueItemSchema`, `studentAssignmentSummarySchema`, `studentDashboardSchema`, `activityItemSchema`, `mentorDashboardSchema`, `dashboardSchema` (+ inferred types).
 - **Backend:** `lib/dashboard-figures.ts` (`isSessionInProgress`, `progressFrom`, `summarizeStudentAssignments`, `isQuizDraft`, `quizRollupFrom`, `mergeActivity`, `ActivityRow`); `lib/permissions.ts` `submissionQueueScopeFor`; `lib/quiz-scope.ts` `countGradedByQuiz`; `lib/queries/reports.ts` `byScoreThenId` (now exported), `ScoreOrderKey`; `lib/queries/assignments.ts` `StudentAssignmentStateRow`, `listAssignmentStatesForStudent`; `lib/queries/sessions.ts` `loadSeasonProgress`, `CurrentOrNextSession`, `loadCurrentOrNextSession`; `lib/queries/dashboard.ts` `loadStudentDashboard`, `loadSeasonStaffDashboard`, `loadMentorDashboard`.
 - **Mobile:** `queryKeys.dashboard.{all, me}`; `use-dashboard.ts` (`DASHBOARD_STALE_TIME`, `useStudentDashboard`, `useSeasonStaffDashboard`, `useMentorDashboard`); `lib/format.ts` `firstName`, `formatEventWhen`, `formatTimeAgo`; `lib/dashboard-branch.ts` `dashboardBranchFor`, `DashboardBranch`; `lib/dashboard-invalidation.ts` `DASHBOARD_META`; components `dashboard/{DashboardFrame, StatTile, TileRow, UpcomingEventsCard, SuperDashboard, SeasonStaffDashboard, MentorDashboard, StudentDashboard, AlumniDashboard}`.
+- **Changed by the v1-parity revision (2026-10-09):** `isSessionInProgress`, `mergeActivity`, `ActivityRow`, `activityItemSchema` and `loadCurrentOrNextSession` are removed; `loadNextSession`, `rosterRowsFrom`, `ATTENDANCE_TIERS`/`attendanceTier`, `studentFirstName`, `cohort.roster`/`cohort.belowThreshold`, MENTOR `recentAttendance`/`recentSubmissions` and `organisationReport.upcomingEventCount` are added. *(v1 parity 2026-10-09: was "the names above only")*
 - **Retired:** Plan 1's `AssignmentsSummary` (dashboard.tsx). **Any new mutation that moves a Home number** must carry `meta: DASHBOARD_META` and add a row to `dashboard-invalidation.test.ts`.
 
 ## Open decisions
 
 1. **MENTOR and SEASON events.** Spec 19 D19 recommends treating MENTOR like SUPER for SEASON events; Plan 14 kept v1 parity, so the mentor's card omits them. Unchanged here — needs a product call, and if taken, the change belongs in Plan 14's `eventVisibilityFilter`, not on this screen.
-2. **Graduated students in the mentor feed.** Excluded per D18's recommendation (matching the at-risk cohort); the spec calls it a product question.
+2. **Graduated students in the mentor feed.** Closed — v1: graduated students are included in both activity lists (`jpc-space/src/app/mentor/dashboard/page.tsx:67-91` filters only `role: "STUDENT"`); soft-deleted rows stay out. *(v1 parity 2026-10-09: was "excluded per D18, matching the at-risk cohort")*
 3. **`use-check-in.ts` is created by both Plan 6 (`useCheckInState`, `useRegenerateCheckIn`) and Plan 11 (`useCheckIn`).** This plan only needs `useCheckIn` to live in that file; the coordinator's reconciliation should confirm Plan 11 *appends* rather than recreates it.
-4. **Due-soon labels are absolute** ("Due Jun 1, 2099"); v1's relative "Due in 3 days" is not rebuilt. Allowed by D23 if wanted later (`formatTimeAgo`-style, from the instant).
+4. **Due-soon labels.** Closed — v1: an overdue row reads "Due {formatDayKey(dueOrgDay)}" (red), any other row "Due in {relative from dueAt}" (amber, device-computed from the instant per D23), no label when `dueAt` is null; the card has a "See all" → `/assignments` link (`jpc-space/src/app/student/dashboard/page.tsx:249-288`). *(v1 parity 2026-10-09: was "absolute labels; Overdue · was due / Due / No due date; no See all")*
 5. **Leader whose current season has no group of theirs** sees the server's 403 message. `useCurrentSeasonId` picks from the seasons the leader can list; if Plan 6's `useStaffSeasonSelection` becomes the staff season source, swap it in here — X8 currently names `useCurrentSeasonId`.
 
 ## Revision 2026-10-05
 
 - Written from spec 19 with ruling X17's acceptances. Composes Plans 8, 11, 12, 14 and 15's server computations (extracted, not copied, in Task 3) and replaces Plan 1 Task 5's dashboard card and tests explicitly.
+
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 19-R30, R31, R41 | REG-60 | 70/85 red/amber/green tiers on the average and each roster row; red callout "Students below 70% attendance" listing every roster student < 70, hidden when none; leader identical (`src/app/admin/dashboard/page.tsx:132-138`, `:270-276`, `:364-377`; `src/app/leader/dashboard/page.tsx:90-145`) | `apps/mobile/src/components/dashboard/SeasonStaffDashboard.tsx:38-39`, `:83-129`; `apps/backend/src/lib/queries/dashboard.ts:142-155`; `packages/shared/src/dashboard.ts:82-84` | Ledger row 1; Task 1 Step 2; Task 4 Step 3; Task 7 Step 4 |
+| 2 | 19-R24, R27, R28, R35, R41 | REG-60 | "All students" card: every roster student, attendance % ("—" when no sessions held), "{n} pending", lowest attendance first with no-figure rows last, "View all", empty "No students enrolled" / leader "No students yet" (`src/app/admin/dashboard/page.tsx:91-102`, `:225-293`; `leader/dashboard/page.tsx:256`) | `SeasonStaffDashboard.tsx:83-129`; `dashboard.ts:142-155`; `packages/shared/src/dashboard.ts:76-86` | Ledger rows 2, 3, 5; Task 1 Step 2; Task 2 Step 2; Task 4 Steps 1, 3; Task 7 Steps 1, 4 |
+| 3 | 19-R22, R68 | REG-60 | Staff hero "{n} students · Week N of M" + "Progress" tile "{pct}%" / "Week N/M"; student ring "{pct}% done", "Week N of M · K week(s) to go" / "· complete" (`admin/dashboard/page.tsx:55-56`, `:156`, `:171`; `student/dashboard/page.tsx:69-72`, `:132-159`) | `SeasonStaffDashboard.tsx:33-37`, `:42-59`; `StudentDashboard.tsx:84-96` | Ledger row 10; Task 7 Steps 1, 2, 4 |
+| 4 | 19-R21, R64, R74 | REG-60 | Next session = first `startsAt >= now`; card "Next session", date · "N min" · location, relative badge, "Watch recording" whenever `youtubeUrl` is set (`admin/dashboard/page.tsx:43-54`, `:183-222`; `student/dashboard/page.tsx:42-53`, `:200-243`) | `apps/backend/src/lib/queries/sessions.ts:179-215`; `dashboard.ts:33-44`, `:70`, `:123`; `packages/shared/src/dashboard.ts:67`; `SeasonStaffDashboard.tsx:62-81`; `StudentDashboard.tsx:146-177` | Ledger row 11; Task 1 Step 2; Task 2 Steps 1–2; Task 3 Step 5; Task 4 Steps 1, 3; Task 7 Steps 2, 4 |
+| 5 | 19-R36 | REG-60 | ADMIN "Assignments" panel (Pending review / Reviewed) "View all" → assignments; Quizzes panel "View all" → quizzes (`admin/dashboard/page.tsx:295-360`) | `SeasonStaffDashboard.tsx:52-58` | Task 7 Steps 1, 4 |
+| 6 | 19-R47, R48, R49; 09-R76 | REG-61, REG-60 | Mentor card "Flagged for follow-up" + "All students" link, no "N of M" caption, empty "Nobody flagged" / "All students above the 60% engagement threshold." (`src/app/mentor/dashboard/page.tsx:57-64`, `:108-122`) | `apps/mobile/src/components/dashboard/MentorDashboard.tsx:55-73` | Ledger row 15; Task 7 Steps 1, 5 |
+| 7 | 19-R51, R52, R53, R54; 08-R57 | REG-60 | Two blocks: 4 newest marks (graduated included), then 4 newest SUBMITTED\|REVIEWED by `submittedAt`, one row per submission labelled by status (`mentor/dashboard/page.tsx:67-91`, `:161-210`) | `dashboard.ts:163`, `:171-273`; `apps/backend/src/lib/dashboard-figures.ts:123-127`; `packages/shared/src/dashboard.ts` mentor schema; `MentorDashboard.tsx:97-124` | Ledger row 16; Open decision 2; Task 1 Steps 1–2; Task 2 Steps 1–2; Task 4 Steps 1, 3, 6; Task 7 Step 5; Task 9 Step 2 |
+| 8 | 19-R57 | REG-01 | Quick links Students, My notes, Reports, Settings (`mentor/dashboard/page.tsx:221-226`) | `MentorDashboard.tsx:126` | Task 7 Steps 1, 5 |
+| 9 | 19-R10; 15-R75 | REG-60 | Events card renders nothing when no event qualifies (`src/components/events/upcoming-events-card.tsx:30`) | `apps/mobile/src/components/dashboard/UpcomingEventsCard.tsx:25-27` | Ledger row 17; Task 6 Steps 1–2; Task 9 Step 2 |
+| 10 | 19-R15; 15-R79 | REG-60 | SUPER tile = `jpcEvent.count({ date >= now })`, any visibility, no bound, no caption (`src/app/super/dashboard/page.tsx:18`, `:33-34`) | `SuperDashboard.tsx:58-64`; Plan 15's organisation report (new field `upcomingEventCount`) | Ledger row 18; Task 4 Steps 3, 6; Task 7 Step 6 |
+| 11 | 19-R13 | REG-60 | SUPER tile labelled "Students" (`super/dashboard/page.tsx:16`, `:30`) | `SuperDashboard.tsx:39-41` | Ledger row 19; Task 7 Steps 1, 6 |
+| 12 | 19-R59 | REG-60 | Alumni first token of trimmed name, "there" only on null; student "Hi, {name.split(' ')[0]} 👋" (`src/app/alumni/dashboard/page.tsx:21`, `:33`; `student/dashboard/page.tsx:88`, `:93-95`) | `apps/mobile/src/lib/format.ts:93-100`; `StudentDashboard.tsx:63` | Ledger row 20; Task 5 Steps 1, 4; Task 7 Steps 2–3 |
+| 13 | 19-R67 | REG-60 | "… need(s) your attention." / "You're all caught up this week." (`student/dashboard/page.tsx:98-101`) | `StudentDashboard.tsx:22-29` | Ledger row 21; Task 7 Step 2 |
+| 14 | 19-R69 | REG-60 | Tile "Absence budget", value `max(0, round(100 − budgetPct))%` or "—", "this season", → attendance (`student/dashboard/page.tsx:85-87`, `:163-168`) | `StudentDashboard.tsx:106-111` | Ledger row 12; "Handed to Plan 18"; Task 7 Step 2 |
+| 15 | 19-R71 | REG-60 | Tile "Assignments", value pending, sublabel "pending", no overdue caption (`student/dashboard/page.tsx:182-188`) | `StudentDashboard.tsx:120-129` | Task 7 Steps 1–2 |
+| 16 | 19-R72 | REG-60 | Banner "{n} assignment(s) submitted late this season" over every turned-in submission on a live season assignment (untargeted) (`student/dashboard/page.tsx:57-68`, `:79-81`, `:190-197`) | `dashboard-figures.ts:65`; `dashboard.ts` `loadStudentDashboard`; `StudentDashboard.tsx:132-142` | Ledger row 14; Task 1 Step 2; Task 2 Steps 1–2; Task 4 Steps 1, 3; Task 7 Step 2 |
+| 17 | 19-R73 | REG-60 | Due soon: first 3 pending, overdue "Due MMM d" (red), others "Due in {relative}" (amber), none without `dueAt`; "See all" (`student/dashboard/page.tsx:249-288`) | `StudentDashboard.tsx:30-34`, `:180-202` | Open decision 4; Task 5 Step 4; Task 7 Steps 1–2 |
+
+**Awaiting owner (not changed):** none in this plan. Conflicts resolved here (no behaviour beyond the rows above):
+08-R57 asks for "no soft-delete filters" on the mentor activity lists while 19-R51/R52 say keep them —
+this revision keeps the soft-delete filters (19 rows; soft-deleted rows are not live data). 09-R68 and
+09-R87 (label "Attendance") are not applied here: v1's student **dashboard** tile is labelled "Absence
+budget" (`src/app/student/dashboard/page.tsx:163`, 19-R69); the "Attendance" label is the profile
+page's and belongs to Plan 11.

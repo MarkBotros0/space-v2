@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { CalendarGrid } from "../../src/components/calendar/CalendarGrid";
 import { DayEntries, Legend, type CalendarContext } from "../../src/components/calendar/CalendarEntries";
 import { ChoiceChips } from "../../src/components/ChoiceChips";
-import { SeasonSwitcher } from "../../src/components/SeasonSwitcher";
 import { useEvents } from "../../src/hooks/use-events";
 import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
@@ -22,6 +22,7 @@ import {
 } from "../../src/lib/calendar-grid";
 import { groupCalendarByDay } from "../../src/lib/day-groups";
 import { formatDayKey } from "../../src/lib/format";
+import { parsePositiveInt } from "../../src/lib/params";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
 import { Button, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
@@ -84,8 +85,8 @@ function initialAnchor(sessions: SessionListItem[], today: string): string {
 /**
  * The Upcoming / Week / Month toggle with its stepper (REG-75) around either
  * a pinned season's sessions already in hand, or windowed GET /sessions reads.
- * "Today" is the server's org day once a default-window read has reported it
- * (its `fromDayKey`); until then the device's date stands in.
+ * "Today" is the server's org day once a range read has reported it (its
+ * `todayDayKey`); until then the device's date stands in.
  */
 function CalendarSurface({ source, showSeason }: { source: Source; showSeason: boolean }) {
   const role = useSessionStore((s) => s.user?.role ?? null);
@@ -196,7 +197,13 @@ function PinnedSeasonCalendar() {
 
 type ContextFor = (sessions: SessionListItem[]) => CalendarContext;
 
-/** A windowed GET /sessions view (D-16.7) with Earlier / Later paging: the Upcoming view. */
+/**
+ * The Upcoming (agenda) view: everything from the start of the org's today
+ * onward, unbounded, with no paging — past sessions only through Week/Month.
+ * v1 parity 2026-10-09 (03-sessions R98, R75; v1 season-calendar.tsx:236-251):
+ * was an 8-week window with Earlier/Later. GET /sessions with no bounds returns
+ * every session of the scoped seasons; `todayDayKey` is the server's org day (C2).
+ */
 function RangeSessions({
   seasonId,
   contextFor,
@@ -206,44 +213,25 @@ function RangeSessions({
   contextFor: ContextFor;
   onOrgToday: (dayKey: string) => void;
 }) {
-  const theme = useTheme();
-  const [window, setWindow] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
-  const range = useSessionRange({ seasonId, from: window.from, to: window.to }, true);
+  const range = useSessionRange({ seasonId, from: null, to: null }, true);
   const events = useEvents();
-  const isDefaultWindow = window.from === null && window.to === null;
-  const reportedToday = range.data?.fromDayKey;
+  const reportedToday = range.data?.todayDayKey;
 
-  // The default window starts at org-midnight today, so its first day IS the
-  // org's today — the one place the device learns it without guessing a zone.
   useEffect(() => {
-    if (isDefaultWindow && reportedToday) onOrgToday(reportedToday);
-  }, [isDefaultWindow, reportedToday, onOrgToday]);
+    if (reportedToday) onOrgToday(reportedToday);
+  }, [reportedToday, onOrgToday]);
 
   if (range.isPending) return <LoadingState />;
   if (range.isError) {
     return <ErrorState message="Couldn't load sessions. Check your connection and try again." onRetry={() => void range.refetch()} />;
   }
-  const data = range.data;
-  // Only events whose start day lies in the window the header names (ISO day
-  // strings compare correctly). useEvents() reads the server's default window,
-  // today − 30 d to + 365 d; paging "Earlier" past that shows sessions without
-  // events — a windowed events read is the deferred /api/v1/calendar's job (D-15.1).
-  const eventRows = (events.data ?? []).filter(
-    (e) => e.dayKey >= data.fromDayKey && e.dayKey <= data.toDayKey,
-  );
-  return (
-    <>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: theme.spacing.md }}>
-        <Button title="Earlier" variant="ghost" onPress={() => setWindow({ from: null, to: data.from })} />
-        <Text variant="label">{`${formatDayKey(data.fromDayKey)} – ${formatDayKey(data.toDayKey)}`}</Text>
-        <Button title="Later" variant="ghost" onPress={() => setWindow({ from: data.to, to: null })} />
-      </View>
-      {data.sessions.length === 0 && eventRows.length === 0 ? (
-        <EmptyState title="No sessions" message="Nothing is scheduled in this window." />
-      ) : (
-        <CalendarDays sessions={data.sessions} events={eventRows} ctx={contextFor(data.sessions)} />
-      )}
-    </>
+  const today = range.data.todayDayKey;
+  const sessions = range.data.sessions.filter((s) => s.dayKey >= today);
+  const eventRows = (events.data ?? []).filter((e) => e.dayKey >= today);
+  return sessions.length === 0 && eventRows.length === 0 ? (
+    <EmptyState title="Nothing coming up" message="You're all caught up. Switch to Month to review past sessions." />
+  ) : (
+    <CalendarDays sessions={sessions} events={eventRows} ctx={contextFor(range.data.sessions)} />
   );
 }
 
@@ -291,36 +279,53 @@ function MultiSeasonCalendar() {
   );
 }
 
-/** ADMIN — one season at a time, switchable (spec 03 §9; v1 forced one via redirect, R86). */
-function AdminCalendar() {
-  const selection = useStaffSeasonSelection(true);
-  let body: ReactNode;
-  if (selection.isPending) body = <LoadingState />;
-  else if (selection.isError) body = <ErrorState message="Couldn't load your seasons." onRetry={selection.refetch} />;
-  else if (selection.seasonId === null) body = <EmptyState title="No season to show" message="You aren't assigned to a season yet." />;
-  else
-    body = (
-      <>
-        <SeasonSwitcher seasons={selection.seasons} selectedId={selection.seasonId} onSelect={selection.setSeasonId} />
-        {/* key: switching season starts again from the default window. */}
-        <CalendarSurface key={selection.seasonId} source={{ kind: "range", seasonId: selection.seasonId }} showSeason={false} />
-      </>
-    );
+/**
+ * One season's full calendar, opened by `seasonId` (e.g. after creating a
+ * session — v1 session-form.tsx:125 goes to the season's calendar, 03 R30).
+ * The server refuses a season outside the caller's scope.
+ */
+function SeasonCalendar({ seasonId }: { seasonId: number }) {
   return (
     <Screen edges={["top", "left", "right"]} scroll>
-      {body}
+      <CalendarSurface key={seasonId} source={{ kind: "range", seasonId }} showSeason={false} />
     </Screen>
   );
 }
 
 /**
+ * ADMIN — v1's /admin/calendar redirect (03-sessions R86, v1
+ * admin/calendar/page.tsx:16-40): the newest ACTIVE administered season, else
+ * the newest of any status, with no picker. Other seasons' calendars are
+ * reached from their season workspace. v1 parity 2026-10-09: was a SeasonSwitcher.
+ */
+function AdminCalendar() {
+  const selection = useStaffSeasonSelection(true);
+  if (selection.isPending || selection.isError || selection.seasonId === null) {
+    return (
+      <Screen edges={["top", "left", "right"]} scroll>
+        {selection.isPending ? (
+          <LoadingState />
+        ) : selection.isError ? (
+          <ErrorState message="Couldn't load your seasons." onRetry={selection.refetch} />
+        ) : (
+          <EmptyState title="No season to show" message="No active season found." />
+        )}
+      </Screen>
+    );
+  }
+  return <SeasonCalendar seasonId={selection.seasonId} />;
+}
+
+/**
  * /calendar — one route, every role (Decision D1). STUDENT/ALUMNI keep
- * Plan 4's pinned season; ADMIN gets a season switcher; SUPER and LEADER see
- * every season the server scopes them to, in an org-day window. MENTOR has
- * no calendar in its nav (spec 03 §9).
+ * Plan 4's pinned season; ADMIN gets v1's one-season redirect target; SUPER
+ * and LEADER see every season the server scopes them to. A `seasonId` param
+ * opens that one season for staff. MENTOR has no calendar in its nav (spec 03 §9).
  */
 export default function CalendarScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
+  const { seasonId: rawSeasonId } = useLocalSearchParams<{ seasonId?: string }>();
+  const paramSeasonId = parsePositiveInt(rawSeasonId);
   const leadsNothing = useSessionStore(
     (s) => s.user?.role === "LEADER" && (s.scopes?.groupLeaderIds.length ?? 0) === 0,
   );
@@ -338,6 +343,9 @@ export default function CalendarScreen() {
         <EmptyState title="No calendar" message="You don't lead any groups yet." />
       </Screen>
     );
+  }
+  if (paramSeasonId !== null && (role === "SUPER" || role === "LEADER" || role === "ADMIN")) {
+    return <SeasonCalendar seasonId={paramSeasonId} />;
   }
   if (role === "SUPER" || role === "LEADER") return <MultiSeasonCalendar />;
   if (role === "ADMIN") return <AdminCalendar />;

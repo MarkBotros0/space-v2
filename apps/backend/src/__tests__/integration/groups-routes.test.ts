@@ -201,27 +201,49 @@ describe("POST /api/v1/seasons/:id/groups and PATCH /api/v1/groups/:id", () => {
     expect(res.body.error.code).toBe("invalid_leader");
   });
 
-  it("refuses a student who is not enrolled in the season", async () => {
+  // v1 parity 2026-10-09 (spec 05 R18): v1's group form enrols any live student
+  // it is given (group-actions.ts:55-76).
+  it("enrols a live student who is not yet in the season (ACTIVE, with the group)", async () => {
     const stranger = await createTestUser("stranger", "STUDENT");
     const res = await request(app)
       .post(`/api/v1/seasons/${seasonId}/groups`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ name: "Bad students", studentIds: [stranger.id] });
+      .send({ name: "New students", studentIds: [stranger.id] });
 
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("not_enrolled");
+    expect(res.status).toBe(201);
+    const enrollment = await db.seasonEnrollment.findUnique({
+      where: { studentUserId_seasonId: { studentUserId: stranger.id, seasonId } },
+      select: { status: true, groupId: true },
+    });
+    expect(enrollment).toEqual({ status: "ACTIVE", groupId: res.body.data.id });
   });
 
-  it("refuses a duplicate name within the season", async () => {
-    // No database constraint exists and the CSV importer matches groups by
-    // name, so two groups sharing one silently misroute an import.
+  it("refuses a student id that is not a live student", async () => {
+    const staff = await createTestUser("not-a-student", "LEADER");
     const res = await request(app)
       .post(`/api/v1/seasons/${seasonId}/groups`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ name: "Group A" });
+      .send({ name: "Bad students", studentIds: [staff.id] });
 
     expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("name_taken");
+    expect(res.body.error.code).toBe("invalid_student");
+  });
+
+  // v1 parity 2026-10-09 (spec 05 R15, Plan 18 Task 2b.P Step 6): v1 has no
+  // name-uniqueness check (group-actions.ts:17,44,105).
+  it("allows two groups with the same name in one season", async () => {
+    const first = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Twin" });
+    const second = await request(app)
+      .post(`/api/v1/seasons/${seasonId}/groups`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ name: "Twin" });
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(second.body.data.id).not.toBe(first.body.data.id);
   });
 
   it("preserves enrolment history when the roster changes", async () => {
@@ -382,7 +404,9 @@ describe("GET /api/v1/groups/:id", () => {
     expect(other.status).toBe(403);
   });
 
-  it("withholds member emails from a student reading their own group", async () => {
+  // v1 parity 2026-10-09 (spec 05 R75): v1's student season view shows leader
+  // emails (mailto) but never a peer's (student/season/page.tsx:71-77,163-183).
+  it("shows a student their leaders' emails but withholds peers' emails", async () => {
     const res = await request(app)
       .get(`/api/v1/groups/${groupAId}`)
       .set("authorization", `Bearer ${studentToken}`);
@@ -390,9 +414,11 @@ describe("GET /api/v1/groups/:id", () => {
     expect(res.status).toBe(200);
     // Names still come through — a student should see who is in their group.
     expect(res.body.data.students).toEqual([{ id: expect.any(Number), name: "Test student" }]);
-    expect(res.body.data.leaders).toEqual([{ id: expect.any(Number), name: "Test leader" }]);
-    // Belt and braces: no address anywhere in the payload, however nested.
-    expect(JSON.stringify(res.body)).not.toContain("@jpc.test");
+    expect(res.body.data.leaders).toEqual([
+      { id: expect.any(Number), name: "Test leader", email: expect.any(String) },
+    ]);
+    // No peer address anywhere in the students list.
+    expect(JSON.stringify(res.body.data.students)).not.toContain("@");
   });
 
   it("does not honour grant rows carried by a STUDENT", async () => {

@@ -104,31 +104,27 @@ describe("StudentDetailScreen", () => {
     expect(screen.getByText("Moved away")).toBeTruthy();
   });
 
-  it("shows no notes or phone to MENTOR — the public arm has no such fields", async () => {
+  it("shows MENTOR the full profile — notes, phone and a Call button, as v1 (06-students R71)", async () => {
     useSessionStore.setState(mentorSession);
-    // The mentor arm's payload: dropReason nulled, profile is the public cut.
-    get.mockResolvedValue({
-      data: {
-        data: {
-          ...base,
-          enrollments: [{ ...enrollment, dropReason: null }],
-          profile: publicProfile,
-        },
-      },
-    });
+    get.mockResolvedValue({ data: { data: { ...base, profile: internalProfile } } });
 
     renderWithProviders(<StudentDetailScreen />);
 
     expect(await screen.findByText("Sara Student")).toBeTruthy();
-    expect(screen.queryByText("Watch attendance")).toBeNull();
-    expect(screen.queryByText(/\+20 100 000 0000/)).toBeNull();
+    expect(screen.getByText("Watch attendance")).toBeTruthy();
+    expect(screen.getByText(/\+20 100 000 0000/)).toBeTruthy();
+    expect(screen.getByText("Call")).toBeTruthy();
+    expect(screen.getByText("Email")).toBeTruthy();
+    expect(screen.getByText("Moved away")).toBeTruthy();
   });
 
-  it("fails loudly when the server leaks a withheld field to a narrow role", async () => {
-    useSessionStore.setState(mentorSession);
-    // A server bug serving the INTERNAL payload to a mentor: the public arm
-    // is .strict(), so the parse throws and the screen shows its error state
-    // instead of quietly rendering someone's personal data.
+  it("fails loudly when the server leaks the internal notes to the student themselves", async () => {
+    useSessionStore.setState({
+      user: { id: 21, name: "Sara Student", email: "sara@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
+      scopes: emptyScopes,
+    });
+    // The self view parses the private arm, which is .strict(): a payload
+    // carrying `notes` throws instead of quietly rendering it.
     get.mockResolvedValue({ data: { data: { ...base, profile: internalProfile } } });
 
     renderWithProviders(<StudentDetailScreen />);
@@ -139,7 +135,7 @@ describe("StudentDetailScreen", () => {
 
 describe("StudentDetailScreen history (REG-83)", () => {
   const ok = (data: unknown) => Promise.resolve({ data: { data } });
-  function serve(session: typeof superSession) {
+  function serve(session: typeof superSession | typeof mentorSession) {
     useSessionStore.setState(session);
     get.mockImplementation((url: string) => {
       if (url === "/api/v1/students/21")
@@ -157,6 +153,12 @@ describe("StudentDetailScreen history (REG-83)", () => {
               submittedAt: "2099-04-02T10:00:00.000Z", reviewedAt: null, seasonId: 7, seasonTitle: "Spring 2099" },
           ],
         });
+      if (url === "/api/v1/students/21/documents")
+        return ok({
+          documents: [
+            { id: 9, originalName: "consent.pdf", sizeBytes: 2048, mimeType: "application/pdf", uploadedAt: "2099-03-01T10:00:00.000Z" },
+          ],
+        });
       if (url.includes("/engagement") || url.includes("/notes")) return Promise.reject(new Error("skip"));
       return Promise.reject(new Error(`unexpected GET ${url}`));
     });
@@ -172,6 +174,20 @@ describe("StudentDetailScreen history (REG-83)", () => {
 
     fireEvent.press(screen.getByText("Essay one · Submitted · Late"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
+  });
+
+  it("lists documents read-only for SUPER (06-students R80)", async () => {
+    serve(superSession);
+    renderWithProviders(<StudentDetailScreen />);
+    expect(await screen.findByText("consent.pdf")).toBeTruthy();
+    expect(screen.getByText(/application\/pdf · 2\.0 KB · uploaded/)).toBeTruthy();
+  });
+
+  it("never asks for documents as MENTOR", async () => {
+    serve(mentorSession);
+    renderWithProviders(<StudentDetailScreen />);
+    await screen.findByText("83% attendance");
+    expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/documents");
   });
 
   it("never asks a student's own record for the staff-only history", async () => {

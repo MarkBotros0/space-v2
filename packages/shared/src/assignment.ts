@@ -68,6 +68,15 @@ export const studentAssignmentListItemSchema = z.object({
   id: z.number(),
   title: z.string(),
   dueAt: z.string().nullable(),
+  /** Org-calendar day of `dueAt` (C2/X13); null when there is no due date. */
+  dueOrgDay: isoDaySchema.nullable(),
+  /**
+   * How far off the deadline is while it has not passed — v1's
+   * `formatDistanceToNowStrict(dueAt)` ("3 days", "5 hours"), derived on the
+   * server (C4) so device clocks never disagree. Null when there is no due
+   * date or it has passed. v1 parity 2026-10-09 (07-assignments R48).
+   */
+  dueDistance: z.string().nullable(),
   isOverdue: z.boolean(),
   status: assignmentStudentStatusSchema,
   reviewedAt: z.string().nullable(),
@@ -198,21 +207,10 @@ const assignmentWriteBase = z.object({
 
 type AssignmentWriteParsed = z.infer<typeof assignmentWriteBase>;
 
-/**
- * Deliberate divergence from v1: "specific groups" with an empty list is
- * rejected rather than silently accepted. v1 wrote an assignment that targeted
- * nobody, notified nobody and had an expected count of zero — indistinguishable
- * from a save that worked.
- */
-function refineTargeting(value: AssignmentWriteParsed, ctx: z.RefinementCtx): void {
-  if (!value.isAllGroups && value.groupIds.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["groupIds"],
-      message: "Choose at least one group, or target the whole season.",
-    });
-  }
-}
+// v1 parity 2026-10-09 (R13): no targeting refinement. v1
+// assignment-actions.ts:73 saves "specific groups" with none chosen: it targets
+// nobody, notifies nobody and has expected count 0 — with no publish flag, that
+// is how an admin parks one.
 
 /**
  * The type-driven coercion v1 applied in its action bodies (R14–R17), hoisted
@@ -246,9 +244,7 @@ function normalizeAssignmentWrite(value: AssignmentWriteParsed) {
  * "leave the due date alone" the same request. `seasonId` is not a field —
  * create takes it from the path and update can never change it (R68).
  */
-export const assignmentWriteRequestSchema = assignmentWriteBase
-  .superRefine(refineTargeting)
-  .transform(normalizeAssignmentWrite);
+export const assignmentWriteRequestSchema = assignmentWriteBase.transform(normalizeAssignmentWrite);
 
 /** What a client sends. */
 export type AssignmentWriteRequest = z.input<typeof assignmentWriteRequestSchema>;

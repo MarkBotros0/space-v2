@@ -1,5 +1,6 @@
 // apps/mobile/src/__tests__/student-import.test.tsx
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { IMPORT_MAX_PASTE_CHARS } from "@space/shared";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -77,9 +78,8 @@ const previewBody = (overrides: Record<string, unknown> = {}) => ({
         { rowNumber: 3, name: "Bad Row", email: "nope", status: "invalid", message: "Email is not valid.", values: { name: "Bad Row", email: "nope", university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
       ],
       detectedColumns: ["Name", "Email"],
-      unrecognisedColumns: ["Phone No"],
       delimiter: "tab",
-      counts: { new: 1, exists: 0, duplicate: 0, invalid: 1, previously_removed: 0, total: 2 },
+      counts: { new: 1, exists: 0, duplicate: 0, invalid: 1, total: 2 },
       ...overrides,
     },
   },
@@ -116,16 +116,27 @@ describe("ImportScreen — step 1, paste", () => {
     expect(await screen.findByText(/name, student/i)).toBeTruthy();
   });
 
-  it("refuses an over-long paste locally, without spending a request", async () => {
+  it("refuses a paste over v1's 5 MB ceiling locally, without spending a request (R4)", async () => {
     useSessionStore.setState(superSession);
     renderWithProviders(<ImportScreen />);
 
     const field = await screen.findByLabelText("Paste your spreadsheet");
-    fireEvent.changeText(field, "x".repeat(262145));
+    fireEvent.changeText(field, "x".repeat(IMPORT_MAX_PASTE_CHARS + 1));
     fireEvent.press(screen.getByText("Preview"));
 
     expect(await screen.findByText(/too long/i)).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it("sends a paste over the old 256 KB cap (R3/R4)", async () => {
+    useSessionStore.setState(superSession);
+    post.mockResolvedValue(previewBody());
+    renderWithProviders(<ImportScreen />);
+
+    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "x".repeat(262145));
+    fireEvent.press(screen.getByText("Preview"));
+
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
   });
 
   it("posts the paste and moves to the preview step", async () => {
@@ -189,28 +200,29 @@ describe("ImportScreen — step 2, preview", () => {
     expect(await screen.findByText("Fresh Student")).toBeTruthy();
   });
 
-  it("warns about a column it did not recognise (D-16.12)", async () => {
+  it("shows no unrecognised-column warning, as v1 (R18 / D-16.12)", async () => {
     await reachPreview();
-    expect(screen.getByText(/Phone No/)).toBeTruthy();
-    expect(screen.getByText(/not recognised/i)).toBeTruthy();
+    expect(screen.queryByText(/not recognised/i)).toBeNull();
   });
 
   it("commits only the importable rows, sending values and no status (D-16.4)", async () => {
     await reachPreview();
-    post.mockResolvedValue({ data: { data: { created: 1, skipped: 0, enrolled: 0, rows: [{ rowNumber: 2, name: "Fresh Student", email: "fresh@jpc.test", outcome: "created", message: null, userId: 55 }] } } });
+    post.mockResolvedValue({ data: { data: { created: 1, skipped: 0, failed: 0, rows: [{ rowNumber: 2, name: "Fresh Student", email: "fresh@jpc.test", outcome: "created", message: null, userId: 55 }] } } });
 
     fireEvent.press(screen.getByText("Import 1 student"));
 
     await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
     const [url, body] = post.mock.calls[1];
     expect(url).toBe("/api/v1/imports/students/commit");
-    expect(body).toMatchObject({ mode: "season", seasonId: 7, onExisting: "skip" });
+    expect(body).toMatchObject({ mode: "season", seasonId: 7 });
+    // An existing user is always skipped; there is no onExisting (R44).
+    expect("onExisting" in body).toBe(false);
     expect(body.rows).toHaveLength(1);
     expect(body.rows[0]).toEqual({ rowNumber: 2, values: expect.objectContaining({ email: "fresh@jpc.test" }) });
     expect("status" in body.rows[0]).toBe(false);
   });
 
-  it("requires an explicit confirmation before sending onExisting=enroll, and then SENDS the existing rows (D-16.7)", async () => {
+  it("has no enrol control and never sends rows already in the system (R44 / D-16.7)", async () => {
     const existingRow = {
       rowNumber: 4,
       name: "Returning Student",
@@ -229,23 +241,14 @@ describe("ImportScreen — step 2, preview", () => {
         },
       },
     });
-    fireEvent.press(screen.getByText("Also enrol people already in the system"));
+    expect(screen.queryByText(/enrol/i)).toBeNull();
 
-    // The control alone must not arm it — enrol changes existing records.
-    expect(await screen.findByText(/will also enrol/i)).toBeTruthy();
-    // Unconfirmed: the button still counts only the new row.
-    expect(screen.getByText("Import 1 student")).toBeTruthy();
-    fireEvent.press(screen.getByText("Yes, enrol them too"));
-
-    post.mockResolvedValue({ data: { data: { created: 1, skipped: 0, enrolled: 1, rows: [] } } });
-    // Confirmed: the existing row is now part of the commit — without it,
-    // `enroll` reaches the server with nothing to enrol (D-16.7's whole point).
-    fireEvent.press(screen.getByText("Import 1 student, enrol 1"));
+    post.mockResolvedValue({ data: { data: { created: 1, skipped: 0, failed: 0, rows: [] } } });
+    fireEvent.press(screen.getByText("Import 1 student"));
 
     await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
     const body = post.mock.calls[1][1];
-    expect(body.onExisting).toBe("enroll");
-    expect(body.rows.map((r: { rowNumber: number }) => r.rowNumber).sort()).toEqual([2, 4]);
+    expect(body.rows.map((r: { rowNumber: number }) => r.rowNumber)).toEqual([2]);
   });
 
   it("keeps the paste when the operator goes back, so a fix does not start over", async () => {
@@ -274,9 +277,10 @@ describe("ImportScreen — step 3, result", () => {
     useSessionStore.setState(superSession);
     post
       .mockResolvedValueOnce(previewBody())
-      .mockResolvedValueOnce({ data: { data: { created: 1, skipped: 1, enrolled: 0, rows: [
+      .mockResolvedValueOnce({ data: { data: { created: 1, skipped: 1, failed: 1, rows: [
         { rowNumber: 2, name: "Fresh Student", email: "fresh@jpc.test", outcome: "created", message: null, userId: 55 },
-        { rowNumber: 4, name: "Old Student", email: "old@jpc.test", outcome: "skipped", message: "Already in the system.", userId: 12 },
+        { rowNumber: 4, name: "Old Student", email: "old@jpc.test", outcome: "skipped", message: "Already in the system.", userId: null },
+        { rowNumber: 5, name: "Long Phone", email: "lp@jpc.test", outcome: "failed", message: "Invalid name or email.", userId: null },
       ] } } });
 
     renderWithProviders(<ImportScreen />);
@@ -286,12 +290,15 @@ describe("ImportScreen — step 3, result", () => {
     await screen.findByText(/1 new · /);
     fireEvent.press(screen.getByText("Import 1 student"));
 
-    expect(await screen.findByText(/1 created/)).toBeTruthy();
+    expect(await screen.findByText("1 created · 1 skipped · 1 failed")).toBeTruthy();
     expect(screen.getByText(/no invites were sent/i)).toBeTruthy();
     // The non-created rows are listed by ROW NUMBER — a report you cannot map
     // back to the sheet is not a report (spec §8).
     expect(screen.getByText(/Row 4/)).toBeTruthy();
     expect(screen.getByText(/Already in the system/)).toBeTruthy();
+    // Failed rows are listed with their messages (R42, R54).
+    expect(screen.getByText(/Row 5/)).toBeTruthy();
+    expect(screen.getByText("Invalid name or email.")).toBeTruthy();
   });
 
   it("says re-running the same paste is safe", async () => {
@@ -300,7 +307,7 @@ describe("ImportScreen — step 3, result", () => {
     useSessionStore.setState(superSession);
     post
       .mockResolvedValueOnce(previewBody())
-      .mockResolvedValueOnce({ data: { data: { created: 1, skipped: 0, enrolled: 0, rows: [] } } });
+      .mockResolvedValueOnce({ data: { data: { created: 1, skipped: 0, failed: 0, rows: [] } } });
 
     renderWithProviders(<ImportScreen />);
     fireEvent.press(await screen.findByLabelText("Target season: Spring 2099"));

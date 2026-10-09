@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import * as attendanceNotifications from "../../lib/attendance-notifications";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 // Controller ruling: the brief specifies 30000, but the shared Neon staging
@@ -267,6 +268,49 @@ describe("POST /api/v1/sessions/:id/attendance", () => {
       .post(`/api/v1/sessions/${sessionId}/attendance`)
       .set("authorization", `Bearer ${adminToken}`)
       .send({});
+    expect(res.status).toBe(400);
+  });
+
+  // v1 parity 2026-10-09 (spec 04 R33): v1's console override (manualOverrideAction)
+  // never flags low attendance; the batch form does.
+  it("runs the low-attendance flag for a batch save but not for a console override", async () => {
+    const spy = jest.spyOn(attendanceNotifications, "flagLowAttendance");
+    try {
+      const batch = await request(app)
+        .post(`/api/v1/sessions/${sessionId}/attendance`)
+        .set("authorization", `Bearer ${adminToken}`)
+        .send({ entries: [{ studentUserId, status: "ABSENT" }] });
+      expect(batch.status).toBe(200);
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      spy.mockClear();
+      const override = await request(app)
+        .post(`/api/v1/sessions/${sessionId}/attendance`)
+        .set("authorization", `Bearer ${adminToken}`)
+        .send({ consoleOverride: true, entries: [{ studentUserId, status: "PRESENT", notes: "Kept" }] });
+      expect(override.status).toBe(200);
+      expect(spy).not.toHaveBeenCalled();
+      const row = await db.attendance.findUnique({
+        where: { sessionId_studentUserId: { sessionId, studentUserId } },
+        select: { status: true, notes: true },
+      });
+      expect(row).toEqual({ status: "PRESENT", notes: "Kept" });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("refuses a console override of more than one student", async () => {
+    const res = await request(app)
+      .post(`/api/v1/sessions/${sessionId}/attendance`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({
+        consoleOverride: true,
+        entries: [
+          { studentUserId, status: "PRESENT" },
+          { studentUserId: otherStudentUserId, status: "PRESENT" },
+        ],
+      });
     expect(res.status).toBe(400);
   });
 

@@ -11,7 +11,8 @@ import {
 
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useDeleteSeason, useUpdateSeasonAsSuper } from "../../../../src/hooks/use-season-writes";
-import { apiErrorMessage } from "../../../../src/lib/api-error";
+import { DeleteSeasonConfirm } from "../../../../src/components/season/SeasonList";
+import { apiErrorMessage, apiFieldErrors } from "../../../../src/lib/api-error";
 import { firstErrorByField } from "../../../../src/lib/form-errors";
 import { useSessionStore } from "../../../../src/store/session";
 import { useTheme } from "../../../../src/theme";
@@ -42,7 +43,6 @@ function SeasonEditForm({ season }: { season: SeasonDetail }) {
   const [weight, setWeight] = useState(String(season.absenceWeightMinutes));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
-  const [armed, setArmed] = useState(false);
 
   const body = () => ({
     code,
@@ -68,20 +68,20 @@ function SeasonEditForm({ season }: { season: SeasonDetail }) {
     update.mutate(body(), {
       // The code may have changed — every URL addressing the season moves (spec 02 D8).
       onSuccess: (ref) => router.replace({ pathname: "/seasons/[code]", params: { code: ref.code } }),
-      onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the season.")),
+      onError: (err) => {
+        // v1 parity 2026-10-09 (spec 02 R5): "Already in use." under Code beside the top message.
+        setErrors(apiFieldErrors(err));
+        setMessage(apiErrorMessage(err, "Couldn't save the season."));
+      },
     });
   };
 
-  const onDelete = () => {
-    if (!armed) {
-      setArmed(true);
-      return;
-    }
+  const onDelete = (done: () => void) => {
     setMessage(null);
     remove.mutate(season.id, {
       onSuccess: () => router.replace("/seasons"),
       onError: (err) => {
-        setArmed(false);
+        done();
         setMessage(apiErrorMessage(err, "Couldn't delete the season."));
       },
     });
@@ -113,10 +113,7 @@ function SeasonEditForm({ season }: { season: SeasonDetail }) {
       </Card>
       <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
         <Text variant="heading">Delete</Text>
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          A season with sessions or enrollments can't be deleted — archive it instead.
-        </Text>
-        <Button title={armed ? "Really delete?" : "Delete season"} variant="ghost" onPress={onDelete} loading={remove.isPending} />
+        <DeleteSeasonConfirm title={season.title} pending={remove.isPending} onDelete={onDelete} buttonTitle="Delete season" />
       </Card>
     </>
   );

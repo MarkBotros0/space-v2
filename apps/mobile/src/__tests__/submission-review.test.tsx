@@ -36,7 +36,7 @@ beforeEach(() => {
 
 it("shows the work, the late flag from the contract, and records a review", async () => {
   get.mockResolvedValue({ data: { data: detail } });
-  post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: false } } });
+  post.mockResolvedValue({ data: { data: { reviewed: true } } });
 
   renderWithProviders(<SubmissionReviewScreen />);
 
@@ -58,7 +58,7 @@ it("says Update review, with the earlier feedback in the field, when redoing a r
   get.mockResolvedValue({
     data: { data: { ...detail, status: "REVIEWED", reviewedAt: "2099-03-31T10:00:00.000Z", feedback: "Good work." } },
   });
-  post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: false } } });
+  post.mockResolvedValue({ data: { data: { reviewed: true } } });
 
   renderWithProviders(<SubmissionReviewScreen />);
 
@@ -73,25 +73,28 @@ it("says Update review, with the earlier feedback in the field, when redoing a r
   );
 });
 
-it("returns for revision with the flag set", async () => {
+// v1 parity 2026-10-09 (was "returns for revision" + "409 not_submitted" tests): v1
+// submission-actions.ts:167-191 has one action, no status precondition.
+it("offers one verdict only — no return-for-revision", async () => {
   get.mockResolvedValue({ data: { data: detail } });
-  post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: true } } });
 
   renderWithProviders(<SubmissionReviewScreen />);
-  fireEvent.changeText(await screen.findByLabelText("Feedback"), "Another pass, please.");
-  fireEvent.press(screen.getByText("Return for revision"));
 
-  await waitFor(() =>
-    expect(post).toHaveBeenCalledWith("/api/v1/submissions/aaa1111111/review", {
-      feedback: "Another pass, please.",
-      returnForRevision: true,
-    }),
-  );
+  expect(await screen.findByText("Mark reviewed")).toBeTruthy();
+  expect(screen.queryByText("Return for revision")).toBeNull();
 });
 
-it("stays on the screen and says why when the server refuses (409 not_submitted)", async () => {
+it("labels a legacy RETURNED row 'Returned', as v1's badge", async () => {
+  get.mockResolvedValue({ data: { data: { ...detail, status: "RETURNED" } } });
+
+  renderWithProviders(<SubmissionReviewScreen />);
+
+  expect(await screen.findByText("Returned")).toBeTruthy();
+});
+
+it("stays on the screen and says so when the review fails", async () => {
   get.mockResolvedValue({ data: { data: { ...detail, status: "DRAFT", submittedAt: null } } });
-  post.mockRejectedValue({ response: { status: 409, data: { error: { code: "not_submitted", message: "x" } } } });
+  post.mockRejectedValue({ response: { status: 500, data: { error: { code: "internal", message: "x" } } } });
 
   renderWithProviders(<SubmissionReviewScreen />);
   fireEvent.press(await screen.findByText("Mark reviewed"));

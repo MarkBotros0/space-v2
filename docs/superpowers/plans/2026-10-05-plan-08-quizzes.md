@@ -27,9 +27,41 @@ RNTL 13 via `renderWithProviders`.
 
 **Spec:** `docs/superpowers/specs/domains/12-quizzes.md` (all of §10 — D1, D2,
 D3, D4, D5, D7, D8, D9, D10, D12, D13, D15 are each implemented or explicitly
-declined below), `docs/superpowers/specs/domains/_DECISIONS.md` (C1, C4, C6,
+declined below — D4, D5's reopen/waiting parts, D7's null-clear, D8 and D12 are
+declined by the 2026-10-09 v1-parity revision), `docs/superpowers/specs/domains/_DECISIONS.md` (C1, C4, C6,
 C8, C9, C11, C12), scope from
 `docs/superpowers/plans/2026-08-24-migration-roadmap.md` § Plan 8.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 10-notifications R69 | - | QUIZ_GRADED bodies are "Your quiz has been graded. Check your quiz results." (paper, essay) and "Your quiz was auto-graded. Check your quiz results." (auto); reopen sends nothing (`src/lib/quiz-actions.ts:165-167,481-483,552-554,579-585`) | `apps/backend/src/routes/quizzes.ts:1092-1093,1333-1334,1626-1627` (bodies); delete the retake notice `:1422-1435` | Task 4 Step 6 submit block; Task 5 Step 3 grade block and Step 4 reopen block; Task 6 Step 3 batch block; Task 6 Interfaces |
+| 2 | 10-notifications R70; 12-quizzes R92 | - | PAPER grading notifies only students with no prior `gradedAt`; re-grades are silent; one bulk send (`quiz-actions.ts:128-137,157,161-169`) | `apps/backend/src/routes/quizzes.ts:1605-1630` (`previousScore`/changed-score filter) | Task 6 Step 1 test "saves a batch and notifies only the newly graded"; Task 6 Step 3 batch block; Task 6 Interfaces |
+| 3 | 10-notifications R71; 12-quizzes R75 | - | Every essay grade save notifies the student, re-grades included (`quiz-actions.ts:549-555`) | `apps/backend/src/routes/quizzes.ts:1304,1325-1340` (drop `scoreChanged`) | Task 5 Interfaces; Task 5 Step 1 grade test; Task 5 Step 3 grade block |
+| 4 | 12-quizzes R6 | - | `sessionId` required on create; a quiz is created only from a session page (`quiz-actions.ts:20-27,51-61`; `src/app/admin/season/[code]/sessions/[id]/page.tsx:144`) | `packages/shared/src/quiz.ts:250`; `apps/backend/src/routes/quizzes.ts:130-160`; `apps/mobile/app/(app)/quizzes.tsx:136-140`; `apps/mobile/app/(app)/quiz/new.tsx`; add the entry on `apps/mobile/src/components/SessionQuizzesCard.tsx` | "Spec-vs-schema contradiction"; Task 1 Step 1 test + Step 3 `createQuizRequestSchema`; Task 2 Step 1 tests + Step 4 create handler; Task 8 note; Task 11 intro, Files, Step 2/5/7 notes and tests; Task 11b Step 3 note; Task 12 device item 1 |
+| 5 | 12-quizzes R20 | REG-105 | No reorder; questions keep creation order (`quiz-actions.ts:228-231,253-256`) | `apps/backend/src/routes/quizzes.ts:492-535`; `packages/shared/src/quiz.ts` (`reorderQuestions*` schemas); `apps/mobile/src/hooks/use-quiz-authoring.ts` (`useReorderQuestions`); `apps/mobile/app/(app)/quiz/[id]/edit.tsx:64-76,131-138` | Task 1 Interfaces, Step 1 test, Step 3 schemas; Task 3 title, Interfaces, Step 1 tests, Step 3 block, Steps 4/6/7; Task 11 title, intro, Interfaces, Steps 2/3/6, test; Task 12 mutation 8, device item 1 |
+| 6 | 12-quizzes R30, R40 | - | Unpublish always writes `publishedAt: null`; student reads filter on it, hiding the result (`quiz-actions.ts:288,306-309`; `src/lib/quiz-query.ts:279,402`) | `apps/backend/src/routes/quizzes.ts:568-581` (delete the `quiz_has_graded_attempts` guard) | Task 3 title, Interfaces, Step 1 test, Step 4 publish block, Step 6; Task 11 intro and builder lock test comment; Task 12 mutation 5, device item 5 |
+| 7 | 12-quizzes R51 | REG-106 | `selectedIndex` is int 0-5 or null; no per-question option-count check; an out-of-range index scores 0 (`quiz-actions.ts:362-365`) | `apps/backend/src/routes/quizzes.ts:963-966`; `packages/shared/src/quiz.ts` `saveQuizAnswersRequestSchema` (add `.max(5)`) | Task 1 Step 1 test + Step 3 schema; Task 4 Interfaces, Step 1 test, Step 5 block |
+| 8 | 12-quizzes R52 | REG-106 | MCQ answer may carry text and essay answer a `selectedIndex`; stored as sent (`quiz-actions.ts:390-405`) | `apps/backend/src/routes/quizzes.ts:956-968` (remove `wrong_answer_type`) | Task 4 Interfaces, Step 1 test, Step 5 block |
+| 9 | 12-quizzes R55 (+R56) | REG-107 | Each MCQ choice saves immediately, each essay on blur, fire-and-forget; submit re-saves everything (`src/components/quizzes/quiz-runner.tsx:79,86-91,102-110`). Kept addition: a small "Not saved — retry" notice on failure | `apps/mobile/app/(app)/quiz/[id]/index.tsx:31-34,90,106-140,228` (remove debounce + Saving/Saved line) | Task 1 Step 3 `saveQuizAnswersRequestSchema` comment; Task 9 Step 1 tests + verify note, Step 2 header comment and AttemptForm spec, Step 4 commit; Task 12 mutation 6, device item 2 |
+| 10 | 12-quizzes R70 | - | Each essay award is clamped to `[0, points]` and rounded (`quiz-actions.ts:527`) | `apps/backend/src/routes/quizzes.ts:1292-1298`; `packages/shared/src/quiz.ts` `gradeEssayAnswersRequestSchema` (`points` any finite number) | Task 1 Step 1 test + Step 3 schema; Task 5 Interfaces, Step 1 test, Step 3 block |
+| 11 | 12-quizzes R71 | - | Awards for ids that are not an ESSAY of this quiz are skipped (`quiz-actions.ts:525-526`); R72's "every essay present" check (KEEP-FIX) stays | `apps/backend/src/routes/quizzes.ts:1284-1291` (exact-set → essays-present only) | Task 5 Step 1 test; Task 5 Step 3 block |
+| 12 | 12-quizzes R79 | - | Only `canManageQuiz` (SUPER / season admin) may reopen (`quiz-actions.ts:569`; `src/lib/auth/permissions.ts:135-146`) | `apps/backend/src/routes/quizzes.ts:1365-1386` | Task 1 `canManage` comment; Task 4 Step 4 "already submitted" copy (v1's "Ask an admin to reopen it.", `quiz-actions.ts:352`); Task 5 Interfaces, Step 1 tests, Step 4 block, Step 6; Task 12 mutation 8, device item 5 |
+| 13 | 12-quizzes R81x | - | Reopen creates the new attempt and sends no notification (`quiz-actions.ts:579-585`) | `apps/backend/src/routes/quizzes.ts:1422-1435` | Task 5 Step 1 test; Task 5 Step 4 block; Task 12 device item 5 |
+| 14 | 12-quizzes R83 | - | Reopen button only on the admin grading page and only for GRADED attempts (`src/app/admin/season/[code]/quizzes/[quizId]/grade/page.tsx:66`; `src/app/leader/sessions/[id]/quiz/[quizId]/page.tsx:60`; `src/components/quizzes/quiz-essay-grader.tsx:171`) | `apps/mobile/app/(app)/quiz/[id]/grade.tsx:214-225,253` (gate on `detail.canManage` + GRADED) | Task 10 Step 1 tests; Task 10 Step 2 OnlineGrading spec |
+| 15 | 12-quizzes R84 | REG-108 | Reopen checks neither kind nor `publishedAt` (`quiz-actions.ts:564-585`) | `apps/backend/src/routes/quizzes.ts:1396-1400` | Task 5 Interfaces, Step 1 new test, Step 4 block |
+| 16 | 12-quizzes R89 | - | A null score is skipped; an existing grade is never cleared (`quiz-actions.ts:135`) | `apps/backend/src/routes/quizzes.ts:1589-1594` (drop `deleteMany` branch) | Task 1 Step 1 test + `saveQuizGradesRequestSchema` comment; Task 6 Interfaces, Step 1 test, Step 3 block; Task 10 Step 1 test + PaperGrid spec; Task 12 device item 6 |
+| 17 | 12-quizzes R101 | - | Grading list = each student's latest SUBMITTED or GRADED attempt (`orderBy studentUserId asc, attemptNumber desc`, `distinct`); a reopened student still shows the previous graded attempt (`src/lib/quiz-query.ts:489-496`) | `apps/backend/src/routes/quizzes.ts:1105-1236` | Task 1 `quizGradingPageSchema`; Task 5 Interfaces, Step 1 test, Step 2 block |
+| 18 | 12-quizzes R102 | - | Students with no submitted/graded attempt do not appear on the grading screen (`quiz-query.ts:493-496`) | `apps/backend/src/routes/quizzes.ts:1219-1230` (drop `waiting`); `packages/shared/src/quiz.ts` `quizGradingPageSchema`; `apps/mobile/app/(app)/quiz/[id]/grade.tsx:298-301` | Task 1 Step 3 schema; Task 4 "Nothing tells a grader" note; Task 5 Interfaces, Step 1 test, Step 2 block, Step 6; Task 10 fixture, test, OnlineGrading spec |
+| 19 | 12-quizzes R112 | REG-110 | Quiz lists and the grading view load everything at once (`quiz-query.ts:489-517`; `src/app/leader/quizzes/page.tsx`; `src/app/admin/quizzes/page.tsx`) | `apps/backend/src/routes/quizzes.ts:246-282,1105-1130`; `packages/shared/src/quiz.ts:378-391` (`cursor`/`limit`, `quizAttemptsQuerySchema`, `nextCursor` on `quizListPageSchema`/`quizGradingPageSchema`) | Task 1 Interfaces + Step 3 schemas; Task 2 Interfaces + Step 4 list handler; `visibleStudentIdsForQuiz` comment; Task 5 Interfaces, Step 2 block and paging note; Task 8 note; Task 10 OnlineGrading spec |
+
+**Awaiting owner (not changed):** none.
 
 ## Global Constraints
 
@@ -107,11 +139,13 @@ Read from `apps/backend/prisma/schema.prisma` (verbatim, lines cited):
   notification entry point** — there is no `createNotification` singular in v2.
 
 **Spec-vs-schema contradiction to know about:** the spec (§2) says `Quiz.sessionId`
-is "nullable in the schema, required in code". The schema is authoritative and
-it is nullable — so this plan accepts a null `sessionId` at creation (D12's
-recommendation) instead of reproducing v1's `z.number().int().positive()`
-requirement. Everything downstream (`sessionTitle`, `sessionDate`, ordering)
-already handles null because v1 had to handle the orphan case anyway.
+is "nullable in the schema, required in code". This plan reproduces v1: the
+create schema requires `sessionId: z.number().int().positive()`
+(`jpc-space/src/lib/quiz-actions.ts:21,53`) and a quiz is created only from a
+session (R6). The column stays nullable (`onDelete: SetNull`), so everything
+downstream (`sessionTitle`, `sessionDate`, ordering) still handles a null
+session for quizzes orphaned by a session delete. *(v1 parity 2026-10-09: was
+"accepts a null `sessionId` at creation (D12's recommendation)")*
 
 **Execution shape:** Task 1 first — every later task consumes the contracts.
 Tasks 2 → 3 → 4 → 5 → 6 are the backend and are **sequential, not parallel**:
@@ -165,17 +199,19 @@ one; nothing here consumes them. Plan 10 runs **after** this plan.
   `studentQuizListPageSchema`; request schemas `createQuizRequestSchema`
   (`CreateQuizBody`), `updateQuizRequestSchema` (`UpdateQuizBody`),
   `quizQuestionRequestSchema` (`QuizQuestionBody`),
-  `reorderQuestionsRequestSchema`, `publishQuizRequestSchema`,
+  `publishQuizRequestSchema`,
   `saveQuizAnswersRequestSchema` (`SaveQuizAnswersBody`),
   `saveQuizGradesRequestSchema` (`SaveQuizGradesBody`),
   `gradeEssayAnswersRequestSchema` (`GradeEssayAnswersBody`),
-  `reopenAttemptRequestSchema`, `quizListQuerySchema`, `quizAttemptsQuerySchema`;
+  `reopenAttemptRequestSchema`, `quizListQuerySchema`;
   type `QuizQuestionInput` (`z.input` of `quizQuestionRequestSchema` — what a
   client form sends); and the mutation response schemas (ruling X10 — no
   client casts a write response): `quizCreatedResponseSchema`,
   `quizUpdatedResponseSchema`, `quizQuestionDeletedResponseSchema`,
-  `reorderQuestionsResponseSchema`, `publishQuizResponseSchema`,
+  `publishQuizResponseSchema`,
   `saveQuizAnswersResponseSchema`, `reopenAttemptResponseSchema`.
+  *(v1 parity 2026-10-09: was also `reorderQuestionsRequestSchema`,
+  `reorderQuestionsResponseSchema`, `quizAttemptsQuerySchema` — removed, R20/R112.)*
 
 - [ ] **Step 1: Write the failing test**
 
@@ -186,7 +222,6 @@ import {
   gradeEssayAnswersRequestSchema,
   quizQuestionRequestSchema,
   quizQuestionStudentSchema,
-  reorderQuestionsRequestSchema,
   saveQuizAnswersRequestSchema,
   saveQuizGradesRequestSchema,
 } from "../index";
@@ -227,10 +262,14 @@ describe("createQuizRequestSchema", () => {
     expect(createQuizRequestSchema.safeParse({ ...base, kind: "ONLINE" }).success).toBe(true);
   });
 
-  it("accepts a session-less quiz (D12) — the column is nullable", () => {
+  it("requires a sessionId, as v1 did (R6 — v1 parity 2026-10-09)", () => {
+    // v1 parity 2026-10-09: was "accepts a session-less quiz (D12)".
+    // jpc-space/src/lib/quiz-actions.ts:21 — sessionId: z.number().int().positive().
     expect(
       createQuizRequestSchema.safeParse({ ...base, sessionId: null, kind: "ONLINE" }).success,
-    ).toBe(true);
+    ).toBe(false);
+    const { sessionId: _omit, ...noSession } = base;
+    expect(createQuizRequestSchema.safeParse({ ...noSession, kind: "ONLINE" }).success).toBe(false);
   });
 });
 
@@ -265,14 +304,20 @@ describe("quizQuestionRequestSchema", () => {
 });
 
 describe("saveQuizAnswersRequestSchema", () => {
-  it("has no hard-coded index ceiling — the option count is a server check (R51)", () => {
-    // v1 capped selectedIndex at 5 in the schema, which is neither the real
-    // bound nor a check against this question's options.
+  it("bounds selectedIndex to 0-5 or null, as v1 did (R51 — v1 parity 2026-10-09)", () => {
+    // v1 parity 2026-10-09: was "no hard-coded ceiling; option count is a server check".
+    // jpc-space/src/lib/quiz-actions.ts:362-365 — min(0).max(5).nullable(); there
+    // is no per-question option-count check, and none is added server-side.
     expect(
       saveQuizAnswersRequestSchema.safeParse({
         answers: [{ questionId: 3, selectedIndex: 5, text: null }],
       }).success,
     ).toBe(true);
+    expect(
+      saveQuizAnswersRequestSchema.safeParse({
+        answers: [{ questionId: 3, selectedIndex: 6, text: null }],
+      }).success,
+    ).toBe(false);
   });
 
   it("refuses an empty batch", () => {
@@ -281,7 +326,7 @@ describe("saveQuizAnswersRequestSchema", () => {
 });
 
 describe("saveQuizGradesRequestSchema", () => {
-  it("allows a null score as an explicit clear (diverging from R89)", () => {
+  it("allows a null score — the server skips it and never clears a grade (R89 — v1 parity 2026-10-09)", () => {
     expect(
       saveQuizGradesRequestSchema.safeParse({
         entries: [{ studentUserId: 9, score: null, notes: null }],
@@ -298,18 +343,19 @@ describe("saveQuizGradesRequestSchema", () => {
   });
 });
 
-describe("gradeEssayAnswersRequestSchema / reorderQuestionsRequestSchema", () => {
-  it("requires at least one award and a non-negative integer", () => {
+describe("gradeEssayAnswersRequestSchema", () => {
+  it("requires at least one award; out-of-range points are clamped server-side, not refused", () => {
+    // v1 parity 2026-10-09 (R70): was "a negative award fails the schema". v1
+    // clamps each award to [0, points] and rounds (jpc-space/src/lib/quiz-actions.ts:527),
+    // so the schema accepts any finite number and the handler clamps.
     expect(gradeEssayAnswersRequestSchema.safeParse({ awards: [] }).success).toBe(false);
     expect(
       gradeEssayAnswersRequestSchema.safeParse({ awards: [{ questionId: 1, points: -1 }] }).success,
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("requires a non-empty questionIds list to reorder", () => {
-    expect(reorderQuestionsRequestSchema.safeParse({ questionIds: [] }).success).toBe(false);
-    expect(reorderQuestionsRequestSchema.safeParse({ questionIds: [3, 1, 2] }).success).toBe(true);
-  });
+  // v1 parity 2026-10-09 (R20): the reorderQuestionsRequestSchema case is deleted —
+  // v1 has no reorder (jpc-space/src/lib/quiz-actions.ts:228-231,253-256).
 });
 ```
 
@@ -383,9 +429,10 @@ export const quizSummarySchema = z.object({
 });
 export type QuizSummary = z.infer<typeof quizSummarySchema>;
 
+// v1 parity 2026-10-09 (R112): the whole list in one response, as v1
+// (jpc-space/src/app/leader/quizzes/page.tsx, admin/quizzes/page.tsx). Was "cursor-paged, nextCursor".
 export const quizListPageSchema = z.object({
   items: z.array(quizSummarySchema),
-  nextCursor: z.number().nullable(),
 });
 export type QuizListPage = z.infer<typeof quizListPageSchema>;
 
@@ -420,7 +467,7 @@ export const quizAuthoringDetailSchema = z.object({
    * to have — the server's answer is the one the write path enforces.
    */
   canEditStructure: z.boolean(),
-  /** Whether this caller may reopen an attempt / publish (canManageQuiz). */
+  /** Whether this caller may reopen an attempt / publish (canManageQuiz — admin/SUPER only, R79). */
   canManage: z.boolean(),
   questions: z.array(quizQuestionAuthoringSchema),
 });
@@ -552,21 +599,13 @@ export const quizGradingPageSchema = z.object({
   hasEssays: z.boolean(),
   studentCount: z.number(),
   /**
-   * Students in scope with no attempt at all, and students whose latest attempt
-   * is still IN_PROGRESS, both appear — the second is spec D5/R102, where a
-   * student vanished from the grading list entirely (including one an admin
-   * had just reopened) because the read filtered to SUBMITTED|GRADED.
+   * v1 parity 2026-10-09 (R101/R102/R112): each in-scope student's latest
+   * SUBMITTED or GRADED attempt, all in one response (jpc-space/src/lib/quiz-query.ts:489-517).
+   * A student with none simply does not appear; a reopened student still shows
+   * the previous graded attempt. No `waiting` array, no `nextCursor`.
+   * *(was "latest attempt in any status, a `waiting` list, cursor-paged")*
    */
   items: z.array(quizGradingAttemptSchema),
-  waiting: z.array(
-    z.object({
-      studentUserId: z.number(),
-      studentName: z.string().nullable(),
-      /** null = never started; a date = an IN_PROGRESS attempt open since then. */
-      startedAt: z.string().nullable(),
-    }),
-  ),
-  nextCursor: z.number().nullable(),
 });
 export type QuizGradingPage = z.infer<typeof quizGradingPageSchema>;
 
@@ -582,8 +621,12 @@ export const createQuizRequestSchema = z
      * recorded deviation Plan 3 made for POST /api/v1/sessions.
      */
     seasonId: z.number().int().positive(),
-    /** Nullable: the column is (schema.prisma:648) and D12 recommends allowing it. */
-    sessionId: z.number().int().positive().nullable().default(null),
+    /**
+     * Required, as v1 (jpc-space/src/lib/quiz-actions.ts:21) — a quiz is only
+     * created from a session (R6). The column stays nullable (SetNull), so reads
+     * still handle orphaned quizzes. *(v1 parity 2026-10-09: was "nullable, D12")*
+     */
+    sessionId: z.number().int().positive(),
     title: z.string().trim().min(1).max(200),
     kind: quizKindSchema,
     maxScore: z.number().int().min(1).max(1000).optional(),
@@ -641,27 +684,25 @@ export type QuizQuestionBody = z.output<typeof quizQuestionRequestSchema>;
 /** What a client form sends (before the schema's defaults and transform run). */
 export type QuizQuestionInput = z.input<typeof quizQuestionRequestSchema>;
 
-/** New in v2 (R20: v1 had no reorder at all). Must be a permutation — checked server-side. */
-export const reorderQuestionsRequestSchema = z.object({
-  questionIds: z.array(z.number().int().positive()).min(1),
-});
-export type ReorderQuestionsBody = z.infer<typeof reorderQuestionsRequestSchema>;
+// v1 parity 2026-10-09 (R20): no reorderQuestionsRequestSchema — v1 has no
+// reorder (jpc-space/src/lib/quiz-actions.ts:228-231). Was "PUT permutation".
 
 export const publishQuizRequestSchema = z.object({ publish: z.boolean() });
 export type PublishQuizBody = z.infer<typeof publishQuizRequestSchema>;
 
 /**
- * A batch, unlike v1's one-answer-per-call. The runner debounces and flushes
- * everything pending in one request, so a backgrounded phone loses at most one
- * flush instead of one answer per silent failure (R55/R56 and spec §9).
+ * The wire shape is an array, but the runner sends ONE answer per call, as v1
+ * (jpc-space/src/components/quizzes/quiz-runner.tsx:79,86-91): each MCQ choice
+ * immediately, each essay on blur; submit re-saves all answers first (R55/R56).
+ * *(v1 parity 2026-10-09: was "debounced batch flush")*
  */
 export const saveQuizAnswersRequestSchema = z.object({
   answers: z
     .array(
       z.object({
         questionId: z.number().int().positive(),
-        /** Bounds against THIS question's options.length are a server check (R51). */
-        selectedIndex: z.number().int().min(0).nullable().default(null),
+        /** 0-5 or null, as v1 (quiz-actions.ts:362-365); no per-question bound (R51). */
+        selectedIndex: z.number().int().min(0).max(5).nullable().default(null),
         text: z.string().max(20000).nullable().default(null),
       }),
     )
@@ -671,14 +712,10 @@ export const saveQuizAnswersRequestSchema = z.object({
 export type SaveQuizAnswersBody = z.output<typeof saveQuizAnswersRequestSchema>;
 
 /**
- * `score: null` CLEARS the grade row.
- *
- * v1 skipped null entries entirely (R89), so a grade entered against the wrong
- * student could never be removed. Spec D7 recommends a separate
- * DELETE /quizzes/:id/grades/:studentUserId; this plan folds it into the batch
- * instead, because the client is a grid that submits the whole sheet and a
- * separate endpoint would mean one extra round trip per cleared cell. The
- * upper bound against the quiz's own maxScore is a server check (R88/D7).
+ * `score: null` is SKIPPED — an existing grade is never cleared, as v1
+ * (jpc-space/src/lib/quiz-actions.ts:135; R89). *(v1 parity 2026-10-09: was
+ * "null clears the grade row")* The upper bound against the quiz's own
+ * maxScore is a server check (R88/D7, KEEP-FIX).
  */
 export const saveQuizGradesRequestSchema = z.object({
   entries: z
@@ -698,10 +735,13 @@ export type SaveQuizGradesBody = z.output<typeof saveQuizGradesRequestSchema>;
  * Every ESSAY question of the quiz must appear. v1 recomputed manualScore from
  * only the awards present in the call, so a partial payload silently lowered a
  * student's total (R72); completeness is checked server-side against the quiz.
+ * `points` is any finite number: the server clamps to [0, question points] and
+ * rounds, and ignores awards for non-essay ids, as v1 (quiz-actions.ts:525-527;
+ * R70/R71). *(v1 parity 2026-10-09: was "int min(0); reject above max")*
  */
 export const gradeEssayAnswersRequestSchema = z.object({
   awards: z
-    .array(z.object({ questionId: z.number().int().positive(), points: z.number().int().min(0) }))
+    .array(z.object({ questionId: z.number().int().positive(), points: z.number().finite() }))
     .min(1),
 });
 export type GradeEssayAnswersBody = z.infer<typeof gradeEssayAnswersRequestSchema>;
@@ -711,19 +751,13 @@ export const reopenAttemptRequestSchema = z.object({
 });
 export type ReopenAttemptBody = z.infer<typeof reopenAttemptRequestSchema>;
 
+// v1 parity 2026-10-09 (R112): no cursor/limit — lists and attempts load in
+// full, as v1. quizAttemptsQuerySchema is deleted. Was "cursor + limit 25/20".
 export const quizListQuerySchema = z.object({
   seasonId: z.coerce.number().int().positive().optional(),
   sessionId: z.coerce.number().int().positive().optional(),
-  cursor: z.coerce.number().int().positive().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(25),
 });
 export type QuizListQuery = z.infer<typeof quizListQuerySchema>;
-
-export const quizAttemptsQuerySchema = z.object({
-  cursor: z.coerce.number().int().positive().optional(),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
-export type QuizAttemptsQuery = z.infer<typeof quizAttemptsQuerySchema>;
 
 // ---------------------------------------------------------------------------
 // Write responses — every client mutation parses one of these (ruling X10).
@@ -735,10 +769,6 @@ export const quizCreatedResponseSchema = z.object({ id: z.number() });
 export const quizUpdatedResponseSchema = z.object({ updated: z.literal(true) });
 /** DELETE /quizzes/:id/questions/:questionId */
 export const quizQuestionDeletedResponseSchema = z.object({ deleted: z.literal(true) });
-/** PUT /quizzes/:id/questions/order */
-export const reorderQuestionsResponseSchema = z.object({
-  questions: z.array(quizQuestionAuthoringSchema),
-});
 /** POST /quizzes/:id/publish */
 export const publishQuizResponseSchema = z.object({ publishedAt: z.string().nullable() });
 /** PATCH /quizzes/:id/attempt */
@@ -786,7 +816,7 @@ git add packages/shared && git commit -m "feat(shared): quiz contracts with the 
   - `canGradeQuiz(user: SessionUser, quizId: number): Promise<boolean>` — `staffScopeForSeason(quiz.seasonId) !== null`.
   - `visibleStudentIdsForQuiz(user: SessionUser, seasonId: number): Promise<number[] | null>` in `lib/quiz-scope.ts` — the caller's student set, derived server-side, sorted ascending; `null` = no staff scope at all.
   - `quizzesRouter`, mounted at `/api/v1/quizzes`.
-  - `POST /api/v1/quizzes` → `{ data: { id } }` 201; `PATCH /api/v1/quizzes/:id` → `{ data: { updated: true } }`; `GET /api/v1/quizzes?seasonId=&sessionId=&cursor=&limit=` → staff `{ data: { items: QuizSummary[], nextCursor } }`, student `{ data: { items: StudentQuizResult[], nextCursor: null } }`.
+  - `POST /api/v1/quizzes` → `{ data: { id } }` 201; `PATCH /api/v1/quizzes/:id` → `{ data: { updated: true } }`; `GET /api/v1/quizzes?seasonId=&sessionId=` → staff `{ data: { items: QuizSummary[] } }` (the whole list, as v1 — R112 *(v1 parity 2026-10-09: was "cursor/limit, nextCursor")*), student `{ data: { items: StudentQuizResult[], nextCursor: null } }`.
   - The suite's exported fixture ids (`seasonId`, `sessionId`, tokens) that Tasks 3–6 reuse.
 
 - [ ] **Step 1: Write the failing integration suite**
@@ -941,12 +971,14 @@ describe("POST /api/v1/quizzes", () => {
     expect(res.body.error.code).toBe("session_not_in_season");
   });
 
-  it("allows a session-less quiz (D12) — the column is nullable", async () => {
+  it("refuses a session-less quiz — sessionId is required, as v1 (R6)", async () => {
+    // v1 parity 2026-10-09: was "allows a session-less quiz (D12)".
+    // jpc-space/src/lib/quiz-actions.ts:21,53.
     const res = await request(app)
       .post("/api/v1/quizzes")
       .set("authorization", `Bearer ${adminToken}`)
       .send({ seasonId, sessionId: null, title: "Season-level", kind: "PAPER", maxScore: 10 });
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(400);
   });
 
   it("refuses an admin of another season, a leader, and a student", async () => {
@@ -961,10 +993,19 @@ describe("POST /api/v1/quizzes", () => {
   });
 
   it("lets SUPER create in any season", async () => {
+    const otherSession = await db.session.create({
+      data: {
+        seasonId: otherSeasonId,
+        title: "Other week",
+        startsAt: new Date("2099-03-03T18:00:00.000Z"),
+        durationMinutes: 60,
+      },
+      select: { id: true },
+    });
     const res = await request(app)
       .post("/api/v1/quizzes")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ seasonId: otherSeasonId, sessionId: null, title: "Super", kind: "PAPER", maxScore: 5 });
+      .send({ seasonId: otherSeasonId, sessionId: otherSession.id, title: "Super", kind: "PAPER", maxScore: 5 });
     expect(res.status).toBe(201);
   });
 });
@@ -1166,7 +1207,7 @@ export async function visibleStudentIdsForQuiz(
     },
     select: { studentUserId: true },
   });
-  // Sorted so the grading list's cursor — which pages over these ids — is stable.
+  // Sorted ascending (stable order for the grading list).
   return enrollments.map((e) => e.studentUserId).sort((a, b) => a - b);
 }
 ```
@@ -1299,7 +1340,9 @@ quizzesRouter.post("/", async (req, res) => {
   });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
 
-  if (body.sessionId !== null) {
+  // sessionId is required (R6, v1 parity 2026-10-09 — jpc-space/src/lib/quiz-actions.ts:21),
+  // so the session check always runs.
+  {
     // R7: v1 wrote both ids side by side and checked nothing — the pair was
     // consistent only because one component passed both from the same page.
     const session = await db.session.findUnique({
@@ -1401,7 +1444,8 @@ quizzesRouter.get("/", async (req, res) => {
 
   const parsed = quizListQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { seasonId, sessionId, cursor, limit } = parsed.data;
+  // v1 parity 2026-10-09 (R112): no cursor/limit — the whole list, as v1.
+  const { seasonId, sessionId } = parsed.data;
 
   const resolvedSeasonId = seasonId ?? user.activeSeasonId;
   if (resolvedSeasonId === null || resolvedSeasonId === undefined) {
@@ -1429,10 +1473,8 @@ quizzesRouter.get("/", async (req, res) => {
     where: {
       seasonId: resolvedSeasonId,
       ...(sessionId !== undefined ? { sessionId } : {}),
-      ...(cursor !== undefined ? { id: { lt: cursor } } : {}),
     },
     orderBy: { id: "desc" },
-    take: limit + 1,
     select: {
       id: true,
       title: true,
@@ -1449,7 +1491,7 @@ quizzesRouter.get("/", async (req, res) => {
       _count: { select: { questions: true } },
     },
   });
-  const page = rows.slice(0, limit);
+  const page = rows;
   const quizIds = page.map((q) => q.id);
 
   // ONE definition of "graded", computed once, server-side (ruling C4; spec
@@ -1487,7 +1529,6 @@ quizzesRouter.get("/", async (req, res) => {
       gradedCount: (q.kind === "PAPER" ? paperBy.get(q.id) : onlineBy.get(q.id)) ?? 0,
       studentCount: studentIds.length,
     })),
-    nextCursor: rows.length > limit ? (page[page.length - 1]?.id ?? null) : null,
   });
 });
 ```
@@ -1526,7 +1567,9 @@ git add apps/backend && git commit -m "feat(backend): quiz create, update, and r
 
 ---
 
-### Task 3: Backend — question authoring, reorder, publish (the D3 and D4 gates)
+### Task 3: Backend — question authoring, publish (the D3 gate)
+
+> **v1 parity 2026-10-09:** title was "question authoring, reorder, publish (the D3 and D4 gates)". No reorder (R20) and no D4 unpublish guard (R30/R40) — see this task's notes.
 
 **Files:**
 - Modify: `apps/backend/src/routes/quizzes.ts`
@@ -1535,16 +1578,16 @@ git add apps/backend && git commit -m "feat(backend): quiz create, update, and r
 
 **Interfaces:**
 - Consumes: `canManageQuiz` (Task 2), `quizQuestionRequestSchema`,
-  `reorderQuestionsRequestSchema`, `publishQuizRequestSchema` (Task 1).
+  `publishQuizRequestSchema` (Task 1).
 - Produces (same file, used by Tasks 4–6 and the screens):
   - `assertStructurallyEditable(quizId): Promise<boolean>` — local helper, false once any attempt exists.
   - `recomputeMaxScore(tx, quizId): Promise<void>` — local helper, runs **inside** the caller's transaction.
   - `POST /api/v1/quizzes/:id/questions` → `{ data: QuizQuestionAuthoring }` 201
   - `PATCH /api/v1/quizzes/:id/questions/:questionId` → `{ data: QuizQuestionAuthoring }`
   - `DELETE /api/v1/quizzes/:id/questions/:questionId` → `{ data: { deleted: true } }`
-  - `PUT /api/v1/quizzes/:id/questions/order` → `{ data: { questions: QuizQuestionAuthoring[] } }`
+  - ~~`PUT /api/v1/quizzes/:id/questions/order`~~ — not built: v1 has no reorder (R20, `jpc-space/src/lib/quiz-actions.ts:228-231`) *(v1 parity 2026-10-09: was "PUT permutation endpoint")*
   - `POST /api/v1/quizzes/:id/publish` → `{ data: { publishedAt: string | null } }`
-  - New error codes: `quiz_has_attempts`, `quiz_has_graded_attempts`, `wrong_quiz_kind`, `invalid_order`, `question_not_in_quiz`, `no_questions`, `mcq_without_answer`.
+  - New error codes: `quiz_has_attempts`, `wrong_quiz_kind`, `question_not_in_quiz`, `no_questions`, `mcq_without_answer`. *(v1 parity 2026-10-09: was also `quiz_has_graded_attempts` (D4 unpublish guard) and `invalid_order` (reorder) — both dropped, R30/R20.)*
 
 - [ ] **Step 1: Write the failing tests** (append to the same suite)
 
@@ -1600,40 +1643,17 @@ describe("question authoring", () => {
       where: { quizId }, orderBy: { order: "asc" }, select: { prompt: true, order: true },
     });
     // v1 left gaps (0, 2, ...) because nothing renumbered; harmless for display
-    // but it made `order` a label rather than a position, which a reorder
-    // endpoint cannot live with.
+    // but it made `order` a label rather than a position, which the runner
+    // numbering cannot live with.
     expect(rows.map((r) => r.order)).toEqual([0, 1]);
     expect(rows.map((r) => r.prompt)).toEqual(["One", "Three"]);
     const quiz = await db.quiz.findUnique({ where: { id: quizId }, select: { maxScore: true } });
     expect(quiz?.maxScore).toBe(2);
   });
 
-  it("reorders by an explicit permutation and refuses anything else", async () => {
-    const ids: number[] = [];
-    for (const prompt of ["One", "Two", "Three"]) {
-      const res = await request(app)
-        .post(`/api/v1/quizzes/${quizId}/questions`)
-        .set("authorization", `Bearer ${adminToken}`)
-        .send({ type: "ESSAY", prompt, points: 1, options: [], correctIndex: null });
-      ids.push(res.body.data.id);
-    }
-
-    const ok = await request(app)
-      .put(`/api/v1/quizzes/${quizId}/questions/order`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ questionIds: [ids[2], ids[0], ids[1]] });
-    expect(ok.status).toBe(200);
-    expect(ok.body.data.questions.map((q: { prompt: string }) => q.prompt)).toEqual([
-      "Three", "One", "Two",
-    ]);
-
-    const partial = await request(app)
-      .put(`/api/v1/quizzes/${quizId}/questions/order`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ questionIds: [ids[0]] });
-    expect(partial.status).toBe(400);
-    expect(partial.body.error.code).toBe("invalid_order");
-  });
+  // v1 parity 2026-10-09 (R20): the "reorders by an explicit permutation" case is
+  // deleted — v1 has no reorder (jpc-space/src/lib/quiz-actions.ts:228-231,253-256);
+  // questions keep creation order.
 
   it("refuses every structural write once an attempt exists (spec D3)", async () => {
     const q = await request(app)
@@ -1661,17 +1681,12 @@ describe("question authoring", () => {
     const remove = await request(app)
       .delete(`/api/v1/quizzes/${quizId}/questions/${questionId}`)
       .set("authorization", `Bearer ${adminToken}`);
-    const reorder = await request(app)
-      .put(`/api/v1/quizzes/${quizId}/questions/order`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ questionIds: [questionId] });
-
     // Three compounding v1 rules die here: R22 (edit a live quiz freely),
     // R13 (maxScore rebased under graded attempts), R23 (deleting a question
     // cascade-deletes QuizAnswer rows on GRADED attempts while their scores
     // keep the points those answers earned). Nothing versions or snapshots a
     // quiz, so refusing is the only honest option inside the frozen schema (C1).
-    for (const res of [add, edit, remove, reorder]) {
+    for (const res of [add, edit, remove]) {
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe("quiz_has_attempts");
     }
@@ -1771,7 +1786,11 @@ describe("publish / unpublish", () => {
     expect(off.body.data.publishedAt).toBeNull();
   });
 
-  it("refuses to unpublish once an attempt has been graded (spec D4)", async () => {
+  it("unpublishes even after an attempt has been graded, as v1 (R30/R40)", async () => {
+    // v1 parity 2026-10-09: was "refuses to unpublish once an attempt has been
+    // graded (spec D4)". jpc-space/src/lib/quiz-actions.ts:288,306-309 writes
+    // publishedAt: null unconditionally; the student reads keep filtering on
+    // publishedAt, so the result is hidden as in v1 (quiz-query.ts:279,402).
     const quiz = await db.quiz.create({
       data: { seasonId, sessionId, title: "Live", kind: "ONLINE", maxScore: 1,
         publishedAt: new Date() },
@@ -1791,12 +1810,8 @@ describe("publish / unpublish", () => {
       .post(`/api/v1/quizzes/${quiz.id}/publish`)
       .set("authorization", `Bearer ${adminToken}`)
       .send({ publish: false });
-    // v1's unpublish ran no validation at all (R30) and both student reads
-    // filter on publishedAt (R32, R37), so a graded student lost their own
-    // result with no trace — and the notification they had already received
-    // linked to a list the quiz was no longer in (R40, R118).
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("quiz_has_graded_attempts");
+    expect(res.status).toBe(200);
+    expect(res.body.data.publishedAt).toBeNull();
   });
 
   it("refuses publishing a PAPER quiz", async () => {
@@ -1849,7 +1864,7 @@ async function hasAttempts(quizId: number): Promise<boolean> {
 }
 
 /**
- * The shared preamble for all five authoring writes: exists, is ONLINE, caller
+ * The shared preamble for all four authoring writes (v1 parity 2026-10-09: no reorder): exists, is ONLINE, caller
  * may manage it, and (unless `allowWithAttempts`) has no attempts yet.
  * Returns null once it has already answered the response.
  */
@@ -1908,8 +1923,8 @@ quizzesRouter.post("/:id/questions", async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid question.", 400);
 
   const created = await db.$transaction(async (tx) => {
-    // R20: order is the current count. It stays that way, but a real reorder
-    // endpoint exists now, and delete renumbers, so `order` is a position.
+    // R20: order is the current count, as v1 (no reorder — v1 parity 2026-10-09);
+    // delete renumbers (R21, KEEP-FIX), so `order` stays a position.
     const count = await tx.quizQuestion.count({ where: { quizId: id } });
     const question = await tx.quizQuestion.create({
       data: { quizId: id, order: count, ...parsed.data },
@@ -1948,8 +1963,8 @@ quizzesRouter.patch("/:id/questions/:questionId", async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid question.", 400);
 
   const updated = await db.$transaction(async (tx) => {
-    // `order` is deliberately not writable here — reordering has its own
-    // endpoint, so a question edit cannot silently move a question.
+    // `order` is deliberately not writable here — v1 had no way to move a
+    // question (R20), so a question edit cannot move one either.
     const question = await tx.quizQuestion.update({
       where: { id: questionId },
       data: parsed.data,
@@ -1985,7 +2000,7 @@ quizzesRouter.delete("/:id/questions/:questionId", async (req, res) => {
   await db.$transaction(async (tx) => {
     await tx.quizQuestion.delete({ where: { id: questionId } });
     // R21: v1 left `order` sparse. Renumbering keeps it a position, which is
-    // what the reorder endpoint and the runner's numbering both assume.
+    // what the runner's numbering assumes.
     const survivors = await tx.quizQuestion.findMany({
       where: { quizId: id },
       orderBy: { order: "asc" },
@@ -2000,55 +2015,13 @@ quizzesRouter.delete("/:id/questions/:questionId", async (req, res) => {
   return apiOk(res, { deleted: true });
 });
 
-/**
- * Reorder. New in v2 — v1 had no reorder action, no drag handle, and no `order`
- * on its update path (R20), so the only way to move a question was to delete
- * and re-add it, which under D3's freeze would now be impossible.
- */
-quizzesRouter.put("/:id/questions/order", async (req, res) => {
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
-  const quiz = await loadAuthorableQuiz(req, res, id);
-  if (!quiz) return undefined;
-
-  const parsed = reorderQuestionsRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid order body.", 400);
-  const { questionIds } = parsed.data;
-
-  const current = await db.quizQuestion.findMany({ where: { quizId: id }, select: { id: true } });
-  const currentIds = new Set(current.map((q) => q.id));
-  const sent = new Set(questionIds);
-  // Exact permutation or nothing: a partial list would leave the omitted
-  // questions holding stale positions and silently reshuffle the paper.
-  const isPermutation =
-    sent.size === questionIds.length &&
-    sent.size === currentIds.size &&
-    questionIds.every((qid) => currentIds.has(qid));
-  if (!isPermutation) {
-    return apiError(res, "invalid_order", "Send every question id exactly once.", 400);
-  }
-
-  const questions = await db.$transaction(async (tx) => {
-    for (const [index, questionId] of questionIds.entries()) {
-      await tx.quizQuestion.update({ where: { id: questionId }, data: { order: index } });
-    }
-    return tx.quizQuestion.findMany({
-      where: { quizId: id },
-      orderBy: { order: "asc" },
-      select: {
-        id: true, order: true, type: true, prompt: true, points: true,
-        options: true, correctIndex: true,
-      },
-    });
-  });
-
-  return apiOk(res, { questions });
-});
+// v1 parity 2026-10-09 (R20): no PUT /:id/questions/order. v1 has no reorder
+// (jpc-space/src/lib/quiz-actions.ts:228-231,253-256); questions keep creation
+// order (order = count at insert). Was "PUT permutation endpoint".
 ```
 
-**Note on the transaction loops:** `order` has no unique constraint
-(`@@index([quizId, order])` only), so writing positions one at a time inside a
-transaction cannot collide — no two-phase shuffle is needed.
+**Note on the transaction loop:** `order` has no unique constraint
+(`@@index([quizId, order])` only), so the delete renumbering cannot collide.
 
 - [ ] **Step 4: Publish / unpublish**
 
@@ -2056,9 +2029,8 @@ transaction cannot collide — no two-phase shuffle is needed.
 quizzesRouter.post("/:id/publish", async (req, res) => {
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
-  // Publishing IS allowed with attempts — republishing a live quiz changes
-  // nothing structural (R31 only moves the timestamp, which is read as a
-  // boolean everywhere). Unpublishing is the guarded direction, below.
+  // Publishing and unpublishing are both allowed with attempts — as v1
+  // (jpc-space/src/lib/quiz-actions.ts:288,306-309). R31 only moves the timestamp.
   const quiz = await loadAuthorableQuiz(req, res, id, { allowWithAttempts: true });
   if (!quiz) return undefined;
 
@@ -2084,21 +2056,11 @@ quizzesRouter.post("/:id/publish", async (req, res) => {
         res, "mcq_without_answer", "Every multiple-choice question needs a correct answer.", 409,
       );
     }
-  } else {
-    // Spec D4. v1 wrote publishedAt: null unconditionally and both student
-    // reads filter on it, so a student who had submitted and been graded lost
-    // the quiz from their list AND got a 404 on the detail route, with the
-    // notification they had already received pointing at the empty list.
-    const graded = await db.quizAttempt.count({ where: { quizId: id, status: "GRADED" } });
-    if (graded > 0) {
-      return apiError(
-        res,
-        "quiz_has_graded_attempts",
-        "Students have graded results for this quiz; unpublishing would hide them.",
-        409,
-      );
-    }
   }
+  // v1 parity 2026-10-09 (R30/R40): no D4 graded-attempt guard on unpublish.
+  // v1 writes publishedAt: null unconditionally (quiz-actions.ts:306-309) and the
+  // student reads filter on publishedAt, hiding the result (quiz-query.ts:279,402).
+  // Was "409 quiz_has_graded_attempts once any attempt is GRADED".
 
   const updated = await db.quiz.update({
     where: { id },
@@ -2110,22 +2072,22 @@ quizzesRouter.post("/:id/publish", async (req, res) => {
 });
 ```
 
-Add `publishQuizRequestSchema`, `quizQuestionRequestSchema` and
-`reorderQuestionsRequestSchema` to the shared import block at the top of the
-file.
+Add `publishQuizRequestSchema` and `quizQuestionRequestSchema` to the shared
+import block at the top of the file.
 
 - [ ] **Step 5: Run the suite**
 
 Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern quizzes` → PASS.
 Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
 
-- [ ] **Step 6: OpenAPI, same commit** — the five paths, with the D3 freeze and
-the D4 unpublish guard spelled out in prose and every new error code listed.
+- [ ] **Step 6: OpenAPI, same commit** — the four paths, with the D3 freeze
+spelled out in prose and every new error code listed. *(v1 parity 2026-10-09:
+was "five paths … and the D4 unpublish guard" — no reorder path, no D4 guard.)*
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/backend && git commit -m "feat(backend): quiz question authoring, reorder, and guarded publish"
+git add apps/backend && git commit -m "feat(backend): quiz question authoring and publish"
 ```
 
 ---
@@ -2151,7 +2113,7 @@ assertion the whole plan exists to make true.
   - `PUT /api/v1/quizzes/:id/attempt` → `{ data: StudentQuizDetail }` (create-or-resume, idempotent).
   - `PATCH /api/v1/quizzes/:id/attempt` → `{ data: { saved: number } }`.
   - `POST /api/v1/quizzes/:id/attempt/submit` → `{ data: StudentQuizDetail }`.
-  - New error codes: `quiz_not_published`, `attempt_closed`, `attempt_incomplete`, `no_attempt`, `answer_out_of_range`, `wrong_answer_type`.
+  - New error codes: `quiz_not_published`, `attempt_closed`, `attempt_incomplete`, `no_attempt`. *(v1 parity 2026-10-09: was also `answer_out_of_range`, `wrong_answer_type` — dropped, R51/R52.)*
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2346,21 +2308,29 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     expect(answers.every((a) => a.isCorrect === null && a.pointsAwarded === null)).toBe(true);
   });
 
-  it("bounds selectedIndex against THIS question's options, not a constant (R51)", async () => {
+  it("stores an index 0-5 even past this question's options, as v1 (R51)", async () => {
+    // v1 parity 2026-10-09: was "400 answer_out_of_range when index >= options".
+    // jpc-space/src/lib/quiz-actions.ts:362-365 bounds 0-5 only; the stored index
+    // simply scores 0 at submit.
     await request(app)
       .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`);
     const res = await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
-      // The MCQ has 2 options. v1's schema allowed 0-5 and checked nothing, so
-      // an out-of-range index stored fine and simply scored 0 later.
+      // The MCQ has 2 options.
       .send({ answers: [{ questionId: mcqId, selectedIndex: 4, text: null }] });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("answer_out_of_range");
+    expect(res.status).toBe(200);
+    const tooHigh = await request(app)
+      .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ answers: [{ questionId: mcqId, selectedIndex: 6, text: null }] });
+    expect(tooHigh.status).toBe(400);
   });
 
-  it("refuses a value of the wrong shape for the question type (R52)", async () => {
+  it("stores whatever pair is sent, whatever the question type, as v1 (R52)", async () => {
+    // v1 parity 2026-10-09: was "400 wrong_answer_type". jpc-space/src/lib/quiz-actions.ts:390-405
+    // upserts selectedIndex and text as sent.
     await request(app)
       .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`);
@@ -2368,8 +2338,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
       .send({ answers: [{ questionId: essayId, selectedIndex: 1, text: null }] });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("wrong_answer_type");
+    expect(res.status).toBe(200);
   });
 
   it("refuses a question from another quiz (R50)", async () => {
@@ -2815,7 +2784,8 @@ quizzesRouter.put("/:id/attempt", async (req, res) => {
     return apiError(
       res,
       "attempt_closed",
-      "You've already submitted this quiz. Ask your leader to reopen it.",
+      // v1's exact copy (quiz-actions.ts:352) — reopen is admin-only (R79), v1 parity 2026-10-09.
+      "You've already submitted this quiz. Ask an admin to reopen it.",
       409,
     );
   }
@@ -2897,20 +2867,10 @@ quizzesRouter.patch("/:id/attempt", async (req, res) => {
     if (!question) {
       return apiError(res, "question_not_in_quiz", "That question is not in this quiz.", 400);
     }
-    if (question.type === "MCQ") {
-      // R52: v1 validated neither of these. An ESSAY accepted a selectedIndex
-      // and an MCQ accepted free text; only the client's good manners kept the
-      // data coherent.
-      if (answer.text !== null) {
-        return apiError(res, "wrong_answer_type", "A multiple-choice answer has no text.", 400);
-      }
-      // R51: the real bound is THIS question's option count, not v1's constant 5.
-      if (answer.selectedIndex !== null && answer.selectedIndex >= question.options.length) {
-        return apiError(res, "answer_out_of_range", "That option does not exist.", 400);
-      }
-    } else if (answer.selectedIndex !== null) {
-      return apiError(res, "wrong_answer_type", "An essay answer has no option index.", 400);
-    }
+    // v1 parity 2026-10-09 (R51/R52): no per-type or per-option-count checks.
+    // v1 stores whatever selectedIndex (0-5, schema) / text pair is sent
+    // (jpc-space/src/lib/quiz-actions.ts:362-365,390-405). Was "400
+    // wrong_answer_type / answer_out_of_range".
   }
 
   await db.$transaction(
@@ -3022,7 +2982,8 @@ quizzesRouter.post("/:id/attempt/submit", async (req, res) => {
       await createNotificationsBulk([user.userId], {
         type: "QUIZ_GRADED",
         title: `Quiz graded: ${quiz.title}`,
-        body: "Your quiz was graded automatically.",
+        // v1's exact body (quiz-actions.ts:482) — v1 parity 2026-10-09, was "Your quiz was graded automatically."
+        body: "Your quiz was auto-graded. Check your quiz results.",
         // v1's exact link (ruling X1) — see QUIZ_GRADED_LINK below.
         link: QUIZ_GRADED_LINK,
       });
@@ -3056,7 +3017,9 @@ const QUIZ_GRADED_LINK = "/student/quizzes";
 
 **Nothing tells a grader an attempt is waiting.** That is R65/D14, and it stays
 unbuilt: a new `NotificationType` value is a schema change and therefore blocked
-under C1. The grading screen's "waiting" list (Task 5) is the substitute.
+under C1. As in v1, nothing substitutes for it: the grading screen lists only
+SUBMITTED/GRADED attempts (R101/R102). *(v1 parity 2026-10-09: was "the
+grading screen's 'waiting' list (Task 5) is the substitute")*
 
 - [ ] **Step 7: Run the suite**
 
@@ -3084,13 +3047,13 @@ git add apps/backend && git commit -m "feat(backend): quiz detail by role and th
 
 **Interfaces:**
 - Consumes: `canGradeQuiz`, `canManageQuiz`, `visibleStudentIdsForQuiz` (Task 2),
-  `gradeEssayAnswersRequestSchema`, `reopenAttemptRequestSchema`,
-  `quizAttemptsQuerySchema` (Task 1), `createNotificationsBulk`.
+  `gradeEssayAnswersRequestSchema`, `reopenAttemptRequestSchema` (Task 1),
+  `createNotificationsBulk`.
 - Produces:
-  - `GET /api/v1/quizzes/:id/attempts?cursor=&limit=` → `{ data: QuizGradingPage }`
-  - `POST /api/v1/quizzes/:id/attempts/:attemptId/grade` → `{ data: QuizGradingAttempt }`
-  - `POST /api/v1/quizzes/:id/attempts/reopen` → `{ data: { attemptId, attemptNumber } }` 201
-  - New error codes: `student_not_in_scope`, `attempt_not_submitted`, `awards_incomplete`, `score_exceeds_max`, `attempt_open`.
+  - `GET /api/v1/quizzes/:id/attempts` → `{ data: QuizGradingPage }` — every in-scope student's latest SUBMITTED/GRADED attempt in one response, no `waiting`, no cursor (R101/R102/R112, `jpc-space/src/lib/quiz-query.ts:489-517`) *(v1 parity 2026-10-09: was "cursor-paged; latest attempt in any status plus a `waiting` list")*
+  - `POST /api/v1/quizzes/:id/attempts/:attemptId/grade` → `{ data: QuizGradingAttempt }` — awards clamped to [0, points] and rounded; non-essay ids skipped; notifies on every save (R70/R71/R75, `quiz-actions.ts:525-527,549-555`) *(v1 parity 2026-10-09: was "reject over-max; exact-set check; notify on change only")*
+  - `POST /api/v1/quizzes/:id/attempts/reopen` → `{ data: { attemptId, attemptNumber } }` 201 — gated on `canManageQuiz` (admin/SUPER), no kind/published check, no notification (R79/R84/R81x, `quiz-actions.ts:564-585`) *(v1 parity 2026-10-09: was "canGradeQuiz (leaders too), quiz_not_published 409, 'You can retake' notice")*
+  - New error codes: `student_not_in_scope`, `attempt_not_submitted`, `awards_incomplete`, `attempt_open`. *(v1 parity 2026-10-09: `score_exceeds_max` is no longer produced by this task — R70.)*
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -3159,56 +3122,54 @@ describe("ONLINE grading", () => {
     expect(res.body.data.studentCount).toBe(1);
   });
 
-  it("shows a student whose latest attempt is still in progress instead of hiding them (R102, D5)", async () => {
-    await db.quizAttempt.update({ where: { id: attemptId }, data: { status: "IN_PROGRESS" } });
+  it("shows a reopened student's previous graded attempt, and omits in-progress-only students (R101/R102)", async () => {
+    // v1 parity 2026-10-09: was "in-progress students go to a `waiting` list (D5)".
+    // jpc-space/src/lib/quiz-query.ts:489-496 — status in [SUBMITTED, GRADED],
+    // orderBy [studentUserId asc, attemptNumber desc], distinct studentUserId.
+    await db.quizAttempt.update({
+      where: { id: attemptId },
+      data: { status: "GRADED", manualScore: 4, totalScore: 6, gradedAt: new Date() },
+    });
+    await db.quizAttempt.create({
+      data: { quizId, studentUserId: ownStudentId, attemptNumber: 2 },
+    });
 
-    const res = await request(app)
-      .get(`/api/v1/quizzes/${quizId}/attempts`)
-      .set("authorization", `Bearer ${leaderToken}`);
-
-    expect(res.status).toBe(200);
-    // v1's read filtered to SUBMITTED|GRADED and took one row per student, so a
-    // student with an in-progress attempt vanished from the grading list — as
-    // did any student an admin had just granted a retake to, whose earlier
-    // graded attempt disappeared behind the new one.
-    expect(res.body.data.items).toHaveLength(0);
-    expect(res.body.data.waiting).toEqual([
-      expect.objectContaining({ studentUserId: ownStudentId }),
-    ]);
-    expect(res.body.data.waiting[0].startedAt).not.toBeNull();
-  });
-
-  it("lists a never-started student as waiting with a null startedAt", async () => {
     const res = await request(app)
       .get(`/api/v1/quizzes/${quizId}/attempts`)
       .set("authorization", `Bearer ${adminToken}`);
-    // The admin's scope is the whole season: our student (SUBMITTED) plus the
-    // other group's student, who has not started.
-    expect(res.body.data.studentCount).toBe(2);
-    expect(res.body.data.waiting).toEqual([
-      expect.objectContaining({ studentUserId: otherGroupStudentId, startedAt: null }),
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.items).toEqual([
+      expect.objectContaining({ attemptId, attemptNumber: 1, status: "GRADED" }),
     ]);
+    // The other group's never-started student simply does not appear.
+    expect(res.body.data.studentCount).toBe(2);
+    expect(res.body.data.waiting).toBeUndefined();
+    expect(res.body.data.nextCursor).toBeUndefined();
   });
 
-  it("grades essays, requires every essay, and rejects an over-max award", async () => {
+  it("grades essays, requires every essay, clamps an over-max award, and notifies on every save", async () => {
+    // v1 parity 2026-10-09 (R70/R71/R75): was "rejects an over-max award; exact
+    // set; notify only on first grade or changed total". v1: quiz-actions.ts:525-527
+    // (skip non-essay ids, clamp + round) and :549-555 (notify on every save).
     const before = await quizGradedCount();
     const incomplete = await request(app)
       .post(`/api/v1/quizzes/${quizId}/attempts/${attemptId}/grade`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ awards: [{ questionId: mcqId, points: 2 }] });
-    // Awards naming a non-essay question were silently skipped in v1 (R71),
-    // and manualScore was recomputed from only what arrived, so a partial
-    // payload quietly lowered the total (R72).
+    // The MCQ award is ignored (R71); the essay is missing, so the KEEP-FIX
+    // completeness half still refuses (R72).
     expect(incomplete.status).toBe(400);
     expect(incomplete.body.error.code).toBe("awards_incomplete");
 
     const tooHigh = await request(app)
       .post(`/api/v1/quizzes/${quizId}/attempts/${attemptId}/grade`)
       .set("authorization", `Bearer ${leaderToken}`)
-      .send({ awards: [{ questionId: essayId, points: 99 }] });
-    // v1 clamped silently (R70); D8 says reject, so a miskey is visible.
-    expect(tooHigh.status).toBe(400);
-    expect(tooHigh.body.error.code).toBe("score_exceeds_max");
+      .send({ awards: [{ questionId: essayId, points: 99 }, { questionId: mcqId, points: 2 }] });
+    // Clamped to the essay's 5 points; the stray MCQ award is skipped.
+    expect(tooHigh.status).toBe(200);
+    expect(tooHigh.body.data).toMatchObject({ manualScore: 5, totalScore: 7 });
+    expect((await quizGradedCount()) - before).toBe(1);
 
     const ok = await request(app)
       .post(`/api/v1/quizzes/${quizId}/attempts/${attemptId}/grade`)
@@ -3219,24 +3180,14 @@ describe("ONLINE grading", () => {
       status: "GRADED", autoScore: 2, manualScore: 4, totalScore: 6,
     });
     expect(ok.body.data.gradedByName).toBe("Test leader");
+    expect((await quizGradedCount()) - before).toBe(2);
 
-    expect((await quizGradedCount()) - before).toBe(1);
-
-    // A re-save at the same total is a no-op for the student (D8's unified
-    // rule: notify on a first grade and on a score change, silent otherwise —
-    // v1's two paths disagreed, R75 vs R92).
+    // A re-save at the same total notifies again, as v1.
     await request(app)
       .post(`/api/v1/quizzes/${quizId}/attempts/${attemptId}/grade`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ awards: [{ questionId: essayId, points: 4 }] });
-    expect((await quizGradedCount()) - before).toBe(1);
-
-    // A changed total does notify again.
-    await request(app)
-      .post(`/api/v1/quizzes/${quizId}/attempts/${attemptId}/grade`)
-      .set("authorization", `Bearer ${leaderToken}`)
-      .send({ awards: [{ questionId: essayId, points: 5 }] });
-    expect((await quizGradedCount()) - before).toBe(2);
+    expect((await quizGradedCount()) - before).toBe(3);
   });
 
   it("refuses grading an attempt whose student is outside the caller's scope (R68)", async () => {
@@ -3269,20 +3220,26 @@ describe("ONLINE grading", () => {
     expect(res.body.error.code).toBe("attempt_not_submitted");
   });
 
-  it("lets a LEADER reopen an attempt, and tells the student (D5)", async () => {
+  it("lets an ADMIN reopen an attempt, refuses a LEADER, and sends no notification (R79/R81x)", async () => {
+    // v1 parity 2026-10-09: was "lets a LEADER reopen, and tells the student (D5)".
+    // jpc-space/src/lib/quiz-actions.ts:569 gates on canManageQuiz; :579-585 sends nothing.
     await db.quizAttempt.update({
       where: { id: attemptId },
       data: { status: "GRADED", manualScore: 4, totalScore: 6, gradedAt: new Date() },
     });
     const before = await quizGradedCount();
 
-    const res = await request(app)
+    const leader = await request(app)
       .post(`/api/v1/quizzes/${quizId}/attempts/reopen`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ studentUserId: ownStudentId });
+    expect(leader.status).toBe(403);
 
-    // v1 gated reopen on canManageQuiz — admin only — so the leader looking at
-    // the grading screen could see a stuck student and do nothing about it.
+    const res = await request(app)
+      .post(`/api/v1/quizzes/${quizId}/attempts/reopen`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ studentUserId: ownStudentId });
+
     expect(res.status).toBe(201);
     expect(res.body.data.attemptNumber).toBe(2);
 
@@ -3296,8 +3253,18 @@ describe("ONLINE grading", () => {
     expect(attempts[0]).toMatchObject({ attemptNumber: 1, status: "GRADED", totalScore: 6 });
     expect(attempts[1]).toMatchObject({ attemptNumber: 2, status: "IN_PROGRESS" });
 
-    // v1 sent NOTHING on reopen — the student was never told they had a retake.
-    expect((await quizGradedCount()) - before).toBe(1);
+    // v1 sends nothing on reopen.
+    expect((await quizGradedCount()) - before).toBe(0);
+  });
+
+  it("reopens on an unpublished quiz too — v1 checks neither kind nor publishedAt (R84)", async () => {
+    // v1 parity 2026-10-09: was "409 quiz_not_published". jpc-space/src/lib/quiz-actions.ts:564-585.
+    await db.quiz.update({ where: { id: quizId }, data: { publishedAt: null } });
+    const res = await request(app)
+      .post(`/api/v1/quizzes/${quizId}/attempts/reopen`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ studentUserId: ownStudentId });
+    expect(res.status).toBe(201);
   });
 
   it("reopens a SUBMITTED attempt, then refuses while that one is open", async () => {
@@ -3323,14 +3290,9 @@ describe("ONLINE grading", () => {
     expect(second.body.error.code).toBe("attempt_open");
   });
 
-  it("refuses reopening for a student outside the caller's scope", async () => {
-    const res = await request(app)
-      .post(`/api/v1/quizzes/${quizId}/attempts/reopen`)
-      .set("authorization", `Bearer ${leaderToken}`)
-      .send({ studentUserId: otherGroupStudentId });
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("student_not_in_scope");
-  });
+  // v1 parity 2026-10-09 (R79): the "refuses reopening for a student outside the
+  // caller's scope" case (leaderToken → student_not_in_scope) is deleted — a leader
+  // is now refused by the canManageQuiz gate before any scope check.
 
   it("refuses reopening when the student has never attempted", async () => {
     const res = await request(app)
@@ -3360,18 +3322,13 @@ quizzesRouter.get("/:id/attempts", async (req, res) => {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
-  const parsed = quizAttemptsQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { cursor, limit } = parsed.data;
-
-  // Derived, never accepted (R105). visibleStudentIdsForQuiz returns them
-  // sorted, so paging over the ids is stable and needs no second sort.
+  // v1 parity 2026-10-09 (R112): no cursor/limit — all attempts in one response,
+  // as v1 (jpc-space/src/lib/quiz-query.ts:489-517).
+  // Derived, never accepted (R105, KEEP-FIX).
   const studentIds = await visibleStudentIdsForQuiz(user, quiz.seasonId);
   if (studentIds === null) {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
-  const remaining = cursor === undefined ? studentIds : studentIds.filter((sid) => sid > cursor);
-  const pageIds = remaining.slice(0, limit);
 
   const questions = await db.quizQuestion.findMany({
     where: { quizId: id },
@@ -3382,9 +3339,11 @@ quizzesRouter.get("/:id/attempts", async (req, res) => {
   });
 
   const attempts = await db.quizAttempt.findMany({
-    where: { quizId: id, studentUserId: { in: pageIds } },
-    // Latest attempt per student — every status, not just SUBMITTED|GRADED
-    // (R102/D5): an in-progress attempt hid its student from the list entirely.
+    // v1 parity 2026-10-09 (R101/R102): latest SUBMITTED or GRADED attempt per
+    // student, as v1 (quiz-query.ts:489-496). A reopened student still shows the
+    // previous graded attempt; a student with none does not appear.
+    // Was "latest attempt in any status; in-progress ones go to `waiting`".
+    where: { quizId: id, studentUserId: { in: studentIds }, status: { in: ["SUBMITTED", "GRADED"] } },
     orderBy: [{ studentUserId: "asc" }, { attemptNumber: "desc" }],
     distinct: ["studentUserId"],
     select: {
@@ -3396,7 +3355,6 @@ quizzesRouter.get("/:id/attempts", async (req, res) => {
       manualScore: true,
       totalScore: true,
       submittedAt: true,
-      createdAt: true,
       studentUser: { select: { name: true } },
       // D13: the audit column v1 wrote and never read anywhere.
       gradedBy: { select: { name: true } },
@@ -3409,15 +3367,7 @@ quizzesRouter.get("/:id/attempts", async (req, res) => {
     },
   });
 
-  const scored = attempts.filter((a) => a.status !== "IN_PROGRESS");
-  const inProgress = attempts.filter((a) => a.status === "IN_PROGRESS");
-  const startedIds = new Set(attempts.map((a) => a.studentUserId));
-
-  const names = await db.user.findMany({
-    where: { id: { in: pageIds } },
-    select: { id: true, name: true },
-  });
-  const nameById = new Map(names.map((u) => [u.id, u.name]));
+  const scored = attempts;
 
   return apiOk(res, {
     id: quiz.id,
@@ -3460,30 +3410,13 @@ quizzesRouter.get("/:id/attempts", async (req, res) => {
         }),
       };
     }),
-    waiting: [
-      ...inProgress.map((att) => ({
-        studentUserId: att.studentUserId,
-        studentName: att.studentUser.name,
-        startedAt: att.createdAt,
-      })),
-      ...pageIds
-        .filter((sid) => !startedIds.has(sid))
-        .map((sid) => ({
-          studentUserId: sid,
-          studentName: nameById.get(sid) ?? null,
-          startedAt: null,
-        })),
-    ],
-    nextCursor: remaining.length > limit ? (pageIds[pageIds.length - 1] ?? null) : null,
   });
 });
 ```
 
-**Why paging over ids rather than over attempt rows:** `distinct` plus a cursor
-on the attempt table is fragile (the cursor row may not be the distinct
-survivor), and the student set is already an in-memory array bounded by the
-caller's own roster. v1 paginated nothing at all and returned every attempt's
-every answer, full essay text included, in one payload (R112).
+**No paging (v1 parity 2026-10-09, R112):** v1 returns every attempt's every
+answer in one payload (`jpc-space/src/lib/quiz-query.ts:489-517`), and so does
+this route. *(was "cursor-paged over the sorted student ids")*
 
 - [ ] **Step 3: Essay grading**
 
@@ -3536,33 +3469,32 @@ quizzesRouter.post("/:id/attempts/:attemptId/grade", async (req, res) => {
   });
   const maxBy = new Map(essays.map((q) => [q.id, q.points]));
 
-  // Every essay, exactly once. v1 recomputed manualScore from only the awards
-  // present, so an omitted essay contributed 0 and silently lowered the total.
-  const sent = new Set(parsed.data.awards.map((a) => a.questionId));
-  if (sent.size !== parsed.data.awards.length || sent.size !== essays.length ||
-      !essays.every((q) => sent.has(q.id))) {
+  // v1 parity 2026-10-09 (R71): awards naming a question that is not an ESSAY
+  // of this quiz are skipped, as v1 (quiz-actions.ts:525-526). Was "exact-set check".
+  // R72 (KEEP-FIX) keeps only the "every essay present" half.
+  // v1 parity 2026-10-09 (R70): each award clamped to [0, points] and rounded,
+  // as v1 (quiz-actions.ts:527). Was "reject with score_exceeds_max".
+  const awards = new Map<number, number>();
+  for (const award of parsed.data.awards) {
+    const max = maxBy.get(award.questionId);
+    if (max === undefined) continue;
+    awards.set(award.questionId, Math.max(0, Math.min(max, Math.round(award.points))));
+  }
+  if (!essays.every((q) => awards.has(q.id))) {
     return apiError(res, "awards_incomplete", "Send a mark for every essay question.", 400);
   }
-  for (const award of parsed.data.awards) {
-    const max = maxBy.get(award.questionId) as number;
-    // D8: reject rather than clamp, matching D7's rule for paper scores.
-    if (award.points > max) {
-      return apiError(res, "score_exceeds_max", `That question is out of ${max}.`, 400);
-    }
-  }
 
-  const manualScore = parsed.data.awards.reduce((sum, a) => sum + a.points, 0);
+  const manualScore = [...awards.values()].reduce((sum, p) => sum + p, 0);
   // autoScore is trusted as stored and never recomputed (R73) — recomputing it
   // would need the questions as they were when taken, which nothing records.
   const totalScore = (attempt.autoScore ?? 0) + manualScore;
-  const scoreChanged = attempt.totalScore !== totalScore;
   const now = new Date();
 
   await db.$transaction([
-    ...parsed.data.awards.map((award) =>
+    ...[...awards.entries()].map(([questionId, points]) =>
       db.quizAnswer.update({
-        where: { attemptId_questionId: { attemptId, questionId: award.questionId } },
-        data: { pointsAwarded: award.points },
+        where: { attemptId_questionId: { attemptId, questionId } },
+        data: { pointsAwarded: points },
       }),
     ),
     db.quizAttempt.update({
@@ -3577,15 +3509,16 @@ quizzesRouter.post("/:id/attempts/:attemptId/grade", async (req, res) => {
     }),
   ]);
 
-  if (scoreChanged) {
-    // D8's single rule for both grading paths: notify on a first grade and on
-    // any score change, silent on a no-op re-save. v1's two paths disagreed —
-    // ONLINE notified on every call (R75), PAPER never re-notified (R92).
+  {
+    // v1 parity 2026-10-09 (R71/R75 notif.): notify on EVERY successful essay
+    // grade save, re-grades included, as v1 (quiz-actions.ts:549-555). Was
+    // "D8: only on a first grade or a changed total".
     try {
       await createNotificationsBulk([attempt.studentUserId], {
         type: "QUIZ_GRADED",
         title: `Quiz graded: ${quiz.title}`,
-        body: "Your quiz has been graded.",
+        // v1's exact body (quiz-actions.ts:553). Was "Your quiz has been graded."
+        body: "Your quiz has been graded. Check your quiz results.",
         link: QUIZ_GRADED_LINK,
       });
     } catch {
@@ -3629,12 +3562,11 @@ still types it, so the shape is uniform.
 /**
  * Grant a retake.
  *
- * Gated on canGradeQuiz, not canManageQuiz — spec D5's recommendation. v1 made
- * this admin-only (R79), so the leader actually looking at the grading screen
- * could see a student stuck behind a dead attempt and had to find an admin. And
- * because there is no expiry, no timeout and no ABANDONED status (R47, and
- * adding one is a schema change under C1), a dropped connection mid-quiz makes
- * this endpoint the ONLY way that student ever takes the quiz.
+ * Gated on canManageQuiz — SUPER or an admin of the quiz's season — as v1
+ * (jpc-space/src/lib/quiz-actions.ts:569; R79). *(v1 parity 2026-10-09: was
+ * "canGradeQuiz, leaders may reopen — spec D5")* Because there is no expiry and
+ * no ABANDONED status (R47, C1), this endpoint is the only way a student behind
+ * a dead attempt ever retakes the quiz.
  */
 quizzesRouter.post("/:id/attempts/reopen", async (req, res) => {
   const user = requireUser(req);
@@ -3646,7 +3578,7 @@ quizzesRouter.post("/:id/attempts/reopen", async (req, res) => {
     select: { id: true, title: true, seasonId: true, kind: true, publishedAt: true },
   });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
-  if (!(await canGradeQuiz(user, id))) {
+  if (!(await canManageQuiz(user, id))) {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
@@ -3658,11 +3590,8 @@ quizzesRouter.post("/:id/attempts/reopen", async (req, res) => {
     return apiError(res, "student_not_in_scope", "That student is not in your groups.", 403);
   }
 
-  // R84: v1 checked neither kind nor publishedAt, so a retake could be opened
-  // on an unpublished quiz the student then could not see.
-  if (quiz.kind !== "ONLINE" || quiz.publishedAt === null) {
-    return apiError(res, "quiz_not_published", "This quiz is not available to students.", 409);
-  }
+  // v1 parity 2026-10-09 (R84): no kind / publishedAt check, as v1
+  // (quiz-actions.ts:564-585). Was "409 quiz_not_published unless ONLINE and published".
 
   const latest = await db.quizAttempt.findFirst({
     where: { quizId: id, studentUserId: parsed.data.studentUserId },
@@ -3684,27 +3613,15 @@ quizzesRouter.post("/:id/attempts/reopen", async (req, res) => {
     select: { id: true, attemptNumber: true },
   });
 
-  // v1 sent nothing at all, so a student was never told a retake existed. There
-  // is no dedicated NotificationType and adding one is a schema change (C1), so
-  // QUIZ_GRADED is reused with copy that says what actually happened — D5's
-  // explicit second option.
-  try {
-    await createNotificationsBulk([parsed.data.studentUserId], {
-      type: "QUIZ_GRADED",
-      title: `You can retake: ${quiz.title}`,
-      body: "Your quiz has been reopened, so you can take it again.",
-      link: QUIZ_GRADED_LINK,
-    });
-  } catch {
-    // Best-effort.
-  }
+  // v1 parity 2026-10-09 (R81x / notifications R69): no notification on reopen,
+  // as v1 (quiz-actions.ts:579-585). Was "QUIZ_GRADED 'You can retake' notice".
 
   return apiOk(res, { attemptId: created.id, attemptNumber: created.attemptNumber }, 201);
 });
 ```
 
-Add `gradeEssayAnswersRequestSchema`, `reopenAttemptRequestSchema` and
-`quizAttemptsQuerySchema` to the shared import block.
+Add `gradeEssayAnswersRequestSchema` and `reopenAttemptRequestSchema` to the
+shared import block. *(v1 parity 2026-10-09: `quizAttemptsQuerySchema` no longer exists, R112.)*
 
 - [ ] **Step 5: Run the suite**
 
@@ -3712,8 +3629,10 @@ Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBan
 Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
 
 - [ ] **Step 6: OpenAPI, same commit** — the three paths, documenting that the
-student set is server-derived, that `waiting` exists so nobody disappears, and
-that reopen is a leader power in v2 and notifies the student.
+student set is server-derived, that the list holds only SUBMITTED/GRADED
+attempts, and that reopen is admin-only and silent, as v1. *(v1 parity
+2026-10-09: was "`waiting` exists so nobody disappears … reopen is a leader
+power in v2 and notifies the student")*
 
 - [ ] **Step 7: Commit**
 
@@ -3737,7 +3656,7 @@ in two independent ways at once, and both are fixed here rather than ported.
 - Consumes: `canGradeQuiz`, `visibleStudentIdsForQuiz`, `saveQuizGradesRequestSchema`, `createNotificationsBulk`.
 - Produces:
   - `GET /api/v1/quizzes/:id/grades` → `{ data: QuizGradeSheet }`
-  - `POST /api/v1/quizzes/:id/grades` → `{ data: QuizGradeSheet }` (the sheet after the write)
+  - `POST /api/v1/quizzes/:id/grades` → `{ data: QuizGradeSheet }` (the sheet after the write). A null score is skipped (never clears — R89, `jpc-space/src/lib/quiz-actions.ts:135`); only first-time-graded students are notified, body `"Your quiz has been graded. Check your quiz results."` (R70/R92/R69, `quiz-actions.ts:137,157,161-169`). *(v1 parity 2026-10-09: was "null clears the row; notify on first grade or any score change")*
   - Reuses error codes `student_not_in_scope`, `score_exceeds_max`, `wrong_quiz_kind`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -3787,19 +3706,21 @@ describe("PAPER grades", () => {
     expect(row.gradedByName).toBe("Test leader");
     expect((await quizGradedCount()) - before).toBe(1);
 
-    // Re-saving the same score is silent (D8's unified rule).
+    // Re-saving the same score is silent.
     await request(app)
       .post(`/api/v1/quizzes/${quizId}/grades`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ entries: [{ studentUserId: ownStudentId, score: 18, notes: "Strong." }] });
     expect((await quizGradedCount()) - before).toBe(1);
 
-    // Changing the score notifies again.
+    // Changing the score is ALSO silent: v1 notifies only students whose prior
+    // row had no gradedAt (jpc-space/src/lib/quiz-actions.ts:137,157,161-169; R70/R92).
+    // v1 parity 2026-10-09: was "changing the score notifies again (D8)".
     await request(app)
       .post(`/api/v1/quizzes/${quizId}/grades`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ entries: [{ studentUserId: ownStudentId, score: 19, notes: "Strong." }] });
-    expect((await quizGradedCount()) - before).toBe(2);
+    expect((await quizGradedCount()) - before).toBe(1);
   });
 
   // -------------------------------------------------------------------
@@ -3853,21 +3774,25 @@ describe("PAPER grades", () => {
     expect(await db.quizGrade.count({ where: { quizId } })).toBe(0);
   });
 
-  it("clears a grade when the score is null (diverging from R89)", async () => {
+  it("skips a null score and never clears an existing grade, as v1 (R89)", async () => {
+    // v1 parity 2026-10-09: was "clears a grade when the score is null (diverging
+    // from R89)". jpc-space/src/lib/quiz-actions.ts:135 — `if (g.score === null) continue;`.
     await request(app)
       .post(`/api/v1/quizzes/${quizId}/grades`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ entries: [{ studentUserId: ownStudentId, score: 12, notes: "Typo." }] });
     expect(await db.quizGrade.count({ where: { quizId } })).toBe(1);
 
-    const cleared = await request(app)
+    const skipped = await request(app)
       .post(`/api/v1/quizzes/${quizId}/grades`)
       .set("authorization", `Bearer ${leaderToken}`)
       .send({ entries: [{ studentUserId: ownStudentId, score: null, notes: null }] });
-    expect(cleared.status).toBe(200);
-    // v1 skipped null entries entirely, so a grade entered against the wrong
-    // student could never be removed.
-    expect(await db.quizGrade.count({ where: { quizId } })).toBe(0);
+    expect(skipped.status).toBe(200);
+    const row = await db.quizGrade.findUnique({
+      where: { quizId_studentUserId: { quizId, studentUserId: ownStudentId } },
+      select: { score: true },
+    });
+    expect(row?.score).toBe(12);
   });
 
   it("refuses a PAPER grade against an ONLINE quiz (R94, D10)", async () => {
@@ -3994,8 +3919,8 @@ quizzesRouter.get("/:id/grades", async (req, res) => {
  *
  * All three of D1's corrections are here: one gate for every role, a
  * server-derived visible set that every entry must be inside, and whole-batch
- * rejection so a client bug is loud rather than half-applied. The upserts and
- * deletes also share one transaction — v1 ran two sequential unbatched loops
+ * rejection so a client bug is loud rather than half-applied. The upserts
+ * also share one transaction — v1 ran two sequential unbatched loops
  * (R95), so a failure at student 15 of 30 left half the class graded, some of
  * them notified, and returned an error as though nothing had happened.
  */
@@ -4048,20 +3973,20 @@ quizzesRouter.post("/:id/grades", async (req, res) => {
 
   const existing = await db.quizGrade.findMany({
     where: { quizId: id, studentUserId: { in: parsed.data.entries.map((e) => e.studentUserId) } },
-    select: { studentUserId: true, score: true },
+    select: { studentUserId: true, gradedAt: true },
   });
-  const previousScore = new Map(existing.map((g) => [g.studentUserId, g.score]));
+  const wasGraded = new Set(existing.filter((g) => g.gradedAt !== null).map((g) => g.studentUserId));
 
   // One `now` for the whole batch, as v1 did (R91) — a batch is one act.
   const now = new Date();
-  const writes = parsed.data.entries.map((entry) =>
-    entry.score === null
-      ? // Null CLEARS the row. v1 skipped null entries, so an existing grade
-        // could never be removed — a typo was correctable, a grade against the
-        // wrong student was not. deleteMany (not delete) so clearing an
-        // already-absent row is a no-op rather than a P2025.
-        db.quizGrade.deleteMany({ where: { quizId: id, studentUserId: entry.studentUserId } })
-      : db.quizGrade.upsert({
+  // v1 parity 2026-10-09 (R89): a null score is SKIPPED — no delete, an existing
+  // grade is never cleared (jpc-space/src/lib/quiz-actions.ts:135). Was "null
+  // CLEARS the row via deleteMany".
+  const scored = parsed.data.entries.filter(
+    (e): e is typeof e & { score: number } => e.score !== null,
+  );
+  const writes = scored.map((entry) =>
+      db.quizGrade.upsert({
           where: { quizId_studentUserId: { quizId: id, studentUserId: entry.studentUserId } },
           create: {
             quizId: id,
@@ -4081,17 +4006,20 @@ quizzesRouter.post("/:id/grades", async (req, res) => {
   );
   await db.$transaction(writes);
 
-  // D8's single rule, shared with the essay path: a first grade or a changed
-  // score notifies; a no-op re-save is silent. v1's two paths disagreed.
-  const notifyIds = parsed.data.entries
-    .filter((e) => e.score !== null && previousScore.get(e.studentUserId) !== e.score)
+  // v1 parity 2026-10-09 (R70/R92): notify ONLY students graded for the first
+  // time (no prior row, or a prior row with gradedAt null); re-grades are silent,
+  // as v1 (quiz-actions.ts:137,157,161-169). One bulk send. Was "D8: first grade
+  // or any score change".
+  const notifyIds = scored
+    .filter((e) => !wasGraded.has(e.studentUserId))
     .map((e) => e.studentUserId);
   if (notifyIds.length > 0) {
     try {
       await createNotificationsBulk(notifyIds, {
         type: "QUIZ_GRADED",
         title: `Quiz graded: ${quiz.title}`,
-        body: "Your quiz has been graded.",
+        // v1's exact body (quiz-actions.ts:166). Was "Your quiz has been graded."
+        body: "Your quiz has been graded. Check your quiz results.",
         link: QUIZ_GRADED_LINK,
       });
     } catch {
@@ -4491,6 +4419,8 @@ git add apps/mobile && git commit -m "feat(mobile): quiz detail routes, query ke
 **Interfaces:**
 - Consumes: `useQuizList`, `useStudentQuizList` (Task 7); `useSessionStore`; `formatDate` from `../../src/lib/format`; **`useCurrentSeasonId` from `src/hooks/use-seasons.ts` (Plan 4)** for the staff branch — staff have no `scopes.activeSeasonId` (it is read from the StudentProfile and is always null for ADMIN/LEADER/SUPER), so ruling X8 makes Plan 4's hook the only source of a staff season.
 - Produces: nothing downstream; the two detail screens are reached from here by `router.push`.
+
+> **v1 parity 2026-10-09:** (R112) the staff list is the whole season's quizzes in one response, as v1 (`jpc-space/src/app/leader/quizzes/page.tsx`, `src/app/admin/quizzes/page.tsx`); no infinite scroll or "load more". `quizListPageSchema` has no `nextCursor`, so the `nextCursor: null` in this task's staff fixtures is stripped and can be dropped. v2 code to change: `apps/backend/src/routes/quizzes.ts:246-282` and `packages/shared/src/quiz.ts:381-382` (cursor/limit). (R6) no "New quiz" on this list — see Task 11 Step 7.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -4977,37 +4907,37 @@ describe("quiz runner", () => {
     expect(await screen.findByText("Capital of France?")).toBeTruthy();
   });
 
-  it("debounces answer saves into one batched PATCH and shows the save state", async () => {
+  it("saves an MCQ choice immediately and an essay on blur, one PATCH each (R55)", async () => {
+    // v1 parity 2026-10-09: was "debounces answer saves into one batched PATCH
+    // and shows the save state". v1: jpc-space/src/components/quizzes/quiz-runner.tsx:79
+    // (MCQ saves on select), :86-91 (essay saves on blur). No debounce, no
+    // Saving/Saved line.
     get.mockResolvedValue({
       data: { data: detail({ attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS" }) },
     });
-    patch.mockResolvedValue({ data: { data: { saved: 2 } } });
+    patch.mockResolvedValue({ data: { data: { saved: 1 } } });
 
     renderWithProviders(<QuizDetailScreen />);
 
     fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
-    fireEvent.changeText(screen.getByLabelText("Answer 2"), "Because of the river.");
-    // Nothing has gone out yet — v1 fired one request per keystroke-ish event
-    // and ignored the result (R55), so a failed save was silent and the student
-    // saw their answer in local state as though it had persisted.
-    expect(patch).not.toHaveBeenCalled();
-
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt", {
-        answers: [
-          { questionId: 100, selectedIndex: 1, text: null },
-          { questionId: 101, selectedIndex: null, text: "Because of the river." },
-        ],
+        answers: [{ questionId: 100, selectedIndex: 1, text: null }],
       }),
     );
-    expect(await screen.findByText("Saved")).toBeTruthy();
+
+    fireEvent.changeText(screen.getByLabelText("Answer 2"), "Because of the river.");
+    expect(patch).toHaveBeenCalledTimes(1);
+    fireEvent(screen.getByLabelText("Answer 2"), "blur");
+    await waitFor(() =>
+      expect(patch).toHaveBeenLastCalledWith("/api/v1/quizzes/41/attempt", {
+        answers: [{ questionId: 101, selectedIndex: null, text: "Because of the river." }],
+      }),
+    );
+    expect(screen.queryByText("Saved")).toBeNull();
   });
 
-  it("says so when a save fails instead of pretending it worked", async () => {
+  it("shows a small retry notice when a save fails (silent answer loss is data loss)", async () => {
     get.mockResolvedValue({
       data: { data: detail({ attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS" }) },
     });
@@ -5015,11 +4945,8 @@ describe("quiz runner", () => {
 
     renderWithProviders(<QuizDetailScreen />);
     fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
 
-    expect(await screen.findByText("Not saved")).toBeTruthy();
+    expect(await screen.findByText(/Not saved/)).toBeTruthy();
   });
 
   it("keeps Submit disabled until every question is answered (R59)", async () => {
@@ -5122,11 +5049,10 @@ describe("quiz runner", () => {
 });
 ```
 
-**Verify at implementation time:** RNTL 13's `waitFor` detects Jest fake timers
-and advances them itself; the explicit `act(() => jest.advanceTimersByTime(...))`
-above is there to fire the debounce deterministically before the assertion. If
-the combination hangs, switch the debounce delay to a module-level exported
-constant and have the test import it — do not drop the debounce assertion.
+**Verify at implementation time:** *(v1 parity 2026-10-09: the debounce and its
+fake-timer note are gone — saves fire per change, R55.)* Add a submit case that
+asserts every answer is re-PATCHed before `POST …/attempt/submit` (R56, v1
+`quiz-runner.tsx:102-110`).
 
 - [ ] **Step 2: Implement the runner**
 
@@ -5153,19 +5079,14 @@ import {
 } from "../../../../src/ui";
 
 /**
- * How long after the last edit the pending answers are flushed.
- *
- * v1 saved each answer fire-and-forget and relied on re-saving everything at
- * submit to cover the losses (R55, R56). On a phone that assumption breaks: the
- * app is backgrounded, the network drops mid-quiz, and the "one sitting" never
- * happens — and because an IN_PROGRESS attempt has no expiry (R47) and blocks
- * the student from ever starting again (R45), a lost save is not a lost answer,
- * it is a stuck student. So: a real debounce, a batched PATCH, and a visible
- * save state.
+ * Saving, as v1 (jpc-space/src/components/quizzes/quiz-runner.tsx:79,86-91,102-110;
+ * R55/R56): each MCQ choice is PATCHed immediately, each essay on blur, one
+ * answer per request; submit re-saves every answer, then submits. The one
+ * addition: a failed save shows a small "Not saved — retry" notice, because a
+ * silent failure is answer loss. *(v1 parity 2026-10-09: was "1s debounce,
+ * batched PATCH, Saving/Saved/Not saved status line")*
  */
-const SAVE_DEBOUNCE_MS = 1000;
-
-type SaveState = "idle" | "saving" | "saved" | "error";
+type SaveFailed = boolean;
 ```
 
 Then the pieces, each described precisely enough to write directly:
@@ -5194,33 +5115,29 @@ Then the pieces, each described precisely enough to write directly:
 
 3. **`AttemptForm`** — local state `answers: Record<number, {selectedIndex, text}>`
    seeded from `detail.questions` (each question's saved `selectedIndex`/`text`,
-   so a resumed attempt shows what the server has). A `pendingRef =
-   useRef<Set<number>>(new Set())` of question ids edited since the last flush,
-   a `timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)`, and
-   `saveState: SaveState`.
-   - `queueSave(questionId)` — record the id in `pendingRef`, clear any existing
-     timer, set `saveState` to `"saving"`, and start a `SAVE_DEBOUNCE_MS` timer
-     whose callback builds `AnswerInput[]` from `pendingRef` **in question
-     order** and calls `save.mutate(payload, { onSuccess: () => { pendingRef.current.clear(); setSaveState("saved"); }, onError: () => setSaveState("error") })`.
-   - `useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, [])`
-     so a screen that unmounts mid-debounce does not fire into a dead component.
+   so a resumed attempt shows what the server has), and `saveFailed: SaveFailed`
+   plus the last failed `AnswerInput` for retry.
+   *(v1 parity 2026-10-09 (R55/R56): was "pendingRef + 1s debounce timer +
+   SaveState, batched flush" — v1 `quiz-runner.tsx:79,86-91,102-110`.)*
+   - `saveOne(answer: AnswerInput)` — `save.mutate([answer], { onSuccess: () => setSaveFailed(false), onError: () => { setSaveFailed(true); remember answer } })`. One PATCH per change, no timer.
    - MCQ rendering: each option a `Pressable` with
      `accessibilityLabel={`Answer ${index + 1} option ${optionIndex + 1}: ${option}`}`,
      visually selected when `answers[q.id].selectedIndex === optionIndex`;
-     pressing sets it and calls `queueSave(q.id)`.
+     pressing sets it and calls `saveOne({ questionId: q.id, selectedIndex: optionIndex, text: null })` immediately.
    - ESSAY rendering: `<Input label={`Answer ${index + 1}`} multiline
-     numberOfLines={6} value={...} onChangeText={...} />`, calling `queueSave(q.id)`
-     on change.
-   - A save-state line: `"Saving…"` / `"Saved"` / `"Not saved"` (`"Not saved"`
-     in `theme.colors.danger`-equivalent, plus a `Button title="Retry save"`
-     that re-fires the flush immediately).
-   - `Button title="Submit"` with `disabled={!isComplete || save.isPending}`,
+     numberOfLines={6} value={...} onChangeText={...} onBlur={...} />` —
+     `onChangeText` only updates local state; `onBlur` calls
+     `saveOne({ questionId: q.id, selectedIndex: null, text })`.
+   - No Saving/Saved status line. When `saveFailed`, a small
+     `"Not saved — retry"` notice (danger colour) whose press re-sends the
+     remembered answer.
+   - `Button title="Submit"` with `disabled={!isComplete || submit.isPending}`,
      where `isComplete` is every MCQ having a non-null `selectedIndex` and every
      ESSAY a non-blank trimmed `text` — the same rule the server enforces (R59).
-     `onPress` flushes any pending answers first (await the mutation), then
-     calls `submit.mutate()`. A `409 attempt_incomplete` from the server still
-     surfaces as an inline error message; the disabled button is a courtesy, not
-     the rule.
+     `onPress` re-saves **every** answer first (one PATCH carrying all of them,
+     awaited — v1's `Promise.all` re-save, R56), then calls `submit.mutate()`.
+     A `409 attempt_incomplete` from the server still surfaces as an inline
+     error message; the disabled button is a courtesy, not the rule.
 
 4. **`StaffPreview`** — `useQuizAuthoringDetail(id, true)`. Renders the title,
    the publish state, and each question with its prompt, points, options, and —
@@ -5239,7 +5156,7 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/mobile && git commit -m "feat(mobile): quiz runner with debounced batched saves and a visible save state"
+git add apps/mobile && git commit -m "feat(mobile): quiz runner with per-answer saves, as v1"
 ```
 
 ---
@@ -5319,8 +5236,7 @@ const attemptsPage = {
       ],
     },
   ],
-  waiting: [{ studentUserId: 10, studentName: "Second student", startedAt: null }],
-  nextCursor: null,
+  // v1 parity 2026-10-09 (R102/R112): no `waiting`, no `nextCursor`.
 };
 
 beforeEach(() => {
@@ -5360,7 +5276,8 @@ describe("grading screen — PAPER", () => {
     );
   });
 
-  it("clears a grade when the field is emptied", async () => {
+  it("sends a null score for an emptied field — the server skips it, never clears (R89)", async () => {
+    // v1 parity 2026-10-09: was "clears a grade when the field is emptied".
     post.mockResolvedValue({ data: { data: gradeSheet } });
 
     renderWithProviders(<QuizGradeScreen />);
@@ -5424,19 +5341,40 @@ describe("grading screen — ONLINE", () => {
     );
   });
 
-  it("shows students who have not finished rather than dropping them (R102, D5)", async () => {
+  it("lists only submitted/graded attempts — no Waiting section (R102)", async () => {
+    // v1 parity 2026-10-09: was "shows students who have not finished (R102, D5)".
     renderWithProviders(<QuizGradeScreen />);
 
-    expect(await screen.findByText("Waiting")).toBeTruthy();
-    expect(screen.getByText("Second student")).toBeTruthy();
-    expect(screen.getByText("Not started")).toBeTruthy();
+    expect(await screen.findByText("Test student")).toBeTruthy();
+    expect(screen.queryByText("Waiting")).toBeNull();
+    expect(screen.queryByText("Second student")).toBeNull();
   });
 
-  it("lets a leader reopen a graded attempt", async () => {
+  it("hides Reopen from a leader (R83)", async () => {
+    // v1: jpc-space/src/app/leader/sessions/[id]/quiz/[quizId]/page.tsx:60 — canReopen={false}.
     get.mockImplementation((url: string) =>
       url === "/api/v1/quizzes/41"
         ? Promise.resolve({
             data: { data: authoring({ kind: "ONLINE", maxScore: 7,
+              publishedAt: "2099-02-01T00:00:00.000Z", attemptCount: 1 }) },
+          })
+        : Promise.resolve({
+            data: { data: { ...attemptsPage,
+              items: [{ ...attemptsPage.items[0], status: "GRADED", manualScore: 4, totalScore: 6 }] } },
+          }),
+    );
+    renderWithProviders(<QuizGradeScreen />);
+    expect(await screen.findByText("Test student")).toBeTruthy();
+    expect(screen.queryByText("Reopen for a retake")).toBeNull();
+  });
+
+  it("lets an admin (canManage) reopen a GRADED attempt", async () => {
+    // v1 parity 2026-10-09: was "lets a leader reopen a graded attempt". v1:
+    // admin grade page.tsx:66 canReopen; quiz-essay-grader.tsx:171 GRADED only.
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/quizzes/41"
+        ? Promise.resolve({
+            data: { data: authoring({ kind: "ONLINE", maxScore: 7, canManage: true,
               publishedAt: "2099-02-01T00:00:00.000Z", attemptCount: 1 }) },
           })
         : Promise.resolve({
@@ -5490,7 +5428,8 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/quiz-grading.test.tsx` → FAIL 
    `<Input label={`Notes for ${name}`} />`, plus a caption
    `Graded by ${gradedByName}` when present (D13 — information no v1 user could
    see). "Save grades" builds `entries` from `edits` only: an empty score string
-   becomes `score: null` (an explicit clear), otherwise `Number(value)`; notes
+   becomes `score: null` (skipped by the server, never a clear — R89, v1
+   `quiz-actions.ts:135` *(v1 parity 2026-10-09: was "an explicit clear")*), otherwise `Number(value)`; notes
    fall back to the row's existing notes. Errors: read
    `err.response?.data?.error?.message` and render it in an inline error line —
    **never clamp or pre-truncate a score locally**; the server is the bound
@@ -5512,21 +5451,22 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/quiz-grading.test.tsx` → FAIL 
    - "Save marks" sends **every essay** of that attempt (the server rejects a
      partial payload with `awards_incomplete`, which is the point — v1 silently
      lowered the total instead). Server errors surface inline, same as the grid.
-   - For **every** caller who reached this screen — not gated on
-     `detail.canManage`, because reopen is gated server-side on
-     `canGradeQuiz` (Task 5: leaders may reopen; v1's admin-only gate was the
-     bug) — a `Button title="Reopen for a retake" variant="secondary"` calling
-     `reopen.mutate(item.studentUserId)`, shown for a `GRADED` or `SUBMITTED`
-     attempt and hidden for `IN_PROGRESS`.
-   - Below the list, a "Waiting" section from `page.waiting`: each entry as
-     `name` plus `startedAt === null ? "Not started" : "In progress since ${formatDate(startedAt)}"`,
-     with the same reopen control for an in-progress row. This section is D5's
-     answer to R102 — v1 dropped these students from the screen entirely and
-     gave the grader no way to notice, let alone act.
+   - Only when `detail.canManage` (SUPER or admin of the season) **and** the
+     attempt is `GRADED` — a `Button title="Reopen for a retake" variant="secondary"`
+     calling `reopen.mutate(item.studentUserId)`. As v1: the admin grading page
+     passes `canReopen` (`jpc-space/src/app/admin/season/[code]/quizzes/[quizId]/grade/page.tsx:66`),
+     the leader page does not (`src/app/leader/sessions/[id]/quiz/[quizId]/page.tsx:60`),
+     and the card shows it for GRADED only (`quiz-essay-grader.tsx:171`); the
+     server gate is `canManageQuiz` (R79/R83). *(v1 parity 2026-10-09: was
+     "every grader, GRADED or SUBMITTED")*
+   - No "Waiting" section. As v1, a student with no SUBMITTED/GRADED attempt
+     simply does not appear (R102, `quiz-query.ts:489-496`). *(v1 parity
+     2026-10-09: was "a Waiting section from `page.waiting` with reopen controls")*
+   - All attempts arrive in one response; no infinite scroll / "load more" (R112).
 
 - [ ] **Step 3: Run**
 
-Run: `cd apps/mobile && pnpm jest src/__tests__/quiz-grading.test.tsx` → PASS (all 6).
+Run: `cd apps/mobile && pnpm jest src/__tests__/quiz-grading.test.tsx` → PASS (all 7 — v1 parity 2026-10-09: was 6; the reopen case split into leader-hidden and admin-shown).
 Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
 
 - [ ] **Step 4: Commit**
@@ -5537,7 +5477,9 @@ git add apps/mobile && git commit -m "feat(mobile): quiz grading screen for pape
 
 ---
 
-### Task 11: Mobile — quiz authoring (create, build, reorder, publish)
+### Task 11: Mobile — quiz authoring (create, build, publish)
+
+> **v1 parity 2026-10-09:** title was "create, build, reorder, publish". No reorder (R20); create starts from a session (R6).
 
 The authoring UI v1 had (`src/components/quizzes/create-quiz-form.tsx`,
 `src/components/quizzes/quiz-builder.tsx`,
@@ -5545,12 +5487,18 @@ The authoring UI v1 had (`src/components/quizzes/create-quiz-form.tsx`,
 `src/lib/quiz-actions.ts:29-84, 218-328`) over this plan's own Task 2–3
 endpoints; spec 12 §9. Without it the closing gate's first device-checklist
 item cannot be executed (coverage gap G8). Two routes: `quiz/new` (the create
-form) and `quiz/[id]/edit` (the builder). Divergences from v1, each already
-decided by the backend tasks: questions can be **reordered** (R20 — v1 had no
-reorder at all); the builder **locks** once a student has started
-(`canEditStructure`, spec D3) instead of letting edits cascade-delete answers;
-unpublish of a quiz with graded attempts is refused with the server's message
-(D4); a PAPER quiz opens a "no questions" card rather than v1's silent
+form) and `quiz/[id]/edit` (the builder). As v1, questions keep creation order
+and there is no reorder control (R20, `quiz-actions.ts:228-231`), and unpublish
+always succeeds (R30, `quiz-actions.ts:306-309`). As v1, a quiz is created only
+from a session: `quiz/new` is reached from the session's Quizzes card
+(`SessionQuizzesCard`, Task 11b) with the session id as a route param, never
+from the season-wide Quizzes list (R6, v1's only `CreateQuizForm` is on
+`src/app/admin/season/[code]/sessions/[id]/page.tsx:144`). *(v1 parity
+2026-10-09: was "questions can be reordered (R20); unpublish with graded
+attempts refused (D4); 'New quiz' on the staff list with an optional session")*
+Divergences kept from v1 (KEEP-FIX): the builder **locks** once a student has
+started (`canEditStructure`, spec D3) instead of letting edits cascade-delete
+answers; a PAPER quiz opens a "no questions" card rather than v1's silent
 redirect (`edit/page.tsx:30-32`).
 
 **Files:**
@@ -5558,13 +5506,14 @@ redirect (`edit/page.tsx:30-32`).
 - Create: `apps/mobile/src/components/QuestionEditor.tsx`
 - Create: `apps/mobile/app/(app)/quiz/new.tsx`, `apps/mobile/app/(app)/quiz/[id]/edit.tsx`
 - Modify: `apps/mobile/app/(app)/_layout.tsx` (`DETAIL_ROUTE_NAMES` gains `"quiz/new"`, `"quiz/[id]/edit"`)
-- Modify: `apps/mobile/app/(app)/quizzes.tsx` (staff branch: "New quiz" button; ADMIN/SUPER open a draft ONLINE quiz in the builder)
+- Modify: `apps/mobile/app/(app)/quizzes.tsx` (staff branch: ADMIN/SUPER open a draft ONLINE quiz in the builder; **no** "New quiz" button — R6, v1 parity 2026-10-09, was "New quiz button")
+- Modify: `apps/mobile/src/components/SessionQuizzesCard.tsx` (admin of the season / SUPER: a "New quiz" button pushing `{ pathname: "/quiz/new", params: { sessionId: String(sessionId) } }` — R6, v1 parity 2026-10-09)
 - Modify: `apps/mobile/app/(app)/quiz/[id]/index.tsx` (`StaffPreview` gains an "Edit quiz" button when `canManage`)
 - Test: `apps/mobile/src/__tests__/quiz-authoring.test.tsx` (new), `apps/mobile/src/__tests__/quizzes-screen.test.tsx` (extend), `apps/mobile/src/__tests__/app-layout.test.tsx` (extend)
 
 **Interfaces:**
-- Consumes: Task 1's `createQuizRequestSchema`, `quizQuestionRequestSchema`, `QuizQuestionInput`, `quizQuestionAuthoringSchema`, `quizCreatedResponseSchema`, `quizUpdatedResponseSchema`, `quizQuestionDeletedResponseSchema`, `reorderQuestionsResponseSchema`, `publishQuizResponseSchema`; Task 7's `useQuizAuthoringDetail`, `queryKeys.quizzes`; Plan 4's `useCurrentSeasonId` and `apiErrorMessage`; Phase 0's `useSeasonSessions`.
-- Produces: hooks `useCreateQuiz()`, `useUpdateQuiz(id)`, `useAddQuestion(id)`, `useUpdateQuestion(id)`, `useDeleteQuestion(id)`, `useReorderQuestions(id)`, `usePublishQuiz(id)`; component `<QuestionEditor />`; routes `/quiz/new` and `/quiz/[id]/edit` (route names `quiz/new`, `quiz/[id]/edit`).
+- Consumes: Task 1's `createQuizRequestSchema`, `quizQuestionRequestSchema`, `QuizQuestionInput`, `quizQuestionAuthoringSchema`, `quizCreatedResponseSchema`, `quizUpdatedResponseSchema`, `quizQuestionDeletedResponseSchema`, `publishQuizResponseSchema`; Task 7's `useQuizAuthoringDetail`, `queryKeys.quizzes`; Plan 4's `useCurrentSeasonId` and `apiErrorMessage`; Phase 0's `useSeasonSessions`.
+- Produces: hooks `useCreateQuiz()`, `useUpdateQuiz(id)`, `useAddQuestion(id)`, `useUpdateQuestion(id)`, `useDeleteQuestion(id)`, `usePublishQuiz(id)` *(v1 parity 2026-10-09: `useReorderQuestions` removed, R20)*; component `<QuestionEditor />`; routes `/quiz/new` and `/quiz/[id]/edit` (route names `quiz/new`, `quiz/[id]/edit`).
 
 - [ ] **Step 1: Failing layout assertion.** In `app-layout.test.tsx`, extend
 Task 7's `it.each` list to
@@ -5573,6 +5522,8 @@ Task 7's `it.each` list to
 names absent).
 
 - [ ] **Step 2: Failing screen tests.**
+
+> **v1 parity 2026-10-09:** (R6) `NewQuizScreen` reads `sessionId` from `useLocalSearchParams` (set by `SessionQuizzesCard`), shows that session read-only, and always sends it; the session picker and its "No session" option are removed, so the "creates an ONLINE quiz…" case drops the `press("Week 1")` step and its `expo-router` mock returns `{ sessionId: "12" }` for this describe. A missing/invalid `sessionId` param renders `EmptyState "Not found"`. (R20) the reorder case is replaced by a no-controls case. v2 code to change: `apps/mobile/app/(app)/quiz/new.tsx`, `apps/mobile/app/(app)/quizzes.tsx:136-140`, `apps/mobile/app/(app)/quiz/[id]/edit.tsx:64-76,131-138`, `apps/mobile/src/hooks/use-quiz-authoring.ts` (`useReorderQuestions`). v1: `jpc-space/src/lib/quiz-actions.ts:20-27,51-61`, `src/app/admin/season/[code]/sessions/[id]/page.tsx:144`.
 
 ```tsx
 // apps/mobile/src/__tests__/quiz-authoring.test.tsx
@@ -5684,6 +5635,7 @@ describe("NewQuizScreen", () => {
   });
 
   it("creates a PAPER quiz with v1's default max score and opens its grade sheet", async () => {
+    // v1 parity 2026-10-09 (R6): sessionId is always sent (was `sessionId: null`).
     post.mockResolvedValue({ data: { data: { id: 78 } } });
     renderWithProviders(<NewQuizScreen />);
 
@@ -5692,7 +5644,7 @@ describe("NewQuizScreen", () => {
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes", {
-        seasonId: 7, sessionId: null, title: "Paper quiz", kind: "PAPER", maxScore: 100,
+        seasonId: 7, sessionId: 12, title: "Paper quiz", kind: "PAPER", maxScore: 100,
       }),
     );
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/quiz/[id]/grade", params: { id: "78" } });
@@ -5785,16 +5737,16 @@ describe("QuizEditScreen (the builder)", () => {
     );
   });
 
-  it("reorders by sending the full permutation", async () => {
+  it("offers no reorder controls — questions keep creation order, as v1 (R20)", async () => {
+    // v1 parity 2026-10-09: was "reorders by sending the full permutation".
+    // v1 has no reorder (jpc-space/src/lib/quiz-actions.ts:228-231,253-256).
     get.mockResolvedValue({ data: { data: authoring() } });
-    put.mockResolvedValue({ data: { data: { questions: [{ ...essay, order: 0 }, { ...mcq, order: 1 }] } } });
     renderWithProviders(<QuizEditScreen />);
 
-    fireEvent.press(await screen.findByLabelText("Move question 2 up"));
-
-    await waitFor(() =>
-      expect(put).toHaveBeenCalledWith("/api/v1/quizzes/41/questions/order", { questionIds: [101, 100] }),
-    );
+    expect(await screen.findByText("1. Capital of France?")).toBeTruthy();
+    expect(screen.queryByLabelText("Move question 2 up")).toBeNull();
+    expect(screen.queryByLabelText("Move question 1 down")).toBeNull();
+    expect(put).not.toHaveBeenCalled();
   });
 
   it("deletes only on a second, confirming press", async () => {
@@ -5828,8 +5780,8 @@ describe("QuizEditScreen (the builder)", () => {
     expect(await screen.findByText("Students have started this quiz, so its questions can no longer change.")).toBeTruthy();
     expect(screen.queryByText("Add question")).toBeNull();
     expect(screen.queryByLabelText("Edit question 1")).toBeNull();
-    expect(screen.queryByLabelText("Move question 2 up")).toBeNull();
-    // Publishing state can still change; D4's guard is the server's.
+    // Publishing state can still change, and unpublish always succeeds, as v1
+    // (R30 — v1 parity 2026-10-09: was "D4's guard is the server's").
     expect(screen.getByText("Unpublish")).toBeTruthy();
   });
 
@@ -5866,12 +5818,15 @@ describe("QuizzesScreen — authoring entry points (Task 11)", () => {
     scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
   };
 
-  it("gives an admin a New quiz button", async () => {
+  it("gives an admin NO New quiz button on the season list — create starts from a session (R6)", async () => {
+    // v1 parity 2026-10-09: was "gives an admin a New quiz button" pushing "/quiz/new".
+    // v1's only CreateQuizForm is on the session page
+    // (jpc-space/src/app/admin/season/[code]/sessions/[id]/page.tsx:144).
     useSessionStore.setState(adminSession);
-    staffGets({ items: [], nextCursor: null });
+    staffGets({ items: [] });
     renderWithProviders(<QuizzesScreen />);
-    fireEvent.press(await screen.findByText("New quiz"));
-    expect(mockPush).toHaveBeenCalledWith("/quiz/new");
+    expect(await screen.findByText("No quizzes")).toBeTruthy();
+    expect(screen.queryByText("New quiz")).toBeNull();
   });
 
   it("opens an admin's draft ONLINE quiz in the builder, not the grade screen", async () => {
@@ -5898,6 +5853,8 @@ describe("QuizzesScreen — authoring entry points (Task 11)", () => {
 Run `cd apps/mobile && pnpm jest src/__tests__/quiz-authoring.test.tsx src/__tests__/quizzes-screen.test.tsx` → FAIL.
 
 - [ ] **Step 3: Hooks.**
+
+> **v1 parity 2026-10-09:** (R20) omit `useReorderQuestions` and the `reorderQuestionsResponseSchema` import from the block below; v2 code to change: `apps/mobile/src/hooks/use-quiz-authoring.ts` (delete `useReorderQuestions`). v1: `jpc-space/src/lib/quiz-actions.ts:228-231`.
 
 ```ts
 // apps/mobile/src/hooks/use-quiz-authoring.ts
@@ -6146,6 +6103,8 @@ export function QuestionEditor({ initial, submitting, serverError, onSubmit, onC
 
 - [ ] **Step 5: `quiz/new.tsx`.**
 
+> **v1 parity 2026-10-09:** (R6) replace the `sessionId` state, the "Session (optional)" picker and its "No session" row below with a required `sessionId` read from `useLocalSearchParams<{ sessionId?: string }>()` (parsed like `id`; invalid → `EmptyState "Not found"`), shown read-only as the session's title/date; the request always carries it. v2 code to change: `apps/mobile/app/(app)/quiz/new.tsx`; v1: `jpc-space/src/lib/quiz-actions.ts:20-27`, `src/app/admin/season/[code]/sessions/[id]/page.tsx:144`.
+
 ```tsx
 // apps/mobile/app/(app)/quiz/new.tsx
 import { useState } from "react";
@@ -6271,6 +6230,8 @@ export default function NewQuizScreen() {
 ```
 
 - [ ] **Step 6: `quiz/[id]/edit.tsx` — the builder.**
+
+> **v1 parity 2026-10-09:** (R20) drop `useReorderQuestions`, the `reorder` mutation/`move` handler and the "Move question n up/down" buttons from the block below; questions render in `order` only. v2 code to change: `apps/mobile/app/(app)/quiz/[id]/edit.tsx:11,64-76,131-138`; v1: `jpc-space/src/lib/quiz-actions.ts:228-231,253-256` (no reorder).
 
 ```tsx
 // apps/mobile/app/(app)/quiz/[id]/edit.tsx
@@ -6562,6 +6523,8 @@ export default function QuizEditScreen() {
 
 - [ ] **Step 7: Entry points.**
 
+> **v1 parity 2026-10-09:** (R6) do **not** add the "New quiz" button to `StaffQuizzes` (the block below is superseded; v2 code to change: `apps/mobile/app/(app)/quizzes.tsx:136-140` — remove it). Instead, in `apps/mobile/src/components/SessionQuizzesCard.tsx`, when the caller is SUPER or an admin of the session's season, render `Button title="New quiz"` pushing `{ pathname: "/quiz/new", params: { sessionId: String(sessionId) } }`. v1: the only `CreateQuizForm` is on `jpc-space/src/app/admin/season/[code]/sessions/[id]/page.tsx:144`. The row `onPress` change below stays.
+
 In `apps/mobile/app/(app)/quizzes.tsx`'s `StaffQuizzes`: read
 `const role = useSessionStore((s) => s.user?.role ?? null);` and
 `const canAuthor = role === "ADMIN" || role === "SUPER";`. Render, as the
@@ -6623,7 +6586,7 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/mobile` → clean.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add apps/mobile && git commit -m "feat(mobile): quiz authoring — create, build, reorder and publish"
+git add apps/mobile && git commit -m "feat(mobile): quiz authoring — create, build and publish"
 ```
 
 ---
@@ -6701,6 +6664,8 @@ the early returns — hooks order). Replace the row map with:
 and change the doc comment's "Rows are not pressable yet …" sentence to "A row
 opens the quiz's staff preview (`/quiz/[id]`, Plan 8 Task 11b)."
 
+> **v1 parity 2026-10-09:** keep Task 11's admin-only "New quiz" button on this card (R6 — the only create entry point, as v1 `src/app/admin/season/[code]/sessions/[id]/page.tsx:144`).
+
 - [ ] **Step 4: Run.**
 
 Run: `cd apps/mobile && pnpm jest src/__tests__/session-detail.test.tsx` → PASS (Plan 6's quiz-card cases unchanged).
@@ -6757,17 +6722,21 @@ it claims.
 4. **The D3 freeze.** In `loadAuthorableQuiz`, remove the `hasAttempts` guard. →
    the "refuses every structural write once an attempt exists" test fails on all
    four verbs.
-5. **The D4 unpublish guard.** In `POST /:id/publish`, drop the graded-attempt
-   count check. → the "refuses to unpublish once an attempt has been graded"
-   test fails.
-6. **The runner's batching.** In `use-quizzes.ts`'s `useSaveAnswers`, send only
-   the last-edited answer instead of the batch. → the debounce test's payload
-   assertion fails.
+5. **Unpublish always works (R30).** In `POST /:id/publish`, add back a
+   graded-attempt count check that refuses `publish: false`. → the "unpublishes
+   even after an attempt has been graded, as v1" test fails.
+   *(v1 parity 2026-10-09: was "drop the D4 guard → the refuses-to-unpublish test fails")*
+6. **The runner's immediate save (R55).** In the runner, defer the MCQ save
+   (e.g. a `setTimeout`) instead of PATCHing on press. → the "saves an MCQ
+   choice immediately" test fails. *(v1 parity 2026-10-09: was "send only the
+   last-edited answer → the debounce test fails")*
 7. **The builder lock.** In `quiz/[id]/edit.tsx`, pass `editable={true}` to
    every `QuestionRow` and drop the `data.canEditStructure` gate on "Add
    question". → the "locks the structure once a student has started" test fails.
-8. **The full permutation.** In `useReorderQuestions`, send only the two
-   swapped ids. → the "reorders by sending the full permutation" test fails.
+8. **The reopen gate (R79).** In `POST /:id/attempts/reopen`, swap
+   `canManageQuiz` for `canGradeQuiz`. → the "refuses a LEADER" assertion in
+   the reopen test fails. *(v1 parity 2026-10-09: was "the full permutation —
+   reorder no longer exists, R20")*
 9. **The notification link.** Change `QUIZ_GRADED_LINK` to `"/quizzes"` (a
    v2-style path). → every non-zero `quizGradedCount()` delta assertion fails,
    because the helper counts only rows carrying v1's link (ruling X1).
@@ -6782,12 +6751,17 @@ this trap catches. The relative import path is what keeps it out of `dist`.)
 
 Backend running, `apiClient` pointed at it. On staging:
 
-1. As an **admin** (Task 11's screens): Quizzes → "New quiz", create an
-   ONLINE quiz on a session, add two MCQs and an essay, reorder them, publish. Then try to add a question after a student has
-   started — refused, with the message the API sends.
+1. As an **admin** (Task 11's screens): open a session → its Quizzes card →
+   "New quiz", create an ONLINE quiz on that session, add two MCQs and an
+   essay, publish (no reorder, and no "New quiz" on the season Quizzes list —
+   R6/R20). Then try to add a question after a student has started — refused,
+   with the message the API sends. *(v1 parity 2026-10-09: was "Quizzes → New
+   quiz … reorder them")*
 2. As a **student**: the quizzes tab lists the published quiz as "Not started";
    open it, press "Start quiz", answer one MCQ, kill the app, reopen — the
-   answer survived (so the debounce actually flushed). Answer the rest, submit.
+   answer survived (it was saved on press, R55). Type an essay, leave the field
+   (saved on blur), answer the rest, submit. *(v1 parity 2026-10-09: was "so
+   the debounce actually flushed")*
 3. **Watch the network**: on a proxy or through the dev console, confirm no
    response to the student contains `correctIndex`. The integration test is the
    real guard; this is the sanity check that the deployed build matches it.
@@ -6795,10 +6769,15 @@ Backend running, `apiClient` pointed at it. On staging:
    screen shows the total after a refetch; the student's notification carries
    v1's link `/student/quizzes` (ruling X1), which Plan 13's parser opens as the
    Quizzes tab — and the same row renders correctly in v1.
-5. As a **leader**: reopen the attempt. The student sees the retake and a
-   notification telling them so.
-6. As an **admin**: a PAPER quiz's grid saves a score, clears one by emptying
-   the field, and refuses a score above the max with the server's message.
+5. As a **leader**: no "Reopen for a retake" control. As an **admin**: reopen
+   the GRADED attempt. The student sees the retake; no notification is sent
+   (R79/R83/R81x). As an **admin**: unpublish the graded quiz — it succeeds and
+   the student's result disappears from their list (R30/R40). *(v1 parity
+   2026-10-09: was "leader reopens; student notified")*
+6. As an **admin**: a PAPER quiz's grid saves a score; emptying a field leaves
+   the stored grade untouched (R89); re-grading a score sends no new
+   notification (R92); a score above the max is refused with the server's
+   message (R88, KEEP-FIX). *(v1 parity 2026-10-09: was "clears one by emptying the field")*
 7. As a **leader**: confirm the grid and the attempts list show **only your own
    group's** students, while an admin sees the whole season.
 8. As a **leader**: open a session that has a quiz — its Quizzes card row opens

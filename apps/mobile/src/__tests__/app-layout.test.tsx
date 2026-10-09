@@ -57,6 +57,12 @@ jest.mock("expo-router", () => {
   };
 });
 
+// The top bar (avatar/user menu) needs a SafeAreaProvider and a router; it has
+// its own test (user-menu.test.tsx). Here it is a pass-through.
+jest.mock("../components/UserMenu", () => ({
+  AppTopBar: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 import AppLayout, {
   ALL_ROUTE_NAMES,
   DETAIL_ROUTE_NAMES,

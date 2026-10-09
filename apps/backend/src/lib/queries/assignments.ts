@@ -1,5 +1,6 @@
 import { db } from "../../db/client";
 import type { SubmissionStatus } from "../../generated/prisma/enums";
+import { dueDistance } from "../due-distance";
 import { orgDayKey, orgWallTime } from "../org-time";
 
 /**
@@ -249,13 +250,24 @@ export async function listAssignmentStatesForStudent(
   });
 }
 
+/**
+ * The student list row: the state row minus the dashboard-only `isLate`, plus
+ * `dueDistance` for v1's "· in N days" (R48; v1 parity 2026-10-09). `dueOrgDay`
+ * now travels too — the row labels "Due MMM d" with the org day, not the
+ * device's reading of `dueAt` (C2).
+ */
+export interface StudentAssignmentListRow extends StudentAssignmentRow {
+  dueOrgDay: string | null;
+  dueDistance: string | null;
+}
+
 export async function listAssignmentsForStudent(
   studentUserId: number,
   seasonId: number | null,
-): Promise<StudentAssignmentRow[]> {
-  const rows = await listAssignmentStatesForStudent(studentUserId, seasonId);
-  // The list endpoint's wire shape is unchanged: drop the dashboard-only fields.
-  return rows.map(({ dueOrgDay: _day, isLate: _late, ...row }) => row);
+  now: Date = new Date(),
+): Promise<StudentAssignmentListRow[]> {
+  const rows = await listAssignmentStatesForStudent(studentUserId, seasonId, now);
+  return rows.map(({ isLate: _late, ...row }) => ({ ...row, dueDistance: dueDistance(row.dueAt, now) }));
 }
 
 export interface AssignmentTrackerRowData {

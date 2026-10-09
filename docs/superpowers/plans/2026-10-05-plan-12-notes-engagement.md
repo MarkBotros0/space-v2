@@ -62,7 +62,7 @@ This plan sits after Plans 7 and 9–11 in the execution order (rulings:
 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → **12** → 13 → 14 → 15 → 16 → 17 → 18)
 and consumes three things they build —
 plus Plan 1's `/more` screen, which renders `navFor(user).sidebar` (ruling X15)
-and is how ADMIN/LEADER/SUPER reach this plan's new `/notes` sidebar entry:
+*(v1 parity 2026-10-09: no longer used for `/notes` — only MENTOR has "My notes", via its tab)*:
 
 - `apps/backend/src/lib/rate-limit.ts` exporting `rateLimitHandler` (Plan 9
   Task 4 Step 0, ruling X4). This plan imports it; it does not create it.
@@ -98,15 +98,15 @@ assume it.
 | 7 | Update validates **nothing** — an edit may set the body to `""` | `PATCH` reuses the create schema's `body` bound (2–20000) | spec §7, fixes R25 |
 | 8 | Delete is a hard delete, unreachable from any UI | **Not shipped.** `DELETE /notes/:id` answers `501 delete_unavailable`. Soft delete needs a `deletedAt` column, which needs a migration, which C1 forbids while v1 writes to this table | spec D4 #2, ruling C1 |
 | 9 | Author-only edit; SUPER **not** exempt | Kept, deliberately. `canEditNote` is author equality and nothing else | spec R23/R28, §4 item 5 |
-| 10 | ADMIN write gate reads `StudentProfile.activeSeasonId`, so an admin can open a student they cannot write about | Write gate resolves through `SeasonEnrollment`, matching `canViewStudent` | spec D12 first half, fixes R47/R48 |
+| 10 | ADMIN write gate reads `StudentProfile.activeSeasonId`, so an admin can open a student they cannot write about | **Kept as v1**: ADMIN may write only when the student's `activeSeasonId` is a season they administer; null → refused (jpc-space `src/lib/auth/permissions.ts:410-417`) *(v1 parity 2026-10-09: was "Write gate resolves through `SeasonEnrollment`, matching `canViewStudent`")* | R47/R48 |
 | 11 | LEADER write gate and the score's targeting both read `GroupStudent` (globally unique — one group per student in the whole database) | Both resolve through `SeasonEnrollment.groupId` | ruling C9, fixes R49/R50 and R59 |
-| 12 | "At risk" defined three times, three ways | **One** definition, in `packages/shared`, component-wise (`attendancePct < 60 || submissionPct < 60`), with a zero-denominator guard so a season that has not started flags nobody | spec D7 recommendation, ruling C4; guard fixes R56 |
-| 13 | Engagement denominator is every past session in the season, including ones that ran before the student enrolled | Denominator is past sessions at or after `SeasonEnrollment.enrolledAt` | spec D8 recommendation #1, fixes R55 |
+| 12 | "At risk" defined three times, three ways | **One** definition, in `packages/shared`, component-wise (`attendancePct < 60 || submissionPct < 60`), with a zero-denominator guard so a season that has not started flags nobody — for the mentor surfaces. **Reports' at-risk list keeps v1's own rule**: composite `score < 60`, sorted ascending, top 10, independent of `isAtRisk` (jpc-space `src/lib/reports-query.ts:169-172`; owned by Plan 15 D-17.2) *(v1 parity 2026-10-09: was "one component-wise definition used everywhere, Reports included")* | spec D7 recommendation, ruling C4; guard fixes R56; 09-notes R74 |
+| 13 | Engagement denominator is every past session in the season, including ones that ran before the student enrolled | Denominator is past sessions at or after `SeasonEnrollment.enrolledAt`. **Scope: the engagement score only.** The students-page per-season attendance % (`lib/queries/students.ts`, PR #18, not built by this plan) follows v1's every-started-session denominator (jpc-space `src/lib/students-query.ts:346-358`; 06-students R74) *(v1 parity 2026-10-09: scope note added)* | spec D8 recommendation #1, fixes R55 |
 | 14 | 4N concurrent queries on the mentor dashboard, 4N sequential on reports | A cohort endpoint with a **constant** number of queries, independent of cohort size | spec D10, ruling C4 |
 | 15 | A student's composite score is computed and thrown away | The student's own endpoint returns the **two components and no composite**, and the schema is `.strict()` so a server that leaks `score` fails at the client boundary | spec D9 recommendation |
-| 16 | `/notes` is a MENTOR-only tab; ADMIN/LEADER/SUPER can author but cannot list what they wrote | `/me/notes` opens to all four authoring roles and the navigation follows in the same change | spec D14, fixes R44 |
+| 16 | `/notes` is a MENTOR-only tab; ADMIN/LEADER/SUPER can author but cannot list what they wrote | **Kept as v1**: `GET /me/notes` is MENTOR-only (403 otherwise) and only MENTOR's nav has "My notes" (jpc-space `src/app/mentor/notes/page.tsx:21`) *(v1 parity 2026-10-09: was "`/me/notes` opens to all four authoring roles and the navigation follows")* | R44 |
 | 17 | No rate limit and no audit trail on note reads | Note reads are rate-limited and log `(viewerId, studentUserId, noteCount, at)` | spec D15 |
-| 18 | The mentor composer's student picker queries every non-deleted STUDENT directly, alumni included, bypassing the visible-students scope | **No cross-student picker exists.** The composer lives on the student detail screen, where the student is already in context and already gated. D13's defect cannot be ported because the query it describes has no v2 counterpart | spec D13 |
+| 18 | The mentor composer's student picker queries every non-deleted STUDENT directly, alumni included; the composer writes MENTORS-visibility notes with a "Flag for admin follow-up" checkbox; the student-detail composer offers all three visibilities plus the same checkbox | **Kept as v1**: `/notes` carries the mentor composer — student picker (role STUDENT, `deletedAt` null, ordered by name, alumni included), body, "Flag for admin follow-up", visibility fixed MENTORS — and filters the authored list by the picked student; the student-detail composer gains the "Flag for admin follow-up" toggle and sends its value (jpc-space `src/app/mentor/notes/page.tsx:27-31`, `src/components/students/mentor-note-composer.tsx:23,47-48,87-92`, `src/components/students/note-form.tsx:29,75-98`) *(v1 parity 2026-10-09: was "No cross-student picker exists; composer only on student detail, follow-up hard-coded false")* | R12, R45 |
 
 ### Deferred — needs the pastoral owner's decision, not an engineer's
 
@@ -427,8 +427,9 @@ export type AuthoredNote = z.infer<typeof authoredNoteSchema>;
  * parameter, so a client cannot address a note at a student other than the one
  * named in the URL the gate checked (§8).
  *
- * `seasonId` stays optional: the server defaults it from the student's active
- * season (R4). Spec D12 also floats requiring the caller to name it; §8's own
+ * `seasonId` stays optional: the server defaults it from the student's
+ * `StudentProfile.activeSeasonId` (null when unset), as v1
+ * (jpc-space src/lib/note-actions.ts:46-54; R4). Spec D12 also floats requiring the caller to name it; §8's own
  * contract table keeps it optional and the composer has no season picker, so
  * D12's first half (the write gate) is adopted and its second half is not.
  */
@@ -942,18 +943,18 @@ describe("GET /api/v1/me/notes", () => {
     expect(res.body.data.notes[0].student).toMatchObject({ id: studentUserId });
   });
 
-  it("works for an ADMIN too — v1 had no authored-notes surface for them (R44)", async () => {
+  it("is MENTOR-only, as v1's /mentor/notes (R44) — an ADMIN is refused", async () => {
+    // v1 parity (jpc-space src/app/mentor/notes/page.tsx:21 requireRole MENTOR).
     const res = await request(app)
       .get("/api/v1/me/notes")
       .set("authorization", `Bearer ${adminToken}`);
-    expect(res.status).toBe(200);
-    expect(res.body.data.notes.map((n: { id: number }) => n.id)).toContain(adminsNoteId);
+    expect(res.status).toBe(403);
   });
 
   it("filters to one student with ?studentId", async () => {
     const res = await request(app)
       .get(`/api/v1/me/notes?studentId=${studentUserId}`)
-      .set("authorization", `Bearer ${superToken}`);
+      .set("authorization", `Bearer ${mentorToken}`);
     expect(res.status).toBe(200);
     expect(
       res.body.data.notes.every((n: { student: { id: number } }) => n.student.id === studentUserId),
@@ -1207,8 +1208,8 @@ export async function listNotesForStudent(
 /**
  * Notes THIS caller wrote, across students.
  *
- * v1 offered this to MENTOR only (R44) even though four roles can author. The
- * author-equality narrowing is the whole protection here — R33 makes the
+ * MENTOR only, as v1 (R44; jpc-space src/app/mentor/notes/page.tsx:21) — the
+ * route refuses every other role. The author-equality narrowing is the whole protection here — R33 makes the
  * visibility filter a no-op over one's own notes — so it is a `where` clause,
  * not a post-filter.
  */
@@ -1360,8 +1361,9 @@ studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, r
 
 myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
   const user = requireUser(req);
-  // Only the four roles that can author have anything to list (R46–R49, R51).
-  if (user.role === "STUDENT") {
+  // MENTOR only, as v1's /mentor/notes (page.tsx:21; R44).
+  // v1 parity 2026-10-09: was "open to all four authoring roles".
+  if (user.role !== "MENTOR") {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
@@ -1576,9 +1578,11 @@ describe("POST /api/v1/students/:id/notes", () => {
       select: { authorUserId: true, seasonId: true, body: true },
     });
     // authorUserId comes from the session, never from input (R9), and the
-    // season defaults from the student's enrolment (R4).
+    // season defaults from StudentProfile.activeSeasonId (R4, v1
+    // note-actions.ts:46-54). This student has no StudentProfile row, so the
+    // note is filed under no season even though they are enrolled.
     expect(row.authorUserId).toBe(res.body.data.note.authorId);
-    expect(row.seasonId).toBe(seasonId);
+    expect(row.seasonId).toBeNull();
     expect(row.body).toBe("<p>space-v2-test wrote a note</p>");
   });
 
@@ -1617,15 +1621,16 @@ describe("POST /api/v1/students/:id/notes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("lets an ADMIN write about an enrolled student even with no activeSeasonId (D12)", async () => {
-    // v1's gate read StudentProfile.activeSeasonId, so an admin could OPEN a
-    // student they could not write about (R47/R48). This student has an
-    // enrolment in the admin's season and no StudentProfile row at all.
+  it("refuses an ADMIN when the student has no activeSeasonId, even if enrolled in their season (v1 R47/R48)", async () => {
+    // v1 parity (jpc-space src/lib/auth/permissions.ts:405-417): the ADMIN
+    // gate reads StudentProfile.activeSeasonId and refuses when it is null.
+    // This student has an enrolment in the admin's season and no
+    // StudentProfile row at all.
     const res = await request(app)
       .post(`/api/v1/students/${studentUserId}/notes`)
       .set("authorization", `Bearer ${adminToken}`)
       .send({ body: "space-v2-test admin note", visibility: "ADMINS" });
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(403);
   });
 
   it("rejects a seasonId the student is not enrolled in", async () => {
@@ -1755,15 +1760,12 @@ Append to `apps/backend/src/lib/permissions.ts`:
 /**
  * May this caller write a note about this student?
  *
- * Two deliberate divergences from v1's canWriteNote
+ * One deliberate divergence from v1's canWriteNote
  * (jpc-space/src/lib/auth/permissions.ts:405-427):
  *
- * 1. ADMIN resolves through SeasonEnrollment, not StudentProfile.activeSeasonId
- *    (spec D12, R47/R48). v1's gate meant an admin lost the ability to write
- *    about a student the moment that student's active-season pointer moved,
- *    while canViewStudent — which checks enrolments — still let them open the
- *    page. "Why can't I write a note about this student I can clearly see" is
- *    a support question with a code answer.
+ * 1. ADMIN keeps v1's gate: read StudentProfile.activeSeasonId, refuse when it
+ *    is null, else isAdminOfSeason on it (permissions.ts:410-417; R47/R48).
+ *    *(v1 parity 2026-10-09: was "ADMIN resolves through SeasonEnrollment")*
  * 2. LEADER resolves through SeasonEnrollment.groupId, not GroupStudent
  *    (ruling C9, R49/R50). GroupStudent.studentUserId is @unique across the
  *    whole database, so it holds one group per student for all time; asking it
@@ -1779,12 +1781,13 @@ export async function canWriteNote(user: SessionUser, studentUserId: number): Pr
   if (isSuper(user) || isMentor(user)) return true;
 
   if (user.role === "ADMIN") {
-    if (user.seasonAdminIds.length === 0) return false;
-    const enrollment = await db.seasonEnrollment.findFirst({
-      where: { studentUserId, seasonId: { in: user.seasonAdminIds } },
-      select: { id: true },
+    // v1 (permissions.ts:410-417): the student's active season, or nothing.
+    const profile = await db.studentProfile.findUnique({
+      where: { userId: studentUserId },
+      select: { activeSeasonId: true },
     });
-    return enrollment !== null;
+    if (!profile?.activeSeasonId) return false;
+    return isAdminOfSeason(user, profile.activeSeasonId);
   }
 
   if (user.role === "LEADER") {
@@ -1800,6 +1803,13 @@ export async function canWriteNote(user: SessionUser, studentUserId: number): Pr
   return false;
 }
 ```
+
+> **v1 parity 2026-10-09:** built code to change — `apps/backend/src/lib/permissions.ts:452-459`
+> (ADMIN branch of `canWriteNote` resolves through `SeasonEnrollment`) → read
+> `StudentProfile.activeSeasonId`, false if null, else `isAdminOfSeason`; and in
+> `apps/backend/src/__tests__/integration/notes-routes.test.ts` flip the "lets an ADMIN write … with
+> no activeSeasonId" case to the 403 case in Step 6. v1 to match: jpc-space
+> `src/lib/auth/permissions.ts:405-417` (R47/R48).
 
 - [ ] **Step 8: Write the three handlers**
 
@@ -1844,7 +1854,8 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   const parsed = createNoteRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid note body.", 400);
 
-  // R4: default the season from the student's enrolment. R5 records that v1
+  // R4: default the season from StudentProfile.activeSeasonId (null when
+  // unset), as v1 note-actions.ts:46-54. R5 records that v1
   // never maintains this afterwards — a note keeps pointing at the season it
   // was written in, which is the right behaviour for a dated record and is
   // kept. When the caller names a season it must be one this student is
@@ -1863,12 +1874,12 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
     }
     seasonId = enrollment.seasonId;
   } else {
-    const active = await db.seasonEnrollment.findFirst({
-      where: { studentUserId, status: "ACTIVE" },
-      orderBy: { enrolledAt: "desc" },
-      select: { seasonId: true },
+    // v1 parity 2026-10-09: was "newest ACTIVE SeasonEnrollment".
+    const profile = await db.studentProfile.findUnique({
+      where: { userId: studentUserId },
+      select: { activeSeasonId: true },
     });
-    seasonId = active?.seasonId ?? null;
+    seasonId = profile?.activeSeasonId ?? null;
   }
 
   const created = await db.engagementNote.create({
@@ -1975,6 +1986,12 @@ notesRouter.delete("/:id", requireAuth, (_req, res) =>
   ),
 );
 ```
+
+> **v1 parity 2026-10-09:** built code to change — `apps/backend/src/routes/notes.ts:159-166`
+> defaults `seasonId` from the newest ACTIVE `SeasonEnrollment`; change it to
+> `StudentProfile.activeSeasonId ?? null` (the explicit-`seasonId` path stays), and the Step 6
+> "stores a note…" case now expects `seasonId` null for a student with no profile. v1 to match:
+> jpc-space `src/lib/note-actions.ts:46-54` (R4).
 
 - [ ] **Step 9: Run everything this task touched**
 
@@ -2730,9 +2747,8 @@ git add apps/backend && git commit -m "feat(backend): cohort engagement endpoint
 ### Task 5: Mobile — the authored-notes screen
 
 **Files:**
-- Modify: `packages/shared/src/navigation.ts` (add `/notes` to three sidebars — spec D14)
-- Modify: `packages/shared/src/__tests__/navigation.test.ts` (its pin test freezes every sidebar item — three insertions)
-- Modify: `apps/mobile/src/__tests__/nav-routes.test.ts` (Plan 1's exact ADMIN `/more` list gains "My notes")
+- ~~Modify: `packages/shared/src/navigation.ts` (add `/notes` to three sidebars — spec D14)~~ — withdrawn, v1 parity 2026-10-09: only MENTOR has "My notes" (R44)
+- ~~Modify: `packages/shared/src/__tests__/navigation.test.ts` / `apps/mobile/src/__tests__/nav-routes.test.ts`~~ — withdrawn with it
 - Create: `apps/mobile/src/hooks/use-notes.ts`
 - Modify: `apps/mobile/src/lib/query-keys.ts` (add the `notes` factory)
 - Modify: `apps/mobile/app/(app)/notes.tsx` (replace the placeholder)
@@ -2913,6 +2929,15 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/notes-screen.test.tsx`
 Expected: FAIL — the placeholder renders "This screen isn't built yet".
 
 - [ ] **Step 3: Extend navigation (spec D14)**
+
+> **v1 parity 2026-10-09:** do **not** add these entries. v1 has "My notes" for MENTOR only
+> (jpc-space `src/app/mentor/notes/page.tsx:21`; R44), and `GET /me/notes` is MENTOR-only (Task 2).
+> Built code to change: remove the three `{ href: "/notes", label: "My notes" }` sidebar entries for
+> SUPER/ADMIN/LEADER from `packages/shared/src/navigation.ts:58-105` (and the D14 comment), revert
+> the three insertions in `packages/shared/src/__tests__/navigation.test.ts` and "My notes" in the ADMIN
+> expectation of `apps/mobile/src/__tests__/nav-routes.test.ts`; restrict
+> `apps/backend/src/routes/notes.ts:108-119` to MENTOR. MENTOR's `/notes` tab stays. The text below is
+> the superseded instruction. *(v1 parity 2026-10-09: was "add /notes to SUPER, ADMIN and LEADER sidebars")*
 
 In `packages/shared/src/navigation.ts`, add a `/notes` **sidebar** entry to
 `SUPER`, `ADMIN` and `LEADER`. MENTOR already has the tab and keeps it; all
@@ -3162,6 +3187,23 @@ export default function NotesScreen() {
   );
 }
 ```
+
+> **v1 parity 2026-10-09 (R12, R45):** `/notes` also carries v1's mentor composer above the list
+> (jpc-space `src/app/mentor/notes/page.tsx:27-31`, `src/components/students/mentor-note-composer.tsx:23,47-48,87-92`):
+> a student picker listing every role-STUDENT user with `deletedAt` null, ordered by name (alumni
+> included), a body field and a "Flag for admin follow-up" toggle; it posts
+> `POST /students/:id/notes` with `visibility: "MENTORS"` fixed and `followUpFlagged` from the toggle.
+> Picking a student also filters the authored list (`useAuthoredNotes` with `?studentId=`). The
+> picker needs an endpoint MENTOR can call that returns `{ id, name, email }` with v1's filter (e.g.
+> `GET /api/v1/me/notes/students`, MENTOR-only) — new work, nothing in v2 serves it. Built code to
+> change: `apps/mobile/app/(app)/notes.tsx` (list only today). *(v1 parity 2026-10-09: was "no
+> cross-student picker; no composer on /notes")*
+>
+> **v1 parity 2026-10-09 (R90):** note dates must be the same calendar date for every reader, as v1's
+> server render (`src/app/mentor/notes/page.tsx:103`, `src/components/students/student-detail.tsx:320`).
+> `formatDate(item.createdAt)` above formats in the device zone (`apps/mobile/src/lib/format.ts:11-18`);
+> format it in `config.orgTimezone` instead (or have the server send the org-day string). Built code
+> to change: `apps/mobile/app/(app)/notes.tsx:42`.
 
 - [ ] **Step 7: Update the placeholder guard test and run everything**
 
@@ -3791,6 +3833,19 @@ screen does not fire a request it knows will 403 — and a student reaching
 their own detail screen sees the profile and enrolments without two error
 cards.
 
+> **v1 parity 2026-10-09 (R12):** v1's student-detail composer has a "Flag for admin follow-up"
+> checkbox beside the three visibilities (jpc-space `src/components/students/note-form.tsx:29-49,75-98`).
+> Add a `followUp` state and a `Switch` labelled "Flag for admin follow-up" to `NoteComposer`, send
+> `followUpFlagged: followUp` instead of the literal `false`, and reset it with the body on success;
+> add a test that toggles it and expects `followUpFlagged: true` in the POST. Built code to change:
+> `apps/mobile/app/(app)/student/[id]/index.tsx:265-310` (hard-coded `false` at `:307`).
+> *(v1 parity 2026-10-09: was "followUpFlagged always false")*
+>
+> **v1 parity 2026-10-09 (R90):** the note card's `formatDate(item.createdAt)` formats in the device
+> zone; format in `config.orgTimezone` so every reader sees v1's one server-rendered date
+> (`src/components/students/student-detail.tsx:320`). Built code to change: the `NoteCard` in
+> `apps/mobile/app/(app)/student/[id]/index.tsx`, `apps/mobile/src/lib/format.ts:11-18`.
+
 - [ ] **Step 6: Run the tests**
 
 Run: `cd apps/mobile && pnpm jest src/__tests__/student-engagement-notes.test.tsx src/__tests__/student-detail.test.tsx` → PASS.
@@ -3946,3 +4001,26 @@ order … 7 → 8 → 9 → 10 → 11 → **12** → 13 …):**
 - **Metric reuse:** `isAtRisk` stays the one definition (Plan 15 bands with it,
   Plan 16 reuses it); engagement's submitted set `SUBMITTED|REVIEWED|RETURNED`
   is the complement of Plan 1's `isAssignmentOutstanding`.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 09-notes R4 | - | A note with no season given is filed under `StudentProfile.activeSeasonId` (null if none) (`src/lib/note-actions.ts:46-54`) | `apps/backend/src/routes/notes.ts:159-166` | Task 1 `createNoteRequestSchema` comment; Task 3 Step 6 "stores a note…" test, Step 8 handler code + note |
+| 2 | 09-notes R47, R48 | - | ADMIN may write a note only when the student's `activeSeasonId` is a season they administer; null → refused (`src/lib/auth/permissions.ts:405-417`) | `apps/backend/src/lib/permissions.ts:452-459` | Divergence ledger row 10; Task 3 Step 6 admin test (now 403), Step 7 gate code + note |
+| 3 | 09-notes R44 | - | Only MENTOR has a "my notes" page (`src/app/mentor/notes/page.tsx:21`) | `apps/backend/src/routes/notes.ts:108-119` (MENTOR-only); `packages/shared/src/navigation.ts:58-105` (remove SUPER/ADMIN/LEADER "My notes") + its pin tests | Prerequisites; ledger row 16; Task 2 `/me/notes` tests, `listAuthoredNotes` comment, route gate; Task 5 Files, Step 3 note |
+| 4 | 09-notes R12, R45 | - | `/mentor/notes` has a composer (student picker of every non-deleted STUDENT incl. alumni, body, "Flag for admin follow-up", MENTORS fixed) and filters by `?student`; the student-detail composer has the follow-up checkbox (`src/app/mentor/notes/page.tsx:27-31`, `src/components/students/mentor-note-composer.tsx:23,47-48,87-92`, `src/components/students/note-form.tsx:29,75-98`) | `apps/mobile/app/(app)/notes.tsx` (add composer + picker); new MENTOR-callable picker endpoint; `apps/mobile/app/(app)/student/[id]/index.tsx:265-310` (`followUpFlagged: false` at `:307`) | Ledger row 18; Task 5 Step 6 note; Task 6 Step 5 note. Picker endpoint: not found in plan text — new work |
+| 5 | 09-notes R90 | - | Note dates are formatted on the server, so every reader sees one calendar date (`src/components/students/student-detail.tsx:320`, `src/app/mentor/notes/page.tsx:103`) | `apps/mobile/app/(app)/notes.tsx:42`, the `NoteCard` in `student/[id]/index.tsx`, `apps/mobile/src/lib/format.ts:11-18` (format in `config.orgTimezone`) | Task 5 Step 6 note; Task 6 Step 5 note |
+| 6 | 09-notes R74 | REG-61 | Reports' at-risk list is composite `score < 60`, sorted ascending, top 10 (`src/lib/reports-query.ts:169-172`) | `apps/backend/src/lib/queries/reports.ts:298-308` (Plan 15 D-17.2 owns the change) | Ledger row 12 |
+| 7 | 06-students R74 | REG-83 | Each season row's attendance % = PRESENT+LATE over every started session of the season, for every viewer (`src/lib/students-query.ts:346-358,452`) | `apps/backend/src/lib/queries/students.ts:362-364` (drop the `enrolledAt` cut) and `:541-547` (compute for every row the viewer sees); keep the past-only numerator | Ledger row 13 scope note. The students.ts code came from PR #18, not this plan: not found in plan text — new work |
+
+**Awaiting owner (not changed):** none. *Resolved by the coordinator 2026-10-09:* 06-students R75
+(REG-61, engagement-card denominator = every started session of the season, `src/lib/engagement.ts:26-43`)
+is overruled by KEEP-FIX rows 09-notes R55 and 19-dashboards R25: scoring a mid-season joiner against
+sessions held before they enrolled is a provably wrong value. Ledger row 13 and Task 4's engagement
+code keep the `enrolledAt` filter at `apps/backend/src/lib/queries/engagement.ts:149-151`.

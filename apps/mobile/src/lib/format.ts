@@ -52,6 +52,14 @@ export function formatDayKey(dayKey: string | null): string {
   return format(date, "MMM d, yyyy");
 }
 
+/** e.g. "Apr 1" — an org-day key without the year (v1's overdue badge); same no-zone rule as formatDayKey. */
+export function formatMonthDay(dayKey: string | null): string {
+  if (dayKey == null) return PLACEHOLDER;
+  const date = parse(dayKey, "yyyy-MM-dd", new Date());
+  if (!isValid(date)) return PLACEHOLDER;
+  return format(date, "MMM d");
+}
+
 /** e.g. "Mon, Mar 2" — an org-day key as a week-row heading; same no-zone rule as formatDayKey. */
 export function formatWeekdayDay(dayKey: string | null): string {
   if (dayKey == null) return PLACEHOLDER;

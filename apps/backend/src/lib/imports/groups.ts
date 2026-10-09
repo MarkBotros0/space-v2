@@ -85,20 +85,15 @@ export async function buildGroupImportPreview(
     ]),
   );
 
-  // D-16.19.1 / spec D17: Group.name has no uniqueness constraint of any kind
-  // (schema.prisma:297-311). v1 builds this Map by iteration, so when two
-  // groups' names are case-insensitively equal the LAST one silently wins
-  // every row (R65). Refuse the file instead of guessing; the constraint that
-  // would prevent the situation is a migration → Plan 18.
-  const groupByName = new Map<string, number>();
+  // D-16.19.1 (R65, v1 parity 2026-10-09; owner decision 2026-10-10):
+  // Group.name may repeat within a season, as v1 (05-R15). The paste is
+  // never refused for it; only a row naming an ambiguous group is — v1's
+  // silent last-wins guess (`group-import.ts:59`) is not ported. Every id per
+  // trimmed, lower-cased name.
+  const groupByName = new Map<string, number[]>();
   for (const g of groups) {
     const key = g.name.trim().toLowerCase();
-    if (groupByName.has(key)) {
-      throw new ImportParseError(
-        `This season has more than one group named "${g.name.trim()}". Rename one of them, then import again.`,
-      );
-    }
-    groupByName.set(key, g.id);
+    groupByName.set(key, [...(groupByName.get(key) ?? []), g.id]);
   }
 
   const rows: GroupImportPreview["rows"] = [];
@@ -132,7 +127,17 @@ export async function buildGroupImportPreview(
       rows.push({ ...base, status: "no_group", message: "No group specified.", studentUserId: student.userId });
       continue;
     }
-    const groupId = groupByName.get(group.toLowerCase());
+    const groupIds = groupByName.get(group.toLowerCase()) ?? [];
+    if (groupIds.length > 1) {
+      rows.push({
+        ...base,
+        status: "no_group",
+        message: `Several groups in this season are named "${group}". Rename one of them, then import again.`,
+        studentUserId: student.userId,
+      });
+      continue;
+    }
+    const groupId = groupIds[0];
     if (groupId === undefined) {
       rows.push({
         ...base,

@@ -46,18 +46,19 @@ beforeEach(() => {
 describe("NotificationsScreen", () => {
   it("lists the caller's notifications", async () => {
     get.mockResolvedValue({
-      data: { data: { items: [unread], nextCursor: null, unreadCount: 1 } },
+      data: { data: { items: [unread], unreadCount: 1 } },
     });
 
     renderWithProviders(<NotificationsScreen />);
 
     expect(await screen.findByText("Essay one was reviewed")).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/notifications?limit=20");
+    // v1's one list, newest 100 — no paging params (R33, R39).
+    expect(get).toHaveBeenCalledWith("/api/v1/notifications");
   });
 
   it("writes NOTHING when the inbox is merely read (ruling C6, spec D2)", async () => {
     get.mockResolvedValue({
-      data: { data: { items: [unread], nextCursor: null, unreadCount: 1 } },
+      data: { data: { items: [unread], unreadCount: 1 } },
     });
 
     renderWithProviders(<NotificationsScreen />);
@@ -69,45 +70,26 @@ describe("NotificationsScreen", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it("marks one read and navigates on an explicit tap", async () => {
+  it("navigates on tap and leaves the notification unread, as v1 (R48)", async () => {
     get.mockResolvedValue({
-      data: { data: { items: [unread], nextCursor: null, unreadCount: 1 } },
+      data: { data: { items: [unread], unreadCount: 1 } },
     });
-    post.mockResolvedValue({ data: { data: { marked: 1 } } });
 
     renderWithProviders(<NotificationsScreen />);
     fireEvent.press(await screen.findByText("Essay one was reviewed"));
 
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/notifications/read", { ids: [5] }),
+      expect(mockPush).toHaveBeenCalledWith({
+        pathname: "/assignment/[id]",
+        params: { id: "41" },
+      }),
     );
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/assignment/[id]",
-      params: { id: "41" },
-    });
-  });
-
-  it("does not re-mark a notification that is already read", async () => {
-    get.mockResolvedValue({
-      data: {
-        data: {
-          items: [{ ...unread, readAt: "2026-08-24T11:00:00.000Z" }],
-          nextCursor: null,
-          unreadCount: 0,
-        },
-      },
-    });
-
-    renderWithProviders(<NotificationsScreen />);
-    fireEvent.press(await screen.findByText("Essay one was reviewed"));
-
-    await waitFor(() => expect(mockPush).toHaveBeenCalled());
     expect(post).not.toHaveBeenCalled();
   });
 
   it("marks all read from its own explicit control", async () => {
     get.mockResolvedValue({
-      data: { data: { items: [unread], nextCursor: null, unreadCount: 1 } },
+      data: { data: { items: [unread], unreadCount: 1 } },
     });
     post.mockResolvedValue({ data: { data: { marked: 1 } } });
 
@@ -120,30 +102,27 @@ describe("NotificationsScreen", () => {
   });
 
   it("shows an empty state with no notifications", async () => {
-    get.mockResolvedValue({ data: { data: { items: [], nextCursor: null, unreadCount: 0 } } });
+    get.mockResolvedValue({ data: { data: { items: [], unreadCount: 0 } } });
 
     renderWithProviders(<NotificationsScreen />);
 
     expect(await screen.findByText("No notifications")).toBeTruthy();
   });
 
-  it("navigates without marking when the notification has no resolvable target", async () => {
+  it("does nothing on tap when the notification has no resolvable target", async () => {
     get.mockResolvedValue({
       data: {
         data: {
           items: [{ ...unread, link: "/super/unknown", target: null }],
-          nextCursor: null,
           unreadCount: 1,
         },
       },
     });
-    post.mockResolvedValue({ data: { data: { marked: 1 } } });
 
     renderWithProviders(<NotificationsScreen />);
     fireEvent.press(await screen.findByText("Essay one was reviewed"));
 
-    // Still marked read — the user has seen it — but there is nowhere to go.
-    await waitFor(() => expect(post).toHaveBeenCalled());
     expect(mockPush).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
   });
 });

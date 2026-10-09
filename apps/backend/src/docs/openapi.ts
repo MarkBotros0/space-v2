@@ -815,13 +815,16 @@ export const openApiDocument = {
           quizGraded: { type: "boolean" },
         },
       },
-      DeviceRegistration: {
+      NotificationPreferencesUpdate: {
         type: "object",
-        required: ["token", "platform"],
-        additionalProperties: false,
+        required: ["assignmentCreated", "submissionReviewed", "sessionRescheduled", "lowAttendanceFlag", "mentorFollowup"],
+        description: "v1's five settable keys. `quizGraded` is not settable (as in v1); if sent it is stripped and the stored value is left untouched.",
         properties: {
-          token: { type: "string", minLength: 1, maxLength: 200, description: "Expo push token. A credential; never log it." },
-          platform: { type: "string", enum: ["ios", "android"] },
+          assignmentCreated: { type: "boolean" },
+          submissionReviewed: { type: "boolean" },
+          sessionRescheduled: { type: "boolean" },
+          lowAttendanceFlag: { type: "boolean" },
+          mentorFollowup: { type: "boolean" },
         },
       },
       EngagementScore: {
@@ -888,13 +891,14 @@ export const openApiDocument = {
       },
       NoteSummary: {
         type: "object",
-        required: ["id", "body", "visibility", "followUpFlagged", "createdAt", "updatedAt", "edited", "authorId", "authorName", "authorRole", "seasonId", "seasonTitle", "canEdit"],
+        required: ["id", "body", "visibility", "followUpFlagged", "createdAt", "createdDayKey", "updatedAt", "edited", "authorId", "authorName", "authorRole", "seasonId", "seasonTitle", "canEdit"],
         properties: {
           id: { type: "integer" },
           body: { type: "string", description: "PLAIN TEXT, never HTML. The column holds v1's TipTap HTML; the API strips it on read." },
           visibility: { $ref: "#/components/schemas/NoteVisibility" },
           followUpFlagged: { type: "boolean" },
           createdAt: { type: "string", format: "date-time" },
+          createdDayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-timezone calendar day of createdAt (ruling X13; v1 rendered note dates on the server so every reader saw one date, 09-notes R90). Display this, not createdAt in the device zone." },
           updatedAt: { type: "string", format: "date-time" },
           edited: { type: "boolean", description: "Server-derived: updatedAt is more than a second after createdAt." },
           authorId: { type: "integer" },
@@ -1222,12 +1226,7 @@ export const openApiDocument = {
           name: { type: ["string", "null"] },
           email: { type: "string" },
           groupId: { type: ["integer", "null"], description: "This season's group, from SeasonEnrollment.groupId (C9)." },
-          groupName: { type: ["string", "null"] },
-          otherSeasonGroup: {
-            type: ["object", "null"],
-            description: "The student's current group in ANOTHER season. Assigning them here removes it (GroupStudent is globally unique).",
-            properties: { groupName: { type: "string" }, seasonCode: { type: "string" } },
-          },
+          groupName: { type: ["string", "null"], description: "A student whose only group is in another season reads as unassigned, as v1." },
         },
       },
       GroupAssignmentsRequest: {
@@ -1236,7 +1235,7 @@ export const openApiDocument = {
         properties: {
           assignments: {
             type: "array",
-            maxItems: 500,
+            maxItems: 2000,
             items: {
               type: "object",
               required: ["studentUserId", "groupId"],
@@ -1290,16 +1289,14 @@ export const openApiDocument = {
           description: { type: ["string", "null"], maxLength: 2000 },
           leaderIds: {
             type: "array",
-            maxItems: 20,
             items: { type: "integer" },
             description: "Must all be users with the LEADER role. Replaces the current set.",
           },
           studentIds: {
             type: "array",
-            maxItems: 500,
             items: { type: "integer" },
             description:
-              "Must all already be enrolled in the season. Replaces the current roster; a student dropped from the list keeps their enrolment and loses only the group pointer.",
+              "Must all be live users with the STUDENT role. As v1, a student not yet in the season is enrolled (ACTIVE) by the save; an existing enrolment keeps its status and history and only its group moves. Replaces the current roster; a student dropped from the list keeps their enrolment and loses only the group pointer.",
           },
         },
       },
@@ -1313,7 +1310,7 @@ export const openApiDocument = {
             type: "string",
             format: "email",
             description:
-              "Omitted entirely for a STUDENT caller. A student may read their own group, but v1 only ever put this payload on staff pages — showing every member of a group each other's address is not a change this API makes.",
+              "For a STUDENT caller, present on leaders (v1's student season view links leaders by email) and omitted on students — a student never sees a peer's address.",
           },
         },
       },
@@ -1421,11 +1418,11 @@ export const openApiDocument = {
           enrolledAt: { type: "string", format: "date-time" },
           completedAt: { type: ["string", "null"], format: "date-time" },
           droppedAt: { type: ["string", "null"], format: "date-time" },
-          dropReason: { type: ["string", "null"], description: "Always null for MENTOR and LEADER." },
+          dropReason: { type: ["string", "null"], description: "Null only in the `public` shape, which no caller receives today (every staff role gets `internal`, R71)." },
           attendancePct: {
             type: ["integer", "null"],
             description:
-              "Whole-number % of the season's past sessions (from the student's own enrolment date) marked PRESENT or LATE — the engagement formula, any enrolment status (REG-83). Staff only: null in the student's own view and for a season outside the caller's scope (an ADMIN's other seasons, a LEADER's other groups).",
+              "Whole-number % of the season's past sessions (from the student's own enrolment date) marked PRESENT or LATE — the engagement formula, any enrolment status (REG-83). Staff only: null in the student's own view.",
           },
         },
       },
@@ -1454,10 +1451,20 @@ export const openApiDocument = {
           seasonTitle: { type: "string" },
         },
       },
+      StudentDocumentItem: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          originalName: { type: "string" },
+          sizeBytes: { type: "integer" },
+          mimeType: { type: "string" },
+          uploadedAt: { type: "string", format: "date-time" },
+        },
+      },
       StudentDetail: {
         type: "object",
         description:
-          "Three role-shaped payloads share this envelope; only `profile` differs. **Fields withheld from a role are absent from the wire, not null.** `public` (MENTOR, LEADER): university, year, gifts, activeSeasonId/Title/Code. `private` (the student themselves): public + phone, dateOfBirth, spiritualBackground. `internal` (SUPER, ADMIN): private + notes. The subject never receives `notes`.",
+          "Three role-shaped payloads share this envelope; only `profile` differs. **Fields withheld from a role are absent from the wire, not null.** `internal` (every staff role — SUPER, ADMIN, MENTOR, LEADER — as v1's detail showed leaders and mentors the full profile, R71): private + notes. `private` (the student themselves): public + phone, dateOfBirth, spiritualBackground. `public`: university, year, gifts, activeSeasonId/Title/Code — kept in the contract, returned to no caller today. The subject never receives `notes`.",
         properties: {
           id: { type: "integer" },
           name: { type: "string" },
@@ -1468,7 +1475,7 @@ export const openApiDocument = {
             description: "Advisory current group (GroupStudent).",
             oneOf: [{ type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } }, { type: "null" }],
           },
-          enrollments: { type: "array", items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }, description: "`enrolledAt` descending. For a LEADER only the rows naming one of their groups." },
+          enrollments: { type: "array", items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }, description: "`enrolledAt` descending. Every row, for every admitted viewer (R71)." },
           profile: {
             type: "object",
             properties: {
@@ -1620,6 +1627,16 @@ export const openApiDocument = {
           id: { type: "integer" },
           title: { type: "string" },
           dueAt: { type: ["string", "null"], format: "date-time" },
+          dueOrgDay: {
+            type: ["string", "null"],
+            format: "date",
+            description: "Org-calendar day of `dueAt`; null when there is no due date.",
+          },
+          dueDistance: {
+            type: ["string", "null"],
+            description:
+              "How far off the deadline is while still ahead (\"3 days\", \"5 hours\") — v1's `formatDistanceToNowStrict`, derived server-side. Null when there is no due date or it has passed.",
+          },
           status: {
             oneOf: [
               { $ref: "#/components/schemas/SubmissionStatus" },
@@ -1750,7 +1767,7 @@ export const openApiDocument = {
             type: "array",
             items: { type: "integer" },
             default: [],
-            description: "Required non-empty when `isAllGroups` is false; every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
+            description: "May be empty when `isAllGroups` is false — the assignment then targets nobody, as v1 (R13). Every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
           },
         },
       },
@@ -2386,7 +2403,7 @@ export const openApiDocument = {
       get: {
         tags: ["Me"],
         summary: "The caller's past seasons (students and alumni)",
-        description: "Self only. A current student's active season is excluded; an alumnus sees every enrollment. Soft-deleted seasons are hidden.",
+        description: "Self only. A current student's active season is excluded; an alumnus sees every enrollment. Soft-deleted seasons are included, as v1 (02-seasons R38).",
         responses: {
           200: ok({ type: "object", properties: { seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonHistoryRow" } } } }, "Past seasons, most recent enrollment first."),
           401: errRef("Unauthorized"),
@@ -2399,7 +2416,7 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "The caller's current season — progress, group, next sessions (students)",
         responses: {
-          200: ok({ type: "object", properties: { season: { oneOf: [{ $ref: "#/components/schemas/MySeason" }, { type: "null" }] } } }, "Null when the student has no active season."),
+          200: ok({ type: "object", properties: { season: { oneOf: [{ $ref: "#/components/schemas/MySeason" }, { type: "null" }] } } }, "Null when the student has no active season. A soft-deleted active season is still returned, as v1 (02-seasons R27)."),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
         },
@@ -2410,7 +2427,7 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "The caller's absence budget, streak and past-session attendance (students)",
         responses: {
-          200: ok({ $ref: "#/components/schemas/MyAttendance" }, "Empty shape (season null) when there is no active season."),
+          200: ok({ $ref: "#/components/schemas/MyAttendance" }, "Empty shape (season null) when there is no active season. A soft-deleted active season still counts, as v1 (02-seasons R27)."),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
         },
@@ -2429,8 +2446,8 @@ export const openApiDocument = {
       },
       patch: {
         tags: ["Me"],
-        summary: "Edit the caller's own StudentProfile columns (students; alumni are read-only)",
-        description: "PATCH: absent = untouched, '' or null = cleared. Any key outside university/year/phone/dateOfBirth/spiritualBackground/gifts is refused 403 forbidden_field — name is PATCH /me, email is staff-only.",
+        summary: "Edit the caller's own name and StudentProfile columns (students; alumni are read-only)",
+        description: "PATCH: absent = untouched, '' or null = cleared. Accepts name (trimmed, 2–120, written to User.name in the same transaction) and university/year/phone/dateOfBirth/spiritualBackground/gifts, as v1's student form. `notes` and `activeSeasonId` are silently dropped and the rest saves (v1 R24). `email` — staff-only — and any other key is refused 403 forbidden_field.",
         requestBody: {
           required: true,
           content: {
@@ -2439,6 +2456,7 @@ export const openApiDocument = {
                 type: "object",
                 additionalProperties: false,
                 properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
                   university: { type: ["string", "null"], maxLength: 160 },
                   year: { type: ["string", "null"], maxLength: 40 },
                   phone: { type: ["string", "null"], maxLength: 60 },
@@ -2513,7 +2531,7 @@ export const openApiDocument = {
                 seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonListItem" } },
               },
             },
-            "Visible seasons, newest year first.",
+            "Visible seasons, ordered status ascending (DRAFT, ACTIVE, COMPLETED, ARCHIVED) then startDate descending, as v1.",
           ),
           401: errRef("Unauthorized"),
         },
@@ -2529,7 +2547,7 @@ export const openApiDocument = {
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
-          409: conflict("`code_taken` — the slugified code is in use (also returned for the unique-index race, D15; D15's generic `conflict` is deliberately more specific here)."),
+          409: conflict("`code_taken` — the slugified code is in use (also returned for the unique-index race, D15; D15's generic `conflict` is deliberately more specific here). As v1, the body carries `error.details.fieldErrors = { code: \"Already in use.\" }` beside the message \"A season with that code already exists.\""),
         },
       },
     },
@@ -2559,14 +2577,14 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: conflict("`forbidden` (not SUPER, not this season's ADMIN) or `forbidden_field` (ADMIN sent an identity field)."),
           404: errRef("NotFound"),
-          409: conflict("`code_taken`."),
+          409: conflict("`code_taken` (with `details.fieldErrors.code`)."),
         },
       },
       delete: {
         tags: ["Seasons"],
         summary: "Soft-delete a season",
         description:
-          "SUPER only. Refused with 409 `season_in_use` while the season has any enrollment or session — archive it instead (decision on spec 02 D4). On success clears every StudentProfile.activeSeasonId pointing at it, in the same transaction.",
+          "SUPER only. As v1, soft-deletes whatever the season contains and touches only the season row: StudentProfile.activeSeasonId pointers and SeasonAdmin rows are left as they are. Deleting twice is 404.",
         parameters: [idParam],
         responses: {
           200: ok({ type: "object", properties: { deleted: { type: "boolean" } } }, "Deleted."),
@@ -2574,7 +2592,6 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
-          409: conflict("`season_in_use`."),
         },
       },
     },
@@ -2583,7 +2600,7 @@ export const openApiDocument = {
         tags: ["Seasons"],
         summary: "Duplicate a season's structure",
         description:
-          "SUPER only. Creates a DRAFT season copying program, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is 404.",
+          "SUPER only. Creates a DRAFT season copying program, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). As v1, a soft-deleted source can be duplicated.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -2608,7 +2625,7 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
-          409: conflict("`code_taken`."),
+          409: conflict("`code_taken` (with `details.fieldErrors.code`)."),
         },
       },
     },
@@ -2652,7 +2669,7 @@ export const openApiDocument = {
         tags: ["Groups"],
         summary: "Bulk-assign students to this season's groups",
         description:
-          "Season-admin only; at most 500 rows, each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
+          "Season-admin only; at most 2000 rows (v1's cap; the writes are batched), each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
         parameters: [idParam],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GroupAssignmentsRequest" } } } },
         responses: {
@@ -2682,7 +2699,7 @@ export const openApiDocument = {
         tags: ["Groups"],
         summary: "Create a group in a season",
         description:
-          "Season-admin power. Refuses a duplicate name within the season — v1 has no such constraint and its CSV importer matches groups *by name*, so two groups sharing one silently misroute an import. A real constraint needs a migration; this is the check available now.",
+          "Season-admin power. As v1, two groups in one season may share a name (the importer refuses an ambiguous name instead). Picked students who are not yet in the season are enrolled (ACTIVE).",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -2700,7 +2717,7 @@ export const openApiDocument = {
           404: errRef("NotFound"),
           409: {
             description:
-              "`name_taken`, `invalid_leader` (a named leader lacks the LEADER role) or `not_enrolled` (a named student is not in this season).",
+              "`invalid_leader` (a named leader lacks the LEADER role) or `invalid_student` (a named student is not a live STUDENT user).",
             content: { "application/json": { schema: errorResponse } },
           },
         },
@@ -2840,6 +2857,33 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/groups/student-options": {
+      get: {
+        tags: ["Groups"],
+        summary: "Students a group form may pick from",
+        description:
+          "Season-admin (of any season) or SUPER only. Every live STUDENT user, name-ordered — v1's group form offered every student so an admin can enrol a new one while building a group; saving the form enrols them.",
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                students: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: { id: { type: "integer" }, name: { type: ["string", "null"] }, email: { type: "string" } },
+                  },
+                },
+              },
+            },
+            "Student users.",
+          ),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
     "/api/v1/groups/{id}/impact": {
       get: {
         tags: ["Groups"],
@@ -2912,7 +2956,7 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
           409: {
-            description: "`name_taken`, `invalid_leader` or `not_enrolled`.",
+            description: "`invalid_leader` or `invalid_student`.",
             content: { "application/json": { schema: errorResponse } },
           },
         },
@@ -3144,10 +3188,10 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Student list (active, alumni or dropped)",
         description:
-          "One endpoint serves all three list surfaces, selected by `status` (default `active`).\n\nScope is per role: SUPER and MENTOR read every student; ADMIN gets the students ever enrolled in their seasons; LEADER gets the students whose **enrollment** names one of their groups (C9 — never GroupStudent). `alumni` (graduationYear set) is refused with 403 `forbidden` to LEADER. `dropped` lists WITHDRAWN enrollments, not students (a student dropped from three seasons appears three times; rows carry `droppedEnrollment`) and is SUPER/ADMIN only — it hands out drop reasons, so MENTOR and LEADER get 403. STUDENT is refused on every surface.\n\nPagination is cursor-based: pass the last row's id (the enrollment id when `status=dropped`) as `cursor`; `nextCursor` is null on the last page. `total` is the whole population under the current filters, not the page size (D14). `q` matches name, email or university, case-insensitive.",
+          "One endpoint serves all three list surfaces, selected by `status` (default `active`).\n\nScope is per role: SUPER and MENTOR read every student; ADMIN gets the students ever enrolled in their seasons. LEADER has no students list, as v1 (R28) — 403 `forbidden` on every surface; leaders reach their students through My groups. `dropped` lists WITHDRAWN enrollments, not students (a student dropped from three seasons appears three times; rows carry `droppedEnrollment`) and is SUPER/ADMIN only — it hands out drop reasons, so MENTOR and LEADER get 403. STUDENT is refused on every surface.\n\nPagination is cursor-based: pass the last row's id (the enrollment id when `status=dropped`) as `cursor`; `nextCursor` is null on the last page. `total` is the whole population under the current filters, not the page size (D14). `q` matches name, email or university, case-insensitive.\n\n`alumni` returns every alumnus in one response (graduation year desc, then name), as v1 (R41): `q`, `cursor` and `limit` are ignored and `nextCursor` is always null.",
         parameters: [
           { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
-          { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
+          { name: "seasonId", in: "query", description: "The student's active season (`activeSeasonId`, the season the row shows), as v1's season filter (R35). For `status=dropped`, the dropped enrollment's season.", schema: { type: "integer", minimum: 1 } },
           { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`, the GroupStudent pointer) is this group; `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
           { name: "sort", in: "query", description: "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)", schema: { type: "string", enum: ["name", "university", "season", "group"] } },
           { name: "dir", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "asc" } },
@@ -3216,7 +3260,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "A student's attendance history (staff only)",
         description:
-          "v1's student record listed the 100 most recent attendance marks across seasons (REG-83). Staff only — STUDENT, the subject included, gets 403. Row scope follows the underlying gates: SUPER and MENTOR every season; ADMIN only seasons they administer; LEADER only seasons whose enrolment names one of their groups (C9). Newest session first. 403 before 404.",
+          "v1's student record listed the 100 most recent attendance marks across seasons (REG-83). Staff only — STUDENT, the subject included, gets 403. Any staff caller who passes the detail's row gate sees every season the student was enrolled in, as v1 (R73). Newest session first. 403 before 404.",
         parameters: [idParam],
         responses: {
           200: ok(
@@ -3235,7 +3279,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "A student's submissions (staff only)",
         description:
-          "v1's student record listed the student's 100 most recent submissions (REG-83). Same staff-only gate and row scope as the attendance history. Newest first; a DRAFT is never listed (the student's private work in progress, hidden from every reviewer surface). Link a row to `GET /submissions/{publicId}`.",
+          "v1's student record listed the student's 100 most recent submissions (REG-83). Same staff-only gate and row scope as the attendance history: every enrolled season. Newest first; DRAFT rows are included, as v1 (R77). Link a row to `GET /submissions/{publicId}`.",
         parameters: [idParam],
         responses: {
           200: ok(
@@ -3249,12 +3293,31 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/students/{id}/documents": {
+      get: {
+        tags: ["Students"],
+        summary: "A student's documents (SUPER/ADMIN, read-only)",
+        description:
+          "v1's Documents tab (R80): name, size, MIME type and upload time, newest first. SUPER and ADMIN only (ADMIN also needs the detail's row gate); every other role gets 403. No download link and no storage path. 403 before 404.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", properties: { documents: { type: "array", items: { $ref: "#/components/schemas/StudentDocumentItem" } } } },
+            "The documents.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
     "/api/v1/students/{id}": {
       get: {
         tags: ["Students"],
         summary: "Student detail, shaped by the caller's role",
         description:
-          "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9). Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nThe payload is narrowed per role, not just the access (C8): see `StudentDetail` for which profile fields exist on the wire for MENTOR/LEADER (phone, dateOfBirth, spiritualBackground, notes and per-row dropReason are absent) and why the subject never receives `notes`.",
+          "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9). Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nThe payload is shaped per role: every staff role gets the full profile including notes and drop reasons (as v1, R71); the subject never receives `notes`. See `StudentDetail`.",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/StudentDetail" }, "The student."),
@@ -3268,7 +3331,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Edit a student's profile",
         description:
-          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The subject may edit university, year, phone, dateOfBirth, spiritualBackground and gifts only (never `name` — that is PATCH /me — nor `email`, `notes` or `activeSeasonId`). ADMIN (of a season with an ACTIVE enrollment for the student) adds `name`, `email` and `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
+          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field`. The subject may edit name, university, year, phone, dateOfBirth, spiritualBackground and gifts; `email` is refused (staff-only); `notes` and `activeSeasonId` in a self-edit are silently dropped and the rest saves, as v1 (R24). ADMIN (of a season with an ACTIVE enrollment for the student) adds `name`, `email` and `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -3459,7 +3522,7 @@ export const openApiDocument = {
         tags: ["Notes"],
         summary: "Write a note about a student",
         description:
-          "Writer gate, independent of the read path: SUPER and MENTOR for any student; ADMIN if the student is enrolled in a season they administer; LEADER if the student's `SeasonEnrollment.groupId` is a group they lead; STUDENT never (including about themselves). `body` is **plain text in both directions**: the API escapes and paragraph-wraps it for storage (the column is still rendered raw by v1) and strips tags on read, so no live markup is ever stored or returned. `visibility` and `followUpFlagged` are immutable after creation. `authorUserId` always comes from the session. `seasonId` is optional; omitted, it defaults to the student's most recent ACTIVE enrollment, and when given it must be a season the student is enrolled in (`400 season_not_enrolled`). A flagged note notifies that season's admins (`MENTOR_FOLLOWUP`); the notification **deliberately carries no excerpt of the note** (title and link only), and a notification failure never fails the write.",
+          "Writer gate, independent of the read path: SUPER and MENTOR for any student; ADMIN only if the student's `StudentProfile.activeSeasonId` is a season they administer (none → 403, as v1); LEADER if the student's `SeasonEnrollment.groupId` is a group they lead; STUDENT never (including about themselves). `body` is **plain text in both directions**: the API escapes and paragraph-wraps it for storage (the column is still rendered raw by v1) and strips tags on read, so no live markup is ever stored or returned. `visibility` and `followUpFlagged` are immutable after creation. `authorUserId` always comes from the session. `seasonId` is optional; omitted, it defaults to the student's `StudentProfile.activeSeasonId` (null when unset, as v1), and when given it must be a season the student is enrolled in (`400 season_not_enrolled`). A flagged note notifies that season's admins (`MENTOR_FOLLOWUP`); the notification **deliberately carries no excerpt of the note** (title and link only), and a notification failure never fails the write.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -3539,26 +3602,19 @@ export const openApiDocument = {
         tags: ["Notifications"],
         summary: "The caller's notification inbox, newest first",
         description:
-          "Returns only the caller's own rows (the user id comes from the token, never a parameter). **Performs no write** — it never marks anything read, however often the client refetches (ruling C6); use `POST /notifications/read`. Ordered by id descending; `nextCursor` is the id of the last row of the page, or null at the end. `unreadCount` is a real count over all of the caller's unread rows, not a filter over the page. `target` is derived from the stored v1 link in one server-side function.",
-        parameters: [
-          { name: "cursor", in: "query", required: false, schema: { type: "integer", minimum: 1 }, description: "`nextCursor` of the previous page." },
-          { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
-          { name: "unreadOnly", in: "query", required: false, schema: { type: "string", enum: ["true", "false"], default: "false" } },
-        ],
+          "Returns only the caller's own rows (the user id comes from the token, never a parameter). **Performs no write** — it never marks anything read, however often the client refetches (ruling C6); use `POST /notifications/read`. One list of the newest 100 rows, createdAt descending (id descending as the tie-break), as v1 — no cursor, no paging and no read-state filter; the endpoint takes no query parameters. `unreadCount` is a real count over all of the caller's unread rows, not a filter over the page. `target` is derived from the stored v1 link in one server-side function.",
         responses: {
           200: ok(
             {
               type: "object",
-              required: ["items", "nextCursor", "unreadCount"],
+              required: ["items", "unreadCount"],
               properties: {
-                items: { type: "array", items: { $ref: "#/components/schemas/Notification" } },
-                nextCursor: { type: ["integer", "null"] },
+                items: { type: "array", maxItems: 100, items: { $ref: "#/components/schemas/Notification" } },
                 unreadCount: { type: "integer", minimum: 0 },
               },
             },
-            "One page of the inbox.",
+            "The newest 100 notifications.",
           ),
-          400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
         },
       },
@@ -3580,28 +3636,18 @@ export const openApiDocument = {
     "/api/v1/notifications/read": {
       post: {
         tags: ["Notifications"],
-        summary: "Mark notifications read (the explicit write)",
+        summary: "Mark all notifications read (the explicit write)",
         description:
-          "Body is exactly one of `{ ids: number[] }` (1–200) or `{ all: true }`; both together, an empty `ids`, or any other key (including `userId`) is `400 bad_request`. **`ids` is not an ownership assertion**: the update is scoped to the caller's own unread rows, so another user's id updates nothing and counts as zero. Idempotent — already-read rows are skipped and keep their original `readAt`; `marked` is the number of rows this call changed.",
+          "Body is exactly `{ all: true }` — mark-all is the only read write, as in v1 (opening a notification leaves it unread). Any other key (`ids`, `userId`, …) is `400 bad_request`. The update is scoped to the caller's own unread rows (the user id comes from the token). Idempotent — already-read rows are skipped and keep their original `readAt`; `marked` is the number of rows this call changed.",
         requestBody: {
           required: true,
           content: {
             "application/json": {
               schema: {
-                oneOf: [
-                  {
-                    type: "object",
-                    required: ["ids"],
-                    additionalProperties: false,
-                    properties: { ids: { type: "array", minItems: 1, maxItems: 200, items: { type: "integer", minimum: 1 } } },
-                  },
-                  {
-                    type: "object",
-                    required: ["all"],
-                    additionalProperties: false,
-                    properties: { all: { type: "boolean", enum: [true] } },
-                  },
-                ],
+                type: "object",
+                required: ["all"],
+                additionalProperties: false,
+                properties: { all: { type: "boolean", enum: [true] } },
               },
             },
           },
@@ -3621,7 +3667,7 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "Your notification preferences (all six)",
         description:
-          "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email now, push at cutover); the in-app inbox row is always written.",
+          "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. As in v1, one switch governs every channel: an opted-out user gets neither the in-app row nor the email.",
         responses: {
           200: ok(
             { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
@@ -3634,10 +3680,10 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "Replace your notification preferences",
         description:
-          "PUT, not PATCH: the body must carry all six keys, so a partial body is `400 bad_request`. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
+          "PUT, not PATCH: the body must carry v1's five settable keys, so a partial body is `400 bad_request`. `quizGraded` is not settable (as in v1): if sent it is stripped and the stored value stays. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
         requestBody: {
           required: true,
-          content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferences" } } },
+          content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferencesUpdate" } } },
         },
         responses: {
           200: ok(
@@ -3649,29 +3695,12 @@ export const openApiDocument = {
         },
       },
     },
-    "/api/v1/me/devices": {
-      post: {
-        tags: ["Me"],
-        summary: "Register this device for push (blocked on cutover)",
-        description:
-          "The request body is validated, then the endpoint answers `503 push_unavailable`: Expo push needs a device-token table, the database schema is frozen while v1 runs against it, and the table lands at cutover (see docs/superpowers/cutover/2026-08-24-notifications-push.md). The contract is fixed now so the client is built once; the client keeps the token locally and stops retrying this session.",
-        requestBody: {
-          required: true,
-          content: { "application/json": { schema: { $ref: "#/components/schemas/DeviceRegistration" } } },
-        },
-        responses: {
-          400: errRef("BadRequest"),
-          401: errRef("Unauthorized"),
-          503: conflict("`push_unavailable` — push registration is not available until the cutover migration lands."),
-        },
-      },
-    },
     "/api/v1/me/notes": {
       get: {
         tags: ["Notes"],
         summary: "Notes the caller wrote",
         description:
-          "Open to every authoring role (SUPER, ADMIN, LEADER, MENTOR); a STUDENT receives `403 forbidden`. Narrowed by author equality in the query. Optional `studentId` filters to one student. `body` is plain text. Cursor-paged, newest first. Rate-limited.",
+          "MENTOR only, as v1 (only MENTOR has a \"My notes\" page; 09-notes R44); every other role receives `403 forbidden`. Narrowed by author equality in the query. Optional `studentId` filters to one student. `body` is plain text. Cursor-paged, newest first. Rate-limited.",
         parameters: [
           { name: "studentId", in: "query", schema: { type: "integer", minimum: 1 } },
           { name: "cursor", in: "query", schema: { type: "string" } },
@@ -3690,6 +3719,36 @@ export const openApiDocument = {
             "A page of the caller's own notes.",
           ),
           400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          429: errRef("TooManyRequests"),
+        },
+      },
+    },
+    "/api/v1/me/notes/students": {
+      get: {
+        tags: ["Notes"],
+        summary: "The mentor note composer's student picker",
+        description:
+          "MENTOR only (`403 forbidden` otherwise), as v1's /mentor/notes page. Every non-deleted STUDENT — alumni included — ordered by name, as `{ id, name, email }` (v1 src/app/mentor/notes/page.tsx:27-31; 09-notes R45). A read with no side effects. Rate-limited with the other note reads.",
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              required: ["students"],
+              properties: {
+                students: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["id", "name", "email"],
+                    properties: { id: { type: "integer" }, name: { type: "string" }, email: { type: "string" } },
+                  },
+                },
+              },
+            },
+            "Every non-deleted student, by name.",
+          ),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           429: errRef("TooManyRequests"),
@@ -3745,7 +3804,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Create a session or weekly series",
         description:
-          "Season-admin power. `repeatWeeks` (1–26; v1 clamped silently, v2 refuses) creates that many sessions one calendar week apart **in the organisation timezone** (ORG_TIMEZONE), so the wall-clock time holds across DST; they share a fresh recurrenceGroupId. Creation lives here with `seasonId` in the body, not under /seasons/:id, so the season and session write workstreams never share a route file — do not move it.",
+          "Season-admin power. `repeatWeeks` (clamped silently to 1–26, absent = 1, as v1) creates that many sessions one calendar week apart **in the organisation timezone** (ORG_TIMEZONE), so the wall-clock time holds across DST; they share a fresh recurrenceGroupId. Creation lives here with `seasonId` in the body, not under /seasons/:id, so the season and session write workstreams never share a route file — do not move it.",
         requestBody: {
           required: true,
           content: {
@@ -3763,7 +3822,7 @@ export const openApiDocument = {
                   location: { type: ["string", "null"], maxLength: 200 },
                   youtubeUrl: { type: ["string", "null"], format: "uri" },
                   description: { type: ["string", "null"], maxLength: 2000 },
-                  repeatWeeks: { type: "integer", minimum: 1, maximum: 26, default: 1 },
+                  repeatWeeks: { type: "integer", default: 1, description: "Clamped to 1–26 (values outside are not refused)." },
                 },
               },
             },
@@ -3784,7 +3843,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Calendar sessions across seasons, windowed",
         description:
-          "Season set by role: SUPER all ACTIVE seasons (or any one live season via seasonId); ADMIN their seasons; LEADER every season they lead a group in; STUDENT/MENTOR 403. seasonId narrows within that set and is 403 outside it. Window [from, to) defaults to org-midnight today + 8 calendar weeks; one bound alone extends 8 weeks; span ≤ 120 days. checkInToken only on rows of seasons the caller administers.",
+          "Season set by role: SUPER all ACTIVE seasons (or any one live season via seasonId); ADMIN their seasons; LEADER every season they lead a group in; STUDENT/MENTOR 403. seasonId narrows within that set and is 403 outside it. The window is optional and uncapped, as v1's super calendar: no bounds returns every session of the scoped seasons; `from` alone is [from, ∞); `to` alone is (−∞, to); both is [from, to). Only an inverted window is 400. `from`/`to`/`fromDayKey`/`toDayKey` are null on an open side; `todayDayKey` is the org's today. checkInToken only on rows of seasons the caller administers.",
         parameters: [
           { name: "from", in: "query", schema: { type: "string", format: "date-time" } },
           { name: "to", in: "query", schema: { type: "string", format: "date-time" } },
@@ -3796,10 +3855,11 @@ export const openApiDocument = {
               type: "object",
               properties: {
                 sessions: { type: "array", items: { $ref: "#/components/schemas/SessionListItem" } },
-                from: { type: "string", format: "date-time" },
-                to: { type: "string", format: "date-time" },
-                fromDayKey: { type: "string" },
-                toDayKey: { type: "string" },
+                from: { type: ["string", "null"], format: "date-time" },
+                to: { type: ["string", "null"], format: "date-time" },
+                fromDayKey: { type: ["string", "null"] },
+                toDayKey: { type: ["string", "null"] },
+                todayDayKey: { type: "string" },
               },
             },
             "Sessions in the window.",
@@ -3975,7 +4035,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Mark attendance",
         description:
-          "Upserts every entry in one transaction. `lateMinutes` is stored only when `status` is LATE; any other status clears it, and an omitted `notes` clears the column.",
+          "Upserts every entry in one transaction. `lateMinutes` is stored only when `status` is LATE; any other status clears it, and an omitted `notes` clears the column. After the save the low-attendance flag runs (best effort) — except for `consoleOverride: true`, the check-in console's single-student override, which never flags, as v1.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -3986,6 +4046,7 @@ export const openApiDocument = {
                 required: ["entries"],
                 properties: {
                   entries: { type: "array", items: { $ref: "#/components/schemas/AttendanceEntry" } },
+                  consoleOverride: { type: "boolean", description: "The check-in console's override: exactly one entry, no low-attendance flag (v1 manualOverrideAction)." },
                 },
               },
             },
@@ -4097,7 +4158,7 @@ export const openApiDocument = {
         tags: ["Assignments"],
         summary: "Replace an assignment",
         description:
-          "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). Students newly targeted by the edit get ASSIGNMENT_CREATED (same text and link as create); students already targeted are not notified again. Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
+          "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). An edit notifies nobody — newly targeted students are added silently, as v1 (R66, R74). Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -4133,7 +4194,7 @@ export const openApiDocument = {
         tags: ["Assignments"],
         summary: "Who was given this assignment, and what they have done about it",
         description:
-          "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
+          "Season admins of the assignment's season and SUPER only, as v1; LEADER and MENTOR get 403. The rows carry every student's name and email.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/AssignmentTracker" }, "The tracker."),
@@ -4214,7 +4275,7 @@ export const openApiDocument = {
         tags: ["Submissions"],
         summary: "Record a verdict",
         description:
-          "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort (title `Feedback ready on \"<assignment>\"` as in v1; `<assignment> was returned for revision` when returned; no body) — a mail failure does not report the review as failed.",
+          "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\nOne action, as v1: it always sets `REVIEWED`, whatever the current status (a never-submitted DRAFT included — v1 has no status precondition). Nothing sets `RETURNED`; existing RETURNED rows are only read.\n\nThe student is notified, best-effort (title `Feedback ready on \"<assignment>\"` as in v1; no body) — a mail failure does not report the review as failed.",
         parameters: [{ name: "publicId", in: "path", required: true, schema: { type: "string" } }],
         requestBody: {
           required: true,
@@ -4225,7 +4286,6 @@ export const openApiDocument = {
                 required: ["feedback"],
                 properties: {
                   feedback: { type: "string", maxLength: 20000 },
-                  returnForRevision: { type: "boolean" },
                 },
               },
             },
@@ -4237,7 +4297,6 @@ export const openApiDocument = {
               type: "object",
               properties: {
                 reviewed: { type: "boolean" },
-                returnedForRevision: { type: "boolean" },
               },
             },
             "Recorded.",
@@ -4246,11 +4305,6 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
-          409: {
-            description:
-              "`not_submitted` — a DRAFT that was never submitted cannot be marked REVIEWED. It can still be returned for revision.",
-            content: { "application/json": { schema: errorResponse } },
-          },
         },
       },
     },

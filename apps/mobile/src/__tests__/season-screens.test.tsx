@@ -5,7 +5,11 @@ jest.mock("../lib/api-client", () => ({
 }));
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush, replace: mockReplace }) }));
+let mockParams: Record<string, string> = {};
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useLocalSearchParams: () => mockParams,
+}));
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
@@ -13,6 +17,8 @@ import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SeasonScreen from "../../app/(app)/season";
 import SeasonsScreen from "../../app/(app)/seasons/index";
+import SeasonsByProgramScreen from "../../app/(app)/seasons/program/[program]";
+import SeasonsByYearScreen from "../../app/(app)/seasons/year/[year]";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -41,6 +47,7 @@ const studentSession = makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 });
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = {};
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
@@ -55,11 +62,12 @@ describe("SeasonsScreen (SUPER)", () => {
     });
   });
 
-  it("lists seasons grouped by year with status badges", async () => {
+  // v1 parity 2026-10-09 (spec 02 R43): v1 seasons-list.tsx:112-123 groups by program.
+  it("lists seasons under their program heading with status badges", async () => {
     renderWithProviders(<SeasonsScreen />);
     expect(await screen.findByText("Spring 2027")).toBeTruthy();
-    expect(screen.getByText("2027")).toBeTruthy();
-    expect(screen.getByText("2026")).toBeTruthy();
+    expect(screen.getByText("TEST")).toBeTruthy();
+    expect(screen.getByText("2 years")).toBeTruthy();
     expect(screen.getByText("s8 · DRAFT")).toBeTruthy();
     expect(screen.getByText("s7 · ACTIVE")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
@@ -125,7 +133,16 @@ describe("SeasonsScreen (SUPER)", () => {
     post.mockRejectedValue(
       Object.assign(new Error("409"), {
         isAxiosError: true,
-        response: { status: 409, data: { error: { code: "code_taken", message: "A season with that code already exists." } } },
+        response: {
+          status: 409,
+          data: {
+            error: {
+              code: "code_taken",
+              message: "A season with that code already exists.",
+              details: { fieldErrors: { code: "Already in use." } },
+            },
+          },
+        },
       }),
     );
     renderWithProviders(<SeasonsScreen />);
@@ -149,15 +166,22 @@ describe("SeasonsScreen (SUPER)", () => {
       }),
     );
     expect(await screen.findByText("A season with that code already exists.")).toBeTruthy();
+    // v1 parity 2026-10-09 (spec 02 R5): v1's field error under the Code input.
+    expect(screen.getByLabelText("Code").props.accessibilityHint).toBe("Already in use.");
   });
 
-  it("deletes only on a second, confirming press", async () => {
+  // v1 parity 2026-10-09 (spec 02 R49): one confirm with v1's copy.
+  it("deletes after one confirm showing v1's copy", async () => {
     del.mockResolvedValue({ data: { data: { deleted: true } } });
     renderWithProviders(<SeasonsScreen />);
 
     fireEvent.press((await screen.findAllByText("Delete"))[0]);
     expect(del).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByText("Really delete?"));
+    expect(screen.getByText('Delete "Spring 2027"?')).toBeTruthy();
+    expect(
+      screen.getByText("The season will be hidden from lists. Existing groups, sessions, and attendance are preserved."),
+    ).toBeTruthy();
+    fireEvent.press(screen.getAllByText("Delete")[0]);
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/8"));
   });
 });
@@ -240,14 +264,64 @@ describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => 
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s8" } });
   });
 
-  it("filters by program with exact matching (v1 R44), client-side (D-16.5)", async () => {
+  // v1 parity 2026-10-09 (spec 02 R43, R45): program sections in localeCompare order,
+  // each heading opening the by-program screen; no filter chips.
+  it("groups by program alphabetically and opens a program's screen from its heading", async () => {
     renderWithProviders(<SeasonsScreen />);
     await screen.findByText("Spring 2027");
-    fireEvent.press(screen.getByText("GBV"));
-    expect(screen.queryByText("Spring 2027")).toBeNull();
+    expect(screen.queryByText("All programs")).toBeNull();
+    const headings = screen.getAllByText(/^(GBV|TEST)$/).map((n) => n.props.children);
+    expect(headings).toEqual(["GBV", "TEST"]);
+    fireEvent.press(screen.getByLabelText("GBV seasons"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/program/[program]", params: { program: "GBV" } });
+  });
+});
+
+describe("SUPER by-program and by-year screens (v1 parity 2026-10-09, spec 02 R44-R47)", () => {
+  beforeEach(() => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue({
+      data: { data: { seasons: [
+        { ...seasonRow(9, 2027, "ACTIVE", "GBV 2027"), program: "GBV" },
+        seasonRow(8, 2027, "DRAFT", "TEST 2027"),
+        seasonRow(7, 2026, "ACTIVE", "TEST 2026"),
+        { ...seasonRow(6, 2027, "ACTIVE", "gbv lower"), program: "gbv" },
+      ] } },
+    });
+  });
+
+  it("by-program matches the program exactly and lists year desc", async () => {
+    mockParams = { program: "TEST" };
+    renderWithProviders(<SeasonsByProgramScreen />);
+    expect(await screen.findByText("TEST 2027")).toBeTruthy();
+    const titles = screen.getAllByText(/^TEST 20\d\d$/).map((n) => n.props.children);
+    expect(titles).toEqual(["TEST 2027", "TEST 2026"]);
+    expect(screen.queryByText("GBV 2027")).toBeNull();
+  });
+
+  it("by-program is not found for a program with no seasons (exact match: GBV is not Gbv)", async () => {
+    mockParams = { program: "Gbv" };
+    renderWithProviders(<SeasonsByProgramScreen />);
+    expect(await screen.findByText("Not found")).toBeTruthy();
+  });
+
+  it("by-year regroups the year's seasons under program headings, program asc", async () => {
+    mockParams = { year: "2027" };
+    renderWithProviders(<SeasonsByYearScreen />);
+    expect(await screen.findByText("TEST 2027")).toBeTruthy();
     expect(screen.getByText("GBV 2027")).toBeTruthy();
-    fireEvent.press(screen.getByText("All programs"));
-    expect(screen.getByText("Spring 2027")).toBeTruthy();
-    expect(get).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("TEST 2026")).toBeNull();
+    const headings = screen.getAllByText(/^(GBV|gbv|TEST)$/).map((n) => n.props.children);
+    expect(headings).toEqual(["gbv", "GBV", "TEST"].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it("by-year is not found for a non-integer year or a year with no seasons", async () => {
+    mockParams = { year: "20x7" };
+    const first = renderWithProviders(<SeasonsByYearScreen />);
+    expect(await screen.findByText("Not found")).toBeTruthy();
+    first.unmount();
+    mockParams = { year: "1999" };
+    renderWithProviders(<SeasonsByYearScreen />);
+    expect(await screen.findByText("Not found")).toBeTruthy();
   });
 });

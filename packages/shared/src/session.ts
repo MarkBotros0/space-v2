@@ -139,8 +139,13 @@ function exactlyOneStart(
 export const createSessionRequestSchema = sessionWriteBase
   .extend({
     seasonId: z.number().int().positive(),
-    /** Weekly siblings sharing one recurrenceGroupId. v1 clamped to 26 silently; refusing is honest. */
-    repeatWeeks: z.number().int().min(1).max(26).default(1),
+    /** Weekly siblings sharing one recurrenceGroupId. Clamped to 1..26 silently, absent = 1, as v1
+     *  (session-actions.ts:53, recurrence.ts:10). v1 parity 2026-10-09: was min(1).max(26) → 400. */
+    repeatWeeks: z
+      .number()
+      .int()
+      .default(1)
+      .transform((n) => Math.max(1, Math.min(n, 26))),
   })
   .superRefine(exactlyOneStart);
 export type CreateSessionBody = z.output<typeof createSessionRequestSchema>;
@@ -194,9 +199,10 @@ export const sessionSeriesResponseSchema = z.object({
 });
 export type SessionSeries = z.infer<typeof sessionSeriesResponseSchema>;
 
-/** GET /api/v1/sessions window (D-16.7). */
-export const SESSION_RANGE_DEFAULT_WEEKS = 8;
-export const SESSION_RANGE_MAX_DAYS = 120;
+/**
+ * GET /api/v1/sessions window (D-16.7). v1 parity 2026-10-09 (spec 03 R75):
+ * optional and uncapped — no SESSION_RANGE_DEFAULT_WEEKS / SESSION_RANGE_MAX_DAYS.
+ */
 
 /** Parses `req.query` — every value arrives as a string. */
 export const sessionRangeQuerySchema = z.object({
@@ -207,12 +213,14 @@ export const sessionRangeQuerySchema = z.object({
 
 export const sessionRangeResponseSchema = z.object({
   sessions: z.array(sessionListItemSchema),
-  /** The effective window, half-open [from, to). Page with to=from / from=to. */
-  from: z.string(),
-  to: z.string(),
-  /** Org-calendar days of the first and last instant in the window (X13) — for the header. */
-  fromDayKey: isoDaySchema,
-  toDayKey: isoDaySchema,
+  /** The effective window, half-open [from, to); null on an open side (v1 parity 2026-10-09, R75). */
+  from: z.string().nullable(),
+  to: z.string().nullable(),
+  /** Org-calendar days of the first and last instant in the window (X13); null on an open side. */
+  fromDayKey: isoDaySchema.nullable(),
+  toDayKey: isoDaySchema.nullable(),
+  /** The org's today (C2) — the Upcoming view shows rows with dayKey >= this (v1 R98). */
+  todayDayKey: isoDaySchema,
 });
 export type SessionRange = z.infer<typeof sessionRangeResponseSchema>;
 

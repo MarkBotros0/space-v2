@@ -4,10 +4,10 @@ import bcrypt from "bcryptjs";
 // Relative, not "@space/shared" — the rootDir emit trap (see routes/auth.ts).
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
+  OWN_PROFILE_DROPPED_FIELDS,
   OWN_PROFILE_FIELDS,
   changePasswordRequestSchema,
-  deviceRegistrationSchema,
-  notificationPreferencesSchema,
+  notificationPreferencesUpdateSchema,
   updateOwnProfileInputSchema,
   updateProfileRequestSchema,
 } from "../../../../packages/shared/src/index";
@@ -179,10 +179,12 @@ meRouter.get("/profile", requireAuth, async (req, res) => {
 });
 
 /*
- * The student's own StudentProfile columns — and nothing else (Plan 11
- * Decision 1, spec 18 D2/D8). Name is PATCH /me; email is staff-only; notes
- * and activeSeasonId never (R23). Keys are checked RAW, before the schema,
- * so the refusal names the field instead of v1's silent drop (R24).
+ * The student's own name and StudentProfile columns (Plan 11 Decision 1;
+ * v1 `student-actions.ts:24,103-135`, 18-settings R38). `email` is
+ * staff-only (spec 18 D2/D8, REG-12 KEEP-FIX) and refused by name; `notes`
+ * and `activeSeasonId` are silently dropped and the rest saves, as v1
+ * (06-students R24; v1 parity 2026-10-09). Any other key is refused. Keys are
+ * checked RAW, before the schema, so the refusal names the field.
  */
 meRouter.patch("/profile", requireAuth, async (req, res) => {
   const user = requireUser(req);
@@ -193,12 +195,14 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
   if (typeof req.body !== "object" || req.body === null || Array.isArray(req.body)) {
     return apiError(res, "bad_request", "Invalid profile body.", 400);
   }
-  for (const key of Object.keys(req.body as Record<string, unknown>)) {
+  const rawBody: Record<string, unknown> = { ...(req.body as Record<string, unknown>) };
+  for (const key of OWN_PROFILE_DROPPED_FIELDS) delete rawBody[key];
+  for (const key of Object.keys(rawBody)) {
     if (!OWN_PROFILE_KEYS.has(key)) {
       return apiError(res, "forbidden_field", `Field "${key}" is not editable here.`, 403);
     }
   }
-  const parsed = updateOwnProfileInputSchema.safeParse(req.body);
+  const parsed = updateOwnProfileInputSchema.safeParse(rawBody);
   if (!parsed.success) {
     return apiError(res, "bad_request", parsed.error.issues[0]?.message ?? "Invalid profile body.", 400);
   }
@@ -220,11 +224,17 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
     gifts: body.gifts,
   };
   // Upsert, as Plan 7 does: v1's unconditional update threw for a STUDENT
-  // with no profile row (spec 06 §2).
-  await db.studentProfile.upsert({
-    where: { userId: user.userId },
-    create: { userId: user.userId, ...data },
-    update: data,
+  // with no profile row (spec 06 §2). The name write shares the transaction,
+  // as v1's user + profile update did.
+  await db.$transaction(async (tx) => {
+    if (body.name !== undefined) {
+      await tx.user.update({ where: { id: user.userId }, data: { name: body.name } });
+    }
+    await tx.studentProfile.upsert({
+      where: { userId: user.userId },
+      create: { userId: user.userId, ...data },
+      update: data,
+    });
   });
 
   const profile = await loadMyProfile(user.userId);
@@ -263,9 +273,9 @@ meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
 });
 
 /**
- * Replace them. PUT, not PATCH: the body carries all six keys, so there is no
- * way for a client that has not been updated to leave a new key at its default
- * without saying so.
+ * Replace them. PUT, not PATCH: the body carries v1's five settable keys
+ * (jpc-space settings-actions.ts:58-73). `quizGraded` is not settable in v1,
+ * so it is stripped and left untouched (R56, R57).
  *
  * The target row is never an input (R54) — `user.userId` comes from the
  * verified token, so one user cannot write another's preferences no matter
@@ -274,9 +284,9 @@ meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
 meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
-  const parsed = notificationPreferencesSchema.safeParse(req.body);
+  const parsed = notificationPreferencesUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
-    return apiError(res, "bad_request", "All six notification preferences are required.", 400);
+    return apiError(res, "bad_request", "All five notification preferences are required.", 400);
   }
 
   const preferences = await db.notificationPreference.upsert({
@@ -287,38 +297,6 @@ meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
   });
 
   return apiOk(res, { preferences });
-});
-
-/**
- * Register this device for push.
- *
- * BLOCKED ON CUTOVER. Expo push needs a device token per user, which is a new
- * table (`DeviceToken`: userId, token @unique, platform, lastSeenAt) — and the
- * schema is frozen while v1 runs against the same database (ruling C1). There
- * is no existing column that legitimately holds an Expo push token, and C1
- * forbids overloading one that means something else.
- *
- * So the contract ships and the write does not. The body is validated first,
- * so a client integration error surfaces as a 400 today rather than at
- * cutover; a well-formed registration gets 503 and the client keeps the token
- * locally.
- *
- * To finish this at cutover: apply the migration in
- * docs/superpowers/cutover/2026-08-24-notifications-push.md, then replace the
- * 503 below with the upsert described there (it maps the lowercase wire
- * platform to the DevicePlatform enum with DEVICE_PLATFORM_TO_DB). Nothing
- * else changes — not the route, not the request contract, not the client.
- */
-meRouter.post("/devices", requireAuth, async (req, res) => {
-  const parsed = deviceRegistrationSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid device registration.", 400);
-
-  return apiError(
-    res,
-    "push_unavailable",
-    "Push notifications aren't available yet.",
-    503,
-  );
 });
 
 /**

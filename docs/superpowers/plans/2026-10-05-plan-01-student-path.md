@@ -686,6 +686,8 @@ export default function AssignmentsScreen() {
 (The staff message deliberately does not contain "This screen isn't built
 yet." — the placeholder test's disk scan would otherwise count it.)
 
+> **v1 parity 2026-10-09:** row wording follows v1 `src/app/student/assignments/page.tsx:17-41,98-104`. Keep the server `isOverdue` flag (C4), but a not-started row that is overdue shows **"Due <org day, MMM d>"** in the error tone (badge + dot) instead of "Overdue", otherwise "Not started"; REVIEWED / SUBMITTED / DRAFT keep their labels. The due line reads "Due <MMM d, yyyy>" plus " · in N days" while not yet due — both the day text and the "in N days" distance must come from server-derived values (add them to the list contract), never device arithmetic. Change v2 `apps/mobile/app/(app)/assignments.tsx:16-24`; the Step 1 "marks an overdue assignment" test expects `Due Apr 1` (error tone) rather than `/Overdue/`. *(was "Overdue / Not started from the server flag")*
+
 - [ ] **Step 6: Delete the placeholder row**
 
 In `placeholder-screens.test.tsx` delete the `["assignments", AssignmentsScreen, "Assignments"]`
@@ -904,6 +906,8 @@ describe("AssignmentDetailScreen", () => {
 });
 ```
 
+> **v1 parity 2026-10-09:** only the REVIEWED fixture (and a SUBMITTED fixture with `isOverdue: true`) is read-only now; a SUBMITTED fixture before its due date renders the editor (v1 `src/components/assignments/student-submission-form.tsx:96`). Set the Task 3 SUBMITTED fixture's `isOverdue: true` to keep these assertions, and add a SUBMITTED-before-due case to Task 4's suite asserting "Your answer" is shown and Submit re-submits.
+
 (The REVIEWED and SUBMITTED fixtures are not editable, so Task 4's editor
 renders no `Input` for them and these assertions keep passing after Task 4.
 Task 4's editor fetches `GET /submissions/:publicId` for them; `get` returns
@@ -955,7 +959,10 @@ import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../
 
 function submissionStatusLine(sub: MySubmissionSummary): string {
   if (sub.status === "REVIEWED") return "Reviewed";
-  if (sub.status === "RETURNED") return "Returned for revision";
+  // v1 parity 2026-10-09 (was "Returned for revision"): nothing sets RETURNED any more
+  // (v1 submission-actions.ts:178-191); legacy rows read v1's badge label
+  // (submission-status-badge.tsx:23).
+  if (sub.status === "RETURNED") return "Returned";
   if (sub.status === "SUBMITTED") return sub.isLate ? "Submitted late" : "Submitted";
   return "Draft";
 }
@@ -1424,7 +1431,10 @@ function SubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summa
 
   // Local edits win once typing starts; before that, the server's text shows.
   const value = text ?? sub.text ?? "";
-  const editable = sub.status === "DRAFT" || sub.status === "RETURNED";
+  // v1 parity 2026-10-09 (was "DRAFT || RETURNED only"): v1 student-submission-form.tsx:96 —
+  // read-only only when REVIEWED, or SUBMITTED and past due (server isOverdue, C4).
+  // SUBMITTED work before the due date stays editable and re-submittable.
+  const editable = !(sub.status === "REVIEWED" || (sub.status === "SUBMITTED" && detail.isOverdue));
 
   return (
     <Card style={{ marginTop: theme.spacing.md }}>
@@ -1466,6 +1476,8 @@ function SubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summa
 
 (`Input`'s props extend `TextInputProps`, so `multiline`/`numberOfLines` pass
 through its rest spread — verified.)
+
+> **v1 parity 2026-10-09:** no "Start working" step — v1 shows the editor immediately (`src/app/student/assignments/[id]/page.tsx:40`). When `mySubmission` is null, render `SubmissionEditor` with empty text straight away; the first "Save draft" / "Submit" calls `PUT /submissions/by-assignment/:id` (idempotent upsert — GETs stay side-effect free, C6) and then `PATCH`, or `PUT` accepts `{ text, submit? }` so one request creates and writes. Change v2 `apps/mobile/app/(app)/assignment/[id]/index.tsx:39-50` (and `submissions.ts:342-398` if PUT takes a body). Rewrite the Step 1 "Start working" test as "first Save draft creates the submission, then saves" and Step 2's expected failure accordingly. Editable rule above follows v1 R14.
 
 - [ ] **Step 6: Run the new suite and everything it touches**
 
@@ -2021,7 +2033,7 @@ pointed at it. As a student account on staging:
 
 1. Log in → dashboard shows the assignments summary card; pull to refresh updates it.
 2. Assignments tab → list matches the season; statuses read correctly.
-3. Open an untouched assignment → "Start working" → editor appears with empty text.
+3. Open an untouched assignment → the editor is already there with empty text (no start button, v1 `src/app/student/assignments/[id]/page.tsx:40`). *(v1 parity 2026-10-09: was "press Start working first")*
 4. Type, "Save draft", kill the app, reopen → text survived (server round-trip).
 5. "Submit" → status flips to Submitted; list row updates without a manual refresh.
 6. An assignment with `maxFileSizeMb` set shows the attachments-unavailable note.
@@ -2068,3 +2080,20 @@ and any divergence from this plan discovered while implementing.
 
 Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
 - Header's execution-order line corrected to the authoritative order (17 runs after 7, not before 6).
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 07-assignments R48 | - | Not-started past-due row shows a red "Due MMM d" badge and dot; upcoming rows "Due MMM d, yyyy · in N days" (`src/app/student/assignments/page.tsx:17-41,98-104`) | `apps/mobile/app/(app)/assignments.tsx:16-24` ("Overdue" / "Not started") | Task 1 Step 5 parity note (and the Step 1 overdue test it names) |
+| 2 | 08-submissions R1 | - | Opening an assignment shows the editor at once; no start button (`src/app/student/assignments/[id]/page.tsx:40`) | `apps/mobile/app/(app)/assignment/[id]/index.tsx:39-50` ("Start working" card) | Task 4 Step 5 parity note; Task 7 manual check 3 |
+| 3 | 08-submissions R14 | - | Read-only only when REVIEWED, or SUBMITTED and past due; SUBMITTED before due stays editable (`src/components/assignments/student-submission-form.tsx:96`) | `apps/mobile/app/(app)/assignment/[id]/index.tsx:66` (`DRAFT \|\| RETURNED`) | Task 4 Step 5 `editable` line; Task 3 fixture note |
+| 4 | 08-submissions R21 (label half) | - | Nothing sets RETURNED; legacy rows show v1's "Returned" badge (`src/lib/submission-actions.ts:178-191`; `src/components/ui/submission-status-badge.tsx:23`) | `apps/mobile/app/(app)/assignment/[id]/index.tsx:29` (`submissionStatusLine`) | Task 3 Step 4 `submissionStatusLine` |
+
+**Awaiting owner (not changed):** none
+

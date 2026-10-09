@@ -4,6 +4,7 @@ import type { StyleProp, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "../theme";
+import { useScreenHeader } from "./ScreenHeader";
 
 export type ScreenEdge = "top" | "bottom" | "left" | "right";
 
@@ -63,6 +64,8 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  // The shell header (the notification bell, R36) — null outside (app).
+  const header = useScreenHeader();
 
   // One padding value per edge — the standard `spacing.md` padding (when
   // `padded`) plus that edge's safe-area inset (when the edge is included in
@@ -105,6 +108,7 @@ export function Screen({
           ) : undefined
         }
       >
+        {header}
         {children}
       </ScrollView>
     );
@@ -112,6 +116,7 @@ export function Screen({
 
   return (
     <View style={[baseStyle, paddingStyle, contentContainerStyle, style]}>
+      {header}
       {children}
     </View>
   );

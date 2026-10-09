@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Alert, Linking, Pressable, Switch, View } from "react-native";
 import {
   dateOnlyFromIso,
   type EnrollmentHistoryItem,
@@ -16,6 +16,7 @@ import {
   useDeleteStudent,
   useStudentAttendanceHistory,
   useStudentDetail,
+  useStudentDocuments,
   useStudentSubmissions,
   type StudentDetail,
 } from "../../../../src/hooks/use-students";
@@ -139,6 +140,40 @@ function StudentSubmissionsCard({ studentId, enabled }: { studentId: number; ena
   );
 }
 
+/**
+ * v1's read-only Documents tab (06-students R80, `student-detail.tsx:342-368`):
+ * SUPER and ADMIN only, name · type · size · upload date, newest first, no
+ * download link.
+ */
+function DocumentsCard({ studentId, enabled }: { studentId: number; enabled: boolean }) {
+  const theme = useTheme();
+  const { data, isPending, isError, refetch } = useStudentDocuments(studentId, enabled);
+  if (!enabled) return null;
+  return (
+    <Card style={{ marginTop: theme.spacing.md }}>
+      <Text variant="heading">Documents</Text>
+      {isPending ? (
+        <LoadingState />
+      ) : isError ? (
+        <ErrorState message="Couldn't load documents." onRetry={() => void refetch()} />
+      ) : data.documents.length === 0 ? (
+        <Text variant="body" color={theme.colors.neutral[600]}>
+          No documents
+        </Text>
+      ) : (
+        data.documents.map((d) => (
+          <View key={d.id} style={{ paddingVertical: theme.spacing.xs }}>
+            <Text variant="body">{d.originalName}</Text>
+            <Text variant="caption" color={theme.colors.neutral[600]}>
+              {`${d.mimeType} · ${(d.sizeBytes / 1024).toFixed(1)} KB · uploaded ${formatDate(d.uploadedAt)}`}
+            </Text>
+          </View>
+        ))
+      )}
+    </Card>
+  );
+}
+
 function EnrollmentRow({ item, onDrop }: { item: EnrollmentHistoryItem; onDrop: (() => void) | null }) {
   const theme = useTheme();
   return (
@@ -236,7 +271,8 @@ function NoteCard({ item }: { item: NoteSummary }) {
     <Card style={{ marginTop: theme.spacing.sm }}>
       <Text variant="body">{item.body}</Text>
       <Text variant="label" color={theme.colors.neutral[600]}>
-        {`${item.authorName} · ${formatDate(item.createdAt)}`}
+        {/* The server's org-day, so every reader sees one date, as v1 (R90). */}
+        {`${item.authorName} · ${formatDayKey(item.createdDayKey)}`}
       </Text>
       <Text variant="caption" color={theme.colors.neutral[600]}>
         {VISIBILITY_LABEL[item.visibility]}
@@ -266,6 +302,8 @@ function NoteComposer({ studentId }: { studentId: number }) {
   const theme = useTheme();
   const [body, setBody] = useState("");
   const [visibility, setVisibility] = useState<NoteVisibility>("LEADERS");
+  // v1's "Flag for admin follow-up" checkbox (note-form.tsx:29,75-98; R12).
+  const [followUp, setFollowUp] = useState(false);
   const create = useCreateNote(studentId);
 
   return (
@@ -296,16 +334,27 @@ function NoteComposer({ studentId }: { studentId: number }) {
           onPress={() => setVisibility(v)}
         />
       ))}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm }}>
+        <Switch
+          accessibilityLabel="Flag for admin follow-up"
+          value={followUp}
+          onValueChange={setFollowUp}
+        />
+        <Text variant="body">Flag for admin follow-up</Text>
+      </View>
       <Button
         title="Save note"
         loading={create.isPending}
         onPress={() => {
           if (body.trim().length < 2) return;
           create.mutate(
-            // followUpFlagged is sent explicitly rather than omitted so the
-            // request shape matches the contract's default exactly.
-            { body: body.trim(), visibility, followUpFlagged: false },
-            { onSuccess: () => setBody("") },
+            { body: body.trim(), visibility, followUpFlagged: followUp },
+            {
+              onSuccess: () => {
+                setBody("");
+                setFollowUp(false);
+              },
+            },
           );
         }}
       />
@@ -440,6 +489,26 @@ export default function StudentDetailScreen() {
                 </Text>
               ) : null}
 
+              {/* v1's Email and Call buttons (student-detail.tsx:79-86); Call only with a phone. */}
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
+                <Button
+                  title="Email"
+                  variant="secondary"
+                  onPress={() => void Linking.openURL(`mailto:${data.email}`)}
+                />
+                {"phone" in data.profile && data.profile.phone ? (
+                  <Button
+                    title="Call"
+                    variant="secondary"
+                    onPress={() => {
+                      if ("phone" in data.profile && data.profile.phone) {
+                        void Linking.openURL(`tel:${data.profile.phone}`);
+                      }
+                    }}
+                  />
+                ) : null}
+              </View>
+
               {actions.canEdit || actions.canGraduate || actions.canDelete ? (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
                   {actions.canEdit ? (
@@ -495,6 +564,7 @@ export default function StudentDetailScreen() {
               <AttendanceHistoryCard studentId={id} enabled={role !== null && role !== "STUDENT"} />
               <StudentSubmissionsCard studentId={id} enabled={role !== null && role !== "STUDENT"} />
               <NotesSection studentId={id} enabled={role !== null && role !== "STUDENT"} />
+              <DocumentsCard studentId={id} enabled={role === "SUPER" || role === "ADMIN"} />
 
               {actions.canGraduate ? (
                 <GraduateStudentSheet

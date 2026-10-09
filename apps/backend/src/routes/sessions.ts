@@ -32,8 +32,6 @@ import {
   deleteSessionRequestSchema,
   recurrenceScopeSchema,
   saveAttendanceRequestSchema,
-  SESSION_RANGE_DEFAULT_WEEKS,
-  SESSION_RANGE_MAX_DAYS,
   sessionRangeQuerySchema,
   updateSessionRequestSchema,
 } from "../../../../packages/shared/src/index";
@@ -210,9 +208,11 @@ sessionsRouter.post("/", async (req, res) => {
 
 /**
  * The multi-season calendar (Plan 6 D-16.7, G17). The season set comes from
- * the role (calendarScopeFor); the window is required in practice — v1's
- * super calendar was every session of every ACTIVE season, unbounded (spec
- * 03 R75). Day boundaries are org midnights (C2).
+ * the role (calendarScopeFor). v1 parity 2026-10-09 (spec 03 R75): the window
+ * is optional — no bounds returns every session of the scoped seasons,
+ * unbounded, as v1's super calendar (sessions-query.ts:64-81); one bound is
+ * open-ended. Only an inverted window is refused. Day boundaries are org
+ * midnights (C2).
  */
 sessionsRouter.get("/", async (req, res) => {
   const user = requireUser(req);
@@ -220,24 +220,10 @@ sessionsRouter.get("/", async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid calendar window.", 400);
   const q = parsed.data;
 
-  let from: Date;
-  let to: Date;
-  if (q.from && q.to) {
-    from = new Date(q.from);
-    to = new Date(q.to);
-  } else if (q.from) {
-    from = new Date(q.from);
-    to = addWeeksInOrgTime(from, SESSION_RANGE_DEFAULT_WEEKS);
-  } else if (q.to) {
-    to = new Date(q.to);
-    from = addWeeksInOrgTime(to, -SESSION_RANGE_DEFAULT_WEEKS);
-  } else {
-    from = orgWallClockToInstant(orgDayKey(new Date()), null);
-    to = addWeeksInOrgTime(from, SESSION_RANGE_DEFAULT_WEEKS);
-  }
-  const span = to.getTime() - from.getTime();
-  if (span <= 0 || span > SESSION_RANGE_MAX_DAYS * 86_400_000) {
-    return apiError(res, "bad_request", `The window must be positive and at most ${SESSION_RANGE_MAX_DAYS} days.`, 400);
+  const from = q.from ? new Date(q.from) : null;
+  const to = q.to ? new Date(q.to) : null;
+  if (from && to && to.getTime() <= from.getTime()) {
+    return apiError(res, "bad_request", "The window must be positive.", 400);
   }
 
   const scope = await calendarScopeFor(user, q.seasonId ?? null);
@@ -251,8 +237,9 @@ sessionsRouter.get("/", async (req, res) => {
     sessions,
     from,
     to,
-    fromDayKey: orgDayKey(from),
-    toDayKey: orgDayKey(new Date(to.getTime() - 1)),
+    fromDayKey: from ? orgDayKey(from) : null,
+    toDayKey: to ? orgDayKey(new Date(to.getTime() - 1)) : null,
+    todayDayKey: orgDayKey(new Date()),
   });
 });
 
@@ -524,10 +511,14 @@ sessionsRouter.post("/:id/attendance", async (req, res) => {
   );
 
   // The attendance rows are committed. A notification failure after that point
-  // must not tell the leader their marking failed (spec D6).
-  await bestEffort("notify:LOW_ATTENDANCE_FLAG", () =>
-    flagLowAttendance(sessionId, parsed.data.entries),
-  );
+  // must not tell the leader their marking failed (spec D6). v1 parity
+  // 2026-10-09 (spec 04 R33): the console's single-student override never
+  // flags (v1 attendance-actions.ts:193-232); the batch form does (R15).
+  if (!parsed.data.consoleOverride) {
+    await bestEffort("notify:LOW_ATTENDANCE_FLAG", () =>
+      flagLowAttendance(sessionId, parsed.data.entries),
+    );
+  }
 
   return apiOk(res, { saved: parsed.data.entries.length });
 });

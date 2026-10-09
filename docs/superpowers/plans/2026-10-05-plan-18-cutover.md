@@ -27,10 +27,12 @@ between each.
   coordinator triages. Nothing in Part 2 begins until the ledger is complete
   and the register (drops, deferrals, divergences) is signed by the user,
   because a rule discovered late is a migration discovered late.
-- **Part 2 — Migration thaw.** Fourteen migration folders (thirteen required,
-  one optional — M14) plus one optional data script (M17), each authored
-  **now**, each applied **only** in Part 3. M6 and M11 are withdrawn (see their
-  tasks). Authored means: written to `apps/backend/prisma/migrations-cutover/`,
+- **Part 2 — Migration thaw.** Four required migration folders (M1, M3, M12,
+  M13), each authored **now**, each applied **only** in Part 3.
+  M2, M4, M5 (its notification types, and its `pushEnabled` column), M7, M8, M9, M10, M14, M15, M16 and the M17 data
+  script are withdrawn — for v1 parity, and for M10 and `pushEnabled` because the owner will build push later on Firebase — and M6 and M11 were already withdrawn
+  (see their tasks) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "plus two held for the owner's push decision (M5 reduced to `pushEnabled`, M10)")* *(v1 parity 2026-10-09: was "fourteen folders, thirteen
+  required, one optional M14, plus optional M17")*. Authored means: written to `apps/backend/prisma/migrations-cutover/`,
   generated offline with `prisma migrate diff` between two schema *files* —
   never against the database — and rehearsed against a restored copy. Part 2
   also builds v2's **read-only mode** (Task 2.0b, merged to `main` and
@@ -82,6 +84,12 @@ Plan 18 is always last and consumes all of Plans 1–17:
 | 15 | D-17.10 `"L"` cell (M3 restores the number), D-17.18 export log line (register: stays a log line under C6) |
 | 16 | `GET /me/dashboard` (absence-budget tile moves with M3), page parity for all six dashboards |
 | 17 | `fixture-leak.test.ts`, `enrollStudentInSeason`, the `lower(email)` lookup (M14), the group importer (M1/M2) |
+
+After the v1-parity revision, the rows above that name M2, M4, M5's four
+types, M7, M8, M9, M14, M15, M16, M17 or the credential sweep are no longer
+consumed: those migrations are withdrawn *(v1 parity 2026-10-09: was "every
+row consumed")*. The rows that name M10 or Plan 13's cutover doc are not consumed
+either: M10 and M5's `pushEnabled` are withdrawn *(v1 parity 2026-10-09; owner decision 2026-10-10: was "held for the owner")*.
 
 ---
 
@@ -191,13 +199,11 @@ diff -r /home/mark/projects/JPC/jpc-space/prisma/migrations \
   lists `--from-schema`, `--to-schema`, `--from-config-datasource`,
   `--exit-code` and `--config`. If any is missing, stop and re-derive every
   command in Part 2 from the printed help — do not guess a flag.
-- [ ] **`docs/superpowers/cutover/2026-08-24-notifications-push.md` is
-  reconciled.** Plan 13 instructs its implementer to write the `DeviceToken` and
-  `Notification.entityType`/`entityId` migrations into that file. If it exists,
-  **M4 and M10 below are a reconciliation of it, not a second authoring** —
-  diff them, keep whichever is more correct, and delete the duplicate. If it
-  does not exist, author them here. A second `DeviceToken` migration is exactly
-  the drift this plan exists to close.
+- [ ] ~~**`docs/superpowers/cutover/2026-08-24-notifications-push.md` is
+  reconciled.**~~ — withdrawn: M10 and M4 are both withdrawn, so the doc has
+  nothing to reconcile. It exists on `main` (Plan 13's earlier Task 5) and is
+  deleted with Plan 13's push scaffolding (Plan 13 Revision 2026-10-09, row 7)
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "M10 below is a reconciliation of it, not a second authoring")*.
 - [ ] **A restorable copy of the production database exists and has been
   restored at least once**, into a separate database the team may destroy. Part
   2's rehearsal (Task 2.18) runs there. Nothing in Part 2 is credible without
@@ -214,7 +220,10 @@ Stated because each of these has been mistaken for cutover work before:
 - It is **not** a feature plan. No new screen or destination is built here.
   Part 2b changes only code a migration forces (a key that changes shape, a
   column that needs its writer) plus the smallest UI each new column needs to
-  be reachable (a preference toggle, a staff "Hide post" button). If the parity
+  be reachable — after the v1-parity revision, none
+  *(v1 parity 2026-10-09: was "a preference toggle, a staff Hide post button")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "(the push master switch, if the owner grants push)")*.
+  Task 2b.P is the one exception: v1-parity fixes that no other plan owns. If the parity
   audit finds a missing screen, that is a finding and a follow-up plan, not a
   task appended to this one. Plans 5, 6, 10, 11 and 16 exist precisely because the
   2026-10-05 coverage audit found 37 such gaps; Task 1.6 proves they closed.
@@ -685,8 +694,8 @@ super/seasons	(app)/seasons/index.tsx	PLAN	P4 T3; P6 T5 (move)
 super/seasons/[code]	(app)/seasons/[code]/index.tsx	PLAN	P6 T6
 super/seasons/[code]/edit	(app)/seasons/[code]/edit.tsx	PLAN	P6 T6 (identity + status + delete)
 super/seasons/new	(app)/seasons/index.tsx	PLAN	P4 T3 (inline "New season" form)
-super/seasons/program/[program]	(app)/seasons/index.tsx	PLAN	P6 T6 (program filter) +REG-54
-super/seasons/year/[year]	(app)/seasons/index.tsx	PLAN	P4 T3 (year grouping) +REG-54
+super/seasons/program/[program]	(app)/seasons/program/[program].tsx	PLAN	P6 T6 (v1 parity: by-program screen, not-found when empty)
+super/seasons/year/[year]	(app)/seasons/year/[year].tsx	PLAN	P4 T3 (v1 parity: by-year screen, non-integer year not-found)
 super/settings	(app)/settings.tsx	PLAN	P9 T6
 super/students	(app)/students/index.tsx	PLAN	P7 T6
 super/students/alumni	(app)/students/alumni.tsx	PLAN	P7 T6
@@ -701,6 +710,13 @@ super/users/new	(app)/users/new.tsx	PLAN	P10 T9 +REG-25
 ```
 
   The block is 104 data rows; Step 3 counts them.
+
+  The two `super/seasons/program|year` rows map to their own SUPER screens, as
+  v1's pages do (`app/super/seasons/program/[program]/page.tsx:40`,
+  `app/super/seasons/year/[year]/page.tsx:23-24,41`), and `/seasons` groups by
+  program heading as v1's `components/seasons/seasons-list.tsx:112-123`
+  *(v1 parity 2026-10-09: was "both rows → `(app)/seasons/index.tsx` filter and
+  year grouping, +REG-54")*. REG-54 is cancelled; Plans 4 and 6 own the screens.
 
 - [ ] **Step 3: Check the file against the tree and the register.** Run after
   every plan has merged (this is a check of built code, not of plans):
@@ -737,15 +753,25 @@ not 'add the column'. It is: correct what can be corrected inside the current
 schema, and record the rest as a cutover task."* This is where those records
 are cashed.
 
-**The set, after the 2026-10-05 re-sync against the written plans.** Fourteen
-migration folders — thirteen required (M1–M5, M7–M10, M12, M13, M15, M16) and
-one optional (M14) — plus one optional data script (M17). Two are withdrawn and
-keep their numbers so every cross-reference stays valid: **M6** (season
+**The set, after the 2026-10-09 v1-parity revision.** Four required migration
+folders — M1 (per-season `GroupStudent`, C9 data loss), M3 (historic lateness
+recomputed from the session start, C3), M12 (v1 plaintext invite codes
+voided) and M13 (`sessionsValidFrom`, C7). There is no `optional/` set any more:
+M5's `pushEnabled` and M10 (`DeviceToken`) were held for the owner's push
+decision and are withdrawn — the owner will build push later on Firebase
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "plus two held for the owner's push decision in `optional/`")*.
+Every other migration added behaviour v1 never had and is
+withdrawn in place, keeping its number: M2, M4, M5's four notification types,
+M7, M8, M9, M14, M15, M16 and the M17 data script (each task below says what v1
+does instead) *(v1 parity 2026-10-09: was "thirteen required M1–M5, M7–M10,
+M12, M13, M15, M16; optional M14; optional M17")*. Two were already withdrawn
+and keep their numbers so every cross-reference stays valid: **M6** (season
 timezone: no consumer — C2 keeps one organisation zone, register REG-53) and
 **M11** (`ImportBatch`: Plan 17 D-16.4 holds the preview client-side and
 re-derives every fact at commit, so there is no server store to replace —
-register REG-47; the import *audit* half is M9's `IMPORT` action). Every other
-migration names the Part 2b task that gives it a writer and a reader.
+register REG-47; the import *audit* half was M9's `IMPORT` action, now
+withdrawn with M9). Every remaining migration names the Part 2b task that gives
+it a writer and a reader.
 
 **Every one is authored now and applied only in Part 3.**
 Authoring means writing SQL to `apps/backend/prisma/migrations-cutover/` and
@@ -759,9 +785,9 @@ why C1 exists.
 **Files** (all on the `cutover-code` branch unless marked *main*):
 - Modify: `apps/backend/prisma/schema.prisma` — **on `cutover-code` only**; `main`'s copy stays frozen until R11
 - Create: `apps/backend/prisma.cutover.config.ts` (Prisma CLI config — cutover only)
-- Create: `apps/backend/prisma/migrations-cutover/required/` and `apps/backend/prisma/migrations-cutover/optional/`
+- Create: `apps/backend/prisma/migrations-cutover/required/` *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and `…/optional/`" — no optional migration remains)*
 - Create: `apps/backend/prisma/migrations-cutover/README.md`
-- Create: `apps/backend/prisma/CONSTRAINTS.md`
+- ~~Create: `apps/backend/prisma/CONSTRAINTS.md`~~ — not needed: only M7 and M14 added Prisma-invisible objects and both are withdrawn *(v1 parity 2026-10-09: was "Create CONSTRAINTS.md")*
 - Modify: `CLAUDE.md` (one line under "Hard constraints")
 - Create: `docs/superpowers/audits/2026-cutover/cutover-code.md` (*main*; branch SHA log)
 
@@ -857,17 +883,20 @@ npx prisma migrate diff \
 - [ ] **Step 4: Transactions are explicit.** Prisma 7 does not wrap a
   `migration.sql` in a transaction of its own. Every folder below whose task
   says "atomic" begins with `BEGIN;` and ends with `COMMIT;`, so a failure
-  half-way leaves nothing applied (Task 2.18 Step 6 proves it). M5 is the
-  exception: `ALTER TYPE … ADD VALUE` is kept alone in its folder with no
-  explicit transaction (Task 2.5).
+  half-way leaves nothing applied (Task 2.18 Step 6 proves it). There is no
+  exception any more: M5 is withdrawn entirely (Task 2.5)
+  *(v1 parity 2026-10-09: was "M5 is the exception, no explicit transaction")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "its remaining `pushEnabled` column is an ordinary atomic folder")*.
 
 - [ ] **Step 5: Backup copies live in their own schema.** Every "keep a copy
   first" step in this plan writes to a Postgres schema named `cutover_backup`,
   never to `public`. Prisma reads only `public`, so the copies never appear as
   drift and `migrate diff` never proposes dropping them. Each step that writes
-  one (M14's `user_email`, M17's three HTML copies) starts with
-  `CREATE SCHEMA IF NOT EXISTS cutover_backup;`. The schema is dropped one
-  release after cutover, after the user confirms (register REG-69).
+  one starts with `CREATE SCHEMA IF NOT EXISTS cutover_backup;`. After the
+  v1-parity revision no remaining migration writes one (M14's `user_email` and
+  M17's three HTML copies are withdrawn; M3 keeps its old values in
+  `lateMinutesLegacy`), so the rule only binds a future copy *(v1 parity
+  2026-10-09: was "M14's user_email, M17's three HTML copies")*.
 
 - [ ] **Step 6: Write `migrations-cutover/README.md`** stating, in the file
   itself so nobody has to find this plan:
@@ -875,49 +904,54 @@ npx prisma migrate diff \
   > These migrations are **not applied by any tooling**. Prisma does not read
   > this directory. `required/` is moved into `prisma/migrations/` by hand,
   > once, by the operator, inside the cutover window, after v1 has stopped
-  > writing and a backup has been verified. `optional/` is moved only if the
-  > user approved that migration at the go/no-go gate. Do not move either
+  > writing and a backup has been verified. Do not move it
   > early. Do not run `prisma migrate dev`, `prisma db push` or
   > `prisma migrate reset` against the shared database at any time.
 
-- [ ] **Step 7: Write `prisma/CONSTRAINTS.md`.** Prisma's schema language
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: the README's `optional/` sentence is withdrawn — was "`optional/` is moved only if the user
+  approved that migration at the go/no-go gate. Do not move either early.")*
+
+- [ ] **Step 7: No `prisma/CONSTRAINTS.md`.** Prisma's schema language
   cannot express `CHECK` constraints or partial/functional indexes, and
-  `prisma migrate diff` will not recreate them. Two migrations below add such
-  objects: M7 (`JpcEvent_season_scope_ck`) and, if applied, M14
-  (`User_email_lower_active_key`). Each is recorded in this file with its exact
-  SQL, so the next person to author a migration knows it exists and does not
-  drop it by regenerating from the datamodel. This is decision D-13.9.
+  `prisma migrate diff` will not recreate them. Only M7
+  (`JpcEvent_season_scope_ck`) and M14 (`User_email_lower_active_key`) added
+  such objects, and both are withdrawn, so no remaining migration creates one
+  and the file is not written (D-13.9 withdrawn) *(v1 parity 2026-10-09: was
+  "write CONSTRAINTS.md listing M7's CHECK and M14's index")*.
+
+> **v1 parity 2026-10-09:** `cutover-code` already carries this file (commit
+> `c917f60`, `apps/backend/prisma/CONSTRAINTS.md`, listing the two planned
+> entries). Delete it on the branch.
 
 - [ ] **Step 8: Number and place the folders** — the timestamps fix the apply
-  order, and the optional migration sorts **last** so leaving it out never
-  leaves a gap that a later `migrate deploy` would fill out of order:
+  order:
 
 ```text
 migrations-cutover/
   README.md
   required/
     20261101000001_m1_group_student_per_season/migration.sql   (+ rollback.sql)
-    20261101000002_m2_group_name_unique/migration.sql          (+ rollback.sql)
-    20261101000003_m3_late_basis/migration.sql                 (+ rollback.sql)
-    20261101000004_m4_notification_entity/migration.sql        (+ rollback.sql)
-    20261101000005_m5_notification_types/migration.sql         (forward-only)
-    20261101000007_m7_jpc_event_integrity/migration.sql        (+ rollback.sql)
-    20261101000008_m8_note_soft_delete/migration.sql           (+ rollback.sql)
-    20261101000009_m9_audit_log/migration.sql                  (+ rollback.sql)
-    20261101000010_m10_device_token/migration.sql              (+ rollback.sql)
-    20261101000012_m12_credential_hygiene/migration.sql        (+ rollback.sql)
+    20261101000003_m3_late_recompute/migration.sql             (+ rollback.sql)
+    20261101000012_m12_void_v1_invites/migration.sql           (one-way data step; no rollback.sql)
     20261101000013_m13_sessions_valid_from/migration.sql       (+ rollback.sql)
-    20261101000015_m15_quiz_video_integrity/migration.sql      (+ rollback.sql)
-    20261101000016_m16_forum_moderation/migration.sql          (+ rollback.sql)
-  optional/
-    20261101000099_m14_email_case_and_release/migration.sql    (+ rollback.sql)
-apps/backend/scripts/m17-normalise.ts                          (optional data script, R12)
 ```
 
-  Order matters: M1 precedes every producer that writes `GroupStudent`; M4
-  precedes M5 (the new types' producers write `entityType`); M12 precedes M14
-  (both touch credential/identity rows). The `06` and `11` slots stay empty
-  (withdrawn).
+  Order matters: M1 precedes every producer that writes `GroupStudent`. The
+  `02`, `04`, `05`, `06`, `07`, `08`, `09`, `10`, `11`, `14`, `15`, `16`, `97`,
+  `98` and `99` slots stay empty (withdrawn), and there is no
+  `scripts/m17-normalise.ts`
+  *(v1 parity 2026-10-09: was "thirteen required folders, optional M14, the
+  M17 script; M4 precedes M5; M12 precedes M14")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "optional/ holding 97_m5_push_enabled and 98_m10_device_token; M5 precedes M10")*.
+
+> **v1 parity 2026-10-09:** `cutover-code` already holds `required/…m2_group_name_unique`
+> (commit `18941ab`) and a WIP `required/20261101000003_m3_late_basis` (commit
+> `4d47c9d`). Revert `18941ab` (Task 2.2) and rework `4d47c9d` as Task 2.3 /
+> Task 2b.3 now describe (folder renamed `m3_late_recompute`).
+
+> **v1 parity 2026-10-09; owner decision 2026-10-10:** `cutover-code` also holds `apps/backend/prisma/migrations-cutover/optional/.gitkeep`
+> and the README's `optional/` sentence. Delete both on the branch; no M5 or M10 folder was ever
+> committed there.
 
 ### Task 2.0b: v2 read-only mode (merged to `main` and deployed before R1)
 
@@ -1366,93 +1400,33 @@ writer; the Plan 6 test that pinned the old cross-season move flips).
 
 ---
 
-### Task 2.2 — M2: group names are unique within a season
+### Task 2.2 — M2: group names are unique within a season — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Unfreezes:** `05-groups.md` §10 item 6 (`:804-814`, R15); Plan 17 deferral
-#5; Plan 6's deferral list ("`(seasonId, lower(name))` uniqueness on
-`Group`"). Two groups called "Alpha" in one season are legal in the database
-today, and v1's CSV importer matches by lowercased trimmed name into a `Map` —
-so with duplicates the last group wins silently and half a spreadsheet lands in
-the wrong group.
+v1 accepts any group name, duplicates included and case-sensitive: the name is
+checked only for length (`jpc-space/src/lib/group-actions.ts:17`, written as
+given at `:44` and `:105`), and `Group` has no unique on `name`. Its group
+importer matches by lowercased trimmed name into a `Map`
+(`src/lib/group-import.ts:59,89`), so with duplicates the last group wins
+silently. That silent pick is the only defect, and it lives in the importer,
+not in the table: Plan 17 fixes it without schema by refusing a file row whose
+group name matches more than one group in the season ("ambiguous group name";
+Plan 17 D-16.19.1, revised there for v1 parity). So M2 is withdrawn: no
+`@@unique([seasonId, name])`, no rename of existing duplicates to `Name #id`,
+no R2 duplicates report, and Task 2b.2's case-insensitive check is withdrawn
+with it (D-13.10 withdrawn; REG-64 cancelled) *(v1 parity 2026-10-09: was
+"exact-match DB unique + case-insensitive 409 name_taken, duplicates renamed")*.
 
-**What v2 already does (read from `main`, not assumed):**
-`validateGroupWrite` (`apps/backend/src/lib/queries/groups.ts:120-140`, used
-by `POST /seasons/:id/groups` and `PATCH /groups/:id`) refuses an
-**exact-match** duplicate with `409 name_taken`
-(`integration/groups-routes.test.ts:224`). It is **case-sensitive** today
-(`name: input.name`), so "Alpha" and "alpha" both pass; Plan 17's group
-importer detects case-insensitive collisions in the file (D-16.19.1). There is
-no `group_name_taken` code anywhere — the earlier draft of this task invented
-it.
-
-**Prisma model change:** `@@unique([seasonId, name])` on `Group`.
-
-**Why exact-match and not case-insensitive:** the spec asks for case-insensitive
-uniqueness. Postgres can only express that as a functional unique index on
-`lower(btrim(name))`, which Prisma cannot model and which
-`prisma migrate diff` would silently propose dropping the next time someone
-regenerates from the datamodel. **Decision D-13.10:** the database carries the
-exact-match constraint (modellable, drift-free) and case-insensitivity lives in
-the endpoint — which Task 2b.2 makes true by switching `validateGroupWrite` to
-a case- and whitespace-insensitive comparison. Two layers, neither of them a
-liability.
-
-**DDL and repair:**
-
-```sql
--- (a) Find the offenders FIRST — this one has real violations today.
---     Run at R2, not in the window. NOT part of migration.sql.
-SELECT "seasonId", lower(btrim("name")) AS norm, count(*) AS n,
-       array_agg("id" ORDER BY "id") AS ids
-  FROM "Group" GROUP BY 1,2 HAVING count(*) > 1;
-```
-
-`migration.sql` — atomic:
-
-```sql
-BEGIN;
-
--- (b) Repair: the lowest id keeps the name; the rest are suffixed with their
---     id so the rename is reversible and obviously machine-made.
-UPDATE "Group" g SET "name" = g."name" || ' #' || g."id"
- WHERE EXISTS (SELECT 1 FROM "Group" g2
-                WHERE g2."seasonId" = g."seasonId"
-                  AND lower(btrim(g2."name")) = lower(btrim(g."name"))
-                  AND g2."id" < g."id");
-
--- (c) The constraint — a unique INDEX, as Prisma generates @@unique.
-CREATE UNIQUE INDEX "Group_seasonId_name_key" ON "Group" ("seasonId", "name");
-
-COMMIT;
-```
-
-The repair (b) renames case/whitespace variants too, not only exact
-duplicates, so the endpoint's case-insensitive rule (Task 2b.2) holds for every
-existing row, not just new ones.
-
-**Rows that violate today:** duplicates almost certainly exist — v1 has no
-check of any kind. The (a) query is run at R2 and its output goes to
-`M2-duplicates.tsv`. **[USER] renames them by hand if any of them are
-meaningful** (two real groups that happen to share a name need two real names,
-not `Alpha` and `Alpha #7`); step (b) is the fallback for the ones nobody
-cares about. A machine-generated group name shown to a leader is worse than the
-duplicate was.
-
-**Verification:** `(a)` returns zero rows; `groups-routes.test.ts`'s
-`409 name_taken` case still passes, and Task 2b.2's new case-variant case
-passes; a manual insert of a duplicate name on the rehearsal copy is rejected
-by the database (`23505`) and not merely by the endpoint.
-
-**Rollback:** `DROP INDEX "Group_seasonId_name_key";`
-The renames are **not** rolled back automatically — the suffix `' #' || id` is
-unambiguous, so a reverse `UPDATE` stripping `#<id>` from the tail is recorded
-in the migration folder as `rollback.sql`.
-
-**Code that changes with it:** Task 2b.2.
+v2's existing exact-match `409 name_taken` in `validateGroupWrite`
+(`apps/backend/src/lib/queries/groups.ts:129-139`) is itself a v1 divergence
+(spec 05 R15) and is removed on `main` by Task 2b.P Step 6. `cutover-code`'s
+M2 commit (`18941ab`) is reverted. The folder slot `20261101000002` stays
+empty.
 
 ---
 
-### Task 2.3 — M3: lateness gets a basis and a threshold
+### Task 2.3 — M3: historic lateness is recomputed from the session start
+
+*(v1 parity 2026-10-09: was "M3: lateness gets a basis and a threshold")*
 
 **Unfreezes:** C3 (`_DECISIONS.md:51-69`), `04-attendance.md` D1 (`:571-595`,
 R63/R64/R88/R89) and D2 (`:597-612`). v1 computes `lateMinutes` as minutes
@@ -1464,26 +1438,25 @@ opens twenty minutes late forgives everybody. v2 measures from
 the same column while both systems run. C3 accepts that deliberately and books
 the correction here.
 
-**The spec/ruling conflict, stated (D-13.6):** `04-attendance.md:589-595`
-recommends a hard-coded **15-minute grace** in the interim. C3 rules the
-threshold is **zero** until the column exists. `_DECISIONS.md` wins. The column
-this migration adds defaults to `0`, matching what v2 has been writing; raising
-it to 15 is a **product decision the user makes after cutover**, not a default
-this migration smuggles in.
+**No threshold column, no basis column.** v1 has no grace period: one minute
+late is `LATE` (`jpc-space/src/lib/attendance-actions.ts:152`,
+`minutesLate > 0 ? LATE : PRESENT`), and v1's `Attendance` carries no
+provenance for `lateMinutes` (`prisma/schema.prisma:440-456`). C3 fixes the
+threshold at zero, which *is* v1's rule, so a `Season.lateThresholdMinutes`
+column would be a new capability with no v1 counterpart, and after the
+recompute every checked-in row is one series, so nothing needs a `LateBasis`
+label. Both are withdrawn; check-in stays as Plan 11 Task 2b built it
+(`startsAt`, `LATE` iff elapsed minutes > 0). D-13.6's spec/ruling conflict
+(spec 04's 15-minute grace vs C3's zero) is settled by v1: zero, with no
+column to raise it *(v1 parity 2026-10-09: was "Season.lateThresholdMinutes
+default 0, LateBasis enum + Attendance.lateBasis")*.
 
 **Prisma model change:**
 
 ```prisma
-enum LateBasis { SESSION_START MANUAL UNKNOWN }
-
-model Season {
-  lateThresholdMinutes Int  @default(0)   // NEW — C3's threshold, zero by ruling
-}
-
 model Attendance {
   lateMinutes       Int?
   lateMinutesLegacy Int?                       // NEW — pre-recompute value
-  lateBasis         LateBasis @default(UNKNOWN) // NEW
 }
 ```
 
@@ -1508,10 +1481,7 @@ needing to know which system wrote them.
 -- migration.sql — M3. Atomic.
 BEGIN;
 
-CREATE TYPE "LateBasis" AS ENUM ('SESSION_START','MANUAL','UNKNOWN');
-ALTER TABLE "Season"     ADD COLUMN "lateThresholdMinutes" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "Attendance" ADD COLUMN "lateMinutesLegacy"    INTEGER;
-ALTER TABLE "Attendance" ADD COLUMN "lateBasis" "LateBasis" NOT NULL DEFAULT 'UNKNOWN';
 
 -- (a) Preserve every value before touching one.
 UPDATE "Attendance" SET "lateMinutesLegacy" = "lateMinutes";
@@ -1520,21 +1490,14 @@ UPDATE "Attendance" SET "lateMinutesLegacy" = "lateMinutes";
 --     a LATE row. Basis-independent: it does not matter whether v1 or v2 wrote
 --     the row, because checkedInAt and startsAt are both facts. Only LATE rows
 --     carry minutes (the budget sums lateMinutes over LATE rows only), so a
---     PRESENT row's minutes are left alone and only its basis is labelled.
+--     PRESENT row's minutes are left alone.
 UPDATE "Attendance" a
-   SET "lateMinutes" = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (a."checkedInAt" - s."startsAt")) / 60))::int,
-       "lateBasis"   = 'SESSION_START'
+   SET "lateMinutes" = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (a."checkedInAt" - s."startsAt")) / 60))::int
   FROM "Session" s
  WHERE s."id" = a."sessionId" AND a."checkedInAt" IS NOT NULL AND a."status" = 'LATE';
 
-UPDATE "Attendance" SET "lateBasis" = 'SESSION_START'
- WHERE "checkedInAt" IS NOT NULL AND "status" <> 'LATE';
-
 -- (c) Rows with a lateness but no check-in instant were typed in by a leader.
---     Nothing can be recomputed from them; label them honestly.
-UPDATE "Attendance" SET "lateBasis" = 'MANUAL'
- WHERE "checkedInAt" IS NULL AND "lateMinutes" IS NOT NULL;
--- Everything else keeps UNKNOWN.
+--     Nothing can be recomputed from them; they keep the value as entered.
 
 COMMIT;
 ```
@@ -1542,7 +1505,8 @@ COMMIT;
 **This is the migration that answers C3's "Reports must not present v1-era and
 v2-era `lateMinutes` as one series without saying so."** After (b), the series
 *is* one series for every row that has a `checkedInAt` — the divergence is
-retired rather than annotated. `lateBasis` tells a report which rows those are.
+retired rather than annotated. Rows without a `checkedInAt` were typed by a
+leader and are shown as entered, as v1 shows them.
 
 **Rows that violate today:** none violate a constraint (there is none), but the
 recompute changes values, and it will produce rows where
@@ -1553,7 +1517,7 @@ bigger act than correcting the number, and nobody has authorised it. Instead:
 
 ```sql
 SELECT count(*) FROM "Attendance"
- WHERE "status"='LATE' AND "lateBasis"='SESSION_START' AND COALESCE("lateMinutes",0)=0;
+ WHERE "status"='LATE' AND "checkedInAt" IS NOT NULL AND COALESCE("lateMinutes",0)=0;
 ```
 
 That count goes to the user as a reconciliation figure at R12. Whether to
@@ -1563,224 +1527,77 @@ no.
 **Verification:** the count above is reported; the absence-budget figure for a
 sample of five seasons is computed before and after and the deltas are shown to
 the user (they will move — that is the point, and the organisation must see by
-how much); `SELECT "lateBasis", count(*) FROM "Attendance" GROUP BY 1` shows a
-plausible distribution with `UNKNOWN` confined to rows with neither a
-`checkedInAt` nor a `lateMinutes`.
+how much); `SELECT count(*) FROM "Attendance" WHERE "lateMinutesLegacy" IS DISTINCT FROM "lateMinutes" AND ("checkedInAt" IS NULL OR "status" <> 'LATE')`
+is zero (only recomputed rows changed) *(v1 parity 2026-10-09: was "lateBasis
+distribution check")*.
 
 **Rollback:** `UPDATE "Attendance" SET "lateMinutes" = "lateMinutesLegacy";`
-then drop the two `Attendance` columns, the `Season` column and the type.
+then drop the `Attendance` column.
 `lateMinutesLegacy` is retained for **one full release** after cutover and
 dropped by a separate migration once the reconciliation is accepted — a
 rollback path that is deleted in the same change as the thing it rolls back is
 not a rollback path.
 
-**Code that changes with it:** Task 2b.3 — writers set `lateBasis`, the budget
-applies `lateThresholdMinutes`, and Plan 15's workbook gets its numeric `LATE`
-cell back with a renamed header (D-17.10).
+**Code that changes with it:** Task 2b.3 — Plan 15's workbook gets its numeric
+`LATE` cell back under v1's header *(v1 parity 2026-10-09: was "writers set
+lateBasis, the budget applies lateThresholdMinutes, renamed header")*.
+
+> **v1 parity 2026-10-09:** `cutover-code`'s WIP M3 commit (`4d47c9d`) adds the
+> `LateBasis` enum, `Season.lateThresholdMinutes`, `Attendance.lateBasis` and
+> `apps/backend/src/lib/late-basis.ts`; drop all four (and their tests in
+> `late-basis.test.ts`, `attendance-routes.test.ts`, `check-in-routes.test.ts`),
+> keep `lateMinutesLegacy` and the recompute, and rename the folder
+> `20261101000003_m3_late_recompute`.
 
 ---
 
-### Task 2.4 — M4: notifications carry an entity, not a v1 URL
+### Task 2.4 — M4: notifications carry an entity, not a v1 URL — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Unfreezes:** `10-notifications.md` D1 (`:542-576`), `07-assignments.md` §10
-item 11 (`:645-649`), Plan 12's deferral ("Notification `link` format … one
-cutover change across all notification types"), Plan 13's cutover doc §2.
-`Notification.link` holds a v1 role-prefixed web path
-(`/admin/students/12`), which resolves to nothing in v2's flat route tree —
-and every v2 producer has been *deliberately writing v1's format* so v1 keeps
-working (ruling X1; `apps/backend/src/lib/attendance-notifications.ts:66,74`).
-v2 derives a route-independent `target` on read from that string
-(`parseNotificationLink`, Plan 13 `lib/notification-target.ts`).
+v1 stores a role-prefixed web path in `Notification.link` and tapping a
+notification opens that path (`jpc-space/prisma/schema.prisma:594-607`,
+`src/lib/notifications.ts:44,83`). v2 already keeps that: every producer writes
+v1's five link shapes (ruling X1; e.g.
+`apps/backend/src/lib/attendance-notifications.ts:66,74`) and the API derives a
+route-independent `target` on read with `parseNotificationLink` (Plan 13
+`lib/notification-target.ts`), which gives the device the same destination v1's
+link did. Replacing `link` with `entityType`/`entityId` columns changes nothing a
+user can see and is not forced by the platform, so M4 is withdrawn: no
+`NotificationEntityType` enum, no columns, no backfill, no R2 "sixth link
+shape" no-go gate, no `m4Mismatches` equivalence check, and Task 2b.4's
+producer/reader changes are withdrawn with it. Producers keep writing v1's
+link shapes after cutover *(v1 parity 2026-10-09: was "entityType/entityId
+columns + backfill; producers stop writing link")*.
 
-**The closed set of shapes is Plan 13's, exactly.** `NOTIFICATION_LINK_PATTERNS`
-(Plan 13 Task 2) holds the five shapes v1 writes, enumerated from jpc-space's
-nine producers and re-audited across Plans 5, 6, 10 and 11 (only Plan 5 adds a producer,
-writing `/student/assignments/<id>`):
-
-| # | v1 `link` | Wire `entityType` (Plan 13) | Column value (M4) | `entityId` |
-|---|---|---|---|---|
-| 1 | `/student/assignments/:id` | `assignment` | `ASSIGNMENT` | the id |
-| 2 | `/student/quizzes` | `quiz` | `QUIZ` | null |
-| 3 | `/student/calendar` | `calendar` | `CALENDAR` | null |
-| 4 | `/admin/students/:id` | `student` | `STUDENT` | the id |
-| 5 | `/leader/students/:id` | `student` | `STUDENT` | the id |
-
-**Prisma model change** — the enum has exactly Plan 13's four values. The
-earlier draft also had `SUBMISSION` and `SESSION`; no v1 shape maps to them,
-no producer writes them, and Plan 13's `notificationEntityTypeSchema` could not
-represent them on the wire. An enum value cannot be removed once added (see
-M5), so it is not added speculatively.
-
-```prisma
-enum NotificationEntityType { ASSIGNMENT QUIZ CALENDAR STUDENT }
-
-model Notification {
-  link       String?                        // KEPT (historic rows); new rows write null — Task 2b.4
-  entityType NotificationEntityType?        // NEW
-  entityId   Int?                           // NEW
-  @@index([entityType, entityId])           // NEW
-}
-```
-
-**DDL and backfill** — one `UPDATE` per row of the table above, each regex the
-SQL twin of the matching `NOTIFICATION_LINK_PATTERNS` entry. The rehearsal
-asserts the SQL and `parseNotificationLink` agree row for row.
-
-```sql
--- migration.sql — M4. Atomic.
-BEGIN;
-
-CREATE TYPE "NotificationEntityType" AS ENUM ('ASSIGNMENT','QUIZ','CALENDAR','STUDENT');
-ALTER TABLE "Notification" ADD COLUMN "entityType" "NotificationEntityType";
-ALTER TABLE "Notification" ADD COLUMN "entityId"   INTEGER;
-
--- 1. /student/assignments/:id
-UPDATE "Notification" SET "entityType" = 'ASSIGNMENT',
-       "entityId" = (regexp_match("link", '^/student/assignments/(\d+)$'))[1]::int
- WHERE "link" ~ '^/student/assignments/\d+$';
--- 2. /student/quizzes
-UPDATE "Notification" SET "entityType" = 'QUIZ'     WHERE "link" = '/student/quizzes';
--- 3. /student/calendar
-UPDATE "Notification" SET "entityType" = 'CALENDAR' WHERE "link" = '/student/calendar';
--- 4. /admin/students/:id
-UPDATE "Notification" SET "entityType" = 'STUDENT',
-       "entityId" = (regexp_match("link", '^/admin/students/(\d+)$'))[1]::int
- WHERE "link" ~ '^/admin/students/\d+$';
--- 5. /leader/students/:id
-UPDATE "Notification" SET "entityType" = 'STUDENT',
-       "entityId" = (regexp_match("link", '^/leader/students/(\d+)$'))[1]::int
- WHERE "link" ~ '^/leader/students/\d+$';
-
-CREATE INDEX "Notification_entityType_entityId_idx" ON "Notification"("entityType","entityId");
-
-COMMIT;
-```
-
-**Rows that violate today:** any row whose `link` matches none of the five
-shapes. There is no constraint to violate, so they simply stay null and the
-client falls back to opening the inbox (Plan 13's `target: null`). Enumerate
-them at R2 so the count is known rather than discovered:
-
-```sql
-SELECT "link", count(*) FROM "Notification"
- WHERE "link" IS NOT NULL
-   AND "link" !~ '^/student/assignments/\d+$'
-   AND "link" NOT IN ('/student/quizzes', '/student/calendar')
-   AND "link" !~ '^/(admin|leader)/students/\d+$'
- GROUP BY 1 ORDER BY 2 DESC;   -- expect zero rows
-```
-
-A row in that list means v1 grew a sixth path since Plan 13 enumerated them.
-**That is a no-go condition at R9** unless Plan 13's
-`NOTIFICATION_LINK_PATTERNS`, this table, the SQL above and Task 2b.4 are all
-extended together and re-rehearsed — a notification that silently opens the
-wrong screen is worse than one that opens the inbox.
-
-**Verification:** the R2 query returns zero rows; every row with a recognised
-`link` has a non-null `entityType`; `entityId` is null exactly for `QUIZ` and
-`CALENDAR`; on a 1,000-row sample, `parseNotificationLink(link)` mapped through
-the table above equals `(entityType, entityId)` for every row (Task 2.18 Step 3
-script); the inbox integration test still passes (and C6 still holds —
-opening the inbox writes nothing).
-
-**Rollback:** drop the index, the two columns and the type. `link` was never
-modified, so the rollback is total. `link` is dropped by a **later, separate**
-migration one release after cutover (register REG-69) — not here.
-
-**Code that changes with it:** Task 2b.4 — producers write
-`entityType`/`entityId` and stop writing `link`; the API reads `target` from
-the columns, falling back to `parseNotificationLink` only for a null row.
+The notification email's "Open" button, which Task 2b.4 also covered, stays
+and points at the app (owner decision 2026-10-10; Task 2b.4)
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "not decided here: it awaits the owner")*. The folder slot
+`20261101000004` stays empty.
 
 ---
 
-### Task 2.5 — M5: the `NotificationType` enum grows
+### Task 2.5 — M5: the `NotificationType` enum grows — **WITHDRAWN** (v1 parity 2026-10-09); its `pushEnabled` column — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
-**Unfreezes:** `08-submissions.md` D14 (`:802-808`, submit→leader),
-`14-forum.md` D13 (`:761-769`, someone commented on your response),
-`12-quizzes.md` D14 (`:1276-1283`, attempt awaiting grading) and D5
-(`:1163-1172`, your attempt was reopened — for which v2 currently reuses
-`QUIZ_GRADED` with different copy), `10-notifications.md` D5 close
-(`:672-674`).
+v1 has six notification types and six preference booleans
+(`jpc-space/prisma/schema.prisma:63-70`, `:609-621`). It sends no notice to a
+leader when a student submits (only `SUBMISSION_REVIEWED` to the student,
+`src/lib/submission-actions.ts:193`), none to an author on a forum comment, none
+to a grader when an essay attempt lands, and none to a student when an attempt
+is reopened (`src/lib/quiz-actions.ts:564-600`). The four new types
+(`SUBMISSION_RECEIVED`, `FORUM_COMMENT`, `QUIZ_ATTEMPT_PENDING`,
+`QUIZ_REOPENED`) and their four preference booleans are new behaviour, so they
+are withdrawn — and because an enum value can never be removed once added,
+they must not be applied at all *(v1 parity 2026-10-09: was "four new
+NotificationTypes + four preference booleans + pushEnabled")*. Flag for the
+spec-12 per-spec pass (Plan 8): v2 already sends a `QUIZ_GRADED`-typed
+"You can retake" notification on reopen
+(`apps/backend/src/routes/quizzes.ts:1426-1433`) that v1 never sent.
 
-**Prisma model change:** four values on `NotificationType`, four booleans on
-`NotificationPreference`, one master switch (which `18-settings.md` D3 and Plan
-9 both book here):
-
-```prisma
-enum NotificationType {
-  // ...existing six...
-  SUBMISSION_RECEIVED   // to the leader, when a student submits
-  FORUM_COMMENT         // to the author, when a peer comments
-  QUIZ_ATTEMPT_PENDING  // to the grader, when an essay attempt lands
-  QUIZ_REOPENED         // to the student, when an attempt is reopened
-}
-
-model NotificationPreference {
-  submissionReceived Boolean @default(true)
-  forumComment       Boolean @default(true)
-  quizAttemptPending Boolean @default(true)
-  quizReopened       Boolean @default(true)
-  pushEnabled        Boolean @default(true)   // the master switch (M10's pair)
-}
-```
-
-**DDL:**
-
-```sql
-ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'SUBMISSION_RECEIVED';
-ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'FORUM_COMMENT';
-ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'QUIZ_ATTEMPT_PENDING';
-ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'QUIZ_REOPENED';
-
-ALTER TABLE "NotificationPreference" ADD COLUMN "submissionReceived" BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE "NotificationPreference" ADD COLUMN "forumComment"       BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE "NotificationPreference" ADD COLUMN "quizAttemptPending" BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE "NotificationPreference" ADD COLUMN "quizReopened"       BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE "NotificationPreference" ADD COLUMN "pushEnabled"        BOOLEAN NOT NULL DEFAULT true;
-```
-
-**Backfill:** none. The defaults are the backfill.
-
-**Rows that violate today:** none — this only adds.
-
-**Two traps that make this migration different from every other one here:**
-
-1. **`ALTER TYPE ... ADD VALUE` cannot run inside a transaction block in
-   Postgres versions before 12, and in later versions the new value cannot be
-   *used* in the same transaction that adds it.** M5 therefore runs as its own
-   migration file with **no explicit `BEGIN`** and no statement that uses a
-   new value, and the first row using a new value is written by the
-   post-migration backend after R11. Postgres runs a multi-statement script
-   sent in one call as a single implicit transaction, and adding values inside
-   one is legal on every supported Postgres (12+); what is not legal is using
-   them there, and nothing in this folder does. Do not merge it into M4 to
-   "save a step", and do not put a backfill in it.
-2. **Enum values cannot be removed.** `ALTER TYPE ... DROP VALUE` does not
-   exist. **M5's rollback is forward-only:** the value stays in the type
-   forever, unused and harmless. This is stated so that "we can always roll it
-   back" is never said about it. If the four values turn out to be wrong names,
-   the fix is four more values and a data migration, not a revert. Name them
-   once, correctly.
-
-**Where each new type points (no new link shape, no new entity type).** The
-new producers write `entityType`/`entityId` (M4) and no `link` (Task 2b.4), and
-every target is one of Plan 13's four entity types, so `routeForTarget` on the
-device needs no change:
-
-| Type | Recipient | `entityType` | `entityId` | Opens |
-|---|---|---|---|---|
-| `SUBMISSION_RECEIVED` | the student's group leaders (ACTIVE `SeasonEnrollment.groupId`, C9) | `STUDENT` | the student | `/student/[id]` |
-| `FORUM_COMMENT` | the post's author | `ASSIGNMENT` | the forum assignment | `/assignment/[id]` |
-| `QUIZ_ATTEMPT_PENDING` | `canGradeQuiz` graders | `QUIZ` | null | `/quizzes` |
-| `QUIZ_REOPENED` | the student | `QUIZ` | null | `/quizzes` |
-
-**Verification:** `SELECT unnest(enum_range(NULL::"NotificationType"));` shows
-ten values; a producer test for each new type writes a row and the inbox
-returns it with the target above; the preference matrix test covers eleven
-columns (`notificationPreferencesSchema`'s six plus the four new types plus
-`pushEnabled`).
-
-**Code that changes with it:** Task 2b.5.
+**`pushEnabled` — withdrawn (owner decision 2026-10-10).** The push master
+switch (`18-settings.md` D3, Plan 9) existed only for M10's dispatch. v1 never
+sent push and the owner will build push later on Firebase, so the column is
+not authored, there is no `optional/20261101000097_m5_push_enabled` folder,
+and Task 2b.5 has nothing left. M5 is withdrawn entirely; the folder slots
+`20261101000005` and `20261101000097` stay empty *(v1 parity 2026-10-09; owner decision 2026-10-10: was "`pushEnabled` authored but held in `optional/` for the owner")*.
 
 ---
 
@@ -1812,310 +1629,77 @@ consumer.
 
 ---
 
-### Task 2.7 — M7: `JpcEvent` stops lying about its season
+### Task 2.7 — M7: `JpcEvent` stops lying about its season — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Unfreezes:** `15-events.md` §10 item 6 (`:577-584`, R16/R19 — no `allDay`
-column) and item 11 (`:642-651`, R35/R36 — no soft delete), Plan 14's D-15.6,
-plus a defect found by reading the schema rather than a spec:
-**`JpcEvent.season` is `onDelete: SetNull`**
-(`apps/backend/prisma/schema.prisma:770`, created by v1 migration
-`20260719181435_event_season_visibility/migration.sql:9-10`), and `JpcEvent`
-has **no index on `seasonId`**. A hard season delete therefore turns a
-`SEASON`-visibility event into an event scoped to no season — visible to
-nobody, or to everybody, depending on which read you ask.
+v1 stores an event with no time at midnight and reads it as all-day
+(`jpc-space/src/lib/jpc-event-actions.ts:33-40`), deletes an event permanently
+(`:146-150`, `db.jpcEvent.delete`), and keeps `JpcEvent.season` as
+`onDelete: SetNull` (`prisma/schema.prisma:770`). The `SetNull` path never
+fires in practice: v1's own validation refuses a `SEASON` event without a
+season (`jpc-event-actions.ts:27-30`) and seasons are only soft-deleted
+(`src/lib/season-actions.ts:171`). v2's `isOrgMidnight` derivation
+(`apps/backend/src/lib/org-time.ts`, `routes/events.ts`) already reproduces
+v1's midnight convention. So M7 is withdrawn entirely: no `allDay` column, no
+`deletedAt` soft delete (delete stays hard), no `Restrict` FK, no `CHECK`, no
+new indexes, no organisation-timezone literal and therefore no R9 "M7 literal"
+check, no R12 per-row triage, and Task 2b.7 (with its `Restrict`-driven
+fixture cleanup-order pin) is withdrawn with it *(v1 parity 2026-10-09: was
+"allDay + backfill, event soft delete, SetNull→Restrict FK, season CHECK")*.
 
-**Is `SetNull` what cutover wants? No.** An event whose audience is "one
-season" must not silently outlive that season. **Why `Restrict` breaks
-nothing:** every season delete v2 performs is a soft delete (`update` setting
-`deletedAt`, Plan 3 — its Revision records this), which no FK can block; the
-only hard season deletes are `cleanupTestData`'s, and Plan 14 Task 2 already
-deletes prefixed test events **at the top** of that function, before any
-season. Task 2b.7 pins that order.
-
-**Prisma model change:**
-
-```prisma
-model JpcEvent {
-  allDay    Boolean   @default(false)   // NEW — 15 item 6, D-15.6
-  deletedAt DateTime?                   // NEW — 15 item 11
-  season    Season?   @relation("JpcEventSeason", fields: [seasonId], references: [id], onDelete: Restrict)
-  @@index([seasonId])                   // NEW
-  @@index([deletedAt])                  // NEW
-}
-```
-
-**The organisation timezone is a literal, fixed at authoring time.**
-`prisma migrate deploy` runs `migration.sql` as plain SQL: a psql variable such
-as `:'org_tz'` is a syntax error there, and SQL cannot read `ORG_TIMEZONE`
-from the backend's environment. So the author writes the deployed value of
-`ORG_TIMEZONE` (Plan 3; default `Africa/Cairo`) into the file as a string
-literal, and the R9 gate checks that production's `ORG_TIMEZONE` still equals
-it (R9 item "M7 literal"). Postgres's `AT TIME ZONE` applies the zone's DST
-rules per row, exactly as `isOrgMidnight` does.
-
-**DDL and backfill:**
+The R2 offender query is kept as a **data-quality list only** (no constraint,
+no decision gate):
 
 ```sql
--- migration.sql — M7. Atomic. 'Africa/Cairo' below = production ORG_TIMEZONE
--- at authoring time; R9 re-checks it.
-BEGIN;
-
-ALTER TABLE "JpcEvent" ADD COLUMN "allDay"    BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "JpcEvent" ADD COLUMN "deletedAt" TIMESTAMP(3);
-CREATE INDEX "JpcEvent_seasonId_idx"  ON "JpcEvent"("seasonId");
-CREATE INDEX "JpcEvent_deletedAt_idx" ON "JpcEvent"("deletedAt");
-
--- allDay from Plan 14's midnight convention (an all-day event is stored at
--- org-local midnight), resolved in the organisation timezone (C2). The column
--- is timestamp-without-zone holding UTC, hence the double AT TIME ZONE.
-UPDATE "JpcEvent"
-   SET "allDay" = (
-     date_trunc('minute', ("date" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Cairo')
-       = date_trunc('day', ("date" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Cairo')
-   );
-
-ALTER TABLE "JpcEvent" DROP CONSTRAINT "JpcEvent_seasonId_fkey";
-ALTER TABLE "JpcEvent" ADD CONSTRAINT "JpcEvent_seasonId_fkey"
-  FOREIGN KEY ("seasonId") REFERENCES "Season"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
-ALTER TABLE "JpcEvent" ADD CONSTRAINT "JpcEvent_season_scope_ck"
-  CHECK ("visibility" <> 'SEASON' OR "seasonId" IS NOT NULL) NOT VALID;
--- VALIDATE runs at R12, only after the offenders below are resolved.
-
-COMMIT;
+SELECT "id", "visibility" FROM "JpcEvent" WHERE "visibility"='SEASON' AND "seasonId" IS NULL;
 ```
 
-**Rows that violate today — and there will be some.** The `NOT VALID` /
-`VALIDATE` split exists for exactly this: the constraint binds new rows
-immediately while existing ones are triaged.
-
-```sql
-SELECT "id", "title", "date", "visibility"
-  FROM "JpcEvent" WHERE "visibility"='SEASON' AND "seasonId" IS NULL;
-```
-
-**Disposition: [USER] decides, per row.** These are events whose audience was a
-season that no longer exists. Neither default is safe — promoting them to `ALL`
-widens an audience nobody chose, and deleting them destroys records. The list
-is produced at R2 and decided at R12: re-point at a surviving season, set
-`visibility` explicitly, or soft-delete (`deletedAt`, added above). Only then:
-
-```sql
-ALTER TABLE "JpcEvent" VALIDATE CONSTRAINT "JpcEvent_season_scope_ck";
-```
-
-Record the `CHECK` in `prisma/CONSTRAINTS.md`.
-
-**Verification:** the offender query returns zero; on the rehearsal copy a
-`DELETE FROM "Season"` for a season with events raises `23503` instead of
-silently orphaning them; on a 200-row sample `allDay` equals Plan 14's
-`isOrgMidnight(date)` (Task 2.18 Step 3 script); `fixture-leak.test.ts`
-(extended by Task 2b.7) reports zero prefixed events.
-
-**Rollback:** drop the check, drop both indexes, drop both columns, restore the
-FK to `SetNull`. The `allDay` backfill is derived, not destructive — nothing was
-overwritten.
-
-**Code that changes with it:** Task 2b.7 — writes set `allDay`; reads use it
-instead of `isOrgMidnight`; `DELETE /events/:id` soft-deletes; every event
-read filters `deletedAt: null`.
+The folder slot `20261101000007` stays empty.
 
 ---
 
-### Task 2.8 — M8: pastoral notes get a tombstone
+### Task 2.8 — M8: pastoral notes get a tombstone — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Unfreezes:** `09-notes.md` D4 (`:661-686`, R29 — hard delete, no tombstone,
-and no UI caller in v1, so nobody has ever deleted a note). Plan 12 ships
-`DELETE /notes/:id` as `501 delete_unavailable` (Plan 12 divergence row 8 and
-"Deferred to cutover") precisely so that no note is hard-deleted in the
-interval before this lands.
-
-**Narrowed on 2026-10-05.** The earlier draft also added `resolvedAt` /
-`resolvedById` and a follow-up queue index (`09-notes.md` D11). Nothing in any
-plan writes or reads them — the queue is a screen, and Plan 18 builds no
-screens — so they are not added (register REG-33; D-13.11 is superseded). The
-endpoint that writes `deletedAt` already exists.
-
-**Prisma model change:**
-
-```prisma
-model EngagementNote {
-  deletedAt DateTime?        // NEW — D4 #2
-  @@index([deletedAt])
-}
-```
-
-**DDL:**
-
-```sql
--- migration.sql — M8
-ALTER TABLE "EngagementNote" ADD COLUMN "deletedAt" TIMESTAMP(3);
-CREATE INDEX "EngagementNote_deletedAt_idx" ON "EngagementNote"("deletedAt");
-```
-
-**Backfill:** none. **Rows that violate today:** none — one nullable column.
-
-**Verification:** `DELETE /notes/:id` stops returning 501 and sets `deletedAt`
-(author only — Plan 12's `canEditNote`); every note read (`noteVisibilityWhere`
-in `lib/permissions.ts`) gains `deletedAt: null` and there is **no** exported
-function that returns notes without it — the same mutation Plan 12's closing
-gate already tests, extended by one clause.
-
-**Rollback:** drop the index and the column. Any note soft-deleted between
-apply and rollback becomes visible again — the safe direction.
-
-**Code that changes with it:** Task 2b.8.
+v1 users cannot delete a note: `deleteNoteAction`
+(`jpc-space/src/lib/note-actions.ts:120-129`, a hard delete) has no UI caller
+anywhere in `src/` (C12). v1 therefore offers no note delete, and v2 should
+expose none: no `EngagementNote.deletedAt`, no live `DELETE /notes/:id`, no
+delete control, and Task 2b.8 is withdrawn *(v1 parity 2026-10-09: was
+"deletedAt column; DELETE /notes/:id soft-deletes, author-only, UI control")*.
+Flag for the 09-notes per-spec pass (Plan 12): remove the `501
+delete_unavailable` stub route (`apps/backend/src/routes/notes.ts`) rather than
+turn it on. The folder slot `20261101000008` stays empty.
 
 ---
 
-### Task 2.9 — M9: one `AuditLog` for privileged **writes**
+### Task 2.9 — M9: one `AuditLog` for privileged **writes** — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Unfreezes:** `06-students.md` D15 (`:770-779` — no record of who graduated,
-dropped or deleted a student), `11-invites-users.md` D7 item 4 (`:755-762` — no
-record of who granted a role), `16-imports.md` D15 (`:806-814` — no record of
-who imported what; Plan 17 deferral #2), `18-settings.md` R39 (`:210`); Plan 9's
-"audit columns for role grants" and Plan 10's "audit columns (spec 06 D15)"
-deferrals. Plan 10's `lib/audit.ts` `auditLog(op, actorId, subjectId)` already
-writes a log line for `student.graduate`, `student.delete`,
-`enrollment.drop` and `enrollment.complete` (Plan 10 Decision 4) — this
-migration gives that seam a table.
-
-**What it deliberately does not record — reads (C6).** The earlier draft also
-logged exports (`17-reports.md` D15) and note reads (`09-notes.md` D15) here.
-Both are GETs, and C6 is "No read endpoint performs a write, without
-exception". Plan 15 (D-17.18, `lib/` export log comment) and Plan 12 (divergence
-row 17) already made that call and log a line instead. That stays: registered
-as REG-44 and REG-35, not silently reversed by a migration. Converting exports
-to a `POST` that creates an export record is a contract change for a follow-up.
-
-**Decision D-13.7: one polymorphic table, not per-domain columns.** Specs ask
-for `createdById`/`updatedById` on several tables plus a purpose-built import
-audit. One append-only `AuditLog` answers all of them and does not widen any
-hot table. The cost is that "who last touched this row" becomes a join instead
-of a column; for tables touched a few times a year that is the right trade.
-
-**Prisma model** (plus `auditEntries AuditLog[] @relation("AuditActor")` on
-`User`):
-
-```prisma
-enum AuditAction {
-  STUDENT_GRADUATE
-  STUDENT_DELETE
-  ENROLLMENT_DROP
-  ENROLLMENT_COMPLETE
-  USER_ROLE_CHANGE
-  USER_DEACTIVATE
-  USER_REACTIVATE
-  IMPORT_STUDENTS
-  IMPORT_GROUPS
-}
-
-model AuditLog {
-  id        BigInt      @id @default(autoincrement())
-  actorId   Int?
-  actor     User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
-  action    AuditAction
-  subjectId Int?        // the user the action was about; NOT an FK, so it survives a delete
-  seasonId  Int?        // scope, for filtering — not an FK, deliberately
-  rowCount  Int?        // imports only
-  at        DateTime    @default(now())
-
-  @@index([subjectId, at])
-  @@index([actorId, at])
-  @@index([action, at])
-}
-```
-
-**No free-text column at all.** `06-students.md` D15 is explicit — log actor,
-subject and operation "**without** logging any field value", and Plan 10's
-mutation 20 fails if `formatAuditLine` ever carries one. A `summary` column is
-an invitation to put a role name, a reason or a year in it; the action enum
-says what happened and the subject says to whom.
-
-**DDL:** `CREATE TYPE` + `CREATE TABLE` + three indexes + the FK, generated by
-`migrate diff` from the model above.
-
-**Backfill:** none possible — the information was never recorded. **This is a
-register entry, not a gap to paper over** (REG-63): every role grant,
-graduation, drop and import before cutover is permanently unattributable.
-
-**Rows that violate today:** none — new table.
-
-**Verification:** each writer (Task 2b.9's list) has an integration case
-asserting exactly one `AuditLog` row with the right `action`, `actorId` and
-`subjectId`; a unit case asserts a failing audit insert neither throws nor
-fails the operation (the same best-effort seam as notifications); no endpoint
-returns `AuditLog` rows, so `BigInt` never reaches `JSON.stringify` — if one is
-ever added it must serialise `id` as a string.
-
-**Rollback:** `DROP TABLE "AuditLog"; DROP TYPE "AuditAction";` Total.
-
-**Code that changes with it:** Task 2b.9.
+v1 records nothing about who graduated, dropped, deleted, re-roled,
+deactivated or imported anyone: there is no audit table or log in
+`jpc-space/prisma/schema.prisma`, and those actions write no record. An
+`AuditLog` table with an `AuditAction` enum and writers on nine operations is
+new behaviour, so M9 and Task 2b.9 are withdrawn (D-13.7 withdrawn; REG-63
+moot) *(v1 parity 2026-10-09: was "AuditLog table + AuditAction enum + writers
+on 9 operations")*. Flag for the per-spec pass: Plan 10's `lib/audit.ts` log
+line is likewise a v2 addition (harmless and invisible); that pass decides
+whether it stays. The folder slot `20261101000009` stays empty.
 
 ---
 
-### Task 2.10 — M10: `DeviceToken`, and push stops returning 503
+### Task 2.10 — M10: `DeviceToken`, and push stops returning 503 — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
-**Unfreezes:** `10-notifications.md` D5 item 1 (`:635-654`),
-`18-settings.md` D3 (`:459`), Plan 13 Task 5 ("BLOCKED ON CUTOVER"). Plan 13
-ships the entire mobile permission and token lifecycle against a
-`POST /api/v1/me/devices` that validates the body and then answers
-`503 push_unavailable`, because there is nowhere to put an Expo token and
-`10-notifications.md` D5 explicitly **refuses** reusing an existing column.
-
-**Reconcile, do not re-author.** Plan 13 Task 5 Step 4 wrote
-`docs/superpowers/cutover/2026-08-24-notifications-push.md`, whose §1 was
-written to match this task exactly. Diff its model and SQL against the block
-below; they must be identical. If they differ, this task's text wins only
-where Plan 13's doc contradicts `names.md`'s pins (`devicePlatformSchema`
-lowercase wire, `DEVICE_PLATFORM_TO_DB = { ios: "IOS", android: "ANDROID" }`);
-otherwise adopt the doc's and record the difference. Then the doc gains a line
-"Applied by Plan 18 M10 — see that plan" and is not used again.
-
-**Prisma model** (plus `deviceTokens DeviceToken[]` on `User`):
-
-```prisma
-enum DevicePlatform { IOS ANDROID }   // values = DEVICE_PLATFORM_TO_DB's targets
-
-model DeviceToken {
-  id         Int            @id @default(autoincrement())
-  userId     Int
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token      String         @unique           // Expo push token — a credential; never log it
-  platform   DevicePlatform
-  lastSeenAt DateTime       @default(now())
-  createdAt  DateTime       @default(now())
-
-  @@index([userId])
-  @@index([lastSeenAt])
-}
-```
-
-**Wire vs column.** The request body keeps the lowercase wire value
-(`devicePlatformSchema` = `"ios" | "android"`, what `Platform.OS` returns); the
-server maps it at the write with `DEVICE_PLATFORM_TO_DB`. The client never
-learns the column's spelling, so nothing on the device changes at cutover.
-
-The master switch (`NotificationPreference.pushEnabled`) is added by **M5**, not
-here — one migration per table keeps the rollbacks independent.
-
-**Backfill:** none. Tokens arrive from devices after the app is pointed at v2.
-Push is therefore **not** part of the soak's success criteria at R17 — the
-population starts at zero and fills over days.
-
-**Rows that violate today:** none — new table.
-
-**Verification:** the endpoint stops returning 503 and upserts on `token`;
-`DELETE /me/devices/:token` revokes the caller's row only; two users
-registering the same physical device results in the token moving, not
-duplicating; a dispatch to a token Expo reports `DeviceNotRegistered` deletes
-it; **no push token is ever logged** (Task 2b.10's grep).
-
-**Rollback:** `DROP TABLE "DeviceToken"; DROP TYPE "DevicePlatform";` and the
-endpoint returns to 503, which the mobile client already handles (Plan 13 Task
-10 — "keep the token locally, stop retrying this session").
-
-**Code that changes with it:** Task 2b.10.
+v1 never sent push: there is no device or push model in
+`jpc-space/prisma/schema.prisma` and no push code in `src/`; notifications
+are in-app plus email only. The 2026-10-09 revision held M10 for the owner's
+call on whether push is an exception to parity; the owner has ruled that push
+will be added later on Firebase, under its own plan. So M10 is withdrawn: no
+`DevicePlatform` enum, no `DeviceToken` table, no
+`optional/20261101000098_m10_device_token` folder, no R9 push decision, no
+soak metric, and Task 2b.10 is withdrawn with it. Plan 13's Task 5 and
+Task 10 are withdrawn the same day, and the already-built
+`POST /me/devices` → `503 push_unavailable` stub and the mobile token flow
+are removed (Plan 13 Revision 2026-10-09, row 7). A Firebase plan will
+choose its own storage; nothing here pre-empts it. The folder slots
+`20261101000010` and `20261101000098` stay empty *(v1 parity 2026-10-09; owner decision 2026-10-10: was "authored but held in `optional/`, moved at R10 only on the owner's yes")*.
 
 ---
 
@@ -2134,12 +1718,12 @@ What Plan 17 did hand here (its "Deferred to cutover" table):
 | Plan 17 # | Item | Disposition |
 |---|---|---|
 | 1 | Durable import session (`ImportBatch` + `ImportBatchRow`, commit-by-id, row-edit `PATCH`) | **Deferred** — a flow redesign, not a migration with a consumer. REG-47 |
-| 2 | Import audit trail | **M9** — `IMPORT_STUDENTS` / `IMPORT_GROUPS` with actor, season, row count (Task 2b.9) |
-| 3 | Email normalisation | **M14** (optional) |
-| 4 | Releasing a soft-deleted user's address | **M14** (optional) |
-| 5 | `Group.name` per-season uniqueness | **M2** |
+| 2 | Import audit trail | **Withdrawn** with M9 — v1 records no import (v1 parity 2026-10-09: was "M9 IMPORT_* rows") |
+| 3 | Email normalisation | **Withdrawn** with M14 — v1 matches email exactly (v1 parity 2026-10-09: was "M14 optional") |
+| 4 | Releasing a soft-deleted user's address | **Withdrawn** with M14 — v1 keeps the address reserved (v1 parity 2026-10-09: was "M14 optional") |
+| 5 | `Group.name` per-season uniqueness | **Withdrawn** with M2 — Plan 17 refuses an ambiguous group name instead (v1 parity 2026-10-09: was "M2") |
 | 6 | `GroupStudent` per-season uniqueness | **M1** |
-| 7 | Index for the `lower(email)` lookup | **M14** (stored emails become lowercase; the lookup moves to an indexed `email = ANY(...)`). If M14 is declined, the sequential scan stays — Plan 17 records it as acceptable at this table size (REG-66) |
+| 7 | Index for the `lower(email)` lookup | **Withdrawn** with M14; the 16-imports per-spec pass decides whether Plan 17's `lower(email)` match reverts to v1's exact match (v1 parity 2026-10-09: was "M14, else REG-66") |
 
 **Runbook consequence:** a preview open on someone's phone during the window
 is not lost — it is client state — but its commit is refused with
@@ -2148,13 +1732,23 @@ announces it. The folder slot `20261101000011` stays empty.
 
 ---
 
-### Task 2.12 — M12: credential hygiene
+### Task 2.12 — M12: v1 plaintext invite codes are voided
+
+*(v1 parity 2026-10-09: was "M12: credential hygiene")*
 
 **Unfreezes:** `11-invites-users.md` D5 (`:696-719`) — v1's `InviteToken.token`
-stores the **raw** 32-character code (`jpc-space/src/lib/invites.ts:8-24`);
-plus the missing index on `PasswordResetToken.expiresAt` (`:719`, Plan 10
-Decision 15) and the used/expired token sweep (Plan 9 closing-gate deferral,
-Plan 10 Decision 15).
+stores the **raw** 32-character code (`jpc-space/src/lib/invites.ts:8-24`).
+
+**Withdrawn halves (v1 parity 2026-10-09).** The `PasswordResetToken.expiresAt`
+index and the used/expired token sweep (Task 2b.12) are withdrawn. v1 creates a
+reset token and checks it by hash, never touching earlier ones
+(`jpc-space/src/lib/auth/password-reset.ts:20-29`), so nothing queries by
+`expiresAt`; the index's only consumer was Plan 10's expire-outstanding-tokens
+`updateMany`, which the 11-invites-users per-spec pass reverts (R76). v1 also
+never deletes old reset, invite or refresh tokens, and the sweep changes nothing
+a user sees *(v1 parity 2026-10-09: was "plus the PasswordResetToken.expiresAt
+index (Plan 10 Decision 15) and the token sweep")*. If the owner wants a sweep
+it is a one-off ops step outside parity scope.
 
 **What changed since the earlier draft (verified against the written
 plans).** Plan 9 Decision 4 already stores **only** SHA-256 digests in
@@ -2176,23 +1770,16 @@ as "pending" for the bulk re-invite. So:
 
 A correction carried from the earlier draft and still true: `InviteToken`
 **already has** an `expiresAt` index (`prisma/migrations/20260523162529_init/migration.sql:274`,
-`schema.prisma:178`). The missing index is on **`PasswordResetToken`** only.
+`schema.prisma:178`).
 
-**Prisma model change:**
+**Prisma model change:** none *(v1 parity 2026-10-09: was "@@index([expiresAt])
+on PasswordResetToken")*.
 
-```prisma
-model PasswordResetToken {
-  @@index([expiresAt])           // NEW
-}
-```
-
-**DDL and data step:**
+**Data step:**
 
 ```sql
 -- migration.sql — M12. Atomic.
 BEGIN;
-
-CREATE INDEX "PasswordResetToken_expiresAt_idx" ON "PasswordResetToken"("expiresAt");
 
 -- Overwrite every v1-format invite code (32 alphanumerics; a v2 digest is
 -- always 64 lowercase hex). 'v1-void-<id>' is unique (ids are), NOT NULL, can
@@ -2221,16 +1808,15 @@ invite, so they are in its pending pool today and stay there.
 
 **Verification:** `SELECT count(*) FROM "InviteToken" WHERE "token" !~ '^[0-9a-f]{64}$' AND "token" !~ '^v1-void-[0-9]+$';`
 is zero; `invites-routes.test.ts` (Plan 9) and Plan 10's bulk-invite and reset
-suites pass unchanged on the rehearsal copy; `EXPLAIN` of Plan 10's
-reset-token expiry `updateMany` uses `PasswordResetToken_expiresAt_idx`.
+suites pass unchanged on the rehearsal copy.
 
-**Rollback:** `DROP INDEX "PasswordResetToken_expiresAt_idx";`. The overwritten
+**Rollback:** none — there is no `rollback.sql`. The overwritten
 plaintext codes are **not** recoverable and are not meant to be — this is the
 one deliberately one-way data step in Part 2, and it is one-way in the safe
 direction (they were already unusable).
 
-**Code that changes with it:** Task 2b.12 (the sweep script; no request-path
-code changes).
+**Code that changes with it:** none (no request-path code changes; Task 2b.12
+is withdrawn) *(v1 parity 2026-10-09: was "Task 2b.12, the sweep script")*.
 
 ---
 
@@ -2282,291 +1868,76 @@ check short-circuits to the C7 TTL mitigation.
 
 ---
 
-### Task 2.14 — M14 (**optional**): email is case-insensitive, and a deleted user's address is released
+### Task 2.14 — M14 (**optional**): email is case-insensitive, and a deleted user's address is released — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Unfreezes:** `16-imports.md` D2 (`:658-675`, R25/R28/R60) — `User.email` is a
-plain unique column with no `citext`, so `Foo@x.com` and `foo@x.com` create two
-accounts and a capitalised address can only be logged into with that exact
-capitalisation; Plan 7's deferral (`routes/students.ts` comment, "R19 stands")
-and Plan 17 deferrals #3, #4, #7 — a soft-deleted student's email is reserved
-forever because the unique is unconditional, and `lower(email)` lookups have
-no index.
-
-**Why it is optional (D-13.13).** Its blocker — two real accounts differing
-only in email case — cannot be resolved by a machine; merging two users is a
-product operation with irreversible consequences for attendance and submission
-ownership. So it lives in `migrations-cutover/optional/`, sorts last, is moved
-at R10 **only** if the user approved it at R9, and its Part 2b code is a
-separate commit (Task 2b.14) that is merged only if the migration ran.
-
-**How the existing unique was created.** `User_email_key` is a unique
-**index** (`20260523162529_init/migration.sql:259`:
-`CREATE UNIQUE INDEX "User_email_key" ON "User"("email")`), not a constraint —
-so it is removed with `DROP INDEX`; `ALTER TABLE … DROP CONSTRAINT` fails on it.
-
-**Prisma model change** (on `cutover-code`, in Task 2b.14's commit):
-
-```prisma
-model User {
-  email String        // @unique REMOVED — the real rule is a partial functional index (CONSTRAINTS.md)
-  @@index([email])    // NEW — equality lookups on the stored (now lowercase) value
-}
-```
-
-Removing `@unique` is deliberate and load-bearing: every
-`findUnique({ where: { email } })` stops compiling, which forces each lookup to
-be rewritten as a live-user, normalised `findFirst` (Task 2b.14). Keeping
-`@unique` in the schema while the database enforces something else would let
-those calls compile and silently admit a soft-deleted duplicate.
-
-**DDL, backfill and repair:**
-
-```sql
--- (a) Find collisions FIRST, among LIVE users only. Run at R2; NOT part of
---     migration.sql. These block the migration.
-SELECT lower(btrim("email")) AS norm, count(*) AS n, array_agg("id" ORDER BY "id") AS ids
-  FROM "User" WHERE "deletedAt" IS NULL GROUP BY 1 HAVING count(*) > 1;
-```
-
-```sql
--- migration.sql — M14. Atomic.
-BEGIN;
-
--- (a0) Keep the original casing: (b) is otherwise irreversible.
-CREATE SCHEMA IF NOT EXISTS cutover_backup;
-CREATE TABLE cutover_backup.user_email AS SELECT "id", "email" FROM "User";
-
--- (b) Normalise every row, deleted ones included (they can now share an
---     address; they must still compare equal to a live one).
-UPDATE "User" SET "email" = lower(btrim("email")) WHERE "email" <> lower(btrim("email"));
-
--- (c) Swap the unconditional unique for one that ignores deleted rows and
---     case. Functional + partial: Prisma cannot model it (CONSTRAINTS.md).
-DROP INDEX "User_email_key";
-CREATE UNIQUE INDEX "User_email_lower_active_key" ON "User" (lower("email")) WHERE "deletedAt" IS NULL;
-CREATE INDEX "User_email_idx" ON "User" ("email");
-
-COMMIT;
-```
-
-**Rows that violate today — and this is the one that can stop the window.**
-Query (a) may return real collisions. **No migration may merge them.** If (a)
-returns rows, **[USER] resolves each pair before the window** — soft-delete
-the unused one, or change one address — at R2, days early. **If any collision
-is unresolved at R9, M14 is not moved at R10 and Task 2b.14's commit is
-dropped from the branch** (register REG-66 then applies).
-
-After (c), two soft-deleted users may share an address and a *third* live one
-may reuse it. `GET /users` must therefore never key on email, and every auth
-and clash lookup selects `email = <normalised> AND "deletedAt" IS NULL`.
-
-**Verification:** `SELECT count(*) FROM "User" WHERE "email" <> lower(btrim("email"));`
-is zero; a login with a differently-cased address succeeds; creating a user
-with the email of a soft-deleted user succeeds; creating one with the email of
-a live user still returns `409 email_taken`; Plan 17's preview of a mixed-case
-paste classifies the row as `exists` using `User_email_idx` (`EXPLAIN`).
-
-**Rollback:** `DROP INDEX "User_email_lower_active_key"; DROP INDEX "User_email_idx";`
-then restore casing from the copy and recreate the old unique:
-
-```sql
-UPDATE "User" u SET "email" = b."email" FROM cutover_backup.user_email b WHERE b."id" = u."id";
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-```
-
-The copy is dropped one release after cutover (REG-69).
+v1's `User.email` is unique and matched exactly as typed
+(`jpc-space/prisma/schema.prisma:105`; exact lookups at `src/lib/auth.ts:26` and
+`src/lib/auth/credentials.ts`; the importer trims but matches case-sensitively,
+`src/lib/student-import.ts:118,158`), and a soft-deleted user's address stays
+reserved. Lowercasing every stored email, a partial functional unique on live
+users, releasing deleted users' addresses and rewriting every lookup is new
+behaviour with no v1 counterpart, so M14 and Task 2b.14 are withdrawn (it was
+already optional; it is now declined in the plan rather than at R9). No
+`optional/…m14…` folder, no `cutover_backup.user_email`, no R2 collisions
+report, no R9 M14 decision; D-13.13's "only optional migration" is replaced
+(see D-13.13); REG-66 is moot *(v1 parity 2026-10-09: was "optional M14:
+normalise emails, partial lower(email) unique, release deleted addresses")*.
+Flag for the 16-imports per-spec pass: any `lower(email)` matching in Plan 17
+is itself a divergence from v1's exact match.
 
 ---
 
-### Task 2.15 — M15: quiz and video-quiz integrity
+### Task 2.15 — M15: quiz and video-quiz integrity — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Unfreezes:** `12-quizzes.md` D3 (`:1136-1139` — answer snapshots);
-`13-video-quizzes.md` D6 (`:833-841` — question soft delete), D10
-(`:889-901` — persisted video score) and D13 (`:953-963` — `updatedById`);
-Plan 8 and Plan 14 ("deferred to cutover, with the column each needs") both
-book this block.
-
-**Narrowed on 2026-10-05 to columns that get a writer.** Two columns from the
-earlier draft are not added:
-- `Quiz.deletedAt` (`12-quizzes.md` D9) — v2 has **no** quiz delete endpoint
-  (Plan 8, C12: v1's `deleteQuizAction` is dead code), so nothing would set
-  it. Register REG-51.
-- `Session.videoDurationSeconds` (`13-video-quizzes.md` D2) — filling it needs
-  a YouTube Data API key this repository does not hold, so nothing would set
-  it; Plan 14's client-side guard stays. Register REG-40.
-
-**Prisma model change** (plus `videoQuestionsUpdated SessionVideoQuestion[] @relation("VideoQuestionUpdatedBy")` on `User`):
-
-```prisma
-model QuizAnswer {
-  optionsSnapshot String[] @default([])  // 12 D3 — option text AS TAKEN; [] = taken before snapshots existed
-  pointsSnapshot  Int?                   // 12 D3 — question points AS TAKEN; null = before snapshots
-}
-
-model SessionVideoQuestion {
-  updatedById Int?                       // 13 D13
-  updatedBy   User?     @relation("VideoQuestionUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-  deletedAt   DateTime?                  // 13 D6 — hard delete cascades to responses today
-  @@index([deletedAt])
-}
-
-model SessionVideoQuestionResponse {
-  pointsAwarded Int?                     // 13 D10 — points AS AWARDED
-}
-```
-
-A Prisma scalar list cannot be optional (`String[]?` does not exist), so the
-"no snapshot" state of `optionsSnapshot` is the empty array, not null — the
-grading screen treats `[]` as "taken before snapshots existed".
-
-**Backfill — and the honest limit on it:**
-
-```sql
--- migration.sql — M15. Atomic.
-BEGIN;
--- (generated DDL for the five columns, the FK and the index goes here)
-
--- Points as awarded: recoverable, because isCorrect and the question's CURRENT
--- points are both known. Right for every response whose question has not been
--- edited since, wrong for every one whose has; there is no way to tell them
--- apart — that is precisely the defect being closed.
-UPDATE "SessionVideoQuestionResponse" r
-   SET "pointsAwarded" = CASE WHEN r."isCorrect" THEN q."points" ELSE 0 END
-  FROM "SessionVideoQuestion" q WHERE q."id" = r."questionId";
-
--- Answer snapshots: NOT backfilled. selectedIndex is positional and the option
--- array may have been edited since; writing today's options into a historic
--- answer would fabricate a record of what a student saw (D-13.12).
-COMMIT;
-```
-
-**Rows that violate today:** none — all nullable or defaulted, all additive.
-
-**Verification:** a graded attempt renders from its snapshot even after the
-question's options change (edit the options, re-read the attempt); deleting a
-video question sets `deletedAt` and leaves every response intact (the mutation:
-restore the hard delete and "responses survive a question delete" fails);
-`pointsAwarded` is written on every new response and read by the results
-endpoint instead of being recomputed (C4).
-
-**Rollback:** drop the columns, the FK and the index; `pointsAwarded`'s backfill
-is derived and discarding it loses nothing that was not already derivable.
-
-**Code that changes with it:** Task 2b.15.
+v1's `QuizAnswer` stores `selectedIndex`/`isCorrect`/`pointsAwarded` with no
+option snapshot (`jpc-space/prisma/schema.prisma:734-747`), so review shows a
+question's current options; quiz points are stored at grading time, so an edit
+never changes a grade (`src/lib/quiz-actions.ts:454-458`); deleting a video
+question hard-deletes it and cascades its responses
+(`src/lib/video-quiz-actions.ts:103`); video scores are recomputed from current
+points (`src/lib/video-quiz-query.ts:89-91`); only `createdById` is kept. M15's
+`optionsSnapshot`/`pointsSnapshot`, `SessionVideoQuestion.updatedById`/
+`deletedAt` and `SessionVideoQuestionResponse.pointsAwarded` (+ backfill) are
+new behaviour, so M15 and Task 2b.15 are withdrawn: v1's hard delete,
+current-options review and recomputed video score stay (D-13.12 withdrawn;
+REG-68 moot) *(v1 parity 2026-10-09: was "answer snapshots, video question soft
+delete, persisted pointsAwarded, updatedById")*. The folder slot
+`20261101000015` stays empty.
 
 ---
 
-### Task 2.16 — M16: forum moderation
+### Task 2.16 — M16: forum moderation — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Unfreezes:** `14-forum.md` D2 items 3 and 4 (`:626-637`, R48/R57) and §2
-(`:87-88`), Plan 14's **D-14.4** — which names this as the residual product risk
-it shipped with: a leader's only remedy for an entire inappropriate forum post
-is to contact the author, and the UI says so.
-
-**Prisma model change** (plus `forumPostsHidden Submission[] @relation("SubmissionHiddenBy")` on `User`):
-
-```prisma
-model Submission {
-  hiddenAt   DateTime?            // NEW — hides a forum post from peers
-  hiddenById Int?
-  hiddenBy   User?     @relation("SubmissionHiddenBy", fields: [hiddenById], references: [id], onDelete: SetNull)
-}
-
-model ForumComment {
-  deletedAt DateTime?             // NEW — comment delete stops being physical
-  @@index([deletedAt])
-}
-```
-
-**Why `hiddenAt` and not reverting `status` to `DRAFT`:** `14-forum.md` D2 names
-reverting to `DRAFT` as the available lever and immediately says it overloads
-`DRAFT` further and collides with `08-submissions.md` D3. Plan 14 considered and
-refused it. `hiddenAt` is the column that was blocked; it is unblocked here and
-the overload is not adopted.
-
-**The report/flag half of D2 item 4 is deliberately not built.** A
-student-facing report action needs a row, a triage surface, an SLA and a person
-who reads it. Register REG-39.
-
-**DDL:** generated (three columns, one FK, one index), wrapped in
-`BEGIN; … COMMIT;`. **Backfill:** none. **Rows that violate today:** none.
-
-**Verification:** a hidden post disappears from the peer feed and remains
-visible to its author and to staff, with `hiddenBy` shown to staff; comment
-delete sets `deletedAt` and every comment read filters on it; `canDelete` on the
-contract still governs the control (C4 — the client renders what it is given).
-
-**Rollback:** drop the FK, the index and the three columns. A post hidden before
-rollback becomes visible again — the safe direction.
-
-**Code that changes with it:** Task 2b.16.
+v1 has no way to hide a forum post (`Submission` has no `hiddenAt`,
+`jpc-space/prisma/schema.prisma:513-537`), and a forum comment is hard-deleted
+by its author or by a season ADMIN/SUPER
+(`src/lib/forum-actions.ts:110-120`). `Submission.hiddenAt`/`hiddenById`, a
+hide/unhide endpoint with a staff action, and `ForumComment.deletedAt` are new
+behaviour, so M16 and Task 2b.16 are withdrawn; comment delete stays a hard
+delete *(v1 parity 2026-10-09: was "hiddenAt/hiddenById + hide endpoint +
+ForumComment soft delete")*. Flag for the 14-forum per-spec pass (Plan 14): v1
+lets the author or a season ADMIN/SUPER delete a comment
+(`forum-actions.ts:115-118`) — there is no leader arm. The folder slot
+`20261101000016` stays empty.
 
 ---
 
-### Task 2.17 — M17 (**optional data script**): stored HTML is normalised once
+### Task 2.17 — M17 (**optional data script**): stored HTML is normalised once — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Unfreezes:** C11 (`_DECISIONS.md:175-188`) — "Converting stored HTML to
-structured rich text is a migration, so under C1 it is a cutover task";
-`09-notes.md` D1 (`:604-618`), `07-assignments.md` §10 item 10 (`:636-643`),
-`14-forum.md` D11 (`:739-745`).
-
-Note bodies and forum posts are HTML in the database (v1 wrote HTML; Plan 12
-keeps writing it with `plainTextToHtml` so v1 can render v2's notes, and Plan
-10 does the same for forum posts). v2 converts **on read** with
-`htmlToPlainText` from **`packages/shared/src/html-text.ts`** (Plan 12 Task 1;
-ruling X3 — the one module, also used by Plan 14). Plan 5 writes assignment
-descriptions as plain text already. That works and is not urgent to change.
-What it costs is a permanent converter on a hot path and a column whose
-contents nobody can reason about.
-
-**This is not a migration folder.** It changes no schema; it rewrites row
-contents through the same TypeScript function the API uses — which SQL cannot
-call. It is a script, `apps/backend/scripts/m17-normalise.ts`, run by
-**[USER] at R12 only if the user says so**, because:
-
-- it rewrites the text of pastoral records about named young people;
-- the read-time conversion already makes the data safe, so nothing is at risk
-  if it is skipped;
-- and `09-notes.md` is explicit that the note domain's decisions belong to
-  whoever owns pastoral policy, not to an engineer (D-13.14).
-
-**The script, in order:**
-
-```sql
--- (a) Full copies first — the rollback. Run by the script before any UPDATE.
-CREATE SCHEMA IF NOT EXISTS cutover_backup;
-CREATE TABLE cutover_backup.m17_note_html       AS SELECT "id","body"        FROM "EngagementNote";
-CREATE TABLE cutover_backup.m17_assignment_html AS SELECT "id","description" FROM "Assignment";
-CREATE TABLE cutover_backup.m17_submission_html AS SELECT "id","text"        FROM "Submission";
-```
-
-(b) In batches of 500 by id, resumable from the last id it logged, for each of
-the three columns: `next = htmlToPlainText(value)`; skip the row when
-`next === value` (already plain); skip **and list** the row when the value
-contains a `<` but no tag `htmlToPlainText` recognises (a plain-text note that
-happens to contain `<`); skip and list any row where `next.trim() === ""`
-while `value.trim() !== ""` (a conversion that empties a record is a bug, not a
-short note); otherwise `UPDATE … SET col = next WHERE id = $1 AND col = $2`
-(the `col = $2` guard makes a concurrent edit win). It logs **row ids and
-counts only, never contents**.
-
-```bash
-cd apps/backend
-DATABASE_URL="$PROD_DATABASE_URL" npx ts-node --transpile-only scripts/m17-normalise.ts --dry-run   # counts only
-DATABASE_URL="$PROD_DATABASE_URL" npx ts-node --transpile-only scripts/m17-normalise.ts             # [USER], R12, only on a yes
-```
-
-**Verification:** the three backup tables' row counts equal the live tables';
-a 200-row sample is diffed by hand by the user; the skip lists are reviewed;
-Task 2b.17's commit (writers store plain text, readers stop converting) is
-merged only after the script completed, and every note/assignment/forum test
-still passes.
-
-**Rollback:** restore from the three `cutover_backup.m17_*` tables by id and
-revert Task 2b.17's commit. The copies are dropped one release after cutover
-(REG-69).
+v1 stores note bodies, descriptions and forum posts as HTML and shows them as
+sanitised rich text with their formatting kept
+(`jpc-space/src/components/ui/rich-text-view.tsx:1-11`, sanitize-html;
+e.g. `src/app/mentor/notes/page.tsx:121`). A script that rewrites every stored
+HTML value to plain text would permanently destroy v1's formatting, and C11 is
+already satisfied by sanitising on render, which is what v1 does. So M17, its
+`scripts/m17-normalise.ts`, its `cutover_backup.m17_*` copies, the R12 M17
+decision and Task 2b.17 are withdrawn (D-13.14 withdrawn; REG-67 moot)
+*(v1 parity 2026-10-09: was "optional script rewriting stored HTML to plain text
+at R12")*. If the per-spec passes restore rich-text rendering (14-forum R28 and
+the notes domain), M17 would be actively harmful.
 
 ---
+
 ### Task 2.18: Rehearse the whole set against a restored copy
 
 **Files:** `docs/superpowers/audits/2026-cutover/rehearsal-<date>.md` (the
@@ -2595,63 +1966,27 @@ DATABASE_URL="$REHEARSAL_DATABASE_URL" npx prisma migrate status --config prisma
 # expect all 18 v1 migrations applied, none failed, none pending
 ```
 
-- [ ] **Step 3: Apply.** Stage the folders exactly as R10 will (required, plus
-  `optional/` if M14 is being rehearsed — rehearse **both** variants), apply,
-  and time each:
+- [ ] **Step 3: Apply.** Stage the folders exactly as R10 will (required only
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "plus `optional/` if M5 + M10 are being rehearsed … rehearse both variants")*), apply, and time each:
 
 ```bash
 cd apps/backend
 cp -r prisma/migrations-cutover/required/. prisma/migrations/
-cp -r prisma/migrations-cutover/optional/. prisma/migrations/          # only for the "with M14" run
 time DATABASE_URL="$REHEARSAL_DATABASE_URL" npx prisma migrate deploy --config prisma.cutover.config.ts
 git checkout -- prisma/migrations && git clean -fd prisma/migrations   # un-stage; the real move is R10's
 ```
 
   Record the wall-clock per migration — R10's budget comes from this number,
-  not from a guess. The index builds in M1 and M14 are the two that scale with
-  row count.
-- [ ] **Step 4: Run every verification query** from M1–M16 and record the
-  actual numbers. These become the expected values at R12. Then run the
-  backfill-equivalence checks, which compare the SQL to the TypeScript it
-  mirrors. They are a script under `scripts/`, not a jest test, so neither the
-  unit nor the integration suite ever runs them against a database that lacks
-  the columns:
-
-```ts
-// apps/backend/scripts/cutover-equivalence.ts  (on cutover-code; read-only)
-// Prints mismatch counts only — never a link, a title or an id list.
-import { db } from "../src/db/client";
-import { parseNotificationLink } from "../src/lib/notification-target";
-import { isOrgMidnight } from "../src/lib/org-time";
-
-const TO_COLUMN = { assignment: "ASSIGNMENT", quiz: "QUIZ", calendar: "CALENDAR", student: "STUDENT" } as const;
-
-async function main(): Promise<void> {
-  const notes = await db.notification.findMany({
-    where: { link: { not: null } }, take: 1000, orderBy: { id: "desc" },
-    select: { link: true, entityType: true, entityId: true },
-  });
-  const m4 = notes.filter((r) => {
-    const t = parseNotificationLink(r.link);
-    const want = t ? { entityType: TO_COLUMN[t.entityType], entityId: t.entityId } : { entityType: null, entityId: null };
-    return want.entityType !== r.entityType || want.entityId !== r.entityId;
-  }).length;
-
-  const events = await db.jpcEvent.findMany({ take: 200, orderBy: { id: "desc" }, select: { date: true, allDay: true } });
-  const m7 = events.filter((e) => e.allDay !== isOrgMidnight(e.date)).length;
-
-  console.log(JSON.stringify({ m4Checked: notes.length, m4Mismatches: m4, m7Checked: events.length, m7Mismatches: m7 }));
-  if (m4 + m7 > 0) process.exitCode = 1;
-}
-
-main().finally(() => db.$disconnect());
-```
-
-```bash
-cd apps/backend
-DATABASE_URL="$REHEARSAL_DATABASE_URL" npx ts-node --transpile-only scripts/cutover-equivalence.ts
-# expect {"m4Mismatches":0, … "m7Mismatches":0} and exit 0
-```
+  not from a guess. The index builds in M1 are the ones that scale with row
+  count *(v1 parity 2026-10-09: was "with M14" variant; "M1 and M14" index
+  builds)*.
+- [ ] **Step 4: Run every verification query** from M1, M3, M12 and M13
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and M5/M10 in the push variant")* and record the actual numbers. These become the
+  expected values at R12. The backfill-equivalence script
+  (`scripts/cutover-equivalence.ts`, comparing M4's link backfill with
+  `parseNotificationLink` and M7's `allDay` with `isOrgMidnight`) is withdrawn
+  with M4 and M7 — nothing remains to compare *(v1 parity 2026-10-09: was
+  "verification queries M1–M16 plus the m4/m7 equivalence script")*.
 
 - [ ] **Step 5: Run the full integration suite serially** against the copy,
   with `cutover-code` checked out and its client generated
@@ -2676,10 +2011,10 @@ DATABASE_URL="$REHEARSAL_DATABASE_URL" npx prisma migrate diff \
 ```
 
   Separately, on a second fresh copy, run every `rollback.sql` in reverse
-  order and run the same diff: it must exit 0 except for the Prisma-invisible
-  objects listed in `prisma/CONSTRAINTS.md` (which the diff cannot see) and
-  `cutover_backup` (which it does not read). **A rollback that has never been
-  executed is not a rollback.**
+  order and run the same diff: it must exit 0, and M12's one-way data step has
+  no `rollback.sql` to run *(v1 parity 2026-10-09: was "except the
+  Prisma-invisible objects in CONSTRAINTS.md and cutover_backup")*. **A rollback
+  that has never been executed is not a rollback.**
 - [ ] **Step 7: Rehearse a failure.** On a fresh copy, start M1 and kill the
   connection mid-way (`SELECT pg_terminate_backend(pid)` from a second
   session while the `INSERT` in step (f) runs). Confirm the explicit
@@ -2687,27 +2022,27 @@ DATABASE_URL="$REHEARSAL_DATABASE_URL" npx prisma migrate diff \
   `GroupStudent_studentUserId_key` present), that `_prisma_migrations` records
   M1 as failed, and that the recovery is: restore the backup. Do **not**
   rehearse `prisma migrate resolve` as a recovery path.
-- [ ] **Step 8: Report** the timings, the violating-row counts, the
-  equivalence results, the M13 p95 pair, the rollback result and the
-  failure-injection result. **[USER] reviews this before the window is
-  scheduled.**
+- [ ] **Step 8: Report** the timings, the violating-row counts, the M13 p95
+  pair, the rollback result and the failure-injection result. **[USER] reviews
+  this before the window is scheduled.**
 
-**Done for Part 2:** thirteen folders under `migrations-cutover/required/`
-and one under `optional/`, each with `migration.sql` and (except M5)
-`rollback.sql`; the M17 script; `CONSTRAINTS.md` listing the Prisma-invisible
-objects; Task 2.0b's read-only mode on `main` and deployed; a rehearsal report
-with real numbers; `main`'s `schema.prisma` **unmodified**; and no migration
-applied to the shared database.
+**Done for Part 2:** four folders under `migrations-cutover/required/` (M1,
+M3, M12, M13) and none under `optional/`
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "and two under `optional/` held for the owner's push decision (M5 `pushEnabled`, M10)")*, each with `migration.sql` and (except M12's one-way data
+step) `rollback.sql`; Task 2.0b's read-only mode on `main` and deployed; a
+rehearsal report with real numbers; `main`'s `schema.prisma` **unmodified**;
+and no migration applied to the shared database *(v1 parity 2026-10-09: was
+"thirteen required + optional M14, the M17 script, CONSTRAINTS.md")*.
 
 ---
 
 # Part 2b — Post-migration code (`cutover-code` branch)
 
 **Why this part exists.** A migration that lands without the code that reads
-and writes its columns either breaks v2 (M1, M14 change key shapes that
-`findUnique` calls depend on) or sets off the soak's own alarms on day one
-(a v2 attendance write with `lateBasis = UNKNOWN`, a new notification with a
-null `entityType`). That code cannot merge to `main` before R11 —
+and writes its columns either breaks v2 (M1 changes a key shape that
+`findUnique` calls depend on) or leaves a column with no writer *(v1 parity
+2026-10-09: was "M1, M14 key shapes; lateBasis UNKNOWN / null entityType soak
+alarms")*. That code cannot merge to `main` before R11 —
 `schema.prisma` is frozen there and the generated client must match the
 database it talks to — so it is written, tested and rehearsed on the
 long-lived `cutover-code` branch (Task 2.0 Step 1) and merged at R11.
@@ -2715,7 +2050,9 @@ long-lived `cutover-code` branch (Task 2.0 Step 1) and merged at R11.
 **Rules for every task below.**
 - One commit per migration: the schema delta, `migration.sql`, `rollback.sql`,
   the code, the tests and the OpenAPI change together. Order of commits =
-  migration order; M14's and M17's commits are last so they can be dropped.
+  migration order *(v1 parity 2026-10-09: was
+  "M14's and M17's commits are last")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "M5's and M10's commits (held for the owner's push decision) are last so they can be dropped")*.
 - Tests are written failing first, against the rehearsal copy
   (`DATABASE_URL="$REHEARSAL_DATABASE_URL"`), never against the shared
   database — the shared database does not have these columns until R10.
@@ -2807,427 +2144,187 @@ grep -rn "groupStudent\.\(create\|createMany\|upsert\|deleteMany\|findUnique\|fi
 - [ ] **Step 4: Commit** `feat(backend): per-season GroupStudent (Plan 18 M1)`
   with M1's folder.
 
-### Task 2b.2 — M2 consumer: group names are case-insensitively unique
+### Task 2b.2 — M2 consumer: group names are case-insensitively unique — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Files:** Modify `apps/backend/src/lib/queries/groups.ts` (`validateGroupWrite`),
-`apps/backend/src/routes/seasons.ts` and `routes/groups.ts` (map the race);
-Test `groups-routes.test.ts`.
+v1 has no group-name uniqueness check at all (`jpc-space/src/lib/group-actions.ts:17,44`)
+and stores the name as entered (no trimming beyond zod's defaults). With M2
+withdrawn (Task 2.2), the case/whitespace-insensitive `409 name_taken`, the
+trim on write and the `Group_seasonId_name_key` unique-violation mapping are
+withdrawn too; `cutover-code`'s M2 commit `18941ab` (which made these changes in
+`lib/queries/groups.ts`, `routes/groups.ts`, `routes/seasons.ts`, `openapi.ts`
+and `groups-routes.test.ts`) is reverted. The exact-match check already on
+`main` is removed by Task 2b.P Step 6 *(v1 parity 2026-10-09: was
+"case-insensitive name_taken, trim on write, unique-violation mapping")*.
 
-- [ ] **Step 1: Failing test** (append to the `name_taken` describe):
+### Task 2b.3 — M3 consumer: the workbook's number
 
-```ts
-  it("refuses a name that differs only in case or surrounding space (M2, D-13.10)", async () => {
-    const res = await request(app)
-      .post(`/api/v1/seasons/${seasonId}/groups`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ name: `  ${existingGroupName.toUpperCase()} `, leaderIds: [], studentIds: [] });
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("name_taken");
-  });
-```
+*(v1 parity 2026-10-09: was "M3 consumers: lateness basis, threshold, and the
+workbook's number")*
 
-- [ ] **Step 2: Implement.** In `validateGroupWrite`, replace the exact match:
+**Withdrawn half (v1 parity 2026-10-09).** The check-in threshold and the
+`lateBasis` writers are withdrawn with M3's threshold and basis columns
+(Task 2.3). Check-in stays exactly as it is on `main` (Plan 11 Task 2b: from
+`startsAt`, zero threshold, `LATE` iff elapsed minutes > 0 — v1's rule at
+`jpc-space/src/lib/attendance-actions.ts:148-152`), and the attendance save
+handler is untouched *(v1 parity 2026-10-09: was "elapsed >
+season.lateThresholdMinutes; lateBasis on check-in and attendance save")*.
 
-```ts
-  const clash = await db.group.findFirst({
-    where: {
-      seasonId,
-      name: { equals: input.name.trim(), mode: "insensitive" },
-      ...(excludeGroupId ? { id: { not: excludeGroupId } } : {}),
-    },
-    select: { id: true },
-  });
-```
-
-  and trim on write (the create/update handlers store `parsed.data.name.trim()`).
-  Where those handlers call `db.group.create`/`update`, a concurrent request
-  that slips past the check hits `Group_seasonId_name_key`; catch it with Plan
-  3's `isUniqueViolation(err)` and answer the same
-  `apiError(res, "name_taken", "A group in this season already has that name.", 409)`.
-  Delete the comment in `validateGroupWrite` that says "A real constraint needs
-  a migration (ruling C1)" — it now exists.
-- [ ] **Step 3: Run → PASS.** Commit with M2's folder.
-
-### Task 2b.3 — M3 consumers: lateness basis, threshold, and the workbook's number
-
-**Files:** Modify `apps/backend/src/routes/sessions.ts` (check-in, Plan 11
-Task 2b; attendance save), `apps/backend/src/lib/queries/attendance-budget.ts`
-(Plan 11), Plan 15's season-export workbook builder and its Key sheet;
-`apps/backend/src/docs/openapi.ts`. Tests: `check-in-routes.test.ts`,
-`attendance-routes.test.ts`, `attendance-budget.test.ts`, Plan 15's
+**Files:** Modify Plan 15's season-export workbook builder
+(`apps/backend/src/lib/exports/season-workbook.ts`). Tests: Plan 15's
 `season-export` unit test.
 
 - [ ] **Step 1: Failing tests.**
-  - check-in: a scan 5 minutes after `startsAt` in a season with
-    `lateThresholdMinutes: 10` is `PRESENT`, `lateMinutes: 0`,
-    `lateBasis: "SESSION_START"`; 12 minutes after is `LATE`, `lateMinutes: 12`.
-  - attendance save (leader marks LATE with typed minutes): the row's
-    `lateBasis` is `"MANUAL"`; a PRESENT/ABSENT save leaves `lateBasis` as it
-    was for a checked-in row and `"MANUAL"` otherwise.
-  - workbook: a `LATE` cell with `lateMinutes: 7` renders `7`, and the session
-    column header carries "(minutes late from start)"; a `LATE` cell with
-    `lateMinutes: null` still renders `"L"`.
-- [ ] **Step 2: Implement.**
+  - workbook: a `LATE` cell with `lateMinutes: 7` renders `7`; a `LATE` cell
+    with `lateMinutes: null` still renders `"L"`; the session column header is
+    unchanged (v1's `<day> · <title>`, `jpc-space/src/lib/season-export.ts:106`,
+    with no "(minutes late from start)" suffix).
+- [ ] **Step 2: Implement.** Plan 15's workbook: delete D-17.10's `"L"`
+  substitution for rows whose `lateMinutes` is non-null and print the number,
+  as v1 does (`season-export.ts:7-12`, `lateMinutes ?? "L"`). This restores
+  v1's cell. The session-column header is **not** renamed and no recompute
+  sentence is added to the Key sheet (both are v2 additions; whether Plan 15's
+  Key sheet stays at all is the 17-reports per-spec pass's call) *(v1 parity
+  2026-10-09: was "change the session-column header and the Key sheet sentence
+  in the same change")*. The number is only one series after M3's recompute,
+  so this commit lands with M3's folder. If the 17-reports per-spec pass
+  reverts D-17.10 directly, this step is subsumed.
 
-```ts
-// routes/sessions.ts — POST /check-in (replaces Plan 11 Task 2b's computation;
-// select season.lateThresholdMinutes alongside startsAt)
-  const elapsed = Math.max(0, Math.floor((now.getTime() - session.startsAt.getTime()) / 60_000));
-  const isLate = elapsed > session.season.lateThresholdMinutes;
-  const status = isLate ? "LATE" : "PRESENT";
-  const minutesLate = isLate ? elapsed : 0;
-  // …the existing upsert gains:  lateBasis: "SESSION_START",
-```
-
-  In the attendance save handler (`POST /sessions/:id/attendance`), every
-  upserted row gets `lateBasis: row.checkedInAt ? "SESSION_START" : "MANUAL"`
-  when the leader supplied `lateMinutes`, else leaves the column untouched on
-  update and writes `"MANUAL"` on create. No v2 code path writes `UNKNOWN`
-  (the soak alarms on it). The budget keeps summing `lateMinutes` over LATE
-  rows (Plan 11 `budgetFrom`) — the threshold acts at write time, so there is
-  no second definition (C4).
-
-  Plan 15's workbook: delete D-17.10's `"L"` substitution for rows whose
-  `lateMinutes` is non-null; print the number; change the session-column
-  header and the Key sheet sentence in the same change (D-17.10: "restore the
-  numeric cell **and** change the column header in the same release"). The
-  Key sheet says: "Late cells show minutes after the session's start (ruling
-  C3). Rows recorded before <cutover date> were recomputed from the check-in
-  time; rows typed in by a leader are shown as entered."
-
-  OpenAPI: `POST /sessions/check-in` description names the season threshold.
+> **v1 parity 2026-10-09:** `cutover-code`'s WIP commit `4d47c9d` already
+> prints the number via `lib/exports/attendance-cell.ts`; keep that, and remove
+> its header suffix (`season-workbook.ts`, `(minutes late from start)`) and its
+> `KEY_SYMBOLS` "number" row.
 - [ ] **Step 3: Run → PASS.** Commit with M3's folder.
 
-### Task 2b.4 — M4 consumers: producers write the entity, not a v1 path
+### Task 2b.4 — M4 consumers: producers write the entity, not a v1 path — **WITHDRAWN** (v1 parity 2026-10-09); the email "Open" button becomes an app link (owner decision 2026-10-10)
 
-**Files:** Modify `apps/backend/src/lib/notifications.ts`
-(`CreateNotificationInput`, `createNotificationsBulk` — Plan 13's version);
-every producer (enumerated below); the notifications read
-(`routes/notifications.ts`, Plan 13); `lib/email.ts` call site;
-`apps/backend/src/docs/openapi.ts`. Tests: `notifications.test.ts`, each
-producer's suite.
+**Withdrawn.** With M4 withdrawn (Task 2.4), producers keep writing v1's link
+shapes (`link: "/student/assignments/<id>"`, `QUIZ_GRADED_LINK`, …, ruling X1)
+and `GET /notifications` keeps deriving `target` with `parseNotificationLink`
+(Plan 13). `CreateNotificationInput` keeps `link`; there is no `target` input,
+no `TO_COLUMN` table and no "no producer writes a path" grep *(v1 parity
+2026-10-09: was "producers write entityType/entityId and link: null; read from
+columns")*.
 
-**Interfaces:**
-- Produces: `CreateNotificationInput` gains `target: NotificationTarget | null`
-  (Plan 13's shared type) and loses `link`. The API's `target` field is unchanged
-  on the wire.
+**Resolved (owner 2026-10-10) — the notification email's "Open" button points
+at the app.** v1's notification email carries a "View in JPC Space" button
+and a paste-able link ("Or paste this link into your browser"), both
+`AUTH_URL` + the notification's `link`, when `AUTH_URL` is set
+(`jpc-space/src/lib/email.ts:142-143,149`; button markup `:66-73`). v2 builds
+the same today (`apps/backend/src/lib/email.ts:136-137`). After R14/R21 that
+URL is a v1 web page that no longer exists. v2 keeps v1's button, its label
+and the paste-able link (spec 10 R28), but builds the URL as an **app link to
+the notification's target** instead of `AUTH_URL + link`. Because M4 is
+withdrawn, the target is derived from the stored v1 link with the existing
+`parseNotificationLink` (`apps/backend/src/lib/notification-target.ts:37`),
+exactly as `GET /notifications` does *(v1 parity 2026-10-09; owner decision 2026-10-10: was "awaiting owner — drop the button (REG-38) or point it at the app")*.
 
-- [ ] **Step 1: Failing tests.** In `notifications.test.ts`: a bulk create with
-  `target: { entityType: "student", entityId: 12 }` writes
-  `entityType: "STUDENT", entityId: 12, link: null`; `GET /notifications`
-  returns `target: { entityType: "student", entityId: 12 }` for it; a historic
-  row with `link: "/student/calendar"` and null columns still returns
-  `target: { entityType: "calendar", entityId: null }` (the parser fallback).
-- [ ] **Step 2: Enumerate the producers.** Plan 13 Step 7's table (main, Plans
-  3, 15, 6, 8) plus M5's four new types (Task 2b.5):
-
-```bash
-grep -rn "createNotificationsBulk\|createNotification(" apps/backend/src --include=*.ts | grep -v __tests__
-```
-
-  Each call site's `link: "<v1 path>"` becomes the matching target from M4's
-  table: `/student/assignments/${id}` → `{ entityType: "assignment", entityId: id }`
-  (main's submission review; Plan 5's `notifyAssignmentCreated`);
-  `QUIZ_GRADED_LINK` → `{ entityType: "quiz", entityId: null }` (Plan 8's four
-  sites; delete the constant); `/student/calendar` → `{ entityType: "calendar", entityId: null }`
-  (Plan 3's reschedule); `/admin/students/${id}` and `/leader/students/${id}`
-  → `{ entityType: "student", entityId: id }` (`attendance-notifications.ts:66,74`,
-  Plan 12's `MENTOR_FOLLOWUP`).
-- [ ] **Step 3: Implement the write and the read.**
-
-```ts
-// lib/notifications.ts — inside createNotificationsBulk's createMany
-const TO_COLUMN = { assignment: "ASSIGNMENT", quiz: "QUIZ", calendar: "CALENDAR", student: "STUDENT" } as const;
-      // v1 is retired (R14), so nothing needs its web path any more (M4).
-      link: null,
-      entityType: payload.target ? TO_COLUMN[payload.target.entityType] : null,
-      entityId: payload.target?.entityId ?? null,
-```
-
-  The read maps columns back to the wire with the inverse table, and calls
-  `parseNotificationLink(row.link)` **only** when `entityType` is null (historic
-  rows the backfill could not map). The email call passes no link:
-  `sendNotificationEmail(u.email, payload.title, payload.body ?? null, null)` —
-  the "Open" button pointed at v1's web host, which no longer exists
-  (register REG-38; Plan 12's `buildNotificationHtml` already omits the button
-  when the link is null).
-- [ ] **Step 4: Run → PASS.** Grep that no producer writes a path any more:
-  `grep -rn "link: \`/\|link: \"/" apps/backend/src --include=*.ts | grep -v __tests__` → empty.
-  Commit with M4's folder.
-
-### Task 2b.5 — M5 consumers: four new notification types, their preferences, and the push switch
+**The app-link base is `config.authUrl` (`AUTH_URL`)** — no new config value.
+It is the public base URL whose host Plan 11 registers for https universal
+links (iOS `associatedDomains` + `apple-app-site-association`) and Android app
+links (`intentFilters` with `autoVerify` + `assetlinks.json`) in
+`apps/mobile/app.json` (Plan 11 Decision 8 and Task 11; its Revision row 3
+names the check-in QR `<AUTH_URL>/checkin/<token>`). The https form is used,
+not the `spacev2://` scheme: v1's paste-into-your-browser link has to be an
+https URL, and mail clients do not reliably make a custom scheme clickable.
+When `AUTH_URL` is unset, or the link parses to no target, there is no button
+(Plan 12's `buildNotificationHtml` already omits it for a null link), as v1
+omits it without `AUTH_URL`.
 
 **Files:**
-- Modify: `packages/shared/src/notification.ts` (`notificationTypeSchema`,
-  `notificationPreferencesSchema`, `DEFAULT_NOTIFICATION_PREFERENCES`)
-- Modify: `apps/backend/src/lib/notifications.ts` (`PREF_FIELD` — a full
-  `Record<NotificationType, …>`, so it fails to compile until all four are added)
-- Modify: producers — `routes/submissions.ts` (submit), Plan 14 `routes/forum.ts`
-  (comment create), Plan 8 quiz attempt submit and reopen handlers
-- Modify: `apps/mobile/src/components/NotificationPreferences.tsx` (Plan 13
-  Task 9) — four toggles and a "Push notifications" master switch
-- Tests: shared `notification.test.ts`, `notifications.test.ts`, each producer
-  suite, `apps/mobile/src/__tests__/notification-preferences.test.tsx`
+- Modify: `packages/shared/src/notification.ts` — add
+  `notificationAppPath(target: NotificationTarget | null): string | null`, the
+  same six destinations as mobile's `routeForTarget`
+  (`apps/mobile/src/lib/notification-route.ts:27-44`): `/assignment/<id>`,
+  `/assignments`, `/quizzes`, `/calendar`, `/student/<id>`, `/students`.
+- Modify: `apps/backend/src/lib/email.ts:136-137` (`sendNotificationEmail`).
+- Modify: `apps/mobile/app.json` — widen Plan 11's universal/app-link path
+  list from `/checkin/*` to also cover `/assignment/*`, `/assignments`,
+  `/quizzes`, `/calendar`, `/student/*` and `/students` (and the host's
+  association files with it). expo-router resolves an incoming link by path,
+  so these open the same screens an inbox tap opens.
+- Tests: shared `notification-contracts.test.ts`; backend `email-html.test.ts`.
 
-- [ ] **Step 1: Failing tests.** The shared schema test's pinned key list gains
-  `submissionReceived`, `forumComment`, `quizAttemptPending`, `quizReopened`,
-  `pushEnabled`; each producer suite asserts one notification of the new type
-  to the recipient and target in M5's table; the settings test finds the five
-  new switches by label.
-- [ ] **Step 2: Implement.** `PREF_FIELD` gains
-  `SUBMISSION_RECEIVED: "submissionReceived", FORUM_COMMENT: "forumComment", QUIZ_ATTEMPT_PENDING: "quizAttemptPending", QUIZ_REOPENED: "quizReopened"`.
-  Each producer is wrapped in Plan 13's `bestEffort(label, …)` after its
-  transaction commits — a notification failure never fails the write:
-
-```ts
-// routes/submissions.ts — after a successful submit (status → SUBMITTED)
-  await bestEffort("SUBMISSION_RECEIVED", async () => {
-    const leaders = await leaderIdsForStudentInSeason(submission.studentUserId, assignment.seasonId); // ACTIVE enrolment's group (C9)
-    await createNotificationsBulk(leaders, {
-      type: "SUBMISSION_RECEIVED",
-      title: `${studentName} submitted "${assignment.title}"`,
-      target: { entityType: "student", entityId: submission.studentUserId },
-    });
-  });
-```
-
-  `leaderIdsForStudentInSeason` is added to `lib/queries/groups.ts`
-  (`SeasonEnrollment` ACTIVE → `groupId` → `GroupLeader.userId`). The other
-  three follow the same shape with M5's table. The mobile toggles map 1:1 to
-  the new keys; `pushEnabled` is the master switch Task 2b.10's dispatcher
-  reads. These mobile changes ship in the app build released for R16.
-- [ ] **Step 3: Run → PASS.** Commit with M5's folder.
-
-### Task 2b.7 — M7 consumers: `allDay`, event soft delete, cleanup order
-
-**Files:** Modify Plan 14's `apps/backend/src/routes/events.ts` and
-`lib/queries/events.ts`; `__tests__/integration/fixtures.ts`;
-`__tests__/integration/fixture-leak.test.ts` (Plan 17). Tests: `events-routes.test.ts`.
-
-- [ ] **Step 1: Failing tests.** Creating an event with `time: null` stores
-  `allDay: true`; the read returns `time: null` from `allDay`, not from
-  `isOrgMidnight`; `DELETE /events/:id` leaves the row with `deletedAt` set and
-  it disappears from `GET /events`; `fixture-leak.test.ts` also counts events:
+- [ ] **Step 1: Failing tests.** For each of v1's five link shapes
+  (`NOTIFICATION_LINK_PATTERNS`), `notificationAppPath(parseNotificationLink(link))`
+  is the path of the route `routeForTarget` returns for the same target; with
+  `AUTH_URL=https://host`, a `/student/assignments/42` notification renders
+  `https://host/assignment/42` as both the button `href` and the paste-able
+  link, labelled "View in JPC Space"; an unparseable link or an unset
+  `AUTH_URL` renders no button.
+- [ ] **Step 2: Implement.** In `sendNotificationEmail`:
 
 ```ts
-  it("leaves zero prefixed events", async () => {
-    expect(await db.jpcEvent.count({ where: { title: { startsWith: TEST_PREFIX } } })).toBe(0);
-  });
+  const appUrl = (config.authUrl ?? "").replace(/\/$/, "");
+  // v1: AUTH_URL + link (jpc-space src/lib/email.ts:142-143). v2: an app link
+  // to the same destination, derived from the stored v1 link (M4 is withdrawn).
+  const path = notificationAppPath(parseNotificationLink(link));
+  const viewLink = appUrl && path ? `${appUrl}${path}` : null;
 ```
 
-- [ ] **Step 2: Implement.** The create/update handlers set
-  `allDay: body.time === null`; reads derive `time: null` from `allDay`; every
-  `db.jpcEvent.findMany/findFirst/count` in `routes/events.ts` and
-  `lib/queries/events.ts` gains `deletedAt: null`; `DELETE` becomes
-  `db.jpcEvent.update({ where: { id }, data: { deletedAt: new Date() } })`.
-  `isOrgMidnight` stays (Task 2.18's equivalence test uses it). In
-  `fixtures.ts`, confirm Plan 14's
-  `db.jpcEvent.deleteMany({ where: { title: { startsWith: TEST_PREFIX } } })`
-  is still the **first** statement of `cleanupTestData` — under `Restrict` a
-  season delete before it raises `23503` and strands fixtures.
-- [ ] **Step 3: Run → PASS** (events, fixture-leak). Commit with M7's folder.
+- [ ] **Step 3: Run → PASS.** No migration is involved; commit it on
+  `cutover-code` so it merges at R11, which keeps v1's working web link in
+  the email while v1 still serves. The device checklist for the R16 app build
+  includes tapping a notification email's button on a phone with the app
+  installed.
 
-### Task 2b.8 — M8 consumer: note delete stops returning 501
+### Task 2b.5 — M5 consumers: four new notification types, their preferences, and the push switch — **WITHDRAWN** (v1 parity 2026-10-09); the push switch — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
-**Files:** Modify Plan 12's `routes/notes.ts` (`DELETE /notes/:id`),
-`lib/permissions.ts` (`noteVisibilityWhere`), `docs/openapi.ts`; Plan 12's
-note screens if they hide the delete control behind the 501 (they render a
-"Delete" action only when the API says the note `canEdit` — add it there).
-Tests: `notes-routes.test.ts`.
+**Withdrawn.** The four new types' producers (submit → leaders, forum comment
+→ author, essay attempt → graders, reopen → student), their `PREF_FIELD`
+entries, the four preference toggles and `leaderIdsForStudentInSeason` are
+withdrawn with M5's types (Task 2.5): v1 sends none of these
+(`jpc-space/src/lib/submission-actions.ts:193`, `src/lib/quiz-actions.ts:564-600`)
+*(v1 parity 2026-10-09: was "four producers, PREF_FIELD entries, four toggles
+and a master switch")*.
 
-- [ ] **Step 1: Failing tests.** Author deletes own note → `200 { data: { deleted: true } }`,
-  row has `deletedAt`; it vanishes from `GET /students/:id/notes` and
-  `GET /me/notes`; a non-author → 403; a deleted note → 404 on PATCH.
-- [ ] **Step 2: Implement.**
+**The push master switch — withdrawn (owner decision 2026-10-10)** with M5's
+`pushEnabled` and M10 (Tasks 2.5, 2.10): no `pushEnabled` in
+`notificationPreferencesSchema` / `DEFAULT_NOTIFICATION_PREFERENCES`, no
+"Push notifications" master switch in `NotificationPreferences.tsx`, and the
+R16 app build carries none. Nothing is left in this task *(v1 parity 2026-10-09; owner decision 2026-10-10: was "held for the owner: the master switch, in the push variant only")*.
 
-```ts
-notesRouter.delete("/notes/:id", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid note id.", 400);
-  const note = await db.engagementNote.findFirst({ where: { id, deletedAt: null }, select: { authorUserId: true } });
-  if (!note) return apiError(res, "not_found", "Note not found.", 404);
-  if (!canEditNote(user, note)) return apiError(res, "forbidden", "Only the author can delete a note.", 403);
-  await db.engagementNote.update({ where: { id }, data: { deletedAt: new Date() } });
-  return apiOk(res, { deleted: true });
-});
-```
+### Task 2b.7 — M7 consumers: `allDay`, event soft delete, cleanup order — **WITHDRAWN** (v1 parity 2026-10-09)
 
-  `noteVisibilityWhere` returns `{ deletedAt: null, …existing }`. OpenAPI:
-  replace the `501 delete_unavailable` response with 200/403/404.
-- [ ] **Step 3: Run → PASS.** Commit with M8's folder.
+Withdrawn with M7 (Task 2.7): event writes and reads keep `isOrgMidnight`
+(v1's midnight = all-day, `jpc-space/src/lib/jpc-event-actions.ts:33-40`),
+`DELETE /events/:id` stays a hard delete (`:146-150`), and there is no
+`Restrict` FK, so no cleanup-order pin is needed in `fixtures.ts`
+*(v1 parity 2026-10-09: was "allDay writes/reads, soft delete, cleanup-order
+pin")*.
 
-### Task 2b.9 — M9 writers: `auditLog` gets its table
+### Task 2b.8 — M8 consumer: note delete stops returning 501 — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Files:** Modify Plan 10's `apps/backend/src/lib/audit.ts`; Plan 9's
-`routes/users.ts` (role change, deactivate, reactivate); Plan 17's import
-commit handlers. Tests: Plan 10's `audit.test.ts`, new
-`integration/audit-log.test.ts`.
+Withdrawn with M8 (Task 2.8): v1 offers no note delete
+(`jpc-space/src/lib/note-actions.ts:120-129` has no UI caller), so
+`DELETE /notes/:id` does not go live and no delete control is added
+*(v1 parity 2026-10-09: was "author soft-deletes a note, UI control")*. The
+501 stub's removal belongs to the 09-notes per-spec pass (Plan 12).
 
-- [ ] **Step 1: Failing tests.** Graduate a fixture student → exactly one
-  `AuditLog` row `{ action: "STUDENT_GRADUATE", actorId: super, subjectId: student }`;
-  the same for role change, deactivate, drop, import commit (with `seasonId`
-  and `rowCount`); a unit test with `db.auditLog.create` mocked to reject
-  asserts `auditLog(...)` returns normally and the log line is still written.
-- [ ] **Step 2: Implement.**
+### Task 2b.9 — M9 writers: `auditLog` gets its table — **WITHDRAWN** (v1 parity 2026-10-09)
 
-```ts
-// lib/audit.ts — extend Plan 10's module (its formatAuditLine stays as is)
-import { db } from "../db/client";
-import type { AuditAction } from "../generated/prisma/enums";
-import { bestEffort } from "./best-effort";
+Withdrawn with M9 (Task 2.9): v1 writes no audit record for graduate, drop,
+delete, role change, deactivate, reactivate or import, so there are no
+`AuditLog` rows and Plan 10's `lib/audit.ts` is not extended *(v1 parity
+2026-10-09: was "AuditLog row writes from 9 operations")*.
 
-export type AuditOperation =
-  | "student.graduate" | "student.delete" | "enrollment.drop" | "enrollment.complete"
-  | "user.role_change" | "user.deactivate" | "user.reactivate"
-  | "import.students" | "import.groups";
+### Task 2b.10 — M10 consumers: device registration and push dispatch — **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
-const AUDIT_ACTION = {
-  "student.graduate": "STUDENT_GRADUATE",
-  "student.delete": "STUDENT_DELETE",
-  "enrollment.drop": "ENROLLMENT_DROP",
-  "enrollment.complete": "ENROLLMENT_COMPLETE",
-  "user.role_change": "USER_ROLE_CHANGE",
-  "user.deactivate": "USER_DEACTIVATE",
-  "user.reactivate": "USER_REACTIVATE",
-  "import.students": "IMPORT_STUDENTS",
-  "import.groups": "IMPORT_GROUPS",
-} as const satisfies Record<AuditOperation, AuditAction>;
+Withdrawn with M10 (Task 2.10): v1 never sent push, and the owner will build
+push later on Firebase. No `DeviceToken` upsert, no
+`DELETE /me/devices/:token`, no `apps/backend/src/lib/push.ts` Expo
+dispatcher, no call from `createNotificationsBulk`, and no "Applied by Plan 18
+M10" line in Plan 13's cutover doc (the doc is deleted). The existing
+`POST /me/devices` 503 stub does not go live; it is removed with Plan 13's
+push scaffolding (Plan 13 Revision 2026-10-09, row 7) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "upsert + delete + Expo dispatcher, held for the owner")*.
 
-/** Log line (Plan 10) + an AuditLog row (Plan 18 M9). Never throws, never carries a field value. */
-export function auditLog(
-  operation: AuditOperation,
-  actorId: number,
-  subjectId: number | null,
-  scope: { seasonId?: number; rowCount?: number } = {},
-): void {
-  console.info(formatAuditLine(operation, actorId, subjectId));
-  void bestEffort(`audit ${operation}`, () =>
-    db.auditLog.create({
-      data: {
-        action: AUDIT_ACTION[operation],
-        actorId,
-        subjectId,
-        seasonId: scope.seasonId ?? null,
-        rowCount: scope.rowCount ?? null,
-      },
-    }),
-  );
-}
-```
+### Task 2b.12 — M12: the credential sweep script — **WITHDRAWN** (v1 parity 2026-10-09)
 
-  `formatAuditLine` accepts `subjectId: number | null` (prints `subject=-`).
-  New call sites, each **after** its transaction commits: Plan 9
-  `PATCH /users/:id` when `role` changed (`user.role_change`), deactivate,
-  reactivate; Plan 17 student commit (`import.students`, `{ seasonId, rowCount: created + enrolled }`)
-  and group commit (`import.groups`, `{ seasonId, rowCount: applied }`).
-- [ ] **Step 3: Run → PASS.** Plan 10's mutation 20 (no values in the line)
-  still passes. Commit with M9's folder.
-
-### Task 2b.10 — M10 consumers: device registration and push dispatch
-
-**Files:** Modify `apps/backend/src/routes/me.ts` (`POST /devices`, new
-`DELETE /devices/:token`); Create `apps/backend/src/lib/push.ts`; Modify
-`lib/notifications.ts` (call the dispatcher); `docs/openapi.ts`. Tests:
-`me-notifications-routes.test.ts` (Plan 13), new `__tests__/push.test.ts`.
-
-- [ ] **Step 1: Failing tests.** Plan 13's "answers 503 push_unavailable" case
-  becomes `200 { data: { registered: true } }` with a `DeviceToken` row
-  `platform: "IOS"`; a second user registering the same token moves it (one
-  row, new `userId`); `DELETE /me/devices/<token>` by another user deletes
-  nothing; `push.test.ts` mocks `global.fetch` and `db`, asserts one POST per
-  100 tokens, no call when `shouldPush(type)` is false or the user's
-  `pushEnabled` is false, and a `DeviceNotRegistered` ticket deletes that token.
-- [ ] **Step 2: Implement** the upsert and delete exactly as Plan 13's cutover
-  doc §1 gives them (`DEVICE_PLATFORM_TO_DB[parsed.data.platform]`;
-  `deleteMany({ where: { token, userId: user.userId } })`), and:
-
-```ts
-// apps/backend/src/lib/push.ts
-import { db } from "../db/client";
-import type { NotificationType } from "../generated/prisma/enums";
-import { shouldPush, type NotificationTarget } from "../../../../packages/shared/src/index";
-
-const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-const BATCH = 100;
-
-/** Best-effort Expo push. Never logs a token. Called behind bestEffort(). */
-export async function sendPush(
-  userIds: number[],
-  payload: { type: NotificationType; title: string; body?: string; target: NotificationTarget | null },
-): Promise<void> {
-  if (userIds.length === 0 || !shouldPush(payload.type)) return;
-  const off = new Set(
-    (await db.notificationPreference.findMany({
-      where: { userId: { in: userIds }, pushEnabled: false }, select: { userId: true },
-    })).map((p) => p.userId),
-  );
-  const tokens = (await db.deviceToken.findMany({
-    where: { userId: { in: userIds.filter((id) => !off.has(id)) } }, select: { token: true },
-  })).map((t) => t.token);
-
-  for (let i = 0; i < tokens.length; i += BATCH) {
-    const chunk = tokens.slice(i, i + BATCH);
-    const res = await fetch(EXPO_PUSH_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify(chunk.map((to) => ({ to, title: payload.title, body: payload.body, data: { target: payload.target } }))),
-    });
-    if (!res.ok) continue;
-    const json = (await res.json()) as { data?: { status: string; details?: { error?: string } }[] };
-    const dead = chunk.filter((_, k) => json.data?.[k]?.details?.error === "DeviceNotRegistered");
-    if (dead.length > 0) await db.deviceToken.deleteMany({ where: { token: { in: dead } } });
-  }
-}
-```
-
-  In `createNotificationsBulk`, after the mail fan-out:
-  `void bestEffort("push", () => sendPush(mailTargets, { type: payload.type, title: payload.title, body: payload.body, target: payload.target }));`
-  (`mailTargets` = targets minus per-type opt-outs — the same set mail uses).
-  OpenAPI: `POST /me/devices` → 200; add `DELETE /me/devices/{token}`.
-- [ ] **Step 3: Run → PASS.** Leak grep:
-  `grep -rn "console\.\|logger\." apps/backend/src/lib/push.ts apps/backend/src/routes/me.ts` → no line interpolates a token.
-  Commit with M10's folder. Update Plan 13's cutover doc with "Applied by Plan 18 M10".
-
-### Task 2b.12 — M12: the credential sweep script
-
-**Files:** Create `apps/backend/scripts/sweep-credentials.ts`.
-
-- [ ] **Step 1: Write it** (no request-path code changes — Plan 9 and Plan 10
-  already store and look up digests only):
-
-```ts
-// apps/backend/scripts/sweep-credentials.ts
-// Deletes dead credential rows. Prints counts only — never a token, an email or a name.
-// Usage: DATABASE_URL=… npx ts-node --transpile-only scripts/sweep-credentials.ts [--dry-run]
-import { db } from "../src/db/client";
-
-const DAY = 24 * 60 * 60 * 1000;
-const dryRun = process.argv.includes("--dry-run");
-
-async function main(): Promise<void> {
-  const cutoff = new Date(Date.now() - 30 * DAY);
-  const reset = { createdAt: { lt: cutoff }, OR: [{ usedAt: { not: null } }, { expiresAt: { lt: new Date() } }] };
-  const invite = { usedAt: null, expiresAt: { lt: cutoff } };                 // used invites are history: kept
-  const refresh = { createdAt: { lt: cutoff }, OR: [{ revokedAt: { not: null } }, { expiresAt: { lt: new Date() } }] };
-  const counts = dryRun
-    ? await Promise.all([db.passwordResetToken.count({ where: reset }), db.inviteToken.count({ where: invite }), db.refreshToken.count({ where: refresh })])
-    : await db.$transaction([
-        db.passwordResetToken.deleteMany({ where: reset }),
-        db.inviteToken.deleteMany({ where: invite }),
-        db.refreshToken.deleteMany({ where: refresh }),
-      ]).then((r) => r.map((x) => x.count));
-  console.log(JSON.stringify({ dryRun, passwordResetTokens: counts[0], inviteTokens: counts[1], refreshTokens: counts[2] }));
-}
-
-main().finally(() => db.$disconnect());
-```
-
-  `scripts/` is outside `src/`, so `process.argv` here is not an X14 concern;
-  the database URL still comes only from `config.ts` via `db`.
-- [ ] **Step 2: Rehearse** on the copy (`--dry-run`, then real), confirm the
-  counts, and that `invites-routes`, Plan 10's reset and bulk-invite suites
-  still pass afterwards. Commit with M12's folder.
+v1 never cleans up reset, invite or refresh tokens; old rows accumulate and
+nothing is deleted. `scripts/sweep-credentials.ts` was optional ops hygiene,
+invisible to users and fixing no defect, so it is removed from the plan, and
+R19 no longer runs it *(v1 parity 2026-10-09: was "sweep script deleting
+used/expired reset tokens, expired invites, revoked/expired refresh tokens")*.
+If the owner wants it, it is a one-off ops step outside parity scope.
 
 ### Task 2b.13 — M13: `sessionsValidFrom` is written and enforced
 
@@ -3295,103 +2392,109 @@ grep -rn "revokeAllRefreshTokensForUser(" apps/backend/src --include=*.ts | grep
 - [ ] **Step 3: Run → PASS**, record the p95 pair in Task 2.18. **Mutation:**
   change `<` to `<= -1` (always false) → Step 1 fails. Commit with M13's folder.
 
-### Task 2b.14 — M14 consumers (**separate commit, dropped if M14 is declined**)
+### Task 2b.14 — M14 consumers (**separate commit, dropped if M14 is declined**) — **WITHDRAWN** (v1 parity 2026-10-09)
 
-**Files:** Create `apps/backend/src/lib/email-address.ts`; Modify every
-`User.email` reader/writer the compiler flags once `@unique` is gone —
-`lib/auth/credentials.ts:17` (login's `findUnique({ where: { email } })`), Plan 7 `routes/students.ts`, Plan 9
-`routes/users.ts` and `lib/invites.ts`, Plan 17 `lib/queries/imports` lookup,
-Plan 10 `lib/auth/password-reset.ts`. Tests: `auth-routes.test.ts`,
-`students-routes.test.ts`, `users-routes.test.ts`, Plan 17's import suite.
+Withdrawn with M14 (Task 2.14): email stays exact-match as in v1
+(`jpc-space/src/lib/auth.ts:26`); no `normaliseEmail`, no `findFirst` rewrite,
+deleted addresses stay reserved *(v1 parity 2026-10-09: was "normaliseEmail on
+every write/lookup; deleted addresses reusable")*.
 
-- [ ] **Step 1: Failing tests.** Login with `UPPER@…` for a user stored as
-  `upper@…` → 200; create a student with the address of a soft-deleted user →
-  201; with a live user's (different case) → `409 email_taken`.
-- [ ] **Step 2: Implement.**
+### Task 2b.15 — M15 consumers — **WITHDRAWN** (v1 parity 2026-10-09)
 
-```ts
-// lib/email-address.ts
-/** The one normalisation (M14): stored and compared as trimmed lowercase. */
-export function normaliseEmail(raw: string): string {
-  return raw.trim().toLowerCase();
-}
-```
+Withdrawn with M15 (Task 2.15): no answer snapshots, video questions stay hard
+deletes, video scores stay recomputed, no `updatedById`
+(`jpc-space/src/lib/video-quiz-actions.ts:103`, `src/lib/video-quiz-query.ts:89-91`)
+*(v1 parity 2026-10-09: was "snapshots on submit, video soft delete,
+pointsAwarded, updatedById")*.
 
-  Every write stores `normaliseEmail(input.email)`. Every
-  `findUnique({ where: { email } })` (now a compile error) becomes
-  `findFirst({ where: { email: normaliseEmail(x), deletedAt: null } })`. Every
-  `email_taken` pre-check uses the same `where`; every create catches
-  `isUniqueViolation(err)` on `User_email_lower_active_key` as `409 email_taken`.
-  Plan 17's `lower(email) = ANY(${keys})` raw query becomes
-  `email = ANY(${keys})` (keys are normalised), which uses `User_email_idx`.
-- [ ] **Step 3: Run → PASS.** Commit **separately**:
-  `feat(backend): case-insensitive email, release deleted addresses (Plan 18 M14, optional)`.
+### Task 2b.16 — M16 consumers: hide a forum post; soft comment delete — **WITHDRAWN** (v1 parity 2026-10-09)
 
-### Task 2b.15 — M15 consumers
+Withdrawn with M16 (Task 2.16): no hide/unhide endpoint or mobile action, and
+comment delete stays a hard delete (`jpc-space/src/lib/forum-actions.ts:110-120`);
+D-14.4's "contact the author" copy stays *(v1 parity 2026-10-09: was "hide/unhide
+endpoint and mobile action, comment soft delete")*.
 
-**Files:** Plan 8's attempt submit handler and grading read
-(`routes/quizzes.ts`, `lib/queries/quizzes.ts`); Plan 14's `routes/video-quiz.ts`
-and `lib/queries/video-quiz.ts`. Tests: Plan 8 and Plan 14 suites.
+### Task 2b.17 — M17 consumers (**separate commit, merged only if the script ran**) — **WITHDRAWN** (v1 parity 2026-10-09)
 
-- [ ] **Step 1: Failing tests.** Submit an ONLINE attempt, then edit an MCQ's
-  options; the grading view still shows the options as taken. Delete a video
-  question; its responses survive and the student's results no longer list it.
-  Answer a video question; the response row has `pointsAwarded`. Editing a
-  video question records `updatedById`.
-- [ ] **Step 2: Implement.** At attempt submit, each `QuizAnswer` update sets
-  `optionsSnapshot: question.options, pointsSnapshot: question.points`; the
-  grading/review loaders prefer the snapshot when `optionsSnapshot.length > 0`.
-  Video: update sets `updatedById: user.userId`; `DELETE /video-questions/:id`
-  becomes `update({ data: { deletedAt: new Date() } })`; every question read
-  gains `deletedAt: null`; answer submit writes
-  `pointsAwarded: isCorrect ? question.points : 0`; `loadVideoQuizResults` sums
-  `pointsAwarded` instead of recomputing (C4).
-- [ ] **Step 3: Run → PASS.** Commit with M15's folder.
-
-### Task 2b.16 — M16 consumers: hide a forum post; soft comment delete
-
-**Files:** Plan 14's `routes/forum.ts`, `lib/queries/forum.ts`,
-`lib/permissions.ts` (new `canHideForumPost`); `packages/shared/src/forum.ts`
-(post item gains `hidden: boolean`, `canHide: boolean`); Plan 14's mobile
-`ForumThread` (staff "Hide post" / "Unhide" action); `docs/openapi.ts`.
-Tests: forum suites, `ForumThread` test.
-
-- [ ] **Step 1: Failing tests.** `POST /api/v1/assignments/:id/forum/posts/:publicId/hide`
-  with `{ hidden: true }` by the author's leader → 200; the peer feed omits the
-  post; the author still sees it with `hidden: true`; a peer student → 403;
-  `{ hidden: false }` restores it. Deleting a comment sets `deletedAt` and every
-  comment list omits it.
-- [ ] **Step 2: Implement.** `canHideForumPost(user, submissionId)` admits
-  SUPER, ADMIN of the season, and the LEADER of the author's group in that
-  season — `canDeleteForumComment`'s staff arms without the author arm. The
-  route sets `hiddenAt`/`hiddenById` (or nulls both). The peer-feed query adds
-  `OR: [{ hiddenAt: null }, { studentUserId: user.userId }]` for students; staff
-  reads include hidden posts with `hidden: true`. Comment delete becomes an
-  update; comment reads add `deletedAt: null`. The mobile action renders only
-  when the contract says `canHide` (C4) and replaces D-14.4's "contact the
-  author" copy.
-- [ ] **Step 3: Run → PASS.** Commit with M16's folder.
-
-### Task 2b.17 — M17 consumers (**separate commit, merged only if the script ran**)
-
-**Files:** Plan 12's note writers/readers, Plan 14's forum writers/readers.
-
-- [ ] **Step 1:** Writers store plain text (drop `plainTextToHtml` on write);
-  readers return the column as stored (drop `htmlToPlainText` on read). Keep
-  `packages/shared/src/html-text.ts` — the M17 script imports it.
-- [ ] **Step 2:** Every note, assignment and forum suite passes against a
-  rehearsal copy on which the script has run. Commit **separately**.
+Withdrawn with M17 (Task 2.17): writers keep storing HTML and nothing is
+rewritten (`jpc-space/src/components/ui/rich-text-view.tsx:1-11`)
+*(v1 parity 2026-10-09: was "writers store plain text, readers stop
+converting")*.
 
 ### Task 2b.18: Branch gate (coordinator)
 
 - [ ] `pnpm turbo lint typecheck test:unit build` green on `cutover-code`.
-- [ ] Full serial integration suite green against the rehearsal copy — twice:
-  with M14 + Task 2b.14, and without both.
+- [ ] Full serial integration suite green against the rehearsal copy
+  *(v1 parity 2026-10-09: was "with M14 + Task 2b.14, and without both")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "twice: with M5 + M10 and their Part 2b commits (the push variant), and without them")*.
 - [ ] After `pnpm --filter @space/backend build`, no emitted file requires the
   package by name (X12): `grep -rln 'require("@space/shared")' apps/backend/dist` → empty.
 - [ ] The branch SHA is recorded in `cutover-code.md` with the rehearsal date.
   **This SHA is what R10 applies and R11 deploys.** A later commit means a
   new rehearsal (D-13.17).
+
+### Task 2b.P — v1-parity work with no owning plan
+
+Added 2026-10-09 (v1 parity). Each step reverts a v2 divergence from v1 that
+no other plan's text introduced (most came from PR #18's audit fixes). None
+needs a migration, so this task lands on **`main`**, not `cutover-code`, any
+time before R1. One commit per step; tests first, as everywhere else.
+
+- [ ] **Step 1 — 02-seasons R24 (REG-71): seasons list order.** v1 orders
+  season lists status ascending (DRAFT, ACTIVE, COMPLETED, ARCHIVED) then
+  `startDate` descending (`jpc-space/src/app/super/seasons/page.tsx:20`,
+  `src/app/admin/season/page.tsx:28`). Change
+  `apps/backend/src/routes/seasons.ts:80` from
+  `orderBy: [{ year: "desc" }, { title: "asc" }]` to
+  `orderBy: [{ status: "asc" }, { startDate: "desc" }]`; the mobile `/seasons`
+  program grouping (02 R43, Plan 6) must keep that order within each program.
+- [ ] **Step 2 — 03-sessions R89 (REG-76): calendar legend.** v1 shows a legend
+  only when a season colour map is supplied
+  (`jpc-space/src/components/sessions/season-calendar.tsx:190-198`;
+  `src/app/super/calendar/page.tsx:16,21-25`). In
+  `apps/mobile/src/components/calendar/CalendarEntries.tsx:164-171`, `Legend`
+  returns `null` when `slots` is `null` (drop the Today/Upcoming/Past legend);
+  update its test.
+- [ ] **Step 3 — 03-sessions R103 (REG-95, REG-79): SUPER gets the check-in
+  console.** v1's SUPER calendar opens the admin session page
+  (`jpc-space/src/app/super/calendar/page.tsx:36`), where `canEditSeason` →
+  `isAdminOfSeason` admits any SUPER
+  (`src/app/admin/season/[code]/sessions/[id]/page.tsx:39-42`,
+  `src/lib/rbac.ts:28-29`). In `apps/mobile/app/(app)/session/[id]/index.tsx:239-242`
+  set `showConsole = data.canManageCheckIn` (remove the SUPER narrowing). The
+  single route stays. Revisit REG-79's wording (it describes the season-detail
+  console, not this page).
+- [ ] **Step 4 — 05-groups R75: students see their leaders' emails.** v1's
+  group detail selects id, name and email ordered by name
+  (`jpc-space/src/lib/groups-query.ts:72-81,93-94`), and the student season
+  view shows leaders' emails as `mailto:` links but never peers' emails
+  (`src/app/student/season/page.tsx:71-77,163-183`). In
+  `apps/backend/src/routes/groups.ts:142` return `leaders.map((l) => l.user)`
+  unmodified for every caller; keep `member(...)`'s email strip on `students`
+  only (`:143`) for a STUDENT caller.
+- [ ] **Step 5 — 06-students R77 (REG-83): staff see drafts across every
+  enrolled season.** v1 lists the student's last 100 submissions across all
+  enrolled seasons, DRAFT included (`jpc-space/src/lib/students-query.ts:361-385`).
+  In `apps/backend/src/lib/queries/students.ts:413-454` (`loadStudentSubmissions`)
+  drop `status: { not: "DRAFT" }` (`:422`) and use every enrolled season for any
+  staff caller that passed `canViewStudent`, instead of `readableSeasonIds`
+  (`:312-329`). (Only explicitly saved drafts exist in v2 — view-created drafts
+  are a KEEP-FIX removal under C6, 08 R58.)
+- [ ] **Step 6 — 05-groups R15 (REG-64): duplicate group names are allowed.**
+  v1 has no name-uniqueness check (`jpc-space/src/lib/group-actions.ts:17,44,105`;
+  no unique on `Group.name`). Delete the `name_taken` block in
+  `validateGroupWrite` (`apps/backend/src/lib/queries/groups.ts:125-140`), the
+  `409 name_taken` case in `__tests__/integration/groups-routes.test.ts:224`,
+  and `name_taken` from the two OpenAPI descriptions (`src/docs/openapi.ts:2703,2915`).
+  The importer's ambiguity refusal stays in Plan 17 (D-16.19.1).
+- [ ] **Step 7 — 11-invites-users R52b (REG-104): a deactivated user stays
+  editable.** v1's edit page for a deactivated user still saves name, role and
+  graduation year (`jpc-space/src/lib/user-actions.ts:120-127`;
+  `src/app/super/users/[id]/edit/page.tsx:59-69`). In
+  `apps/backend/src/routes/users.ts:276` refuse only when `!target`; keep the
+  404 for a missing id (11 R52, KEEP-FIX). **Owner to confirm:** the register
+  marked REG-104 "fix before cutover", but no concrete defect was found (the
+  last-SUPER guard counts active SUPERs only).
 
 ---
 # Part 3 — Switchover runbook
@@ -3425,7 +2528,7 @@ ones.
    SHA", and the step is not done until the check command passes.
 2. **v1 cannot come back once the migrations apply.** M1 makes
    `GroupStudent.seasonId` `NOT NULL` (v1's Prisma client inserts without it),
-   M12 and M14 change rows v1 reads. So the only way back to v1 is to restore
+   M12 changes rows v1 reads (M14 is withdrawn). So the only way back to v1 is to restore
    the R8 backup — which is possible until R15 and never after. § "Rollback
    procedure" is the single place this is spelled out.
 
@@ -3446,14 +2549,14 @@ ones.
 | R9 | T+50 | USER+COORD | **GO / NO-GO GATE** | yes — RB-1 |
 | R10 | T+55 | USER | Move required (+ approved optional) migrations; `migrate deploy` | yes — RB-2 |
 | R11 | T+85 | USER (COORD prepares) | Merge `cutover-code`, deploy it with `READ_ONLY=true` | yes — RB-2 |
-| R12 | T+95 | USER+COORD | Held rows (M7); M17 decision; verifications | yes — RB-2 |
+| R12 | T+95 | USER+COORD | Verifications (M7 held rows and the M17 decision withdrawn, v1 parity) | yes — RB-2 |
 | R13 | T+115 | COORD | Smoke test v2, still read-only | yes — RB-2 |
 | R14 | T+125 | USER | **Stop v1 serving traffic** | yes — RB-2 |
 | R15 | T+135 | USER | **Unfreeze v2 (`READ_ONLY=false`) — POINT OF NO RETURN** | **NO** |
 | R16 | T+140 | USER | Point clients at v2; release the app build | forward only |
 | R17 | T+140 → T+7d | COORD | **Soak** | forward only |
 | R18 | T+7d | USER+COORD | Soak review | forward only |
-| R19 | T+7d | USER | Retire `ChangeMe123!`, re-invite, credential sweep | forward only |
+| R19 | T+7d | USER | Retire `ChangeMe123!`, re-invite (credential sweep withdrawn, v1 parity) | forward only |
 | R20 | T+8d | USER | **Release token compatibility** | forward only |
 | R21 | T+14d | USER | **Decommission v1** | forward only |
 
@@ -3465,8 +2568,8 @@ ones.
 
 - [ ] Part 1 complete: `UNVERIFIED` is zero, Task 1.6's checks print nothing,
       `DROPPED.md` signed.
-- [ ] Part 2 complete: the migration folders and the M17 script authored, Task
-      2.18's rehearsal report reviewed by the user.
+- [ ] Part 2 complete: the migration folders authored, Task
+      2.18's rehearsal report reviewed by the user *(v1 parity 2026-10-09: was "the migration folders and the M17 script")*.
 - [ ] Part 2b complete: Task 2b.18's gate passed; the rehearsed `cutover-code`
       SHA is recorded in `cutover-code.md`.
 - [ ] `pnpm turbo lint typecheck test:unit build` green on `main`; full serial
@@ -3475,8 +2578,9 @@ ones.
       with read-only mode present and **off** (Task 2.0b Step 6), and has been
       serving alongside v1: `curl -fsS "$V2_BASE_URL/health"` succeeds.
 - [ ] The mobile app build that R16 releases is built from `cutover-code`
-      (it carries Task 2b.5's preference toggles and Task 2b.16's hide action)
-      and has passed the device checklist against the rehearsal backend.
+      and has passed the device checklist against the rehearsal backend
+      *(v1 parity 2026-10-09: was "Task 2b.5's preference toggles and Task 2b.16's hide action")*
+      *(v1 parity 2026-10-09; owner decision 2026-10-10: was "it carries Task 2b.5's push master switch only if the owner granted push")*.
 
 ### R2 — Violating-row reports **[COORD]**
 
@@ -3485,13 +2589,13 @@ output to `docs/superpowers/audits/2026-cutover/` — counts and ids only, never
 names, emails or bodies:
 
 - [ ] `M1-disagreements.tsv`, `M1-orphans.tsv` (Task 2.1)
-- [ ] `M2-duplicates.tsv` (Task 2.2 query (a))
 - [ ] `M3-late-zero.txt` — the `status='LATE' AND lateMinutes=0` count after a
       dry recompute (run Task 2.3's (b) as a `SELECT` with the same expression)
-- [ ] `M4-unmapped-links.tsv` — Task 2.4's R2 query; **any row is a no-go input**
-- [ ] `M7-orphan-season-events.tsv` (Task 2.7)
+- [ ] `M7-orphan-season-events.tsv` (Task 2.7) — a data-quality list only;
+      no decision gate and no constraint
 - [ ] `M12-v1-invites.txt` — Task 2.12's two counts
-- [ ] `M14-email-collisions.tsv` — **[USER] resolves these before R9**
+
+  *(v1 parity 2026-10-09: was "also M2-duplicates, M4-unmapped-links (no-go input) and M14-email-collisions")*.
 - [ ] Migration history is v1's, complete, unfailed:
 
 ```bash
@@ -3605,23 +2709,16 @@ home. Rescheduling is cheap; a half-migrated shared database is not.**
 
 - [ ] Backup taken **and verified by restore** (R8).
 - [ ] v1 is confirmed quiescent; v2 answers writes with `503 read_only` (R5, R7).
-- [ ] The required set, and each optional migration being applied, was
+- [ ] The required set *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and each optional migration being applied")* was
       rehearsed on a fresh restore within the last 24 hours at the recorded
       `cutover-code` SHA, all verifications passing (R4).
 - [ ] The rollback procedure has been **executed** at least once (Task 2.18
       Step 6).
-- [ ] `M4-unmapped-links.tsv` contains **no row**. If it does, the mapping is
-      incomplete and a notification will open the wrong screen — **no-go**.
-- [ ] **M7 literal:** production's `ORG_TIMEZONE` (read from the v2 hosting
-      environment by the user) equals the literal in M7's `migration.sql`
-      (`grep -n "AT TIME ZONE" apps/backend/prisma/migrations-cutover/required/20261101000007_m7_jpc_event_integrity/migration.sql`).
-- [ ] **M14 decision, recorded:** `M14-email-collisions.tsv` is empty **and**
-      the user approves M14 → M14 runs and Task 2b.14 stays on the branch; or
-      the user declines → `optional/` is not moved, Task 2b.14's commit is
-      reverted on the branch and the branch is re-rehearsed **before** this
-      gate (a revert after rehearsal is a new SHA), and REG-66 is signed.
-- [ ] The held-row list for M7 (orphan season events) is in hand and the user
-      is present to decide it at R12.
+- ~~**Push decision, recorded (owner)**~~ and ~~**Email "Open" button decision,
+  recorded (owner)**~~ — both decided on 2026-10-10, so neither is a gate item:
+  push is withdrawn (Tasks 2.10, 2b.10), and the button is kept as an app link
+  (Task 2b.4) *(v1 parity 2026-10-09; owner decision 2026-10-10)*.
+  *(v1 parity 2026-10-09: was "M4-unmapped-links no-go, M7 literal, M14 decision, M7 held-row list")*.
 - [ ] **No migration has been added to the set since the rehearsal** (D-13.17).
 - [ ] The user is present, and remains present, for R10 through R15.
 - [ ] There is enough window left for R10–R15 **plus the rehearsed rollback
@@ -3631,13 +2728,12 @@ home. Rescheduling is cheap; a half-migrated shared database is not.**
 
 From a checkout of `cutover-code` at the recorded SHA:
 
-- [ ] Move the **required** folders, and the optional one only if approved at
-      R9:
+- [ ] Move the **required** folders *(v1 parity 2026-10-09: was "the optional M14 folder")*
+      *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and the two optional ones (M5, M10) only if the owner granted push at R9")*:
 
 ```bash
 cd apps/backend
 git mv prisma/migrations-cutover/required/* prisma/migrations/
-git mv prisma/migrations-cutover/optional/20261101000099_m14_email_case_and_release prisma/migrations/   # ONLY if M14 was approved at R9
 git commit -m "chore(db): move cutover migrations into prisma/migrations (Plan 18 R10)"
 ```
 
@@ -3668,7 +2764,8 @@ set.
       still set**. Production deploys are the user's (this step changes what
       production runs; it is not [COORD] work). Record the SHA as
       `CUTOVER_SHA`.
-- [ ] `prisma/CONSTRAINTS.md` is on `main` in the same merge.
+- [ ] ~~`prisma/CONSTRAINTS.md` is on `main` in the same merge.~~ No such file
+      after v1 parity (Task 2.0 Step 7) *(v1 parity 2026-10-09: was "CONSTRAINTS.md on main in the same merge")*.
 
 ```bash
 gh auth switch --user MarkBotros0 && git push origin main
@@ -3676,22 +2773,19 @@ gh auth switch --user MarkBotros0 && git push origin main
 
 **Rollback:** RB-2 (redeploys `PRE_CUTOVER_SHA` and restores the backup).
 
-### R12 — Resolve held rows, decide M17, run the verifications **[USER] + [COORD]** — T+95
+### R12 — Run the verifications **[USER] + [COORD]** — T+95
 
-- [ ] **[USER]** decides each orphan `SEASON`-visibility event (M7) — re-point,
-      set visibility, or soft-delete — then runs
-      `ALTER TABLE "JpcEvent" VALIDATE CONSTRAINT "JpcEvent_season_scope_ck";`
-- [ ] **[USER]** decides whether M17 (HTML normalisation) runs at all. If yes:
-      the user runs Task 2.17's script (dry run, then real), reviews the skip
-      lists and the 200-row sample, and **[COORD]** prepares the merge of Task
-      2b.17's commit, which the user deploys (still `READ_ONLY=true`). If no:
-      nothing runs, the read-time conversion stays, REG-67 is signed.
-- [ ] **[COORD]** runs every verification query from M1–M16 and compares to R4's
-      recorded values. Any material divergence is escalated **before** R14.
+*(v1 parity 2026-10-09: was "Resolve held rows, decide M17, run the
+verifications"; the M7 per-row decisions with `VALIDATE CONSTRAINT` and the M17
+decision are withdrawn with M7 and M17.)*
+
+- [ ] **[COORD]** runs every verification query from the applied set (M1, M3,
+      M12, M13 — *v1 parity 2026-10-09; owner decision 2026-10-10: was "and M5/M10 if moved"*) and compares to R4's recorded values. Any
+      material divergence is escalated **before** R14.
 - [ ] **[COORD]** produces the reconciliation figures for the user: the M3
       late-zero count, the before/after absence-budget deltas for five
-      seasons, the M1 disagreement count resolved, the M4 backfill coverage.
-      Whether to re-status the late-zero rows is the user's call (REG-65).
+      seasons, the M1 disagreement count resolved. Whether to re-status the
+      late-zero rows is the user's call (REG-65) *(v1 parity 2026-10-09: was "…and the M4 backfill coverage")*.
 
 **Rollback:** RB-2.
 
@@ -3708,7 +2802,8 @@ three auth writes `READ_ONLY` admits).
 - [ ] A student whose group changed under M1 sees their **current** group, and
       their previous season's assignments are visible again — M1's whole
       point, and the one thing a smoke test can actually prove.
-- [ ] A notification from before cutover opens the right screen (M4).
+- [ ] A notification from before cutover opens the right screen (Plan 13's
+      `parseNotificationLink`; M4 withdrawn, v1 parity 2026-10-09).
 - [ ] Any write from the app shows the read-only message, not a crash.
 
 **Rollback:** RB-2.
@@ -3769,14 +2864,13 @@ Watch, do not change. Ship nothing but a fix for something on this list.
 | `503 read_only` responses | backend logs | any after R15 — the freeze did not lift |
 | Rows written per hour, per table | `pg_stat_user_tables` `n_tup_ins/upd` | any table at < 50% or > 200% of the pre-cutover hourly baseline |
 | `GroupStudent` unique violations | Postgres error log | any — the composite FK and unique should make them impossible |
-| New notifications with null `entityType` | `SELECT count(*) FROM "Notification" WHERE "entityType" IS NULL AND "createdAt" > <R15>` | any — a producer regressed (Task 2b.4) |
-| Push registrations | `DeviceToken` row count | grows from zero; a flat zero after 48h means the client never reached the endpoint |
-| New attendance rows with `lateBasis = 'UNKNOWN'` | query, `createdAt > <R15>` | any — every v2 write is `SESSION_START` or `MANUAL` (Task 2b.3) |
-| Audit rows per privileged action | `AuditLog` | zero rows for a day in which a role changed, a student graduated or an import ran |
 | Backup freshness | backup job | anything other than daily and verified |
 
-- [ ] **Daily:** the table above, plus a scan of `AuditLog` for anything
-      surprising.
+*(v1 parity 2026-10-09: was "also null-entityType notifications, lateBasis UNKNOWN rows and AuditLog
+rows"; withdrawn with M4, M3's basis column and M9.)*
+*(v1 parity 2026-10-09; owner decision 2026-10-10: the "Push registrations — `DeviceToken` row count" metric is withdrawn with M10.)*
+
+- [ ] **Daily:** the table above *(v1 parity 2026-10-09: was "plus a scan of AuditLog")*.
 - [ ] **Daily:** confirm the automated backup ran **and restored**. The R8
       backup is now historical.
 - [ ] **Once, at T+48h:** re-run the parity audit's spot checks for the five
@@ -3792,7 +2886,10 @@ Watch, do not change. Ship nothing but a fix for something on this list.
 - [ ] **[USER]** signs off. Without a signature, R19–R21 do not run and the
       soak continues.
 
-### R19 — Retire the shared password, re-invite, sweep **[USER]** — T+7d
+### R19 — Retire the shared password, re-invite **[USER]** — T+7d
+
+*(v1 parity 2026-10-09: was "Retire the shared password, re-invite, sweep"; the
+credential sweep is withdrawn with Task 2b.12.)*
 
 `11-invites-users.md` D2 (`:628-632`): every UI-created v1 user shares one
 bcrypt hash of the literal `ChangeMe123!` (`jpc-space/src/lib/student-actions.ts:59`,
@@ -3818,14 +2915,6 @@ psql "$PROD_DATABASE_URL" -v ids="{$(paste -sd, changeme-ids.txt)}" -f null-chan
       no login and no live v2 invite — which now includes the `ChangeMe123!`
       accounts and the people whose v1 invites M12 voided (`M12-v1-invites.txt`).
       Mind Gmail's daily cap (Plan 10 Decision 12): spread over days if needed.
-- [ ] Run the credential sweep (Task 2b.12), dry run first:
-
-```bash
-cd apps/backend
-DATABASE_URL="$PROD_DATABASE_URL" npx ts-node --transpile-only scripts/sweep-credentials.ts --dry-run
-DATABASE_URL="$PROD_DATABASE_URL" npx ts-node --transpile-only scripts/sweep-credentials.ts
-```
-
 - [ ] Confirm: re-run the identification script; it finds zero accounts where
       the literal verifies.
 
@@ -3853,10 +2942,12 @@ contaminate its auth metrics, and so the soak measures one change at a time.
       `migrate deploy` runs, and the token-compatibility clause is replaced by
       whatever R20 left in place. **This is the change that closes C1.**
 - [ ] `_DECISIONS.md` gains a header noting that C1 was lifted on this date and
-      which migrations discharged it (and that M6 and M11 were withdrawn, M14
-      and M17 applied or declined).
-- [ ] The REG-69 follow-ups are scheduled (drop `Notification.link`,
-      `Attendance.lateMinutesLegacy`, the `cutover_backup` schema).
+      which migrations discharged it (and that M6 and M11 were withdrawn, that
+      M2, M4, M5's types, M7, M8, M9, M14, M15, M16 and M17 were withdrawn for
+      v1 parity on 2026-10-09, and that M5's `pushEnabled` and M10 were
+      withdrawn on 2026-10-10 because push will be built later on Firebase) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "and whether the owner granted push")*.
+- [ ] The REG-69 follow-up is scheduled (drop `Attendance.lateMinutesLegacy`)
+      *(v1 parity 2026-10-09: was "also drop Notification.link and the cutover_backup schema")*.
 
 ---
 
@@ -3884,9 +2975,9 @@ are untouched.
    `prisma/migrations/` is v1's verbatim.
 3. **[USER]** restores the R8 backup over production (`pg_restore --clean
    --if-exists` into the production database, using the procedure rehearsed in
-   Task 2.18 Step 6), then removes what the dump does not know about:
-   `psql "$PROD_DATABASE_URL" -c 'DROP SCHEMA IF EXISTS cutover_backup CASCADE;'`
-   (created by M14/M17 after the dump was taken).
+   Task 2.18 Step 6). No remaining migration creates a `cutover_backup` schema,
+   so there is nothing outside the dump to remove *(v1 parity 2026-10-09: was "then DROP SCHEMA
+   cutover_backup, created by M14/M17")*.
 4. **[COORD]** proves the restore: the rehearsal's
    `migrate diff --from-config-datasource --to-schema /tmp/schema.main.prisma --exit-code`
    against production exits 0, and `migrate status` shows the 18 v1
@@ -3977,37 +3068,41 @@ only to keep the rotation's 401 burst out of the soak's metrics.
   `migrate resolve` appear in this document only in prohibitions.
 
 - **D-13.6 — Where `04-attendance.md` D1 and ruling C3 disagree on the late
-  threshold, C3 wins and M3's column defaults to 0.** Raising it to 15 is a
-  product decision after cutover, not a default this migration smuggles in.
+  threshold, C3 wins and the threshold is zero — v1's own rule
+  (`jpc-space/src/lib/attendance-actions.ts:152`, `minutesLate > 0`), with no
+  column.** *(v1 parity 2026-10-09: was "M3's column defaults to 0; raising it to 15 is a later product decision")*.
 
-- **D-13.7 — One `AuditLog` table for privileged writes, not audit columns on
-  many tables; reads are not audited in it (C6).** `AuditLog` has no free-text
-  column, so it cannot hold a field value.
+- **D-13.7 — Withdrawn (v1 parity 2026-10-09).** It ruled one `AuditLog`
+  table for privileged writes; M9 is withdrawn because v1 records no audit
+  (Task 2.9).
 
 - **D-13.8 — M3 recomputes `lateMinutes` for checked-in LATE rows rather than
   annotating it, and does not touch `status`.**
 
-- **D-13.9 — Prisma-invisible objects are recorded in `prisma/CONSTRAINTS.md`:**
-  M7's `JpcEvent_season_scope_ck` and, if applied, M14's
-  `User_email_lower_active_key`. M6's `CHECK` no longer exists (M6 withdrawn).
+- **D-13.9 — Withdrawn (v1 parity 2026-10-09).** It recorded Prisma-invisible
+  objects in `prisma/CONSTRAINTS.md`; the only two (M7's CHECK, M14's partial
+  index) are withdrawn, so the file is not written (Task 2.0 Step 7).
 
-- **D-13.10 — Where a constraint can be modelled in Prisma exactly, Prisma
-  wins, and the stricter rule lives in the endpoint.** M2 takes
-  `@@unique([seasonId, name])` (exact-match) with case-insensitivity in
-  `validateGroupWrite` (Task 2b.2). M14 is the exception because no modelled
-  form expresses "unique among live users, ignoring case".
+- **D-13.10 — Withdrawn (v1 parity 2026-10-09).** It ruled M2's exact-match
+  database unique plus a case-insensitive endpoint check; v1 allows duplicate
+  group names (`jpc-space/src/lib/group-actions.ts:17,44`), so M2 and Task 2b.2
+  are withdrawn and Plan 17 refuses an ambiguous group name instead.
 
 - **D-13.11 — Superseded (2026-10-05).** It ruled that M8 would not backfill
   `resolvedAt`; M8 no longer adds `resolvedAt` (no writer exists — REG-33).
 
-- **D-13.12 — M15 backfills `pointsAwarded` but not `optionsSnapshot`.**
+- **D-13.12 — Withdrawn (v1 parity 2026-10-09)** with M15 (it ruled M15
+  backfills `pointsAwarded` but not `optionsSnapshot`).
 
-- **D-13.13 — M14 is the only optional migration**, because its blocker cannot
-  be resolved by a machine. It lives in `migrations-cutover/optional/`, sorts
-  last, and its code is a separate commit.
+- **D-13.13 — Withdrawn (owner decision 2026-10-10)**: there are no optional
+  migrations. M5's `pushEnabled` and M10 were the last two, held for the
+  owner's push decision; push will be built later on Firebase, so both are
+  withdrawn and `migrations-cutover/optional/` is not created
+  *(v1 parity 2026-10-09: was "M14 is the only optional migration")*
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "The optional migrations are M5 (`pushEnabled`) and M10")*.
 
-- **D-13.14 — M17 is a data script, applied only on the user's explicit
-  say-so at R12**, with its code commit merged only if it ran.
+- **D-13.14 — Withdrawn (v1 parity 2026-10-09)** with M17: v1 keeps stored
+  HTML and renders it sanitised (Task 2.17).
 
 - **D-13.15 — The point of no return is R15 (writes unfrozen), not R10
   (migrations applied).** Everything up to R15 is undone by RB-2, because no
@@ -4032,7 +3127,10 @@ only to keep the rotation's 401 burst out of the soak's metrics.
   withdrawn.** This is why M6 and M11 are withdrawn and why M3, M8 and M15 lost
   columns relative to the earlier draft (`lateWeightMinutes`,
   `resolvedAt`/`resolvedById`, `Quiz.deletedAt`, `videoDurationSeconds`).
-  Each removal is a register row, so nothing disappears silently.
+  Each removal is a register row, so nothing disappears silently. On
+  2026-10-09 a second rule joined it: a migration must also keep v1 behaviour
+  or fix a genuine v1 defect, or it is withdrawn (§ "Revision 2026-10-09 — v1
+  parity").
 
 - **D-13.20 — Post-migration code lives on one long-lived `cutover-code`
   branch, one commit per migration, merged at R11.** It cannot merge earlier
@@ -4054,16 +3152,14 @@ only to keep the rotation's 401 burst out of the soak's metrics.
       registered drop/deferral (Task 1.6's checks print nothing).
 - [ ] `UNVERIFIED` is zero.
 - [ ] **Every C1 deferral is discharged or registered.** Each required
-      migration is applied with its Part 2b code; M14 and M17 are applied or
-      explicitly declined and registered; M6 and M11 are withdrawn and
-      registered; every "deferred to cutover" line in the eighteen specs and
+      migration is applied with its Part 2b code; M6, M11, M5/M10 (push,
+      owner 2026-10-10) and the v1-parity withdrawals are recorded *(v1 parity 2026-10-09; owner decision 2026-10-10: was "M5/M10 are applied or withdrawn on the owner's push decision")*; every "deferred to cutover" line in the eighteen specs and
       the seventeen other plans resolves to a migration or a register row.
-- [ ] `prisma/migrations-cutover/required/` is empty (and `optional/` too, or
-      holds only a declined M14); `prisma/migrations/` holds v1's 18 plus the
+- [ ] `prisma/migrations-cutover/required/` is empty *(v1 parity 2026-10-09; owner decision 2026-10-10: was "(and `optional/` too, or holds only a declined M5/M10)")*; `prisma/migrations/` holds v1's 18 plus the
       applied set; `schema.prisma` on `main` matches the database
       (`migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`
-      exits 0 apart from `CONSTRAINTS.md` objects); `CONSTRAINTS.md` lists the
-      Prisma-invisible objects.
+      exits 0) *(v1 parity 2026-10-09: was "declined M14 … apart from CONSTRAINTS.md objects; CONSTRAINTS.md lists them")*.
+- [ ] Task 2b.P's v1-parity steps are merged on `main`.
 - [ ] `READ_ONLY` is off in production and `503 read_only` has not been served
       since R15.
 - [ ] The soak's metrics were within threshold for five consecutive days and the
@@ -4084,7 +3180,11 @@ only to keep the rotation's 401 burst out of the soak's metrics.
 ---
 ## Register seed
 
-Copied into `DROPPED.md` by Task 1.1 Step 3 and signed at Task 1.5. One row per
+Copied into `DROPPED.md` by Task 1.1 Step 3 and signed at Task 1.5.
+**v1 parity 2026-10-09:** a seed row whose divergence the v1-parity
+classification reverts (`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`)
+is cancelled rather than signed; the rows this plan owns are marked below, and
+rows owned by other plans follow those plans' revisions. One row per
 item; `Kind` is `DROP` (v2 will not have it), `DEFER` (not at cutover; owner
 named) or `DIVERGE` (v2 does it differently on purpose). Every v1 citation is a
 path under `jpc-space/src/` unless it names `prisma/`. Rows marked
@@ -4118,7 +3218,7 @@ path under `jpc-space/src/` unless it names `prisma/`. Rows marked
 | REG-12 | DIVERGE | A student cannot change their own email; self-edit covers six `StudentProfile` columns, name via `PATCH /me` | Changing a login identifier with no verification is an account-takeover primitive (spec 18 D8) | Plan 11 Decision 1 (narrows Plan 7's `SELF_EDITABLE`) | `lib/student-actions.ts:103-121` (self edit writes `name` and `email`) |
 | REG-13 | DIVERGE | Soft-deleted seasons are hidden from `/history`, `/season`, `/attendance` | Spec 02 D2 recommendation | Plan 11 Decision 4 | `lib/season-history-query.ts:18` (R27/R38) |
 | REG-14 | DIVERGE | Opening a check-in link never checks in; pressing "Check in" does | C6 (a GET never writes) | Plan 11 Decision 7 | `app/checkin/[token]/page.tsx` (checks in while rendering, R69) |
-| REG-15 | DIVERGE | Check-in lateness measured from the session start, threshold 0 (then the season threshold after M3) | C3 | Plan 11 Task 2b; M3 | `lib/attendance-actions.ts:95-180` (from `checkInOpenAt`) |
+| REG-15 | DIVERGE | Check-in lateness measured from the session start, threshold 0 (no season threshold: M3's column withdrawn, v1 parity 2026-10-09) | C3 | Plan 11 Task 2b; M3 | `lib/attendance-actions.ts:95-180` (from `checkInOpenAt`) |
 | REG-16 | DIVERGE | MENTOR's `/profile` tab is an account card (name, email, settings, sign out) | v1's mentor tab pointed at a page that never existed (spec 18 R11) | Plan 11 Decision 2 | `lib/navigation.ts:129` (links `/mentor/profile`; no `app/mentor/profile/page.tsx` exists) |
 
 ### Plan 5 (assignment authoring)
@@ -4167,7 +3267,7 @@ path under `jpc-space/src/` unless it names `prisma/`. Rows marked
 |---|---|---|---|---|---|
 | REG-36 | DEFER | Notification retention (hard-delete read notifications older than 180 days, spec 10 D10) | Needs a scheduled job; v2 has no scheduler configured | Plan 13 cutover doc §3 | `lib/notifications.ts` (nothing deletes, R53) |
 | REG-37 | DIVERGE | The in-app notification row is always written; preferences govern email/push only | Spec 10 D4 | Plan 13 Task 2 | `lib/notifications.ts:56-96` (filters before insert, R8) |
-| REG-38 | DIVERGE | Notification emails lose the "Open" button after cutover | The button linked `AUTH_URL` + a v1 web path; v1's web host is gone and new rows carry no `link` (Task 2b.4) | M4; Task 2b.4 | `lib/email.ts:136` |
+| REG-38 | DIVERGE | *(resolved, owner 2026-10-10)* Notification emails keep v1's "View in JPC Space" button and paste-able link, built as an app link to the notification's target (`AUTH_URL` + the app path from `parseNotificationLink`) instead of `AUTH_URL` + the v1 web path (spec 10 R28) | v1's web host is gone at R21; the app link opens the same destination in the app (Task 2b.4) | Task 2b.4 | `lib/email.ts:66-73,142-143,149` |
 
 ### Plan 14 (video quizzes, forum, events)
 
@@ -4185,13 +3285,13 @@ path under `jpc-space/src/` unless it names `prisma/`. Rows marked
 | REG-44 | DIVERGE | Export audit stays an application log line, not an `ExportAudit`/`AuditLog` row | C6 — an export is a GET; spec 17 D15's table would make it write. Removed from M9 | Plan 15 D-17.18 and deferral #2 | `app/api/reports/export/route.ts`, `app/api/season/export/route.ts` (no audit) |
 | REG-45 | DROP | CSV export | XLSX only | Plan 15 D-17.7 | `lib/reports-query.ts:177` (`toCsv`) |
 | REG-46 | DIVERGE | `Submitted %` uses the targeted denominator | C5, spec 17 D2 | Plan 15 | `lib/reports-query.ts:61` |
-| REG-59 | DIVERGE | Workbook `LATE` cells printed `"L"` between Plan 15 and cutover; the number returns with a renamed header (Task 2b.3) | C3: two incompatible meanings in one column until M3 | Plan 15 D-17.10 and deferral #1 | `lib/season-export.ts:42` |
+| REG-59 | DIVERGE | Workbook `LATE` cells printed `"L"` between Plan 15 and cutover; the number returns under v1's header (Task 2b.3; v1 parity 2026-10-09: was "with a renamed header") | C3: two incompatible meanings in one column until M3 | Plan 15 D-17.10 and deferral #1 | `lib/season-export.ts:42` |
 
 ### Plan 17 (imports)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-47 | DEFER | A durable import session (`ImportBatch`/`ImportBatchRow`, commit by id, inline row edit) | Plan 17 D-16.4 keeps the preview client-side and re-derives at commit; M11 withdrawn. The import audit half is M9 | Plan 17 deferral #1 | `lib/student-import-actions.ts:25-120` |
+| REG-47 | DEFER | A durable import session (`ImportBatch`/`ImportBatchRow`, commit by id, inline row edit) | Plan 17 D-16.4 keeps the preview client-side and re-derives at commit; M11 withdrawn. The import audit half was M9, withdrawn (v1 parity 2026-10-09) | Plan 17 deferral #1 | `lib/student-import-actions.ts:25-120` |
 | REG-48 | DROP | Spreadsheet (`.xlsx`) upload intake | Paste-only intake | Plan 17 D-16.2 | `lib/spreadsheet.ts:6-40` |
 | REG-49 | DIVERGE | Imported accounts get no password (`passwordHash: null`); invites are separate | v1 gave every imported user `ChangeMe123!` (R55) | Plan 17 | `lib/student-actions.ts:59` |
 
@@ -4202,25 +3302,25 @@ path under `jpc-space/src/` unless it names `prisma/`. Rows marked
 | REG-50 | DEFER | `QuizAttemptStatus` `ABANDONED` / `EXPIRED` | No consumer designed; adding a value is a migration and forward-only | Plan 8 "Schema facts" | `prisma/schema.prisma` `enum QuizAttemptStatus` (IN_PROGRESS, SUBMITTED, GRADED) |
 | REG-51 | DROP | Quiz delete (and therefore `Quiz.deletedAt`) | v1's `deleteQuizAction` is dead code (C12, spec 12 D9); no v2 endpoint, so the column was removed from M15 | Plan 8 Task 6; D-13.19 | `lib/quiz-actions.ts:85-103` |
 | REG-52 | DIVERGE | The leader's per-session quiz page is collapsed into `quiz/[id]/grade` | One destination per job (D1) | Plan 8 Task 10 | `app/leader/sessions/[id]/quiz/[quizId]/page.tsx` |
-| REG-68 | DIVERGE | Quiz answers taken before cutover have no option-text snapshot; the grading screen says so | Writing today's options into history would fabricate what a student saw | D-13.12; M15 | `lib/quiz-actions.ts:367-408` (positional `selectedIndex`) |
+| REG-68 | DIVERGE | *(cancelled — M15 withdrawn, v1 parity 2026-10-09)* Quiz answers taken before cutover have no option-text snapshot; the grading screen says so | Writing today's options into history would fabricate what a student saw | D-13.12; M15 | `lib/quiz-actions.ts:367-408` (positional `selectedIndex`) |
 
 ### Plans 3, 4 and 6 (seasons, sessions, groups)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
 | REG-53 | DEFER | A per-season IANA timezone | C2: one organisation zone; no reader would honour it. M6 withdrawn | Plan 6 deferral list; Plan 15 deferral #4; Task 2.6 | — (v1 formats in the server's zone) |
-| REG-54 | DIVERGE | Program and year "pages" are a filter and a grouping on `/seasons`, not routes | Spec 02 §9 ("do not port as routes") | Plan 6 Task 6; Plan 4 Task 3 | `app/super/seasons/program/[program]/page.tsx`, `app/super/seasons/year/[year]/page.tsx` |
+| REG-54 | DIVERGE | *(cancelled — v1 parity 2026-10-09: by-program and by-year SUPER screens are built as in v1, Plans 4 and 6; Task 1.6 rows)* Program and year "pages" are a filter and a grouping on `/seasons`, not routes | Spec 02 §9 ("do not port as routes") | Plan 6 Task 6; Plan 4 Task 3 | `app/super/seasons/program/[program]/page.tsx`, `app/super/seasons/year/[year]/page.tsx` |
 | REG-55 | DIVERGE | The season roster is not paginated | The group form needs a group's full membership; a season is hundreds of rows at most | Plan 6 (spec 05 §7) | `lib/groups-query.ts:143-163` |
 | REG-56 | DIVERGE | Season delete is refused while any enrolment or session exists (`season_in_use`) and clears `activeSeasonId` pointers; ADMIN cannot delete | Spec 02 D3/D4 | Plan 3 Revision | `lib/season-actions.ts:163-198` |
 | REG-57 | DIVERGE | A taken season code answers `409 code_taken`, not spec 02 D15's `conflict` | A specific code the client can act on | Plan 3 Revision | `lib/season-actions.ts:59-105` |
 | REG-58 | DIVERGE | Session delete is refused when student records exist (`has_student_records`, including video progress) | Attendance/progress must not cascade away | Plan 3 Revision | `lib/session-actions.ts:181-224` |
-| REG-64 | DIVERGE | Group names: exact-match unique in the database, case-/space-insensitive in the endpoint | D-13.10; spec 05 §10 item 6 | M2; Task 2b.2 | `lib/group-actions.ts:28-158` (no check) |
+| REG-64 | DIVERGE | *(cancelled — v1 parity 2026-10-09: duplicate names allowed as in v1, M2/2b.2 withdrawn, exact-match check removed by Task 2b.P Step 6; Plan 17 refuses an ambiguous name)* Group names: exact-match unique in the database, case-/space-insensitive in the endpoint | D-13.10; spec 05 §10 item 6 | M2; Task 2b.2 | `lib/group-actions.ts:28-158` (no check) |
 
 ### Plan 16 (role dashboards)
 
 | Id | Kind | What | Why | Source | v1 citation |
 |---|---|---|---|---|---|
-| REG-60 | DIVERGE | The 21 rows of Plan 16's "Divergence ledger" (at-risk callout via `isAtRisk`; attendance denominators; no full roster on Home; ACTIVE-enrolment rosters; quiz pending counts; review counts; "Session N of M"; next/in-progress session; absence budget left; outstanding = PENDING\|DRAFT; late count; mentor at-risk and activity feed; events card; SUPER tiles; alumni handling; greeting copy) | Spec 19 §10 D2–D21, rulings C4, C5, C9, X17 | Plan 16 § "Divergence ledger" rows 1–21 | `app/{super,admin,leader,mentor,alumni,student}/dashboard/page.tsx` |
+| REG-60 | DIVERGE | *(v1 parity 2026-10-09: ledger rows 1 and 5 — the 70% callout and the full roster on Home — revert to v1 in Plan 16, ruling X17 amended)* The 21 rows of Plan 16's "Divergence ledger" (at-risk callout via `isAtRisk`; attendance denominators; no full roster on Home; ACTIVE-enrolment rosters; quiz pending counts; review counts; "Session N of M"; next/in-progress session; absence budget left; outstanding = PENDING\|DRAFT; late count; mentor at-risk and activity feed; events card; SUPER tiles; alumni handling; greeting copy) | Spec 19 §10 D2–D21, rulings C4, C5, C9, X17 | Plan 16 § "Divergence ledger" rows 1–21 | `app/{super,admin,leader,mentor,alumni,student}/dashboard/page.tsx` |
 
 Task 1.5 Step 2 expands REG-60 into REG-60.1 … REG-60.21, one per ledger row,
 each with the spec 19 R-number the ledger names.
@@ -4231,11 +3331,11 @@ each with the spec 19 R-number the ledger names.
 |---|---|---|---|---|---|
 | REG-43 | DROP | A fixed late-weight model (`Season.lateWeightMinutes`) | Spec 04 D2 recommends against it; no reader or writer (D-13.19) | Task 2.3 | — (v1 charges raw minutes: `lib/engagement.ts:109-172`) |
 | REG-62 | DIVERGE | Historic `lateMinutes` on checked-in LATE rows are recomputed from the session start; `status` is not rewritten | C3; D-13.8 | M3 | `lib/attendance-actions.ts:95-180` |
-| REG-63 | DROP | Attribution for every role grant, graduation, drop and import before cutover | Never recorded; cannot be backfilled | M9 | — |
+| REG-63 | DROP | *(cancelled — M9 withdrawn, v1 parity 2026-10-09: v1 records no attribution before or after)* Attribution for every role grant, graduation, drop and import before cutover | Never recorded; cannot be backfilled | M9 | — |
 | REG-65 | DEFER | Re-statusing LATE rows whose recomputed minutes are 0 | Rewriting attendance history needs the organisation's decision (R12 figure) | D-13.8; R12 | `lib/attendance-actions.ts:95-180` |
-| REG-66 | DEFER | *(conditional — only if M14 is declined)* Case-insensitive email storage, releasing soft-deleted addresses, the `lower(email)` index | Unresolved case collisions at R9 | D-13.13; Plan 17 deferrals #3, #4, #7; Plan 7 | `prisma/migrations/20260523162529_init/migration.sql:259` |
-| REG-67 | DEFER | *(conditional — only if M17 is declined)* Normalising stored HTML; the read-time conversion stays | Pastoral-policy owner declined at R12 | D-13.14 | `lib/note-actions.ts:31-96` (stores HTML) |
-| REG-69 | DEFER | One release after cutover: drop `Notification.link`, `Attendance.lateMinutesLegacy` and the `cutover_backup` schema | Each is a rollback path or a fallback until its replacement is proven | M3, M4, M14, M17 | — |
+| REG-66 | DEFER | *(cancelled — M14 withdrawn, v1 parity 2026-10-09: v1's exact-match email is the behaviour)* *(conditional — only if M14 is declined)* Case-insensitive email storage, releasing soft-deleted addresses, the `lower(email)` index | Unresolved case collisions at R9 | D-13.13; Plan 17 deferrals #3, #4, #7; Plan 7 | `prisma/migrations/20260523162529_init/migration.sql:259` |
+| REG-67 | DEFER | *(cancelled — M17 withdrawn, v1 parity 2026-10-09)* *(conditional — only if M17 is declined)* Normalising stored HTML; the read-time conversion stays | Pastoral-policy owner declined at R12 | D-13.14 | `lib/note-actions.ts:31-96` (stores HTML) |
+| REG-69 | DEFER | One release after cutover: drop `Attendance.lateMinutesLegacy` (v1 parity 2026-10-09: was "also `Notification.link` and the `cutover_backup` schema") | A rollback path until the recompute is accepted | M3 | — |
 
 ---
 
@@ -4327,3 +3427,67 @@ verification. Two were resolved differently from the review's suggestion:
 M9's export audit (review: reconcile) stays a log line under C6 rather than
 becoming a POST; M6 (review: add the refactor or drop the check) is withdrawn
 rather than kept with a refactor task, because no plan reads a per-season zone.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+Plan 18's Part 2 / 2b tasks were classified in the reverse direction (does each
+migration restore v1, fix a genuine v1 defect, or add something v1 never had?).
+**Kept:** Task 2.0b read-only mode (platform), M1 + 2b.1 (C9 data loss), M3's
+recompute + `lateMinutesLegacy` (C3), 2b.3's numeric workbook cell (restores
+v1), M12's voiding of v1 plaintext invite codes (credential at rest), M13 +
+2b.13 (C7 stale-role hole); M6 and M11 stay withdrawn. ~~**Held for the owner:**
+M10 + 2b.10 and M5's `pushEnabled` (push), the 2b.4 email "Open" button.~~
+Both decided by the owner on 2026-10-10 (rows 26 and 27, and "Resolved" below).
+**Withdrawn:** everything else, listed below. Parts 1 and 3 were trimmed to
+match (Task 2.0 folder list and `CONSTRAINTS.md`, Task 2.18's checks and
+equivalence script, R2/R9/R10/R12/R13/R17/R19/R21, RB-2, Decisions, Done means,
+the register seed).
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 02-seasons R43 | REG-54 | `/seasons` grouped under program headings (localeCompare), year desc within (`src/components/seasons/seasons-list.tsx:112-123`) | `apps/mobile/app/(app)/seasons/index.tsx:204-236` (Plan 6 owns the screen) | Task 1.6 page-parity rows + note; REG-54 seed row |
+| 2 | 02-seasons R45 | REG-54 | SUPER by-program and by-year pages, not-found when empty (`src/app/super/seasons/program/[program]/page.tsx:40`, `…/year/[year]/page.tsx:41`) | new `apps/mobile/app/(app)/seasons/program/[program].tsx`, `…/year/[year].tsx` (Plans 6, 4); today a filter at `seasons/index.tsx:174-177` | Task 1.6 page-parity rows |
+| 3 | 02-seasons R46 | REG-54 | by-year page 404s a non-integer year, accepts any integer (`src/app/super/seasons/year/[year]/page.tsx:23-24`) | new `(app)/seasons/year/[year].tsx` (Plan 4) | Task 1.6 page-parity rows |
+| 4 | 05-groups R15 | REG-64 | two groups with one name in a season are allowed; no unique (`src/lib/group-actions.ts:17,44,105`) | delete `name_taken` in `apps/backend/src/lib/queries/groups.ts:125-140`, test `groups-routes.test.ts:224`, `openapi.ts:2703,2915`; revert `cutover-code` `18941ab` | Task 2.2 (withdrawn), Task 2b.2 (withdrawn), Task 2b.P Step 6, D-13.10, REG-64 |
+| 5 | 11-invites-users R52b | REG-104 | a deactivated user's edit page still saves name/role/graduation year (`src/lib/user-actions.ts:120-127`; `src/app/super/users/[id]/edit/page.tsx:59-69`) | `apps/backend/src/routes/users.ts:276` refuse only when `!target` | not found in plan text — new work: Task 2b.P Step 7 |
+| 6 | 02-seasons R24 | REG-71 | season lists ordered status asc then `startDate` desc (`src/app/super/seasons/page.tsx:20`; `src/app/admin/season/page.tsx:28`) | `apps/backend/src/routes/seasons.ts:80` | not found in plan text (no owning plan) — new work: Task 2b.P Step 1 |
+| 7 | 03-sessions R89 | REG-76 | legend shown only when a season colour map is supplied (`src/components/sessions/season-calendar.tsx:190-198`; `src/app/super/calendar/page.tsx:16,21-25`) | `apps/mobile/src/components/calendar/CalendarEntries.tsx:164-171` | not found in plan text (no owning plan) — new work: Task 2b.P Step 2 |
+| 8 | 03-sessions R103 | REG-95; REG-79 | SUPER opens the admin session page and gets the check-in console (`src/app/super/calendar/page.tsx:36`; `src/app/admin/season/[code]/sessions/[id]/page.tsx:39-42`; `src/lib/rbac.ts:28-29`) | `apps/mobile/app/(app)/session/[id]/index.tsx:239-242` | not found in plan text (no owning plan) — new work: Task 2b.P Step 3 |
+| 9 | 05-groups R75 | — | group detail by name with id/name/email; students see leaders' emails, not peers' (`src/lib/groups-query.ts:72-81,93-94`; `src/app/student/season/page.tsx:71-77,163-183`) | `apps/backend/src/routes/groups.ts:142` | not found in plan text (no owning plan) — new work: Task 2b.P Step 4 |
+| 10 | 06-students R77 | REG-83 | staff see the last 100 submissions across all enrolled seasons, DRAFT included (`src/lib/students-query.ts:361-385`) | `apps/backend/src/lib/queries/students.ts:413-454` (`:422`, `:312-329`) | not found in plan text (no owning plan) — new work: Task 2b.P Step 5 |
+| 11 | Plan 18 M2 + 2b.2 | REG-64 | any name accepted; importer picks the last duplicate (`src/lib/group-import.ts:59,89`) | revert `cutover-code` `18941ab`; importer ambiguity refusal is Plan 17's (D-16.19.1) | Task 2.2, 2b.2, Task 2.0 Step 8, R2, Task 2.11 table |
+| 12 | Plan 18 M3b/M3c + 2b.3a | REG-15 | no grace period, `LATE` iff minutes > 0 (`src/lib/attendance-actions.ts:152`); no basis column (`prisma/schema.prisma:440-456`) | `cutover-code` `4d47c9d`: drop `LateBasis`, `Season.lateThresholdMinutes`, `Attendance.lateBasis`, `lib/late-basis.ts` and their tests | Task 2.3, 2b.3, D-13.6, R17 soak, REG-15 |
+| 13 | Plan 18 2b.3b header | REG-59 | session header `<day> · <title>` (`src/lib/season-export.ts:106`); cell `lateMinutes ?? "L"` (`:7-12`) | `cutover-code` `4d47c9d`: remove `(minutes late from start)` in `season-workbook.ts` and the `KEY_SYMBOLS` "number" row | Task 2b.3, REG-59 |
+| 14 | Plan 18 M4 + 2b.4 producers | — | `Notification.link` holds a role-prefixed web path (`prisma/schema.prisma:594-607`; `src/lib/notifications.ts:44,83`) | none (never built) | Task 2.4, 2b.4, 2b.10 note, Task 2.18 Step 4, R2, R9, R12, R13, R17, REG-69 |
+| 15 | Plan 18 M5 types + 2b.5 | — | six types, six booleans; no submit/forum/pending/reopen notices (`prisma/schema.prisma:63-70,609-621`; `src/lib/submission-actions.ts:193`; `src/lib/quiz-actions.ts:564-600`) | none in Plan 18; flag `apps/backend/src/routes/quizzes.ts:1426-1433` (QUIZ_GRADED reopen notice) to Plan 8 | Task 2.5, 2b.5, Task 2.0 Steps 4/8 |
+| 16 | Plan 18 M7 + 2b.7 | — | missing time = midnight = all-day; hard delete; `SetNull` FK never fires (`src/lib/jpc-event-actions.ts:27-40,146-150`; `prisma/schema.prisma:770`; `src/lib/season-actions.ts:171`) | none (never built) | Task 2.7, 2b.7, Task 2.0 Steps 7/8, Task 2.18 Step 4, R2 (data-quality list only), R9, R12, D-13.9 |
+| 17 | Plan 18 M8 + 2b.8 | — | no note delete reachable (`src/lib/note-actions.ts:120-129`, no UI caller) | none in Plan 18; flag the 501 stub in `apps/backend/src/routes/notes.ts` to Plan 12 | Task 2.8, 2b.8 |
+| 18 | Plan 18 M9 + 2b.9 | REG-63 | no audit record of privileged actions (`prisma/schema.prisma`, none) | none in Plan 18; flag Plan 10's `lib/audit.ts` log line | Task 2.9, 2b.9, Task 2.11 table, R17, D-13.7, REG-47, REG-63 |
+| 19 | Plan 18 M12b index | — | reset tokens created and checked by hash, never queried by expiry (`src/lib/auth/password-reset.ts:20-29`) | none (never built) | Task 2.12 |
+| 20 | Plan 18 2b.12 sweep | — | no cleanup of reset/invite/refresh tokens | none (never built) | Task 2b.12, R19 |
+| 21 | Plan 18 M14 + 2b.14 | REG-66 | email unique and matched exactly (`prisma/schema.prisma:105`; `src/lib/auth.ts:26`; `src/lib/student-import.ts:118,158`) | none in Plan 18; flag Plan 17's `lower(email)` match to the 16-imports pass | Task 2.14, 2b.14, Task 2.0, Task 2.18, R2, R9, R10, D-13.13, REG-66 |
+| 22 | Plan 18 M15 + 2b.15 | REG-68 | no answer snapshot; grade fixed at grading; video question hard delete; video score recomputed (`prisma/schema.prisma:734-747`; `src/lib/quiz-actions.ts:454-458`; `src/lib/video-quiz-actions.ts:103`; `src/lib/video-quiz-query.ts:89-91`) | none (never built) | Task 2.15, 2b.15, D-13.12, REG-68 |
+| 23 | Plan 18 M16 + 2b.16 | — | no post hide; comment hard delete by author or season ADMIN/SUPER (`src/lib/forum-actions.ts:110-120`; `prisma/schema.prisma:513-537`) | none in Plan 18; flag the leader arm to Plan 14 | Task 2.16, 2b.16, R1 |
+| 24 | Plan 18 M17 + 2b.17 | REG-67 | stored HTML rendered as sanitised rich text (`src/components/ui/rich-text-view.tsx:1-11`) | none (never built) | Task 2.17, 2b.17, Task 2.0 Step 5, R12, RB-2, D-13.14, REG-67 |
+| 25 | `CONSTRAINTS.md` (knock-on of 16, 21) | — | — | delete `apps/backend/prisma/CONSTRAINTS.md` on `cutover-code` (`c917f60`) | Task 2.0 Files/Step 7, Task 2.18 Step 6, R11, D-13.9, Done means |
+| 26 | Plan 18 M10 + 2b.10; M5 `pushEnabled` + 2b.5 master switch | - | v1 never sent push: no device or push model (`prisma/schema.prisma`), no push code in `src/`; notifications are in-app plus email. Owner decision 2026-10-10: push will be built later on Firebase | none in Plan 18 (never built; `cutover-code` holds only `migrations-cutover/optional/.gitkeep` — delete it and the README's `optional/` sentence); the built Plan 13 scaffolding is listed in Plan 13's Revision row 7 | Architecture; "depends on" note; Prerequisites (cutover doc); What this plan is not; Part 2 intro; Task 2.0 Files, Steps 4, 6, 8 + note; Task 2.5 (withdrawn); Task 2.10 (withdrawn); Task 2.18 Steps 3, 4, Done for Part 2; Part 2b rules; Task 2b.5 (withdrawn); Task 2b.10 (withdrawn); Task 2b.18; R1; R9; R10; R12; R17 soak; R21; D-13.13; Done means |
+| 27 | 10-notifications R28 | REG-38 | "View in JPC Space" button + paste-able link, `AUTH_URL` + `link` (`src/lib/email.ts:66-73,142-143,149`). Owner decision 2026-10-10: keep it, pointed at the app | `apps/backend/src/lib/email.ts:136-137` (build `AUTH_URL` + `notificationAppPath(parseNotificationLink(link))`); new `notificationAppPath` in `packages/shared/src/notification.ts`; `apps/mobile/app.json` universal/app-link paths (Plan 11) | Task 2.4 last paragraph; Task 2b.4 (resolved, steps); R9; REG-38 seed row |
+
+**Resolved (owner 2026-10-10):**
+- Push (M10 + Task 2b.10, M5's `pushEnabled` + Task 2b.5's master switch) —
+  **withdrawn**: the owner will add notifications later with Firebase. Removed
+  from `optional/` (which is no longer created), R9, R10, R12, the R17 soak,
+  D-13.13 and Done means (row 26).
+- 10-notifications R28 / REG-38 — the notification email's "Open" button:
+  **kept, pointed at the app** — v1's "View in JPC Space" button and
+  paste-able link, built as `AUTH_URL` + the app path of the target that
+  `parseNotificationLink` derives (Task 2b.4, row 27).
+
+**Awaiting owner (not changed):**
+- 11-invites-users R52b / REG-104 — applied (Task 2b.P Step 7), but the register
+  marked REG-104 "fix before cutover"; the owner should confirm.

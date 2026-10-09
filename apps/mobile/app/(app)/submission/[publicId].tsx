@@ -18,7 +18,8 @@ import {
 /** Same wording as Plan 1's submissionStatusLine, so student and reviewer read the same words. */
 function statusLine(sub: SubmissionDetail): string {
   if (sub.status === "REVIEWED") return "Reviewed";
-  if (sub.status === "RETURNED") return "Returned for revision";
+  // v1 parity 2026-10-09 (was "Returned for revision"): legacy rows only; v1 badge label.
+  if (sub.status === "RETURNED") return "Returned";
   if (sub.status === "SUBMITTED") return sub.isLate ? "Submitted late" : "Submitted";
   return "Draft";
 }
@@ -29,8 +30,7 @@ function Verdict({ publicId, initialFeedback, alreadyReviewed }: { publicId: str
   const review = useReviewSubmission(publicId);
   const [feedback, setFeedback] = useState(initialFeedback);
 
-  const submit = (returnForRevision: boolean) =>
-    review.mutate({ feedback, returnForRevision }, { onSuccess: () => router.back() });
+  const submit = () => review.mutate({ feedback }, { onSuccess: () => router.back() });
 
   return (
     <Card style={{ marginTop: theme.spacing.md }}>
@@ -38,16 +38,11 @@ function Verdict({ publicId, initialFeedback, alreadyReviewed }: { publicId: str
       <Input label="Feedback" value={feedback} onChangeText={setFeedback} multiline numberOfLines={6} />
       {review.isError ? (
         <Text variant="caption" color={theme.colors.error[700]}>
-          Couldn't record the review. It may not have been submitted yet.
+          Couldn't record the review. Check your connection and try again.
         </Text>
       ) : null}
-      <Button title={alreadyReviewed ? "Update review" : "Mark reviewed"} onPress={() => submit(false)} loading={review.isPending} />
-      <Button
-        title="Return for revision"
-        variant="secondary"
-        onPress={() => submit(true)}
-        loading={review.isPending}
-      />
+      {/* v1 parity 2026-10-09 (R21): one action (v1 submission-actions.ts:167-191); no "Return for revision". */}
+      <Button title={alreadyReviewed ? "Update review" : "Mark reviewed"} onPress={submit} loading={review.isPending} />
     </Card>
   );
 }

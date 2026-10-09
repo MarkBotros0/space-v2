@@ -13,19 +13,29 @@ export interface StaffSeasonSelection {
   refetch: () => void;
 }
 
+export interface StaffSeasonSelectionOptions {
+  /** The default when nothing is picked. Defaults to pickCurrentSeasonId (ACTIVE first, X8). */
+  pickDefault?: (seasons: SeasonListItem[]) => number | null;
+  /** An initial pick, e.g. a `seasonId` route param (D-16.16, R97). */
+  initialSeasonId?: number | null;
+}
+
 /**
- * A staff screen's chosen season (Plan 6 D-16.16): defaults to the same
- * "current" season every staff screen uses (Plan 4's pickCurrentSeasonId,
- * ruling X8) and lets the user pick any season the role-scoped list holds.
- * Replaces v1's redirect-to-one-season pages (spec 03 R86, spec 05 R91).
- * A picked id that is no longer in the list falls back to the default.
+ * A staff screen's chosen season (Plan 6 D-16.16). The default follows v1's
+ * redirect rule for the screen (`pickDefault`): the calendar's newest ACTIVE
+ * season (R86) or /groups' newest season of any status (R91). A picked id that
+ * is no longer in the list falls back to the default.
  */
-export function useStaffSeasonSelection(enabled: boolean): StaffSeasonSelection {
+export function useStaffSeasonSelection(
+  enabled: boolean,
+  options: StaffSeasonSelectionOptions = {},
+): StaffSeasonSelection {
   const query = useSeasons(enabled);
-  const [picked, setPicked] = useState<number | null>(null);
+  const [picked, setPicked] = useState<number | null>(options.initialSeasonId ?? null);
   const seasons = query.data ?? [];
+  const pickDefault = options.pickDefault ?? pickCurrentSeasonId;
   const seasonId =
-    picked !== null && seasons.some((s) => s.id === picked) ? picked : pickCurrentSeasonId(seasons);
+    picked !== null && seasons.some((s) => s.id === picked) ? picked : pickDefault(seasons);
 
   return {
     seasons,

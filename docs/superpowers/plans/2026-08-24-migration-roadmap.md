@@ -19,6 +19,28 @@ so that **plan number = execution order**. No execution has begun. The
 sections below are the scope statements the plans were written against; the
 files are the instructions.
 
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling (2026-10-09): v2 must behave exactly like v1; a v2 difference is
+kept only where v1's behaviour is a genuine defect (a bug or a security hole).
+The owner chose to edit the existing plans in place so they describe v1's
+behaviour. Plans 1–17 are already built and merged, so each now carries a
+"Revision 2026-10-09 — v1 parity" section listing the code to change, and Plan
+18's migration set shrinks to what restores v1 or fixes a v1 defect. The
+cross-plan rulings below that the classification reverted are amended in place
+and marked *(v1 parity 2026-10-09)*: X1 (no link backfill), X2/X3 (stored HTML
+is shown as sanitised rich text where the per-spec passes restore it) and X17
+(v1's 70% callout, tiers and full roster return). Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+**Owner decisions 2026-10-10** (marked *(v1 parity 2026-10-09; owner decision 2026-10-10)* in place): mobile push is
+withdrawn from Plans 13 and 18 — the owner will add notifications later with
+Firebase; the notification email's "Open" button stays, as an app link
+(Plan 18 Task 2b.4); spreadsheet intake and event photos stay switched off
+with `ENABLE_UPLOADS` until the CMS move (Plans 14, 17); and an import row
+whose group name matches several groups in the season keeps Plan 17's
+row-level refusal.
+
 ## Execution order
 
 Run the plans in number order, 1 through 18. Each plan's header lists only
@@ -38,7 +60,7 @@ plans before it.
 | 10 | Students & accounts follow-up | `2026-10-05-plan-10-students-accounts-followup.md` | 17 |
 | 11 | Student self-service | `2026-10-05-plan-11-student-self-service.md` | 14 |
 | 12 | Notes & engagement | `2026-10-05-plan-12-notes-engagement.md` | 8 |
-| 13 | Notifications & push | `2026-10-05-plan-13-notifications-push.md` | 9 |
+| 13 | Notifications & push *(push withdrawn — v1 parity 2026-10-09; owner decision 2026-10-10)* | `2026-10-05-plan-13-notifications-push.md` | 9 |
 | 14 | Video quizzes, forum, events | `2026-10-05-plan-14-video-forum-events.md` | 10 |
 | 15 | Reports & exports | `2026-10-05-plan-15-reports-exports.md` | 11 |
 | 16 | Role dashboards | `2026-10-05-plan-16-role-dashboards.md` | 18 |
@@ -56,14 +78,21 @@ composes 11, 12, 14 and 15; 18 depends on everything.
 
 Decided once so no plan re-decides them. They bind every plan.
 
-- **X1 Notification links** are written in v1's exact format. Plan 13's
-  `NOTIFICATION_LINK_PATTERNS` holds v1's five shapes (`/student/assignments/:id`,
-  `/student/quizzes`, `/student/calendar`, `/admin/students/:id`,
-  `/leader/students/:id`); Plan 18's link backfill maps the same set. A new
-  producer must use one of them or extend both explicitly.
+- **X1 Notification links** are written in v1's exact format, before and
+  after cutover. Plan 13's `NOTIFICATION_LINK_PATTERNS` holds v1's five shapes
+  (`/student/assignments/:id`, `/student/quizzes`, `/student/calendar`,
+  `/admin/students/:id`, `/leader/students/:id`) and `parseNotificationLink`
+  derives the device target from them; there is no entity-column backfill
+  (Plan 18 M4 withdrawn). A new producer must use one of them or extend
+  `NOTIFICATION_LINK_PATTERNS` explicitly *(v1 parity 2026-10-09: was "Plan 18's link backfill maps the same set; … extend both")*.
 - **X2/X3 One HTML module.** `packages/shared/src/html-text.ts` (Plan 12) holds
   `htmlToPlainText`, `plainTextToHtml`, `escapeHtml`; the backend's
-  `lib/html.ts` re-exports. No other converter or escaper exists.
+  `lib/html.ts` re-exports. No other converter or escaper exists. Stored HTML
+  is never rewritten to plain text (Plan 18 M17 withdrawn); where a per-spec
+  pass restores v1's sanitised rich-text display (v1
+  `src/components/ui/rich-text-view.tsx:1-11`; 14-forum R28), the sanitiser
+  and its allow-list live in this module too, and ruling C11's "nothing renders
+  as HTML" needs the owner's amendment *(v1 parity 2026-10-09: was "display always via htmlToPlainText")*.
 - **X4 One rate-limit handler:** `lib/rate-limit.ts` (Plan 9); never copied.
 - **X5 `requireAuth` per route,** or on a prefix the router owns exclusively —
   unknown paths must stay `not_found` 404 (Plan 6 converts `seasons.ts`).
@@ -84,9 +113,16 @@ Decided once so no plan re-decides them. They bind every plan.
   10). Day grouping uses `dayKey`; recurrence steps are DST-safe calendar weeks.
 - **X14** No migrations before Plan 18; no `process.env` outside `config.ts`;
   no `@/`; no `@prisma/client`.
-- **X17 Dashboards** (spec 19 §10): v1's 70%-attendance callout is replaced by
-  the shared `isAtRisk`; "outstanding" is `isAssignmentOutstanding`
-  (PENDING|DRAFT, C5); no full roster on Home.
+- **X17 Dashboards** (spec 19 §10): the admin and leader Home keep v1's
+  "Students below 70% attendance" callout — the server returns the names of
+  roster students with `attendancePct < 70` (`attendanceTotal > 0`), hidden
+  when none — and v1's 70/85 red/amber/green tiers via one shared
+  `ATTENDANCE_TIERS` helper; Home shows the full roster ("All students":
+  name, attendance %, pending, sorted `attendancePct` ascending with no-session
+  rows last) as v1 does (19-dashboards R28, R30, R31, R35, R41). The shared
+  `isAtRisk` stays for the mentor branch (R47). "Outstanding" is
+  `isAssignmentOutstanding` (PENDING|DRAFT, C5 — equal to v1)
+  *(v1 parity 2026-10-09: was "v1's 70% callout is replaced by isAtRisk; no full roster on Home")*.
 
 ## How subagents are used in every plan
 
@@ -296,17 +332,23 @@ enforced, engagement computed server-side.
 - Done: a leader-visibility note is unreadable by a leader outside the
   student's group — proven by integration test.
 
-## Plan 13 — Notifications completed + push
+## Plan 13 — Notifications completed + push — push **WITHDRAWN** (owner decision 2026-10-10: push will be built later on Firebase)
 
-**Goal:** finish the partial domain 10 and add the mobile win: inbox
-endpoints (list, mark-read as explicit writes — C6), preference surface, and
-expo push (token registration, the 2–3 interruptive types only, per spec D5).
+**Goal:** finish the partial domain 10: inbox
+endpoints (list, mark-all-read as an explicit write — C6) and the preference
+surface. Push is not in this plan: v1 never sent push, and the owner will add
+notifications later with Firebase, under its own plan
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "…, and expo push (token registration, the 2–3 interruptive types
+only, per spec D5)"; the 2026-10-09 text had it "awaiting the owner — Plan 18
+Task 2.10")*. In-app notifications and email are unaffected; the email keeps
+v1's "View in JPC Space" button, pointed at the app (Plan 18 Task 2b.4).
 
-- 2 agents: **backend** (inbox + prefs + push dispatch behind the existing
-  best-effort seam) and **mobile** (notifications screen, permission flow,
-  token lifecycle in the session store).
-- Done: a review recorded on one device produces a push on the student's
-  device; opening the inbox never writes (C6).
+- 2 agents: **backend** (inbox + prefs behind the existing best-effort seam)
+  and **mobile** (notifications screen and preference toggles)
+  *(v1 parity 2026-10-09; owner decision 2026-10-10: was "+ push dispatch" and "permission flow, token lifecycle in the session store")*.
+- Done: a review recorded on one device produces an inbox row and an
+  unread-badge increment on the student's device; opening the inbox never
+  writes (C6) *(v1 parity 2026-10-09; owner decision 2026-10-10: was "produces a push on the student's device")*.
 
 ## Plan 14 — Video quizzes, forum, events
 
@@ -342,8 +384,9 @@ three disagreeing "submission %"s.
 reports, events, attendance and notifications endpoints earlier plans built.
 One `/dashboard` route, a branch per role, upcoming events on all six.
 
-- Reuses `isAssignmentOutstanding`, `isAtRisk` and Plan 15's metrics; it
-  defines no new metric (C4/C5).
+- Reuses `isAssignmentOutstanding`, `isAtRisk` (mentor branch) and Plan 15's
+  metrics, plus v1's 70% callout and 70/85 tiers (X17); it defines no new
+  metric (C4/C5) *(v1 parity 2026-10-09: was "isAtRisk" for every branch)*.
 - Done: each role's Home shows its v1 figures, computed server-side.
 
 ## Plan 17 — Imports
@@ -368,10 +411,13 @@ the CMS lands.
    dashboards) and all 104 v1 pages against v2,
    reporting every rule not demonstrably preserved; coordinator triages.
 2. **Migration thaw:** the deferred-to-cutover list executes at last —
-   `GroupStudent` per-season uniqueness + backfill from enrolments,
-   `lateThresholdMinutes`/`lateWeightMinutes`, notification `link` format,
-   soft-delete columns, name uniqueness on groups. Each is a migration
-   written *now*, applied only when v1 stops writing.
+   `GroupStudent` per-season uniqueness + backfill from enrolments, historic
+   lateness recomputed from the session start, v1 plaintext invite codes
+   voided, `sessionsValidFrom` *(v1 parity 2026-10-09; owner decision 2026-10-10: was "; push (`DeviceToken`,
+   `pushEnabled`) only if the owner grants it" — withdrawn, push will be built later on Firebase)*. Each is a migration written *now*, applied only when v1
+   stops writing *(v1 parity 2026-10-09: was "lateThresholdMinutes/
+   lateWeightMinutes, notification link format, soft-delete columns, name
+   uniqueness on groups")*.
 3. Freeze v1 writes, run the backfills, point everything at v2, watch, then
    switch v1 off.
 - Revision: a real v2 read-only freeze mode, the post-migration code changes,

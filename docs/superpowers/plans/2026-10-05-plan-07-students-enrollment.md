@@ -92,6 +92,23 @@ here, per the roadmap's plan split); `GET/PATCH /me/profile` and the
 deferred with uploads (`ENABLE_UPLOADS` is off; recorded in Plan 18's
 register).
 
+*(v1 parity 2026-10-09)* Two of these cuts change:
+- **Documents list (spec 06 R80, REG-06).** It is no longer deferred with
+  uploads. SUPER and ADMIN see a read-only Documents list on the student
+  detail: `originalName`, `sizeBytes`, `mimeType`, `uploadedAt` desc, with no
+  download link, as v1 `src/lib/students-query.ts:405-416` and
+  `src/components/students/student-detail.tsx:342-368`. Listing needs no
+  upload; `ENABLE_UPLOADS` gates only uploading (CLAUDE.md). Upload and delete
+  stay deferred. See the Task 7 note. *(was "documents ride with uploads/CMS")*
+- **Attendance log scope (spec 06 R73, REG-83).** The attendance
+  sub-resource that PR #18 (commit 15b7067) added must show any staff viewer
+  admitted by `canViewStudent` the last 100 rows across **every** season the
+  student was enrolled in, as v1 `src/lib/students-query.ts:323-334`.
+  `readableSeasonIds` (`apps/backend/src/lib/queries/students.ts:312-329`)
+  returns all enrolled seasons for every staff caller, instead of limiting
+  ADMIN to their seasons and LEADER to their groups' rows. *(was "ADMIN
+  limited to administered seasons, LEADER to their group's enrolments")*
+
 **Later plans that change what this plan builds** (so an executor is not
 surprised when the code moves on):
 - **Plan 10** (runs after this one): adds `POST /students/:id/graduate` and
@@ -346,7 +363,9 @@ export type StudentListQuery = z.output<typeof studentListQuerySchema>;
 // ---------------------------------------------------------------------------
 
 /**
- * The cut every admitted staff role may read. `.strict()` — and kept strict by
+ * The narrowest cut. v1 parity 2026-10-09 (spec 06 R71): no caller receives it
+ * any more, because every staff role gets the internal arm and the subject the
+ * private arm. It is kept as the strict base of both. `.strict()` — and kept strict by
  * `.extend()` below — so a client parsing the narrow arm FAILS on a payload
  * carrying a withheld field, instead of stripping it silently. That parse
  * failure is the leak detector D3 asks for.
@@ -388,7 +407,7 @@ export const enrollmentHistoryItemSchema = z.object({
   enrolledAt: z.string(),
   completedAt: z.string().nullable(),
   droppedAt: z.string().nullable(),
-  /** Free-text personal data — always null in the public (LEADER/MENTOR) shape. */
+  /** Free-text personal data — null only in the public shape, which no caller receives since v1 parity 2026-10-09 (R71). */
   dropReason: z.string().nullable(),
 });
 export type EnrollmentHistoryItem = z.infer<typeof enrollmentHistoryItemSchema>;
@@ -402,8 +421,8 @@ const studentDetailBase = z.object({
   /** Advisory current group (GroupStudent — the one question it may answer, C9/R4). */
   currentGroup: z.object({ id: z.number(), name: z.string() }).nullable(),
   /**
-   * Enrollment history, `enrolledAt desc`. For a LEADER, only the rows whose
-   * group is one of theirs (spec 06 §7: "the scoped season rows").
+   * Enrollment history, `enrolledAt desc`, every row for every staff viewer
+   * (v1 parity 2026-10-09, spec 06 R71: was "a LEADER sees only their groups' rows").
    * Sub-resources (attendance, submissions, notes, documents, engagement) are
    * NOT fields of this schema — they become their own endpoints in later
    * plans (spec 06 §7's split).
@@ -694,16 +713,13 @@ describe("GET /api/v1/students (active)", () => {
     expect(ids).not.toContain(student2Id); // season B is not theirs
   });
 
-  it("narrows LEADER to their groups' members through the ENROLLMENT row (C9)", async () => {
-    // student1 has NO GroupStudent row — only SeasonEnrollment.groupId links
-    // them to the leader's group. A scope that reads GroupStudent returns [].
+  // v1 parity 2026-10-09 (spec 06 R28): v1 has no leader students list
+  // (only SUPER/ADMIN/MENTOR pages exist); a leader uses My groups + detail.
+  it("refuses LEADER — v1 gave them no students list", async () => {
     const res = await request(app)
       .get(`/api/v1/students?q=${PFX}`)
       .set("authorization", `Bearer ${leaderToken}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.students.map((s: { id: number }) => s.id)).toEqual([student1Id]);
-    expect(res.body.data.total).toBe(1);
+    expect(res.status).toBe(403);
   });
 
   it("refuses a STUDENT caller — no student roster for students (C8)", async () => {
@@ -713,13 +729,16 @@ describe("GET /api/v1/students (active)", () => {
     expect(res.status).toBe(403);
   });
 
-  it("filters by seasonId through enrollments, any status", async () => {
+  // v1 parity 2026-10-09 (spec 06 R35): v1 filtered on the active season shown
+  // on the row (students-list.tsx:55-99), i.e. StudentProfile.activeSeasonId.
+  it("filters by seasonId on the student's ACTIVE season pointer", async () => {
     const res = await request(app)
-      .get(`/api/v1/students?q=${PFX}&seasonId=${seasonBId}`)
+      .get(`/api/v1/students?q=${PFX}&seasonId=${seasonAId}`)
       .set("authorization", `Bearer ${superToken}`);
 
     const ids = res.body.data.students.map((s: { id: number }) => s.id);
-    expect([...ids].sort()).toEqual([student1Id, student2Id].sort());
+    // student2 is enrolled in B but has no pointer; the dropped student was in A.
+    expect(ids).toEqual([student1Id]);
   });
 
   it("searches university case-insensitively, ANDed with scope (R33)", async () => {
@@ -905,12 +924,11 @@ type StudentScope = { kind: "all" } | { kind: "ids"; ids: number[] };
  * SUPER and MENTOR read all (canReadAllStudents). ADMIN gets the distinct
  * students EVER enrolled in their seasons, regardless of enrollment status —
  * v1's semantics (R30/R31), kept: the list answers "ever mine", not
- * "currently mine". LEADER gets the distinct students whose ENROLLMENT names
- * one of their groups — ruling C9; v1's (unreachable — no leader list page
- * ever existed, R28) branch read GroupStudent instead, which forgets a
- * leader's students the moment a later season reassigns them.
+ * "currently mine". LEADER has no students list, as in v1: no
+ * src/app/leader/students/page.tsx exists (spec 06 R28; v1 parity 2026-10-09).
+ * A leader reaches their students through My groups and the detail page.
  *
- * null = this caller has no student-list surface at all (STUDENT) → 403.
+ * null = this caller has no student-list surface at all (STUDENT, LEADER) → 403.
  */
 async function studentListScope(user: SessionUser): Promise<StudentScope | null> {
   if (canReadAllStudents(user)) return { kind: "all" };
@@ -923,15 +941,7 @@ async function studentListScope(user: SessionUser): Promise<StudentScope | null>
     });
     return { kind: "ids", ids: enrollments.map((e) => e.studentUserId) };
   }
-  if (user.role === "LEADER") {
-    if (user.groupLeaderIds.length === 0) return { kind: "ids", ids: [] };
-    const enrollments = await db.seasonEnrollment.findMany({
-      where: { groupId: { in: user.groupLeaderIds } },
-      select: { studentUserId: true },
-      distinct: ["studentUserId"],
-    });
-    return { kind: "ids", ids: enrollments.map((e) => e.studentUserId) };
-  }
+  // v1 parity 2026-10-09 (spec 06 R28): LEADER falls through to null → 403.
   return null;
 }
 
@@ -1010,9 +1020,9 @@ export async function listStudents(
       // are the same table filtered on the same column.
       { graduationYear: query.status === "alumni" ? { not: null } : null },
       ...(scope.kind === "ids" ? [{ id: { in: scope.ids } }] : []),
-      // Season filter through enrollments, any status (C9; matches the ADMIN
-      // scope's "ever enrolled" meaning).
-      ...(query.seasonId ? [{ seasonEnrollments: { some: { seasonId: query.seasonId } } }] : []),
+      // Season filter on the active-season pointer the row displays, as v1's
+      // students-list.tsx:55-99 (spec 06 R35; v1 parity 2026-10-09).
+      ...(query.seasonId ? [{ studentProfile: { activeSeasonId: query.seasonId } }] : []),
       searchFilter(query.q),
     ],
   };
@@ -1021,6 +1031,13 @@ export async function listStudents(
     query.status === "alumni"
       ? [{ graduationYear: "desc" }, { name: "asc" }, { id: "asc" }] // R40
       : [{ name: "asc" }, { id: "asc" }]; // R34's order, without its cap
+
+  // v1 parity 2026-10-09 (spec 06 R41): the alumni list is every alumnus in
+  // one response, as v1's listAlumni (students-query.ts:143-153) — no page.
+  if (query.status === "alumni") {
+    const all = await db.user.findMany({ where, orderBy, select: LIST_SELECT });
+    return { students: all.map(toListItem), nextCursor: null, total: all.length };
+  }
 
   const [rows, total] = await Promise.all([
     db.user.findMany({
@@ -1157,10 +1174,12 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
 - [ ] **Step 7: OpenAPI** — add `GET /api/v1/students` to `src/docs/openapi.ts`
 in this same commit (house style: hand-authored, prose `description`).
 Document: the `status` query enum and that `dropped` rows are
-enrollment-keyed; per-role narrowing (SUPER/MENTOR all, ADMIN ever-enrolled,
-LEADER via enrollment `groupId` — C9); that `alumni` excludes LEADER and
-`dropped` excludes MENTOR and LEADER (403 `forbidden`); cursor + `total`
-semantics (D14).
+enrollment-keyed; per-role narrowing (SUPER/MENTOR all, ADMIN ever-enrolled);
+that LEADER and STUDENT get 403 `forbidden` on every status (v1 parity
+2026-10-09, spec 06 R28: was "LEADER via enrollment `groupId`"), and
+`dropped` excludes MENTOR too; `seasonId` matches the active-season pointer
+(R35); cursor + `total` semantics (D14), except that `alumni` returns every
+row in one response with `nextCursor: null` (R41).
 
 - [ ] **Step 8: Commit**
 
@@ -1223,34 +1242,33 @@ describe("GET /api/v1/students/:id", () => {
     expect(res.status).toBe(403);
   });
 
-  it("withholds phone, DOB, spiritual background and notes from MENTOR — absence, not null (D3)", async () => {
+  // v1 parity 2026-10-09 (spec 06 R71): v1's mentor and leader detail pages render
+  // the full profile — phone, DOB, spiritual background, internal notes, every
+  // season row with its drop reason (student-detail.tsx:83-84,141-160;
+  // leader/students/[id]/page.tsx:35-42).
+  it("gives MENTOR the internal shape, as v1's mentor detail page", async () => {
     const res = await request(app)
       .get(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${mentorToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.profile).toHaveProperty("university", "Test University");
-    // The keys must not exist on the wire at all — a null would still admit
-    // the field exists and still round-trip through generic clients.
-    expect(res.body.data.profile).not.toHaveProperty("phone");
-    expect(res.body.data.profile).not.toHaveProperty("dateOfBirth");
-    expect(res.body.data.profile).not.toHaveProperty("spiritualBackground");
-    expect(res.body.data.profile).not.toHaveProperty("notes");
+    expect(res.body.data.profile).toMatchObject({
+      university: "Test University",
+      phone: "+20 100 000 0000",
+      spiritualBackground: "Test background",
+      notes: "Internal staff note",
+    });
   });
 
-  it("admits a LEADER to their own student with the public shape and only their rows", async () => {
+  it("admits a LEADER to their own student with the internal shape and every season row", async () => {
     const res = await request(app)
       .get(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${leaderToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.profile).not.toHaveProperty("phone");
-    expect(res.body.data.profile).not.toHaveProperty("notes");
-    // student1 holds two enrollments; only the one naming the leader's group
-    // travels (spec 06 §7: "the scoped season rows").
-    expect(res.body.data.enrollments).toHaveLength(1);
-    expect(res.body.data.enrollments[0].seasonId).toBe(seasonAId);
-    expect(res.body.data.enrollments[0].dropReason).toBeNull();
+    expect(res.body.data.profile).toMatchObject({ phone: "+20 100 000 0000", notes: "Internal staff note" });
+    // Both enrollments travel, the one outside the leader's group included.
+    expect(res.body.data.enrollments).toHaveLength(2);
   });
 
   it("refuses a LEADER outside their groups (C8 — the row gate, not just the route)", async () => {
@@ -1359,14 +1377,9 @@ export async function loadStudentDetail(
     },
   });
 
-  // LEADER sees only the rows naming one of their groups (§7's "scoped
-  // season rows"); every other admitted role sees the full history.
-  const scoped =
-    user.role === "LEADER"
-      ? enrollments.filter((e) => e.groupId !== null && user.groupLeaderIds.includes(e.groupId))
-      : enrollments;
-
-  const history: EnrollmentHistoryItem[] = scoped.map((e) => ({
+  // v1 parity 2026-10-09 (spec 06 R71): every admitted viewer, LEADER included,
+  // sees the full history, as v1's leader detail page (leader/students/[id]/page.tsx:35-42).
+  const history: EnrollmentHistoryItem[] = enrollments.map((e) => ({
     enrollmentId: e.id,
     seasonId: e.seasonId,
     seasonCode: e.season.code,
@@ -1427,16 +1440,16 @@ Append to `routes/students.ts` (extend its imports: `parseId` from
 
 ```ts
 /**
- * Which of the three §4.2 shapes this caller receives. SUPER and ADMIN read
- * everything; the subject reads their own personal data but never the
- * staff-only internal notes (R23); MENTOR and LEADER get the narrow cut —
- * v1 delivered them the full object and relied on React props to not render
- * it (§4.2's LEADER column), which an endpoint cannot do.
+ * Which of the three §4.2 shapes this caller receives. Staff (SUPER, ADMIN,
+ * MENTOR, LEADER) read everything, as v1's staff detail pages rendered it
+ * (spec 06 R71; v1 parity 2026-10-09: was "MENTOR and LEADER get the narrow
+ * public cut"). The subject reads their own personal data but never the
+ * staff-only internal notes (R23). canViewStudent has already admitted the
+ * caller, so any other caller here is the subject.
  */
 function detailViewFor(user: SessionUser, studentUserId: number): StudentDetailView {
-  if (isSuper(user) || user.role === "ADMIN") return "internal";
   if (user.userId === studentUserId) return "private";
-  return "public";
+  return "internal";
 }
 
 studentsRouter.get("/:id", async (req, res) => {
@@ -1465,10 +1478,11 @@ Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBan
 Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
 
 - [ ] **Step 5: OpenAPI** — add `GET /api/v1/students/:id` in the same commit.
-Document the three response shapes and, explicitly, the absence contract:
-which fields do not exist on the wire for MENTOR/LEADER (phone, dateOfBirth,
-spiritualBackground, notes, per-row dropReason) and that the subject never
-receives `notes`.
+Document the response shapes and, explicitly, the absence contract: every
+staff role (SUPER, ADMIN, MENTOR, LEADER) receives the internal shape with the
+full enrollment history (v1 parity 2026-10-09, spec 06 R71: was "phone, DOB,
+spiritual background, notes and dropReason absent for MENTOR/LEADER"), and the
+subject never receives `notes`.
 
 - [ ] **Step 6: Commit**
 
@@ -1573,19 +1587,21 @@ describe("PATCH /api/v1/students/:id", () => {
     expect(profile?.phone).toBe("+20 111 111 1111");
   });
 
-  it("refuses the subject's own write of notes with forbidden_field (R23 — loudly, not v1's silent drop, R24)", async () => {
+  // v1 parity 2026-10-09 (spec 06 R24): v1 dropped notes/activeSeasonId from a
+  // self-edit and saved the rest (student-actions.ts:113-114,130-135).
+  it("ignores the subject's own notes and activeSeasonId and saves the rest (R23, R24)", async () => {
     const res = await request(app)
       .patch(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${student1Token}`)
-      .send({ notes: "self-written" });
+      .send({ notes: "self-written", activeSeasonId: seasonBId, gifts: "Music" });
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("forbidden_field");
+    expect(res.status).toBe(200);
     const profile = await db.studentProfile.findUnique({
       where: { userId: student1Id },
-      select: { notes: true },
+      select: { notes: true, activeSeasonId: true, gifts: true },
     });
-    expect(profile?.notes).toBe("Internal staff note");
+    expect(profile).toMatchObject({ notes: "Internal staff note", activeSeasonId: seasonAId, gifts: "Music" });
+    await db.studentProfile.update({ where: { userId: student1Id }, data: { gifts: "Teaching" } });
   });
 
   it("lets ADMIN write notes but NOT activeSeasonId (the allowlist)", async () => {
@@ -1699,9 +1715,10 @@ itself uses for the generated client and keep the `../` depth correct for
  * after the fact for refusal purposes — and refusal must name the key).
  *
  * - The subject edits their own identity and contact fields (R22) but never
- *   `notes` or `activeSeasonId` (R23). v1 silently dropped those from a
- *   self-edit (R24); an API that pretends a write worked teaches clients to
- *   trust it, so this refuses with `forbidden_field` instead.
+ *   `notes` or `activeSeasonId` (R23). As in v1 (student-actions.ts:113-114,
+ *   130-135, spec 06 R24), a self-edit that carries them is not refused: the
+ *   two keys are stripped and the rest saves (v1 parity 2026-10-09: was
+ *   "refuses with forbidden_field").
  * - ADMIN adds `notes`. NOT `activeSeasonId`: repointing a student's season
  *   is the same unscoped power v1's create leaked to every admin (§4.3), and
  *   it follows creation to SUPER in v2.
@@ -1806,7 +1823,13 @@ studentsRouter.patch("/:id", async (req, res) => {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
-  const allowed = isSuper(user) ? null : user.userId === id ? SELF_EDITABLE : ADMIN_EDITABLE;
+  const isSelf = !isSuper(user) && user.userId === id;
+  if (isSelf) {
+    // v1 parity 2026-10-09 (spec 06 R24): v1 silently ignored these on a self-edit.
+    delete (req.body as Record<string, unknown>).notes;
+    delete (req.body as Record<string, unknown>).activeSeasonId;
+  }
+  const allowed = isSuper(user) ? null : isSelf ? SELF_EDITABLE : ADMIN_EDITABLE;
   if (allowed) {
     for (const key of Object.keys(req.body as Record<string, unknown>)) {
       if (!allowed.has(key)) {
@@ -1910,7 +1933,9 @@ Run: `pnpm turbo lint typecheck test:unit --filter=@space/backend` → clean.
 - [ ] **Step 4: OpenAPI** — add both paths in the same commit. Document:
 SUPER-only creation and WHY there is no password field (D7 — invites are the
 only credential path, Plan 9); the optional `seasonId` transaction semantics
-(D1); the per-role PATCH allowlists and `forbidden_field`; `email_taken`; and
+(D1); the per-role PATCH allowlists and `forbidden_field` (a self-edit's
+`notes`/`activeSeasonId` are ignored, not refused — v1 parity 2026-10-09, R24);
+`email_taken`; and
 `activeSeasonId`'s validation — `404 not_found` for a missing/deleted season,
 `409 not_enrolled` when the student has no ACTIVE enrollment there.
 
@@ -2668,13 +2693,12 @@ Replace the three placeholder screens:
 import { StudentList } from "../../../src/components/StudentList";
 
 export default function StudentsScreen() {
-  // LEADER is included: their nav has no /students tab, but the endpoint
-  // narrows them to their groups' members, and the route stays reachable by
-  // navigation (spec 06 §9's leader-roster decision, answered "yes, scoped").
+  // v1 parity 2026-10-09 (spec 06 R28): v1 has a students list for SUPER,
+  // ADMIN and MENTOR only; a LEADER reaches students through My groups.
   return (
     <StudentList
       status="active"
-      allowedRoles={["SUPER", "ADMIN", "MENTOR", "LEADER"]}
+      allowedRoles={["SUPER", "ADMIN", "MENTOR"]}
       title="Students"
     />
   );
@@ -2700,6 +2724,8 @@ export default function DroppedScreen() {
   return <StudentList status="dropped" allowedRoles={["SUPER", "ADMIN"]} title="Dropped students" />;
 }
 ```
+
+> **v1 parity 2026-10-09:** Two changes to `StudentList`, now `apps/mobile/src/components/StudentList.tsx`. (1) Add a **Season** chip to `StudentFilters` (`StudentList.tsx:70-110`, which also holds PR #18's group filter and sort keys). It defaults to "All seasons" and lists the seasons on the loaded rows by `activeSeasonTitle`. Choosing one sends `seasonId`, which the server now matches against `studentProfile.activeSeasonId` (`apps/backend/src/lib/queries/students.ts:201`), as v1 `src/components/students/students-list.tsx:55-99` (spec 06 R35, REG-82). (2) For `status="alumni"`, render no search input and no "Load more". The server returns every alumnus in one response, ordered `graduationYear` desc then `name` asc (v1 `src/lib/students-query.ts:143-153`, spec 06 R41). The hook's `getNextPageParam` already stops on `nextCursor: null`. Add a `students-list.test.tsx` case for each change.
 
 - [ ] **Step 6: Update `placeholder-screens.test.tsx`**
 
@@ -2873,31 +2899,27 @@ describe("StudentDetailScreen", () => {
     expect(screen.getByText("Moved away")).toBeTruthy();
   });
 
-  it("shows no notes or phone to MENTOR — the public arm has no such fields", async () => {
+  // v1 parity 2026-10-09 (spec 06 R71): mentors and leaders see the full
+  // profile, as v1's staff detail pages (student-detail.tsx:83-84,141-160).
+  it("shows notes, phone and the drop reason to MENTOR — the internal arm", async () => {
     useSessionStore.setState(mentorSession);
-    // The mentor arm's payload: dropReason nulled, profile is the public cut.
-    get.mockResolvedValue({
-      data: {
-        data: {
-          ...base,
-          enrollments: [{ ...enrollment, dropReason: null }],
-          profile: publicProfile,
-        },
-      },
-    });
+    get.mockResolvedValue({ data: { data: { ...base, profile: internalProfile } } });
 
     renderWithProviders(<StudentDetailScreen />);
 
     expect(await screen.findByText("Sara Student")).toBeTruthy();
-    expect(screen.queryByText("Watch attendance")).toBeNull();
-    expect(screen.queryByText(/\+20 100 000 0000/)).toBeNull();
+    expect(screen.getByText("Watch attendance")).toBeTruthy();
+    expect(screen.getByText(/\+20 100 000 0000/)).toBeTruthy();
+    expect(screen.getByText("Moved away")).toBeTruthy();
   });
 
-  it("fails loudly when the server leaks a withheld field to a narrow role", async () => {
-    useSessionStore.setState(mentorSession);
-    // A server bug serving the INTERNAL payload to a mentor: the public arm
-    // is .strict(), so the parse throws and the screen shows its error state
-    // instead of quietly rendering someone's personal data.
+  it("fails loudly when the server leaks internal notes to the student themselves", async () => {
+    useSessionStore.setState({
+      user: { id: 21, name: "Sara Student", email: "sara@jpc.test", role: "STUDENT" as const, avatarPath: null },
+      scopes: emptyScopes,
+    });
+    // A server bug serving the INTERNAL payload to the subject: the private arm
+    // is .strict(), so the parse throws instead of rendering the staff notes (R23).
     get.mockResolvedValue({ data: { data: { ...base, profile: internalProfile } } });
 
     renderWithProviders(<StudentDetailScreen />);
@@ -2919,7 +2941,6 @@ UseQueryResult` to the react-query import):
 import {
   studentDetailInternalSchema,
   studentDetailPrivateSchema,
-  studentDetailPublicSchema,
   type StudentDetailInternal,
   type StudentDetailPrivate,
   type StudentDetailPublic,
@@ -2936,9 +2957,9 @@ export type StudentDetail = StudentDetailPublic | StudentDetailPrivate | Student
  * and hide exactly that bug.
  */
 function detailSchemaFor(role: UserRole) {
-  if (role === "SUPER" || role === "ADMIN") return studentDetailInternalSchema;
+  // v1 parity 2026-10-09 (spec 06 R71): every staff role reads the internal arm.
   if (role === "STUDENT") return studentDetailPrivateSchema; // self view — never `notes`
-  return studentDetailPublicSchema; // LEADER, MENTOR
+  return studentDetailInternalSchema; // SUPER, ADMIN, MENTOR, LEADER
 }
 
 /** `id`/`role` are null while the route param or session is unresolved. */
@@ -3090,6 +3111,8 @@ export default function StudentDetailScreen() {
 
 In `_layout.tsx`, append `"student/[id]"` to `DETAIL_ROUTE_NAMES`.
 
+> **v1 parity 2026-10-09:** Two additions to the detail screen, now `apps/mobile/app/(app)/student/[id]/index.tsx` (Plan 10 moved it). (1) When the profile carries a phone, render a **Call** button (`Linking.openURL("tel:…")`) beside the phone row for every staff viewer, as v1 `src/components/students/student-detail.tsx:83-84` (spec 06 R71). (2) For SUPER and ADMIN, render a read-only **Documents** card from a new `GET /api/v1/students/:id/documents`. The endpoint returns `{ id, originalName, sizeBytes, mimeType, uploadedAt }` ordered `uploadedAt` desc, is gated SUPER/ADMIN plus `canViewStudent`, and has no download link (v1 `src/lib/students-query.ts:405-416`, `student-detail.tsx:342-368`; spec 06 R80, REG-06). Leaders and mentors get no Documents card, as in v1 (`showDocumentsTab={false}`, `src/app/leader/students/[id]/page.tsx:40`, `src/app/mentor/students/[id]/page.tsx:40`).
+
 - [ ] **Step 5: Check the two guard tests**
 
 Read `role-tabs.test.tsx`. If its coverage check is "every nav href has a
@@ -3128,17 +3151,17 @@ Then the full serial integration run:
 Four mutations, one at a time, each must break at least one named test, then
 restore:
 
-1. **Drop the LEADER narrowing.** In `lib/queries/students.ts`
-   `studentListScope`, make the LEADER branch return `{ kind: "all" }` — the
-   "narrows LEADER to their groups' members through the ENROLLMENT row (C9)"
-   test must fail (it pins `toEqual([student1Id])` and `total: 1`).
+1. **Admit LEADER to the list.** In `lib/queries/students.ts`
+   `studentListScope`, return `{ kind: "all" }` for LEADER — the "refuses
+   LEADER — v1 gave them no students list" test must fail. *(v1 parity
+   2026-10-09, spec 06 R28: was "drop the LEADER narrowing")*
 2. **Widen the ADMIN allowlist.** In `routes/students.ts`, add
    `"activeSeasonId"` to `ADMIN_EDITABLE` — the "lets ADMIN write notes but
    NOT activeSeasonId" test must fail on the 403 assertion.
-3. **Break the role shaping.** In `routes/students.ts` `detailViewFor`,
-   return `"internal"` unconditionally — the MENTOR absence test
-   (`not.toHaveProperty("phone")` …) and the LEADER public-shape test must
-   fail.
+3. **Break the self-view narrowing.** In `routes/students.ts` `detailViewFor`,
+   return `"internal"` unconditionally — the student's own "private shape …
+   never their internal notes (R23)" test must fail. *(v1 parity 2026-10-09,
+   spec 06 R71: was "the MENTOR absence and LEADER public-shape tests fail")*
 4. **Drop the pointer validation.** In `routes/students.ts` PATCH, delete the
    `if (body.activeSeasonId !== undefined && body.activeSeasonId !== null)`
    block — "refuses a pointer at a season the student has no ACTIVE
@@ -3161,10 +3184,13 @@ pointed at it. Against staging accounts:
    narrows; "Load more" pages.
 2. Open a student → detail shows profile, internal notes card, and the
    Seasons history with per-season group names.
-3. As a LEADER account: the same student route shows no phone/notes and only
-   the leader's seasons; a student outside their groups errors (403).
-4. Alumni and Dropped screens render their filters; a dropped row shows the
-   reason.
+3. As a LEADER account: there is no Students list (role-gate state). From My
+   groups, the student route shows the full profile (phone with Call, notes)
+   and every season row; a student outside their groups errors (403).
+   *(v1 parity 2026-10-09, R28/R71: was "no phone/notes and only the leader's seasons")*
+4. Alumni shows every alumnus at once with no search box; Dropped renders its
+   filters; a dropped row shows the reason. The active list has a Season
+   filter defaulting to "All seasons". *(v1 parity 2026-10-09, R35/R41)*
 5. As a STUDENT account: the Students screen shows the role-gate empty state.
 
 - [ ] **Step 5: Report**
@@ -3189,3 +3215,22 @@ Applied the cross-plan rulings and the 01–06 review:
 Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → …):
 - New "Later plans that change what this plan builds" note: Plan 10 adds graduate/delete, the create/edit forms and sheets, and moves `student/[id].tsx` → `student/[id]/index.tsx`; Plan 11 narrows `SELF_EDITABLE` (removes `name`/`email`). A matching comment sits on `SELF_EDITABLE` in Task 4's code.
 - Task 7's layout case uses Plan 1 Task 0's real fixtures (`makeUser("ADMIN")`, `scopes = makeScopes()`) instead of a hedged `user()`.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 06-students R24 | REG-97 (intent unaffected) | a self-edit carrying `notes`/`activeSeasonId` silently ignores them; the rest saves (`src/lib/student-actions.ts:113-114,130-135`) | `apps/backend/src/routes/students.ts:250-257` (strip the two keys for a self-edit before the `forbidden_field` loop); email refusal (R22 KEEP-FIX) stays | Task 4 Step 1 test, Step 2 allowlist doc + PATCH code, Step 4 OpenAPI (edited) |
+| 2 | 06-students R28 | REG-98 (cancel) | only SUPER, ADMIN, MENTOR have a students list; no `src/app/leader/students/page.tsx` (`src/lib/students-query.ts:50-55`) | `apps/mobile/app/(app)/students/index.tsx:16` (drop LEADER); `apps/backend/src/lib/queries/students.ts:50-58` (LEADER → 403) | Task 2 Step 1 test, Step 4 `studentListScope`, Step 7 OpenAPI; Task 6 Step 5 `students/index.tsx`; Task 8 mutation 1, device 3 (edited) |
+| 3 | 06-students R35 | REG-82 | list has a season filter on the student's active season, plus group filter and four sorts (`src/components/students/students-list.tsx:55-99`) | `apps/mobile/src/components/StudentList.tsx:70-110` (add Season chip); `apps/backend/src/lib/queries/students.ts:201` (`seasonId` → `studentProfile.activeSeasonId`) | Task 2 Step 1 test, Step 4 filter, Step 7 OpenAPI (edited); Task 6 Step 5 note; Task 8 device 4 |
+| 4 | 06-students R41 | - | alumni list shows every alumnus at once, no search (`src/lib/students-query.ts:143-153`) | `apps/backend/src/lib/queries/students.ts:132-162` (no limit/cursor for alumni); `apps/mobile/src/components/StudentList.tsx` (hide search + Load more for alumni) | Task 2 Step 4 `listStudents` (edited), Step 7 OpenAPI; Task 6 Step 5 note; Task 8 device 4 |
+| 5 | 06-students R71 | - | leaders and mentors see the full profile (phone + Call, DOB, spiritual background, notes, every season row with drop reason); the self view never shows notes (`src/components/students/student-detail.tsx:83-84,141-160`; `src/app/leader/students/[id]/page.tsx:35-42`) | `apps/backend/src/routes/students.ts:57-61` (`detailViewFor` → internal for MENTOR/LEADER); `apps/backend/src/lib/queries/students.ts:534-537` (stop filtering leader rows); mobile `detailSchemaFor` | Task 1 schema comments; Task 3 Step 1 tests, Step 2 `loadStudentDetail`, Step 3 `detailViewFor`, Step 5 OpenAPI; Task 7 Step 2 tests, Step 3 hook, Step 4 note (Call); Task 8 mutation 3, device 3 (edited) |
+| 6 | 06-students R73 | REG-83 | any staff viewer sees the last 100 attendance rows across every enrolled season (`src/lib/students-query.ts:323-334`) | `apps/backend/src/lib/queries/students.ts:312-329` (`readableSeasonIds` returns all enrolled seasons for any staff caller) | "Not in this plan" parity note — the endpoint came from PR #18 (commit 15b7067), so this is new work against that code |
+| 7 | 06-students R80 | REG-06 (un-defer the list) | SUPER and ADMIN see a read-only Documents list: name, size, type, newest first, no download (`src/lib/students-query.ts:405-416`; `src/components/students/student-detail.tsx:342-368`) | new `GET /api/v1/students/:id/documents` in `apps/backend/src/routes/students.ts`; Documents card in `apps/mobile/app/(app)/student/[id]/index.tsx` | "Not in this plan" parity note; Task 7 Step 4 note — new work |
+
+**Awaiting owner (not changed):** none

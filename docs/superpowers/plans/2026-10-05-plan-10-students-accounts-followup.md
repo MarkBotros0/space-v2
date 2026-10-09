@@ -6,7 +6,7 @@
 
 **Architecture:** No new route files. All backend changes extend existing modules:
 - `routes/students.ts` (Plan 7) gains `POST /:id/graduate` and `DELETE /:id`. Its `POST /` now mints an invite in the transaction that creates the student.
-- `routes/users.ts` (Plan 9) gains `GET`/`POST /invites/pending`. Its `POST /` now requires `confirmSuper` before granting SUPER, and its reactivate also clears the student-profile stamp.
+- `routes/users.ts` (Plan 9) gains `GET`/`POST /invites/pending`. Its reactivate also clears the student-profile stamp. (`POST /` takes no `confirmSuper` — Decision 13. *(v1 parity 2026-10-09: was "`POST /` now requires `confirmSuper` before granting SUPER")*)
 - `routes/auth.ts` gains two anonymous routes, `forgot-password` and `reset-password`.
 - Three new library modules hold the logic: `lib/auth/password-reset.ts`, `lib/audit.ts` and `lib/concurrency.ts`. `lib/invites.ts` (Plan 9) gains the bounded batch sender.
 
@@ -76,7 +76,7 @@ On mobile:
   - `InviteToken` (lines 166–179)
   - `PasswordResetToken { token String @unique, userId, expiresAt, usedAt, createdAt }` (lines 198–208)
   - `RefreshToken.revokedAt`
-- **Passwords are bcryptjs at cost 12** (CLAUDE.md; spec 11 D8; Plan 9's rule). Any other algorithm locks out every user.
+- **Passwords are bcryptjs** (CLAUDE.md). Any other algorithm locks out every user. A completed password reset hashes at cost 10, as v1 (`jpc-space/src/lib/auth/password-reset.ts:58`); invite acceptance stays at cost 12 (Plan 9). *(v1 parity 2026-10-09: was "bcryptjs at cost 12")*
 - **No raw credential in any HTTP response body or any log, in any environment.** This covers invite codes and reset tokens. A reset token reaches exactly one place: `sendPasswordResetEmail`. An invite code reaches exactly one place: `sendInviteEmail` (Plan 9 Decision 2).
 - No `process.env` outside `lib/config.ts`. No `@/` alias. No `@prisma/client` import. Prisma comes from `../generated/prisma/client` (X14).
 - **Shared value imports in every backend `src` file use the relative path (ruling X12).** From `src/routes/` and `src/lib/` it is `"../../../../packages/shared/src/index"`. Add one more `../` from `src/lib/auth/`. `import type` may use `"@space/shared"`.
@@ -130,14 +130,13 @@ On mobile:
    | Drop, per enrollment row | the row is ACTIVE and the viewer is SUPER, or is ADMIN with that row's season in `seasonAdminIds` | R64, fixing R68's buttons that 403 |
 
    Only a SUPER edit form shows the active-season picker. Its options are the student's ACTIVE enrollments only, and `activeSeasonId` is sent only when it changed. Re-sending a legacy pointer that has no ACTIVE enrollment would 409 `not_enrolled` (Plan 7 S16).
-7. **Bottom sheets are a new `Sheet` primitive** (`src/ui/Sheet.tsx`, built on an RN `Modal` with `animationType="slide"`, transparent, anchored to the bottom and padded for the bottom inset). Graduate and drop use it. Delete is a destructive `Alert` confirm, the same pattern as Plan 9's deactivate. The new-user SUPER confirmation also mirrors Plan 9's PATCH confirm.
+7. **Bottom sheets are a new `Sheet` primitive** (`src/ui/Sheet.tsx`, built on an RN `Modal` with `animationType="slide"`, transparent, anchored to the bottom and padded for the bottom inset). Graduate and drop use it. Delete is a destructive `Alert` confirm, the same pattern as Plan 9's deactivate. There is no new-user SUPER confirmation (Decision 13). *(v1 parity 2026-10-09: was "the new-user SUPER confirmation mirrors Plan 9's PATCH confirm")*
 8. **Date of birth is a calendar date and moves without the device timezone (X13).** The form takes `YYYY-MM-DD`. The client writes `YYYY-MM-DDT00:00:00.000Z` (`isoFromDateOnly`). Reads go through `dateOnlyFromIso`, which adds 12 hours and truncates to the UTC day. That maps any local-midnight instant from a zone between UTC−11 and UTC+12 to its own calendar day. That covers v1's rows, which v1's web date picker stored as browser-local midnight (Cairo: `…T22:00:00Z` the previous day), as well as v2's UTC-midnight rows. The detail screen renders the result with Plan 4's `formatDayKey`, which never converts zones. Both helpers live in `packages/shared/src/student.ts` and have unit tests.
 9. **Forgot/reset keeps v1's token format and storage byte for byte, so the two backends interoperate.** v1's format is 32 random bytes as 64 hex characters (R71), stored as its SHA-256 hex digest in `PasswordResetToken.token` (R72), with a 1-hour TTL (R73). v2's `hashToken` is the same SHA-256 hex, so a token v1 minted works at v2's endpoint and vice versa, and no schema change is needed. On top of that format, v2 adds:
-   - **One live reset token per user.** Issuing a new one expires the old ones (spec 11 D5 rec 2, fixing R76).
-   - **A 60 s per-account cooldown.** A request inside it mints nothing, which stops mail-bombing a victim from many IPs.
+   - **Every request mints and mails a new token, and earlier ones keep working until they expire; there is no cooldown** — v1's `requestPasswordReset` only creates (`jpc-space/src/lib/auth/password-reset.ts:23-29`, R76). *(v1 parity 2026-10-09: was "one live reset token per user; a 60 s per-account cooldown")*
    - **A constant response, with the work done after it is sent** (`void requestPasswordReset(...)`). This closes R69's timing oracle: v1 awaited SMTP only on the known-email path.
-   - **One opaque failure code**, `400 invalid_reset_token`, for unknown, used and expired tokens and for a deleted target (spec 11 D5 rec 3, closing R77/R78). It is 400 and not 401 because the mobile interceptor spends a refresh rotation on any non-auth 401 (Plan 9 Decision 10).
-   - **A cost-12 hash.**
+   - **v1's three failure reasons, with v1's messages** (`jpc-space/src/lib/auth/password-reset.ts:47-56`, R77/R78): unknown token → `400 invalid_reset_token` "Invalid or expired reset token."; already used → `400 reset_token_used` "Reset token has already been used."; expired → `400 reset_token_expired` "Reset token has expired.". A deleted target answers `invalid_reset_token`. `reset-password.tsx` shows the server's message (`jpc-space/src/app/reset-password/page.tsx:16-20,45-49`). All are 400 and not 401 because the mobile interceptor spends a refresh rotation on any non-auth 401 (Plan 9 Decision 10). *(v1 parity 2026-10-09: was "one opaque `invalid_reset_token` for unknown, used, expired and deleted")*
+   - **A cost-10 hash**, as v1 (`jpc-space/src/lib/auth/password-reset.ts:58`). *(v1 parity 2026-10-09: was "a cost-12 hash")*
    - **Completion revokes:** it consumes the token atomically with a guarded `updateMany`, expires the user's other live reset tokens and live invites, and revokes every refresh token, all in one transaction. This fixes R79 and implements spec 11 D6.
    - **A deleted account is refused at completion as well as at request.** v1 checked only at request (R70).
    - **An unactivated account may reset, as in v1** (R70 refuses only deleted accounts). This activates the account. Proving possession of the mailbox is exactly what an invite proves.
@@ -152,21 +151,22 @@ On mobile:
     - `forgotPasswordLimiter`: 10 per 15 min per IP
     - `resetPasswordLimiter`: 20 per 15 min
     - `bulkInviteLimiter`: 30 per hour
-12. **Bulk invites run as bounded synchronous batches, not through a queue.** Spec 11 §7 says "accept the batch, return the counts, queue the sends". v2 has no queue or worker, and a durable job table is a migration (C1), so this plan builds the safe synchronous version:
+12. **One operator action reaches every pending user, as in v1** (`jpc-space/src/lib/invite-actions.ts:39-75` — one click on "Send N invites" issues to every pending user). The server still works in bounded synchronous batches so that no single HTTP request runs long, and the mobile card loops them. *(v1 parity 2026-10-09: was "bounded batches; the operator taps again for the rest")* Bulk invites run as bounded synchronous batches, not through a queue. Spec 11 §7 says "accept the batch, return the counts, queue the sends". v2 has no queue or worker, and a durable job table is a migration (C1), so this plan builds the safe synchronous version:
     - **`POST /api/v1/users/invites/pending`** processes at most `BULK_INVITE_BATCH_SIZE = 20` pending users per request, oldest id first.
     - **Each user gets one short transaction.** It row-locks the user (`SELECT … FOR UPDATE`), re-checks eligibility, then calls `issueInvite`. A double-tap or two SUPERs racing therefore skip rather than re-mint.
     - **Mail goes out after the commits**, with concurrency `BULK_INVITE_MAIL_CONCURRENCY = 5`. At about 1–2 s per Gmail SMTP send, one request does at most 4 rounds and fits under the client's raised 60 s timeout.
     - **A mail failure expires the invite just minted**, so that person stays pending and the next tap retries them. v1 left them silently "invited" with a code nobody received (R25).
-    - **The response is `{ sent, skipped, failed, remaining }`** (spec R16's missing counter, plus `remaining`). The screen says "tap again for the rest".
-    - **With no mail transport the route refuses with `503 email_not_configured`.** Otherwise it would mint invites nobody receives and drain the pending pool.
+    - **The response is `{ sent, skipped, failed, remaining }`** (spec R16's missing counter, plus `remaining`). On one tap the mobile `PendingInvitesCard` calls `POST /users/invites/pending` repeatedly until `remaining === 0` or a batch makes no progress (`sent === 0` — failed users stay pending at the front of the queue, so a batch that sends nobody would repeat forever), then shows one combined sent/failed summary. There is no "tap again for the rest" copy. *(v1 parity 2026-10-09: was "the screen says 'tap again for the rest'")*
+    - **With no mail transport the route still mints and counts, as v1** (`jpc-space/src/lib/invites.ts:34-38`, `src/lib/invite-actions.ts:53-75`: the send failure is swallowed and the invite reported sent). There is no `503 email_not_configured`. *(v1 parity 2026-10-09: was "refuses with 503 email_not_configured")*
     - **"Pending" means:** not deleted, `passwordHash` null, `lastLoginAt` null, and no live **v2** invite. A live v1 plaintext invite counts as pending, because Plan 9 Decision 4 makes those dead on arrival.
     - **Throughput is capped** by the batch ceiling plus the 30-per-hour limiter at 600 per hour. That stays under Gmail's 2,000 per day Workspace cap unless driven continuously, and the report names the cap.
     - **`GET /api/v1/users/invites/pending` → `{ pending }`** feeds the button's count. R87: the button is hidden at zero.
     - **This diverges from the spec's shape** (`POST /users/invites` with `{ userIds } | { all: true }`). The `userIds` arm has no remaining caller: v1's single-row button is Plan 9's `POST /users/:id/invite`, and v1's post-import send is dropped by Plan 17 (R55). A body whose only legal value is `{ all: true }` is ceremony.
-13. **`POST /users` requires `confirmSuper: true` to create a SUPER.** This is spec 11 D7 rec 3. Plan 9 enforced it only on PATCH, which left creation as the mis-tap path. The error code is the same as Plan 9's: `400 confirm_super_required`. The `/users/new` screen asks through an `Alert` before sending the flag.
+13. **`POST /users` creates a SUPER like any other role, with no confirmation**, as v1 (`jpc-space/src/lib/user-actions.ts:25-31`, `src/components/users/user-form.tsx:62-68`, R49). `createUserRequestSchema` has no `confirmSuper` field, the route returns no `confirm_super_required`, and the `/users/new` screen shows no SUPER `Alert`. *(v1 parity 2026-10-09: was "POST /users requires confirmSuper: true; the screen asks through an Alert")*
 14. **A password change also expires outstanding reset tokens.** This is spec 18 R29 and spec 11 D6. It adds one line inside Plan 9's `POST /me/password` transaction, which already revokes the other sessions.
 15. **Not in this plan. Each item has a named owner so nothing drops silently:**
-    - **Deferred with uploads** (CLAUDE.md "Uploads are switched off"): student photo and documents, G22. Plan 18 records them in its register.
+    - **Deferred with uploads** (CLAUDE.md "Uploads are switched off"): student photo and document **upload**, G22. Plan 18 records them in its register.
+    - **In scope, not deferred — the student's Documents list.** SUPER and ADMIN see a read-only list of the student's documents on the student detail: name, size, MIME type, newest `uploadedAt` first, and no download link (v1 `jpc-space/src/lib/students-query.ts:405-416`, `src/components/students/student-detail.tsx:342-368`, R80). Listing needs no upload, and CLAUDE.md gates only uploading. No task below builds it yet. It is new work on `student/[id]/index.tsx` and the student detail read. *(v1 parity 2026-10-09: was "student photo and documents deferred with uploads")*
     - **Plan 11:** `GET/PATCH /me/profile` and `/profile`.
     - **Plan 18's register:**
       - a per-season bulk close-out of enrollments (spec 06 D10 — a product decision with no owner yet)
@@ -191,7 +191,7 @@ The two streams may run in parallel, because the screens mock `apiClient`. Task 
 
 **Files:**
 - Modify: `packages/shared/src/student.ts` (Plan 7's — append the lifecycle schemas and the date-only helpers)
-- Modify: `packages/shared/src/user.ts` (Plan 9's — `confirmSuper` on create; response schemas; batch constant)
+- Modify: `packages/shared/src/user.ts` (Plan 9's — response schemas; batch constant; no `confirmSuper`, Decision 13 *(v1 parity 2026-10-09)*)
 - Create: `packages/shared/src/password-reset.ts`
 - Modify: `packages/shared/src/index.ts` (add `export * from "./password-reset";`)
 - Test: `packages/shared/src/__tests__/student-lifecycle-schemas.test.ts` (new), `packages/shared/src/__tests__/password-reset-schemas.test.ts` (new), extend `packages/shared/src/__tests__/user-schemas.test.ts` (Plan 9's)
@@ -206,7 +206,7 @@ The two streams may run in parallel, because the screens mock `apiClient`. Task 
   - `updateStudentResponseSchema` → `UpdateStudentResponse`
   - `enrollmentTransitionResponseSchema` → `EnrollmentTransitionResponse`
   - `isDateOnly(value: string): boolean`, `isoFromDateOnly(day: string): string`, `dateOnlyFromIso(iso: string | null): string | null`
-  - `createUserRequestSchema` gaining `confirmSuper?: boolean`
+  - ~~`createUserRequestSchema` gaining `confirmSuper?: boolean`~~ — not added (Decision 13) *(v1 parity 2026-10-09)*
   - `createUserResponseSchema` → `CreateUserResponse`
   - `pendingInvitesResponseSchema` → `PendingInvitesResponse`
   - `bulkInviteResponseSchema` → `BulkInviteResponse`
@@ -362,13 +362,12 @@ Append to Plan 9's `packages/shared/src/__tests__/user-schemas.test.ts` (add the
 new names to its `../index` import):
 
 ```ts
-describe("createUserRequestSchema.confirmSuper (Plan 10 Decision 13)", () => {
+describe("createUserRequestSchema — SUPER is an ordinary role (Plan 10 Decision 13, v1 parity 2026-10-09)", () => {
   const base = { name: "New Person", email: "p@jpc.test", role: "SUPER" as const };
 
-  it("is an optional boolean — the route, not the schema, decides when it is required", () => {
+  it("accepts a SUPER with no confirmation field, and carries no confirmSuper key", () => {
     expect(createUserRequestSchema.safeParse(base).success).toBe(true);
-    expect(createUserRequestSchema.parse({ ...base, confirmSuper: true }).confirmSuper).toBe(true);
-    expect(createUserRequestSchema.safeParse({ ...base, confirmSuper: "yes" }).success).toBe(false);
+    expect("confirmSuper" in createUserRequestSchema.parse(base)).toBe(false);
   });
 });
 
@@ -493,19 +492,7 @@ export function dateOnlyFromIso(iso: string | null): string | null {
 }
 ```
 
-In `packages/shared/src/user.ts`, add one key to `createUserRequestSchema`'s
-object (between `graduationYear` and the closing brace):
-
-```ts
-    /**
-     * Must be `true` when `role` is SUPER (Plan 10 Decision 13 — spec 11 D7
-     * rec 3 applied to creation as Plan 9 applied it to PATCH). The route
-     * enforces it; the schema only types it.
-     */
-    confirmSuper: z.boolean().optional(),
-```
-
-and append to the end of the file:
+In `packages/shared/src/user.ts`, add no `confirmSuper` key to `createUserRequestSchema` (Decision 13; v1 parity 2026-10-09 — current code `packages/shared/src/user.ts:100` to delete). Append to the end of the file:
 
 ```ts
 /** POST /users — Plan 9's response, given a schema so `/users/new` parses it. */
@@ -1283,11 +1270,13 @@ git commit -m "feat(backend): graduate completes every active enrollment; soft d
 
 ### Task 4: `POST /users` SUPER confirmation; bulk "send all pending invites"
 
+> **v1 parity 2026-10-09:** the SUPER-confirmation half of this task is dropped (Decision 13, R49): delete `confirm_super_required` at `apps/backend/src/routes/users.ts:430-432` and `confirmSuper` at `packages/shared/src/user.ts:100`. The bulk route keeps its bounded batches but loses the `503 email_not_configured` guard (`routes/users.ts:231-238`, R89b; v1 `src/lib/invites.ts:34-38`). The steps below are edited to match.
+
 **Files:**
 - Create: `apps/backend/src/lib/concurrency.ts`
 - Modify: `apps/backend/src/lib/invites.ts` (Plan 9's — gains `liveInviteWhere` (moved), `isV2InviteDigest`, `listPendingInviteUserIds`, `inviteIfStillPending`, `sendPendingInviteBatch`)
 - Modify: `apps/backend/src/lib/email.ts` (export `isEmailConfigured`)
-- Modify: `apps/backend/src/routes/users.ts` (Plan 9's — import `liveInviteWhere` instead of defining it; `confirmSuper` on `POST /`; `GET`/`POST /invites/pending`)
+- Modify: `apps/backend/src/routes/users.ts` (Plan 9's — import `liveInviteWhere` instead of defining it; `GET`/`POST /invites/pending`; no `confirmSuper` on `POST /` — v1 parity 2026-10-09)
 - Modify: `apps/backend/src/docs/openapi.ts`
 - Test: `apps/backend/src/__tests__/concurrency.test.ts` (new, unit), `apps/backend/src/__tests__/integration/bulk-invites-routes.test.ts` (new)
 
@@ -1305,8 +1294,8 @@ git commit -m "feat(backend): graduate completes every active enrollment; soft d
   - `isEmailConfigured(): boolean` in `lib/email.ts`
   - Endpoints:
     - `GET /api/v1/users/invites/pending` → `{ data: PendingInvitesResponse }`
-    - `POST /api/v1/users/invites/pending` → `{ data: BulkInviteResponse }`, with errors `email_not_configured` 503 and `forbidden` 403
-  - `POST /api/v1/users` now refusing `role: "SUPER"` without `confirmSuper: true` → `400 confirm_super_required`
+    - `POST /api/v1/users/invites/pending` → `{ data: BulkInviteResponse }`, with error `forbidden` 403 *(v1 parity 2026-10-09: was "also `email_not_configured` 503")*
+  - ~~`POST /api/v1/users` refusing `role: "SUPER"` without `confirmSuper: true`~~ — dropped (Decision 13) *(v1 parity 2026-10-09)*
 
 - [ ] **Step 1: The concurrency helper — failing unit test first**
 
@@ -1534,7 +1523,7 @@ describe("POST /api/v1/users/invites/pending (Plan 10 Decision 12)", () => {
     for (const c of calls) expect(JSON.stringify(res.body)).not.toContain(c[1]);
   });
 
-  it("refuses with 503 and mints nothing when no mail transport is configured", async () => {
+  it("still mints and counts with no mail transport, as v1 (invites.ts:34-38; v1 parity 2026-10-09)", async () => {
     const { pending } = await seedPool();
     mockIsEmailConfigured.mockReturnValue(false);
 
@@ -1542,13 +1531,13 @@ describe("POST /api/v1/users/invites/pending (Plan 10 Decision 12)", () => {
       .post("/api/v1/users/invites/pending")
       .set("authorization", `Bearer ${superToken}`);
 
-    expect(res.status).toBe(503);
-    expect(res.body.error.code).toBe("email_not_configured");
+    expect(res.status).toBe(200);
+    expect(res.body.data.sent).toBeGreaterThan(0);
     const digests = await db.inviteToken.findMany({
       where: { userId: { in: pending.map((p) => p.id) } },
       select: { token: true },
     });
-    expect(digests.filter((d) => isV2InviteDigest(d.token))).toEqual([]);
+    expect(digests.filter((d) => isV2InviteDigest(d.token)).length).toBeGreaterThan(0);
   });
 
   it("is SUPER-only", async () => {
@@ -1608,24 +1597,13 @@ describe("inviteIfStillPending — the per-user lock and re-check", () => {
   });
 });
 
-describe("POST /api/v1/users — creating a SUPER needs confirmSuper (Plan 10 Decision 13)", () => {
-  it("refuses role SUPER without the flag and creates nothing", async () => {
-    const email = testEmail("new-super-refused");
-    const res = await request(app)
-      .post("/api/v1/users")
-      .set("authorization", `Bearer ${superToken}`)
-      .send({ name: "New Super", email, role: "SUPER" });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("confirm_super_required");
-    expect(await db.user.count({ where: { email } })).toBe(0);
-  });
-
-  it("creates the SUPER — with no password, invite-first — when the flag is true", async () => {
+describe("POST /api/v1/users — SUPER is created like any role (Plan 10 Decision 13, v1 parity 2026-10-09)", () => {
+  it("creates the SUPER — with no password, invite-first — with no confirmation flag", async () => {
     const email = testEmail("new-super-confirmed");
     const res = await request(app)
       .post("/api/v1/users")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ name: "New Super", email, role: "SUPER", confirmSuper: true });
+      .send({ name: "New Super", email, role: "SUPER" });
     expect(res.status).toBe(201);
     const row = await db.user.findUnique({ where: { email }, select: { role: true, passwordHash: true } });
     expect(row).toEqual({ role: "SUPER", passwordHash: null });
@@ -1746,7 +1724,7 @@ export const BULK_INVITE_MAIL_CONCURRENCY = 5;
  * Spec 11 §7 asks for a queue; v2 has none and a job table is a migration
  * (C1). So: at most `batchSize` users per call, one short locked transaction
  * each, mail AFTER the commits with a small pool, and the counts back — the
- * screen says "tap again for the rest". A mail failure expires the invite it
+ * mobile card loops calls until remaining is 0 (v1 parity 2026-10-09). A mail failure expires the invite it
  * just minted, so that person stays pending and the next tap retries them;
  * v1 left them "invited" with a code nobody received (R25).
  *
@@ -1818,22 +1796,13 @@ In `routes/users.ts`:
 ```ts
 import rateLimit from "express-rate-limit";
 
-import { isEmailConfigured } from "../lib/email";
 import { liveInviteWhere, listPendingInviteUserIds, sendPendingInviteBatch } from "../lib/invites";
 import { rateLimitHandler } from "../lib/rate-limit";
 ```
 
    (Merge with Plan 9's existing `../lib/invites` and `../lib/email` import lines.)
 
-3. In `usersRouter.post("/", …)`, directly after `const body = parsed.data;`:
-
-```ts
-  // Plan 10 Decision 13 — spec 11 D7 rec 3 on CREATE as Plan 9 has it on
-  // PATCH: a SUPER grant can never be a mis-tapped picker item.
-  if (body.role === "SUPER" && body.confirmSuper !== true) {
-    return apiError(res, "confirm_super_required", "Granting SUPER requires explicit confirmation.", 400);
-  }
-```
+3. `usersRouter.post("/", …)` gets **no** SUPER confirmation check (Decision 13; v1 parity 2026-10-09 — current code `apps/backend/src/routes/users.ts:430-432` to delete).
 
 4. Above `usersRouter.get("/:id", …)` (`/:id` is one segment, so the two-segment
    path cannot collide with it; registering first just spares the reader the
@@ -1855,21 +1824,12 @@ usersRouter.get("/invites/pending", async (req, res) => {
 /**
  * "Send all pending invites" (v1 sendAllPendingInvitesAction,
  * invite-actions.ts:53-75) as ONE bounded batch per request — Plan 10
- * Decision 12. Refuses outright with no mail transport: minting codes nobody
- * receives would also empty the pending pool, hiding the very accounts that
- * still need an invite.
+ * Decision 12; the mobile card loops until remaining is 0. With no mail
+ * transport it still mints and counts, as v1 (v1 parity 2026-10-09).
  */
 usersRouter.post("/invites/pending", bulkInviteLimiter, async (req, res) => {
   const user = requireSuper(req, res);
   if (!user) return;
-  if (!isEmailConfigured()) {
-    return apiError(
-      res,
-      "email_not_configured",
-      "Email isn't configured on this server, so invites can't be delivered.",
-      503,
-    );
-  }
   const result = await sendPendingInviteBatch(user.userId);
   return apiOk(res, result);
 });
@@ -1878,23 +1838,22 @@ usersRouter.post("/invites/pending", bulkInviteLimiter, async (req, res) => {
 - [ ] **Step 6: Run the suites**
 
 Run: `cd apps/backend && npx jest src/__tests__/concurrency.test.ts` → PASS.
-Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "bulk-invites-routes|invites-routes|users-routes"` → PASS (Plan 9's suites prove the `liveInviteWhere` move and the `confirmSuper` check broke nothing).
+Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "bulk-invites-routes|invites-routes|users-routes"` → PASS (Plan 9's suites prove the `liveInviteWhere` move broke nothing).
 Run: `pnpm turbo lint typecheck --filter=@space/backend` → clean.
 
 - [ ] **Step 7: OpenAPI** — in this commit:
   - Document both `/users/invites/pending` operations, covering:
     - the definition of pending
     - the 20-user ceiling per request and the `remaining` counter
-    - `email_not_configured` 503
     - that a mail failure leaves the person pending
     - that no response ever carries a code
-  - On `POST /users`, add the `confirmSuper` field and the `confirm_super_required` 400.
+  - `POST /users` documents no `confirmSuper` field and no `confirm_super_required` (v1 parity 2026-10-09).
 
 - [ ] **Step 8: Commit**
 
 ```bash
 git add apps/backend
-git commit -m "feat(backend): bounded bulk invites for pending accounts; SUPER creation needs confirmSuper"
+git commit -m "feat(backend): bounded bulk invites for pending accounts"
 ```
 
 ---
@@ -1917,14 +1876,14 @@ git commit -m "feat(backend): bounded bulk invites for pending accounts; SUPER c
   - `config.mobileAppScheme: string`
   - `sendPasswordResetEmail(email: string, code: string, expiresAt: Date): Promise<void>`
   - In `lib/auth/password-reset.ts`:
-    - `PASSWORD_RESET_TTL_MS`, `RESET_REQUEST_COOLDOWN_MS`
+    - `PASSWORD_RESET_TTL_MS` (no `RESET_REQUEST_COOLDOWN_MS` — v1 parity 2026-10-09)
     - `type ResetWriter = Pick<typeof db, "passwordResetToken">`
     - `expireLiveResetTokens(client: ResetWriter, userId: number, now?: Date): Promise<number>`
     - `issuePasswordReset(client: ResetWriter, userId: number): Promise<{ raw: string; expiresAt: Date }>`
     - `requestPasswordReset(email: string): Promise<void>`
-    - `completePasswordReset(rawToken: string, password: string): Promise<"ok" | "invalid">`
+    - `completePasswordReset(rawToken: string, password: string): Promise<"ok" | "invalid" | "used" | "expired">` *(v1 parity 2026-10-09: was `"ok" | "invalid"`)*
   - `POST /api/v1/auth/forgot-password` (anonymous) → `{ data: { ok: true } }` on every path except `400 bad_request` (malformed body) and `429`
-  - `POST /api/v1/auth/reset-password` (anonymous) → `{ data: { ok: true } }` or `400 invalid_reset_token`, plus `400 bad_request` and `429`
+  - `POST /api/v1/auth/reset-password` (anonymous) → `{ data: { ok: true } }` or `400 invalid_reset_token` / `400 reset_token_used` / `400 reset_token_expired` (v1's messages), plus `400 bad_request` and `429` *(v1 parity 2026-10-09: was the single `invalid_reset_token`)*
 
 - [ ] **Step 1: Config and the email — failing unit tests first**
 
@@ -2182,22 +2141,17 @@ describe("requestPasswordReset — the policy behind the constant response", () 
     expect(await db.passwordResetToken.count({ where: { userId: u.id } })).toBe(0);
   });
 
-  it("ignores a second request inside the 60 s cooldown (no mail-bombing a victim)", async () => {
+  it("mints and mails a new token on every request, with no cooldown (v1 parity, R76)", async () => {
     const u = await createTestUser("forgot-cooldown", "STUDENT");
     await requestPasswordReset(u.email);
     await requestPasswordReset(u.email);
-    expect(await db.passwordResetToken.count({ where: { userId: u.id } })).toBe(1);
-    expect(mockSendPasswordResetEmail).toHaveBeenCalledTimes(1);
+    expect(await db.passwordResetToken.count({ where: { userId: u.id } })).toBe(2);
+    expect(mockSendPasswordResetEmail).toHaveBeenCalledTimes(2);
   });
 
-  it("after the cooldown, a new request expires the previous token — one live reset per user (R76 fixed)", async () => {
+  it("leaves the earlier token live when a new one is issued (v1 parity, password-reset.ts:23-29)", async () => {
     const u = await createTestUser("forgot-reissue", "STUDENT");
     await requestPasswordReset(u.email);
-    // Age the first row past the cooldown.
-    await db.passwordResetToken.updateMany({
-      where: { userId: u.id },
-      data: { createdAt: new Date(Date.now() - 2 * 60 * 1000) },
-    });
     await requestPasswordReset(u.email);
 
     const rows = await db.passwordResetToken.findMany({
@@ -2206,20 +2160,19 @@ describe("requestPasswordReset — the policy behind the constant response", () 
       select: { expiresAt: true },
     });
     expect(rows).toHaveLength(2);
-    expect(rows[0]!.expiresAt.getTime()).toBeLessThanOrEqual(Date.now());
+    expect(rows[0]!.expiresAt.getTime()).toBeGreaterThan(Date.now());
     expect(rows[1]!.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 });
 
 describe("POST /api/v1/auth/reset-password", () => {
-  it("sets a cost-12 hash, consumes the token, and evicts every session, other reset and live invite (R79 fixed)", async () => {
+  it("sets a cost-10 hash (v1 parity), consumes the token, and evicts every session, other reset and live invite (R79 fixed)", async () => {
     const u = await createTestUser("reset-ok", "STUDENT");
     const signIn = await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD });
     const oldRefresh = signIn.body.data.refreshToken as string;
     await issueInvite(db, u.id, superUser.id); // a live invite that must not survive
     const raw = await mintReset(u.id);
-    // A second live reset token, written directly (issuePasswordReset would
-    // have expired the first): the reset must consume it too.
+    // A second live reset token: the reset must consume it too (R79, KEEP-FIX).
     const other = await db.passwordResetToken.create({
       data: {
         token: hashToken(randomBytes(32).toString("hex")),
@@ -2236,7 +2189,7 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(res.body).toEqual({ data: { ok: true } });
 
     const row = await db.user.findUnique({ where: { id: u.id }, select: { passwordHash: true } });
-    expect(row?.passwordHash).toMatch(/^\$2[aby]\$12\$/); // bcrypt, cost 12 (spec 11 D8)
+    expect(row?.passwordHash).toMatch(/^\$2[aby]\$10\$/); // bcrypt, cost 10 (v1 password-reset.ts:58)
 
     const used = await db.passwordResetToken.findUnique({ where: { token: hashToken(raw) }, select: { usedAt: true } });
     expect(used?.usedAt).not.toBeNull();
@@ -2265,10 +2218,11 @@ describe("POST /api/v1/auth/reset-password", () => {
       .post("/api/v1/auth/reset-password")
       .send({ token: raw, password: "another-password-1" });
     expect(again.status).toBe(400);
-    expect(again.body.error.code).toBe("invalid_reset_token");
+    expect(again.body.error.code).toBe("reset_token_used");
+    expect(again.body.error.message).toBe("Reset token has already been used.");
   });
 
-  it("refuses expired, unknown and deleted-account tokens with one byte-identical body (R77/R78 closed)", async () => {
+  it("reports expired, unknown and deleted-account tokens with v1's reasons (R77/R78; v1 parity 2026-10-09)", async () => {
     const expiredUser = await createTestUser("reset-expired", "STUDENT");
     const expired = await mintReset(expiredUser.id);
     await db.passwordResetToken.updateMany({
@@ -2279,15 +2233,17 @@ describe("POST /api/v1/auth/reset-password", () => {
     const gone = await mintReset(goneUser.id);
     await db.user.update({ where: { id: goneUser.id }, data: { deletedAt: new Date() } });
 
-    const bodies = [];
+    const errors = [];
     for (const token of [expired, randomBytes(32).toString("hex"), gone]) {
       const res = await request(app).post("/api/v1/auth/reset-password").send({ token, password: "brand-new-password" });
       expect(res.status).toBe(400);
-      bodies.push(res.body);
+      errors.push(res.body.error);
     }
-    expect(bodies[0].error.code).toBe("invalid_reset_token");
-    expect(bodies[1]).toEqual(bodies[0]);
-    expect(bodies[2]).toEqual(bodies[0]);
+    expect(errors).toEqual([
+      { code: "reset_token_expired", message: "Reset token has expired." },
+      { code: "invalid_reset_token", message: "Invalid or expired reset token." },
+      { code: "invalid_reset_token", message: "Invalid or expired reset token." },
+    ]);
   });
 
   it("accepts a token minted the way v1 mints them — the two backends interoperate (Decision 9)", async () => {
@@ -2345,7 +2301,8 @@ describe("POST /api/v1/me/password consumes outstanding reset tokens (spec 18 R2
 
     const res = await request(app).post("/api/v1/auth/reset-password").send({ token: raw, password: "brand-new-password" });
     expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("invalid_reset_token");
+    // expireLiveResetTokens stamps expiresAt = now, so the token reads as expired.
+    expect(res.body.error.code).toBe("reset_token_expired");
   });
 });
 ```
@@ -2374,8 +2331,7 @@ import { hashToken, revokeAllRefreshTokensForUser } from "./tokens";
 
 /** v1's TTL, unchanged (spec 11 R73). */
 export const PASSWORD_RESET_TTL_MS = PASSWORD_RESET_TTL_MINUTES * 60 * 1000;
-/** One request per account per minute — stops mail-bombing a victim from many IPs. */
-export const RESET_REQUEST_COOLDOWN_MS = 60 * 1000;
+// No per-account cooldown — v1 has none (password-reset.ts:12-41; v1 parity 2026-10-09).
 
 export type ResetWriter = Pick<typeof db, "passwordResetToken">;
 
@@ -2397,9 +2353,8 @@ export async function expireLiveResetTokens(
  * (R71), stored only as its SHA-256 hex digest (R72) via the same hashToken
  * refresh and invite tokens use. Identical format is what lets a token minted
  * by either backend complete at either backend (Plan 10 Decision 9).
- * Prior live tokens are expired first: one live reset per user (spec 11 D5
- * rec 2 — v1 let every request add another live credential, R76).
- * Deliberately sends no email: callers mail after their transaction commits.
+ * Earlier live tokens are left alone, as v1 (password-reset.ts:23-29, R76;
+ * v1 parity 2026-10-09). Deliberately sends no email: callers mail after their transaction commits.
  */
 export async function issuePasswordReset(
   client: ResetWriter,
@@ -2408,7 +2363,6 @@ export async function issuePasswordReset(
   const raw = randomBytes(32).toString("hex");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + PASSWORD_RESET_TTL_MS);
-  await expireLiveResetTokens(client, userId, now);
   await client.passwordResetToken.create({ data: { token: hashToken(raw), userId, expiresAt } });
   return { raw, expiresAt };
 }
@@ -2429,12 +2383,6 @@ export async function requestPasswordReset(email: string): Promise<void> {
   });
   if (!user || user.deletedAt) return; // R70
 
-  const recent = await db.passwordResetToken.findFirst({
-    where: { userId: user.id, createdAt: { gt: new Date(Date.now() - RESET_REQUEST_COOLDOWN_MS) } },
-    select: { id: true },
-  });
-  if (recent) return;
-
   const { raw, expiresAt } = await db.$transaction((tx) => issuePasswordReset(tx, user.id));
   try {
     await sendPasswordResetEmail(user.email, raw, expiresAt);
@@ -2449,27 +2397,31 @@ export async function requestPasswordReset(email: string): Promise<void> {
 }
 
 /**
- * Complete a reset. "invalid" covers unknown, used, expired, and a target
- * deleted since the request — one outcome, so the route can answer with one
- * opaque code (spec 11 D5 rec 3; v1 rendered three different messages, R78).
+ * Complete a reset. v1's three outcomes in v1's order (password-reset.ts:47-56,
+ * R77/R78; v1 parity 2026-10-09): unknown → "invalid", used → "used",
+ * expired → "expired". A target deleted since the request is "invalid"; a
+ * lost consume race is "used".
  *
  * The consume is a guarded updateMany inside the transaction, so two
  * concurrent submissions of one token cannot both win. In the same
- * transaction: the cost-12 hash (D8), every other live reset token and live
+ * transaction: the cost-10 hash (v1 password-reset.ts:58), every other live reset token and live
  * invite expired, and every refresh token revoked — the "I think I'm
  * compromised" remedy finally evicts the attacker (R79, spec 11 D6).
  */
-export async function completePasswordReset(rawToken: string, password: string): Promise<"ok" | "invalid"> {
+export async function completePasswordReset(
+  rawToken: string,
+  password: string,
+): Promise<"ok" | "invalid" | "used" | "expired"> {
   const record = await db.passwordResetToken.findUnique({
     where: { token: hashToken(rawToken) },
     select: { id: true, userId: true, usedAt: true, expiresAt: true, user: { select: { deletedAt: true } } },
   });
   if (!record) return "invalid";
-  if (record.usedAt !== null) return "invalid";
-  if (record.expiresAt <= new Date()) return "invalid";
+  if (record.usedAt !== null) return "used";
+  if (record.expiresAt <= new Date()) return "expired";
   if (record.user.deletedAt !== null) return "invalid";
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await bcrypt.hash(password, 10); // v1 cost (password-reset.ts:58)
 
   const consumed = await db.$transaction(async (tx) => {
     const now = new Date();
@@ -2487,7 +2439,7 @@ export async function completePasswordReset(rawToken: string, password: string):
     await revokeAllRefreshTokensForUser(tx, record.userId);
     return true;
   });
-  return consumed ? "ok" : "invalid";
+  return consumed ? "ok" : "used";
 }
 ```
 
@@ -2525,8 +2477,8 @@ authRouter.post("/forgot-password", forgotPasswordLimiter, (req, res) => {
 });
 
 /**
- * Possession of the token is the authorization. One opaque failure,
- * invalid_reset_token, as 400 — not 401, which the mobile interceptor would
+ * Possession of the token is the authorization. v1's three failures with
+ * v1's messages (password-reset.ts:47-56; v1 parity 2026-10-09), each 400 — not 401, which the mobile interceptor would
  * spend a refresh rotation on (Plan 9 Decision 10). The password is validated
  * by the schema before the token is looked at (R77's order kept), so a weak
  * password never consumes a token.
@@ -2542,9 +2494,9 @@ authRouter.post("/reset-password", resetPasswordLimiter, async (req, res) => {
     );
   }
   const outcome = await completePasswordReset(parsed.data.token, parsed.data.password);
-  if (outcome === "invalid") {
-    return apiError(res, "invalid_reset_token", "This reset code is invalid or has expired. Request a new one.", 400);
-  }
+  if (outcome === "invalid") return apiError(res, "invalid_reset_token", "Invalid or expired reset token.", 400);
+  if (outcome === "used") return apiError(res, "reset_token_used", "Reset token has already been used.", 400);
+  if (outcome === "expired") return apiError(res, "reset_token_expired", "Reset token has expired.", 400);
   return apiOk(res, { ok: true });
 });
 ```
@@ -2571,8 +2523,8 @@ Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBan
 Run: `pnpm turbo lint typecheck --filter=@space/backend` → clean.
 
 - [ ] **Step 7: OpenAPI** — in this commit, add both anonymous paths:
-  - **forgot-password:** always `{ ok: true }`; asynchronous; per-account cooldown; 429.
-  - **reset-password:** the single `invalid_reset_token` 400; revokes all sessions and outstanding reset/invite codes; v1-minted tokens accepted.
+  - **forgot-password:** always `{ ok: true }`; asynchronous; 429 (no per-account cooldown — v1 parity 2026-10-09).
+  - **reset-password:** `invalid_reset_token` / `reset_token_used` / `reset_token_expired` 400 with v1's messages (v1 parity 2026-10-09); revokes all sessions and outstanding reset/invite codes; v1-minted tokens accepted.
 
   Also mention on `POST /me/password` that it now expires outstanding reset codes.
 
@@ -3507,7 +3459,7 @@ export function useForgotPassword(): UseMutationResult<PasswordResetAck, Error, 
   });
 }
 
-/** Anonymous. One opaque failure (invalid_reset_token) for every bad token. */
+/** Anonymous. v1's three failures — invalid_reset_token / reset_token_used / reset_token_expired (v1 parity 2026-10-09). */
 export function useResetPassword(): UseMutationResult<PasswordResetAck, Error, ResetPasswordBody> {
   return useMutation({
     mutationFn: async (body) => {
@@ -3533,6 +3485,8 @@ git commit -m "feat(mobile): Sheet and ChoiceChips primitives, student action ga
 ---
 
 ### Task 7: Student detail — directory form, graduate and drop sheets, delete
+
+> **v1 parity 2026-10-09:** 06-students R80 (REG-06), new work not written in any step: for SUPER and ADMIN the student detail gains a read-only **Documents** list — `originalName`, `sizeBytes`, `mimeType`, newest `uploadedAt` first, with no download link (v1 `jpc-space/src/lib/students-query.ts:405-416`, `src/components/students/student-detail.tsx:342-368`). The rows come from the student detail read (`StudentDocument`, `studentUserId`). Add a `documents` array to the detail payload for SUPER/ADMIN only, and render a section on `student/[id]/index.tsx`. Decision 15.
 
 **Files:**
 - Move: `apps/mobile/app/(app)/student/[id].tsx` → `apps/mobile/app/(app)/student/[id]/index.tsx` (ruling X7; the file is rewritten below)
@@ -4745,7 +4699,7 @@ git commit -m "feat(mobile): /students/new (invite-first) and /student/[id]/edit
 - Test: `apps/mobile/src/__tests__/user-new-screen.test.tsx` (new)
 
 **Interfaces:**
-- Consumes: Task 6's `useCreateUser`, `usePendingInviteCount`, `useSendPendingInvites` and `ChoiceChips`; Task 1's `BULK_INVITE_BATCH_SIZE` and `confirmSuper`; Plan 9's `createUserRequestSchema` and `userRoleSchema`; Plan 4's `apiErrorMessage`.
+- Consumes: Task 6's `useCreateUser`, `usePendingInviteCount`, `useSendPendingInvites` and `ChoiceChips`; Task 1's `BULK_INVITE_BATCH_SIZE` (no `confirmSuper` — v1 parity 2026-10-09); Plan 9's `createUserRequestSchema` and `userRoleSchema`; Plan 4's `apiErrorMessage`.
 - Produces:
   - the routes `/users` (now served by `users/index.tsx`) and `/users/new`
   - `"users"` in `DIRECTORY_ROUTE_HREFS` in `_layout.tsx` (Plan 6's set, which Plan 17 Step 0 checks for), so Plan 17 skips its own conversion
@@ -4799,6 +4753,8 @@ Run: `pnpm turbo routes:generate --filter=@space/mobile`
 Run: `cd apps/mobile && pnpm jest src/__tests__/app-layout.test.tsx src/__tests__/role-tabs.test.tsx src/__tests__/users-screen.test.tsx` → `users-screen` PASSES unchanged at its new path. `app-layout` FAILS only because the `users/new` file does not exist yet: the derived route-file set no longer matches. Step 3 creates it.
 
 - [ ] **Step 2: Write the failing tests**
+
+> **v1 parity 2026-10-09:** R17/R49. Replace "sends one batch after a confirm and reports the four counters" with a case where one tap loops: `post` resolves `{ sent: 2, skipped: 0, failed: 0, remaining: 1 }` then `{ sent: 1, skipped: 0, failed: 1, remaining: 1 }` then `{ sent: 0, skipped: 0, failed: 1, remaining: 1 }`, and the test expects 3 POSTs and one combined summary (sent 3, failed 2, 1 still pending) — the loop stops when `remaining === 0` or `sent === 0`. v1: one click reaches every pending user (`jpc-space/src/lib/invite-actions.ts:53-75`). The `/users/new` SUPER case is already edited to "no confirm".
 
 ```tsx
 // apps/mobile/src/__tests__/user-new-screen.test.tsx
@@ -4864,12 +4820,10 @@ describe("/users/new (spec 11 §9)", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it("asks before creating a SUPER and sends confirmSuper only after the confirm (Decision 13)", async () => {
+  it("creates a SUPER like any role — no confirm, no confirmSuper (Decision 13, v1 parity 2026-10-09)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     post.mockResolvedValue({ data: { data: { userId: 41 } } });
-    const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
-      buttons?.find((b) => b.text === "Create SUPER")?.onPress?.();
-    });
+    const alert = jest.spyOn(Alert, "alert");
     renderWithProviders(<NewUserScreen />);
 
     fireEvent.changeText(screen.getByLabelText("Name"), "Second Super");
@@ -4877,10 +4831,11 @@ describe("/users/new (spec 11 §9)", () => {
     fireEvent.press(screen.getByText("SUPER"));
     fireEvent.press(screen.getByText("Create and send invite"));
 
-    expect(alert).toHaveBeenCalledWith("Create a SUPER account?", expect.any(String), expect.any(Array));
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/users", expect.objectContaining({ role: "SUPER", confirmSuper: true })),
+      expect(post).toHaveBeenCalledWith("/api/v1/users", expect.objectContaining({ role: "SUPER" })),
     );
+    expect(post.mock.calls[0]![1]).not.toHaveProperty("confirmSuper");
+    expect(alert).not.toHaveBeenCalledWith("Create a SUPER account?", expect.anything(), expect.anything());
     alert.mockRestore();
   });
 
@@ -4975,8 +4930,8 @@ const ROLE_OPTIONS = userRoleSchema.options.map((role) => ({ value: role, label:
  * invite-first POST /users: no password is set and the server mails the
  * invite — so v1's on-screen "temp password is ChangeMe123!" notice (R43) has
  * no counterpart here. Validation runs the ONE shared schema (R55: v1's form
- * re-implemented it and drifted). A SUPER grant asks first and only then sends
- * confirmSuper (Plan 10 Decision 13).
+ * re-implemented it and drifted). A SUPER grant needs no confirmation and
+ * sends no confirmSuper — SUPER is an ordinary role (Plan 10 Decision 13, v1 parity 2026-10-09).
  */
 export default function NewUserScreen() {
   const theme = useTheme();
@@ -5031,17 +4986,7 @@ export default function NewUserScreen() {
       return;
     }
     setErrors({});
-    if (parsed.data.role === "SUPER") {
-      Alert.alert(
-        "Create a SUPER account?",
-        "SUPER can manage every user and season, and can't be limited by scope.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Create SUPER", onPress: () => create({ ...parsed.data, confirmSuper: true }) },
-        ],
-      );
-      return;
-    }
+    // SUPER is created like any role — no confirmation (Decision 13; v1 parity 2026-10-09).
     create(parsed.data);
   };
 
@@ -5085,6 +5030,8 @@ export default function NewUserScreen() {
 `createUserRequestSchema` is a `superRefine` effect, and its parse returns `CreateUserBody`, which is the output type `useCreateUser` takes. `parsed.data.name` is already trimmed by the schema.
 
 - [ ] **Step 4: The users list gains its two entry points**
+
+> **v1 parity 2026-10-09:** R17. `PendingInvitesCard.run` (current code `apps/mobile/app/(app)/users/index.tsx:74-93`) loops `sendPending.mutateAsync()` until `remaining === 0` or a batch has `sent === 0`, summing `sent`/`skipped`/`failed`, then shows one "Invites sent" alert with the combined counts and the final `remaining`. Drop the "Up to N are sent per tap — tap again for the rest." copy; the confirm reads only "Send invites to N people?". On an error mid-loop, show the counts so far plus the error message. Decision 12 says one operator action reaches every pending user, as in v1.
 
 In `users/index.tsx`, add these imports (merged with the file's existing ones):
 
@@ -5302,9 +5249,9 @@ describe("ResetPasswordScreen", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it("shows the server's one opaque refusal and offers a fresh request", async () => {
+  it("shows the server's specific reason (v1 parity, reset-password/page.tsx:16-20) and offers a fresh request", async () => {
     post.mockRejectedValue(
-      apiFailure(400, "invalid_reset_token", "This reset code is invalid or has expired. Request a new one."),
+      apiFailure(400, "reset_token_expired", "Reset token has expired."),
     );
     renderWithProviders(<ResetPasswordScreen />);
     fireEvent.changeText(screen.getByLabelText("Reset code"), TOKEN);
@@ -5312,9 +5259,7 @@ describe("ResetPasswordScreen", () => {
     fireEvent.changeText(screen.getByLabelText("Confirm password"), "brand-new-password");
     fireEvent.press(screen.getByText("Set new password"));
 
-    expect(
-      await screen.findByText("This reset code is invalid or has expired. Request a new one."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Reset token has expired.")).toBeTruthy();
     fireEvent.press(screen.getByText("Request a new code"));
     expect(mockReplace).toHaveBeenCalledWith("/forgot-password");
   });
@@ -5589,14 +5534,14 @@ git commit -m "feat(mobile): forgot/reset password screens with deep-link token 
   6. **Creation is invite-first.** Remove the `issueInvite(tx, …)` line from `POST /students`. Expected failure: "mints one hashed invite in the creating transaction" (0 rows).
   7. **v1 plaintext invites don't count.** In `listPendingInviteUserIds`, replace the `isV2InviteDigest` filter with `rows.filter((row) => row.invitesReceived.length === 0)`. Expected failure: the GET count test (`pending: 3` ≠ 4).
   8. **Mail failure keeps the person pending.** Delete the `db.inviteToken.updateMany(… expiresAt: new Date() …)` in `sendPendingInviteBatch`'s catch. Expected failure: "a mail failure expires the invite just minted" (`remaining` 0 ≠ 1, live count 1 ≠ 0).
-  9. **No mint without a transport.** Delete the `isEmailConfigured()` guard in `POST /users/invites/pending`. Expected failure: the 503 test.
+  9. ~~**No mint without a transport.**~~ Dropped — the route has no transport guard (Decision 12). *(v1 parity 2026-10-09)*
   10. **Per-user re-check.** In `inviteIfStillPending`, delete the `if (!row || …) return null;` line. Expected failure: "mints for a pending account, then refuses the same account on a second call".
-  11. **SUPER confirmation on create.** Delete the `confirm_super_required` block in `POST /users`. Expected failure: "refuses role SUPER without the flag".
-  12. **Reset evicts.** Remove `await revokeAllRefreshTokensForUser(tx, record.userId);` from `completePasswordReset`. Expected failure: "sets a cost-12 hash, consumes the token, and evicts…" on the rotation assertion (200 ≠ 401).
-  13. **Reset expiry.** Delete `if (record.expiresAt <= new Date()) return "invalid";`, and remove `expiresAt: { gt: now }` from the consuming `updateMany`'s `where`. Expected failure: "refuses expired, unknown and deleted-account tokens" (the expired token resets, 200 ≠ 400). Removing only one of the two leaves the other guard holding. Record that both are load-bearing as a pair.
+  11. ~~**SUPER confirmation on create.**~~ Dropped — there is no confirmation (Decision 13). *(v1 parity 2026-10-09)*
+  12. **Reset evicts.** Remove `await revokeAllRefreshTokensForUser(tx, record.userId);` from `completePasswordReset`. Expected failure: "sets a cost-10 hash (v1 parity), consumes the token, and evicts…" on the rotation assertion (200 ≠ 401).
+  13. **Reset expiry.** Delete `if (record.expiresAt <= new Date()) return "expired";`, and remove `expiresAt: { gt: now }` from the consuming `updateMany`'s `where`. Expected failure: "reports expired, unknown and deleted-account tokens with v1's reasons" (the expired token resets, 200 ≠ 400). Removing only one of the two leaves the other guard holding. Record that both are load-bearing as a pair.
   14. **Digest at rest.** In `issuePasswordReset`, store `token: raw`. Expected failure: the forgot-password test's `hashToken(call[1]) === rows[0].token` assertion.
   15. **Constant-time response.** In `routes/auth.ts`, make the route `async` and `await requestPasswordReset(...)` before answering. Expected failure: "does not wait for the mailer" (the never-resolving mailer holds the request past the 10 s test timeout).
-  16. **Cooldown.** Delete the `recent` check in `requestPasswordReset`. Expected failure: "ignores a second request inside the 60 s cooldown" (2 rows ≠ 1).
+  16. ~~**Cooldown.**~~ Dropped — there is no cooldown (Decision 9). *(v1 parity 2026-10-09)*
   17. **Password change consumes resets.** Delete the `expireLiveResetTokens` line in `me.ts`. Expected failure: "a token minted before a password change no longer works after it" (200 ≠ 400).
   18. **Client gates mirror C7.** In `isAdminOfSeasonForUi`, drop `user.role === "ADMIN" &&`. Expected failure: `student-actions.test.ts` "ignores a stray season-admin claim on a non-ADMIN role".
   19. **R80.** In `reset-password.tsx`, delete the `router.setParams({ token: undefined });` line. Expected failure: "takes the token from the deep link, then removes it from the route params".
@@ -5646,3 +5591,24 @@ Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 →
 - `Depends on` reordered to the execution order (Plan 4 before 15) and now names Plan 6 (`DIRECTORY_ROUTE_HREFS`; no session reads/writes here, so Plan 6's `startDay`/`startTime` format is irrelevant).
 - Task 9 no longer replaces `routeNameForHref` with a `["students", "users"]` set — that would have dropped Plan 6's `"seasons"` and hidden the SUPER Seasons tab. It adds `"users"` to Plan 6's set and the test asserts `/seasons` still maps to `seasons/index`.
 - Task 7's layout case uses `makeUser("ADMIN")` / `makeScopes()` (Plan 1 Task 0's fixtures) instead of a hedged `user()`.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 11-invites-users R17 | — | One click on "Send N invites" issues invites to every pending user (`src/lib/invite-actions.ts:39-75`) | `apps/mobile/app/(app)/users/index.tsx:74-93`: loop the bounded POST until `remaining === 0` or `sent === 0`, then show one summary. Server batching stays | Decision 12; Task 4 Step 4 docstring; Task 9 Step 2 and Step 4 notes |
+| 2 | 11-invites-users R89b | — | With no mail transport, "Send pending invites" still mints invites and reports them sent (`src/lib/invites.ts:34-38`, `src/lib/invite-actions.ts:53-75`) | `apps/backend/src/routes/users.ts:231-238` (delete the 503) | Decision 12; Task 4 note, Interfaces, Step 2 test, Step 5 code + imports, Step 7 OpenAPI; Task 11 mutation 9 |
+| 3 | 11-invites-users R49 | — | SUPER is an ordinary role option on create, with no confirmation (`src/lib/user-actions.ts:25-31`, `src/components/users/user-form.tsx:62-68`) | `apps/backend/src/routes/users.ts:430-432`; `packages/shared/src/user.ts:100`; `apps/mobile/app/(app)/users/new.tsx:84` | Architecture; Decisions 7, 13; Task 1 Files/Interfaces/test/schema step; Task 4 note, Interfaces, Step 2 tests, Step 5 code, Step 6/7/8; Task 9 Interfaces, Step 2 test, Step 3 code; Task 11 mutation 11 |
+| 4 | 11-invites-users R66 | — | A completed reset hashes at bcrypt cost 10 (`src/lib/auth/password-reset.ts:58`) | `apps/backend/src/lib/auth/password-reset.ts:108` | Global Constraints; Decision 9; Task 5 Step 2 test, Step 3 code; Task 11 mutation 12 |
+| 5 | 11-invites-users R76 | — | Every forgot-password request adds a new reset token; earlier tokens keep working; there is no cooldown (`src/lib/auth/password-reset.ts:23-29`) | `apps/backend/src/lib/auth/password-reset.ts:47` (the `expireLiveResetTokens` call in `issuePasswordReset`) and `:68-72` (the cooldown) | Decision 9 bullets 1–2; Task 5 Interfaces, Step 2 tests, Step 3 code, Step 7 OpenAPI; Task 11 mutation 16 |
+| 6 | 11-invites-users R77, R78 | — | Reset reports invalid, already used and expired separately, with v1's messages, and the page shows the reason (`src/lib/auth/password-reset.ts:47-56`, `src/app/reset-password/page.tsx:16-20,45-49`) | `apps/backend/src/lib/auth/password-reset.ts` (`completePasswordReset`); `apps/backend/src/routes/auth.ts:199-202`. `reset-password.tsx` already shows the server's message | Decision 9; Task 5 Interfaces, Step 2 tests, Step 3/4 code, Step 7 OpenAPI; Task 6 hook comment; Task 10 Step 1 test; Task 11 mutation 13 |
+| 7 | 06-students R80 | REG-06 | SUPER and ADMIN see a Documents list on the student detail (name, size, type, newest first, no download) (`src/lib/students-query.ts:405-416`, `src/components/students/student-detail.tsx:342-368`) | Student detail read + `apps/mobile/app/(app)/student/[id]/index.tsx`: new section | Decision 15; Task 7 note. **Not found in plan text — new work** |
+
+**Awaiting owner (not changed):** none.
+
+**Rejected (no edit):** 10-notifications R24 (plan-10 part, "reset guard"). v1's `requestPasswordReset` catches the send failure and returns normally (`jpc-space/src/lib/auth/password-reset.ts:34-40`), and the forgot page always redirects to "sent" (`src/app/forgot-password/page.tsx:10-14`). With email unconfigured, v1 shows the user no error. v2 also shows none, so there is no user-visible divergence to revert. The remaining difference is internal: v1 mints a token that nobody receives, and v2 mints nothing.

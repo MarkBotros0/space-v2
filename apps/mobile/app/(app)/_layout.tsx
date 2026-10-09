@@ -3,8 +3,11 @@ import type { NavItem } from "@space/shared";
 import { ALL_NAV_HREFS } from "@space/shared";
 
 import { NavIcon } from "../../src/components/NavIcon";
+import { AppTopBar } from "../../src/components/UserMenu";
+import { NotificationBell } from "../../src/components/NotificationBell";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { useSessionStore } from "../../src/store/session";
+import { ScreenHeaderContext } from "../../src/ui";
 
 /**
  * Hrefs whose route is a directory (`x/index.tsx`) because the destination
@@ -65,6 +68,8 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "seasons/[code]/edit",
   "seasons/[code]/roster/index",
   "seasons/[code]/roster/import",
+  "seasons/program/[program]",
+  "seasons/year/[year]",
   "group/new",
   "group/[id]/edit",
   "session/new",
@@ -96,7 +101,9 @@ export default function AppLayout() {
   // user's role/scopes change. navFor() returns module-level constants, so
   // Object.is holds across calls with the same inputs and this can't loop.
   const nav = useSessionStore((s) => s.nav());
-  const isAlumnus = useSessionStore((s) => s.user?.role === "STUDENT" && s.scopes?.graduationYear != null);
+  const isAlumnus = useSessionStore(
+    (s) => s.user?.role === "STUDENT" && s.scopes?.graduationYear != null,
+  );
   const segments = useSegments();
 
   // The boot gate (Task 6, app/_layout.tsx) has already resolved "idle" and
@@ -121,27 +128,35 @@ export default function AppLayout() {
     ...DETAIL_ROUTE_NAMES,
   ];
 
+  // v1's top bar with the avatar/user menu on every screen, for every role
+  // (18-settings R9/R10, REG-16; Plan 11 Decision 2), and the bell on every
+  // screen (app-shell.tsx:55-57; 10-notifications R36): `Screen` renders it. The navigator's own
+  // header stays off: AppTopBar owns the top inset.
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
-      {orderedRouteNames.map((name) => {
-        const tab = tabByRouteName.get(name);
-        return (
-          <Tabs.Screen
-            key={name}
-            name={name}
-            options={
-              tab
-                ? {
-                    title: tab.label,
-                    tabBarIcon: ({ color, size }) => (
-                      <NavIcon name={tab.icon} color={color} size={size} />
-                    ),
-                  }
-                : { href: null }
-            }
-          />
-        );
-      })}
-    </Tabs>
+    <AppTopBar>
+      <ScreenHeaderContext.Provider value={<NotificationBell />}>
+      <Tabs screenOptions={{ headerShown: false }}>
+        {orderedRouteNames.map((name) => {
+          const tab = tabByRouteName.get(name);
+          return (
+            <Tabs.Screen
+              key={name}
+              name={name}
+              options={
+                tab
+                  ? {
+                      title: tab.label,
+                      tabBarIcon: ({ color, size }) => (
+                        <NavIcon name={tab.icon} color={color} size={size} />
+                      ),
+                    }
+                  : { href: null }
+              }
+            />
+          );
+        })}
+      </Tabs>
+      </ScreenHeaderContext.Provider>
+    </AppTopBar>
   );
 }

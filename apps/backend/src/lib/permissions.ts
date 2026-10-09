@@ -426,15 +426,11 @@ export async function canEditNote(user: SessionUser, noteId: number): Promise<bo
 /**
  * May this caller write a note about this student?
  *
- * Two deliberate divergences from v1's canWriteNote
+ * One deliberate divergence from v1's canWriteNote
  * (jpc-space/src/lib/auth/permissions.ts:405-427):
  *
- * 1. ADMIN resolves through SeasonEnrollment, not StudentProfile.activeSeasonId
- *    (spec D12, R47/R48). v1's gate meant an admin lost the ability to write
- *    about a student the moment that student's active-season pointer moved,
- *    while canViewStudent — which checks enrolments — still let them open the
- *    page. "Why can't I write a note about this student I can clearly see" is
- *    a support question with a code answer.
+ * 1. ADMIN keeps v1's gate: read StudentProfile.activeSeasonId, refuse when it
+ *    is null, else isAdminOfSeason on it (permissions.ts:410-417; R47/R48).
  * 2. LEADER resolves through SeasonEnrollment.groupId, not GroupStudent
  *    (ruling C9, R49/R50). GroupStudent.studentUserId is @unique across the
  *    whole database, so it holds one group per student for all time; asking it
@@ -450,12 +446,13 @@ export async function canWriteNote(user: SessionUser, studentUserId: number): Pr
   if (isSuper(user) || isMentor(user)) return true;
 
   if (user.role === "ADMIN") {
-    if (user.seasonAdminIds.length === 0) return false;
-    const enrollment = await db.seasonEnrollment.findFirst({
-      where: { studentUserId, seasonId: { in: user.seasonAdminIds } },
-      select: { id: true },
+    // v1 (permissions.ts:410-417): the student's active season, or nothing.
+    const profile = await db.studentProfile.findUnique({
+      where: { userId: studentUserId },
+      select: { activeSeasonId: true },
     });
-    return enrollment !== null;
+    if (!profile?.activeSeasonId) return false;
+    return isAdminOfSeason(user, profile.activeSeasonId);
   }
 
   if (user.role === "LEADER") {

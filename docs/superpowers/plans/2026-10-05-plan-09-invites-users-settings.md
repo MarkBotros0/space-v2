@@ -33,12 +33,12 @@ C8, C11), scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md`
 - **Plan 1:** `DETAIL_ROUTE_NAMES` exported from `app/(app)/_layout.tsx` and Task 0's derived route-count tests (X9); `PLACEHOLDER_SCREENS`; the `makeSession`/`makeUser`/`makeScopes` fixtures (X11); `/more`.
 - **Plan 3:** `formatInOrgTime` in `lib/org-time.ts` (invite expiry in the email, Decision 6).
 - **Plan 6:** `GET /api/v1/groups/leader-options` and `useLeaderOptions` stay as Plan 6 built them — see Decision 17. Nothing else from Plan 6 is consumed.
-- Plans 2, 4, 5, 7 and 8 also run before this one; nothing here consumes them beyond the `DETAIL_ROUTE_NAMES` entries they appended. Plan 10 (users `/new`, bulk invites, forgot/reset, `confirmSuper` on create) and Plan 11 (`/me/profile`) run **after** this plan and consume it.
+- Plans 2, 4, 5, 7 and 8 also run before this one; nothing here consumes them beyond the `DETAIL_ROUTE_NAMES` entries they appended. Plan 10 (users `/new`, bulk invites, forgot/reset) and Plan 11 (`/me/profile`) run **after** this plan and consume it.
 
 ## Global Constraints
 
 - **No migrations, ever.** No edits under `apps/backend/prisma/`. Shared live staging DB (ruling C1). Everything below fits the frozen schema; the columns this plan touches are verified to exist: `User.passwordHash String?` (nullable — schema.prisma:107), `InviteToken { token String @unique, userId, invitedById, expiresAt, usedAt, createdAt }` (:166-179), `RefreshToken.revokedAt` (:190).
-- **Passwords are bcryptjs** (CLAUDE.md — existing hashes are bcrypt; anything else locks out every user). **Every hash this plan writes uses cost 12** (spec 11 D8: cost 12 is already live for invite-accepted accounts, and bcrypt verifies at whatever cost a hash records, so raising the write cost is backward compatible).
+- **Passwords are bcryptjs** (CLAUDE.md — existing hashes are bcrypt; anything else locks out every user). **Hash costs are v1's per write path:** invite acceptance hashes at cost 12 (v1 `jpc-space/src/lib/invites.ts:56`), and `POST /me/password` hashes at cost 10 (v1 `jpc-space/src/lib/settings-actions.ts:50`). bcrypt verifies at whatever cost a hash records, so either cost is compatible with every stored hash. *(v1 parity 2026-10-09: was "every hash this plan writes uses cost 12")*
 - **No raw credential in any HTTP response body or any log, in any environment.** An invite token travels in the invite email and nowhere else (spec 11 §7: "Do not port the 'return the token' behaviour"). There is no dev-mode channel — see Decision 2.
 - Response envelope `{ data }` / `{ error: { code, message } }` via `apiOk`/`apiError`.
 - **Value imports from `@space/shared` use the relative path** in **every** backend `src` file, not only routes (ruling X12): `"../../../../packages/shared/src/index"` from `src/routes/` and `src/lib/`, one more `../` from `src/lib/queries/` or `src/lib/auth/` (the `rootDir` emit trap — CLAUDE.md; `routes/auth.ts` documents it in place). `import type` may use the package name.
@@ -53,16 +53,16 @@ C8, C11), scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md`
 
 1. **Settings backend is folded into `routes/me.ts` + `routes/auth.ts`; there is no `routes/settings.ts`.** Spec 18 §7 is explicit: "Do not add a `GET /api/v1/settings`; it would duplicate `/me` and drift from it." Every settings write is a self-scoped `/me` resource (subject from the token, never the body — spec 18 §4), and `logout-all` is a session operation that belongs beside `login`/`logout`. A `settings.ts` file would own no resource of its own.
 2. **The invite token is never returned in an HTTP response and never logged, in any environment — dev included.** Spec 11 §7 forbids the response-body channel outright, and a dev-only response field has a way of getting depended on by a client and then shipped. An earlier draft logged the code to stdout when `config.nodeEnv === "development"`; that was withdrawn, because `NODE_ENV` **defaults to `"development"`** in `config.ts`, so a production deploy that forgot to set it would have written live credentials into its logs. With no mail transport, `sendInviteEmail` warns once that invite mail is disabled (no address, no code) and returns. Exercising the flow by hand needs `GMAIL_USER`/`GMAIL_APP_PASSWORD` pointed at a test inbox; the integration suite proves acceptance without mail by calling `issueInvite` directly.
-3. **Invite TTL is 7 days** via new config `INVITE_TOKEN_TTL_HOURS` (default `168`). Deliberate divergence from v1's 72-hour default (`jpc-space/src/lib/invites.ts:11-17`): v1's invites were never acceptable at any TTL (D1), and a longer window suits an email-to-mobile-app flow. Env-tunable exactly as v1's was.
+3. **Invite TTL is v1's:** new config `INVITE_TOKEN_TTL_HOURS`, default `72`, and a non-numeric or non-positive value falls back to the default instead of failing boot (`jpc-space/src/lib/invites.ts:11-17`). Env-tunable exactly as v1's was. *(v1 parity 2026-10-09: was "7 days, default 168, invalid value fails boot")*
 4. **v2 looks invites up by digest only — no plaintext fallback.** The shared DB holds v1's plaintext rows; a digest lookup can never match them, so they are dead on arrival. That is correct, not a transition gap: every v1 invite already terminates in a 404 (D1 — the acceptance route never existed), so there is no working credential to preserve. They age out via `expiresAt`.
-5. **Issuing an invite expires the target's prior live invites** (same transaction — spec 11 D5 rec 2: one live invite per user). Expiry is `expiresAt = now`, not `usedAt = now` — `usedAt` means "accepted" and must stay honest.
-6. **The invite email delivers a code to type/paste into the app, not a link — but a long code, not the short numeric one spec 11 D10 suggests.** D10 recommends "a short numeric code the user types" plus the real `expiresAt`. This plan adopts the code-not-link half (it removes R24 entirely — no token in any URL, browser history, or `Referer` — and the email cannot point at a route that doesn't exist, which is how D1 happened) and the real-expiry half (the email states `expiresAt` formatted with Plan 3's `formatInOrgTime`, and the detail screen shows it). It **deliberately diverges** on length: a 6–8 digit code is 20–27 bits, safe only behind a per-invite attempt counter, and `InviteToken` has no column to hold one (C1 — no migrations). Without that counter the only brake is the per-IP `acceptInviteLimiter`, which a distributed guesser walks around. So the code stays 32 base64url characters (~192 bits); it is pasted from the email, not memorised. Revisit at cutover if an attempts column is added.
+5. **Issuing an invite inserts a new row and leaves the target's earlier unused invites valid until their own `expiresAt`** (v1 `jpc-space/src/lib/invites.ts:22-24` — `createInvite` only creates). Nothing is expired on issue; the bulk "has a live invite" eligibility check (Plan 10) stays. *(v1 parity 2026-10-09: was "issuing expires the target's prior live invites in the same transaction")*
+6. **The invite email is v1's: "<inviter name> has invited you", one "Accept Invitation" button, and "This invitation will expire soon — activate your account as soon as you can."** (v1 `jpc-space/src/lib/email.ts:105-125`, `src/lib/invites.ts:32-33`). The button links to the app's custom-scheme deep link `spacev2://accept-invite?token=<code>` (same `MOBILE_APP_SCHEME` config as Plan 10 Decision 10's reset email), and the code is printed beneath it as a fallback for mail clients that do not linkify custom schemes. `accept-invite.tsx` reads `token` from the route params, copies it into state and clears it with `router.setParams({ token: undefined })`, exactly as Plan 10's `reset-password.tsx` does. The inviter's name goes through Plan 12's `escapeHtml` (ruling C11 — v1 interpolated it raw); with no inviter name the line is v1's fallback "You've been invited". No expiry date is stated (v1 R75). v1's https `${AUTH_URL}/accept-invite?token=` link is not restored — it 404'd (D1). The code stays 32 base64url characters (~192 bits): `InviteToken` has no attempts column (C1), so a short numeric code could not be protected. *(v1 parity 2026-10-09: was "code to type/paste, not a link; no inviter name; states the real expiresAt")*
 7. **`app/accept-invite.tsx` is in scope.** The roadmap's screen list names settings + users, but this plan's own done-condition ("an invite is the only way a UI-created user gets credentials") is unreachable if the flow ends at an email with no screen to enter it — that is D1 rebuilt with better plumbing. The screen is small (two fields, one anonymous POST) and sits beside `login.tsx`, outside `(app)`.
-8. **`user/[id].tsx` exists as a dynamic route.** The detail carries an edit form (name/role/graduationYear), a confirm-gated SUPER grant, an invite panel with the real `expiresAt` (v1 showed no expiry anywhere — R75), and deactivate/reactivate. That is far too much interaction to inline in a list row; it follows the `assignment/[id]` dynamic-route pattern (Plan 1 Task 2). A `user/new` create screen is **not** built here — `POST /api/v1/users` exists and is tested; the `/users/new` screen belongs to **Plan 10** (students & accounts follow-up, ruling X15).
-9. **`PATCH /users/:id` is a full replace of `{ name, role, graduationYear }`** (plus the optional `confirmSuper` flag), not a partial patch. v1's form always submits all three (`user-actions.ts:103-130`), the alumni cross-field rule needs all of them present to validate without a server-side merge, and the guards (self-role, last-SUPER) get simpler when the intended end state is explicit.
+8. **`user/[id].tsx` exists as a dynamic route.** The detail carries an edit form (name/role/graduationYear — SUPER is an ordinary role option, no confirm, v1 `src/components/users/user-form.tsx:62-68`), an invite panel that shows only the invite status and the Send/Resend invite button (v1's list shows the Invited badge, `src/components/users/users-list.tsx:79-80`) — no issued/expiry/used dates and no sender (v1 edit page `src/app/super/users/[id]/edit/page.tsx:53-55`, R75), and deactivate/reactivate. That is far too much interaction to inline in a list row; it follows the `assignment/[id]` dynamic-route pattern (Plan 1 Task 2). A `user/new` create screen is **not** built here — `POST /api/v1/users` exists and is tested; the `/users/new` screen belongs to **Plan 10** (students & accounts follow-up, ruling X15). *(v1 parity 2026-10-09: was "a confirm-gated SUPER grant, an invite panel with the real expiresAt")*
+9. **`PATCH /users/:id` is a full replace of `{ name, role, graduationYear }`**, not a partial patch. v1's form always submits all three (`user-actions.ts:103-130`), the alumni cross-field rule needs all of them present to validate without a server-side merge, and the last-SUPER guard gets simpler when the intended end state is explicit. There is no `confirmSuper` flag and no self-role refusal: a SUPER may change their own role, as in v1 (`user-actions.ts:103-130`); the last-SUPER guard (Decision 16) still prevents the lockout. *(v1 parity 2026-10-09: was "plus the optional confirmSuper flag; guards (self-role, last-SUPER)")*
 10. **Wrong current password on `POST /me/password` is `400 incorrect_password`, not 401.** The mobile axios interceptor treats any non-auth-endpoint 401 as an expired access token and burns a refresh rotation on it (`api-client.ts` — `__handleResponseError`); a 401 here would trigger that dance on every typo.
 11. **Password change revokes every refresh token except the one whose raw value the request presents.** The access token doesn't identify a refresh token, so the client sends its own refresh token in the body (optional `refreshToken` field) and the server excludes that hash from the revocation sweep. Omitting it revokes all — fail-safe. The same server already receives raw refresh tokens in `POST /auth/logout`'s body, so this adds no new exposure class.
-12. **Single-target invite refusal is explicit, not silent.** v1's batch silently dropped ineligible ids (R16). `POST /users/:id/invite` is a SUPER pressing a button on one row: an already-activated target gets `409 already_activated`, a deleted one `409 user_deleted`. The anonymous `accept-invite` endpoint is the opposite: **one opaque code for every failure** (unknown/used/expired/already-activated/deleted target all return the identical `400 invalid_invite` body), closing R27's oracle; the distinction lives in server behaviour only.
+12. **Single-target invite refusal is explicit, not silent.** v1's batch silently dropped ineligible ids (R16). `POST /users/:id/invite` is a SUPER pressing a button on one row: an already-activated target gets `409 already_activated`, a deleted one `409 user_deleted`. The anonymous `accept-invite` endpoint reports v1's three outcomes separately, in v1's order (`jpc-space/src/lib/invites.ts:51-54`): unknown token → `400 invalid_invite`, already used → `400 invite_used`, expired → `400 invite_expired`; `accept-invite.tsx` shows a distinct message for each. The R31 refusals (already-activated or deactivated target — KEEP-FIX) stay under `invalid_invite`. *(v1 parity 2026-10-09: was "one opaque invalid_invite code for every failure, closing R27's oracle")*
 13. **No org-level settings endpoints exist, because no org-level settings exist.** Verified against `jpc-space/src/lib/settings-actions.ts` (102 lines, read in full): three actions — `changePasswordAction`, `updateNotificationPreferencesAction`, `updateOwnProfileAction` — all keyed on `session.userId`, none accepting a subject id, none writing anything org-scoped. Spec 18 §2 confirms no `Setting`/`Config` model exists in the schema. Encoding reality means encoding its absence.
 14. **Notification preferences are named for Plan 13, not built here.** Spec 18 §3.5 assigns the preference surface to domain 10 (`GET/PUT /api/v1/me/notification-preferences`, all six keys including the writer-less `quizGraded`). Building a five-key twin here is precisely how v1 lost `quizGraded`. The settings screen ships without the toggles; Plan 13 adds the section.
 15. **Also deferred, each with a named owner so nothing silently drops (ruling X15):**
@@ -76,7 +76,7 @@ C8, C11), scope from `docs/superpowers/plans/2026-08-24-migration-roadmap.md`
 16. **The last-SUPER guard is serialised, not merely counted.** "Count SUPERs inside the transaction" does not stop two concurrent demotions under Postgres's default READ COMMITTED: each transaction counts two, each proceeds, and none remain. Both the PATCH and the deactivate path therefore take row locks on every active SUPER (`SELECT … FOR UPDATE`) inside their transaction before deciding (Task 3's `lockActiveSuperIds`). The second transaction blocks on the first's locks, re-evaluates its `WHERE` against the committed row (Postgres re-checks the predicate for `FOR UPDATE`), no longer sees the demoted SUPER, and refuses. The decision itself is a pure function (`isLastActiveSuper`) with a unit test, because the shared staging DB always contains real SUPERs and an integration test can never reach the "last one" branch.
 
 17. **Plan 6's leader picker is kept, not replaced.** Plan 6 (which runs before this plan) shipped `GET /api/v1/groups/leader-options` + `useLeaderOptions` as an interim read of live LEADER users, anticipating that this plan's `GET /users?role=` might replace it (Plan 6 D-16.14). It does not: `usersRouter` is SUPER-only (spec 11 — user administration), while group management is open to every season admin (`isAdminOfAnySeason`). Repointing the picker at `GET /users?role=LEADER` would either 403 every ADMIN or force this router to widen its gate for one read, leaking emails/roles of every account to admins. So `GET /groups/leader-options` stays the leader picker's source, `useLeaderOptions` is untouched, and this plan adds no `role`-filtered read for non-SUPER callers.
-18. **Forward note — `confirmSuper` on create is Plan 10's.** This plan enforces `confirmSuper: true` only on `PATCH /users/:id` (Task 3). `POST /users` accepts `role: "SUPER"` without it here; Plan 10 Decision 13 later adds `confirmSuper?: boolean` to `createUserRequestSchema` and makes `POST /users` refuse a SUPER grant without it (`400 confirm_super_required`, the same code). No behaviour change in this plan — do not add it early, or Plan 10's failing-test-first step has nothing to fail.
+18. **No `confirmSuper` anywhere.** SUPER is selected and saved like any role on create and edit, with no extra confirmation (v1 `jpc-space/src/lib/user-actions.ts:25-31`, `src/components/users/user-form.tsx:62-68`). Neither `createUserRequestSchema` nor `updateUserRequestSchema` carries a `confirmSuper` field, and no route returns `confirm_super_required`. *(v1 parity 2026-10-09: was "PATCH requires confirmSuper; Plan 10 adds it to create")*
 
 **Execution shape:** Task 1 first (everything consumes the contracts). Then
 Tasks 2–4 are one sequential backend stream (all touch `routes/users.ts`;
@@ -236,6 +236,8 @@ Expected: FAIL — the exports don't exist.
 
 - [ ] **Step 3: Implement the contracts**
 
+> **v1 parity 2026-10-09:** `userListResponseSchema` becomes `{ users: UserListItem[] }` — no `nextCursor` (the list is unpaged, R84; v1 `src/app/super/users/page.tsx:16-17`); the header counts (R88) are computed client-side over the full list. `inviteStateSchema` may keep its fields, but no screen renders `issuedAt`/`expiresAt`/`usedAt`/`invitedByName` (R75). Current code: `packages/shared/src/user.ts` (`confirmSuper` at :100 and :117 goes, see Decision 18).
+
 Create `packages/shared/src/user.ts`:
 
 ```ts
@@ -340,16 +342,15 @@ export type CreateUserBody = z.output<typeof createUserRequestSchema>;
 /**
  * Full replace of the three editable fields (v1's form always submits all
  * three — user-actions.ts:103-130). `email` is deliberately absent (R48) and
- * `.strict()` refuses it rather than stripping it. `confirmSuper` must be
- * `true` for a role change TO SUPER — spec 11 D7 rec 3: a SUPER grant cannot
- * be a mis-tapped picker item.
+ * `.strict()` refuses it rather than stripping it. No `confirmSuper`: SUPER
+ * is an ordinary role option, as in v1 (user-actions.ts:25-31; v1 parity
+ * 2026-10-09).
  */
 export const updateUserRequestSchema = z
   .object({
     name: z.string().trim().min(2, "At least 2 characters.").max(120, "At most 120 characters."),
     role: userRoleSchema,
     graduationYear: z.number().int().nullable(),
-    confirmSuper: z.boolean().optional(),
   })
   .strict()
   .superRefine(checkUserFields);
@@ -375,7 +376,9 @@ export type ActivationResponse = z.infer<typeof activationResponseSchema>;
  */
 export const updateProfileRequestSchema = z
   .object({
-    name: z.string().trim().min(2, "At least 2 characters.").max(120, "At most 120 characters."),
+    // Zod's default messages, as v1 (settings-actions.ts:79-81; v1 parity
+    // 2026-10-09). The trim stays (spec 18 R21, KEEP-FIX).
+    name: z.string().trim().min(2).max(120),
   })
   .strict();
 export type UpdateProfileBody = z.infer<typeof updateProfileRequestSchema>;
@@ -459,7 +462,7 @@ git commit -m "feat(shared): user/invite/settings contracts — one password pol
 
 **Interfaces:**
 - Consumes: `requireAuth`/`requireUser`, `canManageUsers` from `../lib/rbac`, `parseId`, `apiOk`/`apiError`; `userRoleSchema`, `userStatusSchema` (value imports — **relative shared path**).
-- Produces: `GET /api/v1/users` → `{ data: UserListResponse }` with `?q`, `?role`, `?status`, `?cursor`, `?limit`; `GET /api/v1/users/:id` → `{ data: UserDetail }`; fixture `createUnactivatedTestUser(label: string, role: TestRole): Promise<{ id: number; email: string }>` (Tasks 3–4 use it); the module-level `deriveStatus`, `liveInviteWhere`, `LIST_SELECT`, `toListItem` and `loadUserDetail(id: number): Promise<UserDetail | null>` helpers Tasks 3–4 reuse in the same file (GET `/:id` and PATCH `/:id` both answer through `loadUserDetail`, so they cannot drift).
+- Produces: `GET /api/v1/users` → `{ data: UserListResponse }`, every user, unpaged, deactivated first then by name *(v1 parity 2026-10-09: was "with `?q`, `?role`, `?status`, `?cursor`, `?limit`")*; `GET /api/v1/users/:id` → `{ data: UserDetail }`; fixture `createUnactivatedTestUser(label: string, role: TestRole): Promise<{ id: number; email: string }>` (Tasks 3–4 use it); the module-level `deriveStatus`, `liveInviteWhere`, `LIST_SELECT`, `toListItem` and `loadUserDetail(id: number): Promise<UserDetail | null>` helpers Tasks 3–4 reuse in the same file (GET `/:id` and PATCH `/:id` both answer through `loadUserDetail`, so they cannot drift).
 
 - [ ] **Step 1: Add the fixture helper**
 
@@ -481,6 +484,8 @@ export async function createUnactivatedTestUser(
 ```
 
 - [ ] **Step 2: Write the failing integration tests**
+
+> **v1 parity 2026-10-09:** drop the cursor-paging case and the `q` filter case; the status case calls `GET /api/v1/users` with no query and finds its fixtures in the full list. Add a case that pins v1's order: deactivated users first, then by name (`orderBy: [{ deletedAt: "asc" }, { name: "asc" }]` — Postgres sorts NULL last on ASC; v1 `src/app/super/users/page.tsx:16-17`).
 
 ```ts
 // apps/backend/src/__tests__/integration/users-routes.test.ts
@@ -635,6 +640,8 @@ describe("GET /api/v1/users/:id", () => {
 Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern users-routes` → FAIL (404s — no router).
 
 - [ ] **Step 3: Implement `routes/users.ts`**
+
+> **v1 parity 2026-10-09:** `GET /users` returns every user unpaged, ordered `[{ deletedAt: "asc" }, { name: "asc" }]`, as v1 (`src/app/super/users/page.tsx:16-17`, R84). Remove `cursor`/`limit` and the `q`/`role`/`status` filters and the filtered `total` (current code `apps/backend/src/routes/users.ts:144-156`). `GET /users/:id` may keep the invite fields in its payload.
 
 ```ts
 import { Router } from "express";
@@ -892,7 +899,7 @@ git commit -m "feat(backend): SUPER-only users list/detail — paginated, status
 
 **Interfaces:**
 - Consumes: Task 2's `requireSuper`/`loadUserDetail`/`liveInviteWhere`; `updateUserRequestSchema` (relative shared import).
-- Produces: `hashToken(raw: string): string` (exported — Tasks 4–5 import it); `revokeAllRefreshTokensForUser(client: DbWriter, userId: number, exceptTokenHash?: string): Promise<number>` where `export type DbWriter = Pick<typeof db, "refreshToken">` — callable with `db` or a `$transaction` client; `isLastActiveSuper(activeSuperIds: readonly number[], targetId: number): boolean`; `lockActiveSuperIds(tx: Prisma.TransactionClient): Promise<number[]>`; `PATCH /api/v1/users/:id` → `{ data: UserDetail }`; `POST /api/v1/users/:id/deactivate` → `{ data: ActivationResponse }` (`deletedAt: string`); `POST /api/v1/users/:id/reactivate` → `{ data: ActivationResponse }` (`deletedAt: null`). Error codes: `cannot_change_own_role` 409, `last_super` 409, `confirm_super_required` 400, `cannot_deactivate_self` 400.
+- Produces: `hashToken(raw: string): string` (exported — Tasks 4–5 import it); `revokeAllRefreshTokensForUser(client: DbWriter, userId: number, exceptTokenHash?: string): Promise<number>` where `export type DbWriter = Pick<typeof db, "refreshToken">` — callable with `db` or a `$transaction` client; `isLastActiveSuper(activeSuperIds: readonly number[], targetId: number): boolean`; `lockActiveSuperIds(tx: Prisma.TransactionClient): Promise<number[]>`; `PATCH /api/v1/users/:id` → `{ data: UserDetail }`; `POST /api/v1/users/:id/deactivate` → `{ data: ActivationResponse }` (`deletedAt: string`); `POST /api/v1/users/:id/reactivate` → `{ data: ActivationResponse }` (`deletedAt: null`). Error codes: `last_super` 409, `cannot_deactivate_self` 400. *(v1 parity 2026-10-09: was "also `cannot_change_own_role` 409 and `confirm_super_required` 400")*
 
 - [ ] **Step 1: Export the token helpers**
 
@@ -1083,20 +1090,14 @@ describe("PATCH /api/v1/users/:id — role change is revocation (spec 11 D3, rul
     expect(await db.user.count({ where: { role: "SUPER", deletedAt: null } })).toBeGreaterThan(0);
   });
 
-  it("requires confirmSuper to grant SUPER (D7 rec 3)", async () => {
+  it("grants SUPER like any other role — no confirmation flag (v1 parity, user-actions.ts:25-31)", async () => {
     const target = await createTestUser("promote-me", "STUDENT");
-    const refused = await request(app)
-      .patch(`/api/v1/users/${target.id}`)
-      .set("authorization", `Bearer ${superToken}`)
-      .send({ name: "Test promote-me", role: "SUPER", graduationYear: null });
-    expect(refused.status).toBe(400);
-    expect(refused.body.error.code).toBe("confirm_super_required");
-
     const granted = await request(app)
       .patch(`/api/v1/users/${target.id}`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ name: "Test promote-me", role: "SUPER", graduationYear: null, confirmSuper: true });
+      .send({ name: "Test promote-me", role: "SUPER", graduationYear: null });
     expect(granted.status).toBe(200);
+    expect(granted.body.data.role).toBe("SUPER");
   });
 
   it("creates a StudentProfile when a role change lands on STUDENT (R46's fix)", async () => {
@@ -1175,6 +1176,8 @@ describe("PATCH /api/v1/users/:id — response parity with GET", () => {
 Also add `PASSWORD` and `createTestSeason` to the fixtures import at the top
 of the file (`fixtures.ts` exports both). Run the suite → new cases FAIL (404s).
 
+> **v1 parity 2026-10-09:** replace the case "refuses changing your own role (D7)" with "a SUPER may change their own role" — v1's `updateUserAction` has no self check (`jpc-space/src/lib/user-actions.ts:103-130`, R50). Run it with a second fixture SUPER's own token (not `superToken`, so the suite's SUPER is not demoted) and expect 200. In code, delete the `cannot_change_own_role` refusal at `apps/backend/src/routes/users.ts:280-288` and the `confirm_super_required` check at `:291-298`; the last-SUPER guard (R51, KEEP-FIX) stays.
+
 - [ ] **Step 4: Implement the three write routes**
 
 In `routes/users.ts`, add `updateUserRequestSchema` to the relative shared
@@ -1210,23 +1213,9 @@ usersRouter.patch("/:id", async (req, res) => {
 
     const roleChanged = body.role !== target.role;
 
-    // D7 rec 1: you cannot change your own role — the lockout guard v1's
-    // updateUserAction lacked (R50). Renaming yourself stays allowed.
-    if (roleChanged && id === user.userId) {
-      return {
-        fail: ["cannot_change_own_role", "You can't change your own role.", 409] as const,
-      };
-    }
-
-    // D7 rec 3: SUPER is never a mis-tapped picker item.
-    if (roleChanged && body.role === "SUPER" && body.confirmSuper !== true) {
-      return {
-        fail: [
-          "confirm_super_required",
-          "Granting SUPER requires explicit confirmation.", 400,
-        ] as const,
-      };
-    }
+    // v1 parity 2026-10-09: no self-role refusal and no confirmSuper gate —
+    // v1's updateUserAction has neither (user-actions.ts:103-130). The
+    // last-SUPER guard below still prevents the lockout case.
 
     // D7 rec 2: never demote the last SUPER. The active SUPER rows are LOCKED
     // (Decision 16), not merely counted — a count alone lets two concurrent
@@ -1365,7 +1354,7 @@ git commit -m "feat(backend): role change and deactivation revoke — scope casc
 
 **Interfaces:**
 - Consumes: `hashToken` (Task 3), `config`, `formatInOrgTime` from `lib/org-time.ts` (Plan 3), `sendInviteEmail`; `createUserRequestSchema`, `acceptInviteRequestSchema` (relative shared imports); Task 2's `requireSuper`, `loadUserDetail`.
-- Produces: `rateLimitHandler: RateLimitOptions["handler"]` from `apps/backend/src/lib/rate-limit.ts` (Task 5 and Plans 12, 15 and 17 import it; nobody else defines one); `config.inviteTokenTtlHours: number`; `issueInvite(client: InviteWriter, userId: number, invitedById: number): Promise<{ raw: string; expiresAt: Date }>` with `export type InviteWriter = Pick<typeof db, "inviteToken">`; `sendInviteEmail(email: string, code: string, expiresAt: Date): Promise<void>`; `POST /api/v1/users` → 201 `{ data: { userId: number } }`; `POST /api/v1/users/:id/invite` → `{ data: InviteState }`; `POST /api/v1/auth/accept-invite` (anonymous, its own `acceptInviteLimiter`) → `{ data: AcceptInviteResponse }` / `400 invalid_invite`.
+- Produces: `rateLimitHandler: RateLimitOptions["handler"]` from `apps/backend/src/lib/rate-limit.ts` (Task 5 and Plans 12, 15 and 17 import it; nobody else defines one); `config.inviteTokenTtlHours: number`; `issueInvite(client: InviteWriter, userId: number, invitedById: number): Promise<{ raw: string; expiresAt: Date }>` with `export type InviteWriter = Pick<typeof db, "inviteToken">`; `sendInviteEmail(email: string, code: string, inviterName?: string | null): Promise<void>` *(v1 parity 2026-10-09: was "`(email, code, expiresAt: Date)`")*; `POST /api/v1/users` → 201 `{ data: { userId: number } }`; `POST /api/v1/users/:id/invite` → `{ data: InviteState }`; `POST /api/v1/auth/accept-invite` (anonymous, its own `acceptInviteLimiter`) → `{ data: AcceptInviteResponse }` / `400 invalid_invite` | `400 invite_used` | `400 invite_expired` *(v1 parity 2026-10-09: was "the single `400 invalid_invite`")*.
 
 - [ ] **Step 0: Extract the rate-limit handler (ruling X4)**
 
@@ -1431,10 +1420,10 @@ Run: `pnpm turbo typecheck --filter=@space/backend` → clean.
 In `config.ts`'s schema add (with the other numeric keys):
 
 ```ts
-  // Invite acceptance window. 168h = 7 days — deliberately longer than v1's
-  // 72h default: the invite is delivered to email and typed into a phone, and
-  // v1's TTL never mattered because no invite was ever acceptable (spec 11 D1).
-  INVITE_TOKEN_TTL_HOURS: z.coerce.number().int().positive().default(168),
+  // Invite acceptance window — v1's (jpc-space/src/lib/invites.ts:11-17):
+  // default 72h, and a missing, non-numeric or non-positive value falls back
+  // to 72 instead of failing boot (v1 parity 2026-10-09).
+  INVITE_TOKEN_TTL_HOURS: z.coerce.number().finite().positive().catch(72),
 ```
 
 and `inviteTokenTtlHours: parsed.data.INVITE_TOKEN_TTL_HOURS,` to the exported
@@ -1468,9 +1457,8 @@ export interface IssuedInvite {
  *   while hashing the LOWER-value reset tokens (spec 11 D5); this closes it.
  *   v1's plaintext rows in the shared DB can never match a digest lookup and
  *   simply age out — none of them was ever acceptable anyway (D1).
- * - Prior live invites for the user are expired in the same client, so at
- *   most one invite is live per user (D5 rec 2). `expiresAt = now`, not
- *   `usedAt` — "used" means accepted and must stay honest.
+ * - Earlier unused invites are left alone and stay valid until their own
+ *   expiresAt, as v1's createInvite (invites.ts:22-24; v1 parity 2026-10-09).
  *
  * Deliberately does NOT send email: callers mail after their transaction
  * commits, so a transport failure can't roll back a minted row and a rolled
@@ -1485,10 +1473,6 @@ export async function issueInvite(
   const now = new Date();
   const expiresAt = new Date(now.getTime() + config.inviteTokenTtlHours * 60 * 60 * 1000);
 
-  await client.inviteToken.updateMany({
-    where: { userId, usedAt: null, expiresAt: { gt: now } },
-    data: { expiresAt: now },
-  });
   await client.inviteToken.create({
     data: { token: hashToken(raw), userId, invitedById, expiresAt },
   });
@@ -1558,6 +1542,8 @@ Beside the file's existing `let warnedUnconfigured = false;`, add
 `import { formatInOrgTime } from "./org-time";` (Plan 3 created it).
 (`isConfigured`, `getTransporter`, `fromAddress`, `renderShell`, `TEXT`, `BG`,
 `BORDER` all already exist in the file.)
+
+> **v1 parity 2026-10-09:** the `sendInviteEmail` block above is superseded by Decision 6. Change `apps/backend/src/lib/email.ts:163-197` to v1's body (`jpc-space/src/lib/email.ts:105-125`): signature `sendInviteEmail(email, code, inviterName?: string | null)`; first line `<strong>${escapeHtml(inviterName)}</strong> has invited you` (fallback "You've been invited") "to join <strong>JPC Space</strong>, the Jesus Project Community portal."; one `buttonHtml(escapeHtml(link), "Accept Invitation")` where `link = ${config.mobileAppScheme}://accept-invite?token=${encodeURIComponent(code)}` (the `MOBILE_APP_SCHEME` config Plan 10 Decision 10 adds); the code printed beneath as a fallback; v1's note "This invitation will expire soon — activate your account as soon as you can." with no date (drop the `formatInOrgTime` import and the `expiresAt` parameter); v1's closing "If you weren't expecting this invitation, you can ignore this email."; subject "JPC Space — You're Invited". Every caller passes the inviter's `name` (`routes/users.ts:477, 509`, `routes/students.ts:222`, `lib/invites.ts:163`). The unconfigured-transport branch stays as written (v1 also swallowed the send failure, `jpc-space/src/lib/invites.ts:34-45`).
 
 - [ ] **Step 2: Write the failing integration tests**
 
@@ -1673,7 +1659,7 @@ describe("POST /api/v1/users — creation issues credentials to no one (D2)", ()
 });
 
 describe("POST /api/v1/users/:id/invite", () => {
-  it("returns metadata only and expires the previous live invite (D5 rec 2)", async () => {
+  it("returns metadata only and leaves the previous invite live (v1 parity, invites.ts:22-24)", async () => {
     const target = await createUnactivatedTestUser("reinvite", "STUDENT");
 
     const first = await request(app)
@@ -1692,7 +1678,7 @@ describe("POST /api/v1/users/:id/invite", () => {
     const live = await db.inviteToken.count({
       where: { userId: target.id, usedAt: null, expiresAt: { gt: new Date() } },
     });
-    expect(live).toBe(1);
+    expect(live).toBe(2);
   });
 
   it("explicitly refuses an activated target — no silent drop (R16 diverged)", async () => {
@@ -1741,10 +1727,10 @@ describe("POST /api/v1/auth/accept-invite", () => {
       .post("/api/v1/auth/accept-invite")
       .send({ token: raw, password: "other-password-1" });
     expect(again.status).toBe(400);
-    expect(again.body.error.code).toBe("invalid_invite");
+    expect(again.body.error.code).toBe("invite_used");
   });
 
-  it("refuses expired, unknown, and already-activated indistinguishably (R27's oracle closed)", async () => {
+  it("reports unknown, expired and ineligible separately, as v1 (invites.ts:51-54; v1 parity 2026-10-09)", async () => {
     // Expired: mint, then force the expiry into the past.
     const expiredTarget = await createUnactivatedTestUser("expired", "STUDENT");
     const expired = await issueInvite(db, expiredTarget.id, superUser.id);
@@ -1758,17 +1744,16 @@ describe("POST /api/v1/auth/accept-invite", () => {
     const activeTarget = await createTestUser("active-target", "STUDENT");
     const hijack = await issueInvite(db, activeTarget.id, superUser.id);
 
-    const bodies = [];
+    const codes = [];
     for (const token of [expired.raw, "definitely-not-a-real-token-aaaa", hijack.raw]) {
       const res = await request(app)
         .post("/api/v1/auth/accept-invite")
         .send({ token, password: "brand-new-password" });
       expect(res.status).toBe(400);
-      bodies.push(res.body);
+      codes.push(res.body.error.code);
     }
-    // One opaque code, byte-identical bodies — no existence oracle.
-    expect(bodies[1]).toEqual(bodies[0]);
-    expect(bodies[2]).toEqual(bodies[0]);
+    // v1's distinct reasons; the R31 refusal (activated target) stays invalid_invite.
+    expect(codes).toEqual(["invite_expired", "invalid_invite", "invalid_invite"]);
   });
 
   it("stores only the digest — the raw code never touches the database", async () => {
@@ -1789,7 +1774,9 @@ Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBan
 
 - [ ] **Step 3: Implement `POST /users` and `POST /users/:id/invite`**
 
-(`POST /users` takes no `confirmSuper` here; Plan 10 adds it — Decision 18.)
+(`POST /users` takes no `confirmSuper` — Decision 18, v1 parity 2026-10-09.)
+
+> **v1 parity 2026-10-09:** both `sendInviteEmail` calls below pass the caller's display name as the third argument instead of the expiry (`sendInviteEmail(body.email, issuedRaw, callerName)`), read once from `db.user` by `user.userId` — R90, `jpc-space/src/lib/invites.ts:27-38`. Current code: `apps/backend/src/routes/users.ts:477, 509`.
 
 In `routes/users.ts`, extend the relative shared import with
 `createUserRequestSchema`, and add:
@@ -1936,10 +1923,11 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
     return apiError(res, "bad_request", "A token and a password of at least 8 characters are required.", 400);
   }
 
-  // ONE opaque refusal for every failure mode — unknown, used, expired,
-  // already-activated target, deactivated target. v1 disclosed which (R27);
-  // the distinction belongs in server-side behaviour only (D5 rec 3).
-  const refuse = () => apiError(res, "invalid_invite", "This invite is invalid or has expired.", 400);
+  // v1's three outcomes, in v1's order (invites.ts:51-54; v1 parity
+  // 2026-10-09): unknown → invalid_invite, used → invite_used, expired →
+  // invite_expired. The R31 refusals (activated/deactivated target) and a
+  // lost consume race answer invalid_invite.
+  const refuse = () => apiError(res, "invalid_invite", "This invite code is not valid.", 400);
 
   const invite = await db.inviteToken.findUnique({
     where: { token: hashToken(parsed.data.token) },
@@ -1949,8 +1937,8 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
     },
   });
   if (!invite) return refuse();
-  if (invite.usedAt !== null) return refuse();
-  if (invite.expiresAt < new Date()) return refuse();
+  if (invite.usedAt !== null) return apiError(res, "invite_used", "This invite has already been used.", 400);
+  if (invite.expiresAt < new Date()) return apiError(res, "invite_expired", "This invite has expired.", 400);
   // D4 rec 2: an invite is an ACTIVATION, not a reset. v1's acceptInvite
   // would set the password of a live account (R31); refused here.
   if (invite.user.passwordHash !== null || invite.user.deletedAt !== null) return refuse();
@@ -1980,7 +1968,7 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
 Run: `cd apps/backend && npx jest src/__tests__/rate-limit.test.ts` → PASS.
 Run: `cd apps/backend && npx jest --config jest.integration.config.js --runInBand --testPathPattern "invites-routes|users-routes|auth-routes"` → PASS (`auth-routes` proves the handler extraction left login/refresh/logout intact).
 OpenAPI: `POST /users`, `POST /users/:id/invite`, `POST /auth/accept-invite`
-(document `invalid_invite` as the single failure code) in this same commit.
+(document `invalid_invite`, `invite_used` and `invite_expired` — v1 parity 2026-10-09) in this same commit.
 
 - [ ] **Step 6: Commit**
 
@@ -2141,9 +2129,10 @@ describe("POST /api/v1/me/password — the change that finally evicts (spec 18 D
       .send({ refreshToken: refreshB });
     expect(rotateB.status).toBe(200);
 
-    // ...and the new hash is cost 12 (D8).
+    // ...and the new hash is cost 10, as v1's changePasswordAction
+    // (settings-actions.ts:50; v1 parity 2026-10-09).
     const row = await db.user.findUnique({ where: { id: u.id }, select: { passwordHash: true } });
-    expect(row?.passwordHash).toMatch(/^\$2[aby]\$12\$/);
+    expect(row?.passwordHash).toMatch(/^\$2[aby]\$10\$/);
   });
 
   it("400s a wrong current password (not 401 — the client's refresh interceptor) and 409s a null hash", async () => {
@@ -2319,7 +2308,7 @@ meRouter.post("/password", requireAuth, passwordLimiter, async (req, res) => {
     return apiError(res, "incorrect_password", "Current password is incorrect.", 400);
   }
 
-  const newHash = await bcrypt.hash(body.newPassword, 12);
+  const newHash = await bcrypt.hash(body.newPassword, 10); // v1 cost (settings-actions.ts:50; v1 parity 2026-10-09)
   const exceptHash = body.refreshToken ? hashToken(body.refreshToken) : undefined;
 
   // Spec 18 D1: the change and the eviction are one transaction. Every other
@@ -2450,8 +2439,9 @@ describe("SettingsScreen", () => {
     expect(screen.getByText("Change password")).toBeTruthy();
     expect(screen.getByText("Security")).toBeTruthy();
     expect(screen.getByLabelText("Name")).toBeTruthy();
-    // Email is shown, not editable — and the caption is TRUE in v2, unlike
-    // v1's "change via the admin console" lie for students (spec 18 R20/D8).
+    // Email is shown, not editable, with v1's caption "Change via the admin
+    // console." (settings-form.tsx:142-144; v1 parity 2026-10-09). The student
+    // email lock (REG-12, KEEP-FIX) makes that caption true for every role.
     expect(screen.getByText("sp@jpc.test")).toBeTruthy();
   });
 
@@ -2600,6 +2590,8 @@ export function useLogoutAll(): UseMutationResult<LogoutAllResponse, Error, void
 
 - [ ] **Step 3: Write the screen**
 
+> **v1 parity 2026-10-09:** spec 18 R19/R20 — current code `apps/mobile/app/(app)/settings.tsx`: drop `nameValid` and `|| !nameValid` from the Save button's `disabled` (:50, :142; keep `!nameChanged`, R22 is already v1), drop the client-side "Between 2 and 120 characters." check, show the server's message as the Name field error, and change the email caption (:131) to v1's "Change via the admin console." (v1 `src/components/settings/settings-form.tsx:142-144`). The code block below is already edited to match.
+
 Replace `apps/mobile/app/(app)/settings.tsx`:
 
 ```tsx
@@ -2610,6 +2602,7 @@ import { passwordSchema } from "@space/shared";
 
 import { useChangePassword, useLogoutAll, useUpdateProfile } from "../../src/hooks/use-me";
 import { useLogout } from "../../src/hooks/use-session";
+import { apiErrorMessage } from "../../src/lib/api-error";
 import { clearSession } from "../../src/lib/token-storage";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
@@ -2647,19 +2640,17 @@ export default function SettingsScreen() {
 
   if (!user) return null; // the (app) layout redirects before this renders
 
+  // v1 parity 2026-10-09 (spec 18 R19, v1 settings-actions.ts:79-81): no
+  // client-side length check and no disable on length — Save is pressable and
+  // the server's Zod default message is shown as the field error.
   const saveName = () => {
     setNameSaved(false);
-    const trimmed = name.trim();
-    if (trimmed.length < 2 || trimmed.length > 120) {
-      setNameError("Between 2 and 120 characters.");
-      return;
-    }
     setNameError(null);
     updateProfile.mutate(
-      { name: trimmed },
+      { name: name.trim() },
       {
         onSuccess: () => setNameSaved(true),
-        onError: () => setNameError("Couldn't save. Try again."),
+        onError: (err) => setNameError(apiErrorMessage(err, "Couldn't save. Try again.")),
       },
     );
   };
@@ -2726,7 +2717,7 @@ export default function SettingsScreen() {
             </Text>
             <Text variant="body">{user.email}</Text>
             <Text variant="label" color={theme.colors.neutral[600]}>
-              Ask an administrator to change your email.
+              Change via the admin console.
             </Text>
             {nameSaved ? (
               <Text variant="label" color={theme.colors.success[600]}>
@@ -2824,6 +2815,8 @@ git commit -m "feat(mobile): settings screen — six roles one route, evicting p
 
 ### Task 7: Users list screen (SUPER)
 
+> **v1 parity 2026-10-09:** the list is v1's: every user at once, no search box, no infinite scroll (`useUsers` becomes a plain `useQuery` over the unpaged `GET /users`), deactivated users first then by name, and a header line `{active} active · {total} total` where total = all users and active = `deletedAt === null` (v1 `src/app/super/users/page.tsx:55`, R84/R88). Current code to change: `apps/mobile/app/(app)/users/index.tsx` (search box, `useInfiniteQuery`), `apps/mobile/src/hooks/use-users.ts`. Steps 2–4's search and paging tests and code are superseded by this note.
+
 **Files:**
 - Create: `apps/mobile/src/hooks/use-users.ts`
 - Modify: `apps/mobile/src/lib/query-keys.ts` (add the `users` factory)
@@ -2833,7 +2826,7 @@ git commit -m "feat(mobile): settings screen — six roles one route, evicting p
 
 **Interfaces:**
 - Consumes: `apiClient`, `queryKeys` pattern, `userListResponseSchema`, `inviteStateSchema`, types `UserListItem`/`UserStatus` from `@space/shared`.
-- Produces: `queryKeys.users.all/lists()/list(filters)/details()/detail(id: number | null)`; `useUsers(filters: { q: string }, options: { enabled: boolean }): UseInfiniteQueryResult<InfiniteData<UserListResponse>>`; `useSendInvite(): UseMutationResult<InviteState, Error, { userId: number }>` (Task 8 reuses both); the route push target `/user/[id]` (Task 8 creates the file — see its Step 1 ordering note).
+- Produces: `queryKeys.users.all/lists()/list(filters)/details()/detail(id: number | null)`; `useUsers(options: { enabled: boolean }): UseQueryResult<UserListResponse>` *(v1 parity 2026-10-09: was "`useUsers(filters: { q }, …)`: `UseInfiniteQueryResult`")*; `useSendInvite(): UseMutationResult<InviteState, Error, { userId: number }>` (Task 8 reuses both); the route push target `/user/[id]` (Task 8 creates the file — see its Step 1 ordering note).
 
 - [ ] **Step 1: Add the query-key factory**
 
@@ -3215,6 +3208,8 @@ Run: `pnpm turbo routes:generate --filter=@space/mobile`, then
 
 - [ ] **Step 2: Write the failing test**
 
+> **v1 parity 2026-10-09:** R75/R49: the detail shows no invite dates and no sender — only the invite status and the Send/Resend invite button (v1 `src/app/super/users/[id]/edit/page.tsx:53-55`); replace the "shows the invite's real expiry" case with one asserting `queryByText(/Invite expires/)` is null, and the `findByText(/Invite expires/)` waits with a wait on the Name field. Replace "gates a SUPER grant behind an explicit confirmation" with "saves SUPER like any role": no `Alert`, the PATCH body is `{ name, role: "SUPER", graduationYear }` with no `confirmSuper` (v1 `src/components/users/user-form.tsx:62-68`).
+
 ```tsx
 // apps/mobile/src/__tests__/user-detail-screen.test.tsx
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
@@ -3333,6 +3328,8 @@ describe("UserDetailScreen", () => {
 Run: `cd apps/mobile && pnpm jest src/__tests__/user-detail-screen.test.tsx` → FAIL (stub).
 
 - [ ] **Step 3: Add the hooks and the real screen**
+
+> **v1 parity 2026-10-09:** remove the SUPER confirm `Alert` and the `doSave(confirmSuper)` branch (current code `apps/mobile/app/(app)/user/[id].tsx:78-80`), and remove the issued/expiry/used/sender lines from the invite panel (current code `user/[id].tsx:174-186`); keep the status badge and Send/Resend invite button.
 
 Append to `use-users.ts`:
 
@@ -3736,6 +3733,8 @@ Run: `cd apps/mobile && pnpm jest src/__tests__/accept-invite-screen.test.tsx` �
 
 - [ ] **Step 2: Write the hook and the screen**
 
+> **v1 parity 2026-10-09:** the screen also opens from the invite email's `spacev2://accept-invite?token=<code>` link (Decision 6, R24/R91): read `token` with `useLocalSearchParams`, copy it into the code field's state, then `router.setParams({ token: undefined })` so it is not re-emitted into a URL — the same handling as Plan 10's `reset-password.tsx`. On failure show the server's message per code (`invalid_invite` / `invite_used` / `invite_expired`) via `apiErrorMessage` (imported from `../src/lib/api-error`). Add a test for each code's message and one for the prefilled `token` param. Current code: `apps/mobile/app/accept-invite.tsx`.
+
 ```ts
 // apps/mobile/src/hooks/use-accept-invite.ts
 import { useMutation, type UseMutationResult } from "@tanstack/react-query";
@@ -3809,9 +3808,9 @@ export default function AcceptInviteScreen() {
       { token: code.trim(), password },
       {
         onSuccess: () => setDone(true),
-        // One message for every failure — the API deliberately tells us no
-        // more (invalid_invite covers unknown/used/expired/ineligible alike).
-        onError: () => setFailure("That invite is invalid or has expired. Ask for a new one."),
+        // v1's distinct reasons (invites.ts:51-54; v1 parity 2026-10-09):
+        // the server's message for invalid_invite / invite_used / invite_expired.
+        onError: (err) => setFailure(apiErrorMessage(err, "That invite is invalid. Ask for a new one.")),
       },
     );
   };
@@ -3919,7 +3918,7 @@ the `me` shape change and the new mounts must not have broken the others).
 
   1. **Revocation on role change:** in `routes/users.ts`'s PATCH transaction, delete the `await revokeAllRefreshTokensForUser(tx, id);` line → `users-routes.test.ts` "demoting an ADMIN … kills their refresh token" fails on the `rotate.status = 401` assertion (rotation succeeds).
   2. **Digest at rest:** in `lib/invites.ts`, store `token: raw` instead of `token: hashToken(raw)` → `invites-routes.test.ts` "stores only the digest" fails (`row.token === raw`), and "creates with a NULL passwordHash and a hashed invite" fails its `/^[0-9a-f]{64}$/` match.
-  3. **Expiry check:** in `routes/auth.ts`'s accept-invite, delete the `if (invite.expiresAt < new Date()) return refuse();` line → the "refuses expired, unknown, and already-activated indistinguishably" case fails (the expired token activates the account, 200 ≠ 400).
+  3. **Expiry check:** in `routes/auth.ts`'s accept-invite, delete the `invite_expired` line → the "reports unknown, expired and ineligible separately" case fails (the expired token activates the account, 200 ≠ 400). *(v1 parity 2026-10-09: was the "indistinguishably" case)*
   4. **Password-change eviction:** in `routes/me.ts`'s `POST /password` transaction, replace the `revokeAllRefreshTokensForUser` call with `0` → `me-settings-routes.test.ts` "revokes every other session" fails (session A still rotates, `sessionsRevoked` is 0).
   5. **Last-SUPER guard:** in `lib/super-guard.ts`, make `isLastActiveSuper` return `false` unconditionally → `super-guard.test.ts` "is true only when the target is the sole active SUPER" fails. Then, separately, replace `lockActiveSuperIds(tx)` in `routes/users.ts`'s PATCH with a plain `tx.user.findMany({ where: { role: "SUPER", deletedAt: null }, select: { id: true } })` mapped to ids → no automated test can fail (the race needs two transactions interleaved on a DB with exactly two SUPERs, which shared staging never is); record in the report that this half is guarded by Decision 16's review argument, not a test.
   6. **429 envelope:** in `lib/rate-limit.ts`, replace the handler body with `res.status(429).send("Too many requests")` → `rate-limit.test.ts` fails on the body assertion.
@@ -3991,3 +3990,30 @@ Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 →
 - New Decision 17: Plan 6's `GET /groups/leader-options` / `useLeaderOptions` are kept, not repointed at the SUPER-only `GET /users?role=`.
 - New Decision 18 + a note at Task 4 Step 3: `confirmSuper` on `POST /users` is added later by Plan 10 (no behaviour change here).
 - Task 8 wording: `DETAIL_ROUTE_NAMES` always exists (Plan 1); entries from Plans 2/4–8 precede this one.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 11-invites-users R19 | — | Resending adds a new invite; earlier unused invites stay valid until they expire (`src/lib/invites.ts:22-24`) | `apps/backend/src/lib/invites.ts:49-52` (delete the `updateMany`) | Decision 5; Task 4 Step 1 `issueInvite`; Task 4 Step 2 re-invite test (live count 2) |
+| 2 | 11-invites-users R22 | — | Invite TTL defaults to 72 h; an invalid `INVITE_TOKEN_TTL_HOURS` falls back to 72 (`src/lib/invites.ts:11-17`) | `apps/backend/src/lib/config.ts:39` | Decision 3; Task 4 Step 1 config block |
+| 3 | 11-invites-users R24, R91 | — | The invite email's call to action is one "Accept Invitation" button carrying the token (`src/lib/email.ts:117`, `src/lib/invites.ts:32-33`) | `apps/backend/src/lib/email.ts:163-197`; `apps/mobile/app/accept-invite.tsx` (read the `token` param, then clear it) | Decision 6; Task 4 Step 1 note; Task 9 Step 2 note |
+| 4 | 11-invites-users R27 | — | Accept reports unknown, used and expired separately (`src/lib/invites.ts:51-54`) | `apps/backend/src/routes/auth.ts:114-128`; `apps/mobile/app/accept-invite.tsx` | Decision 12; Task 4 Interfaces, Step 2 tests, Step 4 code + OpenAPI; Task 9 Step 2 code + note; Task 10 mutation 3 |
+| 5 | 11-invites-users R49 | — | SUPER is an ordinary role option on create and edit, with no confirmation (`src/lib/user-actions.ts:25-31`, `src/components/users/user-form.tsx:62-68`) | `apps/backend/src/routes/users.ts:291-298`; `packages/shared/src/user.ts:100,117`; `apps/mobile/app/(app)/user/[id].tsx:78-80` (create side: Plan 10) | Header "Depends on"; Decisions 8, 9, 18; Task 1 Step 3 schema; Task 3 Interfaces, Step 3 test + note, Step 4 code; Task 8 Step 2/3 notes |
+| 6 | 11-invites-users R50 | — | A SUPER can change their own role (`src/lib/user-actions.ts:103-130`) | `apps/backend/src/routes/users.ts:280-288` | Decision 9; Task 3 Interfaces, Step 3 note, Step 4 code |
+| 7 | 11-invites-users R66, 18-settings R28 | — | Change-password hashes at bcrypt cost 10 and invite acceptance at 12 (`src/lib/settings-actions.ts:50`, `src/lib/invites.ts:56`) | `apps/backend/src/routes/me.ts:130` | Global Constraints (bcrypt); Task 5 Step 1 test, Step 2 code |
+| 8 | 11-invites-users R75 | — | No expiry shown anywhere: the email says "will expire soon" and the admin sees only the invite status (`src/lib/email.ts:120`, `src/components/users/users-list.tsx:79-80`) | `apps/backend/src/lib/email.ts:186-188`; `apps/mobile/app/(app)/user/[id].tsx:174-186` | Decisions 6, 8; Task 1 Step 3 note; Task 4 Step 1 note; Task 8 Step 2/3 notes |
+| 9 | 11-invites-users R84 | REG-102 | The user list shows every user at once, with no search or filters, deactivated first and then by name (`src/app/super/users/page.tsx:16-17`) | `apps/backend/src/routes/users.ts:144-156`; `apps/mobile/app/(app)/users/index.tsx`; `apps/mobile/src/hooks/use-users.ts` | Task 1 Step 3 note; Task 2 Interfaces, Step 2/3 notes; Task 7 Interfaces + note |
+| 10 | 11-invites-users R88 | REG-102 | The Users header shows "N active · N total" (`src/app/super/users/page.tsx:55`) | `apps/mobile/app/(app)/users/index.tsx` | Task 7 note |
+| 11 | 11-invites-users R90 | — | The invite email says "<inviter name> has invited you" (`src/lib/email.ts:112`). v2 escapes the name because of C11, which is KEEP-FIX | `apps/backend/src/lib/email.ts:149-162,178-182`; callers `routes/users.ts:477,509`, `routes/students.ts:222`, `lib/invites.ts:163` | Decision 6; Task 4 Interfaces, Step 1 note, Step 3 note |
+| 12 | 18-settings R19 | — | Name uses min 2 / max 120 with Zod's default messages; Save can be pressed and the server returns the error (`src/lib/settings-actions.ts:79-81`) | `packages/shared/src/user.ts:141-145`; `apps/mobile/app/(app)/settings.tsx:50,142` | Task 1 Step 3 `updateProfileRequestSchema`; Task 6 Step 3 code + note |
+| 13 | 18-settings R20 | REG-12 | The email caption reads "Change via the admin console." (`src/components/settings/settings-form.tsx:142-144`). The email lock itself stays (KEEP-FIX) | `apps/mobile/app/(app)/settings.tsx:131` | Task 6 Step 1 test comment; Task 6 Step 3 code + note |
+
+**Awaiting owner (not changed):** none.
+
+**Rejected (no edit):** 10-notifications R24 (plan-09 part). v1 does not surface a send failure for an invite: `createInvite` catches `sendInviteEmail`'s throw and logs it (`jpc-space/src/lib/invites.ts:34-45`), so the invite is issued and reported as sent. That is what v2 already does when no transport is configured (Decision 2, `apps/backend/src/lib/email.ts:166-178`).

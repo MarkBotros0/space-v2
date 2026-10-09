@@ -70,40 +70,53 @@ strip) is engagement's `submissionsCompleted`/`submissionsExpected`, which
 image read-back are deferred with uploads (CLAUDE.md; there is no avatar read
 path in v2, so `/profile` renders initials). Check-in token regeneration is
 **Plan 6**. The rotating check-in code (spec 04 D3 option 1), the check-in
-role gate, error-code collapse and rate limit (spec 04 D4), and https
-universal links for v1's printed `https://…/checkin/<token>` sheets are
-**Plan 18's** register; see Decision 9.
+role gate, error-code collapse and rate limit (spec 04 D4) are **Plan 18's**
+register; see Decision 9. https universal links for `https://…/checkin/<token>`
+are **in** this plan (Decision 8). *(v1 parity 2026-10-09: was "universal links are Plan 18's register")*
 
 ## Decisions this plan locks in
 
-1. **One writer per column (spec 18 D2/D8 over spec 06 §8).** `PATCH /me/profile`
-   writes only the six `StudentProfile` columns a student may edit:
-   `university`, `year`, `phone`, `dateOfBirth`, `spiritualBackground` and
-   `gifts`. `User.name` belongs to Plan 9's `PATCH /me`. A student may not
-   change `User.email` (spec 18 D8's recommendation: changing a login
-   identifier with no verification is an account-takeover primitive). Spec
-   06 §8 had put `name` and `email` in `updateOwnProfileInputSchema`.
-   `_DECISIONS.md` does not rule on it, so this follows spec 18's
-   recommendation and the reason is stated here. Plan 7's `PATCH /students/:id`
-   also let the subject write `name` and `email` (`SELF_EDITABLE`), which is a
-   back door around the same decision. Task 4 narrows it to the same six
-   columns, and staff keep `name`/`email` through `ADMIN_EDITABLE`. Changing a
-   name stays a two-tap trip: `/profile` → "Open settings".
-2. **MENTOR's `/profile` tab is the account card.** It shows initials, name,
-   email and role, plus **Settings** and **Sign out**. v1's mentor tab pointed
-   at a page that never existed (spec 18 R11). MENTOR has no More tab, so on a
-   phone this is the mentor's only route to `/settings` and to signing out
-   (spec 18 R9). SUPER, ADMIN and LEADER have no `/profile` nav entry, but if
-   they reach the route they get the same card. The route never calls
-   `/me/profile` for them.
+1. **The student's own profile form edits name and the six `StudentProfile`
+   columns, as v1's student form did** (`jpc-space/src/lib/student-actions.ts:24,103-121`).
+   `PATCH /me/profile` writes `name` (trimmed, 2–120, the same rule as Plan 9's
+   `PATCH /me`, which also stays a name writer, as v1's settings form was —
+   18-settings R38) and `university`, `year`, `phone`, `dateOfBirth`,
+   `spiritualBackground` and `gifts`. `/profile`'s student form has a **Name**
+   field again. There is no "Change your name in Settings" card and no
+   "Open settings" button (the student reaches settings through More, as v1).
+   A student may **not** change `User.email` (spec 18 D8, REG-12 — KEEP-FIX:
+   changing a login identifier with no verification is an account-takeover
+   primitive). `email` in the body is refused `403 forbidden_field`. `notes`
+   and `activeSeasonId` sent in a self-edit are **silently dropped and the
+   rest saves**, as v1's `updateStudentProfileAction` did
+   (`student-actions.ts:113-114,130-135`, 06-students R24). Students still never
+   see `notes`. Task 4 applies the same rule to Plan 7's `PATCH /students/:id`
+   self-edit: `SELF_EDITABLE` is the six columns plus `name`, and `notes`/`activeSeasonId`
+   are stripped instead of refused. Staff keep `email`/`notes` through
+   `ADMIN_EDITABLE`. *(v1 parity 2026-10-09: was "PATCH /me/profile writes only six columns; name only in Settings via 'Open settings'; notes/activeSeasonId refused 403")*
+2. **Every role gets v1's avatar/user menu in the app header** (v1
+   `jpc-space/src/components/layout/user-menu.tsx:23-30,83-88`,
+   `src/components/layout/top-bar.tsx:93-99`): a tap on the avatar opens a menu
+   with the user's name, **Profile settings** and **Sign out**, at every width.
+   "Profile settings" goes to `/profile` for STUDENT and to `/settings` for
+   every other role (v1's `PROFILE_HREF`). This is the mentor's route to
+   Settings, as in v1 (spec 18 R9/R10, REG-16). MENTOR's `/profile` tab stays
+   the account card (initials, name, email and role, plus **Settings** and
+   **Sign out**) — v1's mentor tab pointed at a page that never existed (spec
+   18 R11, KEEP-FIX). SUPER, ADMIN and LEADER have no `/profile` nav entry, but
+   if they reach the route they get the same card. The route never calls
+   `/me/profile` for them. *(v1 parity 2026-10-09: was "the mentor Profile-tab card is the only route to Settings; no avatar menu")*
 3. **`/history` takes no parameter.** Spec 02 §7 sketched `?excludeCurrent=`.
    Instead the server derives R35 from the token: a current student's active
    season is excluded, and an alumnus sees every enrollment. The client
    decides nothing.
-4. **Soft-deleted seasons are hidden from the student surfaces** (spec 02 D2's
-   recommendation, a deliberate divergence from v1 R27/R38). They disappear
-   from `/history`, and `/season` and `/attendance` answer "no active season"
-   when the pointer names a deleted season.
+4. **Soft-deleted seasons stay visible on the student surfaces, as in v1.** A
+   student whose active season was soft-deleted still sees it fully on
+   `/season` and `/attendance` (v1 `jpc-space/src/app/student/season/page.tsx:40-51`
+   reads by id with no `deletedAt` filter, 02-seasons R27), and `/history`
+   includes soft-deleted seasons the student was enrolled in (v1
+   `src/lib/season-history-query.ts:22-32`, R38). None of the three reads
+   filters `season.deletedAt`. REG-13 is cancelled. *(v1 parity 2026-10-09: was "soft-deleted seasons hidden; /season and /attendance answer 'no active season'")*
 5. **`/season`'s student content comes from a new `GET /me/season`, not from
    composing existing reads.** Composing would mean `GET /seasons/:id` plus
    `GET /groups/:id` plus a client-side "starts after now" filter and a
@@ -129,19 +142,27 @@ universal links for v1's printed `https://…/checkin/<token>` sheets are
    and comes back afterwards (R56). `returnTo` is accepted **only** in the
    form `/checkin/<10-char token>` and is rebuilt as a typed `Href`, so it
    cannot become an open redirect.
-8. **What the scanner accepts:** the bare 10-character token (what Plan 4's
-   console QR encodes), v1's printed URL `http(s)://<any host>/checkin/<token>`
+8. **What the scanner accepts:** the bare 10-character token (typed codes and
+   older QRs), v1's QR/printed URL `http(s)://<any host>/checkin/<token>`
    (R41; v1 R72 checked the origin, but the app has no web origin to compare,
    and the token is the credential whichever host printed it), and the app's
    own `spacev2://checkin/<token>`. `parseCheckInCode` in `packages/shared` is
    the one parser, and the enter-code field uses it too.
+   **The console QR encodes v1's full URL, `<public base URL>/checkin/<token>`**
+   (v1 `jpc-space/src/app/admin/season/[code]/sessions/[id]/page.tsx:58-60`,
+   `src/components/sessions/calendar-list.tsx:17`; 03-sessions R68, 04-attendance
+   R41), not the bare token, so a phone's own camera opens check-in directly.
+   The host comes from config, not from a hard-coded origin. This plan ships
+   https universal links (iOS) / app links (Android) for `/checkin/*`, so the
+   native camera opens the app's `/checkin/[token]` screen (Task 11). REG-10 is
+   un-deferred. *(v1 parity 2026-10-09: was "the console QR encodes the bare token; universal links deferred to Plan 18")*
 9. **Not changed here, and recorded:** the check-in endpoint keeps its five
    distinct codes (v1 R59 parity; the result screen branches on them, and
    spec 04 D4's collapse would remove that). It also keeps having no role gate
    and no rate limit. A per-IP limiter would bucket a whole classroom behind
-   one NAT, so it would need a per-user key. Both items, the rotating code,
-   and https universal links are listed for Plan 18's register in the closing
-   gate.
+   one NAT, so it would need a per-user key. Both items and the rotating code
+   are listed for Plan 18's register in the closing gate. (https universal
+   links are no longer deferred — Decision 8. *(v1 parity 2026-10-09)*)
 10. **`GET /me/attendance` covers the active season only.** Spec 04 §7's
     optional `?seasonId` is not built, because no screen needs it and it would
     be one more authorization surface. The response is
@@ -406,7 +427,7 @@ export type MyAttendanceSession = z.infer<typeof myAttendanceSessionSchema>;
 
 /** `GET /api/v1/me/attendance` — the active season only (Plan 11 Decision 10). */
 export const myAttendanceResponseSchema = z.object({
-  /** Null when the student has no active season, or it was soft-deleted. */
+  /** Null when the student has no active season. A soft-deleted season is still returned (v1 R27; v1 parity 2026-10-09). */
   season: z
     .object({
       id: z.number(),
@@ -522,6 +543,8 @@ export const mySeasonResponseSchema = z.object({ season: mySeasonSchema.nullable
 ```
 
 - [ ] **Step 5: Append to `packages/shared/src/student.ts`**
+
+> **v1 parity 2026-10-09:** Decision 1 (18-settings R38, 06-students R24). `updateOwnProfileInputSchema` gains `name: z.string().trim().min(2).max(120).optional()`, and `OWN_PROFILE_FIELDS` gains `"name"`. `notes` and `activeSeasonId` are **stripped**, not refused: the schema is not `.strict()` for those two keys, and the route deletes them before parsing. `email` stays refused, because REG-12 is KEEP-FIX. Rewrite Step 1's case "has no name, email, notes or activeSeasonId — refused, not dropped" so that `{ name: "X Y" }` parses, `{ notes }` and `{ activeSeasonId }` parse with those keys absent from the output, and `{ email }` fails. v1: `jpc-space/src/lib/student-actions.ts:24,103-135`.
 
 Add `import { isoDaySchema } from "./org-time";` (Plan 5) to its imports, then append:
 
@@ -954,6 +977,8 @@ git add apps/backend && git commit -m "fix(backend): check-in lateness measured 
 
 - [ ] **Step 1: Write the failing integration suite**
 
+> **v1 parity 2026-10-09:** 02-seasons R27 (Decision 4, REG-13 cancelled). Add two cases: a student whose `activeSeasonId` points at a soft-deleted season gets that season from `GET /me/season` (not `null`), and gets its budget from `GET /me/attendance`. v1: `jpc-space/src/app/student/season/page.tsx:40-51`. Current code to change: `apps/backend/src/lib/queries/me.ts:136` and `:235` (drop `deletedAt: null`) and `:48` (history). The Step 2 code below is already edited.
+
 ```ts
 // apps/backend/src/__tests__/integration/me-self-service-routes.test.ts
 import request from "supertest";
@@ -990,7 +1015,8 @@ beforeAll(async () => {
     where: { id: current.id },
     data: { title: "Current Season", description: "The season we are in." },
   });
-  // Spec 02 D2: a soft-deleted season disappears from the student surfaces.
+  // v1 parity 2026-10-09 (02-seasons R38): a soft-deleted season the student
+  // was enrolled in still appears in their history, as v1.
   await db.season.update({ where: { id: deleted.id }, data: { title: "Deleted Season", deletedAt: new Date() } });
 
   const student = await createTestUser("self-student", "STUDENT");
@@ -1094,11 +1120,11 @@ const get = (path: string, token: string) =>
   request(app).get(path).set("authorization", `Bearer ${token}`);
 
 describe("GET /api/v1/me/season-history (spec 02 R33–R41)", () => {
-  it("lists past enrollments only — not the current season, not a deleted one (R35, D2)", async () => {
+  it("lists past enrollments, deleted seasons included, but not the current season (R35; R38 v1 parity)", async () => {
     const res = await get("/api/v1/me/season-history", studentToken);
     expect(res.status).toBe(200);
     const titles = res.body.data.seasons.map((s: { title: string }) => s.title);
-    expect(titles).toEqual(["Past Season"]);
+    expect(titles).toEqual(["Past Season", "Deleted Season"]); // enrolledAt desc
     expect(res.body.data.seasons[0]).toMatchObject({
       seasonId: pastSeasonId,
       groupName: "Group A1",
@@ -1280,7 +1306,7 @@ export async function loadSeasonHistory(user: SessionUser): Promise<SeasonHistor
   const enrollments = await db.seasonEnrollment.findMany({
     where: {
       studentUserId: user.userId,
-      season: { deletedAt: null }, // spec 02 D2 (diverges from v1 R38)
+      // No season.deletedAt filter: v1 lists deleted seasons too (R38; v1 parity 2026-10-09).
       ...(excludeSeasonId !== null ? { seasonId: { not: excludeSeasonId } } : {}),
     },
     orderBy: { enrolledAt: "desc" },
@@ -1367,8 +1393,9 @@ export async function loadMySeason(user: SessionUser, now: Date = new Date()): P
   if (seasonId === null) return null; // R28
 
   const season = await db.season.findFirst({
-    // Spec 02 D2: v1 R27 showed a soft-deleted season to its students.
-    where: { id: seasonId, deletedAt: null },
+    // v1 R27 (student/season/page.tsx:40-51): a soft-deleted season is still
+    // shown to its students — no deletedAt filter (v1 parity 2026-10-09).
+    where: { id: seasonId },
     select: { id: true, code: true, title: true, description: true, status: true, startDate: true, endDate: true },
   });
   if (!season) return null;
@@ -1466,7 +1493,8 @@ export async function loadMyAttendance(user: SessionUser, now: Date = new Date()
   if (user.activeSeasonId === null) return none; // R93
 
   const season = await db.season.findFirst({
-    where: { id: user.activeSeasonId, deletedAt: null },
+    // No deletedAt filter — a soft-deleted active season stays visible (v1 R27; v1 parity 2026-10-09).
+    where: { id: user.activeSeasonId },
     select: { id: true, title: true, absenceBudgetMinutes: true, absenceWeightMinutes: true },
   });
   if (!season) return none;
@@ -1671,7 +1699,7 @@ component schemas to `components.schemas` and three paths after
       get: {
         tags: ["Me"],
         summary: "The caller's past seasons (students and alumni)",
-        description: "Self only. A current student's active season is excluded; an alumnus sees every enrollment. Soft-deleted seasons are hidden.",
+        description: "Self only. A current student's active season is excluded; an alumnus sees every enrollment. Soft-deleted seasons are included (v1 R38).",
         responses: {
           200: ok({ type: "object", properties: { seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonHistoryRow" } } } }, "Past seasons, most recent enrollment first."),
           401: errRef("Unauthorized"),
@@ -1730,6 +1758,8 @@ git add apps/backend && git commit -m "feat(backend): student season history, cu
 - Produces: `loadMyProfile(userId: number): Promise<MyProfileRow | null>`; `GET /api/v1/me/profile` → `{ data: { profile: MyProfile } }` (STUDENT incl. alumni, else 403); `PATCH /api/v1/me/profile` → `{ data: { profile: MyProfile } }`. Errors: `forbidden` 403 (staff, alumni), `forbidden_field` 403 (any key outside `OWN_PROFILE_FIELDS`), `bad_request` 400, `not_found` 404. Self-edits through `PATCH /students/:id` are narrowed to the same six fields.
 
 - [ ] **Step 1: Write the failing tests.** Append to
+
+> **v1 parity 2026-10-09:** Decision 1. Replace "refuses name, email, notes and activeSeasonId by name" with three cases. (a) `{ name: "New Name" }` → 200, `User.name` updated (trimmed, 2–120, the same messages as `PATCH /me`). (b) `{ phone, notes, activeSeasonId }` → 200, phone saved, and notes/activeSeasonId unchanged in the DB (v1's silent no-op, 06-students R24). (c) `{ email }` → 403 `forbidden_field` (REG-12, KEEP-FIX). In the `students-routes.test.ts` block, "refuses a student's own name change here" becomes "lets a student rename themselves" (200), and add "drops a student's own notes/activeSeasonId and saves the rest" (200). The email refusal case stays.
 `me-self-service-routes.test.ts` (same file, same fixtures; it runs after the
 read tests, so the student's original phone is still in place for the GET
 case):
@@ -1917,6 +1947,8 @@ export async function loadMyProfile(userId: number): Promise<MyProfileRow | null
 ```
 
 - [ ] **Step 3: Add the routes to `routes/me.ts`.** Extend the existing
+
+> **v1 parity 2026-10-09:** Decision 1. In `PATCH /me/profile`, refuse only `email` by raw key (`forbidden_field`). Delete `notes` and `activeSeasonId` from the body before parsing, and refuse any other unknown key as now. Write `name` to `User.name` in the same transaction as the profile upsert. v1: `jpc-space/src/lib/student-actions.ts:113-135`.
 relative shared import (keep Plan 9's names):
 
 ```ts
@@ -1998,6 +2030,8 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
 ```
 
 - [ ] **Step 4: Narrow Plan 7's self-edit allowlist.** In
+
+> **v1 parity 2026-10-09:** Decision 1. `SELF_EDITABLE` is the six columns **plus `name`** (v1 let the student rename themselves on this form, `student-actions.ts:24,103-121`). For a self-edit, strip `notes` and `activeSeasonId` from the body and save the rest instead of answering 403 (current code `apps/backend/src/routes/students.ts:251-256`; 06-students R24). `email` stays refused with `forbidden_field`, because REG-12 is KEEP-FIX. `ADMIN_EDITABLE` is unchanged.
 `apps/backend/src/routes/students.ts`, replace the two allowlists and extend
 their doc comment's first bullet:
 
@@ -2926,6 +2960,8 @@ git add packages/shared apps/mobile && git commit -m "feat(mobile): student atte
 
 ### Task 8: `/profile` — student editable, alumni read-only, mentor account card (G11)
 
+> **v1 parity 2026-10-09:** 18-settings R9/R10 (REG-16), Decision 2. **Not found in plan text — new work.** Add v1's avatar/user menu to the app header for every role: the user's name, **Profile settings** (STUDENT → `/profile`, every other role → `/settings`, v1 `PROFILE_HREF`), and **Sign out**, at every width. v1: `jpc-space/src/components/layout/user-menu.tsx:23-30,83-88`, `src/components/layout/top-bar.tsx:93-99`. Current code: `apps/mobile/app/(app)/_layout.tsx:125` runs the tabs with `headerShown: false`, and there is no avatar menu. The mentor Profile-tab account card stays (R11 fix).
+
 **Files:**
 - Modify: `apps/mobile/app/(app)/profile.tsx` (replace the placeholder)
 - Modify: `apps/mobile/src/__tests__/placeholder-screens.test.tsx` (delete the `profile` row and import)
@@ -2933,7 +2969,7 @@ git add packages/shared apps/mobile && git commit -m "feat(mobile): student atte
 
 **Interfaces:**
 - Consumes: `useMyProfile`, `useUpdateStudentProfile`, `useMyAttendance`, `initialsOf` (Task 5); `OWN_PROFILE_FIELDS`, `updateOwnProfileInputSchema` (Task 1); `apiErrorMessage` (Plan 4); `useLogout`; the `/settings` route (Plan 9).
-- Produces: the `/profile` screen: STUDENT branch (form plus a stats strip with "Absence budget left" and "Streak"), ALUMNI read-only card, and an account card for every other role (Decision 2).
+- Produces: the `/profile` screen: STUDENT branch (form with Name plus the six fields, and a stats strip with "Attendance" and "Streak" — v1 parity 2026-10-09: was "Absence budget left", no Name), ALUMNI read-only card, and an account card for every other role (Decision 2).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3003,8 +3039,9 @@ describe("ProfileScreen — STUDENT", () => {
     expect(await screen.findByText("Mina Adel")).toBeTruthy();
     expect(screen.getByText("MA")).toBeTruthy(); // initials — no avatar read path in v2
     expect(screen.getByText("mina@jpc.test")).toBeTruthy();
-    // Spec 19 D14 / spec 09 R68: the server's remainingPct, under a label that says what it is.
-    expect(await screen.findByText("Absence budget left")).toBeTruthy();
+    // The server's remainingPct under v1's label "Attendance" (v1 student/profile/page.tsx:61-63,
+    // 88-91; spec 09 R68/R87 — v1 parity 2026-10-09).
+    expect(await screen.findByText("Attendance")).toBeTruthy();
     expect(screen.getByText("42%")).toBeTruthy();
     expect(screen.getByText("Streak")).toBeTruthy();
     expect(screen.getByText("3")).toBeTruthy();
@@ -3056,12 +3093,11 @@ describe("ProfileScreen — STUDENT", () => {
     expect(await screen.findByText("Couldn't save your profile.")).toBeTruthy();
   });
 
-  it("sends name changes to Settings (PATCH /me owns User.name)", async () => {
+  it("edits the name on the profile form, as v1 — no 'Open settings' detour (Decision 1, v1 parity 2026-10-09)", async () => {
     renderWithProviders(<ProfileScreen />);
 
-    fireEvent.press(await screen.findByText("Open settings"));
-
-    expect(mockPush).toHaveBeenCalledWith("/settings");
+    expect((await screen.findByLabelText("Name")).props.value).toBe("Mina Adel");
+    expect(screen.queryByText("Open settings")).toBeNull();
   });
 
   it("shows no stats and runs no attendance query without an active season", async () => {
@@ -3069,7 +3105,7 @@ describe("ProfileScreen — STUDENT", () => {
     renderWithProviders(<ProfileScreen />);
 
     expect(await screen.findByText("Mina Adel")).toBeTruthy();
-    expect(screen.queryByText("Absence budget left")).toBeNull();
+    expect(screen.queryByText("Attendance")).toBeNull();
     expect(get).not.toHaveBeenCalledWith("/api/v1/me/attendance");
   });
 });
@@ -3110,6 +3146,8 @@ describe("ProfileScreen — MENTOR (Decision 2)", () => {
 Run: `cd apps/mobile && pnpm jest src/__tests__/profile-screen.test.tsx` → FAIL (placeholder).
 
 - [ ] **Step 2: Write the screen** — replace `apps/mobile/app/(app)/profile.tsx`:
+
+> **v1 parity 2026-10-09:** In `ProfileForm`, add a **Name** `Input` first (prefilled from `p.name`, sent as `name`, trimmed). Remove the "Name and email" card and its "Open settings" button, which v1 did not have (current code `apps/mobile/app/(app)/profile.tsx:186-192`). Drop `router` if it is now unused. Label the budget tile "Attendance" (current code `profile.tsx:182`; v1 `student/profile/page.tsx:61-63,88-91`). The student dashboard tile gets the same label in Plan 16 (09-notes R68/R87). The code below is edited for the label and the card. The Name field is described here.
 
 ```tsx
 import { useRouter } from "expo-router";
@@ -3292,19 +3330,13 @@ function StudentProfile() {
       <IdentityCard name={p.name} email={p.email} badge="Student" />
       {budget !== null ? (
         <View style={{ flexDirection: "row", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-          {/* v1 labelled this "Attendance" (spec 09 R68); it is the budget LEFT (spec 19 D14). */}
-          <Stat label="Absence budget left" value={`${budget.remainingPct}%`} />
+          {/* v1's label (student/profile/page.tsx:88-91, spec 09 R68/R87; v1 parity 2026-10-09). */}
+          <Stat label="Attendance" value={`${budget.remainingPct}%`} />
           <Stat label="Streak" value={String(attendance.data?.streak ?? 0)} />
         </View>
       ) : null}
+      {/* Name is edited on this form, as v1 (Decision 1; v1 parity 2026-10-09) — no "Open settings" card. */}
       <ProfileForm profile={p} />
-      <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-        <Text variant="heading">Name and email</Text>
-        <Text variant="body" color={theme.colors.neutral[600]}>
-          Change your name in Settings. To change your email, contact the JPC team.
-        </Text>
-        <Button title="Open settings" variant="secondary" onPress={() => router.push("/settings")} />
-      </Card>
     </Screen>
   );
 }
@@ -3533,7 +3565,7 @@ describe("SeasonScreen — STUDENT branch (v1 student/season)", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("shows the same state when the server answers null (deleted season — spec 02 D2)", async () => {
+  it("shows the same state when the server answers null (season row missing)", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
     get.mockResolvedValue({ data: { data: { season: null } } });
 
@@ -4440,6 +4472,8 @@ export function StudentCheckInCard({ detail }: { detail: SessionDetail }) {
 ```
 
 - [ ] **Step 7: Wire it into the session detail.** In
+
+> **v1 parity 2026-10-09:** 03-sessions R68 / 04-attendance R41 (REG-10), Decision 8. The console QR in the same file encodes `<public base URL>/checkin/<token>` instead of the bare token (current code `apps/mobile/app/(app)/session/[id]/index.tsx:79`, `<QRCode value={token} />`). The base URL comes from mobile config. The QR value and the code shown under it are separate: the typed code stays the bare token. v1: `jpc-space/src/app/admin/season/[code]/sessions/[id]/page.tsx:58-60`.
 `apps/mobile/app/(app)/session/[id]/index.tsx` (Plan 4), add the imports
 
 ```tsx
@@ -4481,6 +4515,8 @@ git add apps/mobile && git commit -m "feat(mobile): student check-in by QR scan 
 ---
 
 ### Task 11: `/checkin/<token>` deep link with login → return (spec 04 R56)
+
+> **v1 parity 2026-10-09:** REG-10 is un-deferred (Decision 8). **Not found in plan text — new work.** Ship https universal links (iOS `associatedDomains` + the host's `apple-app-site-association`) and Android app links (`intentFilters` with `autoVerify` + `assetlinks.json`) for `<public base URL>/checkin/*` in `apps/mobile/app.json`, so a phone's own camera opens this screen. The in-app parser already accepts the URL form (`packages/shared/src/attendance.ts:36`).
 
 **Files:**
 - Create: `apps/mobile/app/checkin/[token].tsx` (root Stack, **outside** `(app)`, so it is not a tab and not in `DETAIL_ROUTE_NAMES`; it has no children, so the file form is correct under X7)
@@ -4776,7 +4812,7 @@ Then, **serially**: `cd apps/backend && npx jest --config jest.integration.confi
 the next. Each one must make the named test fail.
 
 1. `loadSeasonHistory`: delete the `excludeSeasonId` spread → "lists past enrollments only" fails (Current Season appears).
-2. `loadSeasonHistory`: delete `season: { deletedAt: null }` → the same test fails (Deleted Season appears).
+2. `loadSeasonHistory`: add `season: { deletedAt: null }` back → the same test fails (Deleted Season disappears). *(v1 parity 2026-10-09: was "delete it → Deleted Season appears")*
 3. `loadMySeason`: read the group through `db.groupStudent.findUnique({ where: { studentUserId: user.userId } })` instead of the enrollment → "resolves the group through this season's enrollment" fails (Group A1).
 4. `loadMySeason`: select `email` on members and pass it through → `mySeasonMemberSchema` is strict, so `use-self-service`/`student-season` parse fails; the integration "peers by name only" `toEqual` fails.
 5. `streakFrom`: `if (status === null) break;` → unit "skips an unmarked session" fails, and integration `streak` becomes 0.
@@ -4802,7 +4838,7 @@ As a **student** with an active season:
 1. More → **Attendance** is listed. It shows "N% used", "X of Y min", the rule line, the streak, and past sessions with "− N min from budget" where applicable. Pull to refresh works.
 2. More → **Current Season** shows the title, "Session N of M", **your** group with its leader's name and email, members by name with "You", and three upcoming sessions. Tap one: session detail opens. "See calendar" opens the calendar.
 3. More → **History** lists past seasons only (not the current one). "Curriculum (N sessions)" expands with org-calendar dates.
-4. More → **Profile** shows initials, the "Absence budget left" and "Streak" stats, and the six fields. Change Phone, Save, kill the app and reopen: the value survives. An impossible date is refused inline. "Open settings" reaches Settings.
+4. More → **Profile** shows initials, the "Attendance" and "Streak" stats, and the Name field plus the six fields. Change Phone, Save, kill the app and reopen: the value survives. An impossible date is refused inline. "Open settings" reaches Settings.
 5. On a second phone as an **admin**, open check-in on today's session. On the student's session detail tap "Scan QR code" and grant the camera. Scan the console QR: "You're checked in!", and the header switches to "Your attendance: Present". Scan again: "Already checked in".
 6. Deny the camera permanently in OS settings, then "Scan QR code" → "Open settings" opens the OS page, and Cancel → "Enter code" with the code shown under the console QR works.
 7. After the session's start time, check in a different student: "Checked in — late · N minutes after session start", and N matches the minutes since `startsAt`, not since the console opened (C3).
@@ -4811,13 +4847,15 @@ As a **student** with an active season:
 
 As an **alumnus**: History tab lists every past enrollment. The Profile tab is the read-only record with "Alumnus · Class of N". No Attendance entry appears in More.
 
-As a **mentor**: the Profile tab shows the account card, "Settings" opens settings, and "Sign out" signs out.
+As a **mentor**: the Profile tab shows the account card, "Settings" opens settings, and "Sign out" signs out. The header avatar menu shows the name, "Profile settings" (→ `/settings`; for a student → `/profile`) and "Sign out", on every role (Decision 2 — v1 parity 2026-10-09).
+
+With the phone's own camera (not the app), scan the console QR: it encodes `<public base URL>/checkin/<token>` and opens the app's check-in screen through the universal/app link (Decision 8 — v1 parity 2026-10-09).
 
 - [ ] **Step 4: Register for Plan 18** (the coordinator appends these to
 Plan 18's deferred/drop register; this plan does not edit Plan 18):
 (a) the rotating check-in code (spec 04 D3 option 1; the static token is still forwardable);
 (b) spec 04 D4: a STUDENT role gate on `POST /sessions/check-in`, and a **per-user** rate limit (a per-IP limiter would bucket a whole classroom behind one NAT). The five distinct codes are kept on purpose (Decision 9);
-(c) https universal links / app links for v1's printed `https://<host>/checkin/<token>` sheets (until then those URLs open v1's web page, which keeps working until cutover);
+(c) ~~https universal links / app links for `https://<host>/checkin/<token>`~~ — no longer deferred; built in this plan (Decision 8, REG-10) *(v1 parity 2026-10-09)*;
 (d) avatar image read-back on `/profile` (with the uploads/CMS track);
 (e) the C3 era boundary: check-in rows written by v2 since this plan measure from `startsAt`, so Plan 18 M3's backfill must treat them as `SESSION_START`.
 
@@ -4838,3 +4876,24 @@ Cross-plan consistency pass (execution order 1 → 2 → 3 → 4 → 5 → 6 →
 - `Depends on` reordered to the execution order and now names Plan 6 (its `use-check-in.ts`, restructured session detail and replaced `session-detail.test.tsx`) and Plan 10 (`login.tsx`, `student/[id]/index.tsx`).
 - Task 10: `use-check-in.ts` is **modified** (append `useCheckIn`, merge imports), not created — Plan 6 Task 7 created it.
 - Task 10 test fixtures: session detail carries `dayKey`/`startTime` (required since Plan 6); the staff case mocks Plan 6's `GET /sessions/12/check-in` and `/quizzes` instead of the stale season-wide list; the edited `session-detail.test.tsx` case is named as Plan 6 left it.
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 02-seasons R27 | REG-13 (cancelled) | A student whose active season was soft-deleted still sees it in full (`src/app/student/season/page.tsx:40-51`) | `apps/backend/src/lib/queries/me.ts:134-139` and `:235` (drop `deletedAt: null`) | Decision 4; Task 1 Step 3 schema comment; Task 3 Step 1 note, Step 2 `loadMySeason`/`loadMyAttendance`; Task 9 Step 1 test name |
+| 2 | 02-seasons R38 | REG-13 (cancelled) | Season history includes soft-deleted seasons the student was enrolled in (`src/lib/season-history-query.ts:22-32`) | `apps/backend/src/lib/queries/me.ts:48` | Decision 4; Task 3 Step 1 fixture + history test, Step 2 `loadSeasonHistory`, Step 4 OpenAPI; Task 12 mutation 2 |
+| 3 | 03-sessions R68, 04-attendance R41 | REG-10 (un-deferred) | The QR encodes `<AUTH_URL>/checkin/<token>`, so a phone's camera opens check-in directly (`src/app/admin/season/[code]/sessions/[id]/page.tsx:58-60`, `src/components/sessions/calendar-list.tsx:17`) | `apps/mobile/app/(app)/session/[id]/index.tsx:79`; `apps/mobile/app.json` (universal/app links) | "Not in this plan"; Decisions 8, 9; Task 10 Step 7 note; Task 11 note (**universal links: not found in plan text — new work**); Task 12 Step 3 checklist, Step 4(c) |
+| 4 | 18-settings R9, R10 | REG-16 | Every role has the top-bar avatar menu (name, "Profile settings" → STUDENT `/profile`, others settings; Sign out). It is the mentor's route to Settings (`src/components/layout/user-menu.tsx:23-30,83-88`, `src/components/layout/top-bar.tsx:93-99`) | `apps/mobile/app/(app)/_layout.tsx:125` (header); `apps/mobile/app/(app)/profile.tsx:190-192` | Decision 2; Task 8 note (**avatar menu: not found in plan text — new work**); Task 12 Step 3 checklist |
+| 5 | 18-settings R38 | REG-12 (email lock stays) | A student edits their own name on the profile form, and in settings (`src/lib/student-actions.ts:24,103-121`) | `apps/backend/src/routes/me.ts` (`PATCH /me/profile`), `apps/backend/src/routes/students.ts:141-144` (`SELF_EDITABLE` + `name`), `apps/mobile/app/(app)/profile.tsx:186-192` | Decision 1; Task 1 Step 5 note; Task 4 Step 1/3/4 notes; Task 8 Step 1 test, Step 2 code + note |
+| 6 | 06-students R24 | REG-97 | `notes` or `activeSeasonId` sent in a student self-edit is silently dropped, and the rest saves (`src/lib/student-actions.ts:113-114,130-135`) | `apps/backend/src/routes/students.ts:251-256` (and the same rule in `PATCH /me/profile`) | Decision 1; Task 1 Step 5 note; Task 4 Step 1/3/4 notes |
+| 7 | 09-notes R68, R87 | — | The student profile shows `max(0, 100 − budgetPct)` labelled "Attendance" (`src/app/student/profile/page.tsx:61-63,88-91`; dashboard `src/app/student/dashboard/page.tsx:85-86` is Plan 16's) | `apps/mobile/app/(app)/profile.tsx:182` | Task 8 Interfaces, Step 1 tests, Step 2 code + note; Task 12 Step 3 checklist |
+
+**Awaiting owner (not changed):** none.
+
+**KEEP-FIX kept:** the student email lock (06-students R22 / spec 18 D8, REG-12). `email` in a self-edit is still refused with `403 forbidden_field`, and mutation 10 still applies. The mentor Profile-tab account card (18-settings R11) stays.

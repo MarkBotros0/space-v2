@@ -17,7 +17,6 @@ import {
 } from "../../../../../packages/shared/src/index";
 import type {
   ImportCellValues,
-  ImportOnExisting,
   ImportProfileFieldKey,
   ImportTemplate,
   StudentImportPreview,
@@ -26,8 +25,11 @@ import type {
   StudentImportRow,
 } from "@space/shared";
 
+import { z } from "zod";
+
 import { db } from "../../db/client";
-import { createStudentRows, enrollStudentInSeason, type NewStudentInput } from "../queries/students";
+import { Prisma } from "../../generated/prisma/client";
+import { createStudentRows, type NewStudentInput } from "../queries/students";
 import { ImportParseError, type ParsedSheet } from "./delimited";
 
 // ---------------------------------------------------------------------------
@@ -39,27 +41,22 @@ export interface StudentHeaderMap {
   emailCol: number;
   profileCols: { col: number; field: ImportProfileFieldKey }[];
   detectedColumns: string[];
-  unrecognisedColumns: string[];
 }
 
 /**
  * Match a header cell by `trim().toLowerCase()` exact equality against a fixed
- * vocabulary — no fuzzy matching, no punctuation stripping (spec R12). What is
- * new is that a header matching NOTHING is collected and reported (R18/D11):
- * v1 drops it silently, which is the most common real-world silent data loss
- * in this domain.
+ * vocabulary — no fuzzy matching, no punctuation stripping (spec R12). A
+ * header matching nothing is silently ignored, as v1 (R18 / D-16.12).
  *
  * Columns are recorded by their true index, so an empty header cell shifts
- * nothing (R13). On a duplicate recognised header the FIRST wins, uniformly —
- * v1 is asymmetric here by accident (last wins for name/email, first for
- * profile columns, R17), and an artefact of an if/else chain is not a
- * specification (the reasoning behind ruling C12).
+ * nothing (R13). Duplicate headers follow v1 exactly (R17 / D-16.22): the
+ * LAST `name`/`email` column wins, the FIRST column for a profile field wins
+ * (`jpc-space/src/lib/student-import.ts:96-103`).
  */
 export function mapStudentHeaders(header: string[]): StudentHeaderMap {
   let nameCol = -1;
   let emailCol = -1;
   const profileCols: { col: number; field: ImportProfileFieldKey }[] = [];
-  const unrecognisedColumns: string[] = [];
 
   header.forEach((raw, col) => {
     const label = raw.trim();
@@ -67,19 +64,17 @@ export function mapStudentHeaders(header: string[]): StudentHeaderMap {
     const key = label.toLowerCase();
 
     if ((IMPORT_NAME_HEADERS as readonly string[]).includes(key)) {
-      if (nameCol === -1) nameCol = col;
+      nameCol = col;
       return;
     }
     if ((IMPORT_EMAIL_HEADERS as readonly string[]).includes(key)) {
-      if (emailCol === -1) emailCol = col;
+      emailCol = col;
       return;
     }
     const field = IMPORT_PROFILE_ALIASES[key];
     if (field !== undefined) {
       if (!profileCols.some((p) => p.field === field)) profileCols.push({ col, field });
-      return;
     }
-    unrecognisedColumns.push(label);
   });
 
   if (nameCol === -1 || emailCol === -1) {
@@ -95,7 +90,6 @@ export function mapStudentHeaders(header: string[]): StudentHeaderMap {
     // Display only (R19): the two literals, then each matched profile
     // column's canonical label in sheet order.
     detectedColumns: ["Name", "Email", ...profileCols.map((p) => IMPORT_FIELD_LABELS[p.field])],
-    unrecognisedColumns,
   };
 }
 
@@ -126,7 +120,7 @@ export function toCellValues(map: StudentHeaderMap, cells: string[]): ImportCell
 }
 
 // ---------------------------------------------------------------------------
-// Validation — ONE standard for preview and commit (D-16.9)
+// Validation — two stages, as v1 (D-16.9)
 // ---------------------------------------------------------------------------
 
 /**
@@ -147,58 +141,53 @@ export function normaliseEmail(email: string): string {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-export type RowValidation =
-  | { ok: true; row: StudentImportRow }
-  | { ok: false; message: string };
+/**
+ * D-16.11 / spec D8 (KEEP-FIX R50). `new Date("01/02/2003")` is 2 January in
+ * V8, so a European sheet transposes every birthday; a bare date resolves to
+ * LOCAL midnight, which on a UTC+2 server stores the previous day (ruling C2);
+ * and v1 drops an unparseable value without failing the row. Returns the
+ * operator-facing problem, or null when the cell is empty or a real ISO date.
+ */
+function dateOfBirthProblem(dateOfBirth: string | null): string | null {
+  if (dateOfBirth === null) return null;
+  if (!ISO_DATE.test(dateOfBirth)) return "Date of birth must be written as YYYY-MM-DD.";
+  const asUtc = new Date(`${dateOfBirth}T00:00:00.000Z`);
+  // Catches 2003-02-30, which passes the regex and which Date silently rolls
+  // forward to 2 March.
+  if (Number.isNaN(asUtc.getTime()) || asUtc.toISOString().slice(0, 10) !== dateOfBirth) {
+    return "Date of birth is not a real date. Use YYYY-MM-DD.";
+  }
+  return null;
+}
 
-const FIELD_MESSAGE: Record<string, string> = {
-  name: "Name is missing or too short.",
-  email: "Email is not valid.",
-  university: "University is too long.",
-  year: "Year is too long.",
-  phone: "Mobile No is too long.",
-  spiritualBackground: "Spiritual background is too long.",
-  gifts: "Gifts is too long.",
-  notes: "Notes is too long.",
-};
+const previewEmailSchema = z.string().trim().email();
 
 /**
- * Is this row importable? Called by the preview classifier AND by the commit,
- * which is the whole of D-16.9: v1 validated names and emails at preview and
- * lengths only at commit, so an over-long value previewed green and came back
- * `failed` after the operator had already committed (spec R24/R41/D12).
- *
- * `studentImportRowSchema` is `createStudentRequestSchema.omit({ seasonId })`,
- * so this is literally the same standard `POST /api/v1/students` applies.
+ * The PREVIEW check, as v1 (`jpc-space/src/lib/student-import.ts:129`, R24):
+ * only a name of at least 2 characters and a parseable email — plus the
+ * date-of-birth rule (R50 KEEP-FIX). An over-long value previews `new` and is
+ * reported `failed` at commit. Returns the row's message, or null when fine.
+ */
+export function previewRowProblem(values: ImportCellValues): string | null {
+  if (values.name.length < 2) return "Name is missing or too short.";
+  if (!previewEmailSchema.safeParse(values.email).success) return "Email is not valid.";
+  return dateOfBirthProblem(values.dateOfBirth);
+}
+
+export type RowValidation = { ok: true; row: StudentImportRow } | { ok: false };
+
+/**
+ * The COMMIT check: `studentImportRowSchema` with v1's import bounds (R41)
+ * plus the date-of-birth rule. A failing row is reported `failed`
+ * "Invalid name or email." by the commit loop (R42).
  */
 export function validateImportRow(values: ImportCellValues): RowValidation {
-  if (values.dateOfBirth !== null) {
-    // D-16.11 / spec D8. `new Date("01/02/2003")` is 2 January in V8, so a
-    // European sheet transposes every birthday; a bare date resolves to LOCAL
-    // midnight, which on a UTC+2 server stores the previous day (ruling C2
-    // forbids deriving wall-clock facts from an incidental zone); and v1 drops
-    // an unparseable value without failing the row.
-    if (!ISO_DATE.test(values.dateOfBirth)) {
-      return { ok: false, message: "Date of birth must be written as YYYY-MM-DD." };
-    }
-    const asUtc = new Date(`${values.dateOfBirth}T00:00:00.000Z`);
-    // Catches 2003-02-30, which passes the regex and which Date silently
-    // rolls forward to 2 March.
-    if (Number.isNaN(asUtc.getTime()) || asUtc.toISOString().slice(0, 10) !== values.dateOfBirth) {
-      return { ok: false, message: "Date of birth is not a real date. Use YYYY-MM-DD." };
-    }
-  }
-
+  if (dateOfBirthProblem(values.dateOfBirth) !== null) return { ok: false };
   const parsed = studentImportRowSchema.safeParse({
     ...values,
-    dateOfBirth:
-      values.dateOfBirth === null ? null : `${values.dateOfBirth}T00:00:00.000Z`,
+    dateOfBirth: values.dateOfBirth === null ? null : `${values.dateOfBirth}T00:00:00.000Z`,
   });
-  if (parsed.success) return { ok: true, row: parsed.data };
-
-  const first = parsed.error.issues[0];
-  const key = typeof first?.path[0] === "string" ? first.path[0] : "";
-  return { ok: false, message: FIELD_MESSAGE[key] ?? "This row is not valid." };
+  return parsed.success ? { ok: true, row: parsed.data } : { ok: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -221,13 +210,12 @@ type Queryable = Pick<typeof db, "$queryRaw">;
  * Raw SQL because Prisma's `mode: "insensitive"` would need one OR branch per
  * address — a 2000-branch WHERE for a full paste. `deletedAt` is deliberately
  * NOT filtered (spec R27/R43, kept): un-deleted matching would let an import
- * resurrect an account somebody removed on purpose. The caller distinguishes
- * the two cases and reports `previously_removed` (D-16.14).
+ * resurrect an account somebody removed on purpose, so a soft-deleted match
+ * reads `exists` / `skipped` "Already in the system." like any other (R22).
  *
  * This is a sequential scan on User — there is no functional index on
  * `lower(email)` and creating one is a migration (ruling C1), so it is on
- * Plan 18's list. Acceptable here: the table is small, and both preview and
- * commit are rate-limited (D-16.21).
+ * Plan 18's list. Acceptable here: the table is small.
  */
 export async function findExistingByEmail(
   client: Queryable,
@@ -251,10 +239,10 @@ export async function findExistingByEmail(
 /**
  * Classify every row against the file and against the database.
  *
- * Order is invalid → duplicate → (exists | previously_removed) → new, with
+ * Order is blank (skipped) → invalid → duplicate → exists → new, with
  * existence resolved by ONE batched lookup after the row loop, so the preview
- * is not N+1 (spec R26). Counts tally the final statuses; blank rows the
- * parser dropped are excluded from `total` (R30).
+ * is not N+1 (spec R26). Counts tally the final statuses; blank rows are
+ * excluded from `total` (R30).
  */
 export async function buildStudentImportPreview(sheet: ParsedSheet): Promise<StudentImportPreview> {
   const map = mapStudentHeaders(sheet.header);
@@ -265,11 +253,19 @@ export async function buildStudentImportPreview(sheet: ParsedSheet): Promise<Stu
 
   for (const parsedRow of sheet.rows) {
     const values = toCellValues(map, parsedRow.cells);
+    // v1's blank-row rule, applied after header mapping
+    // (`jpc-space/src/lib/student-import.ts:120-127`, R20): a row is blank
+    // when name, email and every RECOGNISED profile cell are empty, even if
+    // an ignored column has text. The parser's all-blank filter only keeps
+    // line numbering honest.
+    const hasProfileData = map.profileCols.some(({ field }) => values[field] !== null);
+    if (values.name === "" && values.email === "" && !hasProfileData) continue;
+
     const base = { rowNumber: parsedRow.rowNumber, name: values.name, email: values.email, values };
 
-    const validation = validateImportRow(values);
-    if (!validation.ok) {
-      rows.push({ ...base, status: "invalid", message: validation.message });
+    const problem = previewRowProblem(values);
+    if (problem !== null) {
+      rows.push({ ...base, status: "invalid", message: problem });
       continue;
     }
 
@@ -286,31 +282,19 @@ export async function buildStudentImportPreview(sheet: ParsedSheet): Promise<Stu
   const existing = await findExistingByEmail(db, candidates);
   for (const row of rows) {
     if (row.status !== "new") continue;
-    const match = existing.get(normaliseEmail(row.email));
-    if (!match) continue;
-    if (match.deletedAt !== null) {
-      row.status = "previously_removed";
-      row.message = "Previously removed — restore this account from the users screen.";
-    } else {
+    // Deleted or not (R22 / D-16.14).
+    if (existing.has(normaliseEmail(row.email))) {
       row.status = "exists";
       row.message = "Already in the system.";
     }
   }
 
-  const counts = {
-    new: 0,
-    exists: 0,
-    duplicate: 0,
-    invalid: 0,
-    previously_removed: 0,
-    total: rows.length,
-  };
+  const counts = { new: 0, exists: 0, duplicate: 0, invalid: 0, total: rows.length };
   for (const row of rows) counts[row.status] += 1;
 
   return {
     rows,
     detectedColumns: map.detectedColumns,
-    unrecognisedColumns: map.unrecognisedColumns,
     delimiter: sheet.delimiter,
     counts,
   };
@@ -346,13 +330,13 @@ export function studentImportTemplate(): ImportTemplate {
       target: "User.email",
       note: "Matching is case-insensitive; someone already in the system is skipped, never duplicated.",
     },
-    { label: "Mobile No", acceptedHeaders: ["phone", "mobile", "mobile no", "mobile no.", "mobile number", "phone number"], required: false, maxLength: 60, target: "StudentProfile.phone", note: null },
-    { label: "University", acceptedHeaders: ["university", "college"], required: false, maxLength: 160, target: "StudentProfile.university", note: null },
-    { label: "Year", acceptedHeaders: ["year"], required: false, maxLength: 40, target: "StudentProfile.year", note: "Stored as text — \"3rd\" and \"Year 3\" are both fine." },
+    { label: "Mobile No", acceptedHeaders: ["phone", "mobile", "mobile no", "mobile no.", "mobile number", "phone number"], required: false, maxLength: 50, target: "StudentProfile.phone", note: null },
+    { label: "University", acceptedHeaders: ["university", "college"], required: false, maxLength: 200, target: "StudentProfile.university", note: null },
+    { label: "Year", acceptedHeaders: ["year"], required: false, maxLength: 50, target: "StudentProfile.year", note: "Stored as text — \"3rd\" and \"Year 3\" are both fine." },
     { label: "Date of birth", acceptedHeaders: ["date of birth", "dob", "birthdate", "birth date"], required: false, maxLength: null, target: "StudentProfile.dateOfBirth", note: "YYYY-MM-DD only. Anything else fails the row rather than being guessed at." },
-    { label: "Spiritual background", acceptedHeaders: ["spiritual background"], required: false, maxLength: 4000, target: "StudentProfile.spiritualBackground", note: null },
+    { label: "Spiritual background", acceptedHeaders: ["spiritual background"], required: false, maxLength: 2000, target: "StudentProfile.spiritualBackground", note: null },
     { label: "Gifts", acceptedHeaders: ["gifts", "spiritual gifts"], required: false, maxLength: 2000, target: "StudentProfile.gifts", note: null },
-    { label: "Notes", acceptedHeaders: ["notes"], required: false, maxLength: 4000, target: "StudentProfile.notes", note: "Staff-internal. Never shown to the student." },
+    { label: "Notes", acceptedHeaders: ["notes"], required: false, maxLength: 2000, target: "StudentProfile.notes", note: "Staff-internal. Never shown to the student." },
   ];
 
   return {
@@ -377,18 +361,6 @@ export interface StudentImportCommitRow {
   values: ImportCellValues;
 }
 
-/**
- * Some rows the client asked to commit are not importable. The batch is
- * all-or-nothing (D-16.5), so this aborts everything and carries the row
- * NUMBERS — never the addresses (spec D19).
- */
-export class ImportRowsInvalidError extends Error {
-  constructor(readonly rowNumbers: number[]) {
-    super("Some import rows are not valid.");
-    this.name = "ImportRowsInvalidError";
-  }
-}
-
 function toNewStudentInput(row: StudentImportRow): NewStudentInput {
   return {
     name: row.name,
@@ -405,203 +377,85 @@ function toNewStudentInput(row: StudentImportRow): NewStudentInput {
   };
 }
 
+function isUniqueViolation(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+}
+
 /**
- * Commit a whole batch: one transaction, all-or-nothing, idempotent by email.
+ * Commit the rows: v1's sequential per-row loop, each row in its own
+ * transaction (`jpc-space/src/lib/student-import.ts:238-291`, D-16.5).
  *
- * The preview lives in the client and is resubmitted (roadmap Plan 17), which
- * in v1 made the preview purely advisory — its commit accepted any rows the
- * shape schema admitted, never checked a preview had happened, and never
- * re-ran the classifier (spec R34, "the preview is advisory"). Here the
- * client sends cell VALUES and no status, and this function re-derives every
- * fact it needs: it re-validates each row against the same schema the preview
- * used, re-deduplicates the batch, and re-runs the existence lookup inside
- * the transaction. That re-derivation IS the integrity control (D-16.4).
+ * The client sends cell VALUES and no status, and each row is re-validated
+ * (R41) and re-checked against the database (D-16.4) before it is written:
+ *  - invalid → `failed` "Invalid name or email." and the loop continues (R42);
+ *  - an existing user, deleted or not, staff or student → `skipped`
+ *    "Already in the system." (R44, R22). Never updated, never enrolled;
+ *  - otherwise User + StudentProfile (+ ACTIVE SeasonEnrollment in season
+ *    mode) in ONE transaction for this row (R45, R46). Earlier rows stay
+ *    committed when a later one fails;
+ *  - a unique-violation race → `skipped` "Already in the system." (R52);
+ *  - any other error → logged by row number (never the email, D-16.18) and
+ *    `failed` "Could not create this account." (R53).
+ *
+ * Re-running the same paste creates zero new rows (D-16.6): every row then
+ * hits the existence branch. A repeated address later in the same paste
+ * finds the row created moments earlier and is skipped the same way.
  */
 export async function commitStudentImport(
   input: StudentImportCommitRow[],
   target: StudentImportTarget,
-  onExisting: ImportOnExisting,
 ): Promise<StudentImportResult> {
-  // 1 ─ Re-validate everything BEFORE opening a transaction. A batch with any
-  //     unimportable row writes nothing at all (D-16.5): v1 would have
-  //     written rows 1–39, recorded row 40 `failed` and carried on to row 100.
-  const validated: { rowNumber: number; row: StudentImportRow }[] = [];
-  const invalidRowNumbers: number[] = [];
+  const rows: StudentImportResultRow[] = [];
+
   for (const item of input) {
-    const result = validateImportRow(item.values);
-    if (!result.ok) {
-      invalidRowNumbers.push(item.rowNumber);
+    const base = { rowNumber: item.rowNumber, name: item.values.name, email: item.values.email };
+
+    const validation = validateImportRow(item.values);
+    if (!validation.ok) {
+      rows.push({ ...base, outcome: "failed", message: "Invalid name or email.", userId: null });
       continue;
     }
-    validated.push({ rowNumber: item.rowNumber, row: result.row });
-  }
-  if (invalidRowNumbers.length > 0) throw new ImportRowsInvalidError(invalidRowNumbers);
+    const row = validation.row;
+    const shown = { ...base, name: row.name, email: row.email };
 
-  // 2 ─ In-batch duplicates: the first occurrence wins, the rest are reported
-  //     skipped. Case-insensitive — v1 compares raw strings, so "Foo@x.com"
-  //     and "foo@x.com" in one file become TWO accounts (spec R25).
-  const seen = new Set<string>();
-  const unique: typeof validated = [];
-  const outcomes = new Map<number, StudentImportResultRow>();
+    try {
+      // ── THE IDEMPOTENCE BRANCH ────────────────────────────────────────
+      // On a match the importer skips: it never updates and never
+      // duplicates (spec R44, decision D-16.6). Deleting this branch is
+      // Task 7's mutation 1.
+      const existing = await findExistingByEmail(db, [row.email]);
+      if (existing.size > 0) {
+        rows.push({ ...shown, outcome: "skipped", message: "Already in the system.", userId: null });
+        continue;
+      }
+      // ── END IDEMPOTENCE BRANCH ────────────────────────────────────────
 
-  for (const item of validated) {
-    const key = normaliseEmail(item.row.email);
-    if (seen.has(key)) {
-      outcomes.set(item.rowNumber, {
-        rowNumber: item.rowNumber,
-        name: item.row.name,
-        email: item.row.email,
-        outcome: "skipped",
-        message: "Repeated earlier in this import.",
-        userId: null,
-      });
-      continue;
+      const [created] = await db.$transaction((tx) =>
+        createStudentRows(tx, [toNewStudentInput(row)], target),
+      );
+      rows.push({ ...shown, outcome: "created", message: null, userId: created?.id ?? null });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        rows.push({ ...shown, outcome: "skipped", message: "Already in the system.", userId: null });
+      } else {
+        // The row number and error class only: a Prisma message can quote
+        // the address, and a log of student emails is not wanted (D-16.18).
+        const kind = err instanceof Prisma.PrismaClientKnownRequestError ? err.code : err instanceof Error ? err.name : "unknown";
+        console.error(`[student-import] row ${item.rowNumber} failed: ${kind}`);
+        rows.push({
+          ...shown,
+          outcome: "failed",
+          message: "Could not create this account.",
+          userId: null,
+        });
+      }
     }
-    seen.add(key);
-    unique.push(item);
   }
-
-  await db.$transaction(
-    async (tx) => {
-      const existing = await findExistingByEmail(tx, unique.map((u) => u.row.email));
-
-      const toCreate: typeof unique = [];
-      const toEnroll: { rowNumber: number; userId: number }[] = [];
-
-      for (const item of unique) {
-        // ── THE IDEMPOTENCE BRANCH ────────────────────────────────────────
-        // Everything from `const match` to the `continue` is what makes
-        // "re-running the same paste creates zero new rows" true (spec R44,
-        // decision D-16.6). On a match the importer skips: it never updates
-        // and never duplicates.
-        //
-        // Deleting these lines is Task 7's mutation 1. The test that must go
-        // red is "re-running the same paste creates ZERO new rows" in
-        // imports-routes.test.ts.
-        const match = existing.get(normaliseEmail(item.row.email));
-        if (match) {
-          const outcome = existingOutcome(item, match, target, onExisting);
-          outcomes.set(item.rowNumber, outcome);
-          if (outcome.outcome === "enrolled") {
-            toEnroll.push({ rowNumber: item.rowNumber, userId: match.id });
-          }
-          continue;
-        }
-        // ── END IDEMPOTENCE BRANCH ────────────────────────────────────────
-        toCreate.push(item);
-      }
-
-      if (toCreate.length > 0) {
-        const created = await createStudentRows(
-          tx,
-          toCreate.map((t) => toNewStudentInput(t.row)),
-          target,
-        );
-        const idByEmail = new Map(created.map((c) => [normaliseEmail(c.email), c.id]));
-        for (const item of toCreate) {
-          outcomes.set(item.rowNumber, {
-            rowNumber: item.rowNumber,
-            name: item.row.name,
-            email: item.row.email,
-            outcome: "created",
-            message: null,
-            userId: idByEmail.get(normaliseEmail(item.row.email)) ?? null,
-          });
-        }
-      }
-
-      if (target.kind === "season") {
-        for (const e of toEnroll) {
-          // D-16.7, on Plan 7's rules (one writer — enrollStudentInSeason):
-          //  - one enrolment per student per season, ever. An existing row —
-          //    ACTIVE, WITHDRAWN or COMPLETED — is left entirely alone and the
-          //    row is reported `skipped`, the bulk form of Plan 7's 409
-          //    already_enrolled. A spreadsheet can never resurrect a WITHDRAWN
-          //    enrolment or erase why somebody left;
-          //  - the profile pointer is set only when it is UNSET; a pointer
-          //    another season already holds is never stolen;
-          //  - nothing else on the profile is written.
-          const result = await enrollStudentInSeason(tx, e.userId, target.seasonId);
-          if (result === "already_enrolled") {
-            const prior = outcomes.get(e.rowNumber);
-            if (prior) {
-              outcomes.set(e.rowNumber, {
-                ...prior,
-                outcome: "skipped",
-                message: "Already enrolled in this season — left unchanged.",
-              });
-            }
-          }
-        }
-      }
-    },
-    // Generous but bounded. The create path is three statements regardless of
-    // size; only the `enroll` loop scales with the number of EXISTING
-    // students in the batch, which is the smaller number in practice.
-    { timeout: 30_000 },
-  );
-
-  const rows = input
-    .map((item) => outcomes.get(item.rowNumber))
-    .filter((r): r is StudentImportResultRow => r !== undefined);
 
   return {
     created: rows.filter((r) => r.outcome === "created").length,
     skipped: rows.filter((r) => r.outcome === "skipped").length,
-    enrolled: rows.filter((r) => r.outcome === "enrolled").length,
+    failed: rows.filter((r) => r.outcome === "failed").length,
     rows,
   };
-}
-
-/**
- * What happens to a row whose address is already in the database.
- *
- * The deleted and non-student cases come FIRST, so `enroll` can never reach
- * them: enrolling a soft-deleted account would quietly undo a deliberate
- * removal, and enrolling a LEADER's address as a student would put staff on
- * a roster.
- */
-function existingOutcome(
-  item: { rowNumber: number; row: StudentImportRow },
-  match: ExistingUser,
-  target: StudentImportTarget,
-  onExisting: ImportOnExisting,
-): StudentImportResultRow {
-  const base = {
-    rowNumber: item.rowNumber,
-    name: item.row.name,
-    email: item.row.email,
-    userId: match.id,
-  };
-
-  if (match.deletedAt !== null) {
-    // D-16.14 / spec D6. The lookup is deliberately unfiltered by deletedAt,
-    // so this row can never be re-imported — the address stays reserved by
-    // User.email @unique. Freeing it is a partial unique index, which is a
-    // migration, which is Plan 18.
-    return {
-      ...base,
-      // No id for a removed or staff account: the import screen has no use
-      // for it, and it would hand the operator a handle on a row they
-      // reached only by typing its address.
-      userId: null,
-      outcome: "skipped",
-      message: "Previously removed — restore this account from the users screen.",
-    };
-  }
-  if (match.role !== "STUDENT") {
-    return {
-      ...base,
-      userId: null,
-      outcome: "skipped",
-      message: "That address already belongs to a staff account.",
-    };
-  }
-  if (onExisting === "enroll" && target.kind === "season") {
-    // Provisional: the enrol loop below may downgrade this to `skipped` when
-    // the student already holds an enrolment in the target season (Plan 7's
-    // already_enrolled rule, applied per row).
-    return { ...base, outcome: "enrolled", message: "Already in the system — enrolled in this season." };
-  }
-  return { ...base, outcome: "skipped", message: "Already in the system." };
 }

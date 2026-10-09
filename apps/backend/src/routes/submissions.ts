@@ -313,8 +313,7 @@ submissionsRouter.patch("/:publicId", async (req, res) => {
     // demoted a REVIEWED submission back to DRAFT — it vanished from the
     // reviewer's queue while `feedback` and `reviewedAt` survived, leaving the
     // student reading a verdict on text they had since replaced. A save is not
-    // a state transition. Getting back to editable is what
-    // POST /:publicId/review with returnForRevision is for.
+    // a state transition (KEEP-FIX R8).
     await db.submission.update({
       where: { id: sub.id },
       data: { text: parsed.data.text },
@@ -412,7 +411,6 @@ submissionsRouter.post("/:publicId/review", async (req, res) => {
     where: { publicId: publicId ?? "" },
     select: {
       id: true,
-      status: true,
       studentUserId: true,
       assignmentId: true,
       assignment: { select: { title: true } },
@@ -427,20 +425,15 @@ submissionsRouter.post("/:publicId/review", async (req, res) => {
   const parsed = reviewSubmissionRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid review body.", 400);
 
-  // Reviewing something the student never submitted is legal in v1 and stays
-  // legal — a reviewer may return an untouched draft for revision — but a
-  // DRAFT that has never been submitted cannot be marked REVIEWED, because
-  // there is nothing to have reviewed.
-  if (sub.status === "DRAFT" && !parsed.data.returnForRevision) {
-    return apiError(res, "not_submitted", "That submission has not been submitted yet.", 409);
-  }
-
+  // v1 parity 2026-10-09 (08-submissions R21, R25): v1 submission-actions.ts:167-191
+  // has one reviewer action and no status precondition — any submission, a
+  // never-submitted DRAFT included, becomes REVIEWED. Nothing sets RETURNED.
   const now = new Date();
   await db.submission.update({
     where: { id: sub.id },
     data: {
       feedback: parsed.data.feedback,
-      status: parsed.data.returnForRevision ? "RETURNED" : "REVIEWED",
+      status: "REVIEWED",
       reviewedAt: now,
       reviewedById: user.userId,
     },
@@ -452,18 +445,15 @@ submissionsRouter.post("/:publicId/review", async (req, res) => {
     createNotificationsBulk([sub.studentUserId], {
       type: "SUBMISSION_REVIEWED",
       // REG-91: v1's exact wording for a verdict (submission-actions.ts:196).
-      // v1 had no "returned" state, so that one keeps its own v2 title. Neither
-      // carries the feedback text — the body is left empty on purpose.
-      title: parsed.data.returnForRevision
-        ? `${sub.assignment.title} was returned for revision`
-        : `Feedback ready on "${sub.assignment.title}"`,
+      // It does not carry the feedback text — the body is left empty on purpose.
+      title: `Feedback ready on "${sub.assignment.title}"`,
       // v1's exact link (submission-actions.ts:197; ruling X1): the assignment,
       // not the list.
       link: `/student/assignments/${sub.assignmentId}`,
     }),
   );
 
-  return apiOk(res, { reviewed: true, returnedForRevision: Boolean(parsed.data.returnForRevision) });
+  return apiOk(res, { reviewed: true });
 });
 
 // memoryStorage: the per-assignment size and MIME rules live in the database,

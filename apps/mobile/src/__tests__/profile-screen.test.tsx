@@ -64,19 +64,19 @@ describe("ProfileScreen — STUDENT", () => {
     expect(await screen.findByText("Mina Adel")).toBeTruthy();
     expect(screen.getByText("MA")).toBeTruthy(); // initials — no avatar read path in v2
     expect(screen.getByText("mina@jpc.test")).toBeTruthy();
-    // Spec 19 D14 / spec 09 R68: the server's remainingPct, under a label that says what it is.
-    expect(await screen.findByText("Absence budget left")).toBeTruthy();
+    // v1's label for max(0, 100 − budgetPct) (spec 09 R68/R87; v1 parity 2026-10-09).
+    expect(await screen.findByText("Attendance")).toBeTruthy();
     expect(screen.getByText("42%")).toBeTruthy();
     expect(screen.getByText("Streak")).toBeTruthy();
     expect(screen.getByText("3")).toBeTruthy();
     expect(screen.getByLabelText("University").props.value).toBe("Cairo University");
     expect(screen.getByLabelText("Date of birth (YYYY-MM-DD)").props.value).toBe("2001-04-05");
-    // Decision 1: no name or email field on this screen.
-    expect(screen.queryByLabelText("Name")).toBeNull();
+    // Decision 1 (v1 parity): the name is edited here; the email is not.
+    expect(screen.getByLabelText("Name").props.value).toBe("Mina Adel");
     expect(screen.queryByLabelText("Email")).toBeNull();
   });
 
-  it("saves through PATCH /me/profile with the six fields only", async () => {
+  it("saves through PATCH /me/profile with the name and the six fields", async () => {
     patch.mockResolvedValue({ data: { data: { profile: { ...profile, phone: "+20 122" } } } });
     renderWithProviders(<ProfileScreen />);
 
@@ -85,6 +85,7 @@ describe("ProfileScreen — STUDENT", () => {
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/me/profile", {
+        name: "Mina Adel",
         university: "Cairo University",
         year: "",
         phone: "+20 122",
@@ -117,12 +118,26 @@ describe("ProfileScreen — STUDENT", () => {
     expect(await screen.findByText("Couldn't save your profile.")).toBeTruthy();
   });
 
-  it("sends name changes to Settings (PATCH /me owns User.name)", async () => {
+  it("edits the name on the profile form, as v1 — no 'Open settings' detour (Decision 1, v1 parity 2026-10-09)", async () => {
+    patch.mockResolvedValue({ data: { data: { profile: { ...profile, name: "Mina Adel Botros" } } } });
     renderWithProviders(<ProfileScreen />);
 
-    fireEvent.press(await screen.findByText("Open settings"));
+    fireEvent.changeText(await screen.findByLabelText("Name"), "  Mina Adel Botros ");
+    fireEvent.press(screen.getByText("Save profile"));
 
-    expect(mockPush).toHaveBeenCalledWith("/settings");
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/api/v1/me/profile", expect.objectContaining({ name: "Mina Adel Botros" })),
+    );
+    expect(screen.queryByText("Open settings")).toBeNull();
+    await waitFor(() => expect(useSessionStore.getState().user?.name).toBe("Mina Adel Botros"));
+  });
+
+  it("refuses a one-letter name before sending", async () => {
+    renderWithProviders(<ProfileScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Name"), "M");
+    fireEvent.press(screen.getByText("Save profile"));
+    await waitFor(() => expect(screen.getByLabelText("Name").props.accessibilityHint).toBe("At least 2 characters."));
+    expect(patch).not.toHaveBeenCalled();
   });
 
   it("shows no stats and runs no attendance query without an active season", async () => {
@@ -130,7 +145,7 @@ describe("ProfileScreen — STUDENT", () => {
     renderWithProviders(<ProfileScreen />);
 
     expect(await screen.findByText("Mina Adel")).toBeTruthy();
-    expect(screen.queryByText("Absence budget left")).toBeNull();
+    expect(screen.queryByText("Attendance")).toBeNull();
     expect(get).not.toHaveBeenCalledWith("/api/v1/me/attendance");
   });
 });

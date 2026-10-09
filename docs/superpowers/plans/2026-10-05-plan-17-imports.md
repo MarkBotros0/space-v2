@@ -5,7 +5,9 @@
 **Goal:** Domain 16 — bulk data entry, paste-first. A SUPER pastes a
 spreadsheet selection into the app, sees a row-by-row preview classified
 against the live database, and commits it; the commit creates students,
-profiles and enrolments in **one transaction, all-or-nothing**, and is
+profiles and enrolments **row by row, each row in its own transaction** (v1,
+`jpc-space/src/lib/student-import.ts:238-291`) *(v1 parity 2026-10-09: was "one
+transaction, all-or-nothing")*, and is
 **idempotent by email** — re-running the same paste creates zero duplicate
 rows. A season ADMIN gets the same three-step flow for bulk group assignment.
 Neither importer exists in v2 in any form.
@@ -293,9 +295,10 @@ never validated by the server's classifier and never seen by an operator.
 resubmitted on commit.** No session store is built. The integrity hole is
 closed from the other end: the commit body carries only cell **values**
 (`{ rowNumber, values }`), never a client-computed `status`, and
-`commitStudentImport` re-runs the *same* validator and the *same* database
-existence lookup the preview ran, inside the transaction, before writing
-anything. The preview is a forecast; the commit is authoritative.
+`commitStudentImport` re-runs the commit validator (D-16.9) and the *same* database
+existence lookup the preview ran, row by row, before writing that row (D-16.5). The
+preview is a forecast; the commit is authoritative. *(v1 parity 2026-10-09: was "same
+validator, inside one transaction, before writing anything")*
 
 *Reason.* Spec D9 is explicit that the session model has nowhere to live: an
 `ImportBatch` table is a migration (C1), and the in-process TTL store it
@@ -313,29 +316,27 @@ intends to resubmit. The mitigations are therefore: a smaller cap (D-16.10),
 and a hard rule that the preview is never persisted to disk on the device
 (D-16.18).
 
-### D-16.5 — The commit is one transaction, all-or-nothing. This diverges from v1 *and* from spec D13.
+### D-16.5 — The commit is v1's sequential per-row loop, each row in its own transaction.
 
-*Question.* v1's commit is a sequential `for` loop, one transaction per row
-(R45): row 40 of 100 failing leaves rows 1–39 committed and continues to row
-100, and a request that dies at row 900 of 2000 loses the report for the 900
-that did land (R54). Spec D13 recommends **keeping** the per-row loop and
-persisting the running report into the import session.
+*Ruling (v1, `jpc-space/src/lib/student-import.ts:238-291`).* `commitStudentImport`
+walks the rows in order. For each row it validates (D-16.9; a failure is reported
+`failed` "Invalid name or email." and the loop continues, R42), re-checks existence
+by email (D-16.6; a hit is `skipped` "Already in the system.", R44), then writes that
+one row — `User`, `StudentProfile` and, in season mode, an ACTIVE `SeasonEnrollment` —
+in **its own** `db.$transaction` through `createStudentRows(tx, [row], target)` (R45,
+R46). A unique-violation (`P2002`) on that insert is recorded `skipped` "Already in
+the system." (R52); any other error is logged by row number (D-16.18) and recorded
+`failed` "Could not create this account." (R53). Earlier rows stay committed when a
+later one fails. The result is the per-row list of `created` / `skipped` / `failed`
+outcomes (with `userId` on `created`) plus the three tallies `created`, `skipped`,
+`failed` (R54, `student-import.ts:181-196`, `:286-291`); `rowNumber` may ride along
+as a display aid. *(v1 parity 2026-10-09: was "one all-or-nothing transaction; 422 import_rows_invalid / 409 import_conflict; created/skipped/enrolled tallies")*
 
-*Ruling.* The roadmap binds: **transactional commit, all-or-nothing.** The
-whole batch writes or none of it does.
-
-*Reason.* Spec D13's recommendation is conditioned on the session existing to
-hold the partial report — and D-16.4 rules the session out, so the option D13
-compares against is not on the table. Without a durable report, v1's partial
-write is the worst of both: the operator cannot tell what landed, and their
-only recovery is to re-run and trust idempotence they were never told about.
-All-or-nothing removes the question. It is affordable here because the write
-is **three statements regardless of batch size** —
-`user.createManyAndReturn`, then one `studentProfile.createMany`, then one
-`seasonEnrollment.createMany` — where v1 issued two or three statements *per
-row*, each in its own transaction (R46). Row-level *outcomes* are still
-reported (`created` / `skipped` / `enrolled`); a skipped row is not a failure
-and does not abort anything.
+*Reason.* Owner ruling 2026-10-09: v2 behaves as v1 unless v1 is a defect. v1's
+per-row commit is a design choice, not a bug: every row's outcome is reported, and a
+re-run is safe because of D-16.6's idempotence by email. The `ImportRowsInvalidError`
+422 branch and the `409 import_conflict` branch (`routes/imports.ts:165-188`) are
+removed; there is no `enrolled` outcome (D-16.7).
 
 ### D-16.6 — Idempotence is by email, matched case-insensitively, stored verbatim. This is the plan's load-bearing rule.
 
@@ -365,40 +366,16 @@ kept, and this is what makes "a re-run of the same paste creates zero new
 rows" true. The branch that implements it is marked in the source with a
 banner comment and is mutation 1 in Task 7.
 
-### D-16.7 — An existing user is skipped by default; `onExisting: "enroll"` is offered, required, and never overwrites.
+### D-16.7 — An existing user is always skipped; the import never updates or enrols an existing person.
 
-*Question.* Spec D4, "the highest-value product gap in the domain": bulk
-importing a returning student into a new season does nothing at all — they
-preview `exists`, commit `skipped`, and end with their old `activeSeasonId`
-and no new enrolment.
+*Ruling (v1, `jpc-space/src/lib/student-import.ts:248-251`).* Every row whose email
+matches an existing user (D-16.6) is reported `skipped` "Already in the system." and
+nothing about that user is written. There is no `onExisting` field on the commit
+body, no `enroll` arm, and no enrol confirmation on the screen. *(v1 parity 2026-10-09: was "onExisting: skip | enroll required; enroll enrols existing students via enrollStudentInSeason")*
 
-*Ruling.* `onExisting` is a **required** field on the commit body with two
-values:
-
-- `skip` — reproduces v1 exactly.
-- `enroll` — for an existing, non-deleted `STUDENT`, applies **Plan 7's
-  enrolment rules through the same function** (`enrollStudentInSeason`,
-  Task 4 Step 4b): creates an ACTIVE `SeasonEnrollment` for the target season
-  if none exists, and points `StudentProfile.activeSeasonId` at it **only if
-  the pointer is unset** (Plan 7 never steals a pointer another season
-  holds). An enrolment that already exists, of any status, is left entirely
-  alone — status, `enrolledAt`, `groupId`, `droppedAt` and `dropReason`
-  survive — and the row is reported `skipped` ("Already enrolled in this
-  season"), the per-row form of Plan 7's `409 already_enrolled`. It touches
-  **no** `User` field and no other profile field. `enroll` is valid only in season mode; the alumni arm of
-  the discriminated union accepts `z.literal("skip")` and nothing else.
-
-The field has **no default**, so nothing can inherit `enroll` by accident, and
-the mobile screen defaults its control to `skip` and requires an explicit
-confirmation naming the count before sending `enroll`.
-
-*Reason.* D4 names the exact semantics and the exact hazard: "Never offer a
-mode that overwrites profile data from a spreadsheet — that is how a stale
-export erases a year of pastoral notes." Making the field required is what
-turns a dangerous default into a deliberate act. This changes observable
-behaviour against a shared production database, which is why the write is
-narrowed to two columns that mean "this person is in this season" and nothing
-else. Flag it to domain 6 in the closing report.
+*Reason.* Owner ruling 2026-10-09 (v1 parity). Spec D4's returning-student gap is a
+product request, not a v1 defect; bringing a returning student into a new season
+stays Plan 7's single-student enrolment action.
 
 ### D-16.8 — The importer reuses Plan 7's student write path. There is exactly one way to create a student.
 
@@ -410,10 +387,10 @@ importer's gets `passwordHash: null`.
 *Ruling.* Plan 7's `POST /api/v1/students` handler body is **extracted** into
 `createStudentRows(tx, inputs, target)` in
 `apps/backend/src/lib/queries/students.ts`, and both the route and the
-importer call it. Plan 7's `POST /students/:id/enrollments` body is likewise
-extracted into `enrollStudentInSeason(tx, studentUserId, seasonId)` beside it,
-and the importer's `enroll` arm calls that, so an imported enrolment follows
-Plan 7's rules exactly (D-16.7).
+importer call it. The importer does **not** enrol existing students (D-16.7), so
+it does not call Plan 7's `POST /students/:id/enrollments` path; Task 4 Step 4b's
+`enrollStudentInSeason` extraction is not needed by this plan. *(v1 parity
+2026-10-09: was "importer's enroll arm calls enrollStudentInSeason")*
 
 *Not* the only `STUDENT` writer, and the earlier draft's grep claiming so was
 false: Plan 9's `POST /api/v1/users` creates a `User` of any role — `STUDENT`
@@ -431,42 +408,36 @@ profile pointer and the enrolment agreeing by construction — apply to the
 importer for free and cannot drift. The function takes a batch because the
 importer needs a batch; the single-row route passes an array of one.
 
-### D-16.9 — Preview and commit validate to one standard, because they call one function.
+### D-16.9 — Preview and commit validate in two stages, as v1.
 
-*Question.* Spec D12/R24: v1's preview checks only "name ≥ 2 chars and email
-parses", while its commit additionally enforces 120/50/200/50/40/2000/2000/2000
-character bounds. A 300-character name previews green and comes back `failed`
-after the operator has already committed.
+*Ruling (v1, `jpc-space/src/lib/student-import.ts:129` versus `:71-87`).* The preview
+classifier checks only that the name is at least 2 characters and the email parses
+(plus D-16.11's date-of-birth rule, KEEP-FIX R50); an over-long value previews `new`.
+The commit validates each row against `studentImportRowSchema`, which is defined in
+`packages/shared/src/import.ts` with **v1's import bounds**: name 2–120, phone 50,
+university 200, year 50, date of birth 40, spiritual background 2000, gifts 2000,
+notes 2000 — not derived from `createStudentRequestSchema`. A row failing it is
+reported `failed` "Invalid name or email." and the loop continues (D-16.5). *(v1 parity 2026-10-09: was "one validator, createStudentRequestSchema.omit({ seasonId }), full bounds at preview")*
 
-*Ruling.* One validator, `validateImportRow()`, is called by the classifier
-and by the commit. Its schema is `studentImportRowSchema`, which is literally
-`createStudentRequestSchema.omit({ seasonId: true })` from Plan 7's
-`packages/shared/src/student.ts`.
+*Reason.* Owner ruling 2026-10-09 (v1 parity, R24, R41). The preview reports what
+v1's preview reported; an over-long cell surfaces as that row's `failed` outcome.
 
-*Reason.* Deriving from Plan 7's schema rather than restating its maxima means
-there is **no second set of numbers to drift** — the drift D12 describes, and
-the same class of drift domain 2 already hit between its server and client
-copies of the season schema. It also means v1's import-specific bounds
-(university 200, spiritual background 2000, notes 2000) do **not** port; the
-student domain's bounds (160 / 4000 / 4000) win, because a student created by
-import and a student created by the form must accept the same data.
-
-### D-16.10 — The row shape is flat, and the caps are 2000 rows / 256 KB of text.
+### D-16.10 — The row shape is flat, and the caps are 2000 rows / 5 MB of text.
 
 *Ruling.* An import row is `{ name, email, university, year, phone,
 dateOfBirth, spiritualBackground, gifts, notes }` — flat. v1's nested
 `profile` object (`ImportProfileFields`, `student-import.ts:11-19`) is not
 ported. Caps: `IMPORT_MAX_ROWS = 2000` (v1's, R35, kept) and
-`IMPORT_MAX_PASTE_CHARS = 262144` (256 KB).
+`IMPORT_MAX_PASTE_CHARS = 5 * 1024 * 1024` — v1's 5 MB import ceiling
+(`jpc-space/src/lib/student-import-actions.ts:18`, `group-import-actions.ts:12`, R3);
+`config.importBodyLimit` (`importJsonParser`, `routes/imports.ts:85`) is raised so a
+5 MB paste and its 2000-row commit body fit. *(v1 parity 2026-10-09: was "256 KB paste cap")*
 
 *Reason.* The nesting existed only because v1's importer had a schema of its
-own; flattening is what lets D-16.9's `.omit()` reuse work at all. The
-character cap replaces v1's 5 MB file ceiling (R3): 5 MB of text on a phone is
-not a realistic paste, it is a denial-of-service body, and 256 KB comfortably
-holds 2000 rows of eight populated columns. Both constants live in
-`packages/shared` so the screen can refuse an oversized paste before spending
-a request on it, and the server re-checks because a client-side limit is a
-courtesy, not a control.
+own. The ceiling is v1's (owner ruling 2026-10-09). Both constants live in
+`packages/shared` so the screen refuses an oversized paste before spending a
+request on it (v1 refuses over 5 MB client-side too, `src/components/ui/file-upload.tsx:32-38`,
+R4), and the server re-checks.
 
 ### D-16.11 — Date of birth is ISO-only, real-date-checked, stored as UTC midnight, and a bad value fails its row.
 
@@ -489,19 +460,13 @@ organisation timezone, never an incidental one. And silently dropping the
 value means the operator sees "created" and a missing birth date. Strictness
 costs the operator one find-and-replace and buys correctness for every row.
 
-### D-16.12 — Unrecognised columns are reported back.
+### D-16.12 — Unrecognised columns are silently ignored, as v1.
 
-*Ruling.* The preview returns `unrecognisedColumns: string[]` — every header
-cell that matched no alias, echoed as typed **after trimming**. Both the parser
-and the header mapper trim, so surrounding whitespace can never cause a miss
-(`"Mobile Number "` matches the alias); the earlier claim that whitespace is
-echoed was false and is withdrawn. The screen renders the list as a warning
-above the row list.
+*Ruling (v1, `jpc-space/src/lib/student-import.ts:100-103`).* A header cell that
+matches no alias is ignored; the preview carries no `unrecognisedColumns` and the
+screen shows no "column(s) not recognised" warning. `detectedColumns` (R19) stays. *(v1 parity 2026-10-09: was "unrecognisedColumns reported and shown as a warning")*
 
-*Reason.* Spec D11: v1 shows `detectedColumns` (R19) but never says what it
-*failed* to detect, which is the half that matters. A header typed `Phone No`
-or `Uni` vanishes without a word, and the operator discovers it weeks later as
-missing data. This is the cheapest fix in the domain.
+*Reason.* Owner ruling 2026-10-09 (v1 parity, R18).
 
 ### D-16.13 — `student` is a `name` alias.
 
@@ -513,25 +478,14 @@ student importer rejects such a file outright with R15's message — which, to
 an operator holding a file this system just produced, reads like a bug. One
 word.
 
-### D-16.14 — A soft-deleted user gets its own preview status, and is never resurrected.
+### D-16.14 — A soft-deleted user reads `exists`, as v1; there is no fifth status.
 
-*Ruling.* A fifth row status, `previously_removed`, is added alongside v1's
-four. The existence lookup stays **unfiltered** by `deletedAt` (v1's R27/R43
-behaviour, kept), but a match whose `deletedAt` is non-null classifies
-`previously_removed` with
-`"Previously removed — restore this account from the users screen."` At commit
-it is an outcome of `skipped` with the same message.
+*Ruling (v1, `jpc-space/src/lib/student-import.ts:9`, `:157-167`).* Four statuses
+only — `new`, `exists`, `duplicate`, `invalid`. The existence lookup stays unfiltered
+by `deletedAt`, so a soft-deleted user's email previews `exists` "Already in the
+system." and commits `skipped` with the same message. It is never resurrected. *(v1 parity 2026-10-09: was "fifth status previously_removed with a restore message")*
 
-*Reason.* Spec D6. Filtering the lookup would let an import silently
-resurrect an account somebody deliberately removed, which is worse than the
-problem. But `"Already in the system."` is a lie for a deleted row, and the
-operator has no way to see why from the import screen. Naming it costs one
-enum member. This diverges from spec §8's `importRowStatusSchema` table, which
-mirrors v1's four statuses — D6 is the later and more specific instruction, so
-it wins, and this note is the "say so rather than silently follow the spec"
-`_DECISIONS.md` asks for. Freeing the address itself is a schema question
-(`User.email` is `@unique`, so a removed person's address is reserved
-forever) → Plan 18.
+*Reason.* Owner ruling 2026-10-09 (v1 parity, R22).
 
 ### D-16.15 — Format-dependent value mangling cannot happen, because there is only one format.
 
@@ -601,12 +555,21 @@ sees, not a cacheable read.
 
 Four rulings in one, all on the group importer:
 
-1. **Duplicate group names refuse the file.** If a season holds two groups
-   whose names are equal case-insensitively, the preview fails with
-   `"This season has more than one group named \"X\". Rename one of them, then
-   import again."` v1 builds a `Map` by iteration and lets the **last** one
-   silently win every row (spec D17/R65). `Group.name` has no uniqueness
-   constraint of any kind; adding one is a migration → Plan 18.
+1. **A row naming an ambiguous group is refused; the rest of the paste imports.**
+   The whole-paste refusal is withdrawn (v1 never refuses the file for this,
+   `jpc-space/src/lib/group-import.ts:59`, R65): the preview builds the season's
+   name index and every other row classifies exactly as v1. A row whose trimmed,
+   lower-cased group cell matches **more than one** group of the season classifies
+   `no_group` (v1's existing status, no new enum member) with the message
+   `Several groups in this season are named "X". Rename one of them, then import
+   again.`, carries no `groupId`, and so can never reach the commit. v1 instead
+   lets the **last** same-named group silently receive every such row
+   (`new Map(groups.map(...))`, `group-import.ts:59`) — kept as a fix, because
+   with Plan 18's `@@unique([seasonId, name])` (M2) dropped (05-R15 reverts to
+   v1: duplicate group names are allowed) that guess writes students into an
+   arbitrary group and reports it as success. This row-level refusal is what
+   replaces M2. *(v1 parity 2026-10-09: was "whole paste refused when two season
+   groups share a name; uniqueness constraint → Plan 18")*
 2. **`assigned` is the number written, and `skippedStudentIds` comes back.**
    v1 returns the *requested* array length (spec D5/R80), so "Assigned 40
    students" can mean 12 were written — reported as success.
@@ -649,39 +612,26 @@ every target group must belong to the season (whole batch refused if not) and
 every student must hold an enrolment in it. A caller who fabricates ids
 achieves nothing they could not already do from the roster grid.
 
-### D-16.21 — Both preview endpoints and both commit endpoints are rate-limited.
+### D-16.21 — The import endpoints are not rate-limited, as v1.
 
-*Ruling.* `previewLimiter` = 30 requests / 15 min, `commitLimiter` = 10 / 15
-min by default, read from `config.importPreviewRateLimit` /
-`config.importCommitRateLimit` (env `IMPORT_PREVIEW_RATE_LIMIT`,
-`IMPORT_COMMIT_RATE_LIMIT`) and built by `importLimiter(limit)` with Plan 9's
-shared `rateLimitHandler` from `lib/rate-limit.ts` (ruling X4 — no local copy):
-`too_many_requests` 429 in the `{ error: { code, message } }` envelope, not
-express-rate-limit's plain-text default. The integration suite lifts both
-limits in `jest.setup.ts`, because it commits ~22 times from one IP; the 429
-itself is pinned by a unit test on a limit-1 instance.
+*Ruling (v1, `jpc-space/src/lib/student-import.ts:247-278`; `src/lib/group-actions.ts:225-244`).*
+No limiter on either preview or either commit: `previewLimiter`, `commitLimiter`,
+`importLimiter` and the `IMPORT_PREVIEW_RATE_LIMIT` / `IMPORT_COMMIT_RATE_LIMIT` config
+are removed (`routes/imports.ts:66-72`, `:116`, `:140`, `:244`, `:268`). Two
+concurrent commits of the same rows resolve per row: the loser's rows hit the unique
+index and are reported `skipped` "Already in the system." (D-16.5, R52). *(v1 parity 2026-10-09: was "preview 30/15 min, commit 10/15 min limiters; a race answered 409 import_conflict")*
 
-*Reason.* Spec D18/R84: neither importer is rate-limited in v1, where the
-server-action transport makes that hard to notice. As HTTP endpoints taking a
-256 KB body and a 2000-row commit, both want a limiter. The per-user
-in-flight guard D18 also asks for needs the session store D-16.4 rules out;
-the residual risk is bounded because the commit is idempotent (a second
-concurrent commit of the same paste writes nothing) and transactional (a race
-that loses on the unique index rolls back whole and answers `409
-import_conflict` telling the operator to re-run).
+*Reason.* Owner ruling 2026-10-09 (v1 parity, R84).
 
-### D-16.22 — Duplicate recognised headers: first wins, uniformly.
+### D-16.22 — Duplicate recognised headers: v1's asymmetric rule, ported as-is.
 
-*Ruling.* If two columns map to the same field, the first is used and the rest
-are ignored.
+*Ruling (v1, `jpc-space/src/lib/student-import.ts:96-103`).* If two columns are
+`name` (or both email headers), the **last** one wins — `nameCol`/`emailCol` are
+assigned unconditionally; if two columns map to the same profile field, the **first**
+wins (`students.ts:69-79`: drop the `=== -1` guards on name and email, keep the
+profile guard). *(v1 parity 2026-10-09: was "first wins, uniformly")*
 
-*Reason.* v1 is asymmetric by accident: `name` and `email` are assigned
-unconditionally so the **last** matching column wins, while a profile column
-is guarded by a "not already claimed" test so the **first** wins (spec R17).
-That asymmetry is an artefact of how the `if/else` chain was written, not a
-decision — C12's "dead code in v1 is not a specification" reasoning applies to
-accidental behaviour as much as to unreachable behaviour. One rule is easier
-to explain and easier to test.
+*Reason.* Owner ruling 2026-10-09 (v1 parity, R17).
 
 ---
 
@@ -696,8 +646,8 @@ of it is worked around by overloading an existing column.
 | 1 | **A durable import session** — parsed rows held server-side under an `importId`, so a commit sends an id rather than a payload, the flow is resumable, and inline row correction (`PATCH /imports/:importId/rows/:rowNumber`) becomes possible | new `ImportBatch` + `ImportBatchRow` tables | spec D9, D1, §10d |
 | 2 | **An import audit trail** — which operator imported which batch, when, in what mode, with what per-row outcome. Today `User.createdAt` is the only trace | folded into #1's tables; plus `User.createdById` / `User.updatedById`, which do not exist (`schema.prisma:103-164`) | spec D15 |
 | 3 | **Email normalisation** — `citext` on `User.email`, or a lowercase backfill, so storage and comparison finally agree. v2 changes only the comparison (D-16.6); the stored values are v1's and must stay readable by v1's case-sensitive login | `User.email` type change + backfill, coordinated with domains 1 and 11 | spec D2 |
-| 4 | **Freeing a soft-deleted user's address** so a removed person can be re-imported. `User.email` is `@unique` regardless of `deletedAt`, so the address is reserved forever and the row reads `previously_removed` permanently | partial unique index on `(email) WHERE "deletedAt" IS NULL` | spec D6, D-16.14 |
-| 5 | **`Group.name` uniqueness per season.** v2 *detects* the collision and refuses the file (D-16.19.1); the constraint that would prevent it existing is a migration | `@@unique([seasonId, name])` on `Group` | spec D17 |
+| 4 | **Freeing a soft-deleted user's address** so a removed person can be re-imported. `User.email` is `@unique` regardless of `deletedAt`, so the address is reserved forever and the row reads `exists` "Already in the system." permanently (D-16.14) *(v1 parity 2026-10-09: was "reads previously_removed")* | partial unique index on `(email) WHERE "deletedAt" IS NULL` | spec D6, D-16.14 |
+| 5 | **`Group.name` uniqueness per season — dropped.** Duplicate group names stay allowed, as v1 (05-R15); the importer refuses only the ambiguous **row** (D-16.19.1), so no constraint is needed *(v1 parity 2026-10-09: was "v2 refuses the file; @@unique([seasonId, name]) deferred to Plan 18")* | none | spec D17; 05-R15, 16-R65 |
 | 6 | **`GroupStudent` per-season uniqueness + backfill from enrolments.** `studentUserId` is `@unique` standalone, so assigning a student to a group deletes their membership in *every other season's* group. v2 keeps writing it that way because it must; the fact is recorded on `SeasonEnrollment.groupId`, which is what every read in this plan uses | composite key on `GroupStudent` | ruling C9, spec R70/R77 — already on Plan 18's list |
 | 7 | **A functional index for the case-insensitive email lookup.** `lower(email) IN (...)` is a sequential scan on `User`; acceptable at this table's size and behind a rate limiter, but it is the one query in this plan that does not use an index | `CREATE INDEX ON "User" (lower(email))` | D-16.6, Task 3 |
 
@@ -718,6 +668,8 @@ Plan 7 runs before this plan in the execution order, so `createStudentRequestSch
 always exists here; derive from it (`.omit({ seasonId: true })`) — never restate its maxima (D-16.9).
 
 - [ ] **Step 1: Write the failing test**
+
+> **v1 parity 2026-10-09:** Update the contract tests to the reverted shapes in Step 3: `IMPORT_MAX_PASTE_CHARS === 5 * 1024 * 1024`; the row-status enum is exactly `new | exists | duplicate | invalid` (no `previously_removed`); the preview has no `unrecognisedColumns`; `studentImportRowSchema` refuses phone 51, university 201, year 51, date of birth 41, spiritual background / gifts / notes 2001 chars and accepts each at the bound; the commit input has no `onExisting`; the outcome enum is `created | skipped | failed` and the result tallies are `created`, `skipped`, `failed`.
 
 ```ts
 // packages/shared/src/__tests__/import-schemas.test.ts
@@ -845,6 +797,8 @@ is the right failure: it proves the test is exercising the real barrel export,
 not a local stub.
 
 - [ ] **Step 3: Write the contracts**
+
+> **v1 parity 2026-10-09:** In `packages/shared/src/import.ts`: `IMPORT_MAX_PASTE_CHARS = 5 * 1024 * 1024` (v2 `:21`; v1 `src/lib/student-import-actions.ts:18`, R3); remove `previously_removed` from the status enum and the counts (`:93-104`, `:168`; v1 `jpc-space/src/lib/student-import.ts:9`, R22); remove `unrecognisedColumns` (`:182`, R18); define `studentImportRowSchema` with v1's import bounds — name 2–120, email, phone 50, university 200, year 50, dateOfBirth 40 (+ D-16.11's ISO rule), spiritualBackground 2000, gifts 2000, notes 2000 — instead of `createStudentRequestSchema.omit(...)` (`:145`; v1 `jpc-space/src/lib/student-import.ts:71-87`, R41); drop `importOnExistingSchema` and the `onExisting` fields from the commit input (`:239`, `:248`, R44); outcome enum `["created", "skipped", "failed"]` and result tallies `created/skipped/failed`, `enrolled` removed (`:255-279`; v1 `jpc-space/src/lib/student-import.ts:181-196`, R42, R54).
 
 ```ts
 // packages/shared/src/import.ts
@@ -1284,6 +1238,8 @@ is the branch that produced spec D7's format-dependent mangling.
 
 - [ ] **Step 1: Write the failing test**
 
+> **v1 parity 2026-10-09:** Add a student-preview test (Task 3) rather than a parser test for R20: a row whose only non-blank cell is in an unrecognised column is skipped as blank, not classified `invalid` (v1 `jpc-space/src/lib/student-import.ts:120-127`). The parser's own all-blank filter and its numbering stay.
+
 ```ts
 // apps/backend/src/__tests__/delimited-parser.test.ts
 import { ImportParseError, parseDelimited, sniffDelimiter } from "../lib/imports/delimited";
@@ -1367,6 +1323,8 @@ is the proof the test targets the real module path rather than an inline
 helper; nothing else can produce it.
 
 - [ ] **Step 3: Write the parser**
+
+> **v1 parity 2026-10-09:** Keep the all-blank filter here (L1545) for line numbering only; the student importer's v1 blank-row rule is applied after header mapping in `buildStudentImportPreview` — skip a row when name, email and every **mapped** profile cell are blank (v2 `apps/backend/src/lib/imports/students.ts:266-268`; v1 `jpc-space/src/lib/student-import.ts:120-127`, R20, REG-115).
 
 ```ts
 // apps/backend/src/lib/imports/delimited.ts
@@ -1618,6 +1576,8 @@ from `testEmail()`**, and **every season an import targets comes from
 `createTestSeason()`**.
 
 - [ ] **Step 1: Create the integration suite — the prefix guard first, then the failing preview tests**
+
+> **v1 parity 2026-10-09:** Change these preview expectations: no `unrecognisedColumns` assertion (R18); a soft-deleted user's address previews `exists` "Already in the system." (R22); a 300-character name or an over-long profile cell previews `new` (only name ≥ 2 and a valid email are checked at preview, R24; the date-of-birth rule stays, R50 KEEP-FIX); two `name` columns → the **last** is used, two columns for one profile field → the first (R17); a row with text only in an ignored column is skipped (R20); delete the preview rate-limit case (R84); a paste over 256 KB but under 5 MB is accepted (R3).
 
 ```ts
 // apps/backend/src/__tests__/integration/imports-routes.test.ts
@@ -1934,6 +1894,8 @@ the right first failure: it proves the tests are hitting the real Express app
 through the real mount path, not a stub.
 
 - [ ] **Step 3: Write `lib/imports/students.ts` (preview half)**
+
+> **v1 parity 2026-10-09:** In this block (v2 `apps/backend/src/lib/imports/students.ts`): assign `nameCol`/`emailCol` unconditionally (last wins) and keep the first-wins guard only for profile columns (`:69-79`; v1 `jpc-space/src/lib/student-import.ts:96-103`, R17); delete `unrecognisedColumns` (`:62`, `:82`, `:98`, R18); add the v1 blank-row skip after mapping (`:266-268`, R20); the preview classifier checks only `name.length >= 2` and the email (plus D-16.11) instead of the full commit schema (`:174-202`, `:270`; v1 `jpc-space/src/lib/student-import.ts:129`, R24); a deleted match classifies `exists` "Already in the system." — remove the `previously_removed` branch (`:291-293`, `:305`; v1 `jpc-space/src/lib/student-import.ts:157-167`, R22).
 
 ```ts
 // apps/backend/src/lib/imports/students.ts
@@ -2301,6 +2263,8 @@ export function studentImportTemplate(): ImportTemplate {
 
 - [ ] **Step 4: Write `routes/imports.ts` (preview + template)**
 
+> **v1 parity 2026-10-09:** Remove `previewLimiter` from the student preview route (v2 `apps/backend/src/routes/imports.ts:71`, `:116`; v1 has none, R84).
+
 ```ts
 // apps/backend/src/routes/imports.ts
 import express, { Router } from "express";
@@ -2440,6 +2404,8 @@ export { commitLimiter, previewLimiter, IMPORT_FILE_UPLOAD_SUPPORTED };
 ```
 
 - [ ] **Step 4a: Config, the test-time limits, the 413 mapping, and a unit test for the limiter**
+
+> **v1 parity 2026-10-09:** Remove `importLimiter`, `previewLimiter`/`commitLimiter`, `config.importPreviewRateLimit`/`importCommitRateLimit` (`IMPORT_*_RATE_LIMIT`), their `jest.setup.ts` lift and the limit-1 unit test (`routes/imports.ts:66-72`, R84). Raise `config.importBodyLimit` so a 5 MB paste (JSON-escaped) and a 2000-row commit fit (`routes/imports.ts:85`, R3); the 413 mapping stays.
 
 In `apps/backend/src/lib/config.ts`, add to `envSchema`:
 
@@ -2596,6 +2562,8 @@ middleware, so every other `/api/v1/seasons/*` request falls through to
 
 - [ ] **Step 6: Hand back the OpenAPI fragment (coordinator applies)**
 
+> **v1 parity 2026-10-09:** OpenAPI: no `unrecognisedColumns`, four row statuses, no 429 response on the import routes, paste `maxLength` 5242880.
+
 Add `POST /api/v1/imports/students/preview` and
 `GET /api/v1/imports/students/template` to `apps/backend/src/docs/openapi.ts`
 in the house style (hand-authored, prose `description`, `ok()` /
@@ -2645,6 +2613,8 @@ git add apps/backend && git commit -m "feat(backend): student import preview and
 
 This is the task the plan exists for. Everything load-bearing lives here.
 
+> **v1 parity 2026-10-09:** the commit is no longer "one transaction": it is v1's per-row loop, one transaction per row, with `failed` outcomes (D-16.5; `jpc-space/src/lib/student-import.ts:238-291`). The title is kept for traceability; Steps 1, 2, 5, 6 and 7 carry the changes.
+
 **Files:**
 - Modify: `apps/backend/src/lib/queries/students.ts` (add `createStudentRows`, `enrollStudentInSeason`)
 - Modify: `apps/backend/src/routes/students.ts` (Plan 7's `POST /` calls `createStudentRows`; Plan 7's `POST /:id/enrollments` calls `enrollStudentInSeason`)
@@ -2663,6 +2633,8 @@ Plan 7 runs long before this plan in the execution order, so
 this task refactors Plan 7's handlers and must not recreate them.
 
 - [ ] **Step 1: Write the failing tests — integration first**
+
+> **v1 parity 2026-10-09:** Rewrite the commit expectations to v1's per-row loop (`jpc-space/src/lib/student-import.ts:238-291`): an invalid row is reported `failed` "Invalid name or email." and the valid rows around it are created (replaces "refuses the WHOLE batch when any row is invalid", R42); an existing or soft-deleted match is `skipped` "Already in the system." (R22, R44 — delete the `onExisting: "enroll"` cases and "skips a soft-deleted address even under enroll"); a forced row error after earlier rows leaves those rows committed and reports the row `failed` "Could not create this account." (R45, R53); a unique-violation race on one row reports it `skipped` and the rest continue — no 409 (R52); the result is `{ created, skipped, failed, rows }` (R54). The re-run-creates-zero-rows case stays (D-16.6).
 
 Append to `apps/backend/src/__tests__/integration/imports-routes.test.ts`:
 
@@ -3007,6 +2979,8 @@ describe("POST /api/v1/imports/students/commit — alumni mode", () => {
 
 - [ ] **Step 2: Write the failing unit test for atomicity (Agent A runs this one)**
 
+> **v1 parity 2026-10-09:** Replace the all-or-nothing unit test with a per-row isolation test: each row's writes go through its own `db.$transaction` call (one call per created row), and a throw inside row 2's transaction does not prevent row 3's (R45).
+
 The transaction's rollback path cannot be triggered deterministically through
 HTTP — every failure the integration suite can stage is caught by validation
 before a write happens. So atomicity is pinned where it *is* observable: that
@@ -3309,6 +3283,8 @@ behaviour-preserving, and Task 7 Step 1 runs it.
 
 - [ ] **Step 4b: Extract Plan 7's enrolment write into `enrollStudentInSeason`**
 
+> **v1 parity 2026-10-09:** The importer no longer calls `enrollStudentInSeason` (R44, v1 `jpc-space/src/lib/student-import.ts:248-251`); keep this extraction only if Plan 7's `POST /students/:id/enrollments` already uses it, otherwise skip the step.
+
 Append to `apps/backend/src/lib/queries/students.ts`:
 
 ```ts
@@ -3373,6 +3349,8 @@ Plan 7's enrolment tests (`describe("POST /api/v1/students/:id/enrollments")`)
 must pass unchanged — they are the proof the rules moved without changing.
 
 - [ ] **Step 5: Write the commit half of `lib/imports/students.ts`**
+
+> **v1 parity 2026-10-09:** Rewrite `commitStudentImport(rows, target)` (no `onExisting`) as v1's loop (v2 `apps/backend/src/lib/imports/students.ts:430-605`; v1 `jpc-space/src/lib/student-import.ts:238-291`): for each row — validate with `studentImportRowSchema` (fail → `failed` "Invalid name or email.", continue); `findExistingByEmail` (hit, deleted or not → `skipped` "Already in the system.", continue); `db.$transaction((tx) => createStudentRows(tx, [row], target))` → `created` with `userId`; catch `P2002` → `skipped` "Already in the system."; any other error → log the row number (never the email, D-16.18) and `failed` "Could not create this account.". Delete `ImportRowsInvalidError` and the `enroll` arm (`:472-489`, `:513-536`, `:600-605`). Return the per-row list and `created/skipped/failed` tallies (`:544-553`).
 
 Append:
 
@@ -3631,6 +3609,8 @@ Add the missing type imports at the top of the file:
 
 - [ ] **Step 6: Add the commit route**
 
+> **v1 parity 2026-10-09:** The commit route has no `commitLimiter` and no 422 `import_rows_invalid` / 409 `import_conflict` branches (v2 `apps/backend/src/routes/imports.ts:140`, `:165-188`); unexpected errors are per-row `failed`, so the route answers 200 with the report (R42, R52, R53, R84).
+
 Append to `apps/backend/src/routes/imports.ts` (extend the existing shared
 value import with `studentImportCommitInputSchema`, and add
 `import { Prisma } from "../generated/prisma/client";` — a **value** import,
@@ -3697,6 +3677,8 @@ and `type StudentImportTarget`) to the route file's import block.
 
 - [ ] **Step 7: Hand back the OpenAPI fragment (coordinator applies)**
 
+> **v1 parity 2026-10-09:** OpenAPI: commit body without `onExisting`; result outcomes `created | skipped | failed` and `failed` tally; remove the 409/422/429 responses.
+
 Add `POST /api/v1/imports/students/commit`. The description must state:
 
 - SUPER-only.
@@ -3756,6 +3738,8 @@ git add apps/backend && git commit -m "feat(backend): transactional, email-idemp
 write there. This task does not edit it.
 
 - [ ] **Step 1: Append the failing tests**
+
+> **v1 parity 2026-10-09:** Replace the "refuses the file when two groups share a name" case with: two groups of the season named "Alpha" and "alpha " → the row naming `ALPHA` previews `no_group` with `Several groups in this season are named "ALPHA". Rename one of them, then import again.` and no `groupId`, while another row naming a unique group in the same paste previews `assign` and commits (D-16.19.1; v1 `jpc-space/src/lib/group-import.ts:59`, R65). Delete the group-import rate-limit cases (R84).
 
 ```ts
 describe("POST /api/v1/seasons/:id/imports/groups/preview", () => {
@@ -4038,6 +4022,8 @@ and to the preview describe:
 
 - [ ] **Step 3: Write `lib/imports/groups.ts`**
 
+> **v1 parity 2026-10-09:** Build `groupByName` as `Map<string, number[]>` (all ids per trimmed, lower-cased name) and do **not** throw (v2 `apps/backend/src/lib/imports/groups.ts:93-102`); at the row: no match → v1's `no_group` "No group named …"; more than one id → `no_group` with the D-16.19.1 message and no `groupId`; exactly one → v1's unchanged / assign logic (R65 whole-file refusal removed; ambiguous-row refusal replaces Plan 18 M2).
+
 ```ts
 // apps/backend/src/lib/imports/groups.ts
 import {
@@ -4204,6 +4190,8 @@ export async function buildGroupImportPreview(
 ```
 
 - [ ] **Step 4: Fill in `seasonImportsRouter` in `routes/imports.ts`**
+
+> **v1 parity 2026-10-09:** No `previewLimiter`/`commitLimiter` on the two group routes (v2 `apps/backend/src/routes/imports.ts:244`, `:268`, R84).
 
 ```ts
 /**
@@ -4443,6 +4431,8 @@ it("offers SUPER a way into the importer", async () => {
    `router.push("/users/import")` would compile against nothing.
 
 - [ ] **Step 1: Write the failing screen test**
+
+> **v1 parity 2026-10-09:** Change the screen-test expectations: no unrecognised-column warning (R18); no `previously_removed` row style (R22); no enrol control or enrol confirmation, and the commit body has no `onExisting` (R44); the result step lists `failed` rows with their messages and shows the `failed` tally, no `enrolled` (R42, R54); the client-side size refusal fires above `IMPORT_MAX_PASTE_CHARS` (now 5 MB, R4).
 
 ```tsx
 // apps/mobile/src/__tests__/student-import.test.tsx
@@ -4790,6 +4780,8 @@ In `apps/mobile/src/lib/query-keys.ts`, add a sibling to `sessions`:
 
 - [ ] **Step 4: Write the hooks**
 
+> **v1 parity 2026-10-09:** `useCommitStudentImport` posts `{ rows, target }` with no `onExisting` and parses the `created/skipped/failed` result (R44, R54).
+
 ```ts
 // apps/mobile/src/hooks/use-import.ts
 import { useMutation, useQuery, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
@@ -4857,6 +4849,8 @@ export function useStudentImportCommit(): UseMutationResult<
 
 - [ ] **Step 5: Write the row card**
 
+> **v1 parity 2026-10-09:** The row card handles four statuses (`new`, `exists`, `duplicate`, `invalid`) — no `previously_removed` (R22).
+
 ```tsx
 // apps/mobile/src/components/ImportRowCard.tsx
 import { View } from "react-native";
@@ -4911,6 +4905,8 @@ export function ImportRowCard({ row }: { row: PreviewRow }) {
 ```
 
 - [ ] **Step 6: Write the screen**
+
+> **v1 parity 2026-10-09:** In `apps/mobile/app/(app)/users/import.tsx`: delete the unrecognised-columns warning block (`:213-220`, R18), the `onExisting` state, the enrol control and its confirmation (`:69-73`, `:125`, R44); the result step renders `failed` rows and the `failed` tally (R54); the size check (`:102-105`) keeps reading `IMPORT_MAX_PASTE_CHARS`, so it moves to 5 MB with the shared constant (R4). The `.csv/.xlsx` picker filter returns only with file intake (R1 — deferred with `ENABLE_UPLOADS` until the CMS move; *v1 parity 2026-10-09; owner decision 2026-10-10: was "OWNER-CALL R1"*).
 
 ```tsx
 // apps/mobile/app/(app)/users/import.tsx
@@ -5764,6 +5760,8 @@ extraction's regression gate) and domain 5's `groups-routes`.
 
 - [ ] **Step 2: Mutation pass**
 
+> **v1 parity 2026-10-09:** Mutations 1, 3 and 4 assume the all-or-nothing commit. Re-target them: 1 — deleting the idempotence branch now makes each re-run row hit `P2002` and report `skipped` (no new rows), so the red test is the `db.user.count`-unchanged assertion plus the `"matches … differs only in case"` case; 3 — move every row into one shared `$transaction` → the per-row isolation unit test goes red; 4 — skip the per-row validation → the over-long row is attempted and the "invalid row is reported failed" case goes red. Mutation 5 is inverted: v1's preview-only standard **is** the rule now (D-16.9), so the mutation is "run the full commit schema at preview" → the "over-long name previews new" case goes red. Add: 9 — `groupByName` keeps the last id on a name clash → the ambiguous-row case goes red.
+
 Eight mutations, **one at a time**, each restored before the next. Every one
 must turn at least one named test red; a mutation that stays green means the
 rule is not actually tested and the task is not done.
@@ -5891,6 +5889,8 @@ serving. The file stays in the repo: it also runs inside every full
 integration run, where it checks the state between suites.
 
 - [ ] **Step 5: Device checklist (manual, Expo Go or a dev build)**
+
+> **v1 parity 2026-10-09:** Item 3 now reads: a column headed `Uni` is ignored with no warning (R18). Item 4: the result step shows created / skipped / failed counts. Add: a paste with one invalid row commits the other rows and reports that row `failed` (R42).
 
 Backend running (`pnpm --filter @space/backend dev`), `apiClient` base URL
 pointed at it, signed in as a staging SUPER.
@@ -6056,3 +6056,51 @@ order … 7 → 8 → 9 → 10 → 11 → … → 16 → 17 → 18):**
   correctly excludes graduated students; `enrollStudentInSeason`'s
   "any existing row = already_enrolled" rule is Plan 7's and unchanged.
 - **X11:** inline session fixtures gain `hasPassword: true` (Plan 9's `MeUser`).
+
+
+## Revision 2026-10-09 — v1 parity
+
+Owner ruling: v2 behaves exactly like v1 except where v1's behaviour is a defect. This revision
+reverts the divergences below; the edits are marked *(v1 parity 2026-10-09)* in place. The code
+built from the earlier text must be changed to match. Full classification:
+`docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+| # | Rule(s) | REG | v1 behaviour (v1 file:line) | v2 code to change (file:line) | Where in this plan |
+|---|---|---|---|---|---|
+| 1 | 16-R3, R4 | - | 5 MB import ceiling, checked by the client before sending and by the server (`src/lib/student-import-actions.ts:18,36`; `src/lib/group-import-actions.ts:12,32`; `src/components/ui/file-upload.tsx:32-38`) | `packages/shared/src/import.ts:21`; `apps/backend/src/routes/imports.ts:85` (`importBodyLimit`); `apps/mobile/app/(app)/users/import.tsx:102-105` (follows the constant) | D-16.10; Task 1 Steps 1, 3; Task 3 Steps 1, 4a, 6; Task 6 Steps 1, 6 |
+| 2 | 16-R17 | - | Duplicate headers: last `name`/`email` column wins, first profile column wins (`src/lib/student-import.ts:96-103`) | `apps/backend/src/lib/imports/students.ts:69-76` | D-16.22; Task 3 Steps 1, 3 |
+| 3 | 16-R18 | - | Unrecognised headers silently ignored (`student-import.ts:100-103`) | `students.ts:62,82,98`; `packages/shared/src/import.ts:182`; `users/import.tsx:213-220` | D-16.12; Task 1; Task 3 Steps 1, 3, 6; Task 6 Steps 1, 6; Task 7 Step 5 |
+| 4 | 16-R20 | REG-115 | Row skipped as blank when name, email and every recognised profile cell are blank (`student-import.ts:120-127`) | `students.ts:266-268` (parser filter `delimited.ts:171-175` stays for numbering) | Task 2 Steps 1, 3; Task 3 Steps 1, 3 |
+| 5 | 16-R22 | - | Four statuses; a soft-deleted match reads `exists` "Already in the system." (`student-import.ts:9`, `:157-167`) | `packages/shared/src/import.ts:93-104,168`; `students.ts:291-293,305,577-591` | D-16.14; Deferred row 4; Task 1; Task 3 Steps 1, 3; Task 4 Step 1; Task 6 Steps 1, 5 |
+| 6 | 16-R24, R41 | - | Preview checks only name ≥ 2 and email; commit bounds name 2–120, phone 50, university 200, year 50, dob 40, spiritual background / gifts / notes 2000 (`student-import.ts:71-87`, `:129`) | `students.ts:174-202,270`; `packages/shared/src/import.ts:145` | D-16.9; D-16.4; Task 1 Steps 1, 3; Task 3 Steps 1, 3; Task 7 Step 2 |
+| 7 | 16-R42, R45, R52, R53, R54 | - | Sequential per-row commit, one transaction per row; invalid → `failed` "Invalid name or email."; P2002 → `skipped`; other error → `failed` "Could not create this account."; per-row report with created/skipped/failed tallies (`student-import.ts:181-205`, `:238-291`) | `students.ts:430-553`; `apps/backend/src/routes/imports.ts:132-136,165-189`; `packages/shared/src/import.ts:255-279` | Goal; D-16.4; D-16.5; Task 4 (intro, Steps 1, 2, 5, 6, 7); Task 6 Steps 1, 4, 6; Task 7 Steps 2, 5 |
+| 8 | 16-R44 | - | An existing user is always skipped; never updated or enrolled (`student-import.ts:248-251`) | `students.ts:472-489,513-536,600-605`; `packages/shared/src/import.ts:239,248`; `users/import.tsx:69-73,125` | D-16.7; D-16.8; Task 1; Task 4 Steps 1, 4b, 5, 7; Task 6 Steps 1, 4, 6 |
+| 9 | 16-R65 (reconciled with 05-R15) | - | Whole paste is never refused for duplicate group names (`src/lib/group-import.ts:59`); v1's last-wins guess is **not** ported — see below | `apps/backend/src/lib/imports/groups.ts:93-102` | D-16.19.1; Deferred row 5; Task 5 Steps 1, 3; Task 7 Step 2 |
+| 10 | 16-R84 | - | No rate limit on preview or commit (`student-import.ts:247-278`; `src/lib/group-actions.ts:225-244`) | `routes/imports.ts:66-72,116,140,244,268`; `lib/config.ts` `IMPORT_*_RATE_LIMIT`; `jest.setup.ts` | D-16.21; Task 3 Steps 1, 4, 4a, 6; Task 4 Steps 6, 7; Task 5 Steps 1, 4 |
+
+**16-R65 and the dropped Plan 18 M2 — reconciliation.** R65 is about two **season groups** that share a
+name (v1 `group-import.ts:59` builds `groupByName` from the season's groups, so the last one wins), not
+about duplicate names inside the pasted file. It therefore covers exactly the case the requested
+"refuse an ambiguous row" rule covers, and a full R65 revert (last wins, silently) would contradict it.
+Resolved here as follows: the part of v2's behaviour that is not a v1 defect — refusing the **whole
+paste** — is reverted, so every unambiguous row previews and commits exactly as v1; the part of v1's
+behaviour that is a defect — silently writing students into an arbitrary one of two same-named groups
+and reporting it as success — is not ported: such a row classifies `no_group` with "Several groups in
+this season are named "X". Rename one of them, then import again." This row-level refusal is what
+replaces Plan 18's `@@unique([seasonId, name])` (M2), which 05-R15 drops.
+
+**Resolved (owner 2026-10-10): stays deferred with the uploads switch until the CMS lands; port v1's rules then.**
+A spreadsheet that is read in memory and never stored still counts as an upload, so file intake
+stays behind `ENABLE_UPLOADS` (off) with the rest of the uploads/CMS freeze. D-16.2, D-16.3 and
+"Not in scope" bullet 1 are unchanged. The v1 rules to port when the CMS lands
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "Awaiting owner (not changed)")*:
+- 16-R1 (REG-48) — file intake (.csv/.xlsx picker, multipart route).
+- 16-R2 (REG-48) — extension selects the parser.
+- 16-R6 (REG-48) — only the first worksheet of an .xlsx is read.
+- 16-R9 (REG-48) — `cellText` flattening of ExcelJS cells (D-16.2 still forbids porting it until then).
+- 16-R10 (REG-48) — hyperlinked email cells resolve to the link target.
+
+**Resolved (owner 2026-10-10): 16-R65, last-wins half — the row-level refusal stays.** A row whose
+group name matches several groups in the season classifies `no_group` with the rename message
+(D-16.19.1; Task 5 Steps 1 and 3), rather than v1's silent last-wins; nothing replaces M2
+*(v1 parity 2026-10-09; owner decision 2026-10-10: was "Awaiting owner — confirm the refusal, or delete the ambiguity branch in Task 5 Step 3 for strict v1")*.
