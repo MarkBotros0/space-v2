@@ -13,12 +13,13 @@ import { useTheme } from "../theme";
 import { Button, Card, ErrorState, LoadingState, Text } from "../ui";
 
 /**
- * Roles GET /assignments/:id/tracker answers: SUPER and season ADMINs with
- * the whole roster, LEADERs narrowed to their own groups. It refuses MENTOR
- * and STUDENT, so the screen does not ask on their behalf. This decides only
- * whether to ask; the server is the gate.
+ * Roles GET /assignments/:id/tracker answers: SUPER and season ADMINs only, as
+ * v1 (assignments-query.ts:127-129; 07-assignments R59). It refuses LEADER,
+ * MENTOR and STUDENT, so the screen does not ask on their behalf. This decides
+ * only whether to ask; the server is the gate.
+ * v1 parity 2026-10-09: was "LEADERs too, narrowed to their own groups".
  */
-const TRACKER_ROLES: ReadonlySet<UserRole> = new Set<UserRole>(["SUPER", "ADMIN", "LEADER"]);
+const TRACKER_ROLES: ReadonlySet<UserRole> = new Set<UserRole>(["SUPER", "ADMIN"]);
 
 function ManageActions({ detail }: { detail: AssignmentDetail }) {
   const theme = useTheme();
