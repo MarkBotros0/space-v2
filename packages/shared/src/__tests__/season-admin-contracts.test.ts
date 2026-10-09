@@ -3,6 +3,7 @@ import {
   checkInStateSchema,
   createSessionRequestSchema,
   groupAssignmentsRequestSchema,
+  groupWriteRequestSchema,
   groupDetailSchema,
   seasonDetailSchema,
   sessionDetailSchema,
@@ -126,8 +127,20 @@ describe("groupAssignmentsRequestSchema (D-16.12)", () => {
       }).success,
     ).toBe(false);
   });
-  it("refuses more than 500 rows", () => {
-    const assignments = Array.from({ length: 501 }, (_, i) => ({ studentUserId: i + 1, groupId: null }));
-    expect(groupAssignmentsRequestSchema.safeParse({ assignments }).success).toBe(false);
+  // v1 parity 2026-10-09 (spec 05 R48): v1's cap of 2000, group-actions.ts:183-190.
+  it("accepts 2000 rows and refuses 2001", () => {
+    const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ studentUserId: i + 1, groupId: null }));
+    expect(groupAssignmentsRequestSchema.safeParse({ assignments: rows(2000) }).success).toBe(true);
+    expect(groupAssignmentsRequestSchema.safeParse({ assignments: rows(2001) }).success).toBe(false);
+  });
+});
+
+describe("groupWriteRequestSchema (v1 parity 2026-10-09, spec 05 R14)", () => {
+  it("accepts any number of leaders and students, as v1", () => {
+    const ids = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
+    expect(
+      groupWriteRequestSchema.safeParse({ name: "Big", leaderIds: ids(25), studentIds: ids(600) }).success,
+    ).toBe(true);
+    expect(groupWriteRequestSchema.safeParse({ name: "Bad", studentIds: [0] }).success).toBe(false);
   });
 });

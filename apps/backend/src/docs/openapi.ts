@@ -1222,12 +1222,7 @@ export const openApiDocument = {
           name: { type: ["string", "null"] },
           email: { type: "string" },
           groupId: { type: ["integer", "null"], description: "This season's group, from SeasonEnrollment.groupId (C9)." },
-          groupName: { type: ["string", "null"] },
-          otherSeasonGroup: {
-            type: ["object", "null"],
-            description: "The student's current group in ANOTHER season. Assigning them here removes it (GroupStudent is globally unique).",
-            properties: { groupName: { type: "string" }, seasonCode: { type: "string" } },
-          },
+          groupName: { type: ["string", "null"], description: "A student whose only group is in another season reads as unassigned, as v1." },
         },
       },
       GroupAssignmentsRequest: {
@@ -1236,7 +1231,7 @@ export const openApiDocument = {
         properties: {
           assignments: {
             type: "array",
-            maxItems: 500,
+            maxItems: 2000,
             items: {
               type: "object",
               required: ["studentUserId", "groupId"],
@@ -1290,16 +1285,14 @@ export const openApiDocument = {
           description: { type: ["string", "null"], maxLength: 2000 },
           leaderIds: {
             type: "array",
-            maxItems: 20,
             items: { type: "integer" },
             description: "Must all be users with the LEADER role. Replaces the current set.",
           },
           studentIds: {
             type: "array",
-            maxItems: 500,
             items: { type: "integer" },
             description:
-              "Must all already be enrolled in the season. Replaces the current roster; a student dropped from the list keeps their enrolment and loses only the group pointer.",
+              "Must all be live users with the STUDENT role. As v1, a student not yet in the season is enrolled (ACTIVE) by the save; an existing enrolment keeps its status and history and only its group moves. Replaces the current roster; a student dropped from the list keeps their enrolment and loses only the group pointer.",
           },
         },
       },
@@ -1313,7 +1306,7 @@ export const openApiDocument = {
             type: "string",
             format: "email",
             description:
-              "Omitted entirely for a STUDENT caller. A student may read their own group, but v1 only ever put this payload on staff pages — showing every member of a group each other's address is not a change this API makes.",
+              "For a STUDENT caller, present on leaders (v1's student season view links leaders by email) and omitted on students — a student never sees a peer's address.",
           },
         },
       },
@@ -2534,7 +2527,7 @@ export const openApiDocument = {
                 seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonListItem" } },
               },
             },
-            "Visible seasons, newest year first.",
+            "Visible seasons, ordered status ascending (DRAFT, ACTIVE, COMPLETED, ARCHIVED) then startDate descending, as v1.",
           ),
           401: errRef("Unauthorized"),
         },
@@ -2550,7 +2543,7 @@ export const openApiDocument = {
           400: errRef("BadRequest"),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
-          409: conflict("`code_taken` — the slugified code is in use (also returned for the unique-index race, D15; D15's generic `conflict` is deliberately more specific here)."),
+          409: conflict("`code_taken` — the slugified code is in use (also returned for the unique-index race, D15; D15's generic `conflict` is deliberately more specific here). As v1, the body carries `error.details.fieldErrors = { code: \"Already in use.\" }` beside the message \"A season with that code already exists.\""),
         },
       },
     },
@@ -2580,14 +2573,14 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: conflict("`forbidden` (not SUPER, not this season's ADMIN) or `forbidden_field` (ADMIN sent an identity field)."),
           404: errRef("NotFound"),
-          409: conflict("`code_taken`."),
+          409: conflict("`code_taken` (with `details.fieldErrors.code`)."),
         },
       },
       delete: {
         tags: ["Seasons"],
         summary: "Soft-delete a season",
         description:
-          "SUPER only. Refused with 409 `season_in_use` while the season has any enrollment or session — archive it instead (decision on spec 02 D4). On success clears every StudentProfile.activeSeasonId pointing at it, in the same transaction.",
+          "SUPER only. As v1, soft-deletes whatever the season contains and touches only the season row: StudentProfile.activeSeasonId pointers and SeasonAdmin rows are left as they are. Deleting twice is 404.",
         parameters: [idParam],
         responses: {
           200: ok({ type: "object", properties: { deleted: { type: "boolean" } } }, "Deleted."),
@@ -2595,7 +2588,6 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
-          409: conflict("`season_in_use`."),
         },
       },
     },
@@ -2604,7 +2596,7 @@ export const openApiDocument = {
         tags: ["Seasons"],
         summary: "Duplicate a season's structure",
         description:
-          "SUPER only. Creates a DRAFT season copying program, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is 404.",
+          "SUPER only. Creates a DRAFT season copying program, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). As v1, a soft-deleted source can be duplicated.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -2629,7 +2621,7 @@ export const openApiDocument = {
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
-          409: conflict("`code_taken`."),
+          409: conflict("`code_taken` (with `details.fieldErrors.code`)."),
         },
       },
     },
@@ -2673,7 +2665,7 @@ export const openApiDocument = {
         tags: ["Groups"],
         summary: "Bulk-assign students to this season's groups",
         description:
-          "Season-admin only; at most 500 rows, each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
+          "Season-admin only; at most 2000 rows (v1's cap; the writes are batched), each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
         parameters: [idParam],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GroupAssignmentsRequest" } } } },
         responses: {
@@ -2703,7 +2695,7 @@ export const openApiDocument = {
         tags: ["Groups"],
         summary: "Create a group in a season",
         description:
-          "Season-admin power. Refuses a duplicate name within the season — v1 has no such constraint and its CSV importer matches groups *by name*, so two groups sharing one silently misroute an import. A real constraint needs a migration; this is the check available now.",
+          "Season-admin power. As v1, two groups in one season may share a name (the importer refuses an ambiguous name instead). Picked students who are not yet in the season are enrolled (ACTIVE).",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -2721,7 +2713,7 @@ export const openApiDocument = {
           404: errRef("NotFound"),
           409: {
             description:
-              "`name_taken`, `invalid_leader` (a named leader lacks the LEADER role) or `not_enrolled` (a named student is not in this season).",
+              "`invalid_leader` (a named leader lacks the LEADER role) or `invalid_student` (a named student is not a live STUDENT user).",
             content: { "application/json": { schema: errorResponse } },
           },
         },
@@ -2861,6 +2853,33 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/groups/student-options": {
+      get: {
+        tags: ["Groups"],
+        summary: "Students a group form may pick from",
+        description:
+          "Season-admin (of any season) or SUPER only. Every live STUDENT user, name-ordered — v1's group form offered every student so an admin can enrol a new one while building a group; saving the form enrols them.",
+        responses: {
+          200: ok(
+            {
+              type: "object",
+              properties: {
+                students: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: { id: { type: "integer" }, name: { type: ["string", "null"] }, email: { type: "string" } },
+                  },
+                },
+              },
+            },
+            "Student users.",
+          ),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+        },
+      },
+    },
     "/api/v1/groups/{id}/impact": {
       get: {
         tags: ["Groups"],
@@ -2933,7 +2952,7 @@ export const openApiDocument = {
           403: errRef("Forbidden"),
           404: errRef("NotFound"),
           409: {
-            description: "`name_taken`, `invalid_leader` or `not_enrolled`.",
+            description: "`invalid_leader` or `invalid_student`.",
             content: { "application/json": { schema: errorResponse } },
           },
         },
@@ -3785,7 +3804,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Create a session or weekly series",
         description:
-          "Season-admin power. `repeatWeeks` (1–26; v1 clamped silently, v2 refuses) creates that many sessions one calendar week apart **in the organisation timezone** (ORG_TIMEZONE), so the wall-clock time holds across DST; they share a fresh recurrenceGroupId. Creation lives here with `seasonId` in the body, not under /seasons/:id, so the season and session write workstreams never share a route file — do not move it.",
+          "Season-admin power. `repeatWeeks` (clamped silently to 1–26, absent = 1, as v1) creates that many sessions one calendar week apart **in the organisation timezone** (ORG_TIMEZONE), so the wall-clock time holds across DST; they share a fresh recurrenceGroupId. Creation lives here with `seasonId` in the body, not under /seasons/:id, so the season and session write workstreams never share a route file — do not move it.",
         requestBody: {
           required: true,
           content: {
@@ -3803,7 +3822,7 @@ export const openApiDocument = {
                   location: { type: ["string", "null"], maxLength: 200 },
                   youtubeUrl: { type: ["string", "null"], format: "uri" },
                   description: { type: ["string", "null"], maxLength: 2000 },
-                  repeatWeeks: { type: "integer", minimum: 1, maximum: 26, default: 1 },
+                  repeatWeeks: { type: "integer", default: 1, description: "Clamped to 1–26 (values outside are not refused)." },
                 },
               },
             },
@@ -3824,7 +3843,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Calendar sessions across seasons, windowed",
         description:
-          "Season set by role: SUPER all ACTIVE seasons (or any one live season via seasonId); ADMIN their seasons; LEADER every season they lead a group in; STUDENT/MENTOR 403. seasonId narrows within that set and is 403 outside it. Window [from, to) defaults to org-midnight today + 8 calendar weeks; one bound alone extends 8 weeks; span ≤ 120 days. checkInToken only on rows of seasons the caller administers.",
+          "Season set by role: SUPER all ACTIVE seasons (or any one live season via seasonId); ADMIN their seasons; LEADER every season they lead a group in; STUDENT/MENTOR 403. seasonId narrows within that set and is 403 outside it. The window is optional and uncapped, as v1's super calendar: no bounds returns every session of the scoped seasons; `from` alone is [from, ∞); `to` alone is (−∞, to); both is [from, to). Only an inverted window is 400. `from`/`to`/`fromDayKey`/`toDayKey` are null on an open side; `todayDayKey` is the org's today. checkInToken only on rows of seasons the caller administers.",
         parameters: [
           { name: "from", in: "query", schema: { type: "string", format: "date-time" } },
           { name: "to", in: "query", schema: { type: "string", format: "date-time" } },
@@ -3836,10 +3855,11 @@ export const openApiDocument = {
               type: "object",
               properties: {
                 sessions: { type: "array", items: { $ref: "#/components/schemas/SessionListItem" } },
-                from: { type: "string", format: "date-time" },
-                to: { type: "string", format: "date-time" },
-                fromDayKey: { type: "string" },
-                toDayKey: { type: "string" },
+                from: { type: ["string", "null"], format: "date-time" },
+                to: { type: ["string", "null"], format: "date-time" },
+                fromDayKey: { type: ["string", "null"] },
+                toDayKey: { type: ["string", "null"] },
+                todayDayKey: { type: "string" },
               },
             },
             "Sessions in the window.",
@@ -4015,7 +4035,7 @@ export const openApiDocument = {
         tags: ["Sessions"],
         summary: "Mark attendance",
         description:
-          "Upserts every entry in one transaction. `lateMinutes` is stored only when `status` is LATE; any other status clears it, and an omitted `notes` clears the column.",
+          "Upserts every entry in one transaction. `lateMinutes` is stored only when `status` is LATE; any other status clears it, and an omitted `notes` clears the column. After the save the low-attendance flag runs (best effort) — except for `consoleOverride: true`, the check-in console's single-student override, which never flags, as v1.",
         parameters: [idParam],
         requestBody: {
           required: true,
@@ -4026,6 +4046,7 @@ export const openApiDocument = {
                 required: ["entries"],
                 properties: {
                   entries: { type: "array", items: { $ref: "#/components/schemas/AttendanceEntry" } },
+                  consoleOverride: { type: "boolean", description: "The check-in console's override: exactly one entry, no low-attendance flag (v1 manualOverrideAction)." },
                 },
               },
             },

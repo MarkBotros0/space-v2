@@ -89,6 +89,27 @@ describe("GET /api/v1/groups/leader-options (D-16.14)", () => {
   });
 });
 
+// v1 parity 2026-10-09 (spec 05 R18/R78): v1's picker lists every live student.
+describe("GET /api/v1/groups/student-options", () => {
+  it("lists live STUDENT users, name asc, for a season admin and a SUPER", async () => {
+    for (const t of [adminToken, superToken]) {
+      const res = await request(app).get("/api/v1/groups/student-options").set("authorization", `Bearer ${t}`);
+      expect(res.status).toBe(200);
+      const rows = res.body.data.students as { id: number; name: string | null; email: string }[];
+      const ids = rows.map((r) => r.id);
+      expect(ids).toEqual(expect.arrayContaining(studentIds));
+      expect(ids).not.toContain(leaderId);
+      expect(Object.keys(rows[0] ?? {}).sort()).toEqual(["email", "id", "name"]);
+    }
+  });
+
+  it("refuses an ADMIN with no season and a LEADER", async () => {
+    for (const t of [idleAdminToken, leaderToken]) {
+      expect((await request(app).get("/api/v1/groups/student-options").set("authorization", `Bearer ${t}`)).status).toBe(403);
+    }
+  });
+});
+
 describe("canManage on GET /api/v1/groups/:id (D-16.15)", () => {
   it("is true for the season admin and false for the group's own leader", async () => {
     const admin = await request(app).get(`/api/v1/groups/${groupId}`).set("authorization", `Bearer ${adminToken}`);
