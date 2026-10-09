@@ -1421,11 +1421,11 @@ export const openApiDocument = {
           enrolledAt: { type: "string", format: "date-time" },
           completedAt: { type: ["string", "null"], format: "date-time" },
           droppedAt: { type: ["string", "null"], format: "date-time" },
-          dropReason: { type: ["string", "null"], description: "Always null for MENTOR and LEADER." },
+          dropReason: { type: ["string", "null"], description: "Null only in the `public` shape, which no caller receives today (every staff role gets `internal`, R71)." },
           attendancePct: {
             type: ["integer", "null"],
             description:
-              "Whole-number % of the season's past sessions (from the student's own enrolment date) marked PRESENT or LATE — the engagement formula, any enrolment status (REG-83). Staff only: null in the student's own view and for a season outside the caller's scope (an ADMIN's other seasons, a LEADER's other groups).",
+              "Whole-number % of the season's past sessions (from the student's own enrolment date) marked PRESENT or LATE — the engagement formula, any enrolment status (REG-83). Staff only: null in the student's own view.",
           },
         },
       },
@@ -1454,10 +1454,20 @@ export const openApiDocument = {
           seasonTitle: { type: "string" },
         },
       },
+      StudentDocumentItem: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          originalName: { type: "string" },
+          sizeBytes: { type: "integer" },
+          mimeType: { type: "string" },
+          uploadedAt: { type: "string", format: "date-time" },
+        },
+      },
       StudentDetail: {
         type: "object",
         description:
-          "Three role-shaped payloads share this envelope; only `profile` differs. **Fields withheld from a role are absent from the wire, not null.** `public` (MENTOR, LEADER): university, year, gifts, activeSeasonId/Title/Code. `private` (the student themselves): public + phone, dateOfBirth, spiritualBackground. `internal` (SUPER, ADMIN): private + notes. The subject never receives `notes`.",
+          "Three role-shaped payloads share this envelope; only `profile` differs. **Fields withheld from a role are absent from the wire, not null.** `internal` (every staff role — SUPER, ADMIN, MENTOR, LEADER — as v1's detail showed leaders and mentors the full profile, R71): private + notes. `private` (the student themselves): public + phone, dateOfBirth, spiritualBackground. `public`: university, year, gifts, activeSeasonId/Title/Code — kept in the contract, returned to no caller today. The subject never receives `notes`.",
         properties: {
           id: { type: "integer" },
           name: { type: "string" },
@@ -1468,7 +1478,7 @@ export const openApiDocument = {
             description: "Advisory current group (GroupStudent).",
             oneOf: [{ type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } }, { type: "null" }],
           },
-          enrollments: { type: "array", items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }, description: "`enrolledAt` descending. For a LEADER only the rows naming one of their groups." },
+          enrollments: { type: "array", items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }, description: "`enrolledAt` descending. Every row, for every admitted viewer (R71)." },
           profile: {
             type: "object",
             properties: {
@@ -2386,7 +2396,7 @@ export const openApiDocument = {
       get: {
         tags: ["Me"],
         summary: "The caller's past seasons (students and alumni)",
-        description: "Self only. A current student's active season is excluded; an alumnus sees every enrollment. Soft-deleted seasons are hidden.",
+        description: "Self only. A current student's active season is excluded; an alumnus sees every enrollment. Soft-deleted seasons are included, as v1 (02-seasons R38).",
         responses: {
           200: ok({ type: "object", properties: { seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonHistoryRow" } } } }, "Past seasons, most recent enrollment first."),
           401: errRef("Unauthorized"),
@@ -2399,7 +2409,7 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "The caller's current season — progress, group, next sessions (students)",
         responses: {
-          200: ok({ type: "object", properties: { season: { oneOf: [{ $ref: "#/components/schemas/MySeason" }, { type: "null" }] } } }, "Null when the student has no active season."),
+          200: ok({ type: "object", properties: { season: { oneOf: [{ $ref: "#/components/schemas/MySeason" }, { type: "null" }] } } }, "Null when the student has no active season. A soft-deleted active season is still returned, as v1 (02-seasons R27)."),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
         },
@@ -2410,7 +2420,7 @@ export const openApiDocument = {
         tags: ["Me"],
         summary: "The caller's absence budget, streak and past-session attendance (students)",
         responses: {
-          200: ok({ $ref: "#/components/schemas/MyAttendance" }, "Empty shape (season null) when there is no active season."),
+          200: ok({ $ref: "#/components/schemas/MyAttendance" }, "Empty shape (season null) when there is no active season. A soft-deleted active season still counts, as v1 (02-seasons R27)."),
           401: errRef("Unauthorized"),
           403: errRef("Forbidden"),
         },
@@ -2429,8 +2439,8 @@ export const openApiDocument = {
       },
       patch: {
         tags: ["Me"],
-        summary: "Edit the caller's own StudentProfile columns (students; alumni are read-only)",
-        description: "PATCH: absent = untouched, '' or null = cleared. Any key outside university/year/phone/dateOfBirth/spiritualBackground/gifts is refused 403 forbidden_field — name is PATCH /me, email is staff-only.",
+        summary: "Edit the caller's own name and StudentProfile columns (students; alumni are read-only)",
+        description: "PATCH: absent = untouched, '' or null = cleared. Accepts name (trimmed, 2–120, written to User.name in the same transaction) and university/year/phone/dateOfBirth/spiritualBackground/gifts, as v1's student form. `notes` and `activeSeasonId` are silently dropped and the rest saves (v1 R24). `email` — staff-only — and any other key is refused 403 forbidden_field.",
         requestBody: {
           required: true,
           content: {
@@ -2439,6 +2449,7 @@ export const openApiDocument = {
                 type: "object",
                 additionalProperties: false,
                 properties: {
+                  name: { type: "string", minLength: 2, maxLength: 120 },
                   university: { type: ["string", "null"], maxLength: 160 },
                   year: { type: ["string", "null"], maxLength: 40 },
                   phone: { type: ["string", "null"], maxLength: 60 },
@@ -3144,10 +3155,10 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Student list (active, alumni or dropped)",
         description:
-          "One endpoint serves all three list surfaces, selected by `status` (default `active`).\n\nScope is per role: SUPER and MENTOR read every student; ADMIN gets the students ever enrolled in their seasons; LEADER gets the students whose **enrollment** names one of their groups (C9 — never GroupStudent). `alumni` (graduationYear set) is refused with 403 `forbidden` to LEADER. `dropped` lists WITHDRAWN enrollments, not students (a student dropped from three seasons appears three times; rows carry `droppedEnrollment`) and is SUPER/ADMIN only — it hands out drop reasons, so MENTOR and LEADER get 403. STUDENT is refused on every surface.\n\nPagination is cursor-based: pass the last row's id (the enrollment id when `status=dropped`) as `cursor`; `nextCursor` is null on the last page. `total` is the whole population under the current filters, not the page size (D14). `q` matches name, email or university, case-insensitive.",
+          "One endpoint serves all three list surfaces, selected by `status` (default `active`).\n\nScope is per role: SUPER and MENTOR read every student; ADMIN gets the students ever enrolled in their seasons. LEADER has no students list, as v1 (R28) — 403 `forbidden` on every surface; leaders reach their students through My groups. `dropped` lists WITHDRAWN enrollments, not students (a student dropped from three seasons appears three times; rows carry `droppedEnrollment`) and is SUPER/ADMIN only — it hands out drop reasons, so MENTOR and LEADER get 403. STUDENT is refused on every surface.\n\nPagination is cursor-based: pass the last row's id (the enrollment id when `status=dropped`) as `cursor`; `nextCursor` is null on the last page. `total` is the whole population under the current filters, not the page size (D14). `q` matches name, email or university, case-insensitive.\n\n`alumni` returns every alumnus in one response (graduation year desc, then name), as v1 (R41): `q`, `cursor` and `limit` are ignored and `nextCursor` is always null.",
         parameters: [
           { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
-          { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
+          { name: "seasonId", in: "query", description: "The student's active season (`activeSeasonId`, the season the row shows), as v1's season filter (R35). For `status=dropped`, the dropped enrollment's season.", schema: { type: "integer", minimum: 1 } },
           { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`, the GroupStudent pointer) is this group; `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
           { name: "sort", in: "query", description: "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)", schema: { type: "string", enum: ["name", "university", "season", "group"] } },
           { name: "dir", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "asc" } },
@@ -3216,7 +3227,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "A student's attendance history (staff only)",
         description:
-          "v1's student record listed the 100 most recent attendance marks across seasons (REG-83). Staff only — STUDENT, the subject included, gets 403. Row scope follows the underlying gates: SUPER and MENTOR every season; ADMIN only seasons they administer; LEADER only seasons whose enrolment names one of their groups (C9). Newest session first. 403 before 404.",
+          "v1's student record listed the 100 most recent attendance marks across seasons (REG-83). Staff only — STUDENT, the subject included, gets 403. Any staff caller who passes the detail's row gate sees every season the student was enrolled in, as v1 (R73). Newest session first. 403 before 404.",
         parameters: [idParam],
         responses: {
           200: ok(
@@ -3235,7 +3246,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "A student's submissions (staff only)",
         description:
-          "v1's student record listed the student's 100 most recent submissions (REG-83). Same staff-only gate and row scope as the attendance history. Newest first; a DRAFT is never listed (the student's private work in progress, hidden from every reviewer surface). Link a row to `GET /submissions/{publicId}`.",
+          "v1's student record listed the student's 100 most recent submissions (REG-83). Same staff-only gate and row scope as the attendance history: every enrolled season. Newest first; DRAFT rows are included, as v1 (R77). Link a row to `GET /submissions/{publicId}`.",
         parameters: [idParam],
         responses: {
           200: ok(
@@ -3249,12 +3260,31 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/students/{id}/documents": {
+      get: {
+        tags: ["Students"],
+        summary: "A student's documents (SUPER/ADMIN, read-only)",
+        description:
+          "v1's Documents tab (R80): name, size, MIME type and upload time, newest first. SUPER and ADMIN only (ADMIN also needs the detail's row gate); every other role gets 403. No download link and no storage path. 403 before 404.",
+        parameters: [idParam],
+        responses: {
+          200: ok(
+            { type: "object", properties: { documents: { type: "array", items: { $ref: "#/components/schemas/StudentDocumentItem" } } } },
+            "The documents.",
+          ),
+          400: errRef("BadRequest"),
+          401: errRef("Unauthorized"),
+          403: errRef("Forbidden"),
+          404: errRef("NotFound"),
+        },
+      },
+    },
     "/api/v1/students/{id}": {
       get: {
         tags: ["Students"],
         summary: "Student detail, shaped by the caller's role",
         description:
-          "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9). Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nThe payload is narrowed per role, not just the access (C8): see `StudentDetail` for which profile fields exist on the wire for MENTOR/LEADER (phone, dateOfBirth, spiritualBackground, notes and per-row dropReason are absent) and why the subject never receives `notes`.",
+          "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9). Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nThe payload is shaped per role: every staff role gets the full profile including notes and drop reasons (as v1, R71); the subject never receives `notes`. See `StudentDetail`.",
         parameters: [idParam],
         responses: {
           200: ok({ $ref: "#/components/schemas/StudentDetail" }, "The student."),
@@ -3268,7 +3298,7 @@ export const openApiDocument = {
         tags: ["Students"],
         summary: "Edit a student's profile",
         description:
-          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The subject may edit university, year, phone, dateOfBirth, spiritualBackground and gifts only (never `name` — that is PATCH /me — nor `email`, `notes` or `activeSeasonId`). ADMIN (of a season with an ACTIVE enrollment for the student) adds `name`, `email` and `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
+          "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field`. The subject may edit name, university, year, phone, dateOfBirth, spiritualBackground and gifts; `email` is refused (staff-only); `notes` and `activeSeasonId` in a self-edit are silently dropped and the rest saves, as v1 (R24). ADMIN (of a season with an ACTIVE enrollment for the student) adds `name`, `email` and `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
         parameters: [idParam],
         requestBody: {
           required: true,

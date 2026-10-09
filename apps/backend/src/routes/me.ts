@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 // Relative, not "@space/shared" — the rootDir emit trap (see routes/auth.ts).
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
+  OWN_PROFILE_DROPPED_FIELDS,
   OWN_PROFILE_FIELDS,
   changePasswordRequestSchema,
   deviceRegistrationSchema,
@@ -179,10 +180,12 @@ meRouter.get("/profile", requireAuth, async (req, res) => {
 });
 
 /*
- * The student's own StudentProfile columns — and nothing else (Plan 11
- * Decision 1, spec 18 D2/D8). Name is PATCH /me; email is staff-only; notes
- * and activeSeasonId never (R23). Keys are checked RAW, before the schema,
- * so the refusal names the field instead of v1's silent drop (R24).
+ * The student's own name and StudentProfile columns (Plan 11 Decision 1;
+ * v1 `student-actions.ts:24,103-135`, 18-settings R38). `email` is
+ * staff-only (spec 18 D2/D8, REG-12 KEEP-FIX) and refused by name; `notes`
+ * and `activeSeasonId` are silently dropped and the rest saves, as v1
+ * (06-students R24; v1 parity 2026-10-09). Any other key is refused. Keys are
+ * checked RAW, before the schema, so the refusal names the field.
  */
 meRouter.patch("/profile", requireAuth, async (req, res) => {
   const user = requireUser(req);
@@ -193,12 +196,14 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
   if (typeof req.body !== "object" || req.body === null || Array.isArray(req.body)) {
     return apiError(res, "bad_request", "Invalid profile body.", 400);
   }
-  for (const key of Object.keys(req.body as Record<string, unknown>)) {
+  const rawBody: Record<string, unknown> = { ...(req.body as Record<string, unknown>) };
+  for (const key of OWN_PROFILE_DROPPED_FIELDS) delete rawBody[key];
+  for (const key of Object.keys(rawBody)) {
     if (!OWN_PROFILE_KEYS.has(key)) {
       return apiError(res, "forbidden_field", `Field "${key}" is not editable here.`, 403);
     }
   }
-  const parsed = updateOwnProfileInputSchema.safeParse(req.body);
+  const parsed = updateOwnProfileInputSchema.safeParse(rawBody);
   if (!parsed.success) {
     return apiError(res, "bad_request", parsed.error.issues[0]?.message ?? "Invalid profile body.", 400);
   }
@@ -220,11 +225,17 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
     gifts: body.gifts,
   };
   // Upsert, as Plan 7 does: v1's unconditional update threw for a STUDENT
-  // with no profile row (spec 06 §2).
-  await db.studentProfile.upsert({
-    where: { userId: user.userId },
-    create: { userId: user.userId, ...data },
-    update: data,
+  // with no profile row (spec 06 §2). The name write shares the transaction,
+  // as v1's user + profile update did.
+  await db.$transaction(async (tx) => {
+    if (body.name !== undefined) {
+      await tx.user.update({ where: { id: user.userId }, data: { name: body.name } });
+    }
+    await tx.studentProfile.upsert({
+      where: { userId: user.userId },
+      create: { userId: user.userId, ...data },
+      update: data,
+    });
   });
 
   const profile = await loadMyProfile(user.userId);
