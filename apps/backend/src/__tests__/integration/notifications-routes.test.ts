@@ -11,7 +11,6 @@ const app = createApp();
 let aliceId: number;
 let bobId: number;
 let aliceToken: string;
-let bobToken: string;
 
 async function seedFor(userId: number, count: number, link = "/student/assignments/41") {
   await db.notification.createMany({
@@ -33,7 +32,6 @@ beforeAll(async () => {
   aliceId = alice.id;
   bobId = bob.id;
   aliceToken = await login(app, alice.email);
-  bobToken = await login(app, bob.email);
 });
 
 afterEach(async () => {
@@ -56,8 +54,7 @@ describe("GET /api/v1/notifications", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.items).toHaveLength(3);
     expect(res.body.data.unreadCount).toBe(3);
-    // v1's list has no paging (R33, R39).
-    expect(res.body.data).not.toHaveProperty("nextCursor");
+    expect(res.body.data.nextCursor).toBeNull();
     // D1: the client never sees a bare v1 path it has to parse.
     expect(res.body.data.items[0].target).toEqual({ entityType: "assignment", entityId: 41 });
     expect(res.body.data.items[0].readAt).toBeNull();
@@ -90,31 +87,42 @@ describe("GET /api/v1/notifications", () => {
     expect(unread).toBe(2);
   });
 
-  it("returns v1's newest 100 in one list, createdAt desc, no cursor (R33, R39)", async () => {
-    const base = Date.now() - 1_000_000;
-    await db.notification.createMany({
-      data: Array.from({ length: 101 }, (_, i) => ({
-        userId: aliceId,
-        type: "SUBMISSION_REVIEWED" as const,
-        title: `space-v2-test notification ${i}`,
-        body: null,
-        link: "/student/assignments/41",
-        createdAt: new Date(base + i * 1000),
-      })),
+  it("pages by cursor, newest first", async () => {
+    await seedFor(aliceId, 5);
+
+    const first = await request(app)
+      .get("/api/v1/notifications?limit=2")
+      .set("authorization", `Bearer ${aliceToken}`);
+    expect(first.body.data.items).toHaveLength(2);
+    expect(first.body.data.nextCursor).toBe(first.body.data.items[1].id);
+
+    const second = await request(app)
+      .get(`/api/v1/notifications?limit=2&cursor=${first.body.data.nextCursor}`)
+      .set("authorization", `Bearer ${aliceToken}`);
+    expect(second.body.data.items).toHaveLength(2);
+    // Descending by id, and the cursor row itself is skipped.
+    expect(second.body.data.items[0].id).toBeLessThan(first.body.data.items[1].id);
+
+    const ids = [...first.body.data.items, ...second.body.data.items].map(
+      (i: { id: number }) => i.id,
+    );
+    expect(new Set(ids).size).toBe(4);
+  });
+
+  it("filters to unread when asked", async () => {
+    await seedFor(aliceId, 2);
+    const rows = await db.notification.findMany({ where: { userId: aliceId }, select: { id: true } });
+    await db.notification.update({
+      where: { id: rows[0]!.id },
+      data: { readAt: new Date() },
     });
 
     const res = await request(app)
-      .get("/api/v1/notifications?limit=2&unreadOnly=true")
+      .get("/api/v1/notifications?unreadOnly=true")
       .set("authorization", `Bearer ${aliceToken}`);
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.items).toHaveLength(100);
-    expect(res.body.data).not.toHaveProperty("nextCursor");
-    // Newest first; the oldest (index 0) falls off.
-    expect(res.body.data.items[0].title).toBe("space-v2-test notification 100");
-    expect(res.body.data.items[99].title).toBe("space-v2-test notification 1");
-    // The count is real, not a filter over the 100 (R37).
-    expect(res.body.data.unreadCount).toBe(101);
+    expect(res.body.data.items).toHaveLength(1);
+    expect(res.body.data.unreadCount).toBe(1);
   });
 
   it("refuses an anonymous caller", async () => {
@@ -138,7 +146,7 @@ describe("GET /api/v1/notifications/unread-count", () => {
 });
 
 describe("POST /api/v1/notifications/read", () => {
-  it("refuses the ids form — v1 has mark-all only (R47)", async () => {
+  it("marks the given ids and reports the count", async () => {
     await seedFor(aliceId, 3);
     const rows = await db.notification.findMany({ where: { userId: aliceId }, select: { id: true } });
 
@@ -147,8 +155,28 @@ describe("POST /api/v1/notifications/read", () => {
       .set("authorization", `Bearer ${aliceToken}`)
       .send({ ids: [rows[0]!.id] });
 
-    expect(res.status).toBe(400);
-    expect(await db.notification.count({ where: { userId: aliceId, readAt: null } })).toBe(3);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ marked: 1 });
+    expect(await db.notification.count({ where: { userId: aliceId, readAt: null } })).toBe(2);
+  });
+
+  it("is idempotent — a repeat marks zero and never re-stamps readAt (R44)", async () => {
+    await seedFor(aliceId, 1);
+    const row = (await db.notification.findFirst({ where: { userId: aliceId } }))!;
+
+    await request(app)
+      .post("/api/v1/notifications/read")
+      .set("authorization", `Bearer ${aliceToken}`)
+      .send({ ids: [row.id] });
+    const firstStamp = (await db.notification.findUnique({ where: { id: row.id } }))!.readAt;
+
+    const repeat = await request(app)
+      .post("/api/v1/notifications/read")
+      .set("authorization", `Bearer ${aliceToken}`)
+      .send({ ids: [row.id] });
+
+    expect(repeat.body.data).toEqual({ marked: 0 });
+    expect((await db.notification.findUnique({ where: { id: row.id } }))!.readAt).toEqual(firstStamp);
   });
 
   it("marks everything with all: true", async () => {
@@ -163,38 +191,20 @@ describe("POST /api/v1/notifications/read", () => {
     expect(await db.notification.count({ where: { userId: aliceId, readAt: null } })).toBe(0);
   });
 
-  it("is idempotent — a repeat marks zero and never re-stamps readAt (R44)", async () => {
-    await seedFor(aliceId, 1);
-    const row = (await db.notification.findFirst({ where: { userId: aliceId } }))!;
-
-    await request(app)
-      .post("/api/v1/notifications/read")
-      .set("authorization", `Bearer ${aliceToken}`)
-      .send({ all: true });
-    const firstStamp = (await db.notification.findUnique({ where: { id: row.id } }))!.readAt;
-    expect(firstStamp).not.toBeNull();
-
-    const repeat = await request(app)
-      .post("/api/v1/notifications/read")
-      .set("authorization", `Bearer ${aliceToken}`)
-      .send({ all: true });
-
-    expect(repeat.body.data).toEqual({ marked: 0 });
-    expect((await db.notification.findUnique({ where: { id: row.id } }))!.readAt).toEqual(firstStamp);
-  });
-
-  it("CANNOT mark another user's notifications (ruling C8, R43)", async () => {
-    await seedFor(aliceId, 2);
+  it("CANNOT mark another user's notification, even with its real id (ruling C8, R43)", async () => {
+    await seedFor(bobId, 1);
+    const bobRow = (await db.notification.findFirst({ where: { userId: bobId } }))!;
 
     const res = await request(app)
       .post("/api/v1/notifications/read")
-      .set("authorization", `Bearer ${bobToken}`)
-      .send({ all: true });
+      .set("authorization", `Bearer ${aliceToken}`)
+      .send({ ids: [bobRow.id] });
 
-    // The userId clause in the `where` is the only thing standing between
-    // this and a cross-user write. Do not "simplify" it away.
+    // The id is accepted as input and updates nothing — the userId clause in
+    // the `where` is the only thing standing between this and a cross-user
+    // write. Do not "simplify" it away.
     expect(res.body.data).toEqual({ marked: 0 });
-    expect(await db.notification.count({ where: { userId: aliceId, readAt: null } })).toBe(2);
+    expect((await db.notification.findUnique({ where: { id: bobRow.id } }))!.readAt).toBeNull();
   });
 
   it("refuses a body carrying both arms, or a userId", async () => {
@@ -207,7 +217,7 @@ describe("POST /api/v1/notifications/read", () => {
     const spoofed = await request(app)
       .post("/api/v1/notifications/read")
       .set("authorization", `Bearer ${aliceToken}`)
-      .send({ all: true, userId: bobId });
+      .send({ ids: [1], userId: bobId });
     expect(spoofed.status).toBe(400);
   });
 });

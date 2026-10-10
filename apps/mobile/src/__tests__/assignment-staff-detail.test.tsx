@@ -139,15 +139,12 @@ describe("AssignmentDetailScreen (staff)", () => {
     expect(screen.getByText("Delete assignment")).toBeTruthy(); // disarmed again
   });
 
-  // v1 parity 2026-10-09 (was "gives a LEADER the tracker"): v1 shows it to season admins and SUPER only.
-  it("gives a LEADER no tracker and no edit or delete (canManage is false)", async () => {
+  it("gives a LEADER the tracker but no edit or delete (canManage is false)", async () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }));
     serve({ canManage: false });
     renderWithProviders(<AssignmentDetailScreen />);
 
-    expect(await screen.findByText("Assigned to: Group A")).toBeTruthy();
-    expect(get).not.toHaveBeenCalledWith("/api/v1/assignments/55/tracker");
-    expect(screen.queryByText("1 of 2 submitted")).toBeNull();
+    expect(await screen.findByText("1 of 2 submitted")).toBeTruthy();
     expect(screen.queryByText("Edit")).toBeNull();
     expect(screen.queryByText("Delete assignment")).toBeNull();
   });

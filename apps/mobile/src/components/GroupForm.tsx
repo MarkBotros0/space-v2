@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { groupWriteRequestSchema } from "@space/shared";
 
-import { useLeaderOptions, useStudentOptions, type GroupWriteInput } from "../hooks/use-group-admin";
+import { useLeaderOptions, useSeasonRoster, type GroupWriteInput } from "../hooks/use-group-admin";
 import { firstErrorByField } from "../lib/form-errors";
 import { useTheme } from "../theme";
 import { Button, Card, ErrorState, Input, LoadingState, Text } from "../ui";
@@ -28,26 +28,25 @@ function CheckRow({ label, caption, checked, onPress }: { label: string; caption
   );
 }
 
-/** v1 group-form.tsx:148's helper line, verbatim (spec 05 R79). */
-export const GROUP_FORM_STUDENT_HELP =
-  "Students enrolled in this group for the current season. Adding a student here will move them out of any other group.";
-
 /**
- * Create/edit a group (v1 group-form.tsx; spec 05 §9). v1 parity 2026-10-09
- * (spec 05 R18/R78/R79): students are picked from EVERY live STUDENT user, as
- * v1's listStudentsForPicker, name/email only, under v1's one static helper
- * line; saving enrols a picked student not yet in the season. The server
- * validates leaders are LEADERs and students are live students and returns
- * invalid_leader / invalid_student, shown verbatim via `message`. Saving
- * REPLACES the group's leader and student lists (spec 05 R30) — the form says so.
+ * Create/edit a group (v1 group-form.tsx; spec 05 §9). Students are picked
+ * from the season ROSTER (ACTIVE enrolments, C9), never the global student
+ * table. The server validates leaders are LEADERs and students are enrolled
+ * (Plan 2's validateGroupWrite) and returns name_taken / invalid_leader /
+ * not_enrolled, shown verbatim via `message`. Saving REPLACES the group's
+ * leader and student lists (spec 05 R30) — the form says so.
  */
 export function GroupForm({
+  seasonId,
+  groupId,
   initial,
   submitLabel,
   submitting,
   message,
   onSubmit,
 }: {
+  seasonId: number;
+  groupId: number | null;
   initial: GroupFormValues;
   submitLabel: string;
   submitting: boolean;
@@ -56,7 +55,7 @@ export function GroupForm({
 }) {
   const theme = useTheme();
   const leaders = useLeaderOptions(true);
-  const students = useStudentOptions(true);
+  const roster = useSeasonRoster(seasonId);
   const [values, setValues] = useState(initial);
   const [query, setQuery] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -92,20 +91,28 @@ export function GroupForm({
 
   const q = query.trim().toLowerCase();
   let studentList: ReactNode;
-  if (students.isPending) studentList = <LoadingState />;
-  else if (students.isError) studentList = <ErrorState message="Couldn't load students." onRetry={() => void students.refetch()} />;
+  if (roster.isPending) studentList = <LoadingState />;
+  else if (roster.isError) studentList = <ErrorState message="Couldn't load the roster." onRetry={() => void roster.refetch()} />;
   else
-    studentList = students.data
+    studentList = roster.data
       .filter((r) => q === "" || (r.name ?? "").toLowerCase().includes(q) || r.email.toLowerCase().includes(q))
-      .map((r) => (
-        <CheckRow
-          key={r.id}
-          label={r.name ?? r.email}
-          caption={r.name ? r.email : null}
-          checked={values.studentIds.includes(r.id)}
-          onPress={() => setValues({ ...values, studentIds: toggle(values.studentIds, r.id) })}
-        />
-      ));
+      .map((r) => {
+        const caption =
+          r.groupId !== null && r.groupId !== groupId
+            ? `Now in ${r.groupName ?? "another group"} — saving moves them here.`
+            : r.groupId === null && r.otherSeasonGroup
+              ? `In ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — saving moves them here.`
+              : null;
+        return (
+          <CheckRow
+            key={r.userId}
+            label={r.name ?? r.email}
+            caption={caption}
+            checked={values.studentIds.includes(r.userId)}
+            onPress={() => setValues({ ...values, studentIds: toggle(values.studentIds, r.userId) })}
+          />
+        );
+      });
 
   return (
     <Card style={{ gap: theme.spacing.sm }}>
@@ -120,9 +127,6 @@ export function GroupForm({
       <Text variant="heading">Leaders</Text>
       {leaderList}
       <Text variant="heading">Students</Text>
-      <Text variant="caption" color={theme.colors.neutral[600]}>
-        {GROUP_FORM_STUDENT_HELP}
-      </Text>
       <Input label="Search students" value={query} onChangeText={setQuery} autoCapitalize="none" />
       {studentList}
       <Text variant="caption" color={theme.colors.neutral[600]}>

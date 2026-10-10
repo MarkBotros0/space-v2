@@ -27,31 +27,26 @@ beforeEach(() => {
   useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
 });
 
-// v1 parity 2026-10-09 (R45, R52): v1 lists SUBMITTED, REVIEWED and RETURNED
-// work in one list (submissions-query.ts:123-147) — no pending-only filter, no
-// Load more. The hook follows the cursor until the last page.
-it("shows every page in one list, reviewed work included, without a Load more button", async () => {
+it("lists the pending queue and loads the next page from the cursor", async () => {
   get
     .mockResolvedValueOnce({
       data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: "aaa1111111" } },
     })
     .mockResolvedValueOnce({
-      data: {
-        data: {
-          items: [{ ...queueItem("bbb2222222", "Essay two"), status: "REVIEWED" as const }],
-          counts: { pending: 0, total: 0, late: 0 },
-          nextCursor: null,
-        },
-      },
+      data: { data: { items: [queueItem("bbb2222222", "Essay two")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
     });
 
   renderWithProviders(<SubmissionsScreen />);
 
   expect(await screen.findByText("Essay one")).toBeTruthy();
+  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
+
+  fireEvent.press(screen.getByText("Load more"));
   expect(await screen.findByText("Essay two")).toBeTruthy();
-  expect(screen.getByText("Reviewed")).toBeTruthy();
-  expect(get).toHaveBeenNthCalledWith(1, "/api/v1/submissions?pendingOnly=false&limit=100");
-  expect(get).toHaveBeenNthCalledWith(2, "/api/v1/submissions?pendingOnly=false&limit=100&cursor=aaa1111111");
+  expect(get).toHaveBeenLastCalledWith(
+    "/api/v1/submissions?pendingOnly=true&limit=25&cursor=aaa1111111",
+  );
+  // Last page: the button goes away.
   expect(screen.queryByText("Load more")).toBeNull();
 });
 
@@ -79,14 +74,12 @@ it("navigates to the review screen on press", async () => {
   });
 });
 
-it("shows v1's empty state for an empty queue", async () => {
+it("shows 'All caught up' for an empty queue", async () => {
   get.mockResolvedValue({ data: { data: { items: [], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } } });
 
   renderWithProviders(<SubmissionsScreen />);
 
-  // v1 leader-queue-list.tsx:72-75.
-  expect(await screen.findByText("No submissions yet")).toBeTruthy();
-  expect(screen.getByText("Submissions from students in your groups will appear here.")).toBeTruthy();
+  expect(await screen.findByText("All caught up")).toBeTruthy();
 });
 
 it("keeps the tab an empty state for a student, without a request", async () => {

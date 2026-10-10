@@ -3,6 +3,7 @@ import type { Session } from "@space/shared";
 
 const ACCESS_KEY = "space.accessToken";
 const REFRESH_KEY = "space.refreshToken";
+const PUSH_KEY = "space.pushToken";
 
 export async function saveSession(session: Session): Promise<void> {
   await SecureStore.setItemAsync(ACCESS_KEY, session.accessToken);
@@ -17,7 +18,16 @@ export async function loadRefreshToken(): Promise<string | null> {
   return SecureStore.getItemAsync(REFRESH_KEY);
 }
 
+export async function savePushToken(token: string): Promise<void> {
+  await SecureStore.setItemAsync(PUSH_KEY, token);
+}
+
+export async function loadPushToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(PUSH_KEY);
+}
+
 export async function clearSession(): Promise<void> {
   await SecureStore.deleteItemAsync(ACCESS_KEY);
   await SecureStore.deleteItemAsync(REFRESH_KEY);
+  await SecureStore.deleteItemAsync(PUSH_KEY);
 }

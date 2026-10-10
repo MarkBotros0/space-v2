@@ -13,6 +13,8 @@ function NewGroupForm({ seasonId }: { seasonId: number }) {
   const [message, setMessage] = useState<string | null>(null);
   return (
     <GroupForm
+      seasonId={seasonId}
+      groupId={null}
       initial={{ name: "", description: "", leaderIds: [], studentIds: [] }}
       submitLabel="Create group"
       submitting={create.isPending}
@@ -20,8 +22,7 @@ function NewGroupForm({ seasonId }: { seasonId: number }) {
       onSubmit={(body) => {
         setMessage(null);
         create.mutate(body, {
-          // v1 parity 2026-10-09 (spec 05 R97): v1 group-form.tsx:107 returns to the season's groups.
-          onSuccess: () => router.replace({ pathname: "/groups", params: { seasonId: String(seasonId) } }),
+          onSuccess: (ref) => router.replace({ pathname: "/group/[id]", params: { id: String(ref.id) } }),
           onError: (err) => setMessage(apiErrorMessage(err, "Couldn't create the group.")),
         });
       }}

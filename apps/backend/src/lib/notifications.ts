@@ -26,19 +26,24 @@ const PREF_FIELD = {
 } as const satisfies Record<NotificationType, string>;
 
 export interface BulkNotificationResult {
-  /** Rows written. One per distinct recipient who has not opted out. */
+  /** Rows written. One per distinct recipient, always — see below. */
   written: number;
-  /** Recipients skipped entirely (no row, no email) by their preference. */
+  /** Recipients whose *outbound* channels were suppressed by their preference. */
   suppressed: number;
 }
 
 /**
  * Fan out one notification to many recipients.
  *
- * v1 semantics (jpc-space src/lib/notifications.ts:56-94, spec R8/R9/R11): an
- * opted-out recipient is filtered out **before** the insert, so the one
- * preference switch governs every channel — no in-app row, no email. If every
- * recipient opted out, nothing is written.
+ * Divergence from v1, ruled in spec D4: the in-app row is the user's history
+ * and is **always** written. v1 filtered opted-out recipients out before the
+ * insert (R8), so "off" meant "no record" — a user who only wanted the emails
+ * to stop had to give up their inbox too, and with push arriving that single
+ * boolean would be governing three channels. Here the preference governs
+ * outbound channels only: email now, push at cutover.
+ *
+ * Consequence, accepted deliberately: v1 renders the same table with no
+ * preference filter, so an opted-out user's v1 inbox stops being empty.
  *
  * Returns counts because v1 returned void and the caller could not learn what
  * happened (§6); domain 3's session write response needs the number
@@ -51,19 +56,16 @@ export async function createNotificationsBulk(
   // Deduped: producers resolve recipients from more than one join table
   // (attendance-notifications.ts reads GroupLeader and SeasonAdmin), and
   // createMany has no skipDuplicates and no constraint to trip (R15).
-  const recipients = [...new Set(userIds)];
-  if (recipients.length === 0) return { written: 0, suppressed: 0 };
+  const targets = [...new Set(userIds)];
+  if (targets.length === 0) return { written: 0, suppressed: 0 };
 
   const prefs = await db.notificationPreference.findMany({
-    where: { userId: { in: recipients } },
+    where: { userId: { in: targets } },
   });
   const prefField = PREF_FIELD[payload.type];
   // A user with no preference row has not opted out — defaults are all true
   // (R6). Only the literal `false` suppresses (R7).
   const optedOut = new Set(prefs.filter((p) => p[prefField] === false).map((p) => p.userId));
-  // v1 (notifications.ts:74-75): opted-out users are dropped before the insert.
-  const targets = recipients.filter((id) => !optedOut.has(id));
-  if (targets.length === 0) return { written: 0, suppressed: optedOut.size };
 
   await db.notification.createMany({
     data: targets.map((userId) => ({
@@ -79,17 +81,20 @@ export async function createNotificationsBulk(
     })),
   });
 
-  const users = await db.user.findMany({
-    where: { id: { in: targets } },
-    select: { email: true },
-  });
-  // Fire-and-forget: mail must never delay or fail the request that
-  // triggered it. allSettled so one bad address cannot reject the batch.
-  void Promise.allSettled(
-    users.map((u) =>
-      sendNotificationEmail(u.email, payload.title, payload.body ?? null, payload.link ?? null),
-    ),
-  );
+  const mailTargets = targets.filter((id) => !optedOut.has(id));
+  if (mailTargets.length > 0) {
+    const users = await db.user.findMany({
+      where: { id: { in: mailTargets } },
+      select: { email: true },
+    });
+    // Fire-and-forget: mail must never delay or fail the request that
+    // triggered it. allSettled so one bad address cannot reject the batch.
+    void Promise.allSettled(
+      users.map((u) =>
+        sendNotificationEmail(u.email, payload.title, payload.body ?? null, payload.link ?? null),
+      ),
+    );
+  }
 
   return { written: targets.length, suppressed: optedOut.size };
 }

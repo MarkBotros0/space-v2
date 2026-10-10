@@ -79,15 +79,10 @@ describe("session write schemas", () => {
     ).toBe(true);
   });
 
-  // v1 parity 2026-10-09 (was "refuses outside 1..26"): v1 session-actions.ts:53
-  // and recurrence.ts:10 clamp silently.
-  it("clamps repeatWeeks to 1..26 (v1 session-actions.ts:53)", () => {
-    const parse = (repeatWeeks: number) =>
-      createSessionRequestSchema.parse({ ...valid, seasonId: 1, repeatWeeks }).repeatWeeks;
-    expect(parse(27)).toBe(26);
-    expect(parse(0)).toBe(1);
-    expect(parse(-3)).toBe(1);
-    expect(createSessionRequestSchema.parse({ ...valid, seasonId: 1 }).repeatWeeks).toBe(1);
+  it("refuses repeatWeeks outside 1..26 (v1 clamped silently)", () => {
+    expect(
+      createSessionRequestSchema.safeParse({ ...valid, seasonId: 1, repeatWeeks: 27 }).success,
+    ).toBe(false);
   });
 
   it("requires a scope on update", () => {

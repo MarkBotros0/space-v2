@@ -2,8 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
-let mockParams: Record<string, string> = {};
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }), useLocalSearchParams: () => mockParams }));
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
 import { apiClient } from "../lib/api-client";
 import { deviceTodayKey } from "../lib/calendar-grid";
@@ -30,7 +29,6 @@ const adminSession = makeSession("ADMIN", { seasonAdminIds: [7, 8] }, { id: 2 })
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockParams = {};
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
@@ -80,75 +78,59 @@ it("navigates to session detail on press", async () => {
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "1" } });
 });
 
-// v1 parity 2026-10-09 (03 R75/R98): the Upcoming read sends no bounds; the server
-// answers null bounds and its org today.
 const range = (sessions: unknown[]) => ({
-  data: { data: { sessions, from: null, to: null, fromDayKey: null, toDayKey: null, todayDayKey: "2099-03-01" } },
+  data: { data: { sessions, from: "2099-02-28T22:00:00.000Z", to: "2099-04-25T22:00:00.000Z", fromDayKey: "2099-03-01", toDayKey: "2099-04-25" } },
 });
 
 describe("calendar — staff branches (G17, D-16.7)", () => {
-  // v1 parity 2026-10-09 (spec 03 R86): v1 admin/calendar/page.tsx:16-40 — newest ACTIVE, no picker.
-  it("gives ADMIN the newest ACTIVE season through GET /sessions, with no season switcher", async () => {
+  it("gives ADMIN the current season through GET /sessions, with a season switcher", async () => {
     useSessionStore.setState(adminSession);
-    get.mockImplementation((url: string) => {
+    get.mockImplementation((url: string, config?: { params?: { seasonId?: number } }) => {
       if (url === "/api/v1/seasons") {
         return Promise.resolve({ data: { data: { seasons: [seasonRow(8, 2027, "DRAFT"), seasonRow(7, 2026, "ACTIVE")] } } });
       }
       if (url === "/api/v1/sessions") {
-        return Promise.resolve(range([session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")]));
+        const title = config?.params?.seasonId === 8 ? "Draft season session" : "Kickoff";
+        return Promise.resolve(range([session(1, title, "2099-03-01T18:00:00.000Z", "2099-03-01")]));
       }
-      return Promise.resolve({ data: { data: { events: [], total: 0 } } });
+      return Promise.reject(new Error(`unexpected GET ${url}`));
     });
 
     renderWithProviders(<CalendarScreen />);
 
     expect(await screen.findByText("Kickoff")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: { seasonId: 7 } });
-    expect(screen.queryByText("Season 8")).toBeNull();
-  });
-
-  it("tells an ADMIN with no season \"No active season found.\"", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [] }, { id: 2 }));
-    get.mockResolvedValue({ data: { data: { seasons: [] } } });
-    renderWithProviders(<CalendarScreen />);
-    expect(await screen.findByText("No active season found.")).toBeTruthy();
-  });
-
-  // v1 parity 2026-10-09 (spec 03 R30): creating a session lands on its season's calendar.
-  it("opens one season's calendar from a seasonId param", async () => {
-    useSessionStore.setState(adminSession);
-    mockParams = { seasonId: "8" };
-    get.mockImplementation((url: string) =>
-      url === "/api/v1/sessions"
-        ? Promise.resolve(range([session(1, "Draft season session", "2099-03-01T18:00:00.000Z", "2099-03-01")]))
-        : Promise.resolve({ data: { data: { events: [], total: 0 } } }),
-    );
-    renderWithProviders(<CalendarScreen />);
+    fireEvent.press(screen.getByText("Season 8"));
     expect(await screen.findByText("Draft season session")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: { seasonId: 8 } });
   });
 
-  // v1 parity 2026-10-09 (spec 03 R98, R75): everything from today on, no window, no paging.
-  it("gives SUPER every ACTIVE season unbounded, labels each row's season, and hides past rows", async () => {
+  it("gives SUPER every ACTIVE season in one window, labels each row's season, and pages", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     get.mockResolvedValue(
       range([
-        { ...session(3, "Last month", "2099-02-01T18:00:00.000Z", "2099-02-01"), seasonTitle: "Spring 2099" },
         { ...session(1, "Spring kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01"), seasonTitle: "Spring 2099" },
-        { ...session(2, "Autumn kickoff", "2099-09-01T19:00:00.000Z", "2099-09-01"), seasonId: 9, seasonTitle: "Autumn 2099" },
+        { ...session(2, "Autumn kickoff", "2099-03-01T19:00:00.000Z", "2099-03-01"), seasonId: 9, seasonTitle: "Autumn 2099" },
       ]),
     );
 
     renderWithProviders(<CalendarScreen />);
 
     expect(await screen.findByText("Spring kickoff")).toBeTruthy();
-    expect(screen.getByText("Autumn kickoff")).toBeTruthy();
     expect(screen.getByText("Spring 2099")).toBeTruthy();
     expect(screen.getByText("Autumn 2099")).toBeTruthy();
-    expect(screen.queryByText("Last month")).toBeNull();
-    expect(screen.queryByText("Earlier")).toBeNull();
-    expect(screen.queryByText("Later")).toBeNull();
+    expect(screen.getByText("Mar 1, 2099 – Apr 25, 2099")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: {} });
+
+    fireEvent.press(screen.getByText("Later"));
+    await waitFor(() =>
+      expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: { from: "2099-04-25T22:00:00.000Z" } }),
+    );
+    // Paging swaps to a fresh query key, so the screen shows Loading until it lands.
+    fireEvent.press(await screen.findByText("Earlier"));
+    await waitFor(() =>
+      expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: { to: "2099-02-28T22:00:00.000Z" } }),
+    );
   });
 
   it("renders the server's org time, not the device's reading of startsAt (X13)", async () => {
@@ -235,7 +217,7 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
     expect(screen.queryByText("No season to show")).toBeNull();
   });
 
-  it("shows a (SUPER) Upcoming calendar only the events from the org's today onward", async () => {
+  it("shows a windowed (SUPER) calendar only the events inside its org-day window", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     get.mockImplementation((url: string) =>
       url.startsWith("/api/v1/events")
@@ -244,7 +226,7 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
               data: {
                 events: [
                   eventRow(5, "In window", "2099-03-02T08:00:00.000Z", "2099-03-02", "10:00"),
-                  eventRow(6, "Out of window", "2099-02-01T08:00:00.000Z", "2099-02-01", "10:00"),
+                  eventRow(6, "Out of window", "2099-06-01T08:00:00.000Z", "2099-06-01", "10:00"),
                 ],
                 total: 2,
               },
@@ -276,9 +258,9 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     renderWithProviders(<CalendarScreen />);
     expect(await screen.findByText("Kickoff")).toBeTruthy();
     expect(screen.getAllByText(/^in \d+ days$/).length).toBe(2);
-    expect(screen.getAllByText("Upcoming").length).toBeGreaterThanOrEqual(1);
-    // v1 parity 2026-10-09 (03 R89): no legend without a season colour map.
-    expect(screen.queryByLabelText("Calendar legend")).toBeNull();
+    // The badge on the card, plus the legend swatch of the same name.
+    expect(screen.getAllByText("Upcoming").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByLabelText("Calendar legend")).toBeTruthy();
   });
 
   it("shows a Monday-first month grid anchored on the next session, dimming days outside the month", async () => {
@@ -327,7 +309,7 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
       url.startsWith("/api/v1/events")
         ? Promise.resolve({ data: { data: { events: [], total: 0 } } })
         : Promise.resolve({
-            data: { data: { sessions: [{ ...session(1, "Today's class", `${today}T12:00:00.000Z`, today)  }], from: null, to: null, fromDayKey: null, toDayKey: null, todayDayKey: today } },
+            data: { data: { sessions: [{ ...session(1, "Today's class", `${today}T12:00:00.000Z`, today)  }], from: "x", to: "y", fromDayKey: today, toDayKey: today } },
           }),
     );
     renderWithProviders(<CalendarScreen />);

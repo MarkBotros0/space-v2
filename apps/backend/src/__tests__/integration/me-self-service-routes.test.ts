@@ -18,8 +18,6 @@ let studentToken: string;
 let alumnusToken: string;
 let leaderToken: string;
 let adminToken: string;
-let deletedSeasonId: number;
-let inDeletedToken: string; // a student whose active season was soft-deleted
 
 beforeAll(async () => {
   await cleanupTestData();
@@ -34,7 +32,7 @@ beforeAll(async () => {
     where: { id: current.id },
     data: { title: "Current Season", description: "The season we are in." },
   });
-  // v1 parity (02-seasons R38): a soft-deleted season stays in the history.
+  // Spec 02 D2: a soft-deleted season disappears from the student surfaces.
   await db.season.update({ where: { id: deleted.id }, data: { title: "Deleted Season", deletedAt: new Date() } });
 
   const student = await createTestUser("self-student", "STUDENT");
@@ -123,16 +121,6 @@ beforeAll(async () => {
     ],
   });
 
-  // v1 parity (02-seasons R27): a student whose active season was
-  // soft-deleted still sees it on /season and /attendance.
-  deletedSeasonId = deleted.id;
-  const inDeleted = await createTestUser("in-deleted", "STUDENT");
-  await db.seasonEnrollment.create({
-    data: { studentUserId: inDeleted.id, seasonId: deleted.id, status: "ACTIVE" },
-  });
-  await db.studentProfile.create({ data: { userId: inDeleted.id, activeSeasonId: deleted.id } });
-  inDeletedToken = await login(app, inDeleted.email);
-
   studentToken = await login(app, student.email);
   alumnusToken = await login(app, alumnus.email);
   leaderToken = await login(app, leader.email);
@@ -148,12 +136,11 @@ const get = (path: string, token: string) =>
   request(app).get(path).set("authorization", `Bearer ${token}`);
 
 describe("GET /api/v1/me/season-history (spec 02 R33–R41)", () => {
-  it("lists past enrollments, deleted seasons included, but not the current season (R35; R38 v1 parity)", async () => {
+  it("lists past enrollments only — not the current season, not a deleted one (R35, D2)", async () => {
     const res = await get("/api/v1/me/season-history", studentToken);
     expect(res.status).toBe(200);
     const titles = res.body.data.seasons.map((s: { title: string }) => s.title);
-    // enrolledAt desc: Past (−400 days) before Deleted (−500 days).
-    expect(titles).toEqual(["Past Season", "Deleted Season"]);
+    expect(titles).toEqual(["Past Season"]);
     expect(res.body.data.seasons[0]).toMatchObject({
       seasonId: pastSeasonId,
       groupName: "Group A1",
@@ -231,12 +218,6 @@ describe("GET /api/v1/me/season (v1 student/season, G21)", () => {
     expect(upcoming[0].dayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("still returns a soft-deleted active season, as v1 (02-seasons R27)", async () => {
-    const res = await get("/api/v1/me/season", inDeletedToken);
-    expect(res.status).toBe(200);
-    expect(res.body.data.season).toMatchObject({ id: deletedSeasonId, title: "Deleted Season" });
-  });
-
   it("is null for a student with no active season (R28)", async () => {
     const res = await get("/api/v1/me/season", alumnusToken);
     expect(res.status).toBe(200);
@@ -274,13 +255,6 @@ describe("GET /api/v1/me/attendance (spec 04 §7, spec 19 D14)", () => {
     expect(rows.map((r: { status: string | null }) => r.status)).toEqual([null, "PRESENT", "ABSENT"]);
     expect(rows.map((r: { costMinutes: number | null }) => r.costMinutes)).toEqual([null, null, 90]);
     expect(rows[0].dayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-  });
-
-  it("answers for a soft-deleted active season too, as v1 (02-seasons R27)", async () => {
-    const res = await get("/api/v1/me/attendance", inDeletedToken);
-    expect(res.status).toBe(200);
-    expect(res.body.data.season).toMatchObject({ id: deletedSeasonId });
-    expect(res.body.data.budget).not.toBeNull();
   });
 
   it("answers an alumnus (no active season) with the empty shape, not an error (R93)", async () => {
@@ -354,33 +328,12 @@ describe("PATCH /api/v1/me/profile (Plan 11 Decision 1)", () => {
     expect(res.body.error.code).toBe("bad_request");
   });
 
-  it("renames the student (trimmed, 2–120), as v1's profile form (18-settings R38)", async () => {
-    const res = await patch({ name: "  New Name  " });
-    expect(res.status).toBe(200);
-    expect(res.body.data.profile.name).toBe("New Name");
-    const row = await db.user.findUnique({ where: { id: studentId }, select: { name: true } });
-    expect(row?.name).toBe("New Name");
-    expect((await patch({ name: "X" })).status).toBe(400);
-  });
-
-  it("drops notes and activeSeasonId silently and saves the rest, as v1 (06-students R24)", async () => {
-    const res = await patch({ phone: "+20 133 333 3333", notes: "mine now", activeSeasonId: pastSeasonId });
-    expect(res.status).toBe(200);
-    const row = await db.studentProfile.findUnique({
-      where: { userId: studentId },
-      select: { phone: true, notes: true, activeSeasonId: true },
-    });
-    expect(row).toEqual({
-      phone: "+20 133 333 3333",
-      notes: "STAFF ONLY — never sent to the subject",
-      activeSeasonId: currentSeasonId,
-    });
-  });
-
-  it("refuses email by name — staff-only (REG-12)", async () => {
-    const res = await patch({ email: "x@jpc.test" });
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("forbidden_field");
+  it("refuses name, email, notes and activeSeasonId by name — loudly, not v1's silent drop (R24)", async () => {
+    for (const body of [{ name: "New Name" }, { email: "x@jpc.test" }, { notes: "mine now" }, { activeSeasonId: 1 }]) {
+      const res = await patch(body);
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("forbidden_field");
+    }
   });
 
   it("is read-only for an alumnus", async () => {

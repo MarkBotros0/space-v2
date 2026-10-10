@@ -3,8 +3,14 @@ import { Router } from "express";
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
-import { assignmentColumns, bodyErrorMessage, validateAssignmentRefs } from "../lib/assignment-writes";
-import { canAccessSeason, canManageAssignment } from "../lib/permissions";
+import {
+  assignmentColumns,
+  bodyErrorMessage,
+  notifyAssignmentCreated,
+  targetedStudentIds,
+  validateAssignmentRefs,
+} from "../lib/assignment-writes";
+import { canAccessSeason, canManageAssignment, staffScopeForSeason } from "../lib/permissions";
 import {
   assignmentDetailPayload,
   isLate,
@@ -84,10 +90,9 @@ assignmentsRouter.get("/:id", async (req, res) => {
 /**
  * Who was given this assignment and what they have done about it.
  *
- * Season admins and SUPER only, as v1 (`assignments-query.ts:127-129`,
- * `admin/season/[code]/assignments/[id]/page.tsx:27,30`; 07-assignments R59).
- * LEADER and MENTOR get 403. v1 parity 2026-10-09: was "leaders too, narrowed
- * to their own groups".
+ * Staff only, and scoped: a leader sees their own groups' students, exactly as
+ * the attendance roster does. Both carry names and email addresses, so both are
+ * gated the same way rather than on season access.
  */
 assignmentsRouter.get("/:id/tracker", async (req, res) => {
   const user = requireUser(req);
@@ -100,12 +105,15 @@ assignmentsRouter.get("/:id/tracker", async (req, res) => {
   });
   if (!assignment) return apiError(res, "not_found", "Assignment not found.", 404);
 
-  // canManageAssignment is isAdminOfSeason (SUPER passes).
-  if (!canManageAssignment(user, assignment.seasonId)) {
+  const scope = await staffScopeForSeason(user, assignment.seasonId);
+  if (scope === null) {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
-  const tracker = await loadAssignmentTracker(id);
+  const tracker = await loadAssignmentTracker(
+    id,
+    scope.kind === "groups" ? scope.groupIds : undefined,
+  );
   if (!tracker) return apiError(res, "not_found", "Assignment not found.", 404);
 
   return apiOk(res, tracker);
@@ -114,9 +122,9 @@ assignmentsRouter.get("/:id/tracker", async (req, res) => {
 /**
  * Full replace (spec 07 R67): the body is the whole assignment. Targeting is
  * deleted and recreated inside the same transaction as the field update (R69,
- * R85). An edit notifies nobody and newly targeted students are added
- * silently, as v1 (`assignment-actions.ts:101-139,128-133`; R66, R74).
- * v1 parity 2026-10-09: was "notify newly targeted students".
+ * R85). Students newly brought into scope get ASSIGNMENT_CREATED — v1 told
+ * nobody (R74), which spec §10 item 5 calls a bug; students already targeted
+ * are never notified again.
  */
 assignmentsRouter.patch("/:id", async (req, res) => {
   const user = requireUser(req);
@@ -126,7 +134,7 @@ assignmentsRouter.patch("/:id", async (req, res) => {
   // v1's canEditAssignment read the row without a deletedAt filter (R79).
   const existing = await db.assignment.findFirst({
     where: { id, deletedAt: null },
-    select: { seasonId: true },
+    select: { seasonId: true, isAllGroups: true, targets: { select: { groupId: true } } },
   });
   if (!existing) return apiError(res, "not_found", "Assignment not found.", 404);
   if (!canManageAssignment(user, existing.seasonId)) {
@@ -142,6 +150,14 @@ assignmentsRouter.patch("/:id", async (req, res) => {
   const refusal = await validateAssignmentRefs(existing.seasonId, body);
   if (refusal) return apiError(res, refusal.code, refusal.message, 400);
 
+  const before = new Set(
+    await targetedStudentIds(
+      existing.seasonId,
+      existing.isAllGroups,
+      existing.targets.map((t) => t.groupId),
+    ),
+  );
+
   const columns = assignmentColumns(body);
   await db.$transaction(async (tx) => {
     // seasonId and createdById are never written here (R68).
@@ -154,7 +170,11 @@ assignmentsRouter.patch("/:id", async (req, res) => {
     }
   });
 
-  // v1 parity 2026-10-09 (R66, R74): an edit notifies nobody.
+  const after = await targetedStudentIds(existing.seasonId, body.isAllGroups, body.groupIds);
+  await notifyAssignmentCreated(
+    { id, title: body.title, dueAt: columns.dueAt },
+    after.filter((studentId) => !before.has(studentId)),
+  );
 
   const detail = await loadAssignmentById(id);
   if (!detail) return apiError(res, "not_found", "Assignment not found.", 404);

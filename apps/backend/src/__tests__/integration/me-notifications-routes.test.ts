@@ -50,7 +50,7 @@ describe("notification preferences", () => {
     expect(res.body.data.preferences).toEqual(allTrue);
   });
 
-  it("creates the row on first write and leaves quizGraded untouched (v1 R56, R57)", async () => {
+  it("creates the row on first write and returns what was stored", async () => {
     const res = await request(app)
       .put("/api/v1/me/notification-preferences")
       .set("authorization", `Bearer ${prefsToken}`)
@@ -58,23 +58,13 @@ describe("notification preferences", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.preferences.assignmentCreated).toBe(false);
-    // v1's action takes five fields (settings-actions.ts:58-73); quizGraded is
-    // not settable, so the sent `false` is stripped and the default stays.
-    expect(res.body.data.preferences.quizGraded).toBe(true);
+    // v1 could not turn this one off from any surface: its input type declared
+    // five fields and the form rendered five toggles, so the column kept its
+    // default forever (R56, R57).
+    expect(res.body.data.preferences.quizGraded).toBe(false);
 
     const row = await db.notificationPreference.findUnique({ where: { userId: prefsUserId } });
-    expect(row?.quizGraded).toBe(true);
-  });
-
-  it("accepts v1's five keys without quizGraded", async () => {
-    const { quizGraded: _omit, ...five } = allTrue;
-    const res = await request(app)
-      .put("/api/v1/me/notification-preferences")
-      .set("authorization", `Bearer ${prefsToken}`)
-      .send({ ...five, mentorFollowup: false });
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.preferences).toEqual({ ...allTrue, mentorFollowup: false });
+    expect(row?.quizGraded).toBe(false);
   });
 
   it("updates the existing row rather than creating a second", async () => {
@@ -92,7 +82,7 @@ describe("notification preferences", () => {
     expect(rows[0]?.mentorFollowup).toBe(true);
   });
 
-  it("refuses a partial body — PUT replaces all five", async () => {
+  it("refuses a partial body — PUT replaces all six", async () => {
     const res = await request(app)
       .put("/api/v1/me/notification-preferences")
       .set("authorization", `Bearer ${prefsToken}`)
@@ -115,5 +105,37 @@ describe("notification preferences", () => {
 
   it("refuses an anonymous caller", async () => {
     expect((await request(app).get("/api/v1/me/notification-preferences")).status).toBe(401);
+  });
+});
+
+describe("POST /api/v1/me/devices", () => {
+  it("answers 503 push_unavailable — there is no table to write to yet", async () => {
+    // The schema is frozen while v1 runs (ruling C1) and there is no
+    // DeviceToken model, so registration cannot be honoured. 503 rather than
+    // 404 or 501: the endpoint exists and the caller is entitled to it, the
+    // capability is switched off — the same shape as uploads_disabled.
+    const res = await request(app)
+      .post("/api/v1/me/devices")
+      .set("authorization", `Bearer ${prefsToken}`)
+      .send({ token: "ExponentPushToken[space-v2-test]", platform: "ios" });
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe("push_unavailable");
+  });
+
+  it("validates the body before answering, so the contract is exercised now", async () => {
+    const res = await request(app)
+      .post("/api/v1/me/devices")
+      .set("authorization", `Bearer ${prefsToken}`)
+      .send({ token: "t", platform: "web" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses an anonymous caller", async () => {
+    const res = await request(app)
+      .post("/api/v1/me/devices")
+      .send({ token: "t", platform: "ios" });
+    expect(res.status).toBe(401);
   });
 });

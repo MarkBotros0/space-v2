@@ -108,23 +108,6 @@ export default function SeasonDetailScreen() {
       <>
         <Card>
           <Text variant="title">{s.title}</Text>
-          {isSuper ? (
-            // v1 super/seasons/[code]/page.tsx:27-36: program and year link to the by-program / by-year pages (02 R45).
-            <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-              <Button
-                title={s.program}
-                variant="ghost"
-                accessibilityLabel={`All ${s.program} seasons`}
-                onPress={() => router.push({ pathname: "/seasons/program/[program]", params: { program: s.program } })}
-              />
-              <Button
-                title={String(s.year)}
-                variant="ghost"
-                accessibilityLabel={`All seasons in ${s.year}`}
-                onPress={() => router.push({ pathname: "/seasons/year/[year]", params: { year: String(s.year) } })}
-              />
-            </View>
-          ) : null}
           <Text variant="label" color={theme.colors.neutral[600]}>{`${s.code} · ${s.status}`}</Text>
           <Text variant="label" color={theme.colors.neutral[600]}>{`${seasonDay(s.startDate)} – ${seasonDay(s.endDate)}`}</Text>
           {s.description ? <Text variant="body">{s.description}</Text> : null}

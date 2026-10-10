@@ -10,6 +10,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-notifications",
       [
         "expo-camera",
         {
@@ -24,44 +25,19 @@
     },
     "extra": {
       "apiBaseUrl": "https://space-v2-be.vercel.app",
-      "publicBaseUrl": "https://space-v2-be.vercel.app",
-      "router": {},
       "eas": {
         "projectId": "2c90b65f-1080-4d6c-9050-3ec9b8a57c91"
       }
     },
+    "owner": "markbotros.aigorithm",
     "ios": {
-      "associatedDomains": [
-        "applinks:space-v2-be.vercel.app"
-      ],
       "bundleIdentifier": "com.jpc.space",
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "space-v2-be.vercel.app",
-              "pathPrefix": "/checkin/"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        }
-      ],
-      "package": "com.jpc.space",
-      "permissions": [
-        "android.permission.CAMERA"
-      ]
-    },
-    "owner": "markbotros.aigorithm"
+      "package": "com.jpc.space"
+    }
   }
 }

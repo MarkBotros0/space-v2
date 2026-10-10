@@ -195,26 +195,16 @@ describe("NewAssignmentScreen", () => {
     );
   });
 
-  // v1 parity 2026-10-09 (was "refuses 'specific groups' with none ticked"): v1
-  // assignment-actions.ts:73 saves it, targeting nobody (R13).
-  it("saves 'specific groups' with none ticked, targeting nobody (v1 R13)", async () => {
+  it("refuses 'specific groups' with none ticked, using the shared schema's words, without calling the API", async () => {
     serve();
-    post.mockResolvedValue({ data: { data: { ...detail, id: 80 } } });
     renderWithProviders(<NewAssignmentScreen />);
 
     fireEvent.changeText(await screen.findByLabelText("Title"), "Nobody");
     fireEvent.press(screen.getByLabelText("Specific groups"));
     fireEvent.press(screen.getByText("Create assignment"));
 
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/assignments", {
-        ...STANDARD_DEFAULTS,
-        title: "Nobody",
-        isAllGroups: false,
-        groupIds: [],
-      }),
-    );
-    expect(screen.queryByText(/Choose at least one group/)).toBeNull();
+    expect(await screen.findByText("Choose at least one group, or target the whole season.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
   });
 
   it("shows the server's refusal verbatim and stays on the form", async () => {

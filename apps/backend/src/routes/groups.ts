@@ -55,7 +55,7 @@ groupsRouter.patch("/:id", async (req, res) => {
   const parsed = groupWriteRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid group body.", 400);
 
-  const refusal = await validateGroupWrite(parsed.data);
+  const refusal = await validateGroupWrite(group.seasonId, parsed.data, id);
   if (refusal) return apiError(res, refusal.code, refusal.message, 409);
 
   await db.$transaction(async (tx) => {
@@ -94,23 +94,6 @@ groupsRouter.get("/leader-options", async (req, res) => {
   return apiOk(res, { leaders });
 });
 
-/**
- * Student picker for the group form: every live STUDENT user, name asc — v1
- * listStudentsForPicker (groups-query.ts:112-121). v1 parity 2026-10-09 (spec 05
- * R18/R78): v1 offered every student on purpose so an admin can enrol a new
- * student while building a group; saving enrols them (setGroupStudents).
- */
-groupsRouter.get("/student-options", async (req, res) => {
-  const user = requireUser(req);
-  if (!isAdminOfAnySeason(user)) return apiError(res, "forbidden", "You don't have access to this.", 403);
-  const students = await db.user.findMany({
-    where: { role: "STUDENT", deletedAt: null },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, email: true },
-  });
-  return apiOk(res, { students });
-});
-
 groupsRouter.get("/:id", async (req, res) => {
   const user = requireUser(req);
   const id = parseId(req.params.id);
@@ -141,11 +124,10 @@ groupsRouter.get("/:id", async (req, res) => {
   if (!group) return apiError(res, "not_found", "Group not found.", 404);
 
   // canAccessGroup admits a student to their own group, which is the right
-  // call — they should be able to see who is in it. v1's student season view
-  // shows the leaders' emails (mailto) but never a peer's
-  // (student/season/page.tsx:71-77,163-183), so a STUDENT caller gets leader
-  // emails and peers without addresses. v1 parity 2026-10-09 (spec 05 R75):
-  // was "email stripped from leaders and students alike".
+  // call — they should be able to see who is in it. But the payload below is
+  // v1's *staff* shape, and v1 never showed it to a student: their own group
+  // card came from a separate query that selected no addresses. Withhold the
+  // email rather than the whole endpoint, so the student view keeps working.
   const withEmail = user.role !== "STUDENT";
   const member = (u: { id: number; name: string | null; email: string }) =>
     withEmail ? u : { id: u.id, name: u.name };
@@ -157,7 +139,7 @@ groupsRouter.get("/:id", async (req, res) => {
     seasonId: group.seasonId,
     seasonCode: group.season.code,
     seasonTitle: group.season.title,
-    leaders: group.leaders.map((l) => l.user),
+    leaders: group.leaders.map((l) => member(l.user)),
     students: group.students.map((s) => member(s.studentUser)),
     canManage: isAdminOfSeason(user, group.seasonId),
   });

@@ -5,7 +5,6 @@ import { htmlToPlainText } from "../../../../../packages/shared/src/index";
 
 import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
-import { orgDayKey } from "../org-time";
 import { noteVisibilityWhere } from "../permissions";
 
 /**
@@ -58,8 +57,6 @@ export function toNoteSummary(row: NoteRow, user: SessionUser): NoteSummary {
     visibility: row.visibility,
     followUpFlagged: row.followUpFlagged,
     createdAt: row.createdAt.toISOString(),
-    // One calendar date for every reader, as v1's server render (R90, X13).
-    createdDayKey: orgDayKey(row.createdAt),
     updatedAt: row.updatedAt.toISOString(),
     edited: wasEdited(row),
     authorId: row.authorUserId,
@@ -123,7 +120,8 @@ export async function listNotesForStudent(
 /**
  * Notes THIS caller wrote, across students.
  *
- * MENTOR only, as v1 (R44; the route gates it). The author-equality narrowing is the whole protection here — R33 makes the
+ * v1 offered this to MENTOR only (R44) even though four roles can author. The
+ * author-equality narrowing is the whole protection here — R33 makes the
  * visibility filter a no-op over one's own notes — so it is a `where` clause,
  * not a post-filter.
  */
@@ -154,18 +152,4 @@ export async function listAuthoredNotes(
     })),
     nextCursor: rows.length > query.limit ? String(page[page.length - 1]?.id ?? "") || null : null,
   };
-}
-
-/**
- * The mentor composer's student picker (v1 src/app/mentor/notes/page.tsx:27-31;
- * R45): every non-deleted STUDENT, alumni included, ordered by name.
- */
-export async function listNoteStudentOptions(): Promise<
-  { id: number; name: string; email: string }[]
-> {
-  return db.user.findMany({
-    where: { role: "STUDENT", deletedAt: null },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, email: true },
-  });
 }

@@ -13,20 +13,9 @@ export const attendanceEntrySchema = z.object({
 });
 export type AttendanceEntry = z.infer<typeof attendanceEntrySchema>;
 
-export const saveAttendanceRequestSchema = z
-  .object({
-    entries: z.array(attendanceEntrySchema),
-    /**
-     * The check-in console's single-student override (v1 manualOverrideAction,
-     * attendance-actions.ts:193-232). v1 parity 2026-10-09 (spec 04 R33): it never
-     * sends the low-attendance flag; the batch form does. Exactly one entry.
-     */
-    consoleOverride: z.boolean().optional(),
-  })
-  .refine((v) => !v.consoleOverride || v.entries.length === 1, {
-    path: ["entries"],
-    message: "A console override marks exactly one student.",
-  });
+export const saveAttendanceRequestSchema = z.object({
+  entries: z.array(attendanceEntrySchema),
+});
 export type SaveAttendanceRequest = z.infer<typeof saveAttendanceRequestSchema>;
 
 /**

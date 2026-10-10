@@ -69,7 +69,7 @@ export function useStaffAssignments(
   });
 }
 
-/** GET /assignments/:id/tracker — season admins and SUPER only (v1 parity 2026-10-09; was "+ leaders, own groups"). */
+/** GET /assignments/:id/tracker — season admins see everyone, a leader their own groups. */
 export function useAssignmentTracker(id: number | null): UseQueryResult<AssignmentTracker> {
   return useQuery({
     queryKey: queryKeys.assignments.tracker(id),

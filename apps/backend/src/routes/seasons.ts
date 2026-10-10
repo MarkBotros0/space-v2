@@ -77,9 +77,7 @@ seasonsRouter.get("/", requireAuth, async (req, res) => {
 
   const seasons = await db.season.findMany({
     where,
-    // v1 parity 2026-10-09 (02 R24): v1 orders season lists status asc then startDate desc
-    // (super/seasons/page.tsx:20, admin/season/page.tsx:28).
-    orderBy: [{ status: "asc" }, { startDate: "desc" }],
+    orderBy: [{ year: "desc" }, { title: "asc" }],
     select: {
       id: true,
       code: true,
@@ -134,16 +132,8 @@ seasonsRouter.get("/:id", requireAuth, async (req, res) => {
 
 const ADMIN_EDITABLE = new Set<string>(SEASON_ADMIN_EDITABLE_FIELDS);
 
-// v1 parity 2026-10-09 (02 R5): v1 season-actions.ts:76-83 also returns
-// fieldErrors { code: "Already in use." }, shown under the Code input.
 const codeTaken = (res: Response) =>
-  res.status(409).json({
-    error: {
-      code: "code_taken",
-      message: "A season with that code already exists.",
-      details: { fieldErrors: { code: "Already in use." } },
-    },
-  });
+  apiError(res, "code_taken", "A season with that code already exists.", 409);
 
 seasonsRouter.post("/", requireAuth, async (req, res) => {
   const user = requireUser(req);
@@ -254,10 +244,29 @@ seasonsRouter.delete("/:id", requireAuth, async (req, res) => {
   const existing = await db.season.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
   if (!existing) return apiError(res, "not_found", "Season not found.", 404);
 
-  // v1 parity 2026-10-09 (02 R49, R51): v1 season-actions.ts:163-177 soft-deletes
-  // whatever the season contains and touches only the season row — students keep
-  // their activeSeasonId, SeasonAdmin rows stay. The confirm step lives on the client.
-  await db.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } });
+  // Product decision on spec 02 D4 (recorded in the Revision note): v1
+  // checked nothing and stranded children. v2 refuses while the season has
+  // ANY enrollment or session — archive it (status ARCHIVED) instead. D4's
+  // `force` escape hatch is not offered: a soft-deleted season with sessions
+  // stays reachable by id everywhere (R50), which is the state D4 objects to.
+  const [enrollments, sessions] = await Promise.all([
+    db.seasonEnrollment.count({ where: { seasonId: id } }),
+    db.session.count({ where: { seasonId: id } }),
+  ]);
+  if (enrollments > 0 || sessions > 0) {
+    return apiError(
+      res,
+      "season_in_use",
+      "This season has sessions or enrollments; archive it instead.",
+      409,
+    );
+  }
+
+  // R51: v1 left StudentProfile.activeSeasonId pointing at the deleted row.
+  await db.$transaction([
+    db.studentProfile.updateMany({ where: { activeSeasonId: id }, data: { activeSeasonId: null } }),
+    db.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } }),
+  ]);
   return apiOk(res, { deleted: true });
 });
 
@@ -272,10 +281,9 @@ seasonsRouter.post("/:id/duplicate", requireAuth, async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid duplicate body.", 400);
   const input = parsed.data;
 
-  // v1 parity 2026-10-09 (02 R66): v1 season-actions.ts:210-211 has no deletedAt
-  // filter, so a soft-deleted season can be duplicated.
+  // D6: v1 had no deletedAt guard here and would clone a deleted season.
   const source = await db.season.findFirst({
-    where: { id: sourceId },
+    where: { id: sourceId, deletedAt: null },
     select: {
       program: true, description: true, startDate: true,
       absenceBudgetMinutes: true, absenceWeightMinutes: true,
@@ -442,7 +450,7 @@ seasonsRouter.post("/:id/groups", requireAuth, async (req, res) => {
   const parsed = groupWriteRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid group body.", 400);
 
-  const refusal = await validateGroupWrite(parsed.data);
+  const refusal = await validateGroupWrite(seasonId, parsed.data);
   if (refusal) return apiError(res, refusal.code, refusal.message, 409);
 
   const group = await db.$transaction(async (tx) => {
@@ -613,7 +621,7 @@ seasonsRouter.put("/:id/group-assignments", requireAuth, async (req, res) => {
           skippedStudentIds: [...assigned.skippedStudentIds, ...unassigned.skippedStudentIds],
         };
       },
-      // Batched writes, 2000 students max (spec 05 R48/R56; v1 parity 2026-10-09).
+      // Four statements per student, 500 students max (spec 05 R56).
       { timeout: 30_000 },
     );
     return apiOk(res, result);

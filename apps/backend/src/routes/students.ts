@@ -15,7 +15,6 @@ import {
   listStudents,
   loadStudentAttendanceHistory,
   loadStudentDetail,
-  loadStudentDocuments,
   loadStudentSubmissions,
   type StudentDetailView,
 } from "../lib/queries/students";
@@ -51,19 +50,15 @@ studentsRouter.get("/", async (req, res) => {
 });
 
 /**
- * Which of the three §4.2 shapes this caller receives. Every staff viewer
- * (SUPER, ADMIN, MENTOR, LEADER) reads the full profile — phone, date of
- * birth, spiritual background, internal notes, drop reasons — as v1's
- * student detail rendered it for leaders and mentors too (06-students R71,
- * `student-detail.tsx:83-84,141-160`; v1 parity 2026-10-09). The subject reads
- * their own personal data but never the internal notes (R23). The "public"
- * arm is kept in the contract but no caller receives it today.
+ * Which of the three §4.2 shapes this caller receives. SUPER and ADMIN read
+ * everything; the subject reads their own personal data but never the
+ * staff-only internal notes (R23); MENTOR and LEADER get the narrow cut —
+ * v1 delivered them the full object and relied on React props to not render
+ * it (§4.2's LEADER column), which an endpoint cannot do.
  */
 function detailViewFor(user: SessionUser, studentUserId: number): StudentDetailView {
+  if (isSuper(user) || user.role === "ADMIN") return "internal";
   if (user.userId === studentUserId) return "private";
-  if (isSuper(user) || user.role === "ADMIN" || user.role === "MENTOR" || user.role === "LEADER") {
-    return "internal";
-  }
   return "public";
 }
 
@@ -127,45 +122,26 @@ studentsRouter.get("/:id/submissions", async (req, res) => {
 });
 
 /**
- * The read-only Documents list v1 showed SUPER and ADMIN on the student record
- * (06-students R80, `students-query.ts:405-416`, `student-detail.tsx:342-368`;
- * v1 parity 2026-10-09): name, size, type, newest first, no download link.
- * Listing needs no upload — ENABLE_UPLOADS gates only uploading.
- */
-studentsRouter.get("/:id/documents", async (req, res) => {
-  const user = requireUser(req);
-  if (!isSuper(user) && user.role !== "ADMIN") {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
-  const target = await resolveHistoryTarget(req, res);
-  if (!target) return;
-  return apiOk(res, { documents: await loadStudentDocuments(target.id) });
-});
-
-/**
  * Per-role PATCH allowlists, checked against the RAW body keys before the
  * schema runs (a schema parse cannot distinguish "sent null" from "absent"
  * after the fact for refusal purposes — and refusal must name the key).
  *
- * - The subject edits their name and their own six StudentProfile columns —
- *   the same fields PATCH /me/profile accepts (Plan 11 Decision 1; v1's
- *   student form, `student-actions.ts:24,103-121`). `email` is staff-only
- *   (spec 18 D2/D8, REG-12 KEEP-FIX: changing a login identifier without
- *   verification is an account-takeover primitive) and is refused.
- *   `notes` and `activeSeasonId` in a self-edit are silently dropped and the
- *   rest saves, as v1 did (06-students R24; v1 parity 2026-10-09).
+ * - The subject edits their own StudentProfile columns only — the same six
+ *   PATCH /me/profile accepts (Plan 11 Decision 1). `name` belongs to
+ *   PATCH /me and `email` is staff-only (spec 18 D2/D8: changing a login
+ *   identifier without verification is an account-takeover primitive). Never
+ *   `notes` or `activeSeasonId` (R23). v1 silently dropped those from a
+ *   self-edit (R24); an API that pretends a write worked teaches clients to
+ *   trust it, so this refuses with `forbidden_field` instead.
  * - ADMIN adds `name`, `email` and `notes`. NOT `activeSeasonId`: repointing
  *   a student's season is the same unscoped power v1's create leaked to
  *   every admin (§4.3), and it follows creation to SUPER in v2.
  * - SUPER: everything (allowlist `null` = unchecked).
  */
-const PROFILE_COLUMNS = [
+const SELF_EDITABLE = new Set([
   "university", "year", "phone", "dateOfBirth", "spiritualBackground", "gifts",
-];
-const SELF_EDITABLE = new Set([...PROFILE_COLUMNS, "name"]);
-/** Sent in a self-edit, these are dropped without a refusal (R24). */
-const SELF_SILENTLY_DROPPED = ["notes", "activeSeasonId"];
-const ADMIN_EDITABLE = new Set([...PROFILE_COLUMNS, "name", "email", "notes"]);
+]);
+const ADMIN_EDITABLE = new Set([...SELF_EDITABLE, "name", "email", "notes"]);
 
 studentsRouter.post("/", async (req, res) => {
   const user = requireUser(req);
@@ -272,20 +248,16 @@ studentsRouter.patch("/:id", async (req, res) => {
     return apiError(res, "forbidden", "You don't have access to this.", 403);
   }
 
-  const isSelf = !isSuper(user) && user.userId === id;
-  const rawBody: Record<string, unknown> = { ...(req.body as Record<string, unknown>) };
-  if (isSelf) for (const key of SELF_SILENTLY_DROPPED) delete rawBody[key];
-
-  const allowed = isSuper(user) ? null : isSelf ? SELF_EDITABLE : ADMIN_EDITABLE;
+  const allowed = isSuper(user) ? null : user.userId === id ? SELF_EDITABLE : ADMIN_EDITABLE;
   if (allowed) {
-    for (const key of Object.keys(rawBody)) {
+    for (const key of Object.keys(req.body as Record<string, unknown>)) {
       if (!allowed.has(key)) {
         return apiError(res, "forbidden_field", `Field "${key}" is not editable by your role.`, 403);
       }
     }
   }
 
-  const parsed = updateStudentRequestSchema.safeParse(rawBody);
+  const parsed = updateStudentRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid student body.", 400);
   const body = parsed.data;
 

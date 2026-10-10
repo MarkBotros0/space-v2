@@ -14,17 +14,6 @@ export function apiErrorMessage(err: unknown, fallback: string): string {
   return parsed.success ? parsed.data.error.message : fallback;
 }
 
-/**
- * The envelope's field-level messages (`error.details.fieldErrors`), or `{}`.
- * v1 parity 2026-10-09 (spec 02 R5): a season code clash shows "Already in use."
- * under the Code input beside the top message.
- */
-export function apiFieldErrors(err: unknown): Record<string, string> {
-  if (!axios.isAxiosError(err)) return {};
-  const parsed = apiErrorBodySchema.safeParse(err.response?.data);
-  return parsed.success ? (parsed.data.error.details?.fieldErrors ?? {}) : {};
-}
-
 /** The envelope's machine code (e.g. "has_student_records"), or null. Screens branch on this, never on message text. */
 export function apiErrorCode(err: unknown): string | null {
   if (!axios.isAxiosError(err)) return null;

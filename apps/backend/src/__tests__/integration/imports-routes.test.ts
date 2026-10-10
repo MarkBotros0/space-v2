@@ -161,6 +161,7 @@ describe("POST /api/v1/imports/students/preview", () => {
       duplicate: 1,
       exists: 1,
       invalid: 2,
+      previously_removed: 0,
       total: 6,
     });
     // R7/D7: a leading "+" survives, because nothing here ever coerces a cell.
@@ -197,7 +198,7 @@ describe("POST /api/v1/imports/students/preview", () => {
     expect(res.body.data.counts).toMatchObject({ new: 1, duplicate: 1 });
   });
 
-  it("previews a soft-deleted address as exists \"Already in the system.\" (R22 / D-16.14)", async () => {
+  it("gives a soft-deleted address its own status and a message that says what to do (D-16.14)", async () => {
     const removed = await createTestUser("soft-deleted", "STUDENT");
     await db.user.update({ where: { id: removed.id }, data: { deletedAt: new Date() } });
 
@@ -206,8 +207,8 @@ describe("POST /api/v1/imports/students/preview", () => {
       .set("authorization", `Bearer ${superToken}`)
       .send({ text: sheet("name\temail", `Removed Person\t${removed.email}`) });
 
-    expect(res.body.data.rows[0]).toMatchObject({ status: "exists", message: "Already in the system." });
-    expect(res.body.data.counts).not.toHaveProperty("previously_removed");
+    expect(res.body.data.rows[0].status).toBe("previously_removed");
+    expect(res.body.data.rows[0].message).toMatch(/restore/i);
   });
 
   it("accepts a season export's \"Student\" header (spec D14)", async () => {
@@ -219,48 +220,18 @@ describe("POST /api/v1/imports/students/preview", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.rows[0].status).toBe("new");
     expect(res.body.data.detectedColumns).toEqual(["Name", "Email"]);
+    // D-16.12: the column that matched nothing is named, not swallowed.
+    expect(res.body.data.unrecognisedColumns).toEqual(["Group"]);
   });
 
-  it("silently ignores an unrecognised column, as v1 (R18 / D-16.12)", async () => {
+  it("names an unrecognised column as typed (trimmed)", async () => {
     const res = await request(app)
       .post("/api/v1/imports/students/preview")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ text: sheet("name,email,Phone No,Uni", `A Row,${testEmail("unrec")},1,2`) });
+      .send({ text: sheet("name,email,Phone No,Uni", `A,${testEmail("unrec")},1,2`) });
 
     expect(res.body.data.delimiter).toBe("comma");
-    expect(res.body.data).not.toHaveProperty("unrecognisedColumns");
-    expect(res.body.data.detectedColumns).toEqual(["Name", "Email"]);
-    expect(res.body.data.rows[0].status).toBe("new");
-  });
-
-  it("skips as blank a row whose only text is in an ignored column (R20)", async () => {
-    const res = await request(app)
-      .post("/api/v1/imports/students/preview")
-      .set("authorization", `Bearer ${superToken}`)
-      .send({
-        text: sheet("name\temail\tGroup", `Kept Row\t${testEmail("blank-a")}\tA`, "\t\tOnly Group", `Also Kept\t${testEmail("blank-b")}\tB`),
-      });
-
-    expect(res.body.data.counts).toMatchObject({ total: 2, new: 2, invalid: 0 });
-    // Line numbering stays the operator's own: the skipped line keeps line 3.
-    expect(res.body.data.rows.map((r: { rowNumber: number }) => r.rowNumber)).toEqual([2, 4]);
-  });
-
-  it("uses the LAST name/email column and the FIRST column for a profile field (R17)", async () => {
-    const email = testEmail("r17");
-    const res = await request(app)
-      .post("/api/v1/imports/students/preview")
-      .set("authorization", `Bearer ${superToken}`)
-      .send({
-        text: sheet(
-          "name\temail\tphone\tname\tmobile\temail",
-          `First Name Col\tnot-an-email\t111\tLast Name Col\t222\t${email}`,
-        ),
-      });
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.rows[0]).toMatchObject({ status: "new", name: "Last Name Col", email });
-    expect(res.body.data.rows[0].values.phone).toBe("111");
+    expect(res.body.data.unrecognisedColumns).toEqual(["Phone No", "Uni"]);
   });
 
   it("refuses a paste with no name or email column, naming both", async () => {
@@ -295,20 +266,14 @@ describe("POST /api/v1/imports/students/preview", () => {
     expect(res.body.data.rows[0].message).toMatch(/YYYY-MM-DD/);
   });
 
-  it("checks only name and email at preview; an over-long value previews new (R24 / D-16.9)", async () => {
+  it("applies the SAME length rules at preview as at commit (D-16.9 / spec D12)", async () => {
     const res = await request(app)
       .post("/api/v1/imports/students/preview")
       .set("authorization", `Bearer ${superToken}`)
-      .send({
-        text: sheet(
-          "name\temail\tNotes",
-          `${"x".repeat(300)}\t${testEmail("longname")}\t`,
-          `Long Notes\t${testEmail("longnotes")}\t${"n".repeat(2500)}`,
-        ),
-      });
+      .send({ text: sheet("name\temail", `${"x".repeat(300)}\t${testEmail("longname")}`) });
 
-    // As v1: lengths are a commit-time check, reported `failed` there.
-    expect(res.body.data.rows.map((r: { status: string }) => r.status)).toEqual(["new", "new"]);
+    // v1 previews this green and returns `failed` after the operator commits.
+    expect(res.body.data.rows[0].status).toBe("invalid");
   });
 
   it("refuses a non-SUPER caller (D3 — the gate stays SUPER-only)", async () => {
@@ -351,6 +316,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       .send({
         mode: "season",
         seasonId,
+        onExisting: "skip",
         rows: [
           {
             rowNumber: 2,
@@ -370,7 +336,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({ created: 1, skipped: 0, failed: 0 });
+    expect(res.body.data).toMatchObject({ created: 1, skipped: 0, enrolled: 0 });
     expect(res.body.data.rows[0]).toMatchObject({ rowNumber: 2, outcome: "created" });
     expect(res.body.data.rows[0].userId).toEqual(expect.any(Number));
 
@@ -415,7 +381,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       { rowNumber: 2, values: { name: "Rerun A", email: a, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
       { rowNumber: 3, values: { name: "Rerun B", email: b, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
     ];
-    const body = { mode: "season" as const, seasonId, rows };
+    const body = { mode: "season" as const, seasonId, onExisting: "skip" as const, rows };
 
     const first = await request(app)
       .post("/api/v1/imports/students/commit")
@@ -430,7 +396,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       .send(body);
 
     expect(second.status).toBe(200);
-    expect(second.body.data).toMatchObject({ created: 0, skipped: 2, failed: 0 });
+    expect(second.body.data).toMatchObject({ created: 0, skipped: 2, enrolled: 0 });
     expect(second.body.data.rows.every((r: { outcome: string }) => r.outcome === "skipped")).toBe(true);
 
     // The assertion that cannot be satisfied by a lucky status code: count
@@ -441,8 +407,9 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
   });
 
   it("matches an existing user whose stored address differs only in case", async () => {
-    // Mutation 2's target. Without lower-casing the comparison, this inserts a
-    // second account under the uppercase address — the count below goes red.
+    // Mutation 2's target. Without lower-casing the comparison, this attempts
+    // an insert that the @unique index refuses, the transaction rolls back,
+    // and the response is 409 instead of 200 — red either way.
     const existing = await createTestUser("commit-case", "STUDENT");
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
@@ -450,6 +417,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       .send({
         mode: "season",
         seasonId,
+        onExisting: "skip",
         rows: [{ rowNumber: 2, values: { name: "Shouted Case", email: existing.email.toUpperCase(), university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }],
       });
 
@@ -466,6 +434,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       .send({
         mode: "season",
         seasonId,
+        onExisting: "skip",
         rows: [
           { rowNumber: 2, values: { name: "First Casing", email, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
           { rowNumber: 3, values: { name: "Second Casing", email: email.toUpperCase(), university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
@@ -477,32 +446,32 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
     expect(await db.user.count({ where: { email: { in: [email, email.toUpperCase()] } } })).toBe(1);
   });
 
-  it("reports an invalid row failed and commits the rows around it (R42, R45)", async () => {
-    const good = testEmail("perrow-good");
-    const alsoGood = testEmail("perrow-also");
-    const bad = testEmail("perrow-bad");
+  it("refuses the WHOLE batch when any row is invalid, and writes nothing (D-16.5)", async () => {
+    const good = testEmail("allornothing-good");
+    const alsoGood = testEmail("allornothing-also");
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
       .send({
         mode: "season",
         seasonId,
+        onExisting: "skip",
         rows: [
           { rowNumber: 2, values: { name: "Good One", email: good, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
-          // Over v1's import bound for phone (50) — previews `new`, fails here.
-          { rowNumber: 3, values: { name: "Long Phone", email: bad, university: null, year: null, phone: "1".repeat(51), dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
+          // A client that filtered its own preview badly, or lied.
+          { rowNumber: 3, values: { name: "x".repeat(300), email: testEmail("allornothing-bad"), university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
           { rowNumber: 4, values: { name: "Also Good", email: alsoGood, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
         ],
       });
 
-    expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({ created: 2, skipped: 0, failed: 1 });
-    expect(res.body.data.rows[1]).toMatchObject({ rowNumber: 3, outcome: "failed", message: "Invalid name or email." });
-    expect(await db.user.count({ where: { email: { in: [good, alsoGood] } } })).toBe(2);
-    expect(await db.user.count({ where: { email: bad } })).toBe(0);
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe("import_rows_invalid");
+    expect(res.body.error.message).toMatch(/\b3\b/); // names the offending row number
+    // v1 would have written rows 2 and 4 and reported row 3 `failed` (R45).
+    expect(await db.user.count({ where: { email: { in: [good, alsoGood] } } })).toBe(0);
   });
 
-  it("re-derives validity server-side — a client's own classification is never trusted (D-16.4)", async () => {
+  it("re-derives status server-side — a client's own classification is never trusted (D-16.4)", async () => {
     // The commit body has no `status` field at all, so the only way a client
     // can assert "this row is fine" is by sending it. The server disagrees.
     const res = await request(app)
@@ -511,10 +480,10 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       .send({
         mode: "season",
         seasonId,
+        onExisting: "skip",
         rows: [{ rowNumber: 2, status: "new", values: { name: "N", email: "definitely-not-an-email", university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }],
       });
-    expect(res.status).toBe(200);
-    expect(res.body.data.rows[0]).toMatchObject({ outcome: "failed", message: "Invalid name or email." });
+    expect(res.status).toBe(422);
   });
 
   it("404s a soft-deleted season and writes nothing (spec R39)", async () => {
@@ -525,7 +494,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "season", seasonId: doomed.id, rows: [{ rowNumber: 2, values: { name: "Orphan Row", email, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
+      .send({ mode: "season", seasonId: doomed.id, onExisting: "skip", rows: [{ rowNumber: 2, values: { name: "Orphan Row", email, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
 
     expect(res.status).toBe(404);
     expect(await db.user.count({ where: { email } })).toBe(0);
@@ -536,20 +505,19 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       const res = await request(app)
         .post("/api/v1/imports/students/commit")
         .set("authorization", `Bearer ${token}`)
-        .send({ mode: "season", seasonId, rows: [{ rowNumber: 2, values: { name: "Nope", email: testEmail("nope"), university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
+        .send({ mode: "season", seasonId, onExisting: "skip", rows: [{ rowNumber: 2, values: { name: "Nope", email: testEmail("nope"), university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
       expect(res.status).toBe(403);
     }
   });
 });
 
-describe("POST /api/v1/imports/students/commit — existing users (R44, R22)", () => {
-  const blank = { university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null };
-
-  it("skips an existing student and writes nothing about them — never updated, never enrolled", async () => {
+describe("POST /api/v1/imports/students/commit — onExisting", () => {
+  it("enrols an existing student into the target season without touching their profile (D-16.7 / spec D4)", async () => {
     const returning = await createTestUser("returning", "STUDENT");
     await db.studentProfile.create({
       data: { userId: returning.id, activeSeasonId: otherSeasonId, notes: "A year of pastoral notes", university: "Old University" },
     });
+    await db.seasonEnrollment.create({ data: { studentUserId: returning.id, seasonId: otherSeasonId, status: "COMPLETED", completedAt: new Date() } });
 
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
@@ -557,46 +525,97 @@ describe("POST /api/v1/imports/students/commit — existing users (R44, R22)", (
       .send({
         mode: "season",
         seasonId,
-        // An old client still sending the removed field: stripped, not honoured.
         onExisting: "enroll",
-        rows: [{ rowNumber: 2, values: { ...blank, name: "A COMPLETELY DIFFERENT NAME", email: returning.email, notes: "stale export note" } }],
+        rows: [{ rowNumber: 2, values: { name: "A COMPLETELY DIFFERENT NAME", email: returning.email, university: "Stale Export University", year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: "stale export note" } }],
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({ created: 0, skipped: 1, failed: 0 });
-    expect(res.body.data.rows[0]).toMatchObject({ outcome: "skipped", message: "Already in the system." });
+    expect(res.body.data).toMatchObject({ created: 0, skipped: 0, enrolled: 1 });
 
     const row = await oneUserByEmail(returning.email);
-    expect(row.seasonEnrollments).toEqual([]);
+    // The enrolment was created…
+    expect(row.seasonEnrollments.map((e) => e.seasonId).sort()).toEqual([otherSeasonId, seasonId].sort());
+    // …but the pointer, already held by another season, was NOT stolen —
+    // Plan 7's rule (POST /students/:id/enrollments), now the same function.
     expect(row.studentProfile?.activeSeasonId).toBe(otherSeasonId);
+    // …and nothing else did. A spreadsheet must never erase pastoral notes.
     expect(row.name).toBe("Test returning");
     expect(row.studentProfile?.notes).toBe("A year of pastoral notes");
+    expect(row.studentProfile?.university).toBe("Old University");
   });
 
-  it("skips a soft-deleted address with \"Already in the system.\" and never resurrects it", async () => {
+  it("leaves an existing enrolment for that same season completely alone", async () => {
+    const withdrawn = await createTestUser("withdrawn", "STUDENT");
+    await db.studentProfile.create({ data: { userId: withdrawn.id } });
+    await db.seasonEnrollment.create({
+      data: { studentUserId: withdrawn.id, seasonId, status: "WITHDRAWN", droppedAt: new Date("2099-01-01T00:00:00.000Z"), dropReason: "Moved away" },
+    });
+
+    await request(app)
+      .post("/api/v1/imports/students/commit")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ mode: "season", seasonId, onExisting: "enroll", rows: [{ rowNumber: 2, values: { name: "Withdrawn Person", email: withdrawn.email, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
+
+    const enrolment = await db.seasonEnrollment.findUnique({
+      where: { studentUserId_seasonId: { studentUserId: withdrawn.id, seasonId } },
+      select: { status: true, dropReason: true },
+    });
+    // A resurrected WITHDRAWN enrolment with its reason erased is the most
+    // damaging thing a bulk write can do (spec 06 D2). It must not happen.
+    expect(enrolment).toMatchObject({ status: "WITHDRAWN", dropReason: "Moved away" });
+  });
+
+  it("reports an existing enrolment as skipped, and points an UNSET pointer (Plan 7's rules)", async () => {
+    const already = await createTestUser("already-enrolled", "STUDENT");
+    await db.studentProfile.create({ data: { userId: already.id } });
+    await db.seasonEnrollment.create({
+      data: { studentUserId: already.id, seasonId, status: "ACTIVE" },
+    });
+    const fresh = await createTestUser("pointer-unset", "STUDENT");
+    await db.studentProfile.create({ data: { userId: fresh.id } });
+
+    const blank = { university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null };
+    const res = await request(app)
+      .post("/api/v1/imports/students/commit")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({
+        mode: "season",
+        seasonId,
+        onExisting: "enroll",
+        rows: [
+          { rowNumber: 2, values: { name: "Already Here", email: already.email, ...blank } },
+          { rowNumber: 3, values: { name: "Pointer Unset", email: fresh.email, ...blank } },
+        ],
+      });
+
+    expect(res.body.data).toMatchObject({ created: 0, skipped: 1, enrolled: 1 });
+    expect(res.body.data.rows[0]).toMatchObject({ outcome: "skipped", message: expect.stringMatching(/already enrolled/i) });
+    const freshRow = await oneUserByEmail(fresh.email);
+    expect(freshRow.studentProfile?.activeSeasonId).toBe(seasonId);
+  });
+
+  it("skips a soft-deleted address even under enroll, with a message that says why", async () => {
     const removed = await createTestUser("commit-removed", "STUDENT");
     await db.user.update({ where: { id: removed.id }, data: { deletedAt: new Date() } });
 
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "season", seasonId, rows: [{ rowNumber: 2, values: { ...blank, name: "Removed Person", email: removed.email } }] });
+      .send({ mode: "season", seasonId, onExisting: "enroll", rows: [{ rowNumber: 2, values: { name: "Removed Person", email: removed.email, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
 
-    expect(res.body.data).toMatchObject({ created: 0, skipped: 1, failed: 0 });
-    expect(res.body.data.rows[0].message).toBe("Already in the system.");
+    expect(res.body.data).toMatchObject({ created: 0, skipped: 1, enrolled: 0 });
+    expect(res.body.data.rows[0].message).toMatch(/restore/i);
     expect(await db.seasonEnrollment.count({ where: { studentUserId: removed.id, seasonId } })).toBe(0);
-    const still = await db.user.findUniqueOrThrow({ where: { id: removed.id }, select: { deletedAt: true } });
-    expect(still.deletedAt).not.toBeNull();
   });
 
-  it("skips an address that belongs to a staff account", async () => {
+  it("skips an address that belongs to a staff account rather than enrolling it", async () => {
     const leader = await createTestUser("commit-leader", "LEADER");
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "season", seasonId, rows: [{ rowNumber: 2, values: { ...blank, name: "A Leader", email: leader.email } }] });
+      .send({ mode: "season", seasonId, onExisting: "enroll", rows: [{ rowNumber: 2, values: { name: "A Leader", email: leader.email, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
 
-    expect(res.body.data).toMatchObject({ created: 0, skipped: 1, failed: 0 });
+    expect(res.body.data).toMatchObject({ created: 0, skipped: 1, enrolled: 0 });
     expect(await db.seasonEnrollment.count({ where: { studentUserId: leader.id } })).toBe(0);
   });
 });
@@ -607,7 +626,7 @@ describe("POST /api/v1/imports/students/commit — alumni mode", () => {
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "alumni", graduationYear: 2020, rows: [{ rowNumber: 2, values: { name: "An Alumnus", email, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
+      .send({ mode: "alumni", graduationYear: 2020, onExisting: "skip", rows: [{ rowNumber: 2, values: { name: "An Alumnus", email, university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
 
     expect(res.status).toBe(200);
     const row = await oneUserByEmail(email);
@@ -616,6 +635,13 @@ describe("POST /api/v1/imports/students/commit — alumni mode", () => {
     expect(row.seasonEnrollments).toEqual([]);
   });
 
+  it("rejects onExisting=enroll in alumni mode — there is no season to enrol into", async () => {
+    const res = await request(app)
+      .post("/api/v1/imports/students/commit")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ mode: "alumni", graduationYear: 2020, onExisting: "enroll", rows: [{ rowNumber: 2, values: { name: "A", email: testEmail("alumni-enroll"), university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }] });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("POST /api/v1/seasons/:id/imports/groups/preview", () => {
@@ -716,39 +742,22 @@ describe("POST /api/v1/seasons/:id/imports/groups/preview", () => {
     expect(res.body.data.rows[0].status).toBe("no_student");
   });
 
-  it("refuses only the row naming an ambiguous group, not the paste (D-16.19.1 / R65)", async () => {
+  it("refuses the file when two groups in the season share a name (D-16.19.1 / spec D17)", async () => {
     const clash = await createTestSeason();
-    const admin = await db.user.findFirstOrThrow({ where: { email: { startsWith: `${TEST_PREFIX}admin-` } }, select: { id: true, email: true } });
-    await db.seasonAdmin.create({ data: { seasonId: clash.id, userId: admin.id } });
-    await db.group.create({ data: { seasonId: clash.id, name: "Alpha" } });
-    await db.group.create({ data: { seasonId: clash.id, name: "alpha " } });
-    const beta = await db.group.create({ data: { seasonId: clash.id, name: "Beta" }, select: { id: true } });
-    const one = await createTestUser("grp-clash-one", "STUDENT");
-    const two = await createTestUser("grp-clash-two", "STUDENT");
-    for (const u of [one, two]) {
-      await db.seasonEnrollment.create({ data: { studentUserId: u.id, seasonId: clash.id, status: "ACTIVE" } });
-    }
+    await db.seasonAdmin.create({ data: { seasonId: clash.id, userId: (await db.user.findFirstOrThrow({ where: { email: { startsWith: `${TEST_PREFIX}admin-` } }, select: { id: true } })).id } });
+    await db.group.create({ data: { seasonId: clash.id, name: "Group A" } });
+    await db.group.create({ data: { seasonId: clash.id, name: "group a" } });
 
-    const fresh = await login(app, admin.email);
+    const fresh = await login(app, (await db.user.findFirstOrThrow({ where: { email: { startsWith: `${TEST_PREFIX}admin-` } }, select: { email: true } })).email);
     const res = await request(app)
       .post(`/api/v1/seasons/${clash.id}/imports/groups/preview`)
       .set("authorization", `Bearer ${fresh}`)
-      .send({ text: sheet("email\tgroup", `${one.email}\tALPHA`, `${two.email}\tBeta`) });
+      .send({ text: sheet("email\tgroup", `${enrolledEmail}\tGroup A`) });
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.rows[0]).toMatchObject({
-      status: "no_group",
-      groupId: null,
-      message: 'Several groups in this season are named "ALPHA". Rename one of them, then import again.',
-    });
-    expect(res.body.data.rows[1]).toMatchObject({ status: "assign", groupId: beta.id });
-
-    const commit = await request(app)
-      .post(`/api/v1/seasons/${clash.id}/imports/groups/commit`)
-      .set("authorization", `Bearer ${fresh}`)
-      .send({ assignments: [{ studentUserId: two.id, groupId: beta.id }] });
-    expect(commit.status).toBe(200);
-    expect(commit.body.data.assigned).toBe(1);
+    // v1 builds a Map by iteration and lets the LAST duplicate silently win
+    // every row (spec R65).
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/more than one group named/i);
   });
 
   it("refuses an ADMIN of a different season, and a STUDENT (C8 — the row gate)", async () => {
@@ -883,20 +892,5 @@ describe("the import body limit", () => {
       .send({ text });
     expect(res.status).toBe(200);
     expect(res.body.data.rows).toHaveLength(900);
-  });
-
-  it("accepts a paste over 256 KB and under v1's 5 MB ceiling (R3)", async () => {
-    const rows = Array.from(
-      { length: 1500 },
-      (_, i) => `Big Student ${i}\t${testEmail(`big-${i}`)}\t${"y".repeat(200)}`,
-    );
-    const text = sheet("name\temail\tNotes", ...rows);
-    expect(text.length).toBeGreaterThan(256 * 1024);
-    const res = await request(app)
-      .post("/api/v1/imports/students/preview")
-      .set("authorization", `Bearer ${superToken}`)
-      .send({ text });
-    expect(res.status).toBe(200);
-    expect(res.body.data.rows).toHaveLength(1500);
   });
 });

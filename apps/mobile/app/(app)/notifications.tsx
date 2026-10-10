@@ -1,9 +1,12 @@
-// apps/mobile/app/(app)/notifications.tsx
 import { useRouter } from "expo-router";
 import { FlatList, Pressable } from "react-native";
 import type { NotificationItem } from "@space/shared";
 
-import { useMarkRead, useNotifications } from "../../src/hooks/use-notifications";
+import {
+  flattenNotifications,
+  useMarkRead,
+  useNotifications,
+} from "../../src/hooks/use-notifications";
 import { formatDate } from "../../src/lib/format";
 import { routeForTarget } from "../../src/lib/notification-route";
 import { useTheme } from "../../src/theme";
@@ -16,10 +19,8 @@ import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from
  * the body re-derived the viewer from the session and scoped to their own id,
  * so collapsing them loses no authorization because there never was any (R40).
  *
- * Reading this screen performs no write. Read state changes only from
- * "Mark all read", as in v1 (R47, R48) — never from a tap and never from the
- * list query resolving (ruling C6, spec D2). One list of the newest 100, no
- * paging (R33, R39).
+ * Reading this screen performs no write. Read state changes from a tap or from
+ * "Mark all read", never from the list query resolving — ruling C6, spec D2.
  */
 function NotificationRow({
   item,
@@ -62,14 +63,17 @@ function NotificationRow({
 export default function NotificationsScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { data, isPending, isError, refetch, isRefetching } = useNotifications();
+  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage } =
+    useNotifications();
   const markRead = useMarkRead();
 
-  const items = data?.items ?? [];
+  const items = flattenNotifications(data?.pages);
 
   const handlePress = (item: NotificationItem) => {
-    // v1 (notification-bell.tsx:133-139, notifications-page.tsx:75-81):
-    // opening a notification only navigates; it stays unread (R48).
+    // Explicit: the user tapped. Already-read rows are skipped so a re-open
+    // costs nothing (the endpoint is idempotent anyway — R44).
+    if (item.readAt === null) markRead.mutate({ ids: [item.id] });
+
     const route = routeForTarget(item.target);
     if (route) router.push(route);
   };
@@ -105,6 +109,10 @@ export default function NotificationsScreen() {
           data={items}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => <NotificationRow item={item} onPress={handlePress} />}
+          onEndReachedThreshold={0.5}
+          onEndReached={() => {
+            if (hasNextPage) void fetchNextPage();
+          }}
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
           style={{ marginTop: theme.spacing.sm }}

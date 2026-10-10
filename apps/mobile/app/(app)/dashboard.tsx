@@ -11,8 +11,7 @@ import { LoadingState } from "../../src/ui";
 /**
  * Home — one route, one branch per audience (spec 19 §9, Phase 0 D1). Each
  * branch owns its queries, its loading/error/empty states and its
- * pull-to-refresh. The notification bell comes from the shell header that
- * `Screen` renders on every screen (10-notifications R36).
+ * pull-to-refresh; every branch keeps Plan 13's bell via DashboardFrame.
  * The old per-screen assignment card is gone on purpose: its counts are now the
  * server's (spec 19 D15).
  */

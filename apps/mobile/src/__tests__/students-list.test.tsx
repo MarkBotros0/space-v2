@@ -139,32 +139,6 @@ describe("AlumniScreen", () => {
     expect(await screen.findByText(/Class of 2024/)).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=alumni");
   });
-
-  it("has no search, no filters and no Load more — v1 listed every alumnus at once (06-students R41)", async () => {
-    useSessionStore.setState(superSession);
-    get.mockResolvedValue(
-      page([{ ...activeRow, graduationYear: 2024, activeSeasonTitle: null, currentGroupName: null }], 21, 2),
-    );
-
-    renderWithProviders(<AlumniScreen />);
-
-    await screen.findByText(/Class of 2024/);
-    expect(screen.queryByLabelText("Search students")).toBeNull();
-    expect(screen.queryByText("Filter and sort")).toBeNull();
-    expect(screen.queryByText("Load more")).toBeNull();
-  });
-});
-
-describe("StudentsScreen for a LEADER", () => {
-  it("is not available — v1 had no leader students list (06-students R28)", async () => {
-    useSessionStore.setState({
-      user: { id: 3, name: "Test leader", email: "lea@jpc.test", role: "LEADER" as const, avatarPath: null, hasPassword: true },
-      scopes: { ...emptyScopes, groupLeaderIds: [3] },
-    });
-    renderWithProviders(<StudentsScreen />);
-    expect(await screen.findByText("This list isn't available for your role.")).toBeTruthy();
-    expect(get).not.toHaveBeenCalled();
-  });
 });
 
 describe("DroppedScreen", () => {
@@ -261,18 +235,6 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none&sort=university&dir=desc"),
     );
-  });
-
-  it("filters by the student's active season, as v1's season select (06-students R35)", async () => {
-    useSessionStore.setState(superSession);
-    serve();
-    renderWithProviders(<StudentsScreen />);
-    await screen.findByText("Sara Student");
-
-    fireEvent.press(screen.getByText("Filter and sort"));
-    expect(await screen.findByLabelText("All seasons")).toBeTruthy();
-    fireEvent.press(await screen.findByLabelText("Spring 2099"));
-    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&seasonId=7"));
   });
 
   it("offers no filter on the dropped list, whose rows are enrollments", async () => {

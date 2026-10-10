@@ -361,22 +361,19 @@ describe("POST /api/v1/submissions/:publicId/review", () => {
     expect(notified).toBeGreaterThan(0);
   });
 
-  // v1 parity 2026-10-09 (R21): one action; a legacy returnForRevision flag is
-  // stripped by the schema and the row still becomes REVIEWED.
-  it("always marks REVIEWED — there is no return for revision (v1 R21)", async () => {
-    const pid = await seedSubmission("SUBMITTED", "No return for revision");
+  it("returns work for revision as RETURNED, not by demoting it to DRAFT", async () => {
+    const pid = await seedSubmission("SUBMITTED", "Returned for revision");
     const res = await request(app)
       .post(`/api/v1/submissions/${pid}/review`)
       .set("authorization", `Bearer ${adminToken}`)
       .send({ feedback: "Needs another pass.", returnForRevision: true });
 
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ reviewed: true });
     const row = await db.submission.findUnique({
       where: { publicId: pid },
       select: { status: true },
     });
-    expect(row?.status).toBe("REVIEWED");
+    expect(row?.status).toBe("RETURNED");
   });
 
   it("refuses the author, a mentor, and an unrelated student", async () => {
@@ -400,19 +397,14 @@ describe("POST /api/v1/submissions/:publicId/review", () => {
     expect(read.body.data.canReview).toBe(false);
   });
 
-  // v1 parity 2026-10-09 (R25): v1 submission-actions.ts:167-191 has no status precondition.
-  it("marks a never-submitted DRAFT reviewed (v1 R25)", async () => {
+  it("refuses to mark a never-submitted draft as reviewed", async () => {
     const pid = await seedSubmission("DRAFT", "Never submitted");
     const res = await request(app)
       .post(`/api/v1/submissions/${pid}/review`)
       .set("authorization", `Bearer ${adminToken}`)
       .send({ feedback: "?" });
-    expect(res.status).toBe(200);
-    const row = await db.submission.findUnique({
-      where: { publicId: pid },
-      select: { status: true, feedback: true },
-    });
-    expect(row).toMatchObject({ status: "REVIEWED", feedback: "?" });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("not_submitted");
   });
 });
 
@@ -619,7 +611,7 @@ describe("review notification wording (REG-91)", () => {
     expect(JSON.stringify(n)).not.toContain("script");
   });
 
-  it("uses the same title even when a client still sends returnForRevision (v1 R21)", async () => {
+  it("keeps a distinct title for work returned for revision", async () => {
     const pid = await seedSubmission("SUBMITTED", "Returned wording");
     await request(app)
       .post(`/api/v1/submissions/${pid}/review`)
@@ -629,7 +621,7 @@ describe("review notification wording (REG-91)", () => {
       where: { userId: studentUserId, type: "SUBMISSION_REVIEWED", title: { contains: "Returned wording" } },
       select: { title: true },
     });
-    expect(n?.title).toBe('Feedback ready on "Returned wording"');
+    expect(n?.title).toBe("Returned wording was returned for revision");
   });
 });
 

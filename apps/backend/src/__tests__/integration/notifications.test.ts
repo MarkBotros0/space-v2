@@ -108,9 +108,12 @@ it("notifies the group leader and season admin after two consecutive absences", 
   expect(forAdmin?.title).toContain("2 consecutive absences");
 });
 
-it("respects an opt-out on NotificationPreference", async () => {
-  // v1 semantics (jpc-space src/lib/notifications.ts:62-75, R8): an opted-out
-  // recipient is filtered out before the insert — no in-app row, no email.
+it("writes the in-app row even for an opted-out recipient, and suppresses only their outbound channels", async () => {
+  // BEHAVIOUR CHANGE, spec D4: v1 filtered opted-out recipients out before the
+  // insert (R8), so "off" meant "no record" and the user lost their history to
+  // stop the emails. The row is now always written; the preference governs
+  // email (and push at cutover). This test is the old one, inverted on
+  // purpose — see the plan header.
   await db.notification.deleteMany({ where: { userId: { in: [leaderId, adminId] } } });
   await db.notificationPreference.upsert({
     where: { userId: leaderId },
@@ -124,7 +127,7 @@ it("respects an opt-out on NotificationPreference", async () => {
     where: { userId: { in: [leaderId, adminId] }, type: "LOW_ATTENDANCE_FLAG" },
     select: { userId: true },
   });
-  expect(recipients.map((r) => r.userId)).toEqual([adminId]);
+  expect(recipients.map((r) => r.userId).sort()).toEqual([adminId, leaderId].sort());
 });
 
 it("does not notify a deactivated leader or admin", async () => {
@@ -141,34 +144,15 @@ it("does not notify a deactivated leader or admin", async () => {
   }
 });
 
-it("reports what it wrote and whom it skipped", async () => {
+it("reports what it wrote and whose channels it suppressed", async () => {
   // v1 returned void, so a producer could not tell the caller how many people
   // were actually notified (§6; 03-sessions.md R17 needs this number).
-  await db.notificationPreference.upsert({
-    where: { userId: leaderId },
-    update: { lowAttendanceFlag: false },
-    create: { userId: leaderId, lowAttendanceFlag: false },
-  });
   const result = await createNotificationsBulk([leaderId, adminId, leaderId], {
     type: "LOW_ATTENDANCE_FLAG",
     title: "space-v2-test counting probe",
     body: "b",
     link: `/admin/students/${studentId}`,
   });
-  // leaderId appears twice and is deduped; leaderId is opted out, so only
-  // adminId gets a row (v1 R8 — no row, no email for an opted-out user).
-  expect(result).toEqual({ written: 1, suppressed: 1 });
-});
-
-it("writes nothing when every recipient opted out (v1 R11)", async () => {
-  const result = await createNotificationsBulk([leaderId], {
-    type: "LOW_ATTENDANCE_FLAG",
-    title: "space-v2-test all-opted-out probe",
-    body: "b",
-    link: `/admin/students/${studentId}`,
-  });
-  expect(result).toEqual({ written: 0, suppressed: 1 });
-  expect(
-    await db.notification.count({ where: { title: "space-v2-test all-opted-out probe" } }),
-  ).toBe(0);
+  // leaderId appears twice and is deduped; leaderId is opted out from the case above.
+  expect(result).toEqual({ written: 2, suppressed: 1 });
 });

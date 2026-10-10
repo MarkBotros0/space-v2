@@ -85,16 +85,11 @@ export async function listSessionsForSeason(
  */
 export async function listSessionsInRange(
   scope: CalendarScope,
-  window: { from: Date | null; to: Date | null },
+  window: { from: Date; to: Date },
   includeTokenFor: (seasonId: number) => boolean,
 ): Promise<SessionListRow[]> {
-  // v1 parity 2026-10-09 (spec 03 R75): either side may be open; no bounds = every
-  // session of the scoped seasons, as v1 sessions-query.ts:64-81.
-  const startsAt: Prisma.DateTimeFilter = {};
-  if (window.from) startsAt.gte = window.from;
-  if (window.to) startsAt.lt = window.to;
   const where: Prisma.SessionWhereInput = {
-    ...(window.from || window.to ? { startsAt } : {}),
+    startsAt: { gte: window.from, lt: window.to },
     ...(scope.kind === "active"
       ? { season: { status: "ACTIVE", deletedAt: null } }
       : { seasonId: { in: scope.seasonIds } }),

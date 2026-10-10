@@ -55,6 +55,8 @@ export default function ImportScreen() {
   const [preview, setPreview] = useState<StudentImportPreview | null>(null);
   const [result, setResult] = useState<StudentImportResult | null>(null);
   const [filter, setFilter] = useState<"attention" | "all">("attention");
+  const [enrolExisting, setEnrolExisting] = useState(false);
+  const [enrolConfirmed, setEnrolConfirmed] = useState(false);
 
   const template = useImportTemplate(isSuper);
   // Plan 4's hook — the same cached list the seasons screen reads.
@@ -62,9 +64,16 @@ export default function ImportScreen() {
   const previewMutation = useStudentImportPreview();
   const commitMutation = useStudentImportCommit();
 
-  // Only `new` rows are sent, as v1 (R34); an existing user is always skipped
-  // and never enrolled (R44 / D-16.7).
+  const enrolArmed = mode === "season" && enrolExisting && enrolConfirmed;
   const newRows = useMemo(() => preview?.rows.filter((r) => r.status === "new") ?? [], [preview]);
+  // D-16.7: with `enroll` confirmed, rows already in the system are SENT too —
+  // the server decides per row (enrol, already enrolled, staff, removed).
+  // Unconfirmed, they are never sent.
+  const existingRows = useMemo(
+    () => (enrolArmed ? (preview?.rows.filter((r) => r.status === "exists") ?? []) : []),
+    [preview, enrolArmed],
+  );
+  const importable = useMemo(() => [...newRows, ...existingRows], [newRows, existingRows]);
   const needsSeason = mode === "season" && seasonId === null;
   const visibleRows = useMemo(() => {
     if (!preview) return [];
@@ -107,20 +116,21 @@ export default function ImportScreen() {
   async function runCommit() {
     if (!preview) return;
     setLocalError(null);
-    const rows = newRows.map((r) => ({ rowNumber: r.rowNumber, values: r.values }));
+    const rows = importable.map((r) => ({ rowNumber: r.rowNumber, values: r.values }));
     if (rows.length === 0) return;
 
     // `status` is deliberately not sent: the server re-derives every
     // classification itself (D-16.4), so the client's opinion is not part of
     // the contract.
+    const onExisting = enrolArmed ? ("enroll" as const) : ("skip" as const);
     let body: StudentImportCommitInput;
     if (mode === "season") {
       // Narrowed, not cast: the button is disabled without a season, and this
       // guard makes the type say so (the earlier draft sent `null as number`).
       if (seasonId === null) return;
-      body = { mode: "season", seasonId, rows };
+      body = { mode: "season", seasonId, onExisting, rows };
     } else {
-      body = { mode: "alumni", graduationYear: Number(graduationYear), rows };
+      body = { mode: "alumni", graduationYear: Number(graduationYear), onExisting: "skip", rows };
     }
 
     try {
@@ -138,7 +148,7 @@ export default function ImportScreen() {
       <Screen scroll edges={["top", "left", "right"]}>
         <Text variant="heading">Import complete</Text>
         <Text variant="body">
-          {`${result.created} created · ${result.skipped} skipped · ${result.failed} failed`}
+          {`${result.created} created · ${result.enrolled} enrolled · ${result.skipped} skipped`}
         </Text>
         {/* Spec R55: import sends nothing. Plan 9's single-target invite is
             the only invite path that exists; bulk invites are still deferred,
@@ -149,15 +159,10 @@ export default function ImportScreen() {
         <Text variant="caption" color={theme.colors.neutral[600]}>
           It is safe to run the same paste again — anyone already in the system is skipped, never duplicated.
         </Text>
-        {/* Per-row report, as v1 (R54): skipped and failed rows with their
-            messages. A failed row did not stop the rows after it (R45). */}
         {notCreated.map((r) => (
           <Card key={r.rowNumber} style={{ marginTop: theme.spacing.sm }}>
             <Text variant="label">{`Row ${r.rowNumber} · ${r.email}`}</Text>
-            <Text
-              variant="caption"
-              color={r.outcome === "failed" ? theme.colors.error[600] : theme.colors.neutral[600]}
-            >
+            <Text variant="caption" color={theme.colors.neutral[600]}>
               {r.message ?? r.outcome}
             </Text>
           </Card>
@@ -168,6 +173,8 @@ export default function ImportScreen() {
             setResult(null);
             setPreview(null);
             setText("");
+            setEnrolExisting(false);
+            setEnrolConfirmed(false);
             setStep("paste");
           }}
         />
@@ -194,14 +201,53 @@ export default function ImportScreen() {
                 <Text variant="body">
                   {`${preview.counts.new} new · ${preview.counts.exists} already here · ${preview.counts.duplicate} repeated · ${preview.counts.invalid} invalid`}
                 </Text>
+                {preview.counts.previously_removed > 0 ? (
+                  <Text variant="caption" color={theme.colors.neutral[600]}>
+                    {`${preview.counts.previously_removed} previously removed — restore those from the users screen.`}
+                  </Text>
+                ) : null}
                 <Text variant="caption" color={theme.colors.neutral[600]}>
                   {`Read as ${preview.delimiter === "tab" ? "tab" : "comma"}-separated · columns: ${preview.detectedColumns.join(", ")}`}
                 </Text>
               </Card>
+              {preview.unrecognisedColumns.length > 0 ? (
+                <Card>
+                  {/* D-16.12: v1 never says what it FAILED to detect, which is
+                      the half that matters. */}
+                  <Text variant="label" color={theme.colors.error[600]}>
+                    {`${preview.unrecognisedColumns.length} column(s) not recognised`}
+                  </Text>
+                  <Text variant="caption" color={theme.colors.neutral[600]}>
+                    {`${preview.unrecognisedColumns.map((c) => `"${c}"`).join(", ")} — these were ignored.`}
+                  </Text>
+                </Card>
+              ) : null}
               <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
                 <Button title="Needs attention" variant={filter === "attention" ? "primary" : "secondary"} onPress={() => setFilter("attention")} />
                 <Button title="All" variant={filter === "all" ? "primary" : "secondary"} onPress={() => setFilter("all")} />
               </View>
+              {mode === "season" ? (
+                <View style={{ gap: theme.spacing.xs }}>
+                  <Button
+                    title="Also enrol people already in the system"
+                    variant={enrolExisting ? "primary" : "secondary"}
+                    onPress={() => {
+                      setEnrolExisting(!enrolExisting);
+                      setEnrolConfirmed(false);
+                    }}
+                  />
+                  {enrolExisting && !enrolConfirmed ? (
+                    <View style={{ gap: theme.spacing.xs }}>
+                      {/* D-16.7: `enroll` changes existing records, so it is
+                          never armed by the toggle alone. */}
+                      <Text variant="caption" color={theme.colors.neutral[600]}>
+                        {`This will also enrol ${preview.counts.exists} existing student(s) into this season. Their names, notes and other details will not be changed.`}
+                      </Text>
+                      <Button title="Yes, enrol them too" onPress={() => setEnrolConfirmed(true)} />
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           }
           ListEmptyComponent={
@@ -214,12 +260,14 @@ export default function ImportScreen() {
                 title={
                   needsSeason
                     ? "Choose a season before importing"
-                    : newRows.length === 0
+                    : importable.length === 0
                       ? "Nothing to import"
-                      : `Import ${newRows.length} student${newRows.length === 1 ? "" : "s"}`
+                      : `Import ${newRows.length} student${newRows.length === 1 ? "" : "s"}${
+                          existingRows.length > 0 ? `, enrol ${existingRows.length}` : ""
+                        }`
                 }
                 onPress={runCommit}
-                disabled={needsSeason || newRows.length === 0 || commitMutation.isPending}
+                disabled={needsSeason || importable.length === 0 || commitMutation.isPending}
               />
               <Button title="Back" variant="secondary" onPress={() => setStep("paste")} />
             </View>
