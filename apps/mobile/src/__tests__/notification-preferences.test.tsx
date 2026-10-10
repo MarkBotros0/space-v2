@@ -5,6 +5,8 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn() },
 }));
 
+jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
+
 import { apiClient } from "../lib/api-client";
 import { renderWithProviders } from "./helpers/render";
 
@@ -29,7 +31,7 @@ beforeEach(() => {
 });
 
 describe("NotificationPreferences", () => {
-  it("renders v1's five switches — quizGraded has none", async () => {
+  it("renders a switch for all six types — including the one v1 could never set", async () => {
     renderWithProviders(<NotificationPreferences />);
 
     expect(await screen.findByLabelText("Assignment created")).toBeTruthy();
@@ -37,9 +39,9 @@ describe("NotificationPreferences", () => {
     expect(screen.getByLabelText("Session rescheduled")).toBeTruthy();
     expect(screen.getByLabelText("Low attendance flag")).toBeTruthy();
     expect(screen.getByLabelText("Mentor follow-up")).toBeTruthy();
-    // v1 parity (settings-page.tsx:7-13, settings-form.tsx:27-53; R56/R57,
-    // 18-settings R15): v1's form rendered five toggles; quizGraded is not settable.
-    expect(screen.queryByLabelText("Quiz graded")).toBeNull();
+    // R56/R57: v1's form rendered five toggles and its action spread a
+    // five-field object, so this column kept its default forever.
+    expect(screen.getByLabelText("Quiz graded")).toBeTruthy();
   });
 
   it("states the real low-attendance threshold — two, not three (spec D12)", async () => {
@@ -49,16 +51,15 @@ describe("NotificationPreferences", () => {
     expect(await screen.findByText(/two consecutive/i)).toBeTruthy();
   });
 
-  it("PUTs v1's five keys when one is toggled off — never quizGraded", async () => {
+  it("PUTs all six keys when one is toggled off", async () => {
     renderWithProviders(<NotificationPreferences />);
 
-    fireEvent(await screen.findByLabelText("Mentor follow-up"), "valueChange", false);
+    fireEvent(await screen.findByLabelText("Quiz graded"), "valueChange", false);
 
-    const { quizGraded: _notSettable, ...fiveTrue } = allTrue;
     await waitFor(() =>
       expect(put).toHaveBeenCalledWith("/api/v1/me/notification-preferences", {
-        ...fiveTrue,
-        mentorFollowup: false,
+        ...allTrue,
+        quizGraded: false,
       }),
     );
   });
@@ -68,26 +69,27 @@ describe("NotificationPreferences", () => {
     put.mockReturnValue(new Promise((r) => { resolvePut = r; }));
     renderWithProviders(<NotificationPreferences />);
 
-    fireEvent(await screen.findByLabelText("Mentor follow-up"), "valueChange", false);
-    await waitFor(() => expect(screen.getByLabelText("Mentor follow-up").props.value).toBe(false));
+    fireEvent(await screen.findByLabelText("Quiz graded"), "valueChange", false);
+    await waitFor(() => expect(screen.getByLabelText("Quiz graded").props.value).toBe(false));
     expect(put).toHaveBeenCalled();
-    resolvePut({ data: { data: { preferences: { ...allTrue, mentorFollowup: false } } } });
-    await waitFor(() => expect(screen.getByLabelText("Mentor follow-up").props.value).toBe(false));
+    resolvePut({ data: { data: { preferences: { ...allTrue, quizGraded: false } } } });
+    await waitFor(() => expect(screen.getByLabelText("Quiz graded").props.value).toBe(false));
   });
 
   it("rolls the switch back when the save fails (REG-80)", async () => {
     put.mockRejectedValue(new Error("500"));
     renderWithProviders(<NotificationPreferences />);
 
-    fireEvent(await screen.findByLabelText("Mentor follow-up"), "valueChange", false);
+    fireEvent(await screen.findByLabelText("Quiz graded"), "valueChange", false);
     await waitFor(() => expect(put).toHaveBeenCalled());
-    await waitFor(() => expect(screen.getByLabelText("Mentor follow-up").props.value).toBe(true));
+    await waitFor(() => expect(screen.getByLabelText("Quiz graded").props.value).toBe(true));
   });
 
   it("explains what turning one off actually does", async () => {
-    // v1 semantics (notifications.ts:56-94, R8/R9): off means no inbox row and
-    // no email. Saying so is the difference between a setting and a surprise.
+    // Spec D4: the in-app row is always written now; the switch governs
+    // outbound channels. Saying so is the difference between a setting and a
+    // surprise.
     renderWithProviders(<NotificationPreferences />);
-    expect(await screen.findByText(/not in your inbox/i)).toBeTruthy();
+    expect(await screen.findByText(/still appear in your inbox/i)).toBeTruthy();
   });
 });

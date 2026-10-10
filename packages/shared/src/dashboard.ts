@@ -112,11 +112,13 @@ export const staffSeasonDashboardSchema = z
 export type StaffSeasonDashboard = z.infer<typeof staffSeasonDashboardSchema>;
 
 /**
- * A due-soon row: the student list row with its org-calendar due day, so the
- * label never formats `dueAt` in the device zone (X13). The list's
- * `dueDistance` (v1's "in N days", R48) is a list-only field and is left off.
+ * A due-soon row: the student list row plus its org-calendar due day, so the
+ * label never formats `dueAt` in the device zone (X13). The student list
+ * endpoint itself is unchanged (Plan 5 note 7).
  */
-export const dashboardDueItemSchema = studentAssignmentListItemSchema.omit({ dueDistance: true });
+export const dashboardDueItemSchema = studentAssignmentListItemSchema.extend({
+  dueOrgDay: isoDaySchema.nullable(),
+});
 export type DashboardDueItem = z.infer<typeof dashboardDueItemSchema>;
 
 export const studentAssignmentSummarySchema = z

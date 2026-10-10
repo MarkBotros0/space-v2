@@ -73,8 +73,7 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
         repeatWeeks: 3,
       }),
     );
-    // v1 parity 2026-10-09 (spec 03 R30): v1 session-form.tsx:125 goes to the season's calendar.
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/calendar", params: { seasonId: "7" } });
+    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "55" } });
   });
 
   it("validates with the server's schema before sending", async () => {
@@ -174,8 +173,7 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
         scope: "future",
       }),
     );
-    // v1 parity 2026-10-09 (spec 03 R30): v1 session-form.tsx:138 goes to the session's detail.
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "12" } });
+    expect(mockBack).toHaveBeenCalled();
   });
 
   it("hides the scope selector for a one-off session (spec 03 R29)", async () => {

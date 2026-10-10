@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { useLocalSearchParams } from "expo-router";
-import type { AssignmentDetail, MySubmissionSummary, SubmissionDetail } from "@space/shared";
+import type { AssignmentDetail, MySubmissionSummary } from "@space/shared";
 
 import { AssignmentStaffPanel } from "../../../../src/components/assignment-staff-panel";
 import { ForumThread } from "../../../../src/components/ForumThread";
 import { useAssignmentDetail } from "../../../../src/hooks/use-assignments";
-import { useSaveSubmission, useSubmissionDetail } from "../../../../src/hooks/use-submission";
+import {
+  useEnsureSubmission,
+  useSaveSubmission,
+  useSubmissionDetail,
+} from "../../../../src/hooks/use-submission";
 import { formatOrgDue } from "../../../../src/lib/format";
 import { useSessionStore } from "../../../../src/store/session";
 import { useTheme } from "../../../../src/theme";
@@ -20,73 +24,60 @@ import {
   Text,
 } from "../../../../src/ui";
 
-function submissionStatusLine(sub: { status: MySubmissionSummary["status"]; isLate: boolean }): string {
+function submissionStatusLine(sub: MySubmissionSummary): string {
   if (sub.status === "REVIEWED") return "Reviewed";
-  // v1 parity 2026-10-09 (was "Returned for revision"): nothing sets RETURNED any
-  // more (v1 submission-actions.ts:178-191); legacy rows read v1's badge label
-  // (submission-status-badge.tsx:23).
-  if (sub.status === "RETURNED") return "Returned";
+  if (sub.status === "RETURNED") return "Returned for revision";
   if (sub.status === "SUBMITTED") return sub.isLate ? "Submitted late" : "Submitted";
   return "Draft";
 }
 
-/**
- * v1 parity 2026-10-09 (08-submissions R1): no "Start working" step — v1 shows
- * the editor at once (student/assignments/[id]/page.tsx:40). With no submission
- * yet the editor starts empty and the first Save draft / Submit creates it.
- */
 function SubmissionSection({ detail }: { detail: AssignmentDetail }) {
-  const summary = detail.mySubmission;
-  if (summary === null) return <SubmissionEditor detail={detail} summary={null} />;
-  return <LoadedSubmissionEditor detail={detail} summary={summary} />;
+  const theme = useTheme();
+  const sub = detail.mySubmission;
+  const ensure = useEnsureSubmission(detail.id);
+
+  if (sub === null) {
+    return (
+      <Card style={{ marginTop: theme.spacing.md }}>
+        <Text variant="heading">Your submission</Text>
+        <Button title="Start working" onPress={() => ensure.mutate()} loading={ensure.isPending} />
+        {ensure.isError ? (
+          <Text variant="caption" color={theme.colors.error[700]}>
+            Couldn't start your submission. Try again.
+          </Text>
+        ) : null}
+      </Card>
+    );
+  }
+  return <SubmissionEditor detail={detail} summary={sub} />;
 }
 
-function LoadedSubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summary: MySubmissionSummary }) {
+function SubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summary: MySubmissionSummary }) {
+  const theme = useTheme();
   const { data: sub, isPending, isError, refetch } = useSubmissionDetail(summary.publicId);
+  const save = useSaveSubmission(summary.publicId, detail.id);
+  const [text, setText] = useState<string | null>(null);
 
   if (isPending) return <LoadingState />;
   if (isError) return <ErrorState message="Couldn't load your submission." onRetry={refetch} />;
-  return <SubmissionEditor detail={detail} summary={summary} sub={sub} />;
-}
-
-function SubmissionEditor({
-  detail,
-  summary,
-  sub,
-}: {
-  detail: AssignmentDetail;
-  summary: MySubmissionSummary | null;
-  sub?: SubmissionDetail;
-}) {
-  const theme = useTheme();
-  const save = useSaveSubmission(detail.id);
-  const [text, setText] = useState<string | null>(null);
 
   // Local edits win once typing starts; before that, the server's text shows.
-  const value = text ?? sub?.text ?? "";
-  // v1 parity 2026-10-09 (08-submissions R14; was "DRAFT || RETURNED only"):
-  // v1 student-submission-form.tsx:96 — read-only only when REVIEWED, or
-  // SUBMITTED and past due (server isOverdue, C4). SUBMITTED work before the
-  // due date stays editable and re-submittable.
-  const status = sub?.status ?? null;
-  const editable = !(status === "REVIEWED" || (status === "SUBMITTED" && detail.isOverdue));
+  const value = text ?? sub.text ?? "";
+  const editable = sub.status === "DRAFT" || sub.status === "RETURNED";
   // v1 student-submission-form.tsx:158 — and the server's 400 empty_submission rule.
-  const nothingToSubmit = value.trim() === "" && (sub?.files.length ?? 0) === 0;
-  const publicId = summary?.publicId ?? null;
+  const nothingToSubmit = value.trim() === "" && sub.files.length === 0;
 
   return (
     <Card style={{ marginTop: theme.spacing.md }}>
       <Text variant="heading">Your submission</Text>
-      {sub ? (
-        <Text variant="label" color={theme.colors.neutral[600]}>
-          {submissionStatusLine({ status: sub.status, isLate: sub.isLate })}
-        </Text>
-      ) : null}
-      {sub?.feedback ? <Text variant="body">{sub.feedback}</Text> : null}
+      <Text variant="label" color={theme.colors.neutral[600]}>
+        {submissionStatusLine({ ...summary, status: sub.status, isLate: sub.isLate })}
+      </Text>
+      {sub.feedback ? <Text variant="body">{sub.feedback}</Text> : null}
       {editable ? (
         <>
           <Input label="Your answer" value={value} onChangeText={setText} multiline numberOfLines={8} />
-          {detail.maxFileSizeMb !== null && !(sub?.canUploadFiles ?? false) ? (
+          {detail.maxFileSizeMb !== null && !sub.canUploadFiles ? (
             <Text variant="caption" color={theme.colors.neutral[600]}>
               This assignment expects a file, but attachments aren't available in the app yet.
             </Text>
@@ -99,12 +90,12 @@ function SubmissionEditor({
           <Button
             title="Save draft"
             variant="secondary"
-            onPress={() => save.mutate({ publicId, text: value })}
+            onPress={() => save.mutate({ text: value })}
             loading={save.isPending}
           />
           <Button
             title="Submit"
-            onPress={() => save.mutate({ publicId, text: value, submit: true })}
+            onPress={() => save.mutate({ text: value, submit: true })}
             loading={save.isPending}
             disabled={nothingToSubmit}
           />

@@ -94,8 +94,6 @@ describe("AssignmentDetailScreen", () => {
   it("shows the late badge from the contract flag", async () => {
     const assignment = {
       ...detail,
-      // v1 parity 2026-10-09 (R14): past due, so the SUBMITTED work is read-only.
-      isOverdue: true,
       mySubmission: {
         publicId: "abc123defg", status: "SUBMITTED" as const,
         submittedAt: "2099-04-02T10:00:00.000Z", reviewedAt: null, feedback: null, isLate: true,
@@ -110,29 +108,5 @@ describe("AssignmentDetailScreen", () => {
     renderWithProviders(<AssignmentDetailScreen />);
 
     expect(await screen.findByText("Submitted late")).toBeTruthy();
-  });
-
-  // v1 parity 2026-10-09 (R21 label half): nothing sets RETURNED any more; a
-  // legacy row reads v1's badge word (submission-status-badge.tsx:23).
-  it("labels a legacy RETURNED submission 'Returned', as v1", async () => {
-    const assignment = {
-      ...detail,
-      mySubmission: {
-        publicId: "abc123defg", status: "RETURNED" as const,
-        submittedAt: "2099-03-30T10:00:00.000Z", reviewedAt: null, feedback: null, isLate: false,
-      },
-    };
-    get.mockImplementation((url: string) =>
-      Promise.resolve({
-        data: {
-          data: url === "/api/v1/assignments/41" ? assignment : { ...submissionFor("SUBMITTED", false, null), status: "RETURNED" },
-        },
-      }),
-    );
-
-    renderWithProviders(<AssignmentDetailScreen />);
-
-    expect(await screen.findByText("Returned")).toBeTruthy();
-    expect(screen.queryByText(/revision/)).toBeNull();
   });
 });

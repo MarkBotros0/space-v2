@@ -13,8 +13,8 @@ import {
   studentDeletedResponseSchema,
   studentDetailInternalSchema,
   studentDetailPrivateSchema,
+  studentDetailPublicSchema,
   studentAttendanceHistorySchema,
-  studentDocumentsSchema,
   studentListResponseSchema,
   studentSubmissionsSchema,
   updateStudentResponseSchema,
@@ -26,7 +26,6 @@ import {
   type StudentDetailInternal,
   type StudentDetailPrivate,
   type StudentDetailPublic,
-  type StudentDocuments,
   type StudentAttendanceHistory,
   type StudentListResponse,
   type StudentListSort,
@@ -41,24 +40,14 @@ import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
-/**
- * The list's season and group filters and sort (REG-82, 06-students R35);
- * null leaves each to the server's default. `seasonId` is the student's
- * ACTIVE season, as v1's season select.
- */
+/** The list's group filter and sort (REG-82); null leaves each to the server's default. */
 export interface StudentListView {
-  seasonId: number | null;
   groupId: number | "none" | null;
   sort: StudentListSort | null;
   dir: "asc" | "desc";
 }
 
-export const DEFAULT_STUDENT_VIEW: StudentListView = {
-  seasonId: null,
-  groupId: null,
-  sort: null,
-  dir: "asc",
-};
+export const DEFAULT_STUDENT_VIEW: StudentListView = { groupId: null, sort: null, dir: "asc" };
 
 async function fetchStudentsPage(
   status: StudentListStatus,
@@ -68,7 +57,6 @@ async function fetchStudentsPage(
 ): Promise<StudentListResponse> {
   const params = new URLSearchParams({ status });
   if (q) params.set("q", q);
-  if (view.seasonId !== null) params.set("seasonId", String(view.seasonId));
   if (view.groupId !== null) params.set("groupId", String(view.groupId));
   if (view.sort !== null) {
     params.set("sort", view.sort);
@@ -110,9 +98,9 @@ export type StudentDetail = StudentDetailPublic | StudentDetailPrivate | Student
  * and hide exactly that bug.
  */
 function detailSchemaFor(role: UserRole) {
+  if (role === "SUPER" || role === "ADMIN") return studentDetailInternalSchema;
   if (role === "STUDENT") return studentDetailPrivateSchema; // self view — never `notes`
-  // Every staff role reads the full profile, as v1 (06-students R71).
-  return studentDetailInternalSchema;
+  return studentDetailPublicSchema; // LEADER, MENTOR
 }
 
 /** `id`/`role` are null while the route param or session is unresolved. */
@@ -151,7 +139,7 @@ export function useStudentAttendanceHistory(
   });
 }
 
-/** GET /students/:id/submissions — staff only (REG-83); DRAFT rows included (06-students R77). */
+/** GET /students/:id/submissions — staff only (REG-83); never a DRAFT. */
 export function useStudentSubmissions(
   id: number | null,
   enabled: boolean,
@@ -161,24 +149,6 @@ export function useStudentSubmissions(
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/students/${id}/submissions`);
       return studentSubmissionsSchema.parse(res.data.data);
-    },
-    enabled: enabled && id !== null,
-  });
-}
-
-/**
- * GET /students/:id/documents — SUPER/ADMIN only, read-only (06-students R80).
- * `enabled` is the role gate.
- */
-export function useStudentDocuments(
-  id: number | null,
-  enabled: boolean,
-): UseQueryResult<StudentDocuments> {
-  return useQuery({
-    queryKey: queryKeys.students.documents(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/students/${id}/documents`);
-      return studentDocumentsSchema.parse(res.data.data);
     },
     enabled: enabled && id !== null,
   });

@@ -287,3 +287,13 @@ revision withdraws most migrations, adds Task 2b.P (v1-parity fixes with no
 other owning plan) and holds push and the email "Open" button for your
 decision. Full classification:
 `docs/superpowers/audits/2026-cutover/v1-parity-classification.tsv`.
+
+## 13. Owner reversal 2026-10-10: the code stays on v2's behaviour
+
+After the v1-parity code merged (PR #20), the owner decided v2's behaviour suits the mobile app
+better and reverted the code to its pre-#20 state. Kept: the release setup (backend URL
+`https://space-v2-be.vercel.app`, bundle id `com.jpc.space`, EAS project and `eas.json`). The
+v1-parity plan revisions and `audits/2026-cutover/v1-parity-classification.tsv` stay as a record of
+where v2 differs from v1; they are **not** a to-do list unless the owner picks individual items.
+Push notifications will be built on Firebase later; v2's original Expo push scaffolding (disabled,
+`POST /me/devices` answers 503) is back until then.

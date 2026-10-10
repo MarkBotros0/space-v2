@@ -62,14 +62,10 @@ describe("updateOwnProfileInputSchema (Decision 1)", () => {
     if (!impossible.success) expect(impossible.error.issues[0]?.message).toBe("Not a real calendar day.");
   });
 
-  it("takes a name, drops notes/activeSeasonId, and refuses email (v1 parity: 18-settings R38, 06-students R24; REG-12)", () => {
-    expect(updateOwnProfileInputSchema.parse({ name: "  X Y  " })).toEqual({ name: "X Y" });
-    expect(updateOwnProfileInputSchema.safeParse({ name: "X" }).success).toBe(false);
-    const dropped = updateOwnProfileInputSchema.parse({ notes: "x", activeSeasonId: 3, phone: "1" });
-    expect(dropped).toEqual({ phone: "1" });
-    expect(dropped).not.toHaveProperty("notes");
-    expect(dropped).not.toHaveProperty("activeSeasonId");
-    expect(updateOwnProfileInputSchema.safeParse({ email: "a@b.test" }).success).toBe(false);
+  it("has no name, email, notes or activeSeasonId — refused, not dropped (R23/R24, spec 18 D2/D8)", () => {
+    for (const body of [{ name: "X Y" }, { email: "a@b.test" }, { notes: "x" }, { activeSeasonId: 3 }]) {
+      expect(updateOwnProfileInputSchema.safeParse(body).success).toBe(false);
+    }
   });
 
   it("keeps v1's server-side bounds (R20)", () => {

@@ -1,14 +1,19 @@
 // apps/backend/src/routes/imports.ts
 import express, { Router } from "express";
+import rateLimit from "express-rate-limit";
 
 import { db } from "../db/client";
+import { Prisma } from "../generated/prisma/client";
 import { apiError, apiOk } from "../lib/api-response";
 import { config } from "../lib/config";
 import { ImportParseError, parseDelimited } from "../lib/imports/delimited";
 import { buildGroupImportPreview } from "../lib/imports/groups";
+// The one 429 handler (ruling X4: Plan 9 extracted it; no copies anywhere).
+import { rateLimitHandler } from "../lib/rate-limit";
 import {
   buildStudentImportPreview,
   commitStudentImport,
+  ImportRowsInvalidError,
   studentImportTemplate,
   type StudentImportTarget,
 } from "../lib/imports/students";
@@ -51,18 +56,30 @@ import { requireAuth, requireUser } from "../middleware/require-auth";
 const IMPORT_FILE_UPLOAD_SUPPORTED = false;
 
 /**
- * No rate limit on any import route, as v1 (spec R84 / D-16.21, v1 parity
- * 2026-10-09). A concurrent-commit race is handled per row (R52).
+ * Spec D18/R84: neither importer is rate-limited in v1, where the
+ * server-action transport makes that hard to notice. As HTTP endpoints taking
+ * a 256 KB paste and a 2000-row commit, both want one.
+ *
+ * A factory, and the limits come from config (defaults 30 / 10 per 15 min):
+ * the integration suite commits ~22 times from one IP, so jest.setup.ts lifts
+ * both limits under test, and the 429 behaviour itself is proven by a unit
+ * test that builds `importLimiter(1)` directly (import-limits.test.ts).
  */
+export function importLimiter(limit: number) {
+  return rateLimit({ windowMs: 15 * 60 * 1000, limit, handler: rateLimitHandler });
+}
+const previewLimiter = importLimiter(config.importPreviewRateLimit);
+const commitLimiter = importLimiter(config.importCommitRateLimit);
 
 /**
  * This router's own JSON parser, with an explicit limit.
  *
  * The global `express.json()` in app.ts keeps body-parser's 100 KB default,
- * which a legal 5 MB paste (R3) — and a 2000-row commit that resubmits every
- * cell — both exceed; the overflow would surface as an unmapped `entity.too.large`
+ * which a legal 256 KB paste — and a 2000-row commit that resubmits every cell
+ * — both exceed; the overflow would surface as an unmapped `entity.too.large`
  * and a 500. These routers are therefore mounted in app.ts BEFORE the global
- * parser, and every POST lists `importJsonParser` itself. Nothing else in the
+ * parser, and every POST lists `importJsonParser` itself, AFTER its limiter so
+ * a throttled request is refused before its body is read. Nothing else in the
  * API gets the larger limit.
  */
 export const importJsonParser = express.json({ limit: config.importBodyLimit });
@@ -96,7 +113,7 @@ importsRouter.get("/students/template", async (req, res) => {
   return apiOk(res, studentImportTemplate());
 });
 
-importsRouter.post("/students/preview", importJsonParser, async (req, res) => {
+importsRouter.post("/students/preview", previewLimiter, importJsonParser, async (req, res) => {
   if (!requireSuper(req, res)) return;
 
   const parsed = pastedSheetInputSchema.safeParse(req.body);
@@ -120,7 +137,7 @@ importsRouter.post("/students/preview", importJsonParser, async (req, res) => {
   }
 });
 
-importsRouter.post("/students/commit", importJsonParser, async (req, res) => {
+importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (req, res) => {
   if (!requireSuper(req, res)) return;
 
   const parsed = studentImportCommitInputSchema.safeParse(req.body);
@@ -142,10 +159,35 @@ importsRouter.post("/students/commit", importJsonParser, async (req, res) => {
     target = { kind: "alumni", graduationYear: body.graduationYear };
   }
 
-  // v1's per-row loop (D-16.5): invalid rows, races and unexpected per-row
-  // errors are reported in the result, so this answers 200 with the report
-  // (R42, R52, R53).
-  return apiOk(res, await commitStudentImport(body.rows, target));
+  try {
+    return apiOk(res, await commitStudentImport(body.rows, target, body.onExisting));
+  } catch (err) {
+    if (err instanceof ImportRowsInvalidError) {
+      const shown = err.rowNumbers.slice(0, 10).join(", ");
+      const more = err.rowNumbers.length > 10 ? ` and ${err.rowNumbers.length - 10} more` : "";
+      return apiError(
+        res,
+        "import_rows_invalid",
+        `${err.rowNumbers.length} row(s) are not valid — rows ${shown}${more}. Nothing was imported. Preview again and fix them.`,
+        422,
+      );
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      // Somebody else created one of these addresses between this request's
+      // existence lookup and its insert. The whole transaction rolled back,
+      // so nothing partial landed — and because the commit is idempotent,
+      // re-running the same paste is safe. Say exactly that: v1 downgraded
+      // this race to a silent per-row "skipped" (R52), which made a genuine
+      // conflict indistinguishable from a clean no-op.
+      return apiError(
+        res,
+        "import_conflict",
+        "Someone else added one of these people while this import was running. Nothing was written — run it again.",
+        409,
+      );
+    }
+    throw err;
+  }
 });
 
 /**
@@ -199,6 +241,7 @@ async function resolveAdministeredSeason(
 seasonImportsRouter.post(
   "/:id/imports/groups/preview",
   requireAuth,
+  previewLimiter,
   importJsonParser,
   async (req, res) => {
     const seasonId = await resolveAdministeredSeason(req, res);
@@ -222,6 +265,7 @@ seasonImportsRouter.post(
 seasonImportsRouter.post(
   "/:id/imports/groups/commit",
   requireAuth,
+  commitLimiter,
   importJsonParser,
   async (req, res) => {
     const seasonId = await resolveAdministeredSeason(req, res);
@@ -254,4 +298,4 @@ seasonImportsRouter.post(
   },
 );
 
-export { IMPORT_FILE_UPLOAD_SUPPORTED };
+export { commitLimiter, previewLimiter, IMPORT_FILE_UPLOAD_SUPPORTED };

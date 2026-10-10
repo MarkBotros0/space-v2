@@ -130,8 +130,8 @@ describe("GET /api/v1/students — group filter and sort keys (REG-82)", () => {
   it("keeps the group filter inside the caller's scope", async () => {
     const res = await get(`/api/v1/students?q=${PFX}&groupId=${groupAId}`, adminToken);
     expect(ids(res)).toEqual([s1]);
-    // A LEADER has no students list at all (06-students R28).
-    expect((await get(`/api/v1/students?q=${PFX}&groupId=none`, leaderToken)).status).toBe(403);
+    const leaderNone = await get(`/api/v1/students?q=${PFX}&groupId=none`, leaderToken);
+    expect(ids(leaderNone)).toEqual([]); // the leader's only student has a group
   });
 
   it("sorts by name, university, season or group, either direction", async () => {
@@ -166,11 +166,11 @@ describe("GET /api/v1/students — group filter and sort keys (REG-82)", () => {
   });
 });
 
-describe("GET /api/v1/students/:id — per-enrolment attendance percentage (v1 06-students R74)", () => {
+describe("GET /api/v1/students/:id — per-enrolment attendance percentage (REG-83)", () => {
   const pctBySeason = (res: { body: { data: { enrollments: { seasonId: number; attendancePct: number | null }[] } } }) =>
     Object.fromEntries(res.body.data.enrollments.map((e) => [e.seasonId, e.attendancePct]));
 
-  it("gives SUPER and MENTOR a percentage for every enrolment (every started session)", async () => {
+  it("gives SUPER and MENTOR a percentage for every enrolment (past sessions, from enrolment)", async () => {
     for (const token of [superToken, mentorToken]) {
       const res = await get(`/api/v1/students/${s1}`, token);
       expect(res.status).toBe(200);
@@ -180,35 +180,17 @@ describe("GET /api/v1/students/:id — per-enrolment attendance percentage (v1 0
     }
   });
 
-  it("computes it for every row the viewer sees — admin of A sees B's figure too (v1)", async () => {
+  it("scopes the percentage like the rows: admin only for their season, leader only their group's", async () => {
     const admin = await get(`/api/v1/students/${s1}`, adminToken);
-    expect(pctBySeason(admin)).toEqual({ [seasonAId]: 50, [seasonBId]: 100 });
+    expect(pctBySeason(admin)).toEqual({ [seasonAId]: 50, [seasonBId]: null });
     const leader = await get(`/api/v1/students/${s1}`, leaderToken);
-    expect(pctBySeason(leader)[seasonAId]).toBe(50);
+    expect(pctBySeason(leader)).toEqual({ [seasonAId]: 50 });
   });
 
-  it("is shown on the student's own view too, as v1", async () => {
+  it("is staff-only: the student's own view carries null", async () => {
     const res = await get(`/api/v1/students/${s1}`, s1Token);
     expect(res.status).toBe(200);
-    expect(pctBySeason(res)).toEqual({ [seasonAId]: 50, [seasonBId]: 100 });
-  });
-
-  it("does not cut the denominator at enrolledAt — that cut is the engagement score's only", async () => {
-    // Enrolled between "A past one" (PRESENT) and "A past two" (ABSENT): v1
-    // still divides by both started sessions (students-query.ts:346-358).
-    await db.seasonEnrollment.updateMany({
-      where: { studentUserId: s1, seasonId: seasonAId },
-      data: { enrolledAt: at("2000-01-15T00:00:00.000Z") },
-    });
-    try {
-      const res = await get(`/api/v1/students/${s1}`, superToken);
-      expect(pctBySeason(res)[seasonAId]).toBe(50);
-    } finally {
-      await db.seasonEnrollment.updateMany({
-        where: { studentUserId: s1, seasonId: seasonAId },
-        data: { enrolledAt: at("1999-01-01T00:00:00.000Z") },
-      });
-    }
+    expect(pctBySeason(res)).toEqual({ [seasonAId]: null, [seasonBId]: null });
   });
 });
 
@@ -230,12 +212,11 @@ describe("GET /api/v1/students/:id/attendance (REG-83)", () => {
     });
   });
 
-  it("shows an ADMIN and a LEADER every enrolled season, as v1 (06-students R73)", async () => {
+  it("narrows an ADMIN to their seasons and a LEADER to the seasons naming their group", async () => {
     for (const token of [adminToken, leaderToken]) {
       const res = await get(`/api/v1/students/${s1}/attendance`, token);
       expect(res.status).toBe(200);
       expect(res.body.data.history.map((h: { seasonId: number }) => h.seasonId)).toEqual([
-        seasonBId,
         seasonAId,
         seasonAId,
       ]);
@@ -255,27 +236,26 @@ describe("GET /api/v1/students/:id/attendance (REG-83)", () => {
 });
 
 describe("GET /api/v1/students/:id/submissions (REG-83)", () => {
-  it("lists a student's work newest first, drafts included as v1 (06-students R77), with the late flag", async () => {
+  it("lists a student's submitted work newest first, never a draft, with the late flag", async () => {
     const res = await get(`/api/v1/students/${s1}/submissions`, superToken);
     expect(res.status).toBe(200);
     const subs = res.body.data.submissions;
     expect(subs.map((s: { assignmentTitle: string }) => s.assignmentTitle)).toEqual([
-      "A draft",
       "B essay",
       "A late essay",
     ]);
-    expect(subs[0]).toMatchObject({ status: "DRAFT" });
-    expect(subs[2]).toMatchObject({ status: "SUBMITTED", isLate: true, seasonId: seasonAId });
-    expect(subs[1]).toMatchObject({ status: "REVIEWED", isLate: false });
+    expect(subs[1]).toMatchObject({ status: "SUBMITTED", isLate: true, seasonId: seasonAId });
+    expect(subs[0]).toMatchObject({ status: "REVIEWED", isLate: false });
+    expect(JSON.stringify(res.body)).not.toContain("A draft");
   });
 
-  it("shows an ADMIN and a LEADER every enrolled season (06-students R77)", async () => {
+  it("applies the same row scope as submission detail: admin their season, leader their group's", async () => {
     for (const token of [adminToken, leaderToken]) {
       const res = await get(`/api/v1/students/${s1}/submissions`, token);
       expect(res.status).toBe(200);
       expect(
         res.body.data.submissions.map((s: { assignmentTitle: string }) => s.assignmentTitle),
-      ).toEqual(["A draft", "B essay", "A late essay"]);
+      ).toEqual(["A late essay"]);
     }
   });
 
@@ -287,7 +267,7 @@ describe("GET /api/v1/students/:id/submissions (REG-83)", () => {
 });
 
 describe("history scope when the student is in a season through a different group (REG-83)", () => {
-  it("shows a LEADER and an ADMIN of other seasons that season too, as v1 (06-students R73/R77)", async () => {
+  it("shows a LEADER and an ADMIN of other seasons nothing from it, and SUPER everything", async () => {
     const seasonCId = (await createTestSeason()).id;
     const otherGroup = await db.group.create({
       data: { seasonId: seasonCId, name: "Group C" },
@@ -342,35 +322,8 @@ describe("history scope when the student is in a season through a different grou
     expect(await attendanceFor(superToken)).toContain("C past");
     expect(await submissionsFor(superToken)).toContain("C essay");
     for (const token of [leaderToken, adminToken]) {
-      expect(await attendanceFor(token)).toContain("C past");
-      expect(await submissionsFor(token)).toContain("C essay");
-    }
-  });
-});
-
-describe("GET /api/v1/students/:id/documents (06-students R80)", () => {
-  it("lists documents newest first for SUPER and the student's ADMIN, without the storage path", async () => {
-    await db.studentDocument.createMany({
-      data: [
-        { studentUserId: s1, originalName: "older.pdf", storagePath: "x/older.pdf", mimeType: "application/pdf", sizeBytes: 2048, uploadedAt: at("2000-01-01T00:00:00.000Z") },
-        { studentUserId: s1, originalName: "newer.png", storagePath: "x/newer.png", mimeType: "image/png", sizeBytes: 1024, uploadedAt: at("2000-02-01T00:00:00.000Z") },
-      ],
-    });
-    for (const token of [superToken, adminToken]) {
-      const res = await get(`/api/v1/students/${s1}/documents`, token);
-      expect(res.status).toBe(200);
-      expect(res.body.data.documents.map((d: { originalName: string }) => d.originalName)).toEqual([
-        "newer.png",
-        "older.pdf",
-      ]);
-      expect(res.body.data.documents[0]).toMatchObject({ sizeBytes: 1024, mimeType: "image/png" });
-      expect(JSON.stringify(res.body)).not.toContain("storagePath");
-    }
-  });
-
-  it("refuses MENTOR, LEADER and the student", async () => {
-    for (const token of [mentorToken, leaderToken, s1Token]) {
-      expect((await get(`/api/v1/students/${s1}/documents`, token)).status).toBe(403);
+      expect(await attendanceFor(token)).not.toContain("C past");
+      expect(await submissionsFor(token)).not.toContain("C essay");
     }
   });
 });

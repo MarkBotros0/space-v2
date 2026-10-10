@@ -58,11 +58,6 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
 
     expect(await screen.findByText("TEST 2099")).toBeTruthy();
     expect(screen.getByText("s7 · DRAFT")).toBeTruthy();
-    // v1 super/seasons/[code]/page.tsx:27-36 — program and year open the by-program / by-year screens (02 R45).
-    fireEvent.press(screen.getByLabelText("All TEST seasons"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/program/[program]", params: { program: "TEST" } });
-    fireEvent.press(screen.getByLabelText("All seasons in 2099"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/year/[year]", params: { year: "2099" } });
     expect(screen.getByText("Jan 1, 2099 – Dec 31, 2099")).toBeTruthy();
     expect(await screen.findByText("Kickoff")).toBeTruthy();
     expect(screen.getByText("Mar 1, 2099 · 8:00 PM")).toBeTruthy();
@@ -147,48 +142,26 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
     expect(patch).not.toHaveBeenCalled();
   });
 
-  // v1 parity 2026-10-09 (spec 02 R49): one confirm with v1 delete-season-button.tsx:30-35's copy.
-  it("deletes after one confirm with v1's copy", async () => {
+  it("deletes on a second press and shows season_in_use verbatim", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
-    del.mockResolvedValueOnce({ data: { data: { deleted: true } } });
-    renderWithProviders(<SeasonEditScreen />);
-    fireEvent.press(await screen.findByText("Delete season"));
-    expect(del).not.toHaveBeenCalled();
-    expect(screen.getByText('Delete "TEST 2099"?')).toBeTruthy();
-    expect(
-      screen.getByText("The season will be hidden from lists. Existing groups, sessions, and attendance are preserved."),
-    ).toBeTruthy();
-    const deletes = screen.getAllByText("Delete");
-    fireEvent.press(deletes[deletes.length - 1]!);
-    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/7"));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/seasons"));
-  });
-
-  // v1 parity 2026-10-09 (spec 02 R5): v1 season-actions.ts:76-83's field error under Code.
-  it("shows a code clash under the Code input beside the top message", async () => {
-    useSessionStore.setState(makeSession("SUPER"));
-    routeGets(detail());
-    patch.mockRejectedValueOnce(
+    del.mockRejectedValueOnce(
       Object.assign(new Error("409"), {
         isAxiosError: true,
-        response: {
-          status: 409,
-          data: {
-            error: {
-              code: "code_taken",
-              message: "A season with that code already exists.",
-              details: { fieldErrors: { code: "Already in use." } },
-            },
-          },
-        },
+        response: { status: 409, data: { error: { code: "season_in_use", message: "This season has sessions or enrollments; archive it instead." } } },
       }),
     );
     renderWithProviders(<SeasonEditScreen />);
-    await screen.findByLabelText("Code");
-    fireEvent.press(screen.getByText("Save season"));
-    expect(await screen.findByText("A season with that code already exists.")).toBeTruthy();
-    expect(screen.getByLabelText("Code").props.accessibilityHint).toBe("Already in use.");
+    fireEvent.press(await screen.findByText("Delete season"));
+    expect(del).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText("Really delete?"));
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/7"));
+    expect(await screen.findByText("This season has sessions or enrollments; archive it instead.")).toBeTruthy();
+
+    del.mockResolvedValueOnce({ data: { data: { deleted: true } } });
+    fireEvent.press(screen.getByText("Delete season"));
+    fireEvent.press(screen.getByText("Really delete?"));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/seasons"));
   });
 
   it("refuses a non-SUPER without fetching", async () => {

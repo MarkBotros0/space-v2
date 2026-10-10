@@ -77,8 +77,7 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
     }
     setErrors({});
     update.mutate(body, {
-      // v1 parity 2026-10-09 (spec 03 R30): v1 session-form.tsx:138 pushes the session's detail page.
-      onSuccess: () => router.replace({ pathname: "/session/[id]", params: { id: String(detail.id) } }),
+      onSuccess: () => router.back(),
       onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the session.")),
     });
   };

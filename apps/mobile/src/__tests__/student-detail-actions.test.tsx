@@ -97,8 +97,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
 
   it("gives a MENTOR no actions at all", async () => {
     useSessionStore.setState(makeSession("MENTOR"));
-    // Every staff role gets the internal arm, as v1 (06-students R71).
-    get.mockResolvedValue({ data: { data: internalDetail } });
+    get.mockResolvedValue({ data: { data: { ...base, profile: publicProfile } } });
     renderWithProviders(<StudentDetailScreen />);
 
     await screen.findByText("Sara Student");

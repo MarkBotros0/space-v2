@@ -37,7 +37,7 @@ function GroupChip({ label, selected, onPress, a11yLabel }: { label: string; sel
  * The bulk-assign grid (v1 roster-grid.tsx; spec 05 §9; G7). Sends only the
  * rows whose choice differs from the server's (v1 R100) and reports the
  * server's WRITTEN counts, not the number sent (R101/D-16.12). Rows are ACTIVE
- * enrolments (C9); a student whose group is in another season reads as unassigned, as v1 (R82).
+ * enrolments (C9); a student sitting in another season's group says so (R82).
  */
 function RosterGrid({ seasonId }: { seasonId: number }) {
   const theme = useTheme();
@@ -80,11 +80,8 @@ function RosterGrid({ seasonId }: { seasonId: number }) {
         onSuccess: (result) => {
           setDraft({});
           const skipped = result.skippedStudentIds.length;
-          // v1 parity 2026-10-09 (spec 05 R101): v1's "Updated N student(s)." (roster-grid.tsx:84-87);
-          // N is what the server wrote (KEEP-FIX R57), the skipped note is KEEP-FIX R52.
-          const n = result.assigned + result.unassigned;
           setMessage(
-            `Updated ${n} student${n === 1 ? "" : "s"}.` +
+            `Assigned ${result.assigned}, unassigned ${result.unassigned}.` +
               (skipped > 0 ? ` ${skipped} skipped — no longer active in this season.` : ""),
           );
         },
@@ -108,6 +105,11 @@ function RosterGrid({ seasonId }: { seasonId: number }) {
         return (
           <Card key={r.userId} style={{ marginTop: theme.spacing.sm, gap: theme.spacing.xs }}>
             <Text variant="body">{label}</Text>
+            {r.otherSeasonGroup ? (
+              <Text variant="caption" color={theme.colors.neutral[600]}>
+                {`Also in ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — assigning here moves them.`}
+              </Text>
+            ) : null}
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs }}>
               {options.map((g) => {
                 const name = g?.name ?? ROSTER_UNASSIGNED_LABEL;

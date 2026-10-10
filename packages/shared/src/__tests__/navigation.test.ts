@@ -62,6 +62,7 @@ describe("navFor", () => {
         ["/students", "Students", "students"],
         ["/students/alumni", "Alumni", "alumni"],
         ["/students/dropped", "Dropped students", "dropped"],
+        ["/notes", "My notes", "notes"],
         ["/users", "Users", "users"],
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
@@ -83,6 +84,7 @@ describe("navFor", () => {
         ["/calendar", "Calendar", "calendar"],
         ["/groups", "Groups", "groups"],
         ["/students", "Students", "students"],
+        ["/notes", "My notes", "notes"],
         ["/assignments", "Assignments", "assignments"],
         ["/quizzes", "Quizzes", "quizzes"],
         ["/reports", "Reports", "reports"],
@@ -102,6 +104,7 @@ describe("navFor", () => {
       sidebar: [
         ["/dashboard", "Dashboard", "dashboard"],
         ["/groups", "My Groups", "groups"],
+        ["/notes", "My notes", "notes"],
         ["/calendar", "Calendar", "calendar"],
         ["/submissions", "Submissions", "submissions"],
         ["/quizzes", "Quizzes", "quizzes"],

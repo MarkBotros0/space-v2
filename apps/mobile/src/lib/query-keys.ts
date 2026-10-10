@@ -38,10 +38,6 @@ export const queryKeys = {
     all: ["notes"] as const,
     lists: () => [...queryKeys.notes.all, "list"] as const,
     authored: () => [...queryKeys.notes.lists(), "authored"] as const,
-    // v1's ?student filter on /mentor/notes (R45); null = all students.
-    authoredFor: (studentId: number | null) => [...queryKeys.notes.authored(), { studentId }] as const,
-    // The mentor composer's picker (GET /me/notes/students).
-    studentOptions: () => [...queryKeys.notes.all, "student-options"] as const,
     // Nullable per this file's header convention — no -1 sentinel.
     byStudent: (studentId: number | null) => [...queryKeys.notes.lists(), { studentId }] as const,
   },
@@ -82,8 +78,9 @@ export const queryKeys = {
   notifications: {
     all: ["notifications"] as const,
     lists: () => [...queryKeys.notifications.all, "list"] as const,
-    // v1's one inbox list (newest 100) — no unread-only variant (R39).
-    list: () => [...queryKeys.notifications.lists()] as const,
+    // The unread-only inbox is a different server query, so it gets its own
+    // cache entry rather than being filtered out of the full one.
+    list: (unreadOnly: boolean) => [...queryKeys.notifications.lists(), { unreadOnly }] as const,
     unreadCount: () => [...queryKeys.notifications.all, "unread-count"] as const,
     preferences: () => [...queryKeys.notifications.all, "preferences"] as const,
   },
@@ -104,13 +101,7 @@ export const queryKeys = {
     list: (
       status: string,
       q: string,
-      view: {
-        seasonId: number | null;
-        groupId: number | "none" | null;
-        sort: string | null;
-        dir: "asc" | "desc";
-      } = {
-        seasonId: null,
+      view: { groupId: number | "none" | null; sort: string | null; dir: "asc" | "desc" } = {
         groupId: null,
         sort: null,
         dir: "asc",
@@ -124,8 +115,6 @@ export const queryKeys = {
     attendance: (id: number | null) => [...queryKeys.students.details(), "attendance", { id }] as const,
     /** GET /students/:id/submissions (REG-83). */
     submissions: (id: number | null) => [...queryKeys.students.details(), "submissions", { id }] as const,
-    /** GET /students/:id/documents (06-students R80) — SUPER/ADMIN. */
-    documents: (id: number | null) => [...queryKeys.students.details(), "documents", { id }] as const,
   },
   seasons: {
     all: ["seasons"] as const,
@@ -162,8 +151,6 @@ export const queryKeys = {
     bySeason: (seasonId: number | null) => [...queryKeys.groups.all, "season", { seasonId }] as const,
     impact: (id: number | null) => [...queryKeys.groups.all, "impact", { id }] as const,
     leaderOptions: () => [...queryKeys.groups.all, "leaderOptions"] as const,
-    /** Every live student — the group form's picker (spec 05 R18/R78). Under groups.all: a group save enrols. */
-    studentOptions: () => [...queryKeys.groups.all, "studentOptions"] as const,
     /**
      * Under groups.all ON PURPOSE: every group write (create, edit, delete,
      * bulk assign) can change any roster row — GroupStudent is globally unique

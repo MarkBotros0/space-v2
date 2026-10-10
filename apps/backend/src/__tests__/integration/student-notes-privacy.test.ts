@@ -147,13 +147,14 @@ describe("a student never receives the profile notes or pastoral notes (REG-97)"
     expectNoSecrets(patch);
   });
 
-  it("silently drops `notes` from a self-edit on both write routes, as v1 (06-students R24), and never writes it", async () => {
+  it("refuses a self-edit that names `notes`, on both write routes, and writes nothing", async () => {
     for (const [path, body] of [
       ["/api/v1/me/profile", { notes: "mine now" }],
       [`/api/v1/students/${studentId}`, { notes: "mine now" }],
     ] as const) {
       const res = await as(studentToken).patch(path, body);
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("forbidden_field");
       expectNoSecrets(res);
     }
     const row = await db.studentProfile.findUnique({

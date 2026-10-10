@@ -8,12 +8,10 @@ import {
   groupRefResponseSchema,
   leaderOptionSchema,
   seasonRosterRowSchema,
-  studentOptionSchema,
   type GroupAssignmentsRequest,
   type GroupImpact,
   type LeaderOption,
   type SeasonRosterRow,
-  type StudentOption,
   type UserRole,
 } from "@space/shared";
 
@@ -28,7 +26,6 @@ export type GroupWriteInput = z.input<typeof groupWriteRequestSchema>;
 
 const leaderListSchema = z.array(leaderOptionSchema);
 const rosterSchema = z.array(seasonRosterRowSchema);
-const studentListSchema = z.array(studentOptionSchema);
 
 /**
  * A membership write can change groups the caller never touched
@@ -54,22 +51,7 @@ export function useLeaderOptions(enabled: boolean): UseQueryResult<LeaderOption[
   });
 }
 
-/**
- * GET /groups/student-options — every live STUDENT user, name asc: the group
- * form's picker (v1 groups-query.ts:112-121; v1 parity 2026-10-09, spec 05 R18/R78).
- */
-export function useStudentOptions(enabled: boolean): UseQueryResult<StudentOption[]> {
-  return useQuery({
-    queryKey: queryKeys.groups.studentOptions(),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/groups/student-options");
-      return studentListSchema.parse(res.data.data.students);
-    },
-    enabled,
-  });
-}
-
-/** GET /seasons/:id/roster (D-16.11) — the grid, the group edit form's pre-selection, and Plan 17's import screen. */
+/** GET /seasons/:id/roster (D-16.11) — the grid, the group form's picker, and Plan 17's import screen. */
 export function useSeasonRoster(seasonId: number | null): UseQueryResult<SeasonRosterRow[]> {
   return useQuery({
     queryKey: queryKeys.groups.roster(seasonId),

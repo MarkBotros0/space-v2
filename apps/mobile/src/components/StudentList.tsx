@@ -4,7 +4,6 @@ import { Pressable } from "react-native";
 import type { StudentListItem, StudentListSort, StudentListStatus, UserRole } from "@space/shared";
 
 import { useAllGroups } from "../hooks/use-groups";
-import { useSeasons } from "../hooks/use-seasons";
 import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
 import { formatDate } from "../lib/format";
 import { useSessionStore } from "../store/session";
@@ -68,11 +67,7 @@ const DIR_OPTIONS = [
   { value: "desc", label: "Descending" },
 ] as const;
 
-/**
- * v1's season and group selects and sort controls (REG-82, 06-students R35),
- * server-side here. The season filter is the student's ACTIVE season, as v1's
- * (`students-list.tsx:55-99`). Dropped rows are enrollments, so no filter.
- */
+/** v1's group select and sort controls (REG-82), server-side here. Dropped rows are enrollments, so no filter. */
 function StudentFilters({
   view,
   onChange,
@@ -81,14 +76,6 @@ function StudentFilters({
   onChange: (view: StudentListView) => void;
 }) {
   const { groups } = useAllGroups(true);
-  const seasons = useSeasons(true).data ?? [];
-  const seasonOptions = [
-    { value: "all", label: "All seasons" },
-    ...[...seasons]
-      .sort((a, b) => a.title.localeCompare(b.title))
-      .map((s) => ({ value: String(s.id), label: s.title })),
-  ];
-  const seasonValue = view.seasonId === null ? "all" : String(view.seasonId);
   const groupOptions = [
     { value: "all", label: "All groups" },
     { value: "none", label: "No group" },
@@ -97,12 +84,6 @@ function StudentFilters({
   const groupValue = view.groupId === null ? "all" : String(view.groupId);
   return (
     <>
-      <ChoiceChips
-        label="Season"
-        options={seasonOptions}
-        value={seasonValue}
-        onChange={(v) => onChange({ ...view, seasonId: v === "all" ? null : Number(v) })}
-      />
       <ChoiceChips
         label="Group"
         options={groupOptions}
@@ -175,18 +156,14 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
       refreshing={isRefetching}
     >
       {headerAction ?? null}
-      {/* v1's alumni list has no search box and shows everyone at once (06-students R41). */}
-      {status !== "alumni" ? (
-        <Input
-          label="Search students"
-          value={search}
-          onChangeText={setSearch}
-          returnKeyType="search"
-          onSubmitEditing={() => setQ(search.trim())}
-        />
-      ) : null}
-      {/* v1's alumni list had no filters or sort either (alumni-list.tsx). */}
-      {status === "active" ? (
+      <Input
+        label="Search students"
+        value={search}
+        onChangeText={setSearch}
+        returnKeyType="search"
+        onSubmitEditing={() => setQ(search.trim())}
+      />
+      {status !== "dropped" ? (
         <>
           <Button
             title={filtersOpen ? "Hide filters" : "Filter and sort"}
@@ -211,9 +188,7 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
               ? "No students match your search."
               : view.groupId !== null
                 ? "No students are in that group."
-                : view.seasonId !== null
-                  ? "No students are in that season."
-                  : "Nothing here yet."
+                : "Nothing here yet."
           }
         />
       ) : (
@@ -232,7 +207,7 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
               item={item}
             />
           ))}
-          {hasNextPage && status !== "alumni" ? (
+          {hasNextPage ? (
             <Button
               title="Load more"
               variant="secondary"

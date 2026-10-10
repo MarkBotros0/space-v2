@@ -44,9 +44,10 @@ export function useSeasonDetail(id: number | null): UseQueryResult<SeasonDetail>
  * then the same without the status filter.
  *
  * It sorts here rather than trusting list order: `GET /api/v1/seasons` is
- * ordered status asc then startDate desc (v1 R24), so DRAFT seasons come
- * first. ISO strings of one format compare correctly as strings. Exported so
- * the rule is tested on its own, not only through a screen.
+ * ordered `year desc, title asc`, so two ACTIVE seasons in one year would
+ * otherwise resolve alphabetically, not to the latest-starting one. ISO
+ * strings of one format compare correctly as strings. Exported so the rule is
+ * tested on its own, not only through a screen.
  */
 export function pickCurrentSeasonId(seasons: SeasonListItem[]): number | null {
   const latestFirst = [...seasons].sort((a, b) =>
@@ -54,17 +55,6 @@ export function pickCurrentSeasonId(seasons: SeasonListItem[]): number | null {
   );
   const active = latestFirst.find((s) => s.status === "ACTIVE");
   return (active ?? latestFirst[0])?.id ?? null;
-}
-
-/**
- * v1's /admin/groups redirect target (v1 parity 2026-10-09, spec 05 R91; v1
- * `src/app/admin/groups/page.tsx:25-40`): the season with the latest
- * `startDate`, whatever its status — no ACTIVE preference.
- */
-export function pickNewestSeasonId(seasons: SeasonListItem[]): number | null {
-  let newest: SeasonListItem | null = null;
-  for (const s of seasons) if (newest === null || s.startDate > newest.startDate) newest = s;
-  return newest?.id ?? null;
 }
 
 export interface CurrentSeason {

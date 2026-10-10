@@ -78,21 +78,6 @@ describe("GET /api/v1/seasons", () => {
     expect(ids).toEqual(expect.arrayContaining([seasonId, otherSeasonId]));
   });
 
-  // v1 parity 2026-10-09 (02 R24): v1 orders status asc then startDate desc.
-  it("orders seasons status ascending then startDate descending (v1 R24)", async () => {
-    const res = await request(app).get("/api/v1/seasons").set("authorization", `Bearer ${superToken}`);
-    expect(res.status).toBe(200);
-    const order = ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"];
-    const rows = res.body.data.seasons as { status: string; startDate: string }[];
-    for (let i = 1; i < rows.length; i += 1) {
-      const a = rows[i - 1]!;
-      const b = rows[i]!;
-      const byStatus = order.indexOf(a.status) - order.indexOf(b.status);
-      expect(byStatus).toBeLessThanOrEqual(0);
-      if (byStatus === 0) expect(Date.parse(a.startDate)).toBeGreaterThanOrEqual(Date.parse(b.startDate));
-    }
-  });
-
   it("returns only the scoped season for an ADMIN", async () => {
     const res = await request(app).get("/api/v1/seasons").set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
@@ -279,12 +264,9 @@ describe("season writes", () => {
       .send(seasonBody(first));
     expect(clash.status).toBe(409);
     expect(clash.body.error.code).toBe("code_taken");
-    // v1 parity 2026-10-09: v1 season-actions.ts:80-81 field error under Code.
-    expect(clash.body.error.message).toBe("A season with that code already exists.");
-    expect(clash.body.error.details).toEqual({ fieldErrors: { code: "Already in use." } });
   });
 
-  it("soft-deletes an empty season and leaves student pointers to it (v1 R51)", async () => {
+  it("soft-deletes an empty season and clears student pointers to it", async () => {
     const empty = await createTestSeason();
     const pointed = await createTestUser("pointed", "STUDENT");
     await db.studentProfile.create({ data: { userId: pointed.id, activeSeasonId: empty.id } });
@@ -298,8 +280,7 @@ describe("season writes", () => {
     const profile = await db.studentProfile.findUnique({
       where: { userId: pointed.id }, select: { activeSeasonId: true },
     });
-    // v1 parity 2026-10-09 (was "toBeNull"): v1 season-actions.ts:169-172 touches only the season row.
-    expect(profile?.activeSeasonId).toBe(empty.id);
+    expect(profile?.activeSeasonId).toBeNull();
 
     const again = await request(app)
       .delete(`/api/v1/seasons/${empty.id}`)
@@ -307,21 +288,22 @@ describe("season writes", () => {
     expect(again.status).toBe(404);
   });
 
-  // v1 parity 2026-10-09 (was "blocks deleting … 409 season_in_use"): v1
-  // season-actions.ts:163-177 soft-deletes whatever the season contains.
-  it("soft-deletes a season with sessions and enrollments (v1 R49)", async () => {
+  it("blocks deleting a season with enrollments or sessions (decision on spec 02 D4)", async () => {
+    // `seasonId` (the suite's main season) has an enrollment from beforeAll.
+    const blocked = await request(app)
+      .delete(`/api/v1/seasons/${seasonId}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.error.code).toBe("season_in_use");
+
     const withSession = await createTestSeason();
-    const enrolled = await createTestUser("enrolled", "STUDENT");
-    await db.seasonEnrollment.create({ data: { seasonId: withSession.id, studentUserId: enrolled.id } });
     await db.session.create({
       data: { seasonId: withSession.id, title: "S", startsAt: new Date("2099-02-01T18:00:00.000Z"), durationMinutes: 60 },
     });
-    const gone = await request(app)
+    const blocked2 = await request(app)
       .delete(`/api/v1/seasons/${withSession.id}`)
       .set("authorization", `Bearer ${superToken}`);
-    expect(gone.status).toBe(200);
-    const row = await db.season.findUnique({ where: { id: withSession.id }, select: { deletedAt: true } });
-    expect(row?.deletedAt).not.toBeNull();
+    expect(blocked2.status).toBe(409);
   });
 
   it("refuses delete by an ADMIN even of their own season (D3)", async () => {
@@ -465,15 +447,14 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
     expect(res.body.error.code).toBe("code_taken");
   });
 
-  // v1 parity 2026-10-09 (was "refuses … 404"): v1 season-actions.ts:210-211 has no deletedAt filter.
-  it("duplicates a soft-deleted season (v1 R66)", async () => {
+  it("refuses to duplicate a soft-deleted season (spec 02 D6)", async () => {
     const source = await createTestSeason();
     await db.season.update({ where: { id: source.id }, data: { deletedAt: new Date() } });
     const res = await request(app)
       .post(`/api/v1/seasons/${source.id}/duplicate`)
       .set("authorization", `Bearer ${superToken}`)
       .send({ year: 2100, code: testSeasonCode(), startDate: "2100-01-01T00:00:00.000Z", endDate: "2100-12-31T00:00:00.000Z" });
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(404);
   });
 
   it("is SUPER-only", async () => {

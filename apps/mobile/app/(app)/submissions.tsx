@@ -5,22 +5,9 @@ import type { SubmissionQueueItem } from "@space/shared";
 import { useSubmissionQueue } from "../../src/hooks/use-submission-queue";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
-import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
+import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
-/**
- * v1 parity 2026-10-09 (08-submissions R45): the queue lists SUBMITTED, REVIEWED
- * and RETURNED work (the API never returns a DRAFT), in v1's status-then-recency
- * order (v1 submissions-query.ts:126-127) — not pending-only.
- */
-const ALL = { pendingOnly: false } as const;
-
-/** v1 submission-status-badge.tsx labels. */
-function statusLabel(status: SubmissionQueueItem["status"]): string {
-  if (status === "REVIEWED") return "Reviewed";
-  if (status === "RETURNED") return "Returned";
-  if (status === "SUBMITTED") return "Submitted";
-  return "Draft";
-}
+const PENDING = { pendingOnly: true } as const;
 
 function QueueRow({ item }: { item: SubmissionQueueItem }) {
   const theme = useTheme();
@@ -38,9 +25,6 @@ function QueueRow({ item }: { item: SubmissionQueueItem }) {
         <Text variant="label" color={theme.colors.neutral[600]}>
           {`${item.studentName ?? "Unnamed"} · ${item.groupName ?? "No group"}${item.isLate ? " · Late" : ""}`}
         </Text>
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          {statusLabel(item.status)}
-        </Text>
       </Card>
     </Pressable>
   );
@@ -51,7 +35,8 @@ export default function SubmissionsScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
   // STUDENT gets 403 from GET /submissions; no user means nothing to ask for.
   const isStaff = role !== null && role !== "STUDENT";
-  const { data, isPending, isError, refetch, isRefetching } = useSubmissionQueue(ALL, isStaff);
+  const { data, isPending, isError, refetch, isRefetching, hasNextPage, fetchNextPage, isFetchingNextPage } =
+    useSubmissionQueue(PENDING, isStaff);
 
   if (!isStaff) {
     return (
@@ -61,8 +46,9 @@ export default function SubmissionsScreen() {
     );
   }
 
-  const items = data?.items ?? [];
-  const counts = data?.counts;
+  const items = data?.pages.flatMap((page) => page.items) ?? [];
+  // Counts ignore paging and pendingOnly, so any page carries the same figures.
+  const counts = data?.pages[0]?.counts;
 
   return (
     <Screen edges={["top", "left", "right"]} onRefresh={() => void refetch()} refreshing={isRefetching}>
@@ -76,14 +62,21 @@ export default function SubmissionsScreen() {
       ) : isError ? (
         <ErrorState message="Couldn't load the review queue." onRetry={refetch} />
       ) : items.length === 0 ? (
-        // v1 leader-queue-list.tsx:72-75.
-        <EmptyState
-          title="No submissions yet"
-          message="Submissions from students in your groups will appear here."
-        />
+        <EmptyState title="All caught up" message="No submissions waiting for review." />
       ) : (
-        // v1 parity 2026-10-09 (R52): every row in one list, no "Load more".
-        items.map((item) => <QueueRow key={item.publicId} item={item} />)
+        <>
+          {items.map((item) => (
+            <QueueRow key={item.publicId} item={item} />
+          ))}
+          {hasNextPage ? (
+            <Button
+              title="Load more"
+              variant="secondary"
+              onPress={() => void fetchNextPage()}
+              loading={isFetchingNextPage}
+            />
+          ) : null}
+        </>
       )}
     </Screen>
   );

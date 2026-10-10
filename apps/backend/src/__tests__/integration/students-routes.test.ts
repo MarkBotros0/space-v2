@@ -168,11 +168,16 @@ describe("GET /api/v1/students (active)", () => {
     expect(ids).not.toContain(student2Id); // season B is not theirs
   });
 
-  it("refuses LEADER — v1 had no leader students list (06-students R28)", async () => {
+  it("narrows LEADER to their groups' members through the ENROLLMENT row (C9)", async () => {
+    // student1 has NO GroupStudent row — only SeasonEnrollment.groupId links
+    // them to the leader's group. A scope that reads GroupStudent returns [].
     const res = await request(app)
       .get(`/api/v1/students?q=${PFX}`)
       .set("authorization", `Bearer ${leaderToken}`);
-    expect(res.status).toBe(403);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.students.map((s: { id: number }) => s.id)).toEqual([student1Id]);
+    expect(res.body.data.total).toBe(1);
   });
 
   it("refuses a STUDENT caller — no student roster for students (C8)", async () => {
@@ -182,18 +187,13 @@ describe("GET /api/v1/students (active)", () => {
     expect(res.status).toBe(403);
   });
 
-  it("filters by seasonId on the student's ACTIVE season, as v1 (06-students R35)", async () => {
-    // student1 is enrolled in both A and B but points at A; student2 is in B
-    // with no pointer. Only the pointer counts.
-    const a = await request(app)
-      .get(`/api/v1/students?q=${PFX}&seasonId=${seasonAId}`)
-      .set("authorization", `Bearer ${superToken}`);
-    expect(a.body.data.students.map((s: { id: number }) => s.id)).toEqual([student1Id]);
-
-    const b = await request(app)
+  it("filters by seasonId through enrollments, any status", async () => {
+    const res = await request(app)
       .get(`/api/v1/students?q=${PFX}&seasonId=${seasonBId}`)
       .set("authorization", `Bearer ${superToken}`);
-    expect(b.body.data.students.map((s: { id: number }) => s.id)).toEqual([]);
+
+    const ids = res.body.data.students.map((s: { id: number }) => s.id);
+    expect([...ids].sort()).toEqual([student1Id, student2Id].sort());
   });
 
   it("searches university case-insensitively, ANDed with scope (R33)", async () => {
@@ -232,16 +232,6 @@ describe("GET /api/v1/students?status=alumni", () => {
       const row = res.body.data.students.find((s: { id: number }) => s.id === alumnusId);
       expect(row).toMatchObject({ graduationYear: 2024, university: "Alumni University" });
     }
-  });
-
-  it("returns every alumnus in one response, ignoring search and paging (06-students R41)", async () => {
-    const res = await request(app)
-      .get("/api/v1/students?status=alumni&q=no-such-alumnus&limit=1")
-      .set("authorization", `Bearer ${superToken}`);
-    expect(res.status).toBe(200);
-    expect(res.body.data.nextCursor).toBeNull();
-    expect(res.body.data.total).toBe(res.body.data.students.length);
-    expect(res.body.data.students.map((s: { id: number }) => s.id)).toContain(alumnusId);
   });
 
   it("refuses LEADER — v1 gave them no alumni surface (spec 06 §4.1)", async () => {
@@ -331,34 +321,34 @@ describe("GET /api/v1/students/:id", () => {
     expect(res.status).toBe(403);
   });
 
-  it("gives MENTOR the full profile — phone, spiritual background, notes (06-students R71)", async () => {
+  it("withholds phone, DOB, spiritual background and notes from MENTOR — absence, not null (D3)", async () => {
     const res = await request(app)
       .get(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${mentorToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.profile).toMatchObject({
-      university: "Test University",
-      phone: "+20 100 000 0000",
-      spiritualBackground: "Test background",
-      notes: "Internal staff note",
-    });
-    expect(res.body.data.profile).toHaveProperty("dateOfBirth");
+    expect(res.body.data.profile).toHaveProperty("university", "Test University");
+    // The keys must not exist on the wire at all — a null would still admit
+    // the field exists and still round-trip through generic clients.
+    expect(res.body.data.profile).not.toHaveProperty("phone");
+    expect(res.body.data.profile).not.toHaveProperty("dateOfBirth");
+    expect(res.body.data.profile).not.toHaveProperty("spiritualBackground");
+    expect(res.body.data.profile).not.toHaveProperty("notes");
   });
 
-  it("gives a LEADER of the student the full profile and every season row, as v1 (06-students R71)", async () => {
+  it("admits a LEADER to their own student with the public shape and only their rows", async () => {
     const res = await request(app)
       .get(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${leaderToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.profile).toHaveProperty("phone", "+20 100 000 0000");
-    expect(res.body.data.profile).toHaveProperty("notes", "Internal staff note");
-    // student1 holds two enrollments; both travel, including the season B row
-    // that names no group of the leader's.
-    expect(res.body.data.enrollments.map((e: { seasonId: number }) => e.seasonId).sort()).toEqual(
-      [seasonAId, seasonBId].sort(),
-    );
+    expect(res.body.data.profile).not.toHaveProperty("phone");
+    expect(res.body.data.profile).not.toHaveProperty("notes");
+    // student1 holds two enrollments; only the one naming the leader's group
+    // travels (spec 06 §7: "the scoped season rows").
+    expect(res.body.data.enrollments).toHaveLength(1);
+    expect(res.body.data.enrollments[0].seasonId).toBe(seasonAId);
+    expect(res.body.data.enrollments[0].dropReason).toBeNull();
   });
 
   it("refuses a LEADER outside their groups (C8 — the row gate, not just the route)", async () => {
@@ -474,20 +464,19 @@ describe("PATCH /api/v1/students/:id", () => {
     expect(profile?.phone).toBe("+20 111 111 1111");
   });
 
-  it("drops a student's own notes/activeSeasonId and saves the rest, as v1 (06-students R24)", async () => {
+  it("refuses the subject's own write of notes with forbidden_field (R23 — loudly, not v1's silent drop, R24)", async () => {
     const res = await request(app)
       .patch(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${student1Token}`)
-      .send({ notes: "self-written", activeSeasonId: seasonBId, gifts: "Music" });
+      .send({ notes: "self-written" });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("forbidden_field");
     const profile = await db.studentProfile.findUnique({
       where: { userId: student1Id },
-      select: { notes: true, activeSeasonId: true, gifts: true },
+      select: { notes: true },
     });
     expect(profile?.notes).toBe("Internal staff note");
-    expect(profile?.activeSeasonId).toBe(seasonAId);
-    expect(profile?.gifts).toBe("Music");
   });
 
   it("lets ADMIN write notes but NOT activeSeasonId (the allowlist)", async () => {
@@ -1036,14 +1025,13 @@ describe("PATCH /api/v1/students/:id — one writer per column (Plan 11, spec 18
     expect(res.body.error.code).toBe("forbidden_field");
   });
 
-  it("lets a student rename themselves, as v1's student form (18-settings R38)", async () => {
+  it("refuses a student's own name change here — PATCH /me owns User.name", async () => {
     const res = await request(app)
       .patch(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${student1Token}`)
       .send({ name: "Self Renamed" });
-    expect(res.status).toBe(200);
-    const row = await db.user.findUnique({ where: { id: student1Id }, select: { name: true } });
-    expect(row?.name).toBe("Self Renamed");
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("forbidden_field");
   });
 
   it("still lets an admin correct a student's name", async () => {

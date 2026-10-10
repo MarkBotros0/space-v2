@@ -37,13 +37,6 @@ export const noteSummarySchema = z.object({
   visibility: noteVisibilitySchema,
   followUpFlagged: z.boolean(),
   createdAt: z.string(),
-  /**
-   * `createdAt`'s org-calendar day ("yyyy-MM-dd", ORG_TIMEZONE), derived on the
-   * server. v1 formatted note dates in its server render, so every reader saw
-   * one date (09-notes R90); render this with formatDayKey, never `createdAt`
-   * in the device zone (ruling X13).
-   */
-  createdDayKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   updatedAt: z.string(),
   edited: z.boolean(),
   authorId: z.number().int(),
@@ -110,22 +103,6 @@ export const noteListResponseSchema = z.object({
 export const authoredNoteListResponseSchema = z.object({
   notes: z.array(authoredNoteSchema),
   nextCursor: z.string().nullable(),
-});
-
-/**
- * The mentor composer's student picker (v1 src/app/mentor/notes/page.tsx:27-31;
- * 09-notes R45): every non-deleted STUDENT, alumni included, ordered by name.
- * Served by GET /me/notes/students, MENTOR only.
- */
-export const noteStudentOptionSchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
-  email: z.string(),
-});
-export type NoteStudentOption = z.infer<typeof noteStudentOptionSchema>;
-
-export const noteStudentPickerResponseSchema = z.object({
-  students: z.array(noteStudentOptionSchema),
 });
 
 // ---------------------------------------------------------------------------

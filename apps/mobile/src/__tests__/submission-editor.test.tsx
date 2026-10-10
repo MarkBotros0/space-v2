@@ -60,16 +60,15 @@ beforeEach(() => {
 });
 
 describe("submission editor", () => {
-  // v1 parity 2026-10-09 (R1): no "Start working" — v1 shows the editor at once
-  // (student/assignments/[id]/page.tsx:40). The first save creates the row via
-  // the idempotent PUT (GETs never write, C6) and then PATCHes the text.
-  it("shows the editor straight away; the first Save draft creates the submission, then saves", async () => {
+  it("starts a submission via the idempotent PUT, then loads its text", async () => {
+    // The PUT's onSuccess invalidates the assignment detail; the refetch must
+    // then see the submission it created, or the editor never appears. Model
+    // that state change: null before the PUT resolves, a row after.
     let submissionStarted = false;
     put.mockImplementation(() => {
       submissionStarted = true;
       return Promise.resolve({ data: { data: { publicId: "abc123defg", status: "DRAFT" } } });
     });
-    patch.mockResolvedValue({ data: { data: { saved: true, submitted: false } } });
     get.mockImplementation((url: string) =>
       url === "/api/v1/assignments/41"
         ? Promise.resolve({
@@ -79,66 +78,16 @@ describe("submission editor", () => {
                 : detailNoSubmission,
             },
           })
-        : Promise.resolve({ data: { data: { ...submissionDetail, text: "my first words" } } }),
+        : Promise.resolve({ data: { data: submissionDetail } }),
     );
 
     renderWithProviders(<AssignmentDetailScreen />);
-
-    const input = await screen.findByLabelText("Your answer");
-    expect(screen.queryByText("Start working")).toBeNull();
-    // Opening the screen wrote nothing.
-    expect(put).not.toHaveBeenCalled();
-
-    fireEvent.changeText(input, "my first words");
-    fireEvent.press(screen.getByText("Save draft"));
+    fireEvent.press(await screen.findByText("Start working"));
 
     await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/api/v1/submissions/abc123defg", { text: "my first words" }),
+      expect(put).toHaveBeenCalledWith("/api/v1/submissions/by-assignment/41"),
     );
-    expect(put).toHaveBeenCalledWith("/api/v1/submissions/by-assignment/41");
-    expect(put.mock.invocationCallOrder[0]).toBeLessThan(patch.mock.invocationCallOrder[0] ?? 0);
-    expect(await screen.findByDisplayValue("my first words")).toBeTruthy();
-  });
-
-  // v1 parity 2026-10-09 (R14): v1 student-submission-form.tsx:96 keeps a
-  // SUBMITTED answer editable until the due date passes.
-  it("keeps SUBMITTED work editable and re-submittable before the due date", async () => {
-    const submitted = { ...draftSummary, status: "SUBMITTED" as const, submittedAt: "2099-03-30T10:00:00.000Z" };
-    get.mockImplementation((url: string) =>
-      url === "/api/v1/assignments/41"
-        ? Promise.resolve({ data: { data: { ...detailNoSubmission, isOverdue: false, mySubmission: submitted } } })
-        : Promise.resolve({
-            data: { data: { ...submissionDetail, status: "SUBMITTED", submittedAt: "2099-03-30T10:00:00.000Z" } },
-          }),
-    );
-    patch.mockResolvedValue({ data: { data: { saved: true, submitted: true } } });
-
-    renderWithProviders(<AssignmentDetailScreen />);
-
-    const input = await screen.findByLabelText("Your answer");
-    fireEvent.changeText(input, "improved answer");
-    fireEvent.press(screen.getByText("Submit"));
-
-    await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/api/v1/submissions/abc123defg", {
-        text: "improved answer",
-        submit: true,
-      }),
-    );
-  });
-
-  it("locks SUBMITTED work once the due date has passed, and REVIEWED work always", async () => {
-    const submitted = { ...draftSummary, status: "SUBMITTED" as const, submittedAt: "2099-03-30T10:00:00.000Z" };
-    get.mockImplementation((url: string) =>
-      url === "/api/v1/assignments/41"
-        ? Promise.resolve({ data: { data: { ...detailNoSubmission, isOverdue: true, mySubmission: submitted } } })
-        : Promise.resolve({ data: { data: { ...submissionDetail, status: "SUBMITTED" } } }),
-    );
-
-    renderWithProviders(<AssignmentDetailScreen />);
-
-    expect(await screen.findByText("Submitted")).toBeTruthy();
-    expect(screen.queryByLabelText("Your answer")).toBeNull();
+    expect(await screen.findByDisplayValue("first draft")).toBeTruthy();
   });
 
   it("saves a draft without submitting, and submits explicitly", async () => {
