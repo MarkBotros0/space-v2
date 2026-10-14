@@ -143,20 +143,16 @@ const semantic = {
 };
 const fontWeightUtilities = {
   ".font-normal": {
-    "fontFamily": "Geist_400Regular",
-    "fontWeight": "400"
+    "fontFamily": "Geist_400Regular"
   },
   ".font-medium": {
-    "fontFamily": "Geist_500Medium",
-    "fontWeight": "500"
+    "fontFamily": "Geist_500Medium"
   },
   ".font-semibold": {
-    "fontFamily": "Geist_600SemiBold",
-    "fontWeight": "600"
+    "fontFamily": "Geist_600SemiBold"
   },
   ".font-bold": {
-    "fontFamily": "Geist_700Bold",
-    "fontWeight": "700"
+    "fontFamily": "Geist_700Bold"
   }
 };
 const fontWeightPlugin = plugin(({ addUtilities }) => addUtilities(fontWeightUtilities));

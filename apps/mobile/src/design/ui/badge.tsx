@@ -7,10 +7,11 @@
  * self-alignment; a call site that is a block in v1 (or uses w-fit) adds self-start.
  */
 import { cva, type VariantProps } from "class-variance-authority";
-import { Children, type ReactNode, isValidElement } from "react";
+import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { cn } from "../lib/cn";
+import { withTextRuns } from "../lib/text-runs";
 import { Text } from "./text";
 
 const badgeVariants = cva("flex-row items-center gap-1 rounded-full border border-transparent px-2 py-0.5", {
@@ -70,15 +71,11 @@ type BadgeProps = VariantProps<typeof badgeVariants> & {
 function Badge({ className, textClassName, variant, role, children }: BadgeProps) {
   return (
     <View className={cn(badgeVariants({ variant, role }), className)}>
-      {Children.map(children, (child) =>
-        typeof child === "string" || typeof child === "number" ? (
-          <Text numberOfLines={1} className={cn(badgeTextVariants({ variant, role }), textClassName)}>
-            {child}
-          </Text>
-        ) : isValidElement(child) ? (
-          child
-        ) : null,
-      )}
+      {withTextRuns(children, (text, key) => (
+        <Text key={key} numberOfLines={1} className={cn(badgeTextVariants({ variant, role }), textClassName)}>
+          {text}
+        </Text>
+      ))}
     </View>
   );
 }

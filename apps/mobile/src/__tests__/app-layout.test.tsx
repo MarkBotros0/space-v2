@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { navByRole } from "@space/shared";
 
@@ -106,9 +106,10 @@ beforeEach(() => {
   mockRenderChrome = false;
 });
 
+let mockNotificationItems: unknown[] = [];
 jest.mock("../hooks/use-notifications", () => ({
   useUnreadCount: () => ({ data: 3 }),
-  useNotifications: () => ({ data: { pages: [{ items: [] }] } }),
+  useNotifications: () => ({ data: { pages: [{ items: mockNotificationItems }] } }),
   useMarkRead: () => ({ mutate: () => {}, isPending: false }),
   flattenNotifications: (pages?: { items: unknown[] }[]) => pages?.flatMap((p) => p.items) ?? [],
 }));
@@ -123,6 +124,24 @@ describe("v1 shell", () => {
     expect(screen.getByText("JPC Space")).toBeTruthy();
     expect(screen.getByLabelText("Notifications (3 unread)")).toBeTruthy();
     expect(screen.getByLabelText("User menu")).toBeTruthy();
+  });
+
+  it("lists v1's 10 most recent notifications in the bell (v1 listRecent(userId, 10))", () => {
+    mockRenderChrome = true;
+    mockNotificationItems = Array.from({ length: 15 }, (_, i) => ({
+      id: i + 1,
+      title: `Note ${i + 1}`,
+      body: null,
+      readAt: null,
+      createdAt: new Date().toISOString(),
+      target: null,
+    }));
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    renderWithProviders(<AppLayout />);
+    fireEvent.press(screen.getByLabelText("Notifications (3 unread)"));
+    expect(screen.getByText("Note 10")).toBeTruthy();
+    expect(screen.queryByText("Note 11")).toBeNull();
+    mockNotificationItems = [];
   });
 });
 

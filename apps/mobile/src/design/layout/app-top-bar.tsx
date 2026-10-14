@@ -26,7 +26,8 @@ export function AppTopBar() {
   const { resolved, setMode } = useThemeMode();
   if (!user) return null;
 
-  const items = flattenNotifications(data?.pages);
+  // v1 top-bar bell: listRecent(userId, 10).
+  const items = flattenNotifications(data?.pages).slice(0, 10);
   const name = user.name?.trim() || null;
   return (
     <TopBar

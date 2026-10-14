@@ -290,7 +290,7 @@ describe("DashboardScreen — STUDENT", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "42" } });
 
     expect(new Set(requested())).toEqual(
-      new Set(["/api/v1/me/dashboard", "/api/v1/me/attendance", EVENTS, UNREAD]),
+      new Set(["/api/v1/me/dashboard", "/api/v1/me/attendance", EVENTS]),
     );
   });
 
@@ -406,7 +406,7 @@ describe("DashboardScreen — ALUMNI", () => {
     fireEvent.press(screen.getByText("View my history"));
     expect(mockPush).toHaveBeenCalledWith("/history");
     expect(await screen.findByText("Open day")).toBeTruthy();
-    expect(new Set(requested())).toEqual(new Set([EVENTS, UNREAD]));
+    expect(new Set(requested())).toEqual(new Set([EVENTS]));
   });
 });
 
@@ -558,34 +558,15 @@ describe("DashboardScreen — SUPER", () => {
   });
 });
 
-// Plan 13 Task 8's bell cases, kept; now on a signed-in ALUMNI session.
-describe("NotificationBell on the dashboard", () => {
-  function mockUnreadCount(unreadCount: number) {
-    serve({ [UNREAD]: { unreadCount }, [EVENTS]: events });
-  }
-  beforeEach(() => {
+// The bell lives in v1's top bar (the shell, app-top-bar.tsx; badge, 9+ cap
+// and inbox link are covered in shell-menus.test.tsx). v1's dashboards have
+// no bell of their own, so the body must not render a second one.
+describe("dashboard body", () => {
+  it("renders no notification bell of its own", async () => {
+    serve({ [UNREAD]: { unreadCount: 3 }, [EVENTS]: events });
     useSessionStore.setState(makeSession("STUDENT", { graduationYear: 2024 }));
-  });
-
-  it("shows the unread badge and opens the inbox", async () => {
-    mockUnreadCount(3);
     renderWithProviders(<DashboardScreen />);
-    expect(await screen.findByLabelText("Notifications, 3 unread")).toBeTruthy();
-    expect(screen.getByText("3")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText("Notifications, 3 unread"));
-    expect(mockPush).toHaveBeenCalledWith("/notifications");
-  });
-
-  it("caps the badge at 9+", async () => {
-    mockUnreadCount(42);
-    renderWithProviders(<DashboardScreen />);
-    expect(await screen.findByText("9+")).toBeTruthy();
-  });
-
-  it("renders no badge at zero unread", async () => {
-    mockUnreadCount(0);
-    renderWithProviders(<DashboardScreen />);
-    expect(await screen.findByLabelText("Notifications")).toBeTruthy();
-    expect(screen.queryByText("0")).toBeNull();
+    await waitFor(() => expect(requested().length).toBeGreaterThan(0));
+    expect(screen.queryByLabelText(/^Notifications/)).toBeNull();
   });
 });

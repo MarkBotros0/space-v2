@@ -57,10 +57,11 @@ describe("generated design tokens", () => {
   });
 
   it("font weights map to Geist faces", () => {
-    expect(theme.fontWeightUtilities[".font-semibold"]).toEqual({
-      fontFamily: "Geist_600SemiBold",
-      fontWeight: "600",
-    });
+    // Face only: on Android a fontWeight >= 700 makes React Native look for a
+    // BOLD variant of the family, which expo-font never registers, and it
+    // falls back to the system font. The face already carries the weight.
+    expect(theme.fontWeightUtilities[".font-semibold"]).toEqual({ fontFamily: "Geist_600SemiBold" });
+    expect(theme.fontWeightUtilities[".font-bold"]).toEqual({ fontFamily: "Geist_700Bold" });
     expect(theme.fontWeightUtilities[".font-normal"].fontFamily).toBe("Geist_400Regular");
   });
 });

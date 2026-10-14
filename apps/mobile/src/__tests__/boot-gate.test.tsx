@@ -20,7 +20,8 @@ jest.mock("expo-router", () => {
 
 // RootLayout waits for the Geist fonts and the saved theme before rendering;
 // both are native (expo-font, AsyncStorage) and irrelevant to the gate.
-jest.mock("expo-font", () => ({ useFonts: () => [true] }));
+let mockFonts: [boolean, Error | null] = [true, null];
+jest.mock("expo-font", () => ({ useFonts: () => mockFonts }));
 jest.mock("../design/theme/theme-mode", () => ({ applyStoredThemeMode: () => Promise.resolve() }));
 
 // RootLayout wraps everything in a bare `<SafeAreaProvider>` (no
@@ -49,6 +50,14 @@ import { useSessionStore } from "../store/session";
 
 beforeEach(() => {
   useSessionStore.setState(useSessionStore.getInitialState(), true);
+  mockFonts = [true, null];
+});
+
+it("still boots when the fonts fail to load (system font beats a blank app)", async () => {
+  mockFonts = [false, new Error("font load failed")];
+  useSessionStore.setState({ status: "anonymous" });
+  render(<RootLayout />);
+  expect(await screen.findByText("STACK")).toBeTruthy();
 });
 
 describe("RootLayout boot gate", () => {

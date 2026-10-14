@@ -22,12 +22,14 @@ const queryClient = createQueryClient();
 export default function RootLayout() {
   // Geist faces and the saved theme must be in place before first paint, or
   // every screen flashes the system font / the wrong theme on cold start.
-  const [fontsLoaded] = useFonts(GEIST_FONTS);
+  // A font that fails to load falls back to the system font rather than
+  // leaving the app blank: wait for either outcome.
+  const [fontsLoaded, fontError] = useFonts(GEIST_FONTS);
   const [themeApplied, setThemeApplied] = useState(false);
   useEffect(() => {
     void applyStoredThemeMode().finally(() => setThemeApplied(true));
   }, []);
-  if (!fontsLoaded || !themeApplied) return null;
+  if ((!fontsLoaded && !fontError) || !themeApplied) return null;
 
   return (
     // sonner-native's swipe-to-dismiss needs the gesture root at the top.

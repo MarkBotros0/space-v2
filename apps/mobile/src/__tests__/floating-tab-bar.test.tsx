@@ -50,3 +50,23 @@ it("labels stay one line however long they are", () => {
   const label = screen.getByText("Assignments");
   expect(label.props.numberOfLines).toBe(1);
 });
+
+describe("active tab on detail screens (v1: pathname.startsWith(href + '/'))", () => {
+  it("keeps the list tab lit on its singular detail route", () => {
+    renderBar("assignment/[id]/index");
+    expect(screen.getByLabelText("Assignments").props.accessibilityState).toMatchObject({ selected: true });
+  });
+
+  it("keeps a directory tab lit on its child routes", () => {
+    const { activeTabRoute } = jest.requireActual("../design/layout/floating-tab-bar");
+    expect(activeTabRoute("students/alumni", ["students/index", "dashboard"])).toBe("students/index");
+    expect(activeTabRoute("seasons/[code]/roster/index", ["seasons/index"])).toBe("seasons/index");
+    expect(activeTabRoute("student/[id]/index", ["students/index"])).toBe("students/index");
+  });
+
+  it("lights nothing where v1's URL sits under no tab", () => {
+    const { activeTabRoute } = jest.requireActual("../design/layout/floating-tab-bar");
+    expect(activeTabRoute("session/[id]/index", ["calendar", "dashboard"])).toBeNull();
+    expect(activeTabRoute("notifications", ["calendar", "dashboard"])).toBeNull();
+  });
+});

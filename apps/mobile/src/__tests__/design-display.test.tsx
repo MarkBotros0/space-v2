@@ -74,6 +74,20 @@ describe("Button", () => {
   });
 });
 
+describe("text runs (v1 inline-flex merges adjacent text into one item)", () => {
+  it("Badge renders `{n} pending` as one truncating label", () => {
+    const n = 4;
+    render(<Badge>{n} pending</Badge>);
+    expect(screen.getByText("4 pending").props.numberOfLines).toBe(1);
+  });
+
+  it("Button renders `Mark {count} present` as one label", () => {
+    const count = 3;
+    render(<Button>Mark {count} present</Button>);
+    expect(screen.getByText("Mark 3 present")).toBeTruthy();
+  });
+});
+
 describe("Card", () => {
   it("renders header, title and content", () => {
     render(

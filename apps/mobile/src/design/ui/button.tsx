@@ -10,10 +10,11 @@
  * a block in v1 adds `self-start` (rows are unaffected).
  */
 import { cva, type VariantProps } from "class-variance-authority";
-import { Children, type ReactNode, isValidElement } from "react";
+import type { ReactNode } from "react";
 import { Pressable, type PressableProps } from "react-native";
 
 import { cn } from "../lib/cn";
+import { withTextRuns } from "../lib/text-runs";
 import { shadowStyle } from "../lib/shadow";
 import { Text } from "./text";
 
@@ -87,15 +88,11 @@ function Button({ className, textClassName, variant = "default", size = "default
       style={elevated ? shadowStyle("soft") : undefined}
       {...props}
     >
-      {Children.map(children, (child) =>
-        typeof child === "string" || typeof child === "number" ? (
-          <Text numberOfLines={1} className={cn(buttonTextVariants({ variant, size }), textClassName)}>
-            {child}
-          </Text>
-        ) : isValidElement(child) ? (
-          child
-        ) : null,
-      )}
+      {withTextRuns(children, (text, key) => (
+        <Text key={key} numberOfLines={1} className={cn(buttonTextVariants({ variant, size }), textClassName)}>
+          {text}
+        </Text>
+      ))}
     </Pressable>
   );
 }
