@@ -1,0 +1,18 @@
+# capture-screen.yaml plus one tap (TAP: visible text or accessibility label) before the screenshots.
+appId: com.jpc.space
+---
+- stopApp
+- openLink: spacev2://${ROUTE}
+- extendedWaitUntil:
+    visible: ${WAIT}
+    timeout: 40000
+- tapOn: ${TAP}
+- waitForAnimationToEnd:
+    timeout: 8000
+- evalScript: ${output.n = 0}
+- repeat:
+    times: ${SHOTS}
+    commands:
+      - evalScript: ${output.n = output.n + 1}
+      - takeScreenshot: ${NAME}-${output.n}
+      - scroll

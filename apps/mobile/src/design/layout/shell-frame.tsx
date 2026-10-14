@@ -6,7 +6,8 @@ import { RefreshControl, ScrollView, View } from "react-native";
  * pb-24 pt-4">`. `pb-24` keeps the last row clear of the floating tab bar.
  * The top bar (rendered above this) owns the top safe-area inset.
  * Background: every v1 role layout wraps its pages in `bg-brand-navy-50
- * dark:bg-transparent` (app/<role>/layout.tsx).
+ * dark:bg-transparent … pb-24` (app/<role>/layout.tsx); the tint ends 96px
+ * below the content, so a short page shows the plain background under it.
  * `onRefresh` adds pull-to-refresh (v2-only; v1 pages are server-rendered).
  */
 export function ShellFrame({
@@ -25,8 +26,8 @@ export function ShellFrame({
   }
   return (
     <ScrollView
-      className="flex-1 bg-brand-navy-50 dark:bg-background"
-      contentContainerClassName="px-4 pb-24 pt-4"
+      className="flex-1 bg-background"
+      contentContainerClassName="bg-brand-navy-50 px-4 pb-24 pt-4 dark:bg-background"
       refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined}
     >
       {children}

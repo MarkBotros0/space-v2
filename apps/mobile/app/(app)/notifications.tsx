@@ -97,8 +97,8 @@ export default function NotificationsScreen() {
 
   return (
     <FlatList
-      className="flex-1 bg-brand-navy-50 dark:bg-background"
-      contentContainerClassName="gap-2 px-4 pb-24 pt-4"
+      className="flex-1 bg-background"
+      contentContainerClassName="gap-2 bg-brand-navy-50 px-4 pb-24 pt-4 dark:bg-background"
       data={items}
       keyExtractor={(item) => String(item.id)}
       ListHeaderComponent={

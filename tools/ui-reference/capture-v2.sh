@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# capture-v2.sh <role> <light|dark> <route> <name> [shots] [wait-for-text]
+# capture-v2.sh <role> <light|dark> <route> <name> [shots] [wait-for-text] [tap-first]
 # Signs in as the reference user for <role> (password from ~/.secrets, never printed),
 # sets the emulator's night mode, opens <route> and saves numbered screenshots under
 # ~/projects/JPC/.v2-captures/batch-2/<role>/<theme>/. Role "public" signs out first.
 set -euo pipefail
-role=$1 theme=$2 route=$3 name=$4 shots=${5:-4} wait=${6:-.+}
+role=$1 theme=$2 route=$3 name=$4 shots=${5:-4} wait=${6:-.+} tap=${7:-}
 here=$(cd "$(dirname "$0")" && pwd)
 mobile="$here/../../apps/mobile"
 adb=~/Android/Sdk/platform-tools/adb
@@ -27,7 +27,8 @@ elif [ "$(cat "$stamp" 2>/dev/null)" != "$role" ]; then
   echo "$role" > "$stamp"
 fi
 tmp=$(mktemp -d)
-$maestro --device emulator-5558 test --test-output-dir "$tmp" -e ROUTE="$route" -e NAME="$name" -e SHOTS="$shots" -e WAIT="$wait" "$mobile/.maestro/capture-screen.yaml" >/dev/null
+if [ -n "$tap" ]; then flow=capture-screen-tap.yaml; else flow=capture-screen.yaml; fi
+$maestro --device emulator-5558 test --test-output-dir "$tmp" -e ROUTE="$route" -e NAME="$name" -e SHOTS="$shots" -e WAIT="$wait" -e TAP="$tap" "$mobile/.maestro/$flow" >/dev/null
 rm -f "$out/$name"-[0-9]*.png
 find "$tmp" -name "$name-*.png" -exec cp {} "$out/" \;
 rm -rf "$tmp"
