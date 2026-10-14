@@ -1,0 +1,16 @@
+appId: com.jpc.space
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 30000
+- tapOn: "Email"
+- inputText: ${EMAIL}
+- tapOn: "Password"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: "Sign in"
+- extendedWaitUntil:
+    notVisible: "Sign in"
+    timeout: 30000
