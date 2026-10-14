@@ -18,6 +18,11 @@ jest.mock("expo-router", () => {
   };
 });
 
+// RootLayout waits for the Geist fonts and the saved theme before rendering;
+// both are native (expo-font, AsyncStorage) and irrelevant to the gate.
+jest.mock("expo-font", () => ({ useFonts: () => [true] }));
+jest.mock("../design/theme/theme-mode", () => ({ applyStoredThemeMode: () => Promise.resolve() }));
+
 // RootLayout wraps everything in a bare `<SafeAreaProvider>` (no
 // `initialMetrics`), which under the test renderer waits for an `onLayout`
 // that never fires and so renders none of its children — see the note in
@@ -47,35 +52,37 @@ beforeEach(() => {
 });
 
 describe("RootLayout boot gate", () => {
-  it("shows LoadingState instead of the Stack while status is idle", () => {
+  it("shows LoadingState instead of the Stack while status is idle", async () => {
     useSessionStore.setState({ status: "idle" });
     render(<RootLayout />);
 
-    expect(screen.getByLabelText("Loading")).toBeTruthy();
+    // The fonts/theme step resolves a tick after mount, so wait for the first frame.
+    expect(await screen.findByLabelText("Loading")).toBeTruthy();
     expect(screen.queryByText("STACK")).toBeNull();
   });
 
-  it("shows LoadingState instead of the Stack while status is restoring", () => {
+  it("shows LoadingState instead of the Stack while status is restoring", async () => {
     useSessionStore.setState({ status: "restoring" });
     render(<RootLayout />);
 
-    expect(screen.getByLabelText("Loading")).toBeTruthy();
+    // The fonts/theme step resolves a tick after mount, so wait for the first frame.
+    expect(await screen.findByLabelText("Loading")).toBeTruthy();
     expect(screen.queryByText("STACK")).toBeNull();
   });
 
-  it("renders the Stack once status is authenticated", () => {
+  it("renders the Stack once status is authenticated", async () => {
     useSessionStore.setState({ status: "authenticated" });
     render(<RootLayout />);
 
-    expect(screen.getByText("STACK")).toBeTruthy();
+    expect(await screen.findByText("STACK")).toBeTruthy();
     expect(screen.queryByLabelText("Loading")).toBeNull();
   });
 
-  it("renders the Stack once status is anonymous", () => {
+  it("renders the Stack once status is anonymous", async () => {
     useSessionStore.setState({ status: "anonymous" });
     render(<RootLayout />);
 
-    expect(screen.getByText("STACK")).toBeTruthy();
+    expect(await screen.findByText("STACK")).toBeTruthy();
     expect(screen.queryByLabelText("Loading")).toBeNull();
   });
 });

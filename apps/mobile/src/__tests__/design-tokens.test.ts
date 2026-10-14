@@ -1,7 +1,5 @@
 import tokens from "../../../../docs/superpowers/ui-rebuild/v1-tokens.json";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const theme = require("../design/theme/tailwind-theme.js");
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const config = require("../../tailwind.config.js");
 import { readFileSync } from "node:fs";
 import path from "node:path";

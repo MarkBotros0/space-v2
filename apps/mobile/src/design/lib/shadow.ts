@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { boxShadow } = require("../theme/tailwind-theme.js") as { boxShadow: Record<string, string> };
 
 export type ShadowName = "xs" | "sm" | "md" | "lg" | "xl" | "soft" | "pop" | "lift";
