@@ -51,6 +51,11 @@ describe("generated design tokens", () => {
     expect(theme.boxShadow.lift).toBe(tokens.shadows.lift);
   });
 
+  it("semantic values per theme are available to props that cannot take a class", () => {
+    expect(theme.semantic.light["muted-foreground"]).toBe(tokens.light["muted-foreground"]);
+    expect(theme.semantic.dark.border).toBe(tokens.dark.border);
+  });
+
   it("font weights map to Geist faces", () => {
     expect(theme.fontWeightUtilities[".font-semibold"]).toEqual({
       fontFamily: "Geist_600SemiBold",

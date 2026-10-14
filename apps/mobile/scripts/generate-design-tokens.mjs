@@ -105,10 +105,17 @@ ${colorSource.join("\n")}
 const borderRadius = ${JSON.stringify(borderRadius, null, 2)};
 const boxShadow = ${JSON.stringify(boxShadow, null, 2)};
 const fontFamily = { sans: ["Geist_400Regular"], mono: ["GeistMono_400Regular"] };
+// Resolved semantic values for props that take a colour, not a class
+// (placeholderTextColor, svg fills, gradients): use via useThemeColors().
+const semantic = ${JSON.stringify(
+  Object.fromEntries(["light", "dark"].map((t) => [t, Object.fromEntries(SEMANTIC.map((n) => [n, tokens[t][n]]))])),
+  null,
+  2,
+)};
 const fontWeightUtilities = ${JSON.stringify(fontWeightUtilities, null, 2)};
 const fontWeightPlugin = plugin(({ addUtilities }) => addUtilities(fontWeightUtilities));
 
-module.exports = { colors, borderRadius, boxShadow, fontFamily, fontWeightUtilities, fontWeightPlugin };
+module.exports = { colors, semantic, borderRadius, boxShadow, fontFamily, fontWeightUtilities, fontWeightPlugin };
 `;
 
 writeFileSync(path.join(mobile, "global.css"), css);

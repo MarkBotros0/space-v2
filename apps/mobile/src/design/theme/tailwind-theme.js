@@ -81,6 +81,66 @@ const boxShadow = {
   "lift": "0 8px 24px #0f31321f"
 };
 const fontFamily = { sans: ["Geist_400Regular"], mono: ["GeistMono_400Regular"] };
+// Resolved semantic values for props that take a colour, not a class
+// (placeholderTextColor, svg fills, gradients): use via useThemeColors().
+const semantic = {
+  "light": {
+    "background": "#F9FCFF",
+    "foreground": "#111827",
+    "card": "#FFFFFF",
+    "card-foreground": "#111827",
+    "popover": "#FFFFFF",
+    "popover-foreground": "#111827",
+    "primary": "#003884",
+    "primary-foreground": "#F8F8F8",
+    "secondary": "#7DCED1",
+    "secondary-foreground": "#1F3260",
+    "muted": "#F4F4F6",
+    "muted-foreground": "#4B5563",
+    "accent": "#E2F4F5",
+    "accent-foreground": "#1F3260",
+    "destructive": "#EF4444",
+    "border": "#E5E7EB",
+    "input": "#E5E7EB",
+    "ring": "#7DCED1",
+    "sidebar": "#1F3260",
+    "sidebar-foreground": "rgba(255, 255, 255, 0.78)",
+    "sidebar-primary": "#7DCED1",
+    "sidebar-primary-foreground": "#1F3260",
+    "sidebar-accent": "#243559",
+    "sidebar-accent-foreground": "#FFFFFF",
+    "sidebar-border": "rgba(255, 255, 255, 0.08)",
+    "sidebar-ring": "#7DCED1"
+  },
+  "dark": {
+    "background": "#001226",
+    "foreground": "#FAFAFB",
+    "card": "#061C31",
+    "card-foreground": "#FAFAFB",
+    "popover": "#061C31",
+    "popover-foreground": "#FAFAFB",
+    "primary": "#16BBBC",
+    "primary-foreground": "#001226",
+    "secondary": "#2A3A63",
+    "secondary-foreground": "#FAFAFB",
+    "muted": "#243559",
+    "muted-foreground": "rgba(255, 255, 255, 0.6)",
+    "accent": "#1E5254",
+    "accent-foreground": "#F2FAFA",
+    "destructive": "#EF4444",
+    "border": "rgba(255, 255, 255, 0.08)",
+    "input": "rgba(255, 255, 255, 0.12)",
+    "ring": "#94D5D8",
+    "sidebar": "#061C31",
+    "sidebar-foreground": "rgba(255, 255, 255, 0.78)",
+    "sidebar-primary": "#7DCED1",
+    "sidebar-primary-foreground": "#142048",
+    "sidebar-accent": "#243559",
+    "sidebar-accent-foreground": "#FFFFFF",
+    "sidebar-border": "rgba(255, 255, 255, 0.08)",
+    "sidebar-ring": "#94D5D8"
+  }
+};
 const fontWeightUtilities = {
   ".font-normal": {
     "fontFamily": "Geist_400Regular",
@@ -101,4 +161,4 @@ const fontWeightUtilities = {
 };
 const fontWeightPlugin = plugin(({ addUtilities }) => addUtilities(fontWeightUtilities));
 
-module.exports = { colors, borderRadius, boxShadow, fontFamily, fontWeightUtilities, fontWeightPlugin };
+module.exports = { colors, semantic, borderRadius, boxShadow, fontFamily, fontWeightUtilities, fontWeightPlugin };
