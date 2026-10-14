@@ -1,3 +1,4 @@
+import "react-native-gesture-handler/jestSetup";
 import { configure } from "@testing-library/react-native";
 
 // findBy*/waitFor default to 1s. Under a full parallel run the CPU-bound render

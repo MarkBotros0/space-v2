@@ -22,7 +22,7 @@ import {
   useState,
 } from "react";
 import { Animated, KeyboardAvoidingView, Modal as RNModal, Platform, Pressable, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";
@@ -78,7 +78,9 @@ function ModalClose({ children }: { children: ReactElement }) {
 
 function ModalContent({ className, children }: { className?: string; children?: ReactNode }) {
   const { open, setOpen } = useContext(ModalContext);
-  const insets = useSafeAreaInsets();
+  // Context, not the hook: a sheet rendered outside SafeAreaProvider (tests,
+  // early boot) gets 0 insets instead of throwing.
+  const bottomInset = useContext(SafeAreaInsetsContext)?.bottom ?? 0;
   const slide = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (open) {
@@ -88,7 +90,7 @@ function ModalContent({ className, children }: { className?: string; children?: 
   }, [open, slide]);
   return (
     <RNModal transparent visible={open} animationType="fade" statusBarTranslucent onRequestClose={() => setOpen(false)}>
-      <Pressable accessibilityLabel="Dismiss" style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}>
+      <Pressable testID="modal-backdrop" accessibilityLabel="Dismiss" style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}>
         <BlurView intensity={15} style={StyleSheet.absoluteFill} />
         <View className="absolute inset-0 bg-background/70" />
       </Pressable>
@@ -101,7 +103,7 @@ function ModalContent({ className, children }: { className?: string; children?: 
         >
           <View
             className={cn("max-h-[90vh] flex-col gap-4 rounded-t-2xl border-t border-border bg-card p-4", className)}
-            style={{ paddingBottom: Math.max(16, insets.bottom) }}
+            style={{ paddingBottom: Math.max(16, bottomInset) }}
           >
             <View className="absolute left-1/2 top-2 -ml-5 h-1 w-10 rounded-full bg-muted-foreground/30" />
             {children}
