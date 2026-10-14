@@ -11,6 +11,5 @@ export const APP_DIR = path.join(REF_ROOT, "app");
 export const SHOTS_DIR = path.join(REF_ROOT, "shots");
 export const USERS_FILE = path.join(REF_ROOT, "users.json");
 export const MANIFEST_FILE = path.join(REF_ROOT, "manifest.json");
-export const BRANCH_URL_FILE = path.join(os.homedir(), ".secrets/jpc-v1-reference-db-url");
 export const V1_BASE_URL = "http://localhost:3100";
 export const UI_REBUILD_DOCS = path.join(REPO_ROOT, "docs/superpowers/ui-rebuild");
