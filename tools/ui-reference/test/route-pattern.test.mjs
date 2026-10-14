@@ -42,3 +42,15 @@ test("slugs are filesystem-safe and unique per pattern", () => {
   assert.equal(slugFor("/admin/seasons/[code]/roster"), "admin__seasons__code__roster");
   assert.equal(slugFor("/"), "root");
 });
+
+test("10-char mixed-case public ids without a digit become [publicId]", () => {
+  assert.equal(toPattern("/leader/submissions/PumFyLKsNI"), "/leader/submissions/[publicId]");
+  assert.equal(toPattern("/student/assignments"), "/student/assignments");
+});
+
+test("static pages under seasons are kept; any other segment there is a code", () => {
+  assert.equal(toPattern("/super/seasons/new"), "/super/seasons/new");
+  assert.equal(toPattern("/super/seasons/7"), "/super/seasons/[code]");
+  assert.equal(toPattern("/super/seasons/year/2026"), "/super/seasons/year/[year]");
+  assert.equal(toPattern("/super/seasons/program/youth"), "/super/seasons/program/[program]");
+});

@@ -8,10 +8,17 @@ import { MANIFEST_FILE, SHOTS_DIR, USERS_FILE, V1_BASE_URL } from "./lib/paths.m
 const VIEWPORT = { width: 375, height: 812 };
 const MAX_PAGES_PER_ROLE = 120;
 const MAX_DIALOGS_PER_PAGE = 4;
+const PAGE_DEADLINE_MS = 420000;
 // Pages not reachable by links but part of the reference.
 const EXTRA_PATHS = { super: ["/dev/design-system"] };
 
-const users = JSON.parse(readFileSync(USERS_FILE, "utf8"));
+const allUsers = JSON.parse(readFileSync(USERS_FILE, "utf8"));
+// `--role <name>` captures one role into manifest.<role>.json so roles can run
+// in parallel and a failure costs one role, not the run. merge-manifest.mjs
+// combines the parts into manifest.json.
+const roleArg = process.argv.indexOf("--role");
+const onlyRole = roleArg > 0 ? process.argv[roleArg + 1] : null;
+const users = onlyRole ? { [onlyRole]: allUsers[onlyRole] } : allUsers;
 const browser = await chromium.launch();
 const manifest = {
   capturedAt: new Date().toISOString(),
@@ -22,7 +29,7 @@ const manifest = {
 // One slow page must not end the run: navigation errors are recorded, not thrown.
 async function visit(page, pathname) {
   try {
-    await page.goto(new URL(pathname, V1_BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.goto(new URL(pathname, V1_BASE_URL).toString(), { waitUntil: "domcontentloaded", timeout: 150000 });
     await settle(page);
     return null;
   } catch (err) {
@@ -30,9 +37,23 @@ async function visit(page, pathname) {
   }
 }
 
+// Rejects instead of resolving: used as a per-page watchdog.
+function deadline(promise, ms, what) {
+  let timer;
+  const limit = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${what} exceeded ${ms / 1000}s`)), ms);
+  });
+  return Promise.race([promise, limit]).finally(() => clearTimeout(timer));
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((resolve) => setTimeout(resolve, ms))]);
+}
+
 async function settle(page) {
-  await page.waitForLoadState("networkidle").catch(() => {});
-  await page.evaluate(() => document.fonts.ready);
+  await page.waitForLoadState("networkidle", { timeout: 20000 }).catch(() => {});
+  // No browser call may wait forever: a hang here once stalled a whole run.
+  await withTimeout(page.evaluate(() => document.fonts.ready).catch(() => {}), 5000);
   await page.waitForTimeout(300); // let entrance animations finish
 }
 
@@ -87,6 +108,8 @@ for (const [role, user] of Object.entries(users)) {
     dark: await newThemedContext("dark", storageState),
   };
   const pages = { light: await contexts.light.newPage(), dark: await contexts.dark.newPage() };
+  pages.light.setDefaultTimeout(15000);
+  pages.dark.setDefaultTimeout(15000);
 
   const seen = new Set();
   const queue = ["/", ...(EXTRA_PATHS[role] ?? [])];
@@ -94,6 +117,8 @@ for (const [role, user] of Object.entries(users)) {
 
   while (queue.length && results.length < MAX_PAGES_PER_ROLE) {
     const target = queue.shift();
+    // Nav links repeat on every page; a slow page must cost one visit, not one per link.
+    if (seen.has(toPattern(target))) continue;
     const navError = await visit(pages.light, target);
     if (navError) {
       const pattern = toPattern(target);
@@ -112,6 +137,19 @@ for (const [role, user] of Object.entries(users)) {
     const slug = slugFor(pattern);
     const entry = { pattern, exampleUrl: landed, shots: {}, dialogs: [] };
     try {
+      await deadline(capturePage(), PAGE_DEADLINE_MS, "page capture");
+    } catch (err) {
+      entry.error = String(err.message).slice(0, 200);
+      if (err.message.includes("page capture exceeded")) {
+        // A frozen tab ignores further calls: replace both tabs.
+        for (const theme of ["light", "dark"]) {
+          await withTimeout(pages[theme].close().catch(() => {}), 5000);
+          pages[theme] = await contexts[theme].newPage();
+          pages[theme].setDefaultTimeout(15000);
+        }
+      }
+    }
+    async function capturePage() {
       for (const theme of ["light", "dark"]) {
         const page = pages[theme];
         if (theme === "dark") {
@@ -128,15 +166,16 @@ for (const [role, user] of Object.entries(users)) {
           entry.dialogs[i] = { ...(entry.dialogs[i] ?? {}), ...d };
         });
       }
-    } catch (err) {
-      entry.error = String(err.message).slice(0, 200);
     }
     results.push(entry);
     console.log(`${role}: ${pattern}`);
 
     // Re-read links from a fresh load: dialogs opened above may have navigated.
-    if (await visit(pages.light, landed)) continue;
-    const hrefs = await pages.light.$$eval("a[href]", (as) => as.map((a) => a.getAttribute("href")));
+    if (await deadline(visit(pages.light, landed), 200000, "link reload").catch((e) => e.message)) continue;
+    const hrefs = await withTimeout(
+      pages.light.$$eval("a[href]", (as) => as.map((a) => a.getAttribute("href"))).catch(() => []),
+      15000,
+    ) ?? [];
     for (const href of hrefs) {
       if (!isCrawlable(href, V1_BASE_URL)) continue;
       const next = new URL(href, V1_BASE_URL).pathname;
@@ -147,8 +186,14 @@ for (const [role, user] of Object.entries(users)) {
   manifest.roles[role] = { pages: results };
   await contexts.light.close();
   await contexts.dark.close();
+  const part = MANIFEST_FILE.replace(/\.json$/, `.${role}.json`);
+  const body = { capturedAt: manifest.capturedAt, viewport: manifest.viewport, role, ...manifest.roles[role] };
+  writeFileSync(part, JSON.stringify(body, null, 2), { mode: 0o600 });
+  console.log(`${role}: done (${results.length} pages)`);
 }
 
 await browser.close();
-writeFileSync(MANIFEST_FILE, JSON.stringify(manifest, null, 2), { mode: 0o600 });
-console.log("manifest written");
+if (!onlyRole) {
+  writeFileSync(MANIFEST_FILE, JSON.stringify(manifest, null, 2), { mode: 0o600 });
+  console.log("manifest written");
+}
