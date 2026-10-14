@@ -139,3 +139,12 @@ status bar) are in `gaps-foundations.md` and not repeated.
 | Comment delete asks first ("Delete comment?"). | v2 confirm kept, drawn with v1's ConfirmDialog. |
 | "Group discussion · N" counts loaded posts; "Load more" / "Show all comments" paging. | The thread pages and returns no total. |
 | Due dates in the list are the device's reading of `dueAt`. | Data gap — the student list has no `dueOrgDay`. |
+
+## Profile
+
+| Difference | Reason |
+|---|---|
+| No Full name or Email fields in the form; a card points to Settings for the name. | Spec 06 Decision 1 — this screen edits the six own columns only; PATCH /me owns the name. |
+| No "Add photo" button; the avatar shows initials. | Uploads are off and v2 has no avatar read path. |
+| Budget stat reads "Absence budget left" (v1: "Attendance"). | Spec 19 D14. |
+| Success is a toast ("Profile saved."); v1 refreshed silently. | v2 feedback kept. |

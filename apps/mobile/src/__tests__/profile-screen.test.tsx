@@ -5,9 +5,11 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 const mockLogout = jest.fn(() => Promise.resolve());
 jest.mock("../hooks/use-session", () => ({ useLogout: () => mockLogout }));
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
 import type { MyProfile } from "@space/shared";
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -39,10 +41,16 @@ const attendance = {
   sessions: [],
 };
 
+const selfEngagement = {
+  attendancePct: 62, submissionPct: 25, attendanceTotal: 8, attendancePresent: 5,
+  submissionsExpected: 4, submissionsCompleted: 1, seasonId: 7, seasonTitle: "GBV 2026",
+};
+
 function routeGets(p: typeof profile = profile) {
   get.mockImplementation((url: string) => {
     if (url === "/api/v1/me/profile") return Promise.resolve({ data: { data: { profile: p } } });
     if (url === "/api/v1/me/attendance") return Promise.resolve({ data: { data: attendance } });
+    if (url === "/api/v1/students/1/engagement") return Promise.resolve({ data: { data: selfEngagement } });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 }
@@ -70,7 +78,11 @@ describe("ProfileScreen — STUDENT", () => {
     expect(screen.getByText("Streak")).toBeTruthy();
     expect(screen.getByText("3")).toBeTruthy();
     expect(screen.getByLabelText("University").props.value).toBe("Cairo University");
-    expect(screen.getByLabelText("Date of birth (YYYY-MM-DD)").props.value).toBe("2001-04-05");
+    // v1's DatePicker (PPP format) in place of a typed field.
+    expect(screen.getByLabelText("Date of birth")).toHaveTextContent("April 5th, 2001");
+    // The student's own engagement (self arm): completed / expected.
+    expect(await screen.findByLabelText("Assignments: 1/4")).toBeTruthy();
+    expect(screen.getByText("Your details")).toBeTruthy();
     // Decision 1: no name or email field on this screen.
     expect(screen.queryByLabelText("Name")).toBeNull();
     expect(screen.queryByLabelText("Email")).toBeNull();
@@ -81,7 +93,7 @@ describe("ProfileScreen — STUDENT", () => {
     renderWithProviders(<ProfileScreen />);
 
     fireEvent.changeText(await screen.findByLabelText("Phone"), "+20 122");
-    fireEvent.press(screen.getByText("Save profile"));
+    fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/me/profile", {
@@ -93,26 +105,27 @@ describe("ProfileScreen — STUDENT", () => {
         gifts: "",
       }),
     );
-    expect(await screen.findByText("Profile saved.")).toBeTruthy();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Profile saved."));
   });
 
-  it("validates with the server's schema before sending — an impossible date never leaves", async () => {
+  it("sends the picked date of birth as the org-free yyyy-MM-dd string", async () => {
+    patch.mockResolvedValue({ data: { data: { profile: { ...profile, dateOfBirth: "2001-04-20" } } } });
     renderWithProviders(<ProfileScreen />);
 
-    fireEvent.changeText(await screen.findByLabelText("Date of birth (YYYY-MM-DD)"), "2001-02-30");
-    fireEvent.press(screen.getByText("Save profile"));
+    fireEvent.press(await screen.findByLabelText("Date of birth"));
+    fireEvent.press(screen.getByText("20"));
+    fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Date of birth (YYYY-MM-DD)").props.accessibilityHint).toBe("Not a real calendar day."),
+      expect(patch).toHaveBeenCalledWith("/api/v1/me/profile", expect.objectContaining({ dateOfBirth: "2001-04-20" })),
     );
-    expect(patch).not.toHaveBeenCalled();
   });
 
   it("treats a response carrying notes as a failed save (X10, R23)", async () => {
     patch.mockResolvedValue({ data: { data: { profile: { ...profile, notes: "internal" } } } });
     renderWithProviders(<ProfileScreen />);
 
-    fireEvent.press(await screen.findByText("Save profile"));
+    fireEvent.press(await screen.findByText("Save changes"));
 
     expect(await screen.findByText("Couldn't save your profile.")).toBeTruthy();
   });

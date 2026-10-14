@@ -9,25 +9,37 @@ import {
   type UpdateOwnProfileInput,
 } from "@space/shared";
 
+import { format, isValid, parse } from "date-fns";
+
+import { Fieldset } from "../../src/design/forms/fieldset";
+import { Eyebrow } from "../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { shadowStyle } from "../../src/design/lib/shadow";
+import { StatCard } from "../../src/design/students/stat-card";
+import {
+  Avatar,
+  AvatarFallback,
+  Badge,
+  Button as ButtonV1,
+  DatePicker,
+  FormField,
+  Input as InputV1,
+  Text as TextV1,
+  Textarea,
+  toast,
+} from "../../src/design/ui";
+import { useMyEngagement } from "../../src/hooks/use-engagement";
 import { useLogout } from "../../src/hooks/use-session";
 import { useMyAttendance, useMyProfile, useUpdateStudentProfile } from "../../src/hooks/use-self-service";
 import { apiErrorMessage } from "../../src/lib/api-error";
 import { initialsOf } from "../../src/lib/initials";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
-import { Button, Card, ErrorState, Input, LoadingState, Screen, Text } from "../../src/ui";
+import { Button, Card, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
 const EDGES = ["top", "left", "right"] as const;
 
-const FIELD_LABELS: Record<OwnProfileField, string> = {
-  university: "University",
-  year: "Year",
-  phone: "Phone",
-  dateOfBirth: "Date of birth (YYYY-MM-DD)",
-  spiritualBackground: "Spiritual background",
-  gifts: "Gifts",
-};
-const MULTILINE: ReadonlySet<OwnProfileField> = new Set(["spiritualBackground", "gifts"]);
 
 type FormValues = Record<OwnProfileField, string>;
 
@@ -74,24 +86,24 @@ function IdentityCard({ name, email, badge }: { name: string; email: string; bad
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <Card style={{ flex: 1, alignItems: "center" }}>
-      <Text variant="title">{value}</Text>
-      <Text variant="caption">{label}</Text>
-    </Card>
-  );
+/** "2001-04-05" ↔ a local-midnight Date: no zone shift either way. */
+function dobToDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = parse(value, "yyyy-MM-dd", new Date());
+  return isValid(date) ? date : null;
 }
 
+/** v1 student-form.tsx in its isSelf mode — the six own columns (Decision 1). */
 function ProfileForm({ profile }: { profile: MyProfile }) {
-  const theme = useTheme();
+  const router = useRouter();
   const update = useUpdateStudentProfile();
   const [values, setValues] = useState<FormValues>(() => toFormValues(profile));
   const [errors, setErrors] = useState<Partial<Record<OwnProfileField, string>>>({});
-  const [message, setMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const set = (field: OwnProfileField) => (text: string) => setValues((v) => ({ ...v, [field]: text }));
 
   const save = () => {
-    setMessage(null);
+    setSubmitError(null);
     const body: UpdateOwnProfileInput = values;
     // The SAME schema the server runs — v1's client and server copies had
     // drifted (spec 06 R21); here they cannot.
@@ -109,89 +121,162 @@ function ProfileForm({ profile }: { profile: MyProfile }) {
     }
     setErrors({});
     update.mutate(body, {
-      onSuccess: () => setMessage("Profile saved."),
-      onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save your profile.")),
+      onSuccess: () => toast.success("Profile saved."),
+      onError: (err) => setSubmitError(apiErrorMessage(err, "Couldn't save your profile.")),
     });
   };
 
   return (
-    <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-      <Text variant="heading">Your details</Text>
-      {OWN_PROFILE_FIELDS.map((field) => (
-        <Input
-          key={field}
-          label={FIELD_LABELS[field]}
-          value={values[field]}
-          onChangeText={(text) => setValues((v) => ({ ...v, [field]: text }))}
-          error={errors[field]}
-          multiline={MULTILINE.has(field)}
-          autoCapitalize={field === "dateOfBirth" ? "none" : "sentences"}
-          keyboardType={field === "phone" ? "phone-pad" : "default"}
-        />
-      ))}
-      {message ? (
-        <Text variant="label" accessibilityLiveRegion="polite">
-          {message}
-        </Text>
+    <View className="flex-col gap-6">
+      <Fieldset legend="Personal">
+        <FormField label="Date of birth" error={errors.dateOfBirth}>
+          <DatePicker
+            accessibilityLabel="Date of birth"
+            value={dobToDate(values.dateOfBirth)}
+            onChange={(d) => set("dateOfBirth")(format(d, "yyyy-MM-dd"))}
+          />
+        </FormField>
+      </Fieldset>
+      <Fieldset legend="Contact">
+        <FormField label="Phone" error={errors.phone}>
+          <InputV1 accessibilityLabel="Phone" keyboardType="phone-pad" value={values.phone} onChangeText={set("phone")} />
+        </FormField>
+      </Fieldset>
+      <Fieldset legend="Academic">
+        <FormField label="University" error={errors.university}>
+          <InputV1 accessibilityLabel="University" value={values.university} onChangeText={set("university")} />
+        </FormField>
+        <FormField label="Year / faculty" error={errors.year}>
+          <InputV1
+            accessibilityLabel="Year / faculty"
+            placeholder="e.g. 3rd · Engineering"
+            value={values.year}
+            onChangeText={set("year")}
+          />
+        </FormField>
+      </Fieldset>
+      <Fieldset legend="Spiritual background">
+        <FormField label="Notes" error={errors.spiritualBackground}>
+          <Textarea
+            accessibilityLabel="Notes"
+            numberOfLines={3}
+            placeholder="Church affiliation, baptism status, faith journey…"
+            value={values.spiritualBackground}
+            onChangeText={set("spiritualBackground")}
+          />
+        </FormField>
+      </Fieldset>
+      <Fieldset legend="Community">
+        <FormField label="Gifts / interests" error={errors.gifts}>
+          <Textarea
+            accessibilityLabel="Gifts / interests"
+            numberOfLines={2}
+            placeholder="e.g. worship, hospitality, mentoring younger students"
+            value={values.gifts}
+            onChangeText={set("gifts")}
+          />
+        </FormField>
+      </Fieldset>
+      {submitError ? (
+        <TextV1
+          accessibilityLiveRegion="polite"
+          className="rounded-md bg-error-50 px-3 py-2 text-sm text-error-800 dark:bg-error-950 dark:text-error-200"
+        >
+          {submitError}
+        </TextV1>
       ) : null}
-      <Button title="Save profile" onPress={save} loading={update.isPending} />
-    </Card>
+      <View className="flex-col-reverse gap-2">
+        <ButtonV1 variant="outline" onPress={() => router.back()}>
+          Cancel
+        </ButtonV1>
+        <ButtonV1 disabled={update.isPending} onPress={save}>
+          {update.isPending ? "Saving…" : "Save changes"}
+        </ButtonV1>
+      </View>
+    </View>
   );
 }
 
 /** v1 /student/profile — the six own columns editable, nothing else (Decision 1). */
 function StudentProfile() {
-  const theme = useTheme();
   const router = useRouter();
+  const userId = useSessionStore((s) => s.user?.id ?? null);
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const profile = useMyProfile(true);
   const attendance = useMyAttendance(activeSeasonId);
+  const engagement = useMyEngagement(userId, activeSeasonId !== null);
 
-  if (profile.isPending) {
+  if (profile.isPending || profile.isError) {
     return (
-      <Screen edges={EDGES}>
-        <LoadingState />
-      </Screen>
-    );
-  }
-  if (profile.isError) {
-    return (
-      <Screen edges={EDGES}>
-        <ErrorState message="Couldn't load your profile." onRetry={() => void profile.refetch()} />
-      </Screen>
+      <ShellFrame>
+        {profile.isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void profile.refetch()} />}
+      </ShellFrame>
     );
   }
 
   const p = profile.data;
   const budget = attendance.data?.budget ?? null;
+  const streak = attendance.data?.streak ?? null;
+  const eng = engagement.data;
 
   return (
-    <Screen
-      edges={EDGES}
-      scroll
+    <ShellFrame
       onRefresh={() => {
         void profile.refetch();
-        if (activeSeasonId !== null) void attendance.refetch();
+        if (activeSeasonId !== null) {
+          void attendance.refetch();
+          void engagement.refetch();
+        }
       }}
       refreshing={profile.isRefetching}
     >
-      <IdentityCard name={p.name} email={p.email} badge="Student" />
-      {budget !== null ? (
-        <View style={{ flexDirection: "row", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-          {/* v1 labelled this "Attendance" (spec 09 R68); it is the budget LEFT (spec 19 D14). */}
-          <Stat label="Absence budget left" value={`${budget.remainingPct}%`} />
-          <Stat label="Streak" value={String(attendance.data?.streak ?? 0)} />
+      <View className="flex-col gap-3">
+        <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+          <View className="flex-row items-center gap-4">
+            {/* Initials only: v2 has no avatar read path and uploads are off (gap note). */}
+            <Avatar size="xl" className="shrink-0">
+              <AvatarFallback>{initialsOf(p.name, p.email.charAt(0).toUpperCase() || "?")}</AvatarFallback>
+            </Avatar>
+            <View className="min-w-0 flex-1">
+              <TextV1 numberOfLines={1} className="text-xl font-black text-brand-navy-900 dark:text-foreground">
+                {p.name}
+              </TextV1>
+              <TextV1 numberOfLines={1} className="text-xs text-muted-foreground">
+                {p.email}
+              </TextV1>
+              <View className="mt-2 flex-row flex-wrap gap-1.5">
+                <Badge variant="teal">Student</Badge>
+              </View>
+            </View>
+          </View>
         </View>
-      ) : null}
-      <ProfileForm profile={p} />
-      <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-        <Text variant="heading">Name and email</Text>
-        <Text variant="body" color={theme.colors.neutral[600]}>
-          Change your name in Settings. To change your email, contact the JPC team.
-        </Text>
-        <Button title="Open settings" variant="secondary" onPress={() => router.push("/settings")} />
-      </Card>
-    </Screen>
+        {activeSeasonId !== null ? (
+          <View className="flex-row gap-3">
+            {/* v1 labelled this "Attendance" (spec 09 R68); it is the budget LEFT (spec 19 D14). */}
+            <StatCard label="Absence budget left" value={budget ? `${budget.remainingPct}%` : "—"} />
+            <StatCard label="Assignments" value={eng ? `${eng.submissionsCompleted}/${eng.submissionsExpected}` : "—"} />
+            <StatCard
+              label="Streak"
+              value={streak === null ? "—" : String(streak)}
+              icon={streak !== null && streak > 0 ? "flame" : undefined}
+            />
+          </View>
+        ) : null}
+        <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+          <Eyebrow className="mb-4">Your details</Eyebrow>
+          <ProfileForm profile={p} />
+        </View>
+        {/* Decision 1: name and email are not edited here (PATCH /me owns User.name). */}
+        <View className="flex-col items-start gap-3 rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+          <TextV1 className="text-sm text-muted-foreground">
+            Change your name in Settings. To change your email, contact the JPC team.
+          </TextV1>
+          <ButtonV1 variant="outline" size="sm" onPress={() => router.push("/settings")}>
+            Open settings
+          </ButtonV1>
+        </View>
+      </View>
+    </ShellFrame>
   );
 }
 
