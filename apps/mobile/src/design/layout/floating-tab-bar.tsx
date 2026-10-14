@@ -14,8 +14,10 @@ import { NavLink } from "./nav-link";
  *   flex h-16 max-w-md items-center rounded-full bg-sidebar/75 px-2
  *   text-sidebar-foreground shadow-[var(--shadow-lift)] ring-1 ring-white/10
  *   backdrop-blur-xl backdrop-saturate-150
- * Native differences: ring → border; backdrop-blur-xl → BlurView intensity 40
- * under the translucent fill; backdrop-saturate has no native equivalent.
+ * Native differences: ring → border; backdrop-blur-xl → BlurView, but
+ * Android's blur darkens the backdrop (bar measured #364771 vs v1 #536187),
+ * so a bg-background/85 layer restores the light, blurred backdrop v1 sees
+ * before its 75% navy; backdrop-saturate has no native equivalent.
  */
 export function FloatingTabBar({ items, state, navigation }: BottomTabBarProps & { items: NavItem[] }) {
   const insets = useSafeAreaInsets();
@@ -30,7 +32,8 @@ export function FloatingTabBar({ items, state, navigation }: BottomTabBarProps &
         className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
         style={shadowStyle("lift")}
       >
-        <BlurView intensity={40} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={40} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+        <View className="absolute inset-0 bg-background/85" />
         <View className="absolute inset-0 bg-sidebar/75" />
         {items.slice(0, 5).map((item) => {
           const name = routeNameForHref(item.href);

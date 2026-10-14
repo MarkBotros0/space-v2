@@ -2,7 +2,9 @@ import { Redirect, Tabs, useSegments } from "expo-router";
 import type { NavItem } from "@space/shared";
 import { ALL_NAV_HREFS } from "@space/shared";
 
-import { NavIcon } from "../../src/components/NavIcon";
+import { AppTopBar } from "../../src/design/layout/app-top-bar";
+import { FloatingTabBar } from "../../src/design/layout/floating-tab-bar";
+import { ShellContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { DIRECTORY_ROUTE_HREFS, routeNameForHref } from "../../src/lib/route-names";
 import { useSessionStore } from "../../src/store/session";
@@ -106,27 +108,19 @@ export default function AppLayout() {
     ...DETAIL_ROUTE_NAMES,
   ];
 
+  // v1's shell (shell-frame.tsx): the top bar above every screen and the
+  // floating pill tab bar, which renders the role's tabs itself.
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
-      {orderedRouteNames.map((name) => {
-        const tab = tabByRouteName.get(name);
-        return (
-          <Tabs.Screen
-            key={name}
-            name={name}
-            options={
-              tab
-                ? {
-                    title: tab.label,
-                    tabBarIcon: ({ color, size }) => (
-                      <NavIcon name={tab.icon} color={color} size={size} />
-                    ),
-                  }
-                : { href: null }
-            }
-          />
-        );
-      })}
-    </Tabs>
+    <ShellContext.Provider value={true}>
+      <Tabs
+        screenOptions={{ header: () => <AppTopBar /> }}
+        tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
+      >
+        {orderedRouteNames.map((name) => {
+          const tab = tabByRouteName.get(name);
+          return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : { href: null }} />;
+        })}
+      </Tabs>
+    </ShellContext.Provider>
   );
 }

@@ -25,6 +25,20 @@ copy, icons). Comparison page: `~/projects/JPC/.v2-captures/foundations/compare-
 | Tab bar | `backdrop-saturate-150` not applied (blur is). | No saturate filter in expo-blur. |
 | Empty state | v1's `blur-xl` glow behind the icon is omitted. | v1 blurs it to near-invisibility; React Native has no blur filter for it. |
 
+## Shell (top bar + floating tab bar) on real screens
+
+Captured as the student (light, dark) and admin (light) reference users and
+compared with v1's dashboards (`compare-shell.html`, devbox only). Measured
+colours: tab bar light #516084 vs v1 #536187, dark #071c31 vs #041b32; top
+bar dark #051a2e vs #051a2e.
+
+| Part | Difference | Reason |
+|---|---|---|
+| Top bar | No backdrop blur. | It is the navigator's header, so nothing scrolls beneath it; drawn as v1's card/78 over the page background, which is what v1 shows at the top of a page. |
+| Tab bar | Blur plus a bg-background/85 underlay before v1's 75% navy. | Android's blur darkens the backdrop (bar measured #364771 without the underlay). |
+| Tab bar | Sits above the device's gesture/home inset instead of 16px from the edge on phones with one. | v1 uses `max(1rem, env(safe-area-inset-bottom))` — same rule. |
+| Screen bodies | Still the pre-rebuild UI (light body under a dark shell in dark mode). | Rebuilt in batches 2–6; mixed UI accepted for the rollout. |
+
 ## Motion not reproduced
 
 | Component | v1 | v2 |

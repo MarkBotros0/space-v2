@@ -190,11 +190,22 @@ wired to `refetch`, `EmptyState`.
 The remaining interfaces in `packages/shared` predate this and should convert
 as each domain lands.
 
-**Tab screens pass `edges={["top","left","right"]}` to `Screen`** — the tab bar
-already consumes the bottom inset, so the default double-pads. `Screen` sums
-insets into per-edge padding; never split that back into a `padding` shorthand
-plus per-edge overrides, because Yoga resolves the specific edge first and the
-shorthand is silently ignored.
+**UI matches v1 exactly** (owner ruling 2026-10-14, spec
+`docs/superpowers/specs/2026-10-14-mobile-ui-v1-match-design.md`). Styling is
+NativeWind with a theme generated from v1's resolved tokens
+(`pnpm --filter @space/mobile design:tokens`). Components live in
+`src/design/` under v1's file names and keep v1's class strings, variants and
+copy; porting rules are in `docs/superpowers/plans/2026-10-14-ui-plan-01-foundations.md`
+Task 6, and known differences in `docs/superpowers/ui-rebuild/gaps-foundations.md`.
+Render text with `src/design/ui/text.tsx` (it carries v1's body defaults:
+16px/24px, Geist, foreground colour — React Native text inherits nothing).
+Button, Badge and the pills carry no self-alignment: where v1 places them in
+a block (or uses `w-fit`), add `self-start`. A screen is done only after a
+side-by-side capture against v1 (`tools/ui-reference/`). The shell
+(`app/(app)/_layout.tsx`) renders v1's top bar as the tab header and the
+floating pill tab bar; legacy `Screen` drops its top inset and pads the bottom
+by 96px inside it. `src/ui/` and `src/theme/` are legacy and are deleted when
+the last screen stops importing them.
 
 **Testing.** Anything rendering `Screen` must use `renderWithProviders`
 (`src/__tests__/helpers/render.tsx`) — it supplies `SafeAreaProvider` with

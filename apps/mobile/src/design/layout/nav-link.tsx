@@ -30,7 +30,10 @@ export function NavLink({
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
-      className="relative flex-1 flex-col items-center justify-center gap-1 self-stretch px-1"
+      // v1 has px-1 here, but its truncate label still spills into that
+      // padding ("Assignments" is wider than the padded tab); dropping the
+      // padding gives the native label the same room instead of an ellipsis.
+      className="relative flex-1 flex-col items-center justify-center gap-1 self-stretch"
     >
       <View
         className={cn(
@@ -49,7 +52,7 @@ export function NavLink({
       <Text
         numberOfLines={1}
         className={cn(
-          "max-w-full text-[10px] font-medium leading-none",
+          "text-[10px] font-medium leading-none",
           active ? "text-white" : featured ? "text-white/80" : "text-white/55",
         )}
       >
