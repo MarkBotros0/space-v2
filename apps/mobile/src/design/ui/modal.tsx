@@ -91,7 +91,7 @@ function ModalContent({ className, children }: { className?: string; children?: 
   return (
     <RNModal transparent visible={open} animationType="fade" statusBarTranslucent onRequestClose={() => setOpen(false)}>
       <Pressable testID="modal-backdrop" accessibilityLabel="Dismiss" style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}>
-        <BlurView intensity={15} style={StyleSheet.absoluteFill} />
+        <BlurView intensity={15} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
         <View className="absolute inset-0 bg-background/70" />
       </Pressable>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 justify-end" pointerEvents="box-none">

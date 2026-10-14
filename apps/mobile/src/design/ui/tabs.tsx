@@ -1,8 +1,12 @@
 /**
  * Port of v1 src/components/ui/tabs.tsx (Base UI Tabs) — controlled
  * (value/onValueChange) or uncontrolled (defaultValue).
- * Native differences: inline-flex list → self-start row; data-[selected]
- * styles applied from state; hover/focus states dropped.
+ * v1 styles the selected tab with data-[selected]:…, but Base UI marks it
+ * data-active, so in v1 no tab ever looks selected (all muted, no teal
+ * underline). That is reproduced here (owner rule: match v1 exactly) and
+ * listed in gaps-foundations.md as a v1 bug; the selected state is still
+ * exposed to accessibility. v1's inline-flex list stretches to full width
+ * inside the flex-col root, as a View does. Hover/focus dropped.
  */
 import { createContext, type ReactNode, useContext, useState } from "react";
 import { Pressable, View } from "react-native";
@@ -41,7 +45,7 @@ function Tabs({
 
 function TabsList({ className, children }: { className?: string; children?: ReactNode }) {
   return (
-    <View accessibilityRole="tablist" className={cn("relative self-start flex-row items-center gap-1 border-b border-border", className)}>
+    <View accessibilityRole="tablist" className={cn("relative flex-row items-center gap-1 border-b border-border", className)}>
       {children}
     </View>
   );
@@ -56,14 +60,10 @@ function TabsTrigger({ value, className, children, disabled }: { value: string; 
       accessibilityState={{ selected, disabled: !!disabled }}
       disabled={disabled}
       onPress={() => ctx.setValue(value)}
-      className={cn(
-        "relative -mb-px flex-row items-center gap-1.5 border-b-2 px-3 py-2",
-        selected ? "border-brand-teal-500" : "border-transparent",
-        className,
-      )}
+      className={cn("relative -mb-px flex-row items-center gap-1.5 border-b-2 border-transparent px-3 py-2", className)}
     >
       {typeof children === "string" ? (
-        <Text className={cn("text-sm font-medium", selected ? "text-foreground" : "text-muted-foreground")}>{children}</Text>
+        <Text className="text-sm font-medium text-muted-foreground">{children}</Text>
       ) : (
         children
       )}

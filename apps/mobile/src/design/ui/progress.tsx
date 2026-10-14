@@ -1,7 +1,7 @@
 /**
  * Port of v1 src/components/ui/progress.tsx (Base UI Progress).
- * Native differences: transition-[width] dropped; the value text is the raw
- * number, as v1's default formatter renders it.
+ * Native differences: transition-[width] dropped. The value reads like Base
+ * UI's default formatter (percent, e.g. "25%").
  */
 import { View } from "react-native";
 
@@ -21,7 +21,7 @@ function Progress({ className, value, label, showValue }: { className?: string; 
       {label || showValue ? (
         <View className="flex-row items-center justify-between">
           {label ? <Text className="text-sm font-medium text-foreground">{label}</Text> : <View />}
-          {showValue ? <Text className="text-sm text-muted-foreground tabular-nums">{`${value ?? 0}`}</Text> : null}
+          {showValue ? <Text className="text-sm text-muted-foreground tabular-nums">{`${Math.round(value ?? 0)}%`}</Text> : null}
         </View>
       ) : null}
       <View className="h-2 w-full overflow-hidden rounded-full bg-muted">

@@ -5,7 +5,9 @@
  * props (xs/sm/icon-xs: 12, sm/icon-sm: 14, others: 16) instead of
  * [&_svg]:size-*; rounded-[min(var(--radius-md),10px|12px)] → rounded-md
  * (radius-md is 8px, already below both caps); disabled:opacity-50 applied
- * from the prop.
+ * from the prop. v1's inline-flex sizes a button to its content inside a
+ * block; a React Native column stretches it instead, so a call site that is
+ * a block in v1 adds `self-start` (rows are unaffected).
  */
 import { cva, type VariantProps } from "class-variance-authority";
 import { Children, type ReactNode, isValidElement } from "react";

@@ -21,19 +21,25 @@ import {
 } from "../design/ui";
 
 describe("Text", () => {
-  it("starts from v1's body: foreground colour and Geist regular", () => {
+  it("starts from v1's body: 16px/24px, foreground colour and Geist regular", () => {
     render(<Text>Hello</Text>);
-    expect(screen.getByText("Hello").props.className).toBe("font-normal text-foreground");
+    expect(screen.getByText("Hello").props.className).toBe("font-normal text-base text-foreground");
+  });
+
+  it("an explicit size replaces the body size", () => {
+    render(<Text className="text-sm">Small</Text>);
+    expect(screen.getByText("Small").props.className).toBe("font-normal text-foreground text-sm");
   });
 
   it("font-mono replaces the Geist face instead of fighting font-normal", () => {
     render(<Text className="font-mono">x = 1</Text>);
-    expect(screen.getByText("x = 1").props.className).toBe("text-foreground font-mono");
+    expect(screen.getByText("x = 1").props.className).toBe("text-base text-foreground font-mono");
+    expect(screen.getByText("x = 1")).toHaveStyle({ fontFamily: "GeistMono_400Regular" });
   });
 
   it("lets a caller override weight and colour (last wins)", () => {
     render(<Text className="font-semibold text-muted-foreground">Hi</Text>);
-    expect(screen.getByText("Hi").props.className).toBe("font-semibold text-muted-foreground");
+    expect(screen.getByText("Hi").props.className).toBe("text-base font-semibold text-muted-foreground");
   });
 });
 
@@ -110,7 +116,7 @@ describe("status components", () => {
     render(<Progress value={40} label="Season" showValue />);
     expect(screen.getByRole("progressbar").props.accessibilityValue).toMatchObject({ now: 40, min: 0, max: 100 });
     expect(screen.getByText("Season")).toBeTruthy();
-    expect(screen.getByText("40")).toBeTruthy();
+    expect(screen.getByText("40%")).toBeTruthy();
   });
 
   it("ProgressRing clamps and labels like v1", () => {

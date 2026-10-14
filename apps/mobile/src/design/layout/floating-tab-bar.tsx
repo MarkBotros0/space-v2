@@ -30,7 +30,7 @@ export function FloatingTabBar({ items, state, navigation }: BottomTabBarProps &
         className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
         style={shadowStyle("lift")}
       >
-        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={40} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
         <View className="absolute inset-0 bg-sidebar/75" />
         {items.slice(0, 5).map((item) => {
           const name = routeNameForHref(item.href);

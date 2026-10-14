@@ -85,7 +85,7 @@ export function UserMenu({
                 {userName}
               </Text>
             ) : null}
-            <Badge role={ROLE_COLOR[role]}>{role}</Badge>
+            <Badge role={ROLE_COLOR[role]} className="self-start">{role}</Badge>
           </Pressable>
           <View className="my-1 h-px bg-border" />
           <Pressable

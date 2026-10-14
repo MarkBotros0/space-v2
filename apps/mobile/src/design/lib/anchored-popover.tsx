@@ -5,7 +5,7 @@
  * when there is no room below, and closes on an outside press.
  */
 import { type ReactNode, useCallback, useRef, useState } from "react";
-import { Modal, Pressable, useWindowDimensions, View, type View as ViewType } from "react-native";
+import { Modal, Platform, Pressable, StatusBar, useWindowDimensions, View, type View as ViewType } from "react-native";
 
 import { cn } from "./cn";
 import { shadowStyle } from "./shadow";
@@ -20,7 +20,10 @@ export function useAnchor() {
   const ref = useRef<ViewType>(null);
   const [rect, setRect] = useState<Rect | null>(null);
   const measure = useCallback(() => {
-    ref.current?.measureInWindow((x, y, width, height) => setRect({ x, y, width, height }));
+    // On Android, measureInWindow reports y below the status bar while the
+    // popover's modal (edge-to-edge) draws from the top of the screen.
+    const statusBar = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
+    ref.current?.measureInWindow((x, y, width, height) => setRect({ x, y: y + statusBar, width, height }));
   }, []);
   return { ref, rect, measure };
 }

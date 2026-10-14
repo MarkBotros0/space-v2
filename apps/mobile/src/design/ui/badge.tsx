@@ -3,7 +3,8 @@
  * Native differences: v1's single class string is split — box classes on the
  * View (badgeVariants), text classes on the Text (badgeTextVariants);
  * whitespace-nowrap → numberOfLines={1}; [&_svg]:size-3 → icons size 12;
- * inline-flex → self-start.
+ * inline-flex has no native equivalent: like Button, a Badge takes no
+ * self-alignment; a call site that is a block in v1 (or uses w-fit) adds self-start.
  */
 import { cva, type VariantProps } from "class-variance-authority";
 import { Children, type ReactNode, isValidElement } from "react";
@@ -12,7 +13,7 @@ import { View } from "react-native";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
-const badgeVariants = cva("self-start flex-row items-center gap-1 rounded-full border border-transparent px-2 py-0.5", {
+const badgeVariants = cva("flex-row items-center gap-1 rounded-full border border-transparent px-2 py-0.5", {
   variants: {
     variant: {
       default: "bg-muted",

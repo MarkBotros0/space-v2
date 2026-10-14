@@ -1,9 +1,9 @@
 /**
  * Port of v1 src/components/ui/empty-state.tsx.
  * Native differences: bg-gradient-to-br → expo-linear-gradient with the same
- * stops (light teal-100→teal-200, dark teal-900→navy-900); the blur-xl glow
- * behind the icon is a soft larger circle at the same colour/opacity
- * (no native blur filter); ring-inset → border; md:py-16 dropped.
+ * stops (light teal-100→teal-200, dark teal-900→navy-900); v1's blur-xl glow
+ * behind the icon is blurred to near-invisibility and React Native has no
+ * blur filter, so it is omitted; ring-inset → border; md:py-16 dropped.
  */
 import { LinearGradient } from "expo-linear-gradient";
 import type { LucideIcon } from "lucide-react-native";
@@ -47,7 +47,6 @@ function EmptyState({
     >
       {Icon ? (
         <View className="relative items-center justify-center">
-          <View className="absolute -inset-3 rounded-full bg-brand-teal-200/40 dark:bg-brand-teal-900/60" />
           <LinearGradient
             colors={stops}
             start={{ x: 0, y: 0 }}

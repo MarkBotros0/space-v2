@@ -23,7 +23,7 @@ function AttendancePill({ status, className }: { status: AttendanceStatus; class
   const entry = map[status];
   const Icon = entry.icon;
   return (
-    <View className={cn("self-start flex-row items-center gap-1 rounded-full px-2 py-0.5", entry.box, className)}>
+    <View className={cn("flex-row items-center gap-1 rounded-full px-2 py-0.5", entry.box, className)}>
       <Icon size={12} className={entry.text} />
       <Text numberOfLines={1} className={cn("text-xs font-medium", entry.text)}>
         {entry.label}

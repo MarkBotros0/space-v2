@@ -99,7 +99,7 @@ export function MoreMenu({
         </View>
         <View className="flex-1 flex-col gap-1">
           {name ? <Text className="text-sm font-semibold text-foreground">{name}</Text> : null}
-          <Badge role={ROLE_COLOR[role]}>{role}</Badge>
+          <Badge role={ROLE_COLOR[role]} className="self-start">{role}</Badge>
         </View>
       </View>
       {items.length > 0 ? (

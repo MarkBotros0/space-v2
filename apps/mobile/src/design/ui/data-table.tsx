@@ -50,7 +50,7 @@ function DataTable<Row>({
         {rows.map((row, i) => (
           <View key={rowKey(row)} className={cn("min-h-11 flex-row items-center gap-3 px-4 py-3", i > 0 && "border-t border-border/60")}>
             <View className="min-w-0 flex-1">
-              {primary ? asNode(primary.cell(row), "text-sm text-foreground") : null}
+              {primary ? asNode(primary.cell(row), "text-foreground") : null}
               {metaColumns.length > 0 ? (
                 <View className="mt-0.5 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5">
                   {metaColumns.map((col, j) => (
@@ -65,7 +65,7 @@ function DataTable<Row>({
             {actionColumns.length > 0 ? (
               <View className="shrink-0 flex-row items-center gap-1">
                 {actionColumns.map((col) => (
-                  <Fragment key={col.key}>{asNode(col.cell(row), "text-sm text-foreground")}</Fragment>
+                  <Fragment key={col.key}>{asNode(col.cell(row), "text-foreground")}</Fragment>
                 ))}
               </View>
             ) : null}

@@ -19,7 +19,7 @@ const map: Record<SubmissionStatus, { label: string; box: string; text: string }
 function SubmissionStatusBadge({ status, className }: { status: SubmissionStatus; className?: string }) {
   const entry = map[status];
   return (
-    <View className={cn("self-start flex-row items-center rounded-full px-2 py-0.5", entry.box, className)}>
+    <View className={cn("flex-row items-center rounded-full px-2 py-0.5", entry.box, className)}>
       <Text numberOfLines={1} className={cn("text-xs font-medium", entry.text)}>
         {entry.label}
       </Text>

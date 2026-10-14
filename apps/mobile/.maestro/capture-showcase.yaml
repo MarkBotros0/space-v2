@@ -1,0 +1,34 @@
+# Captures the design-system showcase (build with EXPO_PUBLIC_SHOW_DEV_ROUTES=1)
+# in light then dark, one viewport per screenshot, top to bottom.
+# ~/.maestro/bin/maestro --device emulator-5558 test --test-output-dir <dir> .maestro/capture-showcase.yaml
+appId: com.jpc.space
+---
+- stopApp
+- openLink: spacev2://dev/design-system
+- extendedWaitUntil:
+    visible: "Design System"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Switch to light mode"
+    commands:
+      - tapOn: "Switch to light mode"
+- repeat:
+    times: 13
+    commands:
+      - evalScript: ${output.n = (output.n || 0) + 1}
+      - takeScreenshot: showcase-light-${output.n}
+      - scroll
+- stopApp
+- openLink: spacev2://dev/design-system
+- extendedWaitUntil:
+    visible: "Switch to dark mode"
+    timeout: 20000
+- tapOn: "Switch to dark mode"
+- evalScript: ${output.n = 0}
+- repeat:
+    times: 13
+    commands:
+      - evalScript: ${output.n = output.n + 1}
+      - takeScreenshot: showcase-dark-${output.n}
+      - scroll

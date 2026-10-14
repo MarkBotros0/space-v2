@@ -2,6 +2,8 @@ import "../global.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -38,11 +40,18 @@ export default function RootLayout() {
           <SafeAreaProvider>
             <Gate />
             <Toaster />
+            <ThemedStatusBar />
           </SafeAreaProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
+}
+
+/** Status-bar icons follow the app theme (dark icons on v1's light background). */
+function ThemedStatusBar() {
+  const { colorScheme } = useColorScheme();
+  return <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />;
 }
 
 /**
