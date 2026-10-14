@@ -118,3 +118,71 @@ export function formatTimeAgo(iso: string | null): string {
   if (!isValid(date)) return PLACEHOLDER;
   return formatDistanceToNowStrict(date, { addSuffix: true });
 }
+
+function formatDayKeyAs(dayKey: string | null, pattern: string): string {
+  if (dayKey == null) return PLACEHOLDER;
+  const date = parse(dayKey, "yyyy-MM-dd", new Date());
+  if (!isValid(date)) return PLACEHOLDER;
+  return format(date, pattern);
+}
+
+/** e.g. "Mar 13" — v1's short due badge; org day key, no zone (X13). */
+export function formatShortDay(dayKey: string | null): string {
+  return formatDayKeyAs(dayKey, "MMM d");
+}
+
+/** e.g. "Sunday, March 8" — v1's agenda day heading. */
+export function formatLongDay(dayKey: string | null): string {
+  return formatDayKeyAs(dayKey, "EEEE, MMMM d");
+}
+
+/** e.g. "Sunday, March 8, 2026" — v1's session hero date. */
+export function formatLongDayYear(dayKey: string | null): string {
+  return formatDayKeyAs(dayKey, "EEEE, MMMM d, yyyy");
+}
+
+/** e.g. "Sun, Mar 8, 2026" — v1's attendance row date. */
+export function formatWeekdayDayYear(dayKey: string | null): string {
+  return formatDayKeyAs(dayKey, "EEE, MMM d, yyyy");
+}
+
+/** "20:00" → { clock: "8:00", meridiem: "PM" } — v1's agenda time rail, as text (X13). */
+export function splitWallTime(time: string | null): { clock: string; meridiem: string } {
+  const whole = formatWallTime(time);
+  if (whole === PLACEHOLDER) return { clock: PLACEHOLDER, meridiem: "" };
+  const [clock = PLACEHOLDER, meridiem = ""] = whole.split(" ");
+  return { clock, meridiem };
+}
+
+/** "20:00" + 90 → "21:30"; wraps past midnight. Text arithmetic on the org clock. */
+export function addMinutesToWallTime(time: string | null, minutes: number): string | null {
+  if (time == null) return null;
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  if (!m) return null;
+  const total = (((Number(m[1]) * 60 + Number(m[2]) + minutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** "3 days" — v1's `formatDistanceToNowStrict` without a suffix ("Due in 3 days"). */
+export function formatDistanceOnly(iso: string | null): string {
+  if (iso == null) return PLACEHOLDER;
+  const date = parseISO(iso);
+  if (!isValid(date)) return PLACEHOLDER;
+  return formatDistanceToNowStrict(date);
+}
+
+/** v1 upcoming-events-card whenLabel: "Mar 5 · 6:30 PM", "Mar 5 – Mar 7" (no year). */
+export function formatEventWhenShort(event: { dayKey: string; endDayKey: string | null; time: string | null }): string {
+  const start =
+    event.time !== null ? `${formatShortDay(event.dayKey)} · ${formatWallTime(event.time)}` : formatShortDay(event.dayKey);
+  if (event.endDayKey && event.endDayKey !== event.dayKey) return `${start} – ${formatShortDay(event.endDayKey)}`;
+  return start;
+}
+
+/** v1's notification stamp: "Jul 8, 2026 · 1:57 PM · 3 months ago". */
+export function formatStampAgo(iso: string | null): string {
+  if (iso == null) return PLACEHOLDER;
+  const date = parseISO(iso);
+  if (!isValid(date)) return PLACEHOLDER;
+  return `${format(date, "MMM d, yyyy · h:mm a")} · ${formatDistanceToNowStrict(date, { addSuffix: true })}`;
+}
