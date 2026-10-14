@@ -53,3 +53,24 @@ status bar) are in `gaps-foundations.md` and not repeated.
 |---|---|
 | Page background is `bg-brand-navy-50` (dark: background). | Every v1 role layout wraps pages in it; Plan 01's ShellFrame used plain background. |
 | Top bar's bottom line no longer bright in dark mode. | The bar's bordered view now paints its own background; the navigator's light-grey scene colour was showing through the translucent border. |
+
+## Dashboard
+
+| Difference | Reason |
+|---|---|
+| "Session N of M · K sessions to go" (v1: "Week …"). | Spec 19 D12. |
+| Budget tile reads "Absence budget left" (wraps to two lines; v1's "Absence budget" also wraps). | Spec 19 D14. |
+| "Join stream" button and "Happening now" eyebrow only while a session runs; no "Watch recording" for future sessions. | Spec 19 D13. |
+| Upcoming events card always shows, with an empty state; placed before Due soon in both branches. | Spec 19 D19/R10. |
+| Greeting subtitle "You're all caught up." (no "this week"). | v1 counted the whole season (R67). |
+| Next-session relative badge hidden while the session is in progress. | The eyebrow already says "Happening now". |
+| No stagger fade-up on load. | Motion not ported (gaps-foundations). |
+| Single-word stat labels may use 12px of the tile padding. | CSS overflows unbreakable words into the padding; React Native would break them mid-word. |
+
+## Foundation fixes found here (affect every screen)
+
+| Fix | Detail |
+|---|---|
+| `font-extrabold` / `font-black` now render Geist 800 / 900. | Only 400–700 faces were loaded; v1 uses font-black 96×. |
+| ProgressRing draws its track and indicator. | NativeWind consumed `stroke-*` classes on svg without producing a colour; colours now resolve from the generated theme. |
+| `tracking-*` letter spacing applied. | NativeWind dropped em letter spacing; base Text resolves em × font size. |

@@ -81,7 +81,10 @@ export function StatCard({
         {icon === "flame" ? <Flame testID="stat-card-flame" size={24} className="text-warning-500" /> : null}
         <Text className={cn("text-3xl font-black leading-none", VALUE[variant])}>{value}</Text>
       </View>
-      <Text className={cn("text-center text-[10px] font-bold uppercase tracking-widest", LABEL[variant])}>
+      {/* CSS never breaks inside a word, so v1's "ASSIGNMENTS" overflows into
+          the tile's padding; React Native would break it mid-word. The label
+          gets 12px of the padding on each side instead. */}
+      <Text className={cn("-mx-3 text-center text-[10px] font-bold uppercase tracking-widest", LABEL[variant])}>
         {label}
       </Text>
       {sublabel ? <Text className={cn("text-center text-[10px]", SUB[variant])}>{sublabel}</Text> : null}

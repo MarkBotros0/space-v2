@@ -4,20 +4,34 @@
  * Native differences: react-native-svg; v1's -rotate-90 on the svg becomes a
  * rotation transform on the circles' group; the stroke transition is dropped.
  * Porting rule for callers: v1 `stroke-[var(--color-X)]` → `stroke-X`
- * (e.g. "stroke-error-500"); NativeWind maps it onto the circle's stroke prop.
+ * (e.g. "stroke-error-500"); the colour is resolved from the generated theme.
  */
-import { cssInterop } from "nativewind";
+import { useColorScheme } from "nativewind";
 import type { ReactNode } from "react";
 import { View } from "react-native";
-import Svg, { Circle, type CircleProps, G } from "react-native-svg";
+import Svg, { Circle, G } from "react-native-svg";
 
 import { cn } from "../lib/cn";
 
-/** Circle whose stroke colour comes from a `stroke-*` class via NativeWind. */
-function StrokeCircle({ style, ...props }: Omit<CircleProps, "stroke" | "style"> & { className?: string; style?: { stroke?: string } }) {
-  return <Circle {...props} stroke={style?.stroke} />;
+const { colors, semantic } = require("../theme/tailwind-theme.js") as {
+  colors: Record<string, Record<string, string> | string>;
+  semantic: Record<"light" | "dark", Record<string, string>>;
+};
+
+/**
+ * Resolves a `stroke-<ramp>-<step>` or `stroke-<semantic>` class to a colour.
+ * NativeWind consumes `stroke-*` classes on svg elements without producing a
+ * style, so the ring is coloured here from the generated theme instead.
+ */
+function strokeColor(className: string, scheme: "light" | "dark"): string | undefined {
+  const name = className.trim().replace(/^stroke-/, "");
+  const semanticColor = semantic[scheme][name];
+  if (semanticColor) return semanticColor;
+  const m = /^(.*)-(\d{2,3})$/.exec(name);
+  if (!m) return undefined;
+  const ramp = colors[m[1]!];
+  return typeof ramp === "object" ? ramp[m[2]!] : undefined;
 }
-cssInterop(StrokeCircle, { className: "style" });
 
 export function ProgressRing({
   value,
@@ -40,6 +54,10 @@ export function ProgressRing({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const dash = (clamped / 100) * circumference;
+  const scheme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
+  const lastStroke = (indicatorClassName ?? "").split(/\s+/).filter((c) => c.startsWith("stroke-")).pop();
+  const indicator = (lastStroke && strokeColor(lastStroke, scheme)) ?? strokeColor("stroke-brand-teal-500", scheme);
+  const track = strokeColor("stroke-border", scheme);
 
   return (
     <View
@@ -51,8 +69,8 @@ export function ProgressRing({
     >
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
-          <StrokeCircle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={strokeWidth} className="stroke-border" />
-          <StrokeCircle
+          <Circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={strokeWidth} stroke={track} />
+          <Circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
@@ -60,7 +78,7 @@ export function ProgressRing({
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeDasharray={`${dash} ${circumference}`}
-            className={cn("stroke-brand-teal-500", indicatorClassName)}
+            stroke={indicator}
           />
         </G>
       </Svg>

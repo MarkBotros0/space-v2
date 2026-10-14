@@ -68,5 +68,12 @@ describe("generated design tokens", () => {
     expect(theme.fontWeightUtilities[".font-semibold"]).toEqual({ fontFamily: "Geist_600SemiBold" });
     expect(theme.fontWeightUtilities[".font-bold"]).toEqual({ fontFamily: "Geist_700Bold" });
     expect(theme.fontWeightUtilities[".font-normal"].fontFamily).toBe("Geist_400Regular");
+    // v1 uses font-black 96× (every student h1 and stat value) and font-extrabold.
+    expect(theme.fontWeightUtilities[".font-extrabold"]).toEqual({ fontFamily: "Geist_800ExtraBold" });
+    expect(theme.fontWeightUtilities[".font-black"]).toEqual({ fontFamily: "Geist_900Black" });
+    const { GEIST_FONTS } = require("../design/theme/fonts");
+    for (const face of Object.values(theme.fontWeightUtilities) as { fontFamily: string }[]) {
+      expect(GEIST_FONTS).toHaveProperty(face.fontFamily);
+    }
   });
 });

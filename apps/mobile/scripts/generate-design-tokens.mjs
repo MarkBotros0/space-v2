@@ -99,7 +99,8 @@ const boxShadow = {
 };
 
 const FACES = { normal: ["400", "Geist_400Regular"], medium: ["500", "Geist_500Medium"],
-  semibold: ["600", "Geist_600SemiBold"], bold: ["700", "Geist_700Bold"] };
+  semibold: ["600", "Geist_600SemiBold"], bold: ["700", "Geist_700Bold"],
+  extrabold: ["800", "Geist_800ExtraBold"], black: ["900", "Geist_900Black"] };
 const fontWeightUtilities = Object.fromEntries(
   // Face only — see design-tokens.test.ts: fontWeight >= 700 sends Android to a
   // BOLD variant that expo-font never registers (system-font fallback).

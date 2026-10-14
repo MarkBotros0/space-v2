@@ -153,6 +153,12 @@ const fontWeightUtilities = {
   },
   ".font-bold": {
     "fontFamily": "Geist_700Bold"
+  },
+  ".font-extrabold": {
+    "fontFamily": "Geist_800ExtraBold"
+  },
+  ".font-black": {
+    "fontFamily": "Geist_900Black"
   }
 };
 const fontWeightPlugin = plugin(({ addUtilities }) => addUtilities(fontWeightUtilities));

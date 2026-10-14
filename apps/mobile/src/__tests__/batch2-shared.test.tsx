@@ -90,3 +90,47 @@ describe("StatCard", () => {
     expect(screen.getByLabelText("Pending: 2")).toBeTruthy();
   });
 });
+
+describe("ProgressRing stroke colours", () => {
+  // NativeWind consumed `stroke-*` classes without producing a style, so the
+  // ring rendered with no stroke at all on device.
+  const { Circle } = require("react-native-svg");
+  const { ProgressRing } = require("../design/ui/progress-ring");
+
+  it("draws a border-coloured track and a teal indicator by default", () => {
+    const r = render(<ProgressRing value={50} />);
+    const [track, indicator] = r.UNSAFE_getAllByType(Circle);
+    expect(track.props.stroke).toBe("#E5E7EB");
+    expect(indicator.props.stroke).toBe("#7DCED1");
+  });
+
+  it("takes v1's indicator override as a stroke-<ramp>-<step> class", () => {
+    const r = render(<ProgressRing value={80} indicatorClassName="stroke-error-500" />);
+    expect(r.UNSAFE_getAllByType(Circle)[1].props.stroke).toBe("#EF4444");
+  });
+});
+
+describe("Text letter spacing", () => {
+  // tracking-* is em-based; NativeWind dropped it, so v1's widest eyebrows
+  // rendered ~25% narrower. Text resolves em × font size itself.
+  const { StyleSheet } = require("react-native");
+  const { Text } = require("../design/ui/text");
+  const spacing = (className: string) => {
+    render(<Text className={className}>Label</Text>);
+    return StyleSheet.flatten(screen.getByText("Label").props.style).letterSpacing;
+  };
+
+  it("resolves tracking-widest at 10px to 1px", () => {
+    expect(spacing("text-[10px] font-bold uppercase tracking-widest")).toBeCloseTo(1);
+  });
+
+  it("uses the size class and defaults to 16px", () => {
+    expect(spacing("text-2xl tracking-tight")).toBeCloseTo(-0.6);
+    expect(spacing("tracking-wide")).toBeCloseTo(0.4);
+  });
+
+  it("adds nothing without a tracking class", () => {
+    expect(spacing("text-sm")).toBeUndefined();
+  });
+});
+
