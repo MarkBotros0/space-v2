@@ -16,7 +16,11 @@ export function SeasonSwitcher({ seasons, selectedId, onSelect }: SeasonSwitcher
   if (seasons.length < 2) return null;
   return (
     <ScrollView
+      testID="season-switcher"
       horizontal
+      // A horizontal ScrollView defaults to flexGrow 1: inside Screen's growing
+      // content container it stretched every chip to fill the spare height.
+      style={{ flexGrow: 0 }}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ gap: theme.spacing.sm, paddingBottom: theme.spacing.sm }}
     >
