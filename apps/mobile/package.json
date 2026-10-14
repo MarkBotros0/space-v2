@@ -10,7 +10,8 @@
     "lint": "eslint app src",
     "routes:generate": "expo customize tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test:unit": "jest"
+    "test:unit": "jest",
+    "design:tokens": "node scripts/generate-design-tokens.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
