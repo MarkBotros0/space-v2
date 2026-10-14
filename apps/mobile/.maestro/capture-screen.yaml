@@ -1,0 +1,14 @@
+# Opens one route (already signed in) and takes SHOTS viewport screenshots top to bottom.
+# maestro --device emulator-5558 test --test-output-dir <dir> -e ROUTE=dashboard -e NAME=x -e SHOTS=4 .maestro/capture-screen.yaml
+appId: com.jpc.space
+---
+- openLink: spacev2://${ROUTE}
+- waitForAnimationToEnd:
+    timeout: 8000
+- evalScript: ${output.n = 0}
+- repeat:
+    times: ${SHOTS}
+    commands:
+      - evalScript: ${output.n = output.n + 1}
+      - takeScreenshot: ${NAME}-${output.n}
+      - scroll
