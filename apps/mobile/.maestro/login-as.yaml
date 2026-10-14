@@ -5,9 +5,11 @@ appId: com.jpc.space
 - extendedWaitUntil:
     visible: "Sign in"
     timeout: 30000
-- tapOn: "Email"
+- tapOn:
+    id: "login-email"
 - inputText: ${EMAIL}
-- tapOn: "Password"
+- tapOn:
+    id: "login-password"
 - inputText: ${PASSWORD}
 - hideKeyboard
 - tapOn: "Sign in"

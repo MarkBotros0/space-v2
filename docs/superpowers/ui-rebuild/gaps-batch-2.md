@@ -14,3 +14,11 @@ status bar) are in `gaps-foundations.md` and not repeated.
 | Send / Set buttons disabled until the fields are filled (v1 relies on `required`). | v2 behaviour kept. |
 | Per-field validation messages instead of v1's single "Please enter a valid email and password.". | B2-1. |
 | Card is vertically centred in the scroll area, a few px higher than v1 (status bar). | Platform. |
+
+## Check-in link
+
+| Difference | Reason |
+|---|---|
+| A confirm step (teal QR circle, "Check in to this session?", "Check in" button) before the write. | B2-4 — spec 04 D3/C6: no write on open. |
+| "Already checked in" message doesn't name the recorded status ("(late)"). | Data gap — the refusal carries no `currentStatus`. |
+| Invalid code inside the app reads "This check-in code is not valid." (link screen keeps "link"). | `checkInCopy` is shared with in-app scans. |

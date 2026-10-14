@@ -57,6 +57,7 @@ export default function LoginScreen() {
               <Input
                 size="lg"
                 accessibilityLabel="Email"
+                testID="login-email"
                 autoCapitalize="none"
                 autoComplete="email"
                 keyboardType="email-address"
@@ -75,6 +76,7 @@ export default function LoginScreen() {
               <PasswordInput
                 size="lg"
                 accessibilityLabel="Password"
+                testID="login-password"
                 autoComplete="current-password"
                 value={field.value}
                 onChangeText={field.onChange}

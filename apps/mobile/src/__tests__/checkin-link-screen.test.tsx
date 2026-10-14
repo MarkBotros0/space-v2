@@ -44,6 +44,7 @@ describe("CheckInLinkScreen", () => {
 
     renderWithProviders(<CheckInLinkScreen />);
 
+    expect(screen.getByText("Check in to this session?")).toBeTruthy();
     expect(screen.getByText("Check in to the session this code belongs to?")).toBeTruthy();
     // React Query starts a mutation on a later tick, so let effects and
     // microtasks settle before asserting that nothing was written on open.
@@ -77,6 +78,7 @@ describe("CheckInLinkScreen", () => {
     mockParams = { token: "not-a-token" };
     useSessionStore.setState(makeSession("STUDENT"));
     const { unmount } = renderWithProviders(<CheckInLinkScreen />);
+    expect(screen.getByText("Can't check in")).toBeTruthy();
     expect(screen.getByText("This check-in link is not valid.")).toBeTruthy();
     expect(screen.queryByText("Check in")).toBeNull();
     unmount();
