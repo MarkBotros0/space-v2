@@ -1,15 +1,18 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { Lock, ShieldCheck, UserRound } from "lucide-react-native";
 import { View } from "react-native";
 import { passwordSchema } from "@space/shared";
 
 import { NotificationPreferences } from "../../src/components/NotificationPreferences";
+import { PageHeader } from "../../src/design/layout/page-header";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { Section } from "../../src/design/settings/section";
+import { Button, FormField, Input, PasswordInput, toast } from "../../src/design/ui";
 import { useChangePassword, useLogoutAll, useUpdateProfile } from "../../src/hooks/use-me";
 import { useLogout } from "../../src/hooks/use-session";
 import { clearSession } from "../../src/lib/token-storage";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Button, Card, Input, Screen, Text } from "../../src/ui";
 
 /**
  * One route, all six navigation roles, ZERO role branches — spec 18 R3: v1's
@@ -20,7 +23,6 @@ import { Button, Card, Input, Screen, Text } from "../../src/ui";
  * last row is the whole point of the domain.
  */
 export default function SettingsScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
   const clear = useSessionStore((s) => s.clear);
@@ -32,14 +34,12 @@ export default function SettingsScreen() {
 
   const [name, setName] = useState(user?.name ?? "");
   const [nameError, setNameError] = useState<string | null>(null);
-  const [nameSaved, setNameSaved] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [revokedMessage, setRevokedMessage] = useState<string | null>(null);
 
   if (!user) return null; // the (app) layout redirects before this renders
 
@@ -50,7 +50,6 @@ export default function SettingsScreen() {
   const nameValid = trimmedName.length >= 2 && trimmedName.length <= 120;
 
   const saveName = () => {
-    setNameSaved(false);
     const trimmed = name.trim();
     if (trimmed.length < 2 || trimmed.length > 120) {
       setNameError("Between 2 and 120 characters.");
@@ -60,14 +59,13 @@ export default function SettingsScreen() {
     updateProfile.mutate(
       { name: trimmed },
       {
-        onSuccess: () => setNameSaved(true),
-        onError: () => setNameError("Couldn't save. Try again."),
+        onSuccess: () => toast.success("Profile saved."),
+        onError: () => toast.error("Couldn't save. Try again."),
       },
     );
   };
 
   const submitPassword = () => {
-    setRevokedMessage(null);
     setPasswordError(null);
     setConfirmError(null);
     const parsed = passwordSchema.safeParse(newPassword);
@@ -88,13 +86,15 @@ export default function SettingsScreen() {
           setCurrentPassword("");
           setNewPassword("");
           setConfirm("");
-          setRevokedMessage(
-            data.sessionsRevoked === 1
-              ? "Signed out of 1 other device."
-              : `Signed out of ${data.sessionsRevoked} other devices.`,
-          );
+          const revoked =
+            data.sessionsRevoked === 0
+              ? ""
+              : data.sessionsRevoked === 1
+                ? " Signed out of 1 other device."
+                : ` Signed out of ${data.sessionsRevoked} other devices.`;
+          toast.success(`Password updated.${revoked}`);
         },
-        onError: () => setPasswordError("Couldn't change the password. Check your current password."),
+        onError: () => toast.error("Couldn't change the password. Check your current password."),
       },
     );
   };
@@ -117,90 +117,76 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      <View style={{ gap: theme.spacing.md }}>
-        <Card>
-          <Text variant="heading">Profile</Text>
-          <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-            <Input label="Name" value={name} onChangeText={setName} error={nameError ?? undefined} />
-            <Text variant="label" color={theme.colors.neutral[600]}>
-              Sign-in email
-            </Text>
-            <Text variant="body">{user.email}</Text>
-            <Text variant="label" color={theme.colors.neutral[600]}>
-              Ask an administrator to change your email.
-            </Text>
-            {nameSaved ? (
-              <Text variant="label" color={theme.colors.success[600]}>
-                Saved.
-              </Text>
-            ) : null}
-            <Button
-              title="Save name"
-              onPress={saveName}
-              loading={updateProfile.isPending}
-              disabled={!nameChanged || !nameValid}
-            />
+    <ShellFrame>
+      <PageHeader title="Settings" description="Profile, password, and notification preferences." />
+      <View className="flex-col gap-4">
+        <Section icon={UserRound} title="Profile" description="Your name as it appears across JPC Space.">
+          <View className="flex-col gap-4">
+            <FormField label="Name" required error={nameError ?? undefined}>
+              <Input accessibilityLabel="Name" value={name} onChangeText={setName} />
+            </FormField>
+            <FormField label="Email" description="Change via the admin console.">
+              <Input accessibilityLabel="Email" value={user.email} editable={false} disabled />
+            </FormField>
+            <View className="flex-row justify-end">
+              <Button onPress={saveName} disabled={updateProfile.isPending || !nameChanged || !nameValid}>
+                {updateProfile.isPending ? "Saving…" : "Save profile"}
+              </Button>
+            </View>
           </View>
-        </Card>
+        </Section>
 
         {user.hasPassword ? (
-          <Card>
-            <Text variant="heading">Change password</Text>
-            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-              <Input
-                label="Current password"
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                secureTextEntry
-              />
-              <Input
-                label="New password"
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry
-                error={passwordError ?? undefined}
-              />
-              <Input
-                label="Confirm new password"
-                value={confirm}
-                onChangeText={setConfirm}
-                secureTextEntry
-                error={confirmError ?? undefined}
-              />
-              {revokedMessage ? (
-                <Text variant="label" color={theme.colors.success[600]}>
-                  {revokedMessage}
-                </Text>
-              ) : null}
-              <Button
-                title="Update password"
-                onPress={submitPassword}
-                loading={changePassword.isPending}
-                disabled={!currentPassword || !newPassword || !confirm}
-              />
+          <Section icon={Lock} title="Change password" description="Use at least 8 characters.">
+            <View className="flex-col gap-4">
+              <FormField label="Current password" required>
+                <PasswordInput
+                  accessibilityLabel="Current password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                />
+              </FormField>
+              <FormField label="New password" required error={passwordError ?? undefined}>
+                <PasswordInput accessibilityLabel="New password" value={newPassword} onChangeText={setNewPassword} />
+              </FormField>
+              <FormField label="Confirm new password" required error={confirmError ?? undefined}>
+                <PasswordInput accessibilityLabel="Confirm new password" value={confirm} onChangeText={setConfirm} />
+              </FormField>
+              <View className="flex-row justify-end">
+                <Button
+                  onPress={submitPassword}
+                  disabled={changePassword.isPending || !currentPassword || !newPassword || !confirm}
+                >
+                  {changePassword.isPending ? "Updating…" : "Update password"}
+                </Button>
+              </View>
             </View>
-          </Card>
+          </Section>
         ) : null}
 
         <NotificationPreferences />
 
-        <Card>
-          <Text variant="heading">Security</Text>
-          <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-            <Button title="Sign out" variant="secondary" onPress={signOut} />
+        <Section
+          icon={ShieldCheck}
+          title="Security"
+          description="Signs this account out on every device — use it if a phone is lost."
+        >
+          <View className="flex-row justify-end gap-2">
+            <Button variant="outline" onPress={() => void signOut()}>
+              Sign out
+            </Button>
             <Button
-              title="Sign out everywhere"
-              variant="ghost"
+              variant="outline"
+              textClassName="text-error-700 dark:text-error-200"
+              disabled={logoutAll.isPending}
               onPress={signOutEverywhere}
-              loading={logoutAll.isPending}
-            />
-            <Text variant="label" color={theme.colors.neutral[600]}>
-              Signs this account out on every device — use it if a phone is lost.
-            </Text>
+            >
+              Sign out everywhere
+            </Button>
           </View>
-        </Card>
+        </Section>
       </View>
-    </Screen>
+    </ShellFrame>
   );
 }

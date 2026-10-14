@@ -28,6 +28,7 @@ elif [ "$(cat "$stamp" 2>/dev/null)" != "$role" ]; then
 fi
 tmp=$(mktemp -d)
 $maestro --device emulator-5558 test --test-output-dir "$tmp" -e ROUTE="$route" -e NAME="$name" -e SHOTS="$shots" -e WAIT="$wait" "$mobile/.maestro/capture-screen.yaml" >/dev/null
+rm -f "$out/$name"-[0-9]*.png
 find "$tmp" -name "$name-*.png" -exec cp {} "$out/" \;
 rm -rf "$tmp"
 ls "$out" | grep "^$name-"

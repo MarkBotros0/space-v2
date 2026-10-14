@@ -2,6 +2,7 @@
 # maestro --device emulator-5558 test --test-output-dir <dir> -e ROUTE=dashboard -e NAME=x -e SHOTS=4 -e WAIT='Some text' .maestro/capture-screen.yaml
 appId: com.jpc.space
 ---
+- stopApp
 - openLink: spacev2://${ROUTE}
 - extendedWaitUntil:
     visible: ${WAIT}

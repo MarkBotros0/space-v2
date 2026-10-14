@@ -29,10 +29,19 @@ function parse(value) {
   return { rgb: m.slice(1, 4).map(Number), alpha: Number(m[4]) };
 }
 
+const isTranslucent = (name) => parse(tokens.light[name]).alpha < 1 || parse(tokens.dark[name]).alpha < 1;
+const round = (n) => Number(n.toFixed(4));
+
+// For translucent tokens, every opacity modifier's product with the token's
+// own alpha is precomputed per theme (--border-alpha-60), so the result never
+// depends on NativeWind evaluating calc() inside rgb() at runtime.
 function varsBlock(selector, theme) {
   const lines = SEMANTIC.map((name) => {
     const { rgb, alpha } = parse(tokens[theme][name]);
-    return `  --${name}: ${rgb.join(" ")};\n  --${name}-alpha: ${alpha};`;
+    const base = `  --${name}: ${rgb.join(" ")};\n  --${name}-alpha: ${alpha};`;
+    if (!isTranslucent(name)) return base;
+    const steps = Array.from({ length: 100 }, (_, i) => `  --${name}-alpha-${i + 1}: ${round((alpha * (i + 1)) / 100)};`);
+    return [base, ...steps].join("\n");
   });
   return `${selector} {\n${lines.join("\n")}\n}`;
 }
@@ -53,10 +62,9 @@ const css = [
 // modifier (v1: border-border/60, ring-ring/40) multiplies the token's own alpha.
 const colorSource = [];
 for (const name of SEMANTIC) {
-  const translucent = parse(tokens.light[name]).alpha < 1 || parse(tokens.dark[name]).alpha < 1;
   colorSource.push(
-    translucent
-      ? `  ${JSON.stringify(name)}: ({ opacityValue }) =>\n    opacityValue === undefined\n      ? "rgb(var(--${name}) / var(--${name}-alpha))"\n      : \`rgb(var(--${name}) / calc(var(--${name}-alpha) * \${opacityValue}))\`,`
+    isTranslucent(name)
+      ? `  ${JSON.stringify(name)}: ({ opacityValue }) =>\n    opacityValue === undefined\n      ? "rgb(var(--${name}) / var(--${name}-alpha))"\n      : \`rgb(var(--${name}) / var(--${name}-alpha-\${Math.round(Number(opacityValue) * 100)}))\`,`
       : `  ${JSON.stringify(name)}: "rgb(var(--${name}) / <alpha-value>)",`,
   );
 }

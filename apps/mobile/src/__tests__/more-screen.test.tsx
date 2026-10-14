@@ -42,6 +42,8 @@ describe("MoreScreen", () => {
     useSessionStore.setState(makeSession("STUDENT", {}, { name: "Mina Adel" }));
 
     renderWithProviders(<MoreScreen />);
+    expect(screen.getByText("Account, settings, and more places to go.")).toBeTruthy();
+    expect(screen.getByText("Appearance")).toBeTruthy();
 
     expect(screen.getByText("MA")).toBeTruthy();
     expect(screen.getByText("Mina Adel")).toBeTruthy();

@@ -24,8 +24,13 @@ describe("generated design tokens", () => {
     const darkBlock = css.slice(css.indexOf(".dark:root"));
     expect(darkBlock).toContain("--border: 255 255 255;");
     expect(darkBlock).toContain("--border-alpha: 0.08;");
-    // v1 writes border-border/60 (12×): the modifier multiplies the token's alpha.
-    expect(theme.colors.border({ opacityValue: "0.6" })).toBe("rgb(var(--border) / calc(var(--border-alpha) * 0.6))");
+    // v1 writes border-border/60 (12×): the modifier multiplies the token's
+    // alpha. Each product is precomputed per theme as its own variable so
+    // nothing depends on calc() inside rgb() at runtime.
+    expect(theme.colors.border({ opacityValue: "0.6" })).toBe("rgb(var(--border) / var(--border-alpha-60))");
+    expect(darkBlock).toContain("--border-alpha-60: 0.048;");
+    const lightBlock = css.slice(css.indexOf(":root"), css.indexOf(".dark:root"));
+    expect(lightBlock).toContain("--border-alpha-60: 0.6;");
     expect(theme.colors.border({})).toBe("rgb(var(--border) / var(--border-alpha))");
   });
 
