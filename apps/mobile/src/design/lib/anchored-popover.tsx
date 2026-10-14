@@ -30,6 +30,8 @@ export function AnchoredPopover({
   onClose,
   anchor,
   width,
+  align = "start",
+  sideOffset = SIDE_OFFSET,
   className,
   children,
 }: {
@@ -38,6 +40,9 @@ export function AnchoredPopover({
   anchor: Rect | null;
   /** "anchor" = exactly the trigger's width, "min-anchor" = at least it, undefined = content width. */
   width?: "anchor" | "min-anchor";
+  /** Base UI `align`: "end" lines the popup's right edge up with the trigger's. */
+  align?: "start" | "end";
+  sideOffset?: number;
   className?: string;
   children: ReactNode;
 }) {
@@ -47,10 +52,11 @@ export function AnchoredPopover({
 
   let position: { top?: number; bottom?: number; left: number } = { top: 0, left: EDGE };
   if (anchor) {
-    const below = anchor.y + anchor.height + SIDE_OFFSET;
+    const below = anchor.y + anchor.height + sideOffset;
     const fitsBelow = below + popupHeight <= win.height - EDGE;
-    const left = Math.max(EDGE, Math.min(anchor.x, win.width - EDGE - popupWidth));
-    position = fitsBelow || anchor.y < popupHeight ? { top: below, left } : { bottom: win.height - anchor.y + SIDE_OFFSET, left };
+    const wanted = align === "end" ? anchor.x + anchor.width - popupWidth : anchor.x;
+    const left = Math.max(EDGE, Math.min(wanted, win.width - EDGE - popupWidth));
+    position = fitsBelow || anchor.y < popupHeight ? { top: below, left } : { bottom: win.height - anchor.y + sideOffset, left };
   }
   const sizing =
     anchor && width === "anchor"
