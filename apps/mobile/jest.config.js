@@ -7,7 +7,9 @@ module.exports = {
   // typecheck test:unit` on a small machine (Vercel's build box is 2 cores).
   // The work is CPU-bound, not hung, so a larger budget is the right fix.
   testTimeout: 30000,
+  // app/_layout.tsx imports ../global.css (NativeWind); Jest cannot parse CSS.
+  moduleNameMapper: { "\\.css$": "<rootDir>/__mocks__/style-mock.js" },
   transformIgnorePatterns: [
-    "node_modules/(?!(\\.pnpm|(jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg))",
+    "node_modules/(?!(\\.pnpm|(jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|nativewind|react-native-css-interop))",
   ],
 };

@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: 0 56 132;
+  --sidebar: 31 50 96;
+  --background: 249 252 255;
+}
+.dark:root {
+  --primary: 22 187 188;
+  --sidebar: 6 28 49;
+  --background: 0 18 38;
+}
