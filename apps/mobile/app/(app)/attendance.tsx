@@ -1,48 +1,49 @@
+import { useRouter } from "expo-router";
+import { Calendar } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import type { MyAttendanceSession } from "@space/shared";
 
+import { BackLink, Eyebrow } from "../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { cn } from "../../src/design/lib/cn";
+import { shadowStyle } from "../../src/design/lib/shadow";
+import { Badge, EmptyState, ProgressRing, Text } from "../../src/design/ui";
 import { useMyAttendance } from "../../src/hooks/use-self-service";
-import { formatDayKey, formatSessionTime } from "../../src/lib/format";
+import { formatSessionTime, formatWeekdayDayYear } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
-const EDGES = ["top", "left", "right"] as const;
-
-function statusLabel(status: MyAttendanceSession["status"]): string {
-  if (status === "PRESENT") return "Present";
-  if (status === "LATE") return "Late";
-  if (status === "ABSENT") return "Absent";
-  return "No record";
+function StatusBadge({ status }: { status: MyAttendanceSession["status"] }) {
+  if (status === "PRESENT") return <Badge variant="success">Present</Badge>;
+  if (status === "LATE") return <Badge variant="warning">Late</Badge>;
+  if (status === "ABSENT") return <Badge variant="error">Absent</Badge>;
+  return <Badge variant="outline">No record</Badge>;
 }
 
 /** One past session. Cost and lateness are the server's (R95, C4) — nothing is computed here. */
-function SessionRow({ row }: { row: MyAttendanceSession }) {
-  const theme = useTheme();
+function SessionRow({ row, first, last }: { row: MyAttendanceSession; first: boolean; last: boolean }) {
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        gap: theme.spacing.sm,
-        paddingVertical: theme.spacing.sm,
-        borderTopWidth: theme.borderWidths.thin,
-        borderTopColor: theme.colors.neutral[100],
-      }}
-    >
-      <View style={{ flex: 1 }}>
-        <Text variant="body">{row.title}</Text>
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          {`${formatDayKey(row.dayKey)} · ${formatSessionTime(row.startsAt)}`}
+    <View className={cn("flex-row items-start gap-3 px-4 py-3", !first && "border-t border-border", last && "pb-4")}>
+      <View className="mt-0.5 min-w-0 flex-1">
+        <Text numberOfLines={1} className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+          {row.title}
         </Text>
-        {row.lateMinutes !== null && row.lateMinutes > 0 ? (
-          <Text variant="caption" color={theme.colors.warning[700]}>{`${row.lateMinutes} min late`}</Text>
+        {/* Day from the org day key (X13); no org wall time in this payload, so the
+            time is the device's reading of startsAt (gap note). */}
+        <Text className="text-xs text-muted-foreground/70">
+          {`${formatWeekdayDayYear(row.dayKey)} · ${formatSessionTime(row.startsAt)}`}
+        </Text>
+        {row.status === "LATE" && row.lateMinutes !== null && row.lateMinutes > 0 ? (
+          <Text className="mt-0.5 text-xs text-warning-700 dark:text-warning-300">{`${row.lateMinutes} min late`}</Text>
         ) : null}
         {row.costMinutes !== null && row.costMinutes > 0 ? (
-          <Text variant="caption" color={theme.colors.error[600]}>{`−${row.costMinutes} min from budget`}</Text>
+          <Text className="mt-0.5 text-xs text-error-600 dark:text-error-400">{`−${row.costMinutes} min from budget`}</Text>
         ) : null}
       </View>
-      <Text variant="label">{statusLabel(row.status)}</Text>
+      <View className="shrink-0 pt-0.5">
+        <StatusBadge status={row.status} />
+      </View>
     </View>
   );
 }
@@ -54,72 +55,82 @@ function SessionRow({ row }: { row: MyAttendanceSession }) {
  * same query key, so the two can never disagree.
  */
 export default function AttendanceScreen() {
-  const theme = useTheme();
+  const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const isStudent = role === "STUDENT";
   const seasonId = isStudent ? activeSeasonId : null;
   const { data, isPending, isError, refetch, isRefetching } = useMyAttendance(seasonId);
 
-  const notEnrolled = <EmptyState title="Not enrolled" message="Enroll in a season to track attendance." />;
+  const notEnrolled = (
+    <EmptyState icon={Calendar} title="Not enrolled" description="Enroll in a season to track attendance." />
+  );
   let body: ReactNode;
   if (!isStudent) {
-    body = <EmptyState title="Not available" message="Attendance tracking is for students." />;
+    body = <EmptyState icon={Calendar} title="Not available" description="Attendance tracking is for students." />;
   } else if (seasonId === null) {
     body = notEnrolled;
   } else if (isPending) {
-    body = <LoadingState />;
+    body = <RouteSkeleton />;
   } else if (isError) {
-    body = <ErrorState message="Couldn't load your attendance." onRetry={() => void refetch()} />;
+    body = <RouteError onRetry={() => void refetch()} />;
   } else if (data.season === null) {
     body = notEnrolled;
   } else {
-    const { budget, season, streak, sessions } = data;
+    const { budget, season, sessions } = data;
+    const pct = budget?.budgetPct ?? 0;
+    const tone = pct >= 100 ? "stroke-error-500" : pct >= 70 ? "stroke-warning-500" : undefined;
     body = (
       <>
-        <Card style={{ gap: theme.spacing.xs }}>
-          <Text variant="caption" color={theme.colors.neutral[600]}>
-            Absence budget
-          </Text>
-          <Text
-            variant="title"
-            color={budget !== null && budget.budgetPct >= 100 ? theme.colors.error[600] : undefined}
-          >
-            {budget !== null ? `${budget.budgetPct}% used` : "—"}
-          </Text>
-          {budget !== null ? (
-            <Text variant="body">{`${budget.minutesUsed} of ${budget.budgetMinutes} min`}</Text>
-          ) : null}
-          <Text variant="caption" color={theme.colors.neutral[600]}>
-            {`Absent = ${season.absenceWeightMinutes} min · Late = actual minutes late`}
-          </Text>
-          <Text variant="label">{`Streak: ${streak} ${streak === 1 ? "session" : "sessions"}`}</Text>
-        </Card>
+        <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+          <View className="flex-row items-center gap-5">
+            <ProgressRing value={pct} label={`Absence budget ${pct}% used`} indicatorClassName={tone}>
+              <Text className="text-2xl font-black text-brand-navy-900 dark:text-foreground">{`${pct}%`}</Text>
+              <Eyebrow className="mt-1">used</Eyebrow>
+            </ProgressRing>
+            <View className="min-w-0 flex-1">
+              <Eyebrow tone="teal">Absence budget</Eyebrow>
+              <Text className="mt-1 text-lg font-black text-brand-navy-900 dark:text-foreground">
+                {`${budget?.minutesUsed ?? 0} of ${budget?.budgetMinutes ?? season.absenceBudgetMinutes} min`}
+              </Text>
+              <Text className="text-xs text-muted-foreground">
+                {`Absent = ${season.absenceWeightMinutes} min · Late = actual minutes late`}
+              </Text>
+            </View>
+          </View>
+        </View>
         {sessions.length === 0 ? (
-          <EmptyState title="No sessions yet" message="Past sessions will appear here." />
+          <EmptyState icon={Calendar} title="No sessions yet" description="Past sessions will appear here." />
         ) : (
-          <Card style={{ marginTop: theme.spacing.md }}>
-            <Text variant="heading">Session history</Text>
-            {sessions.map((row) => (
-              <SessionRow key={row.sessionId} row={row} />
-            ))}
-          </Card>
+          <View className="rounded-2xl border border-border bg-card" style={shadowStyle("soft")}>
+            <Eyebrow className="px-4 pt-4">Session history</Eyebrow>
+            <View className="mt-2">
+              {sessions.map((row, i) => (
+                <SessionRow key={row.sessionId} row={row} first={i === 0} last={i === sessions.length - 1} />
+              ))}
+            </View>
+          </View>
         )}
       </>
     );
   }
 
   return (
-    <Screen
-      edges={EDGES}
-      scroll
+    <ShellFrame
       onRefresh={() => {
         if (seasonId !== null) void refetch();
       }}
       refreshing={isRefetching}
     >
-      <Text variant="title">Attendance</Text>
-      {body}
-    </Screen>
+      <View className="flex-col gap-3">
+        <View>
+          <BackLink label="Dashboard" onPress={() => router.push("/dashboard")} />
+          <Text accessibilityRole="header" className="mt-2 text-2xl font-black text-brand-navy-900 dark:text-foreground">
+            Attendance
+          </Text>
+        </View>
+        {body}
+      </View>
+    </ShellFrame>
   );
 }

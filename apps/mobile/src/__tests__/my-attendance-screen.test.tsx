@@ -37,11 +37,14 @@ describe("AttendanceScreen", () => {
 
     renderWithProviders(<AttendanceScreen />);
 
-    expect(await screen.findByText("58% used")).toBeTruthy();
+    expect(await screen.findByLabelText("Absence budget 58% used")).toBeTruthy();
+    expect(screen.getByText("58%")).toBeTruthy();
+    expect(screen.getByText("used")).toBeTruthy();
+    expect(screen.getByText("← Dashboard")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/me/attendance");
     expect(screen.getByText("105 of 180 min")).toBeTruthy();
     expect(screen.getByText("Absent = 90 min · Late = actual minutes late")).toBeTruthy(); // R96
-    expect(screen.getByText("Streak: 1 session")).toBeTruthy();
+    expect(screen.queryByText(/^Streak/)).toBeNull(); // v1 shows the streak on the dashboard only
     expect(screen.getByText("12 min late")).toBeTruthy();
     expect(screen.getByText("−12 min from budget")).toBeTruthy();
     expect(screen.getByText("−90 min from budget")).toBeTruthy(); // R95, from costMinutes

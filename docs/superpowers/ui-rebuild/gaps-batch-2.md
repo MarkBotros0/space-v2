@@ -74,3 +74,23 @@ status bar) are in `gaps-foundations.md` and not repeated.
 | `font-extrabold` / `font-black` now render Geist 800 / 900. | Only 400–700 faces were loaded; v1 uses font-black 96×. |
 | ProgressRing draws its track and indicator. | NativeWind consumed `stroke-*` classes on svg without producing a colour; colours now resolve from the generated theme. |
 | `tracking-*` letter spacing applied. | NativeWind dropped em letter spacing; base Text resolves em × font size. |
+
+## Season
+
+| Difference | Reason |
+|---|---|
+| "Session N of M" (v1: "Week …"). | Spec 02 R29 / 19 D12. |
+| Leaders and members are listed in the server's order (by name). | v2 API ordering. |
+| Upcoming sessions' time is the device's reading of `startsAt`. | Data gap — no org wall time in `/me/season`'s upcoming rows. |
+
+## History
+
+| Difference | Reason |
+|---|---|
+| The ▶/▼ marker is drawn as text. | No `<details>` element. |
+
+## Attendance
+
+| Difference | Reason |
+|---|---|
+| Row times are the device's reading of `startsAt` (the day comes from `dayKey`). | Data gap — no org wall time in `/me/attendance` rows. |
