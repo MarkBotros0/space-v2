@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
 import { cn } from "../lib/cn";
+import { Text } from "../ui/text";
 
 /** v1 page-header.tsx at phone width (md: classes dropped). */
 export function PageHeader({

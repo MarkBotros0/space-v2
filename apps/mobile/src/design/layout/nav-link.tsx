@@ -1,9 +1,10 @@
 import type { NavIconName } from "@space/shared";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 
 import { NavIcon } from "../icons/nav-icon";
 import { cn } from "../lib/cn";
 import { shadowStyle } from "../lib/shadow";
+import { Text } from "../ui/text";
 
 /**
  * v1 nav-link.tsx, `variant === "tab"` branch. v1 slides a `motion.span`
