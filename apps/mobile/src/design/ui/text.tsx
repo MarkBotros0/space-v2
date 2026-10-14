@@ -12,7 +12,10 @@ import { cn } from "../lib/cn";
 const BODY_FEATURES: TextStyle = { fontVariant: ["stylistic-one", "stylistic-three"] };
 
 function Text({ className, style, ...props }: TextProps & { className?: string }) {
-  return <RNText className={cn("font-normal text-foreground", className)} style={[BODY_FEATURES, style]} {...props} />;
+  // font-normal sets the Geist face too; with font-mono it would win the
+  // fontFamily cascade, so mono text starts from colour only.
+  const base = className?.split(" ").includes("font-mono") ? "text-foreground" : "font-normal text-foreground";
+  return <RNText className={cn(base, className)} style={[BODY_FEATURES, style]} {...props} />;
 }
 
 export { Text };

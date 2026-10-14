@@ -26,6 +26,11 @@ describe("Text", () => {
     expect(screen.getByText("Hello").props.className).toBe("font-normal text-foreground");
   });
 
+  it("font-mono replaces the Geist face instead of fighting font-normal", () => {
+    render(<Text className="font-mono">x = 1</Text>);
+    expect(screen.getByText("x = 1").props.className).toBe("text-foreground font-mono");
+  });
+
   it("lets a caller override weight and colour (last wins)", () => {
     render(<Text className="font-semibold text-muted-foreground">Hi</Text>);
     expect(screen.getByText("Hi").props.className).toBe("font-semibold text-muted-foreground");
