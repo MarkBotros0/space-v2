@@ -186,3 +186,8 @@ export function formatStampAgo(iso: string | null): string {
   if (!isValid(date)) return PLACEHOLDER;
   return `${format(date, "MMM d, yyyy · h:mm a")} · ${formatDistanceToNowStrict(date, { addSuffix: true })}`;
 }
+
+/** e.g. "Apr 1" — v1's short badge date for an instant with no org day key (device zone, gap note). */
+export function formatShortDate(iso: string | null): string {
+  return formatIso(iso, "MMM d");
+}

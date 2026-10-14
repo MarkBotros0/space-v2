@@ -125,3 +125,17 @@ status bar) are in `gaps-foundations.md` and not repeated.
 | Any dismiss of a question sheet (back, backdrop, ×) leaves the quiz. | Spec 13 D15 — v1's sheet ignores dismissal. |
 | End time is the start wall time plus the duration. | Data gap — no end time in the payload. |
 | If the video can't play: "Watch recording" plus a one-line note. | Spec 13 R37 — v1 failed silently. |
+
+## Assignments, assignment detail, forum
+
+| Difference | Reason |
+|---|---|
+| Response boxes are plain text areas without v1's formatting toolbar. | Data gap — the API stores and returns submissions/forum posts as plain text; a rich editor would lose or escape its formatting. |
+| RETURNED shows a warning dot and a "Returned" badge. | v2 status; v1 had no case. |
+| "Late" badge next to Submitted. | v2's `isLate` flag kept. |
+| "Start working" before a draft exists; editable only while DRAFT or RETURNED. | Ruling C6 and v2's edit rule (v1 created the draft on open and allowed edits until the due date). |
+| No remove-file control; a note when the assignment expects a file. | Uploads are off; no mobile hook for file removal. |
+| Forum keeps a due badge in the header and the leader's feedback card. | Spec 14 D10 / D9. |
+| Comment delete asks first ("Delete comment?"). | v2 confirm kept, drawn with v1's ConfirmDialog. |
+| "Group discussion · N" counts loaded posts; "Load more" / "Show all comments" paging. | The thread pages and returns no total. |
+| Due dates in the list are the device's reading of `dueAt`. | Data gap — the student list has no `dueOrgDay`. |

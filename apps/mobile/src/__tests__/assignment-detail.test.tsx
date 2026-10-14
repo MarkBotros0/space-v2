@@ -67,6 +67,8 @@ describe("AssignmentDetailScreen", () => {
 
     expect(await screen.findByText("Essay one")).toBeTruthy();
     expect(screen.getByText("Write about the thing.")).toBeTruthy();
+    expect(screen.getByText("← Assignments")).toBeTruthy();
+    expect(screen.getByText("Brief")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/assignments/41");
   });
 
@@ -88,6 +90,7 @@ describe("AssignmentDetailScreen", () => {
     renderWithProviders(<AssignmentDetailScreen />);
 
     expect(await screen.findByText("Solid work.")).toBeTruthy();
+    expect(screen.getByText("Leader feedback")).toBeTruthy();
     expect(screen.getByText("Reviewed")).toBeTruthy();
   });
 
@@ -107,6 +110,8 @@ describe("AssignmentDetailScreen", () => {
 
     renderWithProviders(<AssignmentDetailScreen />);
 
-    expect(await screen.findByText("Submitted late")).toBeTruthy();
+    // v1 has no late badge here; v2 keeps the flag as an extra "Late" badge (B2-16).
+    expect(await screen.findByText("Late")).toBeTruthy();
+    expect(screen.getByText("Submitted")).toBeTruthy();
   });
 });

@@ -96,7 +96,7 @@ describe("submission editor", () => {
 
     renderWithProviders(<AssignmentDetailScreen />);
 
-    const input = await screen.findByLabelText("Your answer");
+    const input = await screen.findByLabelText("Your response");
     fireEvent.changeText(input, "better draft");
 
     fireEvent.press(screen.getByText("Save draft"));
@@ -105,6 +105,7 @@ describe("submission editor", () => {
         text: "better draft",
       }),
     );
+    expect(await screen.findByText("Draft saved.")).toBeTruthy();
 
     patch.mockResolvedValue({ data: { data: { saved: true, submitted: true } } });
     fireEvent.press(screen.getByText("Submit"));
@@ -114,6 +115,7 @@ describe("submission editor", () => {
         submit: true,
       }),
     );
+    expect(await screen.findByText("Submitted!")).toBeTruthy();
   });
 
   it("disables Submit while the text is empty and nothing is attached (REG-85)", async () => {
@@ -124,7 +126,7 @@ describe("submission editor", () => {
     );
     renderWithProviders(<AssignmentDetailScreen />);
 
-    const input = await screen.findByLabelText("Your answer");
+    const input = await screen.findByLabelText("Your response");
     const submitDisabled = () => screen.getByRole("button", { name: "Submit" }).props.accessibilityState?.disabled;
     expect(submitDisabled()).toBe(true);
     fireEvent.changeText(input, "   ");
@@ -148,7 +150,7 @@ describe("submission editor", () => {
           }),
     );
     renderWithProviders(<AssignmentDetailScreen />);
-    await screen.findByLabelText("Your answer");
+    await screen.findByLabelText("Your response");
     expect(screen.getByRole("button", { name: "Submit" }).props.accessibilityState?.disabled).toBeFalsy();
   });
 

@@ -1,5 +1,6 @@
 import {
   addMinutesToWallTime,
+  formatShortDate,
   formatDistanceOnly,
   formatEventWhenShort,
   formatLongDay,
@@ -133,6 +134,11 @@ describe("batch-2 formatters", () => {
     expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe("Mar 5 · 6:30 PM");
     expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: "2099-03-07", time: null })).toBe("Mar 5 – Mar 7");
     expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: "2099-03-05", time: null })).toBe("Mar 5");
+  });
+
+  it("formats an instant's short date", () => {
+    expect(formatShortDate("2099-04-01T12:00:00.000Z")).toBe("Apr 1");
+    expect(formatShortDate(null)).toBe("—");
   });
 
   it("formats distances and stamps", () => {

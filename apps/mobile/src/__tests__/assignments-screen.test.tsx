@@ -45,7 +45,13 @@ describe("AssignmentsScreen (student)", () => {
     renderWithProviders(<AssignmentsScreen />);
 
     expect(await screen.findByText("Essay one")).toBeTruthy();
-    expect(screen.getByText(/Not started/)).toBeTruthy();
+    expect(screen.getByText("Not started")).toBeTruthy();
+    expect(screen.getByText("Assignments")).toBeTruthy();
+    expect(screen.getByText("Your current season")).toBeTruthy();
+    expect(screen.getByLabelText("Submitted: 0")).toBeTruthy();
+    expect(screen.getByLabelText("Pending: 1")).toBeTruthy();
+    expect(screen.getByLabelText("Reviewed: 0")).toBeTruthy();
+    expect(screen.getByText(/^Due Apr \d, 2099 · in /)).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/assignments");
   });
 
@@ -58,7 +64,8 @@ describe("AssignmentsScreen (student)", () => {
 
     renderWithProviders(<AssignmentsScreen />);
 
-    expect(await screen.findByText(/Overdue/)).toBeTruthy();
+    // v1's past-due badge: "Due {MMM d}" in the error tone.
+    expect(await screen.findByText("Due Apr 1")).toBeTruthy();
   });
 
   it("navigates to the detail route on press", async () => {

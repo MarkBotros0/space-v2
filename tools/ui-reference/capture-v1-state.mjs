@@ -25,7 +25,8 @@ for (const theme of ["light", "dark"]) {
       .or(page.getByRole("link", { name, exact: true }));
     const target = (await byRole.count()) > 0 ? byRole.first() : page.getByText(name, { exact: true }).first();
     await target.click();
-    await page.waitForTimeout(600);
+    await page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(800);
   }
   const out = path.join(SHOTS_DIR, role, theme, `${arg("name")}.png`);
   await page.screenshot({ path: out, fullPage: true });

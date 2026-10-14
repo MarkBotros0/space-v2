@@ -1,7 +1,27 @@
+import { Lock, MessagesSquare, Send, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
-import { countWords, type ForumComment, type ForumPost, type ForumView } from "@space/shared";
+import { countWords, plainTextToHtml, type ForumComment, type ForumPost, type ForumView } from "@space/shared";
 
+import { Eyebrow } from "../design/layout/page-title";
+import { cn } from "../design/lib/cn";
+import { iconWithClassName } from "../design/lib/icon";
+import {
+  Avatar,
+  AvatarFallback,
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ConfirmDialog,
+  EmptyState,
+  RichTextView,
+  Skeleton,
+  Text,
+  Textarea,
+} from "../design/ui";
 import {
   useDeleteComment,
   useForumComments,
@@ -10,16 +30,36 @@ import {
   useSubmitForumResponse,
 } from "../hooks/use-forum";
 import { apiErrorMessage } from "../lib/api-error";
-import { formatDate } from "../lib/format";
+import { formatDate, formatTimeAgo } from "../lib/format";
+import { initialsOf } from "../lib/initials";
 import { useSessionStore } from "../store/session";
-import { useTheme } from "../theme";
-import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Text } from "../ui";
 
+iconWithClassName(Send, Trash2);
+
+const NOTICE = {
+  error: "rounded-md bg-error-50 px-3 py-2 text-sm text-error-800 dark:bg-error-950 dark:text-error-200",
+  success: "rounded-md bg-success-50 px-3 py-2 text-sm text-success-800 dark:bg-success-950 dark:text-success-200",
+};
+
+/** v1 forum-view.tsx PersonAvatar: initials only (no avatar URL in the contract). */
+function PersonAvatar({ name }: { name: string }) {
+  return (
+    <Avatar className="size-9">
+      <AvatarFallback>{initialsOf(name, "?")}</AvatarFallback>
+    </Avatar>
+  );
+}
+
+/**
+ * v1 forum-view.tsx compose card. Plain text in and out: the server converts
+ * to and from stored HTML, so a rich editor here would store literal tags
+ * (gap note). The leader's feedback on the own post is v2's (spec 14 D9).
+ */
 function ComposeCard({ assignmentId, view }: { assignmentId: number; view: ForumView }) {
-  const theme = useTheme();
   const own = view.own;
   const submit = useSubmitForumResponse(assignmentId);
   const [draft, setDraft] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   if (own === null) return null;
 
   const value = draft ?? own.text;
@@ -27,94 +67,111 @@ function ComposeCard({ assignmentId, view }: { assignmentId: number; view: Forum
   const minWords = view.minWords ?? 0;
   // Math.max(1, ...): an empty post must never unlock the feed (D-14.5).
   const tooShort = words < Math.max(1, minWords);
+  const meetsMin = !tooShort;
 
   return (
-    <Card style={{ gap: theme.spacing.sm }}>
-      {own.feedback ? (
-        <View style={{ gap: theme.spacing.xs }}>
-          <Text variant="label">Feedback from your leader</Text>
-          <Text variant="body">{own.feedback}</Text>
-          {own.reviewedAt ? (
-            <Text variant="caption" color={theme.colors.neutral[600]}>
-              {formatDate(own.reviewedAt)}
-            </Text>
+    <>
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">Your response</CardTitle>
+          {own.posted ? <Badge variant="success">Posted</Badge> : null}
+        </CardHeader>
+        <CardContent className="flex-col gap-3">
+          <Textarea
+            accessibilityLabel="Your response"
+            placeholder="Share your thoughts…"
+            value={value}
+            onChangeText={setDraft}
+            className="min-h-32"
+          />
+          <Text
+            className={cn("text-xs", meetsMin ? "text-success-700 dark:text-success-300" : "text-muted-foreground")}
+          >
+            {`${words} ${words === 1 ? "word" : "words"}${minWords > 0 ? ` · minimum ${minWords}` : ""}`}
+          </Text>
+          {submit.isError ? (
+            <Text className={NOTICE.error}>{apiErrorMessage(submit.error, "Couldn't post your response. Try again.")}</Text>
           ) : null}
-        </View>
+          {info && !submit.isPending ? <Text className={NOTICE.success}>{info}</Text> : null}
+          <View className="flex-row justify-end">
+            <Button
+              disabled={submit.isPending || tooShort}
+              onPress={() => {
+                if (tooShort) return;
+                const wasPosted = own.posted;
+                setInfo(null);
+                submit.mutate(value, { onSuccess: () => setInfo(wasPosted ? "Response updated." : "Posted!") });
+              }}
+            >
+              {submit.isPending ? "Posting…" : own.posted ? "Update response" : "Post response"}
+            </Button>
+          </View>
+        </CardContent>
+      </Card>
+      {own.feedback ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Leader feedback</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-col gap-1">
+            <RichTextView html={plainTextToHtml(own.feedback)} />
+            {own.reviewedAt ? <Text className="text-xs text-muted-foreground">{formatDate(own.reviewedAt)}</Text> : null}
+          </CardContent>
+        </Card>
       ) : null}
-      {/* Plain text, one Input: the server converts to and from stored HTML. */}
-      <Input
-        label="Your response"
-        value={value}
-        onChangeText={setDraft}
-        multiline
-        numberOfLines={6}
-      />
-      <Text variant="caption" color={theme.colors.neutral[600]}>
-        {`${words} / ${minWords} words`}
-      </Text>
-      {submit.isError ? (
-        <Text variant="caption" color={theme.colors.error[700]}>
-          {apiErrorMessage(submit.error, "Couldn't post your response. Try again.")}
-        </Text>
-      ) : null}
-      <Button
-        title={own.posted ? "Update response" : "Post response"}
-        onPress={() => {
-          if (tooShort) return;
-          submit.mutate(value);
-        }}
-        disabled={tooShort}
-        loading={submit.isPending}
-      />
-    </Card>
+    </>
   );
 }
 
 function CommentRow({ comment, assignmentId }: { comment: ForumComment; assignmentId: number }) {
-  const theme = useTheme();
   const remove = useDeleteComment(assignmentId);
-  const [armed, setArmed] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   return (
-    <View style={{ gap: theme.spacing.xs }}>
-      <Text variant="label">{comment.authorDisplayName}</Text>
-      <Text variant="body">{comment.body}</Text>
-      {/* canDelete is the server's answer; the client never re-derives it. */}
-      {comment.canDelete ? (
-        <Button
-          title={armed ? "Confirm delete" : "Delete"}
-          accessibilityLabel="Delete comment"
-          variant="ghost"
-          loading={remove.isPending}
-          onPress={() => {
-            if (!armed) {
-              setArmed(true);
-              return;
-            }
-            setArmed(false);
-            remove.mutate(comment.id);
-          }}
-        />
-      ) : null}
-      {remove.isError ? (
-        <Text variant="caption" color={theme.colors.error[700]}>
-          {apiErrorMessage(remove.error, "Couldn't delete the comment.")}
-        </Text>
-      ) : null}
+    <View className="flex-row items-start gap-2.5">
+      <PersonAvatar name={comment.authorDisplayName} />
+      <View className="flex-1 flex-col rounded-lg bg-muted/50 px-3 py-2">
+        <View className="flex-row items-center justify-between gap-2">
+          <Text className="shrink text-xs font-semibold text-foreground">{comment.authorDisplayName}</Text>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-[10px] text-muted-foreground">{formatTimeAgo(comment.createdAt)}</Text>
+            {/* canDelete is the server's answer; the client never re-derives it. */}
+            {comment.canDelete ? (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                accessibilityLabel="Delete comment"
+                disabled={remove.isPending}
+                onPress={() => setConfirming(true)}
+              >
+                <Trash2 size={12} className="text-muted-foreground" />
+              </Button>
+            ) : null}
+          </View>
+        </View>
+        <Text className="text-sm text-foreground">{comment.body}</Text>
+        {remove.isError ? (
+          <Text className="text-xs text-error-700">{apiErrorMessage(remove.error, "Couldn't delete the comment.")}</Text>
+        ) : null}
+      </View>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Delete comment?"
+        description="This removes your comment for everyone."
+        confirmLabel="Delete"
+        destructive
+        pending={remove.isPending}
+        onConfirm={() => {
+          setConfirming(false);
+          remove.mutate(comment.id);
+        }}
+      />
     </View>
   );
 }
 
-function PostCard({
-  assignmentId,
-  post,
-  allowComments,
-}: {
-  assignmentId: number;
-  post: ForumPost;
-  allowComments: boolean;
-}) {
-  const theme = useTheme();
+function PostCard({ assignmentId, post, allowComments }: { assignmentId: number; post: ForumPost; allowComments: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const comments = useForumComments(assignmentId, post.submissionPublicId, expanded);
@@ -127,82 +184,100 @@ function PostCard({
   const send = (): void => {
     const body = draft.trim();
     if (body === "") return;
-    postComment.mutate(
-      { postPublicId: post.submissionPublicId, body },
-      { onSuccess: () => setDraft("") },
-    );
+    postComment.mutate({ postPublicId: post.submissionPublicId, body }, { onSuccess: () => setDraft("") });
   };
 
   return (
-    <Card style={{ gap: theme.spacing.sm }}>
-      <Text variant="label">{post.authorDisplayName}</Text>
-      <Text variant="body">{post.text}</Text>
-      {post.submittedAt ? (
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          {formatDate(post.submittedAt)}
-        </Text>
-      ) : null}
-
-      {allowComments ? (
-        <View style={{ gap: theme.spacing.sm }}>
-          {expanded && comments.isError ? (
-            <ErrorState
-              message="Couldn't load the comments."
-              onRetry={() => void comments.refetch()}
-            />
-          ) : null}
-          {shown.map((c) => (
-            <CommentRow key={c.id} comment={c} assignmentId={assignmentId} />
-          ))}
-          {!expanded && remaining > 0 ? (
-            <>
-              <Text variant="caption" color={theme.colors.neutral[600]}>
-                {`${remaining} more`}
-              </Text>
-              <Button title="Show all comments" variant="ghost" onPress={() => setExpanded(true)} />
-            </>
-          ) : null}
-          {expanded && comments.isPending ? <LoadingState /> : null}
-          {expanded && comments.hasNextPage ? (
-            <Button
-              title="More comments"
-              variant="ghost"
-              loading={comments.isFetchingNextPage}
-              onPress={() => void comments.fetchNextPage()}
-            />
-          ) : null}
-          {post.canComment ? (
-            <View style={{ gap: theme.spacing.xs }}>
-              <Input label="Add a comment" value={draft} onChangeText={setDraft} multiline />
-              {postComment.isError ? (
-                <Text variant="caption" color={theme.colors.error[700]}>
-                  {apiErrorMessage(postComment.error, "Couldn't post your comment.")}
-                </Text>
-              ) : null}
-              <Button
-                title="Comment"
-                variant="secondary"
-                disabled={draft.trim() === ""}
-                loading={postComment.isPending}
-                onPress={send}
-              />
-            </View>
-          ) : null}
+    <Card>
+      <CardContent className="flex-col gap-3 pt-6">
+        <View className="flex-row items-center gap-2.5">
+          <PersonAvatar name={post.authorDisplayName} />
+          <View className="flex-col">
+            <Text className="text-sm font-semibold text-foreground">{post.authorDisplayName}</Text>
+            {post.submittedAt ? (
+              <Text className="text-xs text-muted-foreground">{formatTimeAgo(post.submittedAt)}</Text>
+            ) : null}
+          </View>
         </View>
-      ) : null}
+        <RichTextView html={post.text ? plainTextToHtml(post.text) : null} emptyText="No written response." />
+
+        {allowComments ? (
+          <View className="flex-col gap-3 border-t border-border pt-3">
+            {expanded && comments.isError ? (
+              <View className="flex-row items-center gap-2">
+                <Text className="text-xs text-error-700">Couldn't load the comments.</Text>
+                <Button variant="outline" size="sm" onPress={() => void comments.refetch()}>
+                  Try again
+                </Button>
+              </View>
+            ) : null}
+            {shown.map((c) => (
+              <CommentRow key={c.id} comment={c} assignmentId={assignmentId} />
+            ))}
+            {/* Comment paging is v2's (v1 loaded every comment). */}
+            {!expanded && remaining > 0 ? (
+              <View className="flex-row items-center gap-2">
+                <Text className="text-xs text-muted-foreground">{`${remaining} more`}</Text>
+                <Button variant="outline" size="sm" onPress={() => setExpanded(true)}>
+                  Show all comments
+                </Button>
+              </View>
+            ) : null}
+            {expanded && comments.isPending ? <Skeleton className="h-10 rounded-lg" /> : null}
+            {expanded && comments.hasNextPage ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start"
+                disabled={comments.isFetchingNextPage}
+                onPress={() => void comments.fetchNextPage()}
+              >
+                More comments
+              </Button>
+            ) : null}
+            {post.canComment ? (
+              <View className="flex-row items-end gap-2">
+                <Textarea
+                  accessibilityLabel="Write a comment…"
+                  placeholder="Write a comment…"
+                  value={draft}
+                  onChangeText={setDraft}
+                  className="min-h-10 flex-1"
+                />
+                <Button
+                  size="icon"
+                  accessibilityLabel="Post comment"
+                  disabled={postComment.isPending || draft.trim() === ""}
+                  onPress={send}
+                >
+                  <Send size={16} className="text-primary-foreground" />
+                </Button>
+              </View>
+            ) : null}
+            {postComment.isError ? (
+              <Text className="text-xs text-error-700">{apiErrorMessage(postComment.error, "Couldn't post your comment.")}</Text>
+            ) : null}
+          </View>
+        ) : null}
+      </CardContent>
     </Card>
   );
 }
 
+/** v1 components/forum/forum-view.tsx, with v2's paging and own-post feedback. */
 export function ForumThread({ assignmentId }: { assignmentId: number }) {
-  const theme = useTheme();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const query = useForumThread(assignmentId, true);
 
-  if (query.isPending) return <LoadingState />;
+  if (query.isPending) return <Skeleton className="h-40 rounded-2xl" />;
   if (query.isError) {
     return (
-      <ErrorState message="Couldn't load the discussion." onRetry={() => void query.refetch()} />
+      <View className="flex-col items-start gap-2">
+        <Text className="text-sm text-error-600 dark:text-error-400">Couldn't load the discussion.</Text>
+        <Button variant="outline" size="sm" onPress={() => void query.refetch()}>
+          Try again
+        </Button>
+      </View>
     );
   }
 
@@ -213,45 +288,44 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
   const canRemove = role === "LEADER" || role === "ADMIN" || role === "SUPER";
 
   return (
-    <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.md }}>
-      {/* No due date here: the screen header already shows the server's org day. */}
+    <View className="flex-col gap-4">
       <ComposeCard assignmentId={assignmentId} view={view} />
 
       {view.locked ? (
         <EmptyState
+          icon={Lock}
           title="Post to unlock the discussion"
-          message="You'll see everyone else's responses once you post yours."
+          description="Share your own response first to see what your group-mates wrote."
         />
       ) : posts.length === 0 ? (
         <EmptyState
-          title="No one has posted yet."
-          message="Responses from the group appear here."
+          icon={MessagesSquare}
+          title="No responses yet"
+          description="You're the first in your group to post. Check back soon."
         />
       ) : (
-        <>
+        <View className="flex-col gap-3">
+          {/* The thread pages, so this counts what has loaded (gap note). */}
+          <Eyebrow>{`Group discussion · ${posts.length}`}</Eyebrow>
           {posts.map((p) => (
-            <PostCard
-              key={p.submissionPublicId}
-              assignmentId={assignmentId}
-              post={p}
-              allowComments={view.allowComments}
-            />
+            <PostCard key={p.submissionPublicId} assignmentId={assignmentId} post={p} allowComments={view.allowComments} />
           ))}
           {query.hasNextPage ? (
             <Button
-              title="Load more"
-              variant="ghost"
-              loading={query.isFetchingNextPage}
+              variant="outline"
+              className="self-start"
+              disabled={query.isFetchingNextPage}
               onPress={() => void query.fetchNextPage()}
-            />
+            >
+              Load more
+            </Button>
           ) : null}
-        </>
+        </View>
       )}
 
       {canRemove && !view.locked ? (
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          You can remove comments here. Removing a whole response isn't supported yet — ask the
-          author to edit it.
+        <Text className="text-xs text-muted-foreground">
+          You can remove comments here. Removing a whole response isn't supported yet — ask the author to edit it.
         </Text>
       ) : null}
     </View>
