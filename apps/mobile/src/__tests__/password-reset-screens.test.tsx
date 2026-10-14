@@ -36,6 +36,7 @@ describe("ForgotPasswordScreen", () => {
   it("shows the same confirmation whatever the server knows (R67)", async () => {
     post.mockResolvedValue({ data: { data: { ok: true } } });
     renderWithProviders(<ForgotPasswordScreen />);
+    expect(screen.getByText("We'll email you a reset code.")).toBeTruthy();
 
     fireEvent.changeText(screen.getByLabelText("Email"), " someone@jpc.test ");
     fireEvent.press(screen.getByText("Send reset code"));
@@ -67,6 +68,7 @@ describe("ResetPasswordScreen", () => {
   it("takes the token from the deep link, then removes it from the route params (R80)", async () => {
     mockParams = { token: TOKEN };
     renderWithProviders(<ResetPasswordScreen />);
+    expect(screen.getByText("Choose a new password — at least 8 characters.")).toBeTruthy();
 
     await waitFor(() => expect(screen.getByLabelText("Reset code").props.value).toBe(TOKEN));
     expect(mockSetParams).toHaveBeenCalledTimes(1);

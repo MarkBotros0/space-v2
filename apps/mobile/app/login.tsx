@@ -1,20 +1,20 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { AccessibilityInfo, View } from "react-native";
 import { loginRequestSchema, type LoginRequest } from "@space/shared";
 
+import { AuthCard, AuthField, AuthLink, AuthNotice } from "../src/design/layout/auth-card";
+import { Button, Input, PasswordInput } from "../src/design/ui";
 import { useLogin } from "../src/hooks/use-session";
 import { returnHrefFor } from "../src/lib/return-to";
-import { useTheme } from "../src/theme";
-import { Button, FormField, Screen, Text } from "../src/ui";
 
+/** v1 app/login/page.tsx + login-form.tsx. */
 export default function LoginScreen() {
   const router = useRouter();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const login = useLogin();
-  const theme = useTheme();
 
   // `useLogin` already does login -> /me -> setSession (Task 6); this screen
   // just drives the form and reacts to success/failure. It does not persist
@@ -26,7 +26,6 @@ export default function LoginScreen() {
     defaultValues: { email: "", password: "" },
   });
 
-  // Mirrors `ErrorState`'s accessibility treatment (see states.tsx):
   // `accessibilityRole="alert"` and `accessibilityLiveRegion="assertive"`
   // help on Android and cost nothing on iOS, but iOS only reliably announces
   // through an imperative `announceForAccessibility` call, so fire one
@@ -43,58 +42,56 @@ export default function LoginScreen() {
       // returnHrefFor admits only that one typed shape (Decision 7).
       router.replace(returnHrefFor(returnTo) ?? "/dashboard");
     } catch {
-      setError("Incorrect email or password.");
+      setError("Invalid email or password.");
     }
   }
 
   return (
-    <Screen>
-      <View style={{ flex: 1, justifyContent: "center", gap: theme.spacing.md }}>
-        <Text variant="heading" style={{ marginBottom: theme.spacing.sm }}>
-          JPC Space
-        </Text>
-
-        {error ? (
-          // Inline, above the form — a wrong password is a field-level
-          // problem, not a reason to take over the whole screen. The fields
-          // below stay mounted with their values intact (RHF's
-          // `shouldUnregister: false`), so there's no extra tap to get back
-          // to a fillable form.
-          <Text
-            variant="body"
-            color={theme.colors.error[600]}
-            accessibilityRole="alert"
-            accessibilityLiveRegion="assertive"
-          >
-            {error}
-          </Text>
-        ) : null}
-
-        <FormField
+    <AuthCard title="Welcome back" description="Sign in to JPC Space to continue.">
+      <View className="flex-col gap-4">
+        <Controller
           control={control}
           name="email"
-          label="Email"
-          autoCapitalize="none"
-          keyboardType="email-address"
+          render={({ field, fieldState }) => (
+            <AuthField label="Email" error={fieldState.error?.message}>
+              <Input
+                size="lg"
+                accessibilityLabel="Email"
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+              />
+            </AuthField>
+          )}
         />
-        <FormField control={control} name="password" label="Password" secureTextEntry />
-
-        <Button
-          title="Sign in"
-          onPress={handleSubmit(onSubmit)}
-          loading={formState.isSubmitting}
+        <Controller
+          control={control}
+          name="password"
+          render={({ field, fieldState }) => (
+            <AuthField label="Password" error={fieldState.error?.message}>
+              <PasswordInput
+                size="lg"
+                accessibilityLabel="Password"
+                autoComplete="current-password"
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+              />
+            </AuthField>
+          )}
         />
-        <Button
-          title="I have an invite code"
-          variant="ghost"
-          onPress={() => router.push("/accept-invite")}
-        />
-        <Button
-          title="Forgot password?"
-          variant="ghost"
-          onPress={() => router.push("/forgot-password")}
-        />
+        {/* The fields stay mounted with their values (RHF), so a wrong
+            password needs no extra tap to get back to a fillable form. */}
+        {error ? <AuthNotice tone="error">{error}</AuthNotice> : null}
+        <Button size="lg" className="w-full" disabled={formState.isSubmitting} onPress={handleSubmit(onSubmit)}>
+          {formState.isSubmitting ? "Signing in…" : "Sign in"}
+        </Button>
+        <AuthLink label="Forgot password?" onPress={() => router.push("/forgot-password")} />
+        <AuthLink label="I have an invite code" onPress={() => router.push("/accept-invite")} />
       </View>
-    </Screen>
+    </AuthCard>
   );
 }

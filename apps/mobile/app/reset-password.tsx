@@ -3,10 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { extractResetToken, passwordSchema } from "@space/shared";
 
+import { AuthCard, AuthField, AuthLink, AuthNotice } from "../src/design/layout/auth-card";
+import { Button, Input, PasswordInput } from "../src/design/ui";
 import { useResetPassword } from "../src/hooks/use-password-reset";
 import { apiErrorMessage } from "../src/lib/api-error";
-import { useTheme } from "../src/theme";
-import { Button, Input, Screen, Text } from "../src/ui";
 
 /**
  * v1's /reset-password, anonymous, outside (app). The code arrives three
@@ -17,7 +17,6 @@ import { Button, Input, Screen, Text } from "../src/ui";
  * re-emitted it into a second history entry on every error (R80).
  */
 export default function ResetPasswordScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ token?: string }>();
   const consumedParam = useRef(false);
@@ -73,65 +72,52 @@ export default function ResetPasswordScreen() {
 
   if (done) {
     return (
-      <Screen>
-        <View style={{ flex: 1, justifyContent: "center", gap: theme.spacing.md }}>
-          <Text variant="heading">Password updated</Text>
-          <Text variant="body">
-            Sign in with your new password. Every other device signed in to this account has been signed out.
-          </Text>
-          <Button title="Go to sign in" onPress={() => router.replace("/login")} />
-        </View>
-      </Screen>
+      <AuthCard
+        title="Password updated"
+        description="Sign in with your new password. Every other device signed in to this account has been signed out."
+      >
+        <Button size="lg" className="w-full" onPress={() => router.replace("/login")}>
+          Go to sign in
+        </Button>
+      </AuthCard>
     );
   }
 
   return (
-    <Screen scroll>
-      <View style={{ flex: 1, justifyContent: "center", gap: theme.spacing.md }}>
-        <Text variant="heading">Reset password</Text>
+    <AuthCard title="Reset password" description="Choose a new password — at least 8 characters.">
+      <View className="flex-col gap-4">
         {failure ? (
           <>
-            <Text
-              variant="body"
-              color={theme.colors.error[600]}
-              accessibilityRole="alert"
-              accessibilityLiveRegion="assertive"
-            >
-              {failure}
-            </Text>
-            <Button title="Request a new code" variant="secondary" onPress={() => router.replace("/forgot-password")} />
+            <AuthNotice tone="error">{failure}</AuthNotice>
+            <AuthLink label="Request a new code" onPress={() => router.replace("/forgot-password")} />
           </>
         ) : null}
-        <Input
-          label="Reset code"
-          value={code}
-          onChangeText={setCode}
-          autoCapitalize="none"
-          autoCorrect={false}
-          error={codeError ?? undefined}
-        />
-        <Input
-          label="New password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          error={passwordError ?? undefined}
-        />
-        <Input
-          label="Confirm password"
-          value={confirm}
-          onChangeText={setConfirm}
-          secureTextEntry
-          error={confirmError ?? undefined}
-        />
+        <AuthField label="Reset code" error={codeError ?? undefined}>
+          <Input
+            size="lg"
+            accessibilityLabel="Reset code"
+            value={code}
+            onChangeText={setCode}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </AuthField>
+        <AuthField label="New password" error={passwordError ?? undefined}>
+          <PasswordInput size="lg" accessibilityLabel="New password" value={password} onChangeText={setPassword} />
+        </AuthField>
+        <AuthField label="Confirm password" error={confirmError ?? undefined}>
+          <PasswordInput size="lg" accessibilityLabel="Confirm password" value={confirm} onChangeText={setConfirm} />
+        </AuthField>
         <Button
-          title="Set new password"
+          size="lg"
+          className="w-full"
           onPress={submit}
-          loading={resetPassword.isPending}
-          disabled={!code.trim() || !password || !confirm}
-        />
-        <Button title="Back to sign in" variant="ghost" onPress={() => router.replace("/login")} />
+          disabled={resetPassword.isPending || !code.trim() || !password || !confirm}
+        >
+          Set new password
+        </Button>
+        <AuthLink label="Back to sign in" onPress={() => router.replace("/login")} />
       </View>
-    </Screen>
+    </AuthCard>
   );
 }
