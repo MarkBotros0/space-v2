@@ -5,18 +5,46 @@ import { MANIFEST_FILE, REPO_ROOT, UI_REBUILD_DOCS } from "./lib/paths.mjs";
 
 const ROLE_PREFIXES = new Set(["student", "alumni", "leader", "admin", "super", "mentor"]);
 const SINGULAR = { groups: "group", sessions: "session", assignments: "assignment", quizzes: "quiz",
-  events: "event", submissions: "submission", users: "user" };
+  events: "event", submissions: "submission", users: "user", students: "student" };
+// v1 list/new pages whose v2 "new" screen lives under a different noun.
+const NEW_TARGET = { calendar: "session" };
+// Pairings no rule derives, each checked by hand against both components.
+const EXPLICIT = {
+  "/super/users/[id]/edit": "(app)/user/[id]", // v2's user screen is the edit form
+  "/leader/sessions/[id]/quiz/[id]": "(app)/quiz/[id]/grade", // v1 page title "Grade quiz"
+  "/super/seasons/new": "(app)/seasons/index", // v2 shows the create form inline on the list
+};
+// v2 screens whose v1 counterpart is part of another page, not its own page.
+const SECTION_OF = {
+  "/super/seasons/new": "(app)/seasons/index",
+};
+// Hand-review notes printed beside a row (keyed by v1 pattern or v2 route).
+const NOTES = {
+  "/dev/design-system": "counterpart is Plan 01's showcase `dev/design-system`",
+  "/forbidden": "no v2 page",
+  "/mentor/profile": "v1 itself returns 404 here (no mentor profile page)",
+  "/super/seasons/year/[year]": "gap — owner decides",
+  "/super/seasons/program/[program]": "gap — owner decides",
+  "(app)/event/[id]": "section of v1 `/super/events` (inline jpc-event-form)",
+  "(app)/quiz/new": "section of v1 `/admin/season/[code]/sessions/[id]` (create-quiz-form)",
+  "accept-invite": "no v1 page — needs an approved mockup",
+  "index": "redirect only; v1 `/` redirects too",
+};
 
 export function v2RouteFor(pattern, v2Routes) {
   const parts = pattern.split("/").filter(Boolean);
   if (parts.length && ROLE_PREFIXES.has(parts[0])) parts.shift();
   if (parts.length === 0) return v2Routes.includes("(app)/dashboard") ? "(app)/dashboard" : null;
 
+  if (EXPLICIT[pattern] && v2Routes.includes(EXPLICIT[pattern])) return EXPLICIT[pattern];
   const candidates = [parts.join("/")];
-  // list/[id] -> singular/[id] (v2 detail routes are singular, ruling X7)
-  if (parts.length >= 2 && SINGULAR[parts[0]] && parts[1].startsWith("[")) {
-    candidates.push([SINGULAR[parts[0]], ...parts.slice(1)].join("/"));
+  // v1 scopes admin pages under season/[code]/…; v2 serves them from flat
+  // routes (the season comes from the user's scope), except the season's own pages.
+  if (parts[0] === "season" && parts[1] === "[code]" && parts.length > 2) {
+    const rest = parts.slice(2);
+    candidates.push(...seasonFree(rest));
   }
+  candidates.push(...seasonFree(parts).slice(1));
   // v1 addresses one season as season/[code]; v2 nests it under seasons/
   if (parts[0] === "season" && parts[1] === "[code]") {
     candidates.push(["seasons", ...parts.slice(1)].join("/"));
@@ -27,6 +55,20 @@ export function v2RouteFor(pattern, v2Routes) {
     }
   }
   return null;
+}
+
+// Candidate v2 paths for role- and season-free v1 segments.
+function seasonFree(parts) {
+  const out = [parts.join("/")];
+  // list/[id] -> singular/[id] (v2 detail routes are singular, ruling X7)
+  if (parts.length >= 2 && SINGULAR[parts[0]] && parts[1].startsWith("[")) {
+    out.push([SINGULAR[parts[0]], ...parts.slice(1)].join("/"));
+  }
+  if (parts.length === 2 && parts[1] === "new") {
+    const noun = NEW_TARGET[parts[0]] ?? SINGULAR[parts[0]];
+    if (noun) out.push(`${noun}/new`);
+  }
+  return out;
 }
 
 function listRoutes(dir, prefix = "") {
@@ -59,13 +101,15 @@ function main() {
     for (const p of r.pages) {
       const v2 = v2RouteFor(p.pattern, v2Routes);
       if (v2) matched.add(v2);
-      const status = p.error ? `capture failed: ${p.error.replace(/\|/g, "/")}` : v2 ? "match v1" : "v1-only (not in v2)";
-      lines.push(`| \`${p.pattern}\` | ${v2 ? `\`${v2}\`` : "—"} | ${status} | ${p.shots.light ?? "—"} | ${p.shots.dark ?? "—"} | ${p.dialogs.length} |`);
+      let status = p.error ? `capture failed: ${p.error.replace(/\|/g, "/")}` : v2 ? "match v1" : "v1-only (not in v2)";
+      if (NOTES[p.pattern]) status += ` — ${NOTES[p.pattern]}`;
+      const v2Cell = v2 ? `\`${v2}\`${SECTION_OF[p.pattern] ? " (section of)" : ""}` : "—";
+      lines.push(`| \`${p.pattern}\` | ${v2Cell} | ${status} | ${p.shots.light ?? "—"} | ${p.shots.dark ?? "—"} | ${p.dialogs.length} |`);
     }
     lines.push("");
   }
   const v2Only = v2Routes.filter((r) => !matched.has(r));
-  lines.push("## v2 screens with no v1 page (`v2-only`)", "", ...v2Only.map((r) => `- \`${r}\``), "");
+  lines.push("## v2 screens with no v1 page (`v2-only`)", "", ...v2Only.map((r) => `- \`${r}\`${NOTES[r] ? ` — ${NOTES[r]}` : ""}`), "");
   mkdirSync(UI_REBUILD_DOCS, { recursive: true });
   writeFileSync(path.join(UI_REBUILD_DOCS, "screen-map.md"), lines.join("\n"));
   console.log(`screen map: ${matched.size} matched, ${v2Only.length} v2-only`);

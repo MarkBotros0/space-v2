@@ -3,6 +3,7 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { signInAs } from "./lib/auth.mjs";
 import { isCrawlable, slugFor, toPattern } from "./lib/route-pattern.mjs";
+import { extraPathsFor } from "./lib/extra-paths.mjs";
 import { MANIFEST_FILE, SHOTS_DIR, USERS_FILE, V1_BASE_URL } from "./lib/paths.mjs";
 
 const VIEWPORT = { width: 375, height: 812 };
@@ -18,7 +19,10 @@ const allUsers = JSON.parse(readFileSync(USERS_FILE, "utf8"));
 // combines the parts into manifest.json.
 const roleArg = process.argv.indexOf("--role");
 const onlyRole = roleArg > 0 ? process.argv[roleArg + 1] : null;
-const users = onlyRole ? { [onlyRole]: allUsers[onlyRole] } : allUsers;
+// `--extra` visits only lib/extra-paths.mjs pages (no link following) into
+// manifest.<role>.extra.json. Role "public" captures signed out.
+const extraOnly = process.argv.includes("--extra");
+const users = onlyRole ? { [onlyRole]: onlyRole === "public" ? { email: null } : allUsers[onlyRole] } : allUsers;
 const browser = await chromium.launch();
 const manifest = {
   capturedAt: new Date().toISOString(),
@@ -98,10 +102,13 @@ for (const [role, user] of Object.entries(users)) {
     continue;
   }
   // Sign in once, reuse the cookies for both themes.
-  const authCtx = await browser.newContext();
-  await signInAs(authCtx, V1_BASE_URL, user.email);
-  const storageState = await authCtx.storageState();
-  await authCtx.close();
+  let storageState;
+  if (user.email) {
+    const authCtx = await browser.newContext();
+    await signInAs(authCtx, V1_BASE_URL, user.email);
+    storageState = await authCtx.storageState();
+    await authCtx.close();
+  }
 
   const contexts = {
     light: await newThemedContext("light", storageState),
@@ -112,7 +119,7 @@ for (const [role, user] of Object.entries(users)) {
   pages.dark.setDefaultTimeout(15000);
 
   const seen = new Set();
-  const queue = ["/", ...(EXTRA_PATHS[role] ?? [])];
+  const queue = extraOnly ? await extraPathsFor(role) : ["/", ...(EXTRA_PATHS[role] ?? [])];
   const results = [];
 
   while (queue.length && results.length < MAX_PAGES_PER_ROLE) {
@@ -131,7 +138,7 @@ for (const [role, user] of Object.entries(users)) {
     }
     const landed = new URL(pages.light.url()).pathname;
     const pattern = toPattern(landed);
-    if (seen.has(pattern) || landed.startsWith("/login")) continue;
+    if (seen.has(pattern) || (landed.startsWith("/login") && role !== "public")) continue;
     seen.add(pattern);
 
     const slug = slugFor(pattern);
@@ -170,6 +177,7 @@ for (const [role, user] of Object.entries(users)) {
     results.push(entry);
     console.log(`${role}: ${pattern}`);
 
+    if (extraOnly) continue;
     // Re-read links from a fresh load: dialogs opened above may have navigated.
     if (await deadline(visit(pages.light, landed), 200000, "link reload").catch((e) => e.message)) continue;
     const hrefs = await withTimeout(
@@ -186,7 +194,7 @@ for (const [role, user] of Object.entries(users)) {
   manifest.roles[role] = { pages: results };
   await contexts.light.close();
   await contexts.dark.close();
-  const part = MANIFEST_FILE.replace(/\.json$/, `.${role}.json`);
+  const part = MANIFEST_FILE.replace(/\.json$/, extraOnly ? `.${role}.extra.json` : `.${role}.json`);
   const body = { capturedAt: manifest.capturedAt, viewport: manifest.viewport, role, ...manifest.roles[role] };
   writeFileSync(part, JSON.stringify(body, null, 2), { mode: 0o600 });
   console.log(`${role}: done (${results.length} pages)`);

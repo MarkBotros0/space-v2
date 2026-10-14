@@ -17,11 +17,14 @@ function normalise(pages) {
 
 const users = JSON.parse(readFileSync(USERS_FILE, "utf8"));
 const manifest = { capturedAt: null, viewport: null, roles: {} };
-for (const [role, user] of Object.entries(users)) {
+// "public" = signed-out pages (capture.mjs --role public --extra).
+for (const [role, user] of Object.entries({ public: { email: null }, ...users })) {
   const part = MANIFEST_FILE.replace(/\.json$/, `.${role}.json`);
   if (!user) { manifest.roles[role] = { skipped: "no reference user", pages: [] }; continue; }
-  if (!existsSync(part)) { manifest.roles[role] = { skipped: "capture missing", pages: [] }; console.log(`${role}: MISSING`); continue; }
-  const p = JSON.parse(readFileSync(part, "utf8"));
+  const extra = MANIFEST_FILE.replace(/\.json$/, `.${role}.extra.json`);
+  if (!existsSync(part) && !existsSync(extra)) { manifest.roles[role] = { skipped: "capture missing", pages: [] }; console.log(`${role}: MISSING`); continue; }
+  const parts = [part, extra].filter(existsSync).map((f) => JSON.parse(readFileSync(f, "utf8")));
+  const p = { ...parts[0], pages: parts.flatMap((x) => x.pages) };
   manifest.capturedAt ??= p.capturedAt;
   manifest.viewport ??= p.viewport;
   const pages = normalise(p.pages);

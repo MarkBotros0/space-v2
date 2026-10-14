@@ -54,3 +54,7 @@ test("static pages under seasons are kept; any other segment there is a code", (
   assert.equal(toPattern("/super/seasons/year/2026"), "/super/seasons/year/[year]");
   assert.equal(toPattern("/super/seasons/program/youth"), "/super/seasons/program/[program]");
 });
+
+test("the segment after checkin is a token", () => {
+  assert.equal(toPattern("/checkin/not-a-real-token"), "/checkin/[token]");
+});
