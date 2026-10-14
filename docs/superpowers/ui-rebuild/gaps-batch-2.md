@@ -105,3 +105,11 @@ status bar) are in `gaps-foundations.md` and not repeated.
 | Alumni keep the pre-rebuild calendar. | v1 alumni have an Events page instead — batch 6. |
 | Arabic chip titles truncate from the end of the line in their own direction. | Platform text layout. |
 | Plain-background area below a short page (navy-50 tint ends 96px under the content) — reproduced. | v1 role layout's `pb-24` wrapper. |
+
+## Quizzes and quiz runner
+
+| Difference | Reason |
+|---|---|
+| Session and graded dates are the device's reading of `sessionDate` / `gradedAt`. | Data gap — instants with no org day key. |
+| Answers save on a 1 s debounce in one batch with a visible "Saving… / Saved / Not saved" line and "Retry save". | v2 behaviour (spec 12 R55/R56). |
+| Mixed Arabic/Latin punctuation can sit on the other side of a line than in Chrome. | Platform bidi. |

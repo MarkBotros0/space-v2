@@ -79,12 +79,18 @@ describe("QuizzesScreen — student", () => {
     renderWithProviders(<QuizzesScreen />);
 
     expect(await screen.findByText("Week 1 quiz")).toBeTruthy();
-    // The row renders one label line, so the assertion matches the whole line —
-    // getByText("15 / 20") would find nothing.
-    expect(screen.getByText("Week 1 · 15 / 20")).toBeTruthy();
+    // v1 row: session line, then the score as "15" + "/20" over "75%".
+    expect(screen.getAllByText("Week 1 · Mar 1, 2099").length).toBeGreaterThan(0);
+    expect(screen.getByText("15/20")).toBeTruthy(); // "/20" is a nested span
+    expect(screen.getByText("/20")).toBeTruthy();
+    expect(screen.getByText("75%")).toBeTruthy();
+    expect(screen.getAllByText("Nice work.")).toHaveLength(2);
+    expect(screen.getAllByText("Graded Mar 2, 2099").length).toBe(2);
     // (15/20 + 5/10) / 2 = 62.5% → 63%. Presentation arithmetic over
     // server-supplied scores, not a business rule re-derived on the device.
-    expect(screen.getByText("63% average")).toBeTruthy();
+    expect(screen.getByText("63%")).toBeTruthy();
+    expect(screen.getByText("Average score")).toBeTruthy();
+    expect(screen.getByText("2 graded · 0 pending")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/quizzes?seasonId=7");
   });
 
@@ -106,8 +112,8 @@ describe("QuizzesScreen — student", () => {
 
     renderWithProviders(<QuizzesScreen />);
 
-    expect(await screen.findByText("Week 1 · Not started")).toBeTruthy();
-    expect(screen.getByText("Week 1 · Waiting to be marked")).toBeTruthy();
+    expect(await screen.findByText("Take quiz")).toBeTruthy();
+    expect(screen.getByText("Awaiting grading")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Online quiz"));
     expect(mockPush).toHaveBeenCalledWith({
@@ -124,8 +130,19 @@ describe("QuizzesScreen — student", () => {
 
     renderWithProviders(<QuizzesScreen />);
 
-    expect(await screen.findByText("No active season")).toBeTruthy();
+    // v1: the hero still renders ("—") over an empty list.
+    expect(await screen.findByText("No quizzes yet")).toBeTruthy();
+    expect(screen.getByText("—")).toBeTruthy();
     expect(get).not.toHaveBeenCalled();
+  });
+
+  it("does not open a paper quiz — v1 rows for PAPER are not links", async () => {
+    useSessionStore.setState(studentSession);
+    get.mockResolvedValue({ data: { data: { items: [studentRow()], nextCursor: null } } });
+
+    renderWithProviders(<QuizzesScreen />);
+    fireEvent.press(await screen.findByText("Week 1 quiz"));
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });
 
