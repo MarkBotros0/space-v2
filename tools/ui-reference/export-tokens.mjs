@@ -1,7 +1,12 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
-import { UI_REBUILD_DOCS, V1_BASE_URL } from "./lib/paths.mjs";
+import { APP_DIR, UI_REBUILD_DOCS, V1_BASE_URL } from "./lib/paths.mjs";
+import { themeColorVars } from "./lib/theme-vars.mjs";
+
+// @theme inline emits no variables; define them on :root before resolving so
+// palette tokens (and semantic tokens that point at them) resolve on any page.
+const THEME_VARS = themeColorVars(readFileSync(path.join(APP_DIR, "src/app/globals.css"), "utf8"));
 
 const SEMANTIC = [
   "background", "foreground", "card", "card-foreground", "popover", "popover-foreground",
@@ -64,6 +69,9 @@ for (const theme of ["light", "dark"]) {
   const page = await ctx.newPage();
   await page.goto(V1_BASE_URL + "/login", { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.evaluate(() => document.fonts.ready);
+  await page.addStyleTag({
+    content: `:root { ${Object.entries(THEME_VARS).map(([k, v]) => `${k}: ${v};`).join(" ")} }`,
+  });
   const raw = await resolve(page);
   tokens[theme] = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k.replace(/^color-/, ""), toHex(v)]));
   if (theme === "light") {
@@ -91,6 +99,12 @@ for (const theme of ["light", "dark"]) {
 }
 await browser.close();
 
+// An unresolvable var() inherits the body colour, which looks like a real
+// value; repeated steps inside a ramp are the tell.
+for (const ramp of RAMPS) {
+  const values = STEPS.map((step) => tokens.light[`${ramp}-${step}`]);
+  if (new Set(values).size !== values.length) throw new Error(`${ramp} has repeated steps: ${values.join(" ")}`);
+}
 if (tokens.light.background === tokens.dark.background) {
   throw new Error("light and dark backgrounds are identical — the theme switch did not apply");
 }
