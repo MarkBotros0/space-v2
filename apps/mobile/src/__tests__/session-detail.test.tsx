@@ -71,9 +71,11 @@ it("shows a student the org-time header and their attendance, and no staff cards
 
   expect(await screen.findByText("Week 3")).toBeTruthy();
   // Server-derived day and wall-clock time (X13) — not the device's reading of startsAt.
-  expect(screen.getByText("Mar 15, 2099 · 8:00 PM · 90 min")).toBeTruthy();
+  expect(screen.getByText("← Calendar")).toBeTruthy();
+  expect(screen.getByText("Sunday, March 15, 2099")).toBeTruthy();
+  expect(screen.getByText("8:00 PM – 9:30 PM · 90 min")).toBeTruthy();
   expect(screen.getByText("Your attendance: Late (10 min)")).toBeTruthy();
-  expect(screen.getByText("Check-in isn't open right now.")).toBeTruthy();
+  expect(screen.getByText("Check-in hasn't opened yet")).toBeTruthy();
   expect(screen.queryByText("Edit session")).toBeNull();
   expect(screen.queryByText("Mark attendance")).toBeNull();
   expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/quizzes");

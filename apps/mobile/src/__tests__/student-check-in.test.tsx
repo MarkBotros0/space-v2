@@ -58,7 +58,8 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     post.mockResolvedValue({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
     renderWithProviders(<SessionDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Scan QR code"));
+    // v1: one "Check In" button opens the scan modal.
+    fireEvent.press(await screen.findByText("Check In"));
     expect(screen.getByTestId("mock-camera")).toBeTruthy();
     scanMockBarcode("AbC123XyZ0");
 
@@ -71,7 +72,8 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     post.mockResolvedValue({ data: { data: { status: "LATE", minutesLate: 12 } } });
     renderWithProviders(<SessionDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Scan QR code"));
+    // v1: one "Check In" button opens the scan modal.
+    fireEvent.press(await screen.findByText("Check In"));
     scanMockBarcode("https://space.jpc.example/checkin/AbC123XyZ0");
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/sessions/check-in", { token: "AbC123XyZ0" }));
@@ -84,9 +86,10 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     post.mockResolvedValue({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
     renderWithProviders(<SessionDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Scan QR code"));
+    // v1: one "Check In" button opens the scan modal.
+    fireEvent.press(await screen.findByText("Check In"));
     scanMockBarcode("https://example.com/menu");
-    expect(await screen.findByText("That doesn't look like a check-in code.")).toBeTruthy();
+    expect(await screen.findByText("That doesn't look like a check-in code")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
 
     // The camera reports the same frame repeatedly — one write, not three.
@@ -101,11 +104,12 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     post.mockResolvedValue({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
     renderWithProviders(<SessionDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Enter code"));
+    fireEvent.press(await screen.findByText("Check In"));
+    fireEvent.press(screen.getByText("Enter code instead"));
     fireEvent.changeText(screen.getByLabelText("Check-in code"), "abc");
     fireEvent.press(screen.getByText("Check in"));
     expect(screen.getByLabelText("Check-in code").props.accessibilityHint).toBe(
-      "That doesn't look like a check-in code.",
+      "That doesn't look like a check-in code",
     );
     expect(post).not.toHaveBeenCalled();
 
@@ -119,7 +123,8 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     post.mockRejectedValue(refusal(409, "closed"));
     renderWithProviders(<SessionDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Scan QR code"));
+    // v1: one "Check In" button opens the scan modal.
+    fireEvent.press(await screen.findByText("Check In"));
     scanMockBarcode("AbC123XyZ0");
 
     expect(await screen.findByText("Check-in is now closed.")).toBeTruthy();
@@ -131,7 +136,8 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     serve();
     renderWithProviders(<SessionDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Scan QR code"));
+    // v1: one "Check In" button opens the scan modal.
+    fireEvent.press(await screen.findByText("Check In"));
     expect(screen.queryByTestId("mock-camera")).toBeNull();
     fireEvent.press(screen.getByText("Allow camera"));
     expect(mockCamera.requestPermission).toHaveBeenCalledTimes(1);
@@ -143,19 +149,20 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     serve();
     renderWithProviders(<SessionDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Scan QR code"));
+    // v1: one "Check In" button opens the scan modal.
+    fireEvent.press(await screen.findByText("Check In"));
     fireEvent.press(screen.getByText("Open settings"));
     expect(openSettings).toHaveBeenCalledTimes(1);
-    fireEvent.press(screen.getByText("Cancel"));
-    expect(screen.getByText("Enter code")).toBeTruthy();
+    expect(screen.getByText("Enter code instead")).toBeTruthy();
   });
 
   it("offers nothing to scan while check-in is not open — the server's flag decides (C4, R73)", async () => {
     serve({ ...detail, checkInOpen: false });
     renderWithProviders(<SessionDetailScreen />);
 
-    expect(await screen.findByText("Check-in isn't open right now.")).toBeTruthy();
-    expect(screen.queryByText("Scan QR code")).toBeNull();
+    expect(await screen.findByText("Check-in hasn't opened yet")).toBeTruthy();
+    // v1 keeps the button visible but disabled.
+    expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
   });
 
   it("shows a student who already scanned in when they did, with no controls", async () => {
@@ -166,7 +173,7 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     renderWithProviders(<SessionDetailScreen />);
 
     expect(await screen.findByText(/You checked in at/)).toBeTruthy();
-    expect(screen.queryByText("Scan QR code")).toBeNull();
+    expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
   });
 
   it("refreshes the session after a successful check-in", async () => {
@@ -174,7 +181,8 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     post.mockResolvedValue({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
     renderWithProviders(<SessionDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Scan QR code"));
+    // v1: one "Check In" button opens the scan modal.
+    fireEvent.press(await screen.findByText("Check In"));
     scanMockBarcode("AbC123XyZ0");
 
     await waitFor(() =>
@@ -199,7 +207,7 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     renderWithProviders(<SessionDetailScreen />);
 
     expect(await screen.findByText("Week 3")).toBeTruthy();
-    expect(screen.queryByText("Scan QR code")).toBeNull();
+    expect(screen.queryByText("Check In")).toBeNull();
     expect(screen.queryByText("Your check-in")).toBeNull();
   });
 });

@@ -113,3 +113,15 @@ status bar) are in `gaps-foundations.md` and not repeated.
 | Session and graded dates are the device's reading of `sessionDate` / `gradedAt`. | Data gap — instants with no org day key. |
 | Answers save on a 1 s debounce in one batch with a visible "Saving… / Saved / Not saved" line and "Retry save". | v2 behaviour (spec 12 R55/R56). |
 | Mixed Arabic/Latin punctuation can sit on the other side of a line than in Chrome. | Platform bidi. |
+
+## Session detail
+
+| Difference | Reason |
+|---|---|
+| "Your attendance" row in Details and an "About" card with the description. | B2-14 — v2 data kept, drawn as v1 rows/cards. |
+| Check In opens a sheet that scans and shows the result in place, with an "Enter code instead" fallback and camera-permission states. | v2 behaviour: no write-on-render page (spec 04 D3), typed fallback, permission flow (§9 row 7). |
+| Button stays disabled after checking in, with "You checked in at …" under it. | v2 shows the recorded check-in; v1 left the button enabled. |
+| Play/Pause and "Leave the quiz" under the seek bar. | The native player has no controls (v1 taps the YouTube frame); D15 exit. |
+| Any dismiss of a question sheet (back, backdrop, ×) leaves the quiz. | Spec 13 D15 — v1's sheet ignores dismissal. |
+| End time is the start wall time plus the duration. | Data gap — no end time in the payload. |
+| If the video can't play: "Watch recording" plus a one-line note. | Spec 13 R37 — v1 failed silently. |

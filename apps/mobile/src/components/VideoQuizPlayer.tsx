@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, Linking, Modal, Pressable, View } from "react-native";
+import { Check, Lock, Pause, Play, Video, X } from "lucide-react-native";
+import { AppState, Linking, Pressable, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import { useRouter } from "expo-router";
 import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-iframe";
@@ -7,8 +8,13 @@ import { formatTimestamp, type StudentVideoQuestion, type StudentVideoQuiz } fro
 
 import { useSaveVideoProgress, useSubmitVideoAnswer } from "../hooks/use-video-quiz";
 import { apiErrorMessage } from "../lib/api-error";
-import { useTheme } from "../theme";
-import { Button, Card, EmptyState, ErrorState, Text } from "../ui";
+import { cn } from "../design/lib/cn";
+import { iconWithClassName } from "../design/lib/icon";
+import { shadowStyle } from "../design/lib/shadow";
+import { Eyebrow } from "../design/layout/page-title";
+import { Button, Modal, ModalContent, ModalHeader, ModalTitle, Text } from "../design/ui";
+
+iconWithClassName(Check, Lock, Pause, Play, Video, X);
 
 /**
  * getCurrentTime() crosses the webview bridge as a promise, so v1's 0.1 s
@@ -36,22 +42,32 @@ interface AnswerFeedback {
   correctIndex: number;
 }
 
+/** v1's "Watch recording" link button (sessions/[id]/page.tsx). */
+export function WatchRecordingButton({ youtubeUrl }: { youtubeUrl: string }) {
+  return (
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => void Linking.openURL(youtubeUrl)}
+      className="flex-row items-center justify-center gap-2 rounded-lg bg-brand-teal-600 px-4 py-3 active:bg-brand-teal-700"
+      style={{ boxShadow: "0px 2px 8px 0px rgba(93, 185, 188, 0.35)" }}
+    >
+      <Video size={16} className="shrink-0 text-white" />
+      <Text className="text-sm font-bold text-white">Watch recording</Text>
+    </Pressable>
+  );
+}
+
+/** The link stays when the app can't play the video; the silence does not (spec 13 R37). */
 function VideoFallback({ youtubeUrl }: { youtubeUrl: string | null }) {
   return (
-    <EmptyState
-      title="Video unavailable"
-      message="This session's video link can't be played in the app."
-      action={
-        youtubeUrl ? (
-          <Button title="Watch on YouTube" onPress={() => void Linking.openURL(youtubeUrl)} />
-        ) : undefined
-      }
-    />
+    <View className="flex-col gap-2">
+      {youtubeUrl ? <WatchRecordingButton youtubeUrl={youtubeUrl} /> : null}
+      <Text className="text-xs text-muted-foreground">This session's video link can't be played in the app.</Text>
+    </View>
   );
 }
 
 export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: VideoQuizPlayerProps) {
-  const theme = useTheme();
   const router = useRouter();
   const playerRef = useRef<YoutubeIframeRef>(null);
   const submit = useSubmitVideoAnswer(sessionId);
@@ -213,24 +229,24 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
 
   const deadlockMessage =
     "A question on this video is set past the end of the recording. Ask your leader to fix it.";
+  const total = duration ?? 0;
+  const playedPct = total > 0 ? Math.min(100, (current / total) * 100) : 0;
+  const lockedFrom = total > 0 && Number.isFinite(barrier) ? Math.min(100, (barrier / total) * 100) : 100;
 
   return (
-    <View style={{ gap: theme.spacing.md }}>
-      <Card style={{ gap: theme.spacing.xs }}>
-        <Text variant="heading">{`${quiz.earnedPoints} / ${quiz.totalPoints} points`}</Text>
-        <Text variant="label" color={theme.colors.neutral[600]}>
-          {`${quiz.answeredCount} of ${quiz.questions.length} questions answered`}
-        </Text>
-        {quiz.completedAt !== null ? <Text variant="label">Quiz complete</Text> : null}
-      </Card>
-
+    <View className="flex-col gap-3">
       {deadlocked ? (
-        <ErrorState message={deadlockMessage} onRetry={() => onRetry?.()} />
+        <View className="flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4">
+          <Text className="text-sm text-error-600 dark:text-error-400">{deadlockMessage}</Text>
+          <Button variant="outline" size="sm" onPress={() => onRetry?.()}>
+            Try again
+          </Button>
+        </View>
       ) : (
-        <>
+        <View className="overflow-hidden rounded-2xl border border-border bg-black" style={shadowStyle("soft")}>
           <YoutubePlayer
             ref={playerRef}
-            height={220}
+            height={211}
             videoId={quiz.videoId}
             play={playing}
             initialPlayerParams={{
@@ -249,97 +265,145 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
               }
             }}
           />
-          <View style={{ gap: theme.spacing.xs }}>
+          <View className="bg-black px-3 py-2">
             <Pressable
               accessibilityRole="adjustable"
-              accessibilityLabel="Video position"
+              accessibilityLabel="Video progress"
               onLayout={(e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width)}
               onPress={(e) => onSeekPress(e.nativeEvent.locationX)}
-              // 44 px touch target (jpc-space/CLAUDE.md); the track is drawn inside it.
-              style={{ minHeight: 44, justifyContent: "center" }}
+              className="h-6 justify-center"
             >
-              <View
-                style={{
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: theme.colors.neutral[300],
-                  overflow: "hidden",
-                }}
-              >
-                <View
-                  style={{
-                    height: 6,
-                    width: `${duration && duration > 0 ? Math.min(100, (current / duration) * 100) : 0}%`,
-                    backgroundColor: theme.colors.brand.teal[500],
-                  }}
-                />
+              <View className="h-1.5 w-full rounded-full bg-white/20">
+                {lockedFrom < 100 ? (
+                  <View
+                    className="absolute bottom-0 right-0 top-0 rounded-r-full bg-white/5"
+                    style={{ left: `${lockedFrom}%` }}
+                  />
+                ) : null}
+                <View className="absolute bottom-0 left-0 top-0 rounded-full bg-brand-teal-500" style={{ width: `${playedPct}%` }} />
+                {total > 0
+                  ? quiz.questions.map((q) => (
+                      <View
+                        key={q.id}
+                        className={cn("absolute size-2 rounded-full", q.answered ? "bg-success-500" : "bg-warning-400")}
+                        style={{ left: `${Math.min(100, (q.atSeconds / total) * 100)}%`, top: -1, marginLeft: -4 }}
+                      />
+                    ))
+                  : null}
               </View>
             </Pressable>
-            <Text variant="caption" color={theme.colors.neutral[600]}>
-              {`${formatTimestamp(current)} / ${formatTimestamp(duration ?? 0)}`}
-            </Text>
-          </View>
-          <Button
-            title={playing ? "Pause" : "Play"}
-            variant="secondary"
-            onPress={() => setPlaying((p) => !p)}
-          />
-        </>
-      )}
-
-      <Button title="Leave the quiz" variant="ghost" onPress={handleLeave} />
-
-      <Modal
-        visible={open !== null}
-        transparent
-        animationType="slide"
-        // The Android hardware back button. Left undefined it dismisses the
-        // modal and deletes the gate (spec 13 §10 D15), so it is an explicit exit.
-        onRequestClose={handleLeave}
-      >
-        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <View
-            style={{
-              backgroundColor: theme.colors.white,
-              padding: theme.spacing.lg,
-              gap: theme.spacing.sm,
-              borderTopLeftRadius: theme.radii.lg,
-              borderTopRightRadius: theme.radii.lg,
-            }}
-          >
-            {open !== null ? (
-              <>
-                <Text variant="heading">{open.prompt}</Text>
-                {feedback === null ? (
-                  open.options.map((option, index) => (
-                    <Button
-                      key={`${open.id}-${index}`}
-                      title={option}
-                      variant="ghost"
-                      onPress={() => onAnswer(index)}
-                      loading={submit.isPending}
-                    />
-                  ))
-                ) : (
-                  <>
-                    <Text variant="body">
-                      {feedback.isCorrect
-                        ? "Correct"
-                        : `Not quite — the answer was ${open.options[feedback.correctIndex] ?? ""}`}
-                    </Text>
-                    <Button title="Continue" onPress={onContinue} />
-                  </>
-                )}
-                {answerError ? (
-                  <Text variant="label" color={theme.colors.error[500]}>
-                    {answerError}
-                  </Text>
-                ) : null}
-                <Button title="Leave the quiz" variant="ghost" onPress={handleLeave} />
-              </>
-            ) : null}
+            <View className="flex-row items-center justify-between">
+              <Text className="font-mono text-[11px] font-medium text-white/70">
+                {`${formatTimestamp(current)} / ${formatTimestamp(total)}`}
+              </Text>
+              {Number.isFinite(barrier) && barrier < total ? (
+                <View className="flex-row items-center gap-1">
+                  <Lock size={12} className="text-white/70" />
+                  <Text className="text-[11px] font-medium text-white/70">Answer to unlock</Text>
+                </View>
+              ) : null}
+            </View>
+            {/* v1 plays and pauses by tapping the YouTube frame; the native
+                player has no controls, so the app keeps explicit ones. */}
+            <View className="mt-1 flex-row items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                textClassName="text-white"
+                accessibilityLabel={playing ? "Pause" : "Play"}
+                onPress={() => setPlaying((p) => !p)}
+              >
+                {playing ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white" />}
+                {playing ? "Pause" : "Play"}
+              </Button>
+              <Button variant="ghost" size="sm" textClassName="text-white/70" onPress={handleLeave}>
+                Leave the quiz
+              </Button>
+            </View>
           </View>
         </View>
+      )}
+
+      <View className="flex-row items-center justify-between rounded-xl border border-border bg-card p-4">
+        <View>
+          <Text className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+            {quiz.completedAt !== null ? "Quiz complete" : "In progress"}
+          </Text>
+          <Text className="text-xs text-muted-foreground">{`${quiz.answeredCount} of ${quiz.questions.length} answered`}</Text>
+        </View>
+        <View className="items-end">
+          <Text className="text-lg font-black text-brand-teal-700 dark:text-brand-teal-300">
+            {String(quiz.earnedPoints)}
+            <Text className="text-sm font-semibold text-muted-foreground">{`/${quiz.totalPoints}`}</Text>
+          </Text>
+          <Eyebrow>Points</Eyebrow>
+        </View>
+      </View>
+
+      {/* v1's QuestionModal ignores dismissal; here any dismiss (Android back,
+          backdrop, X) is an explicit exit — left alone it would delete the gate
+          (spec 13 §10 D15). */}
+      <Modal
+        open={open !== null}
+        onOpenChange={(next) => {
+          if (!next) handleLeave();
+        }}
+      >
+        <ModalContent>
+          {open !== null ? (
+            <>
+              <ModalHeader>
+                <ModalTitle>{open.prompt}</ModalTitle>
+              </ModalHeader>
+              <View className="flex-col gap-2">
+                {open.options.map((option, index) => {
+                  const correct = feedback !== null && index === feedback.correctIndex;
+                  return (
+                    <Pressable
+                      key={`${open.id}-${index}`}
+                      accessibilityRole="button"
+                      disabled={submit.isPending || feedback !== null}
+                      onPress={() => onAnswer(index)}
+                      className={cn(
+                        "flex-row items-center justify-between gap-2 rounded-xl border px-4 py-3",
+                        correct ? "border-success-600 bg-success-600/10" : "border-border bg-card active:border-brand-teal-500",
+                      )}
+                    >
+                      <Text
+                        className={cn(
+                          "flex-1 text-sm font-medium",
+                          correct ? "text-success-700 dark:text-success-300" : "text-foreground",
+                        )}
+                      >
+                        {option}
+                      </Text>
+                      {correct ? <Check size={16} className="shrink-0 text-success-700 dark:text-success-300" /> : null}
+                    </Pressable>
+                  );
+                })}
+                {answerError ? <Text className="text-xs text-error-600">{answerError}</Text> : null}
+                {feedback !== null ? (
+                  <View className="mt-2 flex-col gap-3">
+                    {feedback.isCorrect ? (
+                      <View className="flex-row items-center gap-2">
+                        <Check size={16} className="text-success-700 dark:text-success-300" />
+                        <Text className="text-sm font-bold text-success-700 dark:text-success-300">Correct!</Text>
+                      </View>
+                    ) : (
+                      <View className="flex-row items-center gap-2">
+                        <X size={16} className="text-error-600" />
+                        <Text className="flex-1 text-sm font-bold text-error-600">
+                          Not quite — the correct answer is highlighted.
+                        </Text>
+                      </View>
+                    )}
+                    <Button onPress={onContinue}>Continue</Button>
+                  </View>
+                ) : null}
+              </View>
+            </>
+          ) : null}
+        </ModalContent>
       </Modal>
     </View>
   );

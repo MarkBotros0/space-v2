@@ -120,7 +120,11 @@ describe("student video quiz", () => {
 
     // Cold-start of the whole session screen (player, webview mock, modal)
     // can exceed the 1s default while turbo runs every package in parallel.
-    expect(await screen.findByText("0 / 2 points", {}, { timeout: 8000 })).toBeTruthy();
+    // v1 summary: "0" + nested "/2" over "Points".
+    expect(await screen.findByText("0/2", {}, { timeout: 8000 })).toBeTruthy();
+    expect(screen.getByText("Points")).toBeTruthy();
+    expect(screen.getByText("In progress")).toBeTruthy();
+    expect(screen.getByText("0 of 2 answered")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/video-quiz");
     // The authoring read carries correctIndex for every question. A student
     // screen must never issue it, whatever the server would answer.
@@ -145,7 +149,7 @@ describe("student video quiz", () => {
     expect(
       await screen.findByText("Couldn't load the video quiz.", {}, { timeout: 5000 }),
     ).toBeTruthy();
-    expect(screen.queryByText("0 / 2 points")).toBeNull();
+    expect(screen.queryByText("0/2")).toBeNull();
   });
 
   it("opens the question modal at the barrier and posts the answer", async () => {
@@ -179,7 +183,8 @@ describe("student video quiz", () => {
         selectedIndex: 0,
       }),
     );
-    expect(await screen.findByText("Correct")).toBeTruthy();
+    expect(await screen.findByText("Correct!")).toBeTruthy();
+    expect(screen.getByText("Continue")).toBeTruthy();
   });
 
   it("falls back to a link when the URL does not resolve to a video", async () => {
@@ -195,7 +200,7 @@ describe("student video quiz", () => {
 
     renderWithProviders(<SessionDetailScreen />);
 
-    expect(await screen.findByText("Watch on YouTube")).toBeTruthy();
+    expect(await screen.findByText("Watch recording")).toBeTruthy();
     expect(screen.getByText("This session's video link can't be played in the app.")).toBeTruthy();
   });
 
@@ -218,7 +223,7 @@ describe("student video quiz", () => {
     );
 
     renderWithProviders(<SessionDetailScreen />);
-    expect(await screen.findByText("2 / 2 points")).toBeTruthy();
+    expect(await screen.findByText("2/2")).toBeTruthy();
     expect(screen.getByText("Quiz complete")).toBeTruthy();
   });
 });

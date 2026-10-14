@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { Linking, View } from "react-native";
+import { CheckCheck, Clock, MapPin } from "lucide-react-native";
+import { useEffect, useState, type ReactNode } from "react";
+import { View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { AttendanceRosterRow, MyAttendance, SessionDetail } from "@space/shared";
@@ -7,13 +8,19 @@ import type { AttendanceRosterRow, MyAttendance, SessionDetail } from "@space/sh
 import { StudentCheckInCard } from "../../../../src/components/check-in/StudentCheckInCard";
 import { SessionQuizzesCard } from "../../../../src/components/SessionQuizzesCard";
 import { VideoQuestionsEditor, VideoQuizResultsTable } from "../../../../src/components/VideoQuestionsEditor";
-import { VideoQuizPlayer } from "../../../../src/components/VideoQuizPlayer";
+import { VideoQuizPlayer, WatchRecordingButton } from "../../../../src/components/VideoQuizPlayer";
+import { BackLink, Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { iconWithClassName } from "../../../../src/design/lib/icon";
+import { shadowStyle } from "../../../../src/design/lib/shadow";
+import { Badge, Button as ButtonV1, Text as TextV1 } from "../../../../src/design/ui";
 import { useAttendanceRoster } from "../../../../src/hooks/use-attendance";
 import { useCheckInState, useRegenerateCheckIn } from "../../../../src/hooks/use-check-in";
 import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../../../src/hooks/use-session-detail";
 import { useStudentVideoQuiz } from "../../../../src/hooks/use-video-quiz";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
-import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
+import { addMinutesToWallTime, formatDayKey, formatLongDayYear, formatWallTime } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { useSessionStore } from "../../../../src/store/session";
 import { useTheme } from "../../../../src/theme";
@@ -21,6 +28,8 @@ import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from
 
 /** v1's leader page refreshed every 10s while check-in was open (check-in-attendance-list.tsx:58). */
 export const LIVE_ROSTER_REFRESH_MS = 10_000;
+
+iconWithClassName(CheckCheck, Clock, MapPin);
 
 function attendanceLine(a: MyAttendance): string {
   if (a.status === "PRESENT") return "Your attendance: Present";
@@ -157,7 +166,7 @@ function LiveCheckInRoster({ detail }: { detail: SessionDetail }) {
 }
 
 /**
- * The session's interactive video (Plan 14). Students get the player; a season
+ * The session's interactive video (Plan 14), staff side — students get the player in StudentSessionBody. A season
  * admin / SUPER gets the question editor (which reads the answer key); a LEADER
  * gets the results table only. Nothing renders for a session with no video — v1
  * lets an admin author a full quiz no student can ever reach (R17).
@@ -166,7 +175,6 @@ function VideoSection({ detail }: { detail: SessionDetail }) {
   const theme = useTheme();
   const user = useSessionStore((s) => s.user);
   const scopes = useSessionStore((s) => s.scopes);
-  const isStudent = user?.role === "STUDENT";
   // Mirrors canManageSessionVideo exactly: SUPER, or an ADMIN of this season.
   // NOT `canMarkAttendance` — that flag admits a group LEADER, who may not
   // author questions. The server enforces the gate regardless; this only decides
@@ -177,32 +185,9 @@ function VideoSection({ detail }: { detail: SessionDetail }) {
   // Results: authors, plus a LEADER (the server narrows a leader to their groups).
   const canSeeResults = canAuthorVideo || user?.role === "LEADER";
   const hasVideo = detail.youtubeUrl !== null;
-  const quiz = useStudentVideoQuiz(detail.id, isStudent && hasVideo);
 
   if (!hasVideo) return null;
 
-  if (isStudent) {
-    const youtubeUrl = detail.youtubeUrl;
-    return (
-      <View style={{ marginTop: theme.spacing.md }}>
-        {quiz.isPending ? (
-          <LoadingState />
-        ) : quiz.isError ? (
-          <ErrorState message="Couldn't load the video quiz." onRetry={() => void quiz.refetch()} />
-        ) : quiz.data.questions.length === 0 ? (
-          <Button
-            title="Watch on YouTube"
-            variant="secondary"
-            onPress={() => {
-              if (youtubeUrl !== null) void Linking.openURL(youtubeUrl);
-            }}
-          />
-        ) : (
-          <VideoQuizPlayer sessionId={detail.id} quiz={quiz.data} onRetry={() => void quiz.refetch()} />
-        )}
-      </View>
-    );
-  }
   if (canAuthorVideo) return <VideoQuestionsEditor sessionId={detail.id} />;
   if (canSeeResults) {
     return (
@@ -214,6 +199,93 @@ function VideoSection({ detail }: { detail: SessionDetail }) {
   return null;
 }
 
+/** v1 app/student/sessions/[id]/page.tsx + the v2 extras kept by B2-14. */
+function StudentSessionBody({
+  data,
+  refetch,
+  isRefetching,
+}: {
+  data: SessionDetail;
+  refetch: () => void;
+  isRefetching: boolean;
+}) {
+  const router = useRouter();
+  const hasVideo = data.youtubeUrl !== null;
+  const quiz = useStudentVideoQuiz(data.id, hasVideo);
+  // Org wall times from the server (X13); the end is text arithmetic on the org clock.
+  const end = addMinutesToWallTime(data.startTime, data.durationMinutes);
+
+  let video: ReactNode = null;
+  if (hasVideo) {
+    if (quiz.isPending) video = <RouteSkeleton />;
+    else if (quiz.isError)
+      video = (
+        <View className="flex-col items-start gap-2">
+          <TextV1 className="text-sm text-error-600 dark:text-error-400">Couldn't load the video quiz.</TextV1>
+          <ButtonV1 variant="outline" size="sm" onPress={() => void quiz.refetch()}>
+            Try again
+          </ButtonV1>
+        </View>
+      );
+    else if (quiz.data.questions.length === 0 && data.youtubeUrl !== null)
+      video = <WatchRecordingButton youtubeUrl={data.youtubeUrl} />;
+    else video = <VideoQuizPlayer sessionId={data.id} quiz={quiz.data} onRetry={() => void quiz.refetch()} />;
+  }
+
+  return (
+    <ShellFrame onRefresh={refetch} refreshing={isRefetching}>
+      <View className="flex-col gap-3">
+        <View>
+          <BackLink label="Calendar" onPress={() => router.back()} />
+          <View className="mt-2 rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+            <View className="mb-2 flex-row items-center gap-2">
+              <Badge variant={hasVideo ? "teal" : "outline"}>{hasVideo ? "Online" : "In-person"}</Badge>
+            </View>
+            <PageTitle title={data.title} size="detail" />
+            <TextV1 className="mt-1 text-sm text-muted-foreground">{formatLongDayYear(data.dayKey)}</TextV1>
+          </View>
+        </View>
+
+        {video}
+
+        <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+          <Eyebrow>Details</Eyebrow>
+          <View className="mt-2 flex-col gap-2">
+            <View className="flex-row items-center gap-2">
+              <Clock size={16} className="shrink-0 text-brand-teal-600" />
+              <TextV1 className="text-sm text-muted-foreground">
+                {`${formatWallTime(data.startTime)} – ${formatWallTime(end)} · ${data.durationMinutes} min`}
+              </TextV1>
+            </View>
+            {data.location ? (
+              <View className="flex-row items-center gap-2">
+                <MapPin size={16} className="shrink-0 text-brand-teal-600" />
+                <TextV1 className="text-sm text-muted-foreground">{data.location}</TextV1>
+              </View>
+            ) : null}
+            {data.myAttendance ? (
+              <View className="flex-row items-center gap-2">
+                <CheckCheck size={16} className="shrink-0 text-brand-teal-600" />
+                <TextV1 className="text-sm text-muted-foreground">{attendanceLine(data.myAttendance)}</TextV1>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        {data.description ? (
+          <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+            <Eyebrow className="mb-2">About</Eyebrow>
+            <TextV1 className="text-sm text-foreground/90">{data.description}</TextV1>
+          </View>
+        ) : null}
+
+        {/* Spec 04 §9 row 3: students get the check-in action (Plan 11, G2). */}
+        <StudentCheckInCard detail={data} />
+      </View>
+    </ShellFrame>
+  );
+}
+
 function SessionDetailBody({ id }: { id: number }) {
   const theme = useTheme();
   const router = useRouter();
@@ -222,18 +294,30 @@ function SessionDetailBody({ id }: { id: number }) {
   const { data, isPending, isError, refetch, isRefetching } = useSessionDetail(id);
 
   if (isPending) {
-    return (
+    return role === "STUDENT" ? (
+      <ShellFrame>
+        <RouteSkeleton />
+      </ShellFrame>
+    ) : (
       <Screen edges={["top", "left", "right"]}>
         <LoadingState />
       </Screen>
     );
   }
   if (isError) {
-    return (
+    return role === "STUDENT" ? (
+      <ShellFrame>
+        <RouteError onRetry={() => void refetch()} />
+      </ShellFrame>
+    ) : (
       <Screen edges={["top", "left", "right"]}>
         <ErrorState message="Couldn't load this session." onRetry={() => void refetch()} />
       </Screen>
     );
+  }
+
+  if (role === "STUDENT") {
+    return <StudentSessionBody data={data} refetch={() => void refetch()} isRefetching={isRefetching} />;
   }
 
   // v1 showed the console only to an admin OF the season; the API also lets any
@@ -267,9 +351,6 @@ function SessionDetailBody({ id }: { id: number }) {
         <CheckInConsole detail={data} />
       ) : data.canMarkAttendance ? (
         <LiveCheckInRoster detail={data} />
-      ) : role === "STUDENT" ? (
-        // Spec 04 §9 row 3: students get the check-in action (Plan 11, G2).
-        <StudentCheckInCard detail={data} />
       ) : null}
 
       {data.canMarkAttendance ? <SessionQuizzesCard sessionId={data.id} /> : null}
