@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { navByRole } from "@space/shared";
 
 import { useSessionStore } from "../store/session";
+import { renderWithProviders } from "./helpers/render";
 import { listRouteNames } from "./helpers/routes";
 import { makeScopes, makeUser } from "./helpers/session";
 
@@ -37,6 +38,9 @@ import { makeScopes, makeUser } from "./helpers/session";
 type CapturedScreen = { name: string; title?: string; href?: string | null };
 let mockScreens: CapturedScreen[] = [];
 let mockSegments: string[] = ["(app)", "dashboard"];
+// When set, the Tabs mock also renders the layout's tabBar and header (the
+// shell), which need providers the routing tests do without.
+let mockRenderChrome = false;
 
 jest.mock("expo-router", () => {
   const { Text } = require("react-native");
@@ -48,11 +52,33 @@ jest.mock("expo-router", () => {
     });
     return null;
   };
-  const Tabs = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+  const Tabs = ({
+    children,
+    tabBar,
+    screenOptions,
+  }: {
+    children: React.ReactNode;
+    tabBar?: (props: unknown) => React.ReactNode;
+    screenOptions?: { header?: (props: unknown) => React.ReactNode };
+  }) => (
+    <>
+      {children}
+      {mockRenderChrome && screenOptions?.header ? screenOptions.header({}) : null}
+      {mockRenderChrome && tabBar
+        ? tabBar({
+            state: { index: 0, routes: [{ key: "dashboard", name: "dashboard" }] },
+            navigation: { navigate: () => {} },
+            descriptors: {},
+            insets: { top: 0, bottom: 0, left: 0, right: 0 },
+          })
+        : null}
+    </>
+  );
   Tabs.Screen = TabsScreen;
   return {
     Tabs,
     useSegments: () => mockSegments,
+    useRouter: () => ({ push: () => {} }),
     Redirect: ({ href }: { href: string }) => <Text testID="redirect">{href}</Text>,
   };
 });
@@ -77,6 +103,46 @@ beforeEach(() => {
   useSessionStore.getState().clear();
   mockScreens = [];
   mockSegments = ["(app)", "dashboard"];
+  mockRenderChrome = false;
+});
+
+let mockNotificationItems: unknown[] = [];
+jest.mock("../hooks/use-notifications", () => ({
+  useUnreadCount: () => ({ data: 3 }),
+  useNotifications: () => ({ data: { pages: [{ items: mockNotificationItems }] } }),
+  useMarkRead: () => ({ mutate: () => {}, isPending: false }),
+  flattenNotifications: (pages?: { items: unknown[] }[]) => pages?.flatMap((p) => p.items) ?? [],
+}));
+
+describe("v1 shell", () => {
+  it("renders v1's floating tab bar with the role's tabs and the top bar", () => {
+    mockRenderChrome = true;
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    renderWithProviders(<AppLayout />);
+    const tabs = screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel);
+    expect(tabs).toEqual(navByRole.STUDENT.tabs.map((t) => t.label));
+    expect(screen.getByText("JPC Space")).toBeTruthy();
+    expect(screen.getByLabelText("Notifications (3 unread)")).toBeTruthy();
+    expect(screen.getByLabelText("User menu")).toBeTruthy();
+  });
+
+  it("lists v1's 10 most recent notifications in the bell (v1 listRecent(userId, 10))", () => {
+    mockRenderChrome = true;
+    mockNotificationItems = Array.from({ length: 15 }, (_, i) => ({
+      id: i + 1,
+      title: `Note ${i + 1}`,
+      body: null,
+      readAt: null,
+      createdAt: new Date().toISOString(),
+      target: null,
+    }));
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    renderWithProviders(<AppLayout />);
+    fireEvent.press(screen.getByLabelText("Notifications (3 unread)"));
+    expect(screen.getByText("Note 10")).toBeTruthy();
+    expect(screen.queryByText("Note 11")).toBeNull();
+    mockNotificationItems = [];
+  });
 });
 
 describe("AppLayout tab shell", () => {

@@ -8,3 +8,5 @@ dist/
 coverage/
 *.log
 uploads/
+
+tools/ui-reference/node_modules/

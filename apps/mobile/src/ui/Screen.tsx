@@ -3,6 +3,7 @@ import { RefreshControl, ScrollView, View } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { SHELL_BOTTOM_PADDING, useInShell } from "../design/layout/shell-context";
 import { useTheme } from "../theme";
 
 export type ScreenEdge = "top" | "bottom" | "left" | "right";
@@ -63,6 +64,10 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  // Inside v1's shell the top bar already sits under the status bar and the
+  // floating tab bar covers the bottom, so the top inset is dropped and the
+  // bottom gets v1's pb-24 instead.
+  const inShell = useInShell();
 
   // One padding value per edge — the standard `spacing.md` padding (when
   // `padded`) plus that edge's safe-area inset (when the edge is included in
@@ -76,8 +81,8 @@ export function Screen({
   // horizontal gutter.
   const pad = padded ? theme.spacing.md : 0;
   const paddingStyle: ViewStyle = {
-    paddingTop: pad + (edges.includes("top") ? insets.top : 0),
-    paddingBottom: pad + (edges.includes("bottom") ? insets.bottom : 0),
+    paddingTop: pad + (edges.includes("top") && !inShell ? insets.top : 0),
+    paddingBottom: inShell ? SHELL_BOTTOM_PADDING : pad + (edges.includes("bottom") ? insets.bottom : 0),
     paddingLeft: pad + (edges.includes("left") ? insets.left : 0),
     paddingRight: pad + (edges.includes("right") ? insets.right : 0),
   };

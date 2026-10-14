@@ -1,8 +1,17 @@
+import "../global.css";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useColorScheme } from "nativewind";
+import { useEffect, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useBootSession } from "../src/hooks/use-session";
+import { GEIST_FONTS } from "../src/design/theme/fonts";
+import { applyStoredThemeMode } from "../src/design/theme/theme-mode";
+import { Toaster } from "../src/design/ui/toaster";
 import { createQueryClient } from "../src/lib/query-client";
 import { useSessionStore } from "../src/store/session";
 import { ThemeProvider } from "../src/theme";
@@ -11,18 +20,40 @@ import { LoadingState } from "../src/ui";
 const queryClient = createQueryClient();
 
 export default function RootLayout() {
+  // Geist faces and the saved theme must be in place before first paint, or
+  // every screen flashes the system font / the wrong theme on cold start.
+  // A font that fails to load falls back to the system font rather than
+  // leaving the app blank: wait for either outcome.
+  const [fontsLoaded, fontError] = useFonts(GEIST_FONTS);
+  const [themeApplied, setThemeApplied] = useState(false);
+  useEffect(() => {
+    void applyStoredThemeMode().finally(() => setThemeApplied(true));
+  }, []);
+  if ((!fontsLoaded && !fontError) || !themeApplied) return null;
+
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        {/* SafeAreaProvider lives here, not in a lower-level component: it's
+    // sonner-native's swipe-to-dismiss needs the gesture root at the top.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          {/* SafeAreaProvider lives here, not in a lower-level component: it's
             the one place Screen's useSafeAreaInsets() can find a provider,
             and nothing below mounts Screen before Task 7. */}
-        <SafeAreaProvider>
-          <Gate />
-        </SafeAreaProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+          <SafeAreaProvider>
+            <Gate />
+            <Toaster />
+            <ThemedStatusBar />
+          </SafeAreaProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
+}
+
+/** Status-bar icons follow the app theme (dark icons on v1's light background). */
+function ThemedStatusBar() {
+  const { colorScheme } = useColorScheme();
+  return <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />;
 }
 
 /**

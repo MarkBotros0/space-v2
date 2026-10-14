@@ -2,28 +2,15 @@ import { Redirect, Tabs, useSegments } from "expo-router";
 import type { NavItem } from "@space/shared";
 import { ALL_NAV_HREFS } from "@space/shared";
 
-import { NavIcon } from "../../src/components/NavIcon";
+import { AppTopBar } from "../../src/design/layout/app-top-bar";
+import { FloatingTabBar } from "../../src/design/layout/floating-tab-bar";
+import { ShellContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
+import { DIRECTORY_ROUTE_HREFS, routeNameForHref } from "../../src/lib/route-names";
 import { useSessionStore } from "../../src/store/session";
 
-/**
- * Hrefs whose route is a directory (`x/index.tsx`) because the destination
- * has child routes (ruling X7): `students` (alumni, dropped), `seasons`
- * (Plan 6's `seasons/[code]/…`) and `users` (`users/new`, Plan 17's `users/import`). Without the mapping the tab bar looks for
- * a file named "seasons" and silently omits the tab.
- */
-const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons", "users"]);
-
-/**
- * href → route name (the `name` prop `Tabs.Screen` expects, which is the
- * file path relative to this directory, extension dropped). Exported (not just
- * used locally) so tests can check its output against what actually exists
- * on disk instead of trusting the hardcoded cases here.
- */
-export function routeNameForHref(href: string): string {
-  const path = href.slice(1);
-  return DIRECTORY_ROUTE_HREFS.has(path) ? `${path}/index` : path;
-}
+// Re-exported: tests and older imports read these from the layout.
+export { DIRECTORY_ROUTE_HREFS, routeNameForHref };
 
 /**
  * The full universe of route files under this group, derived from
@@ -121,27 +108,19 @@ export default function AppLayout() {
     ...DETAIL_ROUTE_NAMES,
   ];
 
+  // v1's shell (shell-frame.tsx): the top bar above every screen and the
+  // floating pill tab bar, which renders the role's tabs itself.
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
-      {orderedRouteNames.map((name) => {
-        const tab = tabByRouteName.get(name);
-        return (
-          <Tabs.Screen
-            key={name}
-            name={name}
-            options={
-              tab
-                ? {
-                    title: tab.label,
-                    tabBarIcon: ({ color, size }) => (
-                      <NavIcon name={tab.icon} color={color} size={size} />
-                    ),
-                  }
-                : { href: null }
-            }
-          />
-        );
-      })}
-    </Tabs>
+    <ShellContext.Provider value={true}>
+      <Tabs
+        screenOptions={{ header: () => <AppTopBar /> }}
+        tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
+      >
+        {orderedRouteNames.map((name) => {
+          const tab = tabByRouteName.get(name);
+          return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : { href: null }} />;
+        })}
+      </Tabs>
+    </ShellContext.Provider>
   );
 }

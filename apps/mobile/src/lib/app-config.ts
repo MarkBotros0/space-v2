@@ -11,3 +11,11 @@ export function easProjectId(): string | null {
   const id = extra?.eas?.projectId;
   return typeof id === "string" && id.length > 0 ? id : null;
 }
+
+/**
+ * Hidden developer routes (the design-system showcase) are compiled in only
+ * when the build sets EXPO_PUBLIC_SHOW_DEV_ROUTES=1.
+ */
+export function showDevRoutes(): boolean {
+  return process.env.EXPO_PUBLIC_SHOW_DEV_ROUTES === "1";
+}
