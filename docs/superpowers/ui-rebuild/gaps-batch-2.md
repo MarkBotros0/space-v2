@@ -148,3 +148,17 @@ status bar) are in `gaps-foundations.md` and not repeated.
 | No "Add photo" button; the avatar shows initials. | Uploads are off and v2 has no avatar read path. |
 | Budget stat reads "Absence budget left" (v1: "Attendance"). | Spec 19 D14. |
 | Success is a toast ("Profile saved."); v1 refreshed silently. | v2 feedback kept. |
+
+## Data gaps (would need backend / contract work — not done in this batch)
+
+| Gap | Effect today |
+|---|---|
+| No total in `GET /notifications`. | Header shows "{n} unread" only. |
+| No org wall time on `/me/season` upcoming rows and `/me/attendance` rows. | Times are the device's reading of `startsAt`. |
+| No org day key for quiz `sessionDate` / `gradedAt` or the student assignment list's `dueAt`. | Dates read in the device zone. |
+| No end time in session detail. | End = start wall time + duration. |
+| No `currentStatus` on the "already checked in" refusal. | Generic message. |
+| No total post count in the forum view. | "Group discussion · N" counts loaded posts. |
+| No avatar URL / upload endpoint (uploads off). | Initials only, no "Add photo". |
+| Submissions and forum posts are plain text on the wire. | No rich-text toolbar. |
+| No mobile hook for removing a submitted file. | No remove control. |

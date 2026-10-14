@@ -11,7 +11,6 @@ jest.mock("../hooks/use-session", () => ({
 
 // Ionicons loads its font asynchronously and setStates after the test body has
 // finished, which logs act() warnings. The glyph is not under test here.
-jest.mock("../components/NavIcon", () => ({ NavIcon: () => null }));
 
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
