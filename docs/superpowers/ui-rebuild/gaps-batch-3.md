@@ -11,3 +11,9 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - "Session 12 of 12" / "Session 12/12" instead of "Week …" (D12).
 - No season: v2 shows "No season yet"; v1 renders the dashboard with zeros. B3-4.
 - The DEV user-switcher icon in v1's top bar is a dev tool, not ported.
+
+## Groups
+- Members come from one `GET /groups/:id` per group (the list rows carry only a count; adding members to the list contract is a backend change). B3-5.
+- Groups of ACTIVE seasons come first; groups of other seasons follow under a "Past seasons" eyebrow, but only when both kinds exist (spec 05 §9). v1 sorts all groups by name together. B3-5.
+- Group cards are not pressable (v1), so the leader no longer reaches `/group/[id]`; that screen is the admin page (batch 4).
+- The STUDENT branch of `/groups` (deep link only, no v1 page) keeps its pre-rebuild rendering until the batch-6 cleanup.

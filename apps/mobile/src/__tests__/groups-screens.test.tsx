@@ -33,26 +33,71 @@ beforeEach(() => {
   useSessionStore.setState(leaderSession);
 });
 
-it("lists my groups with season and headcount, and navigates on press", async () => {
-  get.mockResolvedValue({ data: { data: { groups: [groupRow] } } });
+const season = (id: number, title: string, status: string) => ({
+  id, code: `s${id}`, title, program: "TEST", year: 2099, status,
+  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
+});
+const detail = (id: number, name: string, seasonId: number, students: { id: number; name: string | null; email?: string }[]) => ({
+  id, name, description: null, seasonId, seasonCode: `s${seasonId}`, seasonTitle: seasonId === 7 ? "Spring 2026" : "Fall 2025",
+  leaders: [], students, canManage: false,
+});
+
+function serveLeaderGroups() {
+  get.mockImplementation((url: string) => {
+    const body: Record<string, unknown> = {
+      "/api/v1/seasons": { seasons: [season(7, "Spring 2026", "ACTIVE"), season(3, "Fall 2025", "ARCHIVED")] },
+      "/api/v1/groups": {
+        groups: [
+          { ...groupRow, id: 2, name: "Older group", seasonId: 3, seasonCode: "s3", seasonTitle: "Fall 2025", studentCount: 0 },
+          groupRow,
+        ],
+      },
+      "/api/v1/groups/3": detail(3, "Group A", 7, [
+        { id: 21, name: "Sara Student", email: "sara@jpc.test" },
+        { id: 22, name: null, email: "noname@jpc.test" },
+      ]),
+      "/api/v1/groups/2": detail(2, "Older group", 3, []),
+    };
+    return url in body ? Promise.resolve({ data: { data: body[url] } }) : Promise.reject(new Error(url));
+  });
+}
+
+it("lists my groups v1-style: members, past seasons apart, student and calendar links", async () => {
+  useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3, 2] }, { id: 5, name: "Test leader", email: "l@jpc.test" }));
+  serveLeaderGroups();
 
   renderWithProviders(<GroupsScreen />);
 
-  expect(await screen.findByText("Group A")).toBeTruthy();
-  expect(screen.getByText("Spring 2026 · 8 students")).toBeTruthy();
-  expect(get).toHaveBeenCalledWith("/api/v1/groups");
+  expect(await screen.findByText("Sara Student")).toBeTruthy();
+  expect(screen.getByText("My groups")).toBeTruthy();
+  expect(screen.getByText("2 groups")).toBeTruthy();
+  expect(screen.getByText("Spring 2026")).toBeTruthy();
+  expect(screen.getByText("noname@jpc.test")).toBeTruthy();
+  expect(await screen.findByText("No students yet.")).toBeTruthy();
+  // Past seasons render after the current ones, under their own eyebrow (spec 05 §9).
+  const order = screen.UNSAFE_root.findAll((n: { props: { children?: unknown } }) => typeof n.props.children === "string").map((n: { props: { children?: unknown } }) => n.props.children as string);
+  expect(order.indexOf("Group A")).toBeLessThan(order.indexOf("Past seasons"));
+  expect(order.indexOf("Past seasons")).toBeLessThan(order.indexOf("Older group"));
 
   fireEvent.press(screen.getByText("Group A"));
-  expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "3" } });
+  expect(mockPush).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByText("Sara Student"));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
+  fireEvent.press(screen.getAllByText("Calendar →")[0]!);
+  expect(mockPush).toHaveBeenCalledWith("/calendar");
 });
 
-it("shows the empty state for a leader with no groups", async () => {
-  get.mockResolvedValue({ data: { data: { groups: [] } } });
+it("a leader who leads nothing gets v1's empty page and no request (R87)", () => {
+  useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [] }));
 
   renderWithProviders(<GroupsScreen />);
 
-  expect(await screen.findByText("No groups")).toBeTruthy();
+  expect(screen.getByText("You don't lead any groups yet.")).toBeTruthy();
+  expect(screen.getByText("No groups")).toBeTruthy();
+  expect(screen.getByText("An admin will add you to a group when you're ready.")).toBeTruthy();
+  expect(get).not.toHaveBeenCalled();
 });
+
 
 it("shows members with emails for a staff caller", async () => {
   get.mockResolvedValue({
