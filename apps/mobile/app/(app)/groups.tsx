@@ -105,11 +105,14 @@ function LeaderGroups() {
     );
   }
 
-  const active = new Set((seasons.data ?? []).filter((x) => x.status === "ACTIVE").map((x) => x.id));
+  // Past = a finished season; a DRAFT season being set up is upcoming, so it stays current.
+  const past = new Set(
+    (seasons.data ?? []).filter((x) => x.status === "COMPLETED" || x.status === "ARCHIVED").map((x) => x.id),
+  );
   // Until the seasons load, every group counts as current.
-  const isCurrent = (g: GroupListItem) => seasons.data === undefined || active.has(g.seasonId);
+  const isCurrent = (g: GroupListItem) => !past.has(g.seasonId);
   const current = rows.filter(isCurrent).sort(byName);
-  const past = rows.filter((g) => !isCurrent(g)).sort(byName);
+  const pastRows = rows.filter((g) => !isCurrent(g)).sort(byName);
   const card = (g: GroupListItem) => <LeaderGroupCard key={g.id} group={g} detail={details[rows.indexOf(g)] ?? { isError: false }} />;
 
   return (
@@ -132,8 +135,8 @@ function LeaderGroups() {
           ) : (
             <View className="flex-col gap-4">
               {current.map(card)}
-              {current.length > 0 && past.length > 0 ? <Eyebrow>Past seasons</Eyebrow> : null}
-              {past.map(card)}
+              {current.length > 0 && pastRows.length > 0 ? <Eyebrow>Past seasons</Eyebrow> : null}
+              {pastRows.map(card)}
             </View>
           )}
         </View>

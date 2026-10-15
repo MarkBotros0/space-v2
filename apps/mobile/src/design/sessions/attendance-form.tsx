@@ -4,13 +4,27 @@
  * toggles (+ minutes late), the error box, and the save bar. The screen owns
  * state and the write (touched rows only, notes kept — spec 04 R13/R16).
  * Native differences: ring-1 → border; v1's `sticky bottom-24` bar becomes a
- * bar pinned 96px above the bottom (over the floating tab bar), with a
- * spacer of its height closing the list so the last row stays reachable.
+ * bar pinned 16px above the floating tab bar (whose bottom follows the
+ * safe-area inset), with a spacer closing the list so the last row stays
+ * reachable.
  */
+
+/** The floating tab bar: bottom max(16, inset), 64px tall (floating-tab-bar.tsx). */
+const TAB_BAR_HEIGHT = 64;
+/** The save bar: two 36px buttons, an 8px gap, 12px padding and borders. */
+const SAVE_BAR_HEIGHT = 112;
+/** ShellFrame's own bottom padding (pb-24), which already clears an inset-free tab bar. */
+const FRAME_BOTTOM_PADDING = 96;
+
+function useSaveBarBottom(): number {
+  const insets = useSafeAreaInsets();
+  return Math.max(16, insets.bottom) + TAB_BAR_HEIGHT + 16;
+}
 import type { AttendanceRosterRow, AttendanceStatus } from "@space/shared";
 import { Check, Clock, X, type LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
@@ -46,6 +60,7 @@ export function AttendanceRosterForm({
   onMarkAll: (status: AttendanceStatus) => void;
   onLateText: (row: AttendanceRosterRow, text: string) => void;
 }) {
+  const barBottom = useSaveBarBottom();
   if (rows.length === 0) {
     return (
       <Text className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -137,19 +152,20 @@ export function AttendanceRosterForm({
         </Text>
       ) : null}
       {/* Room for the floating save bar. */}
-      <View testID="save-bar-spacer" className="h-28" />
+      <View testID="save-bar-spacer" style={{ height: SAVE_BAR_HEIGHT + barBottom - FRAME_BOTTOM_PADDING }} />
     </View>
   );
 }
 
 /** v1's save bar: Save above Cancel at phone width (flex-col-reverse). */
 export function AttendanceSaveBar({ pending, onSave, onCancel }: { pending: boolean; onSave: () => void; onCancel: () => void }): ReactNode {
+  const bottom = useSaveBarBottom();
   return (
     <View
       accessibilityLabel="Save bar"
       className="z-10 flex-col-reverse gap-2 rounded-lg border border-border bg-card p-3"
       // Inset offsets as a style: NativeWind left the inset classes unresolved here.
-      style={[{ position: "absolute", left: 16, right: 16, bottom: 96 }, shadowStyle("sm")]}
+      style={[{ position: "absolute", left: 16, right: 16, bottom }, shadowStyle("sm")]}
     >
       <Button variant="outline" disabled={pending} onPress={onCancel}>
         Cancel

@@ -394,17 +394,20 @@ function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
           <CheckInAttendanceList
             rows={roster.data}
             pending={save.isPending}
+            error={save.isError ? apiErrorMessage(save.error, "Couldn't save the attendance.") : null}
             onOverride={(row, status, done) =>
               save.mutate(
                 [{ studentUserId: row.studentUserId, status, notes: row.notes, lateMinutes: status === "LATE" ? row.lateMinutes : null }],
-                { onSuccess: done },
+                {
+                  onSuccess: () => {
+                    save.reset();
+                    done();
+                  },
+                },
               )
             }
           />
         )}
-        {save.isError ? (
-          <TextV1 className="text-xs text-error-600">{apiErrorMessage(save.error, "Couldn't save the attendance.")}</TextV1>
-        ) : null}
       </CardContent>
     </CardV1>
   );

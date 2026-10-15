@@ -342,3 +342,19 @@ it("shows a leader the video quiz results, and nothing for a video with no quest
   expect(await screen.findByText("Check-in")).toBeTruthy();
   await waitFor(() => expect(screen.queryByText("Video quiz results")).toBeNull());
 });
+
+it("shows a failed override inside the sheet, where the leader is looking", async () => {
+  useSessionStore.setState(leader());
+  routeGets({
+    detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
+    roster: [{ studentUserId: 21, name: "Sara Student", email: "sara@jpc.test", groupName: "Group A", status: null, notes: null, lateMinutes: null }],
+  });
+  post.mockRejectedValue(
+    Object.assign(new Error("400"), { isAxiosError: true, response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } } }),
+  );
+  renderWithProviders(<SessionDetailScreen />);
+  fireEvent.press(await screen.findByLabelText("Edit attendance for Sara Student"));
+  fireEvent.press(screen.getByLabelText("Mark Sara Student PRESENT"));
+  expect(await screen.findByTestId("override-error")).toBeTruthy();
+  expect(screen.getByText("Override attendance")).toBeTruthy();
+});

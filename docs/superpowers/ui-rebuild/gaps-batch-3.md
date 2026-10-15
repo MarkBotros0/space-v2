@@ -87,3 +87,8 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - A "Late" badge sits beside a late submission's status (V2-ONLY, like B2-16).
 - Attendance rows format the session start from an instant in the device zone (X13).
 - SUPER, ADMIN and MENTOR keep the pre-rebuild student screen until their batches.
+
+## Review fixes
+- `/submissions` is rebuilt for LEADER only; ADMIN, SUPER and MENTOR keep the pre-batch pending queue until their batches. `/submission/[publicId]` is v1's layout for every reviewer, because v1's review form is one shared component.
+- Groups in a DRAFT (upcoming) season count as current; only COMPLETED and ARCHIVED seasons go under "Past seasons".
+- The attendance save bar sits 16px above the floating tab bar, whose position follows the safe-area inset.

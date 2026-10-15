@@ -25,10 +25,13 @@ const ORDER: AttendanceStatus[] = ["PRESENT", "LATE", "ABSENT"];
 export function CheckInAttendanceList({
   rows,
   pending,
+  error,
   onOverride,
 }: {
   rows: AttendanceRosterRow[];
   pending: boolean;
+  /** The last override's failure, shown inside the sheet (the card is behind it). */
+  error: string | null;
   /** Resolves when the write settles; the sheet closes on success. */
   onOverride: (row: AttendanceRosterRow, status: AttendanceStatus, done: () => void) => void;
 }) {
@@ -102,6 +105,11 @@ export function CheckInAttendanceList({
               </View>
             ))}
           </View>
+          {error ? (
+            <Text testID="override-error" className="mt-3 text-sm text-error-600 dark:text-error-400">
+              {error}
+            </Text>
+          ) : null}
         </ModalContent>
       </Modal>
     </>

@@ -111,3 +111,13 @@ it("leaves the late count out of the header when zero", async () => {
   renderWithProviders(<SubmissionsScreen />);
   expect(await screen.findByText("1 pending review · 3 total")).toBeTruthy();
 });
+
+it("keeps the pre-batch pending queue for an admin until batch 4 (plan: other roles unchanged)", async () => {
+  useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 2 }));
+  get.mockResolvedValue({ data: { data: { items: [], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } } });
+
+  renderWithProviders(<SubmissionsScreen />);
+
+  expect(await screen.findByText("All caught up")).toBeTruthy();
+  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
+});

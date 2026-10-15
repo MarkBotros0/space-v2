@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), post: jest.fn() } }));
 const mockBack = jest.fn();
@@ -45,9 +46,12 @@ it("heads the page with the session, v1-style, and keeps the save bar clear of t
   renderWithProviders(<AttendanceScreen />);
   expect(await screen.findByText("Attendance — Week three")).toBeTruthy();
   expect(screen.getByText("Sun, Mar 1, 2099 · 8:00 PM")).toBeTruthy();
-  expect(screen.getByLabelText("Save bar")).toBeTruthy();
-  // The bar floats over the list; a spacer of its height ends the list.
-  expect(screen.getByTestId("save-bar-spacer")).toBeTruthy();
+  // The bar sits 16px above the floating tab bar, whose bottom follows the
+  // safe-area inset (helper inset: 34) — max(16, 34) + 64 + 16 = 114.
+  const bar = screen.getByLabelText("Save bar");
+  expect(StyleSheet.flatten(bar.props.style).bottom).toBe(114);
+  // The list ends with a spacer covering the bar and the part of the tab bar above the frame's own padding.
+  expect(StyleSheet.flatten(screen.getByTestId("save-bar-spacer").props.style).height).toBe(112 + 114 - 96);
   fireEvent.press(screen.getByText("Cancel"));
   expect(mockBack).toHaveBeenCalledTimes(1);
 });

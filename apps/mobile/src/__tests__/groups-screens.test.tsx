@@ -45,13 +45,15 @@ const detail = (id: number, name: string, seasonId: number, students: { id: numb
 function serveLeaderGroups() {
   get.mockImplementation((url: string) => {
     const body: Record<string, unknown> = {
-      "/api/v1/seasons": { seasons: [season(7, "Spring 2026", "ACTIVE"), season(3, "Fall 2025", "ARCHIVED")] },
+      "/api/v1/seasons": { seasons: [season(7, "Spring 2026", "ACTIVE"), season(3, "Fall 2025", "ARCHIVED"), season(9, "Fall 2026", "DRAFT")] },
       "/api/v1/groups": {
         groups: [
           { ...groupRow, id: 2, name: "Older group", seasonId: 3, seasonCode: "s3", seasonTitle: "Fall 2025", studentCount: 0 },
           groupRow,
+          { ...groupRow, id: 4, name: "Next group", seasonId: 9, seasonCode: "s9", seasonTitle: "Fall 2026", studentCount: 0 },
         ],
       },
+      "/api/v1/groups/4": detail(4, "Next group", 9, []),
       "/api/v1/groups/3": detail(3, "Group A", 7, [
         { id: 21, name: "Sara Student", email: "sara@jpc.test" },
         { id: 22, name: null, email: "noname@jpc.test" },
@@ -70,14 +72,16 @@ it("lists my groups v1-style: members, past seasons apart, student and calendar 
 
   expect(await screen.findByText("Sara Student")).toBeTruthy();
   expect(screen.getByText("My groups")).toBeTruthy();
-  expect(screen.getByText("2 groups")).toBeTruthy();
+  expect(screen.getByText("3 groups")).toBeTruthy();
   expect(screen.getByText("Spring 2026")).toBeTruthy();
   expect(screen.getByText("noname@jpc.test")).toBeTruthy();
-  expect(await screen.findByText("No students yet.")).toBeTruthy();
+  expect((await screen.findAllByText("No students yet.")).length).toBe(2);
   // Past seasons render after the current ones, under their own eyebrow (spec 05 §9).
   const order = screen.UNSAFE_root.findAll((n: { props: { children?: unknown } }) => typeof n.props.children === "string").map((n: { props: { children?: unknown } }) => n.props.children as string);
   expect(order.indexOf("Group A")).toBeLessThan(order.indexOf("Past seasons"));
   expect(order.indexOf("Past seasons")).toBeLessThan(order.indexOf("Older group"));
+  // A season being set up (DRAFT) is upcoming, not past.
+  expect(order.indexOf("Next group")).toBeLessThan(order.indexOf("Past seasons"));
 
   fireEvent.press(screen.getByText("Group A"));
   expect(mockPush).not.toHaveBeenCalled();
