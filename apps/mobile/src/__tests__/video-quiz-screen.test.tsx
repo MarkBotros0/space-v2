@@ -9,9 +9,10 @@ jest.mock("../lib/api-client", () => ({
     delete: jest.fn(),
   },
 }));
+const mockBack = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "12" }),
-  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), back: mockBack }),
 }));
 // The session screen statically imports Plan 11's StudentCheckInCard → QrScanner
 // → expo-camera (a native module). Plan 11's stand-in, as every suite that
@@ -185,6 +186,22 @@ describe("student video quiz", () => {
     );
     expect(await screen.findByText("Correct!")).toBeTruthy();
     expect(screen.getByText("Continue")).toBeTruthy();
+  });
+
+  it("keeps the question sheet open on a stray backdrop tap and offers an explicit exit", async () => {
+    renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={quiz} readCurrentTime={async () => 31} />);
+    expect(await screen.findByText("Question 1", {}, { timeout: 3000 })).toBeTruthy();
+
+    // v1's QuestionModal ignores dismissal: no ×, and the backdrop does nothing.
+    expect(screen.queryByLabelText("Close")).toBeNull();
+    fireEvent.press(screen.getByLabelText("Dismiss"));
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(screen.getByText("Question 1")).toBeTruthy();
+
+    // Leaving is a labelled choice inside the sheet (spec 13 D15).
+    const leave = screen.getAllByText("Leave the quiz");
+    fireEvent.press(leave[leave.length - 1]!);
+    expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
   it("falls back to a link when the URL does not resolve to a video", async () => {

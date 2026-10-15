@@ -340,16 +340,16 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
         </View>
       </View>
 
-      {/* v1's QuestionModal ignores dismissal; here any dismiss (Android back,
-          backdrop, X) is an explicit exit — left alone it would delete the gate
-          (spec 13 §10 D15). */}
+      {/* v1's QuestionModal ignores dismissal: no ×, inert backdrop. The
+          Android back button is an explicit exit — left alone it would
+          delete the gate (spec 13 §10 D15). */}
       <Modal
         open={open !== null}
         onOpenChange={(next) => {
           if (!next) handleLeave();
         }}
       >
-        <ModalContent>
+        <ModalContent dismissible={false}>
           {open !== null ? (
             <>
               <ModalHeader>
@@ -400,6 +400,9 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
                     <Button onPress={onContinue}>Continue</Button>
                   </View>
                 ) : null}
+                <Button variant="ghost" onPress={handleLeave}>
+                  Leave the quiz
+                </Button>
               </View>
             </>
           ) : null}

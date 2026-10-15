@@ -76,7 +76,20 @@ function ModalClose({ children }: { children: ReactElement }) {
   return withPress(children, () => setOpen(false));
 }
 
-function ModalContent({ className, children }: { className?: string; children?: ReactNode }) {
+/**
+ * `dismissible={false}`: v1's `onOpenChange={noop}` sheets — no ×, and the
+ * backdrop does nothing. The Android back button still requests a close
+ * (onOpenChange(false)), so the caller decides what back means.
+ */
+function ModalContent({
+  className,
+  children,
+  dismissible = true,
+}: {
+  className?: string;
+  children?: ReactNode;
+  dismissible?: boolean;
+}) {
   const { open, setOpen } = useContext(ModalContext);
   // Context, not the hook: a sheet rendered outside SafeAreaProvider (tests,
   // early boot) gets 0 insets instead of throwing.
@@ -90,7 +103,14 @@ function ModalContent({ className, children }: { className?: string; children?: 
   }, [open, slide]);
   return (
     <RNModal transparent visible={open} animationType="fade" statusBarTranslucent onRequestClose={() => setOpen(false)}>
-      <Pressable testID="modal-backdrop" accessibilityLabel="Dismiss" style={StyleSheet.absoluteFill} onPress={() => setOpen(false)}>
+      <Pressable
+        testID="modal-backdrop"
+        accessibilityLabel="Dismiss"
+        style={StyleSheet.absoluteFill}
+        onPress={() => {
+          if (dismissible) setOpen(false);
+        }}
+      >
         <BlurView intensity={15} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
         <View className="absolute inset-0 bg-background/70" />
       </Pressable>
@@ -107,6 +127,7 @@ function ModalContent({ className, children }: { className?: string; children?: 
           >
             <View className="absolute left-1/2 top-2 -ml-5 h-1 w-10 rounded-full bg-muted-foreground/30" />
             {children}
+{dismissible ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close"
@@ -115,6 +136,7 @@ function ModalContent({ className, children }: { className?: string; children?: 
             >
               <X size={16} className="text-muted-foreground" />
             </Pressable>
+            ) : null}
           </View>
         </Animated.View>
       </KeyboardAvoidingView>

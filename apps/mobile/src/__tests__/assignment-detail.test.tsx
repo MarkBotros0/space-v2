@@ -72,6 +72,21 @@ describe("AssignmentDetailScreen", () => {
     expect(get).toHaveBeenCalledWith("/api/v1/assignments/41");
   });
 
+  it("shows a v2 plain-text brief verbatim, angle brackets and all", async () => {
+    // v2's form stores plain text; the column also holds v1's TipTap HTML.
+    get.mockResolvedValue({ data: { data: { ...detail, description: "Read pages <intro> & <summary>.\nThen reflect." } } });
+    renderWithProviders(<AssignmentDetailScreen />);
+    expect(await screen.findByText("Read pages <intro> & <summary>.")).toBeTruthy();
+    expect(screen.getByText("Then reflect.")).toBeTruthy();
+  });
+
+  it("renders a v1 HTML brief as markup", async () => {
+    get.mockResolvedValue({ data: { data: { ...detail, description: "<p><strong>Bold</strong> brief</p>" } } });
+    renderWithProviders(<AssignmentDetailScreen />);
+    expect(await screen.findByText("Bold")).toBeTruthy();
+    expect(screen.queryByText(/<strong>/)).toBeNull();
+  });
+
   it("shows reviewed feedback from mySubmission", async () => {
     const assignment = {
       ...detail,

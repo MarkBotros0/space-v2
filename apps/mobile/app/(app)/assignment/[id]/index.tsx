@@ -26,6 +26,7 @@ import {
 } from "../../../../src/design/ui";
 import { useAssignmentDetail } from "../../../../src/hooks/use-assignments";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
+import { storedTextToHtml } from "../../../../src/lib/stored-text";
 import {
   useEnsureSubmission,
   useSaveSubmission,
@@ -249,7 +250,7 @@ function StudentAssignmentDetail({ detail, onRefresh, refreshing }: { detail: As
         {detail.description ? (
           <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
             <Eyebrow className="mb-2">{forum ? "Question" : "Brief"}</Eyebrow>
-            <RichTextView html={detail.description} />
+            <RichTextView html={storedTextToHtml(detail.description)} />
           </View>
         ) : null}
         {/* A forum response IS the submission; it can never carry files. */}

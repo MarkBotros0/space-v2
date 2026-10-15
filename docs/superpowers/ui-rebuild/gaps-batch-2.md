@@ -100,7 +100,7 @@ status bar) are in `gaps-foundations.md` and not repeated.
 | Difference | Reason |
 |---|---|
 | Event rows without a url open v2's event screen (v1: inert). | v2 has an event detail route. |
-| "Today / in N days" counts calendar days between org day keys (v1 rounds the instant distance, which can differ by one near evening sessions). | X13 — no device-clock day maths. |
+| "Today / in N days" counts calendar days between day keys (v1 rounds the instant distance, which can differ by one near evening sessions). "Today" itself is the device's date, so a phone far from Cairo can be a day off around midnight. | Day headings and grid cells use the server's `dayKey`; the student path has no server "org today" to read. |
 | Events older than 30 days or more than a year ahead never load, so Month can't show them. | Server window of `GET /events` (D-15.1). |
 | Alumni keep the pre-rebuild calendar. | v1 alumni have an Events page instead — batch 6. |
 | Arabic chip titles truncate from the end of the line in their own direction. | Platform text layout. |
