@@ -166,9 +166,15 @@ it("gives a leader a read-only live roster — no open/close/regenerate/edit (sp
   renderWithProviders(<SessionDetailScreen />);
 
   expect(await screen.findByText("Sara Student")).toBeTruthy();
-  expect(screen.getByText("Check-in is open")).toBeTruthy();
+  // v1: an Open/Closed badge in the card header, and v1's "Not recorded".
+  expect(screen.getByText("Check-in")).toBeTruthy();
+  expect(screen.getByText("Open")).toBeTruthy();
   expect(screen.getByText("Present")).toBeTruthy();
-  expect(screen.getByText("Not checked in")).toBeTruthy();
+  expect(screen.getByText("Not recorded")).toBeTruthy();
+  expect(screen.getByText("Sun, Mar 15 · 8:00 PM")).toBeTruthy();
+  // The leader page has no duration, location or description (v1).
+  expect(screen.queryByText("Hall B")).toBeNull();
+  expect(screen.queryByText("Bring your notebook.")).toBeNull();
   for (const label of ["Open check-in", "Close check-in", "Regenerate code", "Edit session"]) {
     expect(screen.queryByText(label)).toBeNull();
   }
@@ -187,7 +193,7 @@ it("refreshes the leader's roster every 10 seconds while check-in is open", asyn
     const rosterCalls = () => get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12/attendance").length;
 
     renderWithProviders(<SessionDetailScreen />);
-    expect(await screen.findByText("Check-in is open")).toBeTruthy();
+    expect(await screen.findByText("Open")).toBeTruthy();
     await waitFor(() => expect(rosterCalls()).toBe(1));
 
     await act(async () => {
@@ -270,7 +276,7 @@ it("hides the quiz card when the session has none", async () => {
   expect(screen.queryByText("Quizzes")).toBeNull();
 });
 
-it("opens a session quiz's staff preview from the quiz card (Plan 8 Task 11b)", async () => {
+it("goes straight to grading from a quiz's Grade → link (v1)", async () => {
   useSessionStore.setState(leader());
   routeGets({
     detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
@@ -278,7 +284,61 @@ it("opens a session quiz's staff preview from the quiz card (Plan 8 Task 11b)", 
   });
   renderWithProviders(<SessionDetailScreen />);
 
-  fireEvent.press(await screen.findByText("Online quiz"));
+  expect(await screen.findByText("Online quiz")).toBeTruthy();
+  fireEvent.press(screen.getByText("Grade →"));
 
-  expect(mockPush).toHaveBeenCalledWith({ pathname: "/quiz/[id]", params: { id: "41" } });
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/quiz/[id]/grade", params: { id: "41" } });
+});
+
+it("lets a leader override one student's attendance, keeping stored notes (v1 modal; spec 04 D7/R32)", async () => {
+  useSessionStore.setState(leader());
+  routeGets({
+    detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
+    roster: [
+      { studentUserId: 21, name: "Sara Student", email: "sara@jpc.test", groupName: "Group A", status: "LATE", notes: "Bus strike", lateMinutes: 15 },
+    ],
+  });
+  post.mockResolvedValue({ data: { data: { saved: 1 } } });
+
+  renderWithProviders(<SessionDetailScreen />);
+  fireEvent.press(await screen.findByLabelText("Edit attendance for Sara Student"));
+  expect(screen.getByText("Override attendance")).toBeTruthy();
+  fireEvent.press(screen.getByLabelText("Mark Sara Student ABSENT"));
+
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/attendance", {
+      entries: [{ studentUserId: 21, status: "ABSENT", notes: "Bus strike", lateMinutes: null }],
+    }),
+  );
+  await waitFor(() => expect(screen.queryByText("Override attendance")).toBeNull());
+});
+
+it("shows a leader the video quiz results, and nothing for a video with no questions (spec 13 D10)", async () => {
+  useSessionStore.setState(leader());
+  const detail = { ...baseDetail, youtubeUrl: "https://youtu.be/x", canMarkAttendance: true, canManageCheckIn: false };
+  const results = (questionCount: number) => ({
+    questionCount,
+    totalPoints: questionCount,
+    rows: [{ studentUserId: 21, studentName: "Sara Student", groupId: 3, groupName: "Group A", answeredCount: 1, questionCount, earnedPoints: 1, totalPoints: questionCount, completedAt: null }],
+  });
+  let questions = 2;
+  get.mockImplementation((url: string) => {
+    if (url === "/api/v1/sessions/12") return ok(detail);
+    if (url === "/api/v1/sessions/12/attendance") return ok({ roster: [] });
+    if (url === "/api/v1/sessions/12/quizzes") return ok({ quizzes: [] });
+    if (url === "/api/v1/sessions/12/video-quiz/results") return ok(results(questions));
+    return Promise.reject(new Error(`unexpected GET ${url}`));
+  });
+
+  const first = renderWithProviders(<SessionDetailScreen />);
+  expect(await screen.findByText("Video quiz results")).toBeTruthy();
+  expect(screen.getByText("1/2 answered")).toBeTruthy();
+  expect(screen.getByText("In progress")).toBeTruthy();
+  first.unmount();
+
+  questions = 0;
+  renderWithProviders(<SessionDetailScreen />);
+  await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/video-quiz/results"));
+  expect(await screen.findByText("Check-in")).toBeTruthy();
+  await waitFor(() => expect(screen.queryByText("Video quiz results")).toBeNull());
 });

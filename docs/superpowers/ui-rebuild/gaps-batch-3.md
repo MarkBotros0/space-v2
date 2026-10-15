@@ -59,3 +59,12 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - Client checks only that each essay mark is a whole number (v1's message "Enter 0–N points…"); the server enforces the maximum (D7). Paper scores are not clamped on the device (D7).
 - The paper table keeps v1's light-only colours in dark mode (v1 has no dark: classes) and scrolls sideways inside its card with fixed column widths. No v1 paper capture exists to compare against.
 - Long Arabic titles wrap at different points (font metrics).
+
+## Session detail (leader)
+- "Mark attendance" (v1 admin's default button) sits under the header: v1 leaders had no link to their attendance page, and in v2 this is the only way in. V2-ONLY. B3-13.
+- No check-in time under each name: the roster has no `checkedInAt` (contract change needed, as an org wall time for X13).
+- Override = one entry through the batch attendance write (spec 04 D7). It keeps the student's stored notes and, for Late, their late minutes (fixes v1's wipe, R32), and it runs low-attendance flagging, which v1's override did not (D7).
+- Roster order and membership come from enrolment, ordered by group then name (spec 04 D6/D9); v1 used `GroupStudent`, unordered.
+- "Grade →" opens grading directly (v1); "· Draft" after an unpublished online quiz's max score is V2-ONLY.
+- "Video quiz results" (spec 13 D10) is V2-ONLY, drawn as a v1 card with DataTable rows, and hidden when the video has no questions.
+- Duration, location and description are not shown (v1's leader page has none). The admin console branch is untouched (batch 4).
