@@ -209,8 +209,13 @@ the last screen stops importing them. Student-page idioms shared by later batche
 (v1's hand-rolled h1, eyebrow, back link), `route-states.tsx` (v1's route
 skeleton and error), `shell-frame.tsx` (page frame with v1's navy-50 tint and
 pull-to-refresh), `src/design/students/` (StatCard, SeasonHistory),
-`src/design/sessions/season-calendar.tsx`. Remaining differences per batch are
-in `docs/superpowers/ui-rebuild/gaps-batch-<n>.md`.
+`src/design/sessions/season-calendar.tsx`. Leader-page idioms (batch 3), shared with
+admin later: `src/design/dashboard/section-card.tsx` (card with icon header + "View all",
+FigurePair), `src/design/sessions/{next-session-card,check-in-attendance-list,attendance-form}.tsx`,
+`src/design/quizzes/` (attempt grader, paper sheet), `src/design/students/{student-detail,note-form}.tsx`;
+`RouteError` picks "your leader" / "an admin" from the session role. If a capture shows a
+class ignored, restart Metro with `--clear` before working around it. Remaining
+differences per batch are in `docs/superpowers/ui-rebuild/gaps-batch-<n>.md`.
 
 **Testing.** Anything rendering `Screen` must use `renderWithProviders`
 (`src/__tests__/helpers/render.tsx`) — it supplies `SafeAreaProvider` with
