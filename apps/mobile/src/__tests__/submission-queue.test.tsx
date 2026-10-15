@@ -27,7 +27,7 @@ beforeEach(() => {
   useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
 });
 
-it("lists the pending queue and loads the next page from the cursor", async () => {
+it("lists every reviewable submission (v1, B3-8) and loads the next page from the cursor", async () => {
   get
     .mockResolvedValueOnce({
       data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: "aaa1111111" } },
@@ -39,12 +39,12 @@ it("lists the pending queue and loads the next page from the cursor", async () =
   renderWithProviders(<SubmissionsScreen />);
 
   expect(await screen.findByText("Essay one")).toBeTruthy();
-  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
+  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=false&limit=25");
 
   fireEvent.press(screen.getByText("Load more"));
   expect(await screen.findByText("Essay two")).toBeTruthy();
   expect(get).toHaveBeenLastCalledWith(
-    "/api/v1/submissions?pendingOnly=true&limit=25&cursor=aaa1111111",
+    "/api/v1/submissions?pendingOnly=false&limit=25&cursor=aaa1111111",
   );
   // Last page: the button goes away.
   expect(screen.queryByText("Load more")).toBeNull();
@@ -57,7 +57,10 @@ it("labels a late hand-in from the contract flag", async () => {
 
   renderWithProviders(<SubmissionsScreen />);
 
-  expect(await screen.findByText("Test student · Group A · Late")).toBeTruthy();
+  expect(await screen.findByText("Test student")).toBeTruthy();
+  expect(screen.getByText("Group A")).toBeTruthy();
+  expect(screen.getByText("Submitted")).toBeTruthy();
+  expect(screen.getByText("Late")).toBeTruthy();
 });
 
 it("navigates to the review screen on press", async () => {
@@ -66,7 +69,7 @@ it("navigates to the review screen on press", async () => {
   });
 
   renderWithProviders(<SubmissionsScreen />);
-  fireEvent.press(await screen.findByText("Essay one"));
+  fireEvent.press(await screen.findByText("Test student"));
 
   expect(mockPush).toHaveBeenCalledWith({
     pathname: "/submission/[publicId]",
@@ -74,12 +77,13 @@ it("navigates to the review screen on press", async () => {
   });
 });
 
-it("shows 'All caught up' for an empty queue", async () => {
+it("shows v1's empty state for an empty queue", async () => {
   get.mockResolvedValue({ data: { data: { items: [], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } } });
 
   renderWithProviders(<SubmissionsScreen />);
 
-  expect(await screen.findByText("All caught up")).toBeTruthy();
+  expect(await screen.findByText("No submissions yet")).toBeTruthy();
+  expect(screen.getByText("Submissions from students in your groups will appear here.")).toBeTruthy();
 });
 
 it("keeps the tab an empty state for a student, without a request", async () => {
@@ -97,6 +101,7 @@ it("shows v1's header counts, omitting late when there are none", async () => {
   });
   renderWithProviders(<SubmissionsScreen />);
   expect(await screen.findByText("4 pending review · 9 total · 2 late")).toBeTruthy();
+  expect(screen.getByRole("header", { name: "Submissions" })).toBeTruthy();
 });
 
 it("leaves the late count out of the header when zero", async () => {
@@ -105,4 +110,14 @@ it("leaves the late count out of the header when zero", async () => {
   });
   renderWithProviders(<SubmissionsScreen />);
   expect(await screen.findByText("1 pending review · 3 total")).toBeTruthy();
+});
+
+it("keeps the pre-batch pending queue for an admin until batch 4 (plan: other roles unchanged)", async () => {
+  useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 2 }));
+  get.mockResolvedValue({ data: { data: { items: [], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } } });
+
+  renderWithProviders(<SubmissionsScreen />);
+
+  expect(await screen.findByText("All caught up")).toBeTruthy();
+  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
 });

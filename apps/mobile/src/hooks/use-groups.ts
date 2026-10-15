@@ -32,14 +32,27 @@ export function useMyGroups(enabled: boolean): UseQueryResult<GroupListItem[]> {
   });
 }
 
+async function fetchGroupDetail(id: number): Promise<GroupDetail> {
+  const res = await apiClient.get(`/api/v1/groups/${id}`);
+  return groupDetailSchema.parse(res.data.data);
+}
+
 export function useGroupDetail(id: number | null): UseQueryResult<GroupDetail> {
   return useQuery({
     queryKey: queryKeys.groups.detail(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/groups/${id}`);
-      return groupDetailSchema.parse(res.data.data);
-    },
+    queryFn: () => fetchGroupDetail(id as number),
     enabled: id !== null,
+  });
+}
+
+/**
+ * Several groups' details at once (same keys as useGroupDetail). The leader's
+ * groups page lists each group's members, which GET /groups rows don't carry
+ * (B3-5: one request per group instead of a contract change).
+ */
+export function useGroupDetails(ids: number[]): UseQueryResult<GroupDetail>[] {
+  return useQueries({
+    queries: ids.map((id) => ({ queryKey: queryKeys.groups.detail(id), queryFn: () => fetchGroupDetail(id) })),
   });
 }
 

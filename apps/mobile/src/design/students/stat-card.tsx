@@ -77,9 +77,12 @@ export function StatCard({
           style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
         />
       ) : null}
-      <View className="flex-row items-center justify-center gap-1">
+      {/* Same for the value: CSS keeps "100%" on one line, spilling into the padding. */}
+      <View className="-mx-3 flex-row items-center justify-center gap-1">
         {icon === "flame" ? <Flame testID="stat-card-flame" size={24} className="text-warning-500" /> : null}
-        <Text className={cn("text-3xl font-black leading-none", VALUE[variant])}>{value}</Text>
+        <Text numberOfLines={1} className={cn("text-3xl font-black leading-none", VALUE[variant])}>
+          {value}
+        </Text>
       </View>
       {/* CSS never breaks inside a word, so v1's "ASSIGNMENTS" overflows into
           the tile's padding; React Native would break it mid-word. The label

@@ -1,5 +1,6 @@
 import { AlumniDashboard } from "../../src/components/dashboard/AlumniDashboard";
 import { DashboardFrame } from "../../src/components/dashboard/DashboardFrame";
+import { LeaderDashboard } from "../../src/components/dashboard/LeaderDashboard";
 import { MentorDashboard } from "../../src/components/dashboard/MentorDashboard";
 import { SeasonStaffDashboard } from "../../src/components/dashboard/SeasonStaffDashboard";
 import { StudentDashboard } from "../../src/components/dashboard/StudentDashboard";
@@ -35,7 +36,7 @@ export default function DashboardScreen() {
     case "ADMIN":
       return <SeasonStaffDashboard role="ADMIN" />;
     case "LEADER":
-      return <SeasonStaffDashboard role="LEADER" />;
+      return <LeaderDashboard />;
     case "MENTOR":
       return <MentorDashboard />;
     case "STUDENT":

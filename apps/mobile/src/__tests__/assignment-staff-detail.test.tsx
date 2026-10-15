@@ -21,7 +21,7 @@ const del = apiClient.delete as jest.Mock;
 const detail = {
   id: 55, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
   sessionId: 12, sessionTitle: "Week 4", title: "Essay one",
-  description: "Write about the thing.", dueAt: "2099-04-01T21:59:00.000Z",
+  description: "<p>Write about <strong>the thing</strong>.</p>", dueAt: "2099-04-01T21:59:00.000Z",
   dueOrgDay: "2099-04-01", dueOrgTime: "23:59", isOverdue: false, isAllGroups: false,
   type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false,
   maxFileSizeMb: 10, allowedMimeCategories: ["pdf" as const], groupIds: [3],
@@ -72,6 +72,9 @@ describe("AssignmentDetailScreen (staff)", () => {
 
     expect(await screen.findByText("Essay one")).toBeTruthy();
     expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+    // Stored v1 HTML renders as text, never as literal tags (B3-16).
+    expect(screen.queryByText(/<p>/)).toBeNull();
+    expect(screen.getByText(/the thing/)).toBeTruthy();
     expect(await screen.findByText("Assigned to: Group A")).toBeTruthy();
     expect(screen.getByText("Standard · files up to 10 MB (PDFs)")).toBeTruthy();
     expect(screen.getByText("Linked session: Week 4")).toBeTruthy();

@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   sessionListItemSchema,
@@ -62,4 +62,35 @@ export function useSessionRange(params: SessionRangeParams, enabled: boolean): U
     },
     enabled,
   });
+}
+
+/**
+ * Every session of several seasons (v1 leader calendar: the union of each led
+ * season's sessions, sorted by start). Same keys as useSeasonSessions, so the
+ * cache is shared. B3-6: GET /sessions is still windowed (D-16.7 amendment
+ * not implemented), so the leader reads each season instead.
+ */
+export function useLedSeasonSessions(seasonIds: number[]): {
+  sessions: SessionListItem[];
+  isPending: boolean;
+  isError: boolean;
+  isRefetching: boolean;
+  refetch: () => void;
+} {
+  const results = useQueries({
+    queries: seasonIds.map((id) => ({
+      queryKey: queryKeys.sessions.bySeason(id),
+      queryFn: () => fetchSeasonSessions(id),
+    })),
+  });
+  const sessions = results
+    .flatMap((r) => r.data ?? [])
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.id - b.id);
+  return {
+    sessions,
+    isPending: results.some((r) => r.isPending),
+    isError: results.some((r) => r.isError),
+    isRefetching: results.some((r) => r.isRefetching),
+    refetch: () => results.forEach((r) => void r.refetch()),
+  };
 }

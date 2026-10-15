@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
@@ -9,6 +10,10 @@ import {
 } from "@space/shared";
 
 import { DropEnrollmentSheet } from "../../../../src/components/DropEnrollmentSheet";
+import { PageTitle } from "../../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { StudentDetail as StudentDetailView } from "../../../../src/design/students/student-detail";
 import { GraduateStudentSheet } from "../../../../src/components/GraduateStudentSheet";
 import { isNoSeasonError, useStudentEngagement } from "../../../../src/hooks/use-engagement";
 import { flattenNotePages, useCreateNote, useStudentNotes } from "../../../../src/hooks/use-notes";
@@ -20,6 +25,7 @@ import {
   type StudentDetail,
 } from "../../../../src/hooks/use-students";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
+import { queryKeys } from "../../../../src/lib/query-keys";
 import { formatDate, formatDateTime, formatDayKey } from "../../../../src/lib/format";
 import { studentActionsFor } from "../../../../src/lib/student-actions";
 import { useSessionStore } from "../../../../src/store/session";
@@ -369,6 +375,41 @@ function NotesSection({ studentId, enabled }: { studentId: number; enabled: bool
   );
 }
 
+/**
+ * LEADER — v1 app/leader/students/[id] (B3-15). Pull-to-refresh invalidates
+ * the student's queries; only mounted ones (the opened tabs) refetch.
+ */
+function LeaderStudentDetail({ id }: { id: number }) {
+  const queryClient = useQueryClient();
+  const { data, isPending, isError, refetch, isRefetching } = useStudentDetail(id, "LEADER");
+  const refresh = () => {
+    void refetch();
+    for (const key of [
+      queryKeys.engagement.student(id),
+      queryKeys.students.attendance(id),
+      queryKeys.students.submissions(id),
+      queryKeys.notes.byStudent(id),
+    ]) {
+      void queryClient.invalidateQueries({ queryKey: key });
+    }
+  };
+  return (
+    <ShellFrame refreshing={isRefetching} onRefresh={refresh}>
+      {isPending ? (
+        <RouteSkeleton />
+      ) : isError ? (
+        <RouteError onRetry={() => void refetch()} />
+      ) : (
+        <View className="flex-col gap-4">
+          <PageTitle title={data.name} subtitle={`${data.email} · leader view`} />
+          {/* A leader who can open this page can write a note about the student (v1 canWriteNote). */}
+          <StudentDetailView student={data} canWriteNote />
+        </View>
+      )}
+    </ShellFrame>
+  );
+}
+
 export default function StudentDetailScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -379,7 +420,8 @@ export default function StudentDetailScreen() {
   const parsed = Number(rawId);
   const id = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 
-  const { data, isPending, isError, refetch } = useStudentDetail(id, role);
+  const isLeader = role === "LEADER";
+  const { data, isPending, isError, refetch } = useStudentDetail(isLeader ? null : id, role);
   const deleteStudent = useDeleteStudent();
   const [graduateOpen, setGraduateOpen] = useState(false);
   const [dropTarget, setDropTarget] = useState<EnrollmentHistoryItem | null>(null);
@@ -413,6 +455,7 @@ export default function StudentDetailScreen() {
       </Screen>
     );
   }
+  if (isLeader) return <LeaderStudentDetail id={id} />;
 
   return (
     <Screen edges={["top", "left", "right"]} scroll>

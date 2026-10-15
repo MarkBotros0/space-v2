@@ -3,9 +3,10 @@ import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
 }));
+const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41" }),
-  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -85,7 +86,8 @@ describe("grading screen — PAPER", () => {
 
     expect(await screen.findByText("Test student")).toBeTruthy();
     expect(screen.getByDisplayValue("18")).toBeTruthy();
-    expect(screen.getByText("1/2 graded")).toBeTruthy();
+    expect(screen.getByText("1 / 2 graded")).toBeTruthy();
+    expect(screen.getByText("Week 1 · Max score: 20")).toBeTruthy();
 
     fireEvent.changeText(screen.getByLabelText("Score for Test student"), "15");
     fireEvent.press(screen.getByText("Save grades"));
@@ -98,6 +100,24 @@ describe("grading screen — PAPER", () => {
         entries: [{ studentUserId: 9, score: 15, notes: null }],
       }),
     );
+    expect(await screen.findByText("Saved")).toBeTruthy();
+  });
+
+  it("goes back to the session from v1's back link", async () => {
+    renderWithProviders(<QuizGradeScreen />);
+    fireEvent.press(await screen.findByText("Back to session"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "12" } });
+  });
+
+  it("has no back link when the quiz has no session", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/quizzes/41"
+        ? Promise.resolve({ data: { data: authoring({ sessionId: null, sessionTitle: null }) } })
+        : Promise.resolve({ data: { data: { ...gradeSheet, sessionTitle: null } } }),
+    );
+    renderWithProviders(<QuizGradeScreen />);
+    expect(await screen.findByText("Max score: 20")).toBeTruthy();
+    expect(screen.queryByText("Back to session")).toBeNull();
   });
 
   it("clears a grade when the field is emptied", async () => {
@@ -157,10 +177,14 @@ describe("grading screen — ONLINE", () => {
     expect(screen.getByText("Because of the river.")).toBeTruthy();
     // R103: the grader sees what was right. This is the audience the answer key
     // exists for — and the student contract has no field to carry it.
-    expect(screen.getByText("Correct answer: Paris")).toBeTruthy();
+    // v1 names the right option only when the student missed it.
+    expect(screen.getByText("Paris")).toBeTruthy();
+    expect(screen.getByText("2/2")).toBeTruthy();
+    expect(screen.queryByText(/correct:/)).toBeNull();
+    expect(screen.getByText("Attempt 1 · Awaiting grading")).toBeTruthy();
 
     fireEvent.changeText(screen.getByLabelText("Marks for Discuss."), "4");
-    fireEvent.press(screen.getByText("Save marks"));
+    fireEvent.press(screen.getByText("Save grade"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/900/grade", {
@@ -198,11 +222,29 @@ describe("grading screen — ONLINE", () => {
 
     renderWithProviders(<QuizGradeScreen />);
 
-    fireEvent.press(await screen.findByText("Reopen for a retake"));
+    expect(await screen.findByText("Attempt 1 · Graded · 6/7")).toBeTruthy();
+    expect(screen.getByText("Update grade")).toBeTruthy();
+    fireEvent.press(screen.getByText("Reopen retake"));
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/reopen", {
         studentUserId: 9,
       }),
     );
+  });
+
+  it("names the right option when the student missed it (v1)", async () => {
+    const wrong = {
+      ...attemptsPage,
+      items: [{ ...attemptsPage.items[0]!, answers: [{ ...attemptsPage.items[0]!.answers[0]!, selectedIndex: 0, isCorrect: false, pointsAwarded: 0 }] }],
+    };
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/quizzes/41"
+        ? Promise.resolve({ data: { data: authoring({ kind: "ONLINE", maxScore: 7, publishedAt: "2099-02-01T00:00:00.000Z" }) } })
+        : Promise.resolve({ data: { data: wrong } }),
+    );
+    renderWithProviders(<QuizGradeScreen />);
+    expect(await screen.findByText("London (correct: Paris)")).toBeTruthy();
+    expect(screen.getByText(" (correct: Paris)")).toBeTruthy();
+    expect(screen.getByText("0/2")).toBeTruthy();
   });
 });

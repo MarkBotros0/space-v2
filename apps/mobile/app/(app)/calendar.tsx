@@ -14,9 +14,10 @@ import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { SeasonCalendar } from "../../src/design/sessions/season-calendar";
 import { EmptyState as EmptyStateV1 } from "../../src/design/ui";
 import { useEvents } from "../../src/hooks/use-events";
+import { useMyGroups } from "../../src/hooks/use-groups";
 import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
-import { useSeasonSessions, useSessionRange } from "../../src/hooks/use-sessions";
+import { useLedSeasonSessions, useSeasonSessions, useSessionRange } from "../../src/hooks/use-sessions";
 import {
   dayCue,
   deviceTodayKey,
@@ -371,7 +372,73 @@ function StudentSeasonCalendar({
   );
 }
 
-/** SUPER (every ACTIVE season) and LEADER (every led season) — G17. */
+/**
+ * LEADER — v1 app/leader/calendar/page.tsx: every session of every led
+ * season in v1's SeasonCalendar, "{n} sessions" under the title. B3-6: each
+ * led season is read on its own (GET /sessions is still windowed).
+ */
+function LeaderCalendar() {
+  const router = useRouter();
+  const groups = useMyGroups(true);
+  const seasonIds = [...new Set((groups.data ?? []).map((g) => g.seasonId))];
+  const led = useLedSeasonSessions(seasonIds);
+  const events = useEvents();
+  const eventRows = events.data ?? [];
+  const today = deviceTodayKey();
+  const n = led.sessions.length;
+
+  let body: ReactNode;
+  if (groups.isPending || led.isPending) body = <RouteSkeleton />;
+  else if (groups.isError || led.isError)
+    body = (
+      <RouteError
+        onRetry={() => {
+          void groups.refetch();
+          led.refetch();
+        }}
+      />
+    );
+  else if (n === 0 && eventRows.length === 0)
+    body = (
+      <EmptyStateV1
+        icon={CalendarIcon}
+        title="Nothing scheduled yet"
+        description="Sessions and events will appear here once they're added."
+      />
+    );
+  else
+    body = (
+      <SeasonCalendar
+        sessions={led.sessions}
+        events={eventRows}
+        today={today}
+        initialAnchor={`${initialAnchor(led.sessions, today).slice(0, 8)}01`}
+        onOpenSession={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
+        onOpenEvent={(e) => router.push({ pathname: "/event/[id]", params: { id: String(e.id) } })}
+      />
+    );
+
+  return (
+    <ShellFrame
+      onRefresh={() => {
+        void groups.refetch();
+        led.refetch();
+        void events.refetch();
+      }}
+      refreshing={groups.isRefetching || led.isRefetching}
+    >
+      <View className="flex-col gap-4">
+        <PageTitle
+          title="Calendar"
+          subtitle={groups.isPending || led.isPending ? undefined : `${n} ${n === 1 ? "session" : "sessions"}`}
+        />
+        {body}
+      </View>
+    </ShellFrame>
+  );
+}
+
+/** SUPER (every ACTIVE season) — G17. */
 function MultiSeasonCalendar() {
   return (
     <Screen edges={["top", "left", "right"]} scroll>
@@ -424,12 +491,20 @@ export default function CalendarScreen() {
   }
   if (leadsNothing) {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <EmptyState title="No calendar" message="You don't lead any groups yet." />
-      </Screen>
+      <ShellFrame>
+        <View className="flex-col gap-4">
+          <PageTitle title="Calendar" subtitle="You don't lead any groups yet." />
+          <EmptyStateV1
+            icon={CalendarIcon}
+            title="No calendar"
+            description="An admin will add you to a group when you're ready."
+          />
+        </View>
+      </ShellFrame>
     );
   }
-  if (role === "SUPER" || role === "LEADER") return <MultiSeasonCalendar />;
+  if (role === "LEADER") return <LeaderCalendar />;
+  if (role === "SUPER") return <MultiSeasonCalendar />;
   if (role === "ADMIN") return <AdminCalendar />;
   if (isAlumnus) return <AlumniCalendar />;
   return <StudentCalendar />;

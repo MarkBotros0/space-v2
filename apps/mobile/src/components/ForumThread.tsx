@@ -158,7 +158,7 @@ function CommentRow({ comment, assignmentId }: { comment: ForumComment; assignme
         open={confirming}
         onOpenChange={setConfirming}
         title="Delete comment?"
-        description="This removes your comment for everyone."
+        description="This removes the comment for everyone."
         confirmLabel="Delete"
         destructive
         pending={remove.isPending}

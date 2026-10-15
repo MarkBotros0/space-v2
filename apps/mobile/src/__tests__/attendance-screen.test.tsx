@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), post: jest.fn() } }));
 const mockBack = jest.fn();
@@ -16,6 +17,13 @@ import AttendanceScreen from "../../app/(app)/session/[id]/attendance";
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
+const sessionDetail = {
+  id: 12, title: "Week three", description: null, startsAt: "2099-03-01T18:00:00.000Z",
+  dayKey: "2099-03-01", startTime: "20:00", durationMinutes: 90, location: null, youtubeUrl: null,
+  recurrenceGroupId: null, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026",
+  checkInOpen: false, myAttendance: null, canMarkAttendance: true, canManageCheckIn: false,
+};
+
 const roster = [
   { studentUserId: 9, name: "Test student", email: "s@jpc.test", groupName: "Group A",
     status: null, notes: null, lateMinutes: null },
@@ -27,7 +35,33 @@ beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
-  get.mockResolvedValue({ data: { data: { roster } } });
+  get.mockImplementation((url: string) =>
+    url === "/api/v1/sessions/12"
+      ? Promise.resolve({ data: { data: sessionDetail } })
+      : Promise.resolve({ data: { data: { roster } } }),
+  );
+});
+
+it("heads the page with the session, v1-style, and keeps the save bar clear of the last row", async () => {
+  renderWithProviders(<AttendanceScreen />);
+  expect(await screen.findByText("Attendance — Week three")).toBeTruthy();
+  expect(screen.getByText("Sun, Mar 1, 2099 · 8:00 PM")).toBeTruthy();
+  // The bar sits 16px above the floating tab bar, whose bottom follows the
+  // safe-area inset (helper inset: 34) — max(16, 34) + 64 + 16 = 114.
+  const bar = screen.getByLabelText("Save bar");
+  expect(StyleSheet.flatten(bar.props.style).bottom).toBe(114);
+  // The list ends with a spacer covering the bar and the part of the tab bar above the frame's own padding.
+  expect(StyleSheet.flatten(screen.getByTestId("save-bar-spacer").props.style).height).toBe(112 + 114 - 96);
+  fireEvent.press(screen.getByText("Cancel"));
+  expect(mockBack).toHaveBeenCalledTimes(1);
+});
+
+it("shows Saving… while the write is in flight", async () => {
+  post.mockReturnValue(new Promise(() => {}));
+  renderWithProviders(<AttendanceScreen />);
+  fireEvent.press(await screen.findByLabelText("Mark Test student PRESENT"));
+  fireEvent.press(screen.getByText("Save attendance"));
+  expect(await screen.findByText("Saving…")).toBeTruthy();
 });
 
 it("renders the roster and saves only rows the caller touched, notes carried through", async () => {
@@ -87,7 +121,7 @@ it("marks everyone at once (v1's quick mark all)", async () => {
   post.mockResolvedValue({ data: { data: { saved: 2 } } });
 
   renderWithProviders(<AttendanceScreen />);
-  fireEvent.press(await screen.findByText("All present"));
+  fireEvent.press(await screen.findByLabelText("Mark all PRESENT"));
   fireEvent.press(screen.getByText("Save attendance"));
 
   await waitFor(() =>

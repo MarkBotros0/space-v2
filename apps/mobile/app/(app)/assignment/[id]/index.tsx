@@ -295,10 +295,11 @@ export default function AssignmentDetailScreen() {
               data.isOverdue ? " · Overdue" : ""
             }`}
           </Text>
+          {/* Descriptions hold v1's stored HTML or v2 plain text; never show raw tags (B3-16). */}
           {data.description ? (
-            <Text variant="body" style={{ marginTop: theme.spacing.sm }}>
-              {data.description}
-            </Text>
+            <View style={{ marginTop: theme.spacing.sm }}>
+              <RichTextView html={storedTextToHtml(data.description)} />
+            </View>
           ) : null}
           {/* Staff keep the authoring panel and read the thread below it
               (own === null). MENTOR reads every group (the API answers 200,

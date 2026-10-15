@@ -53,11 +53,13 @@ function DataTable<Row>({
               {primary ? asNode(primary.cell(row), "text-foreground") : null}
               {metaColumns.length > 0 ? (
                 <View className="mt-0.5 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  {/* The "·" rides with the cell before it: v1's inline flow keeps a
+                      separator at the end of the line it ends, never starting the next. */}
                   {metaColumns.map((col, j) => (
-                    <Fragment key={col.key}>
-                      {j > 0 ? <Text className="text-xs text-muted-foreground">·</Text> : null}
-                      <View className="min-w-0">{asNode(col.cell(row), "text-xs text-muted-foreground")}</View>
-                    </Fragment>
+                    <View key={col.key} className="min-w-0 max-w-full flex-row items-center gap-x-1.5">
+                      {asNode(col.cell(row), "shrink text-xs text-muted-foreground")}
+                      {j < metaColumns.length - 1 ? <Text className="text-xs text-muted-foreground">·</Text> : null}
+                    </View>
                   ))}
                 </View>
               ) : null}

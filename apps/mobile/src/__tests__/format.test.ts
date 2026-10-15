@@ -1,4 +1,5 @@
 import {
+  formatShortDateTime,
   addMinutesToWallTime,
   formatShortDate,
   formatDistanceOnly,
@@ -148,5 +149,12 @@ describe("batch-2 formatters", () => {
     expect(formatStampAgo(new Date(Date.now() - 2 * 3_600_000).toISOString())).toMatch(
       /^\w{3} \d{1,2}, \d{4} · \d{1,2}:\d{2} (AM|PM) · 2 hours ago$/,
     );
+  });
+});
+
+describe("formatShortDateTime (v1 submissions 'MMM d, h:mm a', device zone)", () => {
+  it("formats an instant without the year", () => {
+    expect(formatShortDateTime(new Date(2026, 6, 1, 18, 13).toISOString())).toBe("Jul 1, 6:13 PM");
+    expect(formatShortDateTime(null)).toBe("—");
   });
 });

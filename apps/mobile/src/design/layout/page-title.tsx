@@ -6,9 +6,11 @@
  * `text-xs font-semibold text-brand-teal-700 … ← Label`.
  */
 import type { ReactNode } from "react";
+import { ArrowLeft } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
 import { cn } from "../lib/cn";
+import { iconWithClassName } from "../lib/icon";
 import { Text } from "../ui/text";
 
 export function PageTitle({
@@ -57,7 +59,21 @@ export function Eyebrow({
   );
 }
 
-export function BackLink({ label, onPress }: { label: string; onPress: () => void }) {
+iconWithClassName(ArrowLeft);
+
+/**
+ * `icon`: v1's staff pages (quiz grading) draw `ArrowLeft` + label, teal-700
+ * in both themes (the leader page has no dark: variant) — B3-2.
+ */
+export function BackLink({ label, onPress, icon = false }: { label: string; onPress: () => void; icon?: boolean }) {
+  if (icon) {
+    return (
+      <Pressable accessibilityRole="link" onPress={onPress} className="mb-1 flex-row items-center gap-1 self-start">
+        <ArrowLeft size={12} className="text-brand-teal-700" />
+        <Text className="text-xs font-semibold text-brand-teal-700">{label}</Text>
+      </Pressable>
+    );
+  }
   return (
     <Pressable accessibilityRole="link" onPress={onPress} className="self-start">
       <Text className="text-xs font-semibold text-brand-teal-700 dark:text-brand-teal-300">← {label}</Text>

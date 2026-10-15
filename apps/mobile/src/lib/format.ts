@@ -191,3 +191,8 @@ export function formatStampAgo(iso: string | null): string {
 export function formatShortDate(iso: string | null): string {
   return formatIso(iso, "MMM d");
 }
+
+/** e.g. "Jul 1, 6:13 PM" — v1's submissions stamp for an instant (device zone; no org fields on those payloads). */
+export function formatShortDateTime(iso: string | null): string {
+  return formatIso(iso, "MMM d, h:mm a");
+}
