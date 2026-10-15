@@ -76,3 +76,14 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - After saving, the screen goes back (v2), where v1 jumps to `/leader/calendar`.
 - Server errors show the API's message in v1's error box (v1 showed its own action's message).
 - Roster order: group, then name (spec 04 D6/D9), the same as v1's attendance page.
+
+## Student profile (leader)
+- Phone, Date of birth, Spiritual background, Internal notes and the Call button are absent: a leader's payload withholds them (spec 06 D3/C8). B3-15.
+- The tab row scrolls sideways; v1's five tabs make the whole page 464px wide. Attendance, Submissions and Notes load the first time their tab opens (spec 06 §9).
+- The engagement card appears once its data loads (v1 renders server-side). No card when the student has no current season (v1).
+- "At risk" badge in the engagement card title (V2-ONLY, C4).
+- Seasons list only the rows in the leader's groups (spec 06 §7); the attendance badge is hidden when the server sends no figure.
+- Notes: plain-text Textarea instead of v1's rich-text editor (spec 09 D1). The visibility description is v2's corrected sentence (spec 09 D3). "Follow up", "· Edited" and "Load more" are kept from v2.
+- A "Late" badge sits beside a late submission's status (V2-ONLY, like B2-16).
+- Attendance rows format the session start from an instant in the device zone (X13).
+- SUPER, ADMIN and MENTOR keep the pre-rebuild student screen until their batches.

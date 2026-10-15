@@ -1,7 +1,7 @@
-import { fireEvent, screen } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
-  apiClient: { get: jest.fn() },
+  apiClient: { get: jest.fn(), post: jest.fn() },
 }));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
@@ -188,5 +188,101 @@ describe("StudentDetailScreen history (REG-83)", () => {
     expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/attendance");
     expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/submissions");
     expect(screen.queryByText(/% attendance/)).toBeNull();
+  });
+});
+
+describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () => {
+  const leaderSession = {
+    user: { id: 5, name: "Test leader", email: "lead@jpc.test", role: "LEADER" as const, avatarPath: null, hasPassword: true },
+    scopes: { ...emptyScopes, groupLeaderIds: [3] },
+  };
+  const post = (apiClient as unknown as { post: jest.Mock }).post;
+  const engagement = {
+    score: 75, attendancePct: 50, submissionPct: 100, attendancePresent: 2, attendanceTotal: 4,
+    submissionsCompleted: 2, submissionsExpected: 2, studentUserId: 21, seasonId: 7, seasonTitle: "Spring 2099", atRisk: false,
+  };
+  function serveLeader(over: { engagementError?: boolean } = {}) {
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/students/21")
+        return Promise.resolve({ data: { data: { ...base, enrollments: [{ ...enrollment, status: "ACTIVE", dropReason: null, droppedAt: null, attendancePct: 83 }], profile: publicProfile } } });
+      if (url === "/api/v1/students/21/engagement")
+        return over.engagementError
+          ? Promise.reject(Object.assign(new Error("404"), { isAxiosError: true, response: { status: 404, data: { error: { code: "no_season", message: "x" } } } }))
+          : Promise.resolve({ data: { data: engagement } });
+      if (url === "/api/v1/students/21/submissions")
+        return Promise.resolve({ data: { data: { submissions: [{ publicId: "abc123defg", assignmentId: 41, assignmentTitle: "Essay one", status: "SUBMITTED", isLate: false, submittedAt: "2099-03-02T10:00:00.000Z", reviewedAt: null, seasonId: 7, seasonTitle: "Spring 2099" }] } } });
+      if (url.startsWith("/api/v1/students/21/notes")) return Promise.resolve({ data: { data: { notes: [], nextCursor: null } } });
+      if (url === "/api/v1/students/21/attendance") return Promise.resolve({ data: { data: { history: [] } } });
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+  }
+  const requested = () => get.mock.calls.map(([u]) => u as string);
+
+  it("shows v1's leader header and hero without the fields a leader doesn't receive", async () => {
+    useSessionStore.setState(leaderSession);
+    serveLeader();
+    renderWithProviders(<StudentDetailScreen />);
+    expect(await screen.findByText("sara@jpc.test · leader view")).toBeTruthy();
+    expect(screen.getByText("Email")).toBeTruthy();
+    expect(screen.queryByText("Call")).toBeNull();
+    expect(screen.queryByText("Phone")).toBeNull();
+    expect(screen.queryByText("Date of birth")).toBeNull();
+    for (const label of ["University", "Year / faculty", "Gifts / interests"]) expect(screen.getByText(label)).toBeTruthy();
+    expect(await screen.findByText("Engagement (current season)")).toBeTruthy();
+    expect(screen.getByText("75%")).toBeTruthy();
+    expect(screen.getByText("Attendance: 2/4 (50%)")).toBeTruthy();
+  });
+
+  it("fetches a tab's data only when the tab opens (spec 06 §9)", async () => {
+    useSessionStore.setState(leaderSession);
+    serveLeader();
+    renderWithProviders(<StudentDetailScreen />);
+    expect(await screen.findByText("sara@jpc.test · leader view")).toBeTruthy();
+    expect(requested().some((u) => u.endsWith("/submissions") || u.endsWith("/attendance") || u.includes("/notes"))).toBe(false);
+
+    fireEvent.press(screen.getByText("Submissions"));
+    expect(await screen.findByText("Essay one")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/students/21/submissions");
+    fireEvent.press(screen.getByText("Essay one"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
+
+    fireEvent.press(screen.getByText("Seasons"));
+    expect(await screen.findByText("83% attendance")).toBeTruthy();
+  });
+
+  it("writes a note with v1's composer: visibility, follow-up flag, and the empty-note check", async () => {
+    useSessionStore.setState(leaderSession);
+    serveLeader();
+    post.mockResolvedValue({ data: { data: { note: { id: 1 } } } });
+    renderWithProviders(<StudentDetailScreen />);
+    fireEvent.press(await screen.findByText("Notes"));
+    expect(await screen.findByText("No notes yet")).toBeTruthy();
+
+    fireEvent.changeText(screen.getByLabelText("Note"), "x");
+    fireEvent.press(screen.getByText("Add note"));
+    expect(await screen.findByText("Note can't be empty.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+
+    fireEvent.changeText(screen.getByLabelText("Note"), "Prayed together after the session.");
+    fireEvent.press(screen.getByLabelText("Visible to"));
+    fireEvent.press(await screen.findByText("Admins only"));
+    fireEvent.press(screen.getByLabelText("Flag for admin follow-up"));
+    fireEvent.press(screen.getByText("Add note"));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/students/21/notes", {
+        body: "Prayed together after the session.",
+        visibility: "ADMINS",
+        followUpFlagged: true,
+      }),
+    );
+  });
+
+  it("shows no engagement card when the student has no season (v1)", async () => {
+    useSessionStore.setState(leaderSession);
+    serveLeader({ engagementError: true });
+    renderWithProviders(<StudentDetailScreen />);
+    expect(await screen.findByText("sara@jpc.test · leader view")).toBeTruthy();
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement"));
+    expect(screen.queryByText("Engagement (current season)")).toBeNull();
   });
 });
