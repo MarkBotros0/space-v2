@@ -135,17 +135,43 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
     );
   });
 
-  it("renders the server's org time, not the device's reading of startsAt (X13)", async () => {
-    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }));
-    get.mockResolvedValue(range([{ ...session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01"), startTime: "20:00" }]));
+  const groupRow = (id: number, seasonId: number) => ({
+    id, name: `Group ${id}`, description: null, studentCount: 3, leaderNames: [],
+    seasonId, seasonCode: `S${seasonId}`, seasonTitle: `Season ${seasonId}`,
+  });
+  function serveLeader() {
+    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3, 4] }));
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/groups") return Promise.resolve({ data: { data: { groups: [groupRow(3, 7), groupRow(4, 8)] } } });
+      if (url === "/api/v1/seasons/7/sessions")
+        return Promise.resolve({ data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] } } });
+      if (url === "/api/v1/seasons/8/sessions")
+        return Promise.resolve({
+          data: { data: { sessions: [{ ...session(2, "Other season", "2099-03-08T18:00:00.000Z", "2099-03-08"), seasonId: 8 }] } },
+        });
+      if (url.startsWith("/api/v1/events")) return Promise.resolve({ data: { data: { events: [], total: 0 } } });
+      return Promise.reject(new Error(url));
+    });
+  }
+
+  it("gives a leader every led season's sessions in v1's season calendar, in org time (X13)", async () => {
+    serveLeader();
     renderWithProviders(<CalendarScreen />);
-    expect(await screen.findByText("8:00 PM")).toBeTruthy();
+    expect(await screen.findByText("Kickoff")).toBeTruthy();
+    expect(await screen.findByText("Other season")).toBeTruthy();
+    expect(screen.getByText("2 sessions")).toBeTruthy();
+    expect(screen.getAllByText("8:00").length).toBe(2);
+    expect(get).not.toHaveBeenCalledWith("/api/v1/sessions", expect.anything());
+    fireEvent.press(screen.getByText("Kickoff"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "1" } });
   });
 
   it("tells a leader with no groups so, and fetches nothing (spec 03 R84)", async () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [] }));
     renderWithProviders(<CalendarScreen />);
     expect(await screen.findByText("You don't lead any groups yet.")).toBeTruthy();
+    expect(screen.getByText("No calendar")).toBeTruthy();
+    expect(screen.getByText("An admin will add you to a group when you're ready.")).toBeTruthy();
     expect(get).not.toHaveBeenCalled();
   });
 
