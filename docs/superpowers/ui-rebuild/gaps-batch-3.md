@@ -22,3 +22,8 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - Sessions are read per led season (`GET /seasons/:id/sessions` for each `seasonId` in the leader's groups) and merged on the device. `GET /sessions` is still capped at 8 weeks / 120 days, because the D-16.7 parity amendment (unbounded when no dates are given) was never built in the backend. B3-6.
 - "Today" in the agenda is the device date, as for the student (batch-2 note).
 - No visible difference in the light and dark captures.
+
+## More, Settings, Notifications
+- More lists My notes, Quizzes, Notifications and Settings (v1: Quizzes, Settings), from the shared `navFor` (B2-5, spec 09 D14). B3-7.
+- Settings: six rows (+ "Quiz graded"); low-attendance copy "misses two in a row" (v1 "3"); the D4 inbox explainer; Push and Security sections (B2-6 and the batch-2 gap note).
+- Notifications: "{n} unread" without "of {total}" (no total in the API), and the v2 "Mark all read" button (B2-7).

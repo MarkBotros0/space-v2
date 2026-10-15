@@ -37,6 +37,19 @@ describe("MoreScreen", () => {
     expect(screen.queryByText("Quizzes")).toBeNull();
   });
 
+  it("shows the leader's More rows (v1 Quizzes + Settings, plus v2's My notes and Notifications, B3-7)", () => {
+    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { name: "Lina Leader" }));
+
+    renderWithProviders(<MoreScreen />);
+
+    for (const label of ["My notes", "Quizzes", "Notifications", "Settings"]) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+    expect(screen.queryByText("Submissions")).toBeNull();
+    expect(screen.queryByText("Calendar")).toBeNull();
+    expect(screen.getByText("LEADER")).toBeTruthy();
+  });
+
   it("shows the account card: initials, name and role", () => {
     useSessionStore.setState(makeSession("STUDENT", {}, { name: "Mina Adel" }));
 
