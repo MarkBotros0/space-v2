@@ -68,3 +68,11 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - "Grade →" opens grading directly (v1); "· Draft" after an unpublished online quiz's max score is V2-ONLY.
 - "Video quiz results" (spec 13 D10) is V2-ONLY, drawn as a v1 card with DataTable rows, and hidden when the video has no questions.
 - Duration, location and description are not shown (v1's leader page has none). The admin console branch is untouched (batch 4).
+
+## Attendance
+- One screen for every staff role (v1's leader and admin pages are identical apart from scope and where they return to). B3-14.
+- The save bar is pinned 96px above the bottom (over the floating tab bar), with a spacer closing the list. v1's `sticky` bar also rests in place once the list ends, which React Native can't do on a ScrollView child.
+- Saving sends only the rows the caller touched, with stored notes kept (spec 04 R13/R16). So "Mark at least one student before saving." appears when nothing was touched, even if rows already have a status (v1 re-saved every pre-filled row with notes cleared).
+- After saving, the screen goes back (v2), where v1 jumps to `/leader/calendar`.
+- Server errors show the API's message in v1's error box (v1 showed its own action's message).
+- Roster order: group, then name (spec 04 D6/D9), the same as v1's attendance page.

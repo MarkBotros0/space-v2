@@ -1,98 +1,38 @@
 import { useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
-import type { AttendanceRosterRow, AttendanceStatus } from "@space/shared";
+import { SearchX } from "lucide-react-native";
+import { View } from "react-native";
+import type { AttendanceStatus } from "@space/shared";
 
+import { PageTitle } from "../../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { AttendanceRosterForm, AttendanceSaveBar } from "../../../../src/design/sessions/attendance-form";
+import { EmptyState } from "../../../../src/design/ui";
 import { useAttendanceRoster, useSaveAttendance } from "../../../../src/hooks/use-attendance";
+import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
+import { apiErrorMessage } from "../../../../src/lib/api-error";
 import {
   buildAttendanceEntries,
   type AttendanceMarks,
   type LateMinutesText,
 } from "../../../../src/lib/attendance-entries";
-import { useTheme } from "../../../../src/theme";
-import {
-  Button,
-  Card,
-  EmptyState,
-  ErrorState,
-  Input,
-  LoadingState,
-  Screen,
-  Text,
-} from "../../../../src/ui";
+import { formatWallTime, formatWeekdayDayYear } from "../../../../src/lib/format";
 
-const STATUSES: { value: AttendanceStatus; label: string }[] = [
-  { value: "PRESENT", label: "Present" },
-  { value: "LATE", label: "Late" },
-  { value: "ABSENT", label: "Absent" },
-];
-
-function RosterRow({
-  row,
-  current,
-  lateText,
-  onMark,
-  onLateText,
-}: {
-  row: AttendanceRosterRow;
-  current: AttendanceStatus | null;
-  lateText: string;
-  onMark: (status: AttendanceStatus) => void;
-  onLateText: (text: string) => void;
-}) {
-  const theme = useTheme();
-  const displayName = row.name ?? row.email;
-
-  return (
-    <Card style={{ marginBottom: theme.spacing.sm }}>
-      <Text variant="heading">{displayName}</Text>
-      <Text variant="caption" color={theme.colors.neutral[600]}>
-        {row.groupName ? `${row.groupName} · ${row.email}` : row.email}
-      </Text>
-      <View style={{ flexDirection: "row", gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-        {STATUSES.map((option) => {
-          const active = current === option.value;
-          return (
-            <Pressable
-              key={option.value}
-              accessibilityRole="button"
-              accessibilityLabel={`Mark ${displayName} ${option.value}`}
-              accessibilityState={{ selected: active }}
-              onPress={() => onMark(option.value)}
-              style={{
-                paddingHorizontal: theme.spacing.md,
-                paddingVertical: theme.spacing.sm,
-                borderRadius: theme.radii.md,
-                borderWidth: theme.borderWidths.thin,
-                borderColor: active ? theme.colors.neutral[900] : theme.colors.neutral[300],
-                backgroundColor: active ? theme.colors.neutral[100] : theme.colors.white,
-              }}
-            >
-              <Text variant="label">{option.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      {current === "LATE" ? (
-        <Input
-          label={`Minutes late for ${displayName}`}
-          value={lateText}
-          onChangeText={onLateText}
-          keyboardType="number-pad"
-        />
-      ) : null}
-    </Card>
-  );
-}
-
+/**
+ * v1 app/leader/sessions/[id]/attendance (and the identical admin page): the
+ * session header, then v1's attendance form. Saves send only the rows the
+ * caller touched, with stored notes kept (spec 04 R13/R16); success goes
+ * back to where the caller came from (B3-14).
+ */
 export default function AttendanceScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const parsed = Number(rawId);
   const sessionId = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 
-  const { data: roster, isPending, isError, refetch } = useAttendanceRoster(sessionId);
+  const session = useSessionDetail(sessionId);
+  const { data: roster, isPending, isError, refetch, isRefetching } = useAttendanceRoster(sessionId);
   const save = useSaveAttendance(sessionId ?? 0);
   const [marks, setMarks] = useState<AttendanceMarks>({});
   const [lateText, setLateText] = useState<LateMinutesText>({});
@@ -100,14 +40,11 @@ export default function AttendanceScreen() {
 
   if (sessionId === null) {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <EmptyState title="Not found" message="That session link isn't valid." />
-      </Screen>
+      <ShellFrame>
+        <EmptyState icon={SearchX} title="Not found" description="That session link isn't valid." />
+      </ShellFrame>
     );
   }
-
-  const markAll = (status: AttendanceStatus) =>
-    setMarks(Object.fromEntries((roster ?? []).map((row) => [row.studentUserId, status])));
 
   const onSave = () => {
     setFormError(null);
@@ -119,50 +56,46 @@ export default function AttendanceScreen() {
     save.mutate(entries, { onSuccess: () => router.back() });
   };
 
+  const error =
+    formError ??
+    (save.isError ? apiErrorMessage(save.error, "Couldn't save attendance. Check your connection and try again.") : null);
+  const detail = session.data;
+
   return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      <Text variant="title">Attendance</Text>
-      {isPending ? (
-        <LoadingState />
-      ) : isError ? (
-        <ErrorState message="Couldn't load the roster." onRetry={refetch} />
-      ) : roster.length === 0 ? (
-        <EmptyState title="No students" message="No students are enrolled in this scope." />
-      ) : (
-        <>
-          <View style={{ flexDirection: "row", gap: theme.spacing.sm, marginVertical: theme.spacing.md }}>
-            {STATUSES.map((option) => (
-              <Button
-                key={option.value}
-                title={`All ${option.label.toLowerCase()}`}
-                variant="secondary"
-                onPress={() => markAll(option.value)}
-              />
-            ))}
-          </View>
-          {roster.map((row) => (
-            <RosterRow
-              key={row.studentUserId}
-              row={row}
-              current={marks[row.studentUserId] ?? row.status}
-              lateText={lateText[row.studentUserId] ?? (row.lateMinutes !== null ? String(row.lateMinutes) : "")}
-              onMark={(status) => setMarks((prev) => ({ ...prev, [row.studentUserId]: status }))}
-              onLateText={(text) => setLateText((prev) => ({ ...prev, [row.studentUserId]: text }))}
+    <View className="flex-1">
+      <ShellFrame
+        refreshing={isRefetching}
+        onRefresh={() => {
+          void refetch();
+          void session.refetch();
+        }}
+      >
+        {isPending ? (
+          <RouteSkeleton />
+        ) : isError ? (
+          <RouteError onRetry={() => void refetch()} />
+        ) : (
+          <View className="flex-col gap-4">
+            <PageTitle
+              title={`Attendance — ${detail?.title ?? "…"}`}
+              subtitle={detail ? `${formatWeekdayDayYear(detail.dayKey)} · ${formatWallTime(detail.startTime)}` : undefined}
             />
-          ))}
-          {formError ? (
-            <Text variant="caption" color={theme.colors.error[700]}>
-              {formError}
-            </Text>
-          ) : null}
-          {save.isError ? (
-            <Text variant="caption" color={theme.colors.error[700]}>
-              Couldn't save attendance. Check your connection and try again.
-            </Text>
-          ) : null}
-          <Button title="Save attendance" onPress={onSave} loading={save.isPending} />
-        </>
-      )}
-    </Screen>
+            <AttendanceRosterForm
+              rows={roster}
+              statusOf={(row) => marks[row.studentUserId] ?? row.status}
+              lateTextOf={(row) => lateText[row.studentUserId] ?? (row.lateMinutes !== null ? String(row.lateMinutes) : "")}
+              pending={save.isPending}
+              error={error}
+              onMark={(row, status: AttendanceStatus) => setMarks((prev) => ({ ...prev, [row.studentUserId]: status }))}
+              onMarkAll={(status) => setMarks(Object.fromEntries(roster.map((row) => [row.studentUserId, status])))}
+              onLateText={(row, text) => setLateText((prev) => ({ ...prev, [row.studentUserId]: text }))}
+            />
+          </View>
+        )}
+      </ShellFrame>
+      {!isPending && !isError && roster.length > 0 ? (
+        <AttendanceSaveBar pending={save.isPending} onSave={onSave} onCancel={() => router.back()} />
+      ) : null}
+    </View>
   );
 }
