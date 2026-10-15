@@ -16,8 +16,10 @@ import { Logo } from "../ui/logo";
 export function TopBar({ right }: { right?: ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
-    <View className="z-30 border-b border-border/60" style={{ paddingTop: insets.top }}>
-      <View className="absolute inset-0 bg-background" />
+    // bg-background sits on the bordered view itself: absolute layers stop at
+    // the padding box, and the navigator's light-grey scene colour showed
+    // through the translucent border as a bright line in dark mode.
+    <View className="z-30 border-b border-border/60 bg-background" style={{ paddingTop: insets.top }}>
       <View className="absolute inset-0 bg-card/78" />
       <View className="h-16 flex-row items-center gap-3 px-4">
         <View className="min-w-0 flex-1 flex-row items-center gap-3">

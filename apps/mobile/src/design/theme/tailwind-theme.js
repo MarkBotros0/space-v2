@@ -16,24 +16,24 @@ const colors = {
   "muted-foreground": ({ opacityValue }) =>
     opacityValue === undefined
       ? "rgb(var(--muted-foreground) / var(--muted-foreground-alpha))"
-      : `rgb(var(--muted-foreground) / calc(var(--muted-foreground-alpha) * ${opacityValue}))`,
+      : `rgb(var(--muted-foreground) / var(--muted-foreground-alpha-${Math.round(Number(opacityValue) * 100)}))`,
   "accent": "rgb(var(--accent) / <alpha-value>)",
   "accent-foreground": "rgb(var(--accent-foreground) / <alpha-value>)",
   "destructive": "rgb(var(--destructive) / <alpha-value>)",
   "border": ({ opacityValue }) =>
     opacityValue === undefined
       ? "rgb(var(--border) / var(--border-alpha))"
-      : `rgb(var(--border) / calc(var(--border-alpha) * ${opacityValue}))`,
+      : `rgb(var(--border) / var(--border-alpha-${Math.round(Number(opacityValue) * 100)}))`,
   "input": ({ opacityValue }) =>
     opacityValue === undefined
       ? "rgb(var(--input) / var(--input-alpha))"
-      : `rgb(var(--input) / calc(var(--input-alpha) * ${opacityValue}))`,
+      : `rgb(var(--input) / var(--input-alpha-${Math.round(Number(opacityValue) * 100)}))`,
   "ring": "rgb(var(--ring) / <alpha-value>)",
   "sidebar": "rgb(var(--sidebar) / <alpha-value>)",
   "sidebar-foreground": ({ opacityValue }) =>
     opacityValue === undefined
       ? "rgb(var(--sidebar-foreground) / var(--sidebar-foreground-alpha))"
-      : `rgb(var(--sidebar-foreground) / calc(var(--sidebar-foreground-alpha) * ${opacityValue}))`,
+      : `rgb(var(--sidebar-foreground) / var(--sidebar-foreground-alpha-${Math.round(Number(opacityValue) * 100)}))`,
   "sidebar-primary": "rgb(var(--sidebar-primary) / <alpha-value>)",
   "sidebar-primary-foreground": "rgb(var(--sidebar-primary-foreground) / <alpha-value>)",
   "sidebar-accent": "rgb(var(--sidebar-accent) / <alpha-value>)",
@@ -41,7 +41,7 @@ const colors = {
   "sidebar-border": ({ opacityValue }) =>
     opacityValue === undefined
       ? "rgb(var(--sidebar-border) / var(--sidebar-border-alpha))"
-      : `rgb(var(--sidebar-border) / calc(var(--sidebar-border-alpha) * ${opacityValue}))`,
+      : `rgb(var(--sidebar-border) / var(--sidebar-border-alpha-${Math.round(Number(opacityValue) * 100)}))`,
   "sidebar-ring": "rgb(var(--sidebar-ring) / <alpha-value>)",
   "brand-navy": {"50":"#ECEFF7","100":"#D4DAEA","200":"#ABB7D4","300":"#8294BF","400":"#5A72A9","500":"#3F558E","600":"#344676","700":"#2A3A63","800":"#243559","900":"#1F3260","950":"#142048"},
   "brand-teal": {"50":"#F2FAFA","100":"#E2F4F5","200":"#C7EAEC","300":"#ABDFE2","400":"#94D5D8","500":"#7DCED1","600":"#5DB9BC","700":"#429A9D","800":"#2E7679","900":"#1E5254","950":"#103436"},
@@ -153,6 +153,12 @@ const fontWeightUtilities = {
   },
   ".font-bold": {
     "fontFamily": "Geist_700Bold"
+  },
+  ".font-extrabold": {
+    "fontFamily": "Geist_800ExtraBold"
+  },
+  ".font-black": {
+    "fontFamily": "Geist_900Black"
   }
 };
 const fontWeightPlugin = plugin(({ addUtilities }) => addUtilities(fontWeightUtilities));

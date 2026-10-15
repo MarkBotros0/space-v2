@@ -269,24 +269,24 @@ describe("DashboardScreen — STUDENT", () => {
 
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("Welcome back, Sara")).toBeTruthy();
-    expect(await screen.findByText("2 assignments need your attention")).toBeTruthy();
+    expect(await screen.findByText("Hi, Sara 👋")).toBeTruthy();
+    expect(await screen.findByText("2 assignments need your attention.")).toBeTruthy();
     expect(screen.getByText("Session 3 of 4 · 1 session to go")).toBeTruthy();
     expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
     expect(screen.getByLabelText("Streak: 2")).toBeTruthy();
-    expect(screen.getByLabelText("To do: 2")).toBeTruthy();
-    expect(screen.getByText("You submitted 1 assignment late this season.")).toBeTruthy();
+    expect(screen.getByLabelText("Assignments: 2")).toBeTruthy();
+    expect(screen.getByText("1 assignment submitted late this season")).toBeTruthy();
     expect(screen.getByText("Happening now")).toBeTruthy();
-    expect(screen.getByText("Mar 1, 2099 · 6:00 PM · Hall")).toBeTruthy();
-    expect(screen.getByText("Overdue · was due Jan 5, 2020")).toBeTruthy();
-    expect(screen.getByText("Due Jun 1, 2099")).toBeTruthy();
+    expect(screen.getByText("Sun, Mar 1 · 6:00 PM · 90 min · Hall")).toBeTruthy();
+    expect(screen.getByText("Due Jan 5")).toBeTruthy();
+    expect(screen.getByText(/^Due in /)).toBeTruthy();
     expect(await screen.findByText("Open day")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Join stream"));
     expect(openURL).toHaveBeenCalledWith("https://youtu.be/live");
     fireEvent.press(screen.getByLabelText("Absence budget left: 42%"));
     expect(mockPush).toHaveBeenCalledWith("/attendance");
-    fireEvent.press(screen.getByLabelText("New essay, Due Jun 1, 2099"));
+    fireEvent.press(screen.getByText("New essay"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "42" } });
 
     expect(new Set(requested())).toEqual(
@@ -311,8 +311,9 @@ describe("DashboardScreen — STUDENT", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Not enrolled yet")).toBeTruthy();
+    expect(screen.getByText("Contact your leader or admin to be enrolled in a season.")).toBeTruthy();
     expect(screen.getByText("Welcome to JPC Space")).toBeTruthy();
-    fireEvent.press(screen.getByText("Complete your profile"));
+    fireEvent.press(screen.getByText("Complete your profile →"));
     expect(mockPush).toHaveBeenCalledWith("/profile");
     // No season → the budget read is gated off (Plan 11's enabled guard).
     expect(requested()).not.toContain("/api/v1/me/attendance");
@@ -358,7 +359,7 @@ describe("DashboardScreen — STUDENT", () => {
 
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("Couldn't load your dashboard.")).toBeTruthy();
+    expect(await screen.findByText("Something went wrong")).toBeTruthy();
     serve({
       "/api/v1/me/dashboard": studentDashboard,
       "/api/v1/me/attendance": myAttendance,

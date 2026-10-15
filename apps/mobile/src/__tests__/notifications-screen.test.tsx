@@ -52,6 +52,9 @@ describe("NotificationsScreen", () => {
     renderWithProviders(<NotificationsScreen />);
 
     expect(await screen.findByText("Essay one was reviewed")).toBeTruthy();
+    expect(screen.getByText("1 unread")).toBeTruthy();
+    expect(screen.getByText("SUBMISSION REVIEWED")).toBeTruthy();
+    expect(screen.getByText("New")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/notifications?limit=20");
   });
 
@@ -125,6 +128,7 @@ describe("NotificationsScreen", () => {
     renderWithProviders(<NotificationsScreen />);
 
     expect(await screen.findByText("No notifications")).toBeTruthy();
+    expect(screen.getByText("Activity that involves you will appear here.")).toBeTruthy();
   });
 
   it("navigates without marking when the notification has no resolvable target", async () => {

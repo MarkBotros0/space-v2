@@ -44,6 +44,8 @@ ignore both when comparing.
 ./backend.sh                           # v2 backend on :4100 (tmux: jpc-space-backend-ref)
 node set-reference-passwords.mjs       # known password for the six reference users (originals saved)
 node restore-reference-passwords.mjs   # put the originals back — run when captures are done
+./capture-v2.sh <role|public> <light|dark> <route> <name> [shots]  # -> ~/projects/JPC/.v2-captures/batch-2/<role>/<theme>/
+./batch-2-pairs.sh                     # -> compare-batch-2.html (send privately, never publish)
 ```
 
 JPC's Metro runs on port 8095 (`npx expo start --dev-client --port 8095`); build

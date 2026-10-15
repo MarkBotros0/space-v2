@@ -1,4 +1,14 @@
 import {
+  addMinutesToWallTime,
+  formatShortDate,
+  formatDistanceOnly,
+  formatEventWhenShort,
+  formatLongDay,
+  formatLongDayYear,
+  formatShortDay,
+  formatStampAgo,
+  formatWeekdayDayYear,
+  splitWallTime,
   firstName,
   formatEventWhen,
   formatDate,
@@ -97,6 +107,46 @@ describe("formatEventWhen (spec 19 R11, X13 — server day keys and wall time on
   it("shows a multi-day range", () => {
     expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: "2099-03-07", time: null })).toBe(
       "Mar 5, 2099 – Mar 7, 2099",
+    );
+  });
+});
+
+describe("batch-2 formatters", () => {
+  it("formats org day keys without touching the device zone", () => {
+    expect(formatShortDay("2026-03-13")).toBe("Mar 13");
+    expect(formatLongDay("2026-03-08")).toBe("Sunday, March 8");
+    expect(formatLongDayYear("2026-03-08")).toBe("Sunday, March 8, 2026");
+    expect(formatWeekdayDayYear("2026-03-08")).toBe("Sun, Mar 8, 2026");
+    expect(formatShortDay(null)).toBe("—");
+    expect(formatLongDay("nope")).toBe("—");
+  });
+
+  it("splits and adds to wall-clock times as text", () => {
+    expect(splitWallTime("20:00")).toEqual({ clock: "8:00", meridiem: "PM" });
+    expect(splitWallTime("00:05")).toEqual({ clock: "12:05", meridiem: "AM" });
+    expect(splitWallTime(null)).toEqual({ clock: "—", meridiem: "" });
+    expect(addMinutesToWallTime("20:00", 90)).toBe("21:30");
+    expect(addMinutesToWallTime("23:30", 45)).toBe("00:15");
+    expect(addMinutesToWallTime(null, 30)).toBeNull();
+  });
+
+  it("formats v1's short event label", () => {
+    expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe("Mar 5 · 6:30 PM");
+    expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: "2099-03-07", time: null })).toBe("Mar 5 – Mar 7");
+    expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: "2099-03-05", time: null })).toBe("Mar 5");
+  });
+
+  it("formats an instant's short date", () => {
+    expect(formatShortDate("2099-04-01T12:00:00.000Z")).toBe("Apr 1");
+    expect(formatShortDate(null)).toBe("—");
+  });
+
+  it("formats distances and stamps", () => {
+    const inThreeDays = new Date(Date.now() + 3 * 86_400_000 + 60_000).toISOString();
+    expect(formatDistanceOnly(inThreeDays)).toBe("3 days");
+    expect(formatDistanceOnly(null)).toBe("—");
+    expect(formatStampAgo(new Date(Date.now() - 2 * 3_600_000).toISOString())).toMatch(
+      /^\w{3} \d{1,2}, \d{4} · \d{1,2}:\d{2} (AM|PM) · 2 hours ago$/,
     );
   });
 });

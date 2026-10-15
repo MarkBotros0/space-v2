@@ -43,7 +43,7 @@ describe("UpcomingEventsCard (spec 19 R5–R11, D19)", () => {
     get.mockResolvedValue({ data: { data: { events: [event], total: 1 } } });
     renderWithProviders(<Harness />);
     expect(await screen.findByText("Open day")).toBeTruthy();
-    expect(screen.getByText("Mar 5, 2099 · 6:30 PM")).toBeTruthy();
+    expect(screen.getByText("Mar 5 · 6:30 PM")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/events?upcoming=true&limit=4");
   });
 
@@ -60,10 +60,10 @@ describe("UpcomingEventsCard (spec 19 R5–R11, D19)", () => {
     });
     renderWithProviders(<Harness />);
 
-    fireEvent.press(await screen.findByLabelText("Open day, Mar 5, 2099 · 6:30 PM"));
+    fireEvent.press(await screen.findByLabelText("Open day, Mar 5 · 6:30 PM"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "3" } });
 
-    fireEvent.press(screen.getByLabelText("Gala, Mar 5, 2099 · 6:30 PM"));
+    fireEvent.press(screen.getByLabelText("Gala, Mar 5 · 6:30 PM"));
     expect(openURL).toHaveBeenCalledWith("https://jpc.example/gala");
   });
 

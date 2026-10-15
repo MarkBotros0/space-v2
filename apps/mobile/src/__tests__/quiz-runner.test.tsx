@@ -136,13 +136,19 @@ describe("quiz runner", () => {
     renderWithProviders(<QuizDetailScreen />);
 
     fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
-    fireEvent.press(screen.getByText("Submit"));
+    expect(screen.getByText("Answer every question to submit.")).toBeTruthy();
+    fireEvent.press(screen.getByText("Submit quiz"));
     // Still incomplete: the essay is blank. The server refuses this too
     // (409 attempt_incomplete) — the disabled control is the courtesy, the
     // server check is the rule.
     expect(post).not.toHaveBeenCalled();
 
     fireEvent.changeText(screen.getByLabelText("Answer 2"), "Because.");
+    fireEvent.press(screen.getByText("Submit quiz"));
+    // v1 asks first (ConfirmDialog); nothing is sent until "Submit".
+    expect(await screen.findByText("Submit quiz?")).toBeTruthy();
+    expect(screen.getByText("You can't change your answers after submitting.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Submit"));
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt/submit"),
@@ -165,7 +171,12 @@ describe("quiz runner", () => {
 
     renderWithProviders(<QuizDetailScreen />);
 
-    expect(await screen.findByText("5 / 7")).toBeTruthy();
+    expect(await screen.findByText("5/7")).toBeTruthy(); // "/7" is a nested span
+    expect(screen.getByText("Score")).toBeTruthy();
+    expect(screen.getByText("Your quiz has been graded.")).toBeTruthy();
+    expect(screen.getByText("Q1")).toBeTruthy();
+    expect(screen.getByText("Your answer: London")).toBeTruthy();
+    expect(screen.getByText("5/5 pts")).toBeTruthy();
     // R34: the student is told which MCQ was wrong, and never what was right —
     // there is no correctIndex in the contract to render.
     expect(screen.getByText("Incorrect")).toBeTruthy();
@@ -180,8 +191,12 @@ describe("quiz runner", () => {
 
     renderWithProviders(<QuizDetailScreen />);
 
-    expect(await screen.findByText(/waiting to be marked/i)).toBeTruthy();
-    expect(screen.queryByText("Submit")).toBeNull();
+    // v1 shows the full result view for SUBMITTED, with a Pending badge.
+    expect(await screen.findByText("Submitted")).toBeTruthy();
+    expect(screen.getByText("Awaiting grading for the written answers.")).toBeTruthy();
+    expect(screen.getByText("Pending")).toBeTruthy();
+    expect(screen.getByText("Q1")).toBeTruthy();
+    expect(screen.queryByText("Submit quiz")).toBeNull();
   });
 
   it("gives staff a read-only preview with a link to grading", async () => {

@@ -1,3 +1,5 @@
+import { useRouter } from "expo-router";
+import { Calendar as CalendarIcon } from "lucide-react-native";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
@@ -6,6 +8,11 @@ import { CalendarGrid } from "../../src/components/calendar/CalendarGrid";
 import { DayEntries, Legend, type CalendarContext } from "../../src/components/calendar/CalendarEntries";
 import { ChoiceChips } from "../../src/components/ChoiceChips";
 import { SeasonSwitcher } from "../../src/components/SeasonSwitcher";
+import { PageTitle } from "../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { SeasonCalendar } from "../../src/design/sessions/season-calendar";
+import { EmptyState as EmptyStateV1 } from "../../src/design/ui";
 import { useEvents } from "../../src/hooks/use-events";
 import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
@@ -148,8 +155,8 @@ function CalendarSurface({ source, showSeason }: { source: Source; showSeason: b
   );
 }
 
-/** STUDENT / ALUMNI — Plan 4's pinned-season calendar (no window: one season). */
-function PinnedSeasonCalendar() {
+/** ALUMNI — Plan 4's pinned-season calendar, pre-rebuild UI until batch 6 (v1 alumni get an Events page). */
+function AlumniCalendar() {
   const current = useCurrentSeasonId();
   const sessions = useSeasonSessions(current.seasonId);
   // Two queries, interleaved on the client — exactly what v1's calendar pages
@@ -282,6 +289,88 @@ function RangeGrid({
   );
 }
 
+/**
+ * STUDENT — v1's SeasonCalendar for the pinned season (no window: one
+ * season). A student with no season gets v1's empty state and nothing is
+ * read (B2-13). Events come from a second query, interleaved on the client
+ * exactly as v1's calendar does (D-15.1); its failure never fails the screen.
+ */
+function StudentCalendar() {
+  const router = useRouter();
+  const current = useCurrentSeasonId();
+
+  if (current.seasonId === null && !current.isPending) {
+    return (
+      <ShellFrame>
+        <View className="flex-col gap-3">
+          <PageTitle title="Calendar" />
+          <EmptyStateV1
+            icon={CalendarIcon}
+            title="No active season"
+            description="An admin will enroll you in a season when you're ready."
+          />
+        </View>
+      </ShellFrame>
+    );
+  }
+  return <StudentSeasonCalendar seasonId={current.seasonId} onRetrySeason={current.refetch} router={router} />;
+}
+
+function StudentSeasonCalendar({
+  seasonId,
+  onRetrySeason,
+  router,
+}: {
+  seasonId: number | null;
+  onRetrySeason: () => void;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const sessions = useSeasonSessions(seasonId);
+  const events = useEvents();
+  const eventRows = events.data ?? [];
+  const today = deviceTodayKey();
+
+  let body: ReactNode;
+  if (seasonId === null || sessions.isPending) body = <RouteSkeleton />;
+  else if (sessions.isError) body = <RouteError onRetry={() => void sessions.refetch()} />;
+  else if (sessions.data.length === 0 && eventRows.length === 0)
+    body = (
+      <EmptyStateV1
+        icon={CalendarIcon}
+        title="Nothing scheduled yet"
+        description="Sessions and events will appear here once they're added."
+      />
+    );
+  else
+    body = (
+      <SeasonCalendar
+        sessions={sessions.data}
+        events={eventRows}
+        today={today}
+        // v1: current = startOfMonth(next session, else last, else today) — Week opens on that day's week.
+        initialAnchor={`${initialAnchor(sessions.data, today).slice(0, 8)}01`}
+        onOpenSession={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
+        onOpenEvent={(e) => router.push({ pathname: "/event/[id]", params: { id: String(e.id) } })}
+      />
+    );
+
+  return (
+    <ShellFrame
+      onRefresh={() => {
+        void events.refetch();
+        if (seasonId !== null) void sessions.refetch();
+        else onRetrySeason();
+      }}
+      refreshing={sessions.isRefetching}
+    >
+      <View className="flex-col gap-3">
+        <PageTitle title="Calendar" />
+        {body}
+      </View>
+    </ShellFrame>
+  );
+}
+
 /** SUPER (every ACTIVE season) and LEADER (every led season) — G17. */
 function MultiSeasonCalendar() {
   return (
@@ -321,6 +410,7 @@ function AdminCalendar() {
  */
 export default function CalendarScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
+  const isAlumnus = useSessionStore((s) => (s.scopes?.graduationYear ?? null) !== null);
   const leadsNothing = useSessionStore(
     (s) => s.user?.role === "LEADER" && (s.scopes?.groupLeaderIds.length ?? 0) === 0,
   );
@@ -341,5 +431,6 @@ export default function CalendarScreen() {
   }
   if (role === "SUPER" || role === "LEADER") return <MultiSeasonCalendar />;
   if (role === "ADMIN") return <AdminCalendar />;
-  return <PinnedSeasonCalendar />;
+  if (isAlumnus) return <AlumniCalendar />;
+  return <StudentCalendar />;
 }

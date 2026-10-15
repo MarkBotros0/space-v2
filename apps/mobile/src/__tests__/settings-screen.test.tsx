@@ -16,9 +16,11 @@ jest.mock("expo-router", () => ({
 }));
 
 jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
+import { toast } from "../design/ui/toaster";
 import { renderWithProviders } from "./helpers/render";
 
 import SettingsScreen from "../../app/(app)/settings";
@@ -75,7 +77,8 @@ describe("SettingsScreen", () => {
     expect(screen.getByLabelText("Name")).toBeTruthy();
     // Email is shown, not editable — and the caption is TRUE in v2, unlike
     // v1's "change via the admin console" lie for students (spec 18 R20/D8).
-    expect(screen.getByText("sp@jpc.test")).toBeTruthy();
+    expect(screen.getByDisplayValue("sp@jpc.test")).toBeTruthy();
+    expect(screen.getByText("Profile, password, and notification preferences.")).toBeTruthy();
   });
 
   it("hides the password section for an invited-never-activated account (hasPassword false)", () => {
@@ -94,17 +97,18 @@ describe("SettingsScreen", () => {
     renderWithProviders(<SettingsScreen />);
 
     fireEvent.changeText(screen.getByLabelText("Name"), "New Name");
-    fireEvent.press(screen.getByText("Save name"));
+    fireEvent.press(screen.getByText("Save profile"));
 
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/me", { name: "New Name" }));
     await waitFor(() => expect(useSessionStore.getState().user?.name).toBe("New Name"));
+    expect(toast.success).toHaveBeenCalledWith("Profile saved.");
   });
 
-  it("keeps Save name disabled until the name is changed and valid (REG-80)", () => {
+  it("keeps Save profile disabled until the name is changed and valid (REG-80)", () => {
     useSessionStore.setState(sessionFor("STUDENT"));
     renderWithProviders(<SettingsScreen />);
-    const save = () => screen.getByText("Save name");
-    const disabled = () => screen.getByRole("button", { name: "Save name" }).props.accessibilityState?.disabled;
+    const save = () => screen.getByText("Save profile");
+    const disabled = () => screen.getByRole("button", { name: "Save profile" }).props.accessibilityState?.disabled;
     expect(disabled()).toBe(true);
     fireEvent.changeText(screen.getByLabelText("Name"), "N");
     expect(disabled()).toBe(true);
@@ -132,7 +136,7 @@ describe("SettingsScreen", () => {
         refreshToken: "stored-refresh",
       }),
     );
-    expect(await screen.findByText("Signed out of 2 other devices.")).toBeTruthy();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Password updated. Signed out of 2 other devices."));
   });
 
   it("keeps the mismatch check client-side — no request leaves the device", async () => {

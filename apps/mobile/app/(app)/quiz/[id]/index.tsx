@@ -1,8 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable } from "react-native";
+import { ArrowLeft, Check, Clock, X } from "lucide-react-native";
+import { Pressable, View } from "react-native";
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
+import { Eyebrow } from "../../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { cn } from "../../../../src/design/lib/cn";
+import { iconWithClassName } from "../../../../src/design/lib/icon";
+import { shadowStyle } from "../../../../src/design/lib/shadow";
+import {
+  Badge,
+  Button as ButtonV1,
+  ConfirmDialog,
+  Text as TextV1,
+  Textarea,
+} from "../../../../src/design/ui";
 import {
   useQuizAuthoringDetail,
   useSaveAnswers,
@@ -12,12 +26,11 @@ import {
   type AnswerInput,
 } from "../../../../src/hooks/use-quizzes";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
-import { formatDate } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { useSessionStore } from "../../../../src/store/session";
 import { useTheme } from "../../../../src/theme";
 import {
-  Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text,
+  Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text,
 } from "../../../../src/ui";
 
 /**
@@ -33,51 +46,106 @@ import {
  */
 const SAVE_DEBOUNCE_MS = 1000;
 
+iconWithClassName(ArrowLeft, Check, Clock, X);
+
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 function isAnswered(q: QuizQuestionStudent, a: { selectedIndex: number | null; text: string }): boolean {
   return q.type === "MCQ" ? a.selectedIndex !== null : a.text.trim().length > 0;
 }
 
-function ResultView({ detail }: { detail: StudentQuizDetail }) {
-  const theme = useTheme();
+/** v1 quiz page header: "← Quizzes" link, title (text-xl), session line. */
+function QuizHeader({ detail }: { detail: StudentQuizDetail }) {
+  const router = useRouter();
   return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      <Card style={{ marginBottom: theme.spacing.sm }}>
-        <Text variant="heading">{detail.title}</Text>
-        {detail.totalScore !== null ? (
-          <Text variant="heading">{`${detail.totalScore} / ${detail.maxScore}`}</Text>
-        ) : null}
-      </Card>
-      {detail.questions.map((q, index) => {
-        const answer =
-          q.type === "MCQ"
-            ? q.selectedIndex !== null
-              ? (q.options[q.selectedIndex] ?? "")
-              : "No answer"
-            : (q.text ?? "No answer");
-        return (
-          <Card key={q.id} style={{ marginBottom: theme.spacing.sm }}>
-            <Text variant="caption" color={theme.colors.neutral[600]}>{`Question ${index + 1}`}</Text>
-            <Text variant="label">{q.prompt}</Text>
-            <Text variant="body">{`Your answer: ${answer}`}</Text>
-            {/* The student is told which MCQ was wrong, never what was right (R34). */}
-            {q.isCorrect === true ? <Text variant="label">Correct</Text> : null}
-            {q.isCorrect === false ? <Text variant="label">Incorrect</Text> : null}
-            {q.pointsAwarded !== null ? (
-              <Text variant="caption" color={theme.colors.neutral[600]}>
-                {`${q.pointsAwarded} / ${q.points} points`}
-              </Text>
-            ) : null}
-          </Card>
-        );
-      })}
-    </Screen>
+    <View>
+      <Pressable accessibilityRole="link" onPress={() => router.back()} className="flex-row items-center gap-1 self-start">
+        <ArrowLeft size={12} className="text-brand-teal-700 dark:text-brand-teal-300" />
+        <TextV1 className="text-xs font-semibold text-brand-teal-700 dark:text-brand-teal-300">Quizzes</TextV1>
+      </Pressable>
+      <TextV1 accessibilityRole="header" className="mt-1 text-xl font-black text-brand-navy-900 dark:text-foreground">
+        {detail.title}
+      </TextV1>
+      {detail.sessionTitle ? <TextV1 className="text-sm text-muted-foreground">{detail.sessionTitle}</TextV1> : null}
+    </View>
+  );
+}
+
+const QCARD = "rounded-2xl border border-border bg-card p-4";
+
+/** v1 Result: SUBMITTED and GRADED both list the answers (B2-15). */
+function ResultView({ detail }: { detail: StudentQuizDetail }) {
+  const graded = detail.status === "GRADED";
+  return (
+    <ShellFrame>
+      <View className="flex-col gap-3">
+        <QuizHeader detail={detail} />
+        <View
+          className="flex-row items-center justify-between rounded-2xl border border-border bg-card p-5"
+          style={shadowStyle("soft")}
+        >
+          <View className="min-w-0 flex-1">
+            <TextV1 className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
+              {graded ? "Graded" : "Submitted"}
+            </TextV1>
+            <TextV1 className="text-xs text-muted-foreground">
+              {graded ? "Your quiz has been graded." : "Awaiting grading for the written answers."}
+            </TextV1>
+          </View>
+          {graded ? (
+            <View className="items-end">
+              <TextV1 className="text-2xl font-black text-brand-teal-700 dark:text-brand-teal-300">
+                {String(detail.totalScore ?? 0)}
+                <TextV1 className="text-sm font-semibold text-muted-foreground">{`/${detail.maxScore}`}</TextV1>
+              </TextV1>
+              <Eyebrow>Score</Eyebrow>
+            </View>
+          ) : (
+            <Badge variant="warning">
+              <Clock size={12} className="text-warning-800 dark:text-warning-200" />
+              Pending
+            </Badge>
+          )}
+        </View>
+        {detail.questions.map((q, index) => (
+          <View key={q.id} className={QCARD} style={shadowStyle("soft")}>
+            <View className="flex-row items-center justify-between gap-2">
+              <TextV1 className="text-xs font-bold text-muted-foreground">{`Q${index + 1}`}</TextV1>
+              {/* The student is told which MCQ was wrong, never what was right (R34). */}
+              {q.type === "MCQ" && q.isCorrect !== null ? (
+                q.isCorrect ? (
+                  <Badge variant="success">
+                    <Check size={12} className="text-success-800 dark:text-success-200" />
+                    Correct
+                  </Badge>
+                ) : (
+                  <Badge variant="error">
+                    <X size={12} className="text-error-800 dark:text-error-200" />
+                    Incorrect
+                  </Badge>
+                )
+              ) : (
+                <TextV1 className="text-xs text-muted-foreground">
+                  {q.pointsAwarded !== null ? `${q.pointsAwarded}/${q.points} pts` : `${q.points} pts`}
+                </TextV1>
+              )}
+            </View>
+            <TextV1 className="mt-1 text-sm font-semibold text-brand-navy-900 dark:text-foreground">{q.prompt}</TextV1>
+            {q.type === "MCQ" ? (
+              <TextV1 className="mt-1 text-sm text-muted-foreground">
+                {`Your answer: ${q.selectedIndex !== null ? (q.options[q.selectedIndex] ?? "—") : "—"}`}
+              </TextV1>
+            ) : (
+              <TextV1 className="mt-1 rounded-lg bg-muted/40 px-3 py-2 text-sm text-foreground">{q.text || "—"}</TextV1>
+            )}
+          </View>
+        ))}
+      </View>
+    </ShellFrame>
   );
 }
 
 function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: number }) {
-  const theme = useTheme();
   const save = useSaveAnswers(id);
   const submit = useSubmitAttempt(id);
   const [answers, setAnswers] = useState<
@@ -94,6 +162,7 @@ function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: number }) 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(
     () => () => {
@@ -172,135 +241,148 @@ function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: number }) 
   };
 
   return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      <Text variant="heading">{detail.title}</Text>
-      {detail.questions.map((q, index) => {
-        const a = answers[q.id];
-        return (
-          <Card key={q.id} style={{ marginBottom: theme.spacing.sm, gap: theme.spacing.sm }}>
-            <Text variant="caption" color={theme.colors.neutral[600]}>{`Question ${index + 1}`}</Text>
-            <Text variant="label">{q.prompt}</Text>
-            <Text variant="caption" color={theme.colors.neutral[600]}>
-              {`${q.points} ${q.points === 1 ? "point" : "points"}`}
-            </Text>
-            {q.type === "MCQ" ? (
-              q.options.map((option, optionIndex) => {
-                const selected = a?.selectedIndex === optionIndex;
-                return (
-                  <Pressable
-                    key={optionIndex}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={`Answer ${index + 1} option ${optionIndex + 1}: ${option}`}
-                    onPress={() => setAnswer(q, { selectedIndex: optionIndex })}
-                    style={{
-                      minHeight: 44,
-                      justifyContent: "center",
-                      paddingHorizontal: theme.spacing.md,
-                      borderRadius: theme.radii.sm,
-                      borderWidth: theme.borderWidths.thin,
-                      borderColor: selected ? theme.colors.brand.navy[900] : theme.colors.neutral[300],
-                      backgroundColor: selected ? theme.colors.neutral[100] : theme.colors.transparent,
-                    }}
-                  >
-                    <Text variant="body">{option}</Text>
-                  </Pressable>
-                );
-              })
-            ) : (
-              <Input
-                label={`Answer ${index + 1}`}
-                multiline
-                numberOfLines={6}
-                value={a?.text ?? ""}
-                onChangeText={(text) => setAnswer(q, { text })}
-              />
-            )}
-          </Card>
-        );
-      })}
+    <ShellFrame>
+      <View className="flex-col gap-3">
+        <QuizHeader detail={detail} />
+        {detail.questions.map((q, index) => {
+          const a = answers[q.id];
+          return (
+            <View key={q.id} className={QCARD} style={shadowStyle("soft")}>
+              <View className="flex-row items-center gap-2">
+                <TextV1 className="text-xs font-bold text-muted-foreground">{`Q${index + 1}`}</TextV1>
+                <Badge variant={q.type === "MCQ" ? "teal" : "outline"}>
+                  {q.type === "MCQ" ? "Multiple choice" : "Essay"}
+                </Badge>
+                <TextV1 className="text-xs text-muted-foreground">{`${q.points} pt${q.points === 1 ? "" : "s"}`}</TextV1>
+              </View>
+              <TextV1 className="mt-2 text-sm font-semibold text-brand-navy-900 dark:text-foreground">{q.prompt}</TextV1>
+              {q.type === "MCQ" ? (
+                <View className="mt-3 flex-col gap-2">
+                  {q.options.map((option, optionIndex) => {
+                    const selected = a?.selectedIndex === optionIndex;
+                    return (
+                      <Pressable
+                        key={optionIndex}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected }}
+                        accessibilityLabel={`Answer ${index + 1} option ${optionIndex + 1}: ${option}`}
+                        onPress={() => setAnswer(q, { selectedIndex: optionIndex })}
+                        className={cn(
+                          "flex-row items-center gap-3 rounded-xl border px-4 py-3",
+                          selected ? "border-brand-teal-600 bg-brand-teal-600/10" : "border-border bg-card",
+                        )}
+                      >
+                        <View
+                          className={cn(
+                            "size-5 shrink-0 items-center justify-center rounded-full border",
+                            selected ? "border-brand-teal-600 bg-brand-teal-600" : "border-border",
+                          )}
+                        >
+                          {selected ? <Check size={12} className="text-white" /> : null}
+                        </View>
+                        <TextV1
+                          className={cn(
+                            "flex-1 text-sm font-medium",
+                            selected ? "text-brand-teal-700 dark:text-brand-teal-300" : "text-foreground",
+                          )}
+                        >
+                          {option}
+                        </TextV1>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : (
+                <Textarea
+                  accessibilityLabel={`Answer ${index + 1}`}
+                  className="mt-3"
+                  placeholder="Write your answer…"
+                  value={a?.text ?? ""}
+                  onChangeText={(text) => setAnswer(q, { text })}
+                />
+              )}
+            </View>
+          );
+        })}
 
-      {saveState !== "idle" ? (
-        <Text
-          variant="label"
-          color={saveState === "error" ? theme.colors.error[500] : theme.colors.neutral[600]}
+        {saveState !== "idle" ? (
+          <TextV1 className={cn("text-xs", saveState === "error" ? "text-error-600" : "text-muted-foreground")}>
+            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : "Not saved"}
+          </TextV1>
+        ) : null}
+        {saveState === "error" ? (
+          <ButtonV1 variant="outline" size="sm" className="self-start" onPress={() => void flush()}>
+            Retry save
+          </ButtonV1>
+        ) : null}
+        {submitError ? <TextV1 className="text-xs text-error-600">{submitError}</TextV1> : null}
+        <ButtonV1
+          className="self-start"
+          disabled={!isComplete || save.isPending || submit.isPending}
+          onPress={() => setConfirmOpen(true)}
         >
-          {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : "Not saved"}
-        </Text>
-      ) : null}
-      {saveState === "error" ? (
-        <Button title="Retry save" variant="ghost" onPress={() => void flush()} />
-      ) : null}
-      {submitError ? (
-        <Text variant="label" color={theme.colors.error[500]}>
-          {submitError}
-        </Text>
-      ) : null}
-      <Button
-        title="Submit"
-        onPress={() => void onSubmit()}
-        disabled={!isComplete || save.isPending}
-        loading={submit.isPending}
-      />
-    </Screen>
+          Submit quiz
+        </ButtonV1>
+        {!isComplete ? (
+          <TextV1 className="text-xs text-muted-foreground">Answer every question to submit.</TextV1>
+        ) : null}
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title="Submit quiz?"
+          description="You can't change your answers after submitting."
+          confirmLabel="Submit"
+          pending={submit.isPending}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            void onSubmit();
+          }}
+        />
+      </View>
+    </ShellFrame>
   );
 }
 
 function StudentRunner({ id }: { id: number }) {
-  const theme = useTheme();
   const { data, isPending, isError, refetch } = useStudentQuizDetail(id);
   const start = useStartAttempt(id);
   const [startError, setStartError] = useState<string | null>(null);
 
-  if (isPending) {
+  if (isPending || isError) {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <LoadingState />
-      </Screen>
-    );
-  }
-  if (isError) {
-    return (
-      <Screen edges={["top", "left", "right"]}>
-        <ErrorState message="Couldn't load this quiz." onRetry={refetch} />
-      </Screen>
+      <ShellFrame>{isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}</ShellFrame>
     );
   }
 
   if (data.status === "IN_PROGRESS") return <AttemptForm detail={data} id={id} />;
-  if (data.status === "GRADED") return <ResultView detail={data} />;
+  if (data.status === "GRADED" || data.status === "SUBMITTED") return <ResultView detail={data} />;
 
+  const n = data.questions.length;
   return (
-    <Screen edges={["top", "left", "right"]}>
-      <Card style={{ gap: theme.spacing.sm }}>
-        <Text variant="heading">{data.title}</Text>
-        {data.status === "SUBMITTED" ? (
-          <Text variant="body">
-            {`Submitted${data.submittedAt ? ` ${formatDate(data.submittedAt)}` : ""} — waiting to be marked.`}
-          </Text>
-        ) : (
-          <>
-            <Text variant="body">{`${data.questions.length} questions · ${data.maxScore} points`}</Text>
-            {startError ? (
-              <Text variant="label" color={theme.colors.error[500]}>
-                {startError}
-              </Text>
-            ) : null}
-            {/* The only thing that creates an attempt — never a render (ruling C6). */}
-            <Button
-              title="Start quiz"
-              loading={start.isPending}
-              onPress={() => {
-                setStartError(null);
-                start.mutate(undefined, {
-                  onError: (err) => setStartError(apiErrorMessage(err, "Couldn't start the quiz.")),
-                });
-              }}
-            />
-          </>
-        )}
-      </Card>
-    </Screen>
+    <ShellFrame>
+      <View className="flex-col gap-3">
+        <QuizHeader detail={data} />
+        <View className="flex-col gap-3 rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+          <TextV1 className="text-sm text-muted-foreground">
+            {`${n} question${n === 1 ? "" : "s"} · ${data.maxScore} points. You have one attempt — answer every question before submitting.`}
+          </TextV1>
+          {/* The only thing that creates an attempt — never a render (ruling C6). */}
+          <ButtonV1
+            className="self-start"
+            disabled={start.isPending}
+            onPress={() => {
+              setStartError(null);
+              start.mutate(undefined, {
+                onError: (err) => setStartError(apiErrorMessage(err, "Couldn't start the quiz.")),
+              });
+            }}
+          >
+            {start.isPending ? "Starting…" : "Start quiz"}
+          </ButtonV1>
+          {startError ? <TextV1 className="text-xs text-error-600">{startError}</TextV1> : null}
+        </View>
+      </View>
+    </ShellFrame>
   );
 }
 

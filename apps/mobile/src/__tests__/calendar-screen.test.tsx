@@ -47,9 +47,11 @@ it("renders a student's calendar from their pinned season, grouped by the server
   renderWithProviders(<CalendarScreen />);
 
   expect(await screen.findByText("Kickoff")).toBeTruthy();
-  expect(screen.getByText("Mar 1, 2099")).toBeTruthy();
-  expect(screen.getByText("Mar 2, 2099")).toBeTruthy();
-  expect(screen.getByText("Mar 8, 2099")).toBeTruthy();
+  // v1 agenda headings ("EEEE, MMMM d"), from the server's dayKey: the
+  // 23:30Z session files under Monday the 2nd (X13).
+  expect(screen.getByText("Sunday, March 1")).toBeTruthy();
+  expect(screen.getByText("Monday, March 2")).toBeTruthy();
+  expect(screen.getByText("Sunday, March 8")).toBeTruthy();
   // The student never fetched the seasons list — their season is pinned.
   expect(get).not.toHaveBeenCalledWith("/api/v1/seasons");
   expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/sessions");
@@ -60,10 +62,10 @@ it("shows an empty state for a student with no season and fetches no sessions", 
 
   renderWithProviders(<CalendarScreen />);
 
-  expect(await screen.findByText("No season to show")).toBeTruthy();
-  // Events are org-wide and need no season; sessions do and are not fetched.
-  expect(get).toHaveBeenCalledTimes(1);
-  expect(get).toHaveBeenCalledWith("/api/v1/events");
+  // v1: a student with no season sees only this (B2-13) — no events read either.
+  expect(await screen.findByText("No active season")).toBeTruthy();
+  expect(screen.getByText("An admin will enroll you in a season when you're ready.")).toBeTruthy();
+  expect(get).not.toHaveBeenCalled();
 });
 
 it("navigates to session detail on press", async () => {
@@ -178,7 +180,7 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
     // One day header, both entries under it, event first (09:00Z before 18:00Z).
     expect(await screen.findByText("Summer retreat")).toBeTruthy();
     expect(screen.getByText("Kickoff")).toBeTruthy();
-    expect(screen.getAllByText("Mar 1, 2099")).toHaveLength(1);
+    expect(screen.getAllByText("Sunday, March 1")).toHaveLength(1);
     const titles = screen.getAllByText(/^(Summer retreat|Kickoff)$/).map((n) => n.props.children);
     expect(titles).toEqual(["Summer retreat", "Kickoff"]);
 
@@ -203,7 +205,10 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
   });
 
   it("shows an alumnus with no season the org's events instead of an empty wall", async () => {
-    useSessionStore.setState({ ...studentSession, scopes: { ...studentSession.scopes, activeSeasonId: null } });
+    useSessionStore.setState({
+      ...studentSession,
+      scopes: { ...studentSession.scopes, activeSeasonId: null, graduationYear: 2024 },
+    });
     get.mockImplementation((url: string) =>
       url.startsWith("/api/v1/events")
         ? Promise.resolve({
@@ -253,14 +258,16 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     );
   }
 
-  it("cues upcoming days with in-N-days wording and an Upcoming badge", async () => {
+  it("cues upcoming days with in-N-days wording and v1's time rail", async () => {
     serveStudent();
     renderWithProviders(<CalendarScreen />);
     expect(await screen.findByText("Kickoff")).toBeTruthy();
     expect(screen.getAllByText(/^in \d+ days$/).length).toBe(2);
-    // The badge on the card, plus the legend swatch of the same name.
-    expect(screen.getAllByText("Upcoming").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByLabelText("Calendar legend")).toBeTruthy();
+    // v1's time rail: the org wall time split into "8:00" and "PM" (X13).
+    expect(screen.getAllByText("8:00").length).toBe(2);
+    expect(screen.getAllByText("PM").length).toBe(2);
+    expect(screen.getAllByText("60 min").length).toBe(2);
+    expect(screen.queryByLabelText("Calendar legend")).toBeNull();
   });
 
   it("shows a Monday-first month grid anchored on the next session, dimming days outside the month", async () => {
@@ -271,16 +278,14 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     fireEvent.press(screen.getByLabelText("Month"));
     expect(screen.getByText("March 2099")).toBeTruthy();
     // 1 Mar 2099 is a Sunday: the grid opens on Monday 23 Feb, dimmed as out-of-month.
-    const feb = screen.getByLabelText("Feb 23, 2099, nothing scheduled");
+    const feb = screen.getByLabelText("Feb 23, 2099");
     expect(feb.props.style.opacity ?? feb.props.style?.[0]?.opacity).toBe(0.4);
-    const mar1 = screen.getByLabelText("Mar 1, 2099, 1 scheduled");
-
-    fireEvent.press(mar1);
+    // v1's grid shows each session's title chip in its day cell; no tap-a-day list.
     expect(screen.getByText("Kickoff")).toBeTruthy();
-    expect(screen.queryByText("Week two")).toBeNull();
-
-    fireEvent.press(screen.getByLabelText("Mar 12, 2099, 1 scheduled"));
     expect(screen.getByText("Week two")).toBeTruthy();
+    expect(screen.getByText("Mon")).toBeTruthy();
+    fireEvent.press(screen.getByText("Week two"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "2" } });
 
     fireEvent.press(screen.getByLabelText("Next month"));
     expect(screen.getByText("April 2099")).toBeTruthy();
@@ -293,13 +298,25 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
 
     fireEvent.press(screen.getByLabelText("Week"));
     expect(screen.getByText("Feb 23 – Mar 1")).toBeTruthy();
-    expect(screen.getByText("Sun, Mar 1")).toBeTruthy();
     expect(screen.getByText("Kickoff")).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText("Next week"));
     expect(screen.getByText("Mar 2 – 8")).toBeTruthy();
     expect(screen.queryByText("Kickoff")).toBeNull();
-    expect(screen.getAllByText("Nothing scheduled")).toHaveLength(7);
+  });
+
+  it("opens Week on the week of the anchor month's first day, like v1", async () => {
+    useSessionStore.setState(studentSession);
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/events")
+        ? Promise.resolve({ data: { data: { events: [], total: 0 } } })
+        : Promise.resolve({ data: { data: { sessions: [session(2, "Week two", "2099-03-12T18:00:00.000Z", "2099-03-12")] } } }),
+    );
+    renderWithProviders(<CalendarScreen />);
+    await screen.findByText("Week two");
+
+    fireEvent.press(screen.getByLabelText("Week"));
+    expect(screen.getByText("Feb 23 – Mar 1")).toBeTruthy();
   });
 
   it("reads a staff Month from GET /sessions with the visible days, padded a day each side", async () => {

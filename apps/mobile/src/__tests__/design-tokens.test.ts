@@ -24,8 +24,13 @@ describe("generated design tokens", () => {
     const darkBlock = css.slice(css.indexOf(".dark:root"));
     expect(darkBlock).toContain("--border: 255 255 255;");
     expect(darkBlock).toContain("--border-alpha: 0.08;");
-    // v1 writes border-border/60 (12×): the modifier multiplies the token's alpha.
-    expect(theme.colors.border({ opacityValue: "0.6" })).toBe("rgb(var(--border) / calc(var(--border-alpha) * 0.6))");
+    // v1 writes border-border/60 (12×): the modifier multiplies the token's
+    // alpha. Each product is precomputed per theme as its own variable so
+    // nothing depends on calc() inside rgb() at runtime.
+    expect(theme.colors.border({ opacityValue: "0.6" })).toBe("rgb(var(--border) / var(--border-alpha-60))");
+    expect(darkBlock).toContain("--border-alpha-60: 0.048;");
+    const lightBlock = css.slice(css.indexOf(":root"), css.indexOf(".dark:root"));
+    expect(lightBlock).toContain("--border-alpha-60: 0.6;");
     expect(theme.colors.border({})).toBe("rgb(var(--border) / var(--border-alpha))");
   });
 
@@ -63,5 +68,12 @@ describe("generated design tokens", () => {
     expect(theme.fontWeightUtilities[".font-semibold"]).toEqual({ fontFamily: "Geist_600SemiBold" });
     expect(theme.fontWeightUtilities[".font-bold"]).toEqual({ fontFamily: "Geist_700Bold" });
     expect(theme.fontWeightUtilities[".font-normal"].fontFamily).toBe("Geist_400Regular");
+    // v1 uses font-black 96× (every student h1 and stat value) and font-extrabold.
+    expect(theme.fontWeightUtilities[".font-extrabold"]).toEqual({ fontFamily: "Geist_800ExtraBold" });
+    expect(theme.fontWeightUtilities[".font-black"]).toEqual({ fontFamily: "Geist_900Black" });
+    const { GEIST_FONTS } = require("../design/theme/fonts");
+    for (const face of Object.values(theme.fontWeightUtilities) as { fontFamily: string }[]) {
+      expect(GEIST_FONTS).toHaveProperty(face.fontFamily);
+    }
   });
 });

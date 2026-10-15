@@ -32,6 +32,8 @@ describe("LoginScreen", () => {
     renderWithProviders(<LoginScreen />);
     // `Input` exposes a label, not a placeholder — `getByPlaceholderText`
     // stopped matching once the screen was rebuilt on the `Input` primitive.
+    expect(screen.getByText("Welcome back")).toBeTruthy();
+    expect(screen.getByText("Sign in to JPC Space to continue.")).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Email"), "sara@jpc.test");
     fireEvent.changeText(screen.getByLabelText("Password"), "hunter2");
     fireEvent.press(screen.getByText("Sign in"));
@@ -49,7 +51,7 @@ describe("LoginScreen", () => {
     fireEvent.press(screen.getByText("Sign in"));
 
     await waitFor(() =>
-      expect(screen.getByText("Incorrect email or password.")).toBeTruthy(),
+      expect(screen.getByText("Invalid email or password.")).toBeTruthy(),
     );
     expect(mockReplace).not.toHaveBeenCalled();
 

@@ -67,7 +67,24 @@ describe("AssignmentDetailScreen", () => {
 
     expect(await screen.findByText("Essay one")).toBeTruthy();
     expect(screen.getByText("Write about the thing.")).toBeTruthy();
+    expect(screen.getByText("← Assignments")).toBeTruthy();
+    expect(screen.getByText("Brief")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/assignments/41");
+  });
+
+  it("shows a v2 plain-text brief verbatim, angle brackets and all", async () => {
+    // v2's form stores plain text; the column also holds v1's TipTap HTML.
+    get.mockResolvedValue({ data: { data: { ...detail, description: "Read pages <intro> & <summary>.\nThen reflect." } } });
+    renderWithProviders(<AssignmentDetailScreen />);
+    expect(await screen.findByText("Read pages <intro> & <summary>.")).toBeTruthy();
+    expect(screen.getByText("Then reflect.")).toBeTruthy();
+  });
+
+  it("renders a v1 HTML brief as markup", async () => {
+    get.mockResolvedValue({ data: { data: { ...detail, description: "<p><strong>Bold</strong> brief</p>" } } });
+    renderWithProviders(<AssignmentDetailScreen />);
+    expect(await screen.findByText("Bold")).toBeTruthy();
+    expect(screen.queryByText(/<strong>/)).toBeNull();
   });
 
   it("shows reviewed feedback from mySubmission", async () => {
@@ -88,6 +105,7 @@ describe("AssignmentDetailScreen", () => {
     renderWithProviders(<AssignmentDetailScreen />);
 
     expect(await screen.findByText("Solid work.")).toBeTruthy();
+    expect(screen.getByText("Leader feedback")).toBeTruthy();
     expect(screen.getByText("Reviewed")).toBeTruthy();
   });
 
@@ -107,6 +125,8 @@ describe("AssignmentDetailScreen", () => {
 
     renderWithProviders(<AssignmentDetailScreen />);
 
-    expect(await screen.findByText("Submitted late")).toBeTruthy();
+    // v1 has no late badge here; v2 keeps the flag as an extra "Late" badge (B2-16).
+    expect(await screen.findByText("Late")).toBeTruthy();
+    expect(screen.getByText("Submitted")).toBeTruthy();
   });
 });

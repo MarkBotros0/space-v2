@@ -1,49 +1,49 @@
 // apps/mobile/src/components/NotificationPreferences.tsx
+import { Bell, Smartphone } from "lucide-react-native";
 import { useState } from "react";
-import { Switch, View } from "react-native";
+import { View } from "react-native";
 import type { NotificationPreferences as Prefs } from "@space/shared";
 
-import {
-  useNotificationPreferences,
-  useUpdateNotificationPreferences,
-} from "../hooks/use-notifications";
+import { cn } from "../design/lib/cn";
+import { Section } from "../design/settings/section";
+import { Button, Skeleton, Switch, Text } from "../design/ui";
+import { useNotificationPreferences, useUpdateNotificationPreferences } from "../hooks/use-notifications";
 import { enablePush, type PushStatus } from "../lib/push";
 import { useSessionStore } from "../store/session";
-import { useTheme } from "../theme";
-import { Button, Card, ErrorState, LoadingState, Text } from "../ui";
 
 /**
- * One row per notification type — six, not v1's five.
+ * v1 settings-form.tsx's Notifications section — six rows, not v1's five.
  *
  * The labels are keyed off the preference column names so a key that exists in
  * the contract but not here is a compile error (`Record<keyof Prefs, ...>`),
- * which is the UI half of the fix for R56/R57.
+ * which is the UI half of the fix for R56/R57. Copy is v1's except the
+ * low-attendance count (spec D12) and the sixth row v1 never had.
  */
 const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
   assignmentCreated: {
-    label: "Assignment created",
-    help: "When new work is set for you.",
+    label: "New assignments",
+    help: "When an admin creates an assignment you're targeted by.",
   },
   submissionReviewed: {
     label: "Submission reviewed",
-    help: "When a leader records feedback on your work.",
+    help: "When a leader leaves feedback on your submission.",
   },
   sessionRescheduled: {
     label: "Session rescheduled",
-    help: "When a session in your season moves.",
-  },
-  lowAttendanceFlag: {
-    label: "Low attendance flag",
-    // Spec D12: v1's copy said three. The rule is two.
-    help: "When a student in your group misses two consecutive sessions.",
-  },
-  mentorFollowup: {
-    label: "Mentor follow-up",
-    help: "When a mentor flags a student for follow-up.",
+    help: "When a session you're enrolled in moves time.",
   },
   quizGraded: {
     label: "Quiz graded",
     help: "When a quiz you took has been graded.",
+  },
+  lowAttendanceFlag: {
+    label: "Low-attendance flags",
+    // Spec D12: v1's copy said three. The rule is two.
+    help: "When a student you lead/admin misses two in a row.",
+  },
+  mentorFollowup: {
+    label: "Mentor follow-ups",
+    help: "When a mentor flags a note for admin follow-up.",
   },
 };
 
@@ -68,19 +68,14 @@ const PUSH_COPY: Record<PushStatus | "idle", string> = {
 };
 
 export function NotificationPreferences() {
-  const theme = useTheme();
   const pushToken = useSessionStore((s) => s.pushToken);
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [enabling, setEnabling] = useState(false);
   const { data, isPending, isError, refetch } = useNotificationPreferences();
   const update = useUpdateNotificationPreferences();
 
-  if (isPending) return <LoadingState />;
-  if (isError) {
-    return <ErrorState message="Couldn't load your notification settings." onRetry={refetch} />;
-  }
-
   const toggle = (key: keyof Prefs, value: boolean) => {
+    if (!data) return;
     // PUT replaces all six: there is no partial form of this contract, which
     // is exactly what stops a client from leaving a key at its default without
     // saying so.
@@ -88,54 +83,76 @@ export function NotificationPreferences() {
   };
 
   return (
-    <Card>
-      <Text variant="heading">Notifications</Text>
-      <Text variant="body" color={theme.colors.neutral[600]}>
-        Turning one off stops the emails and push for that kind of notification. They will still
-        appear in your inbox — that is your history.
-      </Text>
-      {ORDER.map((key) => (
-        <View
-          key={key}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: theme.spacing.sm,
-            marginTop: theme.spacing.sm,
-          }}
-        >
-          <View style={{ flexShrink: 1 }}>
-            <Text variant="body">{LABELS[key].label}</Text>
-            <Text variant="caption" color={theme.colors.neutral[600]}>
-              {LABELS[key].help}
-            </Text>
-          </View>
-          <Switch
-            accessibilityLabel={LABELS[key].label}
-            value={data[key]}
-            onValueChange={(value) => toggle(key, value)}
-          />
-        </View>
-      ))}
-      <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.xs }}>
-        <Text variant="body">Push notifications</Text>
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          {PUSH_COPY[pushStatus ?? (pushToken ? "unavailable" : "idle")]}
+    <>
+      <Section icon={Bell} title="Notifications" description="Changes save automatically.">
+        {/* Spec D4: the inbox row is always written; the switch governs the
+            outbound channels. Saying so is the difference between a setting
+            and a surprise. */}
+        <Text className="mb-3 text-xs text-muted-foreground">
+          Turning one off stops the emails and push for that kind of notification. They will still appear in your
+          inbox — that is your history.
         </Text>
-        <Button
-          title={pushToken ? "Push enabled on this device" : "Enable push notifications"}
-          variant="secondary"
-          loading={enabling}
-          disabled={pushToken !== null}
-          onPress={() => {
-            setEnabling(true);
-            void enablePush()
-              .then(({ status }) => setPushStatus(status))
-              .finally(() => setEnabling(false));
-          }}
-        />
-      </View>
-    </Card>
+        {isPending ? (
+          <View accessible accessibilityLabel="Loading" className="flex-col gap-3">
+            <Skeleton className="h-10 rounded-lg" />
+            <Skeleton className="h-10 rounded-lg" />
+            <Skeleton className="h-10 rounded-lg" />
+          </View>
+        ) : isError || !data ? (
+          <View className="flex-col items-start gap-2">
+            <Text className="text-sm text-error-600 dark:text-error-400">
+              Couldn't load your notification settings.
+            </Text>
+            <Button variant="outline" size="sm" onPress={() => void refetch()}>
+              Try again
+            </Button>
+          </View>
+        ) : (
+          <View className="flex-col">
+            {ORDER.map((key, i) => (
+              <View
+                key={key}
+                className={cn(
+                  "flex-row items-center justify-between gap-4 py-3",
+                  i > 0 && "border-t border-border",
+                  i === 0 && "pt-0",
+                  i === ORDER.length - 1 && "pb-0",
+                )}
+              >
+                <View className="min-w-0 flex-1">
+                  <Text className="text-sm font-medium text-foreground">{LABELS[key].label}</Text>
+                  <Text className="text-xs text-muted-foreground">{LABELS[key].help}</Text>
+                </View>
+                <Switch
+                  accessibilityLabel={LABELS[key].label}
+                  checked={data[key]}
+                  onCheckedChange={(value) => toggle(key, value)}
+                  className={update.isPending ? "opacity-70" : undefined}
+                />
+              </View>
+            ))}
+          </View>
+        )}
+      </Section>
+      <Section icon={Smartphone} title="Push notifications" description="Alerts on this device.">
+        <View className="flex-col items-start gap-3">
+          <Text className="text-sm text-muted-foreground">
+            {PUSH_COPY[pushStatus ?? (pushToken ? "unavailable" : "idle")]}
+          </Text>
+          <Button
+            variant="outline"
+            disabled={enabling || pushToken !== null}
+            onPress={() => {
+              setEnabling(true);
+              void enablePush()
+                .then(({ status }) => setPushStatus(status))
+                .finally(() => setEnabling(false));
+            }}
+          >
+            {pushToken ? "Push enabled on this device" : "Enable push notifications"}
+          </Button>
+        </View>
+      </Section>
+    </>
   );
 }

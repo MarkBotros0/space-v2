@@ -205,7 +205,12 @@ side-by-side capture against v1 (`tools/ui-reference/`). The shell
 (`app/(app)/_layout.tsx`) renders v1's top bar as the tab header and the
 floating pill tab bar; legacy `Screen` drops its top inset and pads the bottom
 by 96px inside it. `src/ui/` and `src/theme/` are legacy and are deleted when
-the last screen stops importing them.
+the last screen stops importing them. Student-page idioms shared by later batches: `src/design/layout/page-title.tsx`
+(v1's hand-rolled h1, eyebrow, back link), `route-states.tsx` (v1's route
+skeleton and error), `shell-frame.tsx` (page frame with v1's navy-50 tint and
+pull-to-refresh), `src/design/students/` (StatCard, SeasonHistory),
+`src/design/sessions/season-calendar.tsx`. Remaining differences per batch are
+in `docs/superpowers/ui-rebuild/gaps-batch-<n>.md`.
 
 **Testing.** Anything rendering `Screen` must use `renderWithProviders`
 (`src/__tests__/helpers/render.tsx`) — it supplies `SafeAreaProvider` with

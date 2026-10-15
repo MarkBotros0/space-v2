@@ -1,6 +1,11 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import axios from "axios";
-import { studentEngagementSchema, type StudentEngagement } from "@space/shared";
+import {
+  studentEngagementSchema,
+  studentSelfEngagementSchema,
+  type StudentEngagement,
+  type StudentSelfEngagement,
+} from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { apiErrorCode } from "../lib/api-error";
@@ -42,6 +47,23 @@ export function useStudentEngagement(
     enabled: enabled && studentId !== null,
     // A 404 means "no season to score", which is a real answer, not a
     // transient failure — retrying it three times just delays the message.
+    retry: false,
+  });
+}
+
+/**
+ * The signed-in student's own engagement — the narrower self arm (spec D9),
+ * parsed with its strict schema so a staff-shaped answer is an error, never a
+ * quietly accepted superset. Keyed apart from the staff read of the same id.
+ */
+export function useMyEngagement(userId: number | null, enabled: boolean): UseQueryResult<StudentSelfEngagement> {
+  return useQuery({
+    queryKey: [...queryKeys.engagement.student(userId), "self"] as const,
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/students/${userId}/engagement`);
+      return studentSelfEngagementSchema.parse(res.data.data);
+    },
+    enabled: enabled && userId !== null,
     retry: false,
   });
 }

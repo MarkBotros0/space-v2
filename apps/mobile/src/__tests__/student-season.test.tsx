@@ -57,11 +57,14 @@ describe("SeasonScreen — STUDENT branch (v1 student/season)", () => {
     expect(screen.getByText("Session 3 of 7")).toBeTruthy(); // R29, not "Week N of M"
     expect(screen.getByText("4 to go")).toBeTruthy();
     expect(screen.getByText("Your group")).toBeTruthy();
-    expect(screen.getByText("Group B1")).toBeTruthy();
+    // The outline badge in the hero and the group card both name it (v1).
+    expect(screen.getAllByText("Group B1")).toHaveLength(2);
+    expect(screen.getByText("ACTIVE")).toBeTruthy();
     expect(screen.getByText("Leader")).toBeTruthy();
     expect(screen.getByText("Lina Leader")).toBeTruthy();
     expect(screen.getByText("lina@jpc.test")).toBeTruthy(); // R89: leaders' emails, not peers'
-    expect(screen.getByText("Members (2)")).toBeTruthy();
+    expect(screen.getByText(/^Members/)).toBeTruthy();
+    expect(screen.getByText("(2)")).toBeTruthy();
     expect(screen.getByText("Peer Person")).toBeTruthy();
     expect(screen.getByText("You")).toBeTruthy();
     expect(screen.getByText("The spring season.")).toBeTruthy();

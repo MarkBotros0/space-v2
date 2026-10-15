@@ -39,11 +39,13 @@ describe("HistoryScreen", () => {
     expect(await screen.findByText("GBV 2025")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/me/season-history");
     expect(screen.getByText("History")).toBeTruthy();
-    expect(screen.getByText("50% attended · Participated")).toBeTruthy();
+    expect(screen.getByText("50% attended")).toBeTruthy();
+    expect(screen.getByText("Participated")).toBeTruthy();
+    expect(screen.getByText("Seasons you've participated in")).toBeTruthy();
     expect(screen.getByText(/Group A1/)).toBeTruthy();
     expect(screen.queryByText("Opening night")).toBeNull();
 
-    fireEvent.press(screen.getByText("Curriculum (1 session)"));
+    fireEvent.press(screen.getByText("Curriculum (1 sessions)"));
 
     expect(screen.getByText("Opening night")).toBeTruthy();
     // The server's org-calendar day, not the device's reading of startsAt (X13).
@@ -67,7 +69,7 @@ describe("HistoryScreen", () => {
 
     renderWithProviders(<HistoryScreen />);
 
-    expect(await screen.findByText("Couldn't load your history.")).toBeTruthy();
+    expect(await screen.findByText("Something went wrong")).toBeTruthy();
     expect(screen.queryByText("Great work")).toBeNull();
   });
 

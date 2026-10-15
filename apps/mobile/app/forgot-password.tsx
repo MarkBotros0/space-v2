@@ -3,18 +3,19 @@ import { useState } from "react";
 import { View } from "react-native";
 import { PASSWORD_RESET_TTL_MINUTES, forgotPasswordRequestSchema } from "@space/shared";
 
+import { AuthCard, AuthField, AuthLink, AuthNotice } from "../src/design/layout/auth-card";
+import { Button, Input } from "../src/design/ui";
 import { useForgotPassword } from "../src/hooks/use-password-reset";
 import { apiErrorMessage } from "../src/lib/api-error";
-import { useTheme } from "../src/theme";
-import { Button, Input, Screen, Text } from "../src/ui";
 
 /**
  * v1's /forgot-password (app/forgot-password/page.tsx), anonymous, outside
  * (app). The confirmation is the same whether or not the address exists
  * (R67) — the API answers before it even looks (Plan 10 Decision 9).
+ * Layout is v1's; the copy says "code" because the app takes a pasted code
+ * (Plan 10), not v1's link.
  */
 export default function ForgotPasswordScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const forgot = useForgotPassword();
   const [email, setEmail] = useState("");
@@ -39,37 +40,32 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <Screen scroll>
-      <View style={{ flex: 1, justifyContent: "center", gap: theme.spacing.md }}>
-        <Text variant="heading">Forgot password</Text>
-        {sent ? (
-          <Text variant="body">
+    <AuthCard title="Forgot password" description="We'll email you a reset code.">
+      {sent ? (
+        <View className="mb-4">
+          <AuthNotice tone="success">
             {`If an account exists for that email, we've sent a reset code. It expires in ${PASSWORD_RESET_TTL_MINUTES} minutes.`}
-          </Text>
-        ) : (
-          <>
-            <Text variant="body" color={theme.colors.neutral[600]}>
-              Enter your account's email and we'll send you a reset code.
-            </Text>
-            {failure ? (
-              <Text variant="body" color={theme.colors.error[600]} accessibilityRole="alert">
-                {failure}
-              </Text>
-            ) : null}
-            <Input
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              error={emailError ?? undefined}
-            />
-            <Button title="Send reset code" onPress={submit} loading={forgot.isPending} disabled={!email.trim()} />
-          </>
-        )}
-        <Button title="I have a reset code" variant="secondary" onPress={() => router.push("/reset-password")} />
-        <Button title="Back to sign in" variant="ghost" onPress={() => router.replace("/login")} />
+          </AuthNotice>
+        </View>
+      ) : null}
+      <View className="flex-col gap-4">
+        {failure ? <AuthNotice tone="error">{failure}</AuthNotice> : null}
+        <AuthField label="Email" error={emailError ?? undefined}>
+          <Input
+            size="lg"
+            accessibilityLabel="Email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+        </AuthField>
+        <Button size="lg" className="w-full" onPress={submit} disabled={forgot.isPending || !email.trim()}>
+          Send reset code
+        </Button>
+        <AuthLink label="I have a reset code" onPress={() => router.push("/reset-password")} />
+        <AuthLink label="Back to sign in" onPress={() => router.replace("/login")} />
       </View>
-    </Screen>
+    </AuthCard>
   );
 }

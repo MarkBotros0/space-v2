@@ -131,7 +131,7 @@ describe("forum branch of the assignment screen", () => {
     expect(await screen.findByLabelText("Your response")).toBeTruthy();
     // A deliberate product mechanic, not an error — it gets a real empty state.
     expect(screen.getByText("Post to unlock the discussion")).toBeTruthy();
-    expect(screen.getByText("0 / 5 words")).toBeTruthy();
+    expect(screen.getByText("0 words · minimum 5")).toBeTruthy();
     // v1's FORUM branch shows no due date at all (spec 14 R33).
     expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
     // Nothing was created by opening the screen (ruling C6).
@@ -147,7 +147,7 @@ describe("forum branch of the assignment screen", () => {
 
     renderWithProviders(<AssignmentDetailScreen />);
     fireEvent.changeText(await screen.findByLabelText("Your response"), "one two three");
-    expect(screen.getByText("3 / 5 words")).toBeTruthy();
+    expect(screen.getByText("3 words · minimum 5")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Post response"));
     await waitFor(() => expect(put).not.toHaveBeenCalled());
@@ -193,6 +193,25 @@ describe("forum branch of the assignment screen", () => {
     // v1 never renders feedback on a forum assignment, so a leader's verdict is
     // invisible to the student who wrote the post (spec 14 R34 / D9).
     expect(screen.getByText("space-v2-test leader feedback")).toBeTruthy();
+    expect(screen.getByText("Leader feedback")).toBeTruthy();
+    expect(screen.getByText(/^Group discussion · /)).toBeTruthy();
+  });
+
+  it("deletes a comment only after the confirm dialog", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: forumAssignment } })
+        : Promise.resolve({ data: { data: unlockedView } }),
+    );
+    (apiClient.delete as jest.Mock).mockResolvedValue({ data: { data: { deleted: true } } });
+
+    renderWithProviders(<AssignmentDetailScreen />);
+
+    fireEvent.press(await screen.findByLabelText("Delete comment"));
+    expect(await screen.findByText("Delete comment?")).toBeTruthy();
+    expect(apiClient.delete).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText("Delete"));
+    await waitFor(() => expect(apiClient.delete).toHaveBeenCalledTimes(1));
   });
 
   it("posts a comment against the post's publicId", async () => {
@@ -205,10 +224,10 @@ describe("forum branch of the assignment screen", () => {
 
     renderWithProviders(<AssignmentDetailScreen />);
     fireEvent.changeText(
-      await screen.findByLabelText("Add a comment"),
+      await screen.findByLabelText("Write a comment…"),
       "space-v2-test another comment",
     );
-    fireEvent.press(screen.getByText("Comment"));
+    fireEvent.press(screen.getByLabelText("Post comment"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/assignments/41/forum/posts/peer000001/comments", {
@@ -275,7 +294,7 @@ describe("forum branch of the assignment screen", () => {
 
     renderWithProviders(<AssignmentDetailScreen />);
     expect(await screen.findByText("space-v2-test peer response")).toBeTruthy();
-    expect(screen.queryByLabelText("Add a comment")).toBeNull();
+    expect(screen.queryByLabelText("Write a comment…")).toBeNull();
   });
 
   it("does not render the forum branch for a STANDARD assignment", async () => {
