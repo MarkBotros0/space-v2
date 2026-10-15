@@ -27,3 +27,11 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - More lists My notes, Quizzes, Notifications and Settings (v1: Quizzes, Settings), from the shared `navFor` (B2-5, spec 09 D14). B3-7.
 - Settings: six rows (+ "Quiz graded"); low-attendance copy "misses two in a row" (v1 "3"); the D4 inbox explainer; Push and Security sections (B2-6 and the batch-2 gap note).
 - Notifications: "{n} unread" without "of {total}" (no total in the API), and the v2 "Mark all read" button (B2-7).
+
+## Submissions
+- The list shows every SUBMITTED, REVIEWED and RETURNED row (v1) via `pendingOnly=false`. B3-8.
+- The second line shows the group only: queue items carry no `studentEmail` (contract change needed), and a student with no name shows "Student" instead of v1's email fallback.
+- Totals can differ from v1 (17 vs 19 on the reference data): v2 counts enrolment-scoped rows server-side (spec 08 D12, C9).
+- Dates are formatted from the instant in the device zone (no org fields on queue items, X13).
+- "Load more" paging (D12) has no v1 counterpart.
+- Shared fix: `DataTable` keeps each "·" with the cell before it, so a wrapped meta row ends a line with the separator, as in v1.
