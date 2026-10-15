@@ -451,7 +451,7 @@ describe("DashboardScreen — ADMIN and LEADER", () => {
     expect(requested().some((u) => u.startsWith("/api/v1/me/dashboard"))).toBe(false);
   });
 
-  it("leader: every group named, 'View all' goes to /groups, the attendance label says 'group'", async () => {
+  it("leader: v1 layout — every group named, neutral ring, stat row, at-risk card and the cards' View all links", async () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5, 6] }));
     serve({
       "/api/v1/seasons": { seasons: [seasonRow] },
@@ -463,13 +463,30 @@ describe("DashboardScreen — ADMIN and LEADER", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Group A, Group B")).toBeTruthy();
-    expect(screen.getByText("Group average attendance 33%")).toBeTruthy();
+    expect(screen.getByLabelText("Group average attendance 33%")).toBeTruthy();
+    expect(screen.getAllByText("33%").length).toBeGreaterThan(0);
+    expect(screen.getByText("3 students · Session 3 of 4")).toBeTruthy();
+    expect(screen.getByLabelText("Students: 3")).toBeTruthy();
+    expect(screen.getByLabelText("Progress: 75%")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes: 2")).toBeTruthy();
     expect(screen.getByText("Your students at risk")).toBeTruthy();
-    fireEvent.press(screen.getByText("View all"));
+    expect(screen.getByText("1/3 submitted")).toBeTruthy();
+    expect(screen.getByText("12 students at risk")).toBeTruthy();
+    expect(screen.getByText("1 quiz draft not yet published")).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText("View all Your students at risk"));
     expect(mockPush).toHaveBeenCalledWith("/groups");
+    fireEvent.press(screen.getByLabelText("View all Assignments"));
+    expect(mockPush).toHaveBeenCalledWith("/submissions");
+    fireEvent.press(screen.getByLabelText("View all Quiz corrections"));
+    expect(mockPush).toHaveBeenCalledWith("/quizzes");
+    fireEvent.press(screen.getByLabelText("Quizzes: 2"));
+    expect(mockPush).toHaveBeenCalledWith("/quizzes");
+    fireEvent.press(screen.getAllByText("Sara Student")[0]!);
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
   });
 
-  it("leader refused for the season: shows the server's message", async () => {
+  it("leader refused for the season: v1's leader error page", async () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5] }));
     get.mockImplementation((url: string) => {
       if (url === "/api/v1/seasons")
@@ -488,7 +505,8 @@ describe("DashboardScreen — ADMIN and LEADER", () => {
 
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("You don't have access to this.")).toBeTruthy();
+    expect(await screen.findByText("Something went wrong")).toBeTruthy();
+    expect(screen.getByText(/let an admin know/)).toBeTruthy();
   });
 });
 
