@@ -209,6 +209,8 @@ describe("forum branch of the assignment screen", () => {
 
     fireEvent.press(await screen.findByLabelText("Delete comment"));
     expect(await screen.findByText("Delete comment?")).toBeTruthy();
+    // Neutral copy: a leader may remove a group member's comment, not only their own (B3-16).
+    expect(screen.getByText("This removes the comment for everyone.")).toBeTruthy();
     expect(apiClient.delete).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Delete"));
     await waitFor(() => expect(apiClient.delete).toHaveBeenCalledTimes(1));
