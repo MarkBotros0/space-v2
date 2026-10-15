@@ -50,3 +50,12 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - Session dates come from an instant in the device zone (X13).
 - Arabic titles truncate at the line end the platform picks (RN `numberOfLines`); v1's CSS ellipsis can fall on the other side for RTL text.
 - Admin and super keep the pre-rebuild staff list until batch 4/5.
+
+## Quiz grading
+- One screen for every grader (v1 had separate leader and admin pages with the same components). B3-11.
+- "Reopen retake" shows for leaders too, and on SUBMITTED attempts as well as GRADED (spec 12 D5); v1 never showed it to leaders.
+- "Waiting" (students not started or still in progress) is V2-ONLY (D5/R102), drawn as v1 attempt cards under an eyebrow.
+- "Graded by …" and the summary header cards are dropped (v1 has neither).
+- Client checks only that each essay mark is a whole number (v1's message "Enter 0–N points…"); the server enforces the maximum (D7). Paper scores are not clamped on the device (D7).
+- The paper table keeps v1's light-only colours in dark mode (v1 has no dark: classes) and scrolls sideways inside its card with fixed column widths. No v1 paper capture exists to compare against.
+- Long Arabic titles wrap at different points (font metrics).
