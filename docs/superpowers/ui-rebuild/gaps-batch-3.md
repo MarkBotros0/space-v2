@@ -35,3 +35,11 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - Dates are formatted from the instant in the device zone (no org fields on queue items, X13).
 - "Load more" paging (D12) has no v1 counterpart.
 - Shared fix: `DataTable` keeps each "·" with the cell before it, so a wrapped meta row ends a line with the separator, as in v1.
+
+## Submission review
+- The feedback editor is a plain Textarea without v1's rich-text toolbar: feedback travels as plain text (C11, B2-16). The backend also stores feedback raw rather than through `plainTextToHtml` (backend data-gap table). B3-9.
+- "Return for revision" (outline, beside the primary) is v2's (spec 08 D11). B3-9.
+- After a verdict the reviewer stays on the page (v1), with a toast "Review saved." / "Returned for revision." (v2 feedback).
+- The attachments note reads "Files can't be opened in the app yet." (v1's line points at TODO.md; the mobile app has no file-download hook yet).
+- The group name comes from the enrolment (C9), so it can differ from v1's for a student who changed groups (e.g. "Delta" vs v1 "Alpha").
+- Badge dates are formatted from instants in the device zone (X13).
