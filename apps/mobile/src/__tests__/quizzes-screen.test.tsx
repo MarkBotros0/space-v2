@@ -156,7 +156,11 @@ describe("QuizzesScreen — staff", () => {
     expect(await screen.findByText("Week 1 quiz")).toBeTruthy();
     // One number from the server (ruling C4). v1 computed "graded" three
     // different ways and got three different answers.
-    expect(screen.getByText("Paper · 3/8 graded")).toBeTruthy();
+    expect(screen.getByText("3/8 graded")).toBeTruthy();
+    expect(screen.getByText("Partial")).toBeTruthy();
+    expect(screen.getByText("Week 1 · Mar 1, 2099 · Max 20 pts")).toBeTruthy();
+    expect(screen.getByText("Quizzes")).toBeTruthy();
+    expect(screen.getByText("Grade paper quizzes for your group")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Week 1 quiz"));
     expect(mockPush).toHaveBeenCalledWith({
@@ -165,7 +169,7 @@ describe("QuizzesScreen — staff", () => {
     });
   });
 
-  it("shows an online quiz's draft state", async () => {
+  it("shows an online draft as v1 does: graded count and Pending (B3-10)", async () => {
     useSessionStore.setState(leaderSession);
     staffGets({
       items: [staffRow({ id: 51, title: "Online quiz", kind: "ONLINE",
@@ -176,7 +180,29 @@ describe("QuizzesScreen — staff", () => {
     renderWithProviders(<QuizzesScreen />);
 
     expect(await screen.findByText("Online quiz")).toBeTruthy();
-    expect(screen.getByText("Online · Draft · 4 questions")).toBeTruthy();
+    expect(screen.getByText("0/8 graded")).toBeTruthy();
+    expect(screen.getByText("Pending")).toBeTruthy();
+  });
+
+  it("orders a leader's quizzes by session date, newest first (v1)", async () => {
+    useSessionStore.setState(leaderSession);
+    staffGets({
+      items: [
+        staffRow({ id: 41, title: "Older quiz", sessionDate: "2099-03-01T18:00:00.000Z" }),
+        staffRow({ id: 42, title: "Newer quiz", sessionDate: "2099-03-08T18:00:00.000Z", gradedCount: 8 }),
+        staffRow({ id: 43, title: "Loose quiz", sessionId: null, sessionTitle: null, sessionDate: null, gradedCount: 0 }),
+      ],
+      nextCursor: null,
+    });
+    renderWithProviders(<QuizzesScreen />);
+    expect(await screen.findByText("Newer quiz")).toBeTruthy();
+    const order = screen.UNSAFE_root
+      .findAll((n: { props: { children?: unknown } }) => typeof n.props.children === "string")
+      .map((n: { props: { children?: unknown } }) => n.props.children as string);
+    expect(order.indexOf("Newer quiz")).toBeLessThan(order.indexOf("Older quiz"));
+    expect(order.indexOf("Older quiz")).toBeLessThan(order.indexOf("Loose quiz"));
+    expect(screen.getByText("Done")).toBeTruthy();
+    expect(screen.getByText("No session · Max 20 pts")).toBeTruthy();
   });
 
   it("takes a staff season from the seasons list, never from scopes.activeSeasonId (X8)", async () => {
@@ -219,7 +245,8 @@ describe("QuizzesScreen — authoring entry points (Task 11)", () => {
     useSessionStore.setState(leaderSession);
     staffGets({ items: [], nextCursor: null });
     renderWithProviders(<QuizzesScreen />);
-    expect(await screen.findByText("No quizzes")).toBeTruthy();
+    expect(await screen.findByText("No quizzes yet")).toBeTruthy();
+    expect(screen.getByText("Quizzes created by your admin will appear here.")).toBeTruthy();
     expect(screen.queryByText("New quiz")).toBeNull();
   });
 });

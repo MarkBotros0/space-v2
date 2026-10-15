@@ -43,3 +43,10 @@ Every difference left between the v1 leader pages and the rebuilt v2 screens, wi
 - The attachments note reads "Files can't be opened in the app yet." (v1's line points at TODO.md; the mobile app has no file-download hook yet).
 - The group name comes from the enrolment (C9), so it can differ from v1's for a student who changed groups (e.g. "Delta" vs v1 "Alpha").
 - Badge dates are formatted from instants in the device zone (X13).
+
+## Quizzes
+- Graded counts come from the server (C4/D10): ONLINE quizzes count graded attempts, so a row can read "1/8 graded · Partial" where v1 always showed "0/8 · Pending".
+- v1's order (session date, newest first) is applied on the device because the API orders by id (backend data-gap table). B3-10.
+- Session dates come from an instant in the device zone (X13).
+- Arabic titles truncate at the line end the platform picks (RN `numberOfLines`); v1's CSS ellipsis can fall on the other side for RTL text.
+- Admin and super keep the pre-rebuild staff list until batch 4/5.

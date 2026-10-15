@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { QuizSummary, StudentQuizResult } from "@space/shared";
 
-import { Eyebrow } from "../../src/design/layout/page-title";
+import { Eyebrow, PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { cn } from "../../src/design/lib/cn";
@@ -157,6 +157,81 @@ function StudentQuizzes({ seasonId }: { seasonId: number | null }) {
   );
 }
 
+/** v1's three-way badge over the server's counts (C4, D10). */
+function GradedBadge({ row }: { row: QuizSummary }) {
+  if (row.studentCount > 0 && row.gradedCount >= row.studentCount) return <Badge variant="success">Done</Badge>;
+  if (row.gradedCount > 0) return <Badge variant="warning">Partial</Badge>;
+  return <Badge variant="outline">Pending</Badge>;
+}
+
+/** v1 order: session date, newest first; quizzes without a session last (B3-10). */
+function bySessionDate(a: QuizSummary, b: QuizSummary): number {
+  if (a.sessionDate === b.sessionDate) return b.id - a.id;
+  if (a.sessionDate === null) return 1;
+  if (b.sessionDate === null) return -1;
+  return b.sessionDate.localeCompare(a.sessionDate);
+}
+
+/**
+ * LEADER — v1 app/leader/quizzes/page.tsx. Every row opens grading (spec 12
+ * D12: the flat route has no orphan "#" links).
+ */
+function LeaderQuizzes() {
+  const router = useRouter();
+  const current = useCurrentSeasonId();
+  const seasonId = current.seasonId;
+  const { data, isPending, isError, refetch, isRefetching } = useQuizList(seasonId);
+  const rows = [...(data?.items ?? [])].sort(bySessionDate);
+
+  let body: ReactNode;
+  if (current.isPending || (seasonId !== null && isPending)) body = <RouteSkeleton />;
+  else if (current.isError) body = <RouteError onRetry={current.refetch} />;
+  else if (seasonId !== null && isError) body = <RouteError onRetry={() => void refetch()} />;
+  else if (rows.length === 0)
+    body = (
+      <EmptyStateV1 icon={PenLine} title="No quizzes yet" description="Quizzes created by your admin will appear here." />
+    );
+  else
+    body = (
+      <View className="flex-col gap-3">
+        {rows.map((row) => (
+          <Pressable
+            key={row.id}
+            accessibilityRole="link"
+            onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(row.id) } })}
+            className="flex-row items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-4"
+            style={shadowStyle("soft")}
+          >
+            <View className="min-w-0 flex-1">
+              <TextV1 numberOfLines={1} className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
+                {row.title}
+              </TextV1>
+              <TextV1 className="mt-0.5 text-xs text-muted-foreground">
+                {`${row.sessionTitle !== null ? `${row.sessionTitle} · ${formatDate(row.sessionDate)}` : "No session"} · Max ${row.maxScore} pts`}
+              </TextV1>
+            </View>
+            <View className="shrink-0 flex-row items-center gap-2">
+              <TextV1 className="text-xs text-muted-foreground">{`${row.gradedCount}/${row.studentCount} graded`}</TextV1>
+              <GradedBadge row={row} />
+            </View>
+          </Pressable>
+        ))}
+      </View>
+    );
+
+  return (
+    <ShellFrame
+      refreshing={isRefetching}
+      onRefresh={() => (seasonId !== null ? void refetch() : current.refetch())}
+    >
+      <View className="flex-col gap-4">
+        <PageTitle title="Quizzes" subtitle="Grade paper quizzes for your group" />
+        {body}
+      </View>
+    </ShellFrame>
+  );
+}
+
 function staffStatus(row: QuizSummary): string {
   if (row.kind === "PAPER") return `Paper · ${row.gradedCount}/${row.studentCount} graded`;
   const state = row.publishedAt === null ? "Draft" : `${row.gradedCount}/${row.studentCount} graded`;
@@ -236,7 +311,8 @@ export default function QuizzesScreen() {
   const studentSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
 
   if (role === "STUDENT") return <StudentQuizzes seasonId={studentSeasonId} />;
-  if (role === "LEADER" || role === "ADMIN" || role === "SUPER") {
+  if (role === "LEADER") return <LeaderQuizzes />;
+  if (role === "ADMIN" || role === "SUPER") {
     return <StaffQuizzes />;
   }
   // MENTOR has no quiz access anywhere in v1 and /quizzes is not in the mentor
