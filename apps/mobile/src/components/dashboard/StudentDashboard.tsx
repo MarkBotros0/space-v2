@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { AlertTriangle, Sparkles } from "lucide-react-native";
-import { Linking, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import {
   UPCOMING_EVENTS_LIMIT,
   type DashboardDueItem,
@@ -10,6 +10,7 @@ import {
 import { Eyebrow } from "../../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
+import { NextSessionCard } from "../../design/sessions/next-session-card";
 import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
 import { shadowStyle } from "../../design/lib/shadow";
@@ -22,9 +23,6 @@ import {
   firstName,
   formatDistanceOnly,
   formatShortDay,
-  formatTimeAgo,
-  formatWallTime,
-  formatWeekdayDay,
 } from "../../lib/format";
 import { useSessionStore } from "../../store/session";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
@@ -217,46 +215,10 @@ function EnrolledBody({
         </View>
       ) : null}
 
-      <View className={cn(CARD, "p-4")} style={shadowStyle("soft")}>
-        <Eyebrow>{next?.isInProgress ? "Happening now" : "Next session"}</Eyebrow>
-        {next ? (
-          <View className="mt-2 flex-col gap-2">
-            <View className="flex-row items-start gap-3">
-              <View className="mt-1 size-2 shrink-0 rounded-full bg-brand-teal-500" />
-              <View className="min-w-0 flex-1 items-start">
-                <Pressable
-                  accessibilityRole="link"
-                  onPress={() => router.push({ pathname: "/session/[id]", params: { id: String(next.id) } })}
-                >
-                  <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{next.title}</Text>
-                </Pressable>
-                <Text className="text-xs text-muted-foreground">
-                  {`${formatWeekdayDay(next.dayKey)} · ${formatWallTime(next.time)} · ${next.durationMinutes} min${
-                    next.location ? ` · ${next.location}` : ""
-                  }`}
-                </Text>
-                {next.isInProgress ? null : (
-                  <Badge variant="teal" className="mt-1.5" textClassName="text-[10px]">
-                    {formatTimeAgo(next.startsAt)}
-                  </Badge>
-                )}
-              </View>
-            </View>
-            {/* D13: a stream link only while the session is running; never "Watch recording" on a future one. */}
-            {next.isInProgress && next.youtubeUrl ? (
-              <Pressable
-                accessibilityRole="link"
-                onPress={() => void Linking.openURL(next.youtubeUrl ?? "")}
-                className="items-center justify-center rounded-lg bg-brand-teal-600 px-3 py-2 active:bg-brand-teal-700"
-              >
-                <Text className="text-xs font-bold text-white">Join stream</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ) : (
-          <Text className="mt-2 text-sm italic text-muted-foreground">No upcoming sessions.</Text>
-        )}
-      </View>
+      <NextSessionCard
+        session={next}
+        onOpen={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
+      />
 
       <UpcomingEventsCard query={events} />
 

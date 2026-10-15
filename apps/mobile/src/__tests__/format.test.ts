@@ -150,3 +150,11 @@ describe("batch-2 formatters", () => {
     );
   });
 });
+
+describe("formatShortDateTime (v1 submissions 'MMM d, h:mm a', device zone)", () => {
+  it("formats an instant without the year", () => {
+    const { formatShortDateTime } = jest.requireActual("../lib/format") as typeof import("../lib/format");
+    expect(formatShortDateTime(new Date(2026, 6, 1, 18, 13).toISOString())).toBe("Jul 1, 6:13 PM");
+    expect(formatShortDateTime(null)).toBe("—");
+  });
+});
