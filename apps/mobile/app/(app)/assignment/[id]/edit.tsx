@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { AssignmentDetail } from "@space/shared";
 
@@ -8,7 +9,10 @@ import { useUpdateAssignment } from "../../../../src/hooks/use-assignment-writes
 import { useSeasonGroups } from "../../../../src/hooks/use-groups";
 import { useSeasonSessions } from "../../../../src/hooks/use-sessions";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
-import { EmptyState, ErrorState, LoadingState, Screen } from "../../../../src/ui";
+import { PageTitle } from "../../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { Card, CardContent, EmptyState } from "../../../../src/design/ui";
 
 function EditForm({ detail }: { detail: AssignmentDetail }) {
   const router = useRouter();
@@ -19,11 +23,10 @@ function EditForm({ detail }: { detail: AssignmentDetail }) {
   const update = useUpdateAssignment(detail.id);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  if (groups.isPending || sessions.isPending) return <LoadingState />;
+  if (groups.isPending || sessions.isPending) return <RouteSkeleton />;
   if (groups.isError || sessions.isError) {
     return (
-      <ErrorState
-        message="Couldn't load this season's groups and sessions."
+      <RouteError
         onRetry={() => {
           void groups.refetch();
           void sessions.refetch();
@@ -33,22 +36,28 @@ function EditForm({ detail }: { detail: AssignmentDetail }) {
   }
 
   return (
-    <AssignmentForm
-      initial={valuesFromDetail(detail)}
-      groups={groups.data}
-      sessions={sessions.data}
-      trackerRows={tracker.data?.rows}
-      submitLabel="Save changes"
-      submitting={update.isPending}
-      serverError={serverError}
-      onSubmit={(payload) => {
-        setServerError(null);
-        update.mutate(payload, {
-          onSuccess: () => router.replace({ pathname: "/assignment/[id]", params: { id: String(detail.id) } }),
-          onError: (err) => setServerError(apiErrorMessage(err, "Couldn't save the assignment.")),
-        });
-      }}
-    />
+    <Card>
+      <CardContent className="pt-6">
+        <AssignmentForm
+          initial={valuesFromDetail(detail)}
+          groups={groups.data}
+          sessions={sessions.data}
+          trackerRows={tracker.data?.rows}
+          submitLabel="Save changes"
+          submitting={update.isPending}
+          serverError={serverError}
+          onSubmit={(payload) => {
+            setServerError(null);
+            update.mutate(payload, {
+              onSuccess: () =>
+                router.replace({ pathname: "/assignment/[id]", params: { id: String(detail.id) } }),
+              onError: (err) =>
+                setServerError(apiErrorMessage(err, "Couldn't save the assignment.")),
+            });
+          }}
+        />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -61,21 +70,24 @@ export default function EditAssignmentScreen() {
 
   let body: ReactNode;
   if (id === null) {
-    body = <EmptyState title="Not found" message="That assignment link isn't valid." />;
+    body = <EmptyState title="Not found" description="That assignment link isn't valid." />;
   } else if (detail.isPending) {
-    body = <LoadingState />;
+    body = <RouteSkeleton />;
   } else if (detail.isError) {
-    body = <ErrorState message="Couldn't load this assignment." onRetry={() => void detail.refetch()} />;
+    body = <RouteError onRetry={() => void detail.refetch()} />;
   } else if (!detail.data.canManage) {
     // The server's flag (C4), mirroring the PATCH gate; the gate itself is the server's.
-    body = <EmptyState title="Not available" message="You can't edit this assignment." />;
+    body = <EmptyState title="Not available" description="You can't edit this assignment." />;
   } else {
     body = <EditForm detail={detail.data} />;
   }
 
   return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      {body}
-    </Screen>
+    <ShellFrame>
+      <View className="flex-col gap-4">
+        <PageTitle title="Edit assignment" subtitle={detail.data?.title} />
+        {body}
+      </View>
+    </ShellFrame>
   );
 }

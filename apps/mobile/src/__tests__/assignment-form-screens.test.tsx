@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { format } from "date-fns";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
@@ -9,33 +10,6 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: jest.fn() }),
   useLocalSearchParams: () => mockParams,
 }));
-jest.mock("@react-native-community/datetimepicker", () => {
-  const { Pressable, Text } = require("react-native");
-  // Stands in for the native picker. A press "picks" a value built from LOCAL
-  // fields — what the real picker hands back — so these assertions mean the
-  // same thing in every device timezone (the closing gate runs this file
-  // under two extreme TZs to prove it).
-  return {
-    __esModule: true,
-    default: ({
-      mode,
-      onChange,
-    }: {
-      mode: "date" | "time";
-      onChange: (event: { type: string }, date?: Date) => void;
-    }) => (
-      <Pressable
-        accessibilityLabel={`Choose ${mode}`}
-        onPress={() =>
-          onChange({ type: "set" }, mode === "date" ? new Date(2099, 3, 1, 9, 0) : new Date(2099, 0, 1, 18, 30))
-        }
-      >
-        <Text>{`native ${mode} picker`}</Text>
-      </Pressable>
-    ),
-  };
-});
-
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -49,38 +23,94 @@ const post = apiClient.post as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
 
 const season = {
-  id: 7, code: "s7", title: "Spring 2099", program: "TEST", year: 2099, status: "ACTIVE" as const,
-  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
+  id: 7,
+  code: "s7",
+  title: "Spring 2099",
+  program: "TEST",
+  year: 2099,
+  status: "ACTIVE" as const,
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
 };
 const group = (id: number, name: string) => ({
-  id, name, description: null, studentCount: 2, leaderNames: [],
-  seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
+  id,
+  name,
+  description: null,
+  studentCount: 2,
+  leaderNames: [],
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring 2099",
 });
 const sessionRow = {
-  id: 12, title: "Week 4", startsAt: "2099-03-01T18:00:00.000Z", dayKey: "2099-03-01",
-  durationMinutes: 60, location: null, recurrenceGroupId: null, attendanceMarked: false,
-  seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
-  checkInToken: null, checkInOpenAt: null, checkInClosedAt: null, startTime: "20:00",
+  id: 12,
+  title: "Week 4",
+  startsAt: "2099-03-01T18:00:00.000Z",
+  dayKey: "2099-03-01",
+  durationMinutes: 60,
+  location: null,
+  recurrenceGroupId: null,
+  attendanceMarked: false,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring 2099",
+  checkInToken: null,
+  checkInOpenAt: null,
+  checkInClosedAt: null,
+  startTime: "20:00",
 };
 const detail = {
-  id: 55, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
-  sessionId: null, sessionTitle: null, title: "Essay one", description: "Write about the thing.",
-  dueAt: "2099-04-01T21:59:00.000Z", dueOrgDay: "2099-04-01", dueOrgTime: "23:59",
-  isOverdue: false, isAllGroups: false, type: "STANDARD" as const, forumMinWords: null,
-  forumAllowComments: false, maxFileSizeMb: 10, allowedMimeCategories: ["pdf" as const],
-  groupIds: [3], mySubmission: null, canManage: true,
+  id: 55,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring 2099",
+  sessionId: null,
+  sessionTitle: null,
+  title: "Essay one",
+  description: "Write about the thing.",
+  dueAt: "2099-04-01T21:59:00.000Z",
+  dueOrgDay: "2099-04-01",
+  dueOrgTime: "23:59",
+  isOverdue: false,
+  isAllGroups: false,
+  type: "STANDARD" as const,
+  forumMinWords: null,
+  forumAllowComments: false,
+  maxFileSizeMb: 10,
+  allowedMimeCategories: ["pdf" as const],
+  groupIds: [3],
+  mySubmission: null,
+  canManage: true,
 };
 const tracker = {
-  assignmentId: 55, dueAt: detail.dueAt, isOverdue: false, submittedCount: 1, expectedCount: 2,
+  assignmentId: 55,
+  dueAt: detail.dueAt,
+  isOverdue: false,
+  submittedCount: 1,
+  expectedCount: 2,
   rows: [
     {
-      studentUserId: 9, name: "Sara Student", email: "sara@jpc.test", groupId: 3, groupName: "Group A",
-      status: "SUBMITTED" as const, isLate: false, submittedAt: "2099-03-30T10:00:00.000Z",
-      reviewedAt: null, submissionPublicId: "abc123defg",
+      studentUserId: 9,
+      name: "Sara Student",
+      email: "sara@jpc.test",
+      groupId: 3,
+      groupName: "Group A",
+      status: "SUBMITTED" as const,
+      isLate: false,
+      submittedAt: "2099-03-30T10:00:00.000Z",
+      reviewedAt: null,
+      submissionPublicId: "abc123defg",
     },
     {
-      studentUserId: 10, name: "Nadia", email: "nadia@jpc.test", groupId: 3, groupName: "Group A",
-      status: "PENDING" as const, isLate: false, submittedAt: null, reviewedAt: null,
+      studentUserId: 10,
+      name: "Nadia",
+      email: "nadia@jpc.test",
+      groupId: 3,
+      groupName: "Group A",
+      status: "PENDING" as const,
+      isLate: false,
+      submittedAt: null,
+      reviewedAt: null,
       submissionPublicId: null,
     },
   ],
@@ -101,9 +131,17 @@ function serve(extra: Record<string, unknown> = {}) {
 }
 
 const STANDARD_DEFAULTS = {
-  description: null, dueDay: null, dueTime: null, sessionId: null, type: "STANDARD",
-  forumMinWords: null, forumAllowComments: false, maxFileSizeMb: null,
-  allowedMimeCategories: [], isAllGroups: true, groupIds: [],
+  description: null,
+  dueDay: null,
+  dueTime: null,
+  sessionId: null,
+  type: "STANDARD",
+  forumMinWords: null,
+  forumAllowComments: false,
+  maxFileSizeMb: null,
+  allowedMimeCategories: [],
+  isAllGroups: true,
+  groupIds: [],
 };
 
 beforeEach(() => {
@@ -121,15 +159,18 @@ describe("NewAssignmentScreen", () => {
     renderWithProviders(<NewAssignmentScreen />);
 
     fireEvent.changeText(await screen.findByLabelText("Title"), "Week 4 reflection");
-    expect(screen.getByText("Due: No due date")).toBeTruthy();
-    fireEvent.press(screen.getByText("Pick due date"));
-    fireEvent.press(screen.getByLabelText("Choose date"));
-    expect(screen.getByText("Due: Apr 1, 2099, 11:59 PM")).toBeTruthy(); // R19's 23:59 default
-    fireEvent.press(screen.getByText("Pick due time"));
-    fireEvent.press(screen.getByLabelText("Choose time"));
-    expect(screen.getByText("Due: Apr 1, 2099, 6:30 PM")).toBeTruthy();
+    // Today is always on screen in the open month grid.
+    fireEvent.press(screen.getByLabelText("Due date"));
+    fireEvent.press(screen.getByLabelText(format(new Date(), "PPP")));
+    const day = format(new Date(), "yyyy-MM-dd");
+    // R19's 23:59 default -> 18:30
+    fireEvent.press(screen.getByLabelText("Hour"));
+    fireEvent.press(screen.getByRole("menuitem", { name: "18" }));
+    fireEvent.press(screen.getByLabelText("Minute"));
+    fireEvent.press(screen.getByRole("menuitem", { name: "30" }));
     fireEvent.press(screen.getByLabelText("Specific groups"));
-    fireEvent.press(screen.getByLabelText("Group B"));
+    fireEvent.press(screen.getByLabelText("Groups"));
+    fireEvent.press(screen.getByRole("checkbox", { name: /Group B/ }));
     fireEvent.press(screen.getByText("Create assignment"));
 
     // The device composes no instant: it sends the day and time it was given.
@@ -137,14 +178,17 @@ describe("NewAssignmentScreen", () => {
       expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/assignments", {
         ...STANDARD_DEFAULTS,
         title: "Week 4 reflection",
-        dueDay: "2099-04-01",
+        dueDay: day,
         dueTime: "18:30",
         isAllGroups: false,
         groupIds: [4],
       }),
     );
     await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "77" } }),
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: "/assignment/[id]",
+        params: { id: "77" },
+      }),
     );
   });
 
@@ -155,10 +199,10 @@ describe("NewAssignmentScreen", () => {
 
     fireEvent.changeText(await screen.findByLabelText("Title"), "Discuss");
     expect(screen.getByLabelText("Accept file uploads")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText("Forum"));
+    fireEvent.press(screen.getByLabelText(/^Forum — /));
     expect(screen.queryByLabelText("Accept file uploads")).toBeNull();
     expect(screen.getByDisplayValue("50")).toBeTruthy(); // R21 default
-    fireEvent(screen.getByLabelText("Allow peer comments"), "valueChange", true);
+    fireEvent.press(screen.getByLabelText("Allow peer comments"));
     fireEvent.press(screen.getByText("Create assignment"));
 
     await waitFor(() =>
@@ -178,10 +222,12 @@ describe("NewAssignmentScreen", () => {
     renderWithProviders(<NewAssignmentScreen />);
 
     fireEvent.changeText(await screen.findByLabelText("Title"), "Upload it");
-    fireEvent(screen.getByLabelText("Accept file uploads"), "valueChange", true);
+    fireEvent.press(screen.getByLabelText("Accept file uploads"));
     expect(screen.getByDisplayValue("10")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText("PDFs"));
-    fireEvent.press(screen.getByLabelText("Week 4 · Mar 1, 2099"));
+    fireEvent.press(screen.getByLabelText("Allowed types"));
+    fireEvent.press(screen.getByRole("checkbox", { name: /PDFs/ }));
+    fireEvent.press(screen.getByLabelText("Linked session"));
+    fireEvent.press(screen.getByRole("menuitem", { name: /Week 4/ }));
     fireEvent.press(screen.getByText("Create assignment"));
 
     await waitFor(() =>
@@ -203,7 +249,9 @@ describe("NewAssignmentScreen", () => {
     fireEvent.press(screen.getByLabelText("Specific groups"));
     fireEvent.press(screen.getByText("Create assignment"));
 
-    expect(await screen.findByText("Choose at least one group, or target the whole season.")).toBeTruthy();
+    expect(
+      await screen.findByText("Choose at least one group, or target the whole season."),
+    ).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -214,7 +262,12 @@ describe("NewAssignmentScreen", () => {
         isAxiosError: true,
         response: {
           status: 400,
-          data: { error: { code: "invalid_group", message: "Every group must belong to this assignment's season." } },
+          data: {
+            error: {
+              code: "invalid_group",
+              message: "Every group must belong to this assignment's season.",
+            },
+          },
         },
       }),
     );
@@ -223,7 +276,9 @@ describe("NewAssignmentScreen", () => {
     fireEvent.changeText(await screen.findByLabelText("Title"), "Week 4 reflection");
     fireEvent.press(screen.getByText("Create assignment"));
 
-    expect(await screen.findByText("Every group must belong to this assignment's season.")).toBeTruthy();
+    expect(
+      await screen.findByText("Every group must belong to this assignment's season."),
+    ).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
@@ -247,7 +302,7 @@ describe("EditAssignmentScreen", () => {
     renderWithProviders(<EditAssignmentScreen />);
 
     const title = await screen.findByDisplayValue("Essay one");
-    expect(screen.getByText("Due: Apr 1, 2099, 11:59 PM")).toBeTruthy();
+    expect(screen.getByText(format(new Date(2099, 3, 1), "PPP"))).toBeTruthy();
     expect(screen.getByDisplayValue("10")).toBeTruthy(); // acceptsFiles re-derived from the size (R10)
     fireEvent.changeText(title, "Essay two");
     fireEvent.press(screen.getByText("Save changes"));
@@ -266,7 +321,10 @@ describe("EditAssignmentScreen", () => {
       }),
     );
     await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "55" } }),
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: "/assignment/[id]",
+        params: { id: "55" },
+      }),
     );
   });
 
@@ -276,8 +334,9 @@ describe("EditAssignmentScreen", () => {
 
     await screen.findByDisplayValue("Essay one");
     expect(screen.queryByText(/already started or submitted/)).toBeNull();
-    fireEvent.press(screen.getByLabelText("Group A")); // untick
-    fireEvent.press(screen.getByLabelText("Group B")); // tick
+    fireEvent.press(screen.getByLabelText("Groups"));
+    fireEvent.press(screen.getByRole("checkbox", { name: /Group A/ })); // untick
+    fireEvent.press(screen.getByRole("checkbox", { name: /Group B/ })); // tick
 
     // Sara (SUBMITTED, Group A) is hidden by this edit; Nadia (not started) is not counted.
     expect(
@@ -289,12 +348,14 @@ describe("EditAssignmentScreen", () => {
 
   it("clears the due date", async () => {
     serve({ "/api/v1/assignments/55": detail, "/api/v1/assignments/55/tracker": tracker });
-    patch.mockResolvedValue({ data: { data: { ...detail, dueAt: null, dueOrgDay: null, dueOrgTime: null } } });
+    patch.mockResolvedValue({
+      data: { data: { ...detail, dueAt: null, dueOrgDay: null, dueOrgTime: null } },
+    });
     renderWithProviders(<EditAssignmentScreen />);
 
     await screen.findByDisplayValue("Essay one");
     fireEvent.press(screen.getByText("Clear due date"));
-    expect(screen.getByText("Due: No due date")).toBeTruthy();
+    expect(screen.queryByText("Clear due date")).toBeNull();
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>

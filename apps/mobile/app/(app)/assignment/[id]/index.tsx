@@ -16,6 +16,7 @@ import {
   Badge,
   Button as ButtonV1,
   Card as CardV1,
+  EmptyState as EmptyStateV1,
   CardContent,
   CardHeader,
   CardTitle,
@@ -34,20 +35,22 @@ import {
 } from "../../../../src/hooks/use-submission";
 import { formatDayKey, formatDistanceOnly, formatOrgDue } from "../../../../src/lib/format";
 import { useSessionStore } from "../../../../src/store/session";
-import { useTheme } from "../../../../src/theme";
-import { EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
 
 iconWithClassName(FileIcon);
 
 const NOTICE = {
-  error: "rounded-md bg-error-50 px-3 py-2 text-sm text-error-800 dark:bg-error-950 dark:text-error-200",
-  success: "rounded-md bg-success-50 px-3 py-2 text-sm text-success-800 dark:bg-success-950 dark:text-success-200",
+  error:
+    "rounded-md bg-error-50 px-3 py-2 text-sm text-error-800 dark:bg-error-950 dark:text-error-200",
+  success:
+    "rounded-md bg-success-50 px-3 py-2 text-sm text-success-800 dark:bg-success-950 dark:text-success-200",
 };
 
 /** v1's hero due badge: overdue → "Due MMM d, yyyy" (org day), else "Due in …", or "No due date". */
 function DueBadge({ detail }: { detail: AssignmentDetail }) {
-  if (detail.dueOrgDay === null || detail.dueAt === null) return <Badge variant="outline">No due date</Badge>;
-  if (detail.isOverdue) return <Badge variant="error">{`Due ${formatDayKey(detail.dueOrgDay)}`}</Badge>;
+  if (detail.dueOrgDay === null || detail.dueAt === null)
+    return <Badge variant="outline">No due date</Badge>;
+  if (detail.isOverdue)
+    return <Badge variant="error">{`Due ${formatDayKey(detail.dueOrgDay)}`}</Badge>;
   return <Badge variant="warning">{`Due in ${formatDistanceOnly(detail.dueAt)}`}</Badge>;
 }
 
@@ -106,10 +109,16 @@ function SubmissionSection({ detail }: { detail: AssignmentDetail }) {
             <CardTitle className="text-base">Your submission</CardTitle>
           </CardHeader>
           <CardContent className="flex-col gap-4">
-            <ButtonV1 className="self-start" disabled={ensure.isPending} onPress={() => ensure.mutate()}>
+            <ButtonV1
+              className="self-start"
+              disabled={ensure.isPending}
+              onPress={() => ensure.mutate()}
+            >
               Start working
             </ButtonV1>
-            {ensure.isError ? <TextV1 className={NOTICE.error}>Couldn't start your submission. Try again.</TextV1> : null}
+            {ensure.isError ? (
+              <TextV1 className={NOTICE.error}>Couldn't start your submission. Try again.</TextV1>
+            ) : null}
           </CardContent>
         </CardV1>
       </View>
@@ -118,7 +127,13 @@ function SubmissionSection({ detail }: { detail: AssignmentDetail }) {
   return <SubmissionEditor detail={detail} summary={sub} />;
 }
 
-function SubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summary: MySubmissionSummary }) {
+function SubmissionEditor({
+  detail,
+  summary,
+}: {
+  detail: AssignmentDetail;
+  summary: MySubmissionSummary;
+}) {
   const { data: sub, isPending, isError, refetch } = useSubmissionDetail(summary.publicId);
   const save = useSaveSubmission(summary.publicId, detail.id);
   const [text, setText] = useState<string | null>(null);
@@ -161,7 +176,10 @@ function SubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summa
               className="min-h-32"
             />
           ) : (
-            <RichTextView html={value ? plainTextToHtml(value) : null} emptyText="No written response." />
+            <RichTextView
+              html={value ? plainTextToHtml(value) : null}
+              emptyText="No written response."
+            />
           )}
           {detail.maxFileSizeMb !== null ? (
             <View className="flex-col gap-2">
@@ -192,7 +210,9 @@ function SubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summa
             </View>
           ) : null}
           {save.isError ? (
-            <TextV1 className={NOTICE.error}>{apiErrorMessage(save.error, "Couldn't save. Check your connection and try again.")}</TextV1>
+            <TextV1 className={NOTICE.error}>
+              {apiErrorMessage(save.error, "Couldn't save. Check your connection and try again.")}
+            </TextV1>
           ) : null}
           {info && !save.isPending ? <TextV1 className={NOTICE.success}>{info}</TextV1> : null}
           {editable ? (
@@ -222,7 +242,15 @@ function SubmissionEditor({ detail, summary }: { detail: AssignmentDetail; summa
 }
 
 /** v1 app/student/assignments/[id]/page.tsx (STANDARD and FORUM branches). */
-function StudentAssignmentDetail({ detail, onRefresh, refreshing }: { detail: AssignmentDetail; onRefresh: () => void; refreshing: boolean }) {
+function StudentAssignmentDetail({
+  detail,
+  onRefresh,
+  refreshing,
+}: {
+  detail: AssignmentDetail;
+  onRefresh: () => void;
+  refreshing: boolean;
+}) {
   const router = useRouter();
   const forum = detail.type === "FORUM";
   return (
@@ -230,7 +258,10 @@ function StudentAssignmentDetail({ detail, onRefresh, refreshing }: { detail: As
       <View className="flex-col gap-3">
         <View>
           <BackLink label="Assignments" onPress={() => router.back()} />
-          <View className="mt-2 rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+          <View
+            className="mt-2 rounded-2xl border border-border bg-card p-5"
+            style={shadowStyle("soft")}
+          >
             {forum ? (
               <View className="mb-2 flex-row items-center gap-2">
                 <Badge variant="teal">Forum</Badge>
@@ -240,7 +271,9 @@ function StudentAssignmentDetail({ detail, onRefresh, refreshing }: { detail: As
             {/* The forum keeps v2's due badge (spec 14 D10); v1 showed none there. */}
             <View className="mt-2 flex-row flex-wrap gap-1.5">
               {forum && detail.dueOrgDay !== null ? (
-                <Badge variant={detail.isOverdue ? "error" : "warning"}>{`Due ${formatDayKey(detail.dueOrgDay)}`}</Badge>
+                <Badge
+                  variant={detail.isOverdue ? "error" : "warning"}
+                >{`Due ${formatDayKey(detail.dueOrgDay)}`}</Badge>
               ) : forum ? null : (
                 <DueBadge detail={detail} />
               )}
@@ -248,7 +281,10 @@ function StudentAssignmentDetail({ detail, onRefresh, refreshing }: { detail: As
           </View>
         </View>
         {detail.description ? (
-          <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+          <View
+            className="rounded-2xl border border-border bg-card p-4"
+            style={shadowStyle("soft")}
+          >
             <Eyebrow className="mb-2">{forum ? "Question" : "Brief"}</Eyebrow>
             <RichTextView html={storedTextToHtml(detail.description)} />
           </View>
@@ -261,7 +297,6 @@ function StudentAssignmentDetail({ detail, onRefresh, refreshing }: { detail: As
 }
 
 export default function AssignmentDetailScreen() {
-  const theme = useTheme();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const parsed = Number(rawId);
   const id = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -273,41 +308,53 @@ export default function AssignmentDetailScreen() {
 
   if (isStudent && id !== null) {
     if (isPending || isError) {
-      return <ShellFrame>{isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}</ShellFrame>;
+      return (
+        <ShellFrame>
+          {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
+        </ShellFrame>
+      );
     }
-    return <StudentAssignmentDetail detail={data} onRefresh={() => void refetch()} refreshing={isRefetching} />;
+    return (
+      <StudentAssignmentDetail
+        detail={data}
+        onRefresh={() => void refetch()}
+        refreshing={isRefetching}
+      />
+    );
   }
 
   return (
-    <Screen edges={["top", "left", "right"]} scroll>
+    <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
       {id === null ? (
-        <EmptyState title="Not found" message="That assignment link isn't valid." />
+        <EmptyStateV1 title="Not found" description="That assignment link isn't valid." />
       ) : isPending ? (
-        <LoadingState />
+        <RouteSkeleton />
       ) : isError ? (
-        <ErrorState message="Couldn't load this assignment." onRetry={refetch} />
+        <RouteError onRetry={() => void refetch()} />
       ) : (
-        <>
-          <Text variant="title">{data.title}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>
-            {/* The server's org-clock day and time (C2/X13), never dueAt in the device's zone. */}
-            {`${data.dueOrgDay === null ? "No due date" : `Due ${formatOrgDue(data.dueOrgDay, data.dueOrgTime)}`}${
+        <View className="flex-col gap-4">
+          <PageTitle
+            title={data.title}
+            // The server's org-clock day and time (C2/X13), never dueAt in the device's zone.
+            subtitle={`${data.dueOrgDay === null ? "No due date" : `Due ${formatOrgDue(data.dueOrgDay, data.dueOrgTime)}`}${
               data.isOverdue ? " · Overdue" : ""
             }`}
-          </Text>
+          />
           {/* Descriptions hold v1's stored HTML or v2 plain text; never show raw tags (B3-16). */}
           {data.description ? (
-            <View style={{ marginTop: theme.spacing.sm }}>
-              <RichTextView html={storedTextToHtml(data.description)} />
-            </View>
+            <CardV1>
+              <CardContent className="pt-6">
+                <RichTextView html={storedTextToHtml(data.description)} />
+              </CardContent>
+            </CardV1>
           ) : null}
           {/* Staff keep the authoring panel and read the thread below it
               (own === null). MENTOR reads every group (the API answers 200,
               read-only), so it gets the thread too. */}
           <AssignmentStaffPanel detail={data} />
           {data.type === "FORUM" ? <ForumThread assignmentId={data.id} /> : null}
-        </>
+        </View>
       )}
-    </Screen>
+    </ShellFrame>
   );
 }
