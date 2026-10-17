@@ -49,3 +49,10 @@ Every difference left between the v1 `/admin/*` pages and the rebuilt v2 screens
 - Page title, "Scoped to {scope}." subtitle, the export buttons and the cards are v1's, re-skinned with the design primitives. The charts are v2's own (`BandDonut`, `RankedBars`, `TrendLine`), not v1's Recharts cards: a ranked completion list instead of a bar chart (R18), one line per season (REG-117), a band donut coloured by the server's band (C4), and the organisation roll-up as ranked bars (R60, R97). Their internals still use the legacy theme and text; a restyle to the design charts waits for the devbox capture to show whether it is worth the loss of those decisions.
 - The at-risk row prints "{n}% attendance · {m}% submissions" in the band colour, not v1's two badges.
 - The season filter chips and the "Show more" paging are v2-only (v1 scoped by URL).
+
+## Students, alumni, dropped, student detail
+- The three lists use the phone-card `DataTable` with v1's columns and filters; the name links to the student. The alumni and dropped copy and the Dropped-on stamp use the server's org day (X13).
+- Student detail is the shared design `StudentDetail` that leaders already use. Admins get the same tabs plus the staff actions (Graduate, Edit profile, Delete student) and the drop control; the old admin-only cards are gone. Enrollment statuses print as words ("Dropped"), not enum values.
+- Note cards print the visibility rule in words ("Visible to group leaders only") instead of v1's bare enum badge, because v2 enforces the rule (spec 09 D3). The composer is v1's: Notes tab, "Visible to" select, "Flag for admin follow-up".
+- The engagement card is v1's. A student with no season gets no card (v1), not v2's "No season to score yet" line.
+- The student form uses v1's sections (Personal, Contact, Academic, Spiritual background, Community, Admin only). V2-only kept: the create-time enrollment season and the staff-only notes caption. Date of birth is a date picker; the typed YYYY-MM-DD box is gone.

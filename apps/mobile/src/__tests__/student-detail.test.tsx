@@ -87,9 +87,12 @@ describe("StudentDetailScreen", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("Sara Student")).toBeTruthy();
-    expect(screen.getByText(/\+20 100 000 0000/)).toBeTruthy();
+    expect((await screen.findAllByText("Sara Student")).length).toBeGreaterThan(0);
+    // v1's hero Call button, and the Profile tab's phone and internal notes.
+    expect(screen.getByText("Call")).toBeTruthy();
+    expect(screen.getByText("+20 100 000 0000")).toBeTruthy();
     expect(screen.getByText("Watch attendance")).toBeTruthy();
+    expect(screen.getByText("Staff only — the student never receives this field.")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21");
   });
 
@@ -99,8 +102,9 @@ describe("StudentDetailScreen", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("Spring 2099")).toBeTruthy();
-    expect(screen.getByText(/Dropped/)).toBeTruthy();
+    fireEvent.press(await screen.findByText("Seasons"));
+    expect((await screen.findAllByText("Spring 2099")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Dropped")).toBeTruthy();
     expect(screen.getByText("Moved away")).toBeTruthy();
   });
 
@@ -119,9 +123,10 @@ describe("StudentDetailScreen", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("Sara Student")).toBeTruthy();
+    expect((await screen.findAllByText("Sara Student")).length).toBeGreaterThan(0);
     expect(screen.queryByText("Watch attendance")).toBeNull();
     expect(screen.queryByText(/\+20 100 000 0000/)).toBeNull();
+    expect(screen.queryByText("Call")).toBeNull();
   });
 
   it("fails loudly when the server leaks a withheld field to a narrow role", async () => {
@@ -133,7 +138,7 @@ describe("StudentDetailScreen", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText(/Couldn't load this student/)).toBeTruthy();
+    expect(await screen.findByText("Something went wrong")).toBeTruthy();
   });
 });
 
@@ -166,11 +171,14 @@ describe("StudentDetailScreen history (REG-83)", () => {
     serve(superSession);
     renderWithProviders(<StudentDetailScreen />);
 
+    // Each tab fetches when it opens (spec 06 §9).
+    fireEvent.press(await screen.findByText("Seasons"));
     expect(await screen.findByText("83% attendance")).toBeTruthy();
-    expect(await screen.findByText("Week 4 · Late")).toBeTruthy();
-    expect(await screen.findByText("Essay one · Submitted · Late")).toBeTruthy();
-
-    fireEvent.press(screen.getByText("Essay one · Submitted · Late"));
+    fireEvent.press(screen.getByText("Attendance"));
+    expect(await screen.findByText("Week 4")).toBeTruthy();
+    expect(screen.getByText("Late")).toBeTruthy();
+    fireEvent.press(screen.getByText("Submissions"));
+    fireEvent.press(await screen.findByText("Essay one"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
   });
 
@@ -184,7 +192,8 @@ describe("StudentDetailScreen history (REG-83)", () => {
       data: { data: { ...base, profile: { ...publicProfile, phone: null, dateOfBirth: null, spiritualBackground: null } } },
     });
     renderWithProviders(<StudentDetailScreen />);
-    await screen.findByText("Sara Student");
+    await screen.findAllByText("Sara Student");
+    expect(screen.queryByText("Attendance")).toBeNull();
     expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/attendance");
     expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/submissions");
     expect(screen.queryByText(/% attendance/)).toBeNull();

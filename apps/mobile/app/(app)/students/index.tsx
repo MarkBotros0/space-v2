@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 
 import { StudentList } from "../../../src/components/StudentList";
 import { useSessionStore } from "../../../src/store/session";
-import { Button } from "../../../src/ui";
+import { Button } from "../../../src/design/ui";
 
 export default function StudentsScreen() {
   const router = useRouter();
@@ -17,7 +17,7 @@ export default function StudentsScreen() {
       title="Students"
       // Creation is SUPER-only (Plan 7's POST /students).
       headerAction={
-        isSuper ? <Button title="New student" onPress={() => router.push("/students/new")} /> : null
+        isSuper ? <Button onPress={() => router.push("/students/new")}>New student</Button> : null
       }
     />
   );
