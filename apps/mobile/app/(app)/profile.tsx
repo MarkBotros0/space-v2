@@ -12,7 +12,7 @@ import {
 import { format, isValid, parse } from "date-fns";
 
 import { Fieldset } from "../../src/design/forms/fieldset";
-import { Eyebrow } from "../../src/design/layout/page-title";
+import { Eyebrow, PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { shadowStyle } from "../../src/design/lib/shadow";
@@ -22,6 +22,8 @@ import {
   AvatarFallback,
   Badge,
   Button as ButtonV1,
+  Card,
+  CardContent,
   DatePicker,
   FormField,
   Input as InputV1,
@@ -31,15 +33,14 @@ import {
 } from "../../src/design/ui";
 import { useMyEngagement } from "../../src/hooks/use-engagement";
 import { useLogout } from "../../src/hooks/use-session";
-import { useMyAttendance, useMyProfile, useUpdateStudentProfile } from "../../src/hooks/use-self-service";
+import {
+  useMyAttendance,
+  useMyProfile,
+  useUpdateStudentProfile,
+} from "../../src/hooks/use-self-service";
 import { apiErrorMessage } from "../../src/lib/api-error";
 import { initialsOf } from "../../src/lib/initials";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Button, Card, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
-
-const EDGES = ["top", "left", "right"] as const;
-
 
 type FormValues = Record<OwnProfileField, string>;
 
@@ -58,34 +59,6 @@ function isOwnProfileField(key: string): key is OwnProfileField {
   return OWN_PROFILE_FIELDS.some((field) => field === key);
 }
 
-function IdentityCard({ name, email, badge }: { name: string; email: string; badge: string }) {
-  const theme = useTheme();
-  return (
-    <Card style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.md }}>
-      <View
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: theme.radii.full,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: theme.colors.neutral[100],
-        }}
-      >
-        {/* Avatar images are deferred with uploads (CLAUDE.md); v2 has no avatar read path. */}
-        <Text variant="heading">{initialsOf(name, email.charAt(0).toUpperCase() || "?")}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text variant="heading">{name}</Text>
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          {email}
-        </Text>
-        <Text variant="label">{badge}</Text>
-      </View>
-    </Card>
-  );
-}
-
 /** "2001-04-05" ↔ a local-midnight Date: no zone shift either way. */
 function dobToDate(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -100,7 +73,8 @@ function ProfileForm({ profile }: { profile: MyProfile }) {
   const [values, setValues] = useState<FormValues>(() => toFormValues(profile));
   const [errors, setErrors] = useState<Partial<Record<OwnProfileField, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const set = (field: OwnProfileField) => (text: string) => setValues((v) => ({ ...v, [field]: text }));
+  const set = (field: OwnProfileField) => (text: string) =>
+    setValues((v) => ({ ...v, [field]: text }));
 
   const save = () => {
     setSubmitError(null);
@@ -139,12 +113,21 @@ function ProfileForm({ profile }: { profile: MyProfile }) {
       </Fieldset>
       <Fieldset legend="Contact">
         <FormField label="Phone" error={errors.phone}>
-          <InputV1 accessibilityLabel="Phone" keyboardType="phone-pad" value={values.phone} onChangeText={set("phone")} />
+          <InputV1
+            accessibilityLabel="Phone"
+            keyboardType="phone-pad"
+            value={values.phone}
+            onChangeText={set("phone")}
+          />
         </FormField>
       </Fieldset>
       <Fieldset legend="Academic">
         <FormField label="University" error={errors.university}>
-          <InputV1 accessibilityLabel="University" value={values.university} onChangeText={set("university")} />
+          <InputV1
+            accessibilityLabel="University"
+            value={values.university}
+            onChangeText={set("university")}
+          />
         </FormField>
         <FormField label="Year / faculty" error={errors.year}>
           <InputV1
@@ -209,7 +192,11 @@ function StudentProfile() {
   if (profile.isPending || profile.isError) {
     return (
       <ShellFrame>
-        {profile.isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void profile.refetch()} />}
+        {profile.isPending ? (
+          <RouteSkeleton />
+        ) : (
+          <RouteError onRetry={() => void profile.refetch()} />
+        )}
       </ShellFrame>
     );
   }
@@ -235,10 +222,15 @@ function StudentProfile() {
           <View className="flex-row items-center gap-4">
             {/* Initials only: v2 has no avatar read path and uploads are off (gap note). */}
             <Avatar size="xl" className="shrink-0">
-              <AvatarFallback>{initialsOf(p.name, p.email.charAt(0).toUpperCase() || "?")}</AvatarFallback>
+              <AvatarFallback>
+                {initialsOf(p.name, p.email.charAt(0).toUpperCase() || "?")}
+              </AvatarFallback>
             </Avatar>
             <View className="min-w-0 flex-1">
-              <TextV1 numberOfLines={1} className="text-xl font-black text-brand-navy-900 dark:text-foreground">
+              <TextV1
+                numberOfLines={1}
+                className="text-xl font-black text-brand-navy-900 dark:text-foreground"
+              >
                 {p.name}
               </TextV1>
               <TextV1 numberOfLines={1} className="text-xs text-muted-foreground">
@@ -253,8 +245,14 @@ function StudentProfile() {
         {activeSeasonId !== null ? (
           <View className="flex-row gap-3">
             {/* v1 labelled this "Attendance" (spec 09 R68); it is the budget LEFT (spec 19 D14). */}
-            <StatCard label="Absence budget left" value={budget ? `${budget.remainingPct}%` : "—"} />
-            <StatCard label="Assignments" value={eng ? `${eng.submissionsCompleted}/${eng.submissionsExpected}` : "—"} />
+            <StatCard
+              label="Absence budget left"
+              value={budget ? `${budget.remainingPct}%` : "—"}
+            />
+            <StatCard
+              label="Assignments"
+              value={eng ? `${eng.submissionsCompleted}/${eng.submissionsExpected}` : "—"}
+            />
             <StatCard
               label="Streak"
               value={streak === null ? "—" : String(streak)}
@@ -267,7 +265,10 @@ function StudentProfile() {
           <ProfileForm profile={p} />
         </View>
         {/* Decision 1: name and email are not edited here (PATCH /me owns User.name). */}
-        <View className="flex-col items-start gap-3 rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+        <View
+          className="flex-col items-start gap-3 rounded-2xl border border-border bg-card p-4"
+          style={shadowStyle("soft")}
+        >
           <TextV1 className="text-sm text-muted-foreground">
             Change your name in Settings. To change your email, contact the JPC team.
           </TextV1>
@@ -280,55 +281,65 @@ function StudentProfile() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string | null }) {
-  const theme = useTheme();
+function Field({ label, value, badge }: { label: string; value: string | null; badge?: boolean }) {
   return (
-    <View style={{ gap: theme.spacing.xs }}>
-      <Text variant="caption" color={theme.colors.neutral[600]}>
+    <View>
+      <TextV1 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
-      </Text>
-      <Text variant="body">{value ?? "—"}</Text>
+      </TextV1>
+      {value ? (
+        badge ? (
+          <Badge variant="success" className="mt-1 self-start">
+            {value}
+          </Badge>
+        ) : (
+          <TextV1 className="mt-1 text-sm text-foreground">{value}</TextV1>
+        )
+      ) : (
+        <TextV1 className="mt-1 text-sm italic text-muted-foreground">—</TextV1>
+      )}
     </View>
   );
 }
 
 /** v1 /alumni/profile — read-only (app/alumni/profile/page.tsx:31-46). */
 function AlumniProfile() {
-  const theme = useTheme();
   const profile = useMyProfile(true);
 
-  if (profile.isPending) {
+  if (profile.isPending || profile.isError) {
     return (
-      <Screen edges={EDGES}>
-        <LoadingState />
-      </Screen>
-    );
-  }
-  if (profile.isError) {
-    return (
-      <Screen edges={EDGES}>
-        <ErrorState message="Couldn't load your profile." onRetry={() => void profile.refetch()} />
-      </Screen>
+      <ShellFrame>
+        {profile.isPending ? (
+          <RouteSkeleton />
+        ) : (
+          <RouteError onRetry={() => void profile.refetch()} />
+        )}
+      </ShellFrame>
     );
   }
 
   const p = profile.data;
   return (
-    <Screen edges={EDGES} scroll onRefresh={() => void profile.refetch()} refreshing={profile.isRefetching}>
-      <Text variant="title">Profile</Text>
-      <Text variant="label" color={theme.colors.neutral[600]}>
-        Your alumni record
-      </Text>
-      <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.md }}>
-        <Field label="Name" value={p.name} />
-        <Field label="Email" value={p.email} />
-        <Field label="Status" value={p.graduationYear !== null ? `Alumnus · Class of ${p.graduationYear}` : null} />
-        <Field label="University" value={p.university} />
-      </Card>
-      <Text variant="caption" color={theme.colors.neutral[600]} style={{ marginTop: theme.spacing.md }}>
-        To update your details, please contact the JPC team.
-      </Text>
-    </Screen>
+    <ShellFrame onRefresh={() => void profile.refetch()} refreshing={profile.isRefetching}>
+      <View className="flex-col gap-3">
+        <PageTitle title="Profile" subtitle="Your alumni record" />
+        <Card>
+          <CardContent className="flex-col gap-3 pt-6">
+            <Field label="Name" value={p.name} />
+            <Field label="Email" value={p.email} />
+            <Field
+              label="Status"
+              value={p.graduationYear !== null ? `Alumnus · Class of ${p.graduationYear}` : null}
+              badge
+            />
+            <Field label="University" value={p.university} />
+          </CardContent>
+        </Card>
+        <TextV1 className="text-xs text-muted-foreground">
+          To update your details, please contact the JPC team.
+        </TextV1>
+      </View>
+    </ShellFrame>
   );
 }
 
@@ -336,23 +347,54 @@ function AlumniProfile() {
  * Every non-student role (Decision 2). MENTOR has Profile as a TAB but no More
  * tab, so this card is their only route to Settings and to signing out on a
  * phone (spec 18 R9, R11 — v1's /mentor/profile never existed). Reads only the
- * session store: no student endpoint is called.
+ * session store: no student endpoint is called. Drawn like the student's
+ * identity card so it reads as the same screen.
  */
 function AccountProfile() {
-  const theme = useTheme();
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
   const logout = useLogout();
 
   return (
-    <Screen edges={EDGES} scroll>
-      <Text variant="title">Profile</Text>
-      {user ? <IdentityCard name={user.name} email={user.email} badge={user.role} /> : null}
-      <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-        <Button title="Settings" onPress={() => router.push("/settings")} />
-        <Button title="Sign out" variant="secondary" onPress={() => void logout()} />
+    <ShellFrame>
+      <View className="flex-col gap-3">
+        <PageTitle title="Profile" />
+        {user ? (
+          <View
+            className="rounded-2xl border border-border bg-card p-5"
+            style={shadowStyle("soft")}
+          >
+            <View className="flex-row items-center gap-4">
+              <Avatar size="xl" className="shrink-0">
+                <AvatarFallback>
+                  {initialsOf(user.name, user.email.charAt(0).toUpperCase() || "?")}
+                </AvatarFallback>
+              </Avatar>
+              <View className="min-w-0 flex-1">
+                <TextV1
+                  numberOfLines={1}
+                  className="text-xl font-black text-brand-navy-900 dark:text-foreground"
+                >
+                  {user.name}
+                </TextV1>
+                <TextV1 numberOfLines={1} className="text-xs text-muted-foreground">
+                  {user.email}
+                </TextV1>
+                <View className="mt-2 flex-row flex-wrap gap-1.5">
+                  <Badge variant="teal">{user.role}</Badge>
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : null}
+        <View className="flex-col gap-2">
+          <ButtonV1 onPress={() => router.push("/settings")}>Settings</ButtonV1>
+          <ButtonV1 variant="outline" onPress={() => void logout()}>
+            Sign out
+          </ButtonV1>
+        </View>
       </View>
-    </Screen>
+    </ShellFrame>
   );
 }
 
