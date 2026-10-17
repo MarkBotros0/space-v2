@@ -2,6 +2,10 @@ import { useEffect, type ReactNode } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
+import { PageTitle } from "../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { SeasonsList } from "../../src/design/seasons/seasons-list";
 import { useCurrentSeasonId, useSeasonDetail, useSeasons } from "../../src/hooks/use-seasons";
 import { EditSeason } from "../../src/components/season/EditSeason";
 import { StudentSeason } from "../../src/components/season/StudentSeason";
@@ -11,11 +15,9 @@ import { useTheme } from "../../src/theme";
 import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
 /**
- * The current-season workspace (v1 /admin/season, /student/season).
- *
- * An ADMIN scoped to exactly one season is taken straight into it (v1
- * /admin/season/page.tsx:42; REG-72). The student branch is `StudentSeason`
- * (Plan 11); a route for any season other than the current one is Plan 6 (ruling X15).
+ * The season workspace (v1 /admin/season, /student/season). ADMIN is
+ * `AdminSeason` (batch 4); the student branch is `StudentSeason` (Plan 11);
+ * the remaining staff roles keep the current-season card until their batch.
  */
 function StaffSeason() {
   const theme = useTheme();
@@ -23,13 +25,7 @@ function StaffSeason() {
   const role = useSessionStore((s) => s.user?.role ?? null);
   const current = useCurrentSeasonId();
   const detail = useSeasonDetail(current.seasonId);
-  const canEdit = role === "ADMIN" || role === "SUPER";
-  const scoped = useSeasons(role === "ADMIN");
-  const onlySeason = role === "ADMIN" && scoped.data?.length === 1 ? scoped.data[0] : null;
-
-  useEffect(() => {
-    if (onlySeason) router.replace({ pathname: "/seasons/[code]", params: { code: onlySeason.code } });
-  }, [onlySeason, router]);
+  const canEdit = role === "SUPER";
 
   const handleRefresh = () => {
     if (current.seasonId !== null) void detail.refetch();
@@ -37,14 +33,16 @@ function StaffSeason() {
   };
 
   let body: ReactNode;
-  if (onlySeason) body = <LoadingState />;
-  else if (current.isPending) body = <LoadingState />;
-  else if (current.isError) body = <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
+  if (current.isPending) body = <LoadingState />;
+  else if (current.isError)
+    body = <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
   else if (current.seasonId === null)
     body = <EmptyState title="No season" message="You aren't in a season right now." />;
   else if (detail.isPending) body = <LoadingState />;
   else if (detail.isError)
-    body = <ErrorState message="Couldn't load this season." onRetry={() => void detail.refetch()} />;
+    body = (
+      <ErrorState message="Couldn't load this season." onRetry={() => void detail.refetch()} />
+    );
   else {
     const s = detail.data;
     body = (
@@ -61,7 +59,9 @@ function StaffSeason() {
         <Card style={{ marginTop: theme.spacing.md }}>
           <Text variant="heading">Groups</Text>
           {s.groups.length === 0 ? (
-            <Text variant="body" color={theme.colors.neutral[600]}>No groups yet.</Text>
+            <Text variant="body" color={theme.colors.neutral[600]}>
+              No groups yet.
+            </Text>
           ) : (
             s.groups.map((g) => (
               <View key={g.id} style={{ marginTop: theme.spacing.sm }}>
@@ -77,7 +77,11 @@ function StaffSeason() {
         </Card>
         <View style={{ flexDirection: "row", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
           <Button title="Calendar" variant="secondary" onPress={() => router.push("/calendar")} />
-          <Button title="Assignments" variant="secondary" onPress={() => router.push("/assignments")} />
+          <Button
+            title="Assignments"
+            variant="secondary"
+            onPress={() => router.push("/assignments")}
+          />
         </View>
         {canEdit ? <EditSeason season={s} /> : null}
       </>
@@ -85,9 +89,56 @@ function StaffSeason() {
   }
 
   return (
-    <Screen edges={["top", "left", "right"]} scroll onRefresh={handleRefresh} refreshing={detail.isRefetching}>
+    <Screen
+      edges={["top", "left", "right"]}
+      scroll
+      onRefresh={handleRefresh}
+      refreshing={detail.isRefetching}
+    >
       {body}
     </Screen>
+  );
+}
+
+/**
+ * v1 app/admin/season/page.tsx: an ADMIN with no season is told to contact a
+ * super-admin; with exactly one, goes straight into it (REG-72); with
+ * several, sees "Seasons you administer." as a list grouped by program.
+ */
+function AdminSeason() {
+  const router = useRouter();
+  const seasons = useSeasons(true);
+  const only = seasons.data?.length === 1 ? seasons.data[0]! : null;
+
+  useEffect(() => {
+    if (only) router.replace({ pathname: "/seasons/[code]", params: { code: only.code } });
+  }, [only, router]);
+
+  let body: ReactNode;
+  if (seasons.isPending || only) body = <RouteSkeleton />;
+  else if (seasons.isError) body = <RouteError onRetry={() => void seasons.refetch()} />;
+  else if (seasons.data.length === 0)
+    body = (
+      <PageTitle
+        title="My Season"
+        subtitle="You aren't assigned to a season yet. Contact a super-admin to be added."
+      />
+    );
+  else
+    body = (
+      <View className="flex-col gap-4">
+        <PageTitle title="My Season" subtitle="Seasons you administer." />
+        <SeasonsList
+          rows={seasons.data}
+          onOpen={(row) => router.push({ pathname: "/seasons/[code]", params: { code: row.code } })}
+        />
+      </View>
+    );
+
+  return (
+    <ShellFrame refreshing={seasons.isRefetching} onRefresh={() => void seasons.refetch()}>
+      {body}
+    </ShellFrame>
   );
 }
 
@@ -96,5 +147,6 @@ export default function SeasonScreen() {
   // Two components rather than one with branches: the student half reads
   // GET /me/season and the staff half reads useCurrentSeasonId +
   // GET /seasons/:id — different hooks, so dispatch before any are called.
-  return role === "STUDENT" ? <StudentSeason /> : <StaffSeason />;
+  if (role === "STUDENT") return <StudentSeason />;
+  return role === "ADMIN" ? <AdminSeason /> : <StaffSeason />;
 }

@@ -51,16 +51,17 @@ beforeEach(() => {
 });
 
 describe("SeasonDetailScreen (/seasons/[code])", () => {
-  it("gives SUPER edit plus the admin workspace actions", async () => {
+  it("gives SUPER edit plus the admin workspace actions, in v1's tabs", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     renderWithProviders(<SeasonDetailScreen />);
 
     expect(await screen.findByText("TEST 2099")).toBeTruthy();
-    expect(screen.getByText("s7 · DRAFT")).toBeTruthy();
+    expect(screen.getByText("Code: s7")).toBeTruthy();
+    expect(screen.getByText("Draft")).toBeTruthy();
     expect(screen.getByText("Jan 1, 2099 – Dec 31, 2099")).toBeTruthy();
-    expect(await screen.findByText("Kickoff")).toBeTruthy();
-    expect(screen.getByText("Mar 1, 2099 · 8:00 PM")).toBeTruthy();
+    expect(screen.getByText("4 students across 1 groups")).toBeTruthy();
+    expect(screen.getByText("Spring.")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Edit season"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/edit", params: { code: "s7" } });
@@ -91,14 +92,32 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     expect(screen.queryByText("New session")).toBeNull();
   });
 
-  it("opens a group and a session", async () => {
+  it("lists groups and sessions under their tabs and opens them", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     renderWithProviders(<SeasonDetailScreen />);
-    fireEvent.press(await screen.findByText("Group A"));
+
+    fireEvent.press(await screen.findByText("Groups (1)"));
+    expect(screen.getByText("4 students")).toBeTruthy();
+    expect(screen.getByText("Leaders: Lina")).toBeTruthy();
+    fireEvent.press(screen.getByText("Group A"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "3" } });
-    fireEvent.press(await screen.findByText("Kickoff"));
+
+    fireEvent.press(screen.getByText("Sessions (1)"));
+    expect(await screen.findByText("Kickoff")).toBeTruthy();
+    expect(screen.getByText("Sun, Mar 1, 2099 · 8:00 PM · 90 min")).toBeTruthy();
+    fireEvent.press(screen.getByText("Kickoff"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "12" } });
+    fireEvent.press(screen.getByText("Mark attendance"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]/attendance", params: { id: "12" } });
+  });
+
+  it("shows v1's empty groups state", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    routeGets(detail({ groups: [] }));
+    renderWithProviders(<SeasonDetailScreen />);
+    fireEvent.press(await screen.findByText("Groups (0)"));
+    expect(screen.getByText("No groups yet")).toBeTruthy();
   });
 });
 
