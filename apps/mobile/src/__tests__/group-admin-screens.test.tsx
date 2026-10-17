@@ -17,6 +17,12 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
 }));
 
+jest.mock("../design/ui/toaster", () => ({
+  toast: { success: jest.fn(), error: jest.fn() },
+  Toaster: () => null,
+}));
+
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -37,6 +43,12 @@ const del = apiClient.delete as jest.Mock;
 async function pickOption(select: string, option: string) {
   fireEvent.press(await screen.findByLabelText(select));
   fireEvent.press(await screen.findByText(option));
+}
+
+/** Open a student's group Select and pick a group by its label. */
+async function choose(student: string, group: string) {
+  fireEvent.press(await screen.findByLabelText(`Group for ${student}`));
+  fireEvent.press(screen.getByRole("menuitem", { name: group }));
 }
 
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
@@ -307,19 +319,23 @@ describe("/seasons/[code]/roster (G7)", () => {
     renderWithProviders(<SeasonRosterScreen />);
 
     expect(await screen.findByText("Also in Old (s1) — assigning here moves them.")).toBeTruthy();
-    fireEvent.press(await screen.findByLabelText("Sara: Unassigned"));
-    fireEvent.press(screen.getByLabelText("Omar: Group B"));
+    expect(
+      screen.getByText("2 students in Season 7. Set each student's group and save."),
+    ).toBeTruthy();
+    expect(screen.getByText("No unsaved changes")).toBeTruthy();
+    await choose("Sara", "Unassigned");
+    await choose("Omar", "Group B");
     // Pressing a row back to its original group drops it from the batch.
-    fireEvent.press(screen.getByLabelText("Omar: Group A"));
-    fireEvent.press(screen.getByLabelText("Omar: Unassigned"));
-    fireEvent.press(screen.getByText("Save 1 change"));
+    await choose("Omar", "Unassigned");
+    expect(screen.getByText("1 unsaved change")).toBeTruthy();
+    fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
       expect(put).toHaveBeenCalledWith("/api/v1/seasons/7/group-assignments", {
         assignments: [{ studentUserId: 21, groupId: null }],
       }),
     );
-    expect(await screen.findByText("Assigned 1, unassigned 1.")).toBeTruthy();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Assigned 1, unassigned 1."));
   });
 
   it("offers Import groups to a season admin, pushing the importer route", async () => {
@@ -327,7 +343,7 @@ describe("/seasons/[code]/roster (G7)", () => {
     mockParams = { code: "s7" };
     routeGets();
     renderWithProviders(<SeasonRosterScreen />);
-    fireEvent.press(await screen.findByText("Import groups"));
+    fireEvent.press(await screen.findByText("Import assignments"));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/seasons/[code]/roster/import",
       params: { code: "s7" },
@@ -340,7 +356,7 @@ describe("/seasons/[code]/roster (G7)", () => {
     routeGets({ "/api/v1/seasons/by-code/s7": { ...seasonDetail, canAdminister: false } });
     renderWithProviders(<SeasonRosterScreen />);
     await screen.findByText("Only this season's admins can manage its roster.");
-    expect(screen.queryByText("Import groups")).toBeNull();
+    expect(screen.queryByText("Import assignments")).toBeNull();
   });
 
   it("refuses a caller the server says does not administer the season (C4)", async () => {

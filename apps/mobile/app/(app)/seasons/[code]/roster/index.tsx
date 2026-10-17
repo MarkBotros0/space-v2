@@ -1,73 +1,80 @@
 import { useState, type ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import type { GroupListItem, SeasonRosterRow } from "@space/shared";
+import { Users } from "lucide-react-native";
+import type { SeasonRosterRow } from "@space/shared";
 
+import { PageTitle } from "../../../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../../../src/design/layout/shell-frame";
+import { cn } from "../../../../../src/design/lib/cn";
+import {
+  Button,
+  EmptyState,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Text,
+  toast,
+} from "../../../../../src/design/ui";
 import { useSaveGroupAssignments, useSeasonRoster } from "../../../../../src/hooks/use-group-admin";
 import { useSeasonGroups } from "../../../../../src/hooks/use-groups";
 import { useSeasonByCode } from "../../../../../src/hooks/use-seasons";
 import { apiErrorMessage } from "../../../../../src/lib/api-error";
-import { useTheme } from "../../../../../src/theme";
-import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../../../src/ui";
 
 export const ROSTER_UNASSIGNED_LABEL = "Unassigned";
-
-function GroupChip({ label, selected, onPress, a11yLabel }: { label: string; selected: boolean; onPress: () => void; a11yLabel: string }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      accessibilityLabel={a11yLabel}
-      onPress={onPress}
-      style={{
-        paddingVertical: theme.spacing.xs,
-        paddingHorizontal: theme.spacing.sm,
-        borderRadius: theme.radii.sm,
-        borderWidth: theme.borderWidths.thin,
-        borderColor: selected ? theme.colors.brand.navy[900] : theme.colors.neutral[300],
-      }}
-    >
-      <Text variant="caption">{label}</Text>
-    </Pressable>
-  );
-}
+const NONE = "none";
 
 /**
- * The bulk-assign grid (v1 roster-grid.tsx; spec 05 §9; G7). Sends only the
- * rows whose choice differs from the server's (v1 R100) and reports the
- * server's WRITTEN counts, not the number sent (R101/D-16.12). Rows are ACTIVE
- * enrolments (C9); a student sitting in another season's group says so (R82).
+ * The bulk-assign grid (v1 roster-grid.tsx; spec 05 §9; G7): a card per
+ * student with a group Select, a dirty border, and "n unsaved changes" +
+ * "Save changes" above. Sends only the rows whose choice differs from the
+ * server's (v1 R100) and reports the server's WRITTEN counts, not the number
+ * sent (R101/D-16.12). Rows are ACTIVE enrolments (C9); a student sitting in
+ * another season's group says so (R82). V2-ONLY: the search box.
  */
-function RosterGrid({ seasonId }: { seasonId: number }) {
-  const theme = useTheme();
+function RosterGrid({ seasonId, onNewGroup }: { seasonId: number; onNewGroup: () => void }) {
   const roster = useSeasonRoster(seasonId);
   const groups = useSeasonGroups(seasonId);
   const save = useSaveGroupAssignments(seasonId);
   const [draft, setDraft] = useState<Record<number, number | null>>({});
   const [query, setQuery] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
 
-  if (roster.isPending || groups.isPending) return <LoadingState />;
-  if (roster.isError) return <ErrorState message="Couldn't load the roster." onRetry={() => void roster.refetch()} />;
-  if (groups.isError) return <ErrorState message="Couldn't load the groups." onRetry={() => void groups.refetch()} />;
+  if (roster.isPending || groups.isPending) return <RouteSkeleton />;
+  if (roster.isError) return <RouteError onRetry={() => void roster.refetch()} />;
+  if (groups.isError) return <RouteError onRetry={() => void groups.refetch()} />;
   if (roster.data.length === 0) {
-    return <EmptyState title="No active students" message="Nobody is actively enrolled in this season yet." />;
+    return (
+      <EmptyState
+        icon={Users}
+        title="No students in this season"
+        description="Students appear here once their active season is set for this season (e.g. via the profile import)."
+      />
+    );
   }
   if (groups.data.length === 0) {
-    return <EmptyState title="No groups" message="Create a group first, then assign students to it." />;
+    return (
+      <EmptyState
+        icon={Users}
+        title="No groups yet"
+        description="Create at least one group before assigning students."
+        action={<Button onPress={onNewGroup}>New group</Button>}
+      />
+    );
   }
 
-  const choice = (r: SeasonRosterRow) => (r.userId in draft ? (draft[r.userId] ?? null) : r.groupId);
-  const pick = (r: SeasonRosterRow, groupId: number | null) => {
-    setMessage(null);
+  const choice = (r: SeasonRosterRow) =>
+    r.userId in draft ? (draft[r.userId] ?? null) : r.groupId;
+  const pick = (r: SeasonRosterRow, groupId: number | null) =>
     setDraft((d) => {
       const next = { ...d };
       if (groupId === r.groupId) delete next[r.userId];
       else next[r.userId] = groupId;
       return next;
     });
-  };
   // Roster order, so the batch is deterministic.
   const changes = roster.data
     .filter((r) => r.userId in draft)
@@ -80,92 +87,155 @@ function RosterGrid({ seasonId }: { seasonId: number }) {
         onSuccess: (result) => {
           setDraft({});
           const skipped = result.skippedStudentIds.length;
-          setMessage(
+          toast.success(
             `Assigned ${result.assigned}, unassigned ${result.unassigned}.` +
               (skipped > 0 ? ` ${skipped} skipped — no longer active in this season.` : ""),
           );
         },
-        onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the roster.")),
+        onError: (err) => toast.error(apiErrorMessage(err, "Couldn't save the roster.")),
       },
     );
   };
 
   const q = query.trim().toLowerCase();
   const rows = roster.data.filter(
-    (r) => q === "" || (r.name ?? "").toLowerCase().includes(q) || r.email.toLowerCase().includes(q),
+    (r) =>
+      q === "" || (r.name ?? "").toLowerCase().includes(q) || r.email.toLowerCase().includes(q),
   );
-  const options: (GroupListItem | null)[] = [null, ...groups.data];
+  const groupItems: Record<string, string> = {
+    [NONE]: ROSTER_UNASSIGNED_LABEL,
+    ...Object.fromEntries(groups.data.map((g) => [String(g.id), g.name])),
+  };
 
   return (
-    <>
-      <Input label="Search students" value={query} onChangeText={setQuery} autoCapitalize="none" />
-      {rows.map((r) => {
-        const label = r.name ?? r.email;
-        const current = choice(r);
-        return (
-          <Card key={r.userId} style={{ marginTop: theme.spacing.sm, gap: theme.spacing.xs }}>
-            <Text variant="body">{label}</Text>
-            {r.otherSeasonGroup ? (
-              <Text variant="caption" color={theme.colors.neutral[600]}>
-                {`Also in ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — assigning here moves them.`}
-              </Text>
-            ) : null}
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs }}>
-              {options.map((g) => {
-                const name = g?.name ?? ROSTER_UNASSIGNED_LABEL;
-                return (
-                  <GroupChip
-                    key={g?.id ?? "none"}
-                    label={name}
-                    a11yLabel={`${label}: ${name}`}
-                    selected={current === (g?.id ?? null)}
-                    onPress={() => pick(r, g?.id ?? null)}
-                  />
-                );
-              })}
-            </View>
-          </Card>
-        );
-      })}
-      {message ? <Text variant="label" style={{ marginTop: theme.spacing.md }}>{message}</Text> : null}
-      <Button
-        title={`Save ${changes.length} change${changes.length === 1 ? "" : "s"}`}
-        onPress={onSave}
-        disabled={changes.length === 0}
-        loading={save.isPending}
-        style={{ marginTop: theme.spacing.md }}
+    <View className="flex-col gap-3">
+      <View className="flex-row items-center justify-between gap-3">
+        <Text className="text-sm text-muted-foreground">
+          {changes.length === 0
+            ? "No unsaved changes"
+            : `${changes.length} unsaved change${changes.length === 1 ? "" : "s"}`}
+        </Text>
+        <Button disabled={save.isPending || changes.length === 0} onPress={onSave}>
+          {save.isPending ? "Saving…" : "Save changes"}
+        </Button>
+      </View>
+      <Input
+        accessibilityLabel="Search students"
+        placeholder="Search students"
+        value={query}
+        onChangeText={setQuery}
+        autoCapitalize="none"
       />
-    </>
+      <View className="flex-col gap-2">
+        {rows.map((r) => {
+          const label = r.name ?? r.email;
+          const current = choice(r);
+          const dirty = r.userId in draft;
+          return (
+            <View
+              key={r.userId}
+              className={cn(
+                "flex-col gap-2 rounded-lg border bg-card p-3",
+                dirty ? "border-brand-teal-400" : "border-border",
+              )}
+            >
+              <View className="min-w-0">
+                <Text numberOfLines={1} className="font-medium text-foreground">
+                  {label}
+                </Text>
+                <Text numberOfLines={1} className="text-xs text-muted-foreground">
+                  {r.email}
+                </Text>
+                {r.otherSeasonGroup ? (
+                  <Text className="mt-1 text-xs text-muted-foreground">
+                    {`Also in ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — assigning here moves them.`}
+                  </Text>
+                ) : null}
+              </View>
+              <Select
+                items={groupItems}
+                value={current === null ? NONE : String(current)}
+                onValueChange={(v) => pick(r, v === NONE ? null : Number(v))}
+              >
+                <SelectTrigger accessibilityLabel={`Group for ${label}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>{ROSTER_UNASSIGNED_LABEL}</SelectItem>
+                  {groups.data.map((g) => (
+                    <SelectItem key={g.id} value={String(g.id)}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </View>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
-/** /seasons/[code]/roster — `roster/import.tsx` (Plan 17) hangs off the "Import groups" action. */
+/** v1 admin/season/[code]/roster — `roster/import.tsx` (Plan 17) hangs off the "Import assignments" button. */
 export default function SeasonRosterScreen() {
   const router = useRouter();
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
   const season = useSeasonByCode(code);
+  const roster = useSeasonRoster(season.data?.canAdminister ? season.data.id : null);
 
   let body: ReactNode;
-  if (code === null) body = <EmptyState title="Not found" message="That season link isn't valid." />;
-  else if (season.isPending) body = <LoadingState />;
-  else if (season.isError) body = <ErrorState message="Couldn't load this season." onRetry={() => void season.refetch()} />;
+  if (code === null)
+    body = <EmptyState title="Not found" description="That season link isn't valid." />;
+  else if (season.isPending) body = <RouteSkeleton />;
+  else if (season.isError) body = <RouteError onRetry={() => void season.refetch()} />;
   else if (!season.data.canAdminister)
-    body = <EmptyState title="Not available" message="Only this season's admins can manage its roster." />;
-  else body = <RosterGrid seasonId={season.data.id} />;
+    body = (
+      <EmptyState
+        title="Not available"
+        description="Only this season's admins can manage its roster."
+      />
+    );
+  else
+    body = (
+      <RosterGrid
+        seasonId={season.data.id}
+        onNewGroup={() =>
+          router.push({ pathname: "/group/new", params: { seasonId: String(season.data.id) } })
+        }
+      />
+    );
 
+  const count = roster.data?.length;
   return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      {/* Spec 16 §9 / v1 roster/page.tsx:42: same predicate as the grid — the
-          server's own canAdminister, not a client re-derivation. */}
-      {code !== null && season.data?.canAdminister ? (
-        <Button
-          title="Import groups"
-          variant="secondary"
-          onPress={() => router.push({ pathname: "/seasons/[code]/roster/import", params: { code } })}
-        />
-      ) : null}
-      {body}
-    </Screen>
+    <ShellFrame>
+      <View className="flex-col gap-4">
+        <View className="flex-row items-start justify-between gap-4">
+          <PageTitle
+            className="min-w-0 flex-1"
+            title="Assign to groups"
+            subtitle={
+              season.data && count !== undefined
+                ? `${count} student${count === 1 ? "" : "s"} in ${season.data.title}. Set each student's group and save.`
+                : undefined
+            }
+          />
+          {/* Spec 16 §9 / v1 roster/page.tsx:42: same predicate as the grid — the
+              server's own canAdminister, not a client re-derivation. */}
+          {code !== null && season.data?.canAdminister ? (
+            <Button
+              variant="outline"
+              onPress={() =>
+                router.push({ pathname: "/seasons/[code]/roster/import", params: { code } })
+              }
+            >
+              Import assignments
+            </Button>
+          ) : null}
+        </View>
+        {body}
+      </View>
+    </ShellFrame>
   );
 }
