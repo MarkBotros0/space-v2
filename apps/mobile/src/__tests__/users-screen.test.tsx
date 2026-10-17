@@ -19,19 +19,36 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const superSession = {
-  user: { id: 1, name: "Super", email: "su@jpc.test", role: "SUPER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 1,
+    name: "Super",
+    email: "su@jpc.test",
+    role: "SUPER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
 };
 
 const rows = [
   {
-    id: 2, name: "Active Ann", email: "ann@jpc.test", role: "ADMIN" as const,
-    graduationYear: 2015, lastLoginAt: "2026-08-01T00:00:00.000Z", deletedAt: null,
+    id: 2,
+    name: "Active Ann",
+    email: "ann@jpc.test",
+    role: "ADMIN" as const,
+    graduationYear: 2015,
+    lastLoginAt: "2026-08-01T00:00:00.000Z",
+    deletedAt: null,
     status: "active" as const,
   },
   {
-    id: 3, name: "Pending Pete", email: "pete@jpc.test", role: "STUDENT" as const,
-    graduationYear: null, lastLoginAt: null, deletedAt: null,
+    id: 3,
+    name: "Pending Pete",
+    email: "pete@jpc.test",
+    role: "STUDENT" as const,
+    graduationYear: null,
+    lastLoginAt: null,
+    deletedAt: null,
     status: "pending" as const,
   },
 ];
@@ -59,8 +76,10 @@ describe("UsersScreen", () => {
     post.mockResolvedValue({
       data: {
         data: {
-          issuedAt: "2026-08-24T00:00:00.000Z", expiresAt: "2026-08-31T00:00:00.000Z",
-          usedAt: null, invitedByName: null,
+          issuedAt: "2026-08-24T00:00:00.000Z",
+          expiresAt: "2026-08-31T00:00:00.000Z",
+          usedAt: null,
+          invitedByName: null,
         },
       },
     });
@@ -113,11 +132,11 @@ describe("UsersScreen — Plan 10 entry points", () => {
     expect(mockPush).toHaveBeenCalledWith("/users/new");
   });
 
-  it("offers SUPER a way into the importer", async () => {
+  it("offers SUPER a way into the importer (v1 calls it Import profiles)", async () => {
     useSessionStore.setState(superSession);
     routeGets(0);
     renderWithProviders(<UsersScreen />);
-    fireEvent.press(await screen.findByText("Import students"));
+    fireEvent.press(await screen.findByText("Import profiles"));
     expect(mockPush).toHaveBeenCalledWith("/users/import");
   });
 
@@ -126,7 +145,7 @@ describe("UsersScreen — Plan 10 entry points", () => {
     routeGets(0);
     renderWithProviders(<UsersScreen />);
     await screen.findByText("Active Ann");
-    expect(screen.queryByText("Send pending invites")).toBeNull();
+    expect(screen.queryByText(/^Send \d+ invites?$/)).toBeNull();
   });
 
   it("sends one batch after a confirm and reports the four counters", async () => {
@@ -138,14 +157,18 @@ describe("UsersScreen — Plan 10 entry points", () => {
     });
     renderWithProviders(<UsersScreen />);
 
-    expect(await screen.findByText("3 accounts have no invite yet.")).toBeTruthy();
-    fireEvent.press(screen.getByText("Send pending invites"));
+    fireEvent.press(await screen.findByText("Send 3 invites"));
 
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/users/invites/pending", undefined, { timeout: 60_000 }),
+      expect(post).toHaveBeenCalledWith("/api/v1/users/invites/pending", undefined, {
+        timeout: 60_000,
+      }),
     );
     await waitFor(() =>
-      expect(alert).toHaveBeenCalledWith("Invites sent", "Sent 2 · failed 1 · skipped 0 · 1 still pending."),
+      expect(alert).toHaveBeenCalledWith(
+        "Invites sent",
+        "Sent 2 · failed 1 · skipped 0 · 1 still pending.",
+      ),
     );
     alert.mockRestore();
   });

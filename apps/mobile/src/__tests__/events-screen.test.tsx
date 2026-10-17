@@ -1,5 +1,6 @@
 // apps/mobile/src/__tests__/events-screen.test.tsx
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { format } from "date-fns";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
@@ -18,6 +19,14 @@ import EventsScreen from "../../app/(app)/events";
 import EventDetailScreen from "../../app/(app)/event/[id]";
 
 const get = apiClient.get as jest.Mock;
+const del = apiClient.delete as jest.Mock;
+
+/** The picker opens on the current month, so today is always on screen. */
+function pickToday(label: string) {
+  fireEvent.press(screen.getByLabelText(label));
+  fireEvent.press(screen.getByLabelText(format(new Date(), "PPP")));
+  return format(new Date(), "yyyy-MM-dd");
+}
 const post = apiClient.post as jest.Mock;
 
 const listRow = {
@@ -43,12 +52,26 @@ const detailRow = {
 };
 
 const superSession = {
-  user: { id: 1, name: "Su", email: "su@jpc.test", role: "SUPER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 1,
+    name: "Su",
+    email: "su@jpc.test",
+    role: "SUPER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
 };
 
 const alumnusSession = {
-  user: { id: 8, name: "Al", email: "al@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 8,
+    name: "Al",
+    email: "al@jpc.test",
+    role: "STUDENT" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: 2098 },
 };
 
@@ -68,7 +91,7 @@ describe("events screen", () => {
     expect(await screen.findByText("Summer retreat")).toBeTruthy();
     fireEvent.press(screen.getByText("New event"));
     fireEvent.changeText(screen.getByLabelText("Title"), "Graduation");
-    fireEvent.changeText(screen.getByLabelText("Date"), "2099-09-01");
+    const day = pickToday("Date");
     fireEvent.changeText(screen.getByLabelText("Time"), "18:30");
     fireEvent.press(screen.getByText("Create event"));
 
@@ -77,7 +100,7 @@ describe("events screen", () => {
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/events", {
         title: "Graduation",
-        day: "2099-09-01",
+        day,
         time: "18:30",
         endDay: null,
         description: null,
@@ -94,12 +117,24 @@ describe("events screen", () => {
 
     fireEvent.press(await screen.findByText("New event"));
     fireEvent.changeText(screen.getByLabelText("Title"), "Graduation");
-    fireEvent.changeText(screen.getByLabelText("Date"), "2099-09-01");
+    pickToday("Date");
     fireEvent.changeText(screen.getByLabelText("Time"), "6pm");
     fireEvent.press(screen.getByText("Create event"));
 
     await waitFor(() => expect(post).not.toHaveBeenCalled());
     expect(screen.getByLabelText("Time").props.accessibilityHint).toContain("HH:mm");
+  });
+
+  it("deletes a row behind v1's confirm dialog, SUPER only", async () => {
+    useSessionStore.setState(superSession);
+    del.mockResolvedValue({ data: { data: { deleted: true } } });
+    renderWithProviders(<EventsScreen />);
+
+    fireEvent.press(await screen.findByLabelText("Delete Summer retreat"));
+    expect(await screen.findByText("Delete event?")).toBeTruthy();
+    expect(del).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText("Delete"));
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/events/3"));
   });
 
   it("shows a non-SUPER role the same list with no write controls", async () => {
@@ -111,6 +146,7 @@ describe("events screen", () => {
 
     expect(await screen.findByText("Summer retreat")).toBeTruthy();
     expect(screen.queryByText("New event")).toBeNull();
+    expect(screen.queryByLabelText("Delete Summer retreat")).toBeNull();
   });
 
   it("renders an empty state rather than nothing (spec 15 R75)", async () => {

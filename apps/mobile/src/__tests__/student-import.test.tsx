@@ -26,11 +26,25 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const superSession = {
-  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 1,
+    name: "Test super",
+    email: "sup@jpc.test",
+    role: "SUPER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: emptyScopes,
 };
 const adminSession = {
-  user: { id: 2, name: "Test admin", email: "adm@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 2,
+    name: "Test admin",
+    email: "adm@jpc.test",
+    role: "ADMIN" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: emptyScopes,
 };
 
@@ -38,8 +52,22 @@ const template = {
   data: {
     data: {
       columns: [
-        { label: "Name", acceptedHeaders: ["name", "student"], required: true, maxLength: 120, target: "User.name", note: null },
-        { label: "Email", acceptedHeaders: ["email", "e-mail"], required: true, maxLength: null, target: "User.email", note: null },
+        {
+          label: "Name",
+          acceptedHeaders: ["name", "student"],
+          required: true,
+          maxLength: 120,
+          target: "User.name",
+          note: null,
+        },
+        {
+          label: "Email",
+          acceptedHeaders: ["email", "e-mail"],
+          required: true,
+          maxLength: null,
+          target: "User.email",
+          note: null,
+        },
       ],
       headerRow: "name\temail",
       maxRows: 2000,
@@ -69,12 +97,52 @@ const seasons = {
   },
 };
 
+/** Season is a v1 select now: open it, then pick the item. */
+async function chooseSeason() {
+  fireEvent.press(await screen.findByLabelText("Season"));
+  fireEvent.press(await screen.findByText("Spring 2099"));
+}
+
 const previewBody = (overrides: Record<string, unknown> = {}) => ({
   data: {
     data: {
       rows: [
-        { rowNumber: 2, name: "Fresh Student", email: "fresh@jpc.test", status: "new", message: null, values: { name: "Fresh Student", email: "fresh@jpc.test", university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
-        { rowNumber: 3, name: "Bad Row", email: "nope", status: "invalid", message: "Email is not valid.", values: { name: "Bad Row", email: "nope", university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } },
+        {
+          rowNumber: 2,
+          name: "Fresh Student",
+          email: "fresh@jpc.test",
+          status: "new",
+          message: null,
+          values: {
+            name: "Fresh Student",
+            email: "fresh@jpc.test",
+            university: null,
+            year: null,
+            phone: null,
+            dateOfBirth: null,
+            spiritualBackground: null,
+            gifts: null,
+            notes: null,
+          },
+        },
+        {
+          rowNumber: 3,
+          name: "Bad Row",
+          email: "nope",
+          status: "invalid",
+          message: "Email is not valid.",
+          values: {
+            name: "Bad Row",
+            email: "nope",
+            university: null,
+            year: null,
+            phone: null,
+            dateOfBirth: null,
+            spiritualBackground: null,
+            gifts: null,
+            notes: null,
+          },
+        },
       ],
       detectedColumns: ["Name", "Email"],
       unrecognisedColumns: ["Phone No"],
@@ -109,7 +177,7 @@ describe("ImportScreen — step 1, paste", () => {
     expect(await screen.findByText(/file upload arrives with the CMS/i)).toBeTruthy();
   });
 
-  it("renders the recognised columns from the template, including the \"student\" alias", async () => {
+  it('renders the recognised columns from the template, including the "student" alias', async () => {
     useSessionStore.setState(superSession);
     renderWithProviders(<ImportScreen />);
 
@@ -133,7 +201,10 @@ describe("ImportScreen — step 1, paste", () => {
     post.mockResolvedValue(previewBody());
     renderWithProviders(<ImportScreen />);
 
-    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
+    fireEvent.changeText(
+      await screen.findByLabelText("Paste your spreadsheet"),
+      "name\temail\nA\ta@jpc.test",
+    );
     fireEvent.press(screen.getByText("Preview"));
 
     await waitFor(() =>
@@ -152,10 +223,13 @@ describe("ImportScreen — step 1, the season picker", () => {
     post.mockResolvedValue(previewBody());
     renderWithProviders(<ImportScreen />);
 
-    expect(await screen.findByLabelText("Target season: Spring 2099")).toBeTruthy();
+    expect(await screen.findByLabelText("Season")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
 
-    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
+    fireEvent.changeText(
+      screen.getByLabelText("Paste your spreadsheet"),
+      "name\temail\nA\ta@jpc.test",
+    );
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText(/1 new · /);
 
@@ -172,8 +246,11 @@ describe("ImportScreen — step 2, preview", () => {
     useSessionStore.setState(superSession);
     post.mockResolvedValue(body);
     renderWithProviders(<ImportScreen />);
-    fireEvent.press(await screen.findByLabelText("Target season: Spring 2099"));
-    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
+    await chooseSeason();
+    fireEvent.changeText(
+      screen.getByLabelText("Paste your spreadsheet"),
+      "name\temail\nA\ta@jpc.test",
+    );
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText(/\d+ new · /);
   }
@@ -197,7 +274,25 @@ describe("ImportScreen — step 2, preview", () => {
 
   it("commits only the importable rows, sending values and no status (D-16.4)", async () => {
     await reachPreview();
-    post.mockResolvedValue({ data: { data: { created: 1, skipped: 0, enrolled: 0, rows: [{ rowNumber: 2, name: "Fresh Student", email: "fresh@jpc.test", outcome: "created", message: null, userId: 55 }] } } });
+    post.mockResolvedValue({
+      data: {
+        data: {
+          created: 1,
+          skipped: 0,
+          enrolled: 0,
+          rows: [
+            {
+              rowNumber: 2,
+              name: "Fresh Student",
+              email: "fresh@jpc.test",
+              outcome: "created",
+              message: null,
+              userId: 55,
+            },
+          ],
+        },
+      },
+    });
 
     fireEvent.press(screen.getByText("Import 1 student"));
 
@@ -206,7 +301,10 @@ describe("ImportScreen — step 2, preview", () => {
     expect(url).toBe("/api/v1/imports/students/commit");
     expect(body).toMatchObject({ mode: "season", seasonId: 7, onExisting: "skip" });
     expect(body.rows).toHaveLength(1);
-    expect(body.rows[0]).toEqual({ rowNumber: 2, values: expect.objectContaining({ email: "fresh@jpc.test" }) });
+    expect(body.rows[0]).toEqual({
+      rowNumber: 2,
+      values: expect.objectContaining({ email: "fresh@jpc.test" }),
+    });
     expect("status" in body.rows[0]).toBe(false);
   });
 
@@ -217,7 +315,17 @@ describe("ImportScreen — step 2, preview", () => {
       email: "back@jpc.test",
       status: "exists",
       message: "Already in the system.",
-      values: { name: "Returning Student", email: "back@jpc.test", university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null },
+      values: {
+        name: "Returning Student",
+        email: "back@jpc.test",
+        university: null,
+        year: null,
+        phone: null,
+        dateOfBirth: null,
+        spiritualBackground: null,
+        gifts: null,
+        notes: null,
+      },
     };
     const base = previewBody().data.data;
     await reachPreview({
@@ -259,7 +367,14 @@ describe("ImportScreen — step 2, preview", () => {
   it("surfaces the server's parse message verbatim when the paste is unreadable", async () => {
     useSessionStore.setState(superSession);
     post.mockRejectedValue({
-      response: { data: { error: { code: "bad_request", message: 'There is an unclosed " in that paste. Remove or double it, then paste again.' } } },
+      response: {
+        data: {
+          error: {
+            code: "bad_request",
+            message: 'There is an unclosed " in that paste. Remove or double it, then paste again.',
+          },
+        },
+      },
     });
     renderWithProviders(<ImportScreen />);
     fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), 'name\nA,"oops');
@@ -272,16 +387,40 @@ describe("ImportScreen — step 2, preview", () => {
 describe("ImportScreen — step 3, result", () => {
   it("reports the counts and says plainly that no invites were sent (spec R55)", async () => {
     useSessionStore.setState(superSession);
-    post
-      .mockResolvedValueOnce(previewBody())
-      .mockResolvedValueOnce({ data: { data: { created: 1, skipped: 1, enrolled: 0, rows: [
-        { rowNumber: 2, name: "Fresh Student", email: "fresh@jpc.test", outcome: "created", message: null, userId: 55 },
-        { rowNumber: 4, name: "Old Student", email: "old@jpc.test", outcome: "skipped", message: "Already in the system.", userId: 12 },
-      ] } } });
+    post.mockResolvedValueOnce(previewBody()).mockResolvedValueOnce({
+      data: {
+        data: {
+          created: 1,
+          skipped: 1,
+          enrolled: 0,
+          rows: [
+            {
+              rowNumber: 2,
+              name: "Fresh Student",
+              email: "fresh@jpc.test",
+              outcome: "created",
+              message: null,
+              userId: 55,
+            },
+            {
+              rowNumber: 4,
+              name: "Old Student",
+              email: "old@jpc.test",
+              outcome: "skipped",
+              message: "Already in the system.",
+              userId: 12,
+            },
+          ],
+        },
+      },
+    });
 
     renderWithProviders(<ImportScreen />);
-    fireEvent.press(await screen.findByLabelText("Target season: Spring 2099"));
-    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
+    await chooseSeason();
+    fireEvent.changeText(
+      screen.getByLabelText("Paste your spreadsheet"),
+      "name\temail\nA\ta@jpc.test",
+    );
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText(/1 new · /);
     fireEvent.press(screen.getByText("Import 1 student"));
@@ -303,12 +442,45 @@ describe("ImportScreen — step 3, result", () => {
       .mockResolvedValueOnce({ data: { data: { created: 1, skipped: 0, enrolled: 0, rows: [] } } });
 
     renderWithProviders(<ImportScreen />);
-    fireEvent.press(await screen.findByLabelText("Target season: Spring 2099"));
-    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
+    await chooseSeason();
+    fireEvent.changeText(
+      screen.getByLabelText("Paste your spreadsheet"),
+      "name\temail\nA\ta@jpc.test",
+    );
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText(/1 new · /);
     fireEvent.press(screen.getByText("Import 1 student"));
 
     expect(await screen.findByText(/safe to run the same paste again/i)).toBeTruthy();
+  });
+});
+
+describe("ImportScreen — alumni mode and the way out", () => {
+  it("imports as alumni of a graduation year with no season, then offers View users", async () => {
+    useSessionStore.setState(superSession);
+    post
+      .mockResolvedValueOnce(previewBody())
+      .mockResolvedValueOnce({ data: { data: { created: 1, skipped: 0, enrolled: 0, rows: [] } } });
+    renderWithProviders(<ImportScreen />);
+
+    fireEvent.press(await screen.findByText("Alumni"));
+    expect(screen.queryByLabelText("Season")).toBeNull();
+    fireEvent.changeText(screen.getByLabelText("Graduation year"), "2020");
+    fireEvent.changeText(
+      screen.getByLabelText("Paste your spreadsheet"),
+      "name\temail\nA\ta@jpc.test",
+    );
+    fireEvent.press(screen.getByText("Preview"));
+    await screen.findByText(/1 new · /);
+    fireEvent.press(screen.getByText("Import 1 student"));
+
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
+    expect(post.mock.calls[1][1]).toMatchObject({
+      mode: "alumni",
+      graduationYear: 2020,
+      onExisting: "skip",
+    });
+    fireEvent.press(await screen.findByText("View users"));
+    expect(mockPush).toHaveBeenCalledWith("/users");
   });
 });

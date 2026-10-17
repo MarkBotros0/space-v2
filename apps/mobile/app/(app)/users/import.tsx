@@ -1,6 +1,7 @@
-// apps/mobile/app/(app)/users/import.tsx
+import { useRouter } from "expo-router";
+import { CheckCircle2 } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { FlatList, View } from "react-native";
+import { Pressable, View } from "react-native";
 import type {
   ImportRowStatus,
   StudentImportCommitInput,
@@ -9,15 +10,46 @@ import type {
 } from "@space/shared";
 import { IMPORT_MAX_PASTE_CHARS } from "@space/shared";
 
-import { ImportRowCard } from "../../../src/components/ImportRowCard";
-import { useImportTemplate, useStudentImportCommit, useStudentImportPreview } from "../../../src/hooks/use-import";
+import { FormErrorBox } from "../../../src/design/forms/form-parts";
+import { PageTitle } from "../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { iconWithClassName } from "../../../src/design/lib/icon";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  DataTable,
+  EmptyState,
+  FormField,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Text,
+  Textarea,
+  type DataTableColumn,
+} from "../../../src/design/ui";
+import { cn } from "../../../src/design/lib/cn";
+import {
+  useImportTemplate,
+  useStudentImportCommit,
+  useStudentImportPreview,
+} from "../../../src/hooks/use-import";
 import { useSeasons } from "../../../src/hooks/use-seasons";
 import { useSessionStore } from "../../../src/store/session";
-import { useTheme } from "../../../src/theme";
-import { Button, Card, EmptyState, ErrorState, Input, LoadingState, Screen, Text } from "../../../src/ui";
+
+iconWithClassName(CheckCircle2);
+
+type PreviewRow = StudentImportPreview["rows"][number];
 
 /**
- * `/users/import` — the whole importer in one route.
+ * `/users/import` — v1 super/users/import ("Import profiles batch",
+ * student-import-form.tsx) as v2's three-step paste flow (uploads stay off,
+ * owner decision 2, 2026-10-10).
  *
  * Three steps in local state rather than three routes (spec §9): the paste,
  * the preview and the result all belong to one operation, and splitting them
@@ -35,14 +67,60 @@ type Mode = "season" | "alumni";
 
 /** Default the filter to the rows that need attention (spec §10c). */
 const ATTENTION: ImportRowStatus[] = ["invalid", "duplicate"];
+/** The phone table is not virtualised; "All" on a 2000-row paste shows this many at a time. */
+const PAGE_SIZE = 50;
+
+const STATUS_BADGE: Record<
+  ImportRowStatus,
+  { variant: "success" | "warning" | "error"; label: string }
+> = {
+  new: { variant: "success", label: "New" },
+  exists: { variant: "warning", label: "Skip · already here" },
+  duplicate: { variant: "warning", label: "Skip · repeated" },
+  invalid: { variant: "error", label: "Invalid" },
+  previously_removed: { variant: "warning", label: "Skip · removed" },
+};
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 function messageFor(err: unknown): string {
-  const body = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error;
+  const body = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data
+    ?.error;
   return body?.message ?? "Something went wrong. Try again.";
 }
 
+/** v1's two "Import as" tiles: `flex-1 rounded-lg border px-4 py-3`. */
+function ModeTile({
+  title,
+  caption,
+  selected,
+  onPress,
+}: {
+  title: string;
+  caption: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      className={cn(
+        "rounded-lg border px-4 py-3",
+        selected
+          ? "border-brand-teal-500 bg-brand-teal-50 dark:bg-brand-teal-950"
+          : "border-border bg-card active:bg-accent",
+      )}
+    >
+      <Text className="text-sm font-semibold text-foreground">{title}</Text>
+      <Text className="text-xs text-muted-foreground">{caption}</Text>
+    </Pressable>
+  );
+}
+
 export default function ImportScreen() {
-  const theme = useTheme();
+  const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const isSuper = role === "SUPER";
 
@@ -57,6 +135,7 @@ export default function ImportScreen() {
   const [filter, setFilter] = useState<"attention" | "all">("attention");
   const [enrolExisting, setEnrolExisting] = useState(false);
   const [enrolConfirmed, setEnrolConfirmed] = useState(false);
+  const [shownCount, setShownCount] = useState(PAGE_SIZE);
 
   const template = useImportTemplate(isSuper);
   // Plan 4's hook — the same cached list the seasons screen reads.
@@ -77,17 +156,19 @@ export default function ImportScreen() {
   const needsSeason = mode === "season" && seasonId === null;
   const visibleRows = useMemo(() => {
     if (!preview) return [];
-    return filter === "all" ? preview.rows : preview.rows.filter((r) => ATTENTION.includes(r.status));
+    return filter === "all"
+      ? preview.rows
+      : preview.rows.filter((r) => ATTENTION.includes(r.status));
   }, [preview, filter]);
 
   if (!isSuper) {
     return (
-      <Screen edges={["top", "left", "right"]}>
+      <ShellFrame>
         <EmptyState
-          title="Import students"
-          message="This screen isn't available for your role."
+          title="Import profiles batch"
+          description="This screen isn't available for your role."
         />
-      </Screen>
+      </ShellFrame>
     );
   }
 
@@ -107,6 +188,7 @@ export default function ImportScreen() {
       const next = await previewMutation.mutateAsync({ text, delimiter: "auto" });
       setPreview(next);
       setFilter("attention");
+      setShownCount(PAGE_SIZE);
       setStep("preview");
     } catch (err) {
       setLocalError(messageFor(err));
@@ -141,229 +223,339 @@ export default function ImportScreen() {
     }
   }
 
+  const header = (
+    <PageTitle
+      title="Import profiles batch"
+      subtitle="Bulk-create profiles from pasted rows with name and email columns. Choose whether to import them as active students in a season or as alumni of a graduation year. Invites are sent separately once you're ready."
+    />
+  );
+
   // ── Step 3 ───────────────────────────────────────────────────────────────
   if (step === "result" && result) {
     const notCreated = result.rows.filter((r) => r.outcome !== "created");
     return (
-      <Screen scroll edges={["top", "left", "right"]}>
-        <Text variant="heading">Import complete</Text>
-        <Text variant="body">
-          {`${result.created} created · ${result.enrolled} enrolled · ${result.skipped} skipped`}
-        </Text>
-        {/* Spec R55: import sends nothing. Plan 9's single-target invite is
-            the only invite path that exists; bulk invites are still deferred,
-            so this says so rather than offering a button that 404s. */}
-        <Text variant="body" color={theme.colors.neutral[600]}>
-          No invites were sent. New accounts have no way to sign in until you invite them from the users screen.
-        </Text>
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          It is safe to run the same paste again — anyone already in the system is skipped, never duplicated.
-        </Text>
-        {notCreated.map((r) => (
-          <Card key={r.rowNumber} style={{ marginTop: theme.spacing.sm }}>
-            <Text variant="label">{`Row ${r.rowNumber} · ${r.email}`}</Text>
-            <Text variant="caption" color={theme.colors.neutral[600]}>
-              {r.message ?? r.outcome}
-            </Text>
-          </Card>
-        ))}
-        <Button
-          title="Import another"
-          onPress={() => {
-            setResult(null);
-            setPreview(null);
-            setText("");
-            setEnrolExisting(false);
-            setEnrolConfirmed(false);
-            setStep("paste");
-          }}
-        />
-      </Screen>
+      <ShellFrame>
+        <View className="flex-col gap-4">
+          {header}
+          <View className="flex-row items-start gap-3 rounded-lg bg-success-50 px-4 py-3 dark:bg-success-950">
+            <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-success-600" />
+            <View className="min-w-0 flex-1">
+              <Text className="text-sm font-semibold text-success-800 dark:text-success-200">
+                Import complete
+              </Text>
+              <Text className="text-sm text-success-700 dark:text-success-300">
+                {`${result.created} created · ${result.enrolled} enrolled · ${result.skipped} skipped`}
+              </Text>
+              {/* Spec R55: import sends nothing. Invites go from the users screen. */}
+              <Text className="mt-1 text-sm text-success-700 dark:text-success-300">
+                No invites were sent. New accounts have no way to sign in until you invite them from
+                the users screen.
+              </Text>
+            </View>
+          </View>
+          <Text className="text-xs text-muted-foreground">
+            It is safe to run the same paste again — anyone already in the system is skipped, never
+            duplicated.
+          </Text>
+          {notCreated.map((r) => (
+            <View key={r.rowNumber} className="rounded-lg border border-border bg-card p-3">
+              <Text className="text-sm font-medium">{`Row ${r.rowNumber} · ${r.email}`}</Text>
+              <Text className="text-xs text-muted-foreground">{r.message ?? r.outcome}</Text>
+            </View>
+          ))}
+          <View className="flex-col gap-2">
+            <Button onPress={() => router.push("/users")}>View users</Button>
+            <Button
+              variant="outline"
+              onPress={() => {
+                setResult(null);
+                setPreview(null);
+                setText("");
+                setEnrolExisting(false);
+                setEnrolConfirmed(false);
+                setStep("paste");
+              }}
+            >
+              Import another file
+            </Button>
+          </View>
+        </View>
+      </ShellFrame>
     );
   }
 
   // ── Step 2 ───────────────────────────────────────────────────────────────
   if (step === "preview" && preview) {
+    const shown = visibleRows.slice(0, shownCount);
+    const columns: DataTableColumn<PreviewRow>[] = [
+      {
+        key: "name",
+        header: "Name",
+        cell: (r) => <Text className="font-medium">{r.name || "—"}</Text>,
+      },
+      {
+        key: "email",
+        header: "Email",
+        cell: (r) => <Text className="text-muted-foreground">{r.email || "—"}</Text>,
+      },
+      { key: "row", header: "Row", cell: (r) => `Row ${r.rowNumber}` },
+      {
+        key: "status",
+        header: "Status",
+        cell: (r) => (
+          <View className="flex-col gap-0.5">
+            <Badge variant={STATUS_BADGE[r.status].variant} className="self-start">
+              {STATUS_BADGE[r.status].label}
+            </Badge>
+            {r.message ? <Text className="text-xs text-muted-foreground">{r.message}</Text> : null}
+          </View>
+        ),
+      },
+    ];
     return (
-      // padded={false} + FlatList, NOT <Screen scroll>: Screen's scroll branch
-      // is a ScrollView, and a FlatList inside one loses virtualisation and
-      // warns. A 2000-row preview needs the virtualisation.
-      <Screen edges={["top", "left", "right"]} padded={false}>
-        <FlatList
-          data={visibleRows}
-          keyExtractor={(r) => String(r.rowNumber)}
-          contentContainerStyle={{ padding: theme.spacing.md }}
-          renderItem={({ item }) => <ImportRowCard row={item} />}
-          ListHeaderComponent={
-            <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-              <Card>
-                <Text variant="heading">{`${preview.counts.total} rows`}</Text>
-                <Text variant="body">
-                  {`${preview.counts.new} new · ${preview.counts.exists} already here · ${preview.counts.duplicate} repeated · ${preview.counts.invalid} invalid`}
+      <ShellFrame>
+        <View className="flex-col gap-4">
+          {header}
+          <Card>
+            <CardContent className="pt-6">
+              <View className="flex-col gap-3">
+                <Text className="text-sm text-muted-foreground">
+                  {`${preview.counts.total} rows · ${preview.counts.new} new · ${preview.counts.exists} already here · ${preview.counts.duplicate} repeated · ${preview.counts.invalid} invalid`}
                 </Text>
                 {preview.counts.previously_removed > 0 ? (
-                  <Text variant="caption" color={theme.colors.neutral[600]}>
+                  <Text className="text-xs text-muted-foreground">
                     {`${preview.counts.previously_removed} previously removed — restore those from the users screen.`}
                   </Text>
                 ) : null}
-                <Text variant="caption" color={theme.colors.neutral[600]}>
+                <Text className="text-xs text-muted-foreground">
                   {`Read as ${preview.delimiter === "tab" ? "tab" : "comma"}-separated · columns: ${preview.detectedColumns.join(", ")}`}
                 </Text>
-              </Card>
-              {preview.unrecognisedColumns.length > 0 ? (
-                <Card>
-                  {/* D-16.12: v1 never says what it FAILED to detect, which is
-                      the half that matters. */}
-                  <Text variant="label" color={theme.colors.error[600]}>
-                    {`${preview.unrecognisedColumns.length} column(s) not recognised`}
-                  </Text>
-                  <Text variant="caption" color={theme.colors.neutral[600]}>
-                    {`${preview.unrecognisedColumns.map((c) => `"${c}"`).join(", ")} — these were ignored.`}
-                  </Text>
-                </Card>
-              ) : null}
-              <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-                <Button title="Needs attention" variant={filter === "attention" ? "primary" : "secondary"} onPress={() => setFilter("attention")} />
-                <Button title="All" variant={filter === "all" ? "primary" : "secondary"} onPress={() => setFilter("all")} />
-              </View>
-              {mode === "season" ? (
-                <View style={{ gap: theme.spacing.xs }}>
+                {preview.unrecognisedColumns.length > 0 ? (
+                  <View className="rounded-md bg-warning-50 px-3 py-2 dark:bg-warning-950">
+                    {/* D-16.12: v1 never says what it FAILED to detect, which is the half that matters. */}
+                    <Text className="text-sm font-medium text-warning-800 dark:text-warning-200">
+                      {`${preview.unrecognisedColumns.length} column(s) not recognised`}
+                    </Text>
+                    <Text className="text-xs text-warning-700 dark:text-warning-300">
+                      {`${preview.unrecognisedColumns.map((c) => `"${c}"`).join(", ")} — these were ignored.`}
+                    </Text>
+                  </View>
+                ) : null}
+                <View className="flex-row gap-2">
                   <Button
-                    title="Also enrol people already in the system"
-                    variant={enrolExisting ? "primary" : "secondary"}
+                    size="sm"
+                    variant={filter === "attention" ? "default" : "outline"}
                     onPress={() => {
-                      setEnrolExisting(!enrolExisting);
-                      setEnrolConfirmed(false);
+                      setFilter("attention");
+                      setShownCount(PAGE_SIZE);
                     }}
-                  />
-                  {enrolExisting && !enrolConfirmed ? (
-                    <View style={{ gap: theme.spacing.xs }}>
-                      {/* D-16.7: `enroll` changes existing records, so it is
-                          never armed by the toggle alone. */}
-                      <Text variant="caption" color={theme.colors.neutral[600]}>
-                        {`This will also enrol ${preview.counts.exists} existing student(s) into this season. Their names, notes and other details will not be changed.`}
-                      </Text>
-                      <Button title="Yes, enrol them too" onPress={() => setEnrolConfirmed(true)} />
-                    </View>
-                  ) : null}
+                  >
+                    Needs attention
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={filter === "all" ? "default" : "outline"}
+                    onPress={() => {
+                      setFilter("all");
+                      setShownCount(PAGE_SIZE);
+                    }}
+                  >
+                    All
+                  </Button>
                 </View>
-              ) : null}
-            </View>
-          }
-          ListEmptyComponent={
-            <EmptyState title="Nothing to show" message="No rows match this filter." />
-          }
-          ListFooterComponent={
-            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-              {localError ? <Text variant="body" color={theme.colors.error[600]}>{localError}</Text> : null}
-              <Button
-                title={
-                  needsSeason
+                {shown.length === 0 ? (
+                  <EmptyState title="Nothing to show" description="No rows match this filter." />
+                ) : (
+                  <DataTable columns={columns} rows={shown} rowKey={(r) => r.rowNumber} />
+                )}
+                {visibleRows.length > shownCount ? (
+                  <Button variant="outline" onPress={() => setShownCount((n) => n + PAGE_SIZE)}>
+                    {`Show more (${visibleRows.length - shownCount} left)`}
+                  </Button>
+                ) : null}
+                {mode === "season" ? (
+                  <View className="flex-col gap-2">
+                    <Button
+                      variant={enrolExisting ? "default" : "outline"}
+                      onPress={() => {
+                        setEnrolExisting(!enrolExisting);
+                        setEnrolConfirmed(false);
+                      }}
+                    >
+                      Also enrol people already in the system
+                    </Button>
+                    {enrolExisting && !enrolConfirmed ? (
+                      <View className="flex-col gap-2">
+                        {/* D-16.7: `enroll` changes existing records, so it is never armed by the toggle alone. */}
+                        <Text className="text-xs text-muted-foreground">
+                          {`This will also enrol ${preview.counts.exists} existing student(s) into this season. Their names, notes and other details will not be changed.`}
+                        </Text>
+                        <Button onPress={() => setEnrolConfirmed(true)}>Yes, enrol them too</Button>
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+                <FormErrorBox message={localError} />
+                <Button
+                  disabled={needsSeason || importable.length === 0 || commitMutation.isPending}
+                  onPress={runCommit}
+                >
+                  {needsSeason
                     ? "Choose a season before importing"
                     : importable.length === 0
                       ? "Nothing to import"
                       : `Import ${newRows.length} student${newRows.length === 1 ? "" : "s"}${
                           existingRows.length > 0 ? `, enrol ${existingRows.length}` : ""
-                        }`
-                }
-                onPress={runCommit}
-                disabled={needsSeason || importable.length === 0 || commitMutation.isPending}
-              />
-              <Button title="Back" variant="secondary" onPress={() => setStep("paste")} />
-            </View>
-          }
-        />
-      </Screen>
+                        }`}
+                </Button>
+                <Button variant="outline" onPress={() => setStep("paste")}>
+                  Back
+                </Button>
+              </View>
+            </CardContent>
+          </Card>
+        </View>
+      </ShellFrame>
     );
   }
 
   // ── Step 1 ───────────────────────────────────────────────────────────────
   if (template.isLoading) {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <LoadingState />
-      </Screen>
+      <ShellFrame>
+        <RouteSkeleton />
+      </ShellFrame>
     );
   }
   if (template.isError) {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <ErrorState message="Couldn't load the import columns." onRetry={() => void template.refetch()} />
-      </Screen>
+      <ShellFrame>
+        <RouteError onRetry={() => void template.refetch()} />
+      </ShellFrame>
     );
   }
 
+  const seasonItems: Record<string, string> = Object.fromEntries(
+    (seasons.data ?? []).map((s) => [String(s.id), s.title]),
+  );
+  const yearNum = Number(graduationYear);
+  const yearInvalid =
+    graduationYear !== "" &&
+    !(/^\d{4}$/.test(graduationYear) && yearNum >= 1990 && yearNum <= CURRENT_YEAR);
+
   return (
-    <Screen scroll edges={["top", "left", "right"]}>
-      <Text variant="heading">Import students</Text>
+    <ShellFrame>
+      <View className="flex-col gap-4">
+        {header}
+        <Card>
+          <CardContent className="pt-6">
+            <View className="flex-col gap-4">
+              <FormField label="Import as" required>
+                <View className="flex-col gap-2">
+                  <ModeTile
+                    title="Active students"
+                    caption="Enroll in a season"
+                    selected={mode === "season"}
+                    onPress={() => setMode("season")}
+                  />
+                  <ModeTile
+                    title="Alumni"
+                    caption="Graduated, no season"
+                    selected={mode === "alumni"}
+                    onPress={() => setMode("alumni")}
+                  />
+                </View>
+              </FormField>
 
-      <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-        <Button title="Into a season" variant={mode === "season" ? "primary" : "secondary"} onPress={() => setMode("season")} />
-        <Button title="As alumni" variant={mode === "alumni" ? "primary" : "secondary"} onPress={() => setMode("alumni")} />
-      </View>
+              {mode === "season" ? (
+                // Preview stays enabled without a season — the target is only needed at
+                // commit — but the commit button is disabled until one is chosen. Draft and
+                // archived seasons are listed too: v1's picker offers every non-deleted
+                // season (spec 16 R37).
+                seasons.isPending ? (
+                  <RouteSkeleton />
+                ) : seasons.isError ? (
+                  <RouteError onRetry={() => void seasons.refetch()} />
+                ) : (seasons.data ?? []).length === 0 ? (
+                  <View className="rounded-md bg-warning-50 px-3 py-2 dark:bg-warning-950">
+                    <Text className="text-sm text-warning-800 dark:text-warning-200">
+                      No seasons yet — create a season first, or import these people as alumni
+                      instead.
+                    </Text>
+                  </View>
+                ) : (
+                  <FormField label="Season" required>
+                    <Select
+                      items={seasonItems}
+                      value={seasonId === null ? null : String(seasonId)}
+                      onValueChange={(v) => setSeasonId(Number(v))}
+                    >
+                      <SelectTrigger accessibilityLabel="Season">
+                        <SelectValue placeholder="Choose the season to enroll students in" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(seasons.data ?? []).map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>
+                            {s.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                )
+              ) : (
+                <FormField
+                  label="JPCS graduation year"
+                  required
+                  error={yearInvalid ? `Enter a year between 1990 and ${CURRENT_YEAR}.` : undefined}
+                >
+                  <Input
+                    accessibilityLabel="Graduation year"
+                    value={graduationYear}
+                    onChangeText={setGraduationYear}
+                    keyboardType="number-pad"
+                  />
+                </FormField>
+              )}
 
-      {mode === "alumni" ? (
-        <Input label="Graduation year" value={graduationYear} onChangeText={setGraduationYear} keyboardType="number-pad" />
-      ) : null}
-      {mode === "season" ? (
-        <View style={{ gap: theme.spacing.xs }}>
-          <Text variant="label">Season</Text>
-          {/* Preview stays enabled without a season — the target is only
-              needed at commit — but the commit button is disabled until one
-              is chosen. Draft and archived seasons are listed too: v1's
-              picker offers every non-deleted season (spec 16 R37). */}
-          {seasons.isPending ? (
-            <LoadingState />
-          ) : seasons.isError ? (
-            <ErrorState message="Couldn't load seasons." onRetry={() => void seasons.refetch()} />
-          ) : (seasons.data ?? []).length === 0 ? (
-            <EmptyState title="No seasons" message="Create a season before importing into one." />
-          ) : (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs }}>
-              {(seasons.data ?? []).map((s) => (
-                <Button
-                  key={s.id}
-                  title={s.title}
-                  accessibilityLabel={`Target season: ${s.title}`}
-                  variant={seasonId === s.id ? "primary" : "secondary"}
-                  onPress={() => setSeasonId(s.id)}
+              <FormField label="Paste your spreadsheet" required>
+                <Textarea
+                  accessibilityLabel="Paste your spreadsheet"
+                  className="min-h-40"
+                  value={text}
+                  onChangeText={setText}
+                  placeholder={template.data?.headerRow}
+                  autoCapitalize="none"
                 />
-              ))}
+                <View className="mt-1 flex-col gap-0.5">
+                  <Text className="text-xs font-medium text-muted-foreground">
+                    Columns we recognise
+                  </Text>
+                  {template.data?.columns.map((c) => (
+                    <Text key={c.label} className="text-xs text-muted-foreground">
+                      {`${c.label}${c.required ? " (required)" : ""} — ${c.acceptedHeaders.join(", ")}`}
+                    </Text>
+                  ))}
+                  <Text selectable className="text-xs text-muted-foreground">
+                    {template.data?.headerRow}
+                  </Text>
+                </View>
+              </FormField>
+
+              {template.data?.capabilities.fileUpload === false ? (
+                <Text className="text-xs text-muted-foreground">
+                  Pasting is the only way in right now — file upload arrives with the CMS.
+                </Text>
+              ) : null}
+
+              <FormErrorBox message={localError} />
+              <Button variant="outline" disabled={previewMutation.isPending} onPress={runPreview}>
+                {previewMutation.isPending ? "Reading…" : "Preview"}
+              </Button>
             </View>
-          )}
-        </View>
-      ) : null}
-
-      <Input
-        label="Paste your spreadsheet"
-        value={text}
-        onChangeText={setText}
-        multiline
-        numberOfLines={8}
-        placeholder={template.data?.headerRow}
-      />
-
-      <Card>
-        <Text variant="label">Columns we recognise</Text>
-        {template.data?.columns.map((c) => (
-          <Text key={c.label} variant="caption" color={theme.colors.neutral[600]}>
-            {`${c.label}${c.required ? " (required)" : ""} — ${c.acceptedHeaders.join(", ")}`}
-          </Text>
-        ))}
-        <Text variant="caption" color={theme.colors.neutral[600]} selectable>
-          {template.data?.headerRow}
-        </Text>
-      </Card>
-
-      {template.data?.capabilities.fileUpload === false ? (
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          Pasting is the only way in right now — file upload arrives with the CMS.
-        </Text>
-      ) : null}
-
-      {localError ? <Text variant="body" color={theme.colors.error[600]}>{localError}</Text> : null}
-
-      <Button title="Preview" onPress={runPreview} disabled={previewMutation.isPending} />
-    </Screen>
+          </CardContent>
+        </Card>
+      </View>
+    </ShellFrame>
   );
 }

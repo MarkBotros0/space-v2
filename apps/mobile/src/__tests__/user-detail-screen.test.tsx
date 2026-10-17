@@ -20,13 +20,26 @@ const get = apiClient.get as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
 
 const superSession = {
-  user: { id: 1, name: "Super", email: "su@jpc.test", role: "SUPER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 1,
+    name: "Super",
+    email: "su@jpc.test",
+    role: "SUPER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
 };
 
 const detail = {
-  id: 7, name: "Detail Dan", email: "dan@jpc.test", role: "STUDENT" as const,
-  graduationYear: null, lastLoginAt: null, deletedAt: null, status: "invited" as const,
+  id: 7,
+  name: "Detail Dan",
+  email: "dan@jpc.test",
+  role: "STUDENT" as const,
+  graduationYear: null,
+  lastLoginAt: null,
+  deletedAt: null,
+  status: "invited" as const,
   invite: {
     issuedAt: "2026-08-20T00:00:00.000Z",
     expiresAt: "2026-08-27T00:00:00.000Z",
@@ -46,9 +59,10 @@ describe("UserDetailScreen", () => {
   it("shows the invite's real expiry — the fact v1 showed nowhere (R75)", async () => {
     renderWithProviders(<UserDetailScreen />);
     expect(await screen.findByText(/Invite expires/)).toBeTruthy();
-    // Email is rendered read-only; it is not an input (R48).
+    // Email is rendered read-only, under the title; it is not an input (R48).
     expect(screen.queryByLabelText("Email")).toBeNull();
     expect(screen.getByText("dan@jpc.test")).toBeTruthy();
+    expect(screen.getByText("Edit Detail Dan")).toBeTruthy();
   });
 
   it("saves a full-replace PATCH of name, role, graduationYear", async () => {
@@ -79,7 +93,8 @@ describe("UserDetailScreen", () => {
     renderWithProviders(<UserDetailScreen />);
     await screen.findByText(/Invite expires/);
 
-    fireEvent.press(screen.getByText("SUPER")); // role chip
+    fireEvent.press(screen.getByLabelText("Role"));
+    fireEvent.press(await screen.findByText("Super"));
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() => expect(alertSpy).toHaveBeenCalled());
@@ -98,7 +113,8 @@ describe("UserDetailScreen", () => {
     renderWithProviders(<UserDetailScreen />);
     await screen.findByText(/Invite expires/);
 
-    fireEvent.press(screen.getByText("LEADER"));
+    fireEvent.press(screen.getByLabelText("Role"));
+    fireEvent.press(await screen.findByText("Leader"));
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
@@ -107,5 +123,17 @@ describe("UserDetailScreen", () => {
       ),
     );
     expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("deactivates behind a confirmation, and never offers it for your own account", async () => {
+    const post = apiClient.post as jest.Mock;
+    post.mockResolvedValue({ data: { data: { id: 7, deletedAt: "2026-08-30T00:00:00.000Z" } } });
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
+      buttons?.find((b) => b.style !== "cancel")?.onPress?.();
+    });
+    renderWithProviders(<UserDetailScreen />);
+    fireEvent.press(await screen.findByText("Deactivate"));
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/users/7/deactivate"));
+    alertSpy.mockRestore();
   });
 });
