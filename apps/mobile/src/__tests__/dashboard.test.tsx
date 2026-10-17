@@ -523,6 +523,8 @@ describe("DashboardScreen — MENTOR", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("At risk")).toBeTruthy();
+    expect(screen.getByText("Mentor dashboard")).toBeTruthy();
+    expect(screen.getByText("Recent activity")).toBeTruthy();
     expect(await screen.findByText("1 of 34")).toBeTruthy();
     expect(screen.queryByText("Flagged for follow-up")).toBeNull();
 
