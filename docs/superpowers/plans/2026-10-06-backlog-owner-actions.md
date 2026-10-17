@@ -297,3 +297,28 @@ v1-parity plan revisions and `audits/2026-cutover/v1-parity-classification.tsv` 
 where v2 differs from v1; they are **not** a to-do list unless the owner picks individual items.
 Push notifications will be built on Firebase later; v2's original Expo push scaffolding (disabled,
 `POST /me/devices` answers 503) is back until then.
+
+## 14. UI rebuild captures (devbox)
+
+The UI rebuild screens are source-matched to v1 (no v1 render was available in the build
+sessions). Each needs one side-by-side capture at 375px against v1 (`tools/ui-reference/`), logged
+in as the role named. Fix or record any difference in the batch's gap note. Restart Metro with
+`--clear` first if a class looks ignored.
+
+### Batch 4 — admin (gaps: `docs/superpowers/ui-rebuild/gaps-batch-4.md`)
+
+| Screen | Role | Check |
+|---|---|---|
+| Dashboard | ADMIN | stat cards, section cards, "View all" links |
+| Seasons list, season detail | ADMIN | tabs, header buttons, roster/groups summaries |
+| Calendar | ADMIN | month grid, session sheet |
+| New session, edit session | ADMIN | date and time pickers, scope select, delete confirm |
+| Groups, group detail, new/edit group | ADMIN | table, leader and student pickers |
+| Roster, roster import | ADMIN | enrol/drop actions, import preview |
+| Assignments list, detail, new/edit | ADMIN | due badge, tracker table, form fieldsets |
+| Quizzes list, new/edit quiz | ADMIN | question cards, question editor |
+| Session detail | ADMIN | check-in console and QR, quizzes card |
+| Reports | ADMIN | export menu, charts (v2's own, see gap note) |
+| Students, alumni, dropped | ADMIN | table filters, row links |
+| Student detail | ADMIN | tabs, Graduate / Edit / Delete, drop control |
+| New student, edit student | SUPER, ADMIN | sectioned form, season combobox |
