@@ -10,13 +10,18 @@ import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { cn } from "../../src/design/lib/cn";
 import { iconWithClassName } from "../../src/design/lib/icon";
 import { shadowStyle } from "../../src/design/lib/shadow";
-import { Badge, EmptyState as EmptyStateV1, ProgressRing, Text as TextV1 } from "../../src/design/ui";
+import {
+  Badge,
+  Button,
+  EmptyState as EmptyStateV1,
+  ProgressRing,
+  Text as TextV1,
+} from "../../src/design/ui";
 import { useQuizList, useStudentQuizList } from "../../src/hooks/use-quizzes";
-import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
+import { useCurrentSeasonId, useSeasonDetail } from "../../src/hooks/use-seasons";
 import { formatDate } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
+import { EmptyState, Screen } from "../../src/ui";
 
 /**
  * Three v1 pages collapse into this one: /student/quizzes, /leader/quizzes and
@@ -53,10 +58,14 @@ function StudentQuizRow({ row }: { row: StudentQuizResult }) {
     <>
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
-          <TextV1 className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{row.title}</TextV1>
+          <TextV1 className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
+            {row.title}
+          </TextV1>
           {row.sessionTitle ? (
             <TextV1 className="mt-0.5 text-xs text-muted-foreground">
-              {row.sessionDate ? `${row.sessionTitle} · ${formatDate(row.sessionDate)}` : row.sessionTitle}
+              {row.sessionDate
+                ? `${row.sessionTitle} · ${formatDate(row.sessionDate)}`
+                : row.sessionTitle}
             </TextV1>
           ) : null}
         </View>
@@ -66,7 +75,9 @@ function StudentQuizRow({ row }: { row: StudentQuizResult }) {
         </View>
       </View>
       {row.notes ? (
-        <TextV1 className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{row.notes}</TextV1>
+        <TextV1 className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          {row.notes}
+        </TextV1>
       ) : null}
       {row.gradedAt ? (
         <TextV1 className="mt-2 text-[10px] text-muted-foreground/70">{`Graded ${formatDate(row.gradedAt)}`}</TextV1>
@@ -110,14 +121,21 @@ function StudentQuizzes({ seasonId }: { seasonId: number | null }) {
   const average =
     scored.length === 0
       ? null
-      : Math.round((scored.reduce((sum, r) => sum + (r.score as number) / r.maxScore, 0) / scored.length) * 100);
+      : Math.round(
+          (scored.reduce((sum, r) => sum + (r.score as number) / r.maxScore, 0) / scored.length) *
+            100,
+        );
 
   let list: ReactNode;
   if (seasonId !== null && isPending) list = <RouteSkeleton />;
   else if (seasonId !== null && isError) list = <RouteError onRetry={() => void refetch()} />;
   else if (rows.length === 0)
     list = (
-      <EmptyStateV1 icon={PenLine} title="No quizzes yet" description="Your quiz results will appear here once graded." />
+      <EmptyStateV1
+        icon={PenLine}
+        title="No quizzes yet"
+        description="Your quiz results will appear here once graded."
+      />
     );
   else
     list = (
@@ -144,7 +162,9 @@ function StudentQuizzes({ seasonId }: { seasonId: number | null }) {
             </ProgressRing>
             <View className="min-w-0 flex-1">
               <Eyebrow tone="teal">Quiz performance</Eyebrow>
-              <TextV1 className="mt-1 text-lg font-black text-brand-navy-900 dark:text-foreground">Average score</TextV1>
+              <TextV1 className="mt-1 text-lg font-black text-brand-navy-900 dark:text-foreground">
+                Average score
+              </TextV1>
               <TextV1 className="text-xs text-muted-foreground">
                 {`${scored.length} graded · ${rows.length - scored.length} pending`}
               </TextV1>
@@ -159,7 +179,8 @@ function StudentQuizzes({ seasonId }: { seasonId: number | null }) {
 
 /** v1's three-way badge over the server's counts (C4, D10). */
 function GradedBadge({ row }: { row: QuizSummary }) {
-  if (row.studentCount > 0 && row.gradedCount >= row.studentCount) return <Badge variant="success">Done</Badge>;
+  if (row.studentCount > 0 && row.gradedCount >= row.studentCount)
+    return <Badge variant="success">Done</Badge>;
   if (row.gradedCount > 0) return <Badge variant="warning">Partial</Badge>;
   return <Badge variant="outline">Pending</Badge>;
 }
@@ -170,6 +191,42 @@ function bySessionDate(a: QuizSummary, b: QuizSummary): number {
   if (a.sessionDate === null) return 1;
   if (b.sessionDate === null) return -1;
   return b.sessionDate.localeCompare(a.sessionDate);
+}
+
+/** v1's quiz card (leader and admin lists share it): title, session · date · Max, graded count and badge. */
+function QuizSummaryRow({
+  row,
+  onPress,
+  badge,
+}: {
+  row: QuizSummary;
+  onPress: () => void;
+  badge?: ReactNode;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="link"
+      onPress={onPress}
+      className="flex-row items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-4"
+      style={shadowStyle("soft")}
+    >
+      <View className="min-w-0 flex-1">
+        <TextV1
+          numberOfLines={1}
+          className="text-sm font-bold text-brand-navy-900 dark:text-foreground"
+        >
+          {row.title}
+        </TextV1>
+        <TextV1 className="mt-0.5 text-xs text-muted-foreground">
+          {`${row.sessionTitle !== null ? `${row.sessionTitle} · ${formatDate(row.sessionDate)}` : "No session"} · Max ${row.maxScore} pts`}
+        </TextV1>
+      </View>
+      <View className="shrink-0 flex-row items-center gap-2">
+        <TextV1 className="text-xs text-muted-foreground">{`${row.gradedCount}/${row.studentCount} graded`}</TextV1>
+        {badge ?? <GradedBadge row={row} />}
+      </View>
+    </Pressable>
+  );
 }
 
 /**
@@ -189,32 +246,23 @@ function LeaderQuizzes() {
   else if (seasonId !== null && isError) body = <RouteError onRetry={() => void refetch()} />;
   else if (rows.length === 0)
     body = (
-      <EmptyStateV1 icon={PenLine} title="No quizzes yet" description="Quizzes created by your admin will appear here." />
+      <EmptyStateV1
+        icon={PenLine}
+        title="No quizzes yet"
+        description="Quizzes created by your admin will appear here."
+      />
     );
   else
     body = (
       <View className="flex-col gap-3">
         {rows.map((row) => (
-          <Pressable
+          <QuizSummaryRow
             key={row.id}
-            accessibilityRole="link"
-            onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(row.id) } })}
-            className="flex-row items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-4"
-            style={shadowStyle("soft")}
-          >
-            <View className="min-w-0 flex-1">
-              <TextV1 numberOfLines={1} className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
-                {row.title}
-              </TextV1>
-              <TextV1 className="mt-0.5 text-xs text-muted-foreground">
-                {`${row.sessionTitle !== null ? `${row.sessionTitle} · ${formatDate(row.sessionDate)}` : "No session"} · Max ${row.maxScore} pts`}
-              </TextV1>
-            </View>
-            <View className="shrink-0 flex-row items-center gap-2">
-              <TextV1 className="text-xs text-muted-foreground">{`${row.gradedCount}/${row.studentCount} graded`}</TextV1>
-              <GradedBadge row={row} />
-            </View>
-          </Pressable>
+            row={row}
+            onPress={() =>
+              router.push({ pathname: "/quiz/[id]/grade", params: { id: String(row.id) } })
+            }
+          />
         ))}
       </View>
     );
@@ -232,76 +280,91 @@ function LeaderQuizzes() {
   );
 }
 
-function staffStatus(row: QuizSummary): string {
-  if (row.kind === "PAPER") return `Paper · ${row.gradedCount}/${row.studentCount} graded`;
-  const state = row.publishedAt === null ? "Draft" : `${row.gradedCount}/${row.studentCount} graded`;
-  return `Online · ${state} · ${row.questionCount} question${row.questionCount === 1 ? "" : "s"}`;
-}
-
+/**
+ * ADMIN / SUPER — v1 app/admin/quizzes/page.tsx: "Quizzes", "All quizzes for
+ * {season}", a "Go to sessions" link and the shared quiz cards. V2-ONLY kept:
+ * "New quiz" (v1 created quizzes only from a session's card), and a draft
+ * ONLINE quiz opens its builder, not the grade sheet.
+ */
 function StaffQuizzes() {
-  const theme = useTheme();
   const router = useRouter();
   // Ruling X8: a staff season comes from Plan 4's hook — never
   // scopes.activeSeasonId, which is the student-profile pointer and always
   // null for staff.
   const current = useCurrentSeasonId();
   const seasonId = current.seasonId;
+  const season = useSeasonDetail(seasonId);
   const role = useSessionStore((s) => s.user?.role ?? null);
   const canAuthor = role === "ADMIN" || role === "SUPER";
   const { data, isPending, isError, refetch, isRefetching } = useQuizList(seasonId);
+  const items = data?.items ?? [];
 
   const handleRefresh = () => {
     if (seasonId !== null) void refetch();
     else current.refetch();
   };
 
+  let body: ReactNode;
+  if (current.isPending || (seasonId !== null && isPending)) body = <RouteSkeleton />;
+  else if (current.isError) body = <RouteError onRetry={current.refetch} />;
+  else if (seasonId === null)
+    body = <EmptyStateV1 title="No season" description="You aren't attached to a season yet." />;
+  else if (isError) body = <RouteError onRetry={() => void refetch()} />;
+  else if (items.length === 0)
+    body = (
+      <EmptyStateV1
+        icon={PenLine}
+        title="No quizzes yet"
+        description="Open a session from the calendar, then use the Quizzes card to add one."
+      />
+    );
+  else
+    body = (
+      <View className="flex-col gap-3">
+        {[...items].sort(bySessionDate).map((row) => {
+          const draft = row.kind === "ONLINE" && row.publishedAt === null;
+          return (
+            <QuizSummaryRow
+              key={row.id}
+              row={row}
+              badge={draft ? <Badge variant="warning">Draft</Badge> : undefined}
+              onPress={() =>
+                router.push(
+                  canAuthor && draft
+                    ? { pathname: "/quiz/[id]/edit", params: { id: String(row.id) } }
+                    : { pathname: "/quiz/[id]/grade", params: { id: String(row.id) } },
+                )
+              }
+            />
+          );
+        })}
+      </View>
+    );
+
   return (
-    <Screen edges={["top", "left", "right"]} onRefresh={handleRefresh} refreshing={isRefetching} scroll>
-      {canAuthor && seasonId !== null ? (
-        <Button
-          title="New quiz"
-          style={{ marginBottom: theme.spacing.sm }}
-          onPress={() => router.push("/quiz/new")}
+    <ShellFrame onRefresh={handleRefresh} refreshing={isRefetching}>
+      <View className="flex-col gap-4">
+        <PageTitle
+          title="Quizzes"
+          subtitle={
+            season.data
+              ? `All quizzes for ${season.data.title}`
+              : seasonId === null
+                ? "No season found"
+                : undefined
+          }
         />
-      ) : null}
-      {current.isPending ? (
-        <LoadingState />
-      ) : current.isError ? (
-        <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />
-      ) : seasonId === null ? (
-        <EmptyState title="No season" message="You aren't attached to a season yet." />
-      ) : isPending ? (
-        <LoadingState />
-      ) : isError ? (
-        <ErrorState message="Couldn't load quizzes." onRetry={refetch} />
-      ) : data.items.length === 0 ? (
-        <EmptyState title="No quizzes" message="This season doesn't have any quizzes yet." />
-      ) : (
-        data.items.map((row) => (
-          <Pressable
-            key={row.id}
-            accessibilityRole="button"
-            onPress={() =>
-              router.push(
-                canAuthor && row.kind === "ONLINE" && row.publishedAt === null
-                  ? { pathname: "/quiz/[id]/edit", params: { id: String(row.id) } }
-                  : { pathname: "/quiz/[id]/grade", params: { id: String(row.id) } },
-              )
-            }
-          >
-            <Card style={{ marginBottom: theme.spacing.sm }}>
-              <Text variant="heading">{row.title}</Text>
-              <Text variant="label" color={theme.colors.neutral[600]}>
-                {staffStatus(row)}
-              </Text>
-              <Text variant="caption" color={theme.colors.neutral[600]}>
-                {row.sessionDate ? formatDate(row.sessionDate) : "No session"}
-              </Text>
-            </Card>
-          </Pressable>
-        ))
-      )}
-    </Screen>
+        {seasonId !== null ? (
+          <View className="flex-row flex-wrap gap-2">
+            {canAuthor ? <Button onPress={() => router.push("/quiz/new")}>New quiz</Button> : null}
+            <Button variant="outline" onPress={() => router.push("/calendar")}>
+              Go to sessions
+            </Button>
+          </View>
+        ) : null}
+        {body}
+      </View>
+    </ShellFrame>
   );
 }
 

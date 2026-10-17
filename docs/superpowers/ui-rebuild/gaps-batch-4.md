@@ -30,3 +30,10 @@ Every difference left between the v1 `/admin/*` pages and the rebuilt v2 screens
 - Tracker is grouped under a "Group (n)" eyebrow (REG-84); v1 was one flat table. Pending rows say "Not started" (v1 "Pending"). "Submitted" is `formatShortDateTime`, in the device zone: the tracker payload has no org-clock stamp for it.
 - Form: due date and time are the design DatePicker + TimePicker over org-day strings (C2), plus a v2-only "Clear due date" (v1 could not unset a date). Description uses v1's RichTextEditor. "Linked session" is a Combobox whose option subtitle is the server's `dayKey`, not `startsAt.toLocaleString()` (X13). The orphaned-work warning when narrowing groups is v2's (§10 item 5).
 - The date picker opens on the current month, so picking a far date takes month taps (v1's web calendar has the same behaviour).
+
+## Quizzes (list, create, builder)
+- List: v1's quiz cards, shared with the leader list; "Go to sessions" opens the calendar. V2-only: "New quiz", a "Draft" badge on unpublished ONLINE quizzes (they open the builder, not the grade sheet), and the season title comes from a second query (`GET /seasons/:id`).
+- Create: v1 created a quiz from a session's card, so it had no session picker; v2 keeps an optional session Combobox. Copy is v1's ("Paper (enter grades)", "Online (questions)", "Create", "Create & add questions"). Validation is the shared schema's, not v1's hand-written messages.
+- Builder: v1's publish bar, question cards (Q-number, type badge, points, prompt, "Correct: …") and `QuestionForm` layout. V2-only kept: the settings card (rename, paper max score), reorder arrows, the "questions can no longer change" notice, and "Open grade sheet" for paper quizzes. The MCQ form starts with no option marked correct (the schema requires one) where v1 defaulted to option 1.
+- Delete uses v1's ConfirmDialog; v2's arm-then-press control is gone.
+- The video-quiz editors (`VideoQuestionsEditor`, `VideoQuizPlayer`) have no v1 counterpart and keep their pre-rebuild look.
