@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
+import { GraduationCap } from "lucide-react-native";
 import {
   BAND_LABEL,
   BAND_ORDER,
   REPORT_METRIC_NOTES,
   type EngagementReportRow,
+  type OrganisationReport,
 } from "@space/shared";
 
 import { BandDonut } from "../../src/components/charts/BandDonut";
@@ -16,7 +18,18 @@ import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { cn } from "../../src/design/lib/cn";
-import { Card, CardContent, CardHeader, CardTitle, EmptyState, Text } from "../../src/design/ui";
+import { SeasonStatusBadge } from "../../src/design/seasons/season-status-badge";
+import { StatCard } from "../../src/design/students/stat-card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  DataTable,
+  EmptyState,
+  Text,
+  type DataTableColumn,
+} from "../../src/design/ui";
 import {
   useEngagementReport,
   useEngagementStudents,
@@ -100,63 +113,145 @@ function SeasonPicker({
   );
 }
 
+/**
+ * v1 super/reports/page.tsx (B5-4): three StatCards, "Active members per
+ * season" and "Alumni by graduation year" cards, then the "Students per
+ * season" table. V2 decisions kept: the first card says "Student accounts"
+ * (R51, spec D4 — v1's "Current students" counted accounts never enrolled in
+ * anything), and the pies are ranked lists (R60, R93, R97: a pie coloured by
+ * palette index implies a severity ranking that does not exist, and labelled
+ * slices do not fit 375px).
+ */
 function OrganisationSection() {
+  const router = useRouter();
   const { data, isPending, isError, refetch } = useOrganisationReport(true);
 
   if (isPending) return <RouteSkeleton />;
   if (isError) return <RouteError onRetry={() => void refetch()} />;
 
-  const maxActive = data.seasons.reduce((n, x) => Math.max(n, x.activeCount), 0);
+  const active = data.seasons.filter((s) => s.activeCount > 0);
+  const maxActive = active.reduce((n, x) => Math.max(n, x.activeCount), 0);
+
+  const columns: DataTableColumn<OrganisationReport["seasons"][number]>[] = [
+    {
+      key: "season",
+      header: "Season",
+      cell: (r) => (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`Open ${r.title}`}
+          onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: r.code } })}
+        >
+          <Text className="font-medium text-foreground">{r.title}</Text>
+        </Pressable>
+      ),
+    },
+    { key: "status", header: "Status", cell: (r) => <SeasonStatusBadge status={r.status} /> },
+    { key: "leaders", header: "Leaders", cell: (r) => `${r.leaderCount} leaders` },
+    { key: "active", header: "Active", cell: (r) => `${r.activeCount} active` },
+    { key: "completed", header: "Completed", cell: (r) => `${r.completedCount} completed` },
+    {
+      key: "dropped",
+      header: "Dropped",
+      cell: (r) =>
+        r.withdrawnCount > 0 ? (
+          <Text className="text-xs font-medium text-error-600 dark:text-error-400">
+            {`${r.withdrawnCount} dropped`}
+          </Text>
+        ) : (
+          `${r.withdrawnCount} dropped`
+        ),
+    },
+  ];
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Organisation</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-col gap-4">
-        <View className="flex-row justify-between">
-          {/* "Current students" in v1 counted student ACCOUNTS, including
-              students never enrolled in anything (R51, spec D4). The label says
-              what the number is. */}
-          {[
-            ["Student accounts", data.totalStudentsNotGraduated],
-            ["Alumni", data.totalAlumni],
-            ["Active seasons", data.activeSeasonCount],
-          ].map(([label, value]) => (
-            <View key={label}>
-              <Text className="text-xs text-muted-foreground">{label}</Text>
-              <Text className="text-lg font-black text-brand-navy-900 dark:text-foreground">
-                {String(value)}
-              </Text>
+    <View className="flex-col gap-4">
+      <View className="flex-row gap-3">
+        <StatCard
+          label="Student accounts"
+          value={String(data.totalStudentsNotGraduated)}
+          onPress={() => router.push("/students")}
+        />
+        <StatCard
+          label="Alumni"
+          value={String(data.totalAlumni)}
+          variant="teal"
+          onPress={() => router.push("/students/alumni")}
+        />
+        <StatCard
+          label="Active seasons"
+          value={String(data.activeSeasonCount)}
+          onPress={() => router.push("/seasons")}
+        />
+      </View>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Active members per season</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {active.length === 0 ? (
+            <EmptyState
+              icon={GraduationCap}
+              title="No active members"
+              description="Enroll students in a season to see the breakdown."
+            />
+          ) : (
+            <RankedBars
+              bars={[...active]
+                .sort((a, b) => b.activeCount - a.activeCount)
+                .map((s) => ({
+                  key: String(s.seasonId),
+                  label: s.title,
+                  value: Math.round((s.activeCount / maxActive) * 100),
+                  caption: `${s.activeCount} active`,
+                }))}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Alumni by graduation year</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {data.alumniByYear.length === 0 ? (
+            <EmptyState
+              icon={GraduationCap}
+              title="No alumni yet"
+              description="Graduated students will be counted here by class year."
+            />
+          ) : (
+            <View className="flex-col gap-1">
+              {data.alumniByYear.map((a) => (
+                <Text key={a.year} className="text-sm">{`${a.year}: ${a.count}`}</Text>
+              ))}
             </View>
-          ))}
-        </View>
+          )}
+        </CardContent>
+      </Card>
 
-        <View className="flex-col gap-2">
-          <Text className="text-sm font-medium">Active members per season</Text>
-          {/* v1 drew a pie with one labelled slice per season on a 240px square
-              (R60, R97) and coloured it by palette index, implying a severity
-              ranking that does not exist (R93). A ranked list carries the same
-              information and reads at 375px. */}
-          <RankedBars
-            bars={[...data.seasons]
-              .sort((a, b) => b.activeCount - a.activeCount)
-              .map((s) => ({
-                key: String(s.seasonId),
-                label: s.title,
-                value: maxActive > 0 ? Math.round((s.activeCount / maxActive) * 100) : null,
-                caption: `${s.activeCount} active · ${s.completedCount} completed · ${s.withdrawnCount} dropped · ${s.leaderCount} leaders`,
-              }))}
-          />
-        </View>
-
-        <View className="flex-col gap-1">
-          <Text className="text-sm font-medium">Alumni by year</Text>
-          {data.alumniByYear.map((a) => (
-            <Text key={a.year} className="text-sm">{`${a.year}: ${a.count}`}</Text>
-          ))}
-        </View>
-      </CardContent>
-    </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Students per season</CardTitle>
+          <Text className="text-sm text-muted-foreground">
+            Active, completed, and dropped counts
+          </Text>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {data.seasons.length === 0 ? (
+            <EmptyState
+              icon={GraduationCap}
+              title="No seasons yet"
+              description="Create a season to see enrollment breakdowns."
+            />
+          ) : (
+            <DataTable columns={columns} rows={data.seasons} rowKey={(r) => r.seasonId} />
+          )}
+        </CardContent>
+      </Card>
+    </View>
   );
 }
 

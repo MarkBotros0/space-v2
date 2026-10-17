@@ -216,7 +216,8 @@ FigurePair), `src/design/sessions/{next-session-card,check-in-attendance-list,at
 `RouteError` picks "your leader" / "an admin" from the session role. If a capture shows a
 class ignored, restart Metro with `--clear` before working around it. Admin pages (batch 4) share `src/design/forms/form-parts.tsx` (FormErrorBox, FormActions, ToggleButtons),
 `src/design/seasons/*`, `src/components/dashboard/StaffDashboard.tsx`, and the design `StudentDetail`, whose props
-(`canWriteNote`, `actions`, `dropFor`, `staffTabs`) switch it between leader and admin views.
+(`canWriteNote`, `actions`, `dropFor`, `staffTabs`) switch it between leader and admin views. Super pages (batch 5) add `src/components/season/SeasonForm.tsx`,
+`src/design/users/users-list.tsx`, and the season palette (`buildSeasonColors`) in `design/sessions/season-calendar.tsx`.
 Remaining
 differences per batch are in `docs/superpowers/ui-rebuild/gaps-batch-<n>.md`; captures still owed are in backlog section 14.
 

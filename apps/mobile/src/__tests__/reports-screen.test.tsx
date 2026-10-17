@@ -29,7 +29,14 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const sessionFor = (role: "SUPER" | "MENTOR" | "ADMIN" | "LEADER" | "STUDENT") => ({
-  user: { id: 1, name: `Test ${role}`, email: `${role}@jpc.test`, role, avatarPath: null, hasPassword: true },
+  user: {
+    id: 1,
+    name: `Test ${role}`,
+    email: `${role}@jpc.test`,
+    role,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: emptyScopes,
 });
 
@@ -214,6 +221,25 @@ describe("ReportsScreen — role branches", () => {
   });
 });
 
+describe("ReportsScreen — SUPER's organisation roll-up (v1 super/reports)", () => {
+  it("draws the stat cards, the alumni years and the per-season table, and opens a season", async () => {
+    useSessionStore.setState(sessionFor("SUPER"));
+    mockEndpoints({ withOrg: true });
+
+    renderWithProviders(<ReportsScreen />);
+
+    expect(await screen.findByText("Students per season")).toBeTruthy();
+    expect(screen.getByText("Active seasons")).toBeTruthy();
+    expect(screen.getByText("2098: 12")).toBeTruthy();
+    expect(screen.getAllByText("20 active").length).toBeGreaterThan(0);
+    fireEvent.press(screen.getByLabelText("Open Spring 2099"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/seasons/[code]",
+      params: { code: "spring-2099" },
+    });
+  });
+});
+
 describe("ReportsScreen — the at-risk card comes first and tells the truth", () => {
   it('renders "1 of 34" so the cap is visible (spec D16, R33)', async () => {
     useSessionStore.setState(sessionFor("MENTOR"));
@@ -324,7 +350,14 @@ describe("ReportsScreen — the numbers it renders", () => {
         first!,
         { ...second!, seasonId: 8, seasonTitle: "Autumn 2099" },
         { ...first!, sessionId: 3, dayKey: "2099-09-01", pct: 60 },
-        { ...second!, sessionId: 4, seasonId: 8, seasonTitle: "Autumn 2099", dayKey: "2099-09-08", pct: 40 },
+        {
+          ...second!,
+          sessionId: 4,
+          seasonId: 8,
+          seasonTitle: "Autumn 2099",
+          dayKey: "2099-09-08",
+          pct: 40,
+        },
       ],
     };
     get.mockImplementation((url: string) => {
@@ -333,7 +366,8 @@ describe("ReportsScreen — the numbers it renders", () => {
           data: { data: { scope: summary.scope, rows: [row], nextCursor: null, total: 34 } },
         });
       }
-      if (url.startsWith("/api/v1/reports/engagement")) return Promise.resolve({ data: { data: interleaved } });
+      if (url.startsWith("/api/v1/reports/engagement"))
+        return Promise.resolve({ data: { data: interleaved } });
       return Promise.reject(new Error(`unexpected ${url}`));
     });
 
