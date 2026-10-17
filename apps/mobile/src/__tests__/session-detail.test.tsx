@@ -149,7 +149,7 @@ it("gives a season admin Edit session", async () => {
   useSessionStore.setState(admin());
   routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
   renderWithProviders(<SessionDetailScreen />);
-  fireEvent.press(await screen.findByText("Edit session"));
+  fireEvent.press(await screen.findByText("Edit"));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]/edit", params: { id: "12" } });
 });
 
@@ -223,8 +223,7 @@ it("lists who has checked in on the admin console and refreshes it while open (R
     expect(await screen.findByText("Code: tokABC")).toBeTruthy();
     expect(await screen.findByText("Ada")).toBeTruthy();
     expect(screen.getByText("Present")).toBeTruthy();
-    expect(screen.getByText("Not checked in")).toBeTruthy();
-    expect(screen.getByText("1 of 2 checked in")).toBeTruthy();
+    expect(screen.getByText("Not recorded")).toBeTruthy();
     await waitFor(() => expect(rosterCalls()).toBe(1));
     await act(async () => {
       jest.advanceTimersByTime(10_000);
@@ -239,7 +238,7 @@ it("hides the console from a SUPER who is not an admin of the season, keeping a 
   useSessionStore.setState(makeSession("SUPER", { seasonAdminIds: [99] }, { id: 1 }));
   routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
   renderWithProviders(<SessionDetailScreen />);
-  expect(await screen.findByText("Check-in is closed")).toBeTruthy();
+  expect(await screen.findByText("Closed")).toBeTruthy();
   expect(screen.queryByText("Open check-in")).toBeNull();
   expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/check-in");
 });

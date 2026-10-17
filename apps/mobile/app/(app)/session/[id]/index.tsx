@@ -1,17 +1,17 @@
-import { CheckCheck, Clock, MapPin, PenLine, QrCode } from "lucide-react-native";
+import { CheckCheck, Clock, MapPin, PenLine, QrCode, RotateCcw } from "lucide-react-native";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import type { AttendanceRosterRow, MyAttendance, SessionDetail } from "@space/shared";
+import type { MyAttendance, SessionDetail } from "@space/shared";
 
 import { StudentCheckInCard } from "../../../../src/components/check-in/StudentCheckInCard";
-import { SessionQuizzesCard } from "../../../../src/components/SessionQuizzesCard";
 import {
   VideoQuestionsEditor,
   VideoQuizResultsTable,
 } from "../../../../src/components/VideoQuestionsEditor";
 import { VideoQuizPlayer, WatchRecordingButton } from "../../../../src/components/VideoQuizPlayer";
+import { FormErrorBox } from "../../../../src/design/forms/form-parts";
 import { BackLink, Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
@@ -26,6 +26,7 @@ import {
   CardHeader,
   CardTitle,
   DataTable,
+  EmptyState,
   Text as TextV1,
 } from "../../../../src/design/ui";
 import { useAttendanceRoster, useSaveAttendance } from "../../../../src/hooks/use-attendance";
@@ -47,21 +48,11 @@ import {
 } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { useSessionStore } from "../../../../src/store/session";
-import { useTheme } from "../../../../src/theme";
-import {
-  Button,
-  Card,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  Screen,
-  Text,
-} from "../../../../src/ui";
 
 /** v1's leader page refreshed every 10s while check-in was open (check-in-attendance-list.tsx:58). */
 export const LIVE_ROSTER_REFRESH_MS = 10_000;
 
-iconWithClassName(CheckCheck, Clock, MapPin, PenLine, QrCode);
+iconWithClassName(CheckCheck, Clock, MapPin, PenLine, QrCode, RotateCcw);
 
 function attendanceLine(a: MyAttendance): string {
   if (a.status === "PRESENT") return "Your attendance: Present";
@@ -73,159 +64,6 @@ function attendanceLine(a: MyAttendance): string {
   return "Your attendance: Absent";
 }
 
-function rosterStatus(row: AttendanceRosterRow): string {
-  if (row.status === "PRESENT") return "Present";
-  if (row.status === "LATE") return "Late";
-  if (row.status === "ABSENT") return "Absent";
-  return "Not checked in";
-}
-
-/** Season admins only (canManageCheckIn): open/close/regenerate and the QR. */
-function CheckInConsole({ detail }: { detail: SessionDetail }) {
-  const theme = useTheme();
-  const open = useOpenCheckIn(detail.id);
-  const close = useCloseCheckIn(detail.id);
-  const regenerate = useRegenerateCheckIn(detail.id);
-  // The narrow admin-only read (D-16.9) — after an app restart, the open
-  // session's QR comes back without a reopen and without the season-wide list.
-  const checkIn = useCheckInState(detail.id, true);
-  const token = checkIn.data?.checkInToken ?? open.token;
-  const [error, setError] = useState<string | null>(null);
-  const [regenArmed, setRegenArmed] = useState(false);
-
-  const onOpen = () => {
-    setError(null);
-    open.mutate(undefined, {
-      onError: (err) => setError(apiErrorMessage(err, "Couldn't open check-in.")),
-    });
-  };
-  const onClose = () => {
-    setError(null);
-    close.mutate(undefined, {
-      onError: (err) => setError(apiErrorMessage(err, "Couldn't close check-in.")),
-    });
-  };
-  const onRegenerate = () => {
-    // While open, a code on the room screen stops working — confirm (spec 03 §10 item 9).
-    if (detail.checkInOpen && !regenArmed) {
-      setRegenArmed(true);
-      return;
-    }
-    setRegenArmed(false);
-    setError(null);
-    regenerate.mutate(undefined, {
-      onError: (err) => setError(apiErrorMessage(err, "Couldn't replace the code.")),
-    });
-  };
-
-  return (
-    <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-      <Text variant="heading">Check-in</Text>
-      {detail.checkInOpen ? (
-        <>
-          {token ? (
-            <View style={{ alignItems: "center", gap: theme.spacing.sm }}>
-              <QRCode value={token} size={220} />
-              <Text variant="caption">{`Code: ${token}`}</Text>
-              {checkIn.data?.expiresAtTime ? (
-                <Text variant="caption">{`Closes at ${formatWallTime(checkIn.data.expiresAtTime)}`}</Text>
-              ) : null}
-              {/* Spec 04 D3's risk, stated until the rotating-code upgrade lands. */}
-              <Text variant="caption" color={theme.colors.neutral[600]}>
-                Anyone with this code can check in — keep it on the room screen only.
-              </Text>
-            </View>
-          ) : (
-            <Text variant="label">Loading the check-in code…</Text>
-          )}
-          <Button
-            title="Close check-in"
-            variant="secondary"
-            onPress={onClose}
-            loading={close.isPending}
-          />
-        </>
-      ) : (
-        <Button title="Open check-in" onPress={onOpen} loading={open.isPending} />
-      )}
-      {token ? (
-        <Button
-          title={
-            regenArmed ? "Replace the code? The current one stops working." : "Regenerate code"
-          }
-          variant="ghost"
-          onPress={onRegenerate}
-          loading={regenerate.isPending}
-        />
-      ) : null}
-      {error ? (
-        <Text variant="label" color={theme.colors.error[500]}>
-          {error}
-        </Text>
-      ) : null}
-      <Text variant="heading">Checked in</Text>
-      <LiveRoster detail={detail} emptyText="No students are enrolled yet." />
-    </Card>
-  );
-}
-
-/**
- * Who has checked in, polled every 10s while check-in is open (v1's
- * check-in-attendance-list.tsx:58 router.refresh). The roster endpoint narrows
- * a leader to their own groups server-side.
- */
-function LiveRoster({ detail, emptyText }: { detail: SessionDetail; emptyText: string }) {
-  const theme = useTheme();
-  const roster = useAttendanceRoster(detail.id);
-  const { refetch } = roster;
-
-  useEffect(() => {
-    if (!detail.checkInOpen) return undefined;
-    const timer = setInterval(() => void refetch(), LIVE_ROSTER_REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [detail.checkInOpen, refetch]);
-
-  if (roster.isPending) return <LoadingState />;
-  if (roster.isError)
-    return <ErrorState message="Couldn't load the roster." onRetry={() => void refetch()} />;
-  if (roster.data.length === 0) {
-    return (
-      <Text variant="body" color={theme.colors.neutral[600]}>
-        {emptyText}
-      </Text>
-    );
-  }
-  const checkedIn = roster.data.filter((r) => r.status !== null).length;
-  return (
-    <>
-      <Text variant="label">{`${checkedIn} of ${roster.data.length} checked in`}</Text>
-      {roster.data.map((row) => (
-        <View
-          key={row.studentUserId}
-          style={{ flexDirection: "row", justifyContent: "space-between" }}
-        >
-          <Text variant="body">{row.name ?? row.email}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>
-            {rosterStatus(row)}
-          </Text>
-        </View>
-      ))}
-    </>
-  );
-}
-
-/** Group leaders, and a SUPER who is not this season's admin: who has checked in, read-only — v1 /leader/sessions/[id]. */
-function LiveCheckInRoster({ detail }: { detail: SessionDetail }) {
-  const theme = useTheme();
-  return (
-    <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-      <Text variant="heading">Check-in</Text>
-      <Text variant="label">{detail.checkInOpen ? "Check-in is open" : "Check-in is closed"}</Text>
-      <LiveRoster detail={detail} emptyText="No students in your groups." />
-    </Card>
-  );
-}
-
 /**
  * The session's interactive video (Plan 14), staff side — students get the player in StudentSessionBody. A season
  * admin / SUPER gets the question editor (which reads the answer key); a LEADER
@@ -233,7 +71,6 @@ function LiveCheckInRoster({ detail }: { detail: SessionDetail }) {
  * lets an admin author a full quiz no student can ever reach (R17).
  */
 function VideoSection({ detail }: { detail: SessionDetail }) {
-  const theme = useTheme();
   const user = useSessionStore((s) => s.user);
   const scopes = useSessionStore((s) => s.scopes);
   // Mirrors canManageSessionVideo exactly: SUPER, or an ADMIN of this season.
@@ -252,7 +89,7 @@ function VideoSection({ detail }: { detail: SessionDetail }) {
   if (canAuthorVideo) return <VideoQuestionsEditor sessionId={detail.id} />;
   if (canSeeResults) {
     return (
-      <View style={{ marginTop: theme.spacing.md }}>
+      <View>
         <VideoQuizResultsTable sessionId={detail.id} />
       </View>
     );
@@ -424,12 +261,12 @@ function LeaderQuizzesCard({ sessionId }: { sessionId: number }) {
 }
 
 /**
- * v1 check-in card: Open/Closed badge and the roster with per-student
- * override. Polled every 10s while open (v1 router.refresh). The override is
- * one entry through the batch write (spec 04 D7), carrying the stored notes
- * and late minutes v1's override wiped (R32).
+ * v1's attendance list with per-student override (CheckInAttendanceList).
+ * Polled every 10s while open (v1 router.refresh). The override is one entry
+ * through the batch write (spec 04 D7), carrying the stored notes and late
+ * minutes v1's override wiped (R32).
  */
-function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
+function CheckInRoster({ detail }: { detail: SessionDetail }) {
   const roster = useAttendanceRoster(detail.id);
   const save = useSaveAttendance(detail.id);
   const { refetch } = roster;
@@ -440,6 +277,50 @@ function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
     return () => clearInterval(timer);
   }, [detail.checkInOpen, refetch]);
 
+  if (roster.isPending) {
+    return <TextV1 className="py-4 text-center text-sm text-muted-foreground">Loading…</TextV1>;
+  }
+  if (roster.isError) {
+    return (
+      <View className="flex-col items-start gap-2">
+        <TextV1 className="text-sm text-error-600 dark:text-error-400">
+          Couldn't load the roster.
+        </TextV1>
+        <ButtonV1 variant="outline" size="sm" onPress={() => void refetch()}>
+          Try again
+        </ButtonV1>
+      </View>
+    );
+  }
+  return (
+    <CheckInAttendanceList
+      rows={roster.data}
+      pending={save.isPending}
+      error={save.isError ? apiErrorMessage(save.error, "Couldn't save the attendance.") : null}
+      onOverride={(row, status, done) =>
+        save.mutate(
+          [
+            {
+              studentUserId: row.studentUserId,
+              status,
+              notes: row.notes,
+              lateMinutes: status === "LATE" ? row.lateMinutes : null,
+            },
+          ],
+          {
+            onSuccess: () => {
+              save.reset();
+              done();
+            },
+          },
+        )
+      }
+    />
+  );
+}
+
+/** Leader, and a SUPER who is not this season's admin: v1's read-only card with an Open/Closed badge. */
+function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
   return (
     <CardV1>
       <CardHeader className="flex-row items-center justify-between">
@@ -454,43 +335,197 @@ function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
         )}
       </CardHeader>
       <CardContent className="flex-col gap-6">
-        {roster.isPending ? (
-          <TextV1 className="py-4 text-center text-sm text-muted-foreground">Loading…</TextV1>
-        ) : roster.isError ? (
+        <CheckInRoster detail={detail} />
+      </CardContent>
+    </CardV1>
+  );
+}
+
+/**
+ * Season admins only (canManageCheckIn) — v1 admin session page's check-in
+ * card: Regenerate QR + Open/Close in the header, "Closes at", the QR, then
+ * the roster. The QR is a deliberate difference from the leader card.
+ */
+function CheckInConsoleCard({ detail }: { detail: SessionDetail }) {
+  const open = useOpenCheckIn(detail.id);
+  const close = useCloseCheckIn(detail.id);
+  const regenerate = useRegenerateCheckIn(detail.id);
+  // The narrow admin-only read (D-16.9) — after an app restart, the open
+  // session's QR comes back without a reopen and without the season-wide list.
+  const checkIn = useCheckInState(detail.id, true);
+  const token = checkIn.data?.checkInToken ?? open.token;
+  const [error, setError] = useState<string | null>(null);
+  const [regenArmed, setRegenArmed] = useState(false);
+
+  const onOpen = () => {
+    setError(null);
+    open.mutate(undefined, {
+      onError: (err) => setError(apiErrorMessage(err, "Couldn't open check-in.")),
+    });
+  };
+  const onClose = () => {
+    setError(null);
+    close.mutate(undefined, {
+      onError: (err) => setError(apiErrorMessage(err, "Couldn't close check-in.")),
+    });
+  };
+  const onRegenerate = () => {
+    // While open, a code on the room screen stops working — confirm (spec 03 §10 item 9).
+    if (detail.checkInOpen && !regenArmed) {
+      setRegenArmed(true);
+      return;
+    }
+    setRegenArmed(false);
+    setError(null);
+    regenerate.mutate(undefined, {
+      onError: (err) => setError(apiErrorMessage(err, "Couldn't replace the code.")),
+    });
+  };
+
+  return (
+    <CardV1>
+      <CardHeader>
+        <View className="flex-row items-center gap-2">
+          <QrCode size={16} className="text-foreground" />
+          <CardTitle className="text-base">Check-in</CardTitle>
+        </View>
+        <View className="mt-2 flex-row flex-wrap items-center gap-2">
+          {token ? (
+            <ButtonV1
+              variant="ghost"
+              size="sm"
+              disabled={regenerate.isPending}
+              onPress={onRegenerate}
+            >
+              <RotateCcw size={16} className="text-foreground" />
+              {regenArmed ? "Replace the code? The current one stops working." : "Regenerate code"}
+            </ButtonV1>
+          ) : null}
+          {detail.checkInOpen ? (
+            <ButtonV1 variant="outline" size="sm" disabled={close.isPending} onPress={onClose}>
+              Close check-in
+            </ButtonV1>
+          ) : (
+            <ButtonV1 size="sm" disabled={open.isPending} onPress={onOpen}>
+              Open check-in
+            </ButtonV1>
+          )}
+        </View>
+      </CardHeader>
+      <CardContent className="flex-col gap-6">
+        {detail.checkInOpen && checkIn.data?.expiresAtTime ? (
+          <TextV1 className="text-xs text-muted-foreground">
+            {`Closes at ${formatWallTime(checkIn.data.expiresAtTime)}`}
+          </TextV1>
+        ) : null}
+        {detail.checkInOpen ? (
+          token ? (
+            <View className="items-center gap-2">
+              <QRCode value={token} size={220} />
+              <TextV1 className="text-xs text-muted-foreground">{`Code: ${token}`}</TextV1>
+              {/* Spec 04 D3's risk, stated until the rotating-code upgrade lands. */}
+              <TextV1 className="text-center text-xs text-muted-foreground">
+                Anyone with this code can check in — keep it on the room screen only.
+              </TextV1>
+            </View>
+          ) : (
+            <TextV1 className="text-sm text-muted-foreground">Loading the check-in code…</TextV1>
+          )
+        ) : null}
+        <FormErrorBox message={error} />
+        <CheckInRoster detail={detail} />
+      </CardContent>
+    </CardV1>
+  );
+}
+
+/** The session's quizzes on the admin page: title, kind and state badges, Edit and Grade links (v1). */
+function AdminQuizzesCard({ sessionId, canAuthor }: { sessionId: number; canAuthor: boolean }) {
+  const router = useRouter();
+  const quizzes = useSessionQuizzes(sessionId, true);
+  return (
+    <CardV1>
+      <CardHeader className="flex-row items-center justify-between gap-3">
+        <View className="flex-row items-center gap-2">
+          <PenLine size={16} className="text-brand-teal-600" />
+          <CardTitle className="text-base">Quizzes</CardTitle>
+        </View>
+        {/* V2-ONLY: v1's inline "+ Add quiz" form; v2 opens the new-quiz screen. */}
+        {canAuthor ? (
+          <ButtonV1 variant="outline" size="sm" onPress={() => router.push("/quiz/new")}>
+            + Add quiz
+          </ButtonV1>
+        ) : null}
+      </CardHeader>
+      <CardContent>
+        {quizzes.isPending ? (
+          <TextV1 className="text-sm text-muted-foreground">Loading…</TextV1>
+        ) : quizzes.isError ? (
           <View className="flex-col items-start gap-2">
             <TextV1 className="text-sm text-error-600 dark:text-error-400">
-              Couldn't load the roster.
+              Couldn't load this session's quizzes.
             </TextV1>
-            <ButtonV1 variant="outline" size="sm" onPress={() => void refetch()}>
+            <ButtonV1 variant="outline" size="sm" onPress={() => void quizzes.refetch()}>
               Try again
             </ButtonV1>
           </View>
+        ) : quizzes.data.length === 0 ? (
+          <TextV1 className="text-sm text-muted-foreground">
+            No quizzes for this session yet.
+          </TextV1>
         ) : (
-          <CheckInAttendanceList
-            rows={roster.data}
-            pending={save.isPending}
-            error={
-              save.isError ? apiErrorMessage(save.error, "Couldn't save the attendance.") : null
-            }
-            onOverride={(row, status, done) =>
-              save.mutate(
-                [
-                  {
-                    studentUserId: row.studentUserId,
-                    status,
-                    notes: row.notes,
-                    lateMinutes: status === "LATE" ? row.lateMinutes : null,
-                  },
-                ],
-                {
-                  onSuccess: () => {
-                    save.reset();
-                    done();
-                  },
-                },
-              )
-            }
-          />
+          quizzes.data.map((q, i, all) => (
+            <View
+              key={q.id}
+              className={`flex-row items-center justify-between gap-3 py-2 ${i === 0 ? "pt-0" : "border-t border-border"} ${i === all.length - 1 ? "pb-0" : ""}`}
+            >
+              <View className="min-w-0 flex-1">
+                <View className="flex-row flex-wrap items-center gap-2">
+                  <TextV1
+                    numberOfLines={1}
+                    className="shrink text-sm font-semibold text-brand-navy-900 dark:text-foreground"
+                  >
+                    {q.title}
+                  </TextV1>
+                  <Badge variant={q.kind === "ONLINE" ? "teal" : "outline"}>
+                    {q.kind === "ONLINE" ? "Online" : "Paper"}
+                  </Badge>
+                  {q.kind === "ONLINE" ? (
+                    <Badge variant={q.publishedAt ? "outline" : "warning"}>
+                      {q.publishedAt ? "Published" : "Draft"}
+                    </Badge>
+                  ) : null}
+                </View>
+                <TextV1 className="text-xs text-muted-foreground">
+                  {q.kind === "ONLINE"
+                    ? `${q.questionCount} question${q.questionCount === 1 ? "" : "s"} · ${q.maxScore} pts`
+                    : `Max score: ${q.maxScore}`}
+                </TextV1>
+              </View>
+              <View className="shrink-0 flex-row gap-1">
+                {canAuthor && q.kind === "ONLINE" ? (
+                  <ButtonV1
+                    variant="ghost"
+                    size="sm"
+                    onPress={() =>
+                      router.push({ pathname: "/quiz/[id]/edit", params: { id: String(q.id) } })
+                    }
+                  >
+                    Edit
+                  </ButtonV1>
+                ) : null}
+                <ButtonV1
+                  variant="ghost"
+                  size="sm"
+                  onPress={() =>
+                    router.push({ pathname: "/quiz/[id]/grade", params: { id: String(q.id) } })
+                  }
+                >
+                  Grade
+                </ButtonV1>
+              </View>
+            </View>
+          ))
         )}
       </CardContent>
     </CardV1>
@@ -597,34 +632,118 @@ function LeaderSessionBody({
   );
 }
 
-function SessionDetailBody({ id }: { id: number }) {
-  const theme = useTheme();
+/**
+ * ADMIN / SUPER / MENTOR — v1 app/admin/season/[code]/sessions/[id]/page.tsx:
+ * title and when, Edit + Mark attendance, the info card, Quizzes, Video
+ * questions, Check-in. A MENTOR reads the info card only (no attendance,
+ * no edit: the server's flags).
+ */
+function AdminSessionBody({
+  data,
+  showConsole,
+  refetch,
+  isRefetching,
+}: {
+  data: SessionDetail;
+  showConsole: boolean;
+  refetch: () => void;
+  isRefetching: boolean;
+}) {
   const router = useRouter();
+  return (
+    <ShellFrame refreshing={isRefetching} onRefresh={refetch}>
+      <View className="flex-col gap-4">
+        {/* Org day and wall time from the server (X13) — the device zone never re-reads startsAt. */}
+        <PageTitle
+          title={data.title}
+          subtitle={`${formatDayKey(data.dayKey)} · ${formatWallTime(data.startTime)} · ${data.durationMinutes} min`}
+        />
+        {data.canManageCheckIn || data.canMarkAttendance ? (
+          <View className="flex-row flex-wrap gap-2">
+            {data.canManageCheckIn ? (
+              <ButtonV1
+                variant="outline"
+                onPress={() =>
+                  router.push({ pathname: "/session/[id]/edit", params: { id: String(data.id) } })
+                }
+              >
+                Edit
+              </ButtonV1>
+            ) : null}
+            {data.canMarkAttendance ? (
+              <ButtonV1
+                onPress={() =>
+                  router.push({
+                    pathname: "/session/[id]/attendance",
+                    params: { id: String(data.id) },
+                  })
+                }
+              >
+                Mark attendance
+              </ButtonV1>
+            ) : null}
+          </View>
+        ) : null}
+
+        {data.recurrenceGroupId || data.location || data.description || data.myAttendance ? (
+          <CardV1>
+            <CardContent className="flex-col gap-3 pt-6">
+              {data.recurrenceGroupId ? (
+                <Badge variant="outline" className="self-start">
+                  Part of a recurring series
+                </Badge>
+              ) : null}
+              {data.location ? (
+                <View className="flex-row items-center gap-1.5">
+                  <MapPin size={16} className="text-muted-foreground" />
+                  <TextV1 className="text-sm">{data.location}</TextV1>
+                </View>
+              ) : null}
+              {data.description ? (
+                <TextV1 className="text-sm text-foreground">{data.description}</TextV1>
+              ) : null}
+              {data.myAttendance ? (
+                <TextV1 className="text-sm text-muted-foreground">
+                  {attendanceLine(data.myAttendance)}
+                </TextV1>
+              ) : null}
+            </CardContent>
+          </CardV1>
+        ) : null}
+
+        {data.canMarkAttendance ? (
+          <AdminQuizzesCard sessionId={data.id} canAuthor={showConsole} />
+        ) : null}
+
+        <VideoSection detail={data} />
+
+        {showConsole ? (
+          <CheckInConsoleCard detail={data} />
+        ) : data.canMarkAttendance ? (
+          <LeaderCheckInCard detail={data} />
+        ) : null}
+      </View>
+    </ShellFrame>
+  );
+}
+
+function SessionDetailBody({ id }: { id: number }) {
   const role = useSessionStore((s) => s.user?.role ?? null);
   const seasonAdminIds = useSessionStore((s) => s.scopes?.seasonAdminIds);
   const { data, isPending, isError, refetch, isRefetching } = useSessionDetail(id);
 
-  const v1Frame = role === "STUDENT" || role === "LEADER";
   if (isPending) {
-    return v1Frame ? (
+    return (
       <ShellFrame>
         <RouteSkeleton />
       </ShellFrame>
-    ) : (
-      <Screen edges={["top", "left", "right"]}>
-        <LoadingState />
-      </Screen>
     );
   }
   if (isError) {
-    return v1Frame ? (
+    return (
       <ShellFrame>
         <RouteError onRetry={() => void refetch()} />
       </ShellFrame>
-    ) : (
-      <Screen edges={["top", "left", "right"]}>
-        <ErrorState message="Couldn't load this session." onRetry={() => void refetch()} />
-      </Screen>
     );
   }
 
@@ -645,57 +764,12 @@ function SessionDetailBody({ id }: { id: number }) {
     data.canManageCheckIn && (role !== "SUPER" || (seasonAdminIds ?? []).includes(data.seasonId));
 
   return (
-    <Screen
-      edges={["top", "left", "right"]}
-      scroll
-      onRefresh={() => void refetch()}
-      refreshing={isRefetching}
-    >
-      <Card>
-        <Text variant="title">{data.title}</Text>
-        {/* Org day and time from the server (X13) — the device zone never re-reads startsAt. */}
-        <Text variant="label" color={theme.colors.neutral[600]}>
-          {`${formatDayKey(data.dayKey)} · ${formatWallTime(data.startTime)} · ${data.durationMinutes} min`}
-        </Text>
-        {data.location ? <Text variant="body">{data.location}</Text> : null}
-        {data.description ? <Text variant="body">{data.description}</Text> : null}
-        {data.myAttendance ? (
-          <Text variant="label">{attendanceLine(data.myAttendance)}</Text>
-        ) : null}
-      </Card>
-
-      {data.canManageCheckIn ? (
-        <Button
-          title="Edit session"
-          variant="secondary"
-          style={{ marginTop: theme.spacing.md }}
-          onPress={() =>
-            router.push({ pathname: "/session/[id]/edit", params: { id: String(id) } })
-          }
-        />
-      ) : null}
-
-      {showConsole ? (
-        <CheckInConsole detail={data} />
-      ) : data.canMarkAttendance ? (
-        <LiveCheckInRoster detail={data} />
-      ) : null}
-
-      {data.canMarkAttendance ? <SessionQuizzesCard sessionId={data.id} /> : null}
-
-      <VideoSection detail={data} />
-
-      {data.canMarkAttendance ? (
-        <Button
-          title="Mark attendance"
-          variant="secondary"
-          style={{ marginTop: theme.spacing.md }}
-          onPress={() =>
-            router.push({ pathname: "/session/[id]/attendance", params: { id: String(id) } })
-          }
-        />
-      ) : null}
-    </Screen>
+    <AdminSessionBody
+      data={data}
+      showConsole={showConsole}
+      refetch={() => void refetch()}
+      isRefetching={isRefetching}
+    />
   );
 }
 
@@ -704,9 +778,9 @@ export default function SessionDetailScreen() {
   const id = parsePositiveInt(raw);
   if (id === null) {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <EmptyState title="Not found" message="That session doesn't exist." />
-      </Screen>
+      <ShellFrame>
+        <EmptyState title="Not found" description="That session doesn't exist." />
+      </ShellFrame>
     );
   }
   return <SessionDetailBody id={id} />;

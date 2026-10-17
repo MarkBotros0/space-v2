@@ -37,3 +37,10 @@ Every difference left between the v1 `/admin/*` pages and the rebuilt v2 screens
 - Builder: v1's publish bar, question cards (Q-number, type badge, points, prompt, "Correct: …") and `QuestionForm` layout. V2-only kept: the settings card (rename, paper max score), reorder arrows, the "questions can no longer change" notice, and "Open grade sheet" for paper quizzes. The MCQ form starts with no option marked correct (the schema requires one) where v1 defaulted to option 1.
 - Delete uses v1's ConfirmDialog; v2's arm-then-press control is gone.
 - The video-quiz editors (`VideoQuestionsEditor`, `VideoQuizPlayer`) have no v1 counterpart and keep their pre-rebuild look.
+
+## Session detail (admin)
+- Header buttons read "Edit" and "Mark attendance" (v1); the info card holds the recurrence badge, location and description. The subtitle is the server's org day, start time and duration (X13), not `startsAt` in the device zone.
+- The check-in card is v1's: header with "Regenerate code" and Open / Close check-in, "Closes at", the QR (plus the room-screen warning, spec 04 D3), then v1's `CheckInAttendanceList` with the override sheet. The old "n of m checked in" tally line is gone with the old list.
+- The Quizzes card is v1's (title, Online / Paper and Draft / Published badges, Edit and Grade). Its "+ Add quiz" opens the new-quiz screen with a session picker, because v1's inline form needed the session implicitly. Grade shows on every row, not only online ones as in v1.
+- A SUPER who does not administer the season, and any role with attendance but not check-in control, sees the read-only Open / Closed card (REG-79).
+- The video-questions editor (`VideoQuestionsEditor`) is v2-only and keeps its pre-rebuild look. A session with no video shows no card where v1 shows an explanatory sentence (R17).
