@@ -14,14 +14,32 @@ import CalendarScreen from "../../app/(app)/calendar";
 const get = apiClient.get as jest.Mock;
 
 const session = (id: number, title: string, startsAt: string, dayKey: string) => ({
-  id, title, startsAt, dayKey, durationMinutes: 60, location: null, recurrenceGroupId: null,
-  attendanceMarked: false, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026",
-  checkInToken: null, checkInOpenAt: null, checkInClosedAt: null, startTime: "20:00",
+  id,
+  title,
+  startsAt,
+  dayKey,
+  durationMinutes: 60,
+  location: null,
+  recurrenceGroupId: null,
+  attendanceMarked: false,
+  seasonId: 7,
+  seasonCode: "S26",
+  seasonTitle: "Spring 2026",
+  checkInToken: null,
+  checkInOpenAt: null,
+  checkInClosedAt: null,
+  startTime: "20:00",
 });
 
 const seasonRow = (id: number, year: number, status: "DRAFT" | "ACTIVE") => ({
-  id, code: `S${id}`, title: `Season ${id}`, program: "TEST", year, status,
-  startDate: `${year}-01-01T00:00:00.000Z`, endDate: `${year}-12-31T00:00:00.000Z`,
+  id,
+  code: `S${id}`,
+  title: `Season ${id}`,
+  program: "TEST",
+  year,
+  status,
+  startDate: `${year}-01-01T00:00:00.000Z`,
+  endDate: `${year}-12-31T00:00:00.000Z`,
 });
 
 const studentSession = makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 });
@@ -35,13 +53,17 @@ beforeEach(() => {
 it("renders a student's calendar from their pinned season, grouped by the server's dayKey", async () => {
   useSessionStore.setState(studentSession);
   get.mockResolvedValue({
-    data: { data: { sessions: [
-      session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01"),
-      // 23:30Z on the 1st is 01:30 on the 2nd in Cairo: the server keyed it to
-      // the 2nd. A device-zone grouping in UTC would put it under the 1st.
-      session(2, "Late night", "2099-03-01T23:30:00.000Z", "2099-03-02"),
-      session(3, "Week two", "2099-03-08T18:00:00.000Z", "2099-03-08"),
-    ] } },
+    data: {
+      data: {
+        sessions: [
+          session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01"),
+          // 23:30Z on the 1st is 01:30 on the 2nd in Cairo: the server keyed it to
+          // the 2nd. A device-zone grouping in UTC would put it under the 1st.
+          session(2, "Late night", "2099-03-01T23:30:00.000Z", "2099-03-02"),
+          session(3, "Week two", "2099-03-08T18:00:00.000Z", "2099-03-08"),
+        ],
+      },
+    },
   });
 
   renderWithProviders(<CalendarScreen />);
@@ -81,38 +103,76 @@ it("navigates to session detail on press", async () => {
 });
 
 const range = (sessions: unknown[]) => ({
-  data: { data: { sessions, from: "2099-02-28T22:00:00.000Z", to: "2099-04-25T22:00:00.000Z", fromDayKey: "2099-03-01", toDayKey: "2099-04-25" } },
+  data: {
+    data: {
+      sessions,
+      from: "2099-02-28T22:00:00.000Z",
+      to: "2099-04-25T22:00:00.000Z",
+      fromDayKey: "2099-03-01",
+      toDayKey: "2099-04-25",
+    },
+  },
 });
 
 describe("calendar — staff branches (G17, D-16.7)", () => {
-  it("gives ADMIN the current season through GET /sessions, with a season switcher", async () => {
+  it("gives ADMIN v1's season calendar for the current season, with a season switcher and Add session", async () => {
     useSessionStore.setState(adminSession);
-    get.mockImplementation((url: string, config?: { params?: { seasonId?: number } }) => {
+    get.mockImplementation((url: string) => {
       if (url === "/api/v1/seasons") {
-        return Promise.resolve({ data: { data: { seasons: [seasonRow(8, 2027, "DRAFT"), seasonRow(7, 2026, "ACTIVE")] } } });
+        return Promise.resolve({
+          data: { data: { seasons: [seasonRow(8, 2027, "DRAFT"), seasonRow(7, 2026, "ACTIVE")] } },
+        });
       }
-      if (url === "/api/v1/sessions") {
-        const title = config?.params?.seasonId === 8 ? "Draft season session" : "Kickoff";
-        return Promise.resolve(range([session(1, title, "2099-03-01T18:00:00.000Z", "2099-03-01")]));
-      }
+      if (url === "/api/v1/seasons/7/sessions")
+        return Promise.resolve({
+          data: {
+            data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] },
+          },
+        });
+      if (url === "/api/v1/seasons/8/sessions")
+        return Promise.resolve({
+          data: {
+            data: {
+              sessions: [
+                session(2, "Draft season session", "2099-03-01T18:00:00.000Z", "2099-03-01"),
+              ],
+            },
+          },
+        });
+      if (url.startsWith("/api/v1/events"))
+        return Promise.resolve({ data: { data: { events: [], total: 0 } } });
       return Promise.reject(new Error(`unexpected GET ${url}`));
     });
 
     renderWithProviders(<CalendarScreen />);
 
     expect(await screen.findByText("Kickoff")).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: { seasonId: 7 } });
+    expect(screen.getByText("1 session")).toBeTruthy();
+    expect(get).not.toHaveBeenCalledWith("/api/v1/sessions", expect.anything());
+    fireEvent.press(screen.getByText("Add session"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/new", params: { seasonId: "7" } });
     fireEvent.press(screen.getByText("Season 8"));
     expect(await screen.findByText("Draft season session")).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: { seasonId: 8 } });
+    fireEvent.press(screen.getByText("Add session"));
+    expect(mockPush).toHaveBeenLastCalledWith({
+      pathname: "/session/new",
+      params: { seasonId: "8" },
+    });
   });
 
   it("gives SUPER every ACTIVE season in one window, labels each row's season, and pages", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     get.mockResolvedValue(
       range([
-        { ...session(1, "Spring kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01"), seasonTitle: "Spring 2099" },
-        { ...session(2, "Autumn kickoff", "2099-03-01T19:00:00.000Z", "2099-03-01"), seasonId: 9, seasonTitle: "Autumn 2099" },
+        {
+          ...session(1, "Spring kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01"),
+          seasonTitle: "Spring 2099",
+        },
+        {
+          ...session(2, "Autumn kickoff", "2099-03-01T19:00:00.000Z", "2099-03-01"),
+          seasonId: 9,
+          seasonTitle: "Autumn 2099",
+        },
       ]),
     );
 
@@ -126,30 +186,55 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
 
     fireEvent.press(screen.getByText("Later"));
     await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: { from: "2099-04-25T22:00:00.000Z" } }),
+      expect(get).toHaveBeenCalledWith("/api/v1/sessions", {
+        params: { from: "2099-04-25T22:00:00.000Z" },
+      }),
     );
     // Paging swaps to a fresh query key, so the screen shows Loading until it lands.
     fireEvent.press(await screen.findByText("Earlier"));
     await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: { to: "2099-02-28T22:00:00.000Z" } }),
+      expect(get).toHaveBeenCalledWith("/api/v1/sessions", {
+        params: { to: "2099-02-28T22:00:00.000Z" },
+      }),
     );
   });
 
   const groupRow = (id: number, seasonId: number) => ({
-    id, name: `Group ${id}`, description: null, studentCount: 3, leaderNames: [],
-    seasonId, seasonCode: `S${seasonId}`, seasonTitle: `Season ${seasonId}`,
+    id,
+    name: `Group ${id}`,
+    description: null,
+    studentCount: 3,
+    leaderNames: [],
+    seasonId,
+    seasonCode: `S${seasonId}`,
+    seasonTitle: `Season ${seasonId}`,
   });
   function serveLeader() {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3, 4] }));
     get.mockImplementation((url: string) => {
-      if (url === "/api/v1/groups") return Promise.resolve({ data: { data: { groups: [groupRow(3, 7), groupRow(4, 8)] } } });
+      if (url === "/api/v1/groups")
+        return Promise.resolve({ data: { data: { groups: [groupRow(3, 7), groupRow(4, 8)] } } });
       if (url === "/api/v1/seasons/7/sessions")
-        return Promise.resolve({ data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] } } });
+        return Promise.resolve({
+          data: {
+            data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] },
+          },
+        });
       if (url === "/api/v1/seasons/8/sessions")
         return Promise.resolve({
-          data: { data: { sessions: [{ ...session(2, "Other season", "2099-03-08T18:00:00.000Z", "2099-03-08"), seasonId: 8 }] } },
+          data: {
+            data: {
+              sessions: [
+                {
+                  ...session(2, "Other season", "2099-03-08T18:00:00.000Z", "2099-03-08"),
+                  seasonId: 8,
+                },
+              ],
+            },
+          },
         });
-      if (url.startsWith("/api/v1/events")) return Promise.resolve({ data: { data: { events: [], total: 0 } } });
+      if (url.startsWith("/api/v1/events"))
+        return Promise.resolve({ data: { data: { events: [], total: 0 } } });
       return Promise.reject(new Error(url));
     });
   }
@@ -183,9 +268,25 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
   });
 });
 
-const eventRow = (id: number, title: string, date: string, dayKey: string, time: string | null) => ({
-  id, title, date, endDate: null, dayKey, endDayKey: null, time, allDay: time === null,
-  url: null, visibility: "ALL" as const, seasonId: null, seasonCode: null,
+const eventRow = (
+  id: number,
+  title: string,
+  date: string,
+  dayKey: string,
+  time: string | null,
+) => ({
+  id,
+  title,
+  date,
+  endDate: null,
+  dayKey,
+  endDayKey: null,
+  time,
+  allDay: time === null,
+  url: null,
+  visibility: "ALL" as const,
+  seasonId: null,
+  seasonCode: null,
 });
 
 describe("calendar — JPC events merged into the day buckets (Plan 14)", () => {
@@ -194,10 +295,19 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
     get.mockImplementation((url: string) =>
       url.startsWith("/api/v1/events")
         ? Promise.resolve({
-            data: { data: { events: [eventRow(3, "Summer retreat", "2099-03-01T09:00:00.000Z", "2099-03-01", "11:00")], total: 1 } },
+            data: {
+              data: {
+                events: [
+                  eventRow(3, "Summer retreat", "2099-03-01T09:00:00.000Z", "2099-03-01", "11:00"),
+                ],
+                total: 1,
+              },
+            },
           })
         : Promise.resolve({
-            data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] } },
+            data: {
+              data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] },
+            },
           }),
     );
 
@@ -222,7 +332,9 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
       url.startsWith("/api/v1/events")
         ? Promise.reject(new Error("boom"))
         : Promise.resolve({
-            data: { data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] } },
+            data: {
+              data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] },
+            },
           }),
     );
 
@@ -238,7 +350,14 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
     get.mockImplementation((url: string) =>
       url.startsWith("/api/v1/events")
         ? Promise.resolve({
-            data: { data: { events: [eventRow(4, "Alumni dinner", "2099-03-05T17:00:00.000Z", "2099-03-05", "19:00")], total: 1 } },
+            data: {
+              data: {
+                events: [
+                  eventRow(4, "Alumni dinner", "2099-03-05T17:00:00.000Z", "2099-03-05", "19:00"),
+                ],
+                total: 1,
+              },
+            },
           })
         : Promise.reject(new Error(`unexpected GET ${url}`)),
     );
@@ -280,7 +399,16 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     get.mockImplementation((url: string) =>
       url.startsWith("/api/v1/events")
         ? Promise.resolve({ data: { data: { events: [], total: 0 } } })
-        : Promise.resolve({ data: { data: { sessions: [kickoff, session(2, "Week two", "2099-03-12T18:00:00.000Z", "2099-03-12")] } } }),
+        : Promise.resolve({
+            data: {
+              data: {
+                sessions: [
+                  kickoff,
+                  session(2, "Week two", "2099-03-12T18:00:00.000Z", "2099-03-12"),
+                ],
+              },
+            },
+          }),
     );
   }
 
@@ -336,7 +464,13 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     get.mockImplementation((url: string) =>
       url.startsWith("/api/v1/events")
         ? Promise.resolve({ data: { data: { events: [], total: 0 } } })
-        : Promise.resolve({ data: { data: { sessions: [session(2, "Week two", "2099-03-12T18:00:00.000Z", "2099-03-12")] } } }),
+        : Promise.resolve({
+            data: {
+              data: {
+                sessions: [session(2, "Week two", "2099-03-12T18:00:00.000Z", "2099-03-12")],
+              },
+            },
+          }),
     );
     renderWithProviders(<CalendarScreen />);
     await screen.findByText("Week two");
@@ -352,7 +486,15 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
       url.startsWith("/api/v1/events")
         ? Promise.resolve({ data: { data: { events: [], total: 0 } } })
         : Promise.resolve({
-            data: { data: { sessions: [{ ...session(1, "Today's class", `${today}T12:00:00.000Z`, today)  }], from: "x", to: "y", fromDayKey: today, toDayKey: today } },
+            data: {
+              data: {
+                sessions: [{ ...session(1, "Today's class", `${today}T12:00:00.000Z`, today) }],
+                from: "x",
+                to: "y",
+                fromDayKey: today,
+                toDayKey: today,
+              },
+            },
           }),
     );
     renderWithProviders(<CalendarScreen />);
@@ -361,7 +503,10 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     fireEvent.press(screen.getByLabelText("Month"));
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith("/api/v1/sessions", {
-        params: { from: expect.stringMatching(/T00:00:00\.000Z$/), to: expect.stringMatching(/T00:00:00\.000Z$/) },
+        params: {
+          from: expect.stringMatching(/T00:00:00\.000Z$/),
+          to: expect.stringMatching(/T00:00:00\.000Z$/),
+        },
       }),
     );
     expect(await screen.findByLabelText(/, 1 scheduled$/)).toBeTruthy();

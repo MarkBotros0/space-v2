@@ -7,7 +7,10 @@ import type { AttendanceStatus } from "@space/shared";
 import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
-import { AttendanceRosterForm, AttendanceSaveBar } from "../../../../src/design/sessions/attendance-form";
+import {
+  AttendanceRosterForm,
+  AttendanceSaveBar,
+} from "../../../../src/design/sessions/attendance-form";
 import { EmptyState } from "../../../../src/design/ui";
 import { useAttendanceRoster, useSaveAttendance } from "../../../../src/hooks/use-attendance";
 import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
@@ -32,7 +35,13 @@ export default function AttendanceScreen() {
   const sessionId = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 
   const session = useSessionDetail(sessionId);
-  const { data: roster, isPending, isError, refetch, isRefetching } = useAttendanceRoster(sessionId);
+  const {
+    data: roster,
+    isPending,
+    isError,
+    refetch,
+    isRefetching,
+  } = useAttendanceRoster(sessionId);
   const save = useSaveAttendance(sessionId ?? 0);
   const [marks, setMarks] = useState<AttendanceMarks>({});
   const [lateText, setLateText] = useState<LateMinutesText>({});
@@ -58,7 +67,12 @@ export default function AttendanceScreen() {
 
   const error =
     formError ??
-    (save.isError ? apiErrorMessage(save.error, "Couldn't save attendance. Check your connection and try again.") : null);
+    (save.isError
+      ? apiErrorMessage(
+          save.error,
+          "Couldn't save attendance. Check your connection and try again.",
+        )
+      : null);
   const detail = session.data;
 
   return (
@@ -78,23 +92,40 @@ export default function AttendanceScreen() {
           <View className="flex-col gap-4">
             <PageTitle
               title={`Attendance — ${detail?.title ?? "…"}`}
-              subtitle={detail ? `${formatWeekdayDayYear(detail.dayKey)} · ${formatWallTime(detail.startTime)}` : undefined}
+              subtitle={
+                detail
+                  ? `${formatWeekdayDayYear(detail.dayKey)} · ${formatWallTime(detail.startTime)}`
+                  : undefined
+              }
             />
             <AttendanceRosterForm
               rows={roster}
               statusOf={(row) => marks[row.studentUserId] ?? row.status}
-              lateTextOf={(row) => lateText[row.studentUserId] ?? (row.lateMinutes !== null ? String(row.lateMinutes) : "")}
+              lateTextOf={(row) =>
+                lateText[row.studentUserId] ??
+                (row.lateMinutes !== null ? String(row.lateMinutes) : "")
+              }
               pending={save.isPending}
               error={error}
-              onMark={(row, status: AttendanceStatus) => setMarks((prev) => ({ ...prev, [row.studentUserId]: status }))}
-              onMarkAll={(status) => setMarks(Object.fromEntries(roster.map((row) => [row.studentUserId, status])))}
-              onLateText={(row, text) => setLateText((prev) => ({ ...prev, [row.studentUserId]: text }))}
+              onMark={(row, status: AttendanceStatus) =>
+                setMarks((prev) => ({ ...prev, [row.studentUserId]: status }))
+              }
+              onMarkAll={(status) =>
+                setMarks(Object.fromEntries(roster.map((row) => [row.studentUserId, status])))
+              }
+              onLateText={(row, text) =>
+                setLateText((prev) => ({ ...prev, [row.studentUserId]: text }))
+              }
             />
           </View>
         )}
       </ShellFrame>
       {!isPending && !isError && roster.length > 0 ? (
-        <AttendanceSaveBar pending={save.isPending} onSave={onSave} onCancel={() => router.back()} />
+        <AttendanceSaveBar
+          pending={save.isPending}
+          onSave={onSave}
+          onCancel={() => router.back()}
+        />
       ) : null}
     </View>
   );

@@ -7,7 +7,10 @@ import type { AttendanceRosterRow, MyAttendance, SessionDetail } from "@space/sh
 
 import { StudentCheckInCard } from "../../../../src/components/check-in/StudentCheckInCard";
 import { SessionQuizzesCard } from "../../../../src/components/SessionQuizzesCard";
-import { VideoQuestionsEditor, VideoQuizResultsTable } from "../../../../src/components/VideoQuestionsEditor";
+import {
+  VideoQuestionsEditor,
+  VideoQuizResultsTable,
+} from "../../../../src/components/VideoQuestionsEditor";
 import { VideoQuizPlayer, WatchRecordingButton } from "../../../../src/components/VideoQuizPlayer";
 import { BackLink, Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
@@ -28,7 +31,11 @@ import {
 import { useAttendanceRoster, useSaveAttendance } from "../../../../src/hooks/use-attendance";
 import { useSessionQuizzes } from "../../../../src/hooks/use-session-quizzes";
 import { useCheckInState, useRegenerateCheckIn } from "../../../../src/hooks/use-check-in";
-import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../../../src/hooks/use-session-detail";
+import {
+  useCloseCheckIn,
+  useOpenCheckIn,
+  useSessionDetail,
+} from "../../../../src/hooks/use-session-detail";
 import { useStudentVideoQuiz, useVideoQuizResults } from "../../../../src/hooks/use-video-quiz";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
 import {
@@ -41,7 +48,15 @@ import {
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { useSessionStore } from "../../../../src/store/session";
 import { useTheme } from "../../../../src/theme";
-import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Screen,
+  Text,
+} from "../../../../src/ui";
 
 /** v1's leader page refreshed every 10s while check-in was open (check-in-attendance-list.tsx:58). */
 export const LIVE_ROSTER_REFRESH_MS = 10_000;
@@ -51,7 +66,9 @@ iconWithClassName(CheckCheck, Clock, MapPin, PenLine, QrCode);
 function attendanceLine(a: MyAttendance): string {
   if (a.status === "PRESENT") return "Your attendance: Present";
   if (a.status === "LATE") {
-    return a.lateMinutes !== null ? `Your attendance: Late (${a.lateMinutes} min)` : "Your attendance: Late";
+    return a.lateMinutes !== null
+      ? `Your attendance: Late (${a.lateMinutes} min)`
+      : "Your attendance: Late";
   }
   return "Your attendance: Absent";
 }
@@ -78,11 +95,15 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
 
   const onOpen = () => {
     setError(null);
-    open.mutate(undefined, { onError: (err) => setError(apiErrorMessage(err, "Couldn't open check-in.")) });
+    open.mutate(undefined, {
+      onError: (err) => setError(apiErrorMessage(err, "Couldn't open check-in.")),
+    });
   };
   const onClose = () => {
     setError(null);
-    close.mutate(undefined, { onError: (err) => setError(apiErrorMessage(err, "Couldn't close check-in.")) });
+    close.mutate(undefined, {
+      onError: (err) => setError(apiErrorMessage(err, "Couldn't close check-in.")),
+    });
   };
   const onRegenerate = () => {
     // While open, a code on the room screen stops working — confirm (spec 03 §10 item 9).
@@ -92,7 +113,9 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
     }
     setRegenArmed(false);
     setError(null);
-    regenerate.mutate(undefined, { onError: (err) => setError(apiErrorMessage(err, "Couldn't replace the code.")) });
+    regenerate.mutate(undefined, {
+      onError: (err) => setError(apiErrorMessage(err, "Couldn't replace the code.")),
+    });
   };
 
   return (
@@ -115,20 +138,31 @@ function CheckInConsole({ detail }: { detail: SessionDetail }) {
           ) : (
             <Text variant="label">Loading the check-in code…</Text>
           )}
-          <Button title="Close check-in" variant="secondary" onPress={onClose} loading={close.isPending} />
+          <Button
+            title="Close check-in"
+            variant="secondary"
+            onPress={onClose}
+            loading={close.isPending}
+          />
         </>
       ) : (
         <Button title="Open check-in" onPress={onOpen} loading={open.isPending} />
       )}
       {token ? (
         <Button
-          title={regenArmed ? "Replace the code? The current one stops working." : "Regenerate code"}
+          title={
+            regenArmed ? "Replace the code? The current one stops working." : "Regenerate code"
+          }
           variant="ghost"
           onPress={onRegenerate}
           loading={regenerate.isPending}
         />
       ) : null}
-      {error ? <Text variant="label" color={theme.colors.error[500]}>{error}</Text> : null}
+      {error ? (
+        <Text variant="label" color={theme.colors.error[500]}>
+          {error}
+        </Text>
+      ) : null}
       <Text variant="heading">Checked in</Text>
       <LiveRoster detail={detail} emptyText="No students are enrolled yet." />
     </Card>
@@ -152,18 +186,28 @@ function LiveRoster({ detail, emptyText }: { detail: SessionDetail; emptyText: s
   }, [detail.checkInOpen, refetch]);
 
   if (roster.isPending) return <LoadingState />;
-  if (roster.isError) return <ErrorState message="Couldn't load the roster." onRetry={() => void refetch()} />;
+  if (roster.isError)
+    return <ErrorState message="Couldn't load the roster." onRetry={() => void refetch()} />;
   if (roster.data.length === 0) {
-    return <Text variant="body" color={theme.colors.neutral[600]}>{emptyText}</Text>;
+    return (
+      <Text variant="body" color={theme.colors.neutral[600]}>
+        {emptyText}
+      </Text>
+    );
   }
   const checkedIn = roster.data.filter((r) => r.status !== null).length;
   return (
     <>
       <Text variant="label">{`${checkedIn} of ${roster.data.length} checked in`}</Text>
       {roster.data.map((row) => (
-        <View key={row.studentUserId} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <View
+          key={row.studentUserId}
+          style={{ flexDirection: "row", justifyContent: "space-between" }}
+        >
           <Text variant="body">{row.name ?? row.email}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>{rosterStatus(row)}</Text>
+          <Text variant="label" color={theme.colors.neutral[600]}>
+            {rosterStatus(row)}
+          </Text>
         </View>
       ))}
     </>
@@ -238,7 +282,9 @@ function StudentSessionBody({
     else if (quiz.isError)
       video = (
         <View className="flex-col items-start gap-2">
-          <TextV1 className="text-sm text-error-600 dark:text-error-400">Couldn't load the video quiz.</TextV1>
+          <TextV1 className="text-sm text-error-600 dark:text-error-400">
+            Couldn't load the video quiz.
+          </TextV1>
           <ButtonV1 variant="outline" size="sm" onPress={() => void quiz.refetch()}>
             Try again
           </ButtonV1>
@@ -246,7 +292,10 @@ function StudentSessionBody({
       );
     else if (quiz.data.questions.length === 0 && data.youtubeUrl !== null)
       video = <WatchRecordingButton youtubeUrl={data.youtubeUrl} />;
-    else video = <VideoQuizPlayer sessionId={data.id} quiz={quiz.data} onRetry={() => void quiz.refetch()} />;
+    else
+      video = (
+        <VideoQuizPlayer sessionId={data.id} quiz={quiz.data} onRetry={() => void quiz.refetch()} />
+      );
   }
 
   return (
@@ -254,12 +303,19 @@ function StudentSessionBody({
       <View className="flex-col gap-3">
         <View>
           <BackLink label="Calendar" onPress={() => router.back()} />
-          <View className="mt-2 rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+          <View
+            className="mt-2 rounded-2xl border border-border bg-card p-5"
+            style={shadowStyle("soft")}
+          >
             <View className="mb-2 flex-row items-center gap-2">
-              <Badge variant={hasVideo ? "teal" : "outline"}>{hasVideo ? "Online" : "In-person"}</Badge>
+              <Badge variant={hasVideo ? "teal" : "outline"}>
+                {hasVideo ? "Online" : "In-person"}
+              </Badge>
             </View>
             <PageTitle title={data.title} size="detail" />
-            <TextV1 className="mt-1 text-sm text-muted-foreground">{formatLongDayYear(data.dayKey)}</TextV1>
+            <TextV1 className="mt-1 text-sm text-muted-foreground">
+              {formatLongDayYear(data.dayKey)}
+            </TextV1>
           </View>
         </View>
 
@@ -283,14 +339,19 @@ function StudentSessionBody({
             {data.myAttendance ? (
               <View className="flex-row items-center gap-2">
                 <CheckCheck size={16} className="shrink-0 text-brand-teal-600" />
-                <TextV1 className="text-sm text-muted-foreground">{attendanceLine(data.myAttendance)}</TextV1>
+                <TextV1 className="text-sm text-muted-foreground">
+                  {attendanceLine(data.myAttendance)}
+                </TextV1>
               </View>
             ) : null}
           </View>
         </View>
 
         {data.description ? (
-          <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+          <View
+            className="rounded-2xl border border-border bg-card p-4"
+            style={shadowStyle("soft")}
+          >
             <Eyebrow className="mb-2">About</Eyebrow>
             <TextV1 className="text-sm text-foreground/90">{data.description}</TextV1>
           </View>
@@ -321,7 +382,9 @@ function LeaderQuizzesCard({ sessionId }: { sessionId: number }) {
       <CardContent>
         {quizzes.isError ? (
           <View className="flex-col items-start gap-2">
-            <TextV1 className="text-sm text-error-600 dark:text-error-400">Couldn't load this session's quizzes.</TextV1>
+            <TextV1 className="text-sm text-error-600 dark:text-error-400">
+              Couldn't load this session's quizzes.
+            </TextV1>
             <ButtonV1 variant="outline" size="sm" onPress={() => void quizzes.refetch()}>
               Try again
             </ButtonV1>
@@ -333,15 +396,21 @@ function LeaderQuizzesCard({ sessionId }: { sessionId: number }) {
               className={`flex-row items-center justify-between gap-3 py-2 ${i === 0 ? "pt-0" : "border-t border-border"} ${i === all.length - 1 ? "pb-0" : ""}`}
             >
               <View className="min-w-0 flex-1">
-                <TextV1 className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">{q.title}</TextV1>
+                <TextV1 className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+                  {q.title}
+                </TextV1>
                 <TextV1 className="text-xs text-muted-foreground">
                   {/* "· Draft" is v2's: an unpublished online quiz has nothing to grade yet. */}
-                  {q.kind === "ONLINE" && q.publishedAt === null ? `Max score: ${q.maxScore} · Draft` : `Max score: ${q.maxScore}`}
+                  {q.kind === "ONLINE" && q.publishedAt === null
+                    ? `Max score: ${q.maxScore} · Draft`
+                    : `Max score: ${q.maxScore}`}
                 </TextV1>
               </View>
               <Pressable
                 accessibilityRole="link"
-                onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(q.id) } })}
+                onPress={() =>
+                  router.push({ pathname: "/quiz/[id]/grade", params: { id: String(q.id) } })
+                }
               >
                 {/* v1 has no dark: variant on this link. */}
                 <TextV1 className="text-xs font-semibold text-brand-teal-700">Grade →</TextV1>
@@ -378,14 +447,20 @@ function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
           <QrCode size={16} className="text-foreground" />
           <CardTitle className="text-base">Check-in</CardTitle>
         </View>
-        {detail.checkInOpen ? <Badge variant="success">Open</Badge> : <Badge variant="outline">Closed</Badge>}
+        {detail.checkInOpen ? (
+          <Badge variant="success">Open</Badge>
+        ) : (
+          <Badge variant="outline">Closed</Badge>
+        )}
       </CardHeader>
       <CardContent className="flex-col gap-6">
         {roster.isPending ? (
           <TextV1 className="py-4 text-center text-sm text-muted-foreground">Loading…</TextV1>
         ) : roster.isError ? (
           <View className="flex-col items-start gap-2">
-            <TextV1 className="text-sm text-error-600 dark:text-error-400">Couldn't load the roster.</TextV1>
+            <TextV1 className="text-sm text-error-600 dark:text-error-400">
+              Couldn't load the roster.
+            </TextV1>
             <ButtonV1 variant="outline" size="sm" onPress={() => void refetch()}>
               Try again
             </ButtonV1>
@@ -394,10 +469,19 @@ function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
           <CheckInAttendanceList
             rows={roster.data}
             pending={save.isPending}
-            error={save.isError ? apiErrorMessage(save.error, "Couldn't save the attendance.") : null}
+            error={
+              save.isError ? apiErrorMessage(save.error, "Couldn't save the attendance.") : null
+            }
             onOverride={(row, status, done) =>
               save.mutate(
-                [{ studentUserId: row.studentUserId, status, notes: row.notes, lateMinutes: status === "LATE" ? row.lateMinutes : null }],
+                [
+                  {
+                    studentUserId: row.studentUserId,
+                    status,
+                    notes: row.notes,
+                    lateMinutes: status === "LATE" ? row.lateMinutes : null,
+                  },
+                ],
                 {
                   onSuccess: () => {
                     save.reset();
@@ -428,7 +512,9 @@ function LeaderVideoResults({ sessionId }: { sessionId: number }) {
           <TextV1 className="text-sm text-muted-foreground">Loading…</TextV1>
         ) : results.isError ? (
           <View className="flex-col items-start gap-2">
-            <TextV1 className="text-sm text-error-600 dark:text-error-400">Couldn't load the results.</TextV1>
+            <TextV1 className="text-sm text-error-600 dark:text-error-400">
+              Couldn't load the results.
+            </TextV1>
             <ButtonV1 variant="outline" size="sm" onPress={() => void results.refetch()}>
               Try again
             </ButtonV1>
@@ -440,14 +526,30 @@ function LeaderVideoResults({ sessionId }: { sessionId: number }) {
             rows={results.data.rows}
             rowKey={(r) => r.studentUserId}
             columns={[
-              { key: "name", header: "Student", cell: (r) => r.studentName ?? `Student ${r.studentUserId}` },
-              { key: "answered", header: "Answered", cell: (r) => `${r.answeredCount}/${r.questionCount} answered` },
-              { key: "points", header: "Points", cell: (r) => `${r.earnedPoints}/${r.totalPoints} pts` },
+              {
+                key: "name",
+                header: "Student",
+                cell: (r) => r.studentName ?? `Student ${r.studentUserId}`,
+              },
+              {
+                key: "answered",
+                header: "Answered",
+                cell: (r) => `${r.answeredCount}/${r.questionCount} answered`,
+              },
+              {
+                key: "points",
+                header: "Points",
+                cell: (r) => `${r.earnedPoints}/${r.totalPoints} pts`,
+              },
               {
                 key: "done",
                 header: "",
                 cell: (r) =>
-                  r.completedAt ? <Badge variant="success">Done</Badge> : <Badge variant="outline">In progress</Badge>,
+                  r.completedAt ? (
+                    <Badge variant="success">Done</Badge>
+                  ) : (
+                    <Badge variant="outline">In progress</Badge>
+                  ),
               },
             ]}
           />
@@ -472,12 +574,17 @@ function LeaderSessionBody({
     <ShellFrame refreshing={isRefetching} onRefresh={refetch}>
       <View className="flex-col gap-4">
         {/* Org day and wall time from the server (X13). */}
-        <PageTitle title={data.title} subtitle={`${formatWeekdayDay(data.dayKey)} · ${formatWallTime(data.startTime)}`} />
+        <PageTitle
+          title={data.title}
+          subtitle={`${formatWeekdayDay(data.dayKey)} · ${formatWallTime(data.startTime)}`}
+        />
         {/* V2-ONLY entry: v1 leaders had no link to their attendance page; v1 admin's button. */}
         {data.canMarkAttendance ? (
           <ButtonV1
             className="self-start"
-            onPress={() => router.push({ pathname: "/session/[id]/attendance", params: { id: String(data.id) } })}
+            onPress={() =>
+              router.push({ pathname: "/session/[id]/attendance", params: { id: String(data.id) } })
+            }
           >
             Mark attendance
           </ButtonV1>
@@ -522,10 +629,14 @@ function SessionDetailBody({ id }: { id: number }) {
   }
 
   if (role === "STUDENT") {
-    return <StudentSessionBody data={data} refetch={() => void refetch()} isRefetching={isRefetching} />;
+    return (
+      <StudentSessionBody data={data} refetch={() => void refetch()} isRefetching={isRefetching} />
+    );
   }
   if (role === "LEADER") {
-    return <LeaderSessionBody data={data} refetch={() => void refetch()} isRefetching={isRefetching} />;
+    return (
+      <LeaderSessionBody data={data} refetch={() => void refetch()} isRefetching={isRefetching} />
+    );
   }
 
   // v1 showed the console only to an admin OF the season; the API also lets any
@@ -534,7 +645,12 @@ function SessionDetailBody({ id }: { id: number }) {
     data.canManageCheckIn && (role !== "SUPER" || (seasonAdminIds ?? []).includes(data.seasonId));
 
   return (
-    <Screen edges={["top", "left", "right"]} scroll onRefresh={() => void refetch()} refreshing={isRefetching}>
+    <Screen
+      edges={["top", "left", "right"]}
+      scroll
+      onRefresh={() => void refetch()}
+      refreshing={isRefetching}
+    >
       <Card>
         <Text variant="title">{data.title}</Text>
         {/* Org day and time from the server (X13) — the device zone never re-reads startsAt. */}
@@ -543,7 +659,9 @@ function SessionDetailBody({ id }: { id: number }) {
         </Text>
         {data.location ? <Text variant="body">{data.location}</Text> : null}
         {data.description ? <Text variant="body">{data.description}</Text> : null}
-        {data.myAttendance ? <Text variant="label">{attendanceLine(data.myAttendance)}</Text> : null}
+        {data.myAttendance ? (
+          <Text variant="label">{attendanceLine(data.myAttendance)}</Text>
+        ) : null}
       </Card>
 
       {data.canManageCheckIn ? (
@@ -551,7 +669,9 @@ function SessionDetailBody({ id }: { id: number }) {
           title="Edit session"
           variant="secondary"
           style={{ marginTop: theme.spacing.md }}
-          onPress={() => router.push({ pathname: "/session/[id]/edit", params: { id: String(id) } })}
+          onPress={() =>
+            router.push({ pathname: "/session/[id]/edit", params: { id: String(id) } })
+          }
         />
       ) : null}
 
@@ -570,7 +690,9 @@ function SessionDetailBody({ id }: { id: number }) {
           title="Mark attendance"
           variant="secondary"
           style={{ marginTop: theme.spacing.md }}
-          onPress={() => router.push({ pathname: "/session/[id]/attendance", params: { id: String(id) } })}
+          onPress={() =>
+            router.push({ pathname: "/session/[id]/attendance", params: { id: String(id) } })
+          }
         />
       ) : null}
     </Screen>

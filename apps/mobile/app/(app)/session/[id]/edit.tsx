@@ -8,35 +8,58 @@ import {
   type UpdateSessionInput,
 } from "@space/shared";
 
-import { ScopeSelector, SessionFields, sessionTypeFor, sessionWriteFields, type SessionFormValues } from "../../../../src/components/SessionForm";
+import {
+  ScopeSelector,
+  SessionFields,
+  sessionTypeFor,
+  sessionWriteFields,
+  type SessionFormValues,
+} from "../../../../src/components/SessionForm";
+import { FormActions, FormErrorBox } from "../../../../src/design/forms/form-parts";
+import { PageTitle } from "../../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  EmptyState,
+  Text,
+} from "../../../../src/design/ui";
 import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
-import { useDeleteSession, useSessionSeries, useUpdateSession } from "../../../../src/hooks/use-session-writes";
+import {
+  useDeleteSession,
+  useSessionSeries,
+  useUpdateSession,
+} from "../../../../src/hooks/use-session-writes";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { firstErrorByField } from "../../../../src/lib/form-errors";
 import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
-import { useTheme } from "../../../../src/theme";
-import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
 
-/** "This will change N sessions" before submitting (spec 03 §9, R59 — v1 never said). */
+/** "This will change N sessions" before submitting (spec 03 §9, R59 — v1 never said). V2-ONLY. */
 function SeriesImpact({ sessionId, scope }: { sessionId: number; scope: RecurrenceScope }) {
-  const theme = useTheme();
   const series = useSessionSeries(sessionId, scope, scope !== "one");
-  if (scope === "one") return <Text variant="caption">Only this session.</Text>;
-  if (series.isPending) return <LoadingState />;
-  if (series.isError) return <ErrorState message="Couldn't preview the series." onRetry={() => void series.refetch()} />;
+  if (scope === "one")
+    return <Text className="text-xs text-muted-foreground">Only this session.</Text>;
+  if (series.isPending) return <RouteSkeleton />;
+  if (series.isError) return <RouteError onRetry={() => void series.refetch()} />;
   const n = series.data.sessions.length;
   const withAttendance = series.data.sessions.filter((s) => s.attendanceCount > 0).length;
   return (
-    <View style={{ gap: theme.spacing.xs }}>
-      <Text variant="label">
+    <View className="flex-col gap-1">
+      <Text className="text-sm font-medium">
         {`This affects ${n} session${n === 1 ? "" : "s"}${withAttendance > 0 ? `, ${withAttendance} with attendance recorded` : ""}.`}
       </Text>
       {series.data.videoProgressCount > 0 ? (
-        <Text variant="caption">Video progress has been recorded on some of them.</Text>
+        <Text className="text-xs text-muted-foreground">
+          Video progress has been recorded on some of them.
+        </Text>
       ) : null}
       {series.data.sessions.map((s) => (
-        <Text key={s.id} variant="caption" color={theme.colors.neutral[600]}>
+        <Text key={s.id} className="text-xs text-muted-foreground">
           {`${formatDayKey(s.dayKey)} · ${formatWallTime(s.startTime)}${s.isAnchor ? " (this one)" : ""}`}
         </Text>
       ))}
@@ -45,7 +68,6 @@ function SeriesImpact({ sessionId, scope }: { sessionId: number; scope: Recurren
 }
 
 function EditSessionForm({ detail }: { detail: SessionDetail }) {
-  const theme = useTheme();
   const router = useRouter();
   const update = useUpdateSession(detail.id);
   const remove = useDeleteSession(detail.id);
@@ -92,7 +114,8 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
     remove.mutate(
       { scope, force },
       {
-        onSuccess: () => router.replace({ pathname: "/seasons/[code]", params: { code: detail.seasonCode } }),
+        onSuccess: () =>
+          router.replace({ pathname: "/seasons/[code]", params: { code: detail.seasonCode } }),
         onError: (err) => {
           // Plan 3 refuses to destroy attendance/video progress without force (C12).
           if (apiErrorCode(err) === "has_student_records") setNeedsForce(true);
@@ -113,32 +136,51 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
         : "Delete sessions";
 
   return (
-    <>
-      <Card style={{ gap: theme.spacing.sm }}>
-        <Text variant="heading">Edit session</Text>
-        <SessionFields values={values} onChange={setValues} errors={errors} />
-        {isSeries ? (
-          <>
-            <Text variant="label">Apply to</Text>
-            <ScopeSelector
-              value={scope}
-              onChange={(s) => {
-                setScope(s);
-                setArmed(false);
-                setNeedsForce(false);
-              }}
+    <View className="flex-col gap-4">
+      <Card>
+        <CardContent className="pt-6">
+          <View className="flex-col gap-4">
+            <SessionFields values={values} onChange={setValues} errors={errors} />
+            {isSeries ? (
+              <>
+                <ScopeSelector
+                  value={scope}
+                  onChange={(s) => {
+                    setScope(s);
+                    setArmed(false);
+                    setNeedsForce(false);
+                  }}
+                />
+                <SeriesImpact sessionId={detail.id} scope={scope} />
+              </>
+            ) : null}
+            <FormErrorBox message={message} />
+            <FormActions
+              submitLabel="Save changes"
+              pending={update.isPending}
+              onSubmit={save}
+              onCancel={() => router.back()}
             />
-            <SeriesImpact sessionId={detail.id} scope={scope} />
-          </>
-        ) : null}
-        {message ? <Text variant="label" color={theme.colors.error[500]}>{message}</Text> : null}
-        <Button title="Save changes" onPress={save} loading={update.isPending} />
+          </View>
+        </CardContent>
       </Card>
-      <Card style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-        <Text variant="heading">Delete</Text>
-        <Button title={deleteTitle} variant="ghost" onPress={() => onDelete(needsForce)} loading={remove.isPending} />
+      {/* V2-ONLY: v1 deletes sessions from its session page console. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Delete</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="destructive"
+            className="self-start"
+            disabled={remove.isPending}
+            onPress={() => onDelete(needsForce)}
+          >
+            {deleteTitle}
+          </Button>
+        </CardContent>
       </Card>
-    </>
+    </View>
   );
 }
 
@@ -148,17 +190,25 @@ export default function EditSessionScreen() {
   const detail = useSessionDetail(id);
 
   let body: ReactNode;
-  if (id === null) body = <EmptyState title="Not found" message="That session doesn't exist." />;
-  else if (detail.isPending) body = <LoadingState />;
-  else if (detail.isError) body = <ErrorState message="Couldn't load this session." onRetry={() => void detail.refetch()} />;
+  if (id === null)
+    body = <EmptyState title="Not found" description="That session doesn't exist." />;
+  else if (detail.isPending) body = <RouteSkeleton />;
+  else if (detail.isError) body = <RouteError onRetry={() => void detail.refetch()} />;
   else if (!detail.data.canManageCheckIn)
     // canManageCheckIn IS isAdminOfSeason (Plan 4) — the same gate PATCH/DELETE enforce.
-    body = <EmptyState title="Not available" message="Only this season's admins can edit its sessions." />;
-  else body = <EditSessionForm key={detail.data.id} detail={detail.data} />;
+    body = (
+      <EmptyState
+        title="Not available"
+        description="Only this season's admins can edit its sessions."
+      />
+    );
+  else
+    body = (
+      <View className="flex-col gap-4">
+        <PageTitle title="Edit session" subtitle={`Update ${detail.data.title}.`} />
+        <EditSessionForm key={detail.data.id} detail={detail.data} />
+      </View>
+    );
 
-  return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      {body}
-    </Screen>
-  );
+  return <ShellFrame>{body}</ShellFrame>;
 }

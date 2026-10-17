@@ -5,19 +5,27 @@ import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { CalendarGrid } from "../../src/components/calendar/CalendarGrid";
-import { DayEntries, Legend, type CalendarContext } from "../../src/components/calendar/CalendarEntries";
+import {
+  DayEntries,
+  Legend,
+  type CalendarContext,
+} from "../../src/components/calendar/CalendarEntries";
 import { ChoiceChips } from "../../src/components/ChoiceChips";
 import { SeasonSwitcher } from "../../src/components/SeasonSwitcher";
 import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { SeasonCalendar } from "../../src/design/sessions/season-calendar";
-import { EmptyState as EmptyStateV1 } from "../../src/design/ui";
+import { Button as ButtonV1, EmptyState as EmptyStateV1 } from "../../src/design/ui";
 import { useEvents } from "../../src/hooks/use-events";
 import { useMyGroups } from "../../src/hooks/use-groups";
 import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
-import { useLedSeasonSessions, useSeasonSessions, useSessionRange } from "../../src/hooks/use-sessions";
+import {
+  useLedSeasonSessions,
+  useSeasonSessions,
+  useSessionRange,
+} from "../../src/hooks/use-sessions";
 import {
   dayCue,
   deviceTodayKey,
@@ -57,10 +65,23 @@ function CalendarDays({
         const cue = dayCue(group.dayKey, ctx.today);
         return (
           <View key={group.dayKey} style={{ marginBottom: theme.spacing.md }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+              }}
+            >
               <Text variant="heading">{formatDayKey(group.dayKey)}</Text>
               {cue ? (
-                <Text variant="caption" color={group.dayKey === ctx.today ? theme.colors.success[800] : theme.colors.brand.teal[800]}>
+                <Text
+                  variant="caption"
+                  color={
+                    group.dayKey === ctx.today
+                      ? theme.colors.success[800]
+                      : theme.colors.brand.teal[800]
+                  }
+                >
                   {cue}
                 </Text>
               ) : null}
@@ -123,7 +144,10 @@ function CalendarSurface({ source, showSeason }: { source: Source; showSeason: b
       const events = source.events.filter((e) => e.dayKey >= today);
       body =
         sessions.length === 0 && events.length === 0 ? (
-          <EmptyState title="Nothing coming up" message="You're all caught up. Switch to Month to review past sessions." />
+          <EmptyState
+            title="Nothing coming up"
+            message="You're all caught up. Switch to Month to review past sessions."
+          />
         ) : (
           <CalendarDays sessions={sessions} events={events} ctx={ctx} />
         );
@@ -131,24 +155,51 @@ function CalendarSurface({ source, showSeason }: { source: Source; showSeason: b
       body = (
         <>
           <Legend slots={ctx.slots} />
-          <CalendarGrid view={view} anchor={anchor} sessions={source.sessions} events={source.events} ctx={ctx} />
+          <CalendarGrid
+            view={view}
+            anchor={anchor}
+            sessions={source.sessions}
+            events={source.events}
+            ctx={ctx}
+          />
         </>
       );
     }
   } else if (view === "upcoming") {
-    body = <RangeSessions seasonId={source.seasonId} contextFor={contextFor} onOrgToday={setOrgToday} />;
+    body = (
+      <RangeSessions seasonId={source.seasonId} contextFor={contextFor} onOrgToday={setOrgToday} />
+    );
   } else {
-    body = <RangeGrid seasonId={source.seasonId} view={view} anchor={anchor} contextFor={contextFor} />;
+    body = (
+      <RangeGrid seasonId={source.seasonId} view={view} anchor={anchor} contextFor={contextFor} />
+    );
   }
 
   return (
     <>
       <ChoiceChips label="Calendar view" options={VIEW_OPTIONS} value={view} onChange={setView} />
       {view !== "upcoming" ? (
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginVertical: 8 }}>
-          <Button title="‹" variant="ghost" accessibilityLabel={`Previous ${view}`} onPress={() => step(-1)} />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginVertical: 8,
+          }}
+        >
+          <Button
+            title="‹"
+            variant="ghost"
+            accessibilityLabel={`Previous ${view}`}
+            onPress={() => step(-1)}
+          />
           <Text variant="heading">{rangeLabel(view, anchor)}</Text>
-          <Button title="›" variant="ghost" accessibilityLabel={`Next ${view}`} onPress={() => step(1)} />
+          <Button
+            title="›"
+            variant="ghost"
+            accessibilityLabel={`Next ${view}`}
+            onPress={() => step(1)}
+          />
         </View>
       ) : null}
       {body}
@@ -171,20 +222,38 @@ function AlumniCalendar() {
 
   let body: ReactNode;
   if (current.isPending) body = <LoadingState />;
-  else if (current.isError) body = <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
+  else if (current.isError)
+    body = <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
   else if (current.seasonId === null)
     body =
       eventRows.length === 0 ? (
-        <EmptyState title="No season to show" message="You aren't in a season right now, so there are no sessions on your calendar." />
+        <EmptyState
+          title="No season to show"
+          message="You aren't in a season right now, so there are no sessions on your calendar."
+        />
       ) : (
-        <CalendarSurface source={{ kind: "local", sessions: [], events: eventRows }} showSeason={false} />
+        <CalendarSurface
+          source={{ kind: "local", sessions: [], events: eventRows }}
+          showSeason={false}
+        />
       );
   else if (sessions.isPending) body = <LoadingState />;
   else if (sessions.isError)
-    body = <ErrorState message="Couldn't load sessions. Check your connection and try again." onRetry={() => void sessions.refetch()} />;
+    body = (
+      <ErrorState
+        message="Couldn't load sessions. Check your connection and try again."
+        onRetry={() => void sessions.refetch()}
+      />
+    );
   else if (sessions.data.length === 0 && eventRows.length === 0)
     body = <EmptyState title="No sessions" message="This season doesn't have any sessions yet." />;
-  else body = <CalendarSurface source={{ kind: "local", sessions: sessions.data, events: eventRows }} showSeason={false} />;
+  else
+    body = (
+      <CalendarSurface
+        source={{ kind: "local", sessions: sessions.data, events: eventRows }}
+        showSeason={false}
+      />
+    );
 
   return (
     <Screen
@@ -215,7 +284,10 @@ function RangeSessions({
   onOrgToday: (dayKey: string) => void;
 }) {
   const theme = useTheme();
-  const [window, setWindow] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
+  const [window, setWindow] = useState<{ from: string | null; to: string | null }>({
+    from: null,
+    to: null,
+  });
   const range = useSessionRange({ seasonId, from: window.from, to: window.to }, true);
   const events = useEvents();
   const isDefaultWindow = window.from === null && window.to === null;
@@ -229,7 +301,12 @@ function RangeSessions({
 
   if (range.isPending) return <LoadingState />;
   if (range.isError) {
-    return <ErrorState message="Couldn't load sessions. Check your connection and try again." onRetry={() => void range.refetch()} />;
+    return (
+      <ErrorState
+        message="Couldn't load sessions. Check your connection and try again."
+        onRetry={() => void range.refetch()}
+      />
+    );
   }
   const data = range.data;
   // Only events whose start day lies in the window the header names (ISO day
@@ -241,10 +318,25 @@ function RangeSessions({
   );
   return (
     <>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: theme.spacing.md }}>
-        <Button title="Earlier" variant="ghost" onPress={() => setWindow({ from: null, to: data.from })} />
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: theme.spacing.md,
+        }}
+      >
+        <Button
+          title="Earlier"
+          variant="ghost"
+          onPress={() => setWindow({ from: null, to: data.from })}
+        />
         <Text variant="label">{`${formatDayKey(data.fromDayKey)} – ${formatDayKey(data.toDayKey)}`}</Text>
-        <Button title="Later" variant="ghost" onPress={() => setWindow({ from: data.to, to: null })} />
+        <Button
+          title="Later"
+          variant="ghost"
+          onPress={() => setWindow({ from: data.to, to: null })}
+        />
       </View>
       {data.sessions.length === 0 && eventRows.length === 0 ? (
         <EmptyState title="No sessions" message="Nothing is scheduled in this window." />
@@ -274,7 +366,12 @@ function RangeGrid({
 
   if (range.isPending) return <LoadingState />;
   if (range.isError) {
-    return <ErrorState message="Couldn't load sessions. Check your connection and try again." onRetry={() => void range.refetch()} />;
+    return (
+      <ErrorState
+        message="Couldn't load sessions. Check your connection and try again."
+        onRetry={() => void range.refetch()}
+      />
+    );
   }
   const first = keys[0] ?? anchor;
   const last = keys[keys.length - 1] ?? anchor;
@@ -314,7 +411,13 @@ function StudentCalendar() {
       </ShellFrame>
     );
   }
-  return <StudentSeasonCalendar seasonId={current.seasonId} onRetrySeason={current.refetch} router={router} />;
+  return (
+    <StudentSeasonCalendar
+      seasonId={current.seasonId}
+      onRetrySeason={current.refetch}
+      router={router}
+    />
+  );
 }
 
 function StudentSeasonCalendar({
@@ -350,7 +453,9 @@ function StudentSeasonCalendar({
         today={today}
         // v1: current = startOfMonth(next session, else last, else today) — Week opens on that day's week.
         initialAnchor={`${initialAnchor(sessions.data, today).slice(0, 8)}01`}
-        onOpenSession={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
+        onOpenSession={(id) =>
+          router.push({ pathname: "/session/[id]", params: { id: String(id) } })
+        }
         onOpenEvent={(e) => router.push({ pathname: "/event/[id]", params: { id: String(e.id) } })}
       />
     );
@@ -413,7 +518,9 @@ function LeaderCalendar() {
         events={eventRows}
         today={today}
         initialAnchor={`${initialAnchor(led.sessions, today).slice(0, 8)}01`}
-        onOpenSession={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
+        onOpenSession={(id) =>
+          router.push({ pathname: "/session/[id]", params: { id: String(id) } })
+        }
         onOpenEvent={(e) => router.push({ pathname: "/event/[id]", params: { id: String(e.id) } })}
       />
     );
@@ -430,7 +537,11 @@ function LeaderCalendar() {
       <View className="flex-col gap-4">
         <PageTitle
           title="Calendar"
-          subtitle={groups.isPending || led.isPending ? undefined : `${n} ${n === 1 ? "session" : "sessions"}`}
+          subtitle={
+            groups.isPending || led.isPending
+              ? undefined
+              : `${n} ${n === 1 ? "session" : "sessions"}`
+          }
         />
         {body}
       </View>
@@ -447,25 +558,93 @@ function MultiSeasonCalendar() {
   );
 }
 
-/** ADMIN — one season at a time, switchable (spec 03 §9; v1 forced one via redirect, R86). */
+/**
+ * ADMIN — v1 app/admin/season/[code]/calendar/page.tsx: "Calendar" with
+ * "{n} sessions", an "Add session" button and v1's SeasonCalendar over every
+ * session of the season. V2-ONLY kept: the season switcher (spec 03 §9; v1
+ * forced one season via redirect, R86). Like the leader's (B3-6) it reads the
+ * season's own session list rather than the windowed GET /sessions.
+ */
 function AdminCalendar() {
+  const router = useRouter();
   const selection = useStaffSeasonSelection(true);
+  const sessions = useSeasonSessions(selection.seasonId);
+  const events = useEvents();
+  const eventRows = events.data ?? [];
+  const today = deviceTodayKey();
+  const rows = sessions.data ?? [];
+  const n = rows.length;
+
   let body: ReactNode;
-  if (selection.isPending) body = <LoadingState />;
-  else if (selection.isError) body = <ErrorState message="Couldn't load your seasons." onRetry={selection.refetch} />;
-  else if (selection.seasonId === null) body = <EmptyState title="No season to show" message="You aren't assigned to a season yet." />;
+  if (selection.isPending || (selection.seasonId !== null && sessions.isPending))
+    body = <RouteSkeleton />;
+  else if (selection.isError) body = <RouteError onRetry={selection.refetch} />;
+  else if (selection.seasonId === null)
+    body = (
+      <EmptyStateV1
+        icon={CalendarIcon}
+        title="No season to show"
+        description="You aren't assigned to a season yet."
+      />
+    );
+  else if (sessions.isError) body = <RouteError onRetry={() => void sessions.refetch()} />;
   else
     body = (
-      <>
-        <SeasonSwitcher seasons={selection.seasons} selectedId={selection.seasonId} onSelect={selection.setSeasonId} />
-        {/* key: switching season starts again from the default window. */}
-        <CalendarSurface key={selection.seasonId} source={{ kind: "range", seasonId: selection.seasonId }} showSeason={false} />
-      </>
+      <SeasonCalendar
+        // key: switching season starts again from that season's anchor month.
+        key={selection.seasonId}
+        sessions={rows}
+        events={eventRows}
+        today={today}
+        initialAnchor={`${initialAnchor(rows, today).slice(0, 8)}01`}
+        onOpenSession={(id) =>
+          router.push({ pathname: "/session/[id]", params: { id: String(id) } })
+        }
+        onOpenEvent={(e) => router.push({ pathname: "/event/[id]", params: { id: String(e.id) } })}
+      />
     );
+
   return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      {body}
-    </Screen>
+    <ShellFrame
+      onRefresh={() => {
+        selection.refetch();
+        void sessions.refetch();
+        void events.refetch();
+      }}
+      refreshing={sessions.isRefetching}
+    >
+      <View className="flex-col gap-4">
+        <View className="flex-row items-start justify-between gap-4">
+          <PageTitle
+            className="min-w-0 flex-1"
+            title="Calendar"
+            subtitle={
+              sessions.isPending || selection.seasonId === null
+                ? undefined
+                : `${n} ${n === 1 ? "session" : "sessions"}`
+            }
+          />
+          {selection.seasonId !== null ? (
+            <ButtonV1
+              onPress={() =>
+                router.push({
+                  pathname: "/session/new",
+                  params: { seasonId: String(selection.seasonId) },
+                })
+              }
+            >
+              Add session
+            </ButtonV1>
+          ) : null}
+        </View>
+        <SeasonSwitcher
+          seasons={selection.seasons}
+          selectedId={selection.seasonId}
+          onSelect={selection.setSeasonId}
+        />
+        {body}
+      </View>
+    </ShellFrame>
   );
 }
 
