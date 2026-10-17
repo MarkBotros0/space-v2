@@ -44,3 +44,8 @@ Every difference left between the v1 `/admin/*` pages and the rebuilt v2 screens
 - The Quizzes card is v1's (title, Online / Paper and Draft / Published badges, Edit and Grade). Its "+ Add quiz" opens the new-quiz screen with a session picker, because v1's inline form needed the session implicitly. Grade shows on every row, not only online ones as in v1.
 - A SUPER who does not administer the season, and any role with attendance but not check-in control, sees the read-only Open / Closed card (REG-79).
 - The video-questions editor (`VideoQuestionsEditor`) is v2-only and keeps its pre-rebuild look. A session with no video shows no card where v1 shows an explanatory sentence (R17).
+
+## Reports
+- Page title, "Scoped to {scope}." subtitle, the export buttons and the cards are v1's, re-skinned with the design primitives. The charts are v2's own (`BandDonut`, `RankedBars`, `TrendLine`), not v1's Recharts cards: a ranked completion list instead of a bar chart (R18), one line per season (REG-117), a band donut coloured by the server's band (C4), and the organisation roll-up as ranked bars (R60, R97). Their internals still use the legacy theme and text; a restyle to the design charts waits for the devbox capture to show whether it is worth the loss of those decisions.
+- The at-risk row prints "{n}% attendance · {m}% submissions" in the band colour, not v1's two badges.
+- The season filter chips and the "Show more" paging are v2-only (v1 scoped by URL).
