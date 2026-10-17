@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
-  apiClient: { get: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+  apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -19,27 +19,51 @@ import SeasonDetailScreen from "../../app/(app)/seasons/[code]/index";
 import SeasonEditScreen from "../../app/(app)/seasons/[code]/edit";
 
 const get = apiClient.get as jest.Mock;
+const post = apiClient.post as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
 const del = apiClient.delete as jest.Mock;
 
 const detail = (over: Record<string, unknown> = {}) => ({
-  id: 7, code: "s7", title: "TEST 2099", program: "TEST", year: 2099, status: "DRAFT",
-  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
-  description: "Spring.", sessionCount: 1, studentCount: 4,
-  absenceBudgetMinutes: 240, absenceWeightMinutes: 90, canAdminister: true,
+  id: 7,
+  code: "s7",
+  title: "TEST 2099",
+  program: "TEST",
+  year: 2099,
+  status: "DRAFT",
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
+  description: "Spring.",
+  sessionCount: 1,
+  studentCount: 4,
+  absenceBudgetMinutes: 240,
+  absenceWeightMinutes: 90,
+  canAdminister: true,
   groups: [{ id: 3, name: "Group A", studentCount: 4, leaderNames: ["Lina"] }],
   ...over,
 });
 const sessionRow = {
-  id: 12, title: "Kickoff", startsAt: "2099-03-01T18:00:00.000Z", dayKey: "2099-03-01", startTime: "20:00",
-  durationMinutes: 90, location: null, recurrenceGroupId: null, attendanceMarked: false,
-  seasonId: 7, seasonCode: "s7", seasonTitle: "TEST 2099", checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
+  id: 12,
+  title: "Kickoff",
+  startsAt: "2099-03-01T18:00:00.000Z",
+  dayKey: "2099-03-01",
+  startTime: "20:00",
+  durationMinutes: 90,
+  location: null,
+  recurrenceGroupId: null,
+  attendanceMarked: false,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "TEST 2099",
+  checkInToken: null,
+  checkInOpenAt: null,
+  checkInClosedAt: null,
 };
 
 function routeGets(d: ReturnType<typeof detail>) {
   get.mockImplementation((url: string) => {
     if (url === "/api/v1/seasons/by-code/s7") return Promise.resolve({ data: { data: d } });
-    if (url === "/api/v1/seasons/7/sessions") return Promise.resolve({ data: { data: { sessions: [sessionRow] } } });
+    if (url === "/api/v1/seasons/7/sessions")
+      return Promise.resolve({ data: { data: { sessions: [sessionRow] } } });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 }
@@ -64,9 +88,15 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     expect(screen.getByText("Spring.")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Edit season"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/edit", params: { code: "s7" } });
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/seasons/[code]/edit",
+      params: { code: "s7" },
+    });
     fireEvent.press(screen.getByText("Roster"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/roster", params: { code: "s7" } });
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/seasons/[code]/roster",
+      params: { code: "s7" },
+    });
     fireEvent.press(screen.getByText("New group"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/new", params: { seasonId: "7" } });
     fireEvent.press(screen.getByText("New session"));
@@ -109,7 +139,10 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     fireEvent.press(screen.getByText("Kickoff"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "12" } });
     fireEvent.press(screen.getByText("Mark attendance"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]/attendance", params: { id: "12" } });
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/session/[id]/attendance",
+      params: { id: "12" },
+    });
   });
 
   it("shows v1's empty groups state", async () => {
@@ -118,6 +151,52 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     renderWithProviders(<SeasonDetailScreen />);
     fireEvent.press(await screen.findByText("Groups (0)"));
     expect(screen.getByText("No groups yet")).toBeTruthy();
+  });
+});
+
+describe("Duplicate season (SUPER, on the detail)", () => {
+  it("opens next year with dates one year on and the code to match, then opens the copy (REG-70)", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    routeGets(
+      detail({
+        year: 2026,
+        startDate: "2026-01-01T00:00:00.000Z",
+        endDate: "2026-12-31T00:00:00.000Z",
+      }),
+    );
+    post.mockResolvedValue({ data: { data: { id: 99, code: "test-2028" } } });
+    renderWithProviders(<SeasonDetailScreen />);
+
+    fireEvent.press(await screen.findByText("Duplicate"));
+    expect(await screen.findByText("Duplicate TEST 2026")).toBeTruthy();
+    expect(screen.getByLabelText("Year").props.value).toBe("2027");
+    expect(screen.getByLabelText("Code").props.value).toBe("test-2027");
+    fireEvent.changeText(screen.getByLabelText("Year"), "2028");
+    expect(screen.getByLabelText("Code").props.value).toBe("test-2028");
+    fireEvent.press(screen.getByText("Duplicate season"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/duplicate", {
+        year: 2028,
+        code: "test-2028",
+        startDate: "2027-01-01T00:00:00.000Z",
+        endDate: "2027-12-31T00:00:00.000Z",
+      }),
+    );
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith({
+        pathname: "/seasons/[code]",
+        params: { code: "test-2028" },
+      }),
+    );
+  });
+
+  it("is not offered to an ADMIN", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    routeGets(detail());
+    renderWithProviders(<SeasonDetailScreen />);
+    await screen.findByText("TEST 2099");
+    expect(screen.queryByText("Duplicate")).toBeNull();
   });
 });
 
@@ -130,8 +209,9 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
 
     await screen.findByLabelText("Code");
     fireEvent.changeText(screen.getByLabelText("Code"), "GBV 2099");
-    fireEvent.press(screen.getByText("ACTIVE"));
-    fireEvent.press(screen.getByText("Save season"));
+    fireEvent.press(screen.getByLabelText("Status"));
+    fireEvent.press(await screen.findByText("Active"));
+    fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/seasons/7", {
@@ -146,7 +226,10 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
         absenceWeightMinutes: 90,
       }),
     );
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "gbv-2099" } });
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: "/seasons/[code]",
+      params: { code: "gbv-2099" },
+    });
   });
 
   it("previews the slug and blocks an invalid code client-side with the server's own schema", async () => {
@@ -155,38 +238,50 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
     renderWithProviders(<SeasonEditScreen />);
     await screen.findByLabelText("Code");
     fireEvent.changeText(screen.getByLabelText("Code"), "x");
-    expect(screen.getByText("Saved as: x")).toBeTruthy();
-    fireEvent.press(screen.getByText("Save season"));
+    fireEvent.press(screen.getByText("Save changes"));
     expect(screen.getByLabelText("Code").props.accessibilityHint).toMatch(/2–40/);
     expect(patch).not.toHaveBeenCalled();
   });
 
-  it("deletes on a second press and shows season_in_use verbatim", async () => {
+  it("deletes behind v1's confirm dialog and shows season_in_use verbatim", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     del.mockRejectedValueOnce(
       Object.assign(new Error("409"), {
         isAxiosError: true,
-        response: { status: 409, data: { error: { code: "season_in_use", message: "This season has sessions or enrollments; archive it instead." } } },
+        response: {
+          status: 409,
+          data: {
+            error: {
+              code: "season_in_use",
+              message: "This season has sessions or enrollments; archive it instead.",
+            },
+          },
+        },
       }),
     );
     renderWithProviders(<SeasonEditScreen />);
     fireEvent.press(await screen.findByText("Delete season"));
+    expect(await screen.findByText('Delete "TEST 2099"?')).toBeTruthy();
     expect(del).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByText("Really delete?"));
+    fireEvent.press(screen.getByText("Delete"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/7"));
-    expect(await screen.findByText("This season has sessions or enrollments; archive it instead.")).toBeTruthy();
+    expect(
+      await screen.findByText("This season has sessions or enrollments; archive it instead."),
+    ).toBeTruthy();
 
     del.mockResolvedValueOnce({ data: { data: { deleted: true } } });
     fireEvent.press(screen.getByText("Delete season"));
-    fireEvent.press(screen.getByText("Really delete?"));
+    fireEvent.press(await screen.findByText("Delete"));
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/seasons"));
   });
 
   it("refuses a non-SUPER without fetching", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<SeasonEditScreen />);
-    expect(await screen.findByText("Only a super admin can edit a season's identity.")).toBeTruthy();
+    expect(
+      await screen.findByText("Only a super admin can edit a season's identity."),
+    ).toBeTruthy();
     expect(get).not.toHaveBeenCalled();
   });
 });

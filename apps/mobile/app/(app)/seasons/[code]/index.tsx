@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pencil } from "lucide-react-native";
 
+import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
 import { EditSeason } from "../../../../src/components/season/EditSeason";
 import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
@@ -94,16 +95,24 @@ export default function SeasonDetailScreen() {
             isSuper || canAdminister ? (
               <View className="flex-row flex-wrap gap-2">
                 {isSuper ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onPress={() =>
-                      router.push({ pathname: "/seasons/[code]/edit", params: { code: s.code } })
-                    }
-                  >
-                    <Pencil size={14} className="text-foreground" />
-                    Edit season
-                  </Button>
+                  <>
+                    <DuplicateSeasonDialog
+                      season={s}
+                      onDuplicated={(newCode) =>
+                        router.push({ pathname: "/seasons/[code]", params: { code: newCode } })
+                      }
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onPress={() =>
+                        router.push({ pathname: "/seasons/[code]/edit", params: { code: s.code } })
+                      }
+                    >
+                      <Pencil size={14} className="text-foreground" />
+                      Edit season
+                    </Button>
+                  </>
                 ) : null}
                 {canAdminister ? (
                   <>

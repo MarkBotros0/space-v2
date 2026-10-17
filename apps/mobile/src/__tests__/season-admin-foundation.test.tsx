@@ -21,8 +21,14 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 const row = (id: number, startDate: string, status: "DRAFT" | "ACTIVE") => ({
-  id, code: `s${id}`, title: `Season ${id}`, program: "TEST", year: 2099, status,
-  startDate, endDate: "2099-12-31T00:00:00.000Z",
+  id,
+  code: `s${id}`,
+  title: `Season ${id}`,
+  program: "TEST",
+  year: 2099,
+  status,
+  startDate,
+  endDate: "2099-12-31T00:00:00.000Z",
 });
 
 beforeEach(() => jest.clearAllMocks());
@@ -40,7 +46,10 @@ describe("apiErrorCode", () => {
 
 describe("firstErrorByField", () => {
   it("keys each issue by its LAST path segment and keeps the first", () => {
-    const schema = z.object({ title: z.string().min(2), start: z.object({ time: z.string().regex(/^\d\d:\d\d$/) }) });
+    const schema = z.object({
+      title: z.string().min(2),
+      start: z.object({ time: z.string().regex(/^\d\d:\d\d$/) }),
+    });
     const parsed = schema.safeParse({ title: "x", start: { time: "8pm" } });
     expect(parsed.success).toBe(false);
     if (!parsed.success) {
@@ -63,7 +72,14 @@ describe("parsePositiveInt", () => {
 describe("useStaffSeasonSelection", () => {
   it("defaults to pickCurrentSeasonId, switches on request, and ignores an unknown id", async () => {
     get.mockResolvedValue({
-      data: { data: { seasons: [row(8, "2099-09-01T00:00:00.000Z", "DRAFT"), row(7, "2099-02-01T00:00:00.000Z", "ACTIVE")] } },
+      data: {
+        data: {
+          seasons: [
+            row(8, "2099-09-01T00:00:00.000Z", "DRAFT"),
+            row(7, "2099-02-01T00:00:00.000Z", "ACTIVE"),
+          ],
+        },
+      },
     });
     const { result } = renderHook(() => useStaffSeasonSelection(true), { wrapper });
     await waitFor(() => expect(result.current.seasonId).toBe(7));
@@ -86,7 +102,10 @@ describe("SeasonSwitcher", () => {
     const onSelect = jest.fn();
     renderWithProviders(
       <SeasonSwitcher
-        seasons={[row(7, "2099-02-01T00:00:00.000Z", "ACTIVE"), row(8, "2099-09-01T00:00:00.000Z", "DRAFT")]}
+        seasons={[
+          row(7, "2099-02-01T00:00:00.000Z", "ACTIVE"),
+          row(8, "2099-09-01T00:00:00.000Z", "DRAFT"),
+        ]}
         selectedId={7}
         onSelect={onSelect}
       />,
@@ -97,7 +116,11 @@ describe("SeasonSwitcher", () => {
 
   it("renders nothing when there is nothing to switch between", () => {
     renderWithProviders(
-      <SeasonSwitcher seasons={[row(7, "2099-02-01T00:00:00.000Z", "ACTIVE")]} selectedId={7} onSelect={jest.fn()} />,
+      <SeasonSwitcher
+        seasons={[row(7, "2099-02-01T00:00:00.000Z", "ACTIVE")]}
+        selectedId={7}
+        onSelect={jest.fn()}
+      />,
     );
     expect(screen.queryByText("Season 7")).toBeNull();
   });
