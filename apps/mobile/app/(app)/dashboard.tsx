@@ -1,8 +1,7 @@
 import { AlumniDashboard } from "../../src/components/dashboard/AlumniDashboard";
 import { DashboardFrame } from "../../src/components/dashboard/DashboardFrame";
-import { LeaderDashboard } from "../../src/components/dashboard/LeaderDashboard";
 import { MentorDashboard } from "../../src/components/dashboard/MentorDashboard";
-import { SeasonStaffDashboard } from "../../src/components/dashboard/SeasonStaffDashboard";
+import { AdminDashboard, LeaderDashboard } from "../../src/components/dashboard/StaffDashboard";
 import { StudentDashboard } from "../../src/components/dashboard/StudentDashboard";
 import { SuperDashboard } from "../../src/components/dashboard/SuperDashboard";
 import { dashboardBranchFor } from "../../src/lib/dashboard-branch";
@@ -34,7 +33,7 @@ export default function DashboardScreen() {
     case "SUPER":
       return <SuperDashboard />;
     case "ADMIN":
-      return <SeasonStaffDashboard role="ADMIN" />;
+      return <AdminDashboard />;
     case "LEADER":
       return <LeaderDashboard />;
     case "MENTOR":
