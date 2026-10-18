@@ -1,99 +1,23 @@
 import { useRouter } from "expo-router";
 import { Calendar as CalendarIcon } from "lucide-react-native";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { View } from "react-native";
-import type { JpcEventListItem, SessionListItem } from "@space/shared";
+import { UPCOMING_EVENTS_LIMIT, type SessionListItem } from "@space/shared";
 
-import { CalendarGrid } from "../../src/components/calendar/CalendarGrid";
-import {
-  DayEntries,
-  Legend,
-  type CalendarContext,
-} from "../../src/components/calendar/CalendarEntries";
-import { ChoiceChips } from "../../src/components/ChoiceChips";
+import { UpcomingEventsCard } from "../../src/components/dashboard/UpcomingEventsCard";
 import { SeasonSwitcher } from "../../src/components/SeasonSwitcher";
 import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { buildSeasonColors, SeasonCalendar } from "../../src/design/sessions/season-calendar";
 import { Button as ButtonV1, EmptyState as EmptyStateV1 } from "../../src/design/ui";
-import { useEvents } from "../../src/hooks/use-events";
+import { useEvents, useUpcomingEvents } from "../../src/hooks/use-events";
 import { useMyGroups } from "../../src/hooks/use-groups";
 import { useCurrentSeasonId, useSeasons } from "../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
 import { useLedSeasonSessions, useSeasonSessions } from "../../src/hooks/use-sessions";
-import {
-  dayCue,
-  deviceTodayKey,
-  rangeLabel,
-  stepAnchor,
-  type CalendarView,
-} from "../../src/lib/calendar-grid";
-import { groupCalendarByDay } from "../../src/lib/day-groups";
-import { formatDayKey } from "../../src/lib/format";
+import { deviceTodayKey } from "../../src/lib/calendar-grid";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Button, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
-
-/**
- * Day-grouped sessions and JPC events. Every day, time and order comes from the
- * server's org-clock values (X13) — never a device-zone formatter, which would
- * split an org-midnight event from its day's sessions on a phone west of Cairo.
- * Headings carry v1's "Today" / "in N days" cue (REG-76).
- */
-function CalendarDays({
-  sessions,
-  events,
-  ctx,
-}: {
-  sessions: SessionListItem[];
-  events: JpcEventListItem[];
-  ctx: CalendarContext;
-}) {
-  const theme = useTheme();
-  return (
-    <>
-      <Legend slots={ctx.slots} />
-      {groupCalendarByDay(sessions, events).map((group) => {
-        const cue = dayCue(group.dayKey, ctx.today);
-        return (
-          <View key={group.dayKey} style={{ marginBottom: theme.spacing.md }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-              }}
-            >
-              <Text variant="heading">{formatDayKey(group.dayKey)}</Text>
-              {cue ? (
-                <Text
-                  variant="caption"
-                  color={
-                    group.dayKey === ctx.today
-                      ? theme.colors.success[800]
-                      : theme.colors.brand.teal[800]
-                  }
-                >
-                  {cue}
-                </Text>
-              ) : null}
-            </View>
-            <DayEntries entries={group.entries} ctx={ctx} />
-          </View>
-        );
-      })}
-    </>
-  );
-}
-
-const VIEW_OPTIONS = [
-  { value: "upcoming", label: "Upcoming" },
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-] as const;
-
-type Source = { kind: "local"; sessions: SessionListItem[]; events: JpcEventListItem[] };
 
 /** v1's anchor: the month of the next session, else the last one, else today. */
 function initialAnchor(sessions: SessionListItem[], today: string): string {
@@ -102,139 +26,19 @@ function initialAnchor(sessions: SessionListItem[], today: string): string {
 }
 
 /**
- * The Upcoming / Week / Month toggle with its stepper (REG-75) around either
- * a pinned season's sessions already in hand, or windowed GET /sessions reads.
- * "Today" is the server's org day once a default-window read has reported it
- * (its `fromDayKey`); until then the device's date stands in.
+ * ALUMNI — v1 app/alumni/calendar/page.tsx: "Events" / "Upcoming JPC community
+ * events" and the upcoming-events card. Alumni have no season, so there are no
+ * sessions to draw; v1's card (today onwards, capped by the server) is the page.
  */
-function CalendarSurface({ source }: { source: Source }) {
-  const role = useSessionStore((s) => s.user?.role ?? null);
-  const isStaff = role !== null && role !== "STUDENT";
-  const today = deviceTodayKey();
-  const [view, setView] = useState<CalendarView>("upcoming");
-  const [anchor, setAnchor] = useState(() => initialAnchor(source.sessions, today));
-
-  const ctx: CalendarContext = { today, isStaff, slots: null };
-
-  const step = (dir: 1 | -1) => {
-    if (view !== "upcoming") setAnchor((a) => stepAnchor(view, a, dir));
-  };
-
-  let body: ReactNode;
-  if (view === "upcoming") {
-    const sessions = source.sessions.filter((s) => s.dayKey >= today);
-    const events = source.events.filter((e) => e.dayKey >= today);
-    body =
-      sessions.length === 0 && events.length === 0 ? (
-        <EmptyState
-          title="Nothing coming up"
-          message="You're all caught up. Switch to Month to review past sessions."
-        />
-      ) : (
-        <CalendarDays sessions={sessions} events={events} ctx={ctx} />
-      );
-  } else {
-    body = (
-      <>
-        <Legend slots={ctx.slots} />
-        <CalendarGrid
-          view={view}
-          anchor={anchor}
-          sessions={source.sessions}
-          events={source.events}
-          ctx={ctx}
-        />
-      </>
-    );
-  }
-
-  return (
-    <>
-      <ChoiceChips label="Calendar view" options={VIEW_OPTIONS} value={view} onChange={setView} />
-      {view !== "upcoming" ? (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginVertical: 8,
-          }}
-        >
-          <Button
-            title="‹"
-            variant="ghost"
-            accessibilityLabel={`Previous ${view}`}
-            onPress={() => step(-1)}
-          />
-          <Text variant="heading">{rangeLabel(view, anchor)}</Text>
-          <Button
-            title="›"
-            variant="ghost"
-            accessibilityLabel={`Next ${view}`}
-            onPress={() => step(1)}
-          />
-        </View>
-      ) : null}
-      {body}
-    </>
-  );
-}
-
-/** ALUMNI — Plan 4's pinned-season calendar, pre-rebuild UI until batch 6 (v1 alumni get an Events page). */
 function AlumniCalendar() {
-  const current = useCurrentSeasonId();
-  const sessions = useSeasonSessions(current.seasonId);
-  // Two queries, interleaved on the client — exactly what v1's calendar pages
-  // do (season-calendar.tsx merges a session list and an event list). A single
-  // /api/v1/calendar endpoint is the tidier shape and is deliberately deferred
-  // (D-15.1). The events query is NOT allowed to fail the screen: its error is
-  // swallowed into an empty array, because a calendar with no JPC events is
-  // still a calendar and a calendar with no sessions is not.
-  const events = useEvents();
-  const eventRows = events.data ?? [];
-
-  let body: ReactNode;
-  if (current.isPending) body = <LoadingState />;
-  else if (current.isError)
-    body = <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
-  else if (current.seasonId === null)
-    body =
-      eventRows.length === 0 ? (
-        <EmptyState
-          title="No season to show"
-          message="You aren't in a season right now, so there are no sessions on your calendar."
-        />
-      ) : (
-        <CalendarSurface source={{ kind: "local", sessions: [], events: eventRows }} />
-      );
-  else if (sessions.isPending) body = <LoadingState />;
-  else if (sessions.isError)
-    body = (
-      <ErrorState
-        message="Couldn't load sessions. Check your connection and try again."
-        onRetry={() => void sessions.refetch()}
-      />
-    );
-  else if (sessions.data.length === 0 && eventRows.length === 0)
-    body = <EmptyState title="No sessions" message="This season doesn't have any sessions yet." />;
-  else
-    body = (
-      <CalendarSurface source={{ kind: "local", sessions: sessions.data, events: eventRows }} />
-    );
-
+  const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
   return (
-    <Screen
-      edges={["top", "left", "right"]}
-      scroll
-      onRefresh={() => {
-        void events.refetch();
-        if (current.seasonId !== null) void sessions.refetch();
-        else current.refetch();
-      }}
-      refreshing={sessions.isRefetching}
-    >
-      {body}
-    </Screen>
+    <ShellFrame onRefresh={() => void events.refetch()} refreshing={events.isRefetching}>
+      <View className="flex-col gap-3">
+        <PageTitle title="Events" subtitle="Upcoming JPC community events" />
+        <UpcomingEventsCard query={events} />
+      </View>
+    </ShellFrame>
   );
 }
 
@@ -572,9 +376,13 @@ export default function CalendarScreen() {
 
   if (role === "MENTOR") {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <EmptyState title="Calendar" message="The calendar isn't available for your role." />
-      </Screen>
+      <ShellFrame>
+        <EmptyStateV1
+          icon={CalendarIcon}
+          title="Calendar"
+          description="The calendar isn't available for your role."
+        />
+      </ShellFrame>
     );
   }
   if (leadsNothing) {
