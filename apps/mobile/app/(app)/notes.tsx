@@ -1,12 +1,15 @@
 import { useRouter } from "expo-router";
-import { Pressable } from "react-native";
+import { Flag } from "lucide-react-native";
+import { Pressable, View } from "react-native";
 import type { AuthoredNote, NoteVisibility } from "@space/shared";
 
+import { PageTitle } from "../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../src/design/ui";
 import { flattenNotePages, useAuthoredNotes } from "../../src/hooks/use-notes";
 import { formatDate } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
 /**
  * The truth about the visibility setting, in the words the API enforces.
@@ -24,8 +27,8 @@ const VISIBILITY_LABEL: Record<NoteVisibility, string> = {
   ADMINS: "Visible to season admins only",
 };
 
+/** v1 app/mentor/notes/page.tsx — one card per note: who, when, season, visibility, then the body. */
 function NoteRow({ item }: { item: AuthoredNote }) {
-  const theme = useTheme();
   const router = useRouter();
 
   return (
@@ -35,27 +38,34 @@ function NoteRow({ item }: { item: AuthoredNote }) {
         router.push({ pathname: "/student/[id]", params: { id: String(item.student.id) } })
       }
     >
-      <Card style={{ marginBottom: theme.spacing.sm }}>
-        <Text variant="heading">{item.student.name}</Text>
-        <Text variant="body">{item.body}</Text>
-        <Text variant="label" color={theme.colors.neutral[600]}>
-          {formatDate(item.createdAt)}
-        </Text>
-        {/* Its own node, so the label is findable and read out on its own. */}
-        <Text variant="label" color={theme.colors.neutral[600]}>
-          {VISIBILITY_LABEL[item.visibility]}
-        </Text>
-        {item.followUpFlagged ? (
-          <Text variant="caption" color={theme.colors.neutral[600]}>
-            Follow-up flagged
-          </Text>
-        ) : null}
-        {/* Server-derived (ruling C4): the client never compares timestamps. */}
-        {item.edited ? (
-          <Text variant="caption" color={theme.colors.neutral[600]}>
-            Edited
-          </Text>
-        ) : null}
+      <Card>
+        <CardContent className="flex-col gap-2 pt-4">
+          <View className="flex-row flex-wrap items-center gap-2">
+            <Text className="text-xs font-medium text-foreground">{item.student.name}</Text>
+            <Text className="text-xs text-muted-foreground">·</Text>
+            <Text className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</Text>
+            {item.seasonTitle ? (
+              <>
+                <Text className="text-xs text-muted-foreground">·</Text>
+                <Text className="text-xs text-muted-foreground">{item.seasonTitle}</Text>
+              </>
+            ) : null}
+            {item.followUpFlagged ? (
+              <Badge variant="warning" textClassName="text-[10px]">
+                Follow-up flagged
+              </Badge>
+            ) : null}
+          </View>
+          <Text className="text-sm">{item.body}</Text>
+          <View className="flex-row flex-wrap items-center gap-2">
+            {/* Its own node, so the label is findable and read out on its own. */}
+            <Badge variant="outline" textClassName="text-[10px]">
+              {VISIBILITY_LABEL[item.visibility]}
+            </Badge>
+            {/* Server-derived (ruling C4): the client never compares timestamps. */}
+            {item.edited ? <Text className="text-xs text-muted-foreground">Edited</Text> : null}
+          </View>
+        </CardContent>
       </Card>
     </Pressable>
   );
@@ -66,48 +76,72 @@ export default function NotesScreen() {
   // Four roles can author (spec R46–R49); a STUDENT never can (R51) and the
   // API refuses them, so the screen does not ask.
   const canAuthor = role !== null && role !== "STUDENT";
-  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useAuthoredNotes(canAuthor);
+  const {
+    data,
+    isPending,
+    isError,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useAuthoredNotes(canAuthor);
   const notes = flattenNotePages(data?.pages);
-
-  const handleRefresh = () => {
-    if (canAuthor) void refetch();
-  };
 
   if (!canAuthor) {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <EmptyState title="Notes" message="This screen is for staff who write pastoral notes." />
-      </Screen>
+      <ShellFrame>
+        <EmptyState
+          icon={Flag}
+          title="Notes"
+          description="This screen is for staff who write pastoral notes."
+        />
+      </ShellFrame>
     );
   }
 
+  if (isPending || isError) {
+    return (
+      <ShellFrame>
+        {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
+      </ShellFrame>
+    );
+  }
+
+  // Older pages load on demand (R41), so the count is "so far" while more remain.
+  const count = `${notes.length}${hasNextPage ? "+" : ""}`;
+
   return (
-    <Screen edges={["top", "left", "right"]} onRefresh={handleRefresh} refreshing={isRefetching}>
-      {isPending ? (
-        <LoadingState />
-      ) : isError ? (
-        <ErrorState message="Couldn't load your notes." onRetry={() => void refetch()} />
-      ) : notes.length === 0 ? (
-        <EmptyState
-          title="No notes yet"
-          message="Notes you write about a student appear here. Open a student to write one."
+    <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
+      <View className="flex-col gap-4">
+        <PageTitle
+          title="My notes"
+          subtitle={`${count} note${notes.length === 1 && !hasNextPage ? "" : "s"} you've authored`}
         />
-      ) : (
-        <>
-          {notes.map((item) => (
-            <NoteRow key={item.id} item={item} />
-          ))}
-          {hasNextPage ? (
-            <Button
-              title="Load more"
-              variant="ghost"
-              loading={isFetchingNextPage}
-              onPress={() => void fetchNextPage()}
-            />
-          ) : null}
-        </>
-      )}
-    </Screen>
+        {notes.length === 0 ? (
+          <EmptyState
+            icon={Flag}
+            title="No notes yet"
+            description="Notes you write about a student appear here. Open a student to write one."
+          />
+        ) : (
+          <View className="flex-col gap-3">
+            {notes.map((item) => (
+              <NoteRow key={item.id} item={item} />
+            ))}
+            {hasNextPage ? (
+              <Button
+                variant="outline"
+                className="self-start"
+                disabled={isFetchingNextPage}
+                onPress={() => void fetchNextPage()}
+              >
+                Load more
+              </Button>
+            ) : null}
+          </View>
+        )}
+      </View>
+    </ShellFrame>
   );
 }
