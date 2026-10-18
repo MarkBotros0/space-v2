@@ -17,8 +17,15 @@ Every screen is source-matched and capture-pending (plan 06, "Capture status").
 - Alumni: v1's read-only card of Name, Email, Status (success badge), University, and the "contact the JPC team" line.
 - Mentor and other non-student roles: v2-only account card (initials avatar, role badge, Settings, Sign out), drawn with the student's identity-card styling.
 
-## Not in this batch (files shared with open PRs #23 and #24)
-- Alumni Events (`calendar.tsx` alumni branch), mentor Reports (`reports.tsx`) and the legacy loading state in `dashboard.tsx` still use the legacy primitives. Do them once #23 and #24 merge.
+## Alumni Events
+- v1's "Events" page: title, subtitle and the upcoming-events card (server window, capped at 4 like the dashboard). The old pinned-season calendar for alumni is gone; alumni have no season in v1 either.
+
+## Mentor Reports and calendar
+- Reports is the shared batch-4 screen, already in v1's layout for a mentor. Its charts (`src/components/charts/*`) and band colours still use the legacy theme; they are v2's own drawings (see gaps-batch-4) and stay until the legacy theme is retired.
+- The mentor has no calendar (spec 03 §9); the route shows v1-styled "isn't available" state.
+
+## Cleanup
+- `DashboardFrame` and the legacy calendar list/grid components are deleted; `dashboard.tsx`'s loading frame and `calendar.tsx` no longer import `src/ui` or `src/theme`.
 
 ## Captures owed (add to backlog section 14 once #23 lands)
 
@@ -27,5 +34,6 @@ Every screen is source-matched and capture-pending (plan 06, "Capture status").
 | Dashboard | MENTOR | at-risk rows with badges, activity rows |
 | Notes | MENTOR, LEADER, ADMIN | note cards, follow-up badge, Load more |
 | Dashboard | ALUMNI | welcome card, history button |
+| Events | ALUMNI | title, upcoming-events card |
 | Profile | ALUMNI | record card with status badge |
 | Profile | MENTOR | account card, Settings, Sign out |

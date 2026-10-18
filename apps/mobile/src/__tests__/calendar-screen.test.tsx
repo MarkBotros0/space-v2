@@ -370,6 +370,8 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
 
     renderWithProviders(<CalendarScreen />);
     expect(await screen.findByText("Alumni dinner")).toBeTruthy();
+    expect(screen.getByText("Events")).toBeTruthy();
+    expect(screen.getByText("Upcoming JPC community events")).toBeTruthy();
     expect(screen.queryByText("No season to show")).toBeNull();
   });
 
