@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Pressable, Switch, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import { format, isValid, parse } from "date-fns";
+import { Pressable, View } from "react-native";
+import { useRouter } from "expo-router";
 import {
   assignmentWriteRequestSchema,
   type AssignmentDetail,
@@ -10,11 +12,22 @@ import {
   type SessionListItem,
 } from "@space/shared";
 
+import { FormActions, FormErrorBox } from "../design/forms/form-parts";
+import { cn } from "../design/lib/cn";
+import {
+  Checkbox,
+  Combobox,
+  DatePicker,
+  FormField,
+  Input,
+  MultiSelect,
+  RichTextEditor,
+  Switch,
+  Text,
+  TimePicker,
+} from "../design/ui";
 import { MIME_CATEGORY_LABELS } from "../lib/assignment-labels";
 import { formatDayKey } from "../lib/format";
-import { useTheme } from "../theme";
-import { Button, Card, Input, Text } from "../ui";
-import { DueDateField } from "./due-date-field";
 
 /** Form state — strings for the numeric inputs, as typed. */
 export interface AssignmentFormValues {
@@ -88,7 +101,11 @@ export function toAssignmentBody(v: AssignmentFormValues) {
     forumMinWords: isForum ? (v.forumMinWords.trim() === "" ? 0 : Number(v.forumMinWords)) : null,
     forumAllowComments: isForum ? v.forumAllowComments : false,
     maxFileSizeMb:
-      !isForum && v.acceptsFiles ? (v.maxFileSizeMb.trim() === "" ? 10 : Number(v.maxFileSizeMb)) : null,
+      !isForum && v.acceptsFiles
+        ? v.maxFileSizeMb.trim() === ""
+          ? 10
+          : Number(v.maxFileSizeMb)
+        : null,
     allowedMimeCategories: !isForum && v.acceptsFiles ? v.allowedMimeCategories : [],
     isAllGroups: v.targetMode === "all",
     groupIds: v.targetMode === "groups" ? v.groupIds : [],
@@ -108,37 +125,57 @@ export function orphanedWorkCount(rows: AssignmentTrackerRow[], v: AssignmentFor
   ).length;
 }
 
-function Choice({
+/** v1's `<fieldset className="rounded-lg border border-border p-4">` with its `<legend>`. */
+function Fieldset({ legend, children }: { legend: string; children: ReactNode }) {
+  return (
+    <View className="flex-col gap-2 rounded-lg border border-border p-4">
+      <Text className="text-sm font-medium">{legend}</Text>
+      {children}
+    </View>
+  );
+}
+
+/** v1's `<label><input type="radio" className="size-4"/> text</label>`. */
+function Radio({
   label,
   selected,
   onPress,
-  role,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
-  role: "radio" | "checkbox";
 }) {
-  const theme = useTheme();
   return (
     <Pressable
-      accessibilityRole={role}
+      accessibilityRole="radio"
       accessibilityLabel={label}
       accessibilityState={{ checked: selected }}
       onPress={onPress}
-      style={{
-        paddingVertical: theme.spacing.xs,
-        paddingHorizontal: theme.spacing.sm,
-        borderRadius: theme.radii.sm,
-        borderWidth: theme.borderWidths.thin,
-        borderColor: selected ? theme.colors.brand.navy[900] : theme.colors.neutral[300],
-        backgroundColor: selected ? theme.colors.brand.teal[500] : theme.colors.transparent,
-      }}
+      className="flex-row items-center gap-2"
     >
-      <Text variant="label">{label}</Text>
+      <View
+        className={cn(
+          "size-4 items-center justify-center rounded-full border",
+          selected ? "border-primary" : "border-input bg-background",
+        )}
+      >
+        {selected ? <View className="size-2 rounded-full bg-primary" /> : null}
+      </View>
+      <Text className="flex-1 text-sm">{label}</Text>
     </Pressable>
   );
 }
+
+const dayToDate = (day: string | null): Date | null => {
+  if (day === null) return null;
+  const d = parse(day, "yyyy-MM-dd", new Date());
+  return isValid(d) ? d : null;
+};
+const timeToParts = (time: string): { hour: number; minute: number } => {
+  const m = /^(\d{2}):(\d{2})$/.exec(time);
+  return m ? { hour: Number(m[1]), minute: Number(m[2]) } : { hour: 23, minute: 59 };
+};
+const pad = (n: number) => String(n).padStart(2, "0");
 
 export interface AssignmentFormProps {
   initial: AssignmentFormValues;
@@ -162,14 +199,12 @@ export function AssignmentForm({
   trackerRows,
   onSubmit,
 }: AssignmentFormProps) {
-  const theme = useTheme();
+  const router = useRouter();
   const [v, setV] = useState<AssignmentFormValues>(initial);
   const [clientError, setClientError] = useState<string | null>(null);
 
   const set = <K extends keyof AssignmentFormValues>(key: K, value: AssignmentFormValues[K]) =>
     setV((prev) => ({ ...prev, [key]: value }));
-  const toggle = <T,>(list: T[], item: T): T[] =>
-    list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 
   const isForum = v.type === "FORUM";
   const orphaned = trackerRows ? orphanedWorkCount(trackerRows, v) : 0;
@@ -185,154 +220,197 @@ export function AssignmentForm({
     onSubmit(parsed.data);
   };
 
-  return (
-    <View style={{ gap: theme.spacing.md }}>
-      <Input label="Title" value={v.title} onChangeText={(t) => set("title", t)} />
-      <Input
-        label="Description"
-        value={v.description}
-        onChangeText={(t) => set("description", t)}
-        multiline
-        numberOfLines={6}
-      />
+  const sessionOptions = sessions.map((s) => ({
+    value: String(s.id),
+    label: s.title,
+    // The server's org-calendar day (X13), not startsAt in the device zone.
+    description: formatDayKey(s.dayKey),
+  }));
+  const groupOptions = groups.map((g) => ({ value: String(g.id), label: g.name }));
+  const mimeOptions = (Object.keys(MIME_CATEGORY_LABELS) as MimeCategory[]).map((c) => ({
+    value: c,
+    label: MIME_CATEGORY_LABELS[c],
+  }));
 
-      <Card style={{ gap: theme.spacing.sm }}>
-        <Text variant="heading">Type</Text>
-        <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-          <Choice role="radio" label="Standard" selected={!isForum} onPress={() => set("type", "STANDARD")} />
-          <Choice role="radio" label="Forum" selected={isForum} onPress={() => set("type", "FORUM")} />
-        </View>
+  return (
+    <View className="flex-col gap-4">
+      <FormField label="Title" required>
+        <Input
+          accessibilityLabel="Title"
+          value={v.title}
+          onChangeText={(t) => set("title", t)}
+          placeholder="e.g. Week 4 reflection"
+        />
+      </FormField>
+
+      <FormField label="Description">
+        <RichTextEditor
+          value={v.description}
+          onChange={(html) => set("description", html)}
+          placeholder="Instructions, prompts, expectations…"
+        />
+      </FormField>
+
+      <Fieldset legend="Type">
+        <Radio
+          label="Standard — students submit a private response (optional file uploads)"
+          selected={!isForum}
+          onPress={() => set("type", "STANDARD")}
+        />
+        <Radio
+          label="Forum — students post a response and can see their group-mates' responses"
+          selected={isForum}
+          onPress={() => set("type", "FORUM")}
+        />
         {isForum ? (
-          <>
-            <Input
+          <View className="mt-2 flex-col gap-4">
+            <FormField
               label="Minimum words"
-              value={v.forumMinWords}
-              onChangeText={(t) => set("forumMinWords", t)}
-              keyboardType="number-pad"
-            />
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text variant="body">Allow peer comments</Text>
+              description="Students must write at least this many words to post."
+            >
+              <Input
+                accessibilityLabel="Minimum words"
+                value={v.forumMinWords}
+                onChangeText={(t) => set("forumMinWords", t)}
+                keyboardType="number-pad"
+              />
+            </FormField>
+            <View className="flex-row items-center justify-between gap-3">
+              <View className="min-w-0 flex-1 flex-col">
+                <Text className="text-sm font-medium">Allow peer comments</Text>
+                <Text className="text-sm text-muted-foreground">
+                  Let students comment on each other's responses.
+                </Text>
+              </View>
               <Switch
                 accessibilityLabel="Allow peer comments"
-                value={v.forumAllowComments}
-                onValueChange={(on) => set("forumAllowComments", on)}
+                checked={v.forumAllowComments}
+                onCheckedChange={(on) => set("forumAllowComments", on)}
               />
             </View>
-          </>
+          </View>
         ) : null}
-      </Card>
+      </Fieldset>
 
-      <Card>
-        <DueDateField
-          value={{ day: v.dueDay, time: v.dueTime }}
-          onChange={(next) => setV((prev) => ({ ...prev, dueDay: next.day, dueTime: next.time }))}
+      <FormField label="Due date">
+        <DatePicker
+          accessibilityLabel="Due date"
+          value={dayToDate(v.dueDay)}
+          onChange={(d) => set("dueDay", format(d, "yyyy-MM-dd"))}
         />
-      </Card>
+        {v.dueDay !== null ? (
+          // V2-only (R19/C2): v1 could not unset a due date once picked.
+          <Pressable
+            accessibilityRole="button"
+            className="self-start"
+            onPress={() => set("dueDay", null)}
+          >
+            <Text className="text-sm text-muted-foreground underline">Clear due date</Text>
+          </Pressable>
+        ) : null}
+      </FormField>
+      <FormField
+        label="Due time"
+        description="Times are on the organisation's clock, the same for every student."
+      >
+        <TimePicker
+          minuteStep={15}
+          value={timeToParts(v.dueTime)}
+          onChange={({ hour, minute }) => set("dueTime", `${pad(hour)}:${pad(minute)}`)}
+        />
+      </FormField>
 
-      <Card style={{ gap: theme.spacing.sm }}>
-        <Text variant="heading">Linked session</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm }}>
-          <Choice role="radio" label="No session" selected={v.sessionId === null} onPress={() => set("sessionId", null)} />
-          {sessions.map((s) => (
-            <Choice
-              key={s.id}
-              role="radio"
-              // The server's org-calendar day (X13), not startsAt in the device zone.
-              label={`${s.title} · ${formatDayKey(s.dayKey)}`}
-              selected={v.sessionId === s.id}
-              onPress={() => set("sessionId", s.id)}
-            />
-          ))}
-        </View>
-      </Card>
+      <FormField
+        label="Linked session"
+        description="Optional — associate this assignment with a session on the calendar."
+      >
+        <Combobox
+          accessibilityLabel="Linked session"
+          options={sessionOptions}
+          value={v.sessionId === null ? null : String(v.sessionId)}
+          onChange={(id) => set("sessionId", id === null ? null : Number(id))}
+          placeholder="No session"
+          emptyMessage="No sessions for this season."
+        />
+      </FormField>
 
       {/* R25: a forum assignment never acquires file settings through the UI. */}
       {!isForum ? (
-        <Card style={{ gap: theme.spacing.sm }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text variant="heading">Accept file uploads</Text>
-            <Switch
+        <Fieldset legend="File submissions">
+          <View className="flex-row items-center gap-2">
+            <Checkbox
               accessibilityLabel="Accept file uploads"
-              value={v.acceptsFiles}
-              onValueChange={(on) => set("acceptsFiles", on)}
+              checked={v.acceptsFiles}
+              onCheckedChange={(on) => set("acceptsFiles", on)}
             />
+            <Text className="text-sm">Accept file uploads from students</Text>
           </View>
           {v.acceptsFiles ? (
-            <>
-              <Input
-                label="Max file size (MB)"
-                value={v.maxFileSizeMb}
-                onChangeText={(t) => set("maxFileSizeMb", t)}
-                keyboardType="number-pad"
-              />
-              <Text variant="label">Allowed types (none ticked = any type)</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm }}>
-                {(Object.keys(MIME_CATEGORY_LABELS) as MimeCategory[]).map((c) => (
-                  <Choice
-                    key={c}
-                    role="checkbox"
-                    label={MIME_CATEGORY_LABELS[c]}
-                    selected={v.allowedMimeCategories.includes(c)}
-                    onPress={() => set("allowedMimeCategories", toggle(v.allowedMimeCategories, c))}
-                  />
-                ))}
-              </View>
-            </>
+            <View className="mt-1 flex-col gap-4">
+              <FormField label="Max file size (MB)">
+                <Input
+                  accessibilityLabel="Max file size (MB)"
+                  value={v.maxFileSizeMb}
+                  onChangeText={(t) => set("maxFileSizeMb", t)}
+                  keyboardType="number-pad"
+                />
+              </FormField>
+              <FormField label="Allowed types">
+                <MultiSelect
+                  accessibilityLabel="Allowed types"
+                  options={mimeOptions}
+                  value={v.allowedMimeCategories}
+                  onChange={(next) => set("allowedMimeCategories", next as MimeCategory[])}
+                  placeholder="Any type"
+                />
+              </FormField>
+            </View>
           ) : null}
-        </Card>
+        </Fieldset>
       ) : null}
 
-      <Card style={{ gap: theme.spacing.sm }}>
-        <Text variant="heading">Assign to</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm }}>
-          <Choice
-            role="radio"
-            label="All students in this season"
-            selected={v.targetMode === "all"}
-            onPress={() => set("targetMode", "all")}
-          />
-          <Choice
-            role="radio"
-            label="Specific groups"
-            selected={v.targetMode === "groups"}
-            onPress={() => set("targetMode", "groups")}
-          />
-        </View>
+      <Fieldset legend="Assign to">
+        <Radio
+          label="All students in this season"
+          selected={v.targetMode === "all"}
+          onPress={() => set("targetMode", "all")}
+        />
+        <Radio
+          label="Specific groups"
+          selected={v.targetMode === "groups"}
+          onPress={() => set("targetMode", "groups")}
+        />
         {v.targetMode === "groups" ? (
-          groups.length === 0 ? (
-            <Text variant="body" color={theme.colors.neutral[600]}>
-              This season has no groups yet.
-            </Text>
-          ) : (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm }}>
-              {groups.map((g) => (
-                <Choice
-                  key={g.id}
-                  role="checkbox"
-                  label={g.name}
-                  selected={v.groupIds.includes(g.id)}
-                  onPress={() => set("groupIds", toggle(v.groupIds, g.id))}
-                />
-              ))}
-            </View>
-          )
+          <View className="mt-1">
+            <FormField label="Groups">
+              <MultiSelect
+                accessibilityLabel="Groups"
+                options={groupOptions}
+                value={v.groupIds.map(String)}
+                onChange={(ids) => set("groupIds", ids.map(Number))}
+                placeholder="Pick groups…"
+                emptyMessage="This season has no groups yet."
+              />
+            </FormField>
+          </View>
         ) : null}
-      </Card>
+      </Fieldset>
 
       {orphaned > 0 ? (
-        <Text variant="body" color={theme.colors.warning[700]}>
+        <Text className="text-sm text-warning-700 dark:text-warning-300">
           {`${orphaned} student${orphaned === 1 ? "" : "s"} in groups you removed ${
             orphaned === 1 ? "has" : "have"
           } already started or submitted work. They will no longer see this assignment; their work is kept.`}
         </Text>
       ) : null}
 
-      {error ? (
-        <Text variant="body" color={theme.colors.error[600]}>
-          {error}
-        </Text>
-      ) : null}
-      <Button title={submitLabel} onPress={submit} loading={submitting} />
+      <FormErrorBox message={error} />
+      <FormActions
+        submitLabel={submitLabel}
+        pending={submitting}
+        onSubmit={submit}
+        onCancel={() => router.back()}
+      />
     </View>
   );
 }

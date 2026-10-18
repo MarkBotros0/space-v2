@@ -1,10 +1,20 @@
+import { format, isValid, parse } from "date-fns";
 import { View } from "react-native";
 import type { RecurrenceScope } from "@space/shared";
 
-import { useTheme } from "../theme";
-import { Button, Input } from "../ui";
-import { ChoiceChips } from "./ChoiceChips";
-import { TimePicker } from "./TimePicker";
+import { FormField } from "../design/ui/form-field";
+import { ToggleButtons } from "../design/forms/form-parts";
+import {
+  DatePicker,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+  TimePicker,
+} from "../design/ui";
 
 export type SessionType = "inperson" | "online";
 
@@ -54,8 +64,25 @@ export function sessionWriteFields(v: SessionFormValues) {
 }
 
 /** v1 edit: a session with a YouTube link is online, anything else in-person. */
-export const sessionTypeFor = (youtubeUrl: string | null): SessionType => (youtubeUrl ? "online" : "inperson");
+export const sessionTypeFor = (youtubeUrl: string | null): SessionType =>
+  youtubeUrl ? "online" : "inperson";
 
+/** The day key as a local-midnight Date for the picker (and back) — no zone arithmetic (X13). */
+const dayToDate = (day: string): Date | null => {
+  const d = parse(day, "yyyy-MM-dd", new Date());
+  return isValid(d) ? d : null;
+};
+const timeToParts = (time: string): { hour: number; minute: number } => {
+  const m = /^(\d{2}):(\d{2})$/.exec(time);
+  return m ? { hour: Number(m[1]), minute: Number(m[2]) } : { hour: 18, minute: 0 };
+};
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * v1 src/components/sessions/session-form.tsx fields: Title, Date / Start
+ * time / Duration, Session type, Location or YouTube link, Description. The
+ * form values stay the org-wall strings v2 sends; the pickers translate.
+ */
 export function SessionFields({
   values,
   onChange,
@@ -65,58 +92,127 @@ export function SessionFields({
   onChange: (next: SessionFormValues) => void;
   errors: Record<string, string>;
 }) {
-  const set = (key: "title" | "day" | "durationMinutes" | "location" | "youtubeUrl" | "description") => (text: string) => onChange({ ...values, [key]: text });
+  const set =
+    (key: "title" | "durationMinutes" | "location" | "youtubeUrl" | "description") =>
+    (text: string) =>
+      onChange({ ...values, [key]: text });
   return (
-    <>
-      <Input label="Title" value={values.title} onChangeText={set("title")} error={errors.title} />
-      <Input label="Day (YYYY-MM-DD)" value={values.day} onChangeText={set("day")} autoCapitalize="none" error={errors.startDay} />
-      <TimePicker
-        label="Start time"
-        value={values.time}
-        onChange={(time) => onChange({ ...values, time })}
-        error={errors.startTime ?? errors.startsAt}
-      />
-      <Input
-        label="Duration (minutes)"
-        value={values.durationMinutes}
-        onChangeText={set("durationMinutes")}
-        keyboardType="number-pad"
-        error={errors.durationMinutes}
-      />
-      <ChoiceChips
-        label="Session type"
-        options={[
-          { value: "inperson", label: "In-person" },
-          { value: "online", label: "Online" },
-        ]}
-        value={values.sessionType}
-        onChange={(sessionType) => onChange({ ...values, sessionType })}
-      />
+    <View className="flex-col gap-4">
+      <FormField label="Title" required error={errors.title}>
+        <Input
+          accessibilityLabel="Title"
+          value={values.title}
+          onChangeText={set("title")}
+          placeholder="e.g. Week 4 — Topic"
+        />
+      </FormField>
+
+      <FormField label="Date" required error={errors.startDay}>
+        <DatePicker
+          accessibilityLabel="Date"
+          value={dayToDate(values.day)}
+          onChange={(d) => onChange({ ...values, day: format(d, "yyyy-MM-dd") })}
+          ariaInvalid={Boolean(errors.startDay)}
+        />
+      </FormField>
+      <FormField label="Start time" required error={errors.startTime ?? errors.startsAt}>
+        <TimePicker
+          minuteStep={15}
+          value={timeToParts(values.time)}
+          onChange={({ hour, minute }) =>
+            onChange({ ...values, time: `${pad(hour)}:${pad(minute)}` })
+          }
+        />
+      </FormField>
+      <FormField label="Duration (min)" required error={errors.durationMinutes}>
+        <Input
+          accessibilityLabel="Duration (min)"
+          value={values.durationMinutes}
+          onChangeText={set("durationMinutes")}
+          keyboardType="number-pad"
+        />
+      </FormField>
+
+      <FormField label="Session type">
+        <ToggleButtons
+          options={[
+            { value: "inperson", label: "In-person" },
+            { value: "online", label: "Online" },
+          ]}
+          value={values.sessionType}
+          onChange={(sessionType) => onChange({ ...values, sessionType })}
+        />
+      </FormField>
+
       {values.sessionType === "inperson" ? (
-        <Input label="Location" value={values.location} onChangeText={set("location")} error={errors.location} />
+        <FormField label="Location" error={errors.location}>
+          <Input
+            accessibilityLabel="Location"
+            value={values.location}
+            onChangeText={set("location")}
+            placeholder="Room, building, or address"
+          />
+        </FormField>
       ) : (
-        <Input label="YouTube link" value={values.youtubeUrl} onChangeText={set("youtubeUrl")} autoCapitalize="none" error={errors.youtubeUrl} />
+        <FormField label="YouTube link" error={errors.youtubeUrl}>
+          <Input
+            accessibilityLabel="YouTube link"
+            value={values.youtubeUrl}
+            onChangeText={set("youtubeUrl")}
+            autoCapitalize="none"
+            keyboardType="url"
+            placeholder="https://youtube.com/watch?v=..."
+          />
+        </FormField>
       )}
-      <Input label="Description" value={values.description} onChangeText={set("description")} multiline error={errors.description} />
-    </>
+
+      <FormField label="Description" error={errors.description}>
+        <Textarea
+          accessibilityLabel="Description"
+          value={values.description}
+          onChangeText={set("description")}
+          placeholder="Optional notes shown to leaders and students."
+        />
+      </FormField>
+    </View>
   );
 }
 
+/** v1 words for the "Apply to" select. */
 export const SCOPE_LABELS: Record<RecurrenceScope, string> = {
-  one: "This session",
-  future: "This and following",
-  all: "All in series",
+  one: "This session only",
+  future: "This and future sessions",
+  all: "All sessions in the series",
 };
 
 /** Rendered only for a session with a recurrenceGroupId (spec 03 R29). */
-export function ScopeSelector({ value, onChange }: { value: RecurrenceScope; onChange: (s: RecurrenceScope) => void }) {
-  const theme = useTheme();
-  const scopes: RecurrenceScope[] = ["one", "future", "all"];
+export function ScopeSelector({
+  value,
+  onChange,
+  error,
+}: {
+  value: RecurrenceScope;
+  onChange: (s: RecurrenceScope) => void;
+  error?: string;
+}) {
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm }}>
-      {scopes.map((s) => (
-        <Button key={s} title={SCOPE_LABELS[s]} variant={value === s ? "primary" : "secondary"} onPress={() => onChange(s)} />
-      ))}
-    </View>
+    <FormField label="Apply to" error={error}>
+      <Select
+        items={SCOPE_LABELS}
+        value={value}
+        onValueChange={(v) => onChange(v as RecurrenceScope)}
+      >
+        <SelectTrigger accessibilityLabel="Apply to">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.keys(SCOPE_LABELS) as RecurrenceScope[]).map((s) => (
+            <SelectItem key={s} value={s}>
+              {SCOPE_LABELS[s]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FormField>
   );
 }

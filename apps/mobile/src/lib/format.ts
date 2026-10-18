@@ -196,3 +196,12 @@ export function formatShortDate(iso: string | null): string {
 export function formatShortDateTime(iso: string | null): string {
   return formatIso(iso, "MMM d, h:mm a");
 }
+
+/**
+ * e.g. "Jan 1, 2099" — a season start/end date. Season dates are
+ * timezone-naive calendar days stored as UTC midnight (spec 02 D12): the ISO
+ * date part IS the day, so it is read as a day key, never as an instant.
+ */
+export function formatSeasonDay(iso: string): string {
+  return formatDayKey(iso.slice(0, 10));
+}

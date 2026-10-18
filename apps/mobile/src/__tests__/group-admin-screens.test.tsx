@@ -1,7 +1,13 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
-  apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), put: jest.fn(), delete: jest.fn() },
+  apiClient: {
+    get: jest.fn(),
+    post: jest.fn(),
+    patch: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
+  },
 }));
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -11,6 +17,12 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
 }));
 
+jest.mock("../design/ui/toaster", () => ({
+  toast: { success: jest.fn(), error: jest.fn() },
+  Toaster: () => null,
+}));
+
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -27,38 +39,113 @@ const patch = apiClient.patch as jest.Mock;
 const put = apiClient.put as jest.Mock;
 const del = apiClient.delete as jest.Mock;
 
+/** Open a v1 MultiSelect by its label and tick an option by its visible label. */
+async function pickOption(select: string, option: string) {
+  fireEvent.press(await screen.findByLabelText(select));
+  fireEvent.press(await screen.findByText(option));
+}
+
+/** Open a student's group Select and pick a group by its label. */
+async function choose(student: string, group: string) {
+  fireEvent.press(await screen.findByLabelText(`Group for ${student}`));
+  fireEvent.press(screen.getByRole("menuitem", { name: group }));
+}
+
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
 const seasonRow = (id: number, status: "DRAFT" | "ACTIVE", startDate: string) => ({
-  id, code: `s${id}`, title: `Season ${id}`, program: "TEST", year: 2099, status, startDate, endDate: "2099-12-31T00:00:00.000Z",
+  id,
+  code: `s${id}`,
+  title: `Season ${id}`,
+  program: "TEST",
+  year: 2099,
+  status,
+  startDate,
+  endDate: "2099-12-31T00:00:00.000Z",
 });
 const groupRow = (id: number, name: string, seasonId: number) => ({
-  id, name, description: null, studentCount: 1, leaderNames: ["Lina"], seasonId, seasonCode: `s${seasonId}`, seasonTitle: `Season ${seasonId}`,
+  id,
+  name,
+  description: null,
+  studentCount: 1,
+  leaderNames: ["Lina"],
+  seasonId,
+  seasonCode: `s${seasonId}`,
+  seasonTitle: `Season ${seasonId}`,
 });
 const roster = [
-  { userId: 21, name: "Sara", email: "sara@jpc.test", groupId: 3, groupName: "Group A", otherSeasonGroup: null },
-  { userId: 22, name: "Omar", email: "omar@jpc.test", groupId: null, groupName: null, otherSeasonGroup: { groupName: "Old", seasonCode: "s1" } },
+  {
+    userId: 21,
+    name: "Sara",
+    email: "sara@jpc.test",
+    groupId: 3,
+    groupName: "Group A",
+    otherSeasonGroup: null,
+  },
+  {
+    userId: 22,
+    name: "Omar",
+    email: "omar@jpc.test",
+    groupId: null,
+    groupName: null,
+    otherSeasonGroup: { groupName: "Old", seasonCode: "s1" },
+  },
 ];
 const seasonDetail = {
-  id: 7, code: "s7", title: "Season 7", program: "TEST", year: 2099, status: "ACTIVE",
-  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z", description: null,
-  sessionCount: 0, studentCount: 2, absenceBudgetMinutes: 180, absenceWeightMinutes: 90, canAdminister: true, groups: [],
+  id: 7,
+  code: "s7",
+  title: "Season 7",
+  program: "TEST",
+  year: 2099,
+  status: "ACTIVE",
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
+  description: null,
+  sessionCount: 0,
+  studentCount: 2,
+  absenceBudgetMinutes: 180,
+  absenceWeightMinutes: 90,
+  canAdminister: true,
+  groups: [],
 };
 
 function routeGets(extra: Record<string, unknown> = {}) {
   get.mockImplementation((url: string) => {
     const table: Record<string, unknown> = {
-      "/api/v1/seasons": { seasons: [seasonRow(8, "DRAFT", "2099-09-01T00:00:00.000Z"), seasonRow(7, "ACTIVE", "2099-02-01T00:00:00.000Z")] },
-      "/api/v1/seasons/7/groups": { groups: [groupRow(3, "Group A", 7), groupRow(4, "Group B", 7)] },
+      "/api/v1/seasons": {
+        seasons: [
+          seasonRow(8, "DRAFT", "2099-09-01T00:00:00.000Z"),
+          seasonRow(7, "ACTIVE", "2099-02-01T00:00:00.000Z"),
+        ],
+      },
+      "/api/v1/seasons/7/groups": {
+        groups: [groupRow(3, "Group A", 7), groupRow(4, "Group B", 7)],
+      },
       "/api/v1/seasons/8/groups": { groups: [groupRow(9, "Autumn group", 8)] },
       "/api/v1/seasons/7/roster": { roster },
       "/api/v1/seasons/by-code/s7": seasonDetail,
-      "/api/v1/groups/leader-options": { leaders: [{ id: 5, name: "Lina", email: "lina@jpc.test" }, { id: 6, name: "Karim", email: "karim@jpc.test" }] },
+      "/api/v1/seasons/7": seasonDetail,
+      "/api/v1/groups/leader-options": {
+        leaders: [
+          { id: 5, name: "Lina", email: "lina@jpc.test" },
+          { id: 6, name: "Karim", email: "karim@jpc.test" },
+        ],
+      },
       "/api/v1/groups/3": {
-        id: 3, name: "Group A", description: null, seasonId: 7, seasonCode: "s7", seasonTitle: "Season 7",
-        leaders: [{ id: 5, name: "Lina", email: "lina@jpc.test" }], students: [{ id: 21, name: "Sara", email: "sara@jpc.test" }],
+        id: 3,
+        name: "Group A",
+        description: null,
+        seasonId: 7,
+        seasonCode: "s7",
+        seasonTitle: "Season 7",
+        leaders: [{ id: 5, name: "Lina", email: "lina@jpc.test" }],
+        students: [{ id: 21, name: "Sara", email: "sara@jpc.test" }],
         canManage: true,
       },
-      "/api/v1/groups/3/impact": { studentCount: 1, leaderCount: 1, soleTargetAssignments: [{ id: 70, title: "Only A" }] },
+      "/api/v1/groups/3/impact": {
+        studentCount: 1,
+        leaderCount: 1,
+        soleTargetAssignments: [{ id: 70, title: "Only A" }],
+      },
       ...extra,
     };
     return url in table ? ok(table[url]) : Promise.reject(new Error(`unexpected GET ${url}`));
@@ -78,6 +165,7 @@ describe("/groups — ADMIN/SUPER season branch (G6, D-16.16)", () => {
     renderWithProviders(<GroupsScreen />);
 
     expect(await screen.findByText("Group A")).toBeTruthy();
+    expect(screen.getByText("2 groups in Season 7")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/groups");
     expect(get).not.toHaveBeenCalledWith("/api/v1/groups");
 
@@ -86,8 +174,11 @@ describe("/groups — ADMIN/SUPER season branch (G6, D-16.16)", () => {
 
     fireEvent.press(screen.getByText("New group"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/new", params: { seasonId: "8" } });
-    fireEvent.press(screen.getByText("Roster"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/roster", params: { code: "s8" } });
+    fireEvent.press(screen.getByText("Assign to groups"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/seasons/[code]/roster",
+      params: { code: "s8" },
+    });
     fireEvent.press(screen.getByText("Autumn group"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "9" } });
   });
@@ -115,16 +206,21 @@ describe("/group/new", () => {
     post.mockResolvedValue({ data: { data: { id: 30 } } });
     renderWithProviders(<NewGroupScreen />);
 
+    expect(await screen.findByText("Add a group to Season 7.")).toBeTruthy();
     fireEvent.changeText(await screen.findByLabelText("Name"), "Group C");
-    fireEvent.press(await screen.findByLabelText("Karim"));
-    fireEvent.press(await screen.findByLabelText("Omar"));
+    await pickOption("Leaders", "Karim");
+    await pickOption("Students", "Omar");
     // Omar is currently in another season's group — the form says so before saving.
-    expect(screen.getByText("In Old (s1) — saving moves them here.")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Students"));
+    expect(screen.getByText("omar@jpc.test · In Old (s1) — saving moves them here.")).toBeTruthy();
     fireEvent.press(screen.getByText("Create group"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/groups", {
-        name: "Group C", description: null, leaderIds: [6], studentIds: [22],
+        name: "Group C",
+        description: null,
+        leaderIds: [6],
+        studentIds: [22],
       }),
     );
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "30" } });
@@ -151,11 +247,14 @@ describe("/group/[id]/edit", () => {
     renderWithProviders(<EditGroupScreen />);
 
     expect((await screen.findByLabelText("Name")).props.value).toBe("Group A");
-    fireEvent.press(await screen.findByLabelText("Omar"));
-    fireEvent.press(screen.getByText("Save group"));
+    await pickOption("Students", "Omar");
+    fireEvent.press(screen.getByText("Save changes"));
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/groups/3", {
-        name: "Group A", description: null, leaderIds: [5], studentIds: [21, 22],
+        name: "Group A",
+        description: null,
+        leaderIds: [5],
+        studentIds: [21, 22],
       }),
     );
   });
@@ -167,24 +266,40 @@ describe("/group/[id]/edit", () => {
     del.mockRejectedValueOnce(
       Object.assign(new Error("409"), {
         isAxiosError: true,
-        response: { status: 409, data: { error: { code: "group_has_sole_targets", message: "1 assignment(s) target only this group. Retarget them before deleting it." } } },
+        response: {
+          status: 409,
+          data: {
+            error: {
+              code: "group_has_sole_targets",
+              message: "1 assignment(s) target only this group. Retarget them before deleting it.",
+            },
+          },
+        },
       }),
     );
     renderWithProviders(<EditGroupScreen />);
 
-    expect(await screen.findByText("Deleting unassigns 1 student and removes 1 leader.")).toBeTruthy();
+    expect(
+      await screen.findByText("Deleting unassigns 1 student and removes 1 leader."),
+    ).toBeTruthy();
     expect(screen.getByText("Only A")).toBeTruthy();
     fireEvent.press(screen.getByText("Delete group"));
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Really delete?"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/groups/3"));
-    expect(await screen.findByText("1 assignment(s) target only this group. Retarget them before deleting it.")).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "1 assignment(s) target only this group. Retarget them before deleting it.",
+      ),
+    ).toBeTruthy();
   });
 
   it("deletes and returns to /groups", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { id: "3" };
-    routeGets({ "/api/v1/groups/3/impact": { studentCount: 1, leaderCount: 1, soleTargetAssignments: [] } });
+    routeGets({
+      "/api/v1/groups/3/impact": { studentCount: 1, leaderCount: 1, soleTargetAssignments: [] },
+    });
     del.mockResolvedValue({ data: { data: { deleted: true, orphanedStudentIds: [21] } } });
     renderWithProviders(<EditGroupScreen />);
     fireEvent.press(await screen.findByText("Delete group"));
@@ -198,23 +313,29 @@ describe("/seasons/[code]/roster (G7)", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { code: "s7" };
     routeGets();
-    put.mockResolvedValue({ data: { data: { assigned: 1, unassigned: 1, skippedStudentIds: [] } } });
+    put.mockResolvedValue({
+      data: { data: { assigned: 1, unassigned: 1, skippedStudentIds: [] } },
+    });
     renderWithProviders(<SeasonRosterScreen />);
 
     expect(await screen.findByText("Also in Old (s1) — assigning here moves them.")).toBeTruthy();
-    fireEvent.press(await screen.findByLabelText("Sara: Unassigned"));
-    fireEvent.press(screen.getByLabelText("Omar: Group B"));
+    expect(
+      screen.getByText("2 students in Season 7. Set each student's group and save."),
+    ).toBeTruthy();
+    expect(screen.getByText("No unsaved changes")).toBeTruthy();
+    await choose("Sara", "Unassigned");
+    await choose("Omar", "Group B");
     // Pressing a row back to its original group drops it from the batch.
-    fireEvent.press(screen.getByLabelText("Omar: Group A"));
-    fireEvent.press(screen.getByLabelText("Omar: Unassigned"));
-    fireEvent.press(screen.getByText("Save 1 change"));
+    await choose("Omar", "Unassigned");
+    expect(screen.getByText("1 unsaved change")).toBeTruthy();
+    fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
       expect(put).toHaveBeenCalledWith("/api/v1/seasons/7/group-assignments", {
         assignments: [{ studentUserId: 21, groupId: null }],
       }),
     );
-    expect(await screen.findByText("Assigned 1, unassigned 1.")).toBeTruthy();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Assigned 1, unassigned 1."));
   });
 
   it("offers Import groups to a season admin, pushing the importer route", async () => {
@@ -222,8 +343,11 @@ describe("/seasons/[code]/roster (G7)", () => {
     mockParams = { code: "s7" };
     routeGets();
     renderWithProviders(<SeasonRosterScreen />);
-    fireEvent.press(await screen.findByText("Import groups"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/roster/import", params: { code: "s7" } });
+    fireEvent.press(await screen.findByText("Import assignments"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/seasons/[code]/roster/import",
+      params: { code: "s7" },
+    });
   });
 
   it("does not offer Import groups to a caller who cannot administer the season", async () => {
@@ -232,7 +356,7 @@ describe("/seasons/[code]/roster (G7)", () => {
     routeGets({ "/api/v1/seasons/by-code/s7": { ...seasonDetail, canAdminister: false } });
     renderWithProviders(<SeasonRosterScreen />);
     await screen.findByText("Only this season's admins can manage its roster.");
-    expect(screen.queryByText("Import groups")).toBeNull();
+    expect(screen.queryByText("Import assignments")).toBeNull();
   });
 
   it("refuses a caller the server says does not administer the season (C4)", async () => {
@@ -240,7 +364,9 @@ describe("/seasons/[code]/roster (G7)", () => {
     mockParams = { code: "s7" };
     routeGets({ "/api/v1/seasons/by-code/s7": { ...seasonDetail, canAdminister: false } });
     renderWithProviders(<SeasonRosterScreen />);
-    expect(await screen.findByText("Only this season's admins can manage its roster.")).toBeTruthy();
+    expect(
+      await screen.findByText("Only this season's admins can manage its roster."),
+    ).toBeTruthy();
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/roster");
   });
 });

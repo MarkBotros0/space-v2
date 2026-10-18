@@ -7,8 +7,13 @@ import {
   type QuizQuestionType,
 } from "@space/shared";
 
-import { useTheme } from "../theme";
-import { Button, Input, Text } from "../ui";
+import { Check, Plus, Trash2 } from "lucide-react-native";
+
+import { cn } from "../design/lib/cn";
+import { iconWithClassName } from "../design/lib/icon";
+import { Button, Input, Text, Textarea } from "../design/ui";
+
+iconWithClassName(Check, Plus, Trash2);
 
 export interface QuestionEditorProps {
   /** Present when editing; absent when adding. */
@@ -28,8 +33,13 @@ const MAX_OPTIONS = 6; // quizQuestionRequestSchema: options .max(6)
  * ("Add at least 2 options.", "Mark the correct answer.") are the server's own
  * refinements, not a hand-copied second set.
  */
-export function QuestionEditor({ initial, submitting, serverError, onSubmit, onCancel }: QuestionEditorProps) {
-  const theme = useTheme();
+export function QuestionEditor({
+  initial,
+  submitting,
+  serverError,
+  onSubmit,
+  onCancel,
+}: QuestionEditorProps) {
   const [type, setType] = useState<QuizQuestionType>(initial?.type ?? "MCQ");
   const [prompt, setPrompt] = useState(initial?.prompt ?? "");
   const [points, setPoints] = useState(initial ? String(initial.points) : "1");
@@ -41,7 +51,9 @@ export function QuestionEditor({ initial, submitting, serverError, onSubmit, onC
 
   const removeOption = (index: number) => {
     setOptions((prev) => prev.filter((_, i) => i !== index));
-    setCorrectIndex((prev) => (prev === null || prev === index ? null : prev > index ? prev - 1 : prev));
+    setCorrectIndex((prev) =>
+      prev === null || prev === index ? null : prev > index ? prev - 1 : prev,
+    );
   };
 
   const submit = () => {
@@ -61,62 +73,124 @@ export function QuestionEditor({ initial, submitting, serverError, onSubmit, onC
   const error = localError ?? serverError;
 
   return (
-    <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-      <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-        <Button
-          title="Multiple choice"
-          variant={type === "MCQ" ? "primary" : "secondary"}
-          onPress={() => setType("MCQ")}
-        />
-        <Button
-          title="Essay"
-          variant={type === "ESSAY" ? "primary" : "secondary"}
-          onPress={() => setType("ESSAY")}
+    // v1 quiz-builder.tsx QuestionForm: `rounded-xl border border-brand-teal-600/40 bg-card p-4`.
+    <View className="flex-col gap-3 rounded-xl border border-brand-teal-600/40 bg-card p-4">
+      <View className="flex-row flex-wrap items-center gap-2">
+        {(["MCQ", "ESSAY"] as const).map((t) => (
+          <Pressable
+            key={t}
+            accessibilityRole="radio"
+            accessibilityLabel={t === "MCQ" ? "Multiple choice" : "Essay"}
+            accessibilityState={{ checked: type === t }}
+            onPress={() => setType(t)}
+            className={cn(
+              "rounded-lg border px-3 py-1.5",
+              type === t
+                ? "border-brand-teal-600 bg-brand-teal-600/10"
+                : "border-border active:border-brand-teal-500",
+            )}
+          >
+            <Text
+              className={cn(
+                "text-xs font-bold",
+                type === t
+                  ? "text-brand-teal-700 dark:text-brand-teal-300"
+                  : "text-muted-foreground",
+              )}
+            >
+              {t === "MCQ" ? "Multiple choice" : "Essay"}
+            </Text>
+          </Pressable>
+        ))}
+        <View className="ml-auto flex-row items-center gap-1">
+          <Text className="text-xs font-semibold text-muted-foreground">Points</Text>
+          <Input
+            accessibilityLabel="Points"
+            value={points}
+            onChangeText={setPoints}
+            keyboardType="number-pad"
+            className="h-8 w-16"
+          />
+        </View>
+      </View>
+
+      <View className="flex-col gap-1">
+        <Text className="text-xs font-semibold text-muted-foreground">Question</Text>
+        <Textarea
+          accessibilityLabel="Question prompt"
+          value={prompt}
+          onChangeText={setPrompt}
+          placeholder="What is…?"
+          className="min-h-16"
         />
       </View>
-      <Input label="Question prompt" value={prompt} onChangeText={setPrompt} multiline />
-      <Input label="Points" value={points} onChangeText={setPoints} keyboardType="number-pad" />
+
       {type === "MCQ" ? (
-        <>
+        <View className="flex-col gap-2">
+          <Text className="text-xs font-semibold text-muted-foreground">
+            Options (tap the circle to mark the correct answer)
+          </Text>
           {options.map((option, index) => (
-            <View key={index} style={{ gap: theme.spacing.xs }}>
+            <View key={index} className="flex-row items-center gap-2">
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityLabel={`Mark option ${index + 1} correct`}
+                accessibilityState={{ selected: correctIndex === index }}
+                onPress={() => setCorrectIndex(index)}
+                className={cn(
+                  "size-9 shrink-0 items-center justify-center rounded-full border",
+                  correctIndex === index ? "border-success-600 bg-success-600" : "border-border",
+                )}
+              >
+                <Check
+                  size={16}
+                  className={correctIndex === index ? "text-white" : "text-transparent"}
+                />
+              </Pressable>
               <Input
-                label={`Option ${index + 1}`}
+                accessibilityLabel={`Option ${index + 1}`}
                 value={option}
                 onChangeText={(value) =>
                   setOptions((prev) => prev.map((o, i) => (i === index ? value : o)))
                 }
+                placeholder={`Option ${index + 1}`}
+                className="flex-1"
               />
-              <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-                <Pressable
-                  accessibilityRole="radio"
-                  accessibilityLabel={`Mark option ${index + 1} correct`}
-                  accessibilityState={{ selected: correctIndex === index }}
-                  onPress={() => setCorrectIndex(index)}
+              {options.length > 2 ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  accessibilityLabel={`Remove option ${index + 1}`}
+                  onPress={() => removeOption(index)}
                 >
-                  <Text variant="label">{correctIndex === index ? "✓ Correct answer" : "Mark correct"}</Text>
-                </Pressable>
-                {options.length > 2 ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove option ${index + 1}`}
-                    onPress={() => removeOption(index)}
-                  >
-                    <Text variant="label" color={theme.colors.error[500]}>Remove</Text>
-                  </Pressable>
-                ) : null}
-              </View>
+                  <Trash2 size={16} className="text-muted-foreground" />
+                </Button>
+              ) : null}
             </View>
           ))}
           {options.length < MAX_OPTIONS ? (
-            <Button title="Add option" variant="ghost" onPress={() => setOptions((prev) => [...prev, ""])} />
+            <Button
+              className="self-start"
+              variant="ghost"
+              size="sm"
+              onPress={() => setOptions((prev) => [...prev, ""])}
+            >
+              <Plus size={16} className="text-foreground" />
+              Add option
+            </Button>
           ) : null}
-        </>
+        </View>
       ) : null}
-      {error ? <Text variant="label" color={theme.colors.error[500]}>{error}</Text> : null}
-      <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-        <Button title="Save question" onPress={submit} loading={submitting} />
-        <Button title="Cancel" variant="ghost" onPress={onCancel} />
+
+      {error ? <Text className="text-xs text-error-600">{error}</Text> : null}
+
+      <View className="flex-row gap-2">
+        <Button size="sm" disabled={submitting} onPress={submit}>
+          {submitting ? "Saving…" : initial ? "Save" : "Add question"}
+        </Button>
+        <Button variant="ghost" size="sm" disabled={submitting} onPress={onCancel}>
+          Cancel
+        </Button>
       </View>
     </View>
   );

@@ -93,8 +93,9 @@ describe("NewQuizScreen", () => {
     renderWithProviders(<NewQuizScreen />);
 
     fireEvent.changeText(await screen.findByLabelText("Title"), "Week 3 quiz");
-    fireEvent.press(screen.getByText("Online"));
-    fireEvent.press(await screen.findByText("Week 1"));
+    fireEvent.press(screen.getByLabelText("Online (questions)"));
+    fireEvent.press(screen.getByLabelText("Session"));
+    fireEvent.press(await screen.findByRole("menuitem", { name: /Week 1/ }));
     fireEvent.press(screen.getByText("Create & add questions"));
 
     await waitFor(() =>
@@ -110,7 +111,7 @@ describe("NewQuizScreen", () => {
     renderWithProviders(<NewQuizScreen />);
 
     fireEvent.changeText(await screen.findByLabelText("Title"), "Paper quiz");
-    fireEvent.press(screen.getByText("Create quiz"));
+    fireEvent.press(screen.getByText("Create"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes", {
@@ -125,7 +126,7 @@ describe("NewQuizScreen", () => {
 
     fireEvent.changeText(await screen.findByLabelText("Title"), "Paper quiz");
     fireEvent.changeText(screen.getByLabelText("Max score"), "");
-    fireEvent.press(screen.getByText("Create quiz"));
+    fireEvent.press(screen.getByText("Create"));
 
     expect(await screen.findByText("Max score is required for paper quizzes.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
@@ -149,10 +150,11 @@ describe("QuizEditScreen (the builder)", () => {
     get.mockResolvedValue({ data: { data: authoring() } });
     renderWithProviders(<QuizEditScreen />);
 
-    expect(await screen.findByText("1. Capital of France?")).toBeTruthy();
-    expect(screen.getByText("2. Discuss.")).toBeTruthy();
-    expect(screen.getByText("Correct answer: Paris")).toBeTruthy();
-    expect(screen.getByText("Draft · 7 points")).toBeTruthy();
+    expect(await screen.findByText("Capital of France?")).toBeTruthy();
+    expect(screen.getByText("Discuss.")).toBeTruthy();
+    expect(screen.getByText("Correct: Paris")).toBeTruthy();
+    expect(screen.getByText("Draft")).toBeTruthy();
+    expect(screen.getByText("2 questions · 7 pts")).toBeTruthy();
   });
 
   it("adds an MCQ through the editor and sends exactly the form's question", async () => {
@@ -168,7 +170,7 @@ describe("QuizEditScreen (the builder)", () => {
     fireEvent.changeText(screen.getByLabelText("Option 1"), "3");
     fireEvent.changeText(screen.getByLabelText("Option 2"), "4");
     fireEvent.press(screen.getByLabelText("Mark option 2 correct"));
-    fireEvent.press(screen.getByText("Save question"));
+    fireEvent.press(screen.getByText("Add question"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/questions", {
@@ -185,7 +187,7 @@ describe("QuizEditScreen (the builder)", () => {
     fireEvent.changeText(screen.getByLabelText("Question prompt"), "2 + 2?");
     fireEvent.changeText(screen.getByLabelText("Option 1"), "3");
     fireEvent.changeText(screen.getByLabelText("Option 2"), "4");
-    fireEvent.press(screen.getByText("Save question"));
+    fireEvent.press(screen.getByText("Add question"));
 
     expect(await screen.findByText("Mark the correct answer.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
@@ -198,7 +200,7 @@ describe("QuizEditScreen (the builder)", () => {
 
     fireEvent.press(await screen.findByLabelText("Edit question 1"));
     fireEvent.changeText(screen.getByLabelText("Question prompt"), "Capital of Italy?");
-    fireEvent.press(screen.getByText("Save question"));
+    fireEvent.press(screen.getByText("Save"));
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41/questions/100", {
@@ -219,14 +221,14 @@ describe("QuizEditScreen (the builder)", () => {
     );
   });
 
-  it("deletes only on a second, confirming press", async () => {
+  it("deletes only after the confirm dialog", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
     del.mockResolvedValue({ data: { data: { deleted: true } } });
     renderWithProviders(<QuizEditScreen />);
 
     fireEvent.press(await screen.findByLabelText("Delete question 1"));
     expect(del).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByLabelText("Really delete question 1"));
+    fireEvent.press(screen.getByText("Delete"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/quizzes/41/questions/100"));
   });
 

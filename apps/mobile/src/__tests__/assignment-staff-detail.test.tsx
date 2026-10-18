@@ -75,16 +75,17 @@ describe("AssignmentDetailScreen (staff)", () => {
     // Stored v1 HTML renders as text, never as literal tags (B3-16).
     expect(screen.queryByText(/<p>/)).toBeNull();
     expect(screen.getByText(/the thing/)).toBeTruthy();
-    expect(await screen.findByText("Assigned to: Group A")).toBeTruthy();
+    expect(await screen.findByText("Group A")).toBeTruthy();
     expect(screen.getByText("Standard · files up to 10 MB (PDFs)")).toBeTruthy();
-    expect(screen.getByText("Linked session: Week 4")).toBeTruthy();
+    expect(screen.getByText("Session: Week 4")).toBeTruthy();
 
     // One definition of "submitted" (spec §10 item 8): the server's count.
-    expect(await screen.findByText("1 of 2 submitted")).toBeTruthy();
+    expect(await screen.findByText("1/2 submitted")).toBeTruthy();
     expect(screen.getByText("Sara Student")).toBeTruthy();
     // Grouped under a header (REG-84), so the row no longer repeats the group.
     expect(screen.getByText("Group A (2)")).toBeTruthy();
-    expect(screen.getByText("Submitted · Late")).toBeTruthy();
+    expect(screen.getByText("Submitted")).toBeTruthy();
+    expect(screen.getByText("Late")).toBeTruthy();
     expect(screen.getByText("noname@jpc.test")).toBeTruthy();
     expect(screen.getByText("Not started")).toBeTruthy();
     expect(screen.queryByText("Your submission")).toBeNull();
@@ -96,10 +97,9 @@ describe("AssignmentDetailScreen (staff)", () => {
     serve();
     renderWithProviders(<AssignmentDetailScreen />);
 
-    fireEvent.press(await screen.findByText("noname@jpc.test"));
-    expect(mockPush).not.toHaveBeenCalled();
-
-    fireEvent.press(screen.getByText("Sara Student"));
+    // Only the started row carries an Open button.
+    expect(await screen.findAllByText("Open")).toHaveLength(1);
+    fireEvent.press(screen.getByText("Open"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
   });
 
@@ -147,7 +147,7 @@ describe("AssignmentDetailScreen (staff)", () => {
     serve({ canManage: false });
     renderWithProviders(<AssignmentDetailScreen />);
 
-    expect(await screen.findByText("1 of 2 submitted")).toBeTruthy();
+    expect(await screen.findByText("1/2 submitted")).toBeTruthy();
     expect(screen.queryByText("Edit")).toBeNull();
     expect(screen.queryByText("Delete assignment")).toBeNull();
   });
@@ -157,8 +157,8 @@ describe("AssignmentDetailScreen (staff)", () => {
     serve({ canManage: false });
     renderWithProviders(<AssignmentDetailScreen />);
 
-    expect(await screen.findByText("Assigned to: Group A")).toBeTruthy();
+    expect(await screen.findByText("Group A")).toBeTruthy();
     expect(get).not.toHaveBeenCalledWith("/api/v1/assignments/55/tracker");
-    expect(screen.queryByText("1 of 2 submitted")).toBeNull();
+    expect(screen.queryByText("1/2 submitted")).toBeNull();
   });
 });

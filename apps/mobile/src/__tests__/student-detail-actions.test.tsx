@@ -76,22 +76,22 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("Sara Student")).toBeTruthy();
-    expect(screen.getByText("Edit")).toBeTruthy();
+    expect(await screen.findByText("Edit profile")).toBeTruthy();
     expect(screen.getByText("Graduate")).toBeTruthy();
     expect(screen.getByText("Delete student")).toBeTruthy();
-    expect(screen.getAllByText("Drop")).toHaveLength(2);
     expect(screen.getByText(/Mar 9, 2004/)).toBeTruthy();
+    fireEvent.press(screen.getByText("Seasons"));
+    expect(screen.getAllByText("Drop")).toHaveLength(2);
   });
 
   it("gives an ADMIN of season 7 Edit and ONE Drop — no Graduate, no Delete", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<StudentDetailScreen />);
 
-    await screen.findByText("Sara Student");
-    expect(screen.getByText("Edit")).toBeTruthy();
+    await screen.findByText("Edit profile");
     expect(screen.queryByText("Graduate")).toBeNull();
     expect(screen.queryByText("Delete student")).toBeNull();
+    fireEvent.press(screen.getByText("Seasons"));
     expect(screen.getAllByText("Drop")).toHaveLength(1);
   });
 
@@ -100,15 +100,16 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     get.mockResolvedValue({ data: { data: { ...base, profile: publicProfile } } });
     renderWithProviders(<StudentDetailScreen />);
 
-    await screen.findByText("Sara Student");
-    expect(screen.queryByText("Edit")).toBeNull();
+    await screen.findByText("Seasons");
+    expect(screen.queryByText("Edit profile")).toBeNull();
+    fireEvent.press(screen.getByText("Seasons"));
     expect(screen.queryByText("Drop")).toBeNull();
   });
 
   it("Edit goes to the edit route", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
-    fireEvent.press(await screen.findByText("Edit"));
+    fireEvent.press(await screen.findByText("Edit profile"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]/edit", params: { id: "21" } });
   });
 
@@ -150,6 +151,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     patch.mockResolvedValue({ data: { data: { id: 507, status: "WITHDRAWN" } } });
     renderWithProviders(<StudentDetailScreen />);
 
+    fireEvent.press(await screen.findByText("Seasons"));
     fireEvent.press((await screen.findAllByText("Drop"))[0]!);
     expect(screen.getByText("Drop from Spring 2099?")).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Reason (optional)"), "Moved away");

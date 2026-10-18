@@ -214,8 +214,11 @@ admin later: `src/design/dashboard/section-card.tsx` (card with icon header + "V
 FigurePair), `src/design/sessions/{next-session-card,check-in-attendance-list,attendance-form}.tsx`,
 `src/design/quizzes/` (attempt grader, paper sheet), `src/design/students/{student-detail,note-form}.tsx`;
 `RouteError` picks "your leader" / "an admin" from the session role. If a capture shows a
-class ignored, restart Metro with `--clear` before working around it. Remaining
-differences per batch are in `docs/superpowers/ui-rebuild/gaps-batch-<n>.md`.
+class ignored, restart Metro with `--clear` before working around it. Admin pages (batch 4) share `src/design/forms/form-parts.tsx` (FormErrorBox, FormActions, ToggleButtons),
+`src/design/seasons/*`, `src/components/dashboard/StaffDashboard.tsx`, and the design `StudentDetail`, whose props
+(`canWriteNote`, `actions`, `dropFor`, `staffTabs`) switch it between leader and admin views.
+Remaining
+differences per batch are in `docs/superpowers/ui-rebuild/gaps-batch-<n>.md`; captures still owed are in backlog section 14.
 
 **Testing.** Anything rendering `Screen` must use `renderWithProviders`
 (`src/__tests__/helpers/render.tsx`) — it supplies `SafeAreaProvider` with

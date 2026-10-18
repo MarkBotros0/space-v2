@@ -3,8 +3,7 @@ import { View } from "react-native";
 import { exportFilename } from "@space/shared";
 
 import { useReportExport, useSeasonWorkbookManifest } from "../hooks/use-report-export";
-import { useTheme } from "../theme";
-import { Button, Text } from "../ui";
+import { Button, Text } from "../design/ui";
 
 export interface ExportMenuProps {
   seasonId: number | null;
@@ -29,16 +28,20 @@ function kb(bytes: number): string {
  * proves it; hiding the control just avoids offering a user something that can
  * only fail.
  */
-export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook, exportDay }: ExportMenuProps) {
-  const theme = useTheme();
+export function ExportMenu({
+  seasonId,
+  scopeLabel,
+  canExportWorkbook,
+  exportDay,
+}: ExportMenuProps) {
   const exportMutation = useReportExport();
   const manifest = useSeasonWorkbookManifest(seasonId, canExportWorkbook);
 
   return (
-    <View style={{ gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
+    <View className="flex-col gap-2">
       <Button
-        title="Export engagement"
-        variant="secondary"
+        className="self-start"
+        variant="outline"
         onPress={() =>
           exportMutation.mutate({
             path:
@@ -57,12 +60,14 @@ export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook, exportDay 
             dialogTitle: `Engagement — ${scopeLabel}`,
           })
         }
-      />
+      >
+        Export engagement
+      </Button>
 
       {canExportWorkbook && manifest.data ? (
         <Button
-          title={`Export season workbook (~${kb(manifest.data.estimatedBytes)})`}
-          variant="secondary"
+          className="self-start"
+          variant="outline"
           onPress={() =>
             exportMutation.mutate({
               path: `/api/v1/seasons/${seasonId}/exports/workbook`,
@@ -71,19 +76,17 @@ export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook, exportDay 
               estimatedBytes: manifest.data!.estimatedBytes,
             })
           }
-        />
+        >
+          {`Export season workbook (~${kb(manifest.data.estimatedBytes)})`}
+        </Button>
       ) : null}
 
       {exportMutation.isPending ? (
-        <Text variant="caption" color={theme.colors.neutral[600]}>
-          Preparing your file…
-        </Text>
+        <Text className="text-xs text-muted-foreground">Preparing your file…</Text>
       ) : null}
 
       {exportMutation.isError ? (
-        <Text variant="caption" color={theme.colors.error[600]}>
-          {errorText(exportMutation.error)}
-        </Text>
+        <Text className="text-xs text-error-600">{errorText(exportMutation.error)}</Text>
       ) : null}
     </View>
   );

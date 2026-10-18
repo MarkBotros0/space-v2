@@ -36,16 +36,50 @@ const scopesFor = (seasonAdminIds: number[]) => ({
   graduationYear: null as number | null,
 });
 const adminOf7 = {
-  user: { id: 2, name: "Admin", email: "adm@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 2,
+    name: "Admin",
+    email: "adm@jpc.test",
+    role: "ADMIN" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: scopesFor([7]),
 };
 const adminOfOther = { ...adminOf7, scopes: scopesFor([8]) };
 
 const preview = {
   rows: [
-    { rowNumber: 2, name: "Ann", email: "ann@jpc.test", group: "Group A", status: "assign", message: null, studentUserId: 11, groupId: 3 },
-    { rowNumber: 3, name: "Bob", email: "bob@jpc.test", group: "Group A", status: "unchanged", message: null, studentUserId: 12, groupId: 3 },
-    { rowNumber: 4, name: "Cy", email: "cy@jpc.test", group: "Nope", status: "no_group", message: "No group named \"Nope\".", studentUserId: 13, groupId: null },
+    {
+      rowNumber: 2,
+      name: "Ann",
+      email: "ann@jpc.test",
+      group: "Group A",
+      status: "assign",
+      message: null,
+      studentUserId: 11,
+      groupId: 3,
+    },
+    {
+      rowNumber: 3,
+      name: "Bob",
+      email: "bob@jpc.test",
+      group: "Group A",
+      status: "unchanged",
+      message: null,
+      studentUserId: 12,
+      groupId: 3,
+    },
+    {
+      rowNumber: 4,
+      name: "Cy",
+      email: "cy@jpc.test",
+      group: "Nope",
+      status: "no_group",
+      message: 'No group named "Nope".',
+      studentUserId: 13,
+      groupId: null,
+    },
   ],
   delimiter: "tab",
   counts: { assign: 1, unchanged: 1, no_student: 0, no_group: 1, invalid: 0, total: 3 },
@@ -70,8 +104,11 @@ describe("GroupImportScreen", () => {
     post.mockResolvedValue({ data: { data: preview } });
     renderWithProviders(<GroupImportScreen />);
 
-    expect(await screen.findByText("Import groups · Spring 2099")).toBeTruthy();
-    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "email\tgroup\nann@jpc.test\tGroup A");
+    expect(await screen.findByText("Import group assignments")).toBeTruthy();
+    fireEvent.changeText(
+      screen.getByLabelText("Paste your spreadsheet"),
+      "email\tgroup\nann@jpc.test\tGroup A",
+    );
     fireEvent.press(screen.getByText("Preview"));
 
     await waitFor(() =>
@@ -80,19 +117,30 @@ describe("GroupImportScreen", () => {
         delimiter: "auto",
       }),
     );
-    expect(await screen.findByText("1 to assign · 1 unchanged · 1 not matched")).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "3 rows · 1 to assign · 1 unchanged · 0 no match · 1 no group · 0 invalid",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("Assign")).toBeTruthy();
+    expect(screen.getByText("No group")).toBeTruthy();
   });
 
   it("commits only the assign rows, as resolved id pairs, and reports what was APPLIED", async () => {
     useSessionStore.setState(adminOf7);
     post
       .mockResolvedValueOnce({ data: { data: preview } })
-      .mockResolvedValueOnce({ data: { data: { assigned: 0, skipped: 1, skippedStudentIds: [11] } } });
+      .mockResolvedValueOnce({
+        data: { data: { assigned: 0, skipped: 1, skippedStudentIds: [11] } },
+      });
     renderWithProviders(<GroupImportScreen />);
 
-    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "email\tgroup\nann@jpc.test\tGroup A");
+    fireEvent.changeText(
+      await screen.findByLabelText("Paste your spreadsheet"),
+      "email\tgroup\nann@jpc.test\tGroup A",
+    );
     fireEvent.press(screen.getByText("Preview"));
-    fireEvent.press(await screen.findByText("Assign 1 student"));
+    fireEvent.press(await screen.findByText("Apply 1 assignment"));
 
     await waitFor(() =>
       expect(post).toHaveBeenLastCalledWith("/api/v1/seasons/7/imports/groups/commit", {

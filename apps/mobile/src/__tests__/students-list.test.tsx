@@ -68,7 +68,7 @@ describe("StudentsScreen (active)", () => {
 
     expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText(/Spring 2099/)).toBeTruthy();
-    expect(screen.getByText("1 total")).toBeTruthy();
+    expect(screen.getByText("1 student in your seasons")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=active");
   });
 
@@ -136,7 +136,7 @@ describe("AlumniScreen", () => {
 
     renderWithProviders(<AlumniScreen />);
 
-    expect(await screen.findByText(/Class of 2024/)).toBeTruthy();
+    expect(await screen.findByText("2024")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=alumni");
   });
 });
@@ -223,15 +223,17 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     renderWithProviders(<StudentsScreen />);
     await screen.findByText("Sara Student");
 
-    fireEvent.press(screen.getByText("Filter and sort"));
-    fireEvent.press(await screen.findByLabelText("Group A · Spring 2099"));
+    fireEvent.press(screen.getByLabelText("Group"));
+    fireEvent.press(await screen.findByRole("menuitem", { name: "Group A · Spring 2099" }));
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=3"));
 
-    fireEvent.press(screen.getByLabelText("No group"));
+    fireEvent.press(screen.getByLabelText("Group"));
+    fireEvent.press(screen.getByRole("menuitem", { name: "Unassigned" }));
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none"));
 
-    fireEvent.press(screen.getByLabelText("University"));
-    fireEvent.press(await screen.findByLabelText("Descending"));
+    fireEvent.press(screen.getByLabelText("Sort by"));
+    fireEvent.press(screen.getByRole("menuitem", { name: "Sort: University" }));
+    fireEvent.press(screen.getByLabelText("Toggle sort direction"));
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none&sort=university&dir=desc"),
     );
@@ -242,6 +244,6 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     serve();
     renderWithProviders(<DroppedScreen />);
     await waitFor(() => expect(get).toHaveBeenCalled());
-    expect(screen.queryByText("Filter and sort")).toBeNull();
+    expect(screen.queryByLabelText("Group")).toBeNull();
   });
 });

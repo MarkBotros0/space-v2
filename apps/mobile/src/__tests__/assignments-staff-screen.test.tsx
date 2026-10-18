@@ -61,12 +61,17 @@ describe("AssignmentsScreen (staff)", () => {
     expect(await screen.findByText("Essay one")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/assignments");
     // Names arrive with the groups query; until then the label counts groups.
-    expect(await screen.findByText("Group A · 1/2 submitted")).toBeTruthy();
-    expect(screen.getByText("All students · 0/3 submitted")).toBeTruthy();
-    expect(screen.getByText("Group A, Group B · 2/4 submitted")).toBeTruthy();
+    expect(await screen.findByText("Group A")).toBeTruthy();
+    expect(screen.getByText("1/2 submitted")).toBeTruthy();
+    expect(screen.getByText("All students")).toBeTruthy();
+    expect(screen.getByText("0/3 submitted")).toBeTruthy();
+    expect(screen.getByText("Group A, Group B")).toBeTruthy();
+    expect(screen.getByText("2/4 submitted")).toBeTruthy();
+    expect(screen.getByText("3 assignments")).toBeTruthy();
     expect(screen.getByText("No due date")).toBeTruthy();
-    // The flag decides "Overdue" (C4); the day is the server's org day (X13).
-    expect(screen.getByText("Due Apr 1, 2099 · Overdue")).toBeTruthy();
+    // The flag decides overdue (C4); the day is the server's org day (X13).
+    expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
+    expect(screen.getByText(/^Due in /)).toBeTruthy();
   });
 
   it("opens an assignment, and offers New assignment to a season admin", async () => {
@@ -98,7 +103,7 @@ describe("AssignmentsScreen (staff)", () => {
 
     serve(new Error("network down"));
     renderWithProviders(<AssignmentsScreen />);
-    expect(await screen.findByText("Couldn't load assignments.")).toBeTruthy();
+    expect(await screen.findByText("Something went wrong")).toBeTruthy();
   });
 
   it("says so when there is no season, without asking for assignments", async () => {

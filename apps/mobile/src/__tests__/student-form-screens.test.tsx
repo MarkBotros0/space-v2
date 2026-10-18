@@ -23,24 +23,52 @@ const post = apiClient.post as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
 
 const season = (id: number, title: string, status: "ACTIVE" | "DRAFT" | "ARCHIVED") => ({
-  id, code: `s${id}`, title, program: "TEST", year: 2099, status,
-  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
+  id,
+  code: `s${id}`,
+  title,
+  program: "TEST",
+  year: 2099,
+  status,
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
 });
 
 const enrollment = (seasonId: number, title: string) => ({
-  enrollmentId: 500 + seasonId, seasonId, seasonCode: `S${seasonId}`, seasonTitle: title,
-  seasonStatus: "ACTIVE" as const, startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
-  groupName: null, status: "ACTIVE" as const, enrolledAt: "2099-01-01T00:00:00.000Z",
-  completedAt: null, droppedAt: null, dropReason: null, attendancePct: null,
+  enrollmentId: 500 + seasonId,
+  seasonId,
+  seasonCode: `S${seasonId}`,
+  seasonTitle: title,
+  seasonStatus: "ACTIVE" as const,
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
+  groupName: null,
+  status: "ACTIVE" as const,
+  enrolledAt: "2099-01-01T00:00:00.000Z",
+  completedAt: null,
+  droppedAt: null,
+  dropReason: null,
+  attendancePct: null,
 });
 
 const detail = {
-  id: 21, name: "Sara Student", email: "sara@jpc.test", avatarPath: null, graduationYear: null,
-  currentGroup: null, enrollments: [enrollment(7, "Spring 2099"), enrollment(8, "Autumn 2099")],
+  id: 21,
+  name: "Sara Student",
+  email: "sara@jpc.test",
+  avatarPath: null,
+  graduationYear: null,
+  currentGroup: null,
+  enrollments: [enrollment(7, "Spring 2099"), enrollment(8, "Autumn 2099")],
   profile: {
-    university: "Cairo University", year: null, gifts: null,
-    activeSeasonId: 7, activeSeasonTitle: "Spring 2099", activeSeasonCode: "S7",
-    phone: null, dateOfBirth: null, spiritualBackground: null, notes: "Watch attendance",
+    university: "Cairo University",
+    year: null,
+    gifts: null,
+    activeSeasonId: 7,
+    activeSeasonTitle: "Spring 2099",
+    activeSeasonCode: "S7",
+    phone: null,
+    dateOfBirth: null,
+    spiritualBackground: null,
+    notes: "Watch attendance",
   },
 };
 
@@ -52,7 +80,9 @@ beforeEach(() => {
 describe("/students/new", () => {
   beforeEach(() => {
     get.mockResolvedValue({
-      data: { data: { seasons: [season(7, "Spring 2099", "ACTIVE"), season(9, "Old 2001", "ARCHIVED")] } },
+      data: {
+        data: { seasons: [season(7, "Spring 2099", "ACTIVE"), season(9, "Old 2001", "ARCHIVED")] },
+      },
     });
   });
 
@@ -63,9 +93,9 @@ describe("/students/new", () => {
 
     fireEvent.changeText(screen.getByLabelText("Full name"), "New Student");
     fireEvent.changeText(screen.getByLabelText("Email"), "new@jpc.test");
-    fireEvent.changeText(screen.getByLabelText("Date of birth (YYYY-MM-DD)"), "2004-03-09");
+    fireEvent.press(await screen.findByLabelText("Enroll in season (optional)"));
     fireEvent.press(await screen.findByText("Spring 2099"));
-    // Archived seasons are not offered for a new enrollment.
+    // Archived seasons were never offered for a new enrollment.
     expect(screen.queryByText("Old 2001")).toBeNull();
     fireEvent.press(screen.getByText("Create and send invite"));
 
@@ -75,7 +105,6 @@ describe("/students/new", () => {
     expect(body).toMatchObject({
       name: "New Student",
       email: "new@jpc.test",
-      dateOfBirth: "2004-03-09T00:00:00.000Z",
       seasonId: 7,
     });
     expect(body).not.toHaveProperty("password");
@@ -93,7 +122,9 @@ describe("/students/new", () => {
     fireEvent.press(screen.getByText("Create and send invite"));
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Full name").props.accessibilityHint).toBe("At least 2 characters."),
+      expect(screen.getByLabelText("Full name").props.accessibilityHint).toBe(
+        "At least 2 characters.",
+      ),
     );
     expect(screen.getByLabelText("Email").props.accessibilityHint).toBe("Must be a valid email.");
     expect(post).not.toHaveBeenCalled();
@@ -120,7 +151,8 @@ describe("/student/[id]/edit", () => {
     const university = await screen.findByLabelText("University");
     expect(university.props.value).toBe("Cairo University");
     fireEvent.changeText(screen.getByLabelText("Phone"), "+20 111");
-    fireEvent.press(screen.getByText("Autumn 2099"));
+    fireEvent.press(screen.getByLabelText("Active season"));
+    fireEvent.press(await screen.findByText("Autumn 2099"));
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));

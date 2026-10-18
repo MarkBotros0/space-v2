@@ -424,18 +424,27 @@ describe("DashboardScreen — ADMIN and LEADER", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Spring 2099")).toBeTruthy();
-    expect(screen.getByText("Session 3 of 4")).toBeTruthy();
-    expect(screen.getByText("Average attendance 33%")).toBeTruthy();
+    expect(screen.getByText("Current season")).toBeTruthy();
+    expect(screen.getByLabelText("Season average attendance 33%")).toBeTruthy();
+    expect(screen.getByText("3 students · Session 3 of 4")).toBeTruthy();
     expect(screen.getByText("Happening now")).toBeTruthy();
-    expect(screen.getByText("1 of 12")).toBeTruthy();
-    expect(screen.getByLabelText("Quizzes pending: 2")).toBeTruthy();
+    expect(screen.getByLabelText("Students: 3")).toBeTruthy();
+    expect(screen.getByLabelText("Progress: 75%")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes: 2")).toBeTruthy();
+    expect(screen.getByText("Students at risk")).toBeTruthy();
+    expect(screen.getByText("1/3 submitted")).toBeTruthy();
+    expect(screen.getByText("12 students at risk")).toBeTruthy();
     expect(screen.getByText("1 quiz draft not yet published")).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText("Sara Student, 33% attendance, 1 of 3 submitted"));
+    fireEvent.press(screen.getAllByText("Sara Student")[0]!);
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
-    fireEvent.press(screen.getByLabelText("Pending review: 1"));
-    expect(mockPush).toHaveBeenCalledWith("/submissions");
-    fireEvent.press(screen.getByText("View all"));
+    fireEvent.press(screen.getByLabelText("View all Assignments"));
+    expect(mockPush).toHaveBeenCalledWith("/assignments");
+    fireEvent.press(screen.getByLabelText("View all Quizzes"));
+    expect(mockPush).toHaveBeenCalledWith("/quizzes");
+    fireEvent.press(screen.getByLabelText("Students: 3"));
+    expect(mockPush).toHaveBeenCalledWith("/students");
+    fireEvent.press(screen.getByLabelText("View all Students at risk"));
     expect(mockPush).toHaveBeenCalledWith("/students");
 
     expect(requested().some((u) => u.startsWith("/api/v1/reports"))).toBe(false);

@@ -1,154 +1,159 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import type { SeasonDetail } from "@space/shared";
+import { Pencil } from "lucide-react-native";
 
 import { EditSeason } from "../../../../src/components/season/EditSeason";
+import { PageTitle } from "../../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { iconWithClassName } from "../../../../src/design/lib/icon";
+import { SeasonDetailView } from "../../../../src/design/seasons/season-detail";
+import { CalendarList } from "../../../../src/design/sessions/calendar-list";
+import { Button, EmptyState } from "../../../../src/design/ui";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useSeasonSessions } from "../../../../src/hooks/use-sessions";
-import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
 import { useSessionStore } from "../../../../src/store/session";
-import { useTheme } from "../../../../src/theme";
-import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../../../src/ui";
 
-/**
- * Season dates are timezone-naive calendar days stored as UTC midnight (spec
- * 02 D12); the ISO date part IS the day. Formatting the instant in the
- * device zone would show Dec 31 west of UTC.
- */
-const seasonDay = (iso: string) => formatDayKey(iso.slice(0, 10));
-
-function Actions({ season, isSuper }: { season: SeasonDetail; isSuper: boolean }) {
-  const theme = useTheme();
-  const router = useRouter();
-  if (!isSuper && !season.canAdminister) return null;
-  return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-      {isSuper ? (
-        <Button
-          title="Edit season"
-          variant="secondary"
-          onPress={() => router.push({ pathname: "/seasons/[code]/edit", params: { code: season.code } })}
-        />
-      ) : null}
-      {season.canAdminister ? (
-        <>
-          <Button
-            title="Roster"
-            variant="secondary"
-            onPress={() => router.push({ pathname: "/seasons/[code]/roster", params: { code: season.code } })}
-          />
-          <Button
-            title="New group"
-            variant="secondary"
-            onPress={() => router.push({ pathname: "/group/new", params: { seasonId: String(season.id) } })}
-          />
-          <Button
-            title="New session"
-            variant="secondary"
-            onPress={() => router.push({ pathname: "/session/new", params: { seasonId: String(season.id) } })}
-          />
-        </>
-      ) : null}
-    </View>
-  );
-}
-
-function SessionsCard({ seasonId }: { seasonId: number }) {
-  const theme = useTheme();
-  const router = useRouter();
-  const sessions = useSeasonSessions(seasonId);
-  let body: ReactNode;
-  if (sessions.isPending) body = <LoadingState />;
-  else if (sessions.isError) body = <ErrorState message="Couldn't load sessions." onRetry={() => void sessions.refetch()} />;
-  else if (sessions.data.length === 0) body = <Text variant="body" color={theme.colors.neutral[600]}>No sessions yet.</Text>;
-  else
-    body = sessions.data.map((s) => (
-      <Card
-        key={s.id}
-        style={{ marginTop: theme.spacing.sm }}
-        onPress={() => router.push({ pathname: "/session/[id]", params: { id: String(s.id) } })}
-      >
-        <Text variant="body">{s.title}</Text>
-        {/* Server-derived org day and time (X13) — never the device's reading of startsAt. */}
-        <Text variant="label" color={theme.colors.neutral[600]}>{`${formatDayKey(s.dayKey)} · ${formatWallTime(s.startTime)}`}</Text>
-      </Card>
-    ));
-  return (
-    <Card style={{ marginTop: theme.spacing.md }}>
-      <Text variant="heading">Sessions</Text>
-      {body}
-    </Card>
-  );
-}
+iconWithClassName(Pencil);
 
 /**
  * /seasons/[code] — any season, any role that may see it (spec 02 §9; G4).
- * One screen, role branches by data: SUPER gets Edit; whoever the server
- * says administers the season (canAdminister, C4) gets the workspace; others
- * read. Groups come pre-narrowed by the server for students.
+ * v1 SeasonDetail (admin: read-only tabs; super: Edit season). V2-ONLY kept:
+ * whoever the server says administers the season (canAdminister, C4) gets
+ * the Roster / New group / New session buttons under the tabs, the group
+ * cards open the group, and an ADMIN edits description and budgets (REG-72).
  */
 export default function SeasonDetailScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
   const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
   const isAdmin = useSessionStore((s) => s.user?.role === "ADMIN");
   const detail = useSeasonByCode(code);
+  const sessions = useSeasonSessions(detail.data?.id ?? null);
+
+  const refresh = () => {
+    if (code !== null) void detail.refetch();
+    if (detail.data) void sessions.refetch();
+  };
 
   let body: ReactNode;
-  if (code === null) body = <EmptyState title="Not found" message="That season link isn't valid." />;
-  else if (detail.isPending) body = <LoadingState />;
-  else if (detail.isError)
-    body = <ErrorState message="Couldn't load this season." onRetry={() => void detail.refetch()} />;
-  else {
+  if (code === null) {
+    body = <EmptyState title="Not found" description="That season link isn't valid." />;
+  } else if (detail.isPending) {
+    body = <RouteSkeleton />;
+  } else if (detail.isError) {
+    body = <RouteError onRetry={() => void detail.refetch()} />;
+  } else {
     const s = detail.data;
+    const canAdminister = s.canAdminister;
+    const manage = canAdminister || isSuper;
+    let sessionsTab: ReactNode;
+    if (sessions.isPending) sessionsTab = <RouteSkeleton />;
+    else if (sessions.isError) sessionsTab = <RouteError onRetry={() => void sessions.refetch()} />;
+    else
+      sessionsTab = (
+        <CalendarList
+          sessions={sessions.data}
+          onOpen={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
+          onMarkAttendance={
+            manage
+              ? (id) =>
+                  router.push({ pathname: "/session/[id]/attendance", params: { id: String(id) } })
+              : undefined
+          }
+          onCreate={
+            canAdminister
+              ? () => router.push({ pathname: "/session/new", params: { seasonId: String(s.id) } })
+              : undefined
+          }
+        />
+      );
+
     body = (
-      <>
-        <Card>
-          <Text variant="title">{s.title}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>{`${s.code} · ${s.status}`}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>{`${seasonDay(s.startDate)} – ${seasonDay(s.endDate)}`}</Text>
-          {s.description ? <Text variant="body">{s.description}</Text> : null}
-          <Text variant="label">{`${s.sessionCount} sessions · ${s.studentCount} students`}</Text>
-        </Card>
-        <Actions season={s} isSuper={isSuper} />
-        <Card style={{ marginTop: theme.spacing.md }}>
-          <Text variant="heading">Groups</Text>
-          {s.groups.length === 0 ? (
-            <Text variant="body" color={theme.colors.neutral[600]}>No groups yet.</Text>
-          ) : (
-            s.groups.map((g) => (
-              <Card
-                key={g.id}
-                style={{ marginTop: theme.spacing.sm }}
-                onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(g.id) } })}
+      <View className="flex-col gap-4">
+        <PageTitle title={s.title} subtitle={`Code: ${s.code}`} />
+        <SeasonDetailView
+          season={s}
+          sessionsTab={sessionsTab}
+          onOpenGroup={(id) => router.push({ pathname: "/group/[id]", params: { id: String(id) } })}
+          groupsAction={
+            canAdminister ? (
+              <Button
+                variant="outline"
+                onPress={() =>
+                  router.push({ pathname: "/seasons/[code]/roster", params: { code: s.code } })
+                }
               >
-                <Text variant="body">{g.name}</Text>
-                <Text variant="caption" color={theme.colors.neutral[600]}>
-                  {g.leaderNames.length > 0 ? `${g.studentCount} students · ${g.leaderNames.join(", ")}` : `${g.studentCount} students`}
-                </Text>
-              </Card>
-            ))
-          )}
-        </Card>
-        <SessionsCard seasonId={s.id} />
-        {isAdmin && s.canAdminister ? <EditSeason season={s} /> : null}
-      </>
+                Manage groups
+              </Button>
+            ) : undefined
+          }
+          actions={
+            isSuper || canAdminister ? (
+              <View className="flex-row flex-wrap gap-2">
+                {isSuper ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onPress={() =>
+                      router.push({ pathname: "/seasons/[code]/edit", params: { code: s.code } })
+                    }
+                  >
+                    <Pencil size={14} className="text-foreground" />
+                    Edit season
+                  </Button>
+                ) : null}
+                {canAdminister ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onPress={() =>
+                        router.push({
+                          pathname: "/seasons/[code]/roster",
+                          params: { code: s.code },
+                        })
+                      }
+                    >
+                      Roster
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onPress={() =>
+                        router.push({ pathname: "/group/new", params: { seasonId: String(s.id) } })
+                      }
+                    >
+                      New group
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onPress={() =>
+                        router.push({
+                          pathname: "/session/new",
+                          params: { seasonId: String(s.id) },
+                        })
+                      }
+                    >
+                      New session
+                    </Button>
+                  </>
+                ) : null}
+              </View>
+            ) : undefined
+          }
+          overviewExtra={isAdmin && canAdminister ? <EditSeason season={s} /> : undefined}
+        />
+      </View>
     );
   }
 
   return (
-    <Screen
-      edges={["top", "left", "right"]}
-      scroll
-      onRefresh={() => {
-        if (code !== null) void detail.refetch();
-      }}
-      refreshing={detail.isRefetching}
-    >
+    <ShellFrame refreshing={detail.isRefetching} onRefresh={refresh}>
       {body}
-    </Screen>
+    </ShellFrame>
   );
 }

@@ -23,20 +23,29 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 const NAVY = "text-brand-navy-900 dark:text-foreground";
 const COLUMN = "text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70";
 
+type Variant = "ADMIN" | "LEADER";
+
 /**
- * v1 app/leader/dashboard/page.tsx with the v2 decisions kept (B3-4): neutral
+ * v1 app/leader/dashboard/page.tsx (B3-4) and app/admin/dashboard/page.tsx
+ * (B4-1) share one body; the variant switches the hero, the order, the
+ * destinations and the card titles. v2 decisions kept: neutral
  * ring and no 70/85 tiers (spec 19 D2), "—" before anyone has had a session
  * (D5), the at-risk preview instead of the full roster (D6) with "N/M
  * submitted" instead of a pending count (D4), every led group named (D7),
  * "Session" not "Week" (D12), the stream link only while live (D13).
  */
-function LeaderSummary({
+function StaffSummary({
   data,
   events,
+  variant,
 }: {
   data: StaffSeasonDashboard;
   events: ReturnType<typeof useUpcomingEvents>;
+  variant: Variant;
 }) {
+  const isAdmin = variant === "ADMIN";
+  const studentsHref = isAdmin ? "/students" : "/groups";
+  const assignmentsHref = isAdmin ? "/assignments" : "/submissions";
   const router = useRouter();
   const { progress, cohort, submissions, quizzes } = data;
   const mean = cohort.meanAttendancePct;
@@ -47,26 +56,39 @@ function LeaderSummary({
     <>
       <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
         <View className="flex-row items-center gap-5">
-          <ProgressRing value={mean ?? 0} label={mean !== null ? `Group average attendance ${mean}%` : "No attendance yet"}>
-            <Text className={`text-2xl font-black ${NAVY}`}>{mean !== null ? `${mean}%` : "—"}</Text>
+          <ProgressRing
+            value={mean ?? 0}
+            label={
+              mean !== null
+                ? `${isAdmin ? "Season" : "Group"} average attendance ${mean}%`
+                : "No attendance yet"
+            }
+          >
+            <Text className={`text-2xl font-black ${NAVY}`}>
+              {mean !== null ? `${mean}%` : "—"}
+            </Text>
             <Eyebrow className="mt-1">attendance</Eyebrow>
           </ProgressRing>
           <View className="min-w-0 flex-1">
-            <Eyebrow tone="teal">{data.season.title}</Eyebrow>
+            <Eyebrow tone="teal">{isAdmin ? "Current season" : data.season.title}</Eyebrow>
             <Text numberOfLines={1} className={`mt-1 text-lg font-black ${NAVY}`}>
-              {groupNames || "Your group"}
+              {isAdmin ? data.season.title : groupNames || "Your group"}
             </Text>
             <Text className="text-xs text-muted-foreground">
               {`${n} ${plural(n, "student", "students")}${
-                progress.sessionsTotal > 0 ? ` · Session ${progress.sessionsHeld} of ${progress.sessionsTotal}` : ""
+                progress.sessionsTotal > 0
+                  ? ` · Session ${progress.sessionsHeld} of ${progress.sessionsTotal}`
+                  : ""
               }`}
             </Text>
           </View>
         </View>
       </View>
 
+      {isAdmin ? <UpcomingEventsCard query={events} /> : null}
+
       <View className="flex-row gap-3">
-        <StatCard label="Students" value={String(n)} onPress={() => router.push("/groups")} />
+        <StatCard label="Students" value={String(n)} onPress={() => router.push(studentsHref)} />
         <StatCard
           label="Progress"
           value={`${progress.pct ?? 0}%`}
@@ -86,9 +108,13 @@ function LeaderSummary({
         onOpen={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
       />
 
-      <UpcomingEventsCard query={events} />
+      {isAdmin ? null : <UpcomingEventsCard query={events} />}
 
-      <SectionCard icon={Users} title="Your students at risk" onViewAll={() => router.push("/groups")}>
+      <SectionCard
+        icon={Users}
+        title={isAdmin ? "Students at risk" : "Your students at risk"}
+        onViewAll={() => router.push(studentsHref)}
+      >
         {cohort.atRisk.length === 0 ? (
           <View className="px-4 py-6">
             <EmptyState
@@ -108,7 +134,12 @@ function LeaderSummary({
               <Pressable
                 key={`${r.studentUserId}:${r.seasonId}`}
                 accessibilityRole="link"
-                onPress={() => router.push({ pathname: "/student/[id]", params: { id: String(r.studentUserId) } })}
+                onPress={() =>
+                  router.push({
+                    pathname: "/student/[id]",
+                    params: { id: String(r.studentUserId) },
+                  })
+                }
                 className={`flex-row items-center gap-3 px-4 py-3 active:bg-muted/40 ${i > 0 ? "border-t border-border" : ""}`}
               >
                 <Text numberOfLines={1} className={`flex-1 text-sm font-semibold ${NAVY}`}>
@@ -128,21 +159,34 @@ function LeaderSummary({
         )}
       </SectionCard>
 
-      <SectionCard icon={ClipboardList} title="Assignments" onViewAll={() => router.push("/submissions")}>
+      <SectionCard
+        icon={ClipboardList}
+        title="Assignments"
+        onViewAll={() => router.push(assignmentsHref)}
+      >
         <FigurePair
           items={[
             {
               label: "Pending review",
               value: submissions.pendingReview,
-              accent: submissions.pendingReview > 0 ? "text-warning-700 dark:text-warning-300" : NAVY,
+              accent:
+                submissions.pendingReview > 0 ? "text-warning-700 dark:text-warning-300" : NAVY,
             },
-            { label: "Reviewed", value: submissions.reviewed, accent: "text-success-700 dark:text-success-300" },
+            {
+              label: "Reviewed",
+              value: submissions.reviewed,
+              accent: "text-success-700 dark:text-success-300",
+            },
           ]}
         />
       </SectionCard>
 
       {quizzes.total > 0 || quizzes.drafts > 0 ? (
-        <SectionCard icon={PenLine} title="Quiz corrections" onViewAll={() => router.push("/quizzes")}>
+        <SectionCard
+          icon={PenLine}
+          title={isAdmin ? "Quizzes" : "Quiz corrections"}
+          onViewAll={() => router.push("/quizzes")}
+        >
           <FigurePair
             items={[
               {
@@ -150,7 +194,11 @@ function LeaderSummary({
                 value: quizzes.pending,
                 accent: quizzes.pending > 0 ? "text-warning-700 dark:text-warning-300" : NAVY,
               },
-              { label: "Fully graded", value: quizzes.fullyGraded, accent: "text-success-700 dark:text-success-300" },
+              {
+                label: "Fully graded",
+                value: quizzes.fullyGraded,
+                accent: "text-success-700 dark:text-success-300",
+              },
             ]}
           />
           {quizzes.drafts > 0 ? (
@@ -178,8 +226,8 @@ function LeaderSummary({
   );
 }
 
-/** The leader's Home: their groups in the current staff season (X8, D9). */
-export function LeaderDashboard() {
+/** Home for ADMIN (the season) and LEADER (their groups) in the current staff season (X8, D9). */
+function StaffDashboard({ variant }: { variant: Variant }) {
   const current = useCurrentSeasonId();
   const dash = useSeasonStaffDashboard(current.seasonId);
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
@@ -206,10 +254,14 @@ export function LeaderDashboard() {
   return (
     <ShellFrame refreshing={dash.isRefetching || events.isRefetching} onRefresh={refresh}>
       <View className="flex-col gap-4">
-        {body ?? (dash.data ? <LeaderSummary data={dash.data} events={events} /> : null)}
+        {body ??
+          (dash.data ? <StaffSummary data={dash.data} events={events} variant={variant} /> : null)}
         {/* V2-ONLY no-season branch keeps the events card (D19). */}
         {noSeason ? <UpcomingEventsCard query={events} /> : null}
       </View>
     </ShellFrame>
   );
 }
+
+export const AdminDashboard = () => <StaffDashboard variant="ADMIN" />;
+export const LeaderDashboard = () => <StaffDashboard variant="LEADER" />;

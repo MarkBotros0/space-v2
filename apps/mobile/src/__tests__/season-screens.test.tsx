@@ -16,24 +16,23 @@ import SeasonsScreen from "../../app/(app)/seasons/index";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
-const patch = apiClient.patch as jest.Mock;
 const del = apiClient.delete as jest.Mock;
 
-const seasonRow = (id: number, year: number, status: "DRAFT" | "ACTIVE" | "ARCHIVED", title: string) => ({
-  id, code: `s${id}`, title, program: "TEST", year, status,
-  startDate: `${year}-01-01T00:00:00.000Z`, endDate: `${year}-12-31T00:00:00.000Z`,
+const seasonRow = (
+  id: number,
+  year: number,
+  status: "DRAFT" | "ACTIVE" | "ARCHIVED",
+  title: string,
+) => ({
+  id,
+  code: `s${id}`,
+  title,
+  program: "TEST",
+  year,
+  status,
+  startDate: `${year}-01-01T00:00:00.000Z`,
+  endDate: `${year}-12-31T00:00:00.000Z`,
 });
-
-const detail = {
-  ...seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
-  description: "The spring season.",
-  sessionCount: 3,
-  absenceBudgetMinutes: 180,
-  absenceWeightMinutes: 90,
-  canAdminister: true,
-  studentCount: 12,
-  groups: [{ id: 3, name: "Group A", studentCount: 6, leaderNames: ["Lina Leader"] }],
-};
 
 const superSession = makeSession("SUPER", {}, { id: 1 });
 const adminSession = makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 2 });
@@ -48,10 +47,14 @@ describe("SeasonsScreen (SUPER)", () => {
   beforeEach(() => {
     useSessionStore.setState(superSession);
     get.mockResolvedValue({
-      data: { data: { seasons: [
-        seasonRow(8, 2027, "DRAFT", "Spring 2027"),
-        seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
-      ] } },
+      data: {
+        data: {
+          seasons: [
+            seasonRow(8, 2027, "DRAFT", "Spring 2027"),
+            seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
+          ],
+        },
+      },
     });
   });
 
@@ -125,7 +128,12 @@ describe("SeasonsScreen (SUPER)", () => {
     post.mockRejectedValue(
       Object.assign(new Error("409"), {
         isAxiosError: true,
-        response: { status: 409, data: { error: { code: "code_taken", message: "A season with that code already exists." } } },
+        response: {
+          status: 409,
+          data: {
+            error: { code: "code_taken", message: "A season with that code already exists." },
+          },
+        },
       }),
     );
     renderWithProviders(<SeasonsScreen />);
@@ -165,7 +173,9 @@ describe("SeasonsScreen (SUPER)", () => {
 describe("SeasonsScreen (non-SUPER)", () => {
   it("shows ADMIN the list without write actions", async () => {
     useSessionStore.setState(adminSession);
-    get.mockResolvedValue({ data: { data: { seasons: [seasonRow(7, 2026, "ACTIVE", "Spring 2026")] } } });
+    get.mockResolvedValue({
+      data: { data: { seasons: [seasonRow(7, 2026, "ACTIVE", "Spring 2026")] } },
+    });
     renderWithProviders(<SeasonsScreen />);
     expect(await screen.findByText("Spring 2026")).toBeTruthy();
     expect(screen.queryByText("Duplicate")).toBeNull();
@@ -183,43 +193,55 @@ describe("SeasonsScreen (non-SUPER)", () => {
 describe("SeasonScreen (workspace)", () => {
   it("takes an ADMIN with exactly one season straight into it (REG-72)", async () => {
     useSessionStore.setState(adminSession);
-    get.mockResolvedValue({ data: { data: { seasons: [seasonRow(7, 2026, "ACTIVE", "Spring 2026")] } } });
+    get.mockResolvedValue({
+      data: { data: { seasons: [seasonRow(7, 2026, "ACTIVE", "Spring 2026")] } },
+    });
     renderWithProviders(<SeasonScreen />);
     await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s7" } }),
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: "/seasons/[code]",
+        params: { code: "s7" },
+      }),
     );
   });
 
-  it("renders an ADMIN's current season with counts, groups and the edit section", async () => {
+  it("lists an ADMIN's several seasons by program, v1's My Season page", async () => {
     useSessionStore.setState(adminSession);
-    get.mockImplementation((url: string) =>
-      url === "/api/v1/seasons"
-        ? Promise.resolve({ data: { data: { seasons: [
+    get.mockResolvedValue({
+      data: {
+        data: {
+          seasons: [
             seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
             seasonRow(6, 2025, "ARCHIVED", "Spring 2025"),
-          ] } } })
-        : Promise.resolve({ data: { data: detail } }),
-    );
-    patch.mockResolvedValue({ data: { data: { id: 7, code: "s7" } } });
+          ],
+        },
+      },
+    });
 
     renderWithProviders(<SeasonScreen />);
 
-    expect(await screen.findByText("Spring 2026")).toBeTruthy();
+    expect(await screen.findByText("My Season")).toBeTruthy();
+    expect(screen.getByText("Seasons you administer.")).toBeTruthy();
+    expect(screen.getByText("TEST")).toBeTruthy();
+    expect(screen.getByText("2 years")).toBeTruthy();
+    expect(screen.getByText("Active")).toBeTruthy();
+    expect(screen.getByText("Archived")).toBeTruthy();
+    expect(screen.getByText("Jan 1, 2026 – Dec 31, 2026")).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
-    expect(get).toHaveBeenCalledWith("/api/v1/seasons/7");
-    expect(screen.getByText("3 sessions · 12 students")).toBeTruthy();
-    expect(screen.getByText("Group A")).toBeTruthy();
-    expect(screen.getByText("6 students · Lina Leader")).toBeTruthy();
 
-    fireEvent.changeText(screen.getByLabelText("Description"), "Updated.");
-    fireEvent.changeText(screen.getByLabelText("Absence budget (minutes)"), "240");
-    fireEvent.press(screen.getByText("Save changes"));
-    await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/api/v1/seasons/7", {
-        description: "Updated.",
-        absenceBudgetMinutes: 240,
-      }),
-    );
+    fireEvent.press(screen.getByLabelText("Open Spring 2025"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s6" } });
+  });
+
+  it("tells an ADMIN with no season to contact a super-admin", async () => {
+    useSessionStore.setState(adminSession);
+    get.mockResolvedValue({ data: { data: { seasons: [] } } });
+    renderWithProviders(<SeasonScreen />);
+    expect(
+      await screen.findByText(
+        "You aren't assigned to a season yet. Contact a super-admin to be added.",
+      ),
+    ).toBeTruthy();
   });
 });
 
@@ -227,10 +249,14 @@ describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => 
   beforeEach(() => {
     useSessionStore.setState(superSession);
     get.mockResolvedValue({
-      data: { data: { seasons: [
-        seasonRow(8, 2027, "DRAFT", "Spring 2027"),
-        { ...seasonRow(9, 2027, "ACTIVE", "GBV 2027"), program: "GBV" },
-      ] } },
+      data: {
+        data: {
+          seasons: [
+            seasonRow(8, 2027, "DRAFT", "Spring 2027"),
+            { ...seasonRow(9, 2027, "ACTIVE", "GBV 2027"), program: "GBV" },
+          ],
+        },
+      },
     });
   });
 

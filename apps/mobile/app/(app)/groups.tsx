@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
 import { Users } from "lucide-react-native";
 import { Pressable, View } from "react-native";
@@ -13,15 +14,30 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DataTable,
   EmptyState as V1EmptyState,
+  Button as V1Button,
   Text as V1Text,
+  type DataTableColumn,
 } from "../../src/design/ui";
-import { MY_GROUPS_ROLES, useGroupDetails, useMyGroups, useSeasonGroups } from "../../src/hooks/use-groups";
+import {
+  MY_GROUPS_ROLES,
+  useGroupDetails,
+  useMyGroups,
+  useSeasonGroups,
+} from "../../src/hooks/use-groups";
 import { useSeasons } from "../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
 import { useSessionStore } from "../../src/store/session";
 import { useTheme } from "../../src/theme";
-import { Button, Card as LegacyCard, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
+import {
+  Card as LegacyCard,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Screen,
+  Text,
+} from "../../src/ui";
 
 function GroupRow({ group, subtitle }: { group: GroupListItem; subtitle: string }) {
   const theme = useTheme();
@@ -33,7 +49,9 @@ function GroupRow({ group, subtitle }: { group: GroupListItem; subtitle: string 
     >
       <LegacyCard style={{ marginBottom: theme.spacing.sm }}>
         <Text variant="heading">{group.name}</Text>
-        <Text variant="label" color={theme.colors.neutral[600]}>{subtitle}</Text>
+        <Text variant="label" color={theme.colors.neutral[600]}>
+          {subtitle}
+        </Text>
       </LegacyCard>
     </Pressable>
   );
@@ -42,7 +60,13 @@ function GroupRow({ group, subtitle }: { group: GroupListItem; subtitle: string 
 const byName = (a: GroupListItem, b: GroupListItem) => a.name.localeCompare(b.name);
 
 /** One v1 group card: name, season, "Calendar →", and the members as links. */
-function LeaderGroupCard({ group, detail }: { group: GroupListItem; detail: { data?: GroupDetail; isError: boolean } }) {
+function LeaderGroupCard({
+  group,
+  detail,
+}: {
+  group: GroupListItem;
+  detail: { data?: GroupDetail; isError: boolean };
+}) {
   const router = useRouter();
   const students = detail.data?.students ?? null;
   return (
@@ -59,7 +83,9 @@ function LeaderGroupCard({ group, detail }: { group: GroupListItem; detail: { da
       </CardHeader>
       <CardContent>
         {detail.isError ? (
-          <V1Text className="text-sm italic text-muted-foreground">Couldn't load the members.</V1Text>
+          <V1Text className="text-sm italic text-muted-foreground">
+            Couldn't load the members.
+          </V1Text>
         ) : students === null ? null : students.length === 0 ? (
           <V1Text className="text-sm italic text-muted-foreground">No students yet.</V1Text>
         ) : (
@@ -69,9 +95,13 @@ function LeaderGroupCard({ group, detail }: { group: GroupListItem; detail: { da
                 key={st.id}
                 accessibilityRole="link"
                 className="self-start"
-                onPress={() => router.push({ pathname: "/student/[id]", params: { id: String(st.id) } })}
+                onPress={() =>
+                  router.push({ pathname: "/student/[id]", params: { id: String(st.id) } })
+                }
               >
-                <V1Text className="text-sm text-foreground">{st.name ?? st.email ?? "Student"}</V1Text>
+                <V1Text className="text-sm text-foreground">
+                  {st.name ?? st.email ?? "Student"}
+                </V1Text>
               </Pressable>
             ))}
           </View>
@@ -99,7 +129,11 @@ function LeaderGroups() {
       <ShellFrame>
         <View className="flex-col gap-4">
           <PageTitle title="My groups" subtitle="You don't lead any groups yet." />
-          <V1EmptyState icon={Users} title="No groups" description="An admin will add you to a group when you're ready." />
+          <V1EmptyState
+            icon={Users}
+            title="No groups"
+            description="An admin will add you to a group when you're ready."
+          />
         </View>
       </ShellFrame>
     );
@@ -107,13 +141,17 @@ function LeaderGroups() {
 
   // Past = a finished season; a DRAFT season being set up is upcoming, so it stays current.
   const past = new Set(
-    (seasons.data ?? []).filter((x) => x.status === "COMPLETED" || x.status === "ARCHIVED").map((x) => x.id),
+    (seasons.data ?? [])
+      .filter((x) => x.status === "COMPLETED" || x.status === "ARCHIVED")
+      .map((x) => x.id),
   );
   // Until the seasons load, every group counts as current.
   const isCurrent = (g: GroupListItem) => !past.has(g.seasonId);
   const current = rows.filter(isCurrent).sort(byName);
   const pastRows = rows.filter((g) => !isCurrent(g)).sort(byName);
-  const card = (g: GroupListItem) => <LeaderGroupCard key={g.id} group={g} detail={details[rows.indexOf(g)] ?? { isError: false }} />;
+  const card = (g: GroupListItem) => (
+    <LeaderGroupCard key={g.id} group={g} detail={details[rows.indexOf(g)] ?? { isError: false }} />
+  );
 
   return (
     <ShellFrame
@@ -129,9 +167,16 @@ function LeaderGroups() {
         <RouteError onRetry={() => void groups.refetch()} />
       ) : (
         <View className="flex-col gap-4">
-          <PageTitle title="My groups" subtitle={`${rows.length} ${rows.length === 1 ? "group" : "groups"}`} />
+          <PageTitle
+            title="My groups"
+            subtitle={`${rows.length} ${rows.length === 1 ? "group" : "groups"}`}
+          />
           {rows.length === 0 ? (
-            <V1EmptyState icon={Users} title="No groups" description="An admin will add you to a group when you're ready." />
+            <V1EmptyState
+              icon={Users}
+              title="No groups"
+              description="An admin will add you to a group when you're ready."
+            />
           ) : (
             <View className="flex-col gap-4">
               {current.map(card)}
@@ -149,17 +194,28 @@ function LeaderGroups() {
 function MyGroups() {
   const { data, isPending, isError, refetch, isRefetching } = useMyGroups(true);
   return (
-    <Screen edges={["top", "left", "right"]} onRefresh={() => void refetch()} refreshing={isRefetching}>
+    <Screen
+      edges={["top", "left", "right"]}
+      onRefresh={() => void refetch()}
+      refreshing={isRefetching}
+    >
       {isPending ? (
         <LoadingState />
       ) : isError ? (
-        <ErrorState message="Couldn't load your groups. Check your connection and try again." onRetry={refetch} />
+        <ErrorState
+          message="Couldn't load your groups. Check your connection and try again."
+          onRetry={refetch}
+        />
       ) : data.length === 0 ? (
         <EmptyState title="No groups" message="You aren't in any groups yet." />
       ) : (
         <>
           {data.map((group) => (
-            <GroupRow key={group.id} group={group} subtitle={`${group.seasonTitle} · ${group.studentCount} students`} />
+            <GroupRow
+              key={group.id}
+              group={group}
+              subtitle={`${group.seasonTitle} · ${group.studentCount} students`}
+            />
           ))}
         </>
       )}
@@ -168,69 +224,111 @@ function MyGroups() {
 }
 
 /**
- * ADMIN / SUPER — a season's groups with a season switcher (Plan 6
- * D-16.16; spec 05 §9). v1 forced one season with a redirect (R91) and
+ * ADMIN / SUPER — v1 app/admin/season/[code]/groups/page.tsx: "Groups",
+ * "{n} groups in {season}", "Assign to groups" + "New group", and a table of
+ * Group / Leaders / Students. V2-ONLY kept: the season switcher (Plan 6
+ * D-16.16; spec 05 §9) — v1 forced one season with a redirect (R91) and
  * refused SUPER (R92); neither is ported.
  */
 function SeasonGroups() {
-  const theme = useTheme();
   const router = useRouter();
   const selection = useStaffSeasonSelection(true);
   const groups = useSeasonGroups(selection.seasonId);
+  const season = selection.season;
+  const rows = groups.data ?? [];
 
-  let body;
-  if (selection.isPending) body = <LoadingState />;
-  else if (selection.isError) body = <ErrorState message="Couldn't load your seasons." onRetry={selection.refetch} />;
-  else if (selection.season === null)
-    body = <EmptyState title="No season" message="You aren't assigned to a season yet." />;
-  else {
-    const season = selection.season;
-    body = (
-      <>
-        <SeasonSwitcher seasons={selection.seasons} selectedId={season.id} onSelect={selection.setSeasonId} />
-        <View style={{ flexDirection: "row", gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-          <Button
-            title="New group"
-            variant="secondary"
-            onPress={() => router.push({ pathname: "/group/new", params: { seasonId: String(season.id) } })}
-          />
-          <Button
-            title="Roster"
-            variant="secondary"
-            onPress={() => router.push({ pathname: "/seasons/[code]/roster", params: { code: season.code } })}
-          />
-        </View>
-        {groups.isPending ? (
-          <LoadingState />
-        ) : groups.isError ? (
-          <ErrorState message="Couldn't load this season's groups." onRetry={() => void groups.refetch()} />
-        ) : groups.data.length === 0 ? (
-          <EmptyState title="No groups" message="This season has no groups yet." />
+  const columns: DataTableColumn<GroupListItem>[] = [
+    {
+      key: "name",
+      header: "Group",
+      cell: (row) => (
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(row.id) } })}
+        >
+          <V1Text className="font-medium text-foreground">{row.name}</V1Text>
+        </Pressable>
+      ),
+    },
+    {
+      key: "leaders",
+      header: "Leaders",
+      cell: (row) =>
+        row.leaderNames.length === 0 ? (
+          <V1Text className="text-xs italic text-muted-foreground">No leaders</V1Text>
         ) : (
-          groups.data.map((g) => (
-            <GroupRow
-              key={g.id}
-              group={g}
-              subtitle={g.leaderNames.length > 0 ? `${g.studentCount} students · ${g.leaderNames.join(", ")}` : `${g.studentCount} students`}
-            />
-          ))
-        )}
-      </>
+          <V1Text className="text-xs text-muted-foreground">{row.leaderNames.join(", ")}</V1Text>
+        ),
+    },
+    { key: "students", header: "Students", cell: (row) => String(row.studentCount) },
+  ];
+  const newGroup = () =>
+    season && router.push({ pathname: "/group/new", params: { seasonId: String(season.id) } });
+
+  let body: ReactNode;
+  if (selection.isPending || (season !== null && groups.isPending)) body = <RouteSkeleton />;
+  else if (selection.isError) body = <RouteError onRetry={selection.refetch} />;
+  else if (season === null)
+    body = <V1EmptyState title="No season" description="You aren't assigned to a season yet." />;
+  else if (groups.isError) body = <RouteError onRetry={() => void groups.refetch()} />;
+  else
+    body = (
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(r) => r.id}
+        emptyState={
+          <V1EmptyState
+            icon={Users}
+            title="No groups yet"
+            description="Create a group to organize students and assign leaders."
+            action={<V1Button onPress={newGroup}>New group</V1Button>}
+          />
+        }
+      />
     );
-  }
 
   return (
-    <Screen
-      edges={["top", "left", "right"]}
-      scroll
+    <ShellFrame
+      refreshing={groups.isRefetching}
       onRefresh={() => {
         if (selection.seasonId !== null) void groups.refetch();
         else selection.refetch();
       }}
-      refreshing={groups.isRefetching}
     >
-      {body}
-    </Screen>
+      <View className="flex-col gap-4">
+        <View className="flex-row items-start justify-between gap-4">
+          <PageTitle
+            className="min-w-0 flex-1"
+            title="Groups"
+            subtitle={
+              season && groups.data
+                ? `${rows.length} ${rows.length === 1 ? "group" : "groups"} in ${season.title}`
+                : undefined
+            }
+          />
+          {season ? (
+            <View className="shrink-0 flex-col gap-2">
+              <V1Button
+                variant="outline"
+                onPress={() =>
+                  router.push({ pathname: "/seasons/[code]/roster", params: { code: season.code } })
+                }
+              >
+                Assign to groups
+              </V1Button>
+              <V1Button onPress={newGroup}>New group</V1Button>
+            </View>
+          ) : null}
+        </View>
+        <SeasonSwitcher
+          seasons={selection.seasons}
+          selectedId={selection.seasonId}
+          onSelect={selection.setSeasonId}
+        />
+        {body}
+      </View>
+    </ShellFrame>
   );
 }
 

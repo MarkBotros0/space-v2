@@ -25,8 +25,12 @@ const emptyScopes = {
 };
 const superSession = {
   user: {
-    id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const,
-    avatarPath: null, hasPassword: true,
+    id: 1,
+    name: "Test super",
+    email: "sup@jpc.test",
+    role: "SUPER" as const,
+    avatarPath: null,
+    hasPassword: true,
   },
   scopes: emptyScopes,
 };
@@ -111,11 +115,10 @@ describe("student detail — engagement block", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    // The heading renders while the query is pending, so wait on the score.
-    expect(await screen.findByText("75")).toBeTruthy();
-    expect(screen.getByText("Engagement")).toBeTruthy();
-    expect(screen.getByText("Attendance 50%")).toBeTruthy();
-    expect(screen.getByText("Submissions 100%")).toBeTruthy();
+    expect(await screen.findByText("Engagement (current season)")).toBeTruthy();
+    expect(screen.getByText("75%")).toBeTruthy();
+    expect(screen.getByText("Attendance: 2/4 (50%)")).toBeTruthy();
+    expect(screen.getByText("Submissions: 2/2 (100%)")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement");
   });
 
@@ -145,7 +148,9 @@ describe("student detail — engagement block", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("No season to score yet")).toBeTruthy();
+    // v1 draws no card for a student with no season.
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement"));
+    expect(screen.queryByText("Engagement (current season)")).toBeNull();
   });
 
   it("shows a retryable error — not 'no season' — for any other failure", async () => {
@@ -163,7 +168,7 @@ describe("student detail — engagement block", () => {
     renderWithProviders(<StudentDetailScreen />);
 
     expect(await screen.findByText("Couldn't load engagement.")).toBeTruthy();
-    expect(screen.queryByText("No season to score yet")).toBeNull();
+    expect(screen.queryByText("Engagement (current season)")).toBeNull();
   });
 });
 
@@ -173,6 +178,7 @@ describe("student detail — notes", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
+    fireEvent.press(await screen.findByText("Notes"));
     expect(await screen.findByText("Checked in after the session.")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21/notes");
   });
@@ -182,8 +188,7 @@ describe("student detail — notes", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    // Exactly one match: the note card's caption. The composer's chips say
-    // "Group leaders" / "Mentors" / "Season admins", so they cannot collide.
+    fireEvent.press(await screen.findByText("Notes"));
     expect(await screen.findByText("Visible to group leaders only")).toBeTruthy();
   });
 
@@ -193,10 +198,12 @@ describe("student detail — notes", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    const input = await screen.findByLabelText("New note");
+    fireEvent.press(await screen.findByText("Notes"));
+    const input = await screen.findByLabelText("Note");
     fireEvent.changeText(input, "space-v2-test new observation");
-    fireEvent.press(screen.getByText("Season admins"));
-    fireEvent.press(screen.getByText("Save note"));
+    fireEvent.press(screen.getByLabelText("Visible to"));
+    fireEvent.press(await screen.findByText("Admins only"));
+    fireEvent.press(screen.getByText("Add note"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/students/21/notes", {
@@ -213,8 +220,7 @@ describe("student detail — notes", () => {
     renderWithProviders(<StudentDetailScreen />);
 
     // v1's copy said "in addition to you and admins" and was wrong (R36, D3).
-    expect(
-      await screen.findByText(/Only the group you choose can read this note/),
-    ).toBeTruthy();
+    fireEvent.press(await screen.findByText("Notes"));
+    expect(await screen.findByText(/Only the group you choose can read this note/)).toBeTruthy();
   });
 });
