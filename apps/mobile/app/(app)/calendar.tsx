@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { Calendar as CalendarIcon } from "lucide-react-native";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
@@ -15,25 +15,18 @@ import { SeasonSwitcher } from "../../src/components/SeasonSwitcher";
 import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { SeasonCalendar } from "../../src/design/sessions/season-calendar";
+import { buildSeasonColors, SeasonCalendar } from "../../src/design/sessions/season-calendar";
 import { Button as ButtonV1, EmptyState as EmptyStateV1 } from "../../src/design/ui";
 import { useEvents } from "../../src/hooks/use-events";
 import { useMyGroups } from "../../src/hooks/use-groups";
-import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
+import { useCurrentSeasonId, useSeasons } from "../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
-import {
-  useLedSeasonSessions,
-  useSeasonSessions,
-  useSessionRange,
-} from "../../src/hooks/use-sessions";
+import { useLedSeasonSessions, useSeasonSessions } from "../../src/hooks/use-sessions";
 import {
   dayCue,
   deviceTodayKey,
-  fetchWindow,
   rangeLabel,
-  seasonSlots,
   stepAnchor,
-  visibleKeys,
   type CalendarView,
 } from "../../src/lib/calendar-grid";
 import { groupCalendarByDay } from "../../src/lib/day-groups";
@@ -100,9 +93,7 @@ const VIEW_OPTIONS = [
   { value: "month", label: "Month" },
 ] as const;
 
-type Source =
-  | { kind: "local"; sessions: SessionListItem[]; events: JpcEventListItem[] }
-  | { kind: "range"; seasonId: number | null };
+type Source = { kind: "local"; sessions: SessionListItem[]; events: JpcEventListItem[] };
 
 /** v1's anchor: the month of the next session, else the last one, else today. */
 function initialAnchor(sessions: SessionListItem[], today: string): string {
@@ -116,62 +107,44 @@ function initialAnchor(sessions: SessionListItem[], today: string): string {
  * "Today" is the server's org day once a default-window read has reported it
  * (its `fromDayKey`); until then the device's date stands in.
  */
-function CalendarSurface({ source, showSeason }: { source: Source; showSeason: boolean }) {
+function CalendarSurface({ source }: { source: Source }) {
   const role = useSessionStore((s) => s.user?.role ?? null);
   const isStaff = role !== null && role !== "STUDENT";
-  const [orgToday, setOrgToday] = useState<string | null>(null);
-  const today = orgToday ?? deviceTodayKey();
+  const today = deviceTodayKey();
   const [view, setView] = useState<CalendarView>("upcoming");
-  const [anchor, setAnchor] = useState(() =>
-    source.kind === "local" ? initialAnchor(source.sessions, today) : today,
-  );
-  const slotsRef = useRef<Record<string, number>>({});
+  const [anchor, setAnchor] = useState(() => initialAnchor(source.sessions, today));
 
-  const contextFor = (sessions: SessionListItem[]): CalendarContext => {
-    if (showSeason) slotsRef.current = seasonSlots(sessions, slotsRef.current);
-    return { today, isStaff, slots: showSeason ? slotsRef.current : null };
-  };
+  const ctx: CalendarContext = { today, isStaff, slots: null };
 
   const step = (dir: 1 | -1) => {
     if (view !== "upcoming") setAnchor((a) => stepAnchor(view, a, dir));
   };
 
   let body: ReactNode;
-  if (source.kind === "local") {
-    const ctx = contextFor(source.sessions);
-    if (view === "upcoming") {
-      const sessions = source.sessions.filter((s) => s.dayKey >= today);
-      const events = source.events.filter((e) => e.dayKey >= today);
-      body =
-        sessions.length === 0 && events.length === 0 ? (
-          <EmptyState
-            title="Nothing coming up"
-            message="You're all caught up. Switch to Month to review past sessions."
-          />
-        ) : (
-          <CalendarDays sessions={sessions} events={events} ctx={ctx} />
-        );
-    } else {
-      body = (
-        <>
-          <Legend slots={ctx.slots} />
-          <CalendarGrid
-            view={view}
-            anchor={anchor}
-            sessions={source.sessions}
-            events={source.events}
-            ctx={ctx}
-          />
-        </>
+  if (view === "upcoming") {
+    const sessions = source.sessions.filter((s) => s.dayKey >= today);
+    const events = source.events.filter((e) => e.dayKey >= today);
+    body =
+      sessions.length === 0 && events.length === 0 ? (
+        <EmptyState
+          title="Nothing coming up"
+          message="You're all caught up. Switch to Month to review past sessions."
+        />
+      ) : (
+        <CalendarDays sessions={sessions} events={events} ctx={ctx} />
       );
-    }
-  } else if (view === "upcoming") {
-    body = (
-      <RangeSessions seasonId={source.seasonId} contextFor={contextFor} onOrgToday={setOrgToday} />
-    );
   } else {
     body = (
-      <RangeGrid seasonId={source.seasonId} view={view} anchor={anchor} contextFor={contextFor} />
+      <>
+        <Legend slots={ctx.slots} />
+        <CalendarGrid
+          view={view}
+          anchor={anchor}
+          sessions={source.sessions}
+          events={source.events}
+          ctx={ctx}
+        />
+      </>
     );
   }
 
@@ -232,10 +205,7 @@ function AlumniCalendar() {
           message="You aren't in a season right now, so there are no sessions on your calendar."
         />
       ) : (
-        <CalendarSurface
-          source={{ kind: "local", sessions: [], events: eventRows }}
-          showSeason={false}
-        />
+        <CalendarSurface source={{ kind: "local", sessions: [], events: eventRows }} />
       );
   else if (sessions.isPending) body = <LoadingState />;
   else if (sessions.isError)
@@ -249,10 +219,7 @@ function AlumniCalendar() {
     body = <EmptyState title="No sessions" message="This season doesn't have any sessions yet." />;
   else
     body = (
-      <CalendarSurface
-        source={{ kind: "local", sessions: sessions.data, events: eventRows }}
-        showSeason={false}
-      />
+      <CalendarSurface source={{ kind: "local", sessions: sessions.data, events: eventRows }} />
     );
 
   return (
@@ -268,122 +235,6 @@ function AlumniCalendar() {
     >
       {body}
     </Screen>
-  );
-}
-
-type ContextFor = (sessions: SessionListItem[]) => CalendarContext;
-
-/** A windowed GET /sessions view (D-16.7) with Earlier / Later paging: the Upcoming view. */
-function RangeSessions({
-  seasonId,
-  contextFor,
-  onOrgToday,
-}: {
-  seasonId: number | null;
-  contextFor: ContextFor;
-  onOrgToday: (dayKey: string) => void;
-}) {
-  const theme = useTheme();
-  const [window, setWindow] = useState<{ from: string | null; to: string | null }>({
-    from: null,
-    to: null,
-  });
-  const range = useSessionRange({ seasonId, from: window.from, to: window.to }, true);
-  const events = useEvents();
-  const isDefaultWindow = window.from === null && window.to === null;
-  const reportedToday = range.data?.fromDayKey;
-
-  // The default window starts at org-midnight today, so its first day IS the
-  // org's today — the one place the device learns it without guessing a zone.
-  useEffect(() => {
-    if (isDefaultWindow && reportedToday) onOrgToday(reportedToday);
-  }, [isDefaultWindow, reportedToday, onOrgToday]);
-
-  if (range.isPending) return <LoadingState />;
-  if (range.isError) {
-    return (
-      <ErrorState
-        message="Couldn't load sessions. Check your connection and try again."
-        onRetry={() => void range.refetch()}
-      />
-    );
-  }
-  const data = range.data;
-  // Only events whose start day lies in the window the header names (ISO day
-  // strings compare correctly). useEvents() reads the server's default window,
-  // today − 30 d to + 365 d; paging "Earlier" past that shows sessions without
-  // events — a windowed events read is the deferred /api/v1/calendar's job (D-15.1).
-  const eventRows = (events.data ?? []).filter(
-    (e) => e.dayKey >= data.fromDayKey && e.dayKey <= data.toDayKey,
-  );
-  return (
-    <>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: theme.spacing.md,
-        }}
-      >
-        <Button
-          title="Earlier"
-          variant="ghost"
-          onPress={() => setWindow({ from: null, to: data.from })}
-        />
-        <Text variant="label">{`${formatDayKey(data.fromDayKey)} – ${formatDayKey(data.toDayKey)}`}</Text>
-        <Button
-          title="Later"
-          variant="ghost"
-          onPress={() => setWindow({ from: data.to, to: null })}
-        />
-      </View>
-      {data.sessions.length === 0 && eventRows.length === 0 ? (
-        <EmptyState title="No sessions" message="Nothing is scheduled in this window." />
-      ) : (
-        <CalendarDays sessions={data.sessions} events={eventRows} ctx={contextFor(data.sessions)} />
-      )}
-    </>
-  );
-}
-
-/** Week / Month: reads the visible days (padded a day each side, the server files each by its dayKey). */
-function RangeGrid({
-  seasonId,
-  view,
-  anchor,
-  contextFor,
-}: {
-  seasonId: number | null;
-  view: Exclude<CalendarView, "upcoming">;
-  anchor: string;
-  contextFor: ContextFor;
-}) {
-  const keys = visibleKeys(view, anchor);
-  const { from, to } = fetchWindow(keys);
-  const range = useSessionRange({ seasonId, from, to }, true);
-  const events = useEvents();
-
-  if (range.isPending) return <LoadingState />;
-  if (range.isError) {
-    return (
-      <ErrorState
-        message="Couldn't load sessions. Check your connection and try again."
-        onRetry={() => void range.refetch()}
-      />
-    );
-  }
-  const first = keys[0] ?? anchor;
-  const last = keys[keys.length - 1] ?? anchor;
-  const inView = (k: string) => k >= first && k <= last;
-  const sessions = range.data.sessions.filter((s) => inView(s.dayKey));
-  const eventRows = (events.data ?? []).filter((e) => inView(e.dayKey));
-  const ctx = contextFor(sessions);
-  return (
-    <>
-      <Legend slots={ctx.slots} />
-      <CalendarGrid view={view} anchor={anchor} sessions={sessions} events={eventRows} ctx={ctx} />
-    </>
   );
 }
 
@@ -549,12 +400,70 @@ function LeaderCalendar() {
   );
 }
 
-/** SUPER (every ACTIVE season) — G17. */
-function MultiSeasonCalendar() {
+/**
+ * SUPER — v1 app/super/calendar/page.tsx (B5-4): "Calendar" / "All active
+ * seasons across JPC." and v1's SeasonCalendar over every session of every
+ * ACTIVE season, each season in its own palette colour with a legend. Like
+ * the leader's (B3-6) it reads each season's own session list: GET /sessions
+ * is still windowed, so it cannot give v1's whole-season grid.
+ */
+function SuperCalendar() {
+  const router = useRouter();
+  const seasons = useSeasons(true);
+  const activeIds = (seasons.data ?? []).filter((s) => s.status === "ACTIVE").map((s) => s.id);
+  const all = useLedSeasonSessions(activeIds);
+  const events = useEvents();
+  const eventRows = events.data ?? [];
+  const today = deviceTodayKey();
+
+  let body: ReactNode;
+  if (seasons.isPending || (activeIds.length > 0 && all.isPending)) body = <RouteSkeleton />;
+  else if (seasons.isError || all.isError)
+    body = (
+      <RouteError
+        onRetry={() => {
+          void seasons.refetch();
+          all.refetch();
+        }}
+      />
+    );
+  else if (all.sessions.length === 0 && eventRows.length === 0)
+    body = (
+      <EmptyStateV1
+        icon={CalendarIcon}
+        title="Nothing scheduled yet"
+        description="Sessions and events will appear here once they're added."
+      />
+    );
+  else
+    body = (
+      <SeasonCalendar
+        sessions={all.sessions}
+        events={eventRows}
+        today={today}
+        initialAnchor={`${initialAnchor(all.sessions, today).slice(0, 8)}01`}
+        seasonColors={buildSeasonColors(all.sessions)}
+        onOpenSession={(id) =>
+          router.push({ pathname: "/session/[id]", params: { id: String(id) } })
+        }
+        onOpenEvent={(e) => router.push({ pathname: "/event/[id]", params: { id: String(e.id) } })}
+      />
+    );
+
   return (
-    <Screen edges={["top", "left", "right"]} scroll>
-      <CalendarSurface source={{ kind: "range", seasonId: null }} showSeason />
-    </Screen>
+    <ShellFrame
+      onRefresh={() => {
+        void seasons.refetch();
+        all.refetch();
+        void events.refetch();
+      }}
+      refreshing={seasons.isRefetching || all.isRefetching}
+    >
+      <View className="flex-col gap-4">
+        <PageTitle title="Calendar" subtitle="All active seasons across JPC." />
+        {body}
+      </View>
+    </ShellFrame>
   );
 }
 
@@ -683,7 +592,7 @@ export default function CalendarScreen() {
     );
   }
   if (role === "LEADER") return <LeaderCalendar />;
-  if (role === "SUPER") return <MultiSeasonCalendar />;
+  if (role === "SUPER") return <SuperCalendar />;
   if (role === "ADMIN") return <AdminCalendar />;
   if (isAlumnus) return <AlumniCalendar />;
   return <StudentCalendar />;

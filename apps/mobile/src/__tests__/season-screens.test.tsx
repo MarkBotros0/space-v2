@@ -15,8 +15,6 @@ import SeasonScreen from "../../app/(app)/season";
 import SeasonsScreen from "../../app/(app)/seasons/index";
 
 const get = apiClient.get as jest.Mock;
-const post = apiClient.post as jest.Mock;
-const del = apiClient.delete as jest.Mock;
 
 const seasonRow = (
   id: number,
@@ -58,115 +56,26 @@ describe("SeasonsScreen (SUPER)", () => {
     });
   });
 
-  it("lists seasons grouped by year with status badges", async () => {
+  it("lists seasons by program with status badges, v1's /super/seasons", async () => {
     renderWithProviders(<SeasonsScreen />);
-    expect(await screen.findByText("Spring 2027")).toBeTruthy();
-    expect(screen.getByText("2027")).toBeTruthy();
-    expect(screen.getByText("2026")).toBeTruthy();
-    expect(screen.getByText("s8 · DRAFT")).toBeTruthy();
-    expect(screen.getByText("s7 · ACTIVE")).toBeTruthy();
+    expect(await screen.findByLabelText("Open Spring 2027")).toBeTruthy();
+    expect(screen.getByText("TEST")).toBeTruthy();
+    expect(screen.getByText("2 years")).toBeTruthy();
+    expect(screen.getByText("Draft")).toBeTruthy();
+    expect(screen.getByText("Active")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
   });
 
-  it("duplicates a season through the inline form and parses the response", async () => {
-    post.mockResolvedValue({ data: { data: { id: 99, code: "s7-2027" } } });
+  it("sends New season to its own page and a row's pencil to the edit screen", async () => {
     renderWithProviders(<SeasonsScreen />);
-
-    fireEvent.press((await screen.findAllByText("Duplicate"))[1]); // the 2026 row
-    fireEvent.changeText(screen.getByLabelText("Copy year"), "2027");
-    fireEvent.changeText(screen.getByLabelText("Copy code"), "s7-2027");
-    fireEvent.changeText(screen.getByLabelText("Copy start date"), "2027-01-01T00:00:00.000Z");
-    fireEvent.changeText(screen.getByLabelText("Copy end date"), "2027-12-31T00:00:00.000Z");
-    fireEvent.press(screen.getByText("Create copy"));
-
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/duplicate", {
-        year: 2027,
-        code: "s7-2027",
-        startDate: "2027-01-01T00:00:00.000Z",
-        endDate: "2027-12-31T00:00:00.000Z",
-      }),
-    );
-    expect(await screen.findByText("Created s7-2027.")).toBeTruthy();
-  });
-
-  it("fills the code as program and year are typed, until the code is edited by hand (REG-70)", async () => {
-    renderWithProviders(<SeasonsScreen />);
-    await screen.findByText("Spring 2027");
-    fireEvent.changeText(screen.getByLabelText("Program"), "Spring GBV");
-    fireEvent.changeText(screen.getByLabelText("Year"), "2028");
-    expect(screen.getByLabelText("Code").props.value).toBe("spring-gbv-2028");
-    fireEvent.changeText(screen.getByLabelText("Year"), "2029");
-    expect(screen.getByLabelText("Code").props.value).toBe("spring-gbv-2029");
-    fireEvent.changeText(screen.getByLabelText("Code"), "mine");
-    fireEvent.changeText(screen.getByLabelText("Year"), "2030");
-    expect(screen.getByLabelText("Code").props.value).toBe("mine");
-  });
-
-  it("opens the duplicate form on next year with dates shifted one year and the code to match (REG-70)", async () => {
-    post.mockResolvedValue({ data: { data: { id: 99, code: "test-2027" } } });
-    renderWithProviders(<SeasonsScreen />);
-    fireEvent.press((await screen.findAllByText("Duplicate"))[1]); // the 2026 row
-    expect(screen.getByLabelText("Copy year").props.value).toBe("2027");
-    expect(screen.getByLabelText("Copy start date").props.value).toBe("2027-01-01T00:00:00.000Z");
-    expect(screen.getByLabelText("Copy end date").props.value).toBe("2027-12-31T00:00:00.000Z");
-    expect(screen.getByLabelText("Copy code").props.value).toBe("test-2027");
-    fireEvent.changeText(screen.getByLabelText("Copy year"), "2028");
-    expect(screen.getByLabelText("Copy code").props.value).toBe("test-2028");
-    fireEvent.press(screen.getByText("Create copy"));
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/duplicate", {
-        year: 2028,
-        code: "test-2028",
-        startDate: "2027-01-01T00:00:00.000Z",
-        endDate: "2027-12-31T00:00:00.000Z",
-      }),
-    );
-  });
-
-  it("creates a DRAFT season and shows a 409's server message verbatim", async () => {
-    post.mockRejectedValue(
-      Object.assign(new Error("409"), {
-        isAxiosError: true,
-        response: {
-          status: 409,
-          data: {
-            error: { code: "code_taken", message: "A season with that code already exists." },
-          },
-        },
-      }),
-    );
-    renderWithProviders(<SeasonsScreen />);
-
-    await screen.findByText("Spring 2027");
-    fireEvent.changeText(screen.getByLabelText("Code"), "spring-2028");
-    fireEvent.changeText(screen.getByLabelText("Program"), "TEST");
-    fireEvent.changeText(screen.getByLabelText("Year"), "2028");
-    fireEvent.changeText(screen.getByLabelText("Start date"), "2028-01-01T00:00:00.000Z");
-    fireEvent.changeText(screen.getByLabelText("End date"), "2028-12-31T00:00:00.000Z");
-    fireEvent.press(screen.getByText("Create season"));
-
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons", {
-        code: "spring-2028",
-        program: "TEST",
-        year: 2028,
-        startDate: "2028-01-01T00:00:00.000Z",
-        endDate: "2028-12-31T00:00:00.000Z",
-        status: "DRAFT",
-      }),
-    );
-    expect(await screen.findByText("A season with that code already exists.")).toBeTruthy();
-  });
-
-  it("deletes only on a second, confirming press", async () => {
-    del.mockResolvedValue({ data: { data: { deleted: true } } });
-    renderWithProviders(<SeasonsScreen />);
-
-    fireEvent.press((await screen.findAllByText("Delete"))[0]);
-    expect(del).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByText("Really delete?"));
-    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/8"));
+    await screen.findByLabelText("Open Spring 2026");
+    fireEvent.press(screen.getByText("New season"));
+    expect(mockPush).toHaveBeenCalledWith("/seasons/new");
+    fireEvent.press(screen.getByLabelText("Edit Spring 2026"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/seasons/[code]/edit",
+      params: { code: "s7" },
+    });
   });
 });
 
@@ -177,9 +86,9 @@ describe("SeasonsScreen (non-SUPER)", () => {
       data: { data: { seasons: [seasonRow(7, 2026, "ACTIVE", "Spring 2026")] } },
     });
     renderWithProviders(<SeasonsScreen />);
-    expect(await screen.findByText("Spring 2026")).toBeTruthy();
-    expect(screen.queryByText("Duplicate")).toBeNull();
-    expect(screen.queryByText("Create season")).toBeNull();
+    expect(await screen.findByLabelText("Open Spring 2026")).toBeTruthy();
+    expect(screen.queryByText("New season")).toBeNull();
+    expect(screen.queryByLabelText("Edit Spring 2026")).toBeNull();
   });
 
   it("gives a STUDENT the role empty state and fetches nothing", async () => {
@@ -262,18 +171,19 @@ describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => 
 
   it("opens a season by code", async () => {
     renderWithProviders(<SeasonsScreen />);
-    fireEvent.press(await screen.findByText("Spring 2027"));
+    fireEvent.press(await screen.findByLabelText("Open Spring 2027"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s8" } });
   });
 
   it("filters by program with exact matching (v1 R44), client-side (D-16.5)", async () => {
     renderWithProviders(<SeasonsScreen />);
-    await screen.findByText("Spring 2027");
-    fireEvent.press(screen.getByText("GBV"));
-    expect(screen.queryByText("Spring 2027")).toBeNull();
-    expect(screen.getByText("GBV 2027")).toBeTruthy();
+    await screen.findByLabelText("Open Spring 2027");
+    // The chip comes first; once filtered, the list repeats the name as its heading.
+    fireEvent.press(screen.getAllByText("GBV")[0]!);
+    expect(screen.queryByLabelText("Open Spring 2027")).toBeNull();
+    expect(screen.getByLabelText("Open GBV 2027")).toBeTruthy();
     fireEvent.press(screen.getByText("All programs"));
-    expect(screen.getByText("Spring 2027")).toBeTruthy();
+    expect(screen.getByLabelText("Open Spring 2027")).toBeTruthy();
     expect(get).toHaveBeenCalledTimes(1);
   });
 });

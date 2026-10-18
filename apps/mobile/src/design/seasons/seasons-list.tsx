@@ -6,29 +6,46 @@
  * (the list contract carries no group count — gap note).
  */
 import type { SeasonListItem } from "@space/shared";
-import { Calendar as CalendarIcon } from "lucide-react-native";
+import { Calendar as CalendarIcon, Pencil } from "lucide-react-native";
+import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 
 import { formatSeasonDay } from "../../lib/format";
+import { iconWithClassName } from "../lib/icon";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
 import { DataTable, type DataTableColumn } from "../ui/data-table";
 import { EmptyState } from "../ui/empty-state";
 import { Text } from "../ui/text";
 import { SeasonStatusBadge } from "./season-status-badge";
 
+iconWithClassName(Pencil);
+
 export function SeasonsList({
   rows,
   onOpen,
+  onEdit,
   emptyTitle = "No seasons yet",
   emptyDescription = "Create your first season to get started.",
+  emptyAction,
 }: {
   rows: SeasonListItem[];
   onOpen: (row: SeasonListItem) => void;
+  /** v1 getEditHref: a pencil action per row (SUPER). */
+  onEdit?: (row: SeasonListItem) => void;
+  emptyAction?: ReactNode;
   emptyTitle?: string;
   emptyDescription?: string;
 }) {
   if (rows.length === 0) {
-    return <EmptyState icon={CalendarIcon} title={emptyTitle} description={emptyDescription} />;
+    return (
+      <EmptyState
+        icon={CalendarIcon}
+        title={emptyTitle}
+        description={emptyDescription}
+        action={emptyAction}
+      />
+    );
   }
 
   const columns: DataTableColumn<SeasonListItem>[] = [
@@ -60,6 +77,24 @@ export function SeasonsList({
         </Text>
       ),
     },
+    ...(onEdit
+      ? [
+          {
+            key: "actions",
+            header: "",
+            cell: (row: SeasonListItem) => (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                accessibilityLabel={`Edit ${row.title}`}
+                onPress={() => onEdit(row)}
+              >
+                <Pencil size={16} className="text-foreground" />
+              </Button>
+            ),
+          } satisfies DataTableColumn<SeasonListItem>,
+        ]
+      : []),
   ];
 
   const programs = new Map<string, SeasonListItem[]>();

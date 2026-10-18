@@ -1,11 +1,10 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
 import { apiClient } from "../lib/api-client";
-import { deviceTodayKey } from "../lib/calendar-grid";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -102,18 +101,6 @@ it("navigates to session detail on press", async () => {
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "1" } });
 });
 
-const range = (sessions: unknown[]) => ({
-  data: {
-    data: {
-      sessions,
-      from: "2099-02-28T22:00:00.000Z",
-      to: "2099-04-25T22:00:00.000Z",
-      fromDayKey: "2099-03-01",
-      toDayKey: "2099-04-25",
-    },
-  },
-});
-
 describe("calendar — staff branches (G17, D-16.7)", () => {
   it("gives ADMIN v1's season calendar for the current season, with a season switcher and Add session", async () => {
     useSessionStore.setState(adminSession);
@@ -160,43 +147,62 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
     });
   });
 
-  it("gives SUPER every ACTIVE season in one window, labels each row's season, and pages", async () => {
+  it("gives SUPER v1's all-seasons calendar: every ACTIVE season's sessions, one colour per season", async () => {
     useSessionStore.setState(makeSession("SUPER"));
-    get.mockResolvedValue(
-      range([
-        {
-          ...session(1, "Spring kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01"),
-          seasonTitle: "Spring 2099",
-        },
-        {
-          ...session(2, "Autumn kickoff", "2099-03-01T19:00:00.000Z", "2099-03-01"),
-          seasonId: 9,
-          seasonTitle: "Autumn 2099",
-        },
-      ]),
-    );
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/seasons")
+        return Promise.resolve({
+          data: {
+            data: {
+              seasons: [
+                seasonRow(7, 2026, "ACTIVE"),
+                seasonRow(9, 2026, "ACTIVE"),
+                seasonRow(8, 2027, "DRAFT"),
+              ],
+            },
+          },
+        });
+      if (url === "/api/v1/seasons/7/sessions")
+        return Promise.resolve({
+          data: {
+            data: {
+              sessions: [session(1, "Spring kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")],
+            },
+          },
+        });
+      if (url === "/api/v1/seasons/9/sessions")
+        return Promise.resolve({
+          data: {
+            data: {
+              sessions: [
+                {
+                  ...session(2, "Autumn kickoff", "2099-03-01T19:00:00.000Z", "2099-03-01"),
+                  seasonId: 9,
+                  seasonCode: "S9",
+                },
+              ],
+            },
+          },
+        });
+      if (url.startsWith("/api/v1/events"))
+        return Promise.resolve({ data: { data: { events: [], total: 0 } } });
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
 
     renderWithProviders(<CalendarScreen />);
 
     expect(await screen.findByText("Spring kickoff")).toBeTruthy();
-    expect(screen.getByText("Spring 2099")).toBeTruthy();
-    expect(screen.getByText("Autumn 2099")).toBeTruthy();
-    expect(screen.getByText("Mar 1, 2099 – Apr 25, 2099")).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/sessions", { params: {} });
+    expect(screen.getByText("Autumn kickoff")).toBeTruthy();
+    expect(screen.getByText("Calendar")).toBeTruthy();
+    expect(screen.getByText("All active seasons across JPC.")).toBeTruthy();
+    // The legend names each season by code; the DRAFT season is never read.
+    expect(screen.getAllByText("S26").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("S9").length).toBeGreaterThan(0);
+    expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/8/sessions");
+    expect(get).not.toHaveBeenCalledWith("/api/v1/sessions", expect.anything());
 
-    fireEvent.press(screen.getByText("Later"));
-    await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/api/v1/sessions", {
-        params: { from: "2099-04-25T22:00:00.000Z" },
-      }),
-    );
-    // Paging swaps to a fresh query key, so the screen shows Loading until it lands.
-    fireEvent.press(await screen.findByText("Earlier"));
-    await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/api/v1/sessions", {
-        params: { to: "2099-02-28T22:00:00.000Z" },
-      }),
-    );
+    fireEvent.press(screen.getByText("Spring kickoff"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "1" } });
   });
 
   const groupRow = (id: number, seasonId: number) => ({
@@ -367,28 +373,34 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
     expect(screen.queryByText("No season to show")).toBeNull();
   });
 
-  it("shows a windowed (SUPER) calendar only the events inside its org-day window", async () => {
+  it("shows SUPER the org's events beside the season sessions", async () => {
     useSessionStore.setState(makeSession("SUPER"));
-    get.mockImplementation((url: string) =>
-      url.startsWith("/api/v1/events")
-        ? Promise.resolve({
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/seasons")
+        return Promise.resolve({ data: { data: { seasons: [seasonRow(7, 2026, "ACTIVE")] } } });
+      if (url === "/api/v1/seasons/7/sessions")
+        return Promise.resolve({
+          data: {
+            data: { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] },
+          },
+        });
+      if (url.startsWith("/api/v1/events"))
+        return Promise.resolve({
+          data: {
             data: {
-              data: {
-                events: [
-                  eventRow(5, "In window", "2099-03-02T08:00:00.000Z", "2099-03-02", "10:00"),
-                  eventRow(6, "Out of window", "2099-06-01T08:00:00.000Z", "2099-06-01", "10:00"),
-                ],
-                total: 2,
-              },
+              events: [
+                eventRow(5, "JPC retreat", "2099-03-02T08:00:00.000Z", "2099-03-02", "10:00"),
+              ],
+              total: 1,
             },
-          })
-        : Promise.resolve(range([session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")])),
-    );
+          },
+        });
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
 
     renderWithProviders(<CalendarScreen />);
-    expect(await screen.findByText("In window")).toBeTruthy();
+    expect(await screen.findByText("JPC retreat")).toBeTruthy();
     expect(screen.getByText("Kickoff")).toBeTruthy();
-    expect(screen.queryByText("Out of window")).toBeNull();
   });
 });
 
@@ -477,38 +489,5 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
 
     fireEvent.press(screen.getByLabelText("Week"));
     expect(screen.getByText("Feb 23 – Mar 1")).toBeTruthy();
-  });
-
-  it("reads a staff Month from GET /sessions with the visible days, padded a day each side", async () => {
-    useSessionStore.setState(makeSession("SUPER"));
-    const today = deviceTodayKey();
-    get.mockImplementation((url: string) =>
-      url.startsWith("/api/v1/events")
-        ? Promise.resolve({ data: { data: { events: [], total: 0 } } })
-        : Promise.resolve({
-            data: {
-              data: {
-                sessions: [{ ...session(1, "Today's class", `${today}T12:00:00.000Z`, today) }],
-                from: "x",
-                to: "y",
-                fromDayKey: today,
-                toDayKey: today,
-              },
-            },
-          }),
-    );
-    renderWithProviders(<CalendarScreen />);
-    await screen.findByText("Today's class");
-
-    fireEvent.press(screen.getByLabelText("Month"));
-    await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/api/v1/sessions", {
-        params: {
-          from: expect.stringMatching(/T00:00:00\.000Z$/),
-          to: expect.stringMatching(/T00:00:00\.000Z$/),
-        },
-      }),
-    );
-    expect(await screen.findByLabelText(/, 1 scheduled$/)).toBeTruthy();
   });
 });

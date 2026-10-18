@@ -4,8 +4,9 @@
  * Month as one Monday-first 7-column grid of title chips.
  * Every day and time comes from the server's org-clock strings (X13).
  * Native differences: hover states → pressed; event rows without a url open
- * v2's event screen (v1 has no event page); the SUPER season palette is not
- * ported here (that path is batch 5).
+ * v2's event screen (v1 has no event page). `seasonColors` is SUPER's
+ * multi-season mode (v1 SEASON_PALETTE): each session chip and agenda badge
+ * is coloured by its season and a legend names them.
  */
 import {
   Calendar as CalendarIcon,
@@ -51,10 +52,52 @@ const VIEWS: { value: CalendarView; label: string }[] = [
 type Handlers = {
   onOpenSession: (id: number) => void;
   onOpenEvent: (event: JpcEventListItem) => void;
+  /** Season code → chip colours; present only on SUPER's all-seasons calendar. */
+  seasonColors?: SeasonColors;
 };
 
+export type SeasonColor = { box: string; text: string };
+export type SeasonColors = Record<string, SeasonColor>;
+
+/** v1 SEASON_PALETTE: `bg-X-800 text-X-300` chips that read the same in both themes. */
+export const SEASON_PALETTE: SeasonColor[] = [
+  { box: "bg-info-800", text: "text-info-300" },
+  { box: "bg-success-800", text: "text-success-300" },
+  { box: "bg-warning-800", text: "text-warning-300" },
+  { box: "bg-error-800", text: "text-error-300" },
+  { box: "bg-brand-navy-700", text: "text-brand-teal-300" },
+];
+const FALLBACK_SEASON: SeasonColor = { box: "bg-brand-navy-800", text: "text-brand-teal-400" };
+
+/** v1 builds the map from the season codes in first-seen order, cycling the palette. */
+export function buildSeasonColors(sessions: { seasonCode: string }[]): SeasonColors {
+  const out: SeasonColors = {};
+  for (const code of new Set(sessions.map((s) => s.seasonCode))) {
+    out[code] = SEASON_PALETTE[Object.keys(out).length % SEASON_PALETTE.length]!;
+  }
+  return out;
+}
+
+function SeasonLegend({ colors }: { colors: SeasonColors }) {
+  return (
+    <View className="flex-row flex-wrap gap-2">
+      {Object.entries(colors).map(([code, c]) => (
+        <View key={code} className={cn("rounded px-2 py-0.5", c.box)}>
+          <Text className={cn("text-xs", c.text)}>{code}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 /** v1's hand-rolled segmented control (not ui/tabs). */
-function ViewSwitch({ value, onChange }: { value: CalendarView; onChange: (v: CalendarView) => void }) {
+function ViewSwitch({
+  value,
+  onChange,
+}: {
+  value: CalendarView;
+  onChange: (v: CalendarView) => void;
+}) {
   return (
     <View
       accessibilityRole="tablist"
@@ -73,7 +116,12 @@ function ViewSwitch({ value, onChange }: { value: CalendarView; onChange: (v: Ca
             className={cn("rounded-lg px-3 py-1.5", selected && "bg-card")}
             style={selected ? shadowStyle("soft") : undefined}
           >
-            <Text className={cn("text-sm font-medium", selected ? "text-foreground" : "text-muted-foreground")}>
+            <Text
+              className={cn(
+                "text-sm font-medium",
+                selected ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
               {v.label}
             </Text>
           </Pressable>
@@ -93,15 +141,32 @@ function TimeRail({ time }: { time: string | null }) {
   );
 }
 
-const ROW = "flex-row items-center gap-3 rounded-xl border border-border bg-card p-3 active:bg-accent";
+const ROW =
+  "flex-row items-center gap-3 rounded-xl border border-border bg-card p-3 active:bg-accent";
 
-function AgendaSession({ s, onOpenSession }: { s: SessionListItem; onOpenSession: (id: number) => void }) {
+function AgendaSession({
+  s,
+  onOpenSession,
+  seasonColors,
+}: {
+  s: SessionListItem;
+  onOpenSession: (id: number) => void;
+  seasonColors?: SeasonColors;
+}) {
   return (
-    <Pressable accessibilityRole="link" onPress={() => onOpenSession(s.id)} className={ROW} style={shadowStyle("soft")}>
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => onOpenSession(s.id)}
+      className={ROW}
+      style={shadowStyle("soft")}
+    >
       <TimeRail time={s.startTime} />
       <View className="h-10 w-px shrink-0 bg-border" />
       <View className="min-w-0 flex-1">
-        <Text numberOfLines={1} className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+        <Text
+          numberOfLines={1}
+          className="text-sm font-semibold text-brand-navy-900 dark:text-foreground"
+        >
           {s.title}
         </Text>
         <View className="flex-row flex-wrap items-center gap-x-2">
@@ -112,6 +177,23 @@ function AgendaSession({ s, onOpenSession }: { s: SessionListItem; onOpenSession
               <Text className="text-xs text-muted-foreground">{s.location}</Text>
             </View>
           ) : null}
+          {seasonColors ? (
+            <View
+              className={cn(
+                "rounded px-1.5 py-0.5",
+                (seasonColors[s.seasonCode] ?? FALLBACK_SEASON).box,
+              )}
+            >
+              <Text
+                className={cn(
+                  "text-[10px] font-medium",
+                  (seasonColors[s.seasonCode] ?? FALLBACK_SEASON).text,
+                )}
+              >
+                {s.seasonCode}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
       <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
@@ -119,7 +201,13 @@ function AgendaSession({ s, onOpenSession }: { s: SessionListItem; onOpenSession
   );
 }
 
-function AgendaEvent({ e, onOpenEvent }: { e: JpcEventListItem; onOpenEvent: (e: JpcEventListItem) => void }) {
+function AgendaEvent({
+  e,
+  onOpenEvent,
+}: {
+  e: JpcEventListItem;
+  onOpenEvent: (e: JpcEventListItem) => void;
+}) {
   return (
     <Pressable
       accessibilityRole={e.url ? "link" : "button"}
@@ -133,8 +221,13 @@ function AgendaEvent({ e, onOpenEvent }: { e: JpcEventListItem; onOpenEvent: (e:
       <View className="h-10 w-px shrink-0 bg-border" />
       <View className="min-w-0 flex-1">
         <View className="flex-row items-center gap-1.5">
-          {e.visibility === "ALUMNI_ONLY" ? <Lock size={12} className="shrink-0 text-brand-navy-900 dark:text-foreground" /> : null}
-          <Text numberOfLines={1} className="shrink text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+          {e.visibility === "ALUMNI_ONLY" ? (
+            <Lock size={12} className="shrink-0 text-brand-navy-900 dark:text-foreground" />
+          ) : null}
+          <Text
+            numberOfLines={1}
+            className="shrink text-sm font-semibold text-brand-navy-900 dark:text-foreground"
+          >
             {e.title}
           </Text>
         </View>
@@ -173,14 +266,25 @@ function AgendaView({
             <View className="flex-row items-baseline justify-between gap-2">
               <Eyebrow>{formatLongDay(group.dayKey)}</Eyebrow>
               {cue ? (
-                <Text className="text-[10px] font-medium text-brand-teal-700 dark:text-brand-teal-300">{cue}</Text>
+                <Text className="text-[10px] font-medium text-brand-teal-700 dark:text-brand-teal-300">
+                  {cue}
+                </Text>
               ) : null}
             </View>
             {group.entries.map((entry) =>
               entry.kind === "session" ? (
-                <AgendaSession key={`s${entry.session.id}`} s={entry.session} onOpenSession={handlers.onOpenSession} />
+                <AgendaSession
+                  key={`s${entry.session.id}`}
+                  s={entry.session}
+                  onOpenSession={handlers.onOpenSession}
+                  seasonColors={handlers.seasonColors}
+                />
               ) : (
-                <AgendaEvent key={`e${entry.event.id}`} e={entry.event} onOpenEvent={handlers.onOpenEvent} />
+                <AgendaEvent
+                  key={`e${entry.event.id}`}
+                  e={entry.event}
+                  onOpenEvent={handlers.onOpenEvent}
+                />
               ),
             )}
           </View>
@@ -191,9 +295,15 @@ function AgendaView({
 }
 
 const CHIP_TONE: Record<SessionTone, { box: string; text: string }> = {
-  today: { box: "bg-success-100 dark:bg-success-950", text: "text-success-800 dark:text-success-200" },
+  today: {
+    box: "bg-success-100 dark:bg-success-950",
+    text: "text-success-800 dark:text-success-200",
+  },
   past: { box: "bg-muted", text: "text-muted-foreground" },
-  upcoming: { box: "bg-brand-teal-100 dark:bg-brand-teal-950", text: "text-brand-teal-800 dark:text-brand-teal-200" },
+  upcoming: {
+    box: "bg-brand-teal-100 dark:bg-brand-teal-950",
+    text: "text-brand-teal-800 dark:text-brand-teal-200",
+  },
 };
 
 function CalendarGrid({
@@ -232,20 +342,33 @@ function CalendarGrid({
               <View
                 key={key}
                 accessibilityLabel={formatDayKey(key)}
-                className={cn("min-w-0 flex-1 flex-col gap-0.5 bg-card p-1", view === "week" ? "min-h-32" : "min-h-[72px]")}
+                className={cn(
+                  "min-w-0 flex-1 flex-col gap-0.5 bg-card p-1",
+                  view === "week" ? "min-h-32" : "min-h-[72px]",
+                )}
                 style={outside ? { opacity: 0.4 } : undefined}
               >
                 <View
-                  className={cn("size-6 items-center justify-center self-start rounded-full", isToday && "bg-brand-teal-500")}
+                  className={cn(
+                    "size-6 items-center justify-center self-start rounded-full",
+                    isToday && "bg-brand-teal-500",
+                  )}
                 >
-                  <Text className={cn("text-xs font-medium", isToday ? "text-brand-navy-950" : "text-foreground")}>
+                  <Text
+                    className={cn(
+                      "text-xs font-medium",
+                      isToday ? "text-brand-navy-950" : "text-foreground",
+                    )}
+                  >
                     {String(Number(key.slice(8)))}
                   </Text>
                 </View>
                 {sessions
                   .filter((s) => s.dayKey === key)
                   .map((s) => {
-                    const tone = CHIP_TONE[sessionTone(s.dayKey, today)];
+                    const tone = handlers.seasonColors
+                      ? (handlers.seasonColors[s.seasonCode] ?? FALLBACK_SEASON)
+                      : CHIP_TONE[sessionTone(s.dayKey, today)];
                     return (
                       <Pressable
                         key={s.id}
@@ -253,7 +376,10 @@ function CalendarGrid({
                         onPress={() => handlers.onOpenSession(s.id)}
                         className={cn("rounded px-1 py-0.5", tone.box)}
                       >
-                        <Text numberOfLines={1} className={cn("text-xs font-medium leading-tight", tone.text)}>
+                        <Text
+                          numberOfLines={1}
+                          className={cn("text-xs font-medium leading-tight", tone.text)}
+                        >
                           {s.title}
                         </Text>
                       </Pressable>
@@ -270,14 +396,18 @@ function CalendarGrid({
                         onPress={() => handlers.onOpenEvent(e)}
                         className={cn(
                           "flex-row items-center gap-0.5 rounded px-1 py-0.5",
-                          alumni ? "bg-warning-100 dark:bg-warning-950" : "bg-brand-navy-100 dark:bg-brand-navy-900",
+                          alumni
+                            ? "bg-warning-100 dark:bg-warning-950"
+                            : "bg-brand-navy-100 dark:bg-brand-navy-900",
                         )}
                       >
                         <Text
                           numberOfLines={1}
                           className={cn(
                             "shrink text-xs leading-tight",
-                            alumni ? "text-warning-800 dark:text-warning-200" : "text-brand-navy-800 dark:text-brand-navy-100",
+                            alumni
+                              ? "text-warning-800 dark:text-warning-200"
+                              : "text-brand-navy-800 dark:text-brand-navy-100",
                           )}
                         >
                           {e.title}
@@ -301,6 +431,7 @@ export function SeasonCalendar({
   initialAnchor,
   onOpenSession,
   onOpenEvent,
+  seasonColors,
 }: {
   sessions: SessionListItem[];
   events: JpcEventListItem[];
@@ -309,7 +440,7 @@ export function SeasonCalendar({
 } & Handlers) {
   const [view, setView] = useState<CalendarView>("upcoming");
   const [anchor, setAnchor] = useState(initialAnchor);
-  const handlers = { onOpenSession, onOpenEvent };
+  const handlers = { onOpenSession, onOpenEvent, seasonColors };
 
   return (
     <View className="flex-col gap-4">
@@ -325,7 +456,9 @@ export function SeasonCalendar({
             >
               <ChevronLeft size={16} className="text-foreground" />
             </Button>
-            <Text className="min-w-32 text-center text-sm font-semibold text-foreground">{rangeLabel(view, anchor)}</Text>
+            <Text className="min-w-32 text-center text-sm font-semibold text-foreground">
+              {rangeLabel(view, anchor)}
+            </Text>
             <Button
               variant="ghost"
               size="icon"
@@ -337,10 +470,18 @@ export function SeasonCalendar({
           </View>
         ) : null}
       </View>
+      {seasonColors ? <SeasonLegend colors={seasonColors} /> : null}
       {view === "upcoming" ? (
         <AgendaView sessions={sessions} events={events} today={today} {...handlers} />
       ) : (
-        <CalendarGrid view={view} anchor={anchor} sessions={sessions} events={events} today={today} {...handlers} />
+        <CalendarGrid
+          view={view}
+          anchor={anchor}
+          sessions={sessions}
+          events={events}
+          today={today}
+          {...handlers}
+        />
       )}
     </View>
   );

@@ -6,16 +6,6 @@ import type { seasonWriteRequestSchema } from "@space/shared";
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
-export interface CreateSeasonInput {
-  code: string;
-  program: string;
-  year: number;
-  startDate: string;
-  endDate: string;
-  /** The write schema requires it; a new season always starts as a draft. */
-  status: "DRAFT";
-}
-
 export interface DuplicateSeasonInput {
   year: number;
   startDate: string;
@@ -38,7 +28,7 @@ function useInvalidateSeasons() {
 export function useCreateSeason() {
   const invalidate = useInvalidateSeasons();
   return useMutation({
-    mutationFn: async (body: CreateSeasonInput) => {
+    mutationFn: async (body: SeasonIdentityInput) => {
       const res = await apiClient.post("/api/v1/seasons", body);
       return seasonRefResponseSchema.parse(res.data.data);
     },

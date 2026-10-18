@@ -51,11 +51,14 @@ describe("/users/new (spec 11 §9)", () => {
 
     fireEvent.changeText(screen.getByLabelText("Name"), "Leader Person");
     fireEvent.changeText(screen.getByLabelText("Email"), "l@jpc.test");
-    fireEvent.press(screen.getByText("LEADER"));
+    fireEvent.press(screen.getByLabelText("Role"));
+    fireEvent.press(await screen.findByText("Leader"));
     fireEvent.press(screen.getByText("Create and send invite"));
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Graduation year").props.accessibilityHint).toBe("Required for this role."),
+      expect(screen.getByLabelText("Graduation year").props.accessibilityHint).toBe(
+        "Required for this role.",
+      ),
     );
     expect(post).not.toHaveBeenCalled();
   });
@@ -70,12 +73,20 @@ describe("/users/new (spec 11 §9)", () => {
 
     fireEvent.changeText(screen.getByLabelText("Name"), "Second Super");
     fireEvent.changeText(screen.getByLabelText("Email"), "s@jpc.test");
-    fireEvent.press(screen.getByText("SUPER"));
+    fireEvent.press(screen.getByLabelText("Role"));
+    fireEvent.press(await screen.findByText("Super"));
     fireEvent.press(screen.getByText("Create and send invite"));
 
-    expect(alert).toHaveBeenCalledWith("Create a SUPER account?", expect.any(String), expect.any(Array));
+    expect(alert).toHaveBeenCalledWith(
+      "Create a SUPER account?",
+      expect.any(String),
+      expect.any(Array),
+    );
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/users", expect.objectContaining({ role: "SUPER", confirmSuper: true })),
+      expect(post).toHaveBeenCalledWith(
+        "/api/v1/users",
+        expect.objectContaining({ role: "SUPER", confirmSuper: true }),
+      ),
     );
     alert.mockRestore();
   });

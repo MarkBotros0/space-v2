@@ -41,10 +41,14 @@ function GroupCard({ group }: { group: NonNullable<MySeason["group"]> }) {
         </View>
         <View>
           <Eyebrow>Your group</Eyebrow>
-          <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{group.name}</Text>
+          <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
+            {group.name}
+          </Text>
         </View>
       </View>
-      {group.description ? <Text className="mb-4 text-sm text-muted-foreground">{group.description}</Text> : null}
+      {group.description ? (
+        <Text className="mb-4 text-sm text-muted-foreground">{group.description}</Text>
+      ) : null}
       <Text className="mb-2 text-xs font-bold text-brand-navy-900 dark:text-foreground">
         {group.leaders.length === 1 ? "Leader" : "Leaders"}
       </Text>
@@ -60,10 +64,16 @@ function GroupCard({ group }: { group: NonNullable<MySeason["group"]> }) {
                 </Text>
               </View>
               <View className="min-w-0 flex-1">
-                <Text numberOfLines={1} className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+                <Text
+                  numberOfLines={1}
+                  className="text-sm font-semibold text-brand-navy-900 dark:text-foreground"
+                >
                   {leader.name}
                 </Text>
-                <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`mailto:${leader.email}`)}>
+                <Pressable
+                  accessibilityRole="link"
+                  onPress={() => void Linking.openURL(`mailto:${leader.email}`)}
+                >
                   <Text numberOfLines={1} className="text-xs text-muted-foreground">
                     {leader.email}
                   </Text>
@@ -74,7 +84,8 @@ function GroupCard({ group }: { group: NonNullable<MySeason["group"]> }) {
         </View>
       )}
       <Text className="mb-2 mt-4 text-xs font-bold text-brand-navy-900 dark:text-foreground">
-        Members<Text className="text-xs font-normal text-muted-foreground"> ({group.members.length})</Text>
+        Members
+        <Text className="text-xs font-normal text-muted-foreground"> ({group.members.length})</Text>
       </Text>
       <View className="flex-row flex-wrap gap-1.5">
         {group.members.map((member) => (
@@ -142,9 +153,14 @@ function UpcomingCard({ upcoming }: { upcoming: MySeason["upcoming"] }) {
                 <View className="min-w-0 flex-1">
                   <Pressable
                     accessibilityRole="link"
-                    onPress={() => router.push({ pathname: "/session/[id]", params: { id: String(s.id) } })}
+                    onPress={() =>
+                      router.push({ pathname: "/session/[id]", params: { id: String(s.id) } })
+                    }
                   >
-                    <Text numberOfLines={1} className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+                    <Text
+                      numberOfLines={1}
+                      className="text-sm font-semibold text-brand-navy-900 dark:text-foreground"
+                    >
                       {s.title}
                     </Text>
                   </Pressable>
@@ -181,7 +197,11 @@ export function StudentSeason() {
   const noSeason = (
     <View className="flex-col gap-3">
       <PageTitle title="Current season" />
-      <EmptyState icon={Users} title="No active season" description="An admin will enroll you when you're ready." />
+      <EmptyState
+        icon={Users}
+        title="No active season"
+        description="An admin will enroll you when you're ready."
+      />
     </View>
   );
   let body: ReactNode;
@@ -197,7 +217,10 @@ export function StudentSeason() {
           <View className="flex-row flex-wrap items-start justify-between gap-2">
             <View className="min-w-0">
               <Eyebrow tone="teal">Current season</Eyebrow>
-              <Text accessibilityRole="header" className="mt-1 text-2xl font-black text-brand-navy-900 dark:text-foreground">
+              <Text
+                accessibilityRole="header"
+                className="mt-1 text-2xl font-black text-brand-navy-900 dark:text-foreground"
+              >
                 {data.title}
               </Text>
               <View className="mt-1 flex-row items-center gap-1.5">

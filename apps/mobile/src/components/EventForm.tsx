@@ -1,3 +1,4 @@
+import { format, isValid, parse } from "date-fns";
 import { useState } from "react";
 import { View } from "react-native";
 import {
@@ -6,11 +7,22 @@ import {
   type JpcVisibility,
 } from "@space/shared";
 
+import { FormActions, FormErrorBox } from "../design/forms/form-parts";
+import {
+  Button,
+  DatePicker,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Text,
+  Textarea,
+} from "../design/ui";
+import { FormField } from "../design/ui/form-field";
 import { useSeasons } from "../hooks/use-seasons";
 import { firstErrorByField } from "../lib/form-errors";
-import { useTheme } from "../theme";
-import { Button, Input, Text } from "../ui";
-import { ChoiceChips, type ChoiceOption } from "./ChoiceChips";
 
 export interface EventFormValues {
   title: string;
@@ -41,9 +53,10 @@ export const VISIBILITY_LABELS: Record<JpcVisibility, string> = {
   SEASON: "One season",
 };
 
-const VISIBILITY_OPTIONS: readonly ChoiceOption<JpcVisibility>[] = (
-  ["ALL", "ALUMNI_ONLY", "SEASON"] as const
-).map((value) => ({ value, label: VISIBILITY_LABELS[value] }));
+const dayToDate = (day: string): Date | null => {
+  const d = parse(day, "yyyy-MM-dd", new Date());
+  return isValid(d) ? d : null;
+};
 
 /**
  * Wall-clock fields only (ruling X13): an empty Time is all-day (`null`), an
@@ -68,12 +81,26 @@ export interface EventFormProps {
   submitting: boolean;
   /** Called only with a body that already passed `createJpcEventRequestSchema`. */
   onSubmit: (body: CreateJpcEventBody) => void;
+  onCancel?: () => void;
   message?: string | null;
 }
 
-/** Shared by the SUPER "New event" form and the event detail's edit section. */
-export function EventForm({ initial, submitLabel, submitting, onSubmit, message }: EventFormProps) {
-  const theme = useTheme();
+/**
+ * v1 super/events/jpc-event-form.tsx: Title, Description, Date / Time / End
+ * date, Link, Visibility, then Season when the event is for one season.
+ * Shared by the SUPER "New event" form and the event detail's edit section.
+ * Date and End date are pickers; Time stays a typed HH:mm (empty = all-day)
+ * because the design time picker has no empty state. No Photo or End time
+ * field: uploads are off and the event contract carries neither (gap note).
+ */
+export function EventForm({
+  initial,
+  submitLabel,
+  submitting,
+  onSubmit,
+  onCancel,
+  message,
+}: EventFormProps) {
   const [values, setValues] = useState<EventFormValues>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const seasons = useSeasons(values.visibility === "SEASON");
@@ -96,31 +123,120 @@ export function EventForm({ initial, submitLabel, submitting, onSubmit, message 
   };
 
   return (
-    <View style={{ gap: theme.spacing.sm }}>
-      <Input label="Title" value={values.title} onChangeText={set("title")} error={errors.title} />
-      <Input label="Date" value={values.day} onChangeText={set("day")} autoCapitalize="none" placeholder="YYYY-MM-DD" error={errors.day} />
-      <Input label="Time" value={values.time} onChangeText={set("time")} autoCapitalize="none" placeholder="HH:mm, empty for all-day" error={errors.time} />
-      <Input label="End date" value={values.endDay} onChangeText={set("endDay")} autoCapitalize="none" placeholder="YYYY-MM-DD, optional" error={errors.endDay} />
-      <Input label="Description" value={values.description} onChangeText={set("description")} multiline error={errors.description} />
-      <Input label="Link" value={values.url} onChangeText={set("url")} autoCapitalize="none" error={errors.url} />
-      <ChoiceChips label="Visible to" options={VISIBILITY_OPTIONS} value={values.visibility} onChange={set("visibility")} />
+    <View className="flex-col gap-4">
+      <FormField label="Title" required error={errors.title}>
+        <Input
+          accessibilityLabel="Title"
+          value={values.title}
+          onChangeText={set("title")}
+          placeholder="Spring Retreat"
+        />
+      </FormField>
+      <FormField label="Description" error={errors.description}>
+        <Textarea
+          accessibilityLabel="Description"
+          value={values.description}
+          onChangeText={set("description")}
+          placeholder="What's this event about?"
+        />
+      </FormField>
+      <FormField label="Date" required error={errors.day}>
+        <DatePicker
+          accessibilityLabel="Date"
+          value={dayToDate(values.day)}
+          onChange={(d) => set("day")(format(d, "yyyy-MM-dd"))}
+          ariaInvalid={Boolean(errors.day)}
+        />
+      </FormField>
+      <FormField label="Time" error={errors.time}>
+        <Input
+          accessibilityLabel="Time"
+          value={values.time}
+          onChangeText={set("time")}
+          autoCapitalize="none"
+          placeholder="HH:mm, empty for all-day"
+        />
+      </FormField>
+      <FormField label="End date" error={errors.endDay}>
+        <DatePicker
+          accessibilityLabel="End date"
+          value={dayToDate(values.endDay)}
+          onChange={(d) => set("endDay")(format(d, "yyyy-MM-dd"))}
+          ariaInvalid={Boolean(errors.endDay)}
+        />
+        {values.endDay !== "" ? (
+          // V2-only: v1's native date input could be cleared; the picker cannot.
+          <Button
+            variant="ghost"
+            size="sm"
+            className="self-start"
+            onPress={() => set("endDay")("")}
+          >
+            Remove end date
+          </Button>
+        ) : null}
+      </FormField>
+      <FormField label="Link" error={errors.url}>
+        <Input
+          accessibilityLabel="Link"
+          value={values.url}
+          onChangeText={set("url")}
+          autoCapitalize="none"
+          keyboardType="url"
+          placeholder="https://..."
+        />
+      </FormField>
+      <FormField label="Visible to" required>
+        <Select
+          items={VISIBILITY_LABELS}
+          value={values.visibility}
+          onValueChange={(v) => set("visibility")(v as JpcVisibility)}
+        >
+          <SelectTrigger accessibilityLabel="Visible to">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(VISIBILITY_LABELS) as JpcVisibility[]).map((v) => (
+              <SelectItem key={v} value={v}>
+                {VISIBILITY_LABELS[v]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FormField>
       {values.visibility === "SEASON" ? (
         seasons.data ? (
-          <ChoiceChips
-            label="Season"
-            options={seasons.data.map((s) => ({ value: s.id, label: s.title }))}
-            value={values.seasonId}
-            onChange={set("seasonId")}
-            error={errors.seasonId}
-          />
+          <FormField label="Season" required error={errors.seasonId}>
+            <Select
+              items={Object.fromEntries(seasons.data.map((s) => [String(s.id), s.title]))}
+              value={values.seasonId === null ? null : String(values.seasonId)}
+              onValueChange={(v) => set("seasonId")(Number(v))}
+            >
+              <SelectTrigger accessibilityLabel="Season">
+                <SelectValue placeholder="Choose a season" />
+              </SelectTrigger>
+              <SelectContent>
+                {seasons.data.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
         ) : (
-          <Text variant="label" color={theme.colors.neutral[600]}>
+          <Text className="text-sm text-muted-foreground">
             {seasons.isError ? "Couldn't load seasons." : "Loading seasons…"}
           </Text>
         )
       ) : null}
-      {message ? <Text variant="label" color={theme.colors.error[500]}>{message}</Text> : null}
-      <Button title={submitLabel} onPress={submit} loading={submitting} />
+      <FormErrorBox message={message} />
+      <FormActions
+        submitLabel={submitLabel}
+        pending={submitting}
+        onSubmit={submit}
+        onCancel={onCancel}
+      />
     </View>
   );
 }

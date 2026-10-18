@@ -322,3 +322,16 @@ in as the role named. Fix or record any difference in the batch's gap note. Rest
 | Students, alumni, dropped | ADMIN | table filters, row links |
 | Student detail | ADMIN | tabs, Graduate / Edit / Delete, drop control |
 | New student, edit student | SUPER, ADMIN | sectioned form, season combobox |
+
+### Batch 5 — super (gaps: `docs/superpowers/ui-rebuild/gaps-batch-5.md`)
+
+| Screen | Role | Check |
+|---|---|---|
+| Dashboard | SUPER | 2×2 stat cards |
+| Seasons list, new season, edit season | SUPER | program table, pencil, form, delete confirm |
+| Season detail | SUPER | Edit season, Duplicate sheet |
+| Users, new user, edit user | SUPER | table, role select, deactivate |
+| Import profiles | SUPER | mode tiles, preview, Show more |
+| Events, edit event | SUPER | pencil/trash, inline new, date pickers |
+| Reports | SUPER | organisation stat cards, per-season table |
+| Calendar | SUPER | season colours and legend |
