@@ -1,0 +1,12 @@
+# _tap.yaml by testID: scrolls ${TARGET_ID} into the centre, then taps it.
+appId: com.jpc.space
+---
+- scrollUntilVisible:
+    element:
+      id: ${TARGET_ID}
+    direction: DOWN
+    centerElement: true
+    timeout: 10000
+    optional: true
+- tapOn:
+    id: ${TARGET_ID}

@@ -1,0 +1,16 @@
+# Signs in as ${EMAIL} (one of the runner's <ROLE>_EMAIL values) with the
+# reference password, from a cleared app, and waits for the shell. The cleared
+# state also drops any theme picked in Settings, so the app follows the cell's
+# system theme.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../login-as.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
