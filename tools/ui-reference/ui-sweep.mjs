@@ -222,9 +222,14 @@ async function main() {
   try {
     cells = pick(CELLS, args.cells, (cell) => cell.id, "cell");
     flows = pick(
-      readdirSync(SWEEP_DIR).filter((name) => /^s\d+.*\.yaml$/.test(name)).sort(),
+      // Flows may sit in sub-folders (sweep/student-scenarios/); they are
+      // named, picked and sorted by file name alone.
+      readdirSync(SWEEP_DIR, { recursive: true })
+        .map(String)
+        .filter((rel) => /^s\d+.*\.yaml$/.test(path.basename(rel)))
+        .sort((a, b) => path.basename(a).localeCompare(path.basename(b))),
       args.flows,
-      (name) => name,
+      (rel) => path.basename(rel),
       "sweep flow",
     );
   } catch (err) {
@@ -278,7 +283,7 @@ async function main() {
       for (const flow of flows) {
         console.log(`\n[sweep] ── ${cell.id} / ${flow} ──`);
         const started = Date.now();
-        const prefix = `${flow.split("-")[0]}-`;
+        const prefix = `${path.basename(flow).split("-")[0]}-`;
         for (const old of readdirSync(cellDir).filter((name) => name.startsWith(prefix))) rmSync(path.join(cellDir, old));
         const scratchDir = path.join(runDir, ".maestro");
         const passed = await runMaestro(path.join(SWEEP_DIR, flow), { ...roleEnv, THEME: cell.theme }, scratchDir, secrets);

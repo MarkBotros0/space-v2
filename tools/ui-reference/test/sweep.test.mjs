@@ -56,3 +56,17 @@ test("contact sheet marks missing and failed shots", () => {
   assert.match(html, /<tr class="failure"><th class="name">s02-zz-FAILED/);
   assert.match(html, /1\/3 flow runs completed/);
 });
+
+test("the contact sheet finds a flow kept in a sub-folder by its file name", () => {
+  const cells = CELLS.slice(0, 2);
+  const html = contactSheetHtml({
+    title: "t",
+    cells,
+    shotsByCell: { [cells[0].id]: ["s03-01-dashboard"], [cells[1].id]: [] },
+    results: [
+      { cell: cells[0].id, flow: "student-scenarios/s03-dashboard.yaml", passed: true },
+      { cell: cells[1].id, flow: "student-scenarios/s03-dashboard.yaml", passed: false },
+    ],
+  });
+  assert.match(html, /<td class="missing">flow failed<\/td>/);
+});

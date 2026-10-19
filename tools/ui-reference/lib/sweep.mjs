@@ -107,7 +107,7 @@ export function contactSheetHtml({ title, cells, shotsByCell, results }) {
 
   const whyMissing = (cellId, name) => {
     const flow = name.split("-")[0];
-    const result = results.find((r) => r.cell === cellId && r.flow.startsWith(`${flow}-`));
+    const result = results.find((r) => r.cell === cellId && r.flow.split("/").pop().startsWith(`${flow}-`));
     if (!result) return "not run";
     return result.passed ? "not reached" : "flow failed";
   };

@@ -191,6 +191,85 @@ async function main(): Promise<void> {
     },
   });
 
+  // A graded paper quiz for the performance table, and a published online
+  // quiz the student has not started, so "Take quiz" shows.
+  const paperQuiz = await db.quiz.create({
+    data: {
+      seasonId: season.id,
+      sessionId: pastSession.id,
+      title: "Opening night quiz",
+      kind: "PAPER",
+      createdById: admin.id,
+    },
+  });
+  await db.quizGrade.create({
+    data: {
+      quizId: paperQuiz.id,
+      studentUserId: student.id,
+      score: 82,
+      gradedById: leader.id,
+      gradedAt: fromToday(-5),
+    },
+  });
+  const onlineQuiz = await db.quiz.create({
+    data: {
+      seasonId: season.id,
+      title: "Week 2 check-in",
+      kind: "ONLINE",
+      maxScore: 3,
+      publishedAt: fromToday(-1),
+      createdById: admin.id,
+    },
+  });
+  await db.quizQuestion.createMany({
+    data: [
+      {
+        quizId: onlineQuiz.id,
+        order: 1,
+        type: "MCQ",
+        prompt: "Which hall do we meet in?",
+        points: 1,
+        options: ["Hall A", "Hall B", "Online"],
+        correctIndex: 0,
+      },
+      {
+        quizId: onlineQuiz.id,
+        order: 2,
+        type: "MCQ",
+        prompt: "How long is a session?",
+        points: 1,
+        options: ["60 minutes", "90 minutes", "2 hours"],
+        correctIndex: 1,
+      },
+      {
+        quizId: onlineQuiz.id,
+        order: 3,
+        type: "ESSAY",
+        prompt: "What do you hope to learn this season?",
+        points: 1,
+      },
+    ],
+  });
+
+  await db.notification.createMany({
+    data: [
+      {
+        userId: student.id,
+        type: "ASSIGNMENT_CREATED",
+        title: "New assignment: Read chapter 2",
+        link: "/assignments",
+      },
+      {
+        userId: student.id,
+        type: "QUIZ_GRADED",
+        title: "Opening night quiz graded",
+        body: "You scored 82.",
+        link: "/quizzes",
+        readAt: fromToday(-4),
+      },
+    ],
+  });
+
   const roles = { student, alumni, leader, admin, super: superUser, mentor };
   const users = Object.fromEntries(
     Object.entries(roles).map(([role, u]) => [role, { email: u.email, name: u.name }]),

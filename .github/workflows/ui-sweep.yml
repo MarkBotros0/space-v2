@@ -11,8 +11,8 @@ name: UI sweep (Android emulator)
 # downloaded by anyone signed in to GitHub, and the seed refuses non-local
 # hosts anyway.
 #
-# The login limiter allows 20 sign-ins per 15 minutes. One signed-in flow per
-# cell stays under it; many signed-in flows in one run would not.
+# The login limiter allows 20 sign-ins per 15 minutes, so ci-sweep.sh
+# restarts the backend before each cell.
 on:
   workflow_dispatch:
     inputs:
@@ -28,6 +28,7 @@ on:
     paths:
       - "apps/mobile/.maestro/**"
       - "tools/ui-reference/ui-sweep.mjs"
+      - "tools/ui-reference/ci-sweep.sh"
       - "tools/ui-reference/lib/sweep.mjs"
       - "apps/backend/scripts/seed-sweep.ts"
       - ".github/workflows/ui-sweep.yml"
@@ -93,19 +94,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Throwaway database with fake users, and the backend on :4100
+      - name: Throwaway database with fake users
         working-directory: apps/backend
         run: |
           pnpm db:generate
           pnpm db:migrate:local
           pnpm seed:sweep "$UI_SWEEP_USERS_FILE"
-          PORT=4100 nohup npx ts-node --transpile-only src/server.ts > "$GITHUB_WORKSPACE/backend.log" 2>&1 &
-          for i in $(seq 1 30); do
-            curl -fs http://localhost:4100/health && exit 0
-            sleep 2
-          done
-          cat "$GITHUB_WORKSPACE/backend.log"
-          exit 1
 
       - name: Build Android release APK (JS bundle embedded, no Metro)
         working-directory: apps/mobile
@@ -118,6 +112,8 @@ jobs:
           cd android
           ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
           cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/app.apk"
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | tail -n 1)/aapt" dump xmltree "$GITHUB_WORKSPACE/app.apk" AndroidManifest.xml | grep -i cleartext
+          unzip -p "$GITHUB_WORKSPACE/app.apk" assets/index.android.bundle | grep -ao "10\.0\.2\.2:4100\|space-v2-be\.vercel\.app" | sort | uniq -c
 
       - name: Install Maestro
         run: |
@@ -141,10 +137,8 @@ jobs:
           profile: pixel_6
           disable-animations: false
           # One line: the action runs each script line in its own shell.
-          # Wi-Fi off, as emulator.sh does: with emulated Wi-Fi on, the
-          # emulator's route to the host (10.0.2.2) breaks. The nc line only
-          # logs whether the backend is reachable from the emulator.
-          script: adb install -r app.apk && adb shell svc wifi disable && sleep 5 && (adb shell 'printf "GET /health HTTP/1.0\r\n\r\n" | nc -w 5 10.0.2.2 4100' || true) && node tools/ui-reference/ui-sweep.mjs ${SWEEP_FLOWS:+--flows="$SWEEP_FLOWS"} ${SWEEP_CELLS:+--cells="$SWEEP_CELLS"}
+          # ci-sweep.sh starts the backend on :4100 and sweeps one cell at a time.
+          script: bash tools/ui-reference/ci-sweep.sh
 
       - name: Backend log
         if: always()
