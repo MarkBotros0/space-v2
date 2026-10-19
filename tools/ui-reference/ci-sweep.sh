@@ -80,7 +80,7 @@ CHECK_DIR=$(mktemp -d)
 timeout 300 maestro --device "$UI_SWEEP_DEVICE" test --test-output-dir="$CHECK_DIR" -e EMAIL="$EMAIL" -e PASSWORD="$UI_SWEEP_PASSWORD" apps/mobile/.maestro/ci/signin-check.yaml 2>&1 | tail -n 20
 # The two check screenshots, shrunk and printed as base64, so they can be
 # read from the job log alone (fake data only).
-command -v convert > /dev/null && for shot in $(find "$CHECK_DIR" -name 'ci-*.png' | sort); do
+for shot in $(find "$CHECK_DIR" -name 'ci-*.png' | sort); do
   echo "[ci-sweep] screenshot $(basename "$shot") base64:"
   convert "$shot" -resize 360x -quality 60 jpg:- | base64 -w 0; echo
 done
@@ -114,7 +114,7 @@ done
 # since the job's artifact can't be read from everywhere the log can.
 for shot in $(find "$UI_SWEEP_OUTPUT/run" -name '*-zz-FAILED.png' | sort); do
   echo "[ci-sweep] failure shot ${shot#"$UI_SWEEP_OUTPUT"/run/} base64:"
-  ffmpeg -loglevel error -i "$shot" -vf scale=360:-1 -q:v 8 -f image2 -c:v mjpeg pipe:1 | base64 -w 0; echo
+  convert "$shot" -resize 360x -quality 60 jpg:- | base64 -w 0; echo
 done
 
 # What the app itself logged: JS errors, network failures, cleartext refusals.
