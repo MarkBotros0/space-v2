@@ -44,6 +44,10 @@ appId: com.jpc.space
 # the same mounted screen, focus included.
 - stopApp
 - launchApp
+# A link opened while the app is still starting lands on the dashboard.
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
 - openLink: spacev2://settings
 - extendedWaitUntil:
     visible: 'Profile, password, and notification preferences.'
