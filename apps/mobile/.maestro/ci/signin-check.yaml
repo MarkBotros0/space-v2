@@ -16,8 +16,10 @@ appId: com.jpc.space
     id: "login-password"
 - inputText: ${PASSWORD}
 - hideKeyboard
+- takeScreenshot: ci-1-typed
 - tapOn: "Sign in"
 - extendedWaitUntil:
     notVisible: "Sign in"
     timeout: 20000
     optional: true
+- takeScreenshot: ci-2-after

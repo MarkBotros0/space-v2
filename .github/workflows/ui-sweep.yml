@@ -59,10 +59,10 @@ jobs:
       AUTH_SECRET: ci-only-sweep-secret-not-used-anywhere-else
       # 10.0.2.2 is the emulator's alias for the runner's localhost.
       EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:4100
-      # A pull request sweeps the skill's starting pair (worst cell, and the
-      # reference phone in the other theme); Run workflow defaults to all 16.
-      SWEEP_CELLS: ${{ github.event_name == 'pull_request' && 'small-1.3-3btn-light,iphone-1.0-gesture-dark' || github.event.inputs.cells || '' }}
-      SWEEP_FLOWS: ${{ github.event.inputs.flows || '' }}
+      # A pull request runs one quick signed-in check while sign-in in CI is
+      # being fixed; Run workflow defaults to everything.
+      SWEEP_CELLS: ${{ github.event_name == 'pull_request' && 'iphone-1.0-gesture-light' || github.event.inputs.cells || '' }}
+      SWEEP_FLOWS: ${{ github.event_name == 'pull_request' && 's02' || github.event.inputs.flows || '' }}
       UI_SWEEP_ADB: adb
       UI_SWEEP_DEVICE: emulator-5554
       UI_SWEEP_NO_METRO: "1"

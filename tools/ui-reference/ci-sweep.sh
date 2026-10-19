@@ -47,7 +47,14 @@ adb shell 'printf "GET /health HTTP/1.0\r\n\r\n" | nc -w 5 10.0.2.2 4100' || ech
 # and the backend's requests, while the result is still there to read.
 echo "[ci-sweep] sign-in check:"
 EMAIL=$(node -p 'JSON.parse(require("fs").readFileSync(process.env.UI_SWEEP_USERS_FILE, "utf8")).student.email')
-timeout 300 maestro --device "$UI_SWEEP_DEVICE" test -e EMAIL="$EMAIL" -e PASSWORD="$UI_SWEEP_PASSWORD" apps/mobile/.maestro/ci/signin-check.yaml 2>&1 | tail -n 20
+CHECK_DIR=$(mktemp -d)
+timeout 300 maestro --device "$UI_SWEEP_DEVICE" test --test-output-dir="$CHECK_DIR" -e EMAIL="$EMAIL" -e PASSWORD="$UI_SWEEP_PASSWORD" apps/mobile/.maestro/ci/signin-check.yaml 2>&1 | tail -n 20
+# The two check screenshots, shrunk and printed as base64, so they can be
+# read from the job log alone (fake data only).
+for shot in $(find "$CHECK_DIR" -name 'ci-*.png' | sort); do
+  echo "[ci-sweep] screenshot $(basename "$shot") base64:"
+  convert "$shot" -resize 360x -quality 60 jpg:- | base64 -w 0; echo
+done
 timeout 120 maestro --device "$UI_SWEEP_DEVICE" hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText|hintText)" *: *"[^"]+"' | sort -u | head -n 60
 adb logcat -d | grep -E " E |ReactNativeJS|AndroidRuntime|FATAL" | grep -v "E Netd\|E cutils\|E bpf" | tail -n 60
 grep -v "GET /health" backend.log | tail -n 20
