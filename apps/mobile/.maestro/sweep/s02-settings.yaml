@@ -38,6 +38,13 @@ appId: com.jpc.space
 - takeScreenshot: s02-04-settings-password
 
 # The last section has to clear the floating tab bar and the system bar.
+# Reopen the page first: hiding the keyboard leaves "Confirm new password"
+# focused, and the emulator then kept the page pinned on it, so the scroll
+# below never moved (CI runs 13-15, either cell).
+- openLink: spacev2://settings
+- extendedWaitUntil:
+    visible: 'Profile, password, and notification preferences.'
+    timeout: 40000
 - scrollUntilVisible:
     element: 'Security'
     direction: DOWN
