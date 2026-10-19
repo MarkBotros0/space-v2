@@ -1,0 +1,14 @@
+# Taps ${TARGET} (visible text or accessibility label) after scrolling it into
+# view. Maestro never scrolls before a tap, and on the small phone at font 1.3
+# plenty of buttons start below the fold or under the floating tab bar.
+# Centred, because Maestro counts an element behind the tab bar as visible and
+# would tap the bar instead.
+appId: com.jpc.space
+---
+- scrollUntilVisible:
+    element: ${TARGET}
+    direction: DOWN
+    centerElement: true
+    timeout: 10000
+    optional: true
+- tapOn: ${TARGET}

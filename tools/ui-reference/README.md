@@ -54,6 +54,40 @@ install with `adb -s emulator-5558 install -r …`. `expo run:android` picks
 whichever emulator it likes — don't use it. The `nanny-e2e` (5554) and
 `egx-ui` (5556) emulators and Metro on 8081/8090 belong to other projects.
 
+## UI sweep
+
+```
+node ui-sweep.mjs                                                  # every flow, all 16 cells
+node ui-sweep.mjs --cells=small-1.3-3btn-light,iphone-1.0-gesture-dark --flows=s02
+node ui-sweep.mjs --into=<run folder> --cells=small --flows=s02    # re-run into an earlier sheet
+node ui-sweep.mjs --restore                                        # put the device back after a crash
+```
+
+Not the v1 comparison and not a test. It runs `apps/mobile/.maestro/sweep/s*.yaml` on emulator-5558
+across a matrix and screenshots every state, so someone can *look* at what the v1 match can't show:
+small phones, font scale, the Android nav bar, the keyboard and dark mode. The `ui-sweep` skill
+(`.claude/skills/ui-sweep/`) covers when to run it, writing flows and reviewing the shots.
+
+| Axis | Values | How |
+|---|---|---|
+| Screen | `small` 360×640 dp (`720x1280` @ 320) · `iphone` 375×812 dp (`1125x2436` @ 480, this rig's default) | `wm size` / `wm density` |
+| Font scale | 1.0 · 1.3 (the app sets no cap) | `settings put system font_scale` |
+| Navigation | `3btn` · `gesture` | `cmd overlay enable-exclusive` |
+| Theme | `light` · `dark` | `cmd uimode night` |
+
+Cell ids are `<screen>-<font>-<nav>-<theme>`; `--cells` and `--flows` take comma-separated prefixes.
+Needs the emulator and Metro on 8095; flows that sign in also need `./backend.sh` and
+`set-reference-passwords.mjs` (the runner refuses them otherwise). It passes `<ROLE>_EMAIL` for every
+role in `users.json`, `PASSWORD` (blanked in its output) and `THEME` to each flow. Flows never save:
+the database is shared with v1. Keyboard shots need the soft keyboard, so the runner turns on
+`show_ime_with_hard_keyboard`. It saves the device's settings to `.device-before.json` and restores
+them at the end, also on Ctrl+C.
+
+Output: `~/projects/JPC/.v2-captures/ui-sweep/<timestamp>/` — one folder per cell, `results.json` and
+`index.html` (one row per state, one column per cell). A flow that stops early leaves
+`<sNN>-zz-FAILED.png`. Same privacy as the rest of `.v2-captures/`: real users, never commit or publish.
+Android only; iOS is not covered.
+
 ## Privacy
 
 Everything under `~/projects/JPC/.v1-reference/` contains user data: never

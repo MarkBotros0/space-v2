@@ -231,6 +231,20 @@ and error caption from the accessibility tree, so query fields with
 neither. `jest.mock` factories may only close over out-of-scope consts named
 `mock*`.
 
+**UI sweep.** Matching v1 at one 375dp phone doesn't show a 360dp phone at font 1.3, the Android nav
+bar under the floating tab bar, the keyboard over a form, or dark mode on first launch. After building
+or changing a screen, run the `ui-sweep` skill (`.claude/skills/ui-sweep/`,
+`tools/ui-reference/ui-sweep.mjs`, flows in `apps/mobile/.maestro/sweep/`) and look at the shots
+before calling it done. Sweep flows never save anything (the database is shared with v1).
+
+### Rules from the UI sweep
+
+One line per class of bug the sweep has found, so the next screen doesn't repeat it.
+
+- **Every input stays usable with the keyboard open, on Android too.** The focused field and its
+  submit button must be scrollable above the keyboard. A `KeyboardAvoidingView` with
+  `behavior={undefined}` on Android does nothing here (found on every signed-out form, Oct 2026).
+
 ## Git
 
 `origin` is `MarkBotros0/space-v2`, but this machine has five accounts in the
