@@ -135,6 +135,10 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          # The runner has 4 vCPUs and 16 GB; the defaults (2 cores, ~2 GB)
+          # leave system apps freezing into "isn't responding" dialogs.
+          cores: 4
+          ram-size: 4096M
           disable-animations: false
           # One line: the action runs each script line in its own shell.
           # ci-sweep.sh starts the backend on :4100 and sweeps one cell at a time.

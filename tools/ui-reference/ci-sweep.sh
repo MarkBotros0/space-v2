@@ -18,12 +18,36 @@ adb install -r app.apk || exit 1
 # Wi-Fi off, as emulator.sh does: with emulated Wi-Fi on, the emulator's
 # route to the host (10.0.2.2) breaks.
 adb shell svc wifi disable
+# The Pixel Launcher on the API 34 image freezes under the software GPU and
+# its "isn't responding" dialog then covers the app, so no flow can find
+# "Sign in". The sweep starts the app with `am start` and never needs a home
+# screen, so the launcher is switched off for the run.
+adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
 sleep 5
+
+# Taps "Wait" on any "isn't responding" dialog still on screen.
+dismiss_anr() {
+  adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 || return 0
+  local b
+  b=$(adb shell cat /sdcard/ui.xml | grep -oE 'text="Wait"[^>]*bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' | grep -oE '[0-9]+' | tail -n 4 | tr '\n' ' ')
+  [ -z "$b" ] && return 0
+  set -- $b
+  echo "[ci-sweep] dismissing a not-responding dialog"
+  adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+  sleep 2
+}
+dismiss_anr
 adb logcat -c
 
+# By command line, not pid: the backgrounded subshell's pid is a bash whose
+# node child survived the kill, kept answering /health, and held the step's
+# output open after this script ended, so the job never finished.
 stop_backend() {
-  [ -f backend.pid ] && kill "$(cat backend.pid)" 2>/dev/null && sleep 2
-  rm -f backend.pid
+  pkill -f "src/server.ts" 2>/dev/null || true
+  for _ in $(seq 1 10); do
+    curl -fs http://localhost:4100/health > /dev/null || break
+    sleep 1
+  done
 }
 # A backend still running when this script ends keeps the emulator step
 # waiting forever (the last run sat there until the job was cancelled).
@@ -36,7 +60,7 @@ trap cleanup EXIT
 
 start_backend() {
   stop_backend
-  (cd apps/backend && PORT=4100 nohup node -r ts-node/register/transpile-only src/server.ts < /dev/null >> ../../backend.log 2>&1 & echo $! > ../../backend.pid)
+  (cd apps/backend && PORT=4100 exec setsid node -r ts-node/register/transpile-only src/server.ts < /dev/null >> ../../backend.log 2>&1 &)
   for _ in $(seq 1 30); do
     curl -fs http://localhost:4100/health > /dev/null && return 0
     sleep 2
@@ -74,6 +98,7 @@ cells=$(node --input-type=module -e '
 mkdir -p "$UI_SWEEP_OUTPUT/run"
 for cell in $cells; do
   start_backend || exit 1
+  dismiss_anr
   # A hung Maestro would otherwise hold the job until its timeout with no log.
   if ! timeout 1500 node tools/ui-reference/ui-sweep.mjs --into=run --cells="$cell" ${SWEEP_FLOWS:+--flows="$SWEEP_FLOWS"}; then
     echo "[ci-sweep] $cell stopped early; restoring the device"
