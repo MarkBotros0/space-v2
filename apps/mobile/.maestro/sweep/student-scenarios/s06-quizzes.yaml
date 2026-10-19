@@ -1,0 +1,42 @@
+# UI sweep s06 — Quizzes as a student. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${STUDENT_EMAIL}
+- openLink: spacev2://quizzes
+- extendedWaitUntil:
+    visible: 'Quiz performance'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s06-01-quizzes
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s06-02-quizzes-bottom
+# Opens an online quiz if the student has one to take or resume. Nothing is
+# answered or submitted.
+- scrollUntilVisible:
+    element: '(Take quiz|Resume)'
+    direction: UP
+    timeout: 5000
+    optional: true
+- tapOn:
+    text: '(Take quiz|Resume)'
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s06-03-quiz-attempt
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s06-04-quiz-attempt-bottom
