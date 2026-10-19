@@ -43,7 +43,9 @@ import {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SWEEP_DIR = path.join(REPO_ROOT, "apps/mobile/.maestro/sweep");
-const OUTPUT_ROOT = path.join(os.homedir(), "projects/JPC/.v2-captures/ui-sweep");
+// Defaults are the devbox capture rig; .github/workflows/ui-sweep.yml overrides
+// them with UI_SWEEP_* for a GitHub Actions emulator.
+const OUTPUT_ROOT = process.env.UI_SWEEP_OUTPUT ?? path.join(os.homedir(), "projects/JPC/.v2-captures/ui-sweep");
 /** Written before the first cell is applied, deleted once the device is restored. */
 const DEVICE_STATE_FILE = path.join(OUTPUT_ROOT, ".device-before.json");
 
@@ -51,9 +53,11 @@ const DEVICE_STATE_FILE = path.join(OUTPUT_ROOT, ".device-before.json");
 const PASSWORD_FILE = path.join(os.homedir(), ".secrets/jpc-v1-reference-password");
 const BACKUP_FILE = path.join(os.homedir(), ".secrets/jpc-reference-password-backup.json");
 
-const ADB = path.join(os.homedir(), "Android/Sdk/platform-tools/adb");
-const MAESTRO = path.join(os.homedir(), ".maestro/bin/maestro");
-const DEVICE = "emulator-5558";
+const ADB = process.env.UI_SWEEP_ADB ?? path.join(os.homedir(), "Android/Sdk/platform-tools/adb");
+const MAESTRO = process.env.UI_SWEEP_MAESTRO ?? path.join(os.homedir(), ".maestro/bin/maestro");
+const DEVICE = process.env.UI_SWEEP_DEVICE ?? "emulator-5558";
+/** A release APK carries its own JS bundle, so CI runs without Metro. */
+const NEEDS_METRO = process.env.UI_SWEEP_NO_METRO !== "1";
 const METRO_PORT = 8095;
 const BACKEND = "http://localhost:4100";
 const APP_ID = "com.jpc.space";
@@ -225,7 +229,7 @@ async function main() {
   // would "restore" to that run's last cell.
   if (existsSync(DEVICE_STATE_FILE)) fail("An earlier sweep left a matrix cell applied. Run `node ui-sweep.mjs --restore` first.");
   if (!sh("pm", "list", "packages", APP_ID).includes(APP_ID)) fail(`${APP_ID} is not installed on ${DEVICE} (README.md: debug APK).`);
-  if (!(await reachable(`http://localhost:${METRO_PORT}/status`, "packager-status:running"))) {
+  if (NEEDS_METRO && !(await reachable(`http://localhost:${METRO_PORT}/status`, "packager-status:running"))) {
     fail(`Metro is not running on ${METRO_PORT}. Start it as README.md says (port 8095, EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:4100).`);
   }
   const { env: roleEnv, secrets, signsIn } = signInEnv(flows);

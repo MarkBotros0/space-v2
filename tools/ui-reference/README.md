@@ -88,6 +88,12 @@ Output: `~/projects/JPC/.v2-captures/ui-sweep/<timestamp>/` — one folder per c
 `<sNN>-zz-FAILED.png`. Same privacy as the rest of `.v2-captures/`: real users, never commit or publish.
 Android only; iOS is not covered.
 
+**Without the devbox:** `.github/workflows/ui-sweep.yml` runs the sweep on a GitHub-hosted emulator
+(Actions → "UI sweep" → Run workflow; pick cells and flows) against a release APK, and uploads the
+contact sheet as the `ui-sweep` artifact. Signed-out flows only: the repo is public, so artifacts are
+too, and signed-in shots show real users. `UI_SWEEP_ADB`, `UI_SWEEP_MAESTRO`, `UI_SWEEP_DEVICE`,
+`UI_SWEEP_OUTPUT` and `UI_SWEEP_NO_METRO=1` override the devbox defaults.
+
 ## Privacy
 
 Everything under `~/projects/JPC/.v1-reference/` contains user data: never

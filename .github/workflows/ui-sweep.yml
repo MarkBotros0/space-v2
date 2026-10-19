@@ -1,0 +1,111 @@
+name: UI sweep (Android emulator)
+
+# Runs tools/ui-reference/ui-sweep.mjs on a GitHub-hosted Android emulator,
+# for anyone without the devbox capture rig. Free: the repo is public, so
+# Linux runner minutes cost nothing.
+#
+# Signed-out flows only. This repo is PUBLIC, so the uploaded contact sheet
+# can be downloaded by anyone signed in to GitHub. Signed-in flows show real
+# users from the shared test database and must never be uploaded from here;
+# the runner refuses them anyway, because CI has no users.json or reference
+# password. The release APK points at 10.0.2.2:4100, where nothing listens,
+# so nothing a flow does can reach a real backend.
+on:
+  workflow_dispatch:
+    inputs:
+      cells:
+        description: "Cell prefixes, comma-separated (blank = all 16)"
+        required: false
+        default: ""
+      flows:
+        description: "Flow prefixes, comma-separated (signed-out only)"
+        required: false
+        default: "s01"
+  pull_request:
+    paths:
+      - "apps/mobile/.maestro/sweep/**"
+      - "tools/ui-reference/ui-sweep.mjs"
+      - "tools/ui-reference/lib/sweep.mjs"
+      - ".github/workflows/ui-sweep.yml"
+
+concurrency:
+  group: ui-sweep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:4100
+      SWEEP_CELLS: ${{ github.event.inputs.cells || '' }}
+      SWEEP_FLOWS: ${{ github.event.inputs.flows || 's01' }}
+      UI_SWEEP_ADB: adb
+      UI_SWEEP_DEVICE: emulator-5554
+      UI_SWEEP_NO_METRO: "1"
+      UI_SWEEP_OUTPUT: ${{ github.workspace }}/ui-sweep-output
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build Android release APK (JS bundle embedded, no Metro)
+        working-directory: apps/mobile
+        run: |
+          npx expo prebuild --platform android --no-install
+          cd android
+          ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/app.apk"
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the sweep
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          UI_SWEEP_MAESTRO: maestro
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          # One line: the action runs each script line in its own shell.
+          script: adb install -r app.apk && node tools/ui-reference/ui-sweep.mjs --flows="$SWEEP_FLOWS" ${SWEEP_CELLS:+--cells="$SWEEP_CELLS"}
+
+      - name: Upload contact sheet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-sweep
+          path: ui-sweep-output/
+          if-no-files-found: ignore
+          retention-days: 14
