@@ -80,7 +80,7 @@ CHECK_DIR=$(mktemp -d)
 timeout 300 maestro --device "$UI_SWEEP_DEVICE" test --test-output-dir="$CHECK_DIR" -e EMAIL="$EMAIL" -e PASSWORD="$UI_SWEEP_PASSWORD" apps/mobile/.maestro/ci/signin-check.yaml 2>&1 | tail -n 20
 # The two check screenshots, shrunk and printed as base64, so they can be
 # read from the job log alone (fake data only).
-for shot in $(find "$CHECK_DIR" -name 'ci-*.png' | sort); do
+command -v convert > /dev/null && for shot in $(find "$CHECK_DIR" -name 'ci-*.png' | sort); do
   echo "[ci-sweep] screenshot $(basename "$shot") base64:"
   convert "$shot" -resize 360x -quality 60 jpg:- | base64 -w 0; echo
 done

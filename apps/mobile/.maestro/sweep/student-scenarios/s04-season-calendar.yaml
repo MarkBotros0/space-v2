@@ -7,8 +7,10 @@ appId: com.jpc.space
     env:
       EMAIL: ${STUDENT_EMAIL}
 - openLink: spacev2://season
+# The student season page (StudentSeason) has no "Groups" heading; its
+# eyebrow reads "Current season", in capitals on screen.
 - extendedWaitUntil:
-    visible: 'Groups'
+    visible: '(?i)current season'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

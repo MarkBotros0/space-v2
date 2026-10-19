@@ -170,7 +170,7 @@ async function main(): Promise<void> {
       createdById: admin.id,
     },
   });
-  await db.assignment.create({
+  const reading = await db.assignment.create({
     data: {
       seasonId: season.id,
       title: "Read chapter 2",
@@ -180,15 +180,25 @@ async function main(): Promise<void> {
       createdById: admin.id,
     },
   });
-  await db.submission.create({
-    data: {
-      publicId: newPublicId(),
-      assignmentId: reflection.id,
-      studentUserId: student.id,
-      text: "It was a good start to the season.",
-      status: "SUBMITTED",
-      submittedAt: fromToday(-3),
-    },
+  // Drafts on both, so whichever assignment a flow opens shows the editable
+  // response box. Without a submission the page offers "Start working",
+  // which creates one, and sweep flows never save.
+  await db.submission.createMany({
+    data: [
+      {
+        publicId: newPublicId(),
+        assignmentId: reflection.id,
+        studentUserId: student.id,
+        text: "It was a good start to the season.",
+        status: "DRAFT",
+      },
+      {
+        publicId: newPublicId(),
+        assignmentId: reading.id,
+        studentUserId: student.id,
+        status: "DRAFT",
+      },
+    ],
   });
 
   // A graded paper quiz for the performance table, and a published online
