@@ -76,3 +76,7 @@ done
 # What the app itself logged: JS errors, network failures, cleartext refusals.
 echo "[ci-sweep] app log:"
 adb logcat -d | grep -iE "ReactNativeJS|cleartext|Network Error|okhttp|AxiosError" | tail -n 120 || true
+
+# Anything still running here keeps the emulator step from returning.
+echo "[ci-sweep] processes left:"
+ps -eo pid,ppid,etime,args --forest | grep -vE "\[|ps -eo|grep" | tail -n 40

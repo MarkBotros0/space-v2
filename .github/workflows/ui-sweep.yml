@@ -138,7 +138,7 @@ jobs:
           disable-animations: false
           # One line: the action runs each script line in its own shell.
           # ci-sweep.sh starts the backend on :4100 and sweeps one cell at a time.
-          script: bash tools/ui-reference/ci-sweep.sh
+          script: timeout 5400 bash tools/ui-reference/ci-sweep.sh
 
       - name: Backend log
         if: always()
