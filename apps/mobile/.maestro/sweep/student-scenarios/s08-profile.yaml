@@ -21,6 +21,14 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s08-02-profile-phone-kbd
 - hideKeyboard
+# The phone pad sometimes survives one hideKeyboard on the CI emulator (its
+# keys stay on screen and cover the rest of the form); close it again only
+# while it is still there, so the extra back press never leaves the page.
+- runFlow:
+    when:
+      visible: 'WXYZ'
+    commands:
+      - hideKeyboard
 - runFlow:
     file: ../_tap.yaml
     env:
