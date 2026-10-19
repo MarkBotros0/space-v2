@@ -33,6 +33,7 @@ import {
   CELLS,
   NAV_OVERLAYS,
   contactSheetHtml,
+  flowTitle,
   parseArgs,
   parseNavOverlay,
   parseNightMode,
@@ -173,7 +174,15 @@ function writeSheet(runDir, cells, results) {
       shotsByCell[cell.id] = [];
     }
   }
-  writeFileSync(path.join(runDir, "index.html"), contactSheetHtml({ title: path.basename(runDir), cells, shotsByCell, results }));
+  const flowTitles = {};
+  for (const rel of readdirSync(SWEEP_DIR, { recursive: true }).map(String)) {
+    const base = path.basename(rel);
+    if (/^s\d+.*\.yaml$/.test(base)) flowTitles[base.split("-")[0]] = flowTitle(readFileSync(path.join(SWEEP_DIR, rel), "utf8").split("\n")[0]);
+  }
+  writeFileSync(
+    path.join(runDir, "index.html"),
+    contactSheetHtml({ title: path.basename(runDir), cells, shotsByCell, results, flowTitles }),
+  );
   writeFileSync(path.join(runDir, "results.json"), JSON.stringify(results, null, 2));
 }
 

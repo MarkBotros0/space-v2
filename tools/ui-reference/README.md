@@ -89,8 +89,9 @@ Output: `~/projects/JPC/.v2-captures/ui-sweep/<timestamp>/` — one folder per c
 Android only; iOS is not covered.
 
 **Without the devbox:** `.github/workflows/ui-sweep.yml` runs the sweep on a GitHub-hosted emulator
-(Actions → "UI sweep" → Run workflow; pick cells and flows) against a release APK, and uploads the
-contact sheet as the `ui-sweep` artifact. It never touches the shared test database: the job migrates a
+(Actions → "UI sweep" → Run workflow; pick cells and flows) against a release APK. A full run splits the
+16 cells over four parallel jobs and joins them with `build-sheet.mjs` into one self-contained page, the
+`ui-sweep-contact-sheet` artifact (`ui-sweep.html`, screenshots embedded, one section per flow). It never touches the shared test database: the job migrates a
 throwaway Postgres and seeds fake users for every role (`apps/backend/scripts/seed-sweep.ts`, which
 refuses non-local hosts). The repo is public, so its artifacts are too, which is why only fake data may
 appear in them. `UI_SWEEP_USERS_FILE` and `UI_SWEEP_PASSWORD` point the runner at those fake users;
