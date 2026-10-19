@@ -5,6 +5,18 @@
 # would tap the bar instead.
 appId: com.jpc.space
 ---
+# Swipe along the left margin first: on the CI emulator a swipe that starts
+# on a text field (where Maestro's own scroll starts, mid-screen) often
+# doesn't move the page, so forms stopped scrolling halfway (s02, s08).
+- repeat:
+    while:
+      notVisible: ${TARGET}
+    times: 10
+    commands:
+      - swipe:
+          start: 4%, 70%
+          end: 4%, 35%
+          duration: 500
 - scrollUntilVisible:
     element: ${TARGET}
     direction: DOWN

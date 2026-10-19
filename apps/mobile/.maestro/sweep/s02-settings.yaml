@@ -52,6 +52,16 @@ appId: com.jpc.space
 - extendedWaitUntil:
     visible: 'Profile, password, and notification preferences.'
     timeout: 40000
+# Left-margin swipes, as in _tap.yaml: a swipe starting on a field may not scroll.
+- repeat:
+    while:
+      notVisible: 'Security'
+    times: 10
+    commands:
+      - swipe:
+          start: 4%, 70%
+          end: 4%, 35%
+          duration: 500
 - scrollUntilVisible:
     element: 'Security'
     direction: DOWN
