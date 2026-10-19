@@ -43,6 +43,16 @@ start_backend || exit 1
 # Logged only: whether the emulator reaches the backend at all.
 adb shell 'printf "GET /health HTTP/1.0\r\n\r\n" | nc -w 5 10.0.2.2 4100' || echo "[ci-sweep] emulator cannot reach 10.0.2.2:4100"
 
+# One sign-in as the fake student, then what is on screen, the app's errors
+# and the backend's requests, while the result is still there to read.
+echo "[ci-sweep] sign-in check:"
+EMAIL=$(node -p 'JSON.parse(require("fs").readFileSync(process.env.UI_SWEEP_USERS_FILE, "utf8")).student.email')
+timeout 300 maestro --device "$UI_SWEEP_DEVICE" test -e EMAIL="$EMAIL" -e PASSWORD="$UI_SWEEP_PASSWORD" apps/mobile/.maestro/ci/signin-check.yaml 2>&1 | tail -n 20
+timeout 120 maestro --device "$UI_SWEEP_DEVICE" hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText|hintText)" *: *"[^"]+"' | sort -u | head -n 60
+adb logcat -d | grep -E " E |ReactNativeJS|AndroidRuntime|FATAL" | grep -v "E Netd\|E cutils\|E bpf" | tail -n 60
+grep -v "GET /health" backend.log | tail -n 20
+adb logcat -c
+
 cells=$(node --input-type=module -e '
   import { CELLS, pick } from "./tools/ui-reference/lib/sweep.mjs";
   const wanted = process.env.SWEEP_CELLS ? process.env.SWEEP_CELLS.split(",") : null;

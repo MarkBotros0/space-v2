@@ -1,0 +1,23 @@
+# CI only (tools/ui-reference/ci-sweep.sh): signs in once and stays put, so
+# the job can print what is on screen and in the app log right after "Sign
+# in". Not a sweep flow; it takes no screenshots and never fails on its own.
+appId: com.jpc.space
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 30000
+- tapOn:
+    id: "login-email"
+- inputText: ${EMAIL}
+- hideKeyboard
+- tapOn:
+    id: "login-password"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: "Sign in"
+- extendedWaitUntil:
+    notVisible: "Sign in"
+    timeout: 20000
+    optional: true
