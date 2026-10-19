@@ -21,9 +21,17 @@ adb shell svc wifi disable
 sleep 5
 adb logcat -c
 
-start_backend() {
+stop_backend() {
   [ -f backend.pid ] && kill "$(cat backend.pid)" 2>/dev/null && sleep 2
-  (cd apps/backend && PORT=4100 nohup node -r ts-node/register/transpile-only src/server.ts >> ../../backend.log 2>&1 & echo $! > ../../backend.pid)
+  rm -f backend.pid
+}
+# A backend still running when this script ends keeps the emulator step
+# waiting forever (the last run sat there until the job was cancelled).
+trap stop_backend EXIT
+
+start_backend() {
+  stop_backend
+  (cd apps/backend && PORT=4100 nohup node -r ts-node/register/transpile-only src/server.ts < /dev/null >> ../../backend.log 2>&1 & echo $! > ../../backend.pid)
   for _ in $(seq 1 30); do
     curl -fs http://localhost:4100/health > /dev/null && return 0
     sleep 2
