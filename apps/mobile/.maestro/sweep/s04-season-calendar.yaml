@@ -1,0 +1,56 @@
+# UI sweep s04 — Season and calendar as a student. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: _sign-in.yaml
+    env:
+      EMAIL: ${STUDENT_EMAIL}
+- openLink: spacev2://season
+- extendedWaitUntil:
+    visible: 'Groups'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s04-01-season
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s04-02-season-bottom
+- openLink: spacev2://calendar
+- extendedWaitUntil:
+    visible: 'Calendar'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s04-03-calendar
+# Month / week / day switcher, one shot each; labels come from the control.
+- tapOn: 'Previous .*'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s04-04-calendar-previous
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s04-05-calendar-bottom
+# A session detail, reached by a row's "NN min" line. Optional: an empty
+# calendar has none, which is a state to report, not a failure.
+- tapOn:
+    text: '\d+ min'
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s04-06-session-detail
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s04-07-session-detail-bottom
