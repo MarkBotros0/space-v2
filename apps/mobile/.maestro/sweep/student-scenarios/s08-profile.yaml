@@ -3,7 +3,7 @@
 appId: com.jpc.space
 ---
 - runFlow:
-    file: _sign-in.yaml
+    file: ../_sign-in.yaml
     env:
       EMAIL: ${STUDENT_EMAIL}
 - openLink: spacev2://profile
@@ -14,7 +14,7 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s08-01-profile
 - runFlow:
-    file: _tap.yaml
+    file: ../_tap.yaml
     env:
       TARGET: 'Phone'
 - waitForAnimationToEnd:
@@ -22,7 +22,7 @@ appId: com.jpc.space
 - takeScreenshot: s08-02-profile-phone-kbd
 - hideKeyboard
 - runFlow:
-    file: _tap.yaml
+    file: ../_tap.yaml
     env:
       TARGET: 'Gifts / interests'
 - waitForAnimationToEnd:

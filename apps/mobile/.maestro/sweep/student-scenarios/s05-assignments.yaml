@@ -3,7 +3,7 @@
 appId: com.jpc.space
 ---
 - runFlow:
-    file: _sign-in.yaml
+    file: ../_sign-in.yaml
     env:
       EMAIL: ${STUDENT_EMAIL}
 - openLink: spacev2://assignments
@@ -33,7 +33,7 @@ appId: com.jpc.space
 - takeScreenshot: s05-03-assignment-detail
 # Keyboard on the response box and its Save draft / Submit buttons. Never tap them.
 - runFlow:
-    file: _tap.yaml
+    file: ../_tap.yaml
     env:
       TARGET: 'Your response'
 - waitForAnimationToEnd:

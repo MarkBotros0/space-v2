@@ -3,7 +3,7 @@
 appId: com.jpc.space
 ---
 - runFlow:
-    file: _sign-in.yaml
+    file: ../_sign-in.yaml
     env:
       EMAIL: ${STUDENT_EMAIL}
 - openLink: spacev2://dashboard
