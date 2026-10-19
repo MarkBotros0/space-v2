@@ -110,6 +110,13 @@ for cell in $cells; do
   timeout 120 maestro --device "$UI_SWEEP_DEVICE" hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText|hintText)" *: *"[^"]+"' | sort -u | head -n 40 || true
 done
 
+# Each flow's failure shot, shrunk and printed as base64 (fake data only),
+# since the job's artifact can't be read from everywhere the log can.
+for shot in $(find "$UI_SWEEP_OUTPUT/run" -name '*-zz-FAILED.png' | sort); do
+  echo "[ci-sweep] failure shot ${shot#"$UI_SWEEP_OUTPUT"/run/} base64:"
+  ffmpeg -loglevel error -i "$shot" -vf scale=360:-1 -q:v 8 -f image2 -c:v mjpeg pipe:1 | base64 -w 0; echo
+done
+
 # What the app itself logged: JS errors, network failures, cleartext refusals.
 echo "[ci-sweep] app log:"
 adb logcat -d | grep -iE "ReactNativeJS|cleartext|Network Error|okhttp|AxiosError" | tail -n 120 || true
