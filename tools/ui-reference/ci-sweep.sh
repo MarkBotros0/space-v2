@@ -44,7 +44,15 @@ cells=$(node --input-type=module -e '
 mkdir -p "$UI_SWEEP_OUTPUT/run"
 for cell in $cells; do
   start_backend || exit 1
-  node tools/ui-reference/ui-sweep.mjs --into=run --cells="$cell" ${SWEEP_FLOWS:+--flows="$SWEEP_FLOWS"}
+  # A hung Maestro would otherwise hold the job until its timeout with no log.
+  if ! timeout 1500 node tools/ui-reference/ui-sweep.mjs --into=run --cells="$cell" ${SWEEP_FLOWS:+--flows="$SWEEP_FLOWS"}; then
+    echo "[ci-sweep] $cell stopped early; restoring the device"
+    node tools/ui-reference/ui-sweep.mjs --restore
+  fi
+  # The text on screen where the cell's last flow ended (a login error, say),
+  # since the screenshots are only in the artifact.
+  echo "[ci-sweep] on screen after $cell:"
+  timeout 120 maestro --device "$UI_SWEEP_DEVICE" hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText|hintText)" *: *"[^"]+"' | sort -u | head -n 40 || true
 done
 
 # What the app itself logged: JS errors, network failures, cleartext refusals.
