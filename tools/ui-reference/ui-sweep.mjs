@@ -181,7 +181,11 @@ const timestamp = () => new Date().toISOString().replace(/[:.]/g, "-").replace("
 
 /** One email per role (users.json) plus the shared password, for flows that sign in. */
 function signInEnv(flows) {
-  const needsPassword = flows.some((f) => readFileSync(path.join(SWEEP_DIR, f), "utf8").includes("${PASSWORD}"));
+  // Most flows sign in through _sign-in.yaml and only name ${<ROLE>_EMAIL}
+  // themselves, so look for any of the three, not just ${PASSWORD}.
+  const needsPassword = flows.some((f) =>
+    /\$\{(PASSWORD|[A-Z]+_EMAIL)\}|_sign-in\.yaml/.test(readFileSync(path.join(SWEEP_DIR, f), "utf8")),
+  );
   if (!needsPassword) return { env: {}, secrets: [], signsIn: false };
   if (!existsSync(USERS_FILE)) fail(`No ${USERS_FILE}. Run \`npm run pick-users\` (README.md).`);
   if (!FAKE_USERS_PASSWORD && (!existsSync(PASSWORD_FILE) || !existsSync(BACKUP_FILE))) {
