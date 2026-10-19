@@ -27,7 +27,12 @@ stop_backend() {
 }
 # A backend still running when this script ends keeps the emulator step
 # waiting forever (the last run sat there until the job was cancelled).
-trap stop_backend EXIT
+# Maestro can leave its JVM behind too (seen after `maestro hierarchy`).
+cleanup() {
+  stop_backend
+  pkill -f "maestro" 2>/dev/null || true
+}
+trap cleanup EXIT
 
 start_backend() {
   stop_backend
