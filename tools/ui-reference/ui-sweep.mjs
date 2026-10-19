@@ -28,7 +28,7 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
-import { REPO_ROOT, USERS_FILE } from "./lib/paths.mjs";
+import { REPO_ROOT, USERS_FILE as REFERENCE_USERS_FILE } from "./lib/paths.mjs";
 import {
   CELLS,
   NAV_OVERLAYS,
@@ -52,6 +52,12 @@ const DEVICE_STATE_FILE = path.join(OUTPUT_ROOT, ".device-before.json");
 // Same files as set-reference-passwords.mjs / restore-reference-passwords.mjs.
 const PASSWORD_FILE = path.join(os.homedir(), ".secrets/jpc-v1-reference-password");
 const BACKUP_FILE = path.join(os.homedir(), ".secrets/jpc-reference-password-backup.json");
+// CI signs in as fake users seeded into a throwaway database
+// (apps/backend/scripts/seed-sweep.ts), so it passes their users.json and
+// password directly and skips the reference-password check, which only
+// guards the real accounts on the shared test database.
+const USERS_FILE = process.env.UI_SWEEP_USERS_FILE ?? REFERENCE_USERS_FILE;
+const FAKE_USERS_PASSWORD = process.env.UI_SWEEP_PASSWORD;
 
 const ADB = process.env.UI_SWEEP_ADB ?? path.join(os.homedir(), "Android/Sdk/platform-tools/adb");
 const MAESTRO = process.env.UI_SWEEP_MAESTRO ?? path.join(os.homedir(), ".maestro/bin/maestro");
@@ -178,7 +184,7 @@ function signInEnv(flows) {
   const needsPassword = flows.some((f) => readFileSync(path.join(SWEEP_DIR, f), "utf8").includes("${PASSWORD}"));
   if (!needsPassword) return { env: {}, secrets: [], signsIn: false };
   if (!existsSync(USERS_FILE)) fail(`No ${USERS_FILE}. Run \`npm run pick-users\` (README.md).`);
-  if (!existsSync(PASSWORD_FILE) || !existsSync(BACKUP_FILE)) {
+  if (!FAKE_USERS_PASSWORD && (!existsSync(PASSWORD_FILE) || !existsSync(BACKUP_FILE))) {
     fail(
       "The reference users don't have the known password. Run `node set-reference-passwords.mjs` first " +
         "(it changes six users on the shared test database) and `node restore-reference-passwords.mjs` when done.",
@@ -187,7 +193,7 @@ function signInEnv(flows) {
   const users = JSON.parse(readFileSync(USERS_FILE, "utf8"));
   const env = {};
   for (const [role, user] of Object.entries(users)) if (user?.email) env[`${role.toUpperCase()}_EMAIL`] = user.email;
-  const password = readFileSync(PASSWORD_FILE, "utf8").trim();
+  const password = FAKE_USERS_PASSWORD ?? readFileSync(PASSWORD_FILE, "utf8").trim();
   env.PASSWORD = password;
   return { env, secrets: [password], signsIn: true };
 }

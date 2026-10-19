@@ -90,8 +90,11 @@ Android only; iOS is not covered.
 
 **Without the devbox:** `.github/workflows/ui-sweep.yml` runs the sweep on a GitHub-hosted emulator
 (Actions → "UI sweep" → Run workflow; pick cells and flows) against a release APK, and uploads the
-contact sheet as the `ui-sweep` artifact. Signed-out flows only: the repo is public, so artifacts are
-too, and signed-in shots show real users. `UI_SWEEP_ADB`, `UI_SWEEP_MAESTRO`, `UI_SWEEP_DEVICE`,
+contact sheet as the `ui-sweep` artifact. It never touches the shared test database: the job migrates a
+throwaway Postgres and seeds fake users for every role (`apps/backend/scripts/seed-sweep.ts`, which
+refuses non-local hosts). The repo is public, so its artifacts are too, which is why only fake data may
+appear in them. `UI_SWEEP_USERS_FILE` and `UI_SWEEP_PASSWORD` point the runner at those fake users;
+`UI_SWEEP_ADB`, `UI_SWEEP_MAESTRO`, `UI_SWEEP_DEVICE`,
 `UI_SWEEP_OUTPUT` and `UI_SWEEP_NO_METRO=1` override the devbox defaults.
 
 ## Privacy

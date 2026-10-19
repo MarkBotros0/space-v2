@@ -4,12 +4,15 @@ name: UI sweep (Android emulator)
 # for anyone without the devbox capture rig. Free: the repo is public, so
 # Linux runner minutes cost nothing.
 #
-# Signed-out flows only. This repo is PUBLIC, so the uploaded contact sheet
-# can be downloaded by anyone signed in to GitHub. Signed-in flows show real
-# users from the shared test database and must never be uploaded from here;
-# the runner refuses them anyway, because CI has no users.json or reference
-# password. The release APK points at 10.0.2.2:4100, where nothing listens,
-# so nothing a flow does can reach a real backend.
+# Everything the app shows comes from a throwaway Postgres in this job,
+# migrated with prisma/migrations and seeded with fake users
+# (apps/backend/scripts/seed-sweep.ts). Never point this at the staging
+# database: the repo is PUBLIC, so the uploaded contact sheet can be
+# downloaded by anyone signed in to GitHub, and the seed refuses non-local
+# hosts anyway.
+#
+# The login limiter allows 20 sign-ins per 15 minutes. One signed-in flow per
+# cell stays under it; many signed-in flows in one run would not.
 on:
   workflow_dispatch:
     inputs:
@@ -18,14 +21,15 @@ on:
         required: false
         default: ""
       flows:
-        description: "Flow prefixes, comma-separated (signed-out only)"
+        description: "Flow prefixes, comma-separated (blank = all)"
         required: false
-        default: "s01"
+        default: ""
   pull_request:
     paths:
-      - "apps/mobile/.maestro/sweep/**"
+      - "apps/mobile/.maestro/**"
       - "tools/ui-reference/ui-sweep.mjs"
       - "tools/ui-reference/lib/sweep.mjs"
+      - "apps/backend/scripts/seed-sweep.ts"
       - ".github/workflows/ui-sweep.yml"
 
 concurrency:
@@ -35,15 +39,33 @@ concurrency:
 jobs:
   sweep:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 150
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sweep
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sweep
+      AUTH_SECRET: ci-only-sweep-secret-not-used-anywhere-else
+      # 10.0.2.2 is the emulator's alias for the runner's localhost.
       EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:4100
       SWEEP_CELLS: ${{ github.event.inputs.cells || '' }}
-      SWEEP_FLOWS: ${{ github.event.inputs.flows || 's01' }}
+      SWEEP_FLOWS: ${{ github.event.inputs.flows || '' }}
       UI_SWEEP_ADB: adb
       UI_SWEEP_DEVICE: emulator-5554
       UI_SWEEP_NO_METRO: "1"
       UI_SWEEP_OUTPUT: ${{ github.workspace }}/ui-sweep-output
+      UI_SWEEP_USERS_FILE: ${{ github.workspace }}/sweep-users.json
+      UI_SWEEP_PASSWORD: sweep-password-123 # the fake users' password, from seed-sweep.ts
     steps:
       - uses: actions/checkout@v4
 
@@ -69,10 +91,28 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Throwaway database with fake users, and the backend on :4100
+        working-directory: apps/backend
+        run: |
+          pnpm db:generate
+          pnpm db:migrate:local
+          pnpm seed:sweep "$UI_SWEEP_USERS_FILE"
+          PORT=4100 nohup npx ts-node --transpile-only src/server.ts > "$GITHUB_WORKSPACE/backend.log" 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:4100/health && exit 0
+            sleep 2
+          done
+          cat "$GITHUB_WORKSPACE/backend.log"
+          exit 1
+
       - name: Build Android release APK (JS bundle embedded, no Metro)
         working-directory: apps/mobile
         run: |
           npx expo prebuild --platform android --no-install
+          # Release builds refuse plain http; this APK only talks to the
+          # job's own backend over http://10.0.2.2:4100.
+          sed -i 's/<application /<application android:usesCleartextTraffic="true" /' android/app/src/main/AndroidManifest.xml
+          grep -q 'usesCleartextTraffic="true"' android/app/src/main/AndroidManifest.xml
           cd android
           ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
           cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/app.apk"
@@ -99,13 +139,15 @@ jobs:
           profile: pixel_6
           disable-animations: false
           # One line: the action runs each script line in its own shell.
-          script: adb install -r app.apk && node tools/ui-reference/ui-sweep.mjs --flows="$SWEEP_FLOWS" ${SWEEP_CELLS:+--cells="$SWEEP_CELLS"}
+          script: adb install -r app.apk && node tools/ui-reference/ui-sweep.mjs ${SWEEP_FLOWS:+--flows="$SWEEP_FLOWS"} ${SWEEP_CELLS:+--cells="$SWEEP_CELLS"}
 
       - name: Upload contact sheet
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ui-sweep
-          path: ui-sweep-output/
+          path: |
+            ui-sweep-output/
+            backend.log
           if-no-files-found: ignore
           retention-days: 14
