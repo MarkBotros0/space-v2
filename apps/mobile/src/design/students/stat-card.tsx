@@ -33,12 +33,12 @@ const VALUE: Record<Variant, string> = {
   teal: "text-brand-teal-900 dark:text-brand-teal-100",
 };
 const LABEL: Record<Variant, string> = {
-  white: "text-muted-foreground/70",
+  white: "text-muted-foreground",
   navy: "text-brand-teal-300",
   teal: "text-brand-teal-700 dark:text-brand-teal-300",
 };
 const SUB: Record<Variant, string> = {
-  white: "text-muted-foreground/70",
+  white: "text-muted-foreground",
   navy: "text-white/40",
   teal: "text-brand-teal-600 dark:text-brand-teal-400",
 };
@@ -86,11 +86,12 @@ export function StatCard({
       </View>
       {/* CSS never breaks inside a word, so v1's "ASSIGNMENTS" overflows into
           the tile's padding; React Native would break it mid-word. The label
-          gets 12px of the padding on each side instead, and at most one line
-          per word: at a large font scale a word that still doesn't fit
-          shrinks rather than splitting ("ASSIGNME / NTS"). */}
+          gets 12px of the padding on each side instead, and at most two lines:
+          at a large font scale a word that still doesn't fit shrinks rather
+          than splitting ("ASSIGNME / NTS"), and "ABSENCE BUDGET LEFT" stays at two
+          lines instead of three. */}
       <Text
-        numberOfLines={label.trim().split(/\s+/).length}
+        numberOfLines={Math.min(2, label.trim().split(/\s+/).length)}
         adjustsFontSizeToFit
         minimumFontScale={0.6}
         className={cn("-mx-3 text-center text-[10px] font-bold uppercase tracking-widest", LABEL[variant])}

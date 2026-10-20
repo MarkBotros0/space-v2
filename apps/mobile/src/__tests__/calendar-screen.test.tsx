@@ -445,7 +445,7 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     expect(screen.getByText("March 2099")).toBeTruthy();
     // 1 Mar 2099 is a Sunday: the grid opens on Monday 23 Feb, dimmed as out-of-month.
     const feb = screen.getByLabelText("Feb 23, 2099");
-    expect(feb.props.style.opacity ?? feb.props.style?.[0]?.opacity).toBe(0.4);
+    expect(feb.props.style.opacity ?? feb.props.style?.[0]?.opacity).toBe(0.6);
     // v1's grid shows each session's title chip in its day cell; no tap-a-day list.
     expect(screen.getByText("Kickoff")).toBeTruthy();
     expect(screen.getByText("Week two")).toBeTruthy();

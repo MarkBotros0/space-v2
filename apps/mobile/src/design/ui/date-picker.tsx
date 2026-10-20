@@ -137,7 +137,7 @@ function DatePicker({
                       <Text
                         className={cn(
                           "text-sm text-popover-foreground",
-                          !isCurrentMonth && "text-muted-foreground/50",
+                          !isCurrentMonth && "text-muted-foreground",
                           isSelected && "text-primary-foreground",
                         )}
                       >

@@ -16,6 +16,12 @@ name: UI sweep (Android emulator)
 on:
   workflow_dispatch:
     inputs:
+      module:
+        description: "Whose screens to sweep (flows in .maestro/sweep/<module>-scenarios/; student also runs the signed-out and Settings flows)"
+        required: false
+        type: choice
+        default: student
+        options: [student, leader, admin, super, mentor, alumni]
       cells:
         description: "Cell prefixes, comma-separated (blank = all 16)"
         required: false
@@ -33,9 +39,10 @@ on:
       - "apps/backend/scripts/seed-sweep.ts"
       - ".github/workflows/ui-sweep.yml"
 
-# Per cell selection, so dispatches for different cells run side by side.
+# Per module and cell selection, so dispatches for different modules or cells
+# run side by side.
 concurrency:
-  group: ui-sweep-${{ github.ref }}-${{ github.event.inputs.cells }}
+  group: ui-sweep-${{ github.ref }}-${{ github.event.inputs.module }}-${{ github.event.inputs.cells }}
   cancel-in-progress: true
 
 jobs:
@@ -69,6 +76,8 @@ jobs:
       # A pull request sweeps every flow on the two corner cells; Run workflow
       # defaults to all 16 cells.
       SWEEP_CELLS: ${{ matrix.cells }}
+      # Names the sheet and its artifacts: <module>-ui-sweep.html.
+      SWEEP_MODULE: ${{ github.event.inputs.module || 'student' }}
       SWEEP_FLOWS: ${{ github.event.inputs.flows || '' }}
       UI_SWEEP_ADB: adb
       UI_SWEEP_DEVICE: emulator-5554
@@ -161,7 +170,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-sweep-part-${{ strategy.job-index }}
+          name: ${{ env.SWEEP_MODULE }}-ui-sweep-part-${{ strategy.job-index }}
           path: |
             ui-sweep-output/
             backend.log
@@ -174,6 +183,8 @@ jobs:
     needs: sweep
     if: always()
     runs-on: ubuntu-latest
+    env:
+      SWEEP_MODULE: ${{ github.event.inputs.module || 'student' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -181,14 +192,14 @@ jobs:
           node-version: 24
       - uses: actions/download-artifact@v4
         with:
-          pattern: ui-sweep-part-*
+          pattern: ${{ env.SWEEP_MODULE }}-ui-sweep-part-*
           path: parts
       - name: Build the contact sheet
         run: |
           sudo apt-get install -y --no-install-recommends imagemagick > /dev/null
-          node tools/ui-reference/build-sheet.mjs ui-sweep.html parts/*/ui-sweep-output/run
+          node tools/ui-reference/build-sheet.mjs --module="$SWEEP_MODULE" "$SWEEP_MODULE-ui-sweep.html" parts/*/ui-sweep-output/run
       - uses: actions/upload-artifact@v4
         with:
-          name: ui-sweep-contact-sheet
-          path: ui-sweep.html
+          name: ${{ env.SWEEP_MODULE }}-ui-sweep-contact-sheet
+          path: ${{ env.SWEEP_MODULE }}-ui-sweep.html
           retention-days: 14

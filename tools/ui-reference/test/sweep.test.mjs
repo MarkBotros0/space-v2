@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CELLS, contactSheetHtml, flowTitle, parseArgs, parseNavOverlay, parseNightMode, parseWm, pick, redact } from "../lib/sweep.mjs";
+import { CELLS, contactSheetHtml, flowTitle, flowsOfModule, parseArgs, parseNavOverlay, parseNightMode, parseWm, pick, redact, sheetName } from "../lib/sweep.mjs";
 
 test("the matrix is screen × font × nav × theme, 16 cells", () => {
   assert.equal(CELLS.length, 16);
@@ -22,7 +22,8 @@ test("pick takes prefixes, keeps matrix order, drops repeats", () => {
 });
 
 test("parseArgs rejects unknown flags", () => {
-  assert.deepEqual(parseArgs(["--cells=small", "--flows=s01,s02"]), { cells: ["small"], flows: ["s01", "s02"], into: null });
+  assert.deepEqual(parseArgs(["--cells=small", "--flows=s01,s02"]), { cells: ["small"], flows: ["s01", "s02"], into: null, module: null });
+  assert.equal(parseArgs(["--module=leader"]).module, "leader");
   assert.throws(() => parseArgs(["--ai"]), /Unknown argument/);
 });
 
@@ -86,4 +87,28 @@ test("the contact sheet groups screens under their flow's title", () => {
   assert.match(html, /src="data:small-1.0-3btn-light\/s02-01-settings"/);
   assert.equal(flowTitle("# UI sweep s04 — Season and calendar as a student. Read-only: nothing"), "Season and calendar as a student");
   assert.equal(flowTitle("# UI sweep 01 — the signed-out screens: sign in, forgot"), "The signed-out screens");
+});
+
+const FLOWS = [
+  "s01-signed-out.yaml",
+  "s02-settings.yaml",
+  "student-scenarios/s03-dashboard.yaml",
+  "leader-scenarios/s03-dashboard.yaml",
+  "admin-scenarios/s10-seasons.yaml",
+];
+
+test("flowsOfModule gives the student the flows beside the scenario folders, others only their own", () => {
+  assert.deepEqual(flowsOfModule(FLOWS, "student"), FLOWS.slice(0, 3));
+  assert.deepEqual(flowsOfModule(FLOWS, "leader"), ["leader-scenarios/s03-dashboard.yaml"]);
+  assert.deepEqual(flowsOfModule(FLOWS, null), FLOWS);
+  assert.deepEqual(flowsOfModule(["leader-scenarios\\s03-dashboard.yaml"], "leader"), ["leader-scenarios\\s03-dashboard.yaml"]);
+  assert.throws(() => flowsOfModule(FLOWS, "super"), /No sweep flows for module "super"/);
+});
+
+test("the sheet is named after its module", () => {
+  assert.equal(sheetName("student"), "Student UI sweep");
+  assert.equal(sheetName(null), "UI sweep");
+  const html = contactSheetHtml({ title: "run", module: "leader", cells: [], shotsByCell: {}, results: [] });
+  assert.match(html, /<title>Leader UI sweep<\/title>/);
+  assert.match(html, /<h1>Leader UI sweep — run<\/h1>/);
 });

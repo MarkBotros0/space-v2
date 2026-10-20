@@ -4,6 +4,7 @@ import type { StyleProp, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useInShell, useShellBottomPadding } from "../design/layout/shell-context";
+import { useKeyboardInset } from "../design/lib/keyboard-inset";
 import { useTheme } from "../theme";
 
 export type ScreenEdge = "top" | "bottom" | "left" | "right";
@@ -69,6 +70,7 @@ export function Screen({
   // bottom gets v1's pb-24 instead.
   const inShell = useInShell();
   const shellBottom = useShellBottomPadding();
+  const keyboard = useKeyboardInset();
 
   // One padding value per edge — the standard `spacing.md` padding (when
   // `padded`) plus that edge's safe-area inset (when the edge is included in
@@ -96,6 +98,7 @@ export function Screen({
   if (scroll || onRefresh) {
     return (
       <ScrollView
+        {...keyboard.scrollProps}
         style={[baseStyle, style]}
         // Padding (standard + insets) lives here, not on the ScrollView's
         // own `style`, on purpose: putting it on `style` clips content at
@@ -104,7 +107,14 @@ export function Screen({
         // EmptyState/ErrorState) from collapsing to zero height — a plain
         // `{ padding }` contentContainerStyle gives the content no flex
         // basis to grow into.
-        contentContainerStyle={[paddingStyle, { flexGrow: 1 }, contentContainerStyle]}
+        contentContainerStyle={[
+          paddingStyle,
+          { flexGrow: 1 },
+          contentContainerStyle,
+          // The keyboard covers the bottom of the window (edge-to-edge): pad past it so the
+          // lowest field and the submit button can be scrolled above it.
+          keyboard.inset > 0 ? { paddingBottom: Math.max(Number(paddingStyle.paddingBottom ?? 0), keyboard.inset + 16) } : null,
+        ]}
         refreshControl={
           onRefresh ? (
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

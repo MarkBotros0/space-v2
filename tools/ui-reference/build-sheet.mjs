@@ -5,7 +5,7 @@
  * ImageMagick's `convert` is there, the PNG as is otherwise), so the page
  * opens on its own, with no folder beside it.
  *
- *   node build-sheet.mjs <out.html> <run folder>...
+ *   node build-sheet.mjs [--module=<role>] <out.html> <run folder>...
  *
  * The CI workflow sweeps the 16 cells in parallel jobs, one run folder each,
  * and joins them here. On the devbox the shots are real users: never publish
@@ -16,11 +16,13 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { REPO_ROOT } from "./lib/paths.mjs";
-import { CELLS, contactSheetHtml, flowTitle } from "./lib/sweep.mjs";
+import { CELLS, contactSheetHtml, flowTitle, flowsOfModule } from "./lib/sweep.mjs";
 
-const [out, ...runDirs] = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const module = argv.find((a) => a.startsWith("--module="))?.slice("--module=".length) || null;
+const [out, ...runDirs] = argv.filter((a) => !a.startsWith("--module="));
 if (!out || runDirs.length === 0) {
-  console.error("usage: node build-sheet.mjs <out.html> <run folder>...");
+  console.error("usage: node build-sheet.mjs [--module=<role>] <out.html> <run folder>...");
   process.exit(1);
 }
 
@@ -43,9 +45,11 @@ const shotsByCell = Object.fromEntries(
 
 const sweepDir = path.join(REPO_ROOT, "apps/mobile/.maestro/sweep");
 const flowTitles = {};
-for (const rel of readdirSync(sweepDir, { recursive: true }).map(String)) {
-  const base = path.basename(rel);
-  if (/^s\d+.*\.yaml$/.test(base)) flowTitles[base.split("-")[0]] = flowTitle(readFileSync(path.join(sweepDir, rel), "utf8").split("\n")[0]);
+const flowFiles = readdirSync(sweepDir, { recursive: true })
+  .map(String)
+  .filter((rel) => /^s\d+.*\.yaml$/.test(path.basename(rel)));
+for (const rel of flowsOfModule(flowFiles, module)) {
+  flowTitles[path.basename(rel).split("-")[0]] = flowTitle(readFileSync(path.join(sweepDir, rel), "utf8").split("\n")[0]);
 }
 
 const hasConvert = spawnSync("convert", ["-version"]).status === 0;
@@ -58,6 +62,6 @@ const srcFor = (cellId, name) => {
   return `data:image/png;base64,${readFileSync(png).toString("base64")}`;
 };
 
-writeFileSync(out, contactSheetHtml({ title: "contact sheet", cells, shotsByCell, results, flowTitles, srcFor }));
+writeFileSync(out, contactSheetHtml({ title: "contact sheet", module, cells, shotsByCell, results, flowTitles, srcFor }));
 const shots = Object.values(shotsByCell).flat().length;
 console.log(`[sheet] ${cells.length} cells, ${shots} screenshots, ${results.length} flow runs -> ${out}`);

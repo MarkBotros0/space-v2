@@ -118,6 +118,16 @@ bugs show in one or two of the sixteen. Check every shot for:
 - dark mode: text or icons that vanish on the dark background, hard-coded light surfaces, a light
   flash before the theme applies;
 - enabled buttons that look disabled, and tap targets under 44dp (text links like "Back to sign in");
+- **colour contrast**, on every page, in light *and* dark. Judge by eye first (muted grey text, small
+  captions, placeholders, inactive tab labels, badges, chips, outlined buttons, text on teal or navy),
+  then *measure* every suspect instead of trusting the eye: crop the element, take the text colour (the
+  most extreme glyph pixel) and the background beside it, and compute the WCAG ratio
+  `(L1+0.05)/(L2+0.05)` on sRGB-linearised luminance. Pass is **4.5:1** for text (3:1 from 24px, or
+  18.66px bold) and **3:1** for icons and control borders. Thin 10–12px text never reaches its true colour
+  after anti-aliasing and JPEG, so treat a result within ~0.3 of the line as a pass. List every failing
+  pair as screen, cell, element, text hex, background hex, ratio. Disabled controls are exempt;
+  everything the user is meant to read or tap is not. A token-level fix (a text colour, an alpha on a
+  muted label) is a native defect; a border or surface colour that v1 has too goes to the gaps file;
 - copy and state that contradict another screen, and an empty state with no way forward.
 
 Reading images: the session drops images after about 80–100 reads per agent ("media removed: request
@@ -136,6 +146,12 @@ The v1-match ruling still holds, so sort each finding first:
 - **Defects in screens the change didn't touch:** report them; don't fix them unasked.
 
 After fixing, re-run the sweep for that flow until the shots are clean.
+
+**Sheets are named by module.** The workflow's `module` input (student, leader, admin, super, mentor,
+alumni) and the runner's `--module=` pick whose flows run: `.maestro/sweep/<module>-scenarios/`, plus,
+for `student`, the signed-out and Settings flows beside the folders. The sheet, its title and its
+artifacts are named for it (`student-ui-sweep.html`, `student-ui-sweep-contact-sheet`), so sheets for
+different roles never get mixed up. A new role needs only its `<module>-scenarios/` folder.
 
 **Report:** for each finding give its severity (High = hides or blocks something the user needs;
 Medium = clearly broken or confusing; Low = polish), the cells it appears in, one or two sentences,
