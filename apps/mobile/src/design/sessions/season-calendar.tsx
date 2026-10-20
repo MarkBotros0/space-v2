@@ -377,8 +377,8 @@ function CalendarGrid({
                         className={cn("rounded px-1 py-0.5", tone.box)}
                       >
                         <Text
-                          numberOfLines={1}
-                          className={cn("text-xs font-medium leading-tight", tone.text)}
+                          numberOfLines={2}
+                          className={cn("text-[10px] font-medium leading-tight", tone.text)}
                         >
                           {s.title}
                         </Text>
@@ -402,9 +402,9 @@ function CalendarGrid({
                         )}
                       >
                         <Text
-                          numberOfLines={1}
+                          numberOfLines={2}
                           className={cn(
-                            "shrink text-xs leading-tight",
+                            "shrink text-[10px] leading-tight",
                             alumni
                               ? "text-warning-800 dark:text-warning-200"
                               : "text-brand-navy-800 dark:text-brand-navy-100",
