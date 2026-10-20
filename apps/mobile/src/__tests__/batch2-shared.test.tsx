@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { RefreshControl, ScrollView, Text as RNText } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text as RNText } from "react-native";
 
 import { ShellFrame } from "../design/layout/shell-frame";
 import { BackLink, Eyebrow, PageTitle } from "../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
 import { StatCard } from "../design/students/stat-card";
+import { renderWithProviders } from "./helpers/render";
 
 describe("ShellFrame", () => {
   it("adds a RefreshControl wired to onRefresh", () => {
@@ -27,6 +28,17 @@ describe("ShellFrame", () => {
       </ShellFrame>,
     );
     expect(screen.UNSAFE_getByType(ScrollView).props.refreshControl).toBeUndefined();
+  });
+
+  it("clears the floating tab bar, which sits above the bottom inset", () => {
+    // Helper inset 34: the bar's bottom is max(16, 34), so the padding is 34 + 64 + 16, not v1's flat 96.
+    renderWithProviders(
+      <ShellFrame>
+        <RNText>body</RNText>
+      </ShellFrame>,
+    );
+    const style = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
+    expect(style.paddingBottom).toBe(114);
   });
 });
 
@@ -71,6 +83,13 @@ describe("StatCard", () => {
     fireEvent.press(screen.getByLabelText("Absence budget left: 42%"));
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(screen.getByText("this season")).toBeTruthy();
+  });
+
+  it("gives the label one line per word, so a long word shrinks instead of splitting", () => {
+    render(<StatCard label="Assignments" value="2" />);
+    const label = screen.getByText("Assignments", { includeHiddenElements: true });
+    expect(label.props.numberOfLines).toBe(1);
+    expect(label.props.adjustsFontSizeToFit).toBe(true);
   });
 
   it("shows the flame for a positive streak", () => {

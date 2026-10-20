@@ -70,6 +70,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s14-06-attendance-late-kbd
+- eraseText: 10
 - inputText: '20'
 - hideKeyboard
 - waitForAnimationToEnd:

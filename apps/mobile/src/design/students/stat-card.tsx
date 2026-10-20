@@ -86,8 +86,15 @@ export function StatCard({
       </View>
       {/* CSS never breaks inside a word, so v1's "ASSIGNMENTS" overflows into
           the tile's padding; React Native would break it mid-word. The label
-          gets 12px of the padding on each side instead. */}
-      <Text className={cn("-mx-3 text-center text-[10px] font-bold uppercase tracking-widest", LABEL[variant])}>
+          gets 12px of the padding on each side instead, and at most one line
+          per word: at a large font scale a word that still doesn't fit
+          shrinks rather than splitting ("ASSIGNME / NTS"). */}
+      <Text
+        numberOfLines={label.trim().split(/\s+/).length}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+        className={cn("-mx-3 text-center text-[10px] font-bold uppercase tracking-widest", LABEL[variant])}
+      >
         {label}
       </Text>
       {sublabel ? <Text className={cn("text-center text-[10px]", SUB[variant])}>{sublabel}</Text> : null}
