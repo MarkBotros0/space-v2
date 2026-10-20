@@ -4,13 +4,18 @@
  * `w-full max-w-sm rounded-2xl border border-border/60 bg-card/90 p-6
  * shadow-[var(--shadow-pop)] backdrop-blur-md` > header `mb-6 flex flex-col
  * items-center gap-3 text-center` (Logo lg, h1, description).
- * Native differences: no backdrop blur (bg-card/90 kept); the frame scrolls
- * and avoids the keyboard.
+ * Native differences: no backdrop blur (bg-card/90 kept); the frame scrolls,
+ * keeps py-12 clear of the status and navigation bars (the app draws
+ * edge-to-edge), and keeps the focused field above the keyboard
+ * (useKeyboardInset; KeyboardAvoidingView does nothing on edge-to-edge
+ * Android).
  */
-import { cloneElement, type ReactElement, type ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { cloneElement, type ReactElement, type ReactNode, useContext } from "react";
+import { Pressable, ScrollView, View } from "react-native";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { cn } from "../lib/cn";
+import { useKeyboardInset } from "../lib/keyboard-inset";
 import { shadowStyle } from "../lib/shadow";
 import { FieldError } from "../ui/field";
 import { Logo } from "../ui/logo";
@@ -25,12 +30,18 @@ export function AuthCard({
   description: string;
   children?: ReactNode;
 }) {
+  const insets = useContext(SafeAreaInsetsContext);
+  const keyboard = useKeyboardInset();
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-background">
+    <View className="flex-1 bg-background">
       <ScrollView
+        {...keyboard.scrollProps}
         className="flex-1"
-        contentContainerClassName="min-h-full items-center justify-center px-4 py-12"
-        keyboardShouldPersistTaps="handled"
+        contentContainerClassName="min-h-full items-center justify-center px-4"
+        contentContainerStyle={{
+          paddingTop: (insets?.top ?? 0) + 48,
+          paddingBottom: Math.max((insets?.bottom ?? 0) + 48, keyboard.inset + 16),
+        }}
       >
         <View className="w-full max-w-sm rounded-2xl border border-border/60 bg-card/90 p-6" style={shadowStyle("pop")}>
           <View className="mb-6 flex-col items-center gap-3">
@@ -48,7 +59,7 @@ export function AuthCard({
           {children}
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
