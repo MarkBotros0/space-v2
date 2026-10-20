@@ -343,7 +343,7 @@ function CalendarGrid({
                 key={key}
                 accessibilityLabel={formatDayKey(key)}
                 className={cn(
-                  "min-w-0 flex-1 flex-col gap-0.5 bg-card p-1",
+                  "min-w-0 flex-1 flex-col gap-0.5 bg-card p-0.5",
                   view === "week" ? "min-h-32" : "min-h-[72px]",
                 )}
                 // v1 dims out-of-month days to opacity-40; 40% leaves their date at under 3:1, so 60%.
@@ -375,10 +375,11 @@ function CalendarGrid({
                         key={s.id}
                         accessibilityRole="link"
                         onPress={() => handlers.onOpenSession(s.id)}
-                        className={cn("rounded px-1 py-0.5", tone.box)}
+                        className={cn("rounded px-0.5 py-0.5", tone.box)}
                       >
                         <Text
                           numberOfLines={2}
+                          maxFontSizeMultiplier={1}
                           className={cn("text-[10px] font-medium leading-tight", tone.text)}
                         >
                           {s.title}
@@ -396,7 +397,7 @@ function CalendarGrid({
                         accessibilityRole={e.url ? "link" : "button"}
                         onPress={() => handlers.onOpenEvent(e)}
                         className={cn(
-                          "flex-row items-center gap-0.5 rounded px-1 py-0.5",
+                          "flex-row items-center gap-0.5 rounded px-0.5 py-0.5",
                           alumni
                             ? "bg-warning-100 dark:bg-warning-950"
                             : "bg-brand-navy-100 dark:bg-brand-navy-900",
@@ -404,6 +405,7 @@ function CalendarGrid({
                       >
                         <Text
                           numberOfLines={2}
+                          maxFontSizeMultiplier={1}
                           className={cn(
                             "shrink text-[10px] leading-tight",
                             alumni
