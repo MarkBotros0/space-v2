@@ -36,16 +36,11 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s22-04-session-upcoming-bottom
-- openLink: spacev2://calendar
+# The past session is not in the Upcoming agenda, so it is opened by id (seed order: Opening night is session 1).
+- openLink: spacev2://session/1
 - extendedWaitUntil:
     visible: 'User menu'
     timeout: 40000
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Opening night'
-- waitForAnimationToEnd:
-    timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s22-05-session-past

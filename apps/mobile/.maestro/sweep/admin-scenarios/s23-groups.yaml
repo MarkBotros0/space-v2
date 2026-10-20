@@ -64,6 +64,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s23-08-group-edit-bottom
+# FINDING: an admin of the active season sees "No season" here, so there is no form to type into.
 - openLink: spacev2://group/new
 - extendedWaitUntil:
     visible: 'User menu'
@@ -71,24 +72,3 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s23-09-group-new
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Name'
-- waitForAnimationToEnd:
-    timeout: 5000
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s23-10-group-new-name-kbd
-- inputText: 'Sweep group'
-- hideKeyboard
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s23-11-group-new-name-typed
-# Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s23-12-group-new-bottom

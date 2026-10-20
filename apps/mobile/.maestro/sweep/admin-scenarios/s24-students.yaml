@@ -72,7 +72,16 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s24-09-student-detail-bottom
-# Note form: type, never tap Add note.
+# Note form lives on the Notes tab: type, never tap Add note.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Notes'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s24-10-student-notes-tab
 - runFlow:
     file: ../_tap.yaml
     env:
@@ -81,19 +90,19 @@ appId: com.jpc.space
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s24-10-student-note-kbd
+- takeScreenshot: s24-11-student-note-kbd
 - inputText: 'Sweep note, never saved'
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s24-11-student-note-typed
+- takeScreenshot: s24-12-student-note-typed
 # Last item has to clear the floating tab bar and the system bar.
 - scroll
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s24-12-student-note-bottom
+- takeScreenshot: s24-13-student-note-bottom
 # Student ids follow the seed order: super 1, admin 2, leader 3, mentor 4, student 5.
 - openLink: spacev2://student/5/edit
 - extendedWaitUntil:
@@ -101,7 +110,7 @@ appId: com.jpc.space
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s24-13-student-edit
+- takeScreenshot: s24-14-student-edit
 - runFlow:
     file: ../_tap.yaml
     env:
@@ -110,16 +119,16 @@ appId: com.jpc.space
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s24-14-student-edit-name-kbd
+- takeScreenshot: s24-15-student-edit-name-kbd
 - inputText: 'x'
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s24-15-student-edit-name-typed
+- takeScreenshot: s24-16-student-edit-name-typed
 # Last item has to clear the floating tab bar and the system bar.
 - scroll
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s24-16-student-edit-bottom
+- takeScreenshot: s24-17-student-edit-bottom

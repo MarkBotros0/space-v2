@@ -73,7 +73,7 @@ appId: com.jpc.space
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Title'
+      TARGET: 'Quiz title'
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:

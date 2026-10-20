@@ -36,11 +36,11 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s25-04-assignment-detail-bottom
-# A submitted response from Salma Student is seeded for this; opening it does not change it.
+# Salma Student's submitted response is the first row, so its Open button is the first match; opening does not change it.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Salma Student'
+      TARGET: 'Open'
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
