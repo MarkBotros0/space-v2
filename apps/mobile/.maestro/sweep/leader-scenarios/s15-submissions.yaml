@@ -58,7 +58,11 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s15-06-submission-bottom
-- back
+# Back lands on the first screen of the session, not the queue: reopen the queue.
+- openLink: spacev2://submissions
+- extendedWaitUntil:
+    visible: '.*pending review.*'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 # The reviewed row, found by its assignment title: the form reads Update feedback.

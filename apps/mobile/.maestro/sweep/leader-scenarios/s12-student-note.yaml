@@ -27,6 +27,31 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s12-01-student
+# The tab row scrolls sideways: Notes is off screen until it is swiped. Each tab
+# loads its data the first time it opens.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Seasons'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s12-02-tab-seasons
+- tapOn: 'Attendance'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s12-03-tab-attendance
+- tapOn: 'Submissions'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s12-04-tab-submissions
+- swipe:
+    from:
+      text: 'Submissions'
+    direction: LEFT
+- tapOn: 'Notes'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s12-05-tab-notes
 # The note form: placeholder text finds the textarea. Add note is never tapped.
 - runFlow:
     file: ../_tap.yaml
@@ -34,23 +59,21 @@ appId: com.jpc.space
       TARGET: 'Reflections.*'
 - waitForAnimationToEnd:
     timeout: 5000
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s12-02-note-kbd
+- takeScreenshot: s12-06-note-kbd
 - inputText: 'Sweep note, never saved'
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s12-03-note-typed
+- takeScreenshot: s12-07-note-typed
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s12-04-note-form-scrolled
+- takeScreenshot: s12-08-note-form-scrolled
 # Last item has to clear the floating tab bar and the system bar.
 - scroll
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s12-05-student-bottom
+- takeScreenshot: s12-09-student-bottom
