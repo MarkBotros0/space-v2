@@ -247,7 +247,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan "$RESULTS_BRANCH"
           git rm -rfq .
+          # The downloaded artifacts (parts/) are untracked and would be added.
+          git clean -fdxq
           cp -r "$RUNNER_TEMP"/results/. .
+          # Keep Vercel from building this branch: the project's Root Directory
+          # is apps/backend, so the directory has to exist (or the preview
+          # fails and emails the owner) and its vercel.json turns Git deploys off.
+          mkdir -p apps/backend
+          echo '{ "git": { "deploymentEnabled": false } }' | tee vercel.json > apps/backend/vercel.json
           git add -A
           git commit -qm "UI sweep results: $SWEEP_MODULE, run $GITHUB_RUN_ID"
           git push origin "$RESULTS_BRANCH"
