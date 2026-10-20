@@ -367,6 +367,11 @@ async function main(): Promise<void> {
         title: "New submission: Opening night reflection",
         body: "Salma Student submitted late.",
         link: "/submissions",
+        readAt: fromToday(-1),
+      },
+    ],
+  });
+
   // Admin-side rows (admin-scenarios, s20-s28). The submission to review is the
   // classmate's SUBMITTED reflection seeded above for the leader.
   await db.engagementNote.create({
