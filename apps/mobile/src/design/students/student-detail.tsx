@@ -86,9 +86,9 @@ function EngagementCard({ studentId }: { studentId: number }) {
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between gap-2">
-        <CardTitle className="text-base">Engagement (current season)</CardTitle>
+        <CardTitle className="min-w-0 flex-1 text-base">Engagement (current season)</CardTitle>
         {/* V2-ONLY: the single at-risk definition (C4). */}
-        {e.atRisk ? <Badge variant="error">At risk</Badge> : null}
+        {e.atRisk ? <Badge variant="error" className="shrink-0">At risk</Badge> : null}
       </CardHeader>
       <CardContent className="flex-col gap-3">
         <View className="flex-row items-center gap-3">
