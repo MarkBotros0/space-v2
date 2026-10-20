@@ -244,6 +244,17 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
 - **Every input stays usable with the keyboard open, on Android too.** The focused field and its
   submit button must be scrollable above the keyboard. A `KeyboardAvoidingView` with
   `behavior={undefined}` on Android does nothing here (found on every signed-out form, Oct 2026).
+  The app is edge-to-edge, so Android never resizes the window for the keyboard: put a form in
+  `ShellFrame`, `AuthCard` or legacy `Screen scroll`, which pad their scroll content by the keyboard
+  height and scroll the focused field above it (`design/lib/keyboard-inset.ts`). A bare `ScrollView` or
+  `View` form hides its lower fields.
+- **Last content clears the floating tab bar by the inset, not a flat 96px.** The bar sits at
+  `max(16, bottom inset)`, so bottom padding in the shell comes from `useShellBottomPadding()`
+  (`design/layout/shell-context.ts`). A hard-coded `pb-24` ends under the bar on a 3-button phone.
+- **Text is 4.5:1, icons and control borders 3:1, in both themes.** A muted label at an alpha
+  (`text-muted-foreground/70`) fails on white; use the full token. Measure, don't eyeball (ui-sweep skill).
+- **Cap font scaling where a fixed-size container holds the text.** The tab bar labels stop at 1.15x
+  (`maxFontSizeMultiplier`); a stat label gets two lines and shrinks. Never let a word break mid-word.
 - **No fixed heights on text.** An `Input` is `min-h-*` with `py-0`, not `h-*`: a fixed height clipped the
   digits in number fields at font 1.3 (Minutes late, Score, Points). Title text beside a badge takes
   `min-w-0 flex-1` and the badge `shrink-0`; rows of buttons use `flex-wrap`, since two buttons overflow

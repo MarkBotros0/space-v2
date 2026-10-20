@@ -60,7 +60,7 @@ export function FigurePair({ items }: { items: [Figure, Figure] }) {
       {items.map((f, i) => (
         <View key={f.label} className={cn("flex-1 items-center px-4 py-3", i > 0 && "border-l border-border")}>
           <Text className={cn("text-2xl font-black", f.accent)}>{String(f.value)}</Text>
-          <Text className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+          <Text className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             {f.label}
           </Text>
         </View>

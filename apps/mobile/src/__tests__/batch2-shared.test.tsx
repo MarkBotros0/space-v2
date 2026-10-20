@@ -85,7 +85,7 @@ describe("StatCard", () => {
     expect(screen.getByText("this season")).toBeTruthy();
   });
 
-  it("gives the label one line per word, so a long word shrinks instead of splitting", () => {
+  it("keeps the label to at most two lines, so a long word shrinks instead of splitting", () => {
     render(<StatCard label="Assignments" value="2" />);
     const label = screen.getByText("Assignments", { includeHiddenElements: true });
     expect(label.props.numberOfLines).toBe(1);

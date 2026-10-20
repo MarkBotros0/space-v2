@@ -346,7 +346,8 @@ function CalendarGrid({
                   "min-w-0 flex-1 flex-col gap-0.5 bg-card p-1",
                   view === "week" ? "min-h-32" : "min-h-[72px]",
                 )}
-                style={outside ? { opacity: 0.4 } : undefined}
+                // v1 dims out-of-month days to opacity-40; 40% leaves their date at under 3:1, so 60%.
+                style={outside ? { opacity: 0.6 } : undefined}
               >
                 <View
                   className={cn(

@@ -25,10 +25,20 @@ appId: com.jpc.space
 # rest of the form. Its Done key closes it; Phone has no onSubmitEditing in
 # app/(app)/profile.tsx, so nothing is submitted or saved.
 - pressKey: Enter
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Gifts / interests'
+# Gifts / interests sits near the bottom. Swipe the left margin to the end first
+# (Maestro's own scroll starts on a field and doesn't move the page here), so it is
+# above the tab bar: tapping it from _tap.yaml landed on the floating tab bar in some
+# cells (Home / Calendar instead of the field, sweep 2026-10-20).
+- repeat:
+    times: 6
+    commands:
+      - swipe:
+          start: 4%, 70%
+          end: 4%, 30%
+          duration: 500
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: 'Gifts / interests'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s08-03-profile-lowest-kbd

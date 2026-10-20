@@ -1,0 +1,29 @@
+name: UI sweep results cleanup
+
+# ui-sweep.yml pushes each run's screenshots to a ui-sweep-results-* branch.
+# Whoever reads one deletes it; this removes any left over after 24 hours.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Delete result branches older than 24 hours
+        run: |
+          cutoff=$(date -u -d '24 hours ago' +%s)
+          gh api --paginate "repos/$GITHUB_REPOSITORY/git/matching-refs/heads/ui-sweep-results-" --jq '.[] | "\(.ref) \(.object.sha)"' |
+          while read -r ref sha; do
+            when=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha" --jq .commit.committer.date)
+            if [ "$(date -u -d "$when" +%s)" -lt "$cutoff" ]; then
+              echo "Deleting $ref"
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/$ref"
+            fi
+          done
