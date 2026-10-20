@@ -60,9 +60,18 @@ appId: com.jpc.space
 - takeScreenshot: s15-06-submission-bottom
 # Back lands on the first screen of the session, not the queue: reopen the queue.
 - openLink: spacev2://submissions
+# The queue keeps its scroll position, so its heading may be off-screen: wait
+# on a row, then swipe back to the top (left margin, like _tap.yaml).
 - extendedWaitUntil:
-    visible: '.*pending review.*'
+    visible: 'Salma Student'
     timeout: 40000
+- repeat:
+    times: 4
+    commands:
+      - swipe:
+          start: 4%, 35%
+          end: 4%, 70%
+          duration: 500
 - waitForAnimationToEnd:
     timeout: 5000
 # The reviewed row, found by its assignment title: the form reads Update feedback.

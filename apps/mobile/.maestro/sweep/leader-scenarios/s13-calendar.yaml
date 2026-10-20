@@ -27,7 +27,10 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s13-03-calendar-bottom
 # A session detail, reached from the Upcoming list (Month view has no rows).
-- tapOn: 'Upcoming'
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Upcoming'
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn:
