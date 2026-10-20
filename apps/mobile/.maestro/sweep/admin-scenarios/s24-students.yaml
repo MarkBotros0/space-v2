@@ -122,7 +122,7 @@ appId: com.jpc.space
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Name'
+      TARGET: 'Full name'
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
