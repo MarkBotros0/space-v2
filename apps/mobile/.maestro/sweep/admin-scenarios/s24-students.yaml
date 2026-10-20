@@ -73,6 +73,14 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s24-09-student-detail-bottom
 # Note form lives on the Notes tab: type, never tap Add note.
+- scrollUntilVisible:
+    element: 'Attendance'
+    direction: UP
+    timeout: 10000
+    optional: true
+- swipe:
+    from: 'Attendance'
+    direction: LEFT
 - runFlow:
     file: ../_tap.yaml
     env:

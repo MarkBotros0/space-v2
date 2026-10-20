@@ -94,9 +94,10 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s22-12-session-edit-bottom
-- openLink: spacev2://session/new
+# New session and group need ?seasonId=; the seeded current season is id 2.
+- openLink: spacev2://session/new?seasonId=2
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Repeat weekly for…|Title'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
