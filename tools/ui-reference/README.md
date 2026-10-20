@@ -58,6 +58,7 @@ whichever emulator it likes — don't use it. The `nanny-e2e` (5554) and
 
 ```
 node ui-sweep.mjs                                                  # every flow, all 16 cells
+node ui-sweep.mjs --module=student                                 # one role's flows (see below)
 node ui-sweep.mjs --cells=small-1.3-3btn-light,iphone-1.0-gesture-dark --flows=s02
 node ui-sweep.mjs --into=<run folder> --cells=small --flows=s02    # re-run into an earlier sheet
 node ui-sweep.mjs --restore                                        # put the device back after a crash
@@ -75,6 +76,12 @@ small phones, font scale, the Android nav bar, the keyboard and dark mode. The `
 | Navigation | `3btn` · `gesture` | `cmd overlay enable-exclusive` |
 | Theme | `light` · `dark` | `cmd uimode night` |
 
+A **module** is the role whose screens a sheet covers. Its flows sit in `sweep/<module>-scenarios/`
+(`student-scenarios/`, `leader-scenarios/`, `admin-scenarios/`, ...); the flows beside those folders
+(signed-out screens, Settings) sign in as a student, so they run with `--module=student`. `--module`
+(or `UI_SWEEP_MODULE`, or `SWEEP_MODULE` in CI) picks them and names the sheet; without it every flow runs
+and the sheet is just "UI sweep".
+
 Cell ids are `<screen>-<font>-<nav>-<theme>`; `--cells` and `--flows` take comma-separated prefixes.
 Needs the emulator and Metro on 8095; flows that sign in also need `./backend.sh` and
 `set-reference-passwords.mjs` (the runner refuses them otherwise). It passes `<ROLE>_EMAIL` for every
@@ -89,9 +96,10 @@ Output: `~/projects/JPC/.v2-captures/ui-sweep/<timestamp>/` — one folder per c
 Android only; iOS is not covered.
 
 **Without the devbox:** `.github/workflows/ui-sweep.yml` runs the sweep on a GitHub-hosted emulator
-(Actions → "UI sweep" → Run workflow; pick cells and flows) against a release APK. A full run splits the
-16 cells over four parallel jobs and joins them with `build-sheet.mjs` into one self-contained page, the
-`ui-sweep-contact-sheet` artifact (`ui-sweep.html`, screenshots embedded, one section per flow). It never touches the shared test database: the job migrates a
+(Actions → "UI sweep" → Run workflow; pick the module, cells and flows) against a release APK. A full run
+splits the 16 cells over four parallel jobs and joins them with `build-sheet.mjs` into one self-contained
+page, the `<module>-ui-sweep-contact-sheet` artifact (`<module>-ui-sweep.html`, screenshots embedded, one
+section per flow, titled "<Module> UI sweep"). It never touches the shared test database: the job migrates a
 throwaway Postgres and seeds fake users for every role (`apps/backend/scripts/seed-sweep.ts`, which
 refuses non-local hosts). The repo is public, so its artifacts are too, which is why only fake data may
 appear in them. `UI_SWEEP_USERS_FILE` and `UI_SWEEP_PASSWORD` point the runner at those fake users;

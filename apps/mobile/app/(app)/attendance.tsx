@@ -31,7 +31,7 @@ function SessionRow({ row, first, last }: { row: MyAttendanceSession; first: boo
         </Text>
         {/* Day from the org day key (X13); no org wall time in this payload, so the
             time is the device's reading of startsAt (gap note). */}
-        <Text className="text-xs text-muted-foreground/70">
+        <Text className="text-xs text-muted-foreground">
           {`${formatWeekdayDayYear(row.dayKey)} · ${formatSessionTime(row.startsAt)}`}
         </Text>
         {row.status === "LATE" && row.lateMinutes !== null && row.lateMinutes > 0 ? (

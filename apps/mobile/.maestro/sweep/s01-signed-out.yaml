@@ -3,11 +3,16 @@
 # Nothing is submitted: the backend shares its database with v1.
 appId: com.jpc.space
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible: 'Welcome back'
-    timeout: 40000
+# The app now and then starts to a blank screen on the CI emulator; start it
+# again from scratch (see login-as.yaml).
+- retry:
+    maxRetries: 2
+    commands:
+      - launchApp:
+          clearState: true
+      - extendedWaitUntil:
+          visible: 'Welcome back'
+          timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s01-01-login
@@ -64,7 +69,16 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: s01-07-reset
-- tapOn: 'Confirm password'
+# The card is taller than a small phone: its last link has to clear the system bar.
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s01-07a-reset-bottom
+- runFlow:
+    file: _tap.yaml
+    env:
+      TARGET: 'Confirm password'
 - waitForAnimationToEnd:
     timeout: 3000
 # The lowest field: is it, and the submit button, above the keyboard?
@@ -89,7 +103,15 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: s01-09-invite
-- tapOn: 'Confirm password'
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s01-09a-invite-bottom
+- runFlow:
+    file: _tap.yaml
+    env:
+      TARGET: 'Confirm password'
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: s01-10-invite-confirm-kbd

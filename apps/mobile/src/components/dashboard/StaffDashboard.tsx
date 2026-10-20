@@ -21,7 +21,7 @@ iconWithClassName(AlertTriangle);
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 const NAVY = "text-brand-navy-900 dark:text-foreground";
-const COLUMN = "text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70";
+const COLUMN = "text-[10px] font-bold uppercase tracking-widest text-muted-foreground";
 
 type Variant = "ADMIN" | "LEADER";
 

@@ -80,7 +80,7 @@ function StudentQuizRow({ row }: { row: StudentQuizResult }) {
         </TextV1>
       ) : null}
       {row.gradedAt ? (
-        <TextV1 className="mt-2 text-[10px] text-muted-foreground/70">{`Graded ${formatDate(row.gradedAt)}`}</TextV1>
+        <TextV1 className="mt-2 text-[10px] text-muted-foreground">{`Graded ${formatDate(row.gradedAt)}`}</TextV1>
       ) : null}
     </>
   );

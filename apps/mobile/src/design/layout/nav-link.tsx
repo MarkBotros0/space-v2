@@ -49,12 +49,14 @@ export function NavLink({
           className={featured ? "text-brand-navy-950" : active ? "text-white" : "text-white/55"}
         />
       </View>
+      {/* The pill is 64px tall: a label past 1.15x the font scale pushes "Assignments" into
+          its neighbour ("Assignm…" at 1.3), so it stops growing there. v1's inactive
+          text-white/55 measured 3.5-4.0:1 on the light-theme pill, under the 4.5:1 text
+          floor; 80% clears it. */}
       <Text
         numberOfLines={1}
-        className={cn(
-          "text-[10px] font-medium leading-none",
-          active ? "text-white" : featured ? "text-white/80" : "text-white/55",
-        )}
+        maxFontSizeMultiplier={1.15}
+        className={cn("text-[10px] font-medium leading-none", active ? "text-white" : "text-white/80")}
       >
         {label}
       </Text>
