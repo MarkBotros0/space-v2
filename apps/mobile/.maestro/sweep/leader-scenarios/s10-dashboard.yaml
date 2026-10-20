@@ -1,0 +1,24 @@
+# UI sweep s10 — Dashboard as a leader. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${LEADER_EMAIL}
+- extendedWaitUntil:
+    visible: 'Students'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s10-01-dashboard
+# The 'Your students at risk' card and the upcoming events sit below the fold.
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s10-02-dashboard-bottom

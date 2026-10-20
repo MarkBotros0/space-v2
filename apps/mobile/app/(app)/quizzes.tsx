@@ -212,7 +212,6 @@ function QuizSummaryRow({
     >
       <View className="min-w-0 flex-1">
         <TextV1
-          numberOfLines={1}
           className="text-sm font-bold text-brand-navy-900 dark:text-foreground"
         >
           {row.title}

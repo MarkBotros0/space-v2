@@ -1,8 +1,14 @@
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Platform, type ScrollView, TextInput } from "react-native";
 
-/** Space kept between the focused field and the top of the keyboard. */
-const FIELD_GAP = 24;
+/**
+ * Space kept between the focused field and the top of the keyboard. Generous
+ * on purpose: on the CI emulator the keyboard's reported top sat about 45dp
+ * below where it is drawn, so a 24dp gap left every focused field half hidden
+ * (UI sweep run 40, small phones). The scroll range allows it, so extra room
+ * costs nothing.
+ */
+const FIELD_GAP = 96;
 /** Retries after the keyboard opens: the padding below lands a layout pass or two later. */
 const RETRY_MS = [0, 150, 400];
 
