@@ -367,6 +367,51 @@ async function main(): Promise<void> {
         title: "New submission: Opening night reflection",
         body: "Salma Student submitted late.",
         link: "/submissions",
+  // Admin-side rows (admin-scenarios, s20-s28). The submission to review is the
+  // classmate's SUBMITTED reflection seeded above for the leader.
+  await db.engagementNote.create({
+    data: {
+      studentUserId: student.id,
+      authorUserId: admin.id,
+      seasonId: season.id,
+      body: "Settled in well; check in again after week 3.",
+      visibility: "ADMINS",
+    },
+  });
+  await db.jpcEvent.create({
+    data: {
+      title: "Sweep kickoff event",
+      date: fromToday(14),
+      description: "Fake organisation-wide event for the UI sweep.",
+      visibility: "ALL",
+      createdById: superUser.id,
+    },
+  });
+  // A withdrawn student, so the Dropped students list has a row.
+  const dropped = await user("student3", "Dina Dropped", "STUDENT");
+  await db.seasonEnrollment.create({
+    data: {
+      studentUserId: dropped.id,
+      seasonId: season.id,
+      status: "WITHDRAWN",
+      droppedAt: fromToday(-10),
+      dropReason: "Moved away",
+    },
+  });
+  await db.studentProfile.create({ data: { userId: dropped.id, university: "Cairo University" } });
+  await db.notification.createMany({
+    data: [
+      {
+        userId: admin.id,
+        type: "LOW_ATTENDANCE_FLAG",
+        title: "Salma Student is low on attendance budget",
+        link: "/students",
+      },
+      {
+        userId: admin.id,
+        type: "SUBMISSION_REVIEWED",
+        title: "New submission: Opening night reflection",
+        link: "/assignments",
         readAt: fromToday(-1),
       },
     ],

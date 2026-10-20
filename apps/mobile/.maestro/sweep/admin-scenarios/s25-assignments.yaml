@@ -1,0 +1,125 @@
+# UI sweep s25 — Assignments and submissions as a season admin. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${ADMIN_EMAIL}
+- openLink: spacev2://assignments
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-01-assignments
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-02-assignments-bottom
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Opening night reflection'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-03-assignment-detail
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-04-assignment-detail-bottom
+# A submitted response from Salma Student is seeded for this; opening it does not change it.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Salma Student'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-05-submission-review
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Feedback'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-06-submission-feedback-kbd
+- inputText: 'Sweep feedback, never saved'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-07-submission-feedback-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-08-submission-review-bottom
+- openLink: spacev2://assignment/1/edit
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-09-assignment-edit
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Title'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-10-assignment-edit-title-kbd
+- inputText: 'x'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-11-assignment-edit-title-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-12-assignment-edit-bottom
+- openLink: spacev2://assignment/new
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-13-assignment-new
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Title'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-14-assignment-new-title-kbd
+- inputText: 'Sweep assignment'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-15-assignment-new-title-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-16-assignment-new-bottom

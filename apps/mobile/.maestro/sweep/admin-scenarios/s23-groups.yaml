@@ -1,0 +1,94 @@
+# UI sweep s23 — Groups as a season admin. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${ADMIN_EMAIL}
+- openLink: spacev2://groups
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-01-groups
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-02-groups-bottom
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Group A'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-03-group-detail
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-04-group-detail-bottom
+- openLink: spacev2://group/1/edit
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-05-group-edit
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Description'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-06-group-edit-description-kbd
+- inputText: 'x'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-07-group-edit-description-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-08-group-edit-bottom
+- openLink: spacev2://group/new
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-09-group-new
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Name'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-10-group-new-name-kbd
+- inputText: 'Sweep group'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-11-group-new-name-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s23-12-group-new-bottom
