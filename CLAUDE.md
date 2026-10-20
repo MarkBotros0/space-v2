@@ -255,6 +255,10 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   (`text-muted-foreground/70`) fails on white; use the full token. Measure, don't eyeball (ui-sweep skill).
 - **Cap font scaling where a fixed-size container holds the text.** The tab bar labels stop at 1.15x
   (`maxFontSizeMultiplier`); a stat label gets two lines and shrinks. Never let a word break mid-word.
+- **No fixed heights on text.** An `Input` is `min-h-*` with `py-0`, not `h-*`: a fixed height clipped the
+  digits in number fields at font 1.3 (Minutes late, Score, Points). Title text beside a badge takes
+  `min-w-0 flex-1` and the badge `shrink-0`; rows of buttons use `flex-wrap`, since two buttons overflow
+  a 360dp phone at 1.3.
 
 ## Git
 

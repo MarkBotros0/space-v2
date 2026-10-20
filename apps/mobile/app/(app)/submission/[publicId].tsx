@@ -71,7 +71,7 @@ function ReviewForm({
             {apiErrorMessage(review.error, "Couldn't record the review. It may not have been submitted yet.")}
           </Text>
         ) : null}
-        <View className="flex-row justify-end gap-2">
+        <View className="flex-row flex-wrap justify-end gap-2">
           <Button variant="outline" disabled={review.isPending} onPress={() => submit(true)}>
             Return for revision
           </Button>
