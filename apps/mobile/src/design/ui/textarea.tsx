@@ -1,6 +1,10 @@
 /**
  * Port of v1 src/components/ui/textarea.tsx.
  * Native differences: multiline TextInput, top-aligned; focus ring → border.
+ * `numberOfLines` (v1's `rows`) is not forwarded: on Android it fixes the
+ * height at that many lines, clipping a placeholder that wraps further at a
+ * larger font scale. `min-h-20` already covers v1's two rows, and the field
+ * grows with its content.
  */
 import { forwardRef } from "react";
 import { TextInput, type TextInputProps } from "react-native";
@@ -9,7 +13,7 @@ import { cn } from "../lib/cn";
 import { useThemeColors } from "../theme/use-theme-colors";
 
 const Textarea = forwardRef<TextInput, TextInputProps & { className?: string; disabled?: boolean; "aria-invalid"?: boolean }>(
-  ({ className, disabled, "aria-invalid": invalid, ...props }, ref) => {
+  ({ className, disabled, "aria-invalid": invalid, numberOfLines: _rows, ...props }, ref) => {
     const colors = useThemeColors();
     return (
       <TextInput

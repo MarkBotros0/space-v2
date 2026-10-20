@@ -13,8 +13,6 @@
 const TAB_BAR_HEIGHT = 64;
 /** The save bar: two 36px buttons, an 8px gap, 12px padding and borders. */
 const SAVE_BAR_HEIGHT = 112;
-/** ShellFrame's own bottom padding (pb-24), which already clears an inset-free tab bar. */
-const FRAME_BOTTOM_PADDING = 96;
 
 function useSaveBarBottom(): number {
   const insets = useSafeAreaInsets();
@@ -26,6 +24,7 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useShellBottomPadding } from "../layout/shell-context";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
 import { shadowStyle } from "../lib/shadow";
@@ -61,6 +60,8 @@ export function AttendanceRosterForm({
   onLateText: (row: AttendanceRosterRow, text: string) => void;
 }) {
   const barBottom = useSaveBarBottom();
+  // ShellFrame's own bottom padding, which already clears the tab bar.
+  const frameBottom = useShellBottomPadding();
   if (rows.length === 0) {
     return (
       <Text className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -152,7 +153,7 @@ export function AttendanceRosterForm({
         </Text>
       ) : null}
       {/* Room for the floating save bar. */}
-      <View testID="save-bar-spacer" style={{ height: SAVE_BAR_HEIGHT + barBottom - FRAME_BOTTOM_PADDING }} />
+      <View testID="save-bar-spacer" style={{ height: SAVE_BAR_HEIGHT + barBottom - frameBottom }} />
     </View>
   );
 }

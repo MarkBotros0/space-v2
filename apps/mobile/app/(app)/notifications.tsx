@@ -3,6 +3,7 @@ import { Bell, BellOff } from "lucide-react-native";
 import { FlatList, Pressable, View } from "react-native";
 import type { NotificationItem } from "@space/shared";
 
+import { useShellBottomPadding } from "../../src/design/layout/shell-context";
 import { cn } from "../../src/design/lib/cn";
 import { iconWithClassName } from "../../src/design/lib/icon";
 import { PageHeader } from "../../src/design/layout/page-header";
@@ -71,6 +72,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage } = useNotifications();
   const markRead = useMarkRead();
+  const bottomPadding = useShellBottomPadding();
 
   const items = flattenNotifications(data?.pages);
   // The API pages by cursor and has no total, so v1's "X unread of Y" keeps
@@ -98,7 +100,8 @@ export default function NotificationsScreen() {
   return (
     <FlatList
       className="flex-1 bg-background"
-      contentContainerClassName="gap-2 bg-brand-navy-50 px-4 pb-24 pt-4 dark:bg-background"
+      contentContainerClassName="gap-2 bg-brand-navy-50 px-4 pt-4 dark:bg-background"
+      contentContainerStyle={{ paddingBottom: bottomPadding }}
       data={items}
       keyExtractor={(item) => String(item.id)}
       ListHeaderComponent={
