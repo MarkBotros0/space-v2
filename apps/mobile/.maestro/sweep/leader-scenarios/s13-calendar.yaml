@@ -27,10 +27,15 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s13-03-calendar-bottom
 # A session detail, reached from the Upcoming list (Month view has no rows).
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Upcoming'
+# Back to the top (left margin, like _tap.yaml) where the view toggle is.
+- repeat:
+    times: 4
+    commands:
+      - swipe:
+          start: 4%, 35%
+          end: 4%, 70%
+          duration: 500
+- tapOn: 'Upcoming'
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn:
