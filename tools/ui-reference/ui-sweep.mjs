@@ -12,6 +12,7 @@
  *
  *   node ui-sweep.mjs
  *   node ui-sweep.mjs --cells=small-1.3-3btn-light,iphone-1.0-gesture-dark --flows=s03
+ *   node ui-sweep.mjs --module=student     # one role's flows, sheet titled "Student UI sweep"
  *   node ui-sweep.mjs --into=2026-10-19_02-10-00 --cells=small --flows=s03
  *                                    # re-run into an earlier run's folder
  *   node ui-sweep.mjs --restore      # put the device back after a crashed run
@@ -34,6 +35,7 @@ import {
   NAV_OVERLAYS,
   contactSheetHtml,
   flowTitle,
+  flowsOfModule,
   parseArgs,
   parseNavOverlay,
   parseNightMode,
@@ -68,6 +70,23 @@ const NEEDS_METRO = process.env.UI_SWEEP_NO_METRO !== "1";
 const METRO_PORT = 8095;
 const BACKEND = "http://localhost:4100";
 const APP_ID = "com.jpc.space";
+/** The role whose screens this sheet covers (lib/sweep.mjs flowsOfModule); --module wins. */
+const MODULE = process.env.UI_SWEEP_MODULE || null;
+
+/**
+ * Flow paths under sweep/ for a module (all of them without one). Flows may sit
+ * in sub-folders (sweep/student-scenarios/); they are named, picked and sorted
+ * by file name alone.
+ */
+function sweepFlows(module) {
+  return flowsOfModule(
+    readdirSync(SWEEP_DIR, { recursive: true })
+      .map(String)
+      .filter((rel) => /^s\d+.*\.yaml$/.test(path.basename(rel)))
+      .sort((a, b) => path.basename(a).localeCompare(path.basename(b))),
+    module,
+  );
+}
 
 function fail(message) {
   console.error(`\n[sweep] ✗ ${message}`);
@@ -163,7 +182,7 @@ function captureFailure(file) {
   if (result.status === 0 && result.stdout?.length) writeFileSync(file, result.stdout);
 }
 
-function writeSheet(runDir, cells, results) {
+function writeSheet(runDir, cells, results, module) {
   const shotsByCell = {};
   for (const cell of cells) {
     try {
@@ -175,13 +194,13 @@ function writeSheet(runDir, cells, results) {
     }
   }
   const flowTitles = {};
-  for (const rel of readdirSync(SWEEP_DIR, { recursive: true }).map(String)) {
+  for (const rel of sweepFlows(module)) {
     const base = path.basename(rel);
-    if (/^s\d+.*\.yaml$/.test(base)) flowTitles[base.split("-")[0]] = flowTitle(readFileSync(path.join(SWEEP_DIR, rel), "utf8").split("\n")[0]);
+    flowTitles[base.split("-")[0]] = flowTitle(readFileSync(path.join(SWEEP_DIR, rel), "utf8").split("\n")[0]);
   }
   writeFileSync(
     path.join(runDir, "index.html"),
-    contactSheetHtml({ title: path.basename(runDir), cells, shotsByCell, results, flowTitles }),
+    contactSheetHtml({ title: path.basename(runDir), module, cells, shotsByCell, results, flowTitles }),
   );
   writeFileSync(path.join(runDir, "results.json"), JSON.stringify(results, null, 2));
 }
@@ -230,17 +249,13 @@ async function main() {
   } catch (err) {
     fail(err.message);
   }
+  const module = args.module ?? MODULE;
   let cells;
   let flows;
   try {
     cells = pick(CELLS, args.cells, (cell) => cell.id, "cell");
     flows = pick(
-      // Flows may sit in sub-folders (sweep/student-scenarios/); they are
-      // named, picked and sorted by file name alone.
-      readdirSync(SWEEP_DIR, { recursive: true })
-        .map(String)
-        .filter((rel) => /^s\d+.*\.yaml$/.test(path.basename(rel)))
-        .sort((a, b) => path.basename(a).localeCompare(path.basename(b))),
+      sweepFlows(module),
       args.flows,
       (rel) => path.basename(rel),
       "sweep flow",
@@ -305,12 +320,12 @@ async function main() {
         const previous = results.findIndex((r) => r.cell === cell.id && r.flow === flow);
         if (previous !== -1) results.splice(previous, 1);
         results.push({ cell: cell.id, flow, passed, seconds: Math.round((Date.now() - started) / 1000) });
-        writeSheet(runDir, sheetCells, results);
+        writeSheet(runDir, sheetCells, results, module);
       }
     }
   } finally {
     restore();
-    writeSheet(runDir, sheetCells, results);
+    writeSheet(runDir, sheetCells, results, module);
   }
 
   const failed = results.filter((r) => !r.passed);

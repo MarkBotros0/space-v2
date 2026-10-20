@@ -16,6 +16,12 @@ name: UI sweep (Android emulator)
 on:
   workflow_dispatch:
     inputs:
+      module:
+        description: "Whose screens to sweep (flows in .maestro/sweep/<module>-scenarios/; student also runs the signed-out and Settings flows)"
+        required: false
+        type: choice
+        default: student
+        options: [student, leader, admin, super, mentor, alumni]
       cells:
         description: "Cell prefixes, comma-separated (blank = all 16)"
         required: false
@@ -33,9 +39,10 @@ on:
       - "apps/backend/scripts/seed-sweep.ts"
       - ".github/workflows/ui-sweep.yml"
 
-# Per cell selection, so dispatches for different cells run side by side.
+# Per module and cell selection, so dispatches for different modules or cells
+# run side by side.
 concurrency:
-  group: ui-sweep-${{ github.ref }}-${{ github.event.inputs.cells }}
+  group: ui-sweep-${{ github.ref }}-${{ github.event.inputs.module }}-${{ github.event.inputs.cells }}
   cancel-in-progress: true
 
 jobs:
@@ -69,6 +76,8 @@ jobs:
       # A pull request sweeps every flow on the two corner cells; Run workflow
       # defaults to all 16 cells.
       SWEEP_CELLS: ${{ matrix.cells }}
+      # Names the sheet and its artifacts: <module>-ui-sweep.html.
+      SWEEP_MODULE: ${{ github.event.inputs.module || 'student' }}
       SWEEP_FLOWS: ${{ github.event.inputs.flows || '' }}
       UI_SWEEP_ADB: adb
       UI_SWEEP_DEVICE: emulator-5554
@@ -161,7 +170,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-sweep-part-${{ strategy.job-index }}
+          name: ${{ env.SWEEP_MODULE }}-ui-sweep-part-${{ strategy.job-index }}
           path: |
             ui-sweep-output/
             backend.log
@@ -174,6 +183,8 @@ jobs:
     needs: sweep
     if: always()
     runs-on: ubuntu-latest
+    env:
+      SWEEP_MODULE: ${{ github.event.inputs.module || 'student' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -181,14 +192,70 @@ jobs:
           node-version: 24
       - uses: actions/download-artifact@v4
         with:
-          pattern: ui-sweep-part-*
+          pattern: ${{ env.SWEEP_MODULE }}-ui-sweep-part-*
           path: parts
       - name: Build the contact sheet
         run: |
           sudo apt-get install -y --no-install-recommends imagemagick > /dev/null
-          node tools/ui-reference/build-sheet.mjs ui-sweep.html parts/*/ui-sweep-output/run
+          node tools/ui-reference/build-sheet.mjs --module="$SWEEP_MODULE" "$SWEEP_MODULE-ui-sweep.html" parts/*/ui-sweep-output/run
       - uses: actions/upload-artifact@v4
         with:
-          name: ui-sweep-contact-sheet
-          path: ui-sweep.html
+          name: ${{ env.SWEEP_MODULE }}-ui-sweep-contact-sheet
+          path: ${{ env.SWEEP_MODULE }}-ui-sweep.html
           retention-days: 14
+
+  # Puts the shots and results on a throwaway branch so a Claude session can
+  # `git fetch` and read them (its container can't download Actions
+  # artifacts). The repo is public, so this is fake data only. The branch is
+  # deleted by whoever fetched it, or by ui-sweep-cleanup.yml after 24 hours.
+  publish:
+    needs: sweep
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SWEEP_MODULE: ${{ github.event.inputs.module || 'student' }}
+      RESULTS_BRANCH: ui-sweep-results-${{ github.event.inputs.module || 'student' }}-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ env.SWEEP_MODULE }}-ui-sweep-part-*
+          path: parts
+      - name: Shrink shots and join results
+        run: |
+          sudo apt-get install -y --no-install-recommends imagemagick > /dev/null
+          mkdir -p "$RUNNER_TEMP/results"
+          for run in parts/*/ui-sweep-output/run; do
+            [ -d "$run" ] || continue
+            for cell in "$run"/*/; do
+              id=$(basename "$cell")
+              mkdir -p "$RUNNER_TEMP/results/$id"
+              for png in "$cell"*.png; do
+                [ -f "$png" ] || continue
+                convert "$png" -resize 360x -quality 70 "$RUNNER_TEMP/results/$id/$(basename "${png%.png}").jpg"
+              done
+            done
+          done
+          echo '[]' > "$RUNNER_TEMP/empty.json"
+          jq -s 'add' "$RUNNER_TEMP/empty.json" $(find parts -name results.json) > "$RUNNER_TEMP/results/results.json"
+          printf '%s\n' "Module: $SWEEP_MODULE" "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" "Commit: $GITHUB_SHA" > "$RUNNER_TEMP/results/README.txt"
+      - name: Push the results branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan "$RESULTS_BRANCH"
+          git rm -rfq .
+          # The downloaded artifacts (parts/) are untracked and would be added.
+          git clean -fdxq
+          cp -r "$RUNNER_TEMP"/results/. .
+          # Keep Vercel from building this branch: the project's Root Directory
+          # is apps/backend, so the directory has to exist (or the preview
+          # fails and emails the owner) and its vercel.json turns Git deploys off.
+          mkdir -p apps/backend
+          echo '{ "git": { "deploymentEnabled": false } }' | tee vercel.json > apps/backend/vercel.json
+          git add -A
+          git commit -qm "UI sweep results: $SWEEP_MODULE, run $GITHUB_RUN_ID"
+          git push origin "$RESULTS_BRANCH"
+          echo "Results branch: \`$RESULTS_BRANCH\`" >> "$GITHUB_STEP_SUMMARY"

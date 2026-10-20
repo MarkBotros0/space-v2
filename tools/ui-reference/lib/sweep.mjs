@@ -1,5 +1,6 @@
 // Pure parts of the UI sweep (ui-sweep.mjs): the device matrix, argument
 // selection, device-state parsing and the contact sheet. No adb, no files.
+import path from "node:path";
 
 /**
  * The two phones. Small is the 360×640 dp floor; "iphone" is the capture rig's
@@ -42,14 +43,37 @@ export const CELLS = Object.entries(SCREENS).flatMap(([screen, spec]) =>
 );
 
 export function parseArgs(argv) {
-  const args = { cells: null, flows: null, into: null };
+  const args = { cells: null, flows: null, into: null, module: null };
   for (const arg of argv) {
     if (arg.startsWith("--cells=")) args.cells = arg.slice("--cells=".length).split(",");
     else if (arg.startsWith("--flows=")) args.flows = arg.slice("--flows=".length).split(",");
     else if (arg.startsWith("--into=")) args.into = arg.slice("--into=".length);
+    else if (arg.startsWith("--module=")) args.module = arg.slice("--module=".length) || null;
     else throw new Error(`Unknown argument "${arg}". See the header of ui-sweep.mjs.`);
   }
   return args;
+}
+
+/**
+ * The flows of one module, from their paths under sweep/ ("s01-signed-out.yaml",
+ * "leader-scenarios/s03-dashboard.yaml"). A module is the role whose screens a
+ * sheet covers (student, leader, admin, super, ...); its flows sit in
+ * `<module>-scenarios/`. The flows beside that folder (the signed-out screens
+ * and Settings) sign in as a student, so they belong to the student module.
+ * No module = every flow.
+ */
+export function flowsOfModule(rels, module) {
+  if (!module) return rels;
+  const folders = module === "student" ? [".", "student-scenarios"] : [`${module}-scenarios`];
+  const folderOf = (rel) => path.dirname(rel.replaceAll("\\", "/"));
+  const picked = rels.filter((rel) => folders.includes(folderOf(rel)));
+  if (picked.length === 0) throw new Error(`No sweep flows for module "${module}" (looked in ${folders.join(", ")} under sweep/).`);
+  return picked;
+}
+
+/** "student" → "Student UI sweep"; no module → "UI sweep". The title of a sheet and the prefix of its file. */
+export function sheetName(module) {
+  return module ? `${module.charAt(0).toUpperCase()}${module.slice(1)} UI sweep` : "UI sweep";
 }
 
 /**
@@ -123,7 +147,7 @@ function rowLabel(name) {
  * flow prefix ("s02") to its title; `srcFor(cellId, name)` gives each image's
  * src (default: the PNG beside index.html; build-sheet.mjs embeds them).
  */
-export function contactSheetHtml({ title, cells, shotsByCell, results, flowTitles = {}, srcFor }) {
+export function contactSheetHtml({ title, module = null, cells, shotsByCell, results, flowTitles = {}, srcFor }) {
   const src = srcFor ?? ((cellId, name) => `${cellId}/${name}.png`);
   const names = [...new Set(Object.values(shotsByCell).flat())].sort();
   const flows = [...new Set(names.map((n) => n.split("-")[0]))];
@@ -167,7 +191,7 @@ export function contactSheetHtml({ title, cells, shotsByCell, results, flowTitle
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UI sweep</title>
+<title>${escapeHtml(sheetName(module))}</title>
 <style>
   /* A darkroom light table: frames on a dark ground, cells as columns, flows as sections. */
   :root { --ground: #16181a; --frame: #222528; --rule: #33373b; --ink: #e9ece6; --muted: #9aa198;
@@ -199,7 +223,7 @@ export function contactSheetHtml({ title, cells, shotsByCell, results, flowTitle
   @media (max-width: 600px) { th.name { width: 110px; min-width: 110px; } td img { width: 140px; } thead th { min-width: 140px; } }
 </style></head>
 <body><div class="page">
-<h1>UI sweep — ${escapeHtml(title)}</h1>
+<h1>${escapeHtml(sheetName(module))} — ${escapeHtml(title)}</h1>
 <p class="meta">${summary} Small = 360×640 dp; iPhone size = 375×812 dp. 1.0 / 1.3 = Android font scale. Hover a screenshot for its file name in the run folder.</p>
 <nav aria-label="Flows">${nav}</nav>
 <div class="wrap"><table>

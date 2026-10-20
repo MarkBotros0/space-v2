@@ -10,6 +10,7 @@
 # empties the limiter's in-memory store.
 #
 # Env: SWEEP_CELLS / SWEEP_FLOWS (comma-separated prefixes, blank = all),
+# SWEEP_MODULE (student, leader, admin, ...: whose flows to run),
 # UI_SWEEP_OUTPUT, plus what ui-sweep.mjs and the backend read.
 set -uo pipefail
 cd "$(dirname "$0")/../.."
@@ -100,7 +101,7 @@ for cell in $cells; do
   start_backend || exit 1
   dismiss_anr
   # A hung Maestro would otherwise hold the job until its timeout with no log.
-  if ! timeout 1500 node tools/ui-reference/ui-sweep.mjs --into=run --cells="$cell" ${SWEEP_FLOWS:+--flows="$SWEEP_FLOWS"}; then
+  if ! timeout 1500 node tools/ui-reference/ui-sweep.mjs --into=run --cells="$cell" ${SWEEP_FLOWS:+--flows="$SWEEP_FLOWS"} ${SWEEP_MODULE:+--module="$SWEEP_MODULE"}; then
     echo "[ci-sweep] $cell stopped early; restoring the device"
     node tools/ui-reference/ui-sweep.mjs --restore
   fi

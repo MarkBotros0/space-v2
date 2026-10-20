@@ -50,7 +50,7 @@ export function Eyebrow({
     <Text
       className={cn(
         "text-[10px] font-bold uppercase tracking-widest",
-        tone === "muted" ? "text-muted-foreground/70" : "text-brand-teal-700 dark:text-brand-teal-300",
+        tone === "muted" ? "text-muted-foreground" : "text-brand-teal-700 dark:text-brand-teal-300",
         className,
       )}
     >
