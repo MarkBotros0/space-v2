@@ -66,10 +66,10 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 # The reviewed row, found by its assignment title: the form reads Update feedback.
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Read chapter 2'
+# Only the student's name is a link, so tap the second Salma row.
+- tapOn:
+    text: 'Salma Student'
+    index: 1
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
