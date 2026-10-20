@@ -11,8 +11,8 @@
 
 /** The floating tab bar: bottom max(16, inset), 64px tall (floating-tab-bar.tsx). */
 const TAB_BAR_HEIGHT = 64;
-/** The save bar: two 36px buttons, an 8px gap, 12px padding and borders. */
-const SAVE_BAR_HEIGHT = 112;
+/** The save bar: one row of 36px buttons, 12px padding and borders. */
+const SAVE_BAR_HEIGHT = 62;
 
 function useSaveBarBottom(): number {
   const insets = useSafeAreaInsets();
@@ -158,20 +158,20 @@ export function AttendanceRosterForm({
   );
 }
 
-/** v1's save bar: Save above Cancel at phone width (flex-col-reverse). */
+/** v1's save bar, as one row (Cancel, Save): v1's stacked buttons covered the next student on a phone. */
 export function AttendanceSaveBar({ pending, onSave, onCancel }: { pending: boolean; onSave: () => void; onCancel: () => void }): ReactNode {
   const bottom = useSaveBarBottom();
   return (
     <View
       accessibilityLabel="Save bar"
-      className="z-10 flex-col-reverse gap-2 rounded-lg border border-border bg-card p-3"
+      className="z-10 flex-row items-center gap-2 rounded-lg border border-border bg-card p-3"
       // Inset offsets as a style: NativeWind left the inset classes unresolved here.
       style={[{ position: "absolute", left: 16, right: 16, bottom }, shadowStyle("sm")]}
     >
-      <Button variant="outline" disabled={pending} onPress={onCancel}>
+      <Button variant="outline" className="flex-1" disabled={pending} onPress={onCancel}>
         Cancel
       </Button>
-      <Button disabled={pending} onPress={onSave}>
+      <Button className="flex-[2]" disabled={pending} onPress={onSave}>
         {pending ? "Saving…" : "Save attendance"}
       </Button>
     </View>

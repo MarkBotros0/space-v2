@@ -1,4 +1,6 @@
 import { Redirect, Tabs, useSegments } from "expo-router";
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NavItem } from "@space/shared";
 import { ALL_NAV_HREFS } from "@space/shared";
 
@@ -113,6 +115,7 @@ export default function AppLayout() {
   // floating pill tab bar, which renders the role's tabs itself.
   return (
     <ShellContext.Provider value={true}>
+      <SystemBarScrim />
       <Tabs
         screenOptions={{ header: () => <AppTopBar /> }}
         tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
@@ -123,5 +126,24 @@ export default function AppLayout() {
         })}
       </Tabs>
     </ShellContext.Provider>
+  );
+}
+
+/**
+ * Edge-to-edge Android draws the translucent system bar over the page, so
+ * page text showed through behind it (3-button nav, seen in the leader sweep).
+ * A solid strip the height of the bottom inset, in the shell's page tint,
+ * sits under the floating tab bar (whose bottom is that same inset).
+ */
+function SystemBarScrim() {
+  const { bottom } = useSafeAreaInsets();
+  if (bottom <= 0) return null;
+  return (
+    <View
+      pointerEvents="none"
+      testID="system-bar-scrim"
+      className="bg-brand-navy-50 dark:bg-background"
+      style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: bottom, zIndex: 5 }}
+    />
   );
 }

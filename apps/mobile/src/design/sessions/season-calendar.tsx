@@ -56,7 +56,7 @@ type Handlers = {
   seasonColors?: SeasonColors;
 };
 
-export type SeasonColor = { box: string; text: string };
+export type SeasonColor = { box: string; text: string; bar?: string };
 export type SeasonColors = Record<string, SeasonColor>;
 
 /** v1 SEASON_PALETTE: `bg-X-800 text-X-300` chips that read the same in both themes. */
@@ -294,14 +294,16 @@ function AgendaView({
   );
 }
 
-const CHIP_TONE: Record<SessionTone, { box: string; text: string }> = {
+const CHIP_TONE: Record<SessionTone, { box: string; text: string; bar: string }> = {
   today: {
     box: "bg-success-100 dark:bg-success-950",
+    bar: "bg-success-600 dark:bg-success-400",
     text: "text-success-800 dark:text-success-200",
   },
-  past: { box: "bg-muted", text: "text-muted-foreground" },
+  past: { box: "bg-muted", text: "text-muted-foreground", bar: "bg-muted-foreground" },
   upcoming: {
     box: "bg-brand-teal-100 dark:bg-brand-teal-950",
+    bar: "bg-brand-teal-600 dark:bg-brand-teal-400",
     text: "text-brand-teal-800 dark:text-brand-teal-200",
   },
 };
@@ -321,6 +323,9 @@ function CalendarGrid({
   today: string;
 } & Handlers) {
   const keys = visibleKeys(view, anchor);
+  // A month cell is ~40dp wide on a phone: a title breaks mid-word, so month shows colour bars and
+  // the title lives in the accessibility label; Week and Upcoming carry the text.
+  const compact = view === "month";
   const weeks: string[][] = [];
   for (let i = 0; i < keys.length; i += 7) weeks.push(keys.slice(i, i + 7));
   return (
@@ -343,7 +348,7 @@ function CalendarGrid({
                 key={key}
                 accessibilityLabel={formatDayKey(key)}
                 className={cn(
-                  "min-w-0 flex-1 flex-col gap-0.5 bg-card p-1",
+                  "min-w-0 flex-1 flex-col gap-0.5 bg-card p-0.5",
                   view === "week" ? "min-h-32" : "min-h-[72px]",
                 )}
                 // v1 dims out-of-month days to opacity-40; 40% leaves their date at under 3:1, so 60%.
@@ -374,15 +379,21 @@ function CalendarGrid({
                       <Pressable
                         key={s.id}
                         accessibilityRole="link"
+                        accessibilityLabel={s.title}
                         onPress={() => handlers.onOpenSession(s.id)}
-                        className={cn("rounded px-1 py-0.5", tone.box)}
+                        className={cn("rounded px-0.5 py-0.5", tone.box)}
                       >
-                        <Text
-                          numberOfLines={1}
-                          className={cn("text-xs font-medium leading-tight", tone.text)}
-                        >
-                          {s.title}
-                        </Text>
+                        {compact ? (
+                          <View className={cn("h-2 rounded-sm", tone.bar ?? tone.box)} />
+                        ) : (
+                          <Text
+                            numberOfLines={2}
+                            maxFontSizeMultiplier={1}
+                            className={cn("text-[10px] font-medium leading-tight", tone.text)}
+                          >
+                            {s.title}
+                          </Text>
+                        )}
                       </Pressable>
                     );
                   })}
@@ -394,25 +405,38 @@ function CalendarGrid({
                       <Pressable
                         key={`e${e.id}`}
                         accessibilityRole={e.url ? "link" : "button"}
+                        accessibilityLabel={e.title}
                         onPress={() => handlers.onOpenEvent(e)}
                         className={cn(
-                          "flex-row items-center gap-0.5 rounded px-1 py-0.5",
+                          "flex-row items-center gap-0.5 rounded px-0.5 py-0.5",
                           alumni
                             ? "bg-warning-100 dark:bg-warning-950"
                             : "bg-brand-navy-100 dark:bg-brand-navy-900",
                         )}
                       >
-                        <Text
-                          numberOfLines={1}
-                          className={cn(
-                            "shrink text-xs leading-tight",
-                            alumni
-                              ? "text-warning-800 dark:text-warning-200"
-                              : "text-brand-navy-800 dark:text-brand-navy-100",
-                          )}
-                        >
-                          {e.title}
-                        </Text>
+                        {compact ? (
+                          <View
+                            className={cn(
+                              "h-2 flex-1 rounded-sm",
+                              alumni
+                                ? "bg-warning-600 dark:bg-warning-400"
+                                : "bg-brand-navy-600 dark:bg-brand-navy-300",
+                            )}
+                          />
+                        ) : (
+                          <Text
+                            numberOfLines={2}
+                            maxFontSizeMultiplier={1}
+                            className={cn(
+                              "shrink text-[10px] leading-tight",
+                              alumni
+                                ? "text-warning-800 dark:text-warning-200"
+                                : "text-brand-navy-800 dark:text-brand-navy-100",
+                            )}
+                          >
+                            {e.title}
+                          </Text>
+                        )}
                       </Pressable>
                     );
                   })}

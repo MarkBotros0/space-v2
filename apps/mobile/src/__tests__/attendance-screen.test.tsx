@@ -52,7 +52,7 @@ it("heads the page with the session, v1-style, and keeps the save bar clear of t
   expect(StyleSheet.flatten(bar.props.style).bottom).toBe(114);
   // The list ends with a spacer covering the bar and the part of the tab bar above the frame's own
   // padding, which follows the same inset: max(16, 34) + 80 = 114.
-  expect(StyleSheet.flatten(screen.getByTestId("save-bar-spacer").props.style).height).toBe(112 + 114 - 114);
+  expect(StyleSheet.flatten(screen.getByTestId("save-bar-spacer").props.style).height).toBe(62 + 114 - 114);
   fireEvent.press(screen.getByText("Cancel"));
   expect(mockBack).toHaveBeenCalledTimes(1);
 });

@@ -39,7 +39,7 @@ export function QuizGradeForm({
   return (
     <View className="flex-col gap-4">
       <View className="overflow-hidden rounded-xl border border-neutral-200/60 bg-white" style={TABLE_SHADOW}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator persistentScrollbar>
           <View>
             <View className="flex-row border-b border-neutral-100">
               <Text className={`w-40 ${HEAD}`}>Student</Text>
