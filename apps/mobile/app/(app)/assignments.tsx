@@ -263,9 +263,9 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
   return (
     <ShellFrame onRefresh={handleRefresh} refreshing={list.isRefetching}>
       <View className="flex-col gap-4">
-        <View className="flex-row items-start justify-between gap-4">
+        <View className="flex-row flex-wrap items-start justify-between gap-4">
           <PageTitle
-            className="min-w-0 flex-1"
+            className="min-w-[150px] flex-1"
             title="Assignments"
             subtitle={
               list.data

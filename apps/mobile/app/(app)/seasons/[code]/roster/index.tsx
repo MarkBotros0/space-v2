@@ -109,13 +109,13 @@ function RosterGrid({ seasonId, onNewGroup }: { seasonId: number; onNewGroup: ()
 
   return (
     <View className="flex-col gap-3">
-      <View className="flex-row items-center justify-between gap-3">
-        <Text className="text-sm text-muted-foreground">
+      <View className="flex-row flex-wrap items-center justify-between gap-3">
+        <Text className="min-w-0 text-sm text-muted-foreground">
           {changes.length === 0
             ? "No unsaved changes"
             : `${changes.length} unsaved change${changes.length === 1 ? "" : "s"}`}
         </Text>
-        <Button disabled={save.isPending || changes.length === 0} onPress={onSave}>
+        <Button className="shrink-0" disabled={save.isPending || changes.length === 0} onPress={onSave}>
           {save.isPending ? "Saving…" : "Save changes"}
         </Button>
       </View>
@@ -211,9 +211,9 @@ export default function SeasonRosterScreen() {
   return (
     <ShellFrame>
       <View className="flex-col gap-4">
-        <View className="flex-row items-start justify-between gap-4">
+        <View className="flex-row flex-wrap items-start justify-between gap-4">
           <PageTitle
-            className="min-w-0 flex-1"
+            className="min-w-[150px] flex-1"
             title="Assign to groups"
             subtitle={
               season.data && count !== undefined
