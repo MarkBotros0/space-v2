@@ -56,7 +56,7 @@ type Handlers = {
   seasonColors?: SeasonColors;
 };
 
-export type SeasonColor = { box: string; text: string };
+export type SeasonColor = { box: string; text: string; bar?: string };
 export type SeasonColors = Record<string, SeasonColor>;
 
 /** v1 SEASON_PALETTE: `bg-X-800 text-X-300` chips that read the same in both themes. */
@@ -294,14 +294,16 @@ function AgendaView({
   );
 }
 
-const CHIP_TONE: Record<SessionTone, { box: string; text: string }> = {
+const CHIP_TONE: Record<SessionTone, { box: string; text: string; bar: string }> = {
   today: {
     box: "bg-success-100 dark:bg-success-950",
+    bar: "bg-success-600 dark:bg-success-400",
     text: "text-success-800 dark:text-success-200",
   },
-  past: { box: "bg-muted", text: "text-muted-foreground" },
+  past: { box: "bg-muted", text: "text-muted-foreground", bar: "bg-muted-foreground" },
   upcoming: {
     box: "bg-brand-teal-100 dark:bg-brand-teal-950",
+    bar: "bg-brand-teal-600 dark:bg-brand-teal-400",
     text: "text-brand-teal-800 dark:text-brand-teal-200",
   },
 };
@@ -382,7 +384,7 @@ function CalendarGrid({
                         className={cn("rounded px-0.5 py-0.5", tone.box)}
                       >
                         {compact ? (
-                          <View className="h-2" />
+                          <View className={cn("h-2 rounded-sm", tone.bar ?? tone.box)} />
                         ) : (
                           <Text
                             numberOfLines={2}
@@ -413,7 +415,14 @@ function CalendarGrid({
                         )}
                       >
                         {compact ? (
-                          <View className="h-2 flex-1" />
+                          <View
+                            className={cn(
+                              "h-2 flex-1 rounded-sm",
+                              alumni
+                                ? "bg-warning-600 dark:bg-warning-400"
+                                : "bg-brand-navy-600 dark:bg-brand-navy-300",
+                            )}
+                          />
                         ) : (
                           <Text
                             numberOfLines={2}
