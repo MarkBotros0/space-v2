@@ -364,8 +364,8 @@ async function main(): Promise<void> {
       {
         userId: leader.id,
         type: "SUBMISSION_REVIEWED",
-        title: "New submission: Opening night reflection",
-        body: "Salma Student submitted late.",
+        title: "Reviewed: Week 1 reading",
+        body: "Feedback was recorded for Salma Student.",
         link: "/submissions",
         readAt: fromToday(-1),
       },
