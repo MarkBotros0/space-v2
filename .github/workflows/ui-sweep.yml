@@ -203,3 +203,59 @@ jobs:
           name: ${{ env.SWEEP_MODULE }}-ui-sweep-contact-sheet
           path: ${{ env.SWEEP_MODULE }}-ui-sweep.html
           retention-days: 14
+
+  # Puts the shots and results on a throwaway branch so a Claude session can
+  # `git fetch` and read them (its container can't download Actions
+  # artifacts). The repo is public, so this is fake data only. The branch is
+  # deleted by whoever fetched it, or by ui-sweep-cleanup.yml after 24 hours.
+  publish:
+    needs: sweep
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      SWEEP_MODULE: ${{ github.event.inputs.module || 'student' }}
+      RESULTS_BRANCH: ui-sweep-results-${{ github.event.inputs.module || 'student' }}-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ env.SWEEP_MODULE }}-ui-sweep-part-*
+          path: parts
+      - name: Shrink shots and join results
+        run: |
+          sudo apt-get install -y --no-install-recommends imagemagick > /dev/null
+          mkdir -p "$RUNNER_TEMP/results"
+          for run in parts/*/ui-sweep-output/run; do
+            [ -d "$run" ] || continue
+            for cell in "$run"/*/; do
+              id=$(basename "$cell")
+              mkdir -p "$RUNNER_TEMP/results/$id"
+              for png in "$cell"*.png; do
+                [ -f "$png" ] || continue
+                convert "$png" -resize 360x -quality 70 "$RUNNER_TEMP/results/$id/$(basename "${png%.png}").jpg"
+              done
+            done
+          done
+          echo '[]' > "$RUNNER_TEMP/empty.json"
+          jq -s 'add' "$RUNNER_TEMP/empty.json" $(find parts -name results.json) > "$RUNNER_TEMP/results/results.json"
+          printf '%s\n' "Module: $SWEEP_MODULE" "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" "Commit: $GITHUB_SHA" > "$RUNNER_TEMP/results/README.txt"
+      - name: Push the results branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan "$RESULTS_BRANCH"
+          git rm -rfq .
+          # The downloaded artifacts (parts/) are untracked and would be added.
+          git clean -fdxq
+          cp -r "$RUNNER_TEMP"/results/. .
+          # Keep Vercel from building this branch: the project's Root Directory
+          # is apps/backend, so the directory has to exist (or the preview
+          # fails and emails the owner) and its vercel.json turns Git deploys off.
+          mkdir -p apps/backend
+          echo '{ "git": { "deploymentEnabled": false } }' | tee vercel.json > apps/backend/vercel.json
+          git add -A
+          git commit -qm "UI sweep results: $SWEEP_MODULE, run $GITHUB_RUN_ID"
+          git push origin "$RESULTS_BRANCH"
+          echo "Results branch: \`$RESULTS_BRANCH\`" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,29 @@
+name: UI sweep label trigger
+
+# Adding a `sweep:<module>` label (sweep:student, sweep:leader, ...) to a pull
+# request starts ui-sweep.yml for that module on the PR's branch, then removes
+# the label so it can be applied again. Nothing runs automatically on a push:
+# a change may not touch the UI.
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  actions: write
+  pull-requests: write
+
+jobs:
+  dispatch:
+    if: startsWith(github.event.label.name, 'sweep:') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LABEL: ${{ github.event.label.name }}
+      BRANCH: ${{ github.event.pull_request.head.ref }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Start the sweep
+        run: |
+          module="${LABEL#sweep:}"
+          gh workflow run ui-sweep.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH" -f module="$module"
+          gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label "$LABEL"
