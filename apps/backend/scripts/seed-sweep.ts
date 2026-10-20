@@ -280,6 +280,98 @@ async function main(): Promise<void> {
     ],
   });
 
+  // Leader review queue: the classmate's late submission waits for review and
+  // a reviewed one carries feedback, so the queue shows both badges.
+  await db.submission.createMany({
+    data: [
+      {
+        publicId: newPublicId(),
+        assignmentId: reflection.id,
+        studentUserId: classmate.id,
+        text: "Opening night reminded me why I joined. The worship set was my favourite part.",
+        status: "SUBMITTED",
+        submittedAt: fromToday(-1),
+      },
+      {
+        publicId: newPublicId(),
+        assignmentId: reading.id,
+        studentUserId: classmate.id,
+        text: "Three questions: who wrote it, why now, and what changes?",
+        status: "REVIEWED",
+        submittedAt: fromToday(-1),
+        reviewedAt: fromToday(0),
+        reviewedById: leader.id,
+        feedback: "Good questions. Bring them to the next session.",
+      },
+    ],
+  });
+
+  // The online quiz has a submitted attempt with an essay answer waiting to
+  // be graded, so the leader's grading page shows an attempt card.
+  const [mcq1, mcq2, essay] = await db.quizQuestion.findMany({
+    where: { quizId: onlineQuiz.id },
+    orderBy: { order: "asc" },
+  });
+  const attempt = await db.quizAttempt.create({
+    data: {
+      quizId: onlineQuiz.id,
+      studentUserId: classmate.id,
+      status: "SUBMITTED",
+      autoScore: 1,
+      submittedAt: fromToday(0),
+    },
+  });
+  await db.quizAnswer.createMany({
+    data: [
+      { attemptId: attempt.id, questionId: mcq1.id, selectedIndex: 0, isCorrect: true, pointsAwarded: 1 },
+      { attemptId: attempt.id, questionId: mcq2.id, selectedIndex: 0, isCorrect: false, pointsAwarded: 0 },
+      {
+        attemptId: attempt.id,
+        questionId: essay.id,
+        text: "I hope to learn how to lead a small group well.",
+      },
+    ],
+  });
+
+  // Notes the leader has written, for My notes and the student's page.
+  await db.engagementNote.createMany({
+    data: [
+      {
+        studentUserId: student.id,
+        authorUserId: leader.id,
+        seasonId: season.id,
+        body: "Quiet in group but opened up after the second session. Worth checking in.",
+        visibility: "LEADERS",
+        followUpFlagged: true,
+      },
+      {
+        studentUserId: classmate.id,
+        authorUserId: leader.id,
+        seasonId: season.id,
+        body: "Prayer request: exams next week.",
+        visibility: "LEADERS",
+      },
+    ],
+  });
+  await db.notification.createMany({
+    data: [
+      {
+        userId: leader.id,
+        type: "LOW_ATTENDANCE_FLAG",
+        title: "Salma Student was late to Opening night",
+        link: "/groups",
+      },
+      {
+        userId: leader.id,
+        type: "SUBMISSION_REVIEWED",
+        title: "New submission: Opening night reflection",
+        body: "Salma Student submitted late.",
+        link: "/submissions",
+        readAt: fromToday(-1),
+      },
+    ],
+  });
+
   const roles = { student, alumni, leader, admin, super: superUser, mentor };
   const users = Object.fromEntries(
     Object.entries(roles).map(([role, u]) => [role, { email: u.email, name: u.name }]),

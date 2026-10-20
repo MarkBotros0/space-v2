@@ -1,0 +1,84 @@
+# UI sweep s14 — Session, check-in and attendance as a leader. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${LEADER_EMAIL}
+# Session ids are the seed's insertion order (apps/backend/scripts/seed-sweep.ts):
+# 1 = Opening night (past, attendance recorded), 2 = Week 2 (upcoming).
+- openLink: spacev2://session/2
+- extendedWaitUntil:
+    visible: 'Mark attendance'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s14-01-session-upcoming
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s14-02-session-upcoming-bottom
+- openLink: spacev2://session/1
+- extendedWaitUntil:
+    visible: 'Mark attendance'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s14-03-session-past
+# The check-in roster's Edit opens the Override attendance sheet. Never save it.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit attendance for Salma Student'
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible: 'Override attendance'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s14-04-override-sheet
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: spacev2://session/1/attendance
+- extendedWaitUntil:
+    visible: 'Save attendance'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s14-05-attendance
+# Salma is recorded LATE, so her minutes-late field is on screen.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Minutes late for Salma Student'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s14-06-attendance-late-kbd
+- inputText: '20'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s14-07-attendance-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s14-08-attendance-bottom
