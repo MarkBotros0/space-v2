@@ -28,11 +28,12 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
-import { REPO_ROOT, USERS_FILE } from "./lib/paths.mjs";
+import { REPO_ROOT, USERS_FILE as REFERENCE_USERS_FILE } from "./lib/paths.mjs";
 import {
   CELLS,
   NAV_OVERLAYS,
   contactSheetHtml,
+  flowTitle,
   parseArgs,
   parseNavOverlay,
   parseNightMode,
@@ -43,17 +44,27 @@ import {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SWEEP_DIR = path.join(REPO_ROOT, "apps/mobile/.maestro/sweep");
-const OUTPUT_ROOT = path.join(os.homedir(), "projects/JPC/.v2-captures/ui-sweep");
+// Defaults are the devbox capture rig; .github/workflows/ui-sweep.yml overrides
+// them with UI_SWEEP_* for a GitHub Actions emulator.
+const OUTPUT_ROOT = process.env.UI_SWEEP_OUTPUT ?? path.join(os.homedir(), "projects/JPC/.v2-captures/ui-sweep");
 /** Written before the first cell is applied, deleted once the device is restored. */
 const DEVICE_STATE_FILE = path.join(OUTPUT_ROOT, ".device-before.json");
 
 // Same files as set-reference-passwords.mjs / restore-reference-passwords.mjs.
 const PASSWORD_FILE = path.join(os.homedir(), ".secrets/jpc-v1-reference-password");
 const BACKUP_FILE = path.join(os.homedir(), ".secrets/jpc-reference-password-backup.json");
+// CI signs in as fake users seeded into a throwaway database
+// (apps/backend/scripts/seed-sweep.ts), so it passes their users.json and
+// password directly and skips the reference-password check, which only
+// guards the real accounts on the shared test database.
+const USERS_FILE = process.env.UI_SWEEP_USERS_FILE ?? REFERENCE_USERS_FILE;
+const FAKE_USERS_PASSWORD = process.env.UI_SWEEP_PASSWORD;
 
-const ADB = path.join(os.homedir(), "Android/Sdk/platform-tools/adb");
-const MAESTRO = path.join(os.homedir(), ".maestro/bin/maestro");
-const DEVICE = "emulator-5558";
+const ADB = process.env.UI_SWEEP_ADB ?? path.join(os.homedir(), "Android/Sdk/platform-tools/adb");
+const MAESTRO = process.env.UI_SWEEP_MAESTRO ?? path.join(os.homedir(), ".maestro/bin/maestro");
+const DEVICE = process.env.UI_SWEEP_DEVICE ?? "emulator-5558";
+/** A release APK carries its own JS bundle, so CI runs without Metro. */
+const NEEDS_METRO = process.env.UI_SWEEP_NO_METRO !== "1";
 const METRO_PORT = 8095;
 const BACKEND = "http://localhost:4100";
 const APP_ID = "com.jpc.space";
@@ -163,7 +174,15 @@ function writeSheet(runDir, cells, results) {
       shotsByCell[cell.id] = [];
     }
   }
-  writeFileSync(path.join(runDir, "index.html"), contactSheetHtml({ title: path.basename(runDir), cells, shotsByCell, results }));
+  const flowTitles = {};
+  for (const rel of readdirSync(SWEEP_DIR, { recursive: true }).map(String)) {
+    const base = path.basename(rel);
+    if (/^s\d+.*\.yaml$/.test(base)) flowTitles[base.split("-")[0]] = flowTitle(readFileSync(path.join(SWEEP_DIR, rel), "utf8").split("\n")[0]);
+  }
+  writeFileSync(
+    path.join(runDir, "index.html"),
+    contactSheetHtml({ title: path.basename(runDir), cells, shotsByCell, results, flowTitles }),
+  );
   writeFileSync(path.join(runDir, "results.json"), JSON.stringify(results, null, 2));
 }
 
@@ -171,10 +190,14 @@ const timestamp = () => new Date().toISOString().replace(/[:.]/g, "-").replace("
 
 /** One email per role (users.json) plus the shared password, for flows that sign in. */
 function signInEnv(flows) {
-  const needsPassword = flows.some((f) => readFileSync(path.join(SWEEP_DIR, f), "utf8").includes("${PASSWORD}"));
+  // Most flows sign in through _sign-in.yaml and only name ${<ROLE>_EMAIL}
+  // themselves, so look for any of the three, not just ${PASSWORD}.
+  const needsPassword = flows.some((f) =>
+    /\$\{(PASSWORD|[A-Z]+_EMAIL)\}|_sign-in\.yaml/.test(readFileSync(path.join(SWEEP_DIR, f), "utf8")),
+  );
   if (!needsPassword) return { env: {}, secrets: [], signsIn: false };
   if (!existsSync(USERS_FILE)) fail(`No ${USERS_FILE}. Run \`npm run pick-users\` (README.md).`);
-  if (!existsSync(PASSWORD_FILE) || !existsSync(BACKUP_FILE)) {
+  if (!FAKE_USERS_PASSWORD && (!existsSync(PASSWORD_FILE) || !existsSync(BACKUP_FILE))) {
     fail(
       "The reference users don't have the known password. Run `node set-reference-passwords.mjs` first " +
         "(it changes six users on the shared test database) and `node restore-reference-passwords.mjs` when done.",
@@ -183,7 +206,7 @@ function signInEnv(flows) {
   const users = JSON.parse(readFileSync(USERS_FILE, "utf8"));
   const env = {};
   for (const [role, user] of Object.entries(users)) if (user?.email) env[`${role.toUpperCase()}_EMAIL`] = user.email;
-  const password = readFileSync(PASSWORD_FILE, "utf8").trim();
+  const password = FAKE_USERS_PASSWORD ?? readFileSync(PASSWORD_FILE, "utf8").trim();
   env.PASSWORD = password;
   return { env, secrets: [password], signsIn: true };
 }
@@ -212,9 +235,14 @@ async function main() {
   try {
     cells = pick(CELLS, args.cells, (cell) => cell.id, "cell");
     flows = pick(
-      readdirSync(SWEEP_DIR).filter((name) => /^s\d+.*\.yaml$/.test(name)).sort(),
+      // Flows may sit in sub-folders (sweep/student-scenarios/); they are
+      // named, picked and sorted by file name alone.
+      readdirSync(SWEEP_DIR, { recursive: true })
+        .map(String)
+        .filter((rel) => /^s\d+.*\.yaml$/.test(path.basename(rel)))
+        .sort((a, b) => path.basename(a).localeCompare(path.basename(b))),
       args.flows,
-      (name) => name,
+      (rel) => path.basename(rel),
       "sweep flow",
     );
   } catch (err) {
@@ -225,7 +253,7 @@ async function main() {
   // would "restore" to that run's last cell.
   if (existsSync(DEVICE_STATE_FILE)) fail("An earlier sweep left a matrix cell applied. Run `node ui-sweep.mjs --restore` first.");
   if (!sh("pm", "list", "packages", APP_ID).includes(APP_ID)) fail(`${APP_ID} is not installed on ${DEVICE} (README.md: debug APK).`);
-  if (!(await reachable(`http://localhost:${METRO_PORT}/status`, "packager-status:running"))) {
+  if (NEEDS_METRO && !(await reachable(`http://localhost:${METRO_PORT}/status`, "packager-status:running"))) {
     fail(`Metro is not running on ${METRO_PORT}. Start it as README.md says (port 8095, EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:4100).`);
   }
   const { env: roleEnv, secrets, signsIn } = signInEnv(flows);
@@ -268,7 +296,7 @@ async function main() {
       for (const flow of flows) {
         console.log(`\n[sweep] ── ${cell.id} / ${flow} ──`);
         const started = Date.now();
-        const prefix = `${flow.split("-")[0]}-`;
+        const prefix = `${path.basename(flow).split("-")[0]}-`;
         for (const old of readdirSync(cellDir).filter((name) => name.startsWith(prefix))) rmSync(path.join(cellDir, old));
         const scratchDir = path.join(runDir, ".maestro");
         const passed = await runMaestro(path.join(SWEEP_DIR, flow), { ...roleEnv, THEME: cell.theme }, scratchDir, secrets);

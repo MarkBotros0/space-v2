@@ -1,0 +1,194 @@
+name: UI sweep (Android emulator)
+
+# Runs tools/ui-reference/ui-sweep.mjs on a GitHub-hosted Android emulator,
+# for anyone without the devbox capture rig. Free: the repo is public, so
+# Linux runner minutes cost nothing.
+#
+# Everything the app shows comes from a throwaway Postgres in this job,
+# migrated with prisma/migrations and seeded with fake users
+# (apps/backend/scripts/seed-sweep.ts). Never point this at the staging
+# database: the repo is PUBLIC, so the uploaded contact sheet can be
+# downloaded by anyone signed in to GitHub, and the seed refuses non-local
+# hosts anyway.
+#
+# The login limiter allows 20 sign-ins per 15 minutes, so ci-sweep.sh
+# restarts the backend before each cell.
+on:
+  workflow_dispatch:
+    inputs:
+      cells:
+        description: "Cell prefixes, comma-separated (blank = all 16)"
+        required: false
+        default: ""
+      flows:
+        description: "Flow prefixes, comma-separated (blank = all)"
+        required: false
+        default: ""
+  pull_request:
+    paths:
+      - "apps/mobile/.maestro/**"
+      - "tools/ui-reference/ui-sweep.mjs"
+      - "tools/ui-reference/ci-sweep.sh"
+      - "tools/ui-reference/lib/sweep.mjs"
+      - "apps/backend/scripts/seed-sweep.ts"
+      - ".github/workflows/ui-sweep.yml"
+
+# Per cell selection, so dispatches for different cells run side by side.
+concurrency:
+  group: ui-sweep-${{ github.ref }}-${{ github.event.inputs.cells }}
+  cancel-in-progress: true
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    # One job can't fit all 16 cells in its time limit, so a full run splits
+    # them four ways; the sheet job joins the four into one page.
+    strategy:
+      fail-fast: false
+      matrix:
+        cells: ${{ fromJSON(github.event.inputs.cells && format('["{0}"]', github.event.inputs.cells) || (github.event_name == 'pull_request' && '["small-1.3-3btn-light,iphone-1.0-gesture-dark"]') || '["small-1.0","small-1.3","iphone-1.0","iphone-1.3"]') }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sweep
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sweep
+      AUTH_SECRET: ci-only-sweep-secret-not-used-anywhere-else
+      # 10.0.2.2 is the emulator's alias for the runner's localhost.
+      EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:4100
+      # A pull request sweeps every flow on the two corner cells; Run workflow
+      # defaults to all 16 cells.
+      SWEEP_CELLS: ${{ matrix.cells }}
+      SWEEP_FLOWS: ${{ github.event.inputs.flows || '' }}
+      UI_SWEEP_ADB: adb
+      UI_SWEEP_DEVICE: emulator-5554
+      UI_SWEEP_NO_METRO: "1"
+      UI_SWEEP_OUTPUT: ${{ github.workspace }}/ui-sweep-output
+      UI_SWEEP_USERS_FILE: ${{ github.workspace }}/sweep-users.json
+      UI_SWEEP_PASSWORD: sweep-password-123 # the fake users' password, from seed-sweep.ts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Throwaway database with fake users
+        working-directory: apps/backend
+        run: |
+          pnpm db:generate
+          pnpm db:migrate:local
+          pnpm seed:sweep "$UI_SWEEP_USERS_FILE"
+
+      - name: Build Android release APK (JS bundle embedded, no Metro)
+        working-directory: apps/mobile
+        run: |
+          npx expo prebuild --platform android --no-install
+          # Release builds refuse plain http; this APK only talks to the
+          # job's own backend over http://10.0.2.2:4100.
+          sed -i 's/<application /<application android:usesCleartextTraffic="true" /' android/app/src/main/AndroidManifest.xml
+          grep -q 'usesCleartextTraffic="true"' android/app/src/main/AndroidManifest.xml
+          cd android
+          ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/app.apk"
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | tail -n 1)/aapt" dump xmltree "$GITHUB_WORKSPACE/app.apk" AndroidManifest.xml | grep -i cleartext
+          unzip -p "$GITHUB_WORKSPACE/app.apk" assets/index.android.bundle | grep -ao "10\.0\.2\.2:4100\|space-v2-be\.vercel\.app" | sort | uniq -c
+
+      - name: Install Maestro
+        run: |
+          # ImageMagick shrinks failure shots for the job log (ci-sweep.sh).
+          sudo apt-get install -y --no-install-recommends imagemagick > /dev/null
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the sweep
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          UI_SWEEP_MAESTRO: maestro
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          # The runner has 4 vCPUs and 16 GB; the defaults (2 cores, ~2 GB)
+          # leave system apps freezing into "isn't responding" dialogs.
+          cores: 4
+          ram-size: 4096M
+          disable-animations: false
+          # One line: the action runs each script line in its own shell.
+          # ci-sweep.sh starts the backend on :4100 and sweeps one cell at a time.
+          script: timeout 5400 bash tools/ui-reference/ci-sweep.sh
+
+      - name: Backend log
+        if: always()
+        run: tail -n 200 backend.log || true
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-sweep-part-${{ strategy.job-index }}
+          path: |
+            ui-sweep-output/
+            backend.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # The page to look at: every part's screenshots in one self-contained file,
+  # one section per flow (tools/ui-reference/build-sheet.mjs).
+  sheet:
+    needs: sweep
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ui-sweep-part-*
+          path: parts
+      - name: Build the contact sheet
+        run: |
+          sudo apt-get install -y --no-install-recommends imagemagick > /dev/null
+          node tools/ui-reference/build-sheet.mjs ui-sweep.html parts/*/ui-sweep-output/run
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-sweep-contact-sheet
+          path: ui-sweep.html
+          retention-days: 14

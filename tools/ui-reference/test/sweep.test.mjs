@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CELLS, contactSheetHtml, parseArgs, parseNavOverlay, parseNightMode, parseWm, pick, redact } from "../lib/sweep.mjs";
+import { CELLS, contactSheetHtml, flowTitle, parseArgs, parseNavOverlay, parseNightMode, parseWm, pick, redact } from "../lib/sweep.mjs";
 
 test("the matrix is screen × font × nav × theme, 16 cells", () => {
   assert.equal(CELLS.length, 16);
@@ -53,6 +53,37 @@ test("contact sheet marks missing and failed shots", () => {
     ],
   });
   assert.match(html, /<td class="missing">flow failed<\/td>/);
-  assert.match(html, /<tr class="failure"><th class="name">s02-zz-FAILED/);
-  assert.match(html, /1\/3 flow runs completed/);
+  assert.match(html, /<tr class="failure"><th class="name" scope="row"><code>s02<\/code>where the flow stopped/);
+  assert.match(html, /<b>1\/3<\/b> flow runs completed/);
+});
+
+test("the contact sheet finds a flow kept in a sub-folder by its file name", () => {
+  const cells = CELLS.slice(0, 2);
+  const html = contactSheetHtml({
+    title: "t",
+    cells,
+    shotsByCell: { [cells[0].id]: ["s03-01-dashboard"], [cells[1].id]: [] },
+    results: [
+      { cell: cells[0].id, flow: "student-scenarios/s03-dashboard.yaml", passed: true },
+      { cell: cells[1].id, flow: "student-scenarios/s03-dashboard.yaml", passed: false },
+    ],
+  });
+  assert.match(html, /<td class="missing">flow failed<\/td>/);
+});
+
+test("the contact sheet groups screens under their flow's title", () => {
+  const cells = CELLS.slice(0, 1);
+  const html = contactSheetHtml({
+    title: "t",
+    cells,
+    shotsByCell: { [cells[0].id]: ["s01-01-sign-in", "s02-01-settings"] },
+    results: [],
+    flowTitles: { s02: "Settings as a student" },
+    srcFor: (cell, name) => `data:${cell}/${name}`,
+  });
+  assert.match(html, /<tr class="flow" id="s02"><th colspan="2"><span>s02<\/span> Settings as a student/);
+  assert.match(html, /<code>s01-01<\/code>sign in/);
+  assert.match(html, /src="data:small-1.0-3btn-light\/s02-01-settings"/);
+  assert.equal(flowTitle("# UI sweep s04 — Season and calendar as a student. Read-only: nothing"), "Season and calendar as a student");
+  assert.equal(flowTitle("# UI sweep 01 — the signed-out screens: sign in, forgot"), "The signed-out screens");
 });

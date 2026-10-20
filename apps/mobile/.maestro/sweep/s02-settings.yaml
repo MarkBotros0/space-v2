@@ -38,6 +38,30 @@ appId: com.jpc.space
 - takeScreenshot: s02-04-settings-password
 
 # The last section has to clear the floating tab bar and the system bar.
+# Restart the app first (still signed in): hiding the keyboard leaves
+# "Confirm new password" focused, the page then stayed pinned on it and the
+# scroll below never moved (CI runs 13-19). Reopening the link alone keeps
+# the same mounted screen, focus included.
+- stopApp
+- launchApp
+# A link opened while the app is still starting lands on the dashboard.
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- openLink: spacev2://settings
+- extendedWaitUntil:
+    visible: 'Profile, password, and notification preferences.'
+    timeout: 40000
+# Left-margin swipes, as in _tap.yaml: a swipe starting on a field may not scroll.
+- repeat:
+    while:
+      notVisible: 'Security'
+    times: 10
+    commands:
+      - swipe:
+          start: 4%, 70%
+          end: 4%, 35%
+          duration: 500
 - scrollUntilVisible:
     element: 'Security'
     direction: DOWN

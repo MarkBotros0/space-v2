@@ -7,8 +7,10 @@ appId: com.jpc.space
     env:
       EMAIL: ${STUDENT_EMAIL}
 - openLink: spacev2://season
+# The student season page (StudentSeason) has no "Groups" heading; its
+# eyebrow reads "Current season", in capitals on screen.
 - extendedWaitUntil:
-    visible: 'Groups'
+    visible: '(?i)current season'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -27,8 +29,13 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s04-03-calendar
-# Month / week / day switcher, one shot each; labels come from the control.
-- tapOn: 'Previous .*'
+# The calendar opens on "Upcoming", which has no previous/next arrows; switch
+# to Month first, then step back one month.
+- tapOn: 'Month'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s04-04a-calendar-month
+- tapOn: 'Previous month'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s04-04-calendar-previous

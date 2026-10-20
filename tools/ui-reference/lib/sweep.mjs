@@ -98,70 +98,115 @@ const escapeHtml = (value) =>
   String(value).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 /**
- * One row per screen, one column per cell. `shotsByCell` maps a cell id to
- * the shot names (no extension) it holds. A screen missing from a cell is
- * marked with why, and a failed flow's last screen gets a row of its own.
+ * A flow's title from the first line of its YAML header:
+ * "# UI sweep s04 — Season and calendar as a student. Read-only: …" → "Season and calendar as a student".
  */
-export function contactSheetHtml({ title, cells, shotsByCell, results }) {
+export function flowTitle(firstLine) {
+  const m = String(firstLine).match(/—\s*(.+)$/);
+  if (!m) return "";
+  const title = m[1].split(/[.:](\s|$)/)[0].trim();
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
+/** "s02-03-settings-password-kbd" → { code: "s02-03", label: "settings password kbd" }. */
+function rowLabel(name) {
+  if (name.endsWith("-zz-FAILED")) return { code: name.split("-")[0], label: "where the flow stopped" };
+  const [flow, step, ...rest] = name.split("-");
+  return /^\d+$/.test(step ?? "") ? { code: `${flow}-${step}`, label: rest.join(" ") } : { code: flow, label: [step, ...rest].join(" ") };
+}
+
+/**
+ * One section per flow, one row per screen, one column per cell (the layout of
+ * the NannyApp sweep sheet). `shotsByCell` maps a cell id to the shot names
+ * (no extension) it holds. A screen missing from a cell is marked with why,
+ * and a failed flow's last screen gets a row of its own. `flowTitles` maps a
+ * flow prefix ("s02") to its title; `srcFor(cellId, name)` gives each image's
+ * src (default: the PNG beside index.html; build-sheet.mjs embeds them).
+ */
+export function contactSheetHtml({ title, cells, shotsByCell, results, flowTitles = {}, srcFor }) {
+  const src = srcFor ?? ((cellId, name) => `${cellId}/${name}.png`);
   const names = [...new Set(Object.values(shotsByCell).flat())].sort();
+  const flows = [...new Set(names.map((n) => n.split("-")[0]))];
 
   const whyMissing = (cellId, name) => {
     const flow = name.split("-")[0];
-    const result = results.find((r) => r.cell === cellId && r.flow.startsWith(`${flow}-`));
+    const result = results.find((r) => r.cell === cellId && r.flow.split("/").pop().startsWith(`${flow}-`));
     if (!result) return "not run";
     return result.passed ? "not reached" : "flow failed";
   };
 
-  const header = cells.map((cell) => `<th>${escapeHtml(cell.label)}</th>`).join("");
-  const rows = names
-    .map((name) => {
-      const isFailure = name.endsWith("FAILED");
-      const cellsHtml = cells
-        .map((cell) => {
-          if (!(shotsByCell[cell.id] ?? []).includes(name)) {
-            return isFailure ? "<td></td>" : `<td class="missing">${whyMissing(cell.id, name)}</td>`;
-          }
-          const src = `${cell.id}/${name}.png`;
-          return `<td><a href="${src}" target="_blank"><img loading="lazy" src="${src}" alt="${escapeHtml(name)} — ${escapeHtml(cell.label)}"></a></td>`;
-        })
-        .join("");
-      return `<tr${isFailure ? ' class="failure"' : ""}><th class="name">${escapeHtml(name)}</th>${cellsHtml}</tr>`;
+  const row = (name) => {
+    const isFailure = name.endsWith("FAILED");
+    const { code, label } = rowLabel(name);
+    const cellsHtml = cells
+      .map((cell) => {
+        if (!(shotsByCell[cell.id] ?? []).includes(name)) {
+          return isFailure ? "<td></td>" : `<td class="missing">${whyMissing(cell.id, name)}</td>`;
+        }
+        const alt = `${escapeHtml(name)} — ${escapeHtml(cell.label)}`;
+        return `<td><img loading="lazy" src="${src(cell.id, name)}" alt="${alt}" title="${escapeHtml(`${cell.id}/${name}.png`)}"></td>`;
+      })
+      .join("");
+    return `<tr${isFailure ? ' class="failure"' : ""}><th class="name" scope="row"><code>${escapeHtml(code)}</code>${escapeHtml(label)}</th>${cellsHtml}</tr>`;
+  };
+
+  const sections = flows
+    .map((flow) => {
+      const heading = `<tr class="flow" id="${escapeHtml(flow)}"><th colspan="${cells.length + 1}"><span>${escapeHtml(flow)}</span> ${escapeHtml(flowTitles[flow] ?? "")}</th></tr>`;
+      return [heading, ...names.filter((n) => n.split("-")[0] === flow).map(row)].join("\n");
     })
     .join("\n");
+  const nav = flows.map((f) => `<a href="#${escapeHtml(f)}" title="${escapeHtml(flowTitles[f] ?? "")}">${escapeHtml(f)}</a>`).join("");
 
   const failures = results.filter((r) => !r.passed);
+  const shotCount = Object.values(shotsByCell).flat().filter((n) => !n.endsWith("FAILED")).length;
   const summary =
-    `${names.filter((n) => !n.endsWith("FAILED")).length} screens · ${cells.length} cells · ` +
-    `${results.length - failures.length}/${results.length} flow runs completed` +
-    (failures.length ? ` · failed: ${failures.map((f) => `${f.flow} @ ${f.cell}`).join(", ")}` : "");
+    `<b>${names.filter((n) => !n.endsWith("FAILED")).length}</b> screens · <b>${cells.length}</b> device cells · ` +
+    `<b>${shotCount}</b> screenshots · <b>${results.length - failures.length}/${results.length}</b> flow runs completed.` +
+    (failures.length ? ` Stopped early: ${escapeHtml(failures.map((f) => `${f.flow.split("/").pop()} @ ${f.cell}`).join(", "))}.` : "");
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UI sweep</title>
 <style>
-  :root { --bg: #f8fafc; --fg: #0f172a; --muted: #64748b; --line: #e2e8f0; --bad: #b91c1c; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #0b1220; --fg: #e2e8f0; --muted: #94a3b8; --line: #1e293b; --bad: #fca5a5; } }
-  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  p { margin: 0 0 16px; color: var(--muted); }
-  .wrap { overflow: auto; max-height: calc(100vh - 90px); }
+  /* A darkroom light table: frames on a dark ground, cells as columns, flows as sections. */
+  :root { --ground: #16181a; --frame: #222528; --rule: #33373b; --ink: #e9ece6; --muted: #9aa198;
+    --sage: #a9bea0; --chip: #2b3029; --bad: #f19a8e; color-scheme: dark;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, monospace; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 system-ui, "Segoe UI", sans-serif; }
+  .page { padding: 20px 16px 40px; display: grid; gap: 14px; }
+  h1 { font-size: 22px; font-weight: 800; margin: 0; }
+  .meta { color: var(--muted); margin: 0; max-width: 80ch; }
+  .meta b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  nav { display: flex; flex-wrap: wrap; gap: 6px; }
+  nav a { font: 500 12px var(--mono); color: var(--sage); background: var(--chip); padding: 6px 10px; border-radius: 999px; text-decoration: none; }
+  nav a:hover, nav a:focus-visible { color: var(--ground); background: var(--sage); outline: none; }
+  .wrap { overflow: auto; max-height: calc(100vh - 150px); border: 1px solid var(--rule); border-radius: 10px; }
   table { border-collapse: separate; border-spacing: 0; }
-  th, td { border-bottom: 1px solid var(--line); padding: 6px; vertical-align: top; }
-  thead th { position: sticky; top: 0; background: var(--bg); z-index: 2; font-size: 12px; text-align: left; min-width: 180px; }
-  th.name { position: sticky; left: 0; background: var(--bg); z-index: 1; text-align: left; font: 12px ui-monospace, monospace; white-space: nowrap; }
-  img { width: 180px; display: block; border: 1px solid var(--line); border-radius: 6px; }
-  td.missing { color: var(--muted); font-size: 12px; text-align: center; }
-  tr.failure th.name { color: var(--bad); }
-  tr.failure td img { border-color: var(--bad); }
+  thead th { position: sticky; top: 0; z-index: 3; background: var(--ground); font: 500 11px var(--mono); color: var(--muted);
+    text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--rule); min-width: 180px; white-space: nowrap; }
+  thead th:first-child { left: 0; z-index: 4; }
+  th.name { position: sticky; left: 0; z-index: 2; background: var(--ground); text-align: left; vertical-align: top;
+    font-weight: 500; font-size: 12px; color: var(--muted); padding: 10px 10px 10px 12px; width: 150px; min-width: 150px; border-right: 1px solid var(--rule); }
+  th.name code { display: block; font: 500 12px var(--mono); color: var(--ink); margin-bottom: 2px; }
+  tr.flow th { position: sticky; left: 0; text-align: left; background: var(--frame); padding: 14px 12px; font-size: 15px; font-weight: 700; border-block: 1px solid var(--rule); }
+  tr.flow th span { font: 500 12px var(--mono); color: var(--sage); margin-right: 6px; }
+  td { padding: 8px; vertical-align: top; }
+  td img { display: block; width: 180px; max-width: none; border-radius: 6px; background: var(--frame); }
+  td.missing { color: var(--muted); font: 11px var(--mono); text-align: center; vertical-align: middle; }
+  tr.failure th.name, tr.failure th.name code { color: var(--bad); }
+  tr.failure td img { outline: 2px solid var(--bad); }
+  @media (max-width: 600px) { th.name { width: 110px; min-width: 110px; } td img { width: 140px; } thead th { min-width: 140px; } }
 </style></head>
-<body>
+<body><div class="page">
 <h1>UI sweep — ${escapeHtml(title)}</h1>
-<p>${escapeHtml(summary)}</p>
+<p class="meta">${summary} Small = 360×640 dp; iPhone size = 375×812 dp. 1.0 / 1.3 = Android font scale. Hover a screenshot for its file name in the run folder.</p>
+<nav aria-label="Flows">${nav}</nav>
 <div class="wrap"><table>
-<thead><tr><th class="name">screen</th>${header}</tr></thead>
+<thead><tr><th>screen</th>${cells.map((cell) => `<th>${escapeHtml(cell.label)}</th>`).join("")}</tr></thead>
 <tbody>
-${rows}
+${sections}
 </tbody></table></div>
-</body></html>
+</div></body></html>
 `;
 }
