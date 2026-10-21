@@ -140,18 +140,18 @@ export function AttendanceRosterForm({
   );
 }
 
-/** v1's save bar: Save above Cancel at phone width (flex-col-reverse). */
+/** v1's save bar, as one row (Cancel, Save): v1's stacked buttons covered the next student on a phone. */
 export function AttendanceSaveBar({ pending, onSave, onCancel }: { pending: boolean; onSave: () => void; onCancel: () => void }): ReactNode {
   return (
     <View
       accessibilityLabel="Save bar"
-      className="flex-col-reverse gap-2 rounded-lg border border-border bg-card p-3"
+      className="flex-row items-center gap-2 rounded-lg border border-border bg-card p-3"
       style={shadowStyle("sm")}
     >
-      <Button variant="outline" disabled={pending} onPress={onCancel}>
+      <Button variant="outline" className="flex-1" disabled={pending} onPress={onCancel}>
         Cancel
       </Button>
-      <Button disabled={pending} onPress={onSave}>
+      <Button className="flex-[2]" disabled={pending} onPress={onSave}>
         {pending ? "Saving…" : "Save attendance"}
       </Button>
     </View>
