@@ -335,3 +335,37 @@ in as the role named. Fix or record any difference in the batch's gap note. Rest
 | Events, edit event | SUPER | pencil/trash, inline new, date pickers |
 | Reports | SUPER | organisation stat cards, per-season table |
 | Calendar | SUPER | season colours and legend |
+
+## 15. Before release: what only the owner can do (2026-10-21)
+
+State of main at `bf53a6d` (PRs up to #36): typecheck and lint clean (one unused
+eslint-disable warning in `config.test.ts`), unit tests 235 shared + 156 backend
++ 846 mobile green, and the backend integration suite 43 suites / 784 tests green
+on a local Postgres 16 loaded with v1's migration SQL, including PR #36's
+`startTime` assertion on `GET /me/attendance`. Nothing below is something Claude
+can do; the sections named hold the detail.
+
+1. **Staging integration run** (section 1). Still never run against staging.
+   Expect 43 suites / 784 tests; check the tail for leftover `space-v2-test-` rows.
+2. **Device checklists** (sections 2, 7, 8, 9, 10). None has been run on a phone.
+3. **Side-by-side v1 captures** (section 14) for batches 4 to 6, plus the sweep
+   sheets for admin, leader and student that Claude cannot download from CI.
+4. **Deployed configuration** (section 3): `AUTH_SECRET`, `TRUST_PROXY`,
+   `MOBILE_APP_ORIGIN`, mail credentials, `MOBILE_APP_SCHEME`.
+5. **Firebase push and iOS/Android release** (`/mnt/project-files/guides/shipping-ios-and-firebase.md`).
+6. **Plan 18 cutover** (sections 4, 10, 11). Part 2 lives on the long-lived
+   branch `cutover-code`, which stays PAUSED and unmerged until the owner says
+   to resume at M3; Part 3 (production runbook) follows. Deferred cutover items:
+   null old default-password hashes and invite those accounts, sweep expired
+   invite and reset rows, add audit columns for role grants.
+7. **Fix-after items REG-71 and REG-116** (section 11), and the Plan 13
+   decisions awaiting an explicit view (opted-out users still get in-app rows;
+   push covers three types, mentor follow-ups excluded).
+
+### Small code gaps still open (Claude can build these on request)
+
+- Alumni Events (`calendar.tsx` alumni branch) still uses the legacy `src/ui`
+  primitives rather than the v1 design components.
+- The loading state in `dashboard.tsx` still uses legacy `LoadingState`.
+- Mentor Reports needs no rebuild: `reports.tsx` already uses the design
+  components for MENTOR, ADMIN and SUPER; it only owes its capture.
