@@ -1976,6 +1976,7 @@ export const openApiDocument = {
                 title: { type: "string" },
                 startsAt: { type: "string", format: "date-time" },
                 dayKey: { type: "string" },
+                startTime: { type: "string", description: "Org-clock start, HH:mm (X13)." },
                 status: { oneOf: [{ $ref: "#/components/schemas/AttendanceStatus" }, { type: "null" }] },
                 checkedInAt: { type: ["string", "null"], format: "date-time" },
                 lateMinutes: { type: ["integer", "null"] },

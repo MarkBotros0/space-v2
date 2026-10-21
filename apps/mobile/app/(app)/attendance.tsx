@@ -11,7 +11,7 @@ import { cn } from "../../src/design/lib/cn";
 import { shadowStyle } from "../../src/design/lib/shadow";
 import { Badge, EmptyState, ProgressRing, Text } from "../../src/design/ui";
 import { useMyAttendance } from "../../src/hooks/use-self-service";
-import { formatSessionTime, formatWeekdayDayYear } from "../../src/lib/format";
+import { formatWallTime, formatWeekdayDayYear } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
 
 function StatusBadge({ status }: { status: MyAttendanceSession["status"] }) {
@@ -29,10 +29,9 @@ function SessionRow({ row, first, last }: { row: MyAttendanceSession; first: boo
         <Text numberOfLines={1} className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
           {row.title}
         </Text>
-        {/* Day from the org day key (X13); no org wall time in this payload, so the
-            time is the device's reading of startsAt (gap note). */}
+        {/* Day and time are both the server's org-clock strings (X13), never the device zone. */}
         <Text className="text-xs text-muted-foreground">
-          {`${formatWeekdayDayYear(row.dayKey)} · ${formatSessionTime(row.startsAt)}`}
+          {`${formatWeekdayDayYear(row.dayKey)} · ${formatWallTime(row.startTime)}`}
         </Text>
         {row.status === "LATE" && row.lateMinutes !== null && row.lateMinutes > 0 ? (
           <Text className="mt-0.5 text-xs text-warning-700 dark:text-warning-300">{`${row.lateMinutes} min late`}</Text>
