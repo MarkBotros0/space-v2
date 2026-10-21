@@ -42,17 +42,13 @@ beforeEach(() => {
   );
 });
 
-it("heads the page with the session, v1-style, and keeps the save bar clear of the last row", async () => {
+it("heads the page with the session, v1-style, and puts the save bar after the last row", async () => {
   renderWithProviders(<AttendanceScreen />);
   expect(await screen.findByText("Attendance — Week three")).toBeTruthy();
   expect(screen.getByText("Sun, Mar 1, 2099 · 8:00 PM")).toBeTruthy();
-  // The bar sits 16px above the floating tab bar, whose bottom follows the
-  // safe-area inset (helper inset: 34) — max(16, 34) + 64 + 16 = 114.
+  // The bar is part of the page, after the list, not pinned over the rows.
   const bar = screen.getByLabelText("Save bar");
-  expect(StyleSheet.flatten(bar.props.style).bottom).toBe(114);
-  // The list ends with a spacer covering the bar and the part of the tab bar above the frame's own
-  // padding, which follows the same inset: max(16, 34) + 80 = 114.
-  expect(StyleSheet.flatten(screen.getByTestId("save-bar-spacer").props.style).height).toBe(62 + 114 - 114);
+  expect(StyleSheet.flatten(bar.props.style).position).toBeUndefined();
   fireEvent.press(screen.getByText("Cancel"));
   expect(mockBack).toHaveBeenCalledTimes(1);
 });

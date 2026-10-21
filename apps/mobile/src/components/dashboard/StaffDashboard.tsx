@@ -126,9 +126,16 @@ function StaffSummary({
         ) : (
           <>
             <View className="flex-row gap-3 border-b border-border px-4 py-2">
-              <Text className={`flex-1 ${COLUMN}`}>Student</Text>
-              <Text className={COLUMN}>Attendance</Text>
-              <Text className={COLUMN}>Assignments</Text>
+              {/* Capped like the tab bar labels: at 1.3x the right-hand columns squeezed STUDENT into a mid-word break. */}
+              <Text maxFontSizeMultiplier={1.15} className={`min-w-0 flex-1 ${COLUMN}`}>
+                Student
+              </Text>
+              <Text maxFontSizeMultiplier={1.15} className={`shrink-0 ${COLUMN}`}>
+                Attendance
+              </Text>
+              <Text maxFontSizeMultiplier={1.15} className={`shrink-0 ${COLUMN}`}>
+                Assignments
+              </Text>
             </View>
             {cohort.atRisk.map((r, i) => (
               <Pressable

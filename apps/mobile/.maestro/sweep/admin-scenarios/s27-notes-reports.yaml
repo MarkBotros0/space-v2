@@ -1,0 +1,70 @@
+# UI sweep s27 — Notes, reports and events as a season admin. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${ADMIN_EMAIL}
+- openLink: spacev2://notes
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s27-01-notes
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s27-02-notes-bottom
+- openLink: spacev2://reports
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s27-03-reports
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s27-04-reports-mid
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s27-05-reports-bottom
+- openLink: spacev2://events
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s27-06-events
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s27-07-events-bottom
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Sweep kickoff event'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s27-08-event-detail
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s27-09-event-detail-bottom

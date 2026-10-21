@@ -1,0 +1,94 @@
+# UI sweep s21 — My Season, seasons and roster as a season admin. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${ADMIN_EMAIL}
+- openLink: spacev2://season
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-01-my-season
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-02-my-season-bottom
+- openLink: spacev2://seasons
+- extendedWaitUntil:
+    visible: 'Create and manage program seasons\.'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-03-seasons-list
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-04-seasons-list-bottom
+# The seeded season's code is gbv-<this year>.
+- evalScript: ${output.year = new Date().getFullYear()}
+- openLink: spacev2://seasons/gbv-${output.year}
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-05-season-detail
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-06-season-detail-bottom
+- openLink: spacev2://seasons/gbv-${output.year}/roster
+- extendedWaitUntil:
+    visible: 'Assign to groups'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-07-roster
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-08-roster-bottom
+- openLink: spacev2://seasons/gbv-${output.year}/roster/import
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-09-roster-import
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Paste your spreadsheet'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-10-roster-import-kbd
+- inputText: 'name,email'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-11-roster-import-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s21-12-roster-import-bottom
