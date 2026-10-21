@@ -117,16 +117,16 @@ export default function AttendanceScreen() {
                 setLateText((prev) => ({ ...prev, [row.studentUserId]: text }))
               }
             />
+            {roster.length > 0 ? (
+              <AttendanceSaveBar
+                pending={save.isPending}
+                onSave={onSave}
+                onCancel={() => router.back()}
+              />
+            ) : null}
           </View>
         )}
       </ShellFrame>
-      {!isPending && !isError && roster.length > 0 ? (
-        <AttendanceSaveBar
-          pending={save.isPending}
-          onSave={onSave}
-          onCancel={() => router.back()}
-        />
-      ) : null}
     </View>
   );
 }

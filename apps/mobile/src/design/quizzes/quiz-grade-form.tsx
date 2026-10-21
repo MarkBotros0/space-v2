@@ -1,7 +1,9 @@
 /**
  * Port of v1 components/quizzes/quiz-grade-form.tsx (paper quizzes). v1's
  * table is light-only (bg-white, neutral rings, no dark: classes) and scrolls
- * sideways inside its card at phone width; both are kept (B3-11, gap note).
+ * sideways inside its card at phone width; both are kept (B3-11, gap note). The
+ * scroll bar stays visible (owner ruling 2026-10-21, UI sweep): without it the
+ * Notes column is out of sight on a 360dp phone and nothing says it is there.
  * The screen owns the edits and the save (touched rows only, D7).
  */
 import type { QuizGradeSheet } from "@space/shared";
@@ -39,7 +41,7 @@ export function QuizGradeForm({
   return (
     <View className="flex-col gap-4">
       <View className="overflow-hidden rounded-xl border border-neutral-200/60 bg-white" style={TABLE_SHADOW}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView horizontal showsHorizontalScrollIndicator persistentScrollbar>
           <View>
             <View className="flex-row border-b border-neutral-100">
               <Text className={`w-40 ${HEAD}`}>Student</Text>
