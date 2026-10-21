@@ -16,11 +16,11 @@ const payload = {
   budget: { minutesUsed: 105, budgetMinutes: 180, budgetPct: 58, remainingPct: 42, absentCount: 1, lateCount: 1 },
   streak: 1,
   sessions: [
-    { sessionId: 3, title: "Week 3", startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15",
+    { sessionId: 3, title: "Week 3", startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00",
       status: "LATE", checkedInAt: "2099-03-15T18:12:00.000Z", lateMinutes: 12, costMinutes: 12 },
-    { sessionId: 2, title: "Week 2", startsAt: "2099-03-08T18:00:00.000Z", dayKey: "2099-03-08",
+    { sessionId: 2, title: "Week 2", startsAt: "2099-03-08T18:00:00.000Z", dayKey: "2099-03-08", startTime: "20:00",
       status: "ABSENT", checkedInAt: null, lateMinutes: null, costMinutes: 90 },
-    { sessionId: 1, title: "Week 1", startsAt: "2099-03-01T18:00:00.000Z", dayKey: "2099-03-01",
+    { sessionId: 1, title: "Week 1", startsAt: "2099-03-01T18:00:00.000Z", dayKey: "2099-03-01", startTime: "20:00",
       status: null, checkedInAt: null, lateMinutes: null, costMinutes: null },
   ],
 };
@@ -52,6 +52,8 @@ describe("AttendanceScreen", () => {
     expect(screen.getByText("Absent")).toBeTruthy();
     expect(screen.getByText("No record")).toBeTruthy();
     expect(screen.getByText(/Mar 8, 2099/)).toBeTruthy(); // from dayKey (X13)
+    // Time is the org-clock startTime, not startsAt read in the device zone: 18:00Z fixture, 20:00 org.
+    expect(screen.getAllByText(/ · 8:00 PM$/)).toHaveLength(3);
   });
 
   it("shows the empty state when no session has happened yet", async () => {

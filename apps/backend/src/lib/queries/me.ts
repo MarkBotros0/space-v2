@@ -2,7 +2,7 @@ import { db } from "../../db/client";
 import type { AttendanceStatus, SeasonStatus } from "../../generated/prisma/enums";
 import type { SessionUser } from "../auth/tokens";
 import { costMinutesFor, streakFrom, type AttendanceBudget } from "../attendance-budget";
-import { orgDayKey } from "../org-time";
+import { orgDayKey, orgWallTime } from "../org-time";
 import { isAlumnus } from "../rbac";
 import { computeAttendanceBudget } from "./attendance-budget";
 import { loadSeasonProgress } from "./sessions";
@@ -214,6 +214,7 @@ export interface MyAttendanceSessionRow {
   title: string;
   startsAt: Date;
   dayKey: string;
+  startTime: string;
   status: AttendanceStatus | null;
   checkedInAt: Date | null;
   lateMinutes: number | null;
@@ -262,6 +263,7 @@ export async function loadMyAttendance(user: SessionUser, now: Date = new Date()
       title: s.title,
       startsAt: s.startsAt,
       dayKey: orgDayKey(s.startsAt),
+      startTime: orgWallTime(s.startsAt),
       status,
       checkedInAt: record?.checkedInAt ?? null,
       lateMinutes: status === "LATE" ? (record?.lateMinutes ?? null) : null,

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { attendanceStatusSchema } from "./enums";
-import { isoDaySchema } from "./org-time";
+import { isoDaySchema, wallTimeSchema } from "./org-time";
 
 export const attendanceEntrySchema = z.object({
   studentUserId: z.number().int(),
@@ -88,6 +88,8 @@ export const myAttendanceSessionSchema = z.object({
   title: z.string(),
   startsAt: z.string(),
   dayKey: isoDaySchema,
+  /** Start on the org clock, HH:mm (X13) — the device zone never formats it. */
+  startTime: wallTimeSchema,
   /** Null = no record for this past session (v1 "No record"). */
   status: attendanceStatusSchema.nullable(),
   checkedInAt: z.string().nullable(),

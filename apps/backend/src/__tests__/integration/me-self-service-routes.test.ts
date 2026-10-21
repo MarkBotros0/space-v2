@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { orgWallTime } from "../../lib/org-time";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(60000);
@@ -255,6 +256,9 @@ describe("GET /api/v1/me/attendance (spec 04 §7, spec 19 D14)", () => {
     expect(rows.map((r: { status: string | null }) => r.status)).toEqual([null, "PRESENT", "ABSENT"]);
     expect(rows.map((r: { costMinutes: number | null }) => r.costMinutes)).toEqual([null, null, 90]);
     expect(rows[0].dayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(rows.map((r: { startTime: string; startsAt: string }) => r.startTime)).toEqual(
+      rows.map((r: { startsAt: string }) => orgWallTime(new Date(r.startsAt))),
+    );
   });
 
   it("answers an alumnus (no active season) with the empty shape, not an error (R93)", async () => {
