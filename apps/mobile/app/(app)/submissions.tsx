@@ -15,6 +15,7 @@ import {
   Text,
   type DataTableColumn,
 } from "../../src/design/ui";
+import { usePrefetchSubmission } from "../../src/hooks/use-submission";
 import { useSubmissionQueue } from "../../src/hooks/use-submission-queue";
 import { formatShortDateTime } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
@@ -37,16 +38,14 @@ const PENDING = { pendingOnly: true } as const;
  * v1 components/assignments/leader-queue-list.tsx columns. The queue item
  * carries no student email, so the second line is the group alone (gap note).
  */
-function columns(open: (publicId: string) => void): DataTableColumn<SubmissionQueueItem>[] {
+function columns(): DataTableColumn<SubmissionQueueItem>[] {
   return [
     {
       key: "student",
       header: "Student",
       cell: (r) => (
         <View className="flex-col">
-          <Pressable accessibilityRole="link" className="self-start" onPress={() => open(r.publicId)}>
-            <Text className="font-medium text-foreground">{r.studentName ?? "Student"}</Text>
-          </Pressable>
+          <Text className="font-medium text-foreground">{r.studentName ?? "Student"}</Text>
           {r.groupName ? <Text className="text-xs text-muted-foreground">{r.groupName}</Text> : null}
         </View>
       ),
@@ -144,6 +143,7 @@ function LegacyQueue() {
 /** v1 app/leader/submissions/page.tsx — the leader's review queue. */
 export default function SubmissionsScreen() {
   const router = useRouter();
+  const prefetch = usePrefetchSubmission();
   const role = useSessionStore((s) => s.user?.role ?? null);
   // STUDENT gets 403 from GET /submissions; no user means nothing to ask for.
   const isStaff = role !== null && role !== "STUDENT";
@@ -181,9 +181,11 @@ export default function SubmissionsScreen() {
             }
           />
           <DataTable
-            columns={columns(open)}
+            columns={columns()}
             rows={items}
             rowKey={(r) => r.publicId}
+            onRowPress={(r) => open(r.publicId)}
+            onRowPressIn={(r) => prefetch(r.publicId)}
             emptyState={
               <EmptyState
                 icon={Inbox}

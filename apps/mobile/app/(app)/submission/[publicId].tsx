@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { File as FileIcon, SearchX } from "lucide-react-native";
 import { View } from "react-native";
 import { plainTextToHtml } from "@space/shared";
 
-import { PageTitle } from "../../../src/design/layout/page-title";
+import { BackLink, PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { iconWithClassName } from "../../../src/design/lib/icon";
@@ -39,10 +39,12 @@ function ReviewForm({
   publicId,
   initialFeedback,
   alreadyReviewed,
+  onReturned,
 }: {
   publicId: string;
   initialFeedback: string;
   alreadyReviewed: boolean;
+  onReturned: () => void;
 }) {
   const review = useReviewSubmission(publicId);
   const [feedback, setFeedback] = useState(initialFeedback);
@@ -50,7 +52,13 @@ function ReviewForm({
   const submit = (returnForRevision: boolean) =>
     review.mutate(
       { feedback, returnForRevision },
-      { onSuccess: () => toast.success(returnForRevision ? "Returned for revision." : "Review saved.") },
+      {
+        onSuccess: () => {
+          toast.success(returnForRevision ? "Returned for revision." : "Review saved.");
+          // Returned work is the student's to edit now, so there is nothing left to do here.
+          if (returnForRevision) onReturned();
+        },
+      },
     );
 
   return (
@@ -89,7 +97,11 @@ export default function SubmissionReviewScreen() {
   const { publicId: rawPublicId } = useLocalSearchParams<{ publicId: string }>();
   const publicId = typeof rawPublicId === "string" && rawPublicId.length > 0 ? rawPublicId : null;
 
+  const router = useRouter();
   const { data, isPending, isError, refetch, isRefetching } = useSubmissionDetail(publicId);
+
+  // A deep link (notification, push) has no history to go back to.
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/submissions"));
 
   if (publicId === null) {
     return (
@@ -107,6 +119,7 @@ export default function SubmissionReviewScreen() {
         <RouteError onRetry={() => void refetch()} />
       ) : (
         <View className="flex-col gap-4">
+          <BackLink label="Submissions" onPress={leave} />
           <PageTitle
             title={data.assignmentTitle}
             subtitle={`${data.studentName ?? data.studentEmail}${data.groupName ? ` · ${data.groupName}` : ""}`}
@@ -164,12 +177,25 @@ export default function SubmissionReviewScreen() {
           </Card>
 
           {/* C4: the flag drives the UI; the server gate is what protects the write. */}
-          {data.canReview ? (
+          {data.canReview && data.status === "RETURNED" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Returned to the student</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-col gap-3">
+                <Text className="text-sm text-muted-foreground">
+                  They can edit and submit again. You'll review it once they do.
+                </Text>
+                {data.feedback ? <RichTextView html={plainTextToHtml(data.feedback)} /> : null}
+              </CardContent>
+            </Card>
+          ) : data.canReview ? (
             <ReviewForm
               key={data.publicId}
               publicId={data.publicId}
               initialFeedback={data.feedback ?? ""}
               alreadyReviewed={data.reviewedAt !== null}
+              onReturned={leave}
             />
           ) : data.feedback ? (
             <Card>
