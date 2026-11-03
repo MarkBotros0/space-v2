@@ -157,3 +157,14 @@ export function deviceTodayKey(now: Date = new Date()): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
 }
+
+/** v1's anchor: the day of the next session, else the last one, else today. */
+export function initialAnchor(sessions: readonly SessionListItem[], today: string): string {
+  const next = sessions.find((s) => s.dayKey >= today);
+  return next?.dayKey ?? sessions[sessions.length - 1]?.dayKey ?? today;
+}
+
+/** v1's SeasonCalendar opening month: startOfMonth(initialAnchor) as a day key. */
+export function initialMonthAnchor(sessions: readonly SessionListItem[], today: string): string {
+  return `${initialAnchor(sessions, today).slice(0, 8)}01`;
+}

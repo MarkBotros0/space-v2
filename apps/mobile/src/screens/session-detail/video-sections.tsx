@@ -1,10 +1,7 @@
 import { View } from "react-native";
 import type { SessionDetail } from "@space/shared";
 
-import {
-  VideoQuestionsEditor,
-  VideoQuizResultsTable,
-} from "../../components/VideoQuestionsEditor";
+import { VideoQuestionsEditor, VideoQuizResultsTable } from "../../components/VideoQuestionsEditor";
 import { InlineError } from "../../design/layout/route-states";
 import {
   Badge,
@@ -64,7 +61,10 @@ export function LeaderVideoResults({ sessionId }: { sessionId: number }) {
         {results.isPending ? (
           <TextV1 className="text-sm text-muted-foreground">Loading…</TextV1>
         ) : results.isError ? (
-          <InlineError message="Couldn't load the results." onRetry={() => void results.refetch()} />
+          <InlineError
+            message="Couldn't load the results."
+            onRetry={() => void results.refetch()}
+          />
         ) : results.data.rows.length === 0 ? (
           <TextV1 className="text-sm italic text-muted-foreground">No students to show yet.</TextV1>
         ) : (
