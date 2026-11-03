@@ -52,8 +52,10 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - openLink: spacev2://session/1/attendance
+# Wait on the quick-mark card: since cdcd890 the save bar sits after the
+# roster, below the fold on a 360dp phone at 1.3.
 - extendedWaitUntil:
-    visible: 'Save attendance'
+    visible: 'Quick mark all as'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
