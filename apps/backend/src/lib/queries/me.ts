@@ -106,7 +106,7 @@ export async function loadSeasonHistory(user: SessionUser): Promise<SeasonHistor
 // Current season — v1 app/student/season/page.tsx:40-89
 // ---------------------------------------------------------------------------
 
-export const UPCOMING_LIMIT = 3;
+const UPCOMING_LIMIT = 3;
 
 export interface MySeason {
   id: number;

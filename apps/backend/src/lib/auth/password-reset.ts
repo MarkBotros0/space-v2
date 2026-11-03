@@ -9,9 +9,9 @@ import { isEmailConfigured, sendPasswordResetEmail } from "../email";
 import { hashToken, revokeAllRefreshTokensForUser } from "./tokens";
 
 /** v1's TTL, unchanged (spec 11 R73). */
-export const PASSWORD_RESET_TTL_MS = PASSWORD_RESET_TTL_MINUTES * 60 * 1000;
+const PASSWORD_RESET_TTL_MS = PASSWORD_RESET_TTL_MINUTES * 60 * 1000;
 /** One request per account per minute — stops mail-bombing a victim from many IPs. */
-export const RESET_REQUEST_COOLDOWN_MS = 60 * 1000;
+const RESET_REQUEST_COOLDOWN_MS = 60 * 1000;
 
 export type ResetWriter = Pick<typeof db, "passwordResetToken">;
 
