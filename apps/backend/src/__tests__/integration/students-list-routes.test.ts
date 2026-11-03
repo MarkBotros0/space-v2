@@ -1,0 +1,298 @@
+// Plan 10: POST /students now mails an invite. Stubbed for the same two
+// reasons Plan 9's invites suite gives — a staging .env with GMAIL_* set would
+// otherwise send real SMTP to @jpc.test addresses on every run, and the stub
+// is how this suite proves the raw code reaches the mailer and nothing else.
+// Lazy wrapper: jest.mock is hoisted above this const.
+const mockSendInviteEmail = jest.fn().mockResolvedValue(undefined);
+jest.mock("../../lib/email", () => ({
+  ...jest.requireActual("../../lib/email"),
+  sendInviteEmail: (...args: unknown[]) => mockSendInviteEmail(...args),
+}));
+
+import request from "supertest";
+
+import { createApp } from "../../app";
+import { db } from "../../db/client";
+import { cleanupTestData } from "./fixtures";
+import { seedStudentFixtures } from "./students-setup";
+
+jest.setTimeout(60000);
+
+const app = createApp();
+
+// Every fixture email starts with this. Unscoped (SUPER/MENTOR) list
+// assertions pass ?q=space-v2-test- so real rows in the shared staging DB can
+// never satisfy or break them.
+const PFX = "space-v2-test-";
+
+let seasonAId: number;
+let seasonBId: number;
+let superToken: string;
+let adminToken: string; // season admin of A only
+let mentorToken: string;
+let leaderToken: string; // leads the one group in A
+let student1Id: number; // enrolled in A (group-linked via the ENROLLMENT row) and in B
+let student1Token: string;
+let student2Id: number; // enrolled in B only
+let alumnusId: number; // graduationYear set, COMPLETED enrollment in A
+let droppedId: number; // WITHDRAWN enrollment in A, no group
+let droppedEnrollmentId: number;
+let deletedDroppedId: number; // soft-deleted user with a WITHDRAWN enrollment (D12)
+
+beforeAll(async () => {
+  ({ seasonAId, seasonBId, superToken, adminToken, mentorToken, leaderToken, student1Id, student1Token, student2Id, alumnusId, droppedId, droppedEnrollmentId, deletedDroppedId } = await seedStudentFixtures(app));
+});
+
+afterAll(async () => {
+  await cleanupTestData();
+  await db.$disconnect();
+});
+
+describe("GET /api/v1/students (active)", () => {
+  it("returns every non-graduated, non-deleted student for SUPER, with a real total", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students?q=${PFX}`)
+      .set("authorization", `Bearer ${superToken}`);
+
+    expect(res.status).toBe(200);
+    const ids = res.body.data.students.map((s: { id: number }) => s.id);
+    // droppedId IS here: WITHDRAWN is an enrollment fact, not a user state —
+    // the active list excludes only alumni (R29) and the soft-deleted.
+    expect(ids).toEqual(expect.arrayContaining([student1Id, student2Id, droppedId]));
+    expect(ids).not.toContain(alumnusId);
+    expect(ids).not.toContain(deletedDroppedId);
+    expect(res.body.data.total).toBe(3);
+    const row = res.body.data.students.find((s: { id: number }) => s.id === student1Id);
+    expect(row).toMatchObject({
+      name: "Test student-one",
+      university: "Test University",
+      activeSeasonTitle: "Test Season",
+      droppedEnrollment: null,
+    });
+  });
+
+  it("narrows ADMIN to students ever enrolled in their seasons (R31, kept)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students?q=${PFX}`)
+      .set("authorization", `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    const ids = res.body.data.students.map((s: { id: number }) => s.id);
+    expect(ids).toEqual(expect.arrayContaining([student1Id, droppedId]));
+    expect(ids).not.toContain(student2Id); // season B is not theirs
+  });
+
+  it("narrows LEADER to their groups' members through the ENROLLMENT row (C9)", async () => {
+    // student1 has NO GroupStudent row — only SeasonEnrollment.groupId links
+    // them to the leader's group. A scope that reads GroupStudent returns [].
+    const res = await request(app)
+      .get(`/api/v1/students?q=${PFX}`)
+      .set("authorization", `Bearer ${leaderToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.students.map((s: { id: number }) => s.id)).toEqual([student1Id]);
+    expect(res.body.data.total).toBe(1);
+  });
+
+  it("refuses a STUDENT caller — no student roster for students (C8)", async () => {
+    const res = await request(app)
+      .get("/api/v1/students")
+      .set("authorization", `Bearer ${student1Token}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("filters by seasonId through enrollments, any status", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students?q=${PFX}&seasonId=${seasonBId}`)
+      .set("authorization", `Bearer ${superToken}`);
+
+    const ids = res.body.data.students.map((s: { id: number }) => s.id);
+    expect([...ids].sort()).toEqual([student1Id, student2Id].sort());
+  });
+
+  it("searches university case-insensitively, ANDed with scope (R33)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students?q=${encodeURIComponent("test university")}`)
+      .set("authorization", `Bearer ${adminToken}`);
+
+    expect(res.body.data.students.map((s: { id: number }) => s.id)).toEqual([student1Id]);
+  });
+
+  it("pages with a stable cursor and a constant total (D14 — no silent 200-row cap)", async () => {
+    const first = await request(app)
+      .get(`/api/v1/students?q=${PFX}&limit=2`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(first.body.data.students).toHaveLength(2);
+    expect(first.body.data.nextCursor).not.toBeNull();
+    expect(first.body.data.total).toBe(3);
+
+    const second = await request(app)
+      .get(`/api/v1/students?q=${PFX}&limit=2&cursor=${first.body.data.nextCursor}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(second.body.data.students).toHaveLength(1);
+    expect(second.body.data.nextCursor).toBeNull();
+    const firstIds = first.body.data.students.map((s: { id: number }) => s.id);
+    expect(firstIds).not.toContain(second.body.data.students[0].id);
+  });
+});
+
+describe("GET /api/v1/students?status=alumni", () => {
+  it("lists alumni with the graduation year for ADMIN and MENTOR", async () => {
+    for (const token of [adminToken, mentorToken]) {
+      const res = await request(app)
+        .get(`/api/v1/students?status=alumni&q=${PFX}`)
+        .set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      const row = res.body.data.students.find((s: { id: number }) => s.id === alumnusId);
+      expect(row).toMatchObject({ graduationYear: 2024, university: "Alumni University" });
+    }
+  });
+
+  it("refuses LEADER — v1 gave them no alumni surface (spec 06 §4.1)", async () => {
+    const res = await request(app)
+      .get("/api/v1/students?status=alumni")
+      .set("authorization", `Bearer ${leaderToken}`);
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("GET /api/v1/students?status=dropped", () => {
+  it("returns enrollment-keyed rows with the drop reason (R43)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students?status=dropped&q=${PFX}`)
+      .set("authorization", `Bearer ${superToken}`);
+
+    expect(res.status).toBe(200);
+    const row = res.body.data.students.find((s: { id: number }) => s.id === droppedId);
+    expect(row.droppedEnrollment).toMatchObject({
+      enrollmentId: droppedEnrollmentId,
+      seasonId: seasonAId,
+      dropReason: "Moved away",
+    });
+  });
+
+  it("excludes soft-deleted students (D12 — v1 listed their name and reason forever)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students?status=dropped&q=${PFX}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(res.body.data.students.map((s: { id: number }) => s.id)).not.toContain(deletedDroppedId);
+  });
+
+  it("narrows ADMIN to their seasons' withdrawals (R45)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students?status=dropped&q=${PFX}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.students.length).toBeGreaterThan(0);
+    for (const s of res.body.data.students) {
+      expect(s.droppedEnrollment.seasonId).toBe(seasonAId);
+    }
+  });
+
+  it("refuses MENTOR — as an endpoint this hands every drop reason to read-all (spec 06 §4.3/§7)", async () => {
+    const res = await request(app)
+      .get("/api/v1/students?status=dropped")
+      .set("authorization", `Bearer ${mentorToken}`);
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("GET /api/v1/students/:id", () => {
+  it("returns the internal shape to SUPER — notes and phone included", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${superToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toMatchObject({
+      university: "Test University",
+      phone: "+20 100 000 0000",
+      spiritualBackground: "Test background",
+      notes: "Internal staff note",
+    });
+    // Both enrollments, newest first (R72); the historic group comes from the
+    // ENROLLMENT row (C9/R5), not GroupStudent — none exists for student1.
+    expect(res.body.data.enrollments).toHaveLength(2);
+    const inA = res.body.data.enrollments.find(
+      (e: { seasonId: number }) => e.seasonId === seasonAId,
+    );
+    expect(inA).toMatchObject({ status: "ACTIVE", groupName: "Group A" });
+    expect(res.body.data.currentGroup).toBeNull(); // advisory pointer genuinely unset
+  });
+
+  it("returns the internal shape to a season ADMIN of the student", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile.notes).toBe("Internal staff note");
+  });
+
+  it("refuses an ADMIN outside the student's seasons", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student2Id}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("withholds phone, DOB, spiritual background and notes from MENTOR — absence, not null (D3)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${mentorToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toHaveProperty("university", "Test University");
+    // The keys must not exist on the wire at all — a null would still admit
+    // the field exists and still round-trip through generic clients.
+    expect(res.body.data.profile).not.toHaveProperty("phone");
+    expect(res.body.data.profile).not.toHaveProperty("dateOfBirth");
+    expect(res.body.data.profile).not.toHaveProperty("spiritualBackground");
+    expect(res.body.data.profile).not.toHaveProperty("notes");
+  });
+
+  it("admits a LEADER to their own student with the public shape and only their rows", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${leaderToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).not.toHaveProperty("phone");
+    expect(res.body.data.profile).not.toHaveProperty("notes");
+    // student1 holds two enrollments; only the one naming the leader's group
+    // travels (spec 06 §7: "the scoped season rows").
+    expect(res.body.data.enrollments).toHaveLength(1);
+    expect(res.body.data.enrollments[0].seasonId).toBe(seasonAId);
+    expect(res.body.data.enrollments[0].dropReason).toBeNull();
+  });
+
+  it("refuses a LEADER outside their groups (C8 — the row gate, not just the route)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student2Id}`)
+      .set("authorization", `Bearer ${leaderToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("returns the private shape to the student themselves — never their internal notes (R23)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student1Id}`)
+      .set("authorization", `Bearer ${student1Token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toHaveProperty("phone", "+20 100 000 0000");
+    expect(res.body.data.profile).not.toHaveProperty("notes");
+  });
+
+  it("refuses a student reading another student", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${student2Id}`)
+      .set("authorization", `Bearer ${student1Token}`);
+    expect(res.status).toBe(403);
+  });
+
+  it("404s a soft-deleted student (R69)", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${deletedDroppedId}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(res.status).toBe(404);
+  });
+});
