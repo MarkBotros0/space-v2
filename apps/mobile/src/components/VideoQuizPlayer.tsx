@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Lock, Pause, Play, Video, X } from "lucide-react-native";
+import { Pause, Play, Video } from "lucide-react-native";
 import { AppState, Linking, Pressable, View } from "react-native";
-import type { LayoutChangeEvent } from "react-native";
 import { useRouter } from "expo-router";
 import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-iframe";
-import { formatTimestamp, type StudentVideoQuestion, type StudentVideoQuiz } from "@space/shared";
+import type { StudentVideoQuestion, StudentVideoQuiz } from "@space/shared";
 
 import { useSaveVideoProgress, useSubmitVideoAnswer } from "../hooks/use-video-quiz";
 import { apiErrorMessage } from "../lib/api-error";
-import { cn } from "../design/lib/cn";
 import { iconWithClassName } from "../design/lib/icon";
 import { shadowStyle } from "../design/lib/shadow";
 import { Eyebrow } from "../design/layout/page-title";
-import { Button, Modal, ModalContent, ModalHeader, ModalTitle, Text } from "../design/ui";
+import { InlineError } from "../design/layout/route-states";
+import { Button, Text } from "../design/ui";
+import { VideoProgressTrack } from "./video-quiz/video-progress-track";
+import { VideoQuestionModal, type AnswerFeedback } from "./video-quiz/video-question-modal";
 
-iconWithClassName(Check, Lock, Pause, Play, Video, X);
+iconWithClassName(Pause, Play, Video);
 
 /**
  * getCurrentTime() crosses the webview bridge as a promise, so v1's 0.1 s
@@ -37,11 +38,6 @@ export interface VideoQuizPlayerProps {
   readCurrentTime?: () => Promise<number>;
 }
 
-interface AnswerFeedback {
-  isCorrect: boolean;
-  correctIndex: number;
-}
-
 /** v1's "Watch recording" link button (sessions/[id]/page.tsx). */
 export function WatchRecordingButton({ youtubeUrl }: { youtubeUrl: string }) {
   return (
@@ -62,12 +58,19 @@ function VideoFallback({ youtubeUrl }: { youtubeUrl: string | null }) {
   return (
     <View className="flex-col gap-2">
       {youtubeUrl ? <WatchRecordingButton youtubeUrl={youtubeUrl} /> : null}
-      <Text className="text-xs text-muted-foreground">This session's video link can't be played in the app.</Text>
+      <Text className="text-xs text-muted-foreground">
+        This session's video link can't be played in the app.
+      </Text>
     </View>
   );
 }
 
-export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: VideoQuizPlayerProps) {
+export function VideoQuizPlayer({
+  sessionId,
+  quiz,
+  onRetry,
+  readCurrentTime,
+}: VideoQuizPlayerProps) {
   const router = useRouter();
   const playerRef = useRef<YoutubeIframeRef>(null);
   const submit = useSubmitVideoAnswer(sessionId);
@@ -82,7 +85,6 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
   const [open, setOpen] = useState<StudentVideoQuestion | null>(null);
   const [feedback, setFeedback] = useState<AnswerFeedback | null>(null);
   const [answerError, setAnswerError] = useState<string | null>(null);
-  const [trackWidth, setTrackWidth] = useState(0);
 
   // The barrier is the server's derivation, never recomputed from the answered
   // set (ruling C4): nextQuestionId is also the question the server will accept.
@@ -214,9 +216,9 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
     setPlaying(true);
   };
 
-  const onSeekPress = (x: number): void => {
-    if (duration === null || duration <= 0 || trackWidth <= 0) return;
-    const requested = Math.max(0, Math.min(1, x / trackWidth)) * duration;
+  const onSeek = (fraction: number): void => {
+    if (duration === null || duration <= 0) return;
+    const requested = fraction * duration;
     // Forward seeks are clamped to the barrier; backwards seeking is free, as in v1.
     const target = Math.min(requested, barrier);
     playerRef.current?.seekTo(target, true);
@@ -230,20 +232,20 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
   const deadlockMessage =
     "A question on this video is set past the end of the recording. Ask your leader to fix it.";
   const total = duration ?? 0;
-  const playedPct = total > 0 ? Math.min(100, (current / total) * 100) : 0;
-  const lockedFrom = total > 0 && Number.isFinite(barrier) ? Math.min(100, (barrier / total) * 100) : 100;
 
   return (
     <View className="flex-col gap-3">
       {deadlocked ? (
-        <View className="flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4">
-          <Text className="text-sm text-error-600 dark:text-error-400">{deadlockMessage}</Text>
-          <Button variant="outline" size="sm" onPress={() => onRetry?.()}>
-            Try again
-          </Button>
-        </View>
+        <InlineError
+          className="rounded-2xl border border-border bg-card p-4"
+          message={deadlockMessage}
+          onRetry={() => onRetry?.()}
+        />
       ) : (
-        <View className="overflow-hidden rounded-2xl border border-border bg-black" style={shadowStyle("soft")}>
+        <View
+          className="overflow-hidden rounded-2xl border border-border bg-black"
+          style={shadowStyle("soft")}
+        >
           <YoutubePlayer
             ref={playerRef}
             height={211}
@@ -266,43 +268,13 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
             }}
           />
           <View className="bg-black px-3 py-2">
-            <Pressable
-              accessibilityRole="adjustable"
-              accessibilityLabel="Video progress"
-              onLayout={(e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width)}
-              onPress={(e) => onSeekPress(e.nativeEvent.locationX)}
-              className="h-6 justify-center"
-            >
-              <View className="h-1.5 w-full rounded-full bg-white/20">
-                {lockedFrom < 100 ? (
-                  <View
-                    className="absolute bottom-0 right-0 top-0 rounded-r-full bg-white/5"
-                    style={{ left: `${lockedFrom}%` }}
-                  />
-                ) : null}
-                <View className="absolute bottom-0 left-0 top-0 rounded-full bg-brand-teal-500" style={{ width: `${playedPct}%` }} />
-                {total > 0
-                  ? quiz.questions.map((q) => (
-                      <View
-                        key={q.id}
-                        className={cn("absolute size-2 rounded-full", q.answered ? "bg-success-500" : "bg-warning-400")}
-                        style={{ left: `${Math.min(100, (q.atSeconds / total) * 100)}%`, top: -1, marginLeft: -4 }}
-                      />
-                    ))
-                  : null}
-              </View>
-            </Pressable>
-            <View className="flex-row items-center justify-between">
-              <Text className="font-mono text-[11px] font-medium text-white/70">
-                {`${formatTimestamp(current)} / ${formatTimestamp(total)}`}
-              </Text>
-              {Number.isFinite(barrier) && barrier < total ? (
-                <View className="flex-row items-center gap-1">
-                  <Lock size={12} className="text-white/70" />
-                  <Text className="text-[11px] font-medium text-white/70">Answer to unlock</Text>
-                </View>
-              ) : null}
-            </View>
+            <VideoProgressTrack
+              questions={quiz.questions}
+              current={current}
+              total={total}
+              barrier={barrier}
+              onSeek={onSeek}
+            />
             {/* v1 plays and pauses by tapping the YouTube frame; the native
                 player has no controls, so the app keeps explicit ones. */}
             <View className="mt-1 flex-row items-center justify-between">
@@ -313,7 +285,11 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
                 accessibilityLabel={playing ? "Pause" : "Play"}
                 onPress={() => setPlaying((p) => !p)}
               >
-                {playing ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white" />}
+                {playing ? (
+                  <Pause size={16} className="text-white" />
+                ) : (
+                  <Play size={16} className="text-white" />
+                )}
                 {playing ? "Pause" : "Play"}
               </Button>
               <Button variant="ghost" size="sm" textClassName="text-white/70" onPress={handleLeave}>
@@ -340,74 +316,15 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
         </View>
       </View>
 
-      {/* v1's QuestionModal ignores dismissal: no ×, inert backdrop. The
-          Android back button is an explicit exit — left alone it would
-          delete the gate (spec 13 §10 D15). */}
-      <Modal
-        open={open !== null}
-        onOpenChange={(next) => {
-          if (!next) handleLeave();
-        }}
-      >
-        <ModalContent dismissible={false}>
-          {open !== null ? (
-            <>
-              <ModalHeader>
-                <ModalTitle>{open.prompt}</ModalTitle>
-              </ModalHeader>
-              <View className="flex-col gap-2">
-                {open.options.map((option, index) => {
-                  const correct = feedback !== null && index === feedback.correctIndex;
-                  return (
-                    <Pressable
-                      key={`${open.id}-${index}`}
-                      accessibilityRole="button"
-                      disabled={submit.isPending || feedback !== null}
-                      onPress={() => onAnswer(index)}
-                      className={cn(
-                        "flex-row items-center justify-between gap-2 rounded-xl border px-4 py-3",
-                        correct ? "border-success-600 bg-success-600/10" : "border-border bg-card active:border-brand-teal-500",
-                      )}
-                    >
-                      <Text
-                        className={cn(
-                          "flex-1 text-sm font-medium",
-                          correct ? "text-success-700 dark:text-success-300" : "text-foreground",
-                        )}
-                      >
-                        {option}
-                      </Text>
-                      {correct ? <Check size={16} className="shrink-0 text-success-700 dark:text-success-300" /> : null}
-                    </Pressable>
-                  );
-                })}
-                {answerError ? <Text className="text-xs text-error-600">{answerError}</Text> : null}
-                {feedback !== null ? (
-                  <View className="mt-2 flex-col gap-3">
-                    {feedback.isCorrect ? (
-                      <View className="flex-row items-center gap-2">
-                        <Check size={16} className="text-success-700 dark:text-success-300" />
-                        <Text className="text-sm font-bold text-success-700 dark:text-success-300">Correct!</Text>
-                      </View>
-                    ) : (
-                      <View className="flex-row items-center gap-2">
-                        <X size={16} className="text-error-600" />
-                        <Text className="flex-1 text-sm font-bold text-error-600">
-                          Not quite — the correct answer is highlighted.
-                        </Text>
-                      </View>
-                    )}
-                    <Button onPress={onContinue}>Continue</Button>
-                  </View>
-                ) : null}
-                <Button variant="ghost" onPress={handleLeave}>
-                  Leave the quiz
-                </Button>
-              </View>
-            </>
-          ) : null}
-        </ModalContent>
-      </Modal>
+      <VideoQuestionModal
+        question={open}
+        feedback={feedback}
+        pending={submit.isPending}
+        answerError={answerError}
+        onAnswer={onAnswer}
+        onContinue={onContinue}
+        onLeave={handleLeave}
+      />
     </View>
   );
 }
