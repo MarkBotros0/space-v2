@@ -25,6 +25,7 @@ import {
   Text as TextV1,
   Textarea,
 } from "../../../../src/design/ui";
+import { ConfirmDialog } from "../../../../src/design/ui/confirm-dialog";
 import { useAssignmentDetail } from "../../../../src/hooks/use-assignments";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { storedTextToHtml } from "../../../../src/lib/stored-text";
@@ -138,6 +139,7 @@ function SubmissionEditor({
   const save = useSaveSubmission(summary.publicId, detail.id);
   const [text, setText] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   // A section of the page, so a card-sized skeleton, not the route's.
   if (isPending) return <SkeletonCard />;
@@ -153,6 +155,7 @@ function SubmissionEditor({
     setInfo(null);
     save.mutate(submit ? { text: value, submit: true } : { text: value }, {
       onSuccess: () => setInfo(submit ? "Submitted!" : "Draft saved."),
+      onSettled: () => setConfirming(false),
     });
   };
 
@@ -220,13 +223,32 @@ function SubmissionEditor({
               <ButtonV1 variant="outline" disabled={save.isPending} onPress={() => run(false)}>
                 {save.isPending ? "Saving…" : "Save draft"}
               </ButtonV1>
-              <ButtonV1 disabled={save.isPending || nothingToSubmit} onPress={() => run(true)}>
+              <ButtonV1 disabled={save.isPending || nothingToSubmit} onPress={() => setConfirming(true)}>
                 Submit
               </ButtonV1>
             </View>
           ) : null}
+          {editable ? (
+            <TextV1 className="text-xs text-muted-foreground">
+              A saved draft is private to you and is not sent to your leader until you submit.
+            </TextV1>
+          ) : null}
         </CardContent>
       </CardV1>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Submit your work?"
+        description={
+          sub.status === "RETURNED"
+            ? "Your leader will review this again. You won't be able to change it after you submit."
+            : "Once you submit, you can't change it. Save a draft instead if you're not ready."
+        }
+        confirmLabel="Yes, submit"
+        cancelLabel="Not yet"
+        pending={save.isPending}
+        onConfirm={() => run(true)}
+      />
       {sub.feedback ? (
         <CardV1>
           <CardHeader>
