@@ -198,7 +198,7 @@ importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (r
  * first (ruling X5). It is mounted ahead of the global JSON parser (see
  * importJsonParser), so it sits before seasonsRouter too; it defines only
  * POST /:id/imports/groups/*, so every other request falls through untouched
- * and `routes/seasons.ts` stays unmodified (D-16.20).
+ * and `routes/seasons/` stays unmodified (D-16.20).
  */
 export const seasonImportsRouter = Router();
 

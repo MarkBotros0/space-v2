@@ -20,7 +20,7 @@ import { forbidden } from "./respond";
 
 /**
  * Notes are mounted as three routers from one file rather than as routes added
- * to routes/students.ts and routes/me.ts.
+ * to routes/students/ and routes/me.ts.
  *
  * The specced URLs are nested under other domains (GET /students/:id/notes,
  * GET /me/notes), but spec D5 #3 requires notes never to ride inside another

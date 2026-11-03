@@ -32,7 +32,7 @@ import { forbidden } from "./respond";
  * Domain 14. Mounted at /api/v1 because the thread hangs off an assignment
  * (`/assignments/:id/forum*`) while a comment is addressed on its own
  * (`/forum/comments/:commentId`). Per-route `requireAuth` only (ruling X5) —
- * see video-quiz.ts for why.
+ * see video-quiz/index.ts for why.
  *
  * Status-code rule: the assignment is resolved first (missing, deleted or not
  * FORUM → 404 for every caller); only then does the audience gate run (403).
