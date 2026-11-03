@@ -60,19 +60,26 @@ export async function getSubmission(req: Request<{ publicId: string }>, res: Res
   const sub = await loadSubmissionForApi(publicId ?? "");
   if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
 
-  if (!(await canViewSubmission(user, sub.id))) return forbidden(res);
-
-  // The student's group in this assignment's season, from the enrolment
-  // (ruling C9) — v1's detail named it.
-  const enrollment = await db.seasonEnrollment.findUnique({
-    where: {
-      studentUserId_seasonId: {
-        studentUserId: sub.studentUserId,
-        seasonId: sub.assignment.seasonId,
+  // The three reads below depend only on the row just loaded, not on each
+  // other, so they run together: each is a round trip to the database, and
+  // one after another they were the wait before the review screen could draw.
+  // The student's group in this assignment's season comes from the enrolment
+  // (ruling C9) — v1's detail named it. A caller who then fails the access
+  // check has paid for two reads it never uses, the cheap side of the trade.
+  const [canView, enrollment, canReview] = await Promise.all([
+    canViewSubmission(user, sub.id),
+    db.seasonEnrollment.findUnique({
+      where: {
+        studentUserId_seasonId: {
+          studentUserId: sub.studentUserId,
+          seasonId: sub.assignment.seasonId,
+        },
       },
-    },
-    select: { groupId: true, group: { select: { name: true } } },
-  });
+      select: { groupId: true, group: { select: { name: true } } },
+    }),
+    canReviewSubmission(user, sub.id),
+  ]);
+  if (!canView) return forbidden(res);
 
   return apiOk(res, {
     id: sub.id,
@@ -100,6 +107,6 @@ export async function getSubmission(req: Request<{ publicId: string }>, res: Res
     // 503: an assignment declaring maxFileSizeMb is telling the student a file
     // is expected, so the screen needs to explain why it cannot offer one.
     canUploadFiles: config.enableUploads,
-    canReview: await canReviewSubmission(user, sub.id),
+    canReview,
   });
 }
