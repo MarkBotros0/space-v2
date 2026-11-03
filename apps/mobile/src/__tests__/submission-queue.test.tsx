@@ -77,6 +77,23 @@ it("navigates to the review screen on press", async () => {
   });
 });
 
+it("opens from anywhere on the row, and starts loading the detail on touch-down", async () => {
+  get.mockResolvedValue({
+    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
+  });
+
+  renderWithProviders(<SubmissionsScreen />);
+  const assignment = await screen.findByText("Essay one");
+  fireEvent(assignment, "pressIn");
+  expect(get).toHaveBeenCalledWith("/api/v1/submissions/aaa1111111");
+
+  fireEvent.press(assignment);
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/submission/[publicId]",
+    params: { publicId: "aaa1111111" },
+  });
+});
+
 it("shows v1's empty state for an empty queue", async () => {
   get.mockResolvedValue({ data: { data: { items: [], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } } });
 
