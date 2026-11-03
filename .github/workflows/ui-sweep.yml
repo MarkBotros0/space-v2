@@ -37,6 +37,7 @@ on:
       - "tools/ui-reference/ci-sweep.sh"
       - "tools/ui-reference/lib/sweep.mjs"
       - "apps/backend/scripts/seed-sweep.ts"
+      - "apps/backend/scripts/seed-sweep/**"
       - ".github/workflows/ui-sweep.yml"
 
 # Per module and cell selection, so dispatches for different modules or cells
