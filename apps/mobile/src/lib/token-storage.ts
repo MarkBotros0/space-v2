@@ -22,6 +22,10 @@ export async function savePushToken(token: string): Promise<void> {
   await SecureStore.setItemAsync(PUSH_KEY, token);
 }
 
+export async function loadPushToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(PUSH_KEY);
+}
+
 export async function clearSession(): Promise<void> {
   await SecureStore.deleteItemAsync(ACCESS_KEY);
   await SecureStore.deleteItemAsync(REFRESH_KEY);
