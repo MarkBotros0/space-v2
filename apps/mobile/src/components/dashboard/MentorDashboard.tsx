@@ -4,6 +4,7 @@ import { Pressable, View } from "react-native";
 import { AT_RISK_PCT, UPCOMING_EVENTS_LIMIT, type ActivityItem } from "@space/shared";
 
 import { PageTitle } from "../../design/layout/page-title";
+import { InlineError } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
 import { shadowStyle } from "../../design/lib/shadow";
@@ -47,17 +48,6 @@ function CardTitleRow({
         </Text>
       </View>
       {action}
-    </View>
-  );
-}
-
-function CardError({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <View className="flex-col items-start gap-2 px-4 pb-4">
-      <Text className="text-sm text-error-600 dark:text-error-400">{message}</Text>
-      <Button variant="outline" size="sm" onPress={onRetry}>
-        Try again
-      </Button>
     </View>
   );
 }
@@ -129,7 +119,8 @@ export function MentorDashboard() {
           {engagement.isPending ? (
             <CardLoading />
           ) : engagement.isError ? (
-            <CardError
+            <InlineError
+              className="px-4 pb-4"
               message="Couldn't load the at-risk list."
               onRetry={() => void engagement.refetch()}
             />
@@ -187,7 +178,8 @@ export function MentorDashboard() {
           {feed.isPending ? (
             <CardLoading />
           ) : feed.isError ? (
-            <CardError
+            <InlineError
+              className="px-4 pb-4"
               message="Couldn't load recent activity."
               onRetry={() => void feed.refetch()}
             />

@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { countWords, plainTextToHtml, type ForumComment, type ForumPost, type ForumView } from "@space/shared";
 
 import { Eyebrow } from "../design/layout/page-title";
+import { InlineError } from "../design/layout/route-states";
 import { cn } from "../design/lib/cn";
 import { iconWithClassName } from "../design/lib/icon";
 import {
@@ -272,12 +273,7 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
   if (query.isPending) return <Skeleton className="h-40 rounded-2xl" />;
   if (query.isError) {
     return (
-      <View className="flex-col items-start gap-2">
-        <Text className="text-sm text-error-600 dark:text-error-400">Couldn't load the discussion.</Text>
-        <Button variant="outline" size="sm" onPress={() => void query.refetch()}>
-          Try again
-        </Button>
-      </View>
+      <InlineError message="Couldn't load the discussion." onRetry={() => void query.refetch()} />
     );
   }
 

@@ -24,6 +24,7 @@ import {
 } from "../../../../../src/design/ui";
 import { useGroupImportCommit, useGroupImportPreview } from "../../../../../src/hooks/use-import";
 import { useSeasons } from "../../../../../src/hooks/use-seasons";
+import { importErrorMessage } from "../../../../../src/lib/import-error";
 import { useSessionStore } from "../../../../../src/store/session";
 
 iconWithClassName(CheckCircle2);
@@ -40,12 +41,6 @@ const STATUS_BADGE: Record<
   no_group: { variant: "warning", label: "No group" },
   invalid: { variant: "error", label: "Invalid" },
 };
-
-function messageFor(err: unknown): string {
-  const body = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data
-    ?.error;
-  return body?.message ?? "Something went wrong. Try again.";
-}
 
 /**
  * v1 admin/season/[code]/roster/import (group-import-form.tsx). v1 uploads a
@@ -120,7 +115,7 @@ export default function GroupImportScreen() {
       setPreview(await previewMutation.mutateAsync({ text, delimiter: "auto" }));
     } catch (err) {
       setPreview(null);
-      setError(messageFor(err));
+      setError(importErrorMessage(err));
     }
   }
 
@@ -137,7 +132,7 @@ export default function GroupImportScreen() {
         }),
       );
     } catch (err) {
-      setError(messageFor(err));
+      setError(importErrorMessage(err));
     }
   }
 

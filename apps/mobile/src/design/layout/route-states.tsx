@@ -10,6 +10,7 @@ import { useSessionStore } from "../../store/session";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { Skeleton, SkeletonCard } from "../ui/skeleton";
+import { Text } from "../ui/text";
 
 export function RouteSkeleton() {
   return (
@@ -36,5 +37,28 @@ export function RouteError({ onRetry }: { onRetry: () => void }) {
       description={`We couldn't load this page. Please try again — if it keeps happening, let ${contact} know.`}
       action={<Button onPress={onRetry}>Try again</Button>}
     />
+  );
+}
+
+/**
+ * A card or section whose own query failed: the red line and an outline
+ * "Try again" (v1's inline error). `className` is appended to the wrapper.
+ */
+export function InlineError({
+  message,
+  onRetry,
+  className,
+}: {
+  message: string;
+  onRetry: () => void;
+  className?: string;
+}) {
+  return (
+    <View className={className ? `flex-col items-start gap-2 ${className}` : "flex-col items-start gap-2"}>
+      <Text className="text-sm text-error-600 dark:text-error-400">{message}</Text>
+      <Button variant="outline" size="sm" onPress={onRetry}>
+        Try again
+      </Button>
+    </View>
   );
 }
