@@ -30,15 +30,28 @@ export function useEnsureSubmission(assignmentId: number) {
   });
 }
 
+async function fetchSubmission(publicId: string) {
+  const res = await apiClient.get(`/api/v1/submissions/${publicId}`);
+  return submissionDetailSchema.parse(res.data.data);
+}
+
 export function useSubmissionDetail(publicId: string | null): UseQueryResult<SubmissionDetail> {
   return useQuery({
     queryKey: queryKeys.submissions.detail(publicId),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/submissions/${publicId}`);
-      return submissionDetailSchema.parse(res.data.data);
-    },
+    queryFn: () => fetchSubmission(publicId as string),
     enabled: publicId !== null,
   });
+}
+
+/** Warm the detail on touch-down, so the review screen opens with data already there. */
+export function usePrefetchSubmission() {
+  const queryClient = useQueryClient();
+  return (publicId: string) =>
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.submissions.detail(publicId),
+      queryFn: () => fetchSubmission(publicId),
+      staleTime: 30_000,
+    });
 }
 
 export function useSaveSubmission(publicId: string, assignmentId: number) {

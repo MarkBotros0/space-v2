@@ -6,7 +6,7 @@
  * classes v1's surrounding element gives them.
  */
 import { Fragment, type ReactNode } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 
 import { cn } from "../lib/cn";
 import { shadowStyle } from "../lib/shadow";
@@ -33,12 +33,17 @@ function DataTable<Row>({
   rowKey,
   className,
   emptyState,
+  onRowPress,
+  onRowPressIn,
 }: {
   columns: DataTableColumn<Row>[];
   rows: Row[];
   rowKey: (row: Row) => string | number;
   className?: string;
   emptyState?: ReactNode;
+  /** Makes the whole row the tap target, not just a link inside it. */
+  onRowPress?: (row: Row) => void;
+  onRowPressIn?: (row: Row) => void;
 }) {
   if (rows.length === 0 && emptyState) return <>{emptyState}</>;
   const [primary, ...rest] = columns;
@@ -47,8 +52,17 @@ function DataTable<Row>({
   return (
     <View className={cn("w-full", className)}>
       <View className="overflow-hidden rounded-2xl border border-border/60 bg-card" style={shadowStyle("soft")}>
-        {rows.map((row, i) => (
-          <View key={rowKey(row)} className={cn("min-h-11 flex-row items-center gap-3 px-4 py-3", i > 0 && "border-t border-border/60")}>
+        {rows.map((row, i) => {
+          const Wrapper = onRowPress ? Pressable : View;
+          const pressProps = onRowPress
+            ? {
+                accessibilityRole: "button" as const,
+                onPress: () => onRowPress(row),
+                onPressIn: onRowPressIn ? () => onRowPressIn(row) : undefined,
+              }
+            : {};
+          return (
+          <Wrapper key={rowKey(row)} {...pressProps} className={cn("min-h-11 flex-row items-center gap-3 px-4 py-3", onRowPress && "active:bg-muted/40", i > 0 && "border-t border-border/60")}>
             <View className="min-w-0 flex-1">
               {primary ? asNode(primary.cell(row), "text-foreground") : null}
               {metaColumns.length > 0 ? (
@@ -71,8 +85,9 @@ function DataTable<Row>({
                 ))}
               </View>
             ) : null}
-          </View>
-        ))}
+          </Wrapper>
+          );
+        })}
       </View>
     </View>
   );

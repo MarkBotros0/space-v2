@@ -4,9 +4,11 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
 }));
 const mockBack = jest.fn();
+const mockReplace = jest.fn();
+let mockCanGoBack = true;
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ publicId: "aaa1111111" }),
-  useRouter: () => ({ back: mockBack, push: jest.fn() }),
+  useRouter: () => ({ back: mockBack, push: jest.fn(), replace: mockReplace, canGoBack: () => mockCanGoBack }),
 }));
 
 jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
@@ -33,6 +35,7 @@ const detail = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockCanGoBack = true;
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
 });
@@ -78,7 +81,7 @@ it("says Update review, with the earlier feedback in the field, when redoing a r
   );
 });
 
-it("returns for revision with the flag set", async () => {
+it("returns for revision with the flag set, then leaves a screen with nothing left to do", async () => {
   get.mockResolvedValue({ data: { data: detail } });
   post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: true } } });
 
@@ -93,7 +96,27 @@ it("returns for revision with the flag set", async () => {
     }),
   );
   await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Returned for revision."));
+  await waitFor(() => expect(mockBack).toHaveBeenCalled());
+});
+
+it("has a back link, and falls back to the list when opened from a notification", async () => {
+  mockCanGoBack = false;
+  get.mockResolvedValue({ data: { data: detail } });
+  renderWithProviders(<SubmissionReviewScreen />);
+
+  fireEvent.press(await screen.findByText("← Submissions"));
+
+  expect(mockReplace).toHaveBeenCalledWith("/submissions");
   expect(mockBack).not.toHaveBeenCalled();
+});
+
+it("shows returned work as waiting on the student instead of the review form", async () => {
+  get.mockResolvedValue({ data: { data: { ...detail, status: "RETURNED", feedback: "Another pass." } } });
+  renderWithProviders(<SubmissionReviewScreen />);
+
+  expect(await screen.findByText("Returned to the student")).toBeTruthy();
+  expect(screen.getByText("Another pass.")).toBeTruthy();
+  expect(screen.queryByLabelText("Feedback")).toBeNull();
 });
 
 it("stays on the screen and says why when the server refuses (409 not_submitted)", async () => {
