@@ -120,7 +120,7 @@ export function NotificationBell({
 
 function NotificationRow({ item, first, onPress }: { item: NotificationBellItem; first: boolean; onPress?: () => void }) {
   const inner = (
-    <View className={cn("flex-col gap-1 px-3 py-2.5", !item.readAt && "bg-info-50", !first && "border-t border-border")}>
+    <View className={cn("flex-col gap-1 px-3 py-2.5", !item.readAt && "bg-info-50 dark:bg-info-950", !first && "border-t border-border")}>
       <View className="flex-row items-start gap-2">
         {!item.readAt ? <View className="mt-1.5 size-1.5 shrink-0 rounded-full bg-info-500" /> : null}
         <Text className="flex-1 text-sm font-medium leading-snug text-popover-foreground">{item.title}</Text>
