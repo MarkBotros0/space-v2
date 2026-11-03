@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
-import { sendInviteEmail } from "../../lib/email";
 import { issueInvite, type IssuedInvite } from "../../lib/invites";
 import { parseId } from "../../lib/parse-id";
 import { canEditStudent } from "../../lib/permissions";
@@ -14,6 +13,7 @@ import {
   createStudentRequestSchema,
   updateStudentRequestSchema,
 } from "../../../../../packages/shared/src/index";
+import { sendInviteEmailBestEffort } from "../invite-email";
 import { forbidden } from "../respond";
 
 /**
@@ -111,16 +111,8 @@ export async function createStudent(req: Request, res: Response) {
     throw err;
   }
 
-  // Best-effort, after commit (R25). The log names the user id and the error
-  // — never the address or the code (Plan 9 Decision 2).
-  try {
-    await sendInviteEmail(created.email, invite.raw, invite.expiresAt);
-  } catch (err) {
-    console.error(
-      `[invites] failed to send invite email for user ${created.id}:`,
-      err instanceof Error ? err.message : err,
-    );
-  }
+  // Best-effort, after commit (R25) — see sendInviteEmailBestEffort.
+  await sendInviteEmailBestEffort(created.id, created.email, invite.raw, invite.expiresAt);
 
   return apiOk(res, created, 201);
 }
