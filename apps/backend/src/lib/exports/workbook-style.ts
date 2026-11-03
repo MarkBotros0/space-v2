@@ -8,7 +8,7 @@ import { REPORT_METRIC_NOTES } from "../../../../../packages/shared/src/index";
 import { formatInOrgTime } from "../org-time";
 
 /** brand-navy-900, ported verbatim from jpc-space/src/lib/season-export.ts:23. */
-export const HEADER_FILL = "FF0B2447";
+const HEADER_FILL = "FF0B2447";
 
 /**
  * Pinned collation.

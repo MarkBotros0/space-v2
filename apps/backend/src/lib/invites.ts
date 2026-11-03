@@ -119,7 +119,7 @@ export async function inviteIfStillPending(userId: number, invitedById: number):
 }
 
 /** Parallel SMTP sends per batch (Plan 10 Decision 12). */
-export const BULK_INVITE_MAIL_CONCURRENCY = 5;
+const BULK_INVITE_MAIL_CONCURRENCY = 5;
 
 /**
  * One bounded batch of "send all pending invites" (Plan 10 Decision 12).
