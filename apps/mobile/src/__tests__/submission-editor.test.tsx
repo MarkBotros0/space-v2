@@ -109,6 +109,10 @@ describe("submission editor", () => {
 
     patch.mockResolvedValue({ data: { data: { saved: true, submitted: true } } });
     fireEvent.press(screen.getByText("Submit"));
+    // Submitting is irreversible, so it waits for an explicit confirmation.
+    expect(await screen.findByText("Submit your work?")).toBeTruthy();
+    expect(patch).not.toHaveBeenCalledWith("/api/v1/submissions/abc123defg", expect.objectContaining({ submit: true }));
+    fireEvent.press(screen.getByText("Yes, submit"));
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/submissions/abc123defg", {
         text: "better draft",
@@ -116,6 +120,18 @@ describe("submission editor", () => {
       }),
     );
     expect(await screen.findByText("Submitted!")).toBeTruthy();
+  });
+
+  it("backs out of the confirmation without submitting", async () => {
+    serve({ ...detailNoSubmission, mySubmission: draftSummary });
+    renderWithProviders(<AssignmentDetailScreen />);
+    await screen.findByLabelText("Your response");
+
+    fireEvent.press(screen.getByText("Submit"));
+    fireEvent.press(await screen.findByText("Not yet"));
+
+    await waitFor(() => expect(screen.queryByText("Submit your work?")).toBeNull());
+    expect(patch).not.toHaveBeenCalled();
   });
 
   it("disables Submit while the text is empty and nothing is attached (REG-85)", async () => {
