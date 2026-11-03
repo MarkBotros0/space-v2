@@ -8,14 +8,14 @@ import {
 } from "@space/shared";
 
 import { Eyebrow } from "../../design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { NextSessionCard } from "../../design/sessions/next-session-card";
 import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
 import { shadowStyle } from "../../design/lib/shadow";
 import { StatCard } from "../../design/students/stat-card";
-import { Badge, Button, EmptyState, ProgressRing, Text } from "../../design/ui";
+import { Badge, EmptyState, ProgressRing, Text } from "../../design/ui";
 import { useStudentDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useMyAttendance } from "../../hooks/use-self-service";
@@ -175,12 +175,10 @@ function EnrolledBody({
       ) : null}
 
       {attendance.isError ? (
-        <View className="flex-col items-start gap-2">
-          <Text className="text-sm text-error-600 dark:text-error-400">Couldn't load your attendance.</Text>
-          <Button variant="outline" size="sm" onPress={() => void attendance.refetch()}>
-            Try again
-          </Button>
-        </View>
+        <InlineError
+          message="Couldn't load your attendance."
+          onRetry={() => void attendance.refetch()}
+        />
       ) : (
         <View className="flex-row gap-3">
           <StatCard

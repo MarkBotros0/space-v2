@@ -18,8 +18,8 @@ import {
   Text,
   Textarea,
 } from "../../design/ui";
-import { useImportTemplate } from "../../hooks/use-import";
-import { useSeasons } from "../../hooks/use-seasons";
+import type { useImportTemplate } from "../../hooks/use-import";
+import type { useSeasons } from "../../hooks/use-seasons";
 import type { StudentImportFlow } from "./use-student-import-flow";
 
 const CURRENT_YEAR = new Date().getFullYear();
