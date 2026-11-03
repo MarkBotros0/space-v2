@@ -49,9 +49,7 @@ export async function listVideoQuestions(req: Request, res: Response) {
   if (!session) return apiError(res, "not_found", "Session not found.", 404);
   // This read carries correctIndex for every question. v1's query authorizes
   // nothing and the admin page is the only gate (spec 13 R68/R73).
-  if (!(await canManageSessionVideo(user, sessionId))) {
-    return forbidden(res);
-  }
+  if (!(await canManageSessionVideo(user, sessionId))) return forbidden(res);
 
   const rows = await db.sessionVideoQuestion.findMany({
     where: { sessionId },
@@ -70,9 +68,7 @@ export async function createVideoQuestion(req: Request, res: Response) {
   if (!session) return apiError(res, "not_found", "Session not found.", 404);
   // Gate before parsing (v1 R2): an unauthorized caller gets a refusal, not a
   // validation message.
-  if (!(await canManageSessionVideo(user, sessionId))) {
-    return forbidden(res);
-  }
+  if (!(await canManageSessionVideo(user, sessionId))) return forbidden(res);
 
   const parsed = videoQuestionInputSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid question.", 400);
@@ -107,9 +103,7 @@ export async function updateVideoQuestion(req: Request, res: Response) {
     select: { id: true, sessionId: true, options: true, correctIndex: true, points: true },
   });
   if (!existing) return apiError(res, "not_found", "Question not found.", 404);
-  if (!(await canManageSessionVideo(user, existing.sessionId))) {
-    return forbidden(res);
-  }
+  if (!(await canManageSessionVideo(user, existing.sessionId))) return forbidden(res);
 
   const parsed = videoQuestionInputSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid question.", 400);
@@ -179,9 +173,7 @@ export async function deleteVideoQuestion(req: Request, res: Response) {
     select: { id: true, sessionId: true },
   });
   if (!existing) return apiError(res, "not_found", "Question not found.", 404);
-  if (!(await canManageSessionVideo(user, existing.sessionId))) {
-    return forbidden(res);
-  }
+  if (!(await canManageSessionVideo(user, existing.sessionId))) return forbidden(res);
 
   // The database cascade removes the responses; the count exists so the client
   // can warn before and confirm after. SessionVideoProgress is deliberately left

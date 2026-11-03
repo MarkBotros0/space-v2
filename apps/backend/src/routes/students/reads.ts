@@ -52,9 +52,7 @@ export async function getStudent(req: Request, res: Response) {
   if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
 
   // The gate lives in the handler, not in a call-site convention (R70/C8).
-  if (!(await canViewStudent(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canViewStudent(user, id))) return forbidden(res);
 
   const detail = await loadStudentDetail(id, detailViewFor(user, id), user);
   if (!detail) return apiError(res, "not_found", "Student not found.", 404);

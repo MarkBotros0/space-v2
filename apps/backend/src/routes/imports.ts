@@ -3,7 +3,7 @@ import express, { Router } from "express";
 import rateLimit from "express-rate-limit";
 
 import { db } from "../db/client";
-import { Prisma } from "../generated/prisma/client";
+import { isUniqueViolation } from "../lib/prisma-errors";
 import { apiError, apiOk } from "../lib/api-response";
 import { config } from "../lib/config";
 import { ImportParseError, parseDelimited } from "../lib/imports/delimited";
@@ -29,6 +29,7 @@ import {
   studentImportCommitInputSchema,
 } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { forbidden } from "./respond";
 
 /**
  * Import intake is NOT gated by `ENABLE_UPLOADS`, and nothing in this file
@@ -172,7 +173,7 @@ importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (r
         422,
       );
     }
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+    if (isUniqueViolation(err)) {
       // Somebody else created one of these addresses between this request's
       // existence lookup and its insert. The whole transaction rolled back,
       // so nothing partial landed — and because the commit is idempotent,
@@ -223,7 +224,7 @@ async function resolveAdministeredSeason(
   // claim (ruling C7), so a stray SeasonAdmin row naming a student grants
   // nothing. SUPER short-circuits inside isAdminOfSeason.
   if (!isAdminOfSeason(user, seasonId)) {
-    apiError(res, "forbidden", "You don't have access to this.", 403);
+    forbidden(res);
     return null;
   }
   const season = await db.season.findFirst({

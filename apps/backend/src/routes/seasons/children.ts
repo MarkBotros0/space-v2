@@ -37,9 +37,7 @@ export async function listSeasonGroups(req: Request, res: Response) {
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
-  if (!(await canAccessSeason(user, seasonId))) {
-    return forbidden(res);
-  }
+  if (!(await canAccessSeason(user, seasonId))) return forbidden(res);
 
   // The scope lives in the query, so a group the caller may not see is never
   // read at all. A leader now sees only the groups they lead: v1 handed them
@@ -54,9 +52,7 @@ export async function createSeasonGroup(req: Request, res: Response) {
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
-  if (!isAdminOfSeason(user, seasonId)) {
-    return forbidden(res);
-  }
+  if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
   const season = await db.season.findUnique({ where: { id: seasonId }, select: { id: true } });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
@@ -94,9 +90,7 @@ export async function listSeasonSessions(req: Request, res: Response) {
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
-  if (!(await canAccessSeason(user, seasonId))) {
-    return forbidden(res);
-  }
+  if (!(await canAccessSeason(user, seasonId))) return forbidden(res);
 
   const sessions = await listSessionsForSeason(seasonId, {
     includeCheckInToken: user.role !== "STUDENT",
@@ -109,9 +103,7 @@ export async function listSeasonAssignments(req: Request, res: Response) {
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
-  if (!(await canAccessSeason(user, seasonId))) {
-    return forbidden(res);
-  }
+  if (!(await canAccessSeason(user, seasonId))) return forbidden(res);
 
   // Students get a different row shape — their own status per assignment,
   // rather than the season-wide submission/expected counts staff see.
@@ -129,9 +121,7 @@ export async function createSeasonAssignment(req: Request, res: Response) {
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
   // v1 canCreateAssignment = isAdminOfSeason (SUPER passes) — permissions.ts:273-278.
-  if (!canManageAssignment(user, seasonId)) {
-    return forbidden(res);
-  }
+  if (!canManageAssignment(user, seasonId)) return forbidden(res);
 
   const season = await db.season.findFirst({
     where: { id: seasonId, deletedAt: null },

@@ -8,6 +8,7 @@ import { canAccessSeason, canViewStudent, staffScopeForSeason } from "../lib/per
 import { computeEngagementForSeason } from "../lib/queries/engagement";
 import { canReadAllStudents } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { forbidden } from "./respond";
 
 export const studentEngagementRouter = Router();
 export const seasonEngagementRouter = Router();
@@ -55,9 +56,7 @@ studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => 
   const studentUserId = parseId(req.params.id);
   if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
 
-  if (!(await canViewStudent(user, studentUserId))) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!(await canViewStudent(user, studentUserId))) return forbidden(res);
 
   const requestedSeasonId = parseId(
     typeof req.query.seasonId === "string" ? req.query.seasonId : undefined,
@@ -86,9 +85,7 @@ studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => 
       break;
     }
   }
-  if (!enrollment) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!enrollment) return forbidden(res);
 
   const rows = await computeEngagementForSeason(enrollment.seasonId, {
     studentUserIds: [studentUserId],
@@ -138,12 +135,8 @@ seasonEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => {
 
   // A cohort listing is a staff surface. canAccessSeason admits students to
   // their own season, so the role check is separate and comes first.
-  if (user.role === "STUDENT") {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
-  if (!(await canAccessSeason(user, seasonId))) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (user.role === "STUDENT") return forbidden(res);
+  if (!(await canAccessSeason(user, seasonId))) return forbidden(res);
 
   const groupId = parseId(typeof req.query.groupId === "string" ? req.query.groupId : undefined);
 
@@ -155,9 +148,7 @@ seasonEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => {
     if (scope === null || scope.kind !== "groups") {
       return apiOk(res, { students: [] });
     }
-    if (groupId !== null && !scope.groupIds.includes(groupId)) {
-      return apiError(res, "forbidden", "You don't have access to this.", 403);
-    }
+    if (groupId !== null && !scope.groupIds.includes(groupId)) return forbidden(res);
     const enrollments = await db.seasonEnrollment.findMany({
       where: {
         seasonId,

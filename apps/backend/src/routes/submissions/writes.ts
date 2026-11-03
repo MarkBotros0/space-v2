@@ -130,9 +130,7 @@ export async function startSubmission(req: Request, res: Response) {
     );
   }
 
-  if (!(await canAccessSeason(user, assignment.seasonId))) {
-    return forbidden(res);
-  }
+  if (!(await canAccessSeason(user, assignment.seasonId))) return forbidden(res);
   // The same targeting rule the assignment reads use, from the same helper —
   // a student must not be able to start a submission on work never set them.
   const targeted = await studentCanSeeAssignment(
@@ -178,9 +176,7 @@ export async function reviewSubmission(req: Request<{ publicId: string }>, res: 
   });
   if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
 
-  if (!(await canReviewSubmission(user, sub.id))) {
-    return forbidden(res);
-  }
+  if (!(await canReviewSubmission(user, sub.id))) return forbidden(res);
 
   const parsed = reviewSubmissionRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid review body.", 400);

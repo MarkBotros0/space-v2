@@ -22,6 +22,7 @@ import { canExportSeasonWorkbook, reportScopeFor } from "../lib/permissions";
 import { listEngagementRows, resolveReportScope } from "../lib/queries/reports";
 import { rateLimitHandler } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { forbidden } from "./respond";
 
 export const reportExportsRouter = Router();
 export const seasonExportsRouter = Router();
@@ -84,7 +85,7 @@ reportExportsRouter.get("/engagement/export", requireAuth, exportLimiter, async 
   const user = requireUser(req);
 
   const scope = reportScopeFor(user);
-  if (scope === null) return apiError(res, "forbidden", "You don't have access to this.", 403);
+  if (scope === null) return forbidden(res);
 
   if (req.query.format !== undefined) {
     const format = exportFormatSchema.safeParse(req.query.format);
@@ -136,9 +137,7 @@ seasonExportsRouter.get("/:id/exports/workbook", requireAuth, exportLimiter, asy
   // lib/permissions.ts and spec D6 #3. This is a deliberate divergence from
   // v1, whose endpoint allows any mentor any season (R85) and whose only
   // protection is an unrendered button (R86).
-  if (!canExportSeasonWorkbook(user, seasonId)) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!canExportSeasonWorkbook(user, seasonId)) return forbidden(res);
 
   // null covers "does not exist" AND "soft-deleted" — v1 checked neither
   // (R81, spec D14). One answer for both, so this cannot become an existence
@@ -181,9 +180,7 @@ seasonExportsRouter.get("/:id/exports/manifest", requireAuth, async (req, res) =
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
-  if (!canExportSeasonWorkbook(user, seasonId)) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!canExportSeasonWorkbook(user, seasonId)) return forbidden(res);
 
   const summary = await summariseSeasonWorkbook(seasonId);
   if (!summary) return apiError(res, "not_found", "Season not found.", 404);

@@ -96,9 +96,7 @@ export async function openCheckIn(req: Request, res: Response) {
   if (!session) return apiError(res, "not_found", "Session not found.", 404);
   // Season admins only — not group leaders. Opening check-in is what makes
   // self-marking possible for a whole season's roster.
-  if (!isAdminOfSeason(user, session.seasonId)) {
-    return forbidden(res);
-  }
+  if (!isAdminOfSeason(user, session.seasonId)) return forbidden(res);
 
   // Reuse an existing token so reopening does not invalidate a code already
   // displayed to a room.
@@ -121,9 +119,7 @@ export async function closeCheckIn(req: Request, res: Response) {
     select: { seasonId: true },
   });
   if (!session) return apiError(res, "not_found", "Session not found.", 404);
-  if (!isAdminOfSeason(user, session.seasonId)) {
-    return forbidden(res);
-  }
+  if (!isAdminOfSeason(user, session.seasonId)) return forbidden(res);
 
   await db.session.update({
     where: { id: sessionId },
@@ -148,9 +144,7 @@ export async function getCheckIn(req: Request, res: Response) {
     select: { seasonId: true, checkInToken: true, checkInOpenAt: true, checkInClosedAt: true },
   });
   if (!session) return apiError(res, "not_found", "Session not found.", 404);
-  if (!isAdminOfSeason(user, session.seasonId)) {
-    return forbidden(res);
-  }
+  if (!isAdminOfSeason(user, session.seasonId)) return forbidden(res);
 
   const state = checkInState(session);
   const expiresAt =
@@ -180,9 +174,7 @@ export async function regenerateCheckIn(req: Request, res: Response) {
 
   const session = await db.session.findUnique({ where: { id }, select: { seasonId: true } });
   if (!session) return apiError(res, "not_found", "Session not found.", 404);
-  if (!isAdminOfSeason(user, session.seasonId)) {
-    return forbidden(res);
-  }
+  if (!isAdminOfSeason(user, session.seasonId)) return forbidden(res);
 
   const checkInToken = newPublicId();
   await db.session.update({ where: { id }, data: { checkInToken } });

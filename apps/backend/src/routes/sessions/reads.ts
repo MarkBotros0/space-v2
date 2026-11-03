@@ -159,9 +159,7 @@ export async function listSessionQuizzes(req: Request, res: Response) {
 
   const exists = await db.session.findUnique({ where: { id }, select: { id: true } });
   if (!exists) return apiError(res, "not_found", "Session not found.", 404);
-  if ((await attendanceScopeFor(user, id)) === null) {
-    return forbidden(res);
-  }
+  if ((await attendanceScopeFor(user, id)) === null) return forbidden(res);
 
   const quizzes = await db.quiz.findMany({
     where: { sessionId: id },

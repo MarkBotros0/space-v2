@@ -30,9 +30,7 @@ export async function createQuiz(req: Request, res: Response) {
 
   // R1: creating is a season-admin power. isAdminOfSeason short-circuits SUPER
   // and pairs the claim with the role that can hold it (ruling C7).
-  if (!isAdminOfSeason(user, body.seasonId)) {
-    return forbidden(res);
-  }
+  if (!isAdminOfSeason(user, body.seasonId)) return forbidden(res);
 
   const season = await db.season.findFirst({
     where: { id: body.seasonId, deletedAt: null },
@@ -80,9 +78,7 @@ export async function updateQuiz(req: Request, res: Response) {
     select: { id: true, seasonId: true, kind: true },
   });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
-  if (!(await canManageQuiz(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canManageQuiz(user, id))) return forbidden(res);
 
   const parsed = updateQuizRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid quiz body.", 400);

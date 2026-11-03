@@ -60,9 +60,7 @@ export async function getSubmission(req: Request<{ publicId: string }>, res: Res
   const sub = await loadSubmissionForApi(publicId ?? "");
   if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
 
-  if (!(await canViewSubmission(user, sub.id))) {
-    return forbidden(res);
-  }
+  if (!(await canViewSubmission(user, sub.id))) return forbidden(res);
 
   // The student's group in this assignment's season, from the enrolment
   // (ruling C9) — v1's detail named it.

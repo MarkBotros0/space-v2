@@ -25,9 +25,7 @@ import { forbidden } from "../respond";
 export async function listSubmissionQueue(req: Request, res: Response) {
   const user = requireUser(req);
 
-  if (user.role === "STUDENT") {
-    return forbidden(res);
-  }
+  if (user.role === "STUDENT") return forbidden(res);
 
   const parsed = submissionQueueQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);

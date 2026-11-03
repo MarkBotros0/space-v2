@@ -24,9 +24,7 @@ export async function listAttempts(req: Request, res: Response) {
     select: { id: true, title: true, kind: true, maxScore: true, seasonId: true },
   });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
-  if (!(await canGradeQuiz(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canGradeQuiz(user, id))) return forbidden(res);
 
   const parsed = quizAttemptsQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
@@ -35,9 +33,7 @@ export async function listAttempts(req: Request, res: Response) {
   // Derived, never accepted (R105). visibleStudentIdsForQuiz returns them
   // sorted, so paging over the ids is stable and needs no second sort.
   const studentIds = await visibleStudentIdsForQuiz(user, quiz.seasonId);
-  if (studentIds === null) {
-    return forbidden(res);
-  }
+  if (studentIds === null) return forbidden(res);
   const remaining = cursor === undefined ? studentIds : studentIds.filter((sid) => sid > cursor);
   const pageIds = remaining.slice(0, limit);
 
@@ -157,9 +153,7 @@ export async function gradeAttempt(req: Request, res: Response) {
     select: { id: true, title: true, seasonId: true },
   });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
-  if (!(await canGradeQuiz(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canGradeQuiz(user, id))) return forbidden(res);
 
   const attempt = await db.quizAttempt.findUnique({
     where: { id: attemptId },
@@ -290,9 +284,7 @@ export async function reopenAttempt(req: Request, res: Response) {
     select: { id: true, title: true, seasonId: true, kind: true, publishedAt: true },
   });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
-  if (!(await canGradeQuiz(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canGradeQuiz(user, id))) return forbidden(res);
 
   const parsed = reopenAttemptRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid body.", 400);

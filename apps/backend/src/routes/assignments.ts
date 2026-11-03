@@ -20,6 +20,7 @@ import {
 } from "../lib/queries/assignments";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { updateAssignmentRequestSchema } from "../../../../packages/shared/src/index";
+import { forbidden } from "./respond";
 
 export const assignmentsRouter = Router();
 
@@ -36,9 +37,7 @@ assignmentsRouter.get("/:id", async (req, res) => {
   });
   if (!assignment) return apiError(res, "not_found", "Assignment not found.", 404);
 
-  if (!(await canAccessSeason(user, assignment.seasonId))) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!(await canAccessSeason(user, assignment.seasonId))) return forbidden(res);
 
   const detail = await loadAssignmentById(id);
   // Unreachable in practice — the existence check above already passed — but
@@ -59,7 +58,7 @@ assignmentsRouter.get("/:id", async (req, res) => {
       detail.groupIds,
     ))
   ) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
+    return forbidden(res);
   }
 
   let mySubmission = null;
@@ -106,9 +105,7 @@ assignmentsRouter.get("/:id/tracker", async (req, res) => {
   if (!assignment) return apiError(res, "not_found", "Assignment not found.", 404);
 
   const scope = await staffScopeForSeason(user, assignment.seasonId);
-  if (scope === null) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (scope === null) return forbidden(res);
 
   const tracker = await loadAssignmentTracker(
     id,
@@ -137,9 +134,7 @@ assignmentsRouter.patch("/:id", async (req, res) => {
     select: { seasonId: true, isAllGroups: true, targets: { select: { groupId: true } } },
   });
   if (!existing) return apiError(res, "not_found", "Assignment not found.", 404);
-  if (!canManageAssignment(user, existing.seasonId)) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!canManageAssignment(user, existing.seasonId)) return forbidden(res);
 
   const parsed = updateAssignmentRequestSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -191,9 +186,7 @@ assignmentsRouter.delete("/:id", async (req, res) => {
     select: { seasonId: true },
   });
   if (!existing) return apiError(res, "not_found", "Assignment not found.", 404);
-  if (!canManageAssignment(user, existing.seasonId)) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!canManageAssignment(user, existing.seasonId)) return forbidden(res);
 
   // Designed, not ported (ruling C12, spec 07 §10 item 4): a deleted
   // assignment with submissions would strand student work out of every view.

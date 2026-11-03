@@ -28,6 +28,7 @@ import { loadMyAttendance, loadMyProfile, loadMySeason, loadSeasonHistory } from
 import { rateLimitHandler } from "../lib/rate-limit";
 import { isAlumnus } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { forbidden } from "./respond";
 
 // Closes spec 18 R31: v1's current-password check was an unthrottled online
 // oracle for anyone already holding a session.
@@ -331,9 +332,7 @@ meRouter.get("/dashboard", requireAuth, async (req, res) => {
   const now = new Date();
 
   // An alumnus's Home is /me + /events; this endpoint has nothing for them.
-  if (isAlumnus(user)) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (isAlumnus(user)) return forbidden(res);
   // A student's season is their token's, never a parameter (D22, C8).
   if (user.role === "STUDENT") return apiOk(res, await loadStudentDashboard(user, now));
   if (user.role === "MENTOR") return apiOk(res, await loadMentorDashboard());
@@ -347,9 +346,7 @@ meRouter.get("/dashboard", requireAuth, async (req, res) => {
   // The gate, not a where clause (spec §4 item 1): SUPER and the season's
   // admins get "season"; a LEADER gets their groups in it; everyone else null.
   const scope = await staffScopeForSeason(user, seasonId);
-  if (scope === null) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (scope === null) return forbidden(res);
 
   const dashboard = await loadSeasonStaffDashboard(user, seasonId, scope, now);
   if (!dashboard) return apiError(res, "not_found", "Season not found.", 404);

@@ -22,9 +22,7 @@ export async function getAttendance(req: Request, res: Response) {
   // student's name and email, so reading it is staff-only — and a leader sees
   // only their own groups, which is what the scope narrows.
   const scope = await attendanceScopeFor(user, sessionId);
-  if (scope === null) {
-    return forbidden(res);
-  }
+  if (scope === null) return forbidden(res);
 
   const roster = await loadAttendanceRoster(
     sessionId,
@@ -41,9 +39,7 @@ export async function saveAttendance(req: Request, res: Response) {
   if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
 
   const scope = await attendanceScopeFor(user, sessionId);
-  if (scope === null) {
-    return forbidden(res);
-  }
+  if (scope === null) return forbidden(res);
 
   const parsed = saveAttendanceRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid attendance entries.", 400);

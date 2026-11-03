@@ -41,9 +41,7 @@ export async function startAttempt(req: Request, res: Response) {
   if (quiz.kind !== "ONLINE" || quiz.publishedAt === null) {
     return apiError(res, "quiz_not_published", "This quiz is not available.", 409);
   }
-  if (!(await canAccessSeason(user, quiz.seasonId))) {
-    return forbidden(res);
-  }
+  if (!(await canAccessSeason(user, quiz.seasonId))) return forbidden(res);
 
   const latest = await db.quizAttempt.findFirst({
     where: { quizId: id, studentUserId: user.userId },

@@ -67,14 +67,10 @@ export async function getGradeSheet(req: Request, res: Response) {
 
   const quiz = await db.quiz.findUnique({ where: { id }, select: { seasonId: true } });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
-  if (!(await canGradeQuiz(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canGradeQuiz(user, id))) return forbidden(res);
 
   const studentIds = await visibleStudentIdsForQuiz(user, quiz.seasonId);
-  if (studentIds === null) {
-    return forbidden(res);
-  }
+  if (studentIds === null) return forbidden(res);
 
   const sheet = await buildGradeSheet(id, studentIds);
   if (!sheet) return apiError(res, "not_found", "Quiz not found.", 404);
@@ -116,9 +112,7 @@ export async function saveGrades(req: Request, res: Response) {
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
 
   // (a) One gate, no role-conditional branch.
-  if (!(await canGradeQuiz(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canGradeQuiz(user, id))) return forbidden(res);
 
   // R94/D10: a QuizGrade against an ONLINE quiz is invisible to the student and
   // counts everywhere else.
@@ -131,9 +125,7 @@ export async function saveGrades(req: Request, res: Response) {
 
   // (b) Derived here, never taken from the request.
   const studentIds = await visibleStudentIdsForQuiz(user, quiz.seasonId);
-  if (studentIds === null) {
-    return forbidden(res);
-  }
+  if (studentIds === null) return forbidden(res);
   const visible = new Set(studentIds);
 
   // (c) Validate the WHOLE batch before writing any of it.

@@ -13,6 +13,7 @@ import {
 import { isAdminOfAnySeason, isAdminOfSeason } from "../lib/rbac";
 import { groupWriteRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { forbidden } from "./respond";
 
 export const groupsRouter = Router();
 
@@ -48,9 +49,7 @@ groupsRouter.patch("/:id", async (req, res) => {
   const group = await db.group.findUnique({ where: { id }, select: { seasonId: true } });
   if (!group) return apiError(res, "not_found", "Group not found.", 404);
 
-  if (!isAdminOfSeason(user, group.seasonId)) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!isAdminOfSeason(user, group.seasonId)) return forbidden(res);
 
   const parsed = groupWriteRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid group body.", 400);
@@ -85,7 +84,7 @@ groupsRouter.patch("/:id", async (req, res) => {
  */
 groupsRouter.get("/leader-options", async (req, res) => {
   const user = requireUser(req);
-  if (!isAdminOfAnySeason(user)) return apiError(res, "forbidden", "You don't have access to this.", 403);
+  if (!isAdminOfAnySeason(user)) return forbidden(res);
   const leaders = await db.user.findMany({
     where: { role: "LEADER", deletedAt: null },
     orderBy: { name: "asc" },
@@ -99,9 +98,7 @@ groupsRouter.get("/:id", async (req, res) => {
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid group id.", 400);
 
-  if (!(await canAccessGroup(user, id))) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!(await canAccessGroup(user, id))) return forbidden(res);
 
   const group = await db.group.findUnique({
     where: { id },
@@ -158,7 +155,7 @@ async function loadManagedGroup(req: Request, res: Response): Promise<number | n
     return null;
   }
   if (!isAdminOfSeason(user, group.seasonId)) {
-    apiError(res, "forbidden", "You don't have access to this.", 403);
+    forbidden(res);
     return null;
   }
   return id;

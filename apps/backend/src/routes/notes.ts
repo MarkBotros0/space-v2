@@ -16,6 +16,7 @@ import {
   plainTextToHtml,
   updateNoteRequestSchema,
 } from "../../../../packages/shared/src/index";
+import { forbidden } from "./respond";
 
 /**
  * Notes are mounted as three routers from one file rather than as routes added
@@ -78,9 +79,7 @@ studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, r
   // (R40) — in v2 the student opens the same app over the same API, so the
   // refusal has to be a rule. 403 rather than an empty array, which would be
   // indistinguishable from "this student has no notes" (D5 #2, D6).
-  if (user.role === "STUDENT") {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (user.role === "STUDENT") return forbidden(res);
 
   const student = await db.user.findFirst({
     where: { id: studentUserId, role: "STUDENT" },
@@ -91,15 +90,13 @@ studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, r
   // Gate one: may this caller see the student at all. Gate two is inside the
   // query. v1 had both as page-level conventions that did not know about each
   // other (R39).
-  if (!(await canViewStudent(user, studentUserId))) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!(await canViewStudent(user, studentUserId))) return forbidden(res);
 
   const parsed = noteListQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
 
   const page = await listNotesForStudent(user, studentUserId, parsed.data);
-  if (page === null) return apiError(res, "forbidden", "You don't have access to this.", 403);
+  if (page === null) return forbidden(res);
 
   auditNoteRead(user.userId, studentUserId, page.notes.length);
   return apiOk(res, page);
@@ -108,9 +105,7 @@ studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, r
 myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
   const user = requireUser(req);
   // Only the four roles that can author have anything to list (R46–R49, R51).
-  if (user.role === "STUDENT") {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (user.role === "STUDENT") return forbidden(res);
 
   const parsed = noteListQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
@@ -131,9 +126,7 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
 
   // Gated independently of the read path (ruling C8 #1): narrowing a list only
   // hides rows, it does not stop a caller who already knows an id.
-  if (!(await canWriteNote(user, studentUserId))) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!(await canWriteNote(user, studentUserId))) return forbidden(res);
 
   const parsed = createNoteRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid note body.", 400);

@@ -202,9 +202,7 @@ export async function downloadSubmissionFile(
   // canViewSubmission rather than the author-only check the write paths use:
   // a season admin or the student's group leader must be able to open
   // submitted work, while a peer student must not.
-  if (!(await canViewSubmission(user, file.submission.id))) {
-    return forbidden(res);
-  }
+  if (!(await canViewSubmission(user, file.submission.id))) return forbidden(res);
 
   let stream;
   try {

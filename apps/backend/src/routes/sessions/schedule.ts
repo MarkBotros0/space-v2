@@ -29,9 +29,7 @@ export async function createSession(req: Request, res: Response) {
     select: { id: true },
   });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
-  if (!isAdminOfSeason(user, body.seasonId)) {
-    return forbidden(res);
-  }
+  if (!isAdminOfSeason(user, body.seasonId)) return forbidden(res);
 
   // X13 / C2: calendar-week steps in the org zone, so a series keeps its
   // wall-clock time across DST. v1's addDays did the same in the HOST's zone.

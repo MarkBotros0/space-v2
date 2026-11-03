@@ -90,9 +90,7 @@ export async function getQuiz(req: Request, res: Response) {
 
   // Staff: grading needs the answer key (R103), and canGradeQuiz is the
   // audience that grades. canManage narrows further, to authoring.
-  if (!(await canGradeQuiz(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canGradeQuiz(user, id))) return forbidden(res);
   const detail = await loadQuizAuthoringDetail(id, await canManageQuiz(user, id));
   if (!detail) return apiError(res, "not_found", "Quiz not found.", 404);
   return apiOk(res, detail);

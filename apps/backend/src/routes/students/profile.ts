@@ -131,9 +131,7 @@ export async function updateStudent(req: Request, res: Response) {
   });
   if (!student) return apiError(res, "not_found", "Student not found.", 404);
 
-  if (!(await canEditStudent(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canEditStudent(user, id))) return forbidden(res);
 
   const allowed = isSuper(user) ? null : user.userId === id ? SELF_EDITABLE : ADMIN_EDITABLE;
   if (allowed) {

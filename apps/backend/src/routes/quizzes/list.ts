@@ -112,9 +112,7 @@ export async function listQuizzes(req: Request, res: Response) {
   }
 
   if (user.role === "STUDENT") {
-    if (!(await canAccessSeason(user, resolvedSeasonId))) {
-      return forbidden(res);
-    }
+    if (!(await canAccessSeason(user, resolvedSeasonId))) return forbidden(res);
     return apiOk(res, {
       items: await listQuizResultsForStudent(user.userId, resolvedSeasonId),
       nextCursor: null,
@@ -122,9 +120,7 @@ export async function listQuizzes(req: Request, res: Response) {
   }
 
   const studentIds = await visibleStudentIdsForQuiz(user, resolvedSeasonId);
-  if (studentIds === null) {
-    return forbidden(res);
-  }
+  if (studentIds === null) return forbidden(res);
 
   const rows = await db.quiz.findMany({
     where: {

@@ -32,9 +32,7 @@ export async function createEnrollment(req: Request, res: Response) {
 
   // Season-admin power over the TARGET season; SUPER passes inside the
   // predicate. Gate before any lookup — a refused caller learns nothing.
-  if (!isAdminOfSeason(user, seasonId)) {
-    return forbidden(res);
-  }
+  if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
   const season = await db.season.findFirst({
     where: { id: seasonId, deletedAt: null },
@@ -92,9 +90,7 @@ export async function updateEnrollment(req: Request, res: Response) {
   // R64's gate, moved BEFORE the lookup: v1 fetched the enrollment first and
   // gated second, so a refused caller still learned whether an arbitrary id
   // existed (R65).
-  if (!isAdminOfSeason(user, seasonId)) {
-    return forbidden(res);
-  }
+  if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
   const enrollment = await db.seasonEnrollment.findUnique({
     where: { studentUserId_seasonId: { studentUserId: id, seasonId } },

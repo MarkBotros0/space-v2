@@ -72,9 +72,7 @@ export async function getSeasonByCode(req: Request, res: Response) {
 
   const found = await db.season.findFirst({ where: { code, deletedAt: null }, select: { id: true } });
   if (!found) return apiError(res, "not_found", "Season not found.", 404);
-  if (!(await canAccessSeason(user, found.id))) {
-    return forbidden(res);
-  }
+  if (!(await canAccessSeason(user, found.id))) return forbidden(res);
 
   const season = await loadSeasonDetail(user, found.id);
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
@@ -86,9 +84,7 @@ export async function getSeason(req: Request, res: Response) {
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
-  if (!(await canAccessSeason(user, id))) {
-    return forbidden(res);
-  }
+  if (!(await canAccessSeason(user, id))) return forbidden(res);
 
   const season = await loadSeasonDetail(user, id);
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
