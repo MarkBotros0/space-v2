@@ -115,13 +115,27 @@ ported from).
 ## API surface
 
 `apps/backend` now serves all of v1's `/api/v1` — every route file v1 had
-under that prefix has a ported counterpart here. `src/routes/` mirrors v1's
-route tree file-for-file (`auth.ts`, `me.ts`, `seasons.ts`, `groups.ts`,
-`sessions.ts`, `assignments.ts`, `submissions.ts`, plus `health.ts`).
+under that prefix has a ported counterpart here. `src/routes/` has one module
+per v1 domain: small domains are a single file (`auth.ts`, `me.ts`,
+`groups.ts`, `assignments.ts`, `health.ts`, ...); big ones are a folder
+(`quizzes/`, `sessions/`, `submissions/`, `seasons/`, `students/`, `users/`,
+`video-quiz/`) whose `index.ts` is the route table — paths and middleware in
+registration order — and whose sibling files hold the handlers. Register new
+paths in the `index.ts`, keeping order (`/:id/foo` before `/:id`). A value
+import of `packages/shared` from inside a route folder needs one more `../`
+than from `routes/auth.ts` (see the hard constraint above). The 403 envelope
+is `forbidden(res)` from `routes/respond.ts`.
 Authorization runs through two layers: `lib/rbac.ts` holds pure predicates
 over a decoded token's claims (role, `seasonAdminIds`, `groupLeaderIds`), and
-`lib/permissions.ts` holds the database-backed gates that check a specific
-row's ownership/scope before a handler proceeds. `lib/public-id.ts`
+`lib/permissions/` (one file per domain, re-exported from its `index.ts`)
+holds the database-backed gates that check a specific row's ownership/scope
+before a handler proceeds.
+
+**File size.** Keep every source and test file at or under 400 lines. Split by
+responsibility, turning `foo.ts` into `foo/index.ts` plus parts so importers
+keep the same path. In the mobile app, never put non-route files under `app/`
+(expo-router makes every file a route): screen sections go in
+`src/screens/<screen>/`. `lib/public-id.ts`
 deliberately does **not** use `nanoid` — v1's generator is nanoid v5, which is
 ESM-only, and this backend compiles to CommonJS, so requiring it would throw
 `ERR_REQUIRE_ESM` at runtime. `newPublicId()` reimplements the same alphabet
