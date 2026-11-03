@@ -1,0 +1,74 @@
+name: Tests (on demand)
+
+# Manual only: Actions tab > Tests (on demand) > Run workflow. Deliberately
+# NOT wired to pull_request or push, so it never runs unless someone asks.
+#
+# Integration tests run against a throwaway Postgres in this job, migrated
+# with prisma/migrations. Never staging.
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Which tests to run"
+        required: true
+        type: choice
+        default: all
+        options: [all, unit, integration]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks-and-unit:
+    if: ${{ github.event.inputs.suite != 'integration' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+        working-directory: apps/backend
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:unit
+
+  integration:
+    if: ${{ github.event.inputs.suite != 'unit' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tests
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tests
+      AUTH_SECRET: ci-only-test-secret-not-used-anywhere-else
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: |
+          pnpm db:generate
+          pnpm db:migrate:local
+        working-directory: apps/backend
+      - run: pnpm test:integration
+        working-directory: apps/backend
