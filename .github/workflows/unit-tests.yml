@@ -1,0 +1,31 @@
+name: Unit tests (on demand)
+
+# Manual only: Actions tab > Unit tests (on demand) > Run workflow. Deliberately
+# NOT wired to pull_request or push, so it never runs unless someone asks.
+#
+# Runs lint, typecheck and the unit tests of both apps. Needs no database.
+# Integration tests are the separate "Integration tests (on demand)" workflow.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: unit-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+        working-directory: apps/backend
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:unit
