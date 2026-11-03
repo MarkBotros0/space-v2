@@ -21,6 +21,7 @@ import {
 } from "../lib/queries/reports";
 import { isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { forbidden } from "./respond";
 
 export const reportsRouter = Router();
 
@@ -45,7 +46,7 @@ reportsRouter.get("/engagement", requireAuth, async (req, res) => {
   // LEADER and STUDENT, explicitly. Not an empty list — an empty list is
   // indistinguishable from "there is no data", which is exactly the accident
   // v1 relied on (spec D6 #4, R109, R110).
-  if (scope === null) return apiError(res, "forbidden", "You don't have access to this.", 403);
+  if (scope === null) return forbidden(res);
 
   const parsed = reportScopeQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid report filters.", 400);
@@ -71,7 +72,7 @@ reportsRouter.get("/engagement/students", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
   const scope = reportScopeFor(user);
-  if (scope === null) return apiError(res, "forbidden", "You don't have access to this.", 403);
+  if (scope === null) return forbidden(res);
 
   const parsed = engagementStudentsQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid report filters.", 400);
@@ -97,7 +98,7 @@ reportsRouter.get("/engagement/students", requireAuth, async (req, res) => {
  */
 reportsRouter.get("/organisation", requireAuth, async (req, res) => {
   const user = requireUser(req);
-  if (!isSuper(user)) return apiError(res, "forbidden", "You don't have access to this.", 403);
+  if (!isSuper(user)) return forbidden(res);
 
   return apiOk(res, await buildOrganisationReport());
 });

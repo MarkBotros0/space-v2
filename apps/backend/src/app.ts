@@ -111,7 +111,7 @@ export function createApp(): Express {
   app.use("/api/v1/reports", reportExportsRouter);
   // Fall-through mounting after seasonsRouter: that router's /:id, /:id/groups,
   // /:id/sessions and /:id/assignments cannot match /:id/exports/*, and keeping
-  // this domain's routes in this domain's file stops seasons.ts accumulating a
+  // this domain's routes in this domain's file stops routes/seasons/ accumulating a
   // fourth unrelated concern.
   app.use("/api/v1/seasons", seasonExportsRouter);
 

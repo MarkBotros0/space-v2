@@ -26,12 +26,13 @@ import {
   plainTextToHtml,
   submitForumResponseRequestSchema,
 } from "../../../../packages/shared/src/index";
+import { forbidden } from "./respond";
 
 /**
  * Domain 14. Mounted at /api/v1 because the thread hangs off an assignment
  * (`/assignments/:id/forum*`) while a comment is addressed on its own
  * (`/forum/comments/:commentId`). Per-route `requireAuth` only (ruling X5) —
- * see video-quiz.ts for why.
+ * see video-quiz/index.ts for why.
  *
  * Status-code rule: the assignment is resolved first (missing, deleted or not
  * FORUM → 404 for every caller); only then does the audience gate run (403).
@@ -51,7 +52,7 @@ forumRouter.get("/assignments/:id/forum", requireAuth, async (req, res) => {
   }
 
   const audience = await forumAudienceFor(user, assignmentId);
-  if (audience === null) return apiError(res, "forbidden", "You don't have access to this.", 403);
+  if (audience === null) return forbidden(res);
 
   const view = await loadForumView(assignmentId, user, audience, parsedQuery.data);
   if (view === null) return apiError(res, "not_found", "Assignment not found.", 404);
@@ -75,9 +76,7 @@ forumRouter.put("/assignments/:id/forum/response", requireAuth, async (req, res)
   if (assignment === null) return apiError(res, "not_found", "Assignment not found.", 404);
 
   const audience = await forumAudienceFor(user, assignmentId);
-  if (audience === null || audience.kind !== "student") {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (audience === null || audience.kind !== "student") return forbidden(res);
 
   const parsed = submitForumResponseRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid response.", 400);
@@ -151,7 +150,7 @@ forumRouter.get(
     if (assignment === null) return apiError(res, "not_found", "Assignment not found.", 404);
 
     const audience = await forumAudienceFor(user, assignmentId);
-    if (audience === null) return apiError(res, "forbidden", "You don't have access to this.", 403);
+    if (audience === null) return forbidden(res);
 
     const post = await resolvePost(assignmentId, req.params.publicId);
     // A DRAFT is not a post (spec 14 R23): indistinguishable from a missing one.
@@ -159,7 +158,7 @@ forumRouter.get(
       return apiError(res, "not_found", "Post not found.", 404);
     }
     if (!(await postInAudience(audience, assignment.seasonId, post.studentUserId))) {
-      return apiError(res, "forbidden", "You don't have access to this.", 403);
+      return forbidden(res);
     }
 
     // The same lock the feed applies: a student reads nothing until they post.
@@ -198,9 +197,7 @@ forumRouter.post(
     const parsed = addForumCommentRequestSchema.safeParse(req.body);
     if (!parsed.success) return apiError(res, "bad_request", "Invalid comment.", 400);
 
-    if (!(await canCommentOnForumSubmission(user, post.id))) {
-      return apiError(res, "forbidden", "You don't have access to this.", 403);
-    }
+    if (!(await canCommentOnForumSubmission(user, post.id))) return forbidden(res);
 
     // Post-first, for students only (v1 R41). Staff bypass it by construction.
     if (user.role === "STUDENT") {
@@ -254,9 +251,7 @@ forumRouter.delete("/forum/comments/:commentId", requireAuth, async (req, res) =
   });
   if (comment === null) return apiError(res, "not_found", "Comment not found.", 404);
 
-  if (!(await canDeleteForumComment(user, commentId))) {
-    return apiError(res, "forbidden", "You don't have access to this.", 403);
-  }
+  if (!(await canDeleteForumComment(user, commentId))) return forbidden(res);
 
   // Hard delete: there is no deletedAt column and adding one is a migration.
   // Comments cannot nest, so nothing is orphaned (spec 14 R51).
