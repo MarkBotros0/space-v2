@@ -11,7 +11,6 @@ function loadConfig(env: Record<string, string | undefined>) {
     if (value !== undefined) process.env[key] = value;
   }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     return (require("../lib/config") as { config: Record<string, unknown> }).config;
   } finally {
     for (const key of Object.keys(process.env)) delete process.env[key];
