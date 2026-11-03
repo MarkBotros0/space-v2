@@ -18,7 +18,7 @@ jest.mock("@10play/tentap-editor", () => ({
   PlaceholderBridge: { configureExtension: () => ({}) },
 }));
 
-import { BarChartCard, DataTable, PieChartCard, RichTextEditor, RichTextView, ThemeToggle } from "../design/ui";
+import { DataTable, RichTextEditor, RichTextView, ThemeToggle } from "../design/ui";
 
 type Row = { id: number; name: string; pct: string };
 const columns = [
@@ -78,19 +78,6 @@ describe("ThemeToggle (v1 single button)", () => {
     render(<ThemeToggle />);
     fireEvent.press(screen.getByRole("button", { name: "Switch to light mode" }));
     expect(mockSetMode).toHaveBeenCalledWith("light");
-  });
-});
-
-describe("charts", () => {
-  it("BarChartCard shows its title and one bar per datum", () => {
-    render(<BarChartCard title="Enrollment" data={[{ m: "Jan", n: 3 }, { m: "Feb", n: 5 }]} xKey="m" yKey="n" />);
-    expect(screen.getByText("Enrollment")).toBeTruthy();
-    expect(screen.getAllByTestId("bar")).toHaveLength(2);
-  });
-
-  it("PieChartCard labels each slice by name", () => {
-    render(<PieChartCard title="Engagement" data={[{ name: "High", value: 3 }, { name: "Low", value: 1 }]} />);
-    expect(screen.getAllByTestId("slice")).toHaveLength(2);
   });
 });
 

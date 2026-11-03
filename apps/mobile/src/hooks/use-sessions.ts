@@ -2,9 +2,7 @@ import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query
 import { z } from "zod";
 import {
   sessionListItemSchema,
-  sessionRangeResponseSchema,
   type SessionListItem,
-  type SessionRange,
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
@@ -34,33 +32,6 @@ export function useSeasonSessions(seasonId: number | null): UseQueryResult<Sessi
     queryKey: queryKeys.sessions.bySeason(seasonId),
     queryFn: () => fetchSeasonSessions(seasonId as number),
     enabled: seasonId !== null,
-  });
-}
-
-export interface SessionRangeParams {
-  seasonId: number | null;
-  from: string | null;
-  to: string | null;
-}
-
-/**
- * GET /api/v1/sessions (Plan 6 D-16.7): the role decides which seasons; the
- * window defaults server-side to org-midnight today + 8 calendar weeks. Pass
- * `from` (= the previous `to`) for "Later", `to` (= the previous `from`) for
- * "Earlier" — the server owns every org-day boundary (C2).
- */
-export function useSessionRange(params: SessionRangeParams, enabled: boolean): UseQueryResult<SessionRange> {
-  return useQuery({
-    queryKey: queryKeys.sessions.range(params),
-    queryFn: async () => {
-      const query: Record<string, string | number> = {};
-      if (params.seasonId !== null) query.seasonId = params.seasonId;
-      if (params.from !== null) query.from = params.from;
-      if (params.to !== null) query.to = params.to;
-      const res = await apiClient.get("/api/v1/sessions", { params: query });
-      return sessionRangeResponseSchema.parse(res.data.data);
-    },
-    enabled,
   });
 }
 

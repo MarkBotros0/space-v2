@@ -1,5 +1,5 @@
 import {
-  addDays, bucketByDay, dayCue, fetchWindow, monthGridKeys, rangeLabel, seasonSlots,
+  addDays, bucketByDay, dayCue, monthGridKeys, rangeLabel,
   sessionBadge, sessionTone, startOfWeek, stepAnchor, weekKeys,
 } from "../lib/calendar-grid";
 
@@ -32,14 +32,6 @@ describe("calendar-grid", () => {
     expect(rangeLabel("week", "2099-03-01")).toBe("Feb 23 – Mar 1");
   });
 
-  it("pads the fetch window a day each side and stays under the 120-day cap", () => {
-    const keys = monthGridKeys("2099-03-15");
-    const { from, to } = fetchWindow(keys);
-    expect(from).toBe("2099-02-22T00:00:00.000Z");
-    expect(to).toBe("2099-04-07T00:00:00.000Z");
-    expect((Date.parse(to) - Date.parse(from)) / 86_400_000).toBeLessThan(120);
-  });
-
   it("classifies a day and words the cue", () => {
     expect(sessionTone("2099-03-01", "2099-03-01")).toBe("today");
     expect(sessionTone("2099-02-28", "2099-03-01")).toBe("past");
@@ -57,13 +49,6 @@ describe("calendar-grid", () => {
     expect(sessionBadge(past, "2099-03-01", true)).toBe("Attendance marked");
     expect(sessionBadge({ ...past, attendanceMarked: false }, "2099-03-01", true)).toBe("Attendance pending");
     expect(sessionBadge(past, "2099-03-01", false)).toBeNull();
-  });
-
-  it("assigns palette slots by first appearance, cycling after five", () => {
-    const codes = ["A", "B", "A", "C", "D", "E", "F"].map((seasonCode) => ({ seasonCode }));
-    expect(seasonSlots(codes)).toEqual({ A: 0, B: 1, C: 2, D: 3, E: 4, F: 0 });
-    // A later window keeps the colours already handed out.
-    expect(seasonSlots([{ seasonCode: "Z" }, { seasonCode: "B" }], { B: 1, A: 0 })).toEqual({ A: 0, B: 1, Z: 2 });
   });
 
   it("buckets sessions and events by the server's dayKey", () => {

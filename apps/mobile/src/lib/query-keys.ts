@@ -68,8 +68,6 @@ export const queryKeys = {
     bySeason: (seasonId: number | null) => [...queryKeys.sessions.lists(), { seasonId }] as const,
     detail: (id: number | null) => [...queryKeys.sessions.all, "detail", { id }] as const,
     /** GET /sessions windows (D-16.7). Under lists(), so invalidating sessions.all refreshes them. */
-    range: (params: { seasonId: number | null; from: string | null; to: string | null }) =>
-      [...queryKeys.sessions.lists(), "range", params] as const,
     series: (id: number | null, scope: RecurrenceScope) =>
       [...queryKeys.sessions.all, "series", { id, scope }] as const,
     checkIn: (id: number | null) => [...queryKeys.sessions.all, "checkIn", { id }] as const,

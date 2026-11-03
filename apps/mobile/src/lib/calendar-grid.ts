@@ -100,18 +100,6 @@ export function rangeLabel(view: Exclude<CalendarView, "upcoming">, anchor: stri
     : `${short(first)} – ${short(last)}`;
 }
 
-/**
- * The window to ask GET /sessions for so every visible day is covered.
- * The server owns org-day boundaries (C2), so the device pads one day each
- * side instead of guessing them, and files the response by its own `dayKey`.
- * A month grid is at most 42 days + padding, inside the 120-day cap.
- */
-export function fetchWindow(keys: string[]): { from: string; to: string } {
-  const first = keys[0] ?? "1970-01-01";
-  const last = keys[keys.length - 1] ?? first;
-  return { from: `${addDays(first, -1)}T00:00:00.000Z`, to: `${addDays(last, 2)}T00:00:00.000Z` };
-}
-
 export type SessionTone = "today" | "past" | "upcoming";
 
 export function sessionTone(dayKey: string, today: string): SessionTone {
@@ -138,22 +126,6 @@ export function sessionBadge(
   if (tone === "upcoming") return "Upcoming";
   if (!isStaff) return null;
   return s.attendanceMarked ? "Attendance marked" : "Attendance pending";
-}
-
-/**
- * v1's SEASON_PALETTE slot (0-4) per season, in order of first appearance.
- * Pass the previous result so a season keeps its colour as the window moves;
- * v1 coloured one fixed list, a windowed phone view needs the memory.
- */
-export function seasonSlots(
-  sessions: Pick<SessionListItem, "seasonCode">[],
-  previous: Record<string, number> = {},
-): Record<string, number> {
-  const slots = { ...previous };
-  for (const { seasonCode } of sessions) {
-    if (!(seasonCode in slots)) slots[seasonCode] = Object.keys(slots).length % 5;
-  }
-  return slots;
 }
 
 export interface DayContents {

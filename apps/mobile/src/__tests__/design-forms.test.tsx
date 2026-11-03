@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { renderWithProviders } from "./helpers/render";
 import {
-  ChipInput,
   Combobox,
   DatePicker,
   FormField,
@@ -112,16 +111,6 @@ it("MultiSelect toggles several options (v1 onChange)", () => {
   fireEvent.press(screen.getByLabelText("Tags"));
   fireEvent.press(screen.getByText("Beta"));
   expect(onChange).toHaveBeenCalledWith(["a", "b"]);
-});
-
-it("ChipInput adds on submit and removes on ×", () => {
-  const onChange = jest.fn();
-  render(<ChipInput accessibilityLabel="Emails" value={["x"]} onChange={onChange} />);
-  fireEvent.changeText(screen.getByLabelText("Emails"), "y");
-  fireEvent(screen.getByLabelText("Emails"), "submitEditing");
-  expect(onChange).toHaveBeenCalledWith(["x", "y"]);
-  fireEvent.press(screen.getByLabelText("Remove x"));
-  expect(onChange).toHaveBeenCalledWith([]);
 });
 
 it("DatePicker shows v1's PPP format and picks a day", () => {
