@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View } from "react-native";
+import { View, type TextInputProps } from "react-native";
 import {
   formatTimestamp,
   parseTimestamp,
@@ -12,9 +12,15 @@ import {
   useVideoQuestionWrites,
   useVideoQuizResults,
 } from "../hooks/use-video-quiz";
+import { FormErrorBox } from "../design/forms/form-parts";
+import { InlineError } from "../design/layout/route-states";
+import { Button } from "../design/ui/button";
+import { Card } from "../design/ui/card";
+import { FormField } from "../design/ui/form-field";
+import { Input } from "../design/ui/input";
+import { Skeleton } from "../design/ui/skeleton";
+import { Text } from "../design/ui/text";
 import { apiErrorMessage } from "../lib/api-error";
-import { useTheme } from "../theme";
-import { Button, Card, ErrorState, Input, LoadingState, Text } from "../ui";
 import { ChoiceChips } from "./ChoiceChips";
 
 const MAX_OPTIONS = 6;
@@ -39,37 +45,47 @@ const EMPTY_FORM: FormState = {
   points: "1",
 };
 
+/** A labelled text field; the label doubles as the input's accessibility label. */
+function LabelledInput({
+  label,
+  error,
+  ...props
+}: Omit<TextInputProps, "accessibilityLabel"> & { label: string; error?: string }) {
+  return (
+    <FormField label={label} error={error}>
+      <Input accessibilityLabel={label} {...props} />
+    </FormField>
+  );
+}
+
 /**
  * Results for a session's video quiz: a table nobody had in v1. Rendered for
  * authors (inside the editor) and for a LEADER on their own (the server narrows
  * a leader to their groups).
  */
 export function VideoQuizResultsTable({ sessionId }: { sessionId: number }) {
-  const theme = useTheme();
   const results = useVideoQuizResults(sessionId, true);
   return (
-    <Card style={{ gap: theme.spacing.sm }}>
-      <Text variant="heading">Results</Text>
+    <Card className="flex-col gap-2 p-4">
+      <Text className="text-lg font-semibold">Results</Text>
       {results.isPending ? (
-        <LoadingState />
+        <View accessible accessibilityLabel="Loading">
+          <Skeleton className="h-16 rounded-xl" />
+        </View>
       ) : results.isError ? (
-        <ErrorState message="Couldn't load the results." onRetry={() => void results.refetch()} />
+        <InlineError message="Couldn't load the results." onRetry={() => void results.refetch()} />
       ) : results.data.rows.length === 0 ? (
-        <Text variant="body" color={theme.colors.neutral[600]}>
-          No students to show yet.
-        </Text>
+        <Text className="text-muted-foreground">No students to show yet.</Text>
       ) : (
         results.data.rows.map((row) => (
-          <View
-            key={row.studentUserId}
-            style={{ flexDirection: "row", justifyContent: "space-between", gap: theme.spacing.sm }}
-          >
-            <Text variant="body" style={{ flex: 1 }}>
-              {row.studentName ?? `Student ${row.studentUserId}`}
-            </Text>
-            <Text variant="label">{`${row.answeredCount} / ${row.questionCount}`}</Text>
-            <Text variant="label">{`${row.earnedPoints} / ${row.totalPoints} pts`}</Text>
-            <Text variant="label" accessibilityLabel={row.completedAt ? "Completed" : "Not completed"}>
+          <View key={row.studentUserId} className="flex-row justify-between gap-2">
+            <Text className="min-w-0 flex-1">{row.studentName ?? `Student ${row.studentUserId}`}</Text>
+            <Text className="shrink-0 text-sm font-medium">{`${row.answeredCount} / ${row.questionCount}`}</Text>
+            <Text className="shrink-0 text-sm font-medium">{`${row.earnedPoints} / ${row.totalPoints} pts`}</Text>
+            <Text
+              className="shrink-0 text-sm font-medium"
+              accessibilityLabel={row.completedAt ? "Completed" : "Not completed"}
+            >
               {row.completedAt ? "✓" : "–"}
             </Text>
           </View>
@@ -80,7 +96,6 @@ export function VideoQuizResultsTable({ sessionId }: { sessionId: number }) {
 }
 
 export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
-  const theme = useTheme();
   const questions = useVideoQuestions(sessionId, true);
   const { create, update, remove } = useVideoQuestionWrites(sessionId);
 
@@ -181,48 +196,51 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
   };
 
   return (
-    <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.md }}>
-      <Text variant="heading">Video questions</Text>
+    <View className="mt-4 flex-col gap-4">
+      <Text className="text-lg font-semibold">Video questions</Text>
       {questions.isPending ? (
-        <LoadingState />
+        <View accessible accessibilityLabel="Loading">
+          <Skeleton className="h-24 rounded-2xl" />
+        </View>
       ) : questions.isError ? (
-        <ErrorState message="Couldn't load the questions." onRetry={() => void questions.refetch()} />
+        <InlineError message="Couldn't load the questions." onRetry={() => void questions.refetch()} />
       ) : (
         <>
           {questions.data.length === 0 ? (
-            <Text variant="body" color={theme.colors.neutral[600]}>
-              No questions yet.
-            </Text>
+            <Text className="text-muted-foreground">No questions yet.</Text>
           ) : (
             questions.data.map((q) => (
-              <Card key={q.id} style={{ gap: theme.spacing.xs }}>
-                <Text variant="label">{formatTimestamp(q.atSeconds)}</Text>
-                <Text variant="body">{q.prompt}</Text>
-                <Text variant="caption" color={theme.colors.neutral[600]}>
+              <Card key={q.id} className="flex-col gap-1 p-4">
+                <Text className="text-sm font-medium">{formatTimestamp(q.atSeconds)}</Text>
+                <Text>{q.prompt}</Text>
+                <Text className="text-xs text-muted-foreground">
                   {`Correct answer: ${q.options[q.correctIndex] ?? ""}`}
                 </Text>
-                <Text variant="caption" color={theme.colors.neutral[600]}>
-                  {`${q.responseCount} answers recorded`}
-                </Text>
-                <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-                  <Button title="Edit" variant="ghost" onPress={() => openEdit(q)} />
+                <Text className="text-xs text-muted-foreground">{`${q.responseCount} answers recorded`}</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  <Button variant="outline" onPress={() => openEdit(q)}>
+                    Edit
+                  </Button>
                   <Button
-                    title={armedDelete === q.id ? `Delete ${q.responseCount} answers?` : "Delete"}
-                    variant="ghost"
+                    variant="destructive"
+                    disabled={remove.isPending && remove.variables === q.id}
                     onPress={() => onDelete(q)}
-                    loading={remove.isPending && remove.variables === q.id}
-                  />
+                  >
+                    {armedDelete === q.id ? `Delete ${q.responseCount} answers?` : "Delete"}
+                  </Button>
                 </View>
               </Card>
             ))
           )}
-          {status ? <Text variant="label">{status}</Text> : null}
+          {status ? <Text className="text-sm font-medium">{status}</Text> : null}
 
           {form === null ? (
-            <Button title="Add question" variant="secondary" onPress={openAdd} />
+            <Button variant="secondary" size="lg" onPress={openAdd}>
+              Add question
+            </Button>
           ) : (
-            <Card style={{ gap: theme.spacing.sm }}>
-              <Input
+            <Card className="flex-col gap-2 p-4">
+              <LabelledInput
                 label="Timestamp"
                 value={form.timestamp}
                 onChangeText={(v) => patch({ timestamp: v })}
@@ -230,23 +248,23 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
                 placeholder="2:30"
                 autoCapitalize="none"
               />
-              <Input label="Question" value={form.prompt} onChangeText={(v) => patch({ prompt: v })} />
+              <LabelledInput label="Question" value={form.prompt} onChangeText={(v) => patch({ prompt: v })} />
               {form.options.map((option, index) => (
-                <Input
+                <LabelledInput
                   key={index}
                   label={`Option ${index + 1}`}
                   value={option}
-                  onChangeText={(v) =>
-                    patch({ options: form.options.map((o, i) => (i === index ? v : o)) })
-                  }
+                  onChangeText={(v) => patch({ options: form.options.map((o, i) => (i === index ? v : o)) })}
                 />
               ))}
               {form.options.length < MAX_OPTIONS ? (
                 <Button
-                  title="Add option"
-                  variant="ghost"
+                  variant="outline"
+                  className="self-start"
                   onPress={() => patch({ options: [...form.options, ""] })}
-                />
+                >
+                  Add option
+                </Button>
               ) : null}
               <ChoiceChips
                 label="Correct answer"
@@ -254,23 +272,21 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
                 value={form.correctIndex}
                 onChange={(v) => patch({ correctIndex: v })}
               />
-              <Input
+              <LabelledInput
                 label="Points"
                 value={form.points}
                 onChangeText={(v) => patch({ points: v })}
                 keyboardType="number-pad"
               />
-              {formError ? (
-                <Text variant="label" color={theme.colors.error[500]}>
-                  {formError}
-                </Text>
-              ) : null}
-              <Button
-                title="Save question"
-                onPress={onSave}
-                loading={create.isPending || update.isPending}
-              />
-              <Button title="Cancel" variant="ghost" onPress={() => setForm(null)} />
+              <FormErrorBox message={formError} />
+              <View className="flex-col gap-2">
+                <Button size="lg" disabled={create.isPending || update.isPending} onPress={onSave}>
+                  {create.isPending || update.isPending ? "Saving…" : "Save question"}
+                </Button>
+                <Button size="lg" variant="outline" onPress={() => setForm(null)}>
+                  Cancel
+                </Button>
+              </View>
             </Card>
           )}
         </>
