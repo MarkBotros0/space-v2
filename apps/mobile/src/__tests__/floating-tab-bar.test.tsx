@@ -26,6 +26,7 @@ afterEach(() => {
   setReducedMotionForTests(null);
   resetTabBarScroll();
   mockWithSpring.mockClear();
+  jest.restoreAllMocks();
 });
 
 const items: NavItem[] = [
@@ -128,17 +129,39 @@ describe("sliding highlight", () => {
     expect(navigateToTab).toHaveBeenLastCalledWith("history-key");
   });
 
-  it("springs to the target, and jumps under reduced motion", () => {
+  it("places the highlight at the active tab on first measure without a spring", () => {
+    renderBar("history");
+    layoutTab("History", 210);
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    expect(mockWithSpring).not.toHaveBeenCalledWith(210, expect.anything());
+  });
+
+  it("springs the highlight to the pressed tab's x, and jumps under reduced motion", () => {
     renderBar("dashboard");
     layoutTab("Home", 140);
     layoutTab("History", 210);
-    mockWithSpring.mockClear();
     fireEvent.press(screen.getByLabelText("History"));
-    expect(mockWithSpring).toHaveBeenCalled();
+    expect(mockWithSpring).toHaveBeenCalledWith(210, expect.anything());
     setReducedMotionForTests(true);
     mockWithSpring.mockClear();
     fireEvent.press(screen.getByLabelText("Home"));
-    expect(mockWithSpring).not.toHaveBeenCalled();
+    expect(mockWithSpring).not.toHaveBeenCalledWith(140, expect.anything());
+  });
+
+  it("keeps the latest press when the navigator reports an earlier one, then settles", () => {
+    const nav = jest.fn();
+    const view = render(barTree("dashboard", nav));
+    layoutTab("Assignments", 70);
+    layoutTab("History", 210);
+    fireEvent.press(screen.getByLabelText("Assignments"));
+    fireEvent.press(screen.getByLabelText("History"));
+    view.rerender(barTree("assignments", nav));
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    view.rerender(barTree("history", nav));
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    // pressed was cleared: the highlight now follows the navigator again.
+    view.rerender(barTree("assignments", nav));
+    expect(highlightTarget()).toEqual({ x: 70, width: 70 });
   });
 });
 
@@ -152,7 +175,6 @@ describe("frosted fill", () => {
     jest.replaceProperty(Platform, "OS", "android");
     renderBar();
     expect(screen.UNSAFE_queryByType(BlurView)).toBeNull();
-    jest.restoreAllMocks();
   });
 });
 

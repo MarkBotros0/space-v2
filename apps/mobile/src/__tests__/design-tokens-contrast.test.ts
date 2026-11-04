@@ -58,4 +58,14 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     expect(contrast(rgbOf(t["pill-foreground"]), bg)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(rgbOf(t["pill-active"]), bg)).toBeGreaterThanOrEqual(3);
   });
+
+  // The active tab: the pill over white (worst case), then the 20% teal highlight over that.
+  it("active tab label, icon and idle label read on the highlighted pill (R18)", () => {
+    const pill = composite(t.pill, "#FFFFFF");
+    const active = parse(t["pill-active"] ?? "").rgb;
+    const lit = pill.map((c, i) => active[i]! * 0.2 + c * 0.8);
+    expect(contrast(rgbOf(t["pill-active-label"]), lit)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(active, lit)).toBeGreaterThanOrEqual(3);
+    expect(contrast(rgbOf(t["pill-foreground"]), pill)).toBeGreaterThanOrEqual(4.5);
+  });
 });

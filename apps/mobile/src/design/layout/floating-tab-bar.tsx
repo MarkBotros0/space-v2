@@ -67,7 +67,13 @@ export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & 
   const active = pressed ?? routeActive;
   const [layouts, setLayouts] = useState<Record<string, { x: number; width: number }>>({});
 
-  useEffect(() => setPressed(null), [routeActive]);
+  // The navigator catching up with the press ends it; a report of any other route (an older
+  // press settling, a press that never navigated) must not pull the highlight back. A press
+  // that never navigates is cleared when the next tab press replaces it, or the navigator
+  // reaches the route it shows.
+  useEffect(() => {
+    setPressed((p) => (p === routeActive ? null : p));
+  }, [routeActive]);
   // A tab change always brings the pill back, however the last screen left it.
   const focusedKey = state.routes[state.index]?.key;
   useEffect(() => resetTabBarScroll(), [focusedKey]);

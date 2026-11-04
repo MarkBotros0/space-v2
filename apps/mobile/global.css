@@ -586,6 +586,8 @@
   --pill-foreground-alpha: 1;
   --pill-active: 171 223 226;
   --pill-active-alpha: 1;
+  --pill-active-label: 255 255 255;
+  --pill-active-label-alpha: 1;
 }
 
 .dark:root {
@@ -1171,4 +1173,6 @@
   --pill-foreground-alpha: 1;
   --pill-active: 171 223 226;
   --pill-active-alpha: 1;
+  --pill-active-label: 255 255 255;
+  --pill-active-label-alpha: 1;
 }

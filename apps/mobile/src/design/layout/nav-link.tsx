@@ -67,7 +67,7 @@ export function NavLink({
       <Text
         numberOfLines={1}
         maxFontSizeMultiplier={1.15}
-        className={cn("text-[10px] font-medium leading-none", active ? "text-pill-active" : "text-pill-foreground")}
+        className={cn("text-[10px] font-medium leading-none", active ? "text-pill-active-label" : "text-pill-foreground")}
       >
         {label}
       </Text>

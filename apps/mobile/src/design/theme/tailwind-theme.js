@@ -57,6 +57,7 @@ const colors = {
       : `rgb(var(--pill) / var(--pill-alpha-${Math.round(Number(opacityValue) * 100)}))`,
   "pill-foreground": "rgb(var(--pill-foreground) / <alpha-value>)",
   "pill-active": "rgb(var(--pill-active) / <alpha-value>)",
+  "pill-active-label": "rgb(var(--pill-active-label) / <alpha-value>)",
   "brand-navy": {"50":"#ECEFF7","100":"#D4DAEA","200":"#ABB7D4","300":"#8294BF","400":"#5A72A9","500":"#3F558E","600":"#344676","700":"#2A3A63","800":"#243559","900":"#1F3260","950":"#142048"},
   "brand-teal": {"50":"#F2FAFA","100":"#E2F4F5","200":"#C7EAEC","300":"#ABDFE2","400":"#94D5D8","500":"#7DCED1","600":"#5DB9BC","700":"#429A9D","800":"#2E7679","900":"#1E5254","950":"#103436"},
   "neutral": {"50":"#FAFAFB","100":"#F4F4F6","200":"#E5E7EB","300":"#D1D5DB","400":"#9CA3AF","500":"#6B7280","600":"#4B5563","700":"#374151","800":"#1F2937","900":"#111827","950":"#0B0F19"},
@@ -177,7 +178,8 @@ const semantic = {
     "neutral-strong": "#4B5878",
     "pill": "rgba(20, 32, 72, 0.78)",
     "pill-foreground": "#D4DAEA",
-    "pill-active": "#ABDFE2"
+    "pill-active": "#ABDFE2",
+    "pill-active-label": "#FFFFFF"
   },
   "dark": {
     "background": "#0B1230",
@@ -220,7 +222,8 @@ const semantic = {
     "neutral-strong": "#ABB7D4",
     "pill": "rgba(36, 52, 110, 0.86)",
     "pill-foreground": "#D4DAEA",
-    "pill-active": "#ABDFE2"
+    "pill-active": "#ABDFE2",
+    "pill-active-label": "#FFFFFF"
   }
 };
 const fontWeightUtilities = {
