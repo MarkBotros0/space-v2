@@ -38,13 +38,21 @@ import { makeScopes, makeUser } from "./helpers/session";
 // own exported lists, not pinned. A plan adding a detail route appends to
 // DETAIL_ROUTE_NAMES; the "every route file is declared" test below — which
 // reads the filesystem, independently of the layouts — keeps both lists honest.
-type CapturedScreen = { name: string; title?: string; href?: string | null; options?: Record<string, unknown> };
+type CapturedScreen = {
+  name: string;
+  title?: string;
+  href?: string | null;
+  hidden?: unknown;
+  options?: Record<string, unknown>;
+};
 let mockScreens: CapturedScreen[] = [];
 let mockStackScreens: CapturedScreen[] = [];
 let mockSegments: string[] = ["(app)", "(tabs)", "dashboard"];
 // When set, the Tabs mock also renders the layout's tabBar and header (the
 // shell), which need providers the routing tests do without.
 let mockRenderChrome = false;
+let mockTabsProps: Record<string, unknown> = {};
+let mockStackProps: Record<string, unknown> = {};
 
 jest.mock("expo-router", () => {
   const { Text } = require("react-native");
@@ -54,6 +62,7 @@ jest.mock("expo-router", () => {
         name,
         title: options?.title as string | undefined,
         href: options && "href" in options ? (options.href as string | null) : undefined,
+        hidden: options && "hidden" in options ? options.hidden : undefined,
         options,
       });
       return null;
@@ -62,11 +71,13 @@ jest.mock("expo-router", () => {
     children,
     tabBar,
     screenOptions,
+    ...rest
   }: {
     children: React.ReactNode;
     tabBar?: (props: unknown) => React.ReactNode;
     screenOptions?: { header?: (props: unknown) => React.ReactNode };
   }) => (
+    (mockTabsProps = rest),
     <>
       {children}
       {mockRenderChrome && screenOptions?.header ? screenOptions.header({}) : null}
@@ -81,7 +92,7 @@ jest.mock("expo-router", () => {
     </>
   );
   Tabs.Screen = capture(() => mockScreens);
-  const Stack = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+  const Stack = ({ children, ...rest }: { children: React.ReactNode }) => ((mockStackProps = rest), <>{children}</>);
   Stack.Screen = capture(() => mockStackScreens);
   return {
     Tabs,
@@ -92,6 +103,8 @@ jest.mock("expo-router", () => {
   };
 });
 
+import { ScreenErrorBoundary } from "../design/layout/error-boundary";
+import { singularTabsRouter } from "../lib/tabs-stack-router";
 import AppLayout, {
   DETAIL_ROUTE_NAMES,
   ErrorBoundary as StackErrorBoundary,
@@ -120,6 +133,8 @@ beforeEach(() => {
   mockStackScreens = [];
   mockSegments = ["(app)", "(tabs)", "dashboard"];
   mockRenderChrome = false;
+  mockTabsProps = {};
+  mockStackProps = {};
 });
 
 let mockNotificationItems: unknown[] = [];
@@ -210,12 +225,16 @@ describe("TabsLayout", () => {
     expect(ALL_ROUTE_NAMES).toContain("dashboard");
   });
 
-  it("puts a solid scrim under the system bar so page text can't show through it", () => {
+  it("goes Back to its anchor (expo-router 58 ignores a non-stack anchor otherwise)", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<TabsLayout />);
-    const style = StyleSheet.flatten(screen.getByTestId("system-bar-scrim").props.style);
-    expect(style.height).toBe(34);
-    expect(style.bottom).toBe(0);
+    expect(mockTabsProps.backBehavior).toBe("initialRoute");
+  });
+
+  it("leaves the system-bar scrim to the stack layout, so there is one", () => {
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    renderWithProviders(<TabsLayout />);
+    expect(screen.queryByTestId("system-bar-scrim")).toBeNull();
   });
 });
 
@@ -237,8 +256,22 @@ describe("AppLayout stack", () => {
   });
 
   it("keeps a retry screen on both layouts for a screen that throws", () => {
-    expect(StackErrorBoundary).toBeDefined();
-    expect(TabsErrorBoundary).toBeDefined();
+    expect(StackErrorBoundary).toBe(ScreenErrorBoundary);
+    expect(TabsErrorBoundary).toBe(ScreenErrorBoundary);
+  });
+
+  it("keeps the tabs one navigator: a push to a tab route pops back to it", () => {
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    renderWithProviders(<AppLayout />);
+    expect(mockStackProps.UNSTABLE_router).toBe(singularTabsRouter);
+  });
+
+  it("puts a solid scrim under the system bar beside the stack, for tabs and detail screens alike", () => {
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    renderWithProviders(<AppLayout />);
+    const style = StyleSheet.flatten(screen.getByTestId("system-bar-scrim").props.style);
+    expect(style.height).toBe(34);
+    expect(style.bottom).toBe(0);
   });
 
   it.each([
@@ -288,7 +321,7 @@ describe("route declarations", () => {
     expect(DETAIL_ROUTE_NAMES).toContain("seasons/[code]/roster/import");
   });
 
-  it("never declares a screen href: null — expo-router 58 redirects a focused hidden tab to the first tab", () => {
+  it("never declares a screen href: null or hidden — expo-router 58 redirects a focused hidden tab to the first tab", () => {
     for (const role of ["STUDENT", "ADMIN", "SUPER", "LEADER", "MENTOR"] as const) {
       mockScreens = [];
       mockStackScreens = [];
@@ -300,7 +333,7 @@ describe("route declarations", () => {
       expect(mockScreens.length).toBeGreaterThan(0);
       expect(mockStackScreens.length).toBeGreaterThan(0);
       const all = [...mockScreens, ...mockStackScreens];
-      expect(all.filter((s) => s.href !== undefined).map((s) => s.name)).toEqual([]);
+      expect(all.filter((s) => s.href !== undefined || s.hidden !== undefined).map((s) => s.name)).toEqual([]);
     }
   });
 

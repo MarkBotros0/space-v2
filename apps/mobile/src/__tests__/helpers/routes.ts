@@ -66,15 +66,24 @@ export function urlOfRouteName(routeName: string): string {
 }
 
 /**
+ * The URL pattern a route answers: dynamic segments normalised (`[id]` and
+ * `[publicId]` both → `[]`), since `/student/1` matches either name.
+ */
+export function urlPatternOfRouteName(routeName: string): string {
+  return urlOfRouteName(routeName).replace(/\[[^\]/]+\]/g, "[]");
+}
+
+/**
  * URLs that more than one route file under app/ resolves to. Splitting a
  * directory across groups (`(tabs)/students/index.tsx` beside
  * `students/new.tsx`) is fine; two files answering the same URL is not —
- * expo-router silently picks one.
+ * expo-router silently picks one. `student/[id]` in one group and
+ * `student/[publicId]` in another count as the same URL.
  */
 export function duplicateRouteUrls(): string[] {
   const seen = new Map<string, string[]>();
   for (const file of screenFiles(APP_DIR)) {
-    const url = urlOfRouteName(toRouteName(file, APP_DIR));
+    const url = urlPatternOfRouteName(toRouteName(file, APP_DIR));
     seen.set(url, [...(seen.get(url) ?? []), toRouteName(file, APP_DIR)]);
   }
   return [...seen.values()].filter((files) => files.length > 1).map((files) => files.join(" + "));

@@ -120,6 +120,56 @@ describe("detail screens push on a stack above the tabs", () => {
   });
 });
 
+describe("the tabs are one navigator, however a tab route is reached", () => {
+  // A detail's header (the top bar's bell, user menu) and detail screens
+  // push tab routes. Each push must land in the one Tabs at the bottom of
+  // the stack, never stack a second (tabs) above the detail.
+  const tabsCount = (state: NavState) => appRouteNames(state)?.filter((name) => name === "(tabs)").length;
+
+  it("pushing /settings from a cold-linked detail switches the one Tabs to Settings", async () => {
+    const result = await renderRouter(appContext(), { initialUrl: "/student/1" });
+    expect(await screen.findByText("screen:/student/[id]")).toBeTruthy();
+
+    await act(() => router.push("/settings"));
+    expect(result.getPathname()).toBe("/settings");
+    expect(tabsCount(result.getRouterState() as NavState)).toBe(1);
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)"]);
+  });
+
+  it("pushing /assignments from a detail pushed off /quizzes lands in the same Tabs", async () => {
+    const result = await renderRouter(appContext(), { initialUrl: "/quizzes" });
+    expect(await screen.findByText("screen:/quizzes")).toBeTruthy();
+    await act(() => router.push("/student/1"));
+
+    await act(() => router.push("/assignments"));
+    expect(result.getPathname()).toBe("/assignments");
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)"]);
+  });
+
+  it("pushing a tab route from a tab stays in the Tabs", async () => {
+    const result = await renderRouter(appContext(), { initialUrl: "/dashboard" });
+    expect(await screen.findByText("screen:/dashboard")).toBeTruthy();
+
+    await act(() => router.push("/settings"));
+    expect(result.getPathname()).toBe("/settings");
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)"]);
+  });
+
+  it("a detail pushed from a detail still stacks, and Back walks down", async () => {
+    const result = await renderRouter(appContext(), { initialUrl: "/student/1" });
+    expect(await screen.findByText("screen:/student/[id]")).toBeTruthy();
+
+    await act(() => router.push("/student/1/edit"));
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual([
+      "(tabs)",
+      "student/[id]/index",
+      "student/[id]/edit",
+    ]);
+    await act(() => router.back());
+    expect(result.getPathname()).toBe("/student/1");
+  });
+});
+
 describe("guards on the stack layout cover tabs and detail routes", () => {
   it("sends an anonymous visitor to login from a detail link", async () => {
     useSessionStore.setState({ status: "anonymous", user: null, scopes: null });

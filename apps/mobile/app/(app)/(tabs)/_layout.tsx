@@ -1,6 +1,4 @@
 import { Tabs } from "expo-router";
-import { View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NavItem } from "@space/shared";
 import { ALL_NAV_HREFS } from "@space/shared";
 
@@ -81,41 +79,20 @@ export default function TabsLayout() {
 
   // v1's shell (shell-frame.tsx): the top bar above every screen and the
   // floating pill tab bar, which renders the role's tabs itself.
+  // The system-bar scrim is drawn by the stack layout above, for every screen.
   return (
-    <>
-      <SystemBarScrim />
-      <Tabs
-        backBehavior="initialRoute"
-        screenOptions={{ header: () => <ShellHeader /> }}
-        tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
-      >
-        {orderedRouteNames.map((name) => {
-          const tab = tabByRouteName.get(name);
-          return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : NOT_A_TAB} />;
-        })}
-      </Tabs>
-    </>
+    <Tabs
+      backBehavior="initialRoute"
+      screenOptions={{ header: () => <ShellHeader /> }}
+      tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
+    >
+      {orderedRouteNames.map((name) => {
+        const tab = tabByRouteName.get(name);
+        return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : NOT_A_TAB} />;
+      })}
+    </Tabs>
   );
 }
 
 /** A screen outside the role's tabs: no title, and deliberately NOT `href: null` (see TabsLayout). */
 const NOT_A_TAB = {};
-
-/**
- * Edge-to-edge Android draws the translucent system bar over the page, so
- * page text showed through behind it (3-button nav, seen in the leader sweep).
- * A solid strip the height of the bottom inset, in the shell's page tint,
- * sits under the floating tab bar (whose bottom is that same inset).
- */
-function SystemBarScrim() {
-  const { bottom } = useSafeAreaInsets();
-  if (bottom <= 0) return null;
-  return (
-    <View
-      pointerEvents="none"
-      testID="system-bar-scrim"
-      className="bg-brand-navy-50 dark:bg-background"
-      style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: bottom, zIndex: 5 }}
-    />
-  );
-}

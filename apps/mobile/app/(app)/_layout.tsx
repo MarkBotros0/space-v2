@@ -1,8 +1,11 @@
 import { Redirect, Stack, useSegments } from "expo-router";
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ScreenErrorBoundary } from "../../src/design/layout/error-boundary";
 import { ShellHeader } from "../../src/design/layout/shell-header";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
+import { TABS_ROUTE, singularTabsRouter } from "../../src/lib/tabs-stack-router";
 import { useSessionStore } from "../../src/store/session";
 
 /** A detail screen that throws while rendering shows a retry, not a crashed app. */
@@ -94,12 +97,39 @@ export default function AppLayout() {
   // carry the "(tabs)" group; isBlockedForAlumni skips groups.
   if (isAlumnus && isBlockedForAlumni(segments)) return <Redirect href="/dashboard" />;
 
+  // The tabs are one navigator (singularTabsRouter): a push to a tab route
+  // from a detail (the top bar's bell and user menu, a link to a list)
+  // returns to the one Tabs at the bottom, popping the details above it.
+  // The scrim sits beside the Stack so tabs and detail screens both get it.
   return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={TABS_SCREEN_OPTIONS} />
-      {DETAIL_ROUTE_NAMES.map((name) => (
-        <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
-      ))}
-    </Stack>
+    <>
+      <SystemBarScrim />
+      <Stack UNSTABLE_router={singularTabsRouter}>
+        <Stack.Screen name={TABS_ROUTE} options={TABS_SCREEN_OPTIONS} />
+        {DETAIL_ROUTE_NAMES.map((name) => (
+          <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
+        ))}
+      </Stack>
+    </>
+  );
+}
+
+/**
+ * Edge-to-edge Android draws the translucent system bar over the page, so
+ * page text showed through behind it (3-button nav, seen in the leader sweep).
+ * A solid strip the height of the bottom inset, in the shell's page tint,
+ * under the floating tab bar (whose bottom is that same inset) on a tab, and
+ * under the last content of a detail screen.
+ */
+function SystemBarScrim() {
+  const { bottom } = useSafeAreaInsets();
+  if (bottom <= 0) return null;
+  return (
+    <View
+      pointerEvents="none"
+      testID="system-bar-scrim"
+      className="bg-brand-navy-50 dark:bg-background"
+      style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: bottom, zIndex: 5 }}
+    />
   );
 }
