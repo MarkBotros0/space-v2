@@ -1,6 +1,7 @@
 import { MutationCache, QueryClient } from "@tanstack/react-query";
 
 import { useSessionStore } from "../store/session";
+import { connectOnlineManager } from "./online";
 import { queryKeys } from "./query-keys";
 
 /**
@@ -19,6 +20,8 @@ import { queryKeys } from "./query-keys";
  *   successful mutation tagged `DASHBOARD_META` (spec 19 D24).
  */
 export function createQueryClient(): QueryClient {
+  // Pause queries while offline and refetch on reconnect (see ./online).
+  connectOnlineManager();
   const client: QueryClient = new QueryClient({
     // Spec 19 D24: a mutation tagged DASHBOARD_META refreshes every role's
     // Home. Keyed on meta, not on mutation keys, so the tag is visible at the

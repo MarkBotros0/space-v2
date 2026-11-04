@@ -7,6 +7,7 @@ import { ALL_NAV_HREFS } from "@space/shared";
 import { AppTopBar } from "../../src/design/layout/app-top-bar";
 import { ScreenErrorBoundary } from "../../src/design/layout/error-boundary";
 import { FloatingTabBar } from "../../src/design/layout/floating-tab-bar";
+import { OfflineBanner } from "../../src/design/layout/offline-banner";
 import { ShellContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { DIRECTORY_ROUTE_HREFS, routeNameForHref } from "../../src/lib/route-names";
@@ -121,7 +122,7 @@ export default function AppLayout() {
     <ShellContext.Provider value={true}>
       <SystemBarScrim />
       <Tabs
-        screenOptions={{ header: () => <AppTopBar /> }}
+        screenOptions={{ header: () => <ShellHeader /> }}
         tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
       >
         {orderedRouteNames.map((name) => {
@@ -130,6 +131,16 @@ export default function AppLayout() {
         })}
       </Tabs>
     </ShellContext.Provider>
+  );
+}
+
+/** v1's top bar, with the offline strip under it while there is no network. */
+function ShellHeader() {
+  return (
+    <View>
+      <AppTopBar />
+      <OfflineBanner />
+    </View>
   );
 }
 

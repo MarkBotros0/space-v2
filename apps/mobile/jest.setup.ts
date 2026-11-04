@@ -33,6 +33,12 @@ jest.mock("@10play/tentap-editor", () => {
   };
 });
 
+// createQueryClient wires React Query's onlineManager to NetInfo, which has no
+// native module under Jest; the library's own mock (always online).
+jest.mock("@react-native-community/netinfo", () =>
+  require("@react-native-community/netinfo/jest/netinfo-mock.js"),
+);
+
 // design/ui's ThemeToggle reads the saved theme; the library's own mock.
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
