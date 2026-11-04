@@ -34,3 +34,9 @@ it("lets the row of stat tiles wrap to two columns on a narrow phone", () => {
   renderWithProviders(<DesignCatalogue />);
   expect(screen.getByTestId("catalogue-stat-row").props.className).toContain("flex-wrap");
 });
+
+it("gives every section title the testID the sweep flow swipes from", () => {
+  mockSweep = true;
+  renderWithProviders(<DesignCatalogue />);
+  for (const id of SECTIONS) expect(screen.getByTestId(`catalogue-${id}-title`)).toBeTruthy();
+});

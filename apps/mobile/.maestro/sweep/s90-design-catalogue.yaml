@@ -1,7 +1,7 @@
 # UI sweep 90 - the hidden design catalogue (spacev2://design-catalogue), as a
-# student: every redesign component in every state, each section scrolled
-# fully on screen, the collapsed header, the toast, and a sheet with its
-# keyboard. Needs a dev bundle or a build made with EXPO_PUBLIC_SWEEP_BUILD=1.
+# student: every redesign component in every state, each section's title
+# brought just under the pinned header (_catalogue-section.yaml), the
+# collapsed header, the toast, and a sheet with its keyboard. Needs a dev bundle or a build made with EXPO_PUBLIC_SWEEP_BUILD=1.
 # Nothing is saved: the sheet's Save only closes it and the flow never taps it.
 appId: com.jpc.space
 ---
@@ -17,84 +17,52 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s90-00-top
 
-- scrollUntilVisible:
-    element:
-      id: catalogue-type
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: type
 - takeScreenshot: s90-01-type
 
-- scrollUntilVisible:
-    element:
-      id: catalogue-buttons
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: buttons
 - takeScreenshot: s90-02-buttons
 
-- scrollUntilVisible:
-    element:
-      id: catalogue-chips
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: chips
 - takeScreenshot: s90-03-chips
 
-- scrollUntilVisible:
-    element:
-      id: catalogue-list
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: list
 - takeScreenshot: s90-04-list
 
-- scrollUntilVisible:
-    element:
-      id: catalogue-hero
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: hero
 - takeScreenshot: s90-05-hero
 
-- scrollUntilVisible:
-    element:
-      id: catalogue-stats
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: stats
 - takeScreenshot: s90-06-stats
 
-- scrollUntilVisible:
-    element:
-      id: catalogue-controls
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: controls
 - takeScreenshot: s90-07-controls
 
-- scrollUntilVisible:
-    element:
-      id: catalogue-states
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: states
 - takeScreenshot: s90-08-states
 
 - scrollUntilVisible:
