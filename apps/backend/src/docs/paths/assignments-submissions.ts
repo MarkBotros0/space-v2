@@ -58,7 +58,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Assignments"],
       summary: "Who was given this assignment, and what they have done about it",
       description:
-        "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
+        "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker. A student whose work is still a DRAFT shows as `PENDING` with no `submissionPublicId`: a draft exists only for its author.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/AssignmentTracker" }, "The tracker."),
@@ -170,10 +170,9 @@ export const assignmentsSubmissionsPaths = {
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
-        404: errRef("NotFound"),
-        409: {
+        404: {
           description:
-            "`not_submitted` — a DRAFT that was never submitted cannot be marked REVIEWED. It can still be returned for revision.",
+            "No such submission, or it is a DRAFT — a draft exists only for its author, so it can be neither reviewed nor returned.",
           content: { "application/json": { schema: errorResponse } },
         },
       },
@@ -185,7 +184,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Submissions"],
       summary: "Submission detail",
       description:
-        "Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's submission. `text` and `feedback` are plain text (stored HTML is converted on read, ruling C11); `groupId`/`groupName` name the student's group in the assignment's season.",
+        "Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's submission. A DRAFT is the student's unfinished work and exists only for its author: to anyone else — staff included — it is `404`, as if it did not exist (on this route, its files, PATCH and review alike). RETURNED is not a draft and stays visible. `text` and `feedback` are plain text (stored HTML is converted on read, ruling C11); `groupId`/`groupName` name the student's group in the assignment's season.",
       parameters: [publicIdParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/SubmissionDetail" }, "The submission."),
@@ -337,7 +336,8 @@ export const assignmentsSubmissionsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: {
-          description: "No such file, it belongs to another submission, or the stored blob is missing.",
+          description:
+            "No such file, it belongs to another submission, it is on someone else's DRAFT, or the stored blob is missing.",
           content: { "application/json": { schema: errorResponse } },
         },
       },

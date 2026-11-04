@@ -37,6 +37,22 @@ async function submissionSubject(
   return { studentUserId: submission.studentUserId, seasonId: submission.assignment.seasonId };
 }
 
+/**
+ * Is this submission a DRAFT someone other than its author is asking for?
+ *
+ * A DRAFT is the student's unfinished work (owner decision, 2026-11): it
+ * exists only for its author. Every route that addresses a submission by
+ * publicId answers a hidden draft with 404, exactly as if the row did not
+ * exist, before any role check — a 403 would tell staff the draft is there.
+ * RETURNED is not a draft: it was turned in and sent back, and stays visible.
+ */
+export function isHiddenDraft(
+  user: SessionUser,
+  submission: { status: string; studentUserId: number },
+): boolean {
+  return submission.status === "DRAFT" && submission.studentUserId !== user.userId;
+}
+
 export async function canViewSubmission(user: SessionUser, submissionId: number): Promise<boolean> {
   if (isSuper(user) || isMentor(user)) return true;
 

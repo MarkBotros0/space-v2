@@ -18,7 +18,12 @@ export {
 } from "./season";
 export { canAccessGroup } from "./group";
 export { canGradeQuiz, canManageQuiz } from "./quiz";
-export { canReviewSubmission, canViewSubmission, submissionQueueScopeFor } from "./submission";
+export {
+  canReviewSubmission,
+  canViewSubmission,
+  isHiddenDraft,
+  submissionQueueScopeFor,
+} from "./submission";
 export { canEditStudent, canViewStudent } from "./student";
 export { canEditNote, canViewNote, canWriteNote, noteVisibilityWhere } from "./note";
 export {

@@ -61,20 +61,33 @@ describe("GET /api/v1/submissions/:publicId", () => {
   });
 
   it("allows the student's group leader and the season admin", async () => {
+    const pid = await seedSubmission("SUBMITTED", "Staff read");
     const asLeader = await request(app)
-      .get(`/api/v1/submissions/${publicId}`)
+      .get(`/api/v1/submissions/${pid}`)
       .set("authorization", `Bearer ${leaderToken}`);
     expect(asLeader.status).toBe(200);
 
     const asAdmin = await request(app)
-      .get(`/api/v1/submissions/${publicId}`)
+      .get(`/api/v1/submissions/${pid}`)
       .set("authorization", `Bearer ${adminToken}`);
     expect(asAdmin.status).toBe(200);
   });
 
+  it("hides a DRAFT from everyone but its author, as if it did not exist", async () => {
+    // publicId is the owner's DRAFT. A 403 would confirm it exists.
+    for (const token of [leaderToken, adminToken, mentorToken, peerToken]) {
+      const res = await request(app)
+        .get(`/api/v1/submissions/${publicId}`)
+        .set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe("not_found");
+    }
+  });
+
   it("refuses a peer student in the same season", async () => {
+    const pid = await seedSubmission("SUBMITTED", "Peer read");
     const res = await request(app)
-      .get(`/api/v1/submissions/${publicId}`)
+      .get(`/api/v1/submissions/${pid}`)
       .set("authorization", `Bearer ${peerToken}`);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("forbidden");
@@ -249,14 +262,18 @@ describe("POST /api/v1/submissions/:publicId/review", () => {
     expect(read.body.data.canReview).toBe(false);
   });
 
-  it("refuses to mark a never-submitted draft as reviewed", async () => {
+  it("answers a review of a DRAFT with 404, verdict or return alike", async () => {
     const pid = await seedSubmission("DRAFT", "Never submitted");
-    const res = await request(app)
-      .post(`/api/v1/submissions/${pid}/review`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ feedback: "?" });
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("not_submitted");
+    for (const body of [{ feedback: "?" }, { feedback: "?", returnForRevision: true }]) {
+      const res = await request(app)
+        .post(`/api/v1/submissions/${pid}/review`)
+        .set("authorization", `Bearer ${adminToken}`)
+        .send(body);
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe("not_found");
+    }
+    const row = await db.submission.findUnique({ where: { publicId: pid }, select: { status: true } });
+    expect(row?.status).toBe("DRAFT");
   });
 });
 

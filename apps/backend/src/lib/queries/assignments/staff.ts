@@ -142,10 +142,13 @@ export async function loadAssignmentTracker(
     },
   });
 
+  // A DRAFT is the student's unfinished work and exists only for its author,
+  // so the tracker shows that student as PENDING, with no link to open.
   const submissions = await db.submission.findMany({
     where: {
       assignmentId,
       studentUserId: { in: enrollments.map((e) => e.studentUserId) },
+      status: { not: "DRAFT" },
     },
     select: {
       studentUserId: true,
@@ -190,7 +193,8 @@ export async function loadAssignmentTracker(
     // "Submitted" means a row exists and is not a DRAFT — the same definition
     // the list's submissionCount uses. Ruling C5: one denominator, one
     // numerator, no second opinion.
-    submittedCount: rows.filter((r) => r.status !== "PENDING" && r.status !== "DRAFT").length,
+    // Drafts were filtered out above, so any row with a status was turned in.
+    submittedCount: rows.filter((r) => r.status !== "PENDING").length,
     expectedCount: rows.length,
     rows,
   };

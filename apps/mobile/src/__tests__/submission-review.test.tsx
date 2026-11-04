@@ -119,9 +119,9 @@ it("shows returned work as waiting on the student instead of the review form", a
   expect(screen.queryByLabelText("Feedback")).toBeNull();
 });
 
-it("stays on the screen and says why when the server refuses (409 not_submitted)", async () => {
-  get.mockResolvedValue({ data: { data: { ...detail, status: "DRAFT", submittedAt: null } } });
-  post.mockRejectedValue({ response: { status: 409, data: { error: { code: "not_submitted", message: "x" } } } });
+it("stays on the screen and says why when the server refuses (403 forbidden)", async () => {
+  get.mockResolvedValue({ data: { data: detail } });
+  post.mockRejectedValue({ response: { status: 403, data: { error: { code: "forbidden", message: "x" } } } });
 
   renderWithProviders(<SubmissionReviewScreen />);
   fireEvent.press(await screen.findByText("Mark as reviewed"));

@@ -333,6 +333,9 @@ describe("GET /api/v1/assignments/:id/tracker", () => {
     const pairs = rows.map((r) => `${r.groupName}/${r.name}`);
     // Name-only order would put "Test moved" first and "Test student" last.
     expect(pairs).toEqual(["Group A/Test student", "Group B/Test moved", "Group B/Test other"]);
+    // "Test student" holds a DRAFT here (seeded above). A draft exists only for
+    // its author, so staff see that student as PENDING with nothing to open.
+    expect(res.body.data.rows[0]).toMatchObject({ status: "PENDING", submissionPublicId: null });
   });
 
   it("narrows the roster to a leader's own groups", async () => {

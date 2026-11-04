@@ -6,7 +6,7 @@ import { ForbiddenError } from "../../lib/auth/errors";
 import { bestEffort } from "../../lib/best-effort";
 import { createNotificationsBulk } from "../../lib/notifications";
 import { parseId } from "../../lib/parse-id";
-import { canReviewSubmission, hasActiveEnrollment } from "../../lib/permissions";
+import { canReviewSubmission, hasActiveEnrollment, isHiddenDraft } from "../../lib/permissions";
 import { newPublicId } from "../../lib/public-id";
 import { studentCanSeeAssignment } from "../../lib/queries/assignments";
 import { notifySubmissionReceived } from "../../lib/submission-notifications";
@@ -33,7 +33,10 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
       assignment: { select: { seasonId: true, type: true, title: true } },
     },
   });
-  if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
+  // A draft is its author's alone: anyone else is told it does not exist.
+  if (!sub || isHiddenDraft(user, sub)) {
+    return apiError(res, "not_found", "Submission not found.", 404);
+  }
   // Only the author may edit. Season admins and leaders can read a submission
   // (canViewSubmission) but must never rewrite a student's words.
   if (sub.studentUserId !== user.userId) throw new ForbiddenError();
@@ -198,20 +201,16 @@ export async function reviewSubmission(req: Request<{ publicId: string }>, res: 
       assignment: { select: { title: true } },
     },
   });
-  if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
+  // A draft is its author's alone, and the author never reviews, so nobody can
+  // review a DRAFT: to everyone but its author it does not exist.
+  if (!sub || isHiddenDraft(user, sub)) {
+    return apiError(res, "not_found", "Submission not found.", 404);
+  }
 
   if (!(await canReviewSubmission(user, sub.id))) return forbidden(res);
 
   const parsed = reviewSubmissionRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid review body.", 400);
-
-  // Reviewing something the student never submitted is legal in v1 and stays
-  // legal — a reviewer may return an untouched draft for revision — but a
-  // DRAFT that has never been submitted cannot be marked REVIEWED, because
-  // there is nothing to have reviewed.
-  if (sub.status === "DRAFT" && !parsed.data.returnForRevision) {
-    return apiError(res, "not_submitted", "That submission has not been submitted yet.", 409);
-  }
 
   const now = new Date();
   await db.submission.update({
