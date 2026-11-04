@@ -31,14 +31,18 @@ const seasonsList = {
 };
 
 /** Staff screens make two GETs: the seasons list, then the season's quizzes. */
-function staffGets(quizPage: unknown) {
-  get.mockImplementation((url: string) =>
-    url === "/api/v1/seasons"
-      ? Promise.resolve(seasonsList)
-      : url === "/api/v1/quizzes?seasonId=7"
-        ? Promise.resolve({ data: { data: quizPage } })
-        : Promise.reject(new Error(`unexpected GET ${url}`)),
-  );
+const STAFF_QUIZZES = "/api/v1/quizzes?seasonId=7&limit=100";
+
+/** `pages` are served in order: the first page bare, the next after its cursor. */
+function staffGets(quizPage: unknown, ...more: { cursor: number; page: unknown }[]) {
+  get.mockImplementation((url: string) => {
+    if (url === "/api/v1/seasons") return Promise.resolve(seasonsList);
+    if (url === STAFF_QUIZZES) return Promise.resolve({ data: { data: quizPage } });
+    const next = more.find((m) => url === `${STAFF_QUIZZES}&cursor=${m.cursor}`);
+    return next
+      ? Promise.resolve({ data: { data: next.page } })
+      : Promise.reject(new Error(`unexpected GET ${url}`));
+  });
 }
 
 function studentRow(over: Partial<Record<string, unknown>> = {}) {
@@ -213,7 +217,21 @@ describe("QuizzesScreen — staff", () => {
 
     expect(await screen.findByText("Week 1 quiz")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
-    expect(get).toHaveBeenCalledWith("/api/v1/quizzes?seasonId=7");
+    expect(get).toHaveBeenCalledWith(STAFF_QUIZZES);
+  });
+
+  it("follows nextCursor so the list doesn't stop at the first page", async () => {
+    useSessionStore.setState(leaderSession);
+    staffGets(
+      { items: [staffRow({ id: 90, title: "Page one quiz" })], nextCursor: 90 },
+      { cursor: 90, page: { items: [staffRow({ id: 12, title: "Page two quiz" })], nextCursor: null } },
+    );
+
+    renderWithProviders(<QuizzesScreen />);
+
+    expect(await screen.findByText("Page two quiz")).toBeTruthy();
+    expect(screen.getByText("Page one quiz")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith(`${STAFF_QUIZZES}&cursor=90`);
   });
 });
 describe("QuizzesScreen — authoring entry points (Task 11)", () => {

@@ -26,13 +26,37 @@ import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
-/** Staff list. Parses the staff arm specifically — see the student hook below. */
+/** The API's largest staff-list page (quizListQuerySchema caps `limit` at 100). */
+const QUIZ_LIST_PAGE = 100;
+/** A runaway-cursor backstop: 50 pages of 100 is far past any real season. */
+const QUIZ_LIST_MAX_PAGES = 50;
+
+/**
+ * Staff list — EVERY page, following nextCursor. Parses the staff arm
+ * specifically — see the student hook below.
+ *
+ * The server pages by id while the screens sort by session date (v1's order),
+ * and v1 showed the whole season. A "Load more" over id-ordered pages would
+ * reshuffle rows the reader already saw, so the hook walks the cursor and
+ * returns one page holding everything, with `nextCursor: null`.
+ */
 export function useQuizList(seasonId: number | null): UseQueryResult<QuizListPage> {
   return useQuery({
     queryKey: [...queryKeys.quizzes.bySeason(seasonId), "staff"] as const,
     queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/quizzes?seasonId=${seasonId}`);
-      return quizListPageSchema.parse(res.data.data);
+      const items: QuizListPage["items"] = [];
+      let cursor: number | null = null;
+      for (let i = 0; i < QUIZ_LIST_MAX_PAGES; i++) {
+        const after: string = cursor === null ? "" : `&cursor=${cursor}`;
+        const res = await apiClient.get(
+          `/api/v1/quizzes?seasonId=${seasonId}&limit=${QUIZ_LIST_PAGE}${after}`,
+        );
+        const page = quizListPageSchema.parse(res.data.data);
+        items.push(...page.items);
+        cursor = page.nextCursor;
+        if (cursor === null) break;
+      }
+      return { items, nextCursor: null };
     },
     enabled: seasonId !== null,
   });
