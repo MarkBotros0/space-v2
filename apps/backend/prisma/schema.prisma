@@ -60,6 +60,11 @@ enum NoteVisibility {
   ADMINS
 }
 
+enum DevicePlatform {
+  IOS
+  ANDROID
+}
+
 enum NotificationType {
   ASSIGNMENT_CREATED
   SUBMISSION_REVIEWED
@@ -142,6 +147,7 @@ model User {
 
   notifications            Notification[]
   notificationPreference   NotificationPreference?
+  deviceTokens             DeviceToken[]
   studentDocuments         StudentDocument[]       @relation("StudentDocumentStudent")
   studentDocumentsUploaded StudentDocument[]       @relation("StudentDocumentUploader")
   jpcEventsCreated         JpcEvent[]              @relation("JpcEventCreator")
@@ -770,4 +776,20 @@ model JpcEvent {
   season    Season? @relation("JpcEventSeason", fields: [seasonId], references: [id], onDelete: SetNull)
 
   @@index([date])
+}
+
+// Expo push tokens, one row per device (v2-only; 2026-11-04). `token` is
+// unique, not (userId, token): a phone handed to another user moves with the
+// sign-in rather than notifying both. The token is a credential — never log it.
+model DeviceToken {
+  id         Int            @id @default(autoincrement())
+  userId     Int
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String         @unique
+  platform   DevicePlatform
+  lastSeenAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+
+  @@index([userId])
+  @@index([lastSeenAt])
 }
