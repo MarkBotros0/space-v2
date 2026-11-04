@@ -119,6 +119,10 @@ model User {
   graduationYear Int?
   avatarPath   String?
   lastLoginAt  DateTime?
+  // Access tokens issued before this instant are refused by requireAuth (Plan
+  // 18 M13). Written by logout-all, password change and reset, deactivation
+  // and role change. Null: nothing has been invalidated.
+  sessionsValidFrom DateTime?
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
