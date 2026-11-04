@@ -1,34 +1,60 @@
 /**
- * Port of v1 src/components/ui/skeleton.tsx.
- * Native differences: v1's .jpc-shimmer sweeps a lighter band across
- * bg-muted every 1.6s; here bg-muted pulses opacity 1 → 0.6 → 1 over the
- * same 1.6s (closest native equivalent without a gradient mask).
+ * Redesign placeholder block: a surface-toned rounded rectangle whose opacity
+ * breathes 0.55 <-> 1 (withRepeat/withTiming). Under reduced motion it is a
+ * static 0.7 and nothing runs. `className` still works for the existing call
+ * sites; `width`/`height`/`radius` are the explicit sizing props.
  */
-import { useEffect, useRef } from "react";
-import { Animated, View } from "react-native";
+import { useEffect } from "react";
+import { View, type DimensionValue } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import { cssInterop } from "nativewind";
 
 import { cn } from "../lib/cn";
 import { shadowStyle } from "../lib/shadow";
+import { useReducedMotion } from "../motion";
 
 // The pulse and the size classes must sit on the same view, or w-2/3 resolves
 // against an unsized wrapper.
 cssInterop(Animated.View, { className: "style" });
 
-function Skeleton({ className }: { className?: string }) {
-  const opacity = useRef(new Animated.Value(1)).current;
+const STATIC_OPACITY = 0.7;
+
+function Skeleton({
+  className,
+  width,
+  height,
+  radius,
+}: {
+  className?: string;
+  width?: DimensionValue;
+  height?: number;
+  radius?: number;
+}) {
+  const reduced = useReducedMotion();
+  const opacity = useSharedValue(1);
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.6, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [opacity]);
+    if (reduced) return;
+    opacity.value = withRepeat(withTiming(0.55, { duration: 800, easing: Easing.inOut(Easing.quad) }), -1, true);
+  }, [reduced, opacity]);
+  const animated = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
-    <Animated.View style={{ opacity }} accessibilityElementsHidden className={cn("rounded-md bg-muted", className)} />
+    <Animated.View
+      testID="skeleton"
+      accessibilityElementsHidden
+      className={cn("rounded-lg bg-separator", className)}
+      style={[
+        width !== undefined ? { width } : null,
+        height !== undefined ? { height } : null,
+        radius !== undefined ? { borderRadius: radius } : null,
+        reduced ? { opacity: STATIC_OPACITY } : animated,
+      ]}
+    />
   );
 }
 
@@ -44,7 +70,7 @@ function SkeletonText({ lines = 3, className }: { lines?: number; className?: st
 
 function SkeletonCard({ className }: { className?: string }) {
   return (
-    <View className={cn("flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4", className)} style={shadowStyle("soft")}>
+    <View className={cn("flex-col gap-3 rounded-2xl border border-separator bg-surface p-4", className)} style={shadowStyle("soft")}>
       <Skeleton className="h-5 w-1/3" />
       <SkeletonText lines={3} />
     </View>
