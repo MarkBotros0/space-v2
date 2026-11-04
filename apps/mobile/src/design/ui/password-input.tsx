@@ -4,7 +4,7 @@
  */
 import { Eye, EyeOff } from "lucide-react-native";
 import { forwardRef, useState } from "react";
-import { Pressable, type TextInput, View } from "react-native";
+import { Pressable, type TextInputInstance, View } from "react-native";
 
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";
@@ -12,7 +12,7 @@ import { Input, type InputProps } from "./input";
 
 iconWithClassName(Eye, EyeOff);
 
-const PasswordInput = forwardRef<TextInput, Omit<InputProps, "secureTextEntry">>(({ className, size, ...props }, ref) => {
+const PasswordInput = forwardRef<TextInputInstance, Omit<InputProps, "secureTextEntry">>(({ className, size, ...props }, ref) => {
   const [visible, setVisible] = useState(false);
   const Icon = visible ? EyeOff : Eye;
   const padding = size === "sm" ? "pr-8" : size === "lg" ? "pr-11" : "pr-10";

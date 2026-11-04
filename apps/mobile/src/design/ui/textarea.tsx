@@ -7,12 +7,12 @@
  * grows with its content.
  */
 import { forwardRef } from "react";
-import { TextInput, type TextInputProps } from "react-native";
+import { TextInput, type TextInputInstance, type TextInputProps } from "react-native";
 
 import { cn } from "../lib/cn";
 import { useThemeColors } from "../theme/use-theme-colors";
 
-const Textarea = forwardRef<TextInput, TextInputProps & { className?: string; disabled?: boolean; "aria-invalid"?: boolean }>(
+const Textarea = forwardRef<TextInputInstance, TextInputProps & { className?: string; disabled?: boolean; "aria-invalid"?: boolean }>(
   ({ className, disabled, "aria-invalid": invalid, numberOfLines: _rows, ...props }, ref) => {
     const colors = useThemeColors();
     return (

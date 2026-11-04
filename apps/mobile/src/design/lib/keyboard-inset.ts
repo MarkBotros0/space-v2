@@ -1,5 +1,5 @@
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Platform, type ScrollView, TextInput } from "react-native";
+import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Platform, type ScrollViewInstance, TextInput } from "react-native";
 
 /**
  * Space kept between the focused field and the top of the keyboard. Generous
@@ -34,14 +34,14 @@ type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: 
 export function useKeyboardInset(): {
   inset: number;
   scrollProps: {
-    ref: RefObject<ScrollView | null>;
+    ref: RefObject<ScrollViewInstance | null>;
     onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
     onContentSizeChange: () => void;
     scrollEventThrottle: number;
     keyboardShouldPersistTaps: "handled";
   };
 } {
-  const ref = useRef<ScrollView | null>(null);
+  const ref = useRef<ScrollViewInstance | null>(null);
   const offset = useRef(0);
   const keyboardTop = useRef<number | null>(null);
   const [inset, setInset] = useState(0);

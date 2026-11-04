@@ -7,7 +7,7 @@
  */
 import { cva, type VariantProps } from "class-variance-authority";
 import { forwardRef } from "react";
-import { TextInput, type TextInputProps } from "react-native";
+import { TextInput, type TextInputInstance, type TextInputProps } from "react-native";
 
 import { cn } from "../lib/cn";
 import { useThemeColors } from "../theme/use-theme-colors";
@@ -29,7 +29,7 @@ const inputVariants = cva(
 type InputProps = TextInputProps &
   VariantProps<typeof inputVariants> & { className?: string; disabled?: boolean; "aria-invalid"?: boolean };
 
-const Input = forwardRef<TextInput, InputProps>(({ className, size, disabled, "aria-invalid": invalid, ...props }, ref) => {
+const Input = forwardRef<TextInputInstance, InputProps>(({ className, size, disabled, "aria-invalid": invalid, ...props }, ref) => {
   const colors = useThemeColors();
   return (
     <TextInput
