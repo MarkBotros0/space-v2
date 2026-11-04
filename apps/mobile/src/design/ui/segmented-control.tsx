@@ -1,18 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
-import { cssInterop } from "nativewind";
 
 import { SPRING, useReducedMotion } from "../motion";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
-cssInterop(Animated.View, { className: "style" });
-
 type Option = { value: string; label: string };
 const PAD = 2;
 
-/** Two-to-four way switch; the thumb slides to the selected segment with SPRING.snappy. */
+/**
+ * Two-to-four way switch; the thumb slides to the selected segment with SPRING.snappy.
+ * The thumb's Animated.View takes only styles; its fill is a plain View inside
+ * (classes on an Animated.View are dropped on device).
+ */
 function SegmentedControl({
   options, value, onChange, className,
 }: { options: Option[]; value: string; onChange: (value: string) => void; className?: string }) {
@@ -37,11 +38,9 @@ function SegmentedControl({
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       {segment > 0 ? (
-        <Animated.View
-          pointerEvents="none"
-          className="absolute bottom-0.5 left-0.5 top-0.5 rounded-[10px] bg-surface"
-          style={[{ width: segment }, style]}
-        />
+        <Animated.View pointerEvents="none" style={[styles.thumb, { width: segment }, style]}>
+          <View className="flex-1 rounded-[10px] bg-surface" />
+        </Animated.View>
       ) : null}
       {options.map((o) => {
         const selected = o.value === value;
@@ -68,5 +67,8 @@ function SegmentedControl({
     </View>
   );
 }
+
+// `absolute bottom-0.5 left-0.5 top-0.5` (0.5 = PAD).
+const styles = StyleSheet.create({ thumb: { position: "absolute", top: PAD, bottom: PAD, left: PAD } });
 
 export { SegmentedControl };

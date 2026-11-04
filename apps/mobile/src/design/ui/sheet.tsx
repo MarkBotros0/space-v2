@@ -9,13 +9,16 @@
  * GestureHandlerRootView. Bottom clearance is the safe-area inset, replaced
  * (not added to) by the keyboard height while the keyboard is open.
  * `SheetSaveBar` is pinned to the sheet's bottom and lifted by the same offset.
+ * The Animated.Views take only styles; their classes sit on plain Views inside
+ * them (classes on an Animated.View are dropped on device). The panel keeps
+ * `maxHeight: 90%` on the Animated.View (a percentage of the screen-filling
+ * parent) and its surface `shrink`s inside it so the ScrollView still scrolls.
  */
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Modal as RNModal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from "react-native-gesture-handler";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { cssInterop } from "nativewind";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { DURATION, SPRING, useReducedMotion } from "../motion";
@@ -23,11 +26,11 @@ import { useKeyboardHeight, useKeyboardInset } from "../lib/keyboard-inset";
 import { SaveBarBody, type SaveBarProps } from "../layout/save-bar";
 import { Text } from "./text";
 
-cssInterop(Animated.View, { className: "style" });
-
 const DISMISS_FRACTION = 0.3;
 const DISMISS_VELOCITY = 800;
 const OFFSCREEN = 1000;
+
+const styles = StyleSheet.create({ panel: { maxHeight: "90%" } });
 
 type SheetProps = { open: boolean; onClose: () => void; title?: string; children?: ReactNode; footer?: ReactNode };
 
@@ -109,7 +112,9 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
     <RNModal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <GestureHandlerRootView style={StyleSheet.absoluteFill}>
         <View style={StyleSheet.absoluteFill} className="justify-end" pointerEvents={open ? "auto" : "none"}>
-          <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]} className="bg-black/40" pointerEvents="none" />
+          <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]} pointerEvents="none">
+            <View className="flex-1 bg-black/40" />
+          </Animated.View>
           <Pressable
             testID="sheet-backdrop"
             accessibilityLabel="Close"
@@ -119,33 +124,34 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
           />
           <Animated.View
             testID="sheet"
-            style={sheetStyle}
+            style={[styles.panel, sheetStyle]}
             onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
-            className="max-h-[90%] rounded-t-[24px] bg-surface"
           >
-            <GestureDetector gesture={pan}>
-              <View testID="sheet-header" className="min-h-[44px] items-center justify-center pb-2 pt-3">
-                <View className="h-1 w-10 rounded-full bg-separator" />
-                {title ? (
-                  <Text variant="headline" accessibilityRole="header" className="mt-3 px-4 text-foreground">
-                    {title}
-                  </Text>
-                ) : null}
-              </View>
-            </GestureDetector>
-            <BarHeightContext.Provider value={setBarHeight}>
-              <ScrollView
-                {...scrollProps}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: barHeight + bottom + 16 }}
-              >
-                {children}
-              </ScrollView>
-              {footer ? (
-                <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-                  {footer}
+            <View className="shrink rounded-t-[24px] bg-surface">
+              <GestureDetector gesture={pan}>
+                <View testID="sheet-header" className="min-h-[44px] items-center justify-center pb-2 pt-3">
+                  <View className="h-1 w-10 rounded-full bg-separator" />
+                  {title ? (
+                    <Text variant="headline" accessibilityRole="header" className="mt-3 px-4 text-foreground">
+                      {title}
+                    </Text>
+                  ) : null}
                 </View>
-              ) : null}
-            </BarHeightContext.Provider>
+              </GestureDetector>
+              <BarHeightContext.Provider value={setBarHeight}>
+                <ScrollView
+                  {...scrollProps}
+                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: barHeight + bottom + 16 }}
+                >
+                  {children}
+                </ScrollView>
+                {footer ? (
+                  <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+                    {footer}
+                  </View>
+                ) : null}
+              </BarHeightContext.Provider>
+            </View>
           </Animated.View>
         </View>
       </GestureHandlerRootView>

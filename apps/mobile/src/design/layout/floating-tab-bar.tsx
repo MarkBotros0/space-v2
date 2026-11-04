@@ -93,45 +93,51 @@ export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & 
   );
 
   return (
-    <Animated.View
+    // The placement lives on a plain View and the Animated.View carries only the slide:
+    // classes on an Animated.View are dropped on device (no-classname-on-animated.test.ts).
+    <View
       testID="pill-root"
       // Hidden: never block the touches of the screen the pill used to cover. It stays in
       // the accessibility tree (a screen reader does not scroll-hide).
       pointerEvents={visible ? "box-none" : "none"}
-      className="absolute inset-x-4 items-center"
-      style={[{ bottom: offset }, slide]}
+      className="absolute inset-x-4"
+      style={{ bottom: offset }}
     >
-      <View
-        className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
-        style={shadowStyle("lift")}
-      >
-        {Platform.OS === "ios" ? <BlurView intensity={40} style={StyleSheet.absoluteFill} /> : null}
-        <View className="absolute inset-0 bg-pill" />
-        <PillHighlight target={active ? (layouts[active] ?? null) : null} />
-        {shown.map((item) => {
-          const name = routeNameForHref(item.href);
-          return (
-            <NavLink
-              key={item.href}
-              label={item.label}
-              icon={item.icon}
-              featured={item.icon === "home"}
-              active={active === name}
-              onLayout={(e) => {
-                const { x, width } = e.nativeEvent.layout;
-                setLayouts((prev) =>
-                  prev[name]?.x === x && prev[name]?.width === width ? prev : { ...prev, [name]: { x, width } },
-                );
-              }}
-              onPress={() => {
-                setPending((q) => [...q, name]);
-                const key = state.routes.find((r) => r.name === name)?.key;
-                if (key) navigateToTab(key);
-              }}
-            />
-          );
-        })}
-      </View>
-    </Animated.View>
+      <Animated.View testID="pill-slide" pointerEvents="box-none" style={[styles.center, slide]}>
+        <View
+          className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
+          style={shadowStyle("lift")}
+        >
+          {Platform.OS === "ios" ? <BlurView intensity={40} style={StyleSheet.absoluteFill} /> : null}
+          <View className="absolute inset-0 bg-pill" />
+          <PillHighlight target={active ? (layouts[active] ?? null) : null} />
+          {shown.map((item) => {
+            const name = routeNameForHref(item.href);
+            return (
+              <NavLink
+                key={item.href}
+                label={item.label}
+                icon={item.icon}
+                featured={item.icon === "home"}
+                active={active === name}
+                onLayout={(e) => {
+                  const { x, width } = e.nativeEvent.layout;
+                  setLayouts((prev) =>
+                    prev[name]?.x === x && prev[name]?.width === width ? prev : { ...prev, [name]: { x, width } },
+                  );
+                }}
+                onPress={() => {
+                  setPending((q) => [...q, name]);
+                  const key = state.routes.find((r) => r.name === name)?.key;
+                  if (key) navigateToTab(key);
+                }}
+              />
+            );
+          })}
+        </View>
+      </Animated.View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({ center: { alignItems: "center" } });

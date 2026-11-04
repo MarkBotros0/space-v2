@@ -8,14 +8,12 @@ import { Children, Fragment, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { ChevronRight } from "lucide-react-native";
-import { cssInterop } from "nativewind";
 
 import { listItemEntering, useReducedMotion, usePressScale } from "../motion";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
 import { Text } from "./text";
 
-cssInterop(Animated.View, { className: "style" });
 iconWithClassName(ChevronRight);
 
 function ListSectionHeader({ children, className }: { children: string; className?: string }) {

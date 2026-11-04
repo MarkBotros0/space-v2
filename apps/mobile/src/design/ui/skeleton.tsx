@@ -3,9 +3,12 @@
  * breathes 0.55 <-> 1 (withRepeat/withTiming). Under reduced motion it is a
  * static 0.7 and nothing runs. `className` still works for the existing call
  * sites; `width`/`height`/`radius` are the explicit sizing props.
+ * The caller's classes and sizes sit on a plain View (so w-2/3 and flex-1
+ * resolve against the real parent), which clips a pulsing Animated.View fill.
+ * The Animated.View takes only styles: classes on it are dropped on device.
  */
 import { useEffect } from "react";
-import { View, type DimensionValue } from "react-native";
+import { StyleSheet, View, type DimensionValue } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -13,15 +16,10 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { cssInterop } from "nativewind";
 
 import { cn } from "../lib/cn";
 import { shadowStyle } from "../lib/shadow";
 import { useReducedMotion } from "../motion";
-
-// The pulse and the size classes must sit on the same view, or w-2/3 resolves
-// against an unsized wrapper.
-cssInterop(Animated.View, { className: "style" });
 
 const STATIC_OPACITY = 0.7;
 
@@ -44,17 +42,23 @@ function Skeleton({
   }, [reduced, opacity]);
   const animated = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
-    <Animated.View
+    <View
       testID="skeleton"
       accessibilityElementsHidden
-      className={cn("rounded-lg bg-separator", className)}
+      className={cn("overflow-hidden rounded-lg", className)}
       style={[
         width !== undefined ? { width } : null,
         height !== undefined ? { height } : null,
         radius !== undefined ? { borderRadius: radius } : null,
-        reduced ? { opacity: STATIC_OPACITY } : animated,
       ]}
-    />
+    >
+      <Animated.View
+        testID="skeleton-pulse"
+        style={[StyleSheet.absoluteFill, reduced ? { opacity: STATIC_OPACITY } : animated]}
+      >
+        <View className="flex-1 bg-separator" />
+      </Animated.View>
+    </View>
   );
 }
 

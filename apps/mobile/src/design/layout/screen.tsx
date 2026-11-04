@@ -38,6 +38,9 @@ import {
   useTabBarScroll,
 } from "./tab-bar-scroll";
 
+// Safe only while this ScrollView gets no animated style: css-interop flattens every
+// inline style into one object, and Reanimated swaps an object holding an animated
+// style for that style's initial value, dropping the classes (no-classname-on-animated.test.ts).
 cssInterop(Animated.ScrollView, {
   className: "style",
   contentContainerClassName: "contentContainerStyle",

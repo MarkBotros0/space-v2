@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 
 import { SPRING, useReducedMotion } from "../motion";
@@ -10,6 +11,8 @@ export type HighlightTarget = { x: number; width: number } | null;
  * and width spring to the measured layout of the active tab. A new target
  * replaces the running spring (interruptible: B then C ends at C). The first
  * measurement, and every one under reduced motion, is a jump.
+ * The Animated.View takes only plain and animated styles; the themed fill is a
+ * plain View inside it (classes on an Animated.View are dropped on device).
  */
 export function PillHighlight({ target }: { target: HighlightTarget }) {
   const reduced = useReducedMotion();
@@ -40,11 +43,11 @@ export function PillHighlight({ target }: { target: HighlightTarget }) {
   }));
 
   return (
-    <Animated.View
-      testID="pill-highlight"
-      pointerEvents="none"
-      className="absolute inset-y-1 left-0 rounded-full bg-pill-active/20"
-      style={style}
-    />
+    <Animated.View testID="pill-highlight" pointerEvents="none" style={[styles.track, style]}>
+      <View className="flex-1 rounded-full bg-pill-active/20" />
+    </Animated.View>
   );
 }
+
+// `absolute inset-y-1 left-0` (inset-y-1 = 4px).
+const styles = StyleSheet.create({ track: { position: "absolute", top: 4, bottom: 4, left: 0 } });

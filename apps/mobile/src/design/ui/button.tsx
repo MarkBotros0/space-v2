@@ -5,25 +5,25 @@
  * outline -> secondary, ghost/link -> plain (link keeps an underlined label),
  * default/lg/icon-lg -> md, xs/sm/icon/icon-xs/icon-sm -> sm.
  * The outer Pressable takes the caller's layout classes (self-start, flex-1,
- * w-full); the inner Animated.View carries the look and the press scale, which
- * also runs under reduced motion (it is feedback, not travel). No haptic here:
- * haptics are for selection and success moments.
+ * w-full); the Animated.View inside it carries only the press scale, which
+ * also runs under reduced motion (it is feedback, not travel), and the View
+ * inside that carries the look. Classes never go on the Animated.View: on a
+ * device css-interop merges them with the animated style and Reanimated drops
+ * them (no-classname-on-animated.test.ts). No haptic here: haptics are for
+ * selection and success moments.
  * Native note: a React Native column stretches a button, so a call site that
  * is a block in v1 adds `self-start`.
  */
 import { cva } from "class-variance-authority";
 import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, type PressableProps } from "react-native";
+import { ActivityIndicator, Pressable, type PressableProps, View } from "react-native";
 import Animated from "react-native-reanimated";
-import { cssInterop } from "nativewind";
 
 import { usePressScale } from "../motion";
 import { useThemeColors } from "../theme/use-theme-colors";
 import { cn } from "../lib/cn";
 import { withTextRuns } from "../lib/text-runs";
 import { Text } from "./text";
-
-cssInterop(Animated.View, { className: "style" });
 
 type Variant = "primary" | "secondary" | "destructive" | "plain";
 type Size = "md" | "sm";
@@ -116,21 +116,20 @@ function Button({
       onPressOut={press.onPressOut}
       {...props}
     >
-      <Animated.View
-        style={press.animatedStyle}
-        className={cn(buttonVariants({ variant, size }), blocked && !loading && "opacity-50")}
-      >
-        {loading ? <ActivityIndicator testID="button-spinner" size="small" color={spinner} /> : null}
-        {withTextRuns(children, (text, key) => (
-          <Text
-            key={key}
-            variant="headline"
-            numberOfLines={1}
-            className={cn(buttonTextVariants({ variant }), textClassName)}
-          >
-            {text}
-          </Text>
-        ))}
+      <Animated.View style={press.animatedStyle}>
+        <View className={cn(buttonVariants({ variant, size }), blocked && !loading && "opacity-50")}>
+          {loading ? <ActivityIndicator testID="button-spinner" size="small" color={spinner} /> : null}
+          {withTextRuns(children, (text, key) => (
+            <Text
+              key={key}
+              variant="headline"
+              numberOfLines={1}
+              className={cn(buttonTextVariants({ variant }), textClassName)}
+            >
+              {text}
+            </Text>
+          ))}
+        </View>
       </Animated.View>
     </Pressable>
   );
