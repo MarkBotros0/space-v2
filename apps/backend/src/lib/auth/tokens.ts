@@ -114,7 +114,13 @@ export async function rotateRefreshToken(
   const record = await db.refreshToken.findUnique({ where: { tokenHash: hashToken(rawToken) } });
   if (!record || record.revokedAt || record.expiresAt < new Date()) return null;
 
-  await db.refreshToken.update({ where: { id: record.id }, data: { revokedAt: new Date() } });
+  // Revoke only if still live, so two concurrent refreshes with the same
+  // token can't both win and fork two sessions from one stolen token.
+  const revoked = await db.refreshToken.updateMany({
+    where: { id: record.id, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  if (revoked.count !== 1) return null;
 
   const issued = await issueSession(record.userId, userAgent);
   return issued?.session ?? null;

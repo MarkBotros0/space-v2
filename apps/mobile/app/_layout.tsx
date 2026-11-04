@@ -12,12 +12,16 @@ import { useBootSession } from "../src/hooks/use-session";
 import { GEIST_FONTS } from "../src/design/theme/fonts";
 import { applyStoredThemeMode } from "../src/design/theme/theme-mode";
 import { Toaster } from "../src/design/ui/toaster";
-import { createQueryClient } from "../src/lib/query-client";
+import { ScreenErrorBoundary } from "../src/design/layout/error-boundary";
+import { clearCacheOnUserChange, createQueryClient } from "../src/lib/query-client";
 import { useSessionStore } from "../src/store/session";
 import { ThemeProvider } from "../src/theme";
 import { LoadingState } from "../src/ui";
 
 const queryClient = createQueryClient();
+clearCacheOnUserChange(queryClient);
+
+export const ErrorBoundary = ScreenErrorBoundary;
 
 export default function RootLayout() {
   // Geist faces and the saved theme must be in place before first paint, or

@@ -5,6 +5,7 @@ import type { NavItem } from "@space/shared";
 import { ALL_NAV_HREFS } from "@space/shared";
 
 import { AppTopBar } from "../../src/design/layout/app-top-bar";
+import { ScreenErrorBoundary } from "../../src/design/layout/error-boundary";
 import { FloatingTabBar } from "../../src/design/layout/floating-tab-bar";
 import { ShellContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
@@ -13,6 +14,9 @@ import { useSessionStore } from "../../src/store/session";
 
 // Re-exported: tests and older imports read these from the layout.
 export { DIRECTORY_ROUTE_HREFS, routeNameForHref };
+
+/** A screen that throws while rendering shows a retry, not a crashed app. */
+export const ErrorBoundary = ScreenErrorBoundary;
 
 /**
  * The full universe of route files under this group, derived from

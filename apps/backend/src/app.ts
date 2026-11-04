@@ -61,7 +61,9 @@ export function createApp(): Express {
   app.use("/api/v1/seasons", seasonImportsRouter);
   app.use(express.json());
   if (config.nodeEnv !== "test") {
-    app.use(morgan("dev"));
+    // Coloured "dev" lines locally; Apache combined format in production,
+    // which log drains parse. Neither logs bodies or the Authorization header.
+    app.use(morgan(config.nodeEnv === "production" ? "combined" : "dev"));
   }
 
   app.use(healthRouter);

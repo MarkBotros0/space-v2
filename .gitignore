@@ -10,3 +10,4 @@ coverage/
 uploads/
 
 tools/ui-reference/node_modules/
+.claude/worktrees/

@@ -1,5 +1,6 @@
 import { MutationCache, QueryClient } from "@tanstack/react-query";
 
+import { useSessionStore } from "../store/session";
 import { queryKeys } from "./query-keys";
 
 /**
@@ -38,4 +39,21 @@ export function createQueryClient(): QueryClient {
     },
   });
   return client;
+}
+
+/**
+ * Drops every cached query when the signed-in user changes — sign-out
+ * (explicit, forced by a dead refresh token, or logout-all) or a different
+ * user signing in. Query keys are not scoped by user (`notifications.lists()`,
+ * `dashboard.me(seasonId)`), so without this the next person on the same
+ * phone briefly sees the previous user's data. Returns the unsubscribe.
+ */
+export function clearCacheOnUserChange(client: QueryClient): () => void {
+  let userId = useSessionStore.getState().user?.id ?? null;
+  return useSessionStore.subscribe((state) => {
+    const next = state.user?.id ?? null;
+    if (next === userId) return;
+    if (userId !== null) client.clear();
+    userId = next;
+  });
 }
