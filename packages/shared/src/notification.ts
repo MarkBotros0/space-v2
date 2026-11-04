@@ -182,11 +182,7 @@ export const DEVICE_PLATFORM_TO_DB = {
   android: "ANDROID",
 } as const satisfies Record<DevicePlatform, string>;
 
-/**
- * Device registration (spec D5). The row this writes does not exist yet — the
- * schema is frozen and there is no DeviceToken model — so the endpoint answers
- * 503 until cutover. The contract is fixed now so the client is built once.
- */
+/** `POST /me/devices`: register this device's Expo push token. */
 export const deviceRegistrationSchema = z
   .object({
     token: z.string().min(1).max(200),
@@ -194,3 +190,7 @@ export const deviceRegistrationSchema = z
   })
   .strict();
 export type DeviceRegistration = z.infer<typeof deviceRegistrationSchema>;
+
+/** `DELETE /me/devices`: the token in the body (a credential — never in a path). */
+export const deviceUnregistrationSchema = z.object({ token: z.string().min(1).max(200) }).strict();
+export type DeviceUnregistration = z.infer<typeof deviceUnregistrationSchema>;

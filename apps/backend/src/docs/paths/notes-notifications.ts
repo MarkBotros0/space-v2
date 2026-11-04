@@ -230,17 +230,41 @@ export const notesNotificationsPaths = {
   "/api/v1/me/devices": {
     post: {
       tags: ["Me"],
-      summary: "Register this device for push (blocked on cutover)",
+      summary: "Register this device for push",
       description:
-        "The request body is validated, then the endpoint answers `503 push_unavailable`: Expo push needs a device-token table, the database schema is frozen while v1 runs against it, and the table lands at cutover (see docs/superpowers/cutover/2026-08-24-notifications-push.md). The contract is fixed now so the client is built once; the client keeps the token locally and stops retrying this session.",
+        "Upserts the Expo push token and points it at the caller, so a phone handed to another user moves with the sign-in. Calling it again only refreshes `lastSeenAt`. The token is a credential: it is never logged or returned.",
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/DeviceRegistration" } } },
       },
       responses: {
+        200: ok({ type: "object", required: ["registered"], properties: { registered: { type: "boolean", enum: [true] } } }, "Registered."),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
-        503: conflict("`push_unavailable` — push registration is not available until the cutover migration lands."),
+      },
+    },
+    delete: {
+      tags: ["Me"],
+      summary: "Unregister this device (sign-out)",
+      description:
+        "Deletes the token only if it belongs to the caller. The token is in the body, not the path, because paths reach access logs. Idempotent: an unknown token still answers 200.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["token"],
+              additionalProperties: false,
+              properties: { token: { type: "string", minLength: 1, maxLength: 200 } },
+            },
+          },
+        },
+      },
+      responses: {
+        200: ok({ type: "object", required: ["unregistered"], properties: { unregistered: { type: "boolean", enum: [true] } } }, "Unregistered."),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
       },
     },
   },
