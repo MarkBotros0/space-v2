@@ -31,14 +31,28 @@ export const notificationEntityTypeSchema = z.enum([
   "quiz",
   "calendar",
   "student",
+  "submission",
 ]);
 export type NotificationEntityType = z.infer<typeof notificationEntityTypeSchema>;
 
-export const notificationTargetSchema = z.object({
-  entityType: notificationEntityTypeSchema,
-  /** Null for the two list-level links v1 emits (`/student/quizzes`, `/student/calendar`). */
-  entityId: z.number().int().positive().nullable(),
-});
+/**
+ * Two shapes, one discriminant. Every entity but a submission is addressed by
+ * its numeric id; a submission is addressed by its `publicId` — the only id
+ * any submission route (and the mobile `/submission/[publicId]` screen) takes,
+ * so a numeric id there would need a second lookup the client cannot make.
+ */
+export const notificationTargetSchema = z.discriminatedUnion("entityType", [
+  z.object({
+    entityType: notificationEntityTypeSchema.exclude(["submission"]),
+    /** Null for the two list-level links (`/student/quizzes`, `/student/calendar`). */
+    entityId: z.number().int().positive().nullable(),
+  }),
+  z.object({
+    entityType: z.literal("submission"),
+    /** The submission's publicId (SUBMISSION_RECEIVED). */
+    entityId: z.string().min(1),
+  }),
+]);
 export type NotificationTarget = z.infer<typeof notificationTargetSchema>;
 
 export const notificationSchema = z.object({
@@ -110,6 +124,9 @@ export const NOTIFICATION_PREFERENCE_KEY_BY_TYPE = {
   LOW_ATTENDANCE_FLAG: "lowAttendanceFlag",
   MENTOR_FOLLOWUP: "mentorFollowup",
   QUIZ_GRADED: "quizGraded",
+  QUIZ_PUBLISHED: "quizPublished",
+  SUBMISSION_RECEIVED: "submissionReceived",
+  SESSION_CANCELLED: "sessionCancelled",
 } as const satisfies Record<NotificationType, string>;
 
 export type NotificationPreferenceKey =
@@ -119,7 +136,7 @@ export const NOTIFICATION_PREFERENCE_KEYS: readonly NotificationPreferenceKey[] 
   notificationTypeSchema.options.map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t]);
 
 /**
- * All six keys, required. The `satisfies` below is the structural fix for
+ * Every key, required. The `satisfies` below is the structural fix for
  * R56/R57: drop a key and the object no longer satisfies
  * `Record<NotificationPreferenceKey, boolean>`, which is a compile error rather
  * than a preference nobody can set.
@@ -131,6 +148,9 @@ export const notificationPreferencesSchema = z.object({
   lowAttendanceFlag: z.boolean(),
   mentorFollowup: z.boolean(),
   quizGraded: z.boolean(),
+  quizPublished: z.boolean(),
+  submissionReceived: z.boolean(),
+  sessionCancelled: z.boolean(),
 }) satisfies z.ZodType<Record<NotificationPreferenceKey, boolean>>;
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
@@ -142,6 +162,9 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   lowAttendanceFlag: true,
   mentorFollowup: true,
   quizGraded: true,
+  quizPublished: true,
+  submissionReceived: true,
+  sessionCancelled: true,
 };
 
 export const notificationPreferencesResponseSchema = z.object({
@@ -151,7 +174,8 @@ export const notificationPreferencesResponseSchema = z.object({
 /**
  * Every notification type pushes (owner ruling 2026-11-04, when push landed):
  * each one is something the recipient acts on — new work, feedback, a moved
- * session, a grade, a student missing sessions, a follow-up request. The
+ * session, a grade, a student missing sessions, a follow-up request, a newly
+ * published quiz, work handed in to a leader, a cancelled session. The
  * recipient's per-type preference still turns a type off for every outbound
  * channel at once.
  *
@@ -168,6 +192,9 @@ export const PUSH_NOTIFICATION_TYPES = [
   "LOW_ATTENDANCE_FLAG",
   "MENTOR_FOLLOWUP",
   "QUIZ_GRADED",
+  "QUIZ_PUBLISHED",
+  "SUBMISSION_RECEIVED",
+  "SESSION_CANCELLED",
 ] as const satisfies readonly NotificationType[];
 
 export function shouldPush(type: NotificationType): boolean {

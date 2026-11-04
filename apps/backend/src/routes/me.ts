@@ -241,15 +241,18 @@ const PREFERENCE_SELECT = {
   lowAttendanceFlag: true,
   mentorFollowup: true,
   quizGraded: true,
+  quizPublished: true,
+  submissionReceived: true,
+  sessionCancelled: true,
 } as const;
 
 /**
- * The caller's own notification preferences — all six keys.
+ * The caller's own notification preferences — every key.
  *
  * v1 read the sixth column from the database and dropped it on the floor while
  * projecting to a five-field type (§5, R56), which is why `quizGraded` could
  * never be turned off. The contract is derived from the enum
- * (packages/shared/src/notification.ts), so a seventh type would be a compile
+ * (packages/shared/src/notification.ts), so a new type without a key is a compile
  * error rather than a silently unreachable toggle.
  *
  * No row means opted in to everything (R6) — the row is created lazily, on
@@ -265,7 +268,7 @@ meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
 });
 
 /**
- * Replace them. PUT, not PATCH: the body carries all six keys, so there is no
+ * Replace them. PUT, not PATCH: the body carries every key, so there is no
  * way for a client that has not been updated to leave a new key at its default
  * without saying so.
  *
@@ -278,7 +281,7 @@ meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
 
   const parsed = notificationPreferencesSchema.safeParse(req.body);
   if (!parsed.success) {
-    return apiError(res, "bad_request", "All six notification preferences are required.", 400);
+    return apiError(res, "bad_request", "Every notification preference is required.", 400);
   }
 
   const preferences = await db.notificationPreference.upsert({

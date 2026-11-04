@@ -197,9 +197,9 @@ export const notesNotificationsPaths = {
   "/api/v1/me/notification-preferences": {
     get: {
       tags: ["Me"],
-      summary: "Your notification preferences (all six)",
+      summary: "Your notification preferences (all nine)",
       description:
-        "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email now, push at cutover); the in-app inbox row is always written.",
+        "Always returns all nine keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email now, push at cutover); the in-app inbox row is always written.",
       responses: {
         200: ok(
           { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
@@ -212,7 +212,7 @@ export const notesNotificationsPaths = {
       tags: ["Me"],
       summary: "Replace your notification preferences",
       description:
-        "PUT, not PATCH: the body must carry all six keys, so a partial body is `400 bad_request`. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
+        "PUT, not PATCH: the body must carry all nine keys, so a partial body is `400 bad_request`. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferences" } } },

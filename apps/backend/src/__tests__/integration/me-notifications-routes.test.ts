@@ -35,13 +35,16 @@ describe("notification preferences", () => {
     lowAttendanceFlag: true,
     mentorFollowup: true,
     quizGraded: true,
+    quizPublished: true,
+    submissionReceived: true,
+    sessionCancelled: true,
   };
 
   afterEach(async () => {
     await db.notificationPreference.deleteMany({ where: { userId: prefsUserId } });
   });
 
-  it("returns all six keys, all true, when the user has no row (R6, R58, R59)", async () => {
+  it("returns every key, all true, when the user has no row (R6, R58, R59)", async () => {
     const res = await request(app)
       .get("/api/v1/me/notification-preferences")
       .set("authorization", `Bearer ${prefsToken}`);

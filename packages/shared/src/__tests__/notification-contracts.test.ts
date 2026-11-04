@@ -16,7 +16,7 @@ import {
 } from "../index";
 
 describe("notificationTypeSchema", () => {
-  it("mirrors the six values in prisma/schema.prisma:63-70", () => {
+  it("mirrors the nine values of NotificationType in prisma/schema.prisma", () => {
     expect(notificationTypeSchema.options).toEqual([
       "ASSIGNMENT_CREATED",
       "SUBMISSION_REVIEWED",
@@ -24,12 +24,15 @@ describe("notificationTypeSchema", () => {
       "LOW_ATTENDANCE_FLAG",
       "MENTOR_FOLLOWUP",
       "QUIZ_GRADED",
+      "QUIZ_PUBLISHED",
+      "SUBMISSION_RECEIVED",
+      "SESSION_CANCELLED",
     ]);
   });
 });
 
 describe("notificationPreferencesSchema", () => {
-  it("carries one key per notification type — all six, derived from the enum", () => {
+  it("carries one key per notification type — all nine, derived from the enum", () => {
     // v1 lost quizGraded precisely by hand-writing five of six field names
     // (spec R56, R57). The shape is derived here, and this is the runtime
     // half of that guarantee; the `satisfies` in the source is the compile half.
@@ -38,8 +41,14 @@ describe("notificationPreferencesSchema", () => {
         .map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t])
         .sort(),
     );
-    expect(NOTIFICATION_PREFERENCE_KEYS).toHaveLength(6);
+    expect(NOTIFICATION_PREFERENCE_KEYS).toHaveLength(9);
     expect(NOTIFICATION_PREFERENCE_KEYS).toContain("quizGraded");
+  });
+
+  it("maps each of the three new types to its own column", () => {
+    expect(NOTIFICATION_PREFERENCE_KEY_BY_TYPE.QUIZ_PUBLISHED).toBe("quizPublished");
+    expect(NOTIFICATION_PREFERENCE_KEY_BY_TYPE.SUBMISSION_RECEIVED).toBe("submissionReceived");
+    expect(NOTIFICATION_PREFERENCE_KEY_BY_TYPE.SESSION_CANCELLED).toBe("sessionCancelled");
   });
 
   it("defaults every key to true — a user with no row is opted in (R6, R58)", () => {
@@ -50,16 +59,25 @@ describe("notificationPreferencesSchema", () => {
       lowAttendanceFlag: true,
       mentorFollowup: true,
       quizGraded: true,
+      quizPublished: true,
+      submissionReceived: true,
+      sessionCancelled: true,
     });
   });
 
-  it("refuses a partial body — PUT carries all six keys", () => {
+  it("refuses a partial body — PUT carries every key", () => {
     expect(notificationPreferencesSchema.safeParse({ assignmentCreated: false }).success).toBe(
       false,
     );
     expect(notificationPreferencesSchema.safeParse(DEFAULT_NOTIFICATION_PREFERENCES).success).toBe(
       true,
     );
+    // The six keys an older client sends are no longer a full body.
+    const added = ["quizPublished", "submissionReceived", "sessionCancelled"];
+    const six = Object.fromEntries(
+      Object.entries(DEFAULT_NOTIFICATION_PREFERENCES).filter(([k]) => !added.includes(k)),
+    );
+    expect(notificationPreferencesSchema.safeParse(six).success).toBe(false);
   });
 });
 
@@ -112,6 +130,30 @@ describe("notificationSchema", () => {
     expect(parsed.target).toEqual({ entityType: "assignment", entityId: 41 });
   });
 
+  it("addresses a submission by its publicId, every other entity by a numeric id", () => {
+    const base = {
+      id: 8,
+      type: "SUBMISSION_RECEIVED",
+      title: "Salma submitted Essay one",
+      body: null,
+      link: "/leader/submissions/Ab3dE5gH9k",
+      readAt: null,
+      createdAt: "2026-11-04T10:00:00.000Z",
+    };
+    expect(
+      notificationSchema.parse({ ...base, target: { entityType: "submission", entityId: "Ab3dE5gH9k" } }).target,
+    ).toEqual({ entityType: "submission", entityId: "Ab3dE5gH9k" });
+    expect(
+      notificationSchema.safeParse({ ...base, target: { entityType: "submission", entityId: 41 } }).success,
+    ).toBe(false);
+    expect(
+      notificationSchema.safeParse({ ...base, target: { entityType: "submission", entityId: null } }).success,
+    ).toBe(false);
+    expect(
+      notificationSchema.safeParse({ ...base, target: { entityType: "assignment", entityId: "41" } }).success,
+    ).toBe(false);
+  });
+
   it("allows a null target for a link shape nothing recognises", () => {
     expect(
       notificationSchema.safeParse({
@@ -135,16 +177,29 @@ describe("push policy", () => {
       "LOW_ATTENDANCE_FLAG",
       "MENTOR_FOLLOWUP",
       "QUIZ_GRADED",
+      "QUIZ_PUBLISHED",
+      "SESSION_CANCELLED",
       "SESSION_RESCHEDULED",
+      "SUBMISSION_RECEIVED",
       "SUBMISSION_REVIEWED",
     ]);
     expect(shouldPush("ASSIGNMENT_CREATED")).toBe(true);
+    expect(shouldPush("QUIZ_PUBLISHED")).toBe(true);
+    expect(shouldPush("SUBMISSION_RECEIVED")).toBe(true);
+    expect(shouldPush("SESSION_CANCELLED")).toBe(true);
   });
 
   it("never puts a follow-up's student name on a lock screen (R64)", () => {
     const shown = pushContent("MENTOR_FOLLOWUP", "Follow-up: Salma Student", "Check in this week");
     expect(shown.title).not.toContain("Salma");
     expect(shown.body ?? "").not.toContain("Salma");
+  });
+
+  it("keeps the in-app text for the new types", () => {
+    expect(pushContent("SESSION_CANCELLED", "Cancelled: Week 3", null)).toEqual({
+      title: "Cancelled: Week 3",
+      body: null,
+    });
   });
 
   it("keeps the in-app text for every other type", () => {
