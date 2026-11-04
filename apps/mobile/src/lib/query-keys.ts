@@ -71,7 +71,9 @@ export const queryKeys = {
     series: (id: number | null, scope: RecurrenceScope) =>
       [...queryKeys.sessions.all, "series", { id, scope }] as const,
     checkIn: (id: number | null) => [...queryKeys.sessions.all, "checkIn", { id }] as const,
-    quizzes: (id: number | null) => [...queryKeys.sessions.all, "quizzes", { id }] as const,
+    /** Every session's quiz card — what a quiz write invalidates (it may move sessions). */
+    allQuizzes: () => [...queryKeys.sessions.all, "quizzes"] as const,
+    quizzes: (id: number | null) => [...queryKeys.sessions.allQuizzes(), { id }] as const,
   },
   notifications: {
     all: ["notifications"] as const,

@@ -74,9 +74,11 @@ export function LeaderQuizzesCard({ sessionId }: { sessionId: number }) {
 /** The session's quizzes on the admin page: title, kind and state badges, Edit and Grade links (v1). */
 export function AdminQuizzesCard({
   sessionId,
+  seasonId,
   canAuthor,
 }: {
   sessionId: number;
+  seasonId: number;
   canAuthor: boolean;
 }) {
   const router = useRouter();
@@ -90,7 +92,18 @@ export function AdminQuizzesCard({
         </View>
         {/* V2-ONLY: v1's inline "+ Add quiz" form; v2 opens the new-quiz screen. */}
         {canAuthor ? (
-          <ButtonV1 variant="outline" size="sm" onPress={() => router.push("/quiz/new")}>
+          <ButtonV1
+            variant="outline"
+            size="sm"
+            onPress={() =>
+              // v1 always created the quiz on this session, in this session's
+              // season — never the caller's current one.
+              router.push({
+                pathname: "/quiz/new",
+                params: { sessionId: String(sessionId), seasonId: String(seasonId) },
+              })
+            }
+          >
             + Add quiz
           </ButtonV1>
         ) : null}

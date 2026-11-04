@@ -21,13 +21,17 @@ export type CreateQuizInput = z.input<typeof createQuizRequestSchema>;
 /**
  * Every builder write invalidates the quiz's own detail (whose staff entry
  * holds the questions and canEditStructure) and the lists (questionCount,
- * maxScore and the draft badge all change).
+ * maxScore and the draft badge all change), and every session's quiz card,
+ * which shows the same title, question count, max score and draft badge. A
+ * create or edit only names the quiz, not the session it hangs off, so all of
+ * them are invalidated — only the ones mounted actually refetch.
  */
 function useInvalidateQuiz(id: number | null) {
   const queryClient = useQueryClient();
   return () => {
     if (id !== null) void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.detail(id) });
     void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.allQuizzes() });
   };
 }
 

@@ -132,7 +132,7 @@ export function AdminSessionBody({
         ) : null}
 
         {data.canMarkAttendance ? (
-          <AdminQuizzesCard sessionId={data.id} canAuthor={showConsole} />
+          <AdminQuizzesCard sessionId={data.id} seasonId={data.seasonId} canAuthor={showConsole} />
         ) : null}
 
         <VideoSection detail={data} />
