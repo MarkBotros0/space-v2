@@ -22,6 +22,8 @@ jest.mock("expo-router", () => {
 // both are native (expo-font, AsyncStorage) and irrelevant to the gate.
 let mockFonts: [boolean, Error | null] = [true, null];
 jest.mock("expo-font", () => ({ useFonts: () => mockFonts }));
+// Push wiring has its own tests; here it would need the native module.
+jest.mock("../components/PushNotificationsBridge", () => ({ PushNotificationsBridge: () => null }));
 jest.mock("../design/theme/theme-mode", () => ({ applyStoredThemeMode: () => Promise.resolve() }));
 
 // RootLayout wraps everything in a bare `<SafeAreaProvider>` (no

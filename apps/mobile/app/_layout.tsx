@@ -12,6 +12,7 @@ import { useBootSession } from "../src/hooks/use-session";
 import { GEIST_FONTS } from "../src/design/theme/fonts";
 import { applyStoredThemeMode } from "../src/design/theme/theme-mode";
 import { Toaster } from "../src/design/ui/toaster";
+import { PushNotificationsBridge } from "../src/components/PushNotificationsBridge";
 import { ScreenErrorBoundary } from "../src/design/layout/error-boundary";
 import { clearCacheOnUserChange, createQueryClient } from "../src/lib/query-client";
 import { useSessionStore } from "../src/store/session";
@@ -76,5 +77,10 @@ function Gate() {
     return <LoadingState />;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }} />
+      {status === "authenticated" ? <PushNotificationsBridge /> : null}
+    </>
+  );
 }
