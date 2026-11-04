@@ -21,6 +21,14 @@ export function showDevRoutes(): boolean {
 }
 
 /**
+ * True in a build made with EXPO_PUBLIC_SWEEP_BUILD=1 (the UI sweep's APK):
+ * it unlocks the hidden design catalogue in a release bundle.
+ */
+export function isSweepBuild(): boolean {
+  return process.env.EXPO_PUBLIC_SWEEP_BUILD === "1";
+}
+
+/**
  * Sentry DSN for crash and error reporting (src/lib/sentry.ts), or null when
  * the build sets none — then Sentry stays completely off. Read as a literal
  * `process.env.EXPO_PUBLIC_*` so Expo inlines it at bundle time.
