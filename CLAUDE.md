@@ -248,6 +248,12 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
   title, headline, body, subhead, caption); it carries the body defaults because React
   Native text inherits nothing. Button, Badge and the pills carry no self-alignment:
   where one sits in a block, add `self-start`.
+- **Consistency guard.** `src/__tests__/design-consistency.test.ts` fails on hex / `rgb()`
+  literals and `shadow-` classes anywhere in `app/` and `src/`, and on `rounded-sm|md|lg|xl`
+  and raw `fontSize:` numbers outside `src/design/` (groups 16, buttons 14, chips full; type
+  from Text variants). The legacy kit (Card, Badge, Modal, Tabs, StatCard, SectionCard,
+  PageTitle, ...) already draws on the new tokens and cards are flat; plans 02–05 keep the
+  guard green and delete each legacy component when its last user migrates.
 - **Catalogue.** The hidden design catalogue (`spacev2://design-catalogue`, in dev or with
   `EXPO_PUBLIC_SWEEP_BUILD=1`) shows every component; sweep flow `s90` shoots it.
 - **Motion** (`src/design/motion/`): durations `fast` 150 / `base` 220 / `slow` 320 ms and
