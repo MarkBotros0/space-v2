@@ -149,22 +149,45 @@ export const notificationPreferencesResponseSchema = z.object({
 });
 
 /**
- * Which types warrant an interruptive push (spec D5 item 2, narrowed).
+ * Every notification type pushes (owner ruling 2026-11-04, when push landed):
+ * each one is something the recipient acts on — new work, feedback, a moved
+ * session, a grade, a student missing sessions, a follow-up request. The
+ * recipient's per-type preference still turns a type off for every outbound
+ * channel at once.
  *
- * ASSIGNMENT_CREATED is the highest-volume fan-out in the system and is not
- * time-critical. LOW_ATTENDANCE_FLAG can burst (04 R87 gives it no dedupe) and
- * waits on 04's D7/D12. MENTOR_FOLLOWUP names a student flagged for pastoral
- * follow-up in its title, which must never reach a lock screen (R64, D8) —
- * Plan 12 removed v1's note excerpt from the body, but the name remains.
+ * The spec's earlier narrowing (D5 item 2) is answered instead of kept:
+ * - LOW_ATTENDANCE_FLAG no longer bursts — it fires only on a change to ABSENT;
+ * - MENTOR_FOLLOWUP names a student flagged for pastoral follow-up, which must
+ *   never reach a lock screen (R64, D8), so its push carries neutral text
+ *   (`pushContent`) and the name stays inside the app.
  */
 export const PUSH_NOTIFICATION_TYPES = [
-  "SESSION_RESCHEDULED",
+  "ASSIGNMENT_CREATED",
   "SUBMISSION_REVIEWED",
+  "SESSION_RESCHEDULED",
+  "LOW_ATTENDANCE_FLAG",
+  "MENTOR_FOLLOWUP",
   "QUIZ_GRADED",
 ] as const satisfies readonly NotificationType[];
 
 export function shouldPush(type: NotificationType): boolean {
   return (PUSH_NOTIFICATION_TYPES as readonly NotificationType[]).includes(type);
+}
+
+/**
+ * What a push shows on the lock screen. Most types reuse the in-app title and
+ * body; a type whose text can name a student in a pastoral context is replaced
+ * with neutral copy.
+ */
+export function pushContent(
+  type: NotificationType,
+  title: string,
+  body: string | null,
+): { title: string; body: string | null } {
+  if (type === "MENTOR_FOLLOWUP") {
+    return { title: "Follow-up requested", body: "A note was flagged for follow-up. Open JPC Space to read it." };
+  }
+  return { title, body };
 }
 
 /**

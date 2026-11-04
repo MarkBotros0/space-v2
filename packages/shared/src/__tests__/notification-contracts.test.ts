@@ -11,6 +11,7 @@ import {
   notificationPreferencesSchema,
   notificationSchema,
   notificationTypeSchema,
+  pushContent,
   shouldPush,
 } from "../index";
 
@@ -128,19 +129,29 @@ describe("notificationSchema", () => {
 });
 
 describe("push policy", () => {
-  it("pushes only the three types the recipient is actively waiting on", () => {
+  it("pushes every notification type", () => {
     expect([...PUSH_NOTIFICATION_TYPES].sort()).toEqual([
+      "ASSIGNMENT_CREATED",
+      "LOW_ATTENDANCE_FLAG",
+      "MENTOR_FOLLOWUP",
       "QUIZ_GRADED",
       "SESSION_RESCHEDULED",
       "SUBMISSION_REVIEWED",
     ]);
-    expect(shouldPush("SESSION_RESCHEDULED")).toBe(true);
-    // The highest-volume fan-out in the system (spec D5 item 2).
-    expect(shouldPush("ASSIGNMENT_CREATED")).toBe(false);
-    // Can burst (04 R87, no dedupe) and is deferred until 04's D7/D12 settle.
-    expect(shouldPush("LOW_ATTENDANCE_FLAG")).toBe(false);
-    // Names a student flagged for pastoral follow-up — never on a lock screen (R64).
-    expect(shouldPush("MENTOR_FOLLOWUP")).toBe(false);
+    expect(shouldPush("ASSIGNMENT_CREATED")).toBe(true);
+  });
+
+  it("never puts a follow-up's student name on a lock screen (R64)", () => {
+    const shown = pushContent("MENTOR_FOLLOWUP", "Follow-up: Salma Student", "Check in this week");
+    expect(shown.title).not.toContain("Salma");
+    expect(shown.body ?? "").not.toContain("Salma");
+  });
+
+  it("keeps the in-app text for every other type", () => {
+    expect(pushContent("QUIZ_GRADED", "Quiz graded", "You scored 82.")).toEqual({
+      title: "Quiz graded",
+      body: "You scored 82.",
+    });
   });
 });
 
