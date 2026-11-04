@@ -113,7 +113,8 @@ export const mergedEventSchema = eventWriteBase.superRefine(refineEvent);
 
 /**
  * The window bounds stored instants and carries no day semantics, so instants
- * are right here. Omitted, the server picks the default (D-15.5).
+ * are right here. Omitted, that side of the window is open: with neither, every
+ * visible event (v1 parity, audit R57 REVERT of D-15.5).
  */
 export const eventListQuerySchema = z
   .object({
