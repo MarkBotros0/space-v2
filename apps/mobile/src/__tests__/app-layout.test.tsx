@@ -105,6 +105,7 @@ jest.mock("expo-router", () => {
     Stack,
     useSegments: () => mockSegments,
     useRouter: () => ({ push: () => {} }),
+    useFocusEffect: () => {},
     Redirect: ({ href }: { href: string }) => <Text testID="redirect">{href}</Text>,
   };
 });
@@ -158,7 +159,7 @@ describe("shell", () => {
   it("gives neither tabs nor detail screens a navigator header: Screen owns the top (R14)", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<TabsLayout />);
-    expect(mockTabsProps.screenOptions).toEqual({ headerShown: false });
+    expect(mockTabsProps.screenOptions).toMatchObject({ headerShown: false, animation: "fade", transitionSpec: { config: { duration: 220 } } });
     renderWithProviders(<AppLayout />);
     for (const screenDecl of mockStackScreens) {
       expect(screenDecl.options).toMatchObject({ headerShown: false });

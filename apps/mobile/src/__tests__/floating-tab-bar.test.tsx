@@ -1,8 +1,32 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { BlurView } from "expo-blur";
+import { Platform } from "react-native";
 import type { NavItem } from "@space/shared";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { FloatingTabBar } from "../design/layout/floating-tab-bar";
+import { PillTabBar } from "../design/layout/floating-tab-bar";
+import { PillHighlight } from "../design/layout/pill-highlight";
+import { resetTabBarScroll, useTabBarScroll } from "../design/layout/tab-bar-scroll";
+import { setReducedMotionForTests } from "../design/motion";
+
+const mockWithSpring = jest.fn();
+jest.mock("react-native-reanimated", () => {
+  const actual = jest.requireActual("react-native-reanimated");
+  // A Proxy keeps `default` and the ES-module flag that a spread would drop.
+  return new Proxy(actual, {
+    get: (target, key) =>
+      key === "withSpring"
+        ? (...a: unknown[]) => (mockWithSpring(...a), target.withSpring(...a))
+        : target[key],
+  });
+});
+jest.mock("expo-haptics");
+
+afterEach(() => {
+  setReducedMotionForTests(null);
+  resetTabBarScroll();
+  mockWithSpring.mockClear();
+});
 
 const items: NavItem[] = [
   { href: "/calendar", label: "Calendar", icon: "calendar" },
@@ -15,7 +39,7 @@ const items: NavItem[] = [
 
 const TAB_ROUTES = ["calendar", "assignments", "dashboard", "history", "profile", "settings"];
 
-function renderBar(activeRoute = "dashboard", navigateToTab = jest.fn()) {
+function barTree(activeRoute: string, navigateToTab = jest.fn()) {
   // Every tab is a route in the navigator state, keyed `<name>-key`; the
   // focused one is `activeRoute` (a detail route when it is not a tab).
   const names = TAB_ROUTES.includes(activeRoute) ? TAB_ROUTES : [...TAB_ROUTES, activeRoute];
@@ -23,14 +47,23 @@ function renderBar(activeRoute = "dashboard", navigateToTab = jest.fn()) {
     index: names.indexOf(activeRoute),
     routes: names.map((name) => ({ key: `${name}-key`, name })),
   };
-  render(
+  return (
     <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 375, height: 812 }, insets: { top: 0, left: 0, right: 0, bottom: 34 } }}>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <FloatingTabBar items={items} state={state} navigateToTab={navigateToTab} emitter={{} as any} descriptors={{} as any} insets={{ top: 0, left: 0, right: 0, bottom: 34 }} />
-    </SafeAreaProvider>,
+      <PillTabBar items={items} state={state} navigateToTab={navigateToTab} emitter={{} as any} descriptors={{} as any} insets={{ top: 0, left: 0, right: 0, bottom: 34 }} />
+    </SafeAreaProvider>
   );
+}
+
+function renderBar(activeRoute = "dashboard", navigateToTab = jest.fn()) {
+  render(barTree(activeRoute, navigateToTab));
   return navigateToTab;
 }
+
+function layoutTab(label: string, x: number, width = 70) {
+  fireEvent(screen.getByLabelText(label), "layout", { nativeEvent: { layout: { x, y: 0, width, height: 62 } } });
+}
+const highlightTarget = () => screen.UNSAFE_getByType(PillHighlight).props.target;
 
 it("shows at most five tabs, like v1 tabItems.slice(0, 5)", () => {
   renderBar();
@@ -73,5 +106,87 @@ describe("active tab on detail screens (v1: pathname.startsWith(href + '/'))", (
     const { activeTabRoute } = jest.requireActual("../design/layout/floating-tab-bar");
     expect(activeTabRoute("session/[id]/index", ["calendar", "dashboard"])).toBeNull();
     expect(activeTabRoute("notifications", ["calendar", "dashboard"])).toBeNull();
+  });
+});
+
+describe("sliding highlight", () => {
+  it("targets the active tab's measured layout", () => {
+    renderBar("history");
+    layoutTab("Calendar", 0);
+    layoutTab("History", 210, 72);
+    expect(highlightTarget()).toEqual({ x: 210, width: 72 });
+  });
+
+  it("follows the latest of two quick presses and navigates to it last", () => {
+    const navigateToTab = renderBar("dashboard");
+    layoutTab("Calendar", 0);
+    layoutTab("Assignments", 70);
+    layoutTab("History", 210);
+    fireEvent.press(screen.getByLabelText("Assignments"));
+    fireEvent.press(screen.getByLabelText("History"));
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    expect(navigateToTab).toHaveBeenLastCalledWith("history-key");
+  });
+
+  it("springs to the target, and jumps under reduced motion", () => {
+    renderBar("dashboard");
+    layoutTab("Home", 140);
+    layoutTab("History", 210);
+    mockWithSpring.mockClear();
+    fireEvent.press(screen.getByLabelText("History"));
+    expect(mockWithSpring).toHaveBeenCalled();
+    setReducedMotionForTests(true);
+    mockWithSpring.mockClear();
+    fireEvent.press(screen.getByLabelText("Home"));
+    expect(mockWithSpring).not.toHaveBeenCalled();
+  });
+});
+
+describe("frosted fill", () => {
+  it("blurs the backdrop on iOS", () => {
+    renderBar();
+    expect(screen.UNSAFE_queryByType(BlurView)).not.toBeNull();
+  });
+
+  it("renders the fill alone on Android", () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    renderBar();
+    expect(screen.UNSAFE_queryByType(BlurView)).toBeNull();
+    jest.restoreAllMocks();
+  });
+});
+
+describe("hide on scroll", () => {
+  const touches = () => screen.getByTestId("pill-root").props.pointerEvents;
+  const scroll = (dir: "up" | "down", atEnd = false) => act(() => useTabBarScroll().onScrollDirection(dir, atEnd));
+
+  it("stops intercepting touches while hidden, and returns on scroll up", () => {
+    renderBar();
+    expect(touches()).toBe("box-none");
+    scroll("down");
+    expect(touches()).toBe("none");
+    scroll("up");
+    expect(touches()).toBe("box-none");
+  });
+
+  it("stays in the accessibility tree while hidden", () => {
+    renderBar();
+    scroll("down");
+    expect(screen.getAllByRole("tab")).toHaveLength(5);
+  });
+
+  it("shows again at the end of the content", () => {
+    renderBar();
+    scroll("down");
+    scroll("down", true);
+    expect(touches()).toBe("box-none");
+  });
+
+  it("is visible again after a tab change, however it was left", () => {
+    const view = render(barTree("dashboard"));
+    scroll("down");
+    expect(touches()).toBe("none");
+    view.rerender(barTree("history"));
+    expect(touches()).toBe("box-none");
   });
 });

@@ -1,10 +1,13 @@
 import { Tabs } from "expo-router";
+import { useMemo } from "react";
 import type { NavItem } from "@space/shared";
 import { ALL_NAV_HREFS } from "@space/shared";
 
 import { ScreenErrorBoundary } from "../../../src/design/layout/error-boundary";
-import { FloatingTabBar } from "../../../src/design/layout/floating-tab-bar";
+import { PillTabBar } from "../../../src/design/layout/floating-tab-bar";
 import { TabBarPresenceContext } from "../../../src/design/layout/shell-context";
+import { useResetTabBarOnFocus } from "../../../src/design/layout/use-reset-tab-bar-on-focus";
+import { DURATION, useReducedMotion } from "../../../src/design/motion";
 import { DIRECTORY_ROUTE_HREFS, routeNameForHref } from "../../../src/lib/route-names";
 import { useSessionStore } from "../../../src/store/session";
 
@@ -56,7 +59,7 @@ export const ALL_ROUTE_NAMES: readonly string[] = Array.from(
  * is `router.replace`d to the initial tab (useVisibleTabsWithRedirect): every
  * deep link, notification tap and `router.push` to a non-tab screen landed on
  * the first tab instead. What keeps a screen out of the bar is
- * FloatingTabBar rendering `items`, not the screen's options.
+ * PillTabBar rendering `items`, not the screen's options.
  */
 export default function TabsLayout() {
   // Selector-call form (ruling P11): `nav` is a stable function, calling it
@@ -64,6 +67,18 @@ export default function TabsLayout() {
   // user's role/scopes change. navFor() returns module-level constants, so
   // Object.is holds across calls with the same inputs and this can't loop.
   const nav = useSessionStore((s) => s.nav());
+  useResetTabBarOnFocus();
+  // Tab content crossfades over DURATION.base (react-navigation bottom-tabs'
+  // `animation: "fade"` + `transitionSpec`); reduced motion switches tabs without drift.
+  const reduced = useReducedMotion();
+  const screenOptions = useMemo(
+    () => ({
+      headerShown: false,
+      animation: reduced ? ("none" as const) : ("fade" as const),
+      transitionSpec: { animation: "timing" as const, config: { duration: DURATION.base } },
+    }),
+    [reduced],
+  );
 
   const tabs: NavItem[] = nav?.tabs ?? [];
   const tabByRouteName = new Map(tabs.map((tab) => [routeNameForHref(tab.href), tab]));
@@ -86,8 +101,8 @@ export default function TabsLayout() {
     <TabBarPresenceContext.Provider value={true}>
       <Tabs
         backBehavior="initialRoute"
-        screenOptions={TAB_SCREEN_OPTIONS}
-        tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
+        screenOptions={screenOptions}
+        tabBar={(props) => <PillTabBar {...props} items={tabs} />}
       >
         {orderedRouteNames.map((name) => {
           const tab = tabByRouteName.get(name);
@@ -97,8 +112,6 @@ export default function TabsLayout() {
     </TabBarPresenceContext.Provider>
   );
 }
-
-const TAB_SCREEN_OPTIONS = { headerShown: false } as const;
 
 /** A screen outside the role's tabs: no title, and deliberately NOT `href: null` (see TabsLayout). */
 const NOT_A_TAB = {};

@@ -1,29 +1,27 @@
 import type { BottomTabBarProps } from "expo-router/js-tabs";
 import type { NavItem } from "@space/shared";
 import { BlurView } from "expo-blur";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Platform, StyleSheet, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { routeNameForHref } from "../../lib/route-names";
 import { shadowStyle } from "../lib/shadow";
+import { DURATION, useReducedMotion } from "../motion";
 import { NavLink } from "./nav-link";
+import { PillHighlight } from "./pill-highlight";
+import { resetTabBarScroll, useTabBarVisible } from "./tab-bar-scroll";
 
 /**
- * v1 shell-frame.tsx mobile nav:
- *   fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto
- *   flex h-16 max-w-md items-center rounded-full bg-sidebar/75 px-2
- *   text-sidebar-foreground shadow-[var(--shadow-lift)] ring-1 ring-white/10
- *   backdrop-blur-xl backdrop-saturate-150
- * Native differences: ring → border; backdrop-blur-xl → BlurView, but
- * Android's blur darkens the backdrop (bar measured #364771 vs v1 #536187),
- * so a bg-background/85 layer restores the light, blurred backdrop v1 sees
- * before its 75% navy; backdrop-saturate has no native equivalent.
- * Android: since Expo SDK 55 a real blur needs a `blurTarget` (a
- * BlurTargetView around the content, with the BlurView outside it), which the
- * tab navigator can't give a bar it renders beside its scenes; without one
- * expo-blur falls back to its tinted view, so no blurMethod is set. The two
- * layers above leave ~4% of the backdrop showing, so the bar reads the same.
+ * The frosted floating pill: `bg-pill` fill over a blur. iOS blurs the
+ * backdrop (BlurView intensity 40 under the fill). Android renders the fill
+ * alone: since Expo SDK 55 a real blur needs a `blurTarget` the tab navigator
+ * cannot give a bar it renders beside its scenes, and the fill is opaque
+ * enough (alpha .78 / .86) to hold contrast without it.
  */
+const PILL_HEIGHT = 64;
+
 /**
  * v2's singular detail routes and the list tab whose v1 URL they sit under
  * (v1: /student/assignments/[id] keeps "Assignments" lit).
@@ -57,23 +55,51 @@ export function activeTabRoute(current: string | undefined, tabRoutes: string[])
  * navigation object, so a tab's route name is looked up in the navigator
  * state for its key.
  */
-export function FloatingTabBar({ items, state, navigateToTab }: BottomTabBarProps & { items: NavItem[] }) {
+export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & { items: NavItem[] }) {
   const insets = useSafeAreaInsets();
+  const reduced = useReducedMotion();
+  const visible = useTabBarVisible();
   const shown = items.slice(0, 5);
-  const active = activeTabRoute(state.routes[state.index]?.name, shown.map((i) => routeNameForHref(i.href)));
+  const routeActive = activeTabRoute(state.routes[state.index]?.name, shown.map((i) => routeNameForHref(i.href)));
+  // The route the user just pressed, highlighted at once: the highlight must not wait
+  // for the navigator, and a second press before the first settles retargets it.
+  const [pressed, setPressed] = useState<string | null>(null);
+  const active = pressed ?? routeActive;
+  const [layouts, setLayouts] = useState<Record<string, { x: number; width: number }>>({});
+
+  useEffect(() => setPressed(null), [routeActive]);
+  // A tab change always brings the pill back, however the last screen left it.
+  const focusedKey = state.routes[state.index]?.key;
+  useEffect(() => resetTabBarScroll(), [focusedKey]);
+
+  const offset = Math.max(16, insets.bottom);
+  const hideBy = PILL_HEIGHT + offset + 8;
+  const shownValue = useSharedValue(visible ? 1 : 0);
+  useEffect(() => {
+    shownValue.value = withTiming(visible ? 1 : 0, { duration: DURATION.base });
+  }, [visible, shownValue]);
+  const slide = useAnimatedStyle(() =>
+    reduced
+      ? { opacity: shownValue.value }
+      : { transform: [{ translateY: (1 - shownValue.value) * hideBy }] },
+  );
+
   return (
-    <View
-      pointerEvents="box-none"
+    <Animated.View
+      testID="pill-root"
+      // Hidden: never block the touches of the screen the pill used to cover. It stays in
+      // the accessibility tree (a screen reader does not scroll-hide).
+      pointerEvents={visible ? "box-none" : "none"}
       className="absolute inset-x-4 items-center"
-      style={{ bottom: Math.max(16, insets.bottom) }}
+      style={[{ bottom: offset }, slide]}
     >
       <View
         className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
         style={shadowStyle("lift")}
       >
-        <BlurView intensity={40} style={StyleSheet.absoluteFill} />
-        <View className="absolute inset-0 bg-background/85" />
-        <View className="absolute inset-0 bg-sidebar/75" />
+        {Platform.OS === "ios" ? <BlurView intensity={40} style={StyleSheet.absoluteFill} /> : null}
+        <View className="absolute inset-0 bg-pill" />
+        <PillHighlight target={active ? (layouts[active] ?? null) : null} />
         {shown.map((item) => {
           const name = routeNameForHref(item.href);
           return (
@@ -83,7 +109,14 @@ export function FloatingTabBar({ items, state, navigateToTab }: BottomTabBarProp
               icon={item.icon}
               featured={item.icon === "home"}
               active={active === name}
+              onLayout={(e) => {
+                const { x, width } = e.nativeEvent.layout;
+                setLayouts((prev) =>
+                  prev[name]?.x === x && prev[name]?.width === width ? prev : { ...prev, [name]: { x, width } },
+                );
+              }}
               onPress={() => {
+                setPressed(name);
                 const key = state.routes.find((r) => r.name === name)?.key;
                 if (key) navigateToTab(key);
               }}
@@ -91,6 +124,6 @@ export function FloatingTabBar({ items, state, navigateToTab }: BottomTabBarProp
           );
         })}
       </View>
-    </View>
+    </Animated.View>
   );
 }
