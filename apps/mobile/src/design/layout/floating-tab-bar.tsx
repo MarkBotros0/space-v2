@@ -118,7 +118,6 @@ export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & 
                 key={item.href}
                 label={item.label}
                 icon={item.icon}
-                featured={item.icon === "home"}
                 active={active === name}
                 onLayout={(e) => {
                   const { x, width } = e.nativeEvent.layout;

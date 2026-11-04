@@ -5,7 +5,6 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-na
 
 import { NavIcon } from "../icons/nav-icon";
 import { cn } from "../lib/cn";
-import { shadowStyle } from "../lib/shadow";
 import { haptic, SPRING, useReducedMotion } from "../motion";
 import { Text } from "../ui/text";
 
@@ -17,14 +16,12 @@ export function NavLink({
   label,
   icon,
   active,
-  featured = false,
   onPress,
   onLayout,
 }: {
   label: string;
   icon: NavIconName;
   active: boolean;
-  featured?: boolean;
   onPress: () => void;
   onLayout?: (e: LayoutChangeEvent) => void;
 }) {
@@ -51,15 +48,8 @@ export function NavLink({
       className="relative flex-1 flex-col items-center justify-center gap-1 self-stretch"
     >
       <Animated.View style={iconStyle}>
-        <View
-          className={cn("size-9 items-center justify-center rounded-full", featured && "bg-brand-teal-500")}
-          style={featured ? shadowStyle("soft") : undefined}
-        >
-          <NavIcon
-            name={icon}
-            size={20}
-            className={featured ? "text-brand-navy-950" : active ? "text-pill-active" : "text-pill-foreground"}
-          />
+        <View className="size-9 items-center justify-center rounded-full">
+          <NavIcon name={icon} size={20} className={active ? "text-pill-active" : "text-pill-foreground"} />
         </View>
       </Animated.View>
       {/* The pill is 64px tall: a label past 1.15x the font scale pushes "Assignments" into

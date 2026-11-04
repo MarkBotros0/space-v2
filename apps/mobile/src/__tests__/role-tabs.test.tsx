@@ -51,14 +51,14 @@ describe("role tabs", () => {
     ["MENTOR", navByRole.MENTOR, ["Today", "Students", "Reports", "Notes", "Profile"]],
     ["STUDENT", navByRole.STUDENT, ["Today", "Calendar", "Assignments", "Quizzes", "More"]],
     ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024 }), ["Today", "Events", "History", "Profile", "More"]],
-  ])("the pill draws %s's tabs Today first, and features Today alone (Task 12)", (_role, nav, labels) => {
+  ])("the pill draws %s's tabs Today first, none featured (R22)", (_role, nav, labels) => {
     const state = { index: 0, routes: nav.tabs.map((t) => ({ key: t.href, name: routeNameForHref(t.href) })) };
     renderWithProviders(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       <PillTabBar items={nav.tabs} state={state as any} navigateToTab={() => {}} emitter={{} as any} descriptors={{} as any} insets={{ top: 0, left: 0, right: 0, bottom: 34 }} />,
     );
     expect(screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel)).toEqual(labels);
-    expect(screen.UNSAFE_getAllByType(NavLink).map((link) => link.props.featured)).toEqual([true, false, false, false, false]);
+    expect(screen.UNSAFE_getAllByType(NavLink).map((link) => "featured" in link.props)).toEqual([false, false, false, false, false]);
   });
 
   it("every nav href has a route file: a tab for some role in (tabs)/, any other on the stack", () => {
