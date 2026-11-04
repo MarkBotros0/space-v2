@@ -204,8 +204,7 @@ const BULK_INVITE_MAIL_CONCURRENCY = 5;
 /**
  * One bounded batch of "send all pending invites" (Plan 10 Decision 12).
  *
- * Spec 11 §7 asks for a queue; v2 has none and a job table is a migration
- * (C1). So: at most `batchSize` users per call, one short locked transaction
+ * Spec 11 §7 asks for a queue; v2 has no job table. So: at most `batchSize` users per call, one short locked transaction
  * each, mail AFTER the commits with a small pool, and the counts back — the
  * screen says "tap again for the rest". A mail failure expires the invite it
  * just minted, so that person stays pending and the next tap retries them;

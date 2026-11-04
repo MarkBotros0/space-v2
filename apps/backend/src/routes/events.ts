@@ -214,8 +214,8 @@ eventsRouter.patch("/:id", async (req, res) => {
     return apiError(res, "bad_request", "Season not found.", 400);
   }
 
-  // `createdById` is untouched: it means "who first authored this", and there
-  // is no `updatedById` column to add under C1 (spec 15 R34).
+  // `createdById` is untouched: it means "who first authored this". JpcEvent
+  // has no `updatedById` column, so the last editor is not recorded (spec 15 R34).
   const updated = await db.jpcEvent.update({
     where: { id },
     data: {

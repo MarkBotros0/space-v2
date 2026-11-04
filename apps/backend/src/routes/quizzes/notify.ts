@@ -4,11 +4,11 @@ import { createNotificationsBulk } from "../../lib/notifications";
 
 /**
  * v1's exact link for every QUIZ_GRADED row — `quiz-actions.ts:167,483,554`
- * all write the bare list path. Ruling X1: every plan writes v1's link format,
- * because v1 renders these same rows from the shared database today and a
- * v2-only path would be a dead link in v1. Plan 13's link parser maps this
- * shape to the mobile `/quizzes` tab; any remap is Plan 18's cutover backfill.
- * Do not "improve" it to a per-quiz path here.
+ * all write the bare list path. Ruling X1: every producer writes v1's link
+ * format, because that is the one set of shapes lib/notification-target.ts
+ * parses into a route-independent target; it maps this one to the mobile
+ * `/quizzes` tab. Do not "improve" it to a per-quiz path here without adding
+ * that shape to the parser.
  */
 const QUIZ_GRADED_LINK = "/student/quizzes";
 

@@ -10,21 +10,19 @@ import { notificationTypeSchema, type NotificationType } from "./enums";
  *
  * `Notification.link` is a v1 role-prefixed web path chosen by the producer
  * (R3), and v2's routes are flat, so `/admin/students/12` resolves to nothing
- * in the mobile app. The schema is frozen (C1), so the columns this wants
- * cannot exist yet: until cutover the API derives the target from the stored
- * string in one place (apps/backend/src/lib/notification-target.ts) and keeps
- * writing `link` verbatim so v1 — still in production against the same
- * database — keeps working. No client may parse the path itself.
+ * in the mobile app. Notification has no entity columns, so the API derives
+ * the target from the stored string in one place
+ * (apps/backend/src/lib/notification-target.ts), and producers keep writing
+ * `link` in v1's shapes, the ones that parser knows. No client may parse the
+ * path itself.
  *
  * `calendar` is a destination rather than an entity because one of the five
  * link shapes v1 actually emits is the bare `/student/calendar` (R67), and
  * pretending it names a session would be a lie the resolver has to keep.
  *
- * Wire values are lowercase. Plan 18's M4 stores the same set as the
- * uppercase Postgres enum `NotificationEntityType` (ASSIGNMENT, QUIZ,
- * CALENDAR, STUDENT, plus SUBMISSION/SESSION which nothing writes yet); the
- * mapping is written out in the cutover doc (Task 5) so the wire contract —
- * and every client built against it — does not change at cutover.
+ * Wire values are lowercase, and they are the wire contract: if the target
+ * is ever stored in its own column, the column maps to these values rather
+ * than clients changing.
  */
 export const notificationEntityTypeSchema = z.enum([
   "assignment",
@@ -226,7 +224,7 @@ export function pushContent(
 export const devicePlatformSchema = z.enum(["ios", "android"]);
 export type DevicePlatform = z.infer<typeof devicePlatformSchema>;
 
-/** Wire → database enum value, for the cutover upsert (Task 5's doc, Plan 18 M10). */
+/** Wire → database enum value, for the DeviceToken upsert in POST /me/devices. */
 export const DEVICE_PLATFORM_TO_DB = {
   ios: "IOS",
   android: "ANDROID",

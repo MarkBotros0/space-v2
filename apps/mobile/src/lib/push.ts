@@ -51,10 +51,9 @@ export async function requestPushToken(): Promise<PushTokenResult> {
 /**
  * Hand the token to the API.
  *
- * `503 push_unavailable` is the expected answer until the cutover migration
- * adds the DeviceToken table (see
- * docs/superpowers/cutover/2026-08-24-notifications-push.md). It is a state,
- * not an error: the caller keeps the token and stops retrying.
+ * The server stores it in DeviceToken. A `503` (`push_unavailable`, from a
+ * server that can't take push tokens) is a state, not an error: the caller
+ * keeps the token and stops retrying.
  */
 export async function registerPushToken(token: string): Promise<"registered" | "unavailable" | "failed"> {
   try {

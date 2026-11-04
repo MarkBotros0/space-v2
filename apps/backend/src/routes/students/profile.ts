@@ -61,8 +61,7 @@ export async function createStudent(req: Request, res: Response) {
   // Friendly 409 first; the P2002 catch below converts the race loser to the
   // same answer instead of a 500 (v1 raised the raw Prisma error, R18). Note
   // R19 stands: User.email is @unique at the database level, so a
-  // soft-deleted student's address stays reserved — freeing it needs a
-  // migration (C1, cutover list).
+  // soft-deleted student's address stays reserved.
   const clash = await db.user.findUnique({ where: { email: body.email }, select: { id: true } });
   if (clash) return apiError(res, "email_taken", "A user with that email already exists.", 409);
 

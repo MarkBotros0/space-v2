@@ -57,7 +57,7 @@ export type JpcEventDetail = z.infer<typeof jpcEventDetailSchema>;
 /**
  * Org wall-clock fields, not an instant (D-15.6, ruling X13). The server
  * composes the instant in `config.orgTimezone`; `time: null` means all-day and
- * is stored as org midnight — no `allDay` column exists or can be added (C1).
+ * is stored as org midnight — there is no `allDay` column.
  */
 const eventFields = z.object({
   title: z.string().trim().min(1).max(200),

@@ -2,8 +2,7 @@
 /**
  * Spec 06 D15: User, StudentProfile and SeasonEnrollment carry no
  * createdById/updatedById, so there is no record of who graduated, dropped or
- * deleted a student — and adding the columns is a migration (ruling C1;
- * recorded for cutover). Until then every state-changing student write (and
+ * deleted a student in the database. Instead every state-changing student write (and
  * every account create, role change, deactivation and reactivation) leaves
  * one server-log line naming WHO did WHAT to WHOM.
  *

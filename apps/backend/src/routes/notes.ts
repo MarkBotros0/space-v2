@@ -210,9 +210,9 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
             // the note in the app at all (spec D2, R16/R17, R36). The
             // notification says a follow-up exists and links to it.
             body: "A member of staff flagged a note for follow-up. Open the student to read it.",
-            // v1's link, verbatim. Rewriting notification links to v2's route
-            // tree is one change across every notification type and is a
-            // cutover item, not this plan's.
+            // v1's link, verbatim: lib/notification-target.ts parses v1's
+            // shapes, and rewriting links to v2's route tree would be one
+            // change across every notification type, not one producer.
             link: `/admin/students/${studentUserId}`,
           },
         ),
@@ -259,8 +259,8 @@ notesRouter.patch("/:id", requireAuth, async (req, res) => {
  * caller anywhere — in practice v1 notes are permanent. Shipping a hard delete
  * that v1's users never had, and adding soft delete later, destroys every note
  * removed in between, irrecoverably, about named young people. Soft delete
- * needs a deletedAt column; C1 forbids the migration while v1 writes to this
- * table. So the capability waits for cutover.
+ * needs a deletedAt column, which Note does not have. So the capability is
+ * refused until it does.
  *
  * 501 rather than 404 so a client can tell "this note does not exist" from
  * "this system cannot delete notes yet" and say the right thing.

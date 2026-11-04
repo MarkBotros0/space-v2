@@ -88,8 +88,8 @@ describe("requestPushToken", () => {
 
 describe("registerPushToken", () => {
   it("treats 503 push_unavailable as expected, not as an error", async () => {
-    // The server has nowhere to store it until the cutover migration; the
-    // client keeps the token locally and stops asking.
+    // A server that can't take push tokens answers 503; the client keeps the
+    // token locally and stops asking.
     mockPost.mockRejectedValue(unavailable);
 
     await expect(registerPushToken("ExponentPushToken[abc]")).resolves.toBe("unavailable");

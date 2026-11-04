@@ -146,7 +146,7 @@ describe("question authoring", () => {
     // R13 (maxScore rebased under graded attempts), R23 (deleting a question
     // cascade-deletes QuizAnswer rows on GRADED attempts while their scores
     // keep the points those answers earned). Nothing versions or snapshots a
-    // quiz, so refusing is the only honest option inside the frozen schema (C1).
+    // quiz, so refusing is the honest option: an edit would rewrite graded work.
     for (const res of [add, edit, remove, reorder]) {
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe("quiz_has_attempts");

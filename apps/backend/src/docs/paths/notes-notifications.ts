@@ -103,7 +103,7 @@ export const notesNotificationsPaths = {
       tags: ["Notes"],
       summary: "Delete a note (not available)",
       description:
-        "Always `501 delete_unavailable`; nothing is deleted. v1's delete was a hard delete with no UI caller; soft delete needs a `deletedAt` column, which needs a migration the shared database cannot take while v1 writes to it. Correct a note by editing it.",
+        "Always `501 delete_unavailable`; nothing is deleted. v1's delete was a hard delete with no UI caller; soft delete needs a `deletedAt` column, which Note does not have. Correct a note by editing it.",
       parameters: [idParam],
       responses: {
         401: errRef("Unauthorized"),
@@ -199,7 +199,7 @@ export const notesNotificationsPaths = {
       tags: ["Me"],
       summary: "Your notification preferences (all nine)",
       description:
-        "Always returns all nine keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email now, push at cutover); the in-app inbox row is always written.",
+        "Always returns all nine keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email and push); the in-app inbox row is always written.",
       responses: {
         200: ok(
           { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },

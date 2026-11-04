@@ -182,7 +182,7 @@ export function VideoQuizPlayer({
       .then((d) => {
         setDuration(d);
         // Deadlock guard (spec 13 §10 D2): a question past the end of the
-        // recording can never be reached. The duration is not stored (C1).
+        // recording can never be reached. The duration is not stored, so it is read here.
         if (Number.isFinite(barrierRef.current) && barrierRef.current > d + 1) setDeadlocked(true);
       })
       .catch(() => undefined);

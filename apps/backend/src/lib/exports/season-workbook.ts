@@ -101,10 +101,9 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
       // Ruling C3. v1 printed `lateMinutes ?? "L"` — minutes measured from when
       // an admin opened check-in rather than from session.startsAt, with no
       // threshold, exported to a spreadsheet where a reader sorts and averages
-      // them as "minutes late" (R69, R70). There is no column distinguishing
-      // v1-era rows from v2-era ones and adding one is a migration (C1), so the
-      // workbook cannot annotate per cell — it withholds the number instead.
-      // The Key sheet says so. Restored at cutover after the backfill.
+      // them as "minutes late" (R69, R70). No column distinguishes v1-era rows
+      // from v2-era ones, so the workbook cannot annotate per cell — it
+      // withholds the number instead. The Key sheet says so.
       return "L";
     });
     // Read, not recomputed: the same attendancePct the report shows, whose

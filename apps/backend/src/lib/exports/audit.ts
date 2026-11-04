@@ -13,11 +13,9 @@ export interface ExportAuditEntry {
  * One line per successful export.
  *
  * NOT a database write. Ruling C6 is that a GET never writes, and an export is
- * a GET; more practically, an ExportAudit TABLE needs a migration, which the
- * shared-database freeze forbids while v1 runs (C1). Spec D15 stages it: log
- * now, table at cutover — "do not let 'we cannot add a table yet' become 'we
- * shipped bulk personal-data export with no record of it'". See
- * docs/superpowers/plans/2026-10-05-plan-18-cutover.md.
+ * a GET; and there is no ExportAudit table. Spec D15: "do not let 'we cannot
+ * add a table yet' become 'we shipped bulk personal-data export with no record
+ * of it'" — so the record is this log line.
  *
  * The line carries an actor ID and role, a scope and a row count. It carries NO
  * names, NO emails and NO filename: an audit trail that reproduces the payload

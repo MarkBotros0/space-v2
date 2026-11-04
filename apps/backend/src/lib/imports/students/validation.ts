@@ -104,8 +104,7 @@ type Queryable = Pick<typeof db, "$queryRaw">;
  * the two cases and reports `previously_removed` (D-16.14).
  *
  * This is a sequential scan on User — there is no functional index on
- * `lower(email)` and creating one is a migration (ruling C1), so it is on
- * Plan 18's list. Acceptable here: the table is small, and both preview and
+ * `lower(email)`. Acceptable here: the table is small, and both preview and
  * commit are rate-limited (D-16.21).
  */
 export async function findExistingByEmail(

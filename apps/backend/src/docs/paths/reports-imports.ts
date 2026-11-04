@@ -118,7 +118,7 @@ export const reportsImportsPaths = {
         "`Submitted %` divides by the assignments assigned to that student (ruling C5), " +
         "which CHANGES its value relative to v1 for any season with a group-targeted " +
         "assignment. LATE attendance cells render \"L\": the recorded minutes are " +
-        "measured from the wrong instant and are withheld until the cutover backfill " +
+        "measured from the wrong instant for v1-era rows, and nothing tells those apart, so they are withheld " +
         "(ruling C3).",
       parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
       responses: {

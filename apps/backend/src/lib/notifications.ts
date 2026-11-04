@@ -45,9 +45,9 @@ export interface BulkNotificationResult {
  * Divergence from v1, ruled in spec D4: the in-app row is the user's history
  * and is **always** written. v1 filtered opted-out recipients out before the
  * insert (R8), so "off" meant "no record" — a user who only wanted the emails
- * to stop had to give up their inbox too, and with push arriving that single
- * boolean would be governing three channels. Here the preference governs
- * outbound channels only: email now, push at cutover.
+ * to stop had to give up their inbox too, and with push that single boolean
+ * would govern three channels. Here the preference governs outbound channels
+ * only: email and push.
  *
  * Consequence, accepted deliberately: v1 renders the same table with no
  * preference filter, so an opted-out user's v1 inbox stops being empty.
@@ -80,10 +80,9 @@ export async function createNotificationsBulk(
       type: payload.type,
       title: payload.title,
       body: payload.body,
-      // Keep writing v1's path verbatim: v1 is still in production against
-      // this database and a notification it cannot open is a broken link for
-      // real users. The route-independent target is derived on read
-      // (lib/notification-target.ts). Spec D1.
+      // Keep writing v1's path verbatim: every stored row, old and new, uses
+      // those shapes, and the route-independent target is derived from them
+      // on read (lib/notification-target.ts). Spec D1.
       link: payload.link,
     })),
   });

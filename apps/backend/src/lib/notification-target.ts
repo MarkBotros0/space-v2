@@ -7,13 +7,13 @@ import type {
  * The one place a stored `Notification.link` becomes a route-independent
  * target (spec D1).
  *
- * Every notification in the shared database carries a v1 role-prefixed web
+ * Every stored notification carries a v1 role-prefixed web
  * path chosen by the producer, not by the recipient's role (R3) — and the
  * scheme is already broken inside v1, where a mentor holding a GroupLeader row
  * gets a /leader link that bounces them (R4). v2's routes are flat, so the
- * string is meaningless to a device. The clean fix is two columns; the schema
- * is frozen (C1), so this parses instead, and Plan 18's M4 backfills the
- * columns with SQL that mirrors NOTIFICATION_LINK_PATTERNS one row per entry.
+ * string is meaningless to a device. Notification has no entity columns, so
+ * this parses the link instead, one row of NOTIFICATION_LINK_PATTERNS per
+ * shape a producer writes.
  *
  * Do NOT let a screen parse the path. One function, one place, one test table.
  */

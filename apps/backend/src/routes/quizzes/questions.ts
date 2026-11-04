@@ -45,8 +45,8 @@ async function recomputeMaxScore(tx: Prisma.TransactionClient, quizId: number): 
  * graded attempts (R22), rebasing maxScore retroactively (R13) and
  * cascade-deleting QuizAnswer rows out of GRADED attempts whose scores kept the
  * points those answers earned (R23, schema.prisma:739). Nothing records what a
- * quiz looked like when it was taken; answer snapshots would be a schema change
- * and are therefore blocked (C1). So the cheap correct version is: freeze.
+ * quiz looked like when it was taken (there are no answer snapshots). So the
+ * cheap correct version is: freeze.
  */
 async function hasAttempts(quizId: number): Promise<boolean> {
   return (await db.quizAttempt.count({ where: { quizId } })) > 0;

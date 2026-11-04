@@ -16,8 +16,8 @@ export async function validateGroupWrite(
 ): Promise<{ code: string; message: string } | null> {
   // v1 has no uniqueness on group name within a season, and the CSV importer
   // matches groups *by name* — so two groups called "Tuesday" silently make the
-  // import assign everyone to whichever one it found last. A real constraint
-  // needs a migration (ruling C1); this is the check that can be made now.
+  // import assign everyone to whichever one it found last. There is no unique
+  // constraint on (seasonId, name), so this check is what refuses the clash.
   const clash = await db.group.findFirst({
     where: {
       seasonId,

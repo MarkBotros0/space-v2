@@ -52,10 +52,10 @@ export async function studentCheckIn(req: Request, res: Response) {
 
   // Ruling C3: lateness is measured from the session's START — not from when
   // an admin pressed "Open check-in" (spec 04 R63, D1), which made a punctual
-  // student LATE whenever the console opened early. The threshold is zero
-  // until Plan 18 M3 adds `Season.lateThresholdMinutes` (C3 over spec 04 D1's
-  // 15-minute grace). Rows v1 writes still mean "minutes since opening";
-  // C3 accepts that divergence and Plan 18 M3 backfills it.
+  // student LATE whenever the console opened early. The threshold is zero:
+  // there is no `Season.lateThresholdMinutes` (C3 over spec 04 D1's
+  // 15-minute grace). Rows v1 wrote still mean "minutes since opening";
+  // C3 accepts that divergence (the workbook withholds those minutes).
   const minutesLate = Math.max(
     0,
     Math.floor((now.getTime() - session.startsAt.getTime()) / 60_000),

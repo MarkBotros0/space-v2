@@ -168,8 +168,8 @@ describe("buildSeasonWorkbook", () => {
     expect(alice[3]).toBe("P");
     // v1 printed 12 here — minutes measured from when an admin pressed the
     // check-in button, not from the session start, exported to a spreadsheet
-    // where a reader treats it as minutes late (R69, R70). Withheld until the
-    // cutover backfill.
+    // where a reader treats it as minutes late (R69, R70). Withheld, since no
+    // column tells v1-era rows from v2-era ones.
     expect(alice[4]).toBe("L");
     expect(alice[4]).not.toBe(12);
   });

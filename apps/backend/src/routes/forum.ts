@@ -210,8 +210,7 @@ forumRouter.post(
       }
     }
 
-    // No notification: NotificationType has no forum member and adding one is a
-    // migration (C1). A cutover task (spec 14 D13).
+    // No notification: NotificationType has no forum member (spec 14 D13).
     const created = await db.forumComment.create({
       data: { submissionId: post.id, authorUserId: user.userId, body: parsed.data.body },
       select: {

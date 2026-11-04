@@ -67,7 +67,7 @@ export const forumEventsPaths = {
       tags: ["Forum"],
       summary: "Comment on a post",
       description:
-        "Allowed for a student in the post author's group who has posted their own response first (403 `post_first` otherwise), for the LEADER of that group and for the season ADMIN / SUPER without posting anything. A MENTOR stays read-only. The post must belong to the assignment in the path (404 otherwise). No notification is sent (no forum `NotificationType`; a cutover task). **No moderation beyond comment deletion exists** — there is no way to hide a post or report one (plan 14, D-14.4).",
+        "Allowed for a student in the post author's group who has posted their own response first (403 `post_first` otherwise), for the LEADER of that group and for the season ADMIN / SUPER without posting anything. A MENTOR stays read-only. The post must belong to the assignment in the path (404 otherwise). No notification is sent (`NotificationType` has no forum member). **No moderation beyond comment deletion exists** — there is no way to hide a post or report one (plan 14, D-14.4).",
       parameters: [idParam, publicIdParam],
       requestBody: {
         required: true,

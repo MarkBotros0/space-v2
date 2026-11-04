@@ -40,7 +40,7 @@ type NoteRow = {
 /**
  * `@updatedAt` fires on create as well as update, so the two timestamps are
  * within a few milliseconds of each other on an unedited row. A second of
- * tolerance separates "written" from "amended" without a new column (C1).
+ * tolerance separates "written" from "amended" without a separate edited-at column.
  * v1 wrote updatedAt and never read it (R24, R26); D4 #3 says surface it.
  */
 function wasEdited(row: { createdAt: Date; updatedAt: Date }): boolean {
