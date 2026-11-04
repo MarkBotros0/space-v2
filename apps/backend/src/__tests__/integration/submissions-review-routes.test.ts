@@ -170,17 +170,23 @@ describe("PATCH /api/v1/submissions/:publicId", () => {
 
     // v1 set status: "DRAFT" unconditionally on a draft save, so an autosave
     // after review dropped the submission out of the reviewer's queue while the
-    // stale feedback stayed on screen for the student.
-    await request(app)
-      .patch(`/api/v1/submissions/${pid}`)
-      .set("authorization", `Bearer ${ownerToken}`)
-      .send({ text: "edited after review" });
+    // stale feedback stayed on screen for the student. A REVIEWED row is no
+    // longer the student's to change at all: neither a save nor a re-submit.
+    for (const body of [{ text: "edited after review" }, { text: "resubmit", submit: true }]) {
+      const res = await request(app)
+        .patch(`/api/v1/submissions/${pid}`)
+        .set("authorization", `Bearer ${ownerToken}`)
+        .send(body);
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("submission_locked");
+    }
 
     const row = await db.submission.findUnique({
       where: { publicId: pid },
       select: { status: true, text: true },
     });
-    expect(row).toMatchObject({ status: "REVIEWED", text: "edited after review" });
+    expect(row?.status).toBe("REVIEWED");
+    expect(row?.text).not.toBe("edited after review");
   });
 });
 
