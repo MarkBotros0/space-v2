@@ -128,7 +128,7 @@ model User {
   seasonAdminAssignments     SeasonAdmin[] @relation("SeasonAdminUser")
   seasonAdminAssignmentsMade SeasonAdmin[] @relation("SeasonAdminAssignedBy")
   groupLeaderAssignments     GroupLeader[]
-  groupStudentMembership     GroupStudent?
+  groupStudentMemberships    GroupStudent[]
 
   invitesReceived     InviteToken[]        @relation("InviteUser")
   invitesIssued       InviteToken[]        @relation("InviteIssuedBy")
@@ -317,6 +317,8 @@ model Group {
   seasonEnrollments SeasonEnrollment[]
   assignmentTargets AssignmentTarget[]
 
+  // Target of GroupStudent's composite foreign key (Plan 18 M1).
+  @@unique([id, seasonId])
   @@index([seasonId])
 }
 
@@ -331,16 +333,21 @@ model GroupLeader {
   @@index([userId])
 }
 
-// Current group membership only. Past memberships live in SeasonEnrollment.
-// `studentUserId` is unique standalone — a student belongs to at most one current group.
+// Group membership, one row per student per season (Plan 18 M1). Mirrors
+// SeasonEnrollment.groupId, which stays the authority (ruling C9).
+// `seasonId` is denormalised from Group.seasonId to carry the per-season
+// unique; the composite foreign key to Group(id, seasonId) means it can never
+// disagree with its group's season.
 model GroupStudent {
   groupId       Int
-  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  studentUserId Int      @unique
+  seasonId      Int
+  group         Group    @relation(fields: [groupId, seasonId], references: [id, seasonId], onDelete: Cascade)
+  studentUserId Int
   studentUser   User     @relation(fields: [studentUserId], references: [id], onDelete: Restrict)
   enrolledAt    DateTime @default(now())
 
   @@id([groupId, studentUserId])
+  @@unique([seasonId, studentUserId])
   @@index([groupId])
 }
 
