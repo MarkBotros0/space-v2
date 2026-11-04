@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react";
 import axios from "axios";
 import { meResponseSchema } from "@space/shared";
 
-import { apiClient, login as loginRequest, logout as logoutRequest } from "../lib/api-client";
+import { apiClient, forgetDevice, login as loginRequest, logout as logoutRequest } from "../lib/api-client";
 import { clearSession, loadAccessToken } from "../lib/token-storage";
 import { useSessionStore } from "../store/session";
 import { syncPushRegistration, unregisterPushToken } from "../lib/push";
@@ -53,6 +53,7 @@ export function useBootSession(): void {
         if (!me.user) {
           // The row was deleted inside the access token's window: the token
           // still verifies, but there is no one to sign in as.
+          await forgetDevice();
           await clearSession();
           clear();
           return;
@@ -74,6 +75,7 @@ export function useBootSession(): void {
           err.response.status >= 400 &&
           err.response.status < 500
         ) {
+          await forgetDevice();
           await clearSession();
         }
         clear();

@@ -8,7 +8,7 @@ import {
   type Session,
 } from "@space/shared";
 
-import { clearSession, loadAccessToken, loadRefreshToken, saveSession } from "./token-storage";
+import { clearSession, loadAccessToken, loadPushToken, loadRefreshToken, saveSession } from "./token-storage";
 // Only referenced lazily (via `useSessionStore.getState()` inside functions,
 // never destructured at module scope) so a real import cycle would still
 // surface at call time instead of silently deadlocking module init. There is
@@ -76,6 +76,24 @@ async function rotateViaApi(
 }
 
 /**
+ * Stop pushes to this phone. Uses the push token as proof, with no sign-in
+ * (POST /api/v1/devices/unregister), so it works on every way a session ends:
+ * sign-out, a forced sign-out after the refresh token died, and a stored
+ * session the server rejects at boot. Call it before `clearSession()`, which
+ * deletes the stored token. Best-effort and quick: sign-out never waits long
+ * on it or fails because of it.
+ */
+export async function forgetDevice(): Promise<void> {
+  try {
+    const token = await loadPushToken();
+    if (!token) return;
+    await axios.post(`${baseURL}/api/v1/devices/unregister`, { token }, { timeout: 5000 });
+  } catch {
+    // Offline or storage unreadable: the next sign-in on this phone re-points it.
+  }
+}
+
+/**
  * Re-read `/me` after a token rotation so the store's role and scopes follow
  * the new token. Without it, a student enrolled, moved or graduated while the
  * app stays open keeps the old season and tabs until a restart, while the
@@ -122,6 +140,7 @@ export async function refreshAccessToken(rotate: RotateFn = rotateViaApi): Promi
       // the user to login instead. An indeterminate result (network error,
       // timeout, 5xx) never reaches this branch, so a mere blip does not
       // sign the user out from under them.
+      await forgetDevice();
       await clearSession();
       useSessionStore.getState().clear();
       return null;

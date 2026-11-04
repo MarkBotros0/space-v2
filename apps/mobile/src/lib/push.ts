@@ -3,9 +3,9 @@ import axios from "axios";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-import { apiClient } from "./api-client";
+import { apiClient, forgetDevice } from "./api-client";
 import { easProjectId } from "./app-config";
-import { loadPushToken, savePushToken } from "./token-storage";
+import { savePushToken } from "./token-storage";
 import { useSessionStore } from "../store/session";
 
 export type PushTokenResult =
@@ -101,18 +101,7 @@ export async function syncPushRegistration(): Promise<void> {
   }
 }
 
-/**
- * Tell the server to stop pushing to this phone. Called on sign-out while the
- * access token is still valid; best-effort, because sign-out must succeed
- * offline too (the next sign-in on this phone re-points the token anyway).
- */
+/** Stop pushes to this phone at sign-out (see `forgetDevice`). */
 export async function unregisterPushToken(): Promise<void> {
-  try {
-    const token = await loadPushToken();
-    if (!token) return;
-    await apiClient.delete("/api/v1/me/devices", { data: { token } });
-  } catch {
-    // Offline, storage unreadable, or already signed out server-side: sign-out
-    // goes ahead regardless.
-  }
+  await forgetDevice();
 }

@@ -13,12 +13,14 @@ import { renderHook, waitFor } from "@testing-library/react-native";
 // `login-screen.test.tsx` already does) sidesteps the restriction entirely.
 const mockSyncPush = jest.fn(async () => undefined);
 const mockUnregisterPush = jest.fn(async () => undefined);
+const mockForgetDevice = jest.fn(async () => undefined);
 jest.mock("../lib/push", () => ({
   syncPushRegistration: () => mockSyncPush(),
   unregisterPushToken: () => mockUnregisterPush(),
 }));
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
+  forgetDevice: () => mockForgetDevice(),
   login: jest.fn(),
   logout: jest.fn(),
 }));
@@ -81,6 +83,9 @@ describe("useBootSession", () => {
     renderHook(() => useBootSession());
     await waitFor(() => expect(useSessionStore.getState().status).toBe("anonymous"));
     expect(mockClearSession).toHaveBeenCalled();
+    // The session is dead, so pushes to this phone stop too, before the
+    // stored push token is cleared with the rest.
+    expect(mockForgetDevice).toHaveBeenCalled();
   });
 
   it("leaves stored tokens intact when /me fails with a network error", async () => {

@@ -3,9 +3,8 @@ const mockRequestPermissions = jest.fn();
 const mockGetToken = jest.fn();
 const mockEasProjectId = jest.fn();
 const mockPost = jest.fn();
-const mockDelete = jest.fn();
+const mockForgetDevice = jest.fn(async () => undefined);
 const mockSavePushToken = jest.fn();
-const mockLoadPushToken = jest.fn();
 
 jest.mock("expo-notifications", () => ({
   getPermissionsAsync: (...a: unknown[]) => mockGetPermissions(...a),
@@ -14,11 +13,11 @@ jest.mock("expo-notifications", () => ({
 }));
 jest.mock("../lib/app-config", () => ({ easProjectId: () => mockEasProjectId() }));
 jest.mock("../lib/api-client", () => ({
-  apiClient: { post: (...a: unknown[]) => mockPost(...a), delete: (...a: unknown[]) => mockDelete(...a) },
+  apiClient: { post: (...a: unknown[]) => mockPost(...a) },
+  forgetDevice: () => mockForgetDevice(),
 }));
 jest.mock("../lib/token-storage", () => ({
   savePushToken: (...a: unknown[]) => mockSavePushToken(...a),
-  loadPushToken: () => mockLoadPushToken(),
 }));
 
 import { syncPushRegistration, unregisterPushToken } from "../lib/push";
@@ -30,7 +29,6 @@ beforeEach(() => {
   mockEasProjectId.mockReturnValue("project-1");
   mockGetToken.mockResolvedValue({ data: "ExponentPushToken[x]" });
   mockPost.mockResolvedValue({});
-  mockDelete.mockResolvedValue({});
 });
 
 describe("syncPushRegistration", () => {
@@ -56,19 +54,8 @@ describe("syncPushRegistration", () => {
 });
 
 describe("unregisterPushToken", () => {
-  it("deletes this phone's token with the token in the body", async () => {
-    mockLoadPushToken.mockResolvedValue("ExponentPushToken[x]");
+  it("forgets this device through the sign-in-free endpoint", async () => {
     await unregisterPushToken();
-    expect(mockDelete).toHaveBeenCalledWith("/api/v1/me/devices", { data: { token: "ExponentPushToken[x]" } });
-  });
-
-  it("does nothing without a stored token, and never throws", async () => {
-    mockLoadPushToken.mockResolvedValue(null);
-    await unregisterPushToken();
-    expect(mockDelete).not.toHaveBeenCalled();
-
-    mockLoadPushToken.mockResolvedValue("t");
-    mockDelete.mockRejectedValue(new Error("Network Error"));
-    await expect(unregisterPushToken()).resolves.toBeUndefined();
+    expect(mockForgetDevice).toHaveBeenCalledTimes(1);
   });
 });
