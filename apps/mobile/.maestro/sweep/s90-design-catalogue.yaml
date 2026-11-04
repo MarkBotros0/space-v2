@@ -1,6 +1,6 @@
 # UI sweep 90 - the hidden design catalogue (spacev2://design-catalogue), as a
 # student: every redesign component in every state, each section's title
-# brought just under the pinned header (_catalogue-section.yaml), the
+# scrolled into view (_catalogue-section.yaml), the
 # collapsed header, the toast, and a sheet with its keyboard. Needs a dev bundle or a build made with EXPO_PUBLIC_SWEEP_BUILD=1.
 # Nothing is saved: the sheet's Save only closes it and the flow never taps it.
 appId: com.jpc.space
@@ -77,13 +77,22 @@ appId: com.jpc.space
 # plain tapOn waits for the hierarchy to settle first, which on the CI
 # emulator took ~5.8s, so the shot used to land after the toast had gone.
 # Tap without the settle/retry and shoot as soon as the toast's text shows.
-- tapOn:
-    id: catalogue-toast-button
-    retryTapIfNoChange: false
-    waitToSettleTimeoutMs: 500
-- extendedWaitUntil:
-    visible: 'Nothing was written\.'
-    timeout: 3000
+# A tap that lands while the page is still settling can be swallowed, so tap
+# again (up to three times) until the toast's text is on screen, then shoot.
+- repeat:
+    times: 3
+    while:
+      notVisible: 'Nothing was written\.'
+    commands:
+      - tapOn:
+          id: catalogue-toast-button
+          retryTapIfNoChange: false
+          waitToSettleTimeoutMs: 500
+      - extendedWaitUntil:
+          visible: 'Nothing was written\.'
+          timeout: 2500
+          optional: true
+- assertVisible: 'Nothing was written\.'
 - takeScreenshot: s90-09-toast
 
 # The sheet section is the last: scrolled to the end, the title is collapsed

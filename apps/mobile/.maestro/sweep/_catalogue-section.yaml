@@ -1,29 +1,17 @@
-# Design catalogue: brings section ${SECTION}'s title (catalogue-<id>-title)
-# just below the pinned header, so its shot starts at its own section.
-# scrollUntilVisible alone does not scroll when the element is already on
-# screen (or "centred" within Maestro's loose band), so a section the
-# previous shot already showed was shot again unchanged (s90-01 = s90-00,
-# s90-06 = s90-05 at 1.3x). Slow swipes keep the fling out of it:
-# 1. from the title up: Maestro ends an element swipe at 10% of the height,
-#    which is under the pinned header on a small phone;
-# 2. back down by 8% of the height, which clears the header on every cell.
+# Design catalogue: scrolls section ${SECTION}'s title (catalogue-<id>-title)
+# fully into view and centres it. A section the previous shot already showed
+# whole is not scrolled again, so two short sections can share a picture; that
+# loses no coverage. (An earlier version swiped the title up under the pinned
+# header and back, which landed it under the header on small gesture-nav
+# phones and failed the flow.)
 appId: com.jpc.space
 ---
 - scrollUntilVisible:
     element:
       id: catalogue-${SECTION}-title
     direction: DOWN
+    centerElement: true
+    visibilityPercentage: 100
     timeout: 20000
-- swipe:
-    from:
-      id: catalogue-${SECTION}-title
-    direction: UP
-    duration: 1500
-- swipe:
-    start: 50%, 40%
-    end: 50%, 48%
-    duration: 1500
 - waitForAnimationToEnd:
     timeout: 3000
-- assertVisible:
-    id: catalogue-${SECTION}-title
