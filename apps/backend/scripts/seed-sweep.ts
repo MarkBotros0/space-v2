@@ -20,6 +20,7 @@ import { writeFileSync } from "node:fs";
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
 import { seedActivity } from "./seed-sweep/activity";
+import { seedAlumniScenario, seedMentorScenario, seedSuperScenario } from "./seed-sweep/more-roles";
 import { seedPeople } from "./seed-sweep/people";
 import { seedAdminScenario, seedLeaderScenario, seedStudentScenario } from "./seed-sweep/scenarios";
 
@@ -47,6 +48,10 @@ async function main(): Promise<void> {
   await seedStudentScenario(people);
   await seedLeaderScenario(people, activity);
   await seedAdminScenario(people);
+  // Last, so the ids the earlier flows name stay where they are.
+  await seedSuperScenario(people);
+  await seedMentorScenario(people);
+  await seedAlumniScenario(people);
 
   const { student, alumni, leader, admin, superUser, mentor } = people;
   const roles = { student, alumni, leader, admin, super: superUser, mentor };
