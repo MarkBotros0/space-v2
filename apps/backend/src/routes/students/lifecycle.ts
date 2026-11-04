@@ -17,7 +17,11 @@ import { graduateStudentRequestSchema } from "../../../../../packages/shared/src
  *   - complete EVERY ACTIVE enrollment — v1 completed only the one matching
  *     activeSeasonId and left the rest ACTIVE forever (R48/R60), keeping an
  *     alumnus on rosters, in at-risk counts and (R53) in season access,
- *   - clear activeSeasonId (R56).
+ *   - clear activeSeasonId (R56),
+ *   - end live access tokens (Plan 18 M13): they carry graduationYear, and
+ *     isAlumni() reads it from the token, so without this the graduate is
+ *     treated as a current student for up to 15 minutes. Refresh tokens are
+ *     kept, so the app silently picks up a token with the new claims.
  * Terminal enrollments are history and are not touched. Irreversible (R61):
  * a second graduation is refused rather than silently overwriting the year.
  */
@@ -55,6 +59,7 @@ export async function graduateStudent(req: Request, res: Response) {
     // updateMany, not update: a STUDENT without a profile row (spec 06 §2's
     // hazard) must not turn a graduation into a 500.
     await tx.studentProfile.updateMany({ where: { userId: id }, data: { activeSeasonId: null } });
+    await invalidateSessions(tx, id);
     return { enrollmentsCompleted: completed.count };
   });
 

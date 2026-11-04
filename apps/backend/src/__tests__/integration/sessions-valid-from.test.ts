@@ -44,6 +44,34 @@ describe("User.sessionsValidFrom (Plan 18 M13)", () => {
     expect((await request(app).get("/api/v1/me").set("authorization", `Bearer ${superToken}`)).status).toBe(200);
   });
 
+  it("graduation ends the graduate's access token; their refresh token gets one with the new claims", async () => {
+    const u = await createTestUser("m13-graduate", "STUDENT");
+    const superUser = await createTestUser("m13-grad-super", "SUPER");
+    const session = await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD });
+    const { accessToken, refreshToken } = session.body.data as { accessToken: string; refreshToken: string };
+    const superToken = await login(app, superUser.email);
+    await nextSecond();
+
+    const res = await request(app)
+      .post(`/api/v1/students/${u.id}/graduate`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ graduationYear: 2024 });
+    expect(res.status).toBe(200);
+
+    // The old token said graduationYear: null, i.e. a current student.
+    expect((await request(app).get("/api/v1/me").set("authorization", `Bearer ${accessToken}`)).status).toBe(401);
+    const rotated = await request(app).post("/api/v1/auth/refresh").send({ refreshToken });
+    expect(rotated.status).toBe(200);
+    const fresh = await request(app)
+      .get("/api/v1/me")
+      .set("authorization", `Bearer ${rotated.body.data.accessToken}`);
+    expect(fresh.status).toBe(200);
+    const claims = JSON.parse(
+      Buffer.from(String(rotated.body.data.accessToken).split(".")[1]!, "base64url").toString(),
+    ) as { graduationYear: number | null };
+    expect(claims.graduationYear).toBe(2024);
+  });
+
   it("logout-all ends the access token that asked for it", async () => {
     const u = await createTestUser("m13-logout-all", "STUDENT");
     const token = await login(app, u.email);
