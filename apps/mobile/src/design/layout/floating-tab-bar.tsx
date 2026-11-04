@@ -1,4 +1,4 @@
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarProps } from "expo-router/js-tabs";
 import type { NavItem } from "@space/shared";
 import { BlurView } from "expo-blur";
 import { StyleSheet, View } from "react-native";
