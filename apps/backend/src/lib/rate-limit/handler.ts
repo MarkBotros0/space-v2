@@ -1,6 +1,6 @@
 import type { Options as RateLimitOptions } from "express-rate-limit";
 
-import { apiError } from "./api-response";
+import { apiError } from "../api-response";
 
 /**
  * express-rate-limit's default 429 body is plain text, which would be the one

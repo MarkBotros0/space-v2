@@ -66,6 +66,7 @@ read outside that file). See `.env.example` for the full list.
 | `IMPORT_BODY_LIMIT` | No | `2mb` | JSON body limit for the import routes only; every other route keeps the 100 KB default. |
 | `IMPORT_PREVIEW_RATE_LIMIT` | No | `30` | Import preview requests per 15 minutes per IP. |
 | `IMPORT_COMMIT_RATE_LIMIT` | No | `10` | Import commit requests per 15 minutes per IP. |
+| `RATE_LIMIT_STORE` | No | `postgres` (`memory` when `NODE_ENV=test`) | Where every rate limiter keeps its counters. `postgres` shares them across instances through the `RateLimitHit` table (migration `20261105130000_rate_limit_store` must be applied); `memory` is per process, which on serverless means per instance. |
 
 **When `GMAIL_USER`/`GMAIL_APP_PASSWORD` are unset:** `sendNotificationEmail`
 becomes a no-op (it logs a one-time warning and returns) — in-app
@@ -180,15 +181,20 @@ one. **Do not convert this file to TypeScript.**
 
 ### Known limits on serverless
 
-Two things do not survive a serverless runtime, and neither is fixed by the
+One thing does not survive a serverless runtime and is not fixed by the
 entrypoint above:
 
-- **Rate limiting is per-instance.** `express-rate-limit` uses its default
-  in-memory store, so each cold start gets its own counter and the
-  20-attempts-per-15-minutes login protection weakens to "20 per instance".
-  Needs a shared store (Redis, or Vercel KV) to mean anything.
 - **Prisma needs a pooled connection.** Point `DATABASE_URL` at Neon's *pooled*
   endpoint, or concurrent cold starts exhaust the connection limit.
+
+Rate limiting used to be a second: `express-rate-limit`'s default in-memory
+store gave every instance its own counter. Every limiter is now built by
+`makeLimiter` (`src/lib/rate-limit/`), which by default keeps the counters in
+the `RateLimitHit` table (`RATE_LIMIT_STORE=postgres`), one atomic upsert per
+request, so all instances share one bucket per client. If the database is
+unreachable the limiter logs the error and lets the request through
+(`passOnStoreError`) rather than failing every login. Expired rows are swept by
+the store itself on ~1% of hits; there is no cron.
 
 Local file storage is a third — but uploads are switched off (see above), so it
 is moot until the CMS driver lands.
