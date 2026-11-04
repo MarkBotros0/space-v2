@@ -18,6 +18,11 @@ describe("createStudentRequestSchema", () => {
     expect(createStudentRequestSchema.safeParse({ ...valid, name: "x" }).success).toBe(false);
   });
 
+  it("trims and lowercases the email, as the importer does", () => {
+    const parsed = createStudentRequestSchema.parse({ ...valid, email: "  Space-V2-Test-X@JPC.test " });
+    expect(parsed.email).toBe("space-v2-test-x@jpc.test");
+  });
+
   it("has no password field at all — D7 is structural, not a default", () => {
     // parse strips unknown keys; the schema must not even know the word.
     expect("password" in createStudentRequestSchema.shape).toBe(false);
@@ -31,6 +36,10 @@ describe("updateStudentRequestSchema (PATCH semantics)", () => {
     expect(cleared.gifts).toBeNull();
     const untouched = updateStudentRequestSchema.parse({});
     expect(untouched.gifts).toBeUndefined();
+  });
+
+  it("trims and lowercases an edited email", () => {
+    expect(updateStudentRequestSchema.parse({ email: " A@JPC.test" }).email).toBe("a@jpc.test");
   });
 
   it("still coerces empty string to null on the fields it does receive", () => {

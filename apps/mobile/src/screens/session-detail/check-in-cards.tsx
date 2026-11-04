@@ -1,5 +1,6 @@
+import { useFocusEffect } from "expo-router";
 import { QrCode, RotateCcw } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import type { SessionDetail } from "@space/shared";
@@ -19,7 +20,7 @@ import {
 } from "../../design/ui";
 import { useAttendanceRoster, useSaveAttendance } from "../../hooks/use-attendance";
 import { useCheckInState, useRegenerateCheckIn } from "../../hooks/use-check-in";
-import { useCloseCheckIn, useOpenCheckIn } from "../../hooks/use-session-detail";
+import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../hooks/use-session-detail";
 import { apiErrorMessage } from "../../lib/api-error";
 import { formatWallTime } from "../../lib/format";
 
@@ -38,12 +39,22 @@ function CheckInRoster({ detail }: { detail: SessionDetail }) {
   const roster = useAttendanceRoster(detail.id);
   const save = useSaveAttendance(detail.id);
   const { refetch } = roster;
+  // Same query key as the screen's own read, so this refetch is what moves
+  // `detail` — the Open/Closed badge, and whether the roster polls at all.
+  // Polling only the roster left both stuck at whatever they were on entry:
+  // check-in opened or closed elsewhere (or expired) was never noticed.
+  const { refetch: refetchDetail } = useSessionDetail(detail.id);
 
-  useEffect(() => {
-    if (!detail.checkInOpen) return undefined;
-    const timer = setInterval(() => void refetch(), LIVE_ROSTER_REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [detail.checkInOpen, refetch]);
+  // While the screen is focused only: tab screens stay mounted when left.
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setInterval(() => {
+        void refetchDetail();
+        if (detail.checkInOpen) void refetch();
+      }, LIVE_ROSTER_REFRESH_MS);
+      return () => clearInterval(timer);
+    }, [detail.checkInOpen, refetch, refetchDetail]),
+  );
 
   if (roster.isPending) {
     return <TextV1 className="py-4 text-center text-sm text-muted-foreground">Loading…</TextV1>;

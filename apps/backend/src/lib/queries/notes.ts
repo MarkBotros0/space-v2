@@ -132,6 +132,9 @@ export async function listAuthoredNotes(
   const rows = await db.engagementNote.findMany({
     where: {
       authorUserId: user.userId,
+      // A soft-deleted student's notes leave the list with them, as their
+      // own notes page already 404s.
+      studentUser: { deletedAt: null },
       ...(query.studentId ? { studentUserId: query.studentId } : {}),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],

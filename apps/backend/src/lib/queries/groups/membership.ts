@@ -109,13 +109,27 @@ export async function setGroupStudents(
   // Students previously in this group who are not in the new list keep their
   // enrolment and lose only the group pointer. Removing the enrolment would
   // discard the fact that they were ever in the season.
-  await tx.seasonEnrollment.updateMany({
-    where: { seasonId, groupId, studentUserId: { notIn: studentIds } },
-    data: { groupId: null },
+  //
+  // ACTIVE enrolments only. The form's list is built from the season roster,
+  // which holds ACTIVE enrolments and nothing else, so a COMPLETED or
+  // WITHDRAWN member is never in it — "not in the list" says nothing about
+  // them. Without this, renaming a group in a finished season stripped every
+  // COMPLETED student's group. v1's form only removed the rows it diffed out
+  // of its own list (group-actions.ts:118-131), which never touched them.
+  const removed = await tx.seasonEnrollment.findMany({
+    where: { seasonId, groupId, status: "ACTIVE", studentUserId: { notIn: studentIds } },
+    select: { studentUserId: true },
   });
-  await tx.groupStudent.deleteMany({
-    where: { groupId, studentUserId: { notIn: studentIds } },
-  });
+  const removedIds = removed.map((r) => r.studentUserId);
+  if (removedIds.length > 0) {
+    await tx.seasonEnrollment.updateMany({
+      where: { seasonId, groupId, studentUserId: { in: removedIds } },
+      data: { groupId: null },
+    });
+    await tx.groupStudent.deleteMany({
+      where: { groupId, studentUserId: { in: removedIds } },
+    });
+  }
 
   for (const studentUserId of studentIds) {
     await moveStudentToGroup(tx, seasonId, studentUserId, groupId);

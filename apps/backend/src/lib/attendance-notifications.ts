@@ -2,6 +2,7 @@ import { db } from "../db/client";
 import { AttendanceStatus } from "../generated/prisma/enums";
 
 import { createNotificationsBulk } from "./notifications";
+import { groupIdInSeason } from "./queries/enrollment";
 
 /** If a student has 2+ consecutive ABSENTs in this season, flag them as high-risk
  *  to their group leaders and season admins (each with a link they can actually open). */
@@ -33,14 +34,15 @@ export async function flagLowAttendance(
     if (recent.length < 2) continue;
     if (!recent.every((r) => r.status === AttendanceStatus.ABSENT)) continue;
 
-    const membership = await db.groupStudent.findUnique({
-      where: { studentUserId },
-      select: { groupId: true },
-    });
-    if (!membership) continue;
+    // The student's group IN THIS SEASON (ruling C9). GroupStudent is unique
+    // per student across the whole database, so it named whatever group they
+    // are in now — another season's leaders got the alert. An ungrouped
+    // student is skipped, as in v1.
+    const groupId = await groupIdInSeason(studentUserId, session.seasonId);
+    if (groupId === null) continue;
 
     const leaders = await db.groupLeader.findMany({
-      where: { groupId: membership.groupId, user: { deletedAt: null } },
+      where: { groupId, user: { deletedAt: null } },
       select: { userId: true },
     });
     const admins = await db.seasonAdmin.findMany({
