@@ -43,3 +43,13 @@ jest.mock("@react-native-community/netinfo", () =>
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
+
+// The Sentry SDK needs its native module, which Jest lacks. The app only uses
+// these calls (src/lib/sentry.ts); sentry.test.tsx asserts against them.
+jest.mock("@sentry/react-native", () => ({
+  init: jest.fn(),
+  wrap: jest.fn((component: unknown) => component),
+  captureException: jest.fn(),
+  setUser: jest.fn(),
+  setTag: jest.fn(),
+}));

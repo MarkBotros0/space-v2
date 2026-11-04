@@ -17,14 +17,18 @@ import { Toaster } from "../src/design/ui/toaster";
 import { PushNotificationsBridge } from "../src/components/PushNotificationsBridge";
 import { ScreenErrorBoundary } from "../src/design/layout/error-boundary";
 import { clearCacheOnUserChange, createQueryClient } from "../src/lib/query-client";
+import { initSentry, wrapRoot } from "../src/lib/sentry";
 import { useSessionStore } from "../src/store/session";
+
+// Before anything renders. A no-op unless the build sets EXPO_PUBLIC_SENTRY_DSN.
+initSentry();
 
 const queryClient = createQueryClient();
 clearCacheOnUserChange(queryClient);
 
 export const ErrorBoundary = ScreenErrorBoundary;
 
-export default function RootLayout() {
+function RootLayout() {
   // Geist faces and the saved theme must be in place before first paint, or
   // every screen flashes the system font / the wrong theme on cold start.
   // A font that fails to load falls back to the system font rather than
@@ -51,6 +55,9 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+// Sentry.wrap only when Sentry is on; otherwise the layout itself.
+export default wrapRoot(RootLayout);
 
 /** Status-bar icons follow the app theme (dark icons on v1's light background). */
 function ThemedStatusBar() {
