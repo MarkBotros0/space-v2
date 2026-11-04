@@ -22,9 +22,23 @@ describe("Text variants", () => {
     expect(styleOf(getByText("hello"))).toMatchObject({ fontSize, lineHeight });
   });
 
-  it("defaults to body", () => {
+  it("defaults to body without inline sizing, so caller classes are never overridden", () => {
     const { getByText } = render(<Text>hello</Text>);
-    expect(styleOf(getByText("hello"))).toMatchObject({ fontSize: 16, lineHeight: 24 });
+    expect(getByText("hello").props.className).toContain("text-base");
+    expect(styleOf(getByText("hello")).fontSize).toBeUndefined();
+    expect(styleOf(getByText("hello")).lineHeight).toBeUndefined();
+  });
+
+  it("text-base leading-tight keeps its own line height", () => {
+    const { getByText } = render(<Text className="text-base leading-tight">t</Text>);
+    expect(getByText("t").props.className).toContain("leading-tight");
+    expect(styleOf(getByText("t")).lineHeight).toBeUndefined();
+  });
+
+  it("an explicit variant with leading-* sets no inline line height", () => {
+    const { getByText } = render(<Text variant="title" className="leading-tight">t</Text>);
+    expect(styleOf(getByText("t"))).toMatchObject({ fontSize: 22 });
+    expect(styleOf(getByText("t")).lineHeight).toBeUndefined();
   });
 
   it("weights go through the font-* utilities (one Geist file per weight)", () => {

@@ -65,14 +65,18 @@ function letterSpacingFor(classes: string[]): TextStyle | null {
 
 // The size the merged classes settle on, when it is a type-scale class. Jest
 // (and any caller reading style) cannot see compiled classes, so the scale's
-// size and line height are also set inline, but only while a scale class wins:
+// size and line height are also set inline, but only for an explicit `variant`
+// (a default Text leaves sizing to its compiled classes, so existing leading-*
+// and size overrides keep working), only while a scale class wins, and never
+// a line height over a caller leading-*:
 // a caller's text-sm drops the variant class and so the inline size too.
 function scaleStyleFor(classes: string[]): TextStyle | null {
+  const hasLeading = classes.some((c) => /^leading-/.test(c));
   for (const c of classes) {
     const m = /^text-(large-title|title|headline|body|base|subhead|caption)$/.exec(c);
     if (m) {
       const { size, lineHeight } = tokens.fontSize[(m[1] === "base" ? "body" : m[1]) as keyof typeof tokens.fontSize];
-      return { fontSize: size, lineHeight };
+      return hasLeading ? { fontSize: size } : { fontSize: size, lineHeight };
     }
   }
   return null;
@@ -80,11 +84,11 @@ function scaleStyleFor(classes: string[]): TextStyle | null {
 
 type Props = TextProps & { className?: string; variant?: Variant; tabular?: boolean };
 
-function Text({ className, style, variant = "body", tabular = false, ...props }: Props) {
+function Text({ className, style, variant, tabular = false, ...props }: Props) {
   // font-normal sets the Geist face too; with font-mono it would win the
   // fontFamily cascade, so mono text starts from colour only.
   const mono = className?.split(" ").includes("font-mono") ?? false;
-  const v = VARIANTS[variant];
+  const v = VARIANTS[variant ?? "body"];
   const weight = mono && v.weight === "font-normal" ? "" : v.weight;
   const merged = cn(weight, `text-${v.size} text-foreground`, className);
   const classes = merged.split(/\s+/);
@@ -92,7 +96,7 @@ function Text({ className, style, variant = "body", tabular = false, ...props }:
   return (
     <RNText
       className={merged}
-      style={[BODY_FEATURES, scaleStyleFor(classes), tabular && TABULAR, mono && MONO, tracking, style]}
+      style={[BODY_FEATURES, variant ? scaleStyleFor(classes) : null, tabular && TABULAR, mono && MONO, tracking, style]}
       {...props}
     />
   );
