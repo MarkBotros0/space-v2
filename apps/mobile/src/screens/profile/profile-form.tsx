@@ -145,7 +145,7 @@ export function ProfileForm({ profile }: { profile: MyProfile }) {
       {submitError ? (
         <TextV1
           accessibilityLiveRegion="polite"
-          className="rounded-md bg-error-50 px-3 py-2 text-sm text-error-800 dark:bg-error-950 dark:text-error-200"
+          className="rounded-[14px] bg-bad-soft px-3 py-2 text-sm text-bad"
         >
           {submitError}
         </TextV1>

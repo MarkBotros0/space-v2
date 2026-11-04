@@ -4,7 +4,7 @@ import type { StudentQuizDetail } from "@space/shared";
 import { Text as TextV1 } from "../../design/ui";
 
 /** A question's card on the student quiz pages. */
-export const QCARD = "rounded-2xl border border-border bg-card p-4";
+export const QCARD = "rounded-[16px] bg-surface dark:border dark:border-separator p-4";
 
 /** Quiz page header: title (text-xl), session line. Back is the frame's pinned bar (R23). */
 export function QuizHeader({ detail }: { detail: StudentQuizDetail }) {

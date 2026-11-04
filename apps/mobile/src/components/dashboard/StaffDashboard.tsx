@@ -8,7 +8,6 @@ import { Eyebrow } from "../../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
 import { NextSessionCard } from "../../design/sessions/next-session-card";
 import { StatCard } from "../../design/students/stat-card";
 import { Badge, EmptyState, ProgressRing, Text } from "../../design/ui";
@@ -53,7 +52,7 @@ function StaffSummary({
 
   return (
     <>
-      <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+      <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
         <View className="flex-row items-center gap-5">
           <ProgressRing
             value={mean ?? 0}

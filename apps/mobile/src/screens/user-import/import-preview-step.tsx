@@ -84,7 +84,7 @@ export function ImportPreviewStep({
               {`Read as ${preview.delimiter === "tab" ? "tab" : "comma"}-separated · columns: ${preview.detectedColumns.join(", ")}`}
             </Text>
             {preview.unrecognisedColumns.length > 0 ? (
-              <View className="rounded-md bg-warning-50 px-3 py-2 dark:bg-warning-950">
+              <View className="rounded-[14px] bg-warn-soft px-3 py-2">
                 {/* D-16.12: v1 never says what it FAILED to detect, which is the half that matters. */}
                 <Text className="text-sm font-medium text-warning-800 dark:text-warning-200">
                   {`${preview.unrecognisedColumns.length} column(s) not recognised`}

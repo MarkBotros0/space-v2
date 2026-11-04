@@ -44,7 +44,7 @@ export {
 /** v1's `<fieldset className="rounded-lg border border-border p-4">` with its `<legend>`. */
 function Fieldset({ legend, children }: { legend: string; children: ReactNode }) {
   return (
-    <View className="flex-col gap-2 rounded-lg border border-border p-4">
+    <View className="flex-col gap-2 rounded-[16px] border border-separator p-4">
       <Text className="text-sm font-medium">{legend}</Text>
       {children}
     </View>
@@ -72,7 +72,7 @@ function Radio({
       <View
         className={cn(
           "size-4 items-center justify-center rounded-full border",
-          selected ? "border-primary" : "border-input bg-background",
+          selected ? "border-primary" : "border-control-border bg-surface",
         )}
       >
         {selected ? <View className="size-2 rounded-full bg-primary" /> : null}

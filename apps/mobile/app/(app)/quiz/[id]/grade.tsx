@@ -7,7 +7,6 @@ import type { QuizAuthoringDetail, QuizGradeSheet, QuizGradingAttempt } from "@s
 import { Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
-import { shadowStyle } from "../../../../src/design/lib/shadow";
 import { QuizAttemptCard } from "../../../../src/design/quizzes/quiz-essay-grader";
 import { QuizGradeForm } from "../../../../src/design/quizzes/quiz-grade-form";
 import { Button, EmptyState, Text } from "../../../../src/design/ui";
@@ -34,7 +33,7 @@ function parseMark(value: string): number | null {
   return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
 }
 
-/** v1's header: "← Back to session" (when the quiz has one) over the title. */
+/** The quiz title and its subtitle; Back is the screen's pinned back bar (R23). */
 function Header({ detail, subtitle }: { detail: QuizAuthoringDetail; subtitle?: string }) {
   return (
     <View>
@@ -156,7 +155,7 @@ function AttemptCard({ id, item, maxScore, hasEssays }: { id: number; item: Quiz
  */
 function WaitingRow({ row }: { row: { studentUserId: number; studentName: string | null; startedAt: string | null } }) {
   return (
-    <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
       <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{row.studentName ?? "Student"}</Text>
       <Text className="text-xs text-muted-foreground">
         {row.startedAt === null ? "Not started" : `In progress since ${formatDate(row.startedAt)}`}

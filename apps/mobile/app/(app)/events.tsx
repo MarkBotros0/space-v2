@@ -39,7 +39,7 @@ function EventRow({
   onDelete: () => void;
 }) {
   return (
-    <View className="flex-row items-center gap-3 rounded-lg border border-border bg-card p-4">
+    <View className="flex-row items-center gap-3 rounded-[16px] bg-surface p-4 dark:border dark:border-separator">
       <Pressable accessibilityRole="button" className="min-w-0 flex-1 gap-1" onPress={onOpen}>
         <View className="flex-row flex-wrap items-center gap-2">
           <Text numberOfLines={1} className="shrink font-semibold">

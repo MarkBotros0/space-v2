@@ -6,7 +6,6 @@ import type { JpcEventListResponse } from "@space/shared";
 
 import { Eyebrow } from "../../design/layout/page-title";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
 import { Button, Skeleton, Text } from "../../design/ui";
 import { formatEventWhenShort } from "../../lib/format";
 
@@ -23,12 +22,12 @@ export function UpcomingEventsCard({ query }: { query: UseQueryResult<JpcEventLi
   const router = useRouter();
 
   return (
-    <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
       <Eyebrow>Upcoming events</Eyebrow>
       {query.isPending ? (
         <View accessible accessibilityLabel="Loading" className="mt-2 flex-col gap-2.5">
-          <Skeleton className="h-9 rounded-lg" />
-          <Skeleton className="h-9 rounded-lg" />
+          <Skeleton className="h-9" />
+          <Skeleton className="h-9" />
         </View>
       ) : query.isError ? (
         <View className="mt-2 flex-col items-start gap-2">

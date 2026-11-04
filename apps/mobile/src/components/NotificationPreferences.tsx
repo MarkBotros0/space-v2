@@ -110,9 +110,9 @@ export function NotificationPreferences() {
         </Text>
         {isPending ? (
           <View accessible accessibilityLabel="Loading" className="flex-col gap-3">
-            <Skeleton className="h-10 rounded-lg" />
-            <Skeleton className="h-10 rounded-lg" />
-            <Skeleton className="h-10 rounded-lg" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
           </View>
         ) : isError || !data ? (
           <View className="flex-col items-start gap-2">

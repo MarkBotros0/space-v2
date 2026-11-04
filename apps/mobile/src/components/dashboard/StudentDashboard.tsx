@@ -13,7 +13,6 @@ import { ShellFrame } from "../../design/layout/shell-frame";
 import { NextSessionCard } from "../../design/sessions/next-session-card";
 import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
 import { StatCard } from "../../design/students/stat-card";
 import { Badge, EmptyState, ProgressRing, Text } from "../../design/ui";
 import { useStudentDashboard } from "../../hooks/use-dashboard";
@@ -30,7 +29,7 @@ import { UpcomingEventsCard } from "./UpcomingEventsCard";
 iconWithClassName(AlertTriangle);
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
-const CARD = "rounded-2xl border border-border bg-card";
+const CARD = "rounded-[16px] bg-surface dark:border dark:border-separator";
 
 function subtitle(data: StudentData | undefined): string {
   if (!data?.season || !data.assignments) return "Welcome to JPC Space";
@@ -152,7 +151,7 @@ function EnrolledBody({
       {/* v1 keeps the empty `{!season && …}` slot, an extra 12px. */}
       <View />
       {progress && data.season ? (
-        <View className={cn(CARD, "p-5")} style={shadowStyle("soft")}>
+        <View className={cn(CARD, "p-5")}>
           <View className="flex-row items-center gap-5">
             <ProgressRing value={pct ?? 0} label={`Season ${pct ?? 0}% complete`}>
               <Text className="text-2xl font-black text-brand-navy-900 dark:text-foreground">{`${pct ?? 0}%`}</Text>
@@ -222,7 +221,7 @@ function EnrolledBody({
       <UpcomingEventsCard query={events} />
 
       {data.assignments && data.assignments.dueSoon.length > 0 ? (
-        <View className={cn(CARD, "p-4")} style={shadowStyle("soft")}>
+        <View className={cn(CARD, "p-4")}>
           <View className="flex-row items-center justify-between">
             <Eyebrow>Due soon</Eyebrow>
             <Pressable accessibilityRole="link" onPress={() => router.push("/assignments")}>

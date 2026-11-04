@@ -5,7 +5,6 @@ import type { StudentQuizDetail } from "@space/shared";
 import { Eyebrow } from "../../design/layout/page-title";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
 import { Badge, Text as TextV1 } from "../../design/ui";
 import { QCARD, QuizHeader } from "./quiz-header";
 
@@ -19,8 +18,7 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
       <View className="flex-col gap-3">
         <QuizHeader detail={detail} />
         <View
-          className="flex-row items-center justify-between rounded-2xl border border-border bg-card p-5"
-          style={shadowStyle("soft")}
+          className="flex-row items-center justify-between rounded-[16px] bg-surface dark:border dark:border-separator p-5"
         >
           <View className="min-w-0 flex-1">
             <TextV1 className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
@@ -46,7 +44,7 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
           )}
         </View>
         {detail.questions.map((q, index) => (
-          <View key={q.id} className={QCARD} style={shadowStyle("soft")}>
+          <View key={q.id} className={QCARD}>
             <View className="flex-row items-center justify-between gap-2">
               <TextV1 className="text-xs font-bold text-muted-foreground">{`Q${index + 1}`}</TextV1>
               {/* The student is told which MCQ was wrong, never what was right (R34). */}
@@ -78,7 +76,7 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
                 {`Your answer: ${q.selectedIndex !== null ? (q.options[q.selectedIndex] ?? "—") : "—"}`}
               </TextV1>
             ) : (
-              <TextV1 className="mt-1 rounded-lg bg-muted/40 px-3 py-2 text-sm text-foreground">
+              <TextV1 className="mt-1 rounded-[14px] bg-muted/40 px-3 py-2 text-sm text-foreground">
                 {q.text || "—"}
               </TextV1>
             )}

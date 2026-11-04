@@ -8,7 +8,6 @@ import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { cn } from "../../../src/design/lib/cn";
-import { shadowStyle } from "../../../src/design/lib/shadow";
 import { StatCard } from "../../../src/design/students/stat-card";
 import {
   Badge,
@@ -135,7 +134,7 @@ function StudentAssignments({ seasonId }: { seasonId: number | null }) {
           />
           <StatCard label="Reviewed" value={String(reviewed)} />
         </View>
-        <View className="rounded-2xl border border-border bg-card" style={shadowStyle("soft")}>
+        <View className="rounded-[16px] bg-surface dark:border dark:border-separator">
           {data.map((item, i) => (
             <AssignmentRow key={item.id} item={item} first={i === 0} last={i === data.length - 1} />
           ))}

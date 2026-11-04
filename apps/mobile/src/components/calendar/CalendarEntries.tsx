@@ -104,7 +104,7 @@ function onCard(tint: Tint): Pick<Tint, "box" | "text"> {
 
 export function Chip({ label, tint }: { label: string; tint: Pick<Tint, "box" | "text"> }) {
   return (
-    <View className={cn("self-start rounded-md px-2 py-0.5", tint.box)}>
+    <View className={cn("self-start rounded-full px-2 py-0.5", tint.box)}>
       <Text className={cn("text-xs", tint.text)}>{label}</Text>
     </View>
   );

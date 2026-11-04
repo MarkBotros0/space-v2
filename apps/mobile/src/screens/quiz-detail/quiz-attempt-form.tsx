@@ -6,7 +6,6 @@ import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
 import {
   Badge,
   Button as ButtonV1,
@@ -34,7 +33,7 @@ function AttemptQuestion({
   onChange: (patch: { selectedIndex?: number | null; text?: string }) => void;
 }) {
   return (
-    <View className={QCARD} style={shadowStyle("soft")}>
+    <View className={QCARD}>
       <View className="flex-row items-center gap-2">
         <TextV1 className="text-xs font-bold text-muted-foreground">{`Q${index + 1}`}</TextV1>
         <Badge variant={q.type === "MCQ" ? "teal" : "outline"}>
@@ -57,14 +56,14 @@ function AttemptQuestion({
                 accessibilityLabel={`Answer ${index + 1} option ${optionIndex + 1}: ${option}`}
                 onPress={() => onChange({ selectedIndex: optionIndex })}
                 className={cn(
-                  "flex-row items-center gap-3 rounded-xl border px-4 py-3",
-                  selected ? "border-brand-teal-600 bg-brand-teal-600/10" : "border-border bg-card",
+                  "flex-row items-center gap-3 rounded-[14px] border px-4 py-3",
+                  selected ? "border-ring bg-accent" : "border-control-border bg-surface",
                 )}
               >
                 <View
                   className={cn(
                     "size-5 shrink-0 items-center justify-center rounded-full border",
-                    selected ? "border-brand-teal-600 bg-brand-teal-600" : "border-border",
+                    selected ? "border-brand-teal-600 bg-brand-teal-600" : "border-control-border",
                   )}
                 >
                   {selected ? <Check size={12} className="text-white" /> : null}

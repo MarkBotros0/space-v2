@@ -7,7 +7,6 @@ import { Eyebrow } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { cn } from "../../src/design/lib/cn";
-import { shadowStyle } from "../../src/design/lib/shadow";
 import { Badge, EmptyState, ProgressRing, Text } from "../../src/design/ui";
 import { useMyAttendance } from "../../src/hooks/use-self-service";
 import { formatWallTime, formatWeekdayDayYear } from "../../src/lib/format";
@@ -79,7 +78,7 @@ export default function AttendanceScreen() {
     const tone = pct >= 100 ? "stroke-error-500" : pct >= 70 ? "stroke-warning-500" : undefined;
     body = (
       <>
-        <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+        <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
           <View className="flex-row items-center gap-5">
             <ProgressRing value={pct} label={`Absence budget ${pct}% used`} indicatorClassName={tone}>
               <Text className="text-2xl font-black text-brand-navy-900 dark:text-foreground">{`${pct}%`}</Text>
@@ -99,7 +98,7 @@ export default function AttendanceScreen() {
         {sessions.length === 0 ? (
           <EmptyState icon={Calendar} title="No sessions yet" description="Past sessions will appear here." />
         ) : (
-          <View className="rounded-2xl border border-border bg-card" style={shadowStyle("soft")}>
+          <View className="rounded-[16px] bg-surface dark:border dark:border-separator">
             <Eyebrow className="px-4 pt-4">Session history</Eyebrow>
             <View className="mt-2">
               {sessions.map((row, i) => (

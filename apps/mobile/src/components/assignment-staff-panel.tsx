@@ -158,7 +158,7 @@ function TrackerBlock({ assignmentId }: { assignmentId: number }) {
         {`${tracker.data.submittedCount}/${tracker.data.expectedCount} submitted`}
       </Badge>
       {tracker.data.rows.length === 0 ? (
-        <Text className="rounded-lg border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-muted-foreground">
+        <Text className="rounded-[16px] border border-dashed border-separator bg-muted/40 p-6 text-center text-sm text-muted-foreground">
           No students targeted by this assignment.
         </Text>
       ) : (

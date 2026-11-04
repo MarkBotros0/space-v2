@@ -47,10 +47,10 @@ export function ChoiceChips<T extends string | number | null>({
               accessibilityState={{ selected }}
               onPress={() => onChange(option.value)}
               className={cn(
-                "rounded-lg border px-3 py-1.5",
+                "rounded-full border px-3 py-1.5",
                 selected
-                  ? "border-brand-teal-500 bg-brand-teal-50 dark:bg-brand-teal-950"
-                  : "border-border bg-card active:border-brand-teal-300",
+                  ? "border-ring bg-accent"
+                  : "border-control-border bg-surface active:border-ring",
               )}
             >
               <Text

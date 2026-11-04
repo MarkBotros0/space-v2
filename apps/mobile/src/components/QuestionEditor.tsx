@@ -74,7 +74,7 @@ export function QuestionEditor({
 
   return (
     // v1 quiz-builder.tsx QuestionForm: `rounded-xl border border-brand-teal-600/40 bg-card p-4`.
-    <View className="flex-col gap-3 rounded-xl border border-brand-teal-600/40 bg-card p-4">
+    <View className="flex-col gap-3 rounded-[16px] border border-ring bg-surface p-4">
       <View className="flex-row flex-wrap items-center gap-2">
         {(["MCQ", "ESSAY"] as const).map((t) => (
           <Pressable
@@ -84,10 +84,10 @@ export function QuestionEditor({
             accessibilityState={{ checked: type === t }}
             onPress={() => setType(t)}
             className={cn(
-              "rounded-lg border px-3 py-1.5",
+              "rounded-full border px-3 py-1.5",
               type === t
-                ? "border-brand-teal-600 bg-brand-teal-600/10"
-                : "border-border active:border-brand-teal-500",
+                ? "border-ring bg-accent"
+                : "border-control-border active:border-ring",
             )}
           >
             <Text
@@ -139,7 +139,7 @@ export function QuestionEditor({
                 onPress={() => setCorrectIndex(index)}
                 className={cn(
                   "size-9 shrink-0 items-center justify-center rounded-full border",
-                  correctIndex === index ? "border-success-600 bg-success-600" : "border-border",
+                  correctIndex === index ? "border-success-600 bg-success-600" : "border-control-border",
                 )}
               >
                 <Check

@@ -9,7 +9,6 @@ import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-stat
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { cn } from "../../../src/design/lib/cn";
 import { iconWithClassName } from "../../../src/design/lib/icon";
-import { shadowStyle } from "../../../src/design/lib/shadow";
 import {
   Badge,
   Button,
@@ -74,7 +73,7 @@ function StudentQuizRow({ row }: { row: StudentQuizResult }) {
         </View>
       </View>
       {row.notes ? (
-        <Text className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        <Text className="mt-2 rounded-[14px] bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           {row.notes}
         </Text>
       ) : null}
@@ -83,11 +82,11 @@ function StudentQuizRow({ row }: { row: StudentQuizResult }) {
       ) : null}
     </>
   );
-  const box = "rounded-2xl border border-border bg-card px-4 py-4";
+  const box = "rounded-[16px] bg-surface dark:border dark:border-separator px-4 py-4";
   // v1: a PAPER row is a plain card, not a link.
   if (!online) {
     return (
-      <View className={box} style={shadowStyle("soft")}>
+      <View className={box}>
         {body}
       </View>
     );
@@ -97,7 +96,6 @@ function StudentQuizRow({ row }: { row: StudentQuizResult }) {
       accessibilityRole="link"
       onPress={() => router.push({ pathname: "/quiz/[id]", params: { id: String(row.quizId) } })}
       className={cn(box, "active:border-brand-teal-500")}
-      style={shadowStyle("soft")}
     >
       {body}
     </Pressable>
@@ -148,7 +146,7 @@ function StudentQuizzes({ seasonId }: { seasonId: number | null }) {
   return (
     <ShellFrame onRefresh={handleRefresh} refreshing={isRefetching}>
       <View className="flex-col gap-3">
-        <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+        <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
           <View className="flex-row items-center gap-5">
             <ProgressRing
               value={average ?? 0}
@@ -206,8 +204,7 @@ function QuizSummaryRow({
     <Pressable
       accessibilityRole="link"
       onPress={onPress}
-      className="flex-row items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-4"
-      style={shadowStyle("soft")}
+      className="flex-row items-center justify-between gap-4 rounded-[16px] bg-surface dark:border dark:border-separator px-4 py-4"
     >
       <View className="min-w-0 flex-1">
         <Text

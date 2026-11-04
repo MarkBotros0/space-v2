@@ -9,7 +9,6 @@ import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
 import { Badge, Button, EmptyState, Progress, Text } from "../../design/ui";
 import { useMySeason } from "../../hooks/use-self-service";
 import { formatDate, formatSessionTime } from "../../lib/format";
@@ -18,7 +17,7 @@ import { useSessionStore } from "../../store/session";
 
 iconWithClassName(CalendarDays, MapPin, Users);
 
-const CARD = "rounded-2xl border border-border bg-card";
+const CARD = "rounded-[16px] bg-surface dark:border dark:border-separator";
 
 /** "MMM" / "d" for the date tile, read from the org day key (X13). */
 function dayTile(dayKey: string): { month: string; day: string } {
@@ -34,9 +33,9 @@ function weekday(dayKey: string): string {
 
 function GroupCard({ group }: { group: NonNullable<MySeason["group"]> }) {
   return (
-    <View className={cn(CARD, "p-4")} style={shadowStyle("soft")}>
+    <View className={cn(CARD, "p-4")}>
       <View className="mb-3 flex-row items-center gap-2">
-        <View className="size-7 items-center justify-center rounded-lg bg-brand-navy-100 dark:bg-brand-navy-900">
+        <View className="size-7 items-center justify-center rounded-full bg-brand-navy-100 dark:bg-brand-navy-900">
           <Users size={16} className="text-brand-navy-800 dark:text-brand-navy-100" />
         </View>
         <View>
@@ -122,7 +121,7 @@ function GroupCard({ group }: { group: NonNullable<MySeason["group"]> }) {
 function UpcomingCard({ upcoming }: { upcoming: MySeason["upcoming"] }) {
   const router = useRouter();
   return (
-    <View className={cn(CARD, "p-4")} style={shadowStyle("soft")}>
+    <View className={cn(CARD, "p-4")}>
       <View className="mb-3 flex-row items-center justify-between">
         <Eyebrow>Upcoming sessions</Eyebrow>
         <Button
@@ -142,7 +141,7 @@ function UpcomingCard({ upcoming }: { upcoming: MySeason["upcoming"] }) {
             const tile = dayTile(s.dayKey);
             return (
               <View key={s.id} className="flex-row items-center gap-3">
-                <View className="size-11 shrink-0 items-center justify-center rounded-lg bg-brand-teal-100 dark:bg-brand-teal-950">
+                <View className="size-11 shrink-0 items-center justify-center rounded-full bg-brand-teal-100 dark:bg-brand-teal-950">
                   <Text className="text-[9px] font-bold uppercase leading-none text-brand-teal-800 dark:text-brand-teal-200">
                     {tile.month}
                   </Text>
@@ -213,7 +212,7 @@ export function StudentSeason() {
     const { completedSessions, totalSessions, pct } = data.progress;
     body = (
       <View className="flex-col gap-3">
-        <View className={cn(CARD, "p-5")} style={shadowStyle("soft")}>
+        <View className={cn(CARD, "p-5")}>
           <View className="flex-row flex-wrap items-start justify-between gap-2">
             <View className="min-w-0">
               <Eyebrow tone="teal">Current season</Eyebrow>
@@ -249,7 +248,7 @@ export function StudentSeason() {
         </View>
         {data.group ? <GroupCard group={data.group} /> : null}
         {data.description ? (
-          <View className={cn(CARD, "p-4")} style={shadowStyle("soft")}>
+          <View className={cn(CARD, "p-4")}>
             <Eyebrow className="mb-2">About this season</Eyebrow>
             <Text className="text-sm text-foreground/90">{data.description}</Text>
           </View>

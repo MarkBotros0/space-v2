@@ -75,7 +75,7 @@ function ReviewForm({
           className="min-h-32"
         />
         {review.isError ? (
-          <Text className="rounded-md bg-error-50 px-3 py-2 text-sm text-error-800 dark:bg-error-950 dark:text-error-200">
+          <Text className="rounded-[14px] bg-bad-soft px-3 py-2 text-sm text-bad">
             {apiErrorMessage(review.error, "Couldn't record the review. It may not have been submitted yet.")}
           </Text>
         ) : null}
@@ -158,7 +158,7 @@ export default function SubmissionReviewScreen() {
                   {data.files.map((f) => (
                     <View
                       key={f.id}
-                      className="flex-row items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2"
+                      className="flex-row items-center justify-between gap-2 rounded-[14px] border border-separator bg-muted/40 px-3 py-2"
                     >
                       <View className="min-w-0 flex-1 flex-row items-center gap-2">
                         <FileIcon size={16} className="shrink-0 text-muted-foreground" />

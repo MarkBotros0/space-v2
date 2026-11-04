@@ -1,6 +1,5 @@
 import { View } from "react-native";
 
-import { shadowStyle } from "../../design/lib/shadow";
 import { Avatar, AvatarFallback, Badge, Text as TextV1 } from "../../design/ui";
 import { initialsOf } from "../../lib/initials";
 
@@ -15,7 +14,7 @@ export function IdentityCard({
   badge: string;
 }) {
   return (
-    <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
       <View className="flex-row items-center gap-4">
         {/* Initials only: v2 has no avatar read path and uploads are off (gap note). */}
         <Avatar size="xl" className="shrink-0">

@@ -5,7 +5,6 @@ import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
 import { Button, Text } from "../../design/ui";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { firstName } from "../../lib/format";
@@ -29,7 +28,7 @@ export function AlumniDashboard() {
   return (
     <ShellFrame home onRefresh={() => void events.refetch()} refreshing={events.isRefetching}>
       <View className="flex-col gap-4">
-        <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+        <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
           <View className="flex-row items-center gap-2">
             <GraduationCap size={16} className="text-brand-teal-700 dark:text-brand-teal-300" />
             <Text className="text-xs font-semibold uppercase tracking-wide text-brand-teal-700 dark:text-brand-teal-300">

@@ -115,7 +115,7 @@ export function FoundationSections() {
                   <View key={cls} className="flex-col gap-1">
                     <View
                       accessibilityLabel={`${scale.name}-${STEPS[i]}`}
-                      className={`h-10 rounded-md border border-border ${cls}`}
+                      className={`h-10 rounded-[10px] border border-separator ${cls}`}
                     />
                     <Text className="text-[10px] text-muted-foreground">{STEPS[i]}</Text>
                   </View>
@@ -130,7 +130,7 @@ export function FoundationSections() {
         <Grid cols={2} gap={12}>
           {SEMANTIC.map(([name, cls]) => (
             <View key={name} className="flex-col gap-1">
-              <View className={`h-12 rounded-md border border-border ${cls}`} />
+              <View className={`h-12 rounded-[10px] border border-separator ${cls}`} />
               <Text className="text-xs text-muted-foreground">{name}</Text>
             </View>
           ))}

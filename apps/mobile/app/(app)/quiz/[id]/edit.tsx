@@ -46,7 +46,7 @@ function QuizSettings({
   };
 
   return (
-    <View className="flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+    <View className="flex-col gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-4">
       <View className="flex-col gap-1">
         <Text className="text-xs font-semibold text-muted-foreground">Quiz title</Text>
         <Input accessibilityLabel="Quiz title" value={title} onChangeText={setTitle} />
@@ -153,7 +153,7 @@ function QuestionRow({
       : undefined;
 
   return (
-    <View className="flex-row items-start justify-between gap-3 rounded-xl border border-border bg-card p-4">
+    <View className="flex-row items-start justify-between gap-3 rounded-[16px] bg-surface p-4 dark:border dark:border-separator">
       <View className="min-w-0 flex-1">
         <View className="flex-row flex-wrap items-center gap-2">
           <Text className="text-xs font-bold text-muted-foreground">{`Q${n}`}</Text>
@@ -251,7 +251,7 @@ function QuizBuilder({ id }: { id: number }) {
         <QuizSettings quiz={data} onError={setError} />
 
         {data.kind === "PAPER" ? (
-          <View className="flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+          <View className="flex-col gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-4">
             <Text className="text-sm">
               This is a paper quiz — it has no questions. Grade it from the grade sheet.
             </Text>
@@ -268,7 +268,7 @@ function QuizBuilder({ id }: { id: number }) {
         ) : (
           <>
             {/* v1's publish bar. */}
-            <View className="flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+            <View className="flex-col gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-4">
               <View className="flex-row flex-wrap items-center gap-2">
                 <Badge variant={published ? "success" : "warning"}>
                   {published ? "Published" : "Draft"}

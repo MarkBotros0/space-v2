@@ -4,7 +4,6 @@ import { View } from "react-native";
 import { Eyebrow } from "../../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
-import { shadowStyle } from "../../design/lib/shadow";
 import { StatCard } from "../../design/students/stat-card";
 import { Button as ButtonV1, Text as TextV1 } from "../../design/ui";
 import { useMyEngagement } from "../../hooks/use-engagement";
@@ -70,14 +69,13 @@ export function StudentProfile() {
             />
           </View>
         ) : null}
-        <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+        <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
           <Eyebrow className="mb-4">Your details</Eyebrow>
           <ProfileForm profile={p} />
         </View>
         {/* Decision 1: name and email are not edited here (PATCH /me owns User.name). */}
         <View
-          className="flex-col items-start gap-3 rounded-2xl border border-border bg-card p-4"
-          style={shadowStyle("soft")}
+          className="flex-col items-start gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-4"
         >
           <TextV1 className="text-sm text-muted-foreground">
             Change your name in Settings. To change your email, contact the JPC team.

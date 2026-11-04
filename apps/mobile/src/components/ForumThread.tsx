@@ -38,8 +38,8 @@ import { useSessionStore } from "../store/session";
 iconWithClassName(Send, Trash2);
 
 const NOTICE = {
-  error: "rounded-md bg-error-50 px-3 py-2 text-sm text-error-800 dark:bg-error-950 dark:text-error-200",
-  success: "rounded-md bg-success-50 px-3 py-2 text-sm text-success-800 dark:bg-success-950 dark:text-success-200",
+  error: "rounded-[14px] bg-bad-soft px-3 py-2 text-sm text-bad",
+  success: "rounded-[14px] bg-ok-soft px-3 py-2 text-sm text-ok",
 };
 
 /** v1 forum-view.tsx PersonAvatar: initials only (no avatar URL in the contract). */
@@ -131,7 +131,7 @@ function CommentRow({ comment, assignmentId }: { comment: ForumComment; assignme
   return (
     <View className="flex-row items-start gap-2.5">
       <PersonAvatar name={comment.authorDisplayName} />
-      <View className="flex-1 flex-col rounded-lg bg-muted/50 px-3 py-2">
+      <View className="flex-1 flex-col rounded-[14px] bg-muted/50 px-3 py-2">
         <View className="flex-row items-center justify-between gap-2">
           <Text className="shrink text-xs font-semibold text-foreground">{comment.authorDisplayName}</Text>
           <View className="flex-row items-center gap-2">
@@ -224,7 +224,7 @@ function PostCard({ assignmentId, post, allowComments }: { assignmentId: number;
                 </Button>
               </View>
             ) : null}
-            {expanded && comments.isPending ? <Skeleton className="h-10 rounded-lg" /> : null}
+            {expanded && comments.isPending ? <Skeleton className="h-10" /> : null}
             {expanded && comments.hasNextPage ? (
               <Button
                 variant="outline"

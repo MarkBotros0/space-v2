@@ -70,7 +70,7 @@ export function VideoQuizResultsTable({ sessionId }: { sessionId: number }) {
       <Text className="text-lg font-semibold">Results</Text>
       {results.isPending ? (
         <View accessible accessibilityLabel="Loading">
-          <Skeleton className="h-16 rounded-xl" />
+          <Skeleton className="h-16" />
         </View>
       ) : results.isError ? (
         <InlineError message="Couldn't load the results." onRetry={() => void results.refetch()} />

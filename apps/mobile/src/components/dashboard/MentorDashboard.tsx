@@ -7,7 +7,6 @@ import { PageTitle } from "../../design/layout/page-title";
 import { InlineError } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
 import { Badge, Button, EmptyState, Skeleton, Text } from "../../design/ui";
 import { useMentorDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
@@ -55,8 +54,8 @@ function CardTitleRow({
 function CardLoading() {
   return (
     <View accessible accessibilityLabel="Loading" className="flex-col gap-2.5 px-4 pb-4">
-      <Skeleton className="h-9 rounded-lg" />
-      <Skeleton className="h-9 rounded-lg" />
+      <Skeleton className="h-9" />
+      <Skeleton className="h-9" />
     </View>
   );
 }
@@ -107,7 +106,7 @@ export function MentorDashboard() {
 
         <UpcomingEventsCard query={events} />
 
-        <View className="rounded-2xl border border-border bg-card" style={shadowStyle("soft")}>
+        <View className="rounded-[16px] bg-surface dark:border dark:border-separator">
           <CardTitleRow
             icon={<AlertCircle size={16} className="text-warning-600" />}
             title="At risk"
@@ -171,7 +170,7 @@ export function MentorDashboard() {
           )}
         </View>
 
-        <View className="rounded-2xl border border-border bg-card" style={shadowStyle("soft")}>
+        <View className="rounded-[16px] bg-surface dark:border dark:border-separator">
           <CardTitleRow
             icon={<Users size={16} className="text-info-600" />}
             title="Recent activity"

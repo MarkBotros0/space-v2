@@ -3,7 +3,6 @@ import { View } from "react-native";
 
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
-import { shadowStyle } from "../../design/lib/shadow";
 import { Button as ButtonV1, Text as TextV1 } from "../../design/ui";
 import { useStartAttempt, useStudentQuizDetail } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
@@ -34,8 +33,7 @@ export function StudentRunner({ id }: { id: number }) {
       <View className="flex-col gap-3">
         <QuizHeader detail={data} />
         <View
-          className="flex-col gap-3 rounded-2xl border border-border bg-card p-5"
-          style={shadowStyle("soft")}
+          className="flex-col gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-5"
         >
           <TextV1 className="text-sm text-muted-foreground">
             {`${n} question${n === 1 ? "" : "s"} · ${data.maxScore} points. You have one attempt — answer every question before submitting.`}

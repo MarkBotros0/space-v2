@@ -29,10 +29,10 @@ export function SeasonPicker({
             accessibilityState={{ selected: active }}
             onPress={() => onSelect(o.id)}
             className={cn(
-              "rounded-lg border px-3 py-2",
+              "rounded-full border px-3 py-2",
               active
-                ? "border-brand-teal-500 bg-brand-teal-50 dark:bg-brand-teal-950"
-                : "border-border bg-card",
+                ? "border-ring bg-accent"
+                : "border-control-border bg-surface",
             )}
           >
             <Text
