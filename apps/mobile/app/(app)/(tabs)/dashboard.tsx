@@ -1,12 +1,12 @@
-import { AlumniDashboard } from "../../src/components/dashboard/AlumniDashboard";
-import { MentorDashboard } from "../../src/components/dashboard/MentorDashboard";
-import { AdminDashboard, LeaderDashboard } from "../../src/components/dashboard/StaffDashboard";
-import { StudentDashboard } from "../../src/components/dashboard/StudentDashboard";
-import { SuperDashboard } from "../../src/components/dashboard/SuperDashboard";
-import { dashboardBranchFor } from "../../src/lib/dashboard-branch";
-import { RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { useSessionStore } from "../../src/store/session";
+import { AlumniDashboard } from "../../../src/components/dashboard/AlumniDashboard";
+import { MentorDashboard } from "../../../src/components/dashboard/MentorDashboard";
+import { AdminDashboard, LeaderDashboard } from "../../../src/components/dashboard/StaffDashboard";
+import { StudentDashboard } from "../../../src/components/dashboard/StudentDashboard";
+import { SuperDashboard } from "../../../src/components/dashboard/SuperDashboard";
+import { dashboardBranchFor } from "../../../src/lib/dashboard-branch";
+import { RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { useSessionStore } from "../../../src/store/session";
 
 /**
  * Home — one route, one branch per audience (spec 19 §9, Phase 0 D1). Each

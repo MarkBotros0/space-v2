@@ -2,13 +2,13 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { PageTitle } from "../../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { SeasonsList } from "../../../src/design/seasons/seasons-list";
-import { Button, EmptyState } from "../../../src/design/ui";
-import { useSeasons } from "../../../src/hooks/use-seasons";
-import { useSessionStore } from "../../../src/store/session";
+import { PageTitle } from "../../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { SeasonsList } from "../../../../src/design/seasons/seasons-list";
+import { Button, EmptyState } from "../../../../src/design/ui";
+import { useSeasons } from "../../../../src/hooks/use-seasons";
+import { useSessionStore } from "../../../../src/store/session";
 
 /**
  * SUPER's seasons list (v1 /super/seasons, B5-2): title, "New season" and the

@@ -1,10 +1,10 @@
 import { useRouter } from "expo-router";
 
-import { MoreMenu } from "../../src/design/layout/more-menu";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { useLogout } from "../../src/hooks/use-session";
-import { navHref } from "../../src/lib/nav-routes";
-import { useSessionStore } from "../../src/store/session";
+import { MoreMenu } from "../../../src/design/layout/more-menu";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { useLogout } from "../../../src/hooks/use-session";
+import { navHref } from "../../../src/lib/nav-routes";
+import { useSessionStore } from "../../../src/store/session";
 
 /** v1 /<role>/more → components/layout/more-menu.tsx. Items come from navFor (B2-5). */
 export default function MoreScreen() {

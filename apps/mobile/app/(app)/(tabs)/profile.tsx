@@ -1,7 +1,7 @@
-import { AccountProfile } from "../../src/screens/profile/account-profile";
-import { AlumniProfile } from "../../src/screens/profile/alumni-profile";
-import { StudentProfile } from "../../src/screens/profile/student-profile";
-import { useSessionStore } from "../../src/store/session";
+import { AccountProfile } from "../../../src/screens/profile/account-profile";
+import { AlumniProfile } from "../../../src/screens/profile/alumni-profile";
+import { StudentProfile } from "../../../src/screens/profile/student-profile";
+import { useSessionStore } from "../../../src/store/session";
 
 export default function ProfileScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);

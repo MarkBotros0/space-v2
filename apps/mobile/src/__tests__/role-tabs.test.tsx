@@ -4,9 +4,9 @@ import type * as NodePath from "node:path";
 import { ALL_NAV_HREFS, hrefUnion, navByRole, navFor } from "@space/shared";
 import type { RoleNav } from "@space/shared";
 
-import { routeNameForHref } from "../../app/(app)/_layout";
+import { routeNameForHref } from "../../app/(app)/(tabs)/_layout";
 import { useSessionStore } from "../store/session";
-import { ambiguousRouteSiblings } from "./helpers/routes";
+import { APP_GROUP_DIR, TABS_GROUP_DIR, ambiguousRouteSiblings, duplicateRouteUrls } from "./helpers/routes";
 
 const scopes = {
   seasonAdminIds: [],
@@ -37,7 +37,7 @@ describe("role tabs", () => {
     expect(admin).not.toEqual(student);
   });
 
-  it("every tab href has a route file", () => {
+  it("every nav href has a route file in the tabs group", () => {
     // Guards Decision D1: the tab bar is data-driven, so a nav item pointing
     // at a route nobody created is a runtime crash, not a type error.
     // Sourced from ALL_NAV_HREFS (packages/shared/src/navigation.ts) — the
@@ -46,7 +46,7 @@ describe("role tabs", () => {
     // let ALUMNI-only routes go unguarded (see the "ALUMNI" describe below).
     const fs = require("node:fs") as typeof NodeFs;
     const path = require("node:path") as typeof NodePath;
-    const appDir = path.resolve(__dirname, "../../app/(app)");
+    const appDir = TABS_GROUP_DIR;
 
     const missing = ALL_NAV_HREFS.filter(
       (href) => !fs.existsSync(path.join(appDir, `${href.slice(1)}.tsx`)) &&
@@ -64,7 +64,7 @@ describe("role tabs", () => {
     // just this test catching it first.
     const fs = require("node:fs") as typeof NodeFs;
     const path = require("node:path") as typeof NodePath;
-    const appDir = path.resolve(__dirname, "../../app/(app)");
+    const appDir = TABS_GROUP_DIR;
 
     for (const href of ALL_NAV_HREFS) {
       const name = routeNameForHref(href);
@@ -76,7 +76,7 @@ describe("role tabs", () => {
 describe("route file layout (P13)", () => {
   const fs = require("node:fs") as typeof NodeFs;
   const path = require("node:path") as typeof NodePath;
-  const appDir = path.resolve(__dirname, "../../app/(app)");
+  const appDir = TABS_GROUP_DIR;
 
   function walk(dir: string): string[] {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -105,15 +105,21 @@ describe("route file layout (P13)", () => {
     expect(ambiguousRouteSiblings()).toEqual([]);
   });
 
-  it("no route directory has its own _layout.tsx", () => {
+  it("no two route files answer the same URL", () => {
+    // Groups add no URL segment, so `(tabs)/students/index.tsx` beside
+    // `students/new.tsx` is fine, but a `seasons.tsx` beside
+    // `(tabs)/seasons/index.tsx` would be two files for /seasons.
+    expect(duplicateRouteUrls()).toEqual([]);
+  });
+
+  it("only the stack and the tabs have a _layout.tsx", () => {
     // A nested _layout.tsx stops expo-router from flattening that
-    // directory's routes into this group's Tabs navigator — the routes
-    // inside would silently stop being tabs at all.
-    const rootLayout = path.join(appDir, "_layout.tsx");
-    const nestedLayouts = walk(appDir).filter(
-      (file) => file.endsWith("_layout.tsx") && file !== rootLayout,
+    // directory's routes into the Stack or the Tabs navigator — the routes
+    // inside would silently stop being tabs or pushed screens at all.
+    const layouts = walk(APP_GROUP_DIR).filter((file) => file.endsWith("_layout.tsx"));
+    expect(new Set(layouts)).toEqual(
+      new Set([path.join(APP_GROUP_DIR, "_layout.tsx"), path.join(appDir, "_layout.tsx")]),
     );
-    expect(nestedLayouts).toEqual([]);
   });
 });
 

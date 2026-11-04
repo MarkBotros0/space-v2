@@ -24,7 +24,7 @@ function studentOnlySegments(): ReadonlySet<string> {
 
 const BLOCKED = studentOnlySegments();
 
-/** `segments` as expo-router's useSegments() returns them, e.g. ["(app)", "assignments"]. */
+/** `segments` as expo-router's useSegments() returns them, e.g. ["(app)", "(tabs)", "assignments"] or ["(app)", "quiz", "[id]"]. */
 export function isBlockedForAlumni(segments: readonly string[]): boolean {
   const first = segments.find((s) => !(s.startsWith("(") && s.endsWith(")")));
   return first !== undefined && BLOCKED.has(first);

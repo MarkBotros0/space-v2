@@ -16,7 +16,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import MoreScreen from "../../app/(app)/more";
+import MoreScreen from "../../app/(app)/(tabs)/more";
 
 beforeEach(() => {
   jest.clearAllMocks();

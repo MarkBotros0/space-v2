@@ -5,8 +5,14 @@ import type * as NodePath from "node:path";
 const fs = require("node:fs") as typeof NodeFs;
 const path = require("node:path") as typeof NodePath;
 
-/** `apps/mobile/app/(app)` — the Tabs group every authenticated screen lives in. */
-export const APP_GROUP_DIR = path.resolve(__dirname, "../../../app/(app)");
+/** `apps/mobile/app` — every route file. */
+export const APP_DIR = path.resolve(__dirname, "../../../app");
+
+/** `apps/mobile/app/(app)` — the signed-in Stack: detail routes, with the tabs group at its bottom. */
+export const APP_GROUP_DIR = path.join(APP_DIR, "(app)");
+
+/** `apps/mobile/app/(app)/(tabs)` — the Tabs group every nav destination lives in. */
+export const TABS_GROUP_DIR = path.join(APP_GROUP_DIR, "(tabs)");
 
 function walkFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -25,23 +31,53 @@ function walkDirs(dir: string): string[] {
     });
 }
 
-function toRouteName(file: string): string {
-  return path.relative(APP_GROUP_DIR, file).replace(/\.tsx$/, "").split(path.sep).join("/");
+function toRouteName(file: string, base = APP_GROUP_DIR): string {
+  return path.relative(base, file).replace(/\.tsx$/, "").split(path.sep).join("/");
+}
+
+function screenFiles(dir: string): string[] {
+  return walkFiles(dir).filter((file) => file.endsWith(".tsx") && path.basename(file) !== "_layout.tsx");
 }
 
 /**
  * The route name (the `name` `Tabs.Screen` takes) of every screen file under
- * app/(app): path relative to the group, extension dropped, `/`-separated.
- * `_layout.tsx` is the navigator, not a screen.
+ * app/(app)/(tabs): path relative to the group, extension dropped,
+ * `/`-separated. `_layout.tsx` is the navigator, not a screen.
  */
-export function listRouteNames(): string[] {
-  return walkFiles(APP_GROUP_DIR)
-    .filter((file) => file.endsWith(".tsx") && path.basename(file) !== "_layout.tsx")
-    .map(toRouteName);
+export function listTabRouteNames(): string[] {
+  return screenFiles(TABS_GROUP_DIR).map((file) => toRouteName(file, TABS_GROUP_DIR));
 }
 
-export function readRouteSource(routeName: string): string {
-  return fs.readFileSync(path.join(APP_GROUP_DIR, `${routeName}.tsx`), "utf8");
+/**
+ * The route name (the `name` `Stack.Screen` takes) of every screen file under
+ * app/(app) outside the tabs group: the detail routes.
+ */
+export function listDetailRouteNames(): string[] {
+  return screenFiles(APP_GROUP_DIR)
+    .filter((file) => !file.startsWith(TABS_GROUP_DIR + path.sep))
+    .map((file) => toRouteName(file));
+}
+
+/** "(app)/(tabs)/students/index" → "/students": groups add no URL segment, `index` is its directory. */
+export function urlOfRouteName(routeName: string): string {
+  const parts = routeName.split("/").filter((part) => !/^\(.*\)$/.test(part));
+  if (parts[parts.length - 1] === "index") parts.pop();
+  return `/${parts.join("/")}`;
+}
+
+/**
+ * URLs that more than one route file under app/ resolves to. Splitting a
+ * directory across groups (`(tabs)/students/index.tsx` beside
+ * `students/new.tsx`) is fine; two files answering the same URL is not —
+ * expo-router silently picks one.
+ */
+export function duplicateRouteUrls(): string[] {
+  const seen = new Map<string, string[]>();
+  for (const file of screenFiles(APP_DIR)) {
+    const url = urlOfRouteName(toRouteName(file, APP_DIR));
+    seen.set(url, [...(seen.get(url) ?? []), toRouteName(file, APP_DIR)]);
+  }
+  return [...seen.values()].filter((files) => files.length > 1).map((files) => files.join(" + "));
 }
 
 /**

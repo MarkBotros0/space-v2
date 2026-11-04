@@ -28,7 +28,7 @@ import {
   staffDashboard,
 } from "./helpers/dashboard-fixtures";
 
-import DashboardScreen from "../../app/(app)/dashboard";
+import DashboardScreen from "../../app/(app)/(tabs)/dashboard";
 
 beforeEach(() => {
   jest.clearAllMocks();

@@ -4,17 +4,17 @@ import { useRouter } from "expo-router";
 import { CalendarDays, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react-native";
 import type { JpcEventListItem } from "@space/shared";
 
-import { EMPTY_EVENT_VALUES, EventForm, VISIBILITY_LABELS } from "../../src/components/EventForm";
-import { PageTitle } from "../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { iconWithClassName } from "../../src/design/lib/icon";
-import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../src/design/ui";
-import { ConfirmDialog } from "../../src/design/ui/confirm-dialog";
-import { useCreateEvent, useDeleteEvent, useEventPages } from "../../src/hooks/use-events";
-import { apiErrorMessage } from "../../src/lib/api-error";
-import { formatEventWhen } from "../../src/lib/format";
-import { useSessionStore } from "../../src/store/session";
+import { EMPTY_EVENT_VALUES, EventForm, VISIBILITY_LABELS } from "../../../src/components/EventForm";
+import { PageTitle } from "../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { iconWithClassName } from "../../../src/design/lib/icon";
+import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../../src/design/ui";
+import { ConfirmDialog } from "../../../src/design/ui/confirm-dialog";
+import { useCreateEvent, useDeleteEvent, useEventPages } from "../../../src/hooks/use-events";
+import { apiErrorMessage } from "../../../src/lib/api-error";
+import { formatEventWhen } from "../../../src/lib/format";
+import { useSessionStore } from "../../../src/store/session";
 
 iconWithClassName(ExternalLink);
 iconWithClassName(Pencil);

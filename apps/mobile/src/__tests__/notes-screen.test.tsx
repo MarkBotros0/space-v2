@@ -12,7 +12,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import NotesScreen from "../../app/(app)/notes";
+import NotesScreen from "../../app/(app)/(tabs)/notes";
 
 const get = apiClient.get as jest.Mock;
 

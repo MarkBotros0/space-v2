@@ -3,9 +3,9 @@ import { Inbox } from "lucide-react-native";
 import { View } from "react-native";
 import type { SubmissionQueueItem } from "@space/shared";
 
-import { PageTitle } from "../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { PageTitle } from "../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import {
   Badge,
   Button,
@@ -15,11 +15,11 @@ import {
   SubmissionStatusBadge,
   Text,
   type DataTableColumn,
-} from "../../src/design/ui";
-import { usePrefetchSubmission } from "../../src/hooks/use-submission";
-import { useSubmissionQueue } from "../../src/hooks/use-submission-queue";
-import { formatShortDateTime } from "../../src/lib/format";
-import { useSessionStore } from "../../src/store/session";
+} from "../../../src/design/ui";
+import { usePrefetchSubmission } from "../../../src/hooks/use-submission";
+import { useSubmissionQueue } from "../../../src/hooks/use-submission-queue";
+import { formatShortDateTime } from "../../../src/lib/format";
+import { useSessionStore } from "../../../src/store/session";
 
 // v1 lists every SUBMITTED, REVIEWED and RETURNED row, in that order (B3-8).
 const ALL = { pendingOnly: false } as const;

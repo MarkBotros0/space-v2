@@ -7,7 +7,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import HistoryScreen from "../../app/(app)/history";
+import HistoryScreen from "../../app/(app)/(tabs)/history";
 
 const get = apiClient.get as jest.Mock;
 

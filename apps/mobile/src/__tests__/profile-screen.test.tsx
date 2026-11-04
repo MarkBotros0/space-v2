@@ -15,7 +15,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import ProfileScreen from "../../app/(app)/profile";
+import ProfileScreen from "../../app/(app)/(tabs)/profile";
 
 const get = apiClient.get as jest.Mock;
 const patch = apiClient.patch as jest.Mock;

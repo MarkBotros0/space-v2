@@ -4,17 +4,17 @@ import { Lock, ShieldCheck, UserRound } from "lucide-react-native";
 import { View } from "react-native";
 import { passwordSchema } from "@space/shared";
 
-import { NotificationPreferences } from "../../src/components/NotificationPreferences";
-import { PageHeader } from "../../src/design/layout/page-header";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { Section } from "../../src/design/settings/section";
-import { Button, FormField, Input, PasswordInput, toast } from "../../src/design/ui";
-import { ConfirmDialog } from "../../src/design/ui/confirm-dialog";
-import { useChangePassword, useLogoutAll, useUpdateProfile } from "../../src/hooks/use-me";
-import { useLogout } from "../../src/hooks/use-session";
-import { apiErrorCode, apiErrorMessage } from "../../src/lib/api-error";
-import { clearSession } from "../../src/lib/token-storage";
-import { useSessionStore } from "../../src/store/session";
+import { NotificationPreferences } from "../../../src/components/NotificationPreferences";
+import { PageHeader } from "../../../src/design/layout/page-header";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { Section } from "../../../src/design/settings/section";
+import { Button, FormField, Input, PasswordInput, toast } from "../../../src/design/ui";
+import { ConfirmDialog } from "../../../src/design/ui/confirm-dialog";
+import { useChangePassword, useLogoutAll, useUpdateProfile } from "../../../src/hooks/use-me";
+import { useLogout } from "../../../src/hooks/use-session";
+import { apiErrorCode, apiErrorMessage } from "../../../src/lib/api-error";
+import { clearSession } from "../../../src/lib/token-storage";
+import { useSessionStore } from "../../../src/store/session";
 
 /**
  * One route, all six navigation roles, ZERO role branches — spec 18 R3: v1's

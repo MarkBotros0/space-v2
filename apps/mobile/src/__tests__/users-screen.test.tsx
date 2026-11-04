@@ -15,7 +15,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import UsersScreen from "../../app/(app)/users/index";
+import UsersScreen from "../../app/(app)/(tabs)/users/index";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;

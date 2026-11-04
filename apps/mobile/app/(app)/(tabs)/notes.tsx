@@ -3,13 +3,13 @@ import { Flag } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import type { AuthoredNote, NoteVisibility } from "@space/shared";
 
-import { PageTitle } from "../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../src/design/ui";
-import { flattenNotePages, useAuthoredNotes } from "../../src/hooks/use-notes";
-import { formatDate } from "../../src/lib/format";
-import { useSessionStore } from "../../src/store/session";
+import { PageTitle } from "../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../../src/design/ui";
+import { flattenNotePages, useAuthoredNotes } from "../../../src/hooks/use-notes";
+import { formatDate } from "../../../src/lib/format";
+import { useSessionStore } from "../../../src/store/session";
 
 /**
  * The truth about the visibility setting, in the words the API enforces.

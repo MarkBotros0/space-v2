@@ -71,11 +71,13 @@ function seasonFree(parts) {
   return out;
 }
 
+// The tabs group `(app)/(tabs)/` is listed flat, so tab screens keep the ids
+// this map uses ("(app)/calendar"); groups add no URL segment anyway.
 function listRoutes(dir, prefix = "") {
   const out = [];
   for (const name of readdirSync(dir)) {
     const full = path.join(dir, name);
-    if (statSync(full).isDirectory()) out.push(...listRoutes(full, `${prefix}${name}/`));
+    if (statSync(full).isDirectory()) out.push(...listRoutes(full, name === "(tabs)" ? prefix : `${prefix}${name}/`));
     else if (name.endsWith(".tsx") && !name.startsWith("_")) out.push(`${prefix}${name.replace(/\.tsx$/, "")}`);
   }
   return out;

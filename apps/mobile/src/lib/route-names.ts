@@ -8,7 +8,7 @@ export const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons", "users"]);
 
 /**
  * href → route name (the `name` prop `Tabs.Screen` expects, which is the
- * file path relative to `app/(app)/`, extension dropped). Lives here rather
+ * file path relative to `app/(app)/(tabs)/`, extension dropped). Lives here rather
  * than in the layout so the tab bar can use it without an import cycle.
  */
 export function routeNameForHref(href: string): string {

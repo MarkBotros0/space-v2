@@ -5,7 +5,7 @@ import { navByRole } from "@space/shared";
 
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
-import { listRouteNames } from "./helpers/routes";
+import { listDetailRouteNames, listTabRouteNames } from "./helpers/routes";
 import { makeScopes, makeUser } from "./helpers/session";
 
 // Task-7 fix round, Fix 1: nothing in the suite before this file ever
@@ -17,11 +17,14 @@ import { makeScopes, makeUser } from "./helpers/session";
 //   (b) gutting routeNameForHref to `return path` (dropping the
 //       "students" -> "students/index" special case)
 //   (c) deleting the `status === "anonymous"` -> <Redirect> guard
-// This file renders `AppLayout` for real (`Tabs`/`Tabs.Screen`/`Redirect`
-// mocked to markers, the same technique boot-gate.test.tsx uses for
-// `Stack` — the real navigator needs a context this test has no interest
-// in setting up) and asserts on the `name`/`options` each `Tabs.Screen`
-// actually receives, so all three mutations fail here.
+// This file renders the layouts for real (`Tabs`/`Stack`/their `.Screen`s/
+// `Redirect` mocked to markers, the same technique boot-gate.test.tsx uses
+// for `Stack` — the real navigator needs a context this test has no interest
+// in setting up) and asserts on the `name`/`options` each screen actually
+// receives, so all three mutations fail here. Since Task 9 (redesign plan 01)
+// the tabs are `(app)/(tabs)/_layout.tsx` (TabsLayout) and `(app)/_layout.tsx`
+// (AppLayout) is the Stack the detail routes push onto; real routing through
+// both is pinned by deep-links.test.tsx.
 //
 // Verified (see task report for how): mutation (a) fails the "visible
 // tabs, in order" assertion in both the STUDENT and ADMIN tests; mutation
@@ -31,28 +34,30 @@ import { makeScopes, makeUser } from "./helpers/session";
 // exists on disk" test also catches it independently; mutation (c) fails the
 // anonymous test — `getByTestId` throws because no <Redirect> marker renders.
 //
-// Plan 1 Task 0 (ruling X9): the route total is DERIVED from the layout's
-// own exported lists, not pinned. Every plan that adds a route used to have
-// to bump a hardcoded 19 here; now it appends to DETAIL_ROUTE_NAMES and the
-// "every route file is declared" test below — which reads the filesystem,
-// independently of the layout — is what keeps that list honest.
-type CapturedScreen = { name: string; title?: string; href?: string | null };
+// Plan 1 Task 0 (ruling X9): the route totals are DERIVED from the layouts'
+// own exported lists, not pinned. A plan adding a detail route appends to
+// DETAIL_ROUTE_NAMES; the "every route file is declared" test below — which
+// reads the filesystem, independently of the layouts — keeps both lists honest.
+type CapturedScreen = { name: string; title?: string; href?: string | null; options?: Record<string, unknown> };
 let mockScreens: CapturedScreen[] = [];
-let mockSegments: string[] = ["(app)", "dashboard"];
+let mockStackScreens: CapturedScreen[] = [];
+let mockSegments: string[] = ["(app)", "(tabs)", "dashboard"];
 // When set, the Tabs mock also renders the layout's tabBar and header (the
 // shell), which need providers the routing tests do without.
 let mockRenderChrome = false;
 
 jest.mock("expo-router", () => {
   const { Text } = require("react-native");
-  const TabsScreen = ({ name, options }: { name: string; options?: Record<string, unknown> }) => {
-    mockScreens.push({
-      name,
-      title: options?.title as string | undefined,
-      href: options && "href" in options ? (options.href as string | null) : undefined,
-    });
-    return null;
-  };
+  const capture = (into: () => CapturedScreen[]) =>
+    function Screen({ name, options }: { name: string; options?: Record<string, unknown> }) {
+      into().push({
+        name,
+        title: options?.title as string | undefined,
+        href: options && "href" in options ? (options.href as string | null) : undefined,
+        options,
+      });
+      return null;
+    };
   const Tabs = ({
     children,
     tabBar,
@@ -75,9 +80,12 @@ jest.mock("expo-router", () => {
         : null}
     </>
   );
-  Tabs.Screen = TabsScreen;
+  Tabs.Screen = capture(() => mockScreens);
+  const Stack = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+  Stack.Screen = capture(() => mockStackScreens);
   return {
     Tabs,
+    Stack,
     useSegments: () => mockSegments,
     useRouter: () => ({ push: () => {} }),
     Redirect: ({ href }: { href: string }) => <Text testID="redirect">{href}</Text>,
@@ -85,10 +93,16 @@ jest.mock("expo-router", () => {
 });
 
 import AppLayout, {
-  ALL_ROUTE_NAMES,
   DETAIL_ROUTE_NAMES,
-  routeNameForHref,
+  ErrorBoundary as StackErrorBoundary,
+  unstable_settings as stackSettings,
 } from "../../app/(app)/_layout";
+import TabsLayout, {
+  ALL_ROUTE_NAMES,
+  ErrorBoundary as TabsErrorBoundary,
+  routeNameForHref,
+  unstable_settings as tabsSettings,
+} from "../../app/(app)/(tabs)/_layout";
 
 const scopes = makeScopes();
 
@@ -98,12 +112,13 @@ const scopes = makeScopes();
 // test would keep passing.
 const STUDENT_VISIBLE_NAMES = ["calendar", "assignments", "dashboard", "quizzes", "more"];
 const ADMIN_VISIBLE_NAMES = ["calendar", "groups", "dashboard", "students/index", "more"];
-const TOTAL_ROUTES = ALL_ROUTE_NAMES.length + DETAIL_ROUTE_NAMES.length;
+const TOTAL_TAB_ROUTES = ALL_ROUTE_NAMES.length;
 
 beforeEach(() => {
   useSessionStore.getState().clear();
   mockScreens = [];
-  mockSegments = ["(app)", "dashboard"];
+  mockStackScreens = [];
+  mockSegments = ["(app)", "(tabs)", "dashboard"];
   mockRenderChrome = false;
 });
 
@@ -119,7 +134,7 @@ describe("v1 shell", () => {
   it("renders v1's floating tab bar with the role's tabs and the top bar", () => {
     mockRenderChrome = true;
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
-    renderWithProviders(<AppLayout />);
+    renderWithProviders(<TabsLayout />);
     const tabs = screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel);
     expect(tabs).toEqual(navByRole.STUDENT.tabs.map((t) => t.label));
     expect(screen.getByText("JPC Space")).toBeTruthy();
@@ -138,134 +153,193 @@ describe("v1 shell", () => {
       target: null,
     }));
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
-    renderWithProviders(<AppLayout />);
+    renderWithProviders(<TabsLayout />);
     fireEvent.press(screen.getByLabelText("Notifications (3 unread)"));
     expect(screen.getByText("Note 10")).toBeTruthy();
     expect(screen.queryByText("Note 11")).toBeNull();
     mockNotificationItems = [];
   });
-});
 
-describe("AppLayout tab shell", () => {
-  it("shows exactly the STUDENT tabs, in order, hiding every other route", () => {
+  it("gives detail screens the same top bar as their header (ruling R9)", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<AppLayout />);
+    const header = mockStackScreens.find((s) => s.name === "student/[id]/index")?.options?.header;
+    expect(typeof header).toBe("function");
+    renderWithProviders(<>{(header as () => React.ReactNode)()}</>);
+    expect(screen.getByText("JPC Space")).toBeTruthy();
+  });
+});
 
-    expect(mockScreens).toHaveLength(TOTAL_ROUTES);
+describe("TabsLayout", () => {
+  it("shows exactly the STUDENT tabs, in order, hiding every other route", () => {
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    renderWithProviders(<TabsLayout />);
+
+    expect(mockScreens).toHaveLength(TOTAL_TAB_ROUTES);
 
     const visible = mockScreens.filter((s) => s.title !== undefined);
     const hidden = mockScreens.filter((s) => s.title === undefined);
 
     expect(visible.map((s) => s.name)).toEqual(STUDENT_VISIBLE_NAMES);
-    expect(hidden).toHaveLength(TOTAL_ROUTES - navByRole.STUDENT.tabs.length);
+    expect(hidden).toHaveLength(TOTAL_TAB_ROUTES - navByRole.STUDENT.tabs.length);
   });
 
   it("shows a different visible set for ADMIN", () => {
     useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
-    renderWithProviders(<AppLayout />);
+    renderWithProviders(<TabsLayout />);
 
-    expect(mockScreens).toHaveLength(TOTAL_ROUTES);
+    expect(mockScreens).toHaveLength(TOTAL_TAB_ROUTES);
 
     const visible = mockScreens.filter((s) => s.title !== undefined);
     const hidden = mockScreens.filter((s) => s.title === undefined);
 
     expect(visible.map((s) => s.name)).toEqual(ADMIN_VISIBLE_NAMES);
-    expect(hidden).toHaveLength(TOTAL_ROUTES - navByRole.ADMIN.tabs.length);
+    expect(hidden).toHaveLength(TOTAL_TAB_ROUTES - navByRole.ADMIN.tabs.length);
     expect(visible.map((s) => s.name)).not.toEqual(STUDENT_VISIBLE_NAMES);
   });
 
-  it("redirects an alumnus away from a student-only destination, but not a student (REG-81)", () => {
-    mockSegments = ["(app)", "assignments"];
-    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ graduationYear: 2024 }));
-    renderWithProviders(<AppLayout />);
-    expect(screen.getByTestId("redirect")).toHaveTextContent("/dashboard");
-    expect(mockScreens).toHaveLength(0);
+  it("declares no detail route: those push on the stack above the tabs", () => {
+    useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
+    renderWithProviders(<TabsLayout />);
+    const tabNames = new Set(mockScreens.map((s) => s.name));
+    expect(DETAIL_ROUTE_NAMES.filter((name) => tabNames.has(name))).toEqual([]);
   });
 
-  it("lets an alumnus reach their own destinations and a student reach assignments (REG-81)", () => {
-    mockSegments = ["(app)", "history"];
+  it("anchors the tabs on Home, which every role has", () => {
+    expect(tabsSettings).toEqual({ anchor: "dashboard" });
+    expect(ALL_ROUTE_NAMES).toContain("dashboard");
+  });
+
+  it("puts a solid scrim under the system bar so page text can't show through it", () => {
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    renderWithProviders(<TabsLayout />);
+    const style = StyleSheet.flatten(screen.getByTestId("system-bar-scrim").props.style);
+    expect(style.height).toBe(34);
+    expect(style.bottom).toBe(0);
+  });
+});
+
+describe("AppLayout stack", () => {
+  it("puts the tabs at the bottom of the stack, then every detail route with native push and swipe-back", () => {
+    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
+    renderWithProviders(<AppLayout />);
+
+    expect(mockStackScreens.map((s) => s.name)).toEqual(["(tabs)", ...DETAIL_ROUTE_NAMES]);
+    expect(mockStackScreens[0]?.options).toEqual({ headerShown: false });
+    for (const detail of mockStackScreens.slice(1)) {
+      expect(detail.options).toMatchObject({
+        animation: "slide_from_right",
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
+      });
+    }
+    expect(stackSettings).toEqual({ anchor: "(tabs)" });
+  });
+
+  it("keeps a retry screen on both layouts for a screen that throws", () => {
+    expect(StackErrorBoundary).toBeDefined();
+    expect(TabsErrorBoundary).toBeDefined();
+  });
+
+  it.each([
+    [["(app)", "(tabs)", "assignments"]],
+    [["(app)", "assignment", "[id]"]],
+  ])("redirects an alumnus away from a student-only destination %j, but not a student (REG-81)", (segments) => {
+    mockSegments = segments;
     useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ graduationYear: 2024 }));
     const { unmount } = renderWithProviders(<AppLayout />);
-    expect(screen.queryByTestId("redirect")).toBeNull();
+    expect(screen.getByTestId("redirect")).toHaveTextContent("/dashboard");
+    expect(mockStackScreens).toHaveLength(0);
     unmount();
 
-    mockSegments = ["(app)", "assignments"];
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<AppLayout />);
     expect(screen.queryByTestId("redirect")).toBeNull();
   });
 
-  it("renders the redirect and no Tabs.Screen when anonymous", () => {
+  it("lets an alumnus reach their own destinations (REG-81)", () => {
+    mockSegments = ["(app)", "(tabs)", "history"];
+    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ graduationYear: 2024 }));
+    renderWithProviders(<AppLayout />);
+    expect(screen.queryByTestId("redirect")).toBeNull();
+  });
+
+  it("renders the redirect and no screen when anonymous", () => {
     useSessionStore.setState({ status: "anonymous" });
     renderWithProviders(<AppLayout />);
 
     expect(screen.getByTestId("redirect")).toHaveTextContent("/login");
-    expect(mockScreens).toHaveLength(0);
+    expect(mockStackScreens).toHaveLength(0);
   });
-  it("declares every route file under app/(app), so none can leak into the tab bar", () => {
-    // `Tabs` auto-registers every file in the directory; one the layout does
-    // not declare renders AS A TAB. The left side is read from disk, not from
-    // the layout, so a new route file without a DETAIL_ROUTE_NAMES entry
-    // fails here even though the derived TOTAL_ROUTES above would not notice.
-    expect(new Set(listRouteNames())).toEqual(new Set([...ALL_ROUTE_NAMES, ...DETAIL_ROUTE_NAMES]));
+});
+
+describe("route declarations", () => {
+  it("declares every route file: tabs in (tabs)/, detail routes beside it", () => {
+    // `Tabs` and `Stack` auto-register every file in their directory, and one
+    // a layout does not declare still renders. The left sides are read from disk,
+    // not from the layouts, so a new route file without a list entry fails
+    // here even though the derived totals above would not notice.
+    expect(new Set(listTabRouteNames())).toEqual(new Set(ALL_ROUTE_NAMES));
+    expect(new Set(listDetailRouteNames())).toEqual(new Set(DETAIL_ROUTE_NAMES));
   });
 
-  it("declares users/import hidden from the tab bar", () => {
+  it("declares users/import and the group importer as detail routes", () => {
     expect(DETAIL_ROUTE_NAMES).toContain("users/import");
-  });
-
-  it("declares the group importer hidden from the tab bar", () => {
     expect(DETAIL_ROUTE_NAMES).toContain("seasons/[code]/roster/import");
   });
 
   it("never declares a screen href: null — expo-router 58 redirects a focused hidden tab to the first tab", () => {
     for (const role of ["STUDENT", "ADMIN", "SUPER", "LEADER", "MENTOR"] as const) {
       mockScreens = [];
+      mockStackScreens = [];
       useSessionStore.getState().setSession(makeUser(role), scopes);
-      const { unmount } = renderWithProviders(<AppLayout />);
+      const tabs = renderWithProviders(<TabsLayout />);
+      tabs.unmount();
+      const stack = renderWithProviders(<AppLayout />);
+      stack.unmount();
       expect(mockScreens.length).toBeGreaterThan(0);
-      expect(mockScreens.filter((s) => s.href !== undefined).map((s) => s.name)).toEqual([]);
-      unmount();
+      expect(mockStackScreens.length).toBeGreaterThan(0);
+      const all = [...mockScreens, ...mockStackScreens];
+      expect(all.filter((s) => s.href !== undefined).map((s) => s.name)).toEqual([]);
     }
   });
 
-  it("declares every detail route as a non-tab screen", () => {
+  it("declares every detail route without a tab title", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<AppLayout />);
 
     for (const name of DETAIL_ROUTE_NAMES) {
-      const declared = mockScreens.find((s) => s.name === name);
+      const declared = mockStackScreens.find((s) => s.name === name);
       expect(declared).toBeDefined();
       expect(declared?.title).toBeUndefined();
     }
   });
 
-  it("registers the assignment detail, edit and new routes as hidden detail routes (X7)", () => {
+  it("registers the assignment detail, edit and new routes as detail routes (X7)", () => {
     const names = ["assignment/[id]/index", "assignment/[id]/edit", "assignment/new"];
     for (const name of names) expect(DETAIL_ROUTE_NAMES).toContain(name);
     // The file form must be gone: x/[id].tsx beside x/[id]/ is the ambiguity X7 forbids.
     expect(DETAIL_ROUTE_NAMES).not.toContain("assignment/[id]");
-
-    useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
-    renderWithProviders(<AppLayout />);
-
-    for (const name of names) {
-      expect(mockScreens.find((s) => s.name === name)?.title).toBeUndefined();
-    }
   });
 
-  it("registers the leader-path detail routes as hidden", () => {
-    for (const name of ["group/[id]/index", "submission/[publicId]", "session/[id]/attendance"]) {
+  it("registers the leader-path, session, quiz and student detail routes", () => {
+    for (const name of [
+      "group/[id]/index",
+      "submission/[publicId]",
+      "session/[id]/attendance",
+      "session/[id]/index",
+      "quiz/[id]/index",
+      "quiz/[id]/grade",
+      "quiz/[id]/edit",
+      "quiz/new",
+      "student/[id]/index",
+      "student/[id]/edit",
+      "students/new",
+      "users/new",
+      "event/[id]",
+    ]) {
       expect(DETAIL_ROUTE_NAMES).toContain(name);
     }
-  });
-
-  it("registers session/[id]/index as a hidden detail route", () => {
-    useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
-    renderWithProviders(<AppLayout />);
-    const detail = mockScreens.find((s) => s.name === "session/[id]/index");
-    expect(detail).toBeDefined();
-    expect(detail?.title).toBeUndefined();
   });
 
   it("registers Plan 6's detail routes, in the directory form where they have children (X7)", () => {
@@ -284,48 +358,10 @@ describe("AppLayout tab shell", () => {
     expect(DETAIL_ROUTE_NAMES).not.toContain("group/[id]");
   });
 
-  it.each(["quiz/[id]/index", "quiz/[id]/grade", "quiz/[id]/edit", "quiz/new"])("registers %s as a hidden detail route", (name) => {
-    useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
-    renderWithProviders(<AppLayout />);
-    const detail = mockScreens.find((s) => s.name === name);
-    expect(detail).toBeDefined();
-    expect(detail?.title).toBeUndefined();
-  });
-
-  it("maps the /seasons tab to its directory route, like /students", () => {
+  it("maps directory hrefs to their index route (/seasons, /students, /users)", () => {
     expect(routeNameForHref("/seasons")).toBe("seasons/index");
     expect(routeNameForHref("/students")).toBe("students/index");
+    expect(routeNameForHref("/users")).toBe("users/index");
     expect(routeNameForHref("/calendar")).toBe("calendar");
   });
-
-  it("declares student/[id]/index hidden from the tab bar (directory form, ruling X7)", () => {
-    useSessionStore.getState().setSession(makeUser("ADMIN"), scopes);
-    renderWithProviders(<AppLayout />);
-    const detail = mockScreens.find((s) => s.name === "student/[id]/index");
-    expect(detail).toBeDefined();
-    expect(detail?.title).toBeUndefined();
-  });
-});
-
-it("declares students/new and student/[id]/edit hidden from the tab bar", () => {
-  expect(DETAIL_ROUTE_NAMES).toEqual(expect.arrayContaining(["students/new", "student/[id]/edit"]));
-});
-
-it("maps /users to its directory index and hides users/new (Plan 10)", () => {
-  expect(routeNameForHref("/users")).toBe("users/index");
-  expect(routeNameForHref("/students")).toBe("students/index");
-  expect(routeNameForHref("/seasons")).toBe("seasons/index"); // Plan 6's entry survives
-  expect(DETAIL_ROUTE_NAMES).toContain("users/new");
-});
-
-it("declares the JPC event detail route hidden from the tab bar (Plan 14)", () => {
-  expect(DETAIL_ROUTE_NAMES).toContain("event/[id]");
-});
-
-it("puts a solid scrim under the system bar so page text can't show through it", () => {
-  useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
-  renderWithProviders(<AppLayout />);
-  const style = StyleSheet.flatten(screen.getByTestId("system-bar-scrim").props.style);
-  expect(style.height).toBe(34);
-  expect(style.bottom).toBe(0);
 });

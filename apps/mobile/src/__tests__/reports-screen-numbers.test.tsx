@@ -18,7 +18,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import ReportsScreen from "../../app/(app)/reports";
+import ReportsScreen from "../../app/(app)/(tabs)/reports";
 
 import { mockEndpoints, row, sessionFor, summary } from "./helpers/reports-fixtures";
 

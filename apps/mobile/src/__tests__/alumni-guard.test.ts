@@ -12,3 +12,15 @@ describe("isBlockedForAlumni (REG-81)", () => {
     },
   );
 });
+
+describe("isBlockedForAlumni under the (tabs) group (redesign Task 9)", () => {
+  it("skips both groups for a tab: segments gain \"(tabs)\"", () => {
+    expect(isBlockedForAlumni(["(app)", "(tabs)", "assignments"])).toBe(true);
+    expect(isBlockedForAlumni(["(app)", "(tabs)", "history"])).toBe(false);
+  });
+
+  it("still reads the first segment of a detail route on the stack", () => {
+    expect(isBlockedForAlumni(["(app)", "quiz", "[id]"])).toBe(true);
+    expect(isBlockedForAlumni(["(app)", "session", "[id]"])).toBe(false);
+  });
+});

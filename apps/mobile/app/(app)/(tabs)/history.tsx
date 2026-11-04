@@ -1,13 +1,13 @@
 import { History } from "lucide-react-native";
 import { View } from "react-native";
 
-import { PageTitle } from "../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { SeasonHistory } from "../../src/design/students/season-history";
-import { EmptyState } from "../../src/design/ui";
-import { useSeasonHistory } from "../../src/hooks/use-self-service";
-import { useSessionStore } from "../../src/store/session";
+import { PageTitle } from "../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { SeasonHistory } from "../../../src/design/students/season-history";
+import { EmptyState } from "../../../src/design/ui";
+import { useSeasonHistory } from "../../../src/hooks/use-self-service";
+import { useSessionStore } from "../../../src/store/session";
 
 /**
  * /history — STUDENT (sidebar) and ALUMNI (tab). One screen for v1's two

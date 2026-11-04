@@ -23,7 +23,7 @@ import { useSessionStore } from "../store/session";
 import { toast } from "../design/ui/toaster";
 import { renderWithProviders } from "./helpers/render";
 
-import SettingsScreen from "../../app/(app)/settings";
+import SettingsScreen from "../../app/(app)/(tabs)/settings";
 
 const patch = apiClient.patch as jest.Mock;
 const post = apiClient.post as jest.Mock;

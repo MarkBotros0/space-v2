@@ -4,11 +4,11 @@ import { Users } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import type { GroupDetail, GroupListItem } from "@space/shared";
 
-import { SeasonSwitcher } from "../../src/components/SeasonSwitcher";
-import { SEASON_GROUPS_ROLES } from "../../src/hooks/use-group-admin";
-import { Eyebrow, PageTitle } from "../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { SeasonSwitcher } from "../../../src/components/SeasonSwitcher";
+import { SEASON_GROUPS_ROLES } from "../../../src/hooks/use-group-admin";
+import { Eyebrow, PageTitle } from "../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import {
   Card,
   CardContent,
@@ -19,16 +19,16 @@ import {
   Button,
   Text,
   type DataTableColumn,
-} from "../../src/design/ui";
+} from "../../../src/design/ui";
 import {
   MY_GROUPS_ROLES,
   useGroupDetails,
   useMyGroups,
   useSeasonGroups,
-} from "../../src/hooks/use-groups";
-import { useSeasons } from "../../src/hooks/use-seasons";
-import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
-import { useSessionStore } from "../../src/store/session";
+} from "../../../src/hooks/use-groups";
+import { useSeasons } from "../../../src/hooks/use-seasons";
+import { useStaffSeasonSelection } from "../../../src/hooks/use-season-selection";
+import { useSessionStore } from "../../../src/store/session";
 
 function GroupRow({ group, subtitle }: { group: GroupListItem; subtitle: string }) {
   const router = useRouter();

@@ -11,7 +11,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import GroupsScreen from "../../app/(app)/groups";
+import GroupsScreen from "../../app/(app)/(tabs)/groups";
 import GroupDetailScreen from "../../app/(app)/group/[id]/index";
 
 const get = apiClient.get as jest.Mock;

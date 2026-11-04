@@ -8,7 +8,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import CalendarScreen from "../../app/(app)/calendar";
+import CalendarScreen from "../../app/(app)/(tabs)/calendar";
 import { seasonRow, session, studentSession } from "./helpers/calendar-fixtures";
 
 const get = apiClient.get as jest.Mock;

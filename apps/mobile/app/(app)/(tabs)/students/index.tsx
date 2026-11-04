@@ -1,8 +1,8 @@
 import { useRouter } from "expo-router";
 
-import { StudentList } from "../../../src/components/StudentList";
-import { useSessionStore } from "../../../src/store/session";
-import { Button } from "../../../src/design/ui";
+import { StudentList } from "../../../../src/components/StudentList";
+import { useSessionStore } from "../../../../src/store/session";
+import { Button } from "../../../../src/design/ui";
 
 export default function StudentsScreen() {
   const router = useRouter();

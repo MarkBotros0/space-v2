@@ -7,7 +7,7 @@ jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
-import QuizzesScreen from "../../app/(app)/quizzes";
+import QuizzesScreen from "../../app/(app)/(tabs)/quizzes";
 
 const get = apiClient.get as jest.Mock;
 

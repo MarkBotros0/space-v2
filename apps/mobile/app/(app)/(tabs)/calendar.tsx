@@ -1,17 +1,17 @@
 import { Calendar as CalendarIcon } from "lucide-react-native";
 import { View } from "react-native";
 
-import { PageTitle } from "../../src/design/layout/page-title";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { EmptyState } from "../../src/design/ui";
-import { AlumniCalendar } from "../../src/screens/calendar/alumni-calendar";
+import { PageTitle } from "../../../src/design/layout/page-title";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { EmptyState } from "../../../src/design/ui";
+import { AlumniCalendar } from "../../../src/screens/calendar/alumni-calendar";
 import {
   AdminCalendar,
   LeaderCalendar,
   StudentCalendar,
   SuperCalendar,
-} from "../../src/screens/calendar/season-calendars";
-import { useSessionStore } from "../../src/store/session";
+} from "../../../src/screens/calendar/season-calendars";
+import { useSessionStore } from "../../../src/store/session";
 
 /**
  * /calendar — one route, every role (Decision D1). STUDENT/ALUMNI keep

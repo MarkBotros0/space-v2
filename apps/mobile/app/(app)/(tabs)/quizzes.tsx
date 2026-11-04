@@ -4,23 +4,23 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { QuizSummary, StudentQuizResult } from "@space/shared";
 
-import { Eyebrow, PageTitle } from "../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { cn } from "../../src/design/lib/cn";
-import { iconWithClassName } from "../../src/design/lib/icon";
-import { shadowStyle } from "../../src/design/lib/shadow";
+import { Eyebrow, PageTitle } from "../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { cn } from "../../../src/design/lib/cn";
+import { iconWithClassName } from "../../../src/design/lib/icon";
+import { shadowStyle } from "../../../src/design/lib/shadow";
 import {
   Badge,
   Button,
   EmptyState,
   ProgressRing,
   Text,
-} from "../../src/design/ui";
-import { useQuizList, useStudentQuizList } from "../../src/hooks/use-quizzes";
-import { useCurrentSeasonId, useSeasonDetail } from "../../src/hooks/use-seasons";
-import { formatDate } from "../../src/lib/format";
-import { useSessionStore } from "../../src/store/session";
+} from "../../../src/design/ui";
+import { useQuizList, useStudentQuizList } from "../../../src/hooks/use-quizzes";
+import { useCurrentSeasonId, useSeasonDetail } from "../../../src/hooks/use-seasons";
+import { formatDate } from "../../../src/lib/format";
+import { useSessionStore } from "../../../src/store/session";
 
 /**
  * Three v1 pages collapse into this one: /student/quizzes, /leader/quizzes and

@@ -28,7 +28,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import GroupDetailScreen from "../../app/(app)/group/[id]/index";
-import GroupsScreen from "../../app/(app)/groups";
+import GroupsScreen from "../../app/(app)/(tabs)/groups";
 import NewGroupScreen from "../../app/(app)/group/new";
 import EditGroupScreen from "../../app/(app)/group/[id]/edit";
 import SeasonRosterScreen from "../../app/(app)/seasons/[code]/roster/index";
