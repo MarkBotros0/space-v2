@@ -18,6 +18,11 @@ import { NavLink } from "./nav-link";
  * Android's blur darkens the backdrop (bar measured #364771 vs v1 #536187),
  * so a bg-background/85 layer restores the light, blurred backdrop v1 sees
  * before its 75% navy; backdrop-saturate has no native equivalent.
+ * Android: since Expo SDK 55 a real blur needs a `blurTarget` (a
+ * BlurTargetView around the content, with the BlurView outside it), which the
+ * tab navigator can't give a bar it renders beside its scenes; without one
+ * expo-blur falls back to its tinted view, so no blurMethod is set. The two
+ * layers above leave ~4% of the backdrop showing, so the bar reads the same.
  */
 /**
  * v2's singular detail routes and the list tab whose v1 URL they sit under
@@ -61,7 +66,7 @@ export function FloatingTabBar({ items, state, navigation }: BottomTabBarProps &
         className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
         style={shadowStyle("lift")}
       >
-        <BlurView intensity={40} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={40} style={StyleSheet.absoluteFill} />
         <View className="absolute inset-0 bg-background/85" />
         <View className="absolute inset-0 bg-sidebar/75" />
         {shown.map((item) => {

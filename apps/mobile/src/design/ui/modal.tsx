@@ -3,7 +3,9 @@
  * bottom sheet (its md: centred-dialog classes are dropped).
  * Native differences: Base UI Dialog → RN Modal; the backdrop fades and the
  * sheet slides up (300ms, v1's duration); backdrop-blur-sm → BlurView
- * intensity 15; the sheet adds the bottom safe-area inset under p-4 (v1 web
+ * intensity 15 (on Android since SDK 55, expo-blur's tinted fallback: a
+ * real blur needs a blurTarget in the same window, which an RN Modal is
+ * not); the sheet adds the bottom safe-area inset under p-4 (v1 web
  * has no home indicator); ModalTrigger/ModalClose take one child and add
  * onPress to it (Base UI's render-prop trigger).
  */
@@ -111,7 +113,7 @@ function ModalContent({
           if (dismissible) setOpen(false);
         }}
       >
-        <BlurView intensity={15} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={15} style={StyleSheet.absoluteFill} />
         <View className="absolute inset-0 bg-background/70" />
       </Pressable>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 justify-end" pointerEvents="box-none">
