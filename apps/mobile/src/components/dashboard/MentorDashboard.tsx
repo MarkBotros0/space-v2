@@ -95,6 +95,7 @@ export function MentorDashboard() {
 
   return (
     <ShellFrame
+      home
       onRefresh={refresh}
       refreshing={engagement.isRefetching || feed.isRefetching || events.isRefetching}
     >

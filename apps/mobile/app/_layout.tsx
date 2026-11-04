@@ -51,8 +51,8 @@ function RootLayout() {
     // sonner-native's swipe-to-dismiss needs the gesture root at the top.
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
-        {/* SafeAreaProvider lives here, at the root: the shell's top bar,
-          tab bar and bottom padding all read the insets from it. */}
+        {/* SafeAreaProvider lives here, at the root: the screen frame's top
+          inset, the tab bar and bottom padding all read the insets from it. */}
         <SafeAreaProvider>
           <Gate />
           <Toaster />

@@ -1,5 +1,5 @@
 /**
- * A thin strip under the top bar while the device is offline. Not a v1
+ * A thin strip under the top inset (`Screen`) while the device is offline. Not a v1
  * port — v1 is a website and had no offline state. Queries are paused while
  * this shows (src/lib/online.ts), so it tells the user why nothing loads; it
  * goes away by itself on reconnect, when paused queries refetch.

@@ -29,7 +29,7 @@ export function SuperDashboard() {
   };
 
   return (
-    <ShellFrame onRefresh={refresh} refreshing={org.isRefetching || events.isRefetching}>
+    <ShellFrame home onRefresh={refresh} refreshing={org.isRefetching || events.isRefetching}>
       <View className="flex-col gap-4">
         <PageTitle title="Super Dashboard" subtitle="Global system overview" />
         {org.isPending ? (

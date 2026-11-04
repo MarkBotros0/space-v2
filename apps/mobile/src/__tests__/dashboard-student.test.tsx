@@ -11,6 +11,14 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: (...args: unknown[]) => mockPush(...args) }),
 }));
 
+// Home's frame carries the bell and the user menu (ruling R13), which fetch
+// notifications; they have their own tests (screen.test.tsx). A marker
+// stands in, so these tests see only the requests the branches make.
+jest.mock("../design/layout/home-actions", () => {
+  const { Text } = jest.requireActual("react-native");
+  return { HomeActions: () => <Text testID="home-actions">home actions</Text> };
+});
+
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -193,15 +201,25 @@ describe("DashboardScreen — ALUMNI", () => {
   });
 });
 
-// The bell lives in v1's top bar (the shell, app-top-bar.tsx; badge, 9+ cap
-// and inbox link are covered in shell-menus.test.tsx). v1's dashboards have
-// no bell of their own, so the body must not render a second one.
+// The bell and the user menu live in Home's frame (`ShellFrame home` →
+// Screen's HomeActions, ruling R13; badge, 9+ cap and inbox link are covered
+// in shell-menus.test.tsx and screen.test.tsx). v1's dashboards have no bell
+// of their own, so the body must not render a second one.
 describe("dashboard body", () => {
-  it("renders no notification bell of its own", async () => {
+  it.each([
+    ["STUDENT", { activeSeasonId: null }],
+    ["STUDENT", { graduationYear: 2024 }],
+  ] as const)("%s %j: Home's frame carries the bell and menu once, the body none", async (role, scopes) => {
     serve({ [UNREAD]: { unreadCount: 3 }, [EVENTS]: events });
-    useSessionStore.setState(makeSession("STUDENT", { graduationYear: 2024 }));
+    useSessionStore.setState(makeSession(role, scopes));
     renderWithProviders(<DashboardScreen />);
     await waitFor(() => expect(requested().length).toBeGreaterThan(0));
+    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     expect(screen.queryByLabelText(/^Notifications/)).toBeNull();
+  });
+
+  it("the loading frame before the session lands is Home's too", () => {
+    renderWithProviders(<DashboardScreen />);
+    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
   });
 });

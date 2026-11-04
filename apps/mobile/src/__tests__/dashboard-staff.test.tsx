@@ -11,6 +11,14 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: (...args: unknown[]) => mockPush(...args) }),
 }));
 
+// Home's frame carries the bell and the user menu (ruling R13), which fetch
+// notifications; they have their own tests (screen.test.tsx). A marker
+// stands in, so these tests see only the requests the branches make.
+jest.mock("../design/layout/home-actions", () => {
+  const { Text } = jest.requireActual("react-native");
+  return { HomeActions: () => <Text testID="home-actions">home actions</Text> };
+});
+
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -48,6 +56,7 @@ describe("DashboardScreen — ADMIN and LEADER", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Spring 2099")).toBeTruthy();
+    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     expect(screen.getByText("Current season")).toBeTruthy();
     expect(screen.getByLabelText("Season average attendance 33%")).toBeTruthy();
     expect(screen.getByText("3 students · Session 3 of 4")).toBeTruthy();
@@ -96,6 +105,7 @@ describe("DashboardScreen — ADMIN and LEADER", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Group A, Group B")).toBeTruthy();
+    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     expect(screen.getByLabelText("Group average attendance 33%")).toBeTruthy();
     expect(screen.getAllByText("33%").length).toBeGreaterThan(0);
     expect(screen.getByText("3 students · Session 3 of 4")).toBeTruthy();
@@ -157,6 +167,7 @@ describe("DashboardScreen — MENTOR", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("At risk")).toBeTruthy();
+    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     expect(screen.getByText("Mentor dashboard")).toBeTruthy();
     expect(screen.getByText("Recent activity")).toBeTruthy();
     expect(await screen.findByText("1 of 34")).toBeTruthy();
@@ -202,6 +213,7 @@ describe("DashboardScreen — SUPER", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByLabelText("Students (not graduated): 40")).toBeTruthy();
+    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     expect(screen.getByLabelText("Alumni: 12")).toBeTruthy();
     // seasons.length (all statuses), NOT activeSeasonCount (2).
     expect(screen.getByLabelText("Seasons: 1")).toBeTruthy();

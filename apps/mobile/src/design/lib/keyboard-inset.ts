@@ -31,7 +31,7 @@ type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: 
  * too. With edge-to-edge (always on from Expo SDK 54) Android no longer
  * resizes the window for the keyboard, so `adjustResize` does nothing, and
  * KeyboardAvoidingView measures its frame relative to its parent, which is
- * wrong under the shell's top bar. Instead:
+ * wrong under anything drawn above the scroll view. Instead:
  * - `inset` is the keyboard's height while it is open; the caller adds it to
  *   the scroll content's bottom padding so every field and the submit button
  *   below it can be scrolled above the keyboard;
@@ -41,9 +41,11 @@ type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: 
  *   the field overlaps the keyboard. Android scrolls a focused field into view
  *   itself, but the first time it does so before the padding exists, so it
  *   runs out of scroll range short of the keyboard (UI sweep, Oct 2026).
- * Spread `scrollProps` onto the ScrollView.
+ * Spread `scrollProps` onto the ScrollView. A scroll view whose `onScroll` is
+ * taken by something else (a Reanimated handler: `Screen`) passes
+ * `getOffset` instead and leaves `scrollProps.onScroll` off.
  */
-export function useKeyboardInset(): {
+export function useKeyboardInset(options?: { getOffset?: () => number }): {
   inset: number;
   scrollProps: {
     ref: RefObject<ScrollViewInstance | null>;
@@ -57,6 +59,8 @@ export function useKeyboardInset(): {
   const offset = useRef(0);
   const keyboardTop = useRef<number | null>(null);
   const [inset, setInset] = useState(0);
+  const getOffset = useRef(options?.getOffset);
+  getOffset.current = options?.getOffset;
 
   const ensureVisible = useCallback(() => {
     const top = keyboardTop.current;
@@ -64,7 +68,8 @@ export function useKeyboardInset(): {
     const input = TextInput.State.currentlyFocusedInput() as unknown as Measurable | null;
     input?.measureInWindow?.((_x, y, _w, h) => {
       const overlap = y + h + FIELD_GAP - top;
-      if (overlap > 1) ref.current?.scrollTo({ y: offset.current + overlap, animated: false });
+      const from = getOffset.current ? getOffset.current() : offset.current;
+      if (overlap > 1) ref.current?.scrollTo({ y: from + overlap, animated: false });
     });
   }, []);
 

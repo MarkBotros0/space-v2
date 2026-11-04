@@ -27,7 +27,7 @@ export function AlumniDashboard() {
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
 
   return (
-    <ShellFrame onRefresh={() => void events.refetch()} refreshing={events.isRefetching}>
+    <ShellFrame home onRefresh={() => void events.refetch()} refreshing={events.isRefetching}>
       <View className="flex-col gap-4">
         <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
           <View className="flex-row items-center gap-2">

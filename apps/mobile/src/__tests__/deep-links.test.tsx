@@ -121,8 +121,8 @@ describe("detail screens push on a stack above the tabs", () => {
 });
 
 describe("the tabs are one navigator, however a tab route is reached", () => {
-  // A detail's header (the top bar's bell, user menu) and detail screens
-  // push tab routes. Each push must land in the one Tabs at the bottom of
+  // Home's bell and user menu, and detail screens linking to lists, push
+  // tab routes. Each push must land in the one Tabs at the bottom of
   // the stack, never stack a second (tabs) above the detail.
   const tabsCount = (state: NavState) => appRouteNames(state)?.filter((name) => name === "(tabs)").length;
 

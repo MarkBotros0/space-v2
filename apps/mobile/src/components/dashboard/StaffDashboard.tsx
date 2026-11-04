@@ -265,7 +265,7 @@ function StaffDashboard({ variant }: { variant: Variant }) {
   ) : null;
 
   return (
-    <ShellFrame refreshing={dash.isRefetching || events.isRefetching} onRefresh={refresh}>
+    <ShellFrame home refreshing={dash.isRefetching || events.isRefetching} onRefresh={refresh}>
       <View className="flex-col gap-4">
         {body ??
           (dash.data ? <StaffSummary data={dash.data} events={events} variant={variant} /> : null)}

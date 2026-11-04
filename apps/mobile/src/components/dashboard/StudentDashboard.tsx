@@ -86,6 +86,7 @@ export function StudentDashboard() {
 
   return (
     <ShellFrame
+      home
       onRefresh={refresh}
       refreshing={dash.isRefetching || attendance.isRefetching || events.isRefetching}
     >

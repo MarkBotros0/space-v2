@@ -11,7 +11,8 @@ import { useSessionStore } from "../../../src/store/session";
 /**
  * Home — one route, one branch per audience (spec 19 §9, Phase 0 D1). Each
  * branch owns its queries, its loading/error/empty states and its
- * pull-to-refresh; the notification bell lives in the shell's top bar.
+ * pull-to-refresh, and renders its frame with `home`: Home is the one screen
+ * with the notification bell and the user menu (ruling R13).
  * The old per-screen assignment card is gone on purpose: its counts are now the
  * server's (spec 19 D15).
  */
@@ -23,7 +24,7 @@ export default function DashboardScreen() {
   // between boot and the session landing in the store.
   if (role === null) {
     return (
-      <ShellFrame>
+      <ShellFrame home>
         <RouteSkeleton />
       </ShellFrame>
     );

@@ -8,6 +8,7 @@ import { cn } from "../../../src/design/lib/cn";
 import { iconWithClassName } from "../../../src/design/lib/icon";
 import { PageHeader } from "../../../src/design/layout/page-header";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ScreenChrome } from "../../../src/design/layout/screen";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../../src/design/ui";
 import {
@@ -97,44 +98,48 @@ export default function NotificationsScreen() {
     );
   }
 
+  // A list of its own, not ShellFrame's ScrollView: ScreenChrome gives it the
+  // top inset and the offline strip the navigator header used to (R14).
   return (
-    <FlatList
-      className="flex-1 bg-background"
-      contentContainerClassName="gap-2 bg-brand-navy-50 px-4 pt-4 dark:bg-background"
-      contentContainerStyle={{ paddingBottom: bottomPadding }}
-      data={items}
-      keyExtractor={(item) => String(item.id)}
-      ListHeaderComponent={
-        <PageHeader
-          title="Notifications"
-          description={`${unread} unread`}
-          actions={
-            <Button
-              variant="outline"
-              size="sm"
-              className="self-start"
-              disabled={markRead.isPending}
-              onPress={() => markRead.mutate({ all: true })}
-            >
-              Mark all read
-            </Button>
-          }
-        />
-      }
-      ListEmptyComponent={
-        <EmptyState
-          icon={BellOff}
-          title="No notifications"
-          description="Activity that involves you will appear here."
-        />
-      }
-      renderItem={({ item }) => <NotificationRow item={item} onPress={handlePress} />}
-      onEndReachedThreshold={0.5}
-      onEndReached={() => {
-        if (hasNextPage) void fetchNextPage();
-      }}
-      refreshing={isRefetching}
-      onRefresh={() => void refetch()}
-    />
+    <ScreenChrome>
+      <FlatList
+        className="flex-1 bg-background"
+        contentContainerClassName="gap-2 bg-brand-navy-50 px-4 pt-4 dark:bg-background"
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
+        data={items}
+        keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={
+          <PageHeader
+            title="Notifications"
+            description={`${unread} unread`}
+            actions={
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start"
+                disabled={markRead.isPending}
+                onPress={() => markRead.mutate({ all: true })}
+              >
+                Mark all read
+              </Button>
+            }
+          />
+        }
+        ListEmptyComponent={
+          <EmptyState
+            icon={BellOff}
+            title="No notifications"
+            description="Activity that involves you will appear here."
+          />
+        }
+        renderItem={({ item }) => <NotificationRow item={item} onPress={handlePress} />}
+        onEndReachedThreshold={0.5}
+        onEndReached={() => {
+          if (hasNextPage) void fetchNextPage();
+        }}
+        refreshing={isRefetching}
+        onRefresh={() => void refetch()}
+      />
+    </ScreenChrome>
   );
 }

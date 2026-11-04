@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ScreenErrorBoundary } from "../../src/design/layout/error-boundary";
-import { ShellHeader } from "../../src/design/layout/shell-header";
+import { TabBarPresenceContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { TABS_ROUTE, singularTabsRouter } from "../../src/lib/tabs-stack-router";
 import { useSessionStore } from "../../src/store/session";
@@ -58,17 +58,16 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
 
 /**
  * Detail screens slide in from the right and swipe back from anywhere on the
- * screen. They keep the shell's top bar and offline strip as their header
- * until the Screen frame owns the top inset (ruling R9).
+ * screen. No navigator header: the screen's frame (`Screen`) owns the top
+ * inset, the offline strip and the title (rulings R9, R14).
  */
 export const DETAIL_SCREEN_OPTIONS = {
   animation: "slide_from_right",
   gestureEnabled: true,
   fullScreenGestureEnabled: true,
-  header: () => <ShellHeader />,
+  headerShown: false,
 } as const;
 
-/** The tabs draw their own header (the shell's top bar) per tab. */
 const TABS_SCREEN_OPTIONS = { headerShown: false } as const;
 
 /**
@@ -98,18 +97,22 @@ export default function AppLayout() {
   if (isAlumnus && isBlockedForAlumni(segments)) return <Redirect href="/dashboard" />;
 
   // The tabs are one navigator (singularTabsRouter): a push to a tab route
-  // from a detail (the top bar's bell and user menu, a link to a list)
-  // returns to the one Tabs at the bottom, popping the details above it.
+  // from a detail (a link to a list, Home's bell and user menu) returns to
+  // the one Tabs at the bottom, popping the details above it.
   // The scrim sits beside the Stack so tabs and detail screens both get it.
+  // Detail screens have no pill, so their content only clears the bottom
+  // inset; the tabs layout says otherwise for its own screens (ruling R15).
   return (
     <>
       <SystemBarScrim />
-      <Stack UNSTABLE_router={singularTabsRouter}>
-        <Stack.Screen name={TABS_ROUTE} options={TABS_SCREEN_OPTIONS} />
-        {DETAIL_ROUTE_NAMES.map((name) => (
-          <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
-        ))}
-      </Stack>
+      <TabBarPresenceContext.Provider value={false}>
+        <Stack UNSTABLE_router={singularTabsRouter}>
+          <Stack.Screen name={TABS_ROUTE} options={TABS_SCREEN_OPTIONS} />
+          {DETAIL_ROUTE_NAMES.map((name) => (
+            <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
+          ))}
+        </Stack>
+      </TabBarPresenceContext.Provider>
     </>
   );
 }

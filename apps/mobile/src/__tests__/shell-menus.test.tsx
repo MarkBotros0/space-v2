@@ -1,7 +1,6 @@
 import { fireEvent, screen } from "@testing-library/react-native";
 
 import { NotificationBell } from "../design/layout/notification-bell";
-import { TopBar } from "../design/layout/top-bar";
 import { UserMenu } from "../design/layout/user-menu";
 import { renderWithProviders } from "./helpers/render";
 
@@ -64,11 +63,4 @@ describe("UserMenu (v1 user-menu.tsx)", () => {
     fireEvent.press(screen.getByLabelText("User menu"));
     expect(screen.getByText("Light mode")).toBeTruthy();
   });
-});
-
-it("TopBar shows v1's logo wordmark and its right-hand slot", () => {
-  const { Text } = jest.requireActual("react-native");
-  renderWithProviders(<TopBar right={<Text>RIGHT</Text>} />);
-  expect(screen.getByText("JPC Space")).toBeTruthy();
-  expect(screen.getByText("RIGHT")).toBeTruthy();
 });

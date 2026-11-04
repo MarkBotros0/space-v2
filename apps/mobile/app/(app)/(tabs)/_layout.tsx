@@ -4,7 +4,7 @@ import { ALL_NAV_HREFS } from "@space/shared";
 
 import { ScreenErrorBoundary } from "../../../src/design/layout/error-boundary";
 import { FloatingTabBar } from "../../../src/design/layout/floating-tab-bar";
-import { ShellHeader } from "../../../src/design/layout/shell-header";
+import { TabBarPresenceContext } from "../../../src/design/layout/shell-context";
 import { DIRECTORY_ROUTE_HREFS, routeNameForHref } from "../../../src/lib/route-names";
 import { useSessionStore } from "../../../src/store/session";
 
@@ -77,22 +77,28 @@ export default function TabsLayout() {
     ...ALL_ROUTE_NAMES.filter((name) => !tabByRouteName.has(name)),
   ];
 
-  // v1's shell (shell-frame.tsx): the top bar above every screen and the
-  // floating pill tab bar, which renders the role's tabs itself.
-  // The system-bar scrim is drawn by the stack layout above, for every screen.
+  // The floating pill tab bar renders the role's tabs itself. No header: each
+  // screen's frame (`Screen`) owns the top inset, the offline strip and its
+  // title (ruling R14). Screens here have the pill under them, so their
+  // content clears it (ruling R15). The system-bar scrim is drawn by the
+  // stack layout above, for every screen.
   return (
-    <Tabs
-      backBehavior="initialRoute"
-      screenOptions={{ header: () => <ShellHeader /> }}
-      tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
-    >
-      {orderedRouteNames.map((name) => {
-        const tab = tabByRouteName.get(name);
-        return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : NOT_A_TAB} />;
-      })}
-    </Tabs>
+    <TabBarPresenceContext.Provider value={true}>
+      <Tabs
+        backBehavior="initialRoute"
+        screenOptions={TAB_SCREEN_OPTIONS}
+        tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
+      >
+        {orderedRouteNames.map((name) => {
+          const tab = tabByRouteName.get(name);
+          return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : NOT_A_TAB} />;
+        })}
+      </Tabs>
+    </TabBarPresenceContext.Provider>
   );
 }
+
+const TAB_SCREEN_OPTIONS = { headerShown: false } as const;
 
 /** A screen outside the role's tabs: no title, and deliberately NOT `href: null` (see TabsLayout). */
 const NOT_A_TAB = {};

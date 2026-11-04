@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react-native";
+import { screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 
 import { navByRole } from "@space/shared";
@@ -48,14 +48,18 @@ type CapturedScreen = {
 let mockScreens: CapturedScreen[] = [];
 let mockStackScreens: CapturedScreen[] = [];
 let mockSegments: string[] = ["(app)", "(tabs)", "dashboard"];
-// When set, the Tabs mock also renders the layout's tabBar and header (the
-// shell), which need providers the routing tests do without.
+// When set, the Tabs mock also renders the layout's tabBar (the pill), which
+// needs providers the routing tests do without.
 let mockRenderChrome = false;
 let mockTabsProps: Record<string, unknown> = {};
 let mockStackProps: Record<string, unknown> = {};
+// What each navigator sees of TabBarPresenceContext (ruling R15).
+let mockPresence: { tabs?: boolean; stack?: boolean } = {};
 
 jest.mock("expo-router", () => {
   const { Text } = require("react-native");
+  const { useContext } = require("react");
+  const usePresence = () => useContext(require("../design/layout/shell-context").TabBarPresenceContext);
   const capture = (into: () => CapturedScreen[]) =>
     function Screen({ name, options }: { name: string; options?: Record<string, unknown> }) {
       into().push({
@@ -70,17 +74,15 @@ jest.mock("expo-router", () => {
   const Tabs = ({
     children,
     tabBar,
-    screenOptions,
     ...rest
   }: {
     children: React.ReactNode;
     tabBar?: (props: unknown) => React.ReactNode;
-    screenOptions?: { header?: (props: unknown) => React.ReactNode };
   }) => (
     (mockTabsProps = rest),
+    (mockPresence.tabs = usePresence()),
     <>
       {children}
-      {mockRenderChrome && screenOptions?.header ? screenOptions.header({}) : null}
       {mockRenderChrome && tabBar
         ? tabBar({
             state: { index: 0, routes: [{ key: "dashboard", name: "dashboard" }] },
@@ -92,7 +94,11 @@ jest.mock("expo-router", () => {
     </>
   );
   Tabs.Screen = capture(() => mockScreens);
-  const Stack = ({ children, ...rest }: { children: React.ReactNode }) => ((mockStackProps = rest), <>{children}</>);
+  const Stack = ({ children, ...rest }: { children: React.ReactNode }) => (
+    (mockStackProps = rest),
+    (mockPresence.stack = usePresence()),
+    <>{children}</>
+  );
   Stack.Screen = capture(() => mockStackScreens);
   return {
     Tabs,
@@ -104,6 +110,7 @@ jest.mock("expo-router", () => {
 });
 
 import { ScreenErrorBoundary } from "../design/layout/error-boundary";
+import { TabBarPresenceContext } from "../design/layout/shell-context";
 import { singularTabsRouter } from "../lib/tabs-stack-router";
 import AppLayout, {
   DETAIL_ROUTE_NAMES,
@@ -135,53 +142,40 @@ beforeEach(() => {
   mockRenderChrome = false;
   mockTabsProps = {};
   mockStackProps = {};
+  mockPresence = {};
 });
 
-let mockNotificationItems: unknown[] = [];
-jest.mock("../hooks/use-notifications", () => ({
-  useUnreadCount: () => ({ data: 3 }),
-  useNotifications: () => ({ data: { pages: [{ items: mockNotificationItems }] } }),
-  useMarkRead: () => ({ mutate: () => {}, isPending: false }),
-  flattenNotifications: (pages?: { items: unknown[] }[]) => pages?.flatMap((p) => p.items) ?? [],
-}));
-
-describe("v1 shell", () => {
-  it("renders v1's floating tab bar with the role's tabs and the top bar", () => {
+describe("shell", () => {
+  it("renders the floating tab bar with the role's tabs, and no web top bar", () => {
     mockRenderChrome = true;
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<TabsLayout />);
     const tabs = screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel);
     expect(tabs).toEqual(navByRole.STUDENT.tabs.map((t) => t.label));
-    expect(screen.getByText("JPC Space")).toBeTruthy();
-    expect(screen.getByLabelText("Notifications (3 unread)")).toBeTruthy();
-    expect(screen.getByLabelText("User menu")).toBeTruthy();
+    expect(screen.queryByText("JPC Space")).toBeNull();
   });
 
-  it("lists v1's 10 most recent notifications in the bell (v1 listRecent(userId, 10))", () => {
-    mockRenderChrome = true;
-    mockNotificationItems = Array.from({ length: 15 }, (_, i) => ({
-      id: i + 1,
-      title: `Note ${i + 1}`,
-      body: null,
-      readAt: null,
-      createdAt: new Date().toISOString(),
-      target: null,
-    }));
+  it("gives neither tabs nor detail screens a navigator header: Screen owns the top (R14)", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<TabsLayout />);
-    fireEvent.press(screen.getByLabelText("Notifications (3 unread)"));
-    expect(screen.getByText("Note 10")).toBeTruthy();
-    expect(screen.queryByText("Note 11")).toBeNull();
-    mockNotificationItems = [];
+    expect(mockTabsProps.screenOptions).toEqual({ headerShown: false });
+    renderWithProviders(<AppLayout />);
+    for (const screenDecl of mockStackScreens) {
+      expect(screenDecl.options).toMatchObject({ headerShown: false });
+      expect(screenDecl.options).not.toHaveProperty("header");
+    }
   });
 
-  it("gives detail screens the same top bar as their header (ruling R9)", () => {
+  it("tells tab screens the pill is under them and detail screens it is not (R15)", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<AppLayout />);
-    const header = mockStackScreens.find((s) => s.name === "student/[id]/index")?.options?.header;
-    expect(typeof header).toBe("function");
-    renderWithProviders(<>{(header as () => React.ReactNode)()}</>);
-    expect(screen.getByText("JPC Space")).toBeTruthy();
+    // The tabs sit inside the stack's `false`, so they must say `true` themselves.
+    renderWithProviders(
+      <TabBarPresenceContext.Provider value={false}>
+        <TabsLayout />
+      </TabBarPresenceContext.Provider>,
+    );
+    expect(mockPresence).toEqual({ stack: false, tabs: true });
   });
 });
 
