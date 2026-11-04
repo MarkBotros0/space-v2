@@ -11,7 +11,7 @@ jest.mock("expo-router", () => ({
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { renderWithProviders } from "./helpers/render";
+import { renderStacked } from "./helpers/render";
 import QuizGradeScreen from "../../app/(app)/quiz/[id]/grade";
 
 const get = apiClient.get as jest.Mock;
@@ -82,7 +82,7 @@ describe("grading screen — PAPER", () => {
   it("renders the grid with existing marks and saves only edited rows", async () => {
     post.mockResolvedValue({ data: { data: gradeSheet } });
 
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
 
     expect(await screen.findByText("Test student")).toBeTruthy();
     expect(screen.getByDisplayValue("18")).toBeTruthy();
@@ -103,27 +103,28 @@ describe("grading screen — PAPER", () => {
     expect(await screen.findByText("Saved")).toBeTruthy();
   });
 
-  it("goes back to the session from v1's back link", async () => {
-    renderWithProviders(<QuizGradeScreen />);
-    fireEvent.press(await screen.findByText("Back to session"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "12" } });
+  it("has one back link, the frame's pinned bar; no in-content 'Back to session' (R23)", async () => {
+    renderStacked(<QuizGradeScreen />);
+    expect(await screen.findByText("Test student")).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1);
+    expect(screen.queryByText("Back to session")).toBeNull();
   });
 
-  it("has no back link when the quiz has no session", async () => {
+  it("still has the pinned back bar when the quiz has no session", async () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/quizzes/41"
         ? Promise.resolve({ data: { data: authoring({ sessionId: null, sessionTitle: null }) } })
         : Promise.resolve({ data: { data: { ...gradeSheet, sessionTitle: null } } }),
     );
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
     expect(await screen.findByText("Max score: 20")).toBeTruthy();
-    expect(screen.queryByText("Back to session")).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1);
   });
 
   it("clears a grade when the field is emptied", async () => {
     post.mockResolvedValue({ data: { data: gradeSheet } });
 
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
 
     fireEvent.changeText(await screen.findByLabelText("Score for Second student"), "");
     fireEvent.press(screen.getByText("Save grades"));
@@ -146,7 +147,7 @@ describe("grading screen — PAPER", () => {
       }),
     );
 
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
     fireEvent.changeText(await screen.findByLabelText("Score for Test student"), "25");
     fireEvent.press(screen.getByText("Save grades"));
 
@@ -171,7 +172,7 @@ describe("grading screen — ONLINE", () => {
   it("lists submitted attempts, shows the key to the grader, and marks essays", async () => {
     post.mockResolvedValue({ data: { data: { attemptId: 900 } } });
 
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
 
     expect(await screen.findByText("Test student")).toBeTruthy();
     expect(screen.getByText("Because of the river.")).toBeTruthy();
@@ -194,7 +195,7 @@ describe("grading screen — ONLINE", () => {
   });
 
   it("shows students who have not finished rather than dropping them (R102, D5)", async () => {
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
 
     expect(await screen.findByText("Waiting")).toBeTruthy();
     expect(screen.getByText("Second student")).toBeTruthy();
@@ -210,7 +211,7 @@ describe("grading screen — ONLINE", () => {
             waiting: [{ studentUserId: 10, studentName: "Second student",
               startedAt: "2099-03-02T10:00:00.000Z" }] } } }),
     );
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
 
     expect(await screen.findByText("In progress since Mar 2, 2099")).toBeTruthy();
     expect(screen.queryByText("Reopen retake")).toBeNull();
@@ -233,7 +234,7 @@ describe("grading screen — ONLINE", () => {
             ? Promise.resolve({ data: { data: second } })
             : Promise.reject(new Error(`unexpected GET ${url}`)),
     );
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
 
     expect(await screen.findByText("Test student")).toBeTruthy();
     expect(screen.queryByText("Page two student")).toBeNull();
@@ -268,7 +269,7 @@ describe("grading screen — ONLINE", () => {
     );
     post.mockResolvedValue({ data: { data: { attemptId: 901, attemptNumber: 2 } } });
 
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
 
     expect(await screen.findByText("Attempt 1 · Graded · 6/7")).toBeTruthy();
     expect(screen.getByText("Update grade")).toBeTruthy();
@@ -290,7 +291,7 @@ describe("grading screen — ONLINE", () => {
         ? Promise.resolve({ data: { data: authoring({ kind: "ONLINE", maxScore: 7, publishedAt: "2099-02-01T00:00:00.000Z" }) } })
         : Promise.resolve({ data: { data: wrong } }),
     );
-    renderWithProviders(<QuizGradeScreen />);
+    renderStacked(<QuizGradeScreen />);
     expect(await screen.findByText("London (correct: Paris)")).toBeTruthy();
     expect(screen.getByText(" (correct: Paris)")).toBeTruthy();
     expect(screen.getByText("0/2")).toBeTruthy();

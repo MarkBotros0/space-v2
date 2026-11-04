@@ -5,7 +5,6 @@ import { useRouter } from "expo-router";
 
 import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { BACK_TO_PREVIOUS } from "../../src/design/layout/large-title";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { SeasonsList } from "../../src/design/seasons/seasons-list";
 import { useCurrentSeasonId, useSeasonDetail, useSeasons } from "../../src/hooks/use-seasons";
@@ -83,7 +82,7 @@ function StaffSeason() {
   }
 
   return (
-    <ShellFrame back={BACK_TO_PREVIOUS} onRefresh={handleRefresh} refreshing={detail.isRefetching}>
+    <ShellFrame onRefresh={handleRefresh} refreshing={detail.isRefetching}>
       {body}
     </ShellFrame>
   );
@@ -125,7 +124,7 @@ function AdminSeason() {
     );
 
   return (
-    <ShellFrame back={BACK_TO_PREVIOUS} refreshing={seasons.isRefetching} onRefresh={() => void seasons.refetch()}>
+    <ShellFrame refreshing={seasons.isRefetching} onRefresh={() => void seasons.refetch()}>
       {body}
     </ShellFrame>
   );

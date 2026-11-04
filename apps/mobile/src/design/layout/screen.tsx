@@ -28,7 +28,7 @@ import { cn } from "../lib/cn";
 import { useKeyboardInset } from "../lib/keyboard-inset";
 import { useReducedMotion } from "../motion";
 import { HomeActions } from "./home-actions";
-import { type BackTarget, CompactHeader, compactHeaderFade, LargeTitle } from "./large-title";
+import { BACK_TO_PREVIOUS, type BackTarget, CompactHeader, compactHeaderFade, LargeTitle } from "./large-title";
 import { OfflineBanner } from "./offline-banner";
 import { TabBarPresenceContext, useShellBottomPadding } from "./shell-context";
 import {
@@ -53,7 +53,11 @@ export type ScreenProps = {
   children: ReactNode;
   title?: string;
   subtitle?: string;
-  back?: BackTarget;
+  /**
+   * The pinned back bar. Unset: a screen on the stack (no tab bar) gets
+   * `BACK_TO_PREVIOUS` (ruling R23), a tab gets none. `null` opts out.
+   */
+  back?: BackTarget | null;
   /** Actions beside the large title. */
   trailing?: ReactNode;
   /** Home only: the notification bell and the user menu in the title row. */
@@ -73,15 +77,23 @@ export type ScreenProps = {
  * wraps the list in it so it gets the same top, and passes `back` for the
  * pinned back bar `Screen` would give it (ruling R16).
  */
-export function ScreenChrome({ children, back }: { children: ReactNode; back?: BackTarget }) {
+export function ScreenChrome({ children, back }: { children: ReactNode; back?: BackTarget | null }) {
+  const effective = useEffectiveBack(back);
   const top = useContext(SafeAreaInsetsContext)?.top ?? 0;
   return (
     <View testID="screen" className="flex-1 bg-background" style={{ paddingTop: top }}>
       <OfflineBanner />
-      {back ? <PinnedBackBar back={back} /> : null}
+      {effective ? <PinnedBackBar back={effective} /> : null}
       {children}
     </View>
   );
+}
+
+/** Ruling R23 (Screen passes `back={null}` to ScreenChrome: it draws its own bar beside the title). No tab bar under the screen means it was pushed, so it can go back. */
+function useEffectiveBack(back: BackTarget | null | undefined): BackTarget | null {
+  const hasTabBar = useContext(TabBarPresenceContext);
+  if (back !== undefined) return back;
+  return hasTabBar ? null : BACK_TO_PREVIOUS;
 }
 
 /** The back bar alone: no title to fade in, so its hairline stays hidden. */
@@ -94,7 +106,7 @@ export function Screen({
   children,
   title,
   subtitle,
-  back,
+  back: backProp,
   trailing,
   home = false,
   refreshing = false,
@@ -104,6 +116,7 @@ export function Screen({
 }: ScreenProps) {
   const bottom = useShellBottomPadding();
   const hasTabBar = useContext(TabBarPresenceContext);
+  const back = useEffectiveBack(backProp);
   const reduced = useReducedMotion();
   const { onScrollDirection } = useTabBarScroll();
 
@@ -162,7 +175,7 @@ export function Screen({
 
   if (!scroll) {
     return (
-      <ScreenChrome>
+      <ScreenChrome back={null}>
         {back ? <CompactHeader title={title} back={back} progress={progress} /> : null}
         <View
           className={cn("flex-1 px-4 pt-4", contentClassName)}
@@ -176,7 +189,7 @@ export function Screen({
   }
 
   return (
-    <ScreenChrome>
+    <ScreenChrome back={null}>
       {back ? <CompactHeader title={title} back={back} progress={progress} /> : null}
       <View className="flex-1">
         <Animated.ScrollView

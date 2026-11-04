@@ -9,7 +9,6 @@ import { iconWithClassName } from "../../src/design/lib/icon";
 import { PageHeader } from "../../src/design/layout/page-header";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ScreenChrome } from "../../src/design/layout/screen";
-import { BACK_TO_PREVIOUS } from "../../src/design/layout/large-title";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../src/design/ui";
 import {
@@ -92,7 +91,7 @@ export default function NotificationsScreen() {
 
   if (isPending || isError) {
     return (
-      <ShellFrame back={BACK_TO_PREVIOUS}>
+      <ShellFrame>
         <PageHeader title="Notifications" />
         {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
       </ShellFrame>
@@ -102,7 +101,7 @@ export default function NotificationsScreen() {
   // A list of its own, not ShellFrame's ScrollView: ScreenChrome gives it the
   // top inset and the offline strip the navigator header used to (R14).
   return (
-    <ScreenChrome back={BACK_TO_PREVIOUS}>
+    <ScreenChrome>
       <FlatList
         className="flex-1 bg-background"
         contentContainerClassName="gap-2 bg-brand-navy-50 px-4 pt-4 dark:bg-background"

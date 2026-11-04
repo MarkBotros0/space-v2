@@ -10,7 +10,7 @@ jest.mock("expo-router", () => ({
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { renderWithProviders } from "./helpers/render";
+import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
 import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
@@ -63,11 +63,12 @@ describe("AssignmentDetailScreen", () => {
   it("renders title, description and due date from the detail contract", async () => {
     get.mockResolvedValue({ data: { data: detail } });
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderStacked(<AssignmentDetailScreen />);
 
     expect(await screen.findByText("Essay one")).toBeTruthy();
     expect(screen.getByText("Write about the thing.")).toBeTruthy();
-    expect(screen.getByText("← Assignments")).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1); // the pinned bar (R23)
+    expect(screen.queryByText("← Assignments")).toBeNull();
     expect(screen.getByText("Brief")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/assignments/41");
   });
@@ -75,14 +76,14 @@ describe("AssignmentDetailScreen", () => {
   it("shows a v2 plain-text brief verbatim, angle brackets and all", async () => {
     // v2's form stores plain text; the column also holds v1's TipTap HTML.
     get.mockResolvedValue({ data: { data: { ...detail, description: "Read pages <intro> & <summary>.\nThen reflect." } } });
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderStacked(<AssignmentDetailScreen />);
     expect(await screen.findByText("Read pages <intro> & <summary>.")).toBeTruthy();
     expect(screen.getByText("Then reflect.")).toBeTruthy();
   });
 
   it("renders a v1 HTML brief as markup", async () => {
     get.mockResolvedValue({ data: { data: { ...detail, description: "<p><strong>Bold</strong> brief</p>" } } });
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderStacked(<AssignmentDetailScreen />);
     expect(await screen.findByText("Bold")).toBeTruthy();
     expect(screen.queryByText(/<strong>/)).toBeNull();
   });
@@ -102,7 +103,7 @@ describe("AssignmentDetailScreen", () => {
       }),
     );
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderStacked(<AssignmentDetailScreen />);
 
     expect(await screen.findByText("Solid work.")).toBeTruthy();
     expect(screen.getByText("Leader feedback")).toBeTruthy();
@@ -123,7 +124,7 @@ describe("AssignmentDetailScreen", () => {
       }),
     );
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderStacked(<AssignmentDetailScreen />);
 
     // v1 has no late badge here; v2 keeps the flag as an extra "Late" badge (B2-16).
     expect(await screen.findByText("Late")).toBeTruthy();

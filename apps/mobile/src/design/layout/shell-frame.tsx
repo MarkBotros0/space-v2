@@ -15,7 +15,7 @@ import { Screen } from "./screen";
  * below the content, so a short page shows the plain background under it.
  * `home` (the dashboard route only) puts the bell and the user menu at the
  * top of the content, ruling R13. `back` is Screen's pinned back bar
- * (ruling R16), for a pushed screen that has no back link of its own.
+ * (ruling R16); left unset it is `BACK_TO_PREVIOUS` on the stack (R23), `null` opts out.
  */
 export function ShellFrame({
   children,
@@ -30,7 +30,7 @@ export function ShellFrame({
   refreshing?: boolean;
   onRefresh?: () => void;
   home?: boolean;
-  back?: BackTarget;
+  back?: BackTarget | null;
 }) {
   return (
     <Screen

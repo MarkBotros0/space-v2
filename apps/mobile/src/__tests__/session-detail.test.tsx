@@ -15,7 +15,7 @@ import type { SessionDetail } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { renderWithProviders } from "./helpers/render";
+import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SessionDetailScreen from "../../app/(app)/session/[id]/index";
 
@@ -69,11 +69,12 @@ it("shows a student the org-time header and their attendance, and no staff cards
     detail: { ...baseDetail, myAttendance: { status: "LATE", notes: null, lateMinutes: 10, checkedInAt: null } },
   });
 
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
 
   expect(await screen.findByText("Week 3")).toBeTruthy();
   // Server-derived day and wall-clock time (X13) — not the device's reading of startsAt.
-  expect(screen.getByText("← Calendar")).toBeTruthy();
+  expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1); // the pinned bar (R23)
+  expect(screen.queryByText("← Calendar")).toBeNull();
   expect(screen.getByText("Sunday, March 15, 2099")).toBeTruthy();
   expect(screen.getByText("8:00 PM – 9:30 PM · 90 min")).toBeTruthy();
   expect(screen.getByText("Your attendance: Late (10 min)")).toBeTruthy();
@@ -95,7 +96,7 @@ it("lets a season admin open check-in and shows the QR from the open response", 
     return Promise.reject(new Error(`unexpected POST ${url}`));
   });
 
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
 
   fireEvent.press(await screen.findByText("Open check-in"));
   await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/check-in-open"));
@@ -111,7 +112,7 @@ it("recovers an open session's QR from GET /check-in — not the season-wide lis
   });
   post.mockResolvedValue({ data: { data: { closed: true } } });
 
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
 
   expect(await screen.findByText("Code: tokABC")).toBeTruthy();
   expect(screen.getByText("Closes at 11:00 PM")).toBeTruthy();
@@ -138,7 +139,7 @@ it("regenerates an OPEN session's code only on a confirming second press (spec 0
     return Promise.reject(new Error(`unexpected POST ${url}`));
   });
 
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
 
   fireEvent.press(await screen.findByText("Regenerate code"));
   expect(post).not.toHaveBeenCalled();
@@ -150,7 +151,7 @@ it("regenerates an OPEN session's code only on a confirming second press (spec 0
 it("gives a season admin Edit session", async () => {
   useSessionStore.setState(admin());
   routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
   fireEvent.press(await screen.findByText("Edit"));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]/edit", params: { id: "12" } });
 });
@@ -165,7 +166,7 @@ it("gives a leader a read-only live roster — no open/close/regenerate/edit (sp
     ],
   });
 
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
 
   expect(await screen.findByText("Sara Student")).toBeTruthy();
   // v1: an Open/Closed badge in the card header, and v1's "Not recorded".
@@ -194,7 +195,7 @@ it("refreshes the leader's roster every 10 seconds while check-in is open", asyn
     routeGets({ detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: false }, roster: [] });
     const rosterCalls = () => get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12/attendance").length;
 
-    renderWithProviders(<SessionDetailScreen />);
+    renderStacked(<SessionDetailScreen />);
     expect(await screen.findByText("Open")).toBeTruthy();
     await waitFor(() => expect(rosterCalls()).toBe(1));
 
@@ -221,7 +222,7 @@ it("lists who has checked in on the admin console and refreshes it while open (R
     });
     const rosterCalls = () => get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12/attendance").length;
 
-    renderWithProviders(<SessionDetailScreen />);
+    renderStacked(<SessionDetailScreen />);
     expect(await screen.findByText("Code: tokABC")).toBeTruthy();
     expect(await screen.findByText("Ada")).toBeTruthy();
     expect(screen.getByText("Present")).toBeTruthy();
@@ -239,7 +240,7 @@ it("lists who has checked in on the admin console and refreshes it while open (R
 it("hides the console from a SUPER who is not an admin of the season, keeping a read-only roster (REG-79)", async () => {
   useSessionStore.setState(makeSession("SUPER", { seasonAdminIds: [99] }, { id: 1 }));
   routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
   expect(await screen.findByText("Closed")).toBeTruthy();
   expect(screen.queryByText("Open check-in")).toBeNull();
   expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/check-in");
@@ -248,7 +249,7 @@ it("hides the console from a SUPER who is not an admin of the season, keeping a 
 it("shows a SUPER who administers the season the console (REG-79)", async () => {
   useSessionStore.setState(makeSession("SUPER", { seasonAdminIds: [7] }, { id: 1 }));
   routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } });
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
   expect(await screen.findByText("Open check-in")).toBeTruthy();
 });
 
@@ -261,7 +262,7 @@ it("shows staff the session's quizzes (G18; v1 leader/sessions/[id])", async () 
       { id: 41, title: "Online quiz", kind: "ONLINE", maxScore: 10, questionCount: 4, publishedAt: null },
     ],
   });
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
   expect(await screen.findByText("Quizzes")).toBeTruthy();
   expect(screen.getByText("Paper quiz")).toBeTruthy();
   expect(screen.getByText("Max score: 20")).toBeTruthy();
@@ -271,7 +272,7 @@ it("shows staff the session's quizzes (G18; v1 leader/sessions/[id])", async () 
 it("hides the quiz card when the session has none", async () => {
   useSessionStore.setState(leader());
   routeGets({ detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false }, quizzes: [] });
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
   expect(await screen.findByText("Week 3")).toBeTruthy();
   await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/quizzes"));
   expect(screen.queryByText("Quizzes")).toBeNull();
@@ -283,7 +284,7 @@ it("goes straight to grading from a quiz's Grade → link (v1)", async () => {
     detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
     quizzes: [{ id: 41, title: "Online quiz", kind: "ONLINE", maxScore: 10, questionCount: 4, publishedAt: null }],
   });
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
 
   expect(await screen.findByText("Online quiz")).toBeTruthy();
   fireEvent.press(screen.getByText("Grade →"));
@@ -301,7 +302,7 @@ it("lets a leader override one student's attendance, keeping stored notes (v1 mo
   });
   post.mockResolvedValue({ data: { data: { saved: 1 } } });
 
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
   fireEvent.press(await screen.findByLabelText("Edit attendance for Sara Student"));
   expect(screen.getByText("Override attendance")).toBeTruthy();
   fireEvent.press(screen.getByLabelText("Mark Sara Student ABSENT"));
@@ -331,14 +332,14 @@ it("shows a leader the video quiz results, and nothing for a video with no quest
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 
-  const first = renderWithProviders(<SessionDetailScreen />);
+  const first = renderStacked(<SessionDetailScreen />);
   expect(await screen.findByText("Video quiz results")).toBeTruthy();
   expect(screen.getByText("1/2 answered")).toBeTruthy();
   expect(screen.getByText("In progress")).toBeTruthy();
   first.unmount();
 
   questions = 0;
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
   await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/video-quiz/results"));
   expect(await screen.findByText("Check-in")).toBeTruthy();
   await waitFor(() => expect(screen.queryByText("Video quiz results")).toBeNull());
@@ -353,7 +354,7 @@ it("shows a failed override inside the sheet, where the leader is looking", asyn
   post.mockRejectedValue(
     Object.assign(new Error("400"), { isAxiosError: true, response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } } }),
   );
-  renderWithProviders(<SessionDetailScreen />);
+  renderStacked(<SessionDetailScreen />);
   fireEvent.press(await screen.findByLabelText("Edit attendance for Sara Student"));
   fireEvent.press(screen.getByLabelText("Mark Sara Student PRESENT"));
   expect(await screen.findByTestId("override-error")).toBeTruthy();

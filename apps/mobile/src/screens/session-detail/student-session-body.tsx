@@ -1,12 +1,11 @@
 import { CheckCheck, Clock, MapPin } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
-import { useRouter } from "expo-router";
 import type { SessionDetail } from "@space/shared";
 
 import { StudentCheckInCard } from "../../components/check-in/StudentCheckInCard";
 import { VideoQuizPlayer, WatchRecordingButton } from "../../components/VideoQuizPlayer";
-import { BackLink, Eyebrow, PageTitle } from "../../design/layout/page-title";
+import { Eyebrow, PageTitle } from "../../design/layout/page-title";
 import { InlineError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
@@ -28,7 +27,6 @@ export function StudentSessionBody({
   refetch: () => void;
   isRefetching: boolean;
 }) {
-  const router = useRouter();
   const hasVideo = data.youtubeUrl !== null;
   const quiz = useStudentVideoQuiz(data.id, hasVideo);
   // Org wall times from the server (X13); the end is text arithmetic on the org clock.
@@ -53,9 +51,8 @@ export function StudentSessionBody({
     <ShellFrame onRefresh={refetch} refreshing={isRefetching}>
       <View className="flex-col gap-3">
         <View>
-          <BackLink label="Calendar" onPress={() => router.back()} />
           <View
-            className="mt-2 rounded-2xl border border-border bg-card p-5"
+            className="rounded-2xl border border-border bg-card p-5"
             style={shadowStyle("soft")}
           >
             <View className="mb-2 flex-row items-center gap-2">

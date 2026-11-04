@@ -16,7 +16,7 @@ jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: j
 import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { renderWithProviders } from "./helpers/render";
+import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SubmissionReviewScreen from "../../app/(app)/submission/[publicId]";
 
@@ -44,7 +44,7 @@ it("shows the work, the late flag from the contract, and records a review withou
   get.mockResolvedValue({ data: { data: detail } });
   post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: false } } });
 
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
 
   expect(await screen.findByText("the student's work")).toBeTruthy();
   expect(screen.getByText("Submitted")).toBeTruthy();
@@ -68,7 +68,7 @@ it("says Update review, with the earlier feedback in the field, when redoing a r
   });
   post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: false } } });
 
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
 
   expect(await screen.findByText("Update review")).toBeTruthy();
   expect(screen.queryByText("Mark as reviewed")).toBeNull();
@@ -85,7 +85,7 @@ it("returns for revision with the flag set, then leaves a screen with nothing le
   get.mockResolvedValue({ data: { data: detail } });
   post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: true } } });
 
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
   fireEvent.changeText(await screen.findByLabelText("Feedback"), "Another pass, please.");
   fireEvent.press(screen.getByText("Return for revision"));
 
@@ -99,20 +99,20 @@ it("returns for revision with the flag set, then leaves a screen with nothing le
   await waitFor(() => expect(mockBack).toHaveBeenCalled());
 });
 
-it("has a back link, and falls back to the list when opened from a notification", async () => {
-  mockCanGoBack = false;
+it("has exactly one back link: the frame's pinned bar, not an in-content one (R23)", async () => {
   get.mockResolvedValue({ data: { data: detail } });
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
 
-  fireEvent.press(await screen.findByText("← Submissions"));
-
-  expect(mockReplace).toHaveBeenCalledWith("/submissions");
-  expect(mockBack).not.toHaveBeenCalled();
+  expect(await screen.findByText("Late")).toBeTruthy();
+  expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1);
+  expect(screen.queryByText("← Submissions")).toBeNull();
+  fireEvent.press(screen.getByRole("link", { name: "Back" }));
+  expect(mockBack).toHaveBeenCalledTimes(1);
 });
 
 it("shows returned work as waiting on the student instead of the review form", async () => {
   get.mockResolvedValue({ data: { data: { ...detail, status: "RETURNED", feedback: "Another pass." } } });
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
 
   expect(await screen.findByText("Returned to the student")).toBeTruthy();
   expect(screen.getByText("Another pass.")).toBeTruthy();
@@ -123,7 +123,7 @@ it("stays on the screen and says why when the server refuses (403 forbidden)", a
   get.mockResolvedValue({ data: { data: detail } });
   post.mockRejectedValue({ response: { status: 403, data: { error: { code: "forbidden", message: "x" } } } });
 
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
   fireEvent.press(await screen.findByText("Mark as reviewed"));
 
   expect(await screen.findByText(/Couldn't record the review/)).toBeTruthy();
@@ -133,7 +133,7 @@ it("stays on the screen and says why when the server refuses (403 forbidden)", a
 it("hides the verdict controls when the contract says this caller cannot review", async () => {
   get.mockResolvedValue({ data: { data: { ...detail, canReview: false } } });
 
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
 
   expect(await screen.findByText("the student's work")).toBeTruthy();
   expect(screen.queryByText("Mark as reviewed")).toBeNull();
@@ -142,7 +142,7 @@ it("hides the verdict controls when the contract says this caller cannot review"
 
 it("names the student's group beside them on the detail (REG-89)", async () => {
   get.mockResolvedValue({ data: { data: { ...detail, groupId: 3, groupName: "Group A" } } });
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
   expect(await screen.findByText("Test student · Group A")).toBeTruthy();
 });
 
@@ -156,7 +156,7 @@ it("shows the prompt and the attachments v1-style; the files can't be opened yet
       },
     },
   });
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
   expect(await screen.findByText("Assignment prompt")).toBeTruthy();
   expect(screen.getByText("Write 300 words")).toBeTruthy();
   expect(screen.getByText("Attachments")).toBeTruthy();
@@ -167,13 +167,13 @@ it("shows the prompt and the attachments v1-style; the files can't be opened yet
 
 it("shows the feedback card only to someone who can't review (v1)", async () => {
   get.mockResolvedValue({ data: { data: { ...detail, feedback: "Nice." } } });
-  const { unmount } = renderWithProviders(<SubmissionReviewScreen />);
+  const { unmount } = renderStacked(<SubmissionReviewScreen />);
   expect(await screen.findByText("Add feedback")).toBeTruthy();
   expect(screen.queryByText("Feedback")).toBeNull();
   unmount();
 
   get.mockResolvedValue({ data: { data: { ...detail, feedback: "Nice.", canReview: false } } });
-  renderWithProviders(<SubmissionReviewScreen />);
+  renderStacked(<SubmissionReviewScreen />);
   expect(await screen.findByText("Feedback")).toBeTruthy();
   expect(screen.getByText("Nice.")).toBeTruthy();
 });

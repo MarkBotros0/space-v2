@@ -5,7 +5,6 @@
  * no network, nothing is saved. A detail route, not a nav destination.
  */
 import { EmptyState } from "../../src/design/ui/empty-state";
-import { BACK_TO_PREVIOUS } from "../../src/design/layout/large-title";
 import { Screen } from "../../src/design/layout/screen";
 import { isSweepBuild } from "../../src/lib/app-config";
 import { ChipsSection } from "../../src/screens/design-catalogue/chips-section";
@@ -24,13 +23,13 @@ import { ButtonsSection, TypeSection } from "../../src/screens/design-catalogue/
 export default function DesignCatalogue() {
   if (!__DEV__ && !isSweepBuild()) {
     return (
-      <Screen title="Design catalogue" back={BACK_TO_PREVIOUS}>
+      <Screen title="Design catalogue">
         <EmptyState title="Not available" />
       </Screen>
     );
   }
   return (
-    <Screen title="Design catalogue" subtitle="Every component in every state." back={BACK_TO_PREVIOUS}>
+    <Screen title="Design catalogue" subtitle="Every component in every state.">
       <TypeSection />
       <ButtonsSection />
       <ChipsSection />

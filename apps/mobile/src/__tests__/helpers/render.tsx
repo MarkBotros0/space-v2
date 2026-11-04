@@ -3,6 +3,8 @@ import { render } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { TabBarPresenceContext } from "../../design/layout/shell-context";
+
 // A bare `<SafeAreaProvider>` waits for an `onLayout` that never fires under
 // the test renderer, so it renders none of its children — `render()` still
 // returns a truthy `toJSON()`, so a loose assertion passes against an empty
@@ -36,4 +38,12 @@ export function renderWithProviders(ui: ReactElement) {
       <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
     </SafeAreaProvider>,
   );
+}
+
+/**
+ * `renderWithProviders` for a screen the `(app)` Stack shows: no tab bar under
+ * it, so the frame pins its back bar by default (ruling R23).
+ */
+export function renderStacked(ui: ReactElement) {
+  return renderWithProviders(<TabBarPresenceContext.Provider value={false}>{ui}</TabBarPresenceContext.Provider>);
 }

@@ -22,6 +22,7 @@ jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: j
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { toast } from "../design/ui/toaster";
+import { TabBarPresenceContext } from "../design/layout/shell-context";
 import { renderWithProviders } from "./helpers/render";
 
 import SettingsScreen from "../../app/(app)/settings";
@@ -63,7 +64,11 @@ describe("SettingsScreen back bar (Task 12 fix round 1)", () => {
   it("pins a Back link that returns to wherever Settings was opened from", () => {
     const { user, scopes } = sessionFor("STUDENT");
     useSessionStore.getState().setSession(user, scopes);
-    renderWithProviders(<SettingsScreen />);
+    renderWithProviders(
+      <TabBarPresenceContext.Provider value={false}>
+        <SettingsScreen />
+      </TabBarPresenceContext.Provider>,
+    );
     expect(screen.getByTestId("back-bar")).toBeTruthy();
     fireEvent.press(screen.getByLabelText("Back"));
     expect(mockBack).toHaveBeenCalledTimes(1);

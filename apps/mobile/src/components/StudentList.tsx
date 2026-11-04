@@ -6,7 +6,6 @@ import type { StudentListItem, StudentListSort, StudentListStatus, UserRole } fr
 
 import { PageTitle } from "../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
-import type { BackTarget } from "../design/layout/large-title";
 import { ShellFrame } from "../design/layout/shell-frame";
 import {
   Avatar,
@@ -269,15 +268,13 @@ export interface StudentListProps {
   title: string;
   /** Rendered with the page's other header buttons — e.g. "New student" for SUPER. */
   headerAction?: ReactNode;
-  /** The pinned back bar, on the lists pushed from More (alumni, dropped); never the Students tab. */
-  back?: BackTarget;
 }
 
 /**
  * v1 /admin/students, /alumni and /dropped (and, for SUPER, the same pages
  * under /super): title, count line, search, v1's DataTable (phone cards).
  */
-export function StudentList({ status, allowedRoles, title, headerAction, back }: StudentListProps) {
+export function StudentList({ status, allowedRoles, title, headerAction }: StudentListProps) {
   const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const allowed = role !== null && allowedRoles.includes(role);
@@ -297,7 +294,7 @@ export function StudentList({ status, allowedRoles, title, headerAction, back }:
 
   if (!allowed) {
     return (
-      <ShellFrame back={back}>
+      <ShellFrame>
         <EmptyState title={title} description="This list isn't available for your role." />
       </ShellFrame>
     );
@@ -346,7 +343,7 @@ export function StudentList({ status, allowedRoles, title, headerAction, back }:
     );
 
   return (
-    <ShellFrame back={back} onRefresh={() => void refetch()} refreshing={isRefetching}>
+    <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
       <View className="flex-col gap-4">
         <View className="flex-col gap-3">
           {/* The real population under the current filters (D14) — v1

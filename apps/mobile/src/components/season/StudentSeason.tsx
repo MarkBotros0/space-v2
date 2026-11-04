@@ -6,7 +6,6 @@ import type { MySeason } from "@space/shared";
 
 import { Eyebrow, PageTitle } from "../../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
-import { BACK_TO_PREVIOUS } from "../../design/layout/large-title";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
@@ -262,7 +261,7 @@ export function StudentSeason() {
 
   return (
     <ShellFrame
-      back={BACK_TO_PREVIOUS}
+     
       onRefresh={() => {
         if (seasonId !== null) void refetch();
       }}

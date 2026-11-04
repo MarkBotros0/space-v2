@@ -1,10 +1,9 @@
-import { useRouter } from "expo-router";
 import { Calendar } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import type { MyAttendanceSession } from "@space/shared";
 
-import { BackLink, Eyebrow } from "../../src/design/layout/page-title";
+import { Eyebrow } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { cn } from "../../src/design/lib/cn";
@@ -54,7 +53,6 @@ function SessionRow({ row, first, last }: { row: MyAttendanceSession; first: boo
  * same query key, so the two can never disagree.
  */
 export default function AttendanceScreen() {
-  const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const isStudent = role === "STUDENT";
@@ -123,8 +121,7 @@ export default function AttendanceScreen() {
     >
       <View className="flex-col gap-3">
         <View>
-          <BackLink label="Dashboard" onPress={() => router.push("/dashboard")} />
-          <Text accessibilityRole="header" className="mt-2 text-2xl font-black text-brand-navy-900 dark:text-foreground">
+          <Text accessibilityRole="header" className="text-2xl font-black text-brand-navy-900 dark:text-foreground">
             Attendance
           </Text>
         </View>

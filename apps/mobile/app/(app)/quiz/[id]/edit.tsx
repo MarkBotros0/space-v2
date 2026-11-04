@@ -6,7 +6,7 @@ import type { QuizAuthoringDetail, QuizQuestionAuthoring } from "@space/shared";
 
 import { QuestionEditor } from "../../../../src/components/QuestionEditor";
 import { FormErrorBox } from "../../../../src/design/forms/form-parts";
-import { BackLink, PageTitle } from "../../../../src/design/layout/page-title";
+import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
 import { iconWithClassName } from "../../../../src/design/lib/icon";
@@ -357,15 +357,6 @@ function QuizBuilder({ id }: { id: number }) {
     <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
       <View className="flex-col gap-4">
         <View>
-          <BackLink
-            icon
-            label="Back to session"
-            onPress={() =>
-              data?.sessionId != null
-                ? router.push({ pathname: "/session/[id]", params: { id: String(data.sessionId) } })
-                : router.back()
-            }
-          />
           <PageTitle title={data?.title ?? "Edit quiz"} />
         </View>
         {body}

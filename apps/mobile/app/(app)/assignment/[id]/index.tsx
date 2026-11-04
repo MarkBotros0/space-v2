@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { File as FileIcon } from "lucide-react-native";
 import { View } from "react-native";
 import { plainTextToHtml, type AssignmentDetail, type MySubmissionSummary } from "@space/shared";
 
 import { AssignmentStaffPanel } from "../../../../src/components/assignment-staff-panel";
 import { ForumThread } from "../../../../src/components/ForumThread";
-import { BackLink, Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
+import { Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
 import { cn } from "../../../../src/design/lib/cn";
@@ -273,15 +273,13 @@ function StudentAssignmentDetail({
   onRefresh: () => void;
   refreshing: boolean;
 }) {
-  const router = useRouter();
   const forum = detail.type === "FORUM";
   return (
     <ShellFrame onRefresh={onRefresh} refreshing={refreshing}>
       <View className="flex-col gap-3">
         <View>
-          <BackLink label="Assignments" onPress={() => router.back()} />
           <View
-            className="mt-2 rounded-2xl border border-border bg-card p-5"
+            className="rounded-2xl border border-border bg-card p-5"
             style={shadowStyle("soft")}
           >
             {forum ? (

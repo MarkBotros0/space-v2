@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { PenLine, SearchX } from "lucide-react-native";
 import { View } from "react-native";
 import type { QuizAuthoringDetail, QuizGradeSheet, QuizGradingAttempt } from "@space/shared";
 
-import { BackLink, Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
+import { Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
 import { shadowStyle } from "../../../../src/design/lib/shadow";
@@ -36,17 +36,8 @@ function parseMark(value: string): number | null {
 
 /** v1's header: "← Back to session" (when the quiz has one) over the title. */
 function Header({ detail, subtitle }: { detail: QuizAuthoringDetail; subtitle?: string }) {
-  const router = useRouter();
-  const sessionId = detail.sessionId;
   return (
     <View>
-      {sessionId !== null ? (
-        <BackLink
-          icon
-          label="Back to session"
-          onPress={() => router.push({ pathname: "/session/[id]", params: { id: String(sessionId) } })}
-        />
-      ) : null}
       <PageTitle title={detail.title} />
       {subtitle ? <Text className="mt-2 text-sm text-muted-foreground">{subtitle}</Text> : null}
     </View>

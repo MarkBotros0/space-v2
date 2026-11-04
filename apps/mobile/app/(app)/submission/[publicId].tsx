@@ -4,7 +4,7 @@ import { File as FileIcon, SearchX } from "lucide-react-native";
 import { View } from "react-native";
 import { plainTextToHtml } from "@space/shared";
 
-import { BackLink, PageTitle } from "../../../src/design/layout/page-title";
+import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { iconWithClassName } from "../../../src/design/lib/icon";
@@ -119,7 +119,6 @@ export default function SubmissionReviewScreen() {
         <RouteError onRetry={() => void refetch()} />
       ) : (
         <View className="flex-col gap-4">
-          <BackLink label="Submissions" onPress={leave} />
           <PageTitle
             title={data.assignmentTitle}
             subtitle={`${data.studentName ?? data.studentEmail}${data.groupName ? ` · ${data.groupName}` : ""}`}

@@ -3,6 +3,7 @@ import { screen } from "@testing-library/react-native";
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 
 import { apiClient } from "../lib/api-client";
+import { TabBarPresenceContext } from "../design/layout/shell-context";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -35,12 +36,18 @@ describe("AttendanceScreen", () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
     get.mockResolvedValue({ data: { data: payload } });
 
-    renderWithProviders(<AttendanceScreen />);
+    renderWithProviders(
+      <TabBarPresenceContext.Provider value={false}>
+        <AttendanceScreen />
+      </TabBarPresenceContext.Provider>,
+    );
 
     expect(await screen.findByLabelText("Absence budget 58% used")).toBeTruthy();
     expect(screen.getByText("58%")).toBeTruthy();
     expect(screen.getByText("used")).toBeTruthy();
-    expect(screen.getByText("← Dashboard")).toBeTruthy();
+    // One back link: the frame's pinned bar (R23), not the old in-content "← Dashboard".
+    expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1);
+    expect(screen.queryByText("← Dashboard")).toBeNull();
     expect(get).toHaveBeenCalledWith("/api/v1/me/attendance");
     expect(screen.getByText("105 of 180 min")).toBeTruthy();
     expect(screen.getByText("Absent = 90 min · Late = actual minutes late")).toBeTruthy(); // R96
