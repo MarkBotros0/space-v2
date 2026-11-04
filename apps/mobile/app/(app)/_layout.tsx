@@ -8,7 +8,6 @@ import { AppTopBar } from "../../src/design/layout/app-top-bar";
 import { ScreenErrorBoundary } from "../../src/design/layout/error-boundary";
 import { FloatingTabBar } from "../../src/design/layout/floating-tab-bar";
 import { OfflineBanner } from "../../src/design/layout/offline-banner";
-import { ShellContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { DIRECTORY_ROUTE_HREFS, routeNameForHref } from "../../src/lib/route-names";
 import { useSessionStore } from "../../src/store/session";
@@ -119,7 +118,7 @@ export default function AppLayout() {
   // v1's shell (shell-frame.tsx): the top bar above every screen and the
   // floating pill tab bar, which renders the role's tabs itself.
   return (
-    <ShellContext.Provider value={true}>
+    <>
       <SystemBarScrim />
       <Tabs
         screenOptions={{ header: () => <ShellHeader /> }}
@@ -130,7 +129,7 @@ export default function AppLayout() {
           return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : { href: null }} />;
         })}
       </Tabs>
-    </ShellContext.Provider>
+    </>
   );
 }
 

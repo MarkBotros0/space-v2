@@ -1,17 +1,5 @@
-import { createContext, useContext } from "react";
+import { useContext } from "react";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
-
-/**
- * True inside the authenticated shell, where v1's top bar owns the top
- * safe-area inset and the floating tab bar covers the bottom 96px (v1's
- * `pb-24` on <main>). Provided by `app/(app)/_layout.tsx`; nothing reads it
- * since the legacy `Screen` was deleted (ShellFrame assumes the shell).
- */
-export const ShellContext = createContext(false);
-
-export function useInShell(): boolean {
-  return useContext(ShellContext);
-}
 
 /** v1 shell-frame.tsx <main> bottom padding that keeps content clear of the tab bar. */
 export const SHELL_BOTTOM_PADDING = 96;
