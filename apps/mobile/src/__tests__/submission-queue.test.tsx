@@ -30,10 +30,11 @@ beforeEach(() => {
 it("lists every reviewable submission (v1, B3-8) and loads the next page from the cursor", async () => {
   get
     .mockResolvedValueOnce({
-      data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: "aaa1111111" } },
+      data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 2, total: 5, late: 0 }, nextCursor: "aaa1111111" } },
     })
     .mockResolvedValueOnce({
-      data: { data: { items: [queueItem("bbb2222222", "Essay two")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
+      // A cursor page carries no counts; the header keeps the first page's.
+      data: { data: { items: [queueItem("bbb2222222", "Essay two")], counts: null, nextCursor: null } },
     });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -48,6 +49,7 @@ it("lists every reviewable submission (v1, B3-8) and loads the next page from th
   );
   // Last page: the button goes away.
   expect(screen.queryByText("Load more")).toBeNull();
+  expect(screen.getByText("2 pending review · 5 total")).toBeTruthy();
 });
 
 it("labels a late hand-in from the contract flag", async () => {

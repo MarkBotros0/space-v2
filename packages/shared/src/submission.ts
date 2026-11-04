@@ -122,7 +122,12 @@ export type SubmissionQueueCounts = z.infer<typeof submissionQueueCountsSchema>;
 
 export const submissionQueueSchema = z.object({
   items: z.array(submissionQueueItemSchema),
-  counts: submissionQueueCountsSchema,
+  /**
+   * First page only. A page fetched with `cursor` carries null: the counts do
+   * not change as the list is scrolled, so recounting the whole reachable set
+   * on every page was pure cost. Clients read `pages[0].counts`.
+   */
+  counts: submissionQueueCountsSchema.nullable(),
   /** Cursor for the next page; null when this is the last one. */
   nextCursor: z.string().nullable(),
 });
