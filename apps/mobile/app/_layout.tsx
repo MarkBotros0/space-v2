@@ -18,10 +18,14 @@ import { PushNotificationsBridge } from "../src/components/PushNotificationsBrid
 import { ScreenErrorBoundary } from "../src/design/layout/error-boundary";
 import { clearCacheOnUserChange, createQueryClient } from "../src/lib/query-client";
 import { initSentry, wrapRoot } from "../src/lib/sentry";
+import { keepSplashUntilReady, useHideSplashWhen } from "../src/lib/splash";
 import { useSessionStore } from "../src/store/session";
 
 // Before anything renders. A no-op unless the build sets EXPO_PUBLIC_SENTRY_DSN.
 initSentry();
+// The native splash stays up until fonts, theme and the stored session are
+// settled (RootLayout below), instead of hiding on the first, still-blank frame.
+keepSplashUntilReady();
 
 const queryClient = createQueryClient();
 clearCacheOnUserChange(queryClient);
@@ -38,7 +42,10 @@ function RootLayout() {
   useEffect(() => {
     void applyStoredThemeMode().finally(() => setThemeApplied(true));
   }, []);
-  if ((!fontsLoaded && !fontError) || !themeApplied) return null;
+  const sessionSettled = useSessionStore((s) => s.status !== "idle" && s.status !== "restoring");
+  const shellReady = (fontsLoaded || Boolean(fontError)) && themeApplied;
+  useHideSplashWhen(shellReady && sessionSettled);
+  if (!shellReady) return null;
 
   return (
     // sonner-native's swipe-to-dismiss needs the gesture root at the top.
