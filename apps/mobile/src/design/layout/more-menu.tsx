@@ -6,7 +6,7 @@
  * md: padding dropped. v1's icon map here differs from nav-link's
  * (history → FileText) and is kept as v1 has it.
  */
-import type { NavIconName, NavItem, UserRole } from "@space/shared";
+import type { NavIconName, RoleNav, UserRole } from "@space/shared";
 import {
   Bell,
   Calendar,
@@ -33,6 +33,7 @@ import {
 } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
+import { moreItemsFor } from "../../lib/nav-routes";
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";
 import { shadowStyle } from "../lib/shadow";
@@ -83,12 +84,12 @@ export function MoreMenu({
 }: {
   role: UserRole;
   userName: string | null;
-  nav: { tabs: NavItem[]; sidebar: NavItem[] };
+  nav: RoleNav;
   onNavigate: (href: string) => void;
   onSignOut: () => void;
 }) {
-  const tabHrefs = new Set(nav.tabs.map((t) => t.href));
-  const items = nav.sidebar.filter((item) => !tabHrefs.has(item.href));
+  // The same list more-back.test.tsx walks: sidebar entries that are not a tab.
+  const items = moreItemsFor(nav);
   const name = userName?.trim() || null;
   return (
     <View className="flex-col gap-6">

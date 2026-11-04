@@ -19,13 +19,19 @@ iconWithClassName(ChevronLeft);
 
 export type BackTarget = { label: string; href?: Href };
 
+/**
+ * The plain back link of a pushed screen that can be opened from several
+ * places (More, Profile, a detail): Back to wherever that was.
+ */
+export const BACK_TO_PREVIOUS: BackTarget = { label: "Back" };
+
 /** `href` pushes that route; without one it goes back to wherever the screen was opened from. */
 export function BackLink({ label, href }: BackTarget) {
   const router = useRouter();
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`Back to ${label}`}
+      accessibilityLabel={label === BACK_TO_PREVIOUS.label ? label : `Back to ${label}`}
       hitSlop={4}
       onPress={() => (href ? router.push(href) : router.back())}
       className="-ml-1.5 min-h-[44px] flex-row items-center gap-0.5 self-start pr-2"

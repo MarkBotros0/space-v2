@@ -19,8 +19,9 @@ export const HOME_TAB = "dashboard";
  * no tab history, so "history" alone reports nothing to go back to and the
  * hardware button leaves the app. This adds the fallback: whatever GO_BACK the
  * tab router leaves unhandled (its history has one entry) jumps to Home
- * instead, unless Home is already focused. `canGoBack()` asks the router the
- * same question, so the Android back button follows it.
+ * instead, unless Home is already focused, with nothing behind Home: one more
+ * Back from there exits. `canGoBack()` asks the router the same question, so
+ * the Android back button follows it.
  */
 export const historyThenHomeTabsRouter: RouterOverride = (original) => ({
   getStateForAction(state, action, options) {
@@ -28,8 +29,13 @@ export const historyThenHomeTabsRouter: RouterOverride = (original) => ({
     if (action.type !== "GO_BACK" || isHandled(result)) return result;
     if (!state.routeNames.includes(HOME_TAB) || state.routes[state.index]?.name === HOME_TAB) return result;
     if (action.target && action.target !== state.key) return result;
+    // With "history", a jump APPENDS to the tab history ([X] → [X, Home]), so
+    // the next Back on Home would return to X and fall back here again: an
+    // endless loop with `canGoBack()` stuck true. Home replaces the spent
+    // history instead ([Home]), so the Back after it is unhandled and leaves the app.
+    const spent = { ...state, history: (state.history ?? []).filter((item) => item.type !== "route") };
     const jumpHome = { type: "JUMP_TO", payload: { name: HOME_TAB } };
-    return original.getStateForAction(state, jumpHome as typeof action, options);
+    return original.getStateForAction(spent, jumpHome as typeof action, options);
   },
 });
 

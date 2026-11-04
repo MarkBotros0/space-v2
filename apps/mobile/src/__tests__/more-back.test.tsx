@@ -87,6 +87,18 @@ describe("Back from a More destination returns to More (R19)", () => {
   });
 });
 
+/**
+ * On Home with nothing behind it, the hardware button must leave the app:
+ * `canGoBack()` (what useBackButton asks) is false, and a Back changes nothing.
+ */
+async function expectBackLeavesTheApp(result: Awaited<ReturnType<typeof renderRouter>>) {
+  expect(result.getPathname()).toBe("/dashboard");
+  expect(router.canGoBack()).toBe(false);
+  await act(() => router.back());
+  expect(result.getPathname()).toBe("/dashboard");
+  expect(router.canGoBack()).toBe(false);
+}
+
 describe("tab switches and Back (Android back between tabs)", () => {
   it("walks back through the tabs visited, then Home, then out", async () => {
     signIn("ADMIN");
@@ -117,6 +129,18 @@ describe("tab switches and Back (Android back between tabs)", () => {
     expect(router.canGoBack()).toBe(true);
     await act(() => router.back());
     expect(result.getPathname()).toBe("/dashboard");
+    await expectBackLeavesTheApp(result);
+  });
+
+  it("Today → Calendar, Back, Back: Home, then out of the app", async () => {
+    signIn("ADMIN");
+    const result = await renderRouter(appContext(), { initialUrl: "/dashboard" });
+    expect(await screen.findByText("screen:/dashboard")).toBeTruthy();
+
+    await act(() => router.navigate("/calendar"));
+    await act(() => router.back());
+    expect(result.getPathname()).toBe("/dashboard");
+    await expectBackLeavesTheApp(result);
   });
 
   it("a cold link to a tab goes Back to Home, not out of the app (R11)", async () => {
@@ -127,6 +151,8 @@ describe("tab switches and Back (Android back between tabs)", () => {
 
     await act(() => router.back());
     expect(result.getPathname()).toBe("/dashboard");
+    // The fallback to Home leaves nothing behind it: the next Back exits.
+    await expectBackLeavesTheApp(result);
   });
 
   it("a tab reached from a detail goes Back through the tabs, not to the popped detail", async () => {

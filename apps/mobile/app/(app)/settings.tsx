@@ -6,6 +6,7 @@ import { passwordSchema } from "@space/shared";
 
 import { NotificationPreferences } from "../../src/components/NotificationPreferences";
 import { PageHeader } from "../../src/design/layout/page-header";
+import { BACK_TO_PREVIOUS } from "../../src/design/layout/large-title";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { Section } from "../../src/design/settings/section";
 import { Button, FormField, Input, PasswordInput, toast } from "../../src/design/ui";
@@ -137,7 +138,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ShellFrame>
+    <ShellFrame back={BACK_TO_PREVIOUS}>
       <PageHeader title="Settings" description="Profile, password, and notification preferences." />
       <View className="flex-col gap-4">
         <Section icon={UserRound} title="Profile" description="Your name as it appears across JPC Space.">

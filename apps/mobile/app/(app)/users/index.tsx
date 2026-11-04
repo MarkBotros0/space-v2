@@ -5,6 +5,7 @@ import { BULK_INVITE_BATCH_SIZE, type BulkInviteResponse } from "@space/shared";
 
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { BACK_TO_PREVIOUS } from "../../../src/design/layout/large-title";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { UsersList } from "../../../src/design/users/users-list";
 import { Button, EmptyState, Input, toast } from "../../../src/design/ui";
@@ -80,7 +81,7 @@ export default function UsersScreen() {
     // by URL regardless — the screen guards itself (ruling C8's spirit;
     // the API behind it 403s anyway).
     return (
-      <ShellFrame>
+      <ShellFrame back={BACK_TO_PREVIOUS}>
         <EmptyState title="Users" description="Only SUPER accounts can manage users." />
       </ShellFrame>
     );
@@ -90,7 +91,7 @@ export default function UsersScreen() {
   const total = users$.data?.pages[0]?.total;
 
   return (
-    <ShellFrame refreshing={users$.isRefetching} onRefresh={() => void users$.refetch()}>
+    <ShellFrame back={BACK_TO_PREVIOUS} refreshing={users$.isRefetching} onRefresh={() => void users$.refetch()}>
       <View className="flex-col gap-4">
         <View className="flex-row items-start justify-between gap-4">
           <PageTitle

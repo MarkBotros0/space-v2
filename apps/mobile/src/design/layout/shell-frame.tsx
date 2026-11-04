@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { BackTarget } from "./large-title";
 import { Screen } from "./screen";
 
 /**
@@ -13,7 +14,8 @@ import { Screen } from "./screen";
  * dark:bg-transparent … pb-24` (app/<role>/layout.tsx); the tint ends 96px
  * below the content, so a short page shows the plain background under it.
  * `home` (the dashboard route only) puts the bell and the user menu at the
- * top of the content, ruling R13.
+ * top of the content, ruling R13. `back` is Screen's pinned back bar
+ * (ruling R16), for a pushed screen that has no back link of its own.
  */
 export function ShellFrame({
   children,
@@ -21,12 +23,14 @@ export function ShellFrame({
   refreshing = false,
   onRefresh,
   home = false,
+  back,
 }: {
   children: ReactNode;
   scroll?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
   home?: boolean;
+  back?: BackTarget;
 }) {
   return (
     <Screen
@@ -34,6 +38,7 @@ export function ShellFrame({
       refreshing={refreshing}
       onRefresh={onRefresh}
       home={home}
+      back={back}
       contentClassName="bg-brand-navy-50 dark:bg-background"
     >
       {children}

@@ -7,6 +7,7 @@ import type { JpcEventListItem } from "@space/shared";
 import { EMPTY_EVENT_VALUES, EventForm, VISIBILITY_LABELS } from "../../src/components/EventForm";
 import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { BACK_TO_PREVIOUS } from "../../src/design/layout/large-title";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { iconWithClassName } from "../../src/design/lib/icon";
 import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../src/design/ui";
@@ -137,7 +138,7 @@ export default function EventsScreen() {
 
   if (creating && isSuper) {
     return (
-      <ShellFrame>
+      <ShellFrame back={BACK_TO_PREVIOUS}>
         <NewEvent onDone={() => setCreating(false)} />
       </ShellFrame>
     );
@@ -189,7 +190,7 @@ export default function EventsScreen() {
     );
 
   return (
-    <ShellFrame refreshing={events.isRefetching} onRefresh={() => void events.refetch()}>
+    <ShellFrame back={BACK_TO_PREVIOUS} refreshing={events.isRefetching} onRefresh={() => void events.refetch()}>
       <View className="flex-col gap-4">
         <View className="flex-row items-start justify-between gap-4">
           <PageTitle

@@ -67,16 +67,24 @@ export type ScreenProps = {
 /**
  * The top safe-area inset with the offline strip under it, around a screen's
  * body. `Screen` uses it; a screen that renders its own list (a FlatList)
- * wraps the list in it so it gets the same top.
+ * wraps the list in it so it gets the same top, and passes `back` for the
+ * pinned back bar `Screen` would give it (ruling R16).
  */
-export function ScreenChrome({ children }: { children: ReactNode }) {
+export function ScreenChrome({ children, back }: { children: ReactNode; back?: BackTarget }) {
   const top = useContext(SafeAreaInsetsContext)?.top ?? 0;
   return (
     <View testID="screen" className="flex-1 bg-background" style={{ paddingTop: top }}>
       <OfflineBanner />
+      {back ? <PinnedBackBar back={back} /> : null}
       {children}
     </View>
   );
+}
+
+/** The back bar alone: no title to fade in, so its hairline stays hidden. */
+function PinnedBackBar({ back }: { back: BackTarget }) {
+  const progress = useSharedValue(0);
+  return <CompactHeader back={back} progress={progress} />;
 }
 
 export function Screen({

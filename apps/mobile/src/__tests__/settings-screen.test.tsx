@@ -11,8 +11,9 @@ jest.mock("../lib/token-storage", () => ({
   saveSession: jest.fn(),
 }));
 const mockReplace = jest.fn();
+const mockBack = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace, back: mockBack }),
 }));
 
 jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
@@ -56,6 +57,17 @@ beforeEach(() => {
   });
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   mockLoadRefreshToken.mockResolvedValue("stored-refresh");
+});
+
+describe("SettingsScreen back bar (Task 12 fix round 1)", () => {
+  it("pins a Back link that returns to wherever Settings was opened from", () => {
+    const { user, scopes } = sessionFor("STUDENT");
+    useSessionStore.getState().setSession(user, scopes);
+    renderWithProviders(<SettingsScreen />);
+    expect(screen.getByTestId("back-bar")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Back"));
+    expect(mockBack).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("SettingsScreen", () => {

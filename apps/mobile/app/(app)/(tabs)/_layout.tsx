@@ -23,9 +23,16 @@ export const ErrorBoundary = ScreenErrorBoundary;
  * tab seeded under a cold link to another tab. Without it the seeded tab is
  * whichever route sorts first in the route tree (it was More).
  * Expo Router 58 only goes *Back* to a non-stack anchor with
- * `backBehavior: "initialRoute"`, and says so in a dev warning; these tabs use
- * "history" and get Back-to-Home from historyThenHomeTabsRouter instead
- * (ruling R19, src/lib/tabs-back-router.ts), so that warning is expected.
+ * `backBehavior: "initialRoute"`; these tabs use "history" and get
+ * Back-to-Home from historyThenHomeTabsRouter instead (ruling R19,
+ * src/lib/tabs-back-router.ts).
+ *
+ * EXPECTED DEV WARNING — do not "fix" it: in __DEV__ expo-router logs once
+ * that this navigator "sets the anchor "dashboard", but its backBehavior is
+ * "history"". Switching to "initialRoute" silences it and breaks R19: Back
+ * from a More destination that is a tab route (a leader's My notes, an
+ * admin's Reports) would go Home instead of to More. more-back.test.tsx fails
+ * if that happens.
  */
 export const unstable_settings = { anchor: "dashboard" };
 
