@@ -16,7 +16,9 @@ type TestInstance = ReturnType<typeof screen.getByText>;
 
 function closestHostView(node: TestInstance): TestInstance {
   let current: TestInstance | null = node.parent;
-  while (current && current.type !== "View") {
+  // `type` is typed as React's ElementType, whose strings are DOM tag names
+  // only; a host component's type is its RN name ("View") at runtime.
+  while (current && (current.type as string) !== "View") {
     current = current.parent;
   }
   if (!current) {

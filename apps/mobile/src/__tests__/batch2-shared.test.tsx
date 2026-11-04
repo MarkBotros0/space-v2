@@ -119,13 +119,13 @@ describe("ProgressRing stroke colours", () => {
   it("draws a border-coloured track and a teal indicator by default", () => {
     const r = render(<ProgressRing value={50} />);
     const [track, indicator] = r.UNSAFE_getAllByType(Circle);
-    expect(track.props.stroke).toBe("#E5E7EB");
-    expect(indicator.props.stroke).toBe("#7DCED1");
+    expect(track?.props.stroke).toBe("#E5E7EB");
+    expect(indicator?.props.stroke).toBe("#7DCED1");
   });
 
   it("takes v1's indicator override as a stroke-<ramp>-<step> class", () => {
     const r = render(<ProgressRing value={80} indicatorClassName="stroke-error-500" />);
-    expect(r.UNSAFE_getAllByType(Circle)[1].props.stroke).toBe("#EF4444");
+    expect(r.UNSAFE_getAllByType(Circle)[1]?.props.stroke).toBe("#EF4444");
   });
 });
 
