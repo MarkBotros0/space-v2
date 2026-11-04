@@ -154,7 +154,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     fireEvent.press(await screen.findByText("Seasons"));
     fireEvent.press((await screen.findAllByText("Drop"))[0]!);
     expect(screen.getByText("Drop from Spring 2099?")).toBeTruthy();
-    fireEvent.changeText(screen.getByLabelText("Reason (optional)"), "Moved away");
+    fireEvent.changeText(screen.getByLabelText("Reason"), "Moved away");
     fireEvent.press(screen.getByText("Drop student"));
 
     await waitFor(() =>
