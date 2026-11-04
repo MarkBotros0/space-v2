@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { requireAuth } from "../../middleware/require-auth";
+import { addSeasonAdmin, listSeasonAdmins, removeSeasonAdmin } from "./admins";
 import {
   createSeasonAssignment,
   createSeasonGroup,
@@ -45,6 +46,11 @@ seasonsRouter.post("/:id/groups", requireAuth, createSeasonGroup);
 seasonsRouter.get("/:id/sessions", requireAuth, listSeasonSessions);
 seasonsRouter.get("/:id/assignments", requireAuth, listSeasonAssignments);
 seasonsRouter.post("/:id/assignments", requireAuth, createSeasonAssignment);
+
+// SUPER-only: who administers the season (owner decision — v1 had no write path).
+seasonsRouter.get("/:id/admins", requireAuth, listSeasonAdmins);
+seasonsRouter.post("/:id/admins", requireAuth, addSeasonAdmin);
+seasonsRouter.delete("/:id/admins/:userId", requireAuth, removeSeasonAdmin);
 
 seasonsRouter.get("/:id/roster", requireAuth, getSeasonRoster);
 seasonsRouter.put("/:id/group-assignments", requireAuth, saveGroupAssignments);

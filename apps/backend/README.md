@@ -20,6 +20,9 @@ All paths below are relative to the server root. Everything except
 | GET | `/api/v1/seasons/:id/groups` | |
 | GET | `/api/v1/seasons/:id/sessions` | |
 | GET | `/api/v1/seasons/:id/assignments` | |
+| GET | `/api/v1/seasons/:id/admins` | SUPER only. Not a port — v1 had no way to create `SeasonAdmin` rows. |
+| POST | `/api/v1/seasons/:id/admins` | SUPER only. `{ userId }`; ADMIN-role, active users only; idempotent. |
+| DELETE | `/api/v1/seasons/:id/admins/:userId` | SUPER only. Idempotent. Add and remove revoke the user's refresh tokens. |
 | GET | `/api/v1/groups/:id` | |
 | GET | `/api/v1/sessions/:id` | |
 | GET | `/api/v1/sessions/:id/attendance` | |

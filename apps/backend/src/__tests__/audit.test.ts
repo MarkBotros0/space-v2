@@ -12,4 +12,10 @@ describe("audit lines (spec 06 D15 — who did what to whom, never a field value
     expect(info).toHaveBeenCalledWith("[audit] student.delete actor=1 subject=2");
     info.mockRestore();
   });
+
+  it("appends a season scope id after the subject", () => {
+    expect(formatAuditLine("season.admin_add", 1, 7, { season: 4 })).toBe(
+      "[audit] season.admin_add actor=1 subject=7 season=4",
+    );
+  });
 });

@@ -65,8 +65,9 @@ export const userDetailSchema = userListItemSchema.extend({
   invite: inviteStateSchema.nullable(),
   /**
    * The (non-deleted) seasons this user administers. A role change away from
-   * ADMIN deletes these rows, and nothing in the app can recreate them, so
-   * the edit screen names them in its confirmation first.
+   * ADMIN deletes these rows, and only a SUPER re-adding them one season at a
+   * time (season detail → Admins) restores them, so the edit screen names
+   * them in its confirmation first.
    */
   adminSeasons: z.array(userAdminSeasonSchema),
 });

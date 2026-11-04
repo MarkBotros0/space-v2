@@ -21,12 +21,30 @@ export type AuditOperation =
   | "user.create"
   | "user.role_change"
   | "user.deactivate"
-  | "user.reactivate";
+  | "user.reactivate"
+  // Season admin grants (SUPER-only). The subject is the user; the season
+  // rides along as a scope id.
+  | "season.admin_add"
+  | "season.admin_remove";
 
-export function formatAuditLine(operation: AuditOperation, actorId: number, subjectId: number): string {
-  return `[audit] ${operation} actor=${actorId} subject=${subjectId}`;
+/** Extra ids that locate a change — ids only, like the rest of the line. */
+export type AuditScope = { season?: number };
+
+export function formatAuditLine(
+  operation: AuditOperation,
+  actorId: number,
+  subjectId: number,
+  scope: AuditScope = {},
+): string {
+  const extra = scope.season !== undefined ? ` season=${scope.season}` : "";
+  return `[audit] ${operation} actor=${actorId} subject=${subjectId}${extra}`;
 }
 
-export function auditLog(operation: AuditOperation, actorId: number, subjectId: number): void {
-  console.info(formatAuditLine(operation, actorId, subjectId));
+export function auditLog(
+  operation: AuditOperation,
+  actorId: number,
+  subjectId: number,
+  scope: AuditScope = {},
+): void {
+  console.info(formatAuditLine(operation, actorId, subjectId, scope));
 }
