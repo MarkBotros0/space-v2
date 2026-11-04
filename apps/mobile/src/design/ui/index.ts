@@ -26,6 +26,7 @@ export * from "./rich-text-editor";
 export * from "./rich-text-view";
 export * from "./search-field";
 export * from "./segmented-control";
+export * from "./sheet";
 export * from "./select";
 export * from "./separator";
 export * from "./skeleton";

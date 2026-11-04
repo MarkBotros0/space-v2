@@ -1,5 +1,5 @@
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Platform, type ScrollViewInstance, TextInput } from "react-native";
+import { Keyboard, type KeyboardEvent, type NativeScrollEvent, type NativeSyntheticEvent, Platform, type ScrollViewInstance, TextInput } from "react-native";
 
 /**
  * Space kept between the focused field and the top of the keyboard. Generous
@@ -11,6 +11,18 @@ import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Platform, 
 const FIELD_GAP = 96;
 /** Retries after the keyboard opens: the padding below lands a layout pass or two later. */
 const RETRY_MS = [0, 150, 400];
+
+/** Subscribes to the platform's keyboard show/hide events; returns the unsubscribe. */
+function subscribeKeyboard(onShow: (e: KeyboardEvent) => void, onHide: () => void): () => void {
+  const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+  const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+  const show = Keyboard.addListener(showEvent, onShow);
+  const hide = Keyboard.addListener(hideEvent, onHide);
+  return () => {
+    show.remove();
+    hide.remove();
+  };
+}
 
 type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: number) => void) => void };
 
@@ -57,23 +69,22 @@ export function useKeyboardInset(): {
   }, []);
 
   useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     let timers: ReturnType<typeof setTimeout>[] = [];
-    const show = Keyboard.addListener(showEvent, (e) => {
-      keyboardTop.current = e.endCoordinates.screenY;
-      setInset(e.endCoordinates.height);
-      timers.forEach(clearTimeout);
-      timers = RETRY_MS.map((ms) => setTimeout(ensureVisible, ms));
-    });
-    const hide = Keyboard.addListener(hideEvent, () => {
-      keyboardTop.current = null;
-      setInset(0);
-    });
+    const unsubscribe = subscribeKeyboard(
+      (e) => {
+        keyboardTop.current = e.endCoordinates.screenY;
+        setInset(e.endCoordinates.height);
+        timers.forEach(clearTimeout);
+        timers = RETRY_MS.map((ms) => setTimeout(ensureVisible, ms));
+      },
+      () => {
+        keyboardTop.current = null;
+        setInset(0);
+      },
+    );
     return () => {
       timers.forEach(clearTimeout);
-      show.remove();
-      hide.remove();
+      unsubscribe();
     };
   }, [ensureVisible]);
 
@@ -99,15 +110,6 @@ export function useKeyboardInset(): {
  */
 export function useKeyboardHeight(): number {
   const [height, setHeight] = useState(0);
-  useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const show = Keyboard.addListener(showEvent, (e) => setHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener(hideEvent, () => setHeight(0));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
+  useEffect(() => subscribeKeyboard((e) => setHeight(e.endCoordinates.height), () => setHeight(0)), []);
   return height;
 }

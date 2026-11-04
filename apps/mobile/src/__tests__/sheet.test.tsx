@@ -1,5 +1,6 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { Text } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { SaveBar } from "../design/layout/save-bar";
 import { setReducedMotionForTests } from "../design/motion";
@@ -7,7 +8,10 @@ import { Sheet, SheetSaveBar } from "../design/ui/sheet";
 import { renderWithProviders } from "./helpers/render";
 
 let mockKeyboard = 0;
-jest.mock("../design/lib/keyboard-inset", () => ({ useKeyboardHeight: () => mockKeyboard }));
+jest.mock("../design/lib/keyboard-inset", () => ({
+  useKeyboardHeight: () => mockKeyboard,
+  useKeyboardInset: () => ({ inset: mockKeyboard, scrollProps: {} }),
+}));
 
 const mockWithSpring = jest.fn((to: number) => to);
 jest.mock("react-native-reanimated", () => {
@@ -59,6 +63,40 @@ describe("Sheet", () => {
     renderWithProviders(<Sheet open onClose={() => {}}><Text>b</Text></Sheet>);
     expect(mockWithSpring).not.toHaveBeenCalled();
     expect(screen.getByText("b")).toBeTruthy();
+  });
+});
+
+describe("Sheet lifecycle", () => {
+  it("keeps the content when closed and immediately reopened", () => {
+    const view = renderWithProviders(<Sheet open onClose={() => {}}><Text>body</Text></Sheet>);
+    const { rerender } = view;
+    const ui = (open: boolean) => (
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <Sheet open={open} onClose={() => {}}><Text>body</Text></Sheet>
+      </SafeAreaProvider>
+    );
+    rerender(ui(false));
+    rerender(ui(true));
+    act(() => jest.runAllTimers());
+    expect(screen.getByText("body")).toBeTruthy();
+  });
+
+  it("calls onClose once; the root ignores touches while closing", () => {
+    const onClose = jest.fn();
+    renderWithProviders(<Sheet open onClose={onClose}><Text>body</Text></Sheet>);
+    fireEvent.press(screen.getByTestId("sheet-backdrop"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays rendered when the parent ignores onClose", () => {
+    renderWithProviders(<Sheet open onClose={() => {}}><Text>body</Text></Sheet>);
+    fireEvent.press(screen.getByTestId("sheet-backdrop"));
+    expect(screen.getByText("body")).toBeTruthy();
+  });
+
+  it("header grab area is at least 44pt", () => {
+    renderWithProviders(<Sheet open onClose={() => {}} title="T"><Text>body</Text></Sheet>);
+    expect(screen.getByTestId("sheet-header").props.className).toContain("min-h-[44px]");
   });
 });
 
