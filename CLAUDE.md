@@ -118,6 +118,14 @@ client together under the proxy's IP. `MOBILE_APP_ORIGIN` — CORS origin
 allowed to call the API; default `"*"` (matches the app this backend was
 ported from).
 
+**Sentry is opt-in on both sides.** It stays off until `SENTRY_DSN` (backend)
+or `EXPO_PUBLIC_SENTRY_DSN` (mobile, read only in `src/lib/app-config.ts`) is
+set. Report through `reportError` in each app's `lib/sentry.ts`, never
+`Sentry.*` directly, so the off state stays a no-op. `src/instrument.ts` must
+stay the first import of both backend entrypoints. Never put an email or a
+name into an event. Setup steps are in `apps/backend/README.md` under
+"Turning on Sentry".
+
 ## API surface
 
 `apps/backend` now serves all of v1's `/api/v1` — every route file v1 had
