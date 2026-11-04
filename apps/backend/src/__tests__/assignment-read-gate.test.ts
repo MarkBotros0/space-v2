@@ -6,6 +6,9 @@ const mockDb = {
   seasonEnrollment: { findUnique: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
+// requireAuth's Plan 18 M13 check reads User.sessionsValidFrom; no session
+// has been invalidated in this suite.
+jest.mock("../lib/auth/session-validity", () => ({ isAccessTokenInvalidated: async () => false }));
 const mockLoad = jest.fn();
 jest.mock("../lib/queries/assignments", () => ({
   ...jest.requireActual("../lib/queries/assignments"),

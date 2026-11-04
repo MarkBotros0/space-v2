@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
+import { invalidateSessions } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { parseId } from "../../lib/parse-id";
 import { isSuper } from "../../lib/rbac";
@@ -91,6 +92,7 @@ export async function deleteStudent(req: Request, res: Response) {
     if (marked.count === 0) return false;
     await tx.studentProfile.updateMany({ where: { userId: id }, data: { deletedAt } });
     await revokeAllRefreshTokensForUser(tx, id);
+    await invalidateSessions(tx, id); // Plan 18 M13: live access tokens end too
     return true;
   });
   if (!deleted) return apiError(res, "not_found", "Student not found.", 404);

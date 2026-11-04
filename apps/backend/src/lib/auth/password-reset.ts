@@ -6,6 +6,7 @@ import { PASSWORD_RESET_TTL_MINUTES } from "../../../../../packages/shared/src/i
 
 import { db } from "../../db/client";
 import { isEmailConfigured, sendPasswordResetEmail } from "../email";
+import { invalidateSessions } from "./session-validity";
 import { hashToken, revokeAllRefreshTokensForUser } from "./tokens";
 import { findUserByEmail } from "./find-user-by-email";
 
@@ -119,6 +120,7 @@ export async function completePasswordReset(rawToken: string, password: string):
       data: { expiresAt: now },
     });
     await revokeAllRefreshTokensForUser(tx, record.userId);
+    await invalidateSessions(tx, record.userId, now); // Plan 18 M13
     return true;
   });
   return consumed ? "ok" : "invalid";

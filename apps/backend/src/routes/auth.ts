@@ -18,6 +18,7 @@ import {
 import { db } from "../db/client";
 import { verifyCredentials } from "../lib/auth/credentials";
 import { completePasswordReset, requestPasswordReset } from "../lib/auth/password-reset";
+import { invalidateSessions } from "../lib/auth/session-validity";
 import {
   hashToken,
   issueSession,
@@ -155,7 +156,12 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
 // (spec 18 D1). Authenticated: "everything of mine" needs a proven "me".
 authRouter.post("/logout-all", requireAuth, async (req, res) => {
   const user = requireUser(req);
-  const revoked = await revokeAllRefreshTokensForUser(db, user.userId);
+  // Plan 18 M13: the access tokens end with the refresh tokens, so a lost
+  // phone loses access now, not within 900s.
+  const revoked = await db.$transaction(async (tx) => {
+    await invalidateSessions(tx, user.userId);
+    return revokeAllRefreshTokensForUser(tx, user.userId);
+  });
   return apiOk(res, { revoked });
 });
 

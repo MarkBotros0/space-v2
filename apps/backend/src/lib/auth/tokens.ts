@@ -49,7 +49,14 @@ export async function signAccessToken(
   return { token, expiresIn: ACCESS_TTL_SECONDS };
 }
 
-export async function verifyAccessToken(token: string): Promise<SessionUser | null> {
+/** A verified access token: its claims plus its `iat`, in seconds. */
+export type VerifiedAccess = SessionUser & { issuedAt: number };
+
+/**
+ * Signature, audience and expiry only. Whether the user has since invalidated
+ * their sessions (Plan 18 M13) is requireAuth's check, which needs `issuedAt`.
+ */
+export async function verifyAccessToken(token: string): Promise<VerifiedAccess | null> {
   try {
     const { payload } = await jwtVerify(token, secret(), { audience: AUDIENCE });
     const userId = Number(payload.sub);
@@ -61,6 +68,8 @@ export async function verifyAccessToken(token: string): Promise<SessionUser | nu
       groupLeaderIds: (payload.groupLeaderIds as number[] | undefined) ?? [],
       activeSeasonId: (payload.activeSeasonId as number | null | undefined) ?? null,
       graduationYear: (payload.graduationYear as number | null | undefined) ?? null,
+      // signAccessToken always sets iat; a token without one counts as oldest.
+      issuedAt: typeof payload.iat === "number" ? payload.iat : 0,
     };
   } catch {
     return null;
@@ -136,9 +145,11 @@ export async function revokeRefreshToken(rawToken: string): Promise<void> {
  * Revoke every live refresh token a user holds. C7's note — "a role change
  * does not revoke a live token; the mitigation is TTL" — stops being a
  * mitigation and becomes a revocation here: role change, deactivation,
- * password change and logout-all all call this in (or right after) the write
- * that changes the user's authority. `exceptTokenHash` spares the caller's
- * own session (password change only).
+ * password change and reset, and logout-all all call this in (or right after)
+ * the write that changes the user's authority, together with
+ * invalidateSessions (session-validity.ts), which ends the access tokens too
+ * (Plan 18 M13). `exceptTokenHash` spares the caller's own refresh token
+ * (password change only).
  *
  * Accepts any client exposing `refreshToken` so it runs inside a
  * db.$transaction as well as standalone.

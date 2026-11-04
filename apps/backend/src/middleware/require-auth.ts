@@ -2,11 +2,17 @@ import type { NextFunction, Request, Response } from "express";
 
 import { apiError } from "../lib/api-response";
 import { UnauthorizedError } from "../lib/auth/errors";
+import { isAccessTokenInvalidated } from "../lib/auth/session-validity";
 import { verifyAccessToken, type SessionUser } from "../lib/auth/tokens";
 
 const UNAUTHORIZED_MESSAGE = "Missing or invalid access token.";
 
-/** Resolve the SessionUser from a Bearer access token onto req.user, or 401. */
+/**
+ * Resolve the SessionUser from a Bearer access token onto req.user, or 401.
+ * A token issued before the user's `sessionsValidFrom` (Plan 18 M13) is
+ * refused with the same 401 as an expired one, so the client refreshes —
+ * which works only if its refresh token survived — or signs out.
+ */
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const header = req.get("authorization");
   if (!header?.startsWith("Bearer ")) {
@@ -20,8 +26,14 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  const user = await verifyAccessToken(token);
-  if (!user) {
+  const verified = await verifyAccessToken(token);
+  if (!verified) {
+    apiError(res, "unauthorized", UNAUTHORIZED_MESSAGE, 401);
+    return;
+  }
+
+  const { issuedAt, ...user } = verified;
+  if (await isAccessTokenInvalidated(user.userId, issuedAt)) {
     apiError(res, "unauthorized", UNAUTHORIZED_MESSAGE, 401);
     return;
   }

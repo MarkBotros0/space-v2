@@ -14,6 +14,7 @@ import {
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { expireLiveResetTokens } from "../lib/auth/password-reset";
+import { invalidateSessions } from "../lib/auth/session-validity";
 import { hashToken, revokeAllRefreshTokensForUser } from "../lib/auth/tokens";
 import { parseId } from "../lib/parse-id";
 import { staffScopeForSeason } from "../lib/permissions";
@@ -134,11 +135,17 @@ meRouter.post("/password", requireAuth, passwordLimiter, async (req, res) => {
 
   // Spec 18 D1: the change and the eviction are one transaction. Every other
   // session dies; the presented refresh token (this device) survives.
+  //
+  // Plan 18 M13: every access token issued before now dies too, this
+  // device's included — access tokens carry no session id to spare one by.
+  // This device's next request gets a 401 and its client refreshes with the
+  // surviving refresh token, as it does after an expiry.
   const sessionsRevoked = await db.$transaction(async (tx) => {
     await tx.user.update({ where: { id: user.userId }, data: { passwordHash: newHash } });
     // Spec 18 R29 / spec 11 D6: an outstanding reset link must not outlive
     // the password it was meant to replace.
     await expireLiveResetTokens(tx, user.userId);
+    await invalidateSessions(tx, user.userId);
     return revokeAllRefreshTokensForUser(tx, user.userId, exceptHash);
   });
 

@@ -144,5 +144,8 @@ describe("completePasswordReset", () => {
     expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: 7, revokedAt: null } }),
     );
+    // Plan 18 M13: live access tokens end too, stamped with the reset's instant.
+    const stamp = mockDb.user.update.mock.calls.find(([a]) => "sessionsValidFrom" in a.data);
+    expect(stamp?.[0]).toEqual({ where: { id: 7 }, data: { sessionsValidFrom: expect.any(Date) }, select: { id: true } });
   });
 });

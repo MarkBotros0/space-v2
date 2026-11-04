@@ -16,6 +16,13 @@ const mockDb = {
 const mockIsEmailConfigured = jest.fn();
 const mockSendInviteEmail = jest.fn();
 jest.mock("../db/client", () => ({ db: mockDb }));
+// requireAuth's Plan 18 M13 check is mocked out so it never consumes one of
+// the user.findUnique values queued below; invalidateSessions is observed.
+const mockInvalidateSessions = jest.fn();
+jest.mock("../lib/auth/session-validity", () => ({
+  isAccessTokenInvalidated: async () => false,
+  invalidateSessions: (...a: unknown[]) => mockInvalidateSessions(...a),
+}));
 jest.mock("../lib/email", () => ({
   isEmailConfigured: () => mockIsEmailConfigured(),
   sendInviteEmail: (...a: unknown[]) => mockSendInviteEmail(...a),
@@ -169,6 +176,9 @@ describe("account changes leave an audit line", () => {
     expect(res.status).toBe(200);
     expect(mockDb.seasonAdmin.deleteMany).toHaveBeenCalledWith({ where: { userId: 7 } });
     expect(info).toHaveBeenCalledWith("[audit] user.role_change actor=1 subject=7");
+    // Plan 18 M13: the demoted user's live access tokens end now, in the
+    // same transaction as the refresh revocation.
+    expect(mockInvalidateSessions).toHaveBeenCalledWith(mockDb, 7);
   });
 
   it("no line for a rename alone", async () => {
@@ -177,6 +187,7 @@ describe("account changes leave an audit line", () => {
       .mockResolvedValue(listRow);
     await request(app).patch("/api/v1/users/7").set(auth()).send({ name: "Pat B", role: "ADMIN", graduationYear: 2015 });
     expect(info).not.toHaveBeenCalled();
+    expect(mockInvalidateSessions).not.toHaveBeenCalled();
   });
 
   it("deactivate and reactivate", async () => {
@@ -185,6 +196,9 @@ describe("account changes leave an audit line", () => {
     expect((await request(app).post("/api/v1/users/7/reactivate").set(auth())).status).toBe(200);
     expect(info).toHaveBeenCalledWith("[audit] user.deactivate actor=1 subject=7");
     expect(info).toHaveBeenCalledWith("[audit] user.reactivate actor=1 subject=7");
+    // Deactivation ends live access tokens (Plan 18 M13); reactivation does not need to.
+    expect(mockInvalidateSessions).toHaveBeenCalledTimes(1);
+    expect(mockInvalidateSessions).toHaveBeenCalledWith(mockDb, 7);
   });
 });
 

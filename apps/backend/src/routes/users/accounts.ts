@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
+import { invalidateSessions } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { findExistingByEmail } from "../../lib/imports/students/validation";
 import { deliverInvite, issueInvite } from "../../lib/invites";
@@ -113,8 +114,10 @@ export async function updateUser(req: Request, res: Response) {
 
     if (roleChanged) {
       // C7 made real: the claims baked into live tokens cannot outlive the
-      // change. Access tokens die within 900s; the refresh path dies now.
+      // change. The refresh path dies now, and so do the access tokens
+      // (Plan 18 M13) instead of within their 900s TTL.
       await revokeAllRefreshTokensForUser(tx, id);
+      await invalidateSessions(tx, id);
     }
 
     return { fail: null, roleChanged };
@@ -158,7 +161,9 @@ export async function deactivateUser(req: Request, res: Response) {
     }
     await tx.user.update({ where: { id }, data: { deletedAt } });
     // D6: deactivation revokes — v1 left the refresh path live for 30 days.
+    // Live access tokens end too (Plan 18 M13).
     await revokeAllRefreshTokensForUser(tx, id);
+    await invalidateSessions(tx, id);
     return "ok" as const;
   });
 

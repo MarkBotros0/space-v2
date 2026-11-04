@@ -3,6 +3,9 @@ const mockDb = {
   deviceToken: { upsert: jest.fn(), deleteMany: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
+// requireAuth's Plan 18 M13 check reads User.sessionsValidFrom; no session
+// has been invalidated in this suite.
+jest.mock("../lib/auth/session-validity", () => ({ isAccessTokenInvalidated: async () => false }));
 
 import request from "supertest";
 
