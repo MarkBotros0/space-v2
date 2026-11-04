@@ -2,7 +2,12 @@ import { fireEvent, screen } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
+const mockSetParams = jest.fn();
+let mockParams: Record<string, string> = {};
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush, setParams: mockSetParams }),
+  useLocalSearchParams: () => mockParams,
+}));
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
@@ -23,6 +28,7 @@ function queueItem(publicId: string, title: string, isLate = false) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = {};
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
 });
@@ -50,6 +56,34 @@ it("lists every reviewable submission (v1, B3-8) and loads the next page from th
   // Last page: the button goes away.
   expect(screen.queryByText("Load more")).toBeNull();
   expect(screen.getByText("2 pending review · 5 total")).toBeTruthy();
+});
+
+it("narrows to the dashboard's season when opened with one, and says so", async () => {
+  mockParams = { seasonId: "7" };
+  get.mockResolvedValue({
+    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 1, total: 1, late: 0 }, nextCursor: null } },
+  });
+
+  renderWithProviders(<SubmissionsScreen />);
+
+  expect(await screen.findByText("Essay one")).toBeTruthy();
+  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=false&limit=25&seasonId=7");
+  expect(screen.getByText("Current season only")).toBeTruthy();
+  fireEvent.press(screen.getByText("Show all seasons"));
+  expect(mockSetParams).toHaveBeenCalledWith({ seasonId: undefined });
+});
+
+it("ignores a malformed season param and shows every season", async () => {
+  mockParams = { seasonId: "abc" };
+  get.mockResolvedValue({
+    data: { data: { items: [], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
+  });
+
+  renderWithProviders(<SubmissionsScreen />);
+
+  expect(await screen.findByText("No submissions yet")).toBeTruthy();
+  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=false&limit=25");
+  expect(screen.queryByText("Show all seasons")).toBeNull();
 });
 
 it("labels a late hand-in from the contract flag", async () => {

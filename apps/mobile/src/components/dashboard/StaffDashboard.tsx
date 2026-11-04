@@ -45,7 +45,6 @@ function StaffSummary({
 }) {
   const isAdmin = variant === "ADMIN";
   const studentsHref = isAdmin ? "/students" : "/groups";
-  const assignmentsHref = isAdmin ? "/assignments" : "/submissions";
   const router = useRouter();
   const { progress, cohort, submissions, quizzes } = data;
   const mean = cohort.meanAttendancePct;
@@ -169,7 +168,14 @@ function StaffSummary({
       <SectionCard
         icon={ClipboardList}
         title="Assignments"
-        onViewAll={() => router.push(assignmentsHref)}
+        onViewAll={() =>
+          // The figures below count this season only, so the leader's queue
+          // opens on the same season — otherwise "3 pending" lands on a
+          // cross-season list showing a different number.
+          isAdmin
+            ? router.push("/assignments")
+            : router.push({ pathname: "/submissions", params: { seasonId: String(data.season.id) } })
+        }
       >
         <FigurePair
           items={[
