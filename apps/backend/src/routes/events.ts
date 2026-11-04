@@ -10,10 +10,17 @@ import {
   orgWallTime,
 } from "../lib/org-time";
 import { parseId } from "../lib/parse-id";
-import { eventVisibilityFilter, eventWindowFilter } from "../lib/queries/events";
+import {
+  EVENT_PAGE_ORDER,
+  encodeEventCursor,
+  eventCursorFilter,
+  eventVisibilityFilter,
+  eventWindowFilter,
+} from "../lib/queries/events";
 import { isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
+  EVENT_PAGE_SIZE,
   createJpcEventRequestSchema,
   eventListQuerySchema,
   mergedEventSchema,
@@ -97,7 +104,7 @@ eventsRouter.get("/", async (req, res) => {
   const user = requireUser(req);
   const parsed = eventListQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { from: fromRaw, to: toRaw, upcoming, limit } = parsed.data;
+  const { from: fromRaw, to: toRaw, upcoming, limit, paged, pageSize, cursor } = parsed.data;
 
   // v1 parity (audit 2026-cutover, v1-parity-classification 15-events R57
   // REVERT): with no from/to, every visible event, ordered by date — v1's
@@ -113,6 +120,27 @@ eventsRouter.get("/", async (req, res) => {
       : null;
 
   const where = { AND: [await eventVisibilityFilter(user), eventWindowFilter(from, to)] };
+
+  if (paged) {
+    // Owner decision: the SUPER list pages, newest first. Opt-in — the
+    // calendars read the unpaged form below and need every event.
+    const size = pageSize ?? EVENT_PAGE_SIZE;
+    const [pageRows, total] = await Promise.all([
+      db.jpcEvent.findMany({
+        where: cursor ? { AND: [where, eventCursorFilter(cursor)] } : where,
+        orderBy: EVENT_PAGE_ORDER,
+        take: size + 1,
+        select: LIST_SELECT,
+      }),
+      // The window's total, not the remainder after the cursor.
+      db.jpcEvent.count({ where }),
+    ]);
+    const page = pageRows.slice(0, size);
+    const last = page[page.length - 1];
+    const nextCursor = pageRows.length > size && last ? encodeEventCursor(last) : null;
+    return apiOk(res, { events: page.map(toListItem), total, nextCursor });
+  }
+
   const [rows, total] = await Promise.all([
     db.jpcEvent.findMany({
       where,

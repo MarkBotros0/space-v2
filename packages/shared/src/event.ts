@@ -122,6 +122,18 @@ export type UpdateJpcEventBody = z.output<typeof updateJpcEventRequestSchema>;
 /** The PATCH handler parses `{ ...storedAsWallClock, ...patch }` with this. */
 export const mergedEventSchema = eventWriteBase.superRefine(refineEvent);
 
+/** Default page size for `GET /events?paged=true`. */
+export const EVENT_PAGE_SIZE = 25;
+
+/**
+ * The paged list's cursor: `<date epoch ms>_<id>` of the last row served.
+ * Events are ordered by date, not id, so an id alone cannot say where the next
+ * page starts — and a keyset carrying the date stays valid when the row it
+ * names is deleted between pages (an id-only Prisma cursor would come back
+ * empty). Opaque to the client: it only ever echoes `nextCursor` back.
+ */
+export const eventCursorSchema = z.string().regex(/^\d{1,15}_\d{1,10}$/, "Invalid cursor.");
+
 /**
  * The window bounds stored instants and carries no day semantics, so instants
  * are right here. Omitted, that side of the window is open: with neither, every
@@ -143,10 +155,32 @@ export const eventListQuerySchema = z
       .transform((v) => v === "true"),
     /** Cap on `events` (spec 19 §7: 1–20). `total` is counted before it. */
     limit: z.coerce.number().int().min(1).max(20).optional(),
+    /**
+     * Owner decision (2026-11): `paged=true` switches to cursor paging, newest
+     * first — the SUPER events list. Opt-in, because the calendars need every
+     * event in date order and read the unpaged form. Combines with
+     * `from`/`to`/`upcoming`; not with `limit`, which is the unpaged cap.
+     */
+    paged: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((v) => v === "true"),
+    /** Page size when paged (default {@link EVENT_PAGE_SIZE}). */
+    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+    /** The previous page's `nextCursor`, echoed back verbatim. */
+    cursor: eventCursorSchema.optional(),
   })
   .refine((q) => !(q.upcoming && q.from !== undefined), {
     message: "Use either upcoming or from, not both.",
     path: ["from"],
+  })
+  .refine((q) => q.paged || (q.cursor === undefined && q.pageSize === undefined), {
+    message: "cursor and pageSize need paged=true.",
+    path: ["paged"],
+  })
+  .refine((q) => !(q.paged && q.limit !== undefined), {
+    message: "Use pageSize, not limit, with paged=true.",
+    path: ["limit"],
   });
 export type EventListQuery = z.output<typeof eventListQuerySchema>;
 
@@ -160,5 +194,14 @@ export const jpcEventListResponseSchema = z.object({
   total: z.number().int().min(0),
 });
 export type JpcEventListResponse = z.infer<typeof jpcEventListResponseSchema>;
+
+/**
+ * `GET /events?paged=true`: newest first. `total` counts every visible event
+ * in the window (not just this page); `nextCursor` is null on the last page.
+ */
+export const jpcEventPageResponseSchema = jpcEventListResponseSchema.extend({
+  nextCursor: eventCursorSchema.nullable(),
+});
+export type JpcEventPageResponse = z.infer<typeof jpcEventPageResponseSchema>;
 
 export const deleteJpcEventResponseSchema = z.object({ deleted: z.literal(true) });

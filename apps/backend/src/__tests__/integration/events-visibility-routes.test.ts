@@ -182,6 +182,29 @@ describe("GET /api/v1/events — visibility derived from the token", () => {
     }
   });
 
+  it("pages with paged=true, newest first, and the pages add up to the unpaged window", async () => {
+    const auth = { authorization: `Bearer ${superToken}` };
+    const full = await request(app).get(`/api/v1/events${WINDOW}`).set(auth);
+    const fullIds = (full.body.data.events as { id: number }[]).map((e) => e.id);
+    expect(fullIds.length).toBeGreaterThan(2);
+
+    // Walk the window two at a time; the cursor is echoed back verbatim.
+    const paged: number[] = [];
+    let cursor: string | null = null;
+    do {
+      const qs: string = `${WINDOW}&paged=true&pageSize=2${cursor ? `&cursor=${cursor}` : ""}`;
+      const res = await request(app).get(`/api/v1/events${qs}`).set(auth);
+      expect(res.status).toBe(200);
+      expect(res.body.data.total).toBe(fullIds.length);
+      expect(res.body.data.events.length).toBeLessThanOrEqual(2);
+      paged.push(...(res.body.data.events as { id: number }[]).map((e) => e.id));
+      cursor = res.body.data.nextCursor as string | null;
+    } while (cursor !== null);
+
+    // Same rows, opposite order: the unpaged read is date ascending.
+    expect(paged).toEqual([...fullIds].reverse());
+  });
+
   it("derives allDay, dayKey and time server-side, in the org zone", async () => {
     const midnight = await db.jpcEvent.create({
       data: {
