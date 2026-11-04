@@ -52,7 +52,12 @@ export function activeTabRoute(current: string | undefined, tabRoutes: string[])
   return tabRoutes.find((t) => t.split("/")[0] === parent) ?? null;
 }
 
-export function FloatingTabBar({ items, state, navigation }: BottomTabBarProps & { items: NavItem[] }) {
+/**
+ * Expo Router 58's tab bar gets `navigateToTab(routeKey)` instead of a
+ * navigation object, so a tab's route name is looked up in the navigator
+ * state for its key.
+ */
+export function FloatingTabBar({ items, state, navigateToTab }: BottomTabBarProps & { items: NavItem[] }) {
   const insets = useSafeAreaInsets();
   const shown = items.slice(0, 5);
   const active = activeTabRoute(state.routes[state.index]?.name, shown.map((i) => routeNameForHref(i.href)));
@@ -78,7 +83,10 @@ export function FloatingTabBar({ items, state, navigation }: BottomTabBarProps &
               icon={item.icon}
               featured={item.icon === "home"}
               active={active === name}
-              onPress={() => navigation.navigate(name as never)}
+              onPress={() => {
+                const key = state.routes.find((r) => r.name === name)?.key;
+                if (key) navigateToTab(key);
+              }}
             />
           );
         })}

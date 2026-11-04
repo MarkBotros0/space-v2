@@ -13,18 +13,23 @@ const items: NavItem[] = [
   { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
-function renderBar(activeRoute = "dashboard", navigate = jest.fn()) {
+const TAB_ROUTES = ["calendar", "assignments", "dashboard", "history", "profile", "settings"];
+
+function renderBar(activeRoute = "dashboard", navigateToTab = jest.fn()) {
+  // Every tab is a route in the navigator state, keyed `<name>-key`; the
+  // focused one is `activeRoute` (a detail route when it is not a tab).
+  const names = TAB_ROUTES.includes(activeRoute) ? TAB_ROUTES : [...TAB_ROUTES, activeRoute];
   const state = {
-    index: 0,
-    routes: [{ key: activeRoute, name: activeRoute }],
+    index: names.indexOf(activeRoute),
+    routes: names.map((name) => ({ key: `${name}-key`, name })),
   };
   render(
     <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 375, height: 812 }, insets: { top: 0, left: 0, right: 0, bottom: 34 } }}>
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <FloatingTabBar items={items} state={state as any} navigation={{ navigate } as any} descriptors={{} as any} insets={{ top: 0, left: 0, right: 0, bottom: 34 }} />
+      <FloatingTabBar items={items} state={state} navigateToTab={navigateToTab} emitter={{} as any} descriptors={{} as any} insets={{ top: 0, left: 0, right: 0, bottom: 34 }} />
     </SafeAreaProvider>,
   );
-  return navigate;
+  return navigateToTab;
 }
 
 it("shows at most five tabs, like v1 tabItems.slice(0, 5)", () => {
@@ -39,10 +44,10 @@ it("marks the current route as selected", () => {
   expect(screen.getByLabelText("Home").props.accessibilityState).toMatchObject({ selected: false });
 });
 
-it("navigates to the tab's route name on press", () => {
-  const navigate = renderBar();
+it("navigates to the tab's route on press", () => {
+  const navigateToTab = renderBar();
   fireEvent.press(screen.getByLabelText("Calendar"));
-  expect(navigate).toHaveBeenCalledWith("calendar");
+  expect(navigateToTab).toHaveBeenCalledWith("calendar-key");
 });
 
 it("labels stay one line however long they are", () => {
