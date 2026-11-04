@@ -5,9 +5,16 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
 }));
 const mockReplace = jest.fn();
+const mockBack = jest.fn();
+let mockCanGoBack = false;
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: jest.fn() }),
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: mockReplace,
+    back: mockBack,
+    canGoBack: () => mockCanGoBack,
+  }),
   useLocalSearchParams: () => mockParams,
 }));
 import { apiClient } from "../lib/api-client";
@@ -294,6 +301,20 @@ describe("EditAssignmentScreen", () => {
   beforeEach(() => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { id: "55" };
+    mockCanGoBack = false;
+  });
+
+  it("goes back to the detail it was opened from instead of stacking a second copy", async () => {
+    mockCanGoBack = true;
+    serve({ "/api/v1/assignments/55": detail, "/api/v1/assignments/55/tracker": tracker });
+    patch.mockResolvedValue({ data: { data: { ...detail, title: "Essay two" } } });
+    renderWithProviders(<EditAssignmentScreen />);
+
+    fireEvent.changeText(await screen.findByDisplayValue("Essay one"), "Essay two");
+    fireEvent.press(screen.getByText("Save changes"));
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it("pre-fills from the server's org fields and PATCHes the whole assignment (R67)", async () => {
@@ -320,6 +341,7 @@ describe("EditAssignmentScreen", () => {
         groupIds: [3],
       }),
     );
+    // Opened cold (canGoBack false): nothing to go back to, so the detail replaces it.
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith({
         pathname: "/assignment/[id]",
