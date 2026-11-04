@@ -1,12 +1,22 @@
-import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type UseInfiniteQueryResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   deleteJpcEventResponseSchema,
   jpcEventDetailSchema,
   jpcEventListResponseSchema,
+  jpcEventPageResponseSchema,
   type CreateJpcEventBody,
   type JpcEventDetail,
   type JpcEventListItem,
   type JpcEventListResponse,
+  type JpcEventPageResponse,
   type UpdateJpcEventBody,
 } from "@space/shared";
 
@@ -14,12 +24,12 @@ import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
 /**
- * No `from`/`to` from the client.
+ * The calendars' read: every visible event, date ascending, unpaged.
  *
- * The server defaults the window to [now − 30d, now + 365d]. Deriving calendar
- * bounds on the device would put a wall-clock decision on the wrong side of
- * ruling C2, and v1's unbounded read (every event ever created, on every
- * calendar render) is what the window exists to stop.
+ * No `from`/`to` from the client: with neither the server returns every
+ * visible event (v1 parity, R57 REVERT), and deriving calendar bounds on the
+ * device would put a wall-clock decision on the wrong side of ruling C2. The
+ * events list screen pages instead — {@link useEventPages}.
  */
 export function useEvents(): UseQueryResult<JpcEventListItem[]> {
   return useQuery({
@@ -28,6 +38,25 @@ export function useEvents(): UseQueryResult<JpcEventListItem[]> {
       const res = await apiClient.get("/api/v1/events");
       return jpcEventListResponseSchema.parse(res.data.data).events;
     },
+  });
+}
+
+async function fetchEventPage(cursor: string | null): Promise<JpcEventPageResponse> {
+  const suffix = cursor === null ? "" : `&cursor=${encodeURIComponent(cursor)}`;
+  const res = await apiClient.get(`/api/v1/events?paged=true${suffix}`);
+  return jpcEventPageResponseSchema.parse(res.data.data);
+}
+
+/**
+ * The /events list (owner decision): cursor-paged, newest first, the server's
+ * default page of 25. Under `events.all`, so every event write refreshes it.
+ */
+export function useEventPages(): UseInfiniteQueryResult<InfiniteData<JpcEventPageResponse>> {
+  return useInfiniteQuery({
+    queryKey: queryKeys.events.paged(),
+    queryFn: ({ pageParam }) => fetchEventPage(pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor,
   });
 }
 

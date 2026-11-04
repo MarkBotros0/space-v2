@@ -11,7 +11,7 @@ import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { iconWithClassName } from "../../src/design/lib/icon";
 import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../src/design/ui";
 import { ConfirmDialog } from "../../src/design/ui/confirm-dialog";
-import { useCreateEvent, useDeleteEvent, useEvents } from "../../src/hooks/use-events";
+import { useCreateEvent, useDeleteEvent, useEventPages } from "../../src/hooks/use-events";
 import { apiErrorMessage } from "../../src/lib/api-error";
 import { formatEventWhen } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
@@ -122,12 +122,14 @@ function NewEvent({ onDone }: { onDone: () => void }) {
  * inside, as /calendar does. Everyone gets the same list (a deep link must
  * never crash: ALUMNI's "Events" nav entry points at /calendar, so a mis-tap
  * here is likely); only SUPER gets New event and the row actions. The edit
- * pencil opens the event, whose page holds the edit form.
+ * pencil opens the event, whose page holds the edit form. V2-ONLY: the list
+ * is paged, newest first, 25 at a time behind "Load more" (owner decision).
  */
 export default function EventsScreen() {
   const router = useRouter();
   const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
-  const events = useEvents();
+  const events = useEventPages();
+  const rows = events.data?.pages.flatMap((p) => p.events) ?? [];
   const remove = useDeleteEvent();
   const [creating, setCreating] = useState(false);
   const [confirmId, setConfirmId] = useState<number | null>(null);
@@ -144,7 +146,7 @@ export default function EventsScreen() {
   let body;
   if (events.isPending) body = <RouteSkeleton />;
   else if (events.isError) body = <RouteError onRetry={() => void events.refetch()} />;
-  else if (events.data.length === 0)
+  else if (rows.length === 0)
     // v1's card renders nothing at all here (R75); say so instead.
     body = (
       <EmptyState
@@ -160,7 +162,7 @@ export default function EventsScreen() {
   else
     body = (
       <View className="flex-col gap-3">
-        {events.data.map((e) => (
+        {rows.map((e) => (
           <EventRow
             key={e.id}
             event={e}
@@ -172,6 +174,17 @@ export default function EventsScreen() {
             }}
           />
         ))}
+        {/* Paging is v2's (owner decision); v1 loaded every event. */}
+        {events.hasNextPage ? (
+          <Button
+            variant="outline"
+            className="self-center"
+            disabled={events.isFetchingNextPage}
+            onPress={() => void events.fetchNextPage()}
+          >
+            {events.isFetchingNextPage ? "Loading…" : "Load more"}
+          </Button>
+        ) : null}
       </View>
     );
 

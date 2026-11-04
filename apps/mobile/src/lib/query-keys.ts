@@ -214,6 +214,8 @@ export const queryKeys = {
   events: {
     all: ["events"] as const,
     list: () => [...queryKeys.events.all, "list"] as const,
+    /** The /events screen's cursor-paged read (newest first). */
+    paged: () => [...queryKeys.events.all, "paged"] as const,
     // Plan 16's UpcomingEventsCard (spec 19 §7). Under `all`, so every event
     // write's prefix invalidation refreshes the dashboards too.
     upcoming: (limit: number) => [...queryKeys.events.all, "upcoming", limit] as const,

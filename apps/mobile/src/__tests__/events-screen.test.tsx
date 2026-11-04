@@ -78,7 +78,7 @@ const alumnusSession = {
 beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
-  get.mockResolvedValue({ data: { data: { events: [listRow], total: 1 } } });
+  get.mockResolvedValue({ data: { data: { events: [listRow], total: 1, nextCursor: null } } });
 });
 
 describe("events screen", () => {
@@ -151,10 +151,43 @@ describe("events screen", () => {
 
   it("renders an empty state rather than nothing (spec 15 R75)", async () => {
     useSessionStore.setState(alumnusSession);
-    get.mockResolvedValue({ data: { data: { events: [], total: 0 } } });
+    get.mockResolvedValue({ data: { data: { events: [], total: 0, nextCursor: null } } });
 
     renderWithProviders(<EventsScreen />);
     expect(await screen.findByText("No upcoming events")).toBeTruthy();
+  });
+
+  it("pages newest first behind Load more, echoing the server's cursor", async () => {
+    useSessionStore.setState(superSession);
+    const older = { ...listRow, id: 2, title: "Spring fair" };
+    get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: {
+          data:
+            url === "/api/v1/events?paged=true"
+              ? { events: [listRow], total: 2, nextCursor: "4086000000000_3" }
+              : { events: [older], total: 2, nextCursor: null },
+        },
+      }),
+    );
+
+    renderWithProviders(<EventsScreen />);
+    expect(await screen.findByText("Summer retreat")).toBeTruthy();
+    expect(screen.queryByText("Spring fair")).toBeNull();
+
+    fireEvent.press(screen.getByText("Load more"));
+    expect(await screen.findByText("Spring fair")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/events?paged=true&cursor=4086000000000_3");
+    // The last page carries no cursor, so the button goes.
+    await waitFor(() => expect(screen.queryByText("Load more")).toBeNull());
+  });
+
+  it("shows no Load more when the first page is the only one", async () => {
+    useSessionStore.setState(superSession);
+    renderWithProviders(<EventsScreen />);
+    expect(await screen.findByText("Summer retreat")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/events?paged=true");
+    expect(screen.queryByText("Load more")).toBeNull();
   });
 
   it("navigates to the detail v1 has no page for", async () => {
