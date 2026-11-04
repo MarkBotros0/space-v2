@@ -9,6 +9,7 @@ configure({ asyncUtilTimeout: 5000 });
 // react-native-worklets (Reanimated's runtime, pulled in by sonner-native)
 // throws on import under Jest since 0.7 (Expo SDK 55): it no longer falls back
 // when its native module is missing. This is the library's own Jest mock.
+// (Reanimated itself is handled by jest.resolver.js.)
 jest.mock("react-native-worklets", () => require("react-native-worklets/src/mock"));
 
 // The rich-text editor renders inside a WebView (tentap); Jest has no native
