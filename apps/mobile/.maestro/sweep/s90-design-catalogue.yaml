@@ -105,11 +105,16 @@ appId: com.jpc.space
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 3000
-- runFlow:
-    file: _tap-id.yaml
-    env:
-      TARGET_ID: catalogue-toast-button
-- waitForAnimationToEnd:
+# The toast lives ~4.3s (sonner-native's 4000ms + its 300ms entrance). A
+# plain tapOn waits for the hierarchy to settle first, which on the CI
+# emulator took ~5.8s, so the shot used to land after the toast had gone.
+# Tap without the settle/retry and shoot as soon as the toast's text shows.
+- tapOn:
+    id: catalogue-toast-button
+    retryTapIfNoChange: false
+    waitToSettleTimeoutMs: 500
+- extendedWaitUntil:
+    visible: 'Nothing was written\.'
     timeout: 3000
 - takeScreenshot: s90-09-toast
 
