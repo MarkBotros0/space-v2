@@ -43,7 +43,7 @@ export const ALL_ROUTE_NAMES: readonly string[] = Array.from(
  * auto-registers every file in this directory, and an undeclared screen
  * appears IN the tab bar. Every route file under (app)/ that is not a nav
  * href is listed here; app-layout.test.tsx reads the filesystem and fails if
- * one is missing, and pins that each entry is declared with href: null.
+ * one is missing, and pins that each entry is declared without a tab title.
  * Plans add a detail route by appending to this list — nothing else.
  */
 export const DETAIL_ROUTE_NAMES: readonly string[] = [
@@ -79,9 +79,16 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
 /**
  * `(app)/_layout.tsx` — the `Tabs` navigator every authenticated screen
  * plugs into (Decision D1). `Tabs` picks up all route files in this
- * directory automatically, so every screen not in the current role's
- * `tabs` gets `options={{ href: null }}`: reachable by navigation, absent
- * from the bar.
+ * directory automatically; the floating tab bar draws only the role's
+ * `tabs`, so every other screen is reachable by navigation and absent from
+ * the bar.
+ *
+ * Never mark a screen `href: null` (or `hidden: true`). Since expo-router 58,
+ * `Tabs` turns `href: null` into `hidden: true`, and a focused hidden screen
+ * is `router.replace`d to the initial tab (useVisibleTabsWithRedirect): every
+ * deep link, notification tap and `router.push` to a non-tab screen landed on
+ * the first tab instead. What keeps a screen out of the bar is
+ * FloatingTabBar rendering `items`, not the screen's options.
  */
 export default function AppLayout() {
   const status = useSessionStore((s) => s.status);
@@ -126,12 +133,15 @@ export default function AppLayout() {
       >
         {orderedRouteNames.map((name) => {
           const tab = tabByRouteName.get(name);
-          return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : { href: null }} />;
+          return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : NOT_A_TAB} />;
         })}
       </Tabs>
     </>
   );
 }
+
+/** A screen outside the role's tabs: no title, and deliberately NOT `href: null` (see AppLayout). */
+const NOT_A_TAB = {};
 
 /** v1's top bar, with the offline strip under it while there is no network. */
 function ShellHeader() {

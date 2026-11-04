@@ -12,7 +12,7 @@ import { makeScopes, makeUser } from "./helpers/session";
 // rendered `app/(app)/_layout.tsx` — role-tabs.test.tsx only exercises
 // navByRole/navFor and the filesystem. Three mutations to the layout each
 // left the whole suite green:
-//   (a) replacing the `tab ? {...} : { href: null }` branch with an
+//   (a) replacing the `tab ? {...} : NOT_A_TAB` branch with an
 //       unconditional visible-tab object — every route becomes a tab
 //   (b) gutting routeNameForHref to `return path` (dropping the
 //       "students" -> "students/index" special case)
@@ -153,8 +153,8 @@ describe("AppLayout tab shell", () => {
 
     expect(mockScreens).toHaveLength(TOTAL_ROUTES);
 
-    const visible = mockScreens.filter((s) => s.href !== null);
-    const hidden = mockScreens.filter((s) => s.href === null);
+    const visible = mockScreens.filter((s) => s.title !== undefined);
+    const hidden = mockScreens.filter((s) => s.title === undefined);
 
     expect(visible.map((s) => s.name)).toEqual(STUDENT_VISIBLE_NAMES);
     expect(hidden).toHaveLength(TOTAL_ROUTES - navByRole.STUDENT.tabs.length);
@@ -166,8 +166,8 @@ describe("AppLayout tab shell", () => {
 
     expect(mockScreens).toHaveLength(TOTAL_ROUTES);
 
-    const visible = mockScreens.filter((s) => s.href !== null);
-    const hidden = mockScreens.filter((s) => s.href === null);
+    const visible = mockScreens.filter((s) => s.title !== undefined);
+    const hidden = mockScreens.filter((s) => s.title === undefined);
 
     expect(visible.map((s) => s.name)).toEqual(ADMIN_VISIBLE_NAMES);
     expect(hidden).toHaveLength(TOTAL_ROUTES - navByRole.ADMIN.tabs.length);
@@ -218,14 +218,25 @@ describe("AppLayout tab shell", () => {
     expect(DETAIL_ROUTE_NAMES).toContain("seasons/[code]/roster/import");
   });
 
-  it("declares every detail route with href: null", () => {
+  it("never declares a screen href: null — expo-router 58 redirects a focused hidden tab to the first tab", () => {
+    for (const role of ["STUDENT", "ADMIN", "SUPER", "LEADER", "MENTOR"] as const) {
+      mockScreens = [];
+      useSessionStore.getState().setSession(makeUser(role), scopes);
+      const { unmount } = renderWithProviders(<AppLayout />);
+      expect(mockScreens.length).toBeGreaterThan(0);
+      expect(mockScreens.filter((s) => s.href !== undefined).map((s) => s.name)).toEqual([]);
+      unmount();
+    }
+  });
+
+  it("declares every detail route as a non-tab screen", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<AppLayout />);
 
     for (const name of DETAIL_ROUTE_NAMES) {
       const declared = mockScreens.find((s) => s.name === name);
       expect(declared).toBeDefined();
-      expect(declared?.href).toBeNull();
+      expect(declared?.title).toBeUndefined();
     }
   });
 
@@ -239,7 +250,7 @@ describe("AppLayout tab shell", () => {
     renderWithProviders(<AppLayout />);
 
     for (const name of names) {
-      expect(mockScreens.find((s) => s.name === name)?.href).toBeNull();
+      expect(mockScreens.find((s) => s.name === name)?.title).toBeUndefined();
     }
   });
 
@@ -254,7 +265,7 @@ describe("AppLayout tab shell", () => {
     renderWithProviders(<AppLayout />);
     const detail = mockScreens.find((s) => s.name === "session/[id]/index");
     expect(detail).toBeDefined();
-    expect(detail?.href).toBeNull();
+    expect(detail?.title).toBeUndefined();
   });
 
   it("registers Plan 6's detail routes, in the directory form where they have children (X7)", () => {
@@ -278,7 +289,7 @@ describe("AppLayout tab shell", () => {
     renderWithProviders(<AppLayout />);
     const detail = mockScreens.find((s) => s.name === name);
     expect(detail).toBeDefined();
-    expect(detail?.href).toBeNull();
+    expect(detail?.title).toBeUndefined();
   });
 
   it("maps the /seasons tab to its directory route, like /students", () => {
@@ -292,7 +303,7 @@ describe("AppLayout tab shell", () => {
     renderWithProviders(<AppLayout />);
     const detail = mockScreens.find((s) => s.name === "student/[id]/index");
     expect(detail).toBeDefined();
-    expect(detail?.href).toBeNull();
+    expect(detail?.title).toBeUndefined();
   });
 });
 
