@@ -183,6 +183,24 @@ sidesteps it: type checking happened during `turbo build` with the correct
 tsconfig, and there is no TypeScript left for Vercel to re-check with the wrong
 one. **Do not convert this file to TypeScript.**
 
+### Setting up a new database
+
+A new, empty database (production has none yet) needs two steps from
+`apps/backend`, with `DATABASE_URL` pointing at it:
+
+1. `pnpm db:migrate:deploy` builds the whole schema from every migration.
+2. `pnpm create:super-admin` creates the first SUPER account. It asks for the
+   email, name and password in the terminal (so the password stays out of
+   shell history), shows the database host and asks before writing, and
+   refuses an email that already exists in any letter case.
+
+Everyone else is then created or invited from the app. Don't use
+`pnpm seed:sweep` here: its users share one password written in the repo, and
+it refuses non-local databases for that reason.
+
+Then set the deployment's environment (see Environment above). On Vercel that
+includes `TRUST_PROXY=1`, or the rate limiters bucket every client together.
+
 ### Known limits on serverless
 
 One thing does not survive a serverless runtime and is not fixed by the
