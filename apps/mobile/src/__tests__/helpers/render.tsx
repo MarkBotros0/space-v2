@@ -7,8 +7,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 // the test renderer, so it renders none of its children — `render()` still
 // returns a truthy `toJSON()`, so a loose assertion passes against an empty
 // tree. Passing `initialMetrics` makes children render synchronously, which
-// is the whole point of this helper: every test that renders `Screen` (or
-// anything else that calls `useSafeAreaInsets()`) must go through this, not
+// is the whole point of this helper: every test that renders the shell (`ShellFrame`,
+// the tab bar, or anything else that calls `useSafeAreaInsets()`) must go through this, not
 // a bare `render()`.
 const initialMetrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -20,7 +20,7 @@ const initialMetrics = {
  * `createQueryClient()` (one retry with backoff), a test asserting an error
  * state should not sit through a real retry delay to get there. Every screen
  * that calls `useQuery`/`useMutation` needs a `QueryClientProvider` ancestor
- * the same way every screen that renders `Screen` needs a `SafeAreaProvider`
+ * the same way every screen that renders the shell needs a `SafeAreaProvider`
  * one — wrapping both here means one helper covers both needs instead of
  * every screen test hand-rolling its own client.
  */

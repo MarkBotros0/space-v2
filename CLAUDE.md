@@ -202,8 +202,8 @@ keys are hierarchical factories in `src/lib/query-keys.ts`; hooks live in
 rather than casting, so a backend drift fails at the boundary. Queries
 depending on `scopes.activeSeasonId` (or any nullable id) must pass `enabled`
 — and guard manual `refetch()` too, since `enabled` only gates the automatic
-run. Map states to the primitives: `LoadingState`, `ErrorState` with `onRetry`
-wired to `refetch`, `EmptyState`.
+run. Map states to the primitives: `RouteSkeleton`, `RouteError` with `onRetry`
+wired to `refetch` (`InlineError` for one card's query), `EmptyState`.
 
 **Domain contracts are Zod, not bare interfaces.** `session.ts`'s
 `sessionListItemSchema` is the source of truth and its type is `z.infer` of it.
@@ -223,9 +223,10 @@ Button, Badge and the pills carry no self-alignment: where v1 places them in
 a block (or uses `w-fit`), add `self-start`. A screen is done only after a
 side-by-side capture against v1 (`tools/ui-reference/`). The shell
 (`app/(app)/_layout.tsx`) renders v1's top bar as the tab header and the
-floating pill tab bar; legacy `Screen` drops its top inset and pads the bottom
-by 96px inside it. `src/ui/` and `src/theme/` are legacy and are deleted when
-the last screen stops importing them. Student-page idioms shared by later batches: `src/design/layout/page-title.tsx`
+floating pill tab bar; every screen inside it renders `ShellFrame`. The legacy
+kit (`src/ui/`, `src/theme/`) is gone: raw colours for charts and SVG come from
+`src/design/theme/palette.ts` (ramps) or `useThemeColors()` (semantic tokens),
+never hard-coded hexes. Student-page idioms shared by later batches: `src/design/layout/page-title.tsx`
 (v1's hand-rolled h1, eyebrow, back link), `route-states.tsx` (v1's route
 skeleton and error), `shell-frame.tsx` (page frame with v1's navy-50 tint and
 pull-to-refresh), `src/design/students/` (StatCard, SeasonHistory),
@@ -241,7 +242,7 @@ class ignored, restart Metro with `--clear` before working around it. Admin page
 Remaining
 differences per batch are in `docs/superpowers/ui-rebuild/gaps-batch-<n>.md`; captures still owed are in backlog section 14.
 
-**Testing.** Anything rendering `Screen` must use `renderWithProviders`
+**Testing.** Anything rendering the shell (`ShellFrame`, the bars) must use `renderWithProviders`
 (`src/__tests__/helpers/render.tsx`) — it supplies `SafeAreaProvider` with
 explicit `initialMetrics` and a `QueryClientProvider`. A *bare*
 `SafeAreaProvider` renders no children at all while `render()` still returns a
@@ -265,7 +266,7 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   submit button must be scrollable above the keyboard. A `KeyboardAvoidingView` with
   `behavior={undefined}` on Android does nothing here (found on every signed-out form, Oct 2026).
   The app is edge-to-edge, so Android never resizes the window for the keyboard: put a form in
-  `ShellFrame`, `AuthCard` or legacy `Screen scroll`, which pad their scroll content by the keyboard
+  `ShellFrame` or `AuthCard`, which pad their scroll content by the keyboard
   height and scroll the focused field above it (`design/lib/keyboard-inset.ts`). A bare `ScrollView` or
   `View` form hides its lower fields.
 - **Last content clears the floating tab bar by the inset, not a flat 96px.** The bar sits at

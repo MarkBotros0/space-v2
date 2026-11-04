@@ -8,16 +8,14 @@ it("shows the schema's error and blocks submit", async () => {
   render(<TestLoginForm schema={loginRequestSchema} onSubmit={onSubmit} />);
   fireEvent.changeText(screen.getByLabelText("Email"), "not-an-email");
   fireEvent.press(screen.getByText("Sign in"));
-  // `Input` hides its error caption from the accessibility tree (it's already
-  // surfaced via `accessibilityHint` on the field itself, so screen readers
-  // don't get it twice). Asserting through the hint — the actual
-  // screen-reader-visible surface — proves the error reaches users; a
-  // `getByText(..., { includeHiddenElements: true })` assertion here would
-  // also match the field's always-present visible label ("Email"), so it'd
-  // pass even if `FormField` never surfaced the validation error at all.
+  // FormField hands its error to the control as `accessibilityHint` (the
+  // app's convention for announcing field errors), so the hint is what a
+  // screen reader hears; asserting on it proves the validation message
+  // reaches the field itself; the visible caption carries the same text.
   await waitFor(() =>
     expect(screen.getByLabelText("Email").props.accessibilityHint).toMatch(/email/i),
   );
+  expect(screen.getByText(screen.getByLabelText("Email").props.accessibilityHint)).toBeTruthy();
   expect(onSubmit).not.toHaveBeenCalled();
 });
 

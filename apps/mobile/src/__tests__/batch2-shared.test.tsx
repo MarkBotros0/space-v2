@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
-import { RefreshControl, ScrollView, StyleSheet, Text as RNText } from "react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { Keyboard, RefreshControl, ScrollView, StyleSheet, Text as RNText } from "react-native";
 
 import { ShellFrame } from "../design/layout/shell-frame";
 import { BackLink, Eyebrow, PageTitle } from "../design/layout/page-title";
@@ -39,6 +39,29 @@ describe("ShellFrame", () => {
     );
     const style = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
     expect(style.paddingBottom).toBe(114);
+  });
+
+  it("pads past an open keyboard so a form's last field can scroll above it", () => {
+    jest.useFakeTimers();
+    const listeners: Record<string, (e: { endCoordinates: { height: number; screenY: number } }) => void> = {};
+    const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((event: string, cb: never) => {
+      listeners[event] = cb;
+      return { remove: jest.fn() };
+    }) as unknown as typeof Keyboard.addListener);
+    try {
+      renderWithProviders(
+        <ShellFrame>
+          <RNText>body</RNText>
+        </ShellFrame>,
+      );
+      const show = listeners.keyboardWillShow ?? listeners.keyboardDidShow;
+      act(() => show!({ endCoordinates: { height: 300, screenY: 500 } }));
+      const style = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
+      expect(style.paddingBottom).toBe(316);
+    } finally {
+      spy.mockRestore();
+      jest.useRealTimers();
+    }
   });
 });
 
