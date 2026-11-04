@@ -22,7 +22,20 @@
       "expo-font",
       "@react-native-community/datetimepicker",
       "expo-sharing",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/adaptive-icon.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#243559",
+          "dark": {
+            "image": "./assets/adaptive-icon.png",
+            "backgroundColor": "#142048"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -41,7 +54,11 @@
       }
     },
     "android": {
-      "package": "com.jpc.space"
+      "package": "com.jpc.space",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#243559"
+      }
     }
   }
 }
