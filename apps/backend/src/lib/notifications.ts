@@ -4,6 +4,7 @@ import { pushContent, shouldPush } from "../../../../packages/shared/src/index";
 
 import { sendNotificationEmail } from "./email";
 import { runInBackground } from "./background";
+import { parseNotificationLink } from "./notification-target";
 import { sendPushToUsers } from "./push";
 
 export interface CreateNotificationInput {
@@ -110,7 +111,7 @@ export async function createNotificationsBulk(
       "notification-push",
       sendPushToUsers(mailTargets, {
         ...pushContent(payload.type, payload.title, payload.body ?? null),
-        data: { type: payload.type, link: payload.link ?? null },
+        data: { type: payload.type, target: parseNotificationLink(payload.link ?? null) },
       }),
     );
   }

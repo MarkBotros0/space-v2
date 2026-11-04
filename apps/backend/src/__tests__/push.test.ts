@@ -26,7 +26,7 @@ beforeEach(() => {
   }));
 });
 
-const payload = { title: "Quiz graded", body: "You scored 82.", data: { type: "QUIZ_GRADED", link: "/student/quizzes" } };
+const payload = { title: "Quiz graded", body: "You scored 82.", data: { type: "QUIZ_GRADED", target: { entityType: "quiz" as const, entityId: null } } };
 
 describe("sendPushToUsers", () => {
   it("sends one message per registered device, in batches of 100", async () => {
@@ -84,6 +84,8 @@ describe("createNotificationsBulk push fan-out", () => {
     await createNotificationsBulk([1, 2], { type: "QUIZ_GRADED", title: "Quiz graded", link: "/student/quizzes" });
     await settle();
     expect(mockDb.deviceToken.findMany).toHaveBeenCalledWith({ where: { userId: { in: [1] } }, select: { token: true } });
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
+    expect(sent.data).toEqual({ type: "QUIZ_GRADED", target: { entityType: "quiz", entityId: null } });
   });
 
   it("sends neutral text for a mentor follow-up, never the student's name", async () => {

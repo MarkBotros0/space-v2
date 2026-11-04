@@ -1,4 +1,6 @@
 import { db } from "../db/client";
+import type { NotificationTarget } from "@space/shared";
+
 import { config } from "./config";
 
 /**
@@ -14,8 +16,12 @@ const BATCH = 100;
 export interface PushPayload {
   title: string;
   body?: string | null;
-  /** Read by the app on tap to open the right screen (src/lib/push-routing.ts). */
-  data: { type: string; link: string | null };
+  /**
+   * Read by the app on tap: `target` is the same route-independent target the
+   * inbox renders (lib/notification-target.ts), so the app opens the same
+   * screen a tap in the inbox would. Null opens the inbox.
+   */
+  data: { type: string; target: NotificationTarget | null };
 }
 
 interface ExpoTicket {
