@@ -11,7 +11,7 @@ interface TestLoginFormValues {
 }
 
 interface TestLoginFormProps {
-  schema: z.ZodType<TestLoginFormValues>;
+  schema: z.ZodType<TestLoginFormValues, TestLoginFormValues>;
   onSubmit: (values: TestLoginFormValues) => void;
 }
 
