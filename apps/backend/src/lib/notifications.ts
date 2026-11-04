@@ -1,8 +1,10 @@
 import { db } from "../db/client";
 import type { NotificationType } from "../generated/prisma/enums";
+import { pushContent, shouldPush } from "../../../../packages/shared/src/index";
 
 import { sendNotificationEmail } from "./email";
 import { runInBackground } from "./background";
+import { sendPushToUsers } from "./push";
 
 export interface CreateNotificationInput {
   userId: number;
@@ -97,6 +99,19 @@ export async function createNotificationsBulk(
           sendNotificationEmail(u.email, payload.title, payload.body ?? null, payload.link ?? null),
         ),
       ),
+    );
+  }
+
+  // Push goes to the same recipients as mail: a type the user turned off
+  // stops every outbound channel (spec D4). Only devices that registered a
+  // token are reached.
+  if (mailTargets.length > 0 && shouldPush(payload.type)) {
+    runInBackground(
+      "notification-push",
+      sendPushToUsers(mailTargets, {
+        ...pushContent(payload.type, payload.title, payload.body ?? null),
+        data: { type: payload.type, link: payload.link ?? null },
+      }),
     );
   }
 

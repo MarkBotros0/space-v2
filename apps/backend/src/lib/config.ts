@@ -82,6 +82,16 @@ const envSchema = z.object({
   // integration suite, which commits ~22 times from one IP, can lift them.
   IMPORT_PREVIEW_RATE_LIMIT: z.coerce.number().int().positive().default(30),
   IMPORT_COMMIT_RATE_LIMIT: z.coerce.number().int().positive().default(10),
+  // Push through Expo's push service (lib/push.ts). On by default: it only
+  // sends to devices that registered a token, so a fresh deploy sends nothing.
+  // "false" stops every push without touching in-app rows or email.
+  ENABLE_PUSH: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
+  // Optional Expo access token. Required only if "enhanced push security" is
+  // turned on for the project in Expo; then every send must carry it.
+  EXPO_ACCESS_TOKEN: z.string().optional(),
 });
 
 /**
@@ -129,4 +139,6 @@ export const config = {
   importBodyLimit: parsed.data.IMPORT_BODY_LIMIT,
   importPreviewRateLimit: parsed.data.IMPORT_PREVIEW_RATE_LIMIT,
   importCommitRateLimit: parsed.data.IMPORT_COMMIT_RATE_LIMIT,
+  enablePush: parsed.data.ENABLE_PUSH,
+  expoAccessToken: parsed.data.EXPO_ACCESS_TOKEN,
 } as const;
