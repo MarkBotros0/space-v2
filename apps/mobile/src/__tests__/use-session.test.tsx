@@ -11,6 +11,12 @@ import { renderHook, waitFor } from "@testing-library/react-native";
 // that check and throws `ReferenceError` before any test runs. Declaring the
 // fns inline and importing the mocked module's own exports afterward (as
 // `login-screen.test.tsx` already does) sidesteps the restriction entirely.
+const mockSyncPush = jest.fn(async () => undefined);
+const mockUnregisterPush = jest.fn(async () => undefined);
+jest.mock("../lib/push", () => ({
+  syncPushRegistration: () => mockSyncPush(),
+  unregisterPushToken: () => mockUnregisterPush(),
+}));
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
   login: jest.fn(),
@@ -178,6 +184,7 @@ describe("useLogin", () => {
     expect(mockLogin).toHaveBeenCalledWith("a@b.test", "hunter2");
     expect(get).toHaveBeenCalledWith("/api/v1/me");
     expect(useSessionStore.getState().status).toBe("authenticated");
+    expect(mockSyncPush).toHaveBeenCalled();
     expect(useSessionStore.getState().user).toEqual(me.user);
     expect(useSessionStore.getState().scopes).toEqual(me.scopes);
   });
@@ -237,6 +244,9 @@ describe("useLogout", () => {
     await result.current();
 
     expect(mockLogout).toHaveBeenCalledTimes(1);
+    // Push is unregistered first, while the access token still works.
+    expect(mockUnregisterPush).toHaveBeenCalledTimes(1);
+    expect(mockUnregisterPush.mock.invocationCallOrder[0]).toBeLessThan(mockLogout.mock.invocationCallOrder[0] ?? 0);
     expect(mockClearSession).toHaveBeenCalled();
     expect(useSessionStore.getState().status).toBe("anonymous");
     expect(useSessionStore.getState().user).toBeNull();

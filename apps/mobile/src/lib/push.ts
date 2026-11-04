@@ -5,7 +5,7 @@ import { Platform } from "react-native";
 
 import { apiClient } from "./api-client";
 import { easProjectId } from "./app-config";
-import { savePushToken } from "./token-storage";
+import { loadPushToken, savePushToken } from "./token-storage";
 import { useSessionStore } from "../store/session";
 
 export type PushTokenResult =
@@ -79,4 +79,40 @@ export async function enablePush(): Promise<{ token: string | null; status: Push
 
   const status = await registerPushToken(result.token);
   return { token: result.token, status };
+}
+
+/**
+ * Re-register silently after sign-in and on app start, so the server's row
+ * follows whoever is signed in on this phone and `lastSeenAt` stays fresh.
+ * Never prompts: it only runs when permission was already granted (the prompt
+ * belongs to the explicit settings control). Never throws.
+ */
+export async function syncPushRegistration(): Promise<void> {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    const projectId = easProjectId();
+    if (status !== "granted" || projectId === null) return;
+    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    useSessionStore.getState().setPushToken(token);
+    await savePushToken(token);
+    await registerPushToken(token);
+  } catch {
+    // Push is an extra; a failure here must never disturb sign-in.
+  }
+}
+
+/**
+ * Tell the server to stop pushing to this phone. Called on sign-out while the
+ * access token is still valid; best-effort, because sign-out must succeed
+ * offline too (the next sign-in on this phone re-points the token anyway).
+ */
+export async function unregisterPushToken(): Promise<void> {
+  try {
+    const token = await loadPushToken();
+    if (!token) return;
+    await apiClient.delete("/api/v1/me/devices", { data: { token } });
+  } catch {
+    // Offline, storage unreadable, or already signed out server-side: sign-out
+    // goes ahead regardless.
+  }
 }
