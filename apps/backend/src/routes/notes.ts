@@ -82,7 +82,7 @@ studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, r
   if (user.role === "STUDENT") return forbidden(res);
 
   const student = await db.user.findFirst({
-    where: { id: studentUserId, role: "STUDENT" },
+    where: { id: studentUserId, role: "STUDENT", deletedAt: null },
     select: { id: true },
   });
   if (!student) return apiError(res, "not_found", "Student not found.", 404);
@@ -119,7 +119,7 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
 
   const student = await db.user.findFirst({
-    where: { id: studentUserId, role: "STUDENT" },
+    where: { id: studentUserId, role: "STUDENT", deletedAt: null },
     select: { id: true },
   });
   if (!student) return apiError(res, "not_found", "Student not found.", 404);
@@ -137,8 +137,17 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   // kept. When the caller names a season it must be one this student is
   // actually enrolled in, or the note files itself under a season nobody can
   // reach it from.
+  //
+  // An ADMIN files notes only under seasons they run, explicit or defaulted:
+  // a follow-up flag notifies the note's season's admins, so a note filed
+  // under a season the author doesn't run alerts people who never saw it.
+  // canWriteNote already admits an admin only through an enrolment in one of
+  // their seasons, so there is always one to default to. LEADER, MENTOR and
+  // SUPER keep v1's rule (canWriteNote, permissions.ts:405-427).
+  const adminSeasons = user.role === "ADMIN" ? user.seasonAdminIds : null;
   let seasonId: number | null = null;
   if (parsed.data.seasonId !== undefined) {
+    if (adminSeasons && !adminSeasons.includes(parsed.data.seasonId)) return forbidden(res);
     const enrollment = await db.seasonEnrollment.findUnique({
       where: {
         studentUserId_seasonId: { studentUserId, seasonId: parsed.data.seasonId },
@@ -149,6 +158,14 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
       return apiError(res, "season_not_enrolled", "That student is not enrolled in that season.", 400);
     }
     seasonId = enrollment.seasonId;
+  } else if (adminSeasons) {
+    // Newest enrolment in a season this admin runs, an ACTIVE one first.
+    const enrolments = await db.seasonEnrollment.findMany({
+      where: { studentUserId, seasonId: { in: adminSeasons } },
+      orderBy: { enrolledAt: "desc" },
+      select: { seasonId: true, status: true },
+    });
+    seasonId = (enrolments.find((e) => e.status === "ACTIVE") ?? enrolments[0])?.seasonId ?? null;
   } else {
     const active = await db.seasonEnrollment.findFirst({
       where: { studentUserId, status: "ACTIVE" },
