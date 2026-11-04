@@ -59,15 +59,24 @@ export type JpcEventDetail = z.infer<typeof jpcEventDetailSchema>;
  * composes the instant in `config.orgTimezone`; `time: null` means all-day and
  * is stored as org midnight — no `allDay` column exists or can be added (C1).
  */
-const eventWriteBase = z.object({
+const eventFields = z.object({
   title: z.string().trim().min(1).max(200),
   day: isoDaySchema,
-  time: wallTimeSchema.nullable().default(null),
-  endDay: isoDaySchema.nullable().default(null),
-  description: z.string().max(2000).nullable().default(null),
-  url: z.string().url().nullable().default(null),
+  time: wallTimeSchema.nullable(),
+  endDay: isoDaySchema.nullable(),
+  description: z.string().max(2000).nullable(),
+  url: z.string().url().nullable(),
   visibility: jpcVisibilitySchema,
-  seasonId: z.number().int().positive().nullable().default(null),
+  seasonId: z.number().int().positive().nullable(),
+});
+
+/** Create: the optional fields default to null. */
+const eventWriteBase = eventFields.extend({
+  time: eventFields.shape.time.default(null),
+  endDay: eventFields.shape.endDay.default(null),
+  description: eventFields.shape.description.default(null),
+  url: eventFields.shape.url.default(null),
+  seasonId: eventFields.shape.seasonId.default(null),
 });
 
 /**
@@ -102,10 +111,12 @@ export type CreateJpcEventBody = z.output<typeof createJpcEventRequestSchema>;
  * to resend every field. Both refinements re-apply against the *merged* row in
  * the route (`mergedEventSchema` below), not against the patch, because
  * `{ visibility: "SEASON" }` alone cannot know whether the stored row already
- * has a season. `.partial()` wraps each defaulted field in an optional, so an
- * omitted field parses to `undefined` and does not reset the stored value.
+ * has a season. Built from the fields *without* their create defaults: zod 4
+ * applies a `.default()` even inside `.partial()`, so a PATCH of `{ title }`
+ * would otherwise reset time, description, url and season to null. An omitted
+ * field must parse to absent and keep the stored value.
  */
-export const updateJpcEventRequestSchema = eventWriteBase.partial();
+export const updateJpcEventRequestSchema = eventFields.partial();
 export type UpdateJpcEventBody = z.output<typeof updateJpcEventRequestSchema>;
 
 /** The PATCH handler parses `{ ...storedAsWallClock, ...patch }` with this. */
