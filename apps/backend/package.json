@@ -14,6 +14,8 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:migrate:local": "bash scripts/apply-migrations.sh",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
     "seed:sweep": "ts-node --transpile-only scripts/seed-sweep.ts"
   },
   "dependencies": {

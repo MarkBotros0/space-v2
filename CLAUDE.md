@@ -21,8 +21,14 @@ Mobile-first rebuild of JPC Space (`D:\Projects\JPC\jpc-space` is v1 and still r
   and super surfaces. jpc-space is retired once that is done, not before.
 - **Everything goes in the mobile app.** All 104 of v1's pages, admin and
   super included, become React Native screens. There is no `apps/admin`.
-- **Shared staging database with v1.** No migrations are created here.
-  `prisma/migrations/` is a verbatim copy of v1's.
+- **The database serves v2 only (owner ruling 2026-11-04).** The schema
+  freeze that kept the database shareable with v1 (`_DECISIONS.md` C1) is
+  lifted: v2 owns the schema and may add migrations. v1 must no longer write
+  to this database. `prisma/migrations/` starts with v1's history; add new
+  migrations after it (`pnpm --filter @space/backend db:migrate:deploy`
+  applies them through `prisma.config.ts`). Keep migrations additive unless a
+  destructive change is explicitly planned, and say in the commit which
+  environments they were applied to.
 - **Passwords are bcryptjs.** Existing hashes are bcrypt; any other algorithm
   locks out every user.
 - **Tokens must stay v1-compatible:** `jose` HS256, secret `AUTH_SECRET`

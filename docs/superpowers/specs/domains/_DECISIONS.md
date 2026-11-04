@@ -15,6 +15,12 @@ say so in your report rather than silently following the spec.
 
 ## C1 — The schema is frozen. Everything else follows from this.
 
+> **Superseded 2026-11-04 (owner ruling).** The database now serves v2 only and
+> v2 owns the schema: new migrations are allowed (see CLAUDE.md, "The database
+> serves v2 only"). Rulings below that cite C1 describe why the code is shaped
+> the way it is today; they are no longer a reason to avoid a migration. Plan 18's
+> withdrawn migrations stay withdrawn unless re-opened one by one.
+
 No migration, no new column, no new enum value, no index. `prisma/migrations/`
 is a verbatim copy of v1's and the database is shared with a running production
 system.
