@@ -15,9 +15,9 @@ import {
   CardHeader,
   CardTitle,
   DataTable,
-  EmptyState as V1EmptyState,
-  Button as V1Button,
-  Text as V1Text,
+  EmptyState,
+  Button,
+  Text,
   type DataTableColumn,
 } from "../../src/design/ui";
 import {
@@ -29,31 +29,17 @@ import {
 import { useSeasons } from "../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../src/hooks/use-season-selection";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import {
-  Card as LegacyCard,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  Screen,
-  Text,
-} from "../../src/ui";
 
 function GroupRow({ group, subtitle }: { group: GroupListItem; subtitle: string }) {
-  const theme = useTheme();
   const router = useRouter();
   return (
-    <Pressable
-      accessibilityRole="button"
+    <Card
+      className="p-4"
       onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(group.id) } })}
     >
-      <LegacyCard style={{ marginBottom: theme.spacing.sm }}>
-        <Text variant="heading">{group.name}</Text>
-        <Text variant="label" color={theme.colors.neutral[600]}>
-          {subtitle}
-        </Text>
-      </LegacyCard>
-    </Pressable>
+      <Text className="text-lg font-semibold">{group.name}</Text>
+      <Text className="text-sm font-medium text-muted-foreground">{subtitle}</Text>
+    </Card>
   );
 }
 
@@ -74,20 +60,20 @@ function LeaderGroupCard({
       <CardHeader className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
           <CardTitle className="text-base">{group.name}</CardTitle>
-          <V1Text className="text-sm text-muted-foreground">{group.seasonTitle}</V1Text>
+          <Text className="text-sm text-muted-foreground">{group.seasonTitle}</Text>
         </View>
         <Pressable accessibilityRole="link" onPress={() => router.push("/calendar")}>
           {/* v1 has no dark: variant on this link. */}
-          <V1Text className="text-sm font-medium text-brand-teal-700">Calendar →</V1Text>
+          <Text className="text-sm font-medium text-brand-teal-700">Calendar →</Text>
         </Pressable>
       </CardHeader>
       <CardContent>
         {detail.isError ? (
-          <V1Text className="text-sm italic text-muted-foreground">
+          <Text className="text-sm italic text-muted-foreground">
             Couldn't load the members.
-          </V1Text>
+          </Text>
         ) : students === null ? null : students.length === 0 ? (
-          <V1Text className="text-sm italic text-muted-foreground">No students yet.</V1Text>
+          <Text className="text-sm italic text-muted-foreground">No students yet.</Text>
         ) : (
           <View className="flex-col gap-1.5">
             {students.map((st) => (
@@ -99,9 +85,9 @@ function LeaderGroupCard({
                   router.push({ pathname: "/student/[id]", params: { id: String(st.id) } })
                 }
               >
-                <V1Text className="text-sm text-foreground">
+                <Text className="text-sm text-foreground">
                   {st.name ?? st.email ?? "Student"}
-                </V1Text>
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -129,7 +115,7 @@ function LeaderGroups() {
       <ShellFrame>
         <View className="flex-col gap-4">
           <PageTitle title="My groups" subtitle="You don't lead any groups yet." />
-          <V1EmptyState
+          <EmptyState
             icon={Users}
             title="No groups"
             description="An admin will add you to a group when you're ready."
@@ -172,7 +158,7 @@ function LeaderGroups() {
             subtitle={`${rows.length} ${rows.length === 1 ? "group" : "groups"}`}
           />
           {rows.length === 0 ? (
-            <V1EmptyState
+            <EmptyState
               icon={Users}
               title="No groups"
               description="An admin will add you to a group when you're ready."
@@ -194,22 +180,15 @@ function LeaderGroups() {
 function MyGroups() {
   const { data, isPending, isError, refetch, isRefetching } = useMyGroups(true);
   return (
-    <Screen
-      edges={["top", "left", "right"]}
-      onRefresh={() => void refetch()}
-      refreshing={isRefetching}
-    >
+    <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
       {isPending ? (
-        <LoadingState />
+        <RouteSkeleton />
       ) : isError ? (
-        <ErrorState
-          message="Couldn't load your groups. Check your connection and try again."
-          onRetry={refetch}
-        />
+        <RouteError onRetry={() => void refetch()} />
       ) : data.length === 0 ? (
-        <EmptyState title="No groups" message="You aren't in any groups yet." />
+        <EmptyState icon={Users} title="No groups" description="You aren't in any groups yet." />
       ) : (
-        <>
+        <View className="flex-col gap-2">
           {data.map((group) => (
             <GroupRow
               key={group.id}
@@ -217,9 +196,9 @@ function MyGroups() {
               subtitle={`${group.seasonTitle} · ${group.studentCount} students`}
             />
           ))}
-        </>
+        </View>
       )}
-    </Screen>
+    </ShellFrame>
   );
 }
 
@@ -246,7 +225,7 @@ function SeasonGroups() {
           accessibilityRole="link"
           onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(row.id) } })}
         >
-          <V1Text className="font-medium text-foreground">{row.name}</V1Text>
+          <Text className="font-medium text-foreground">{row.name}</Text>
         </Pressable>
       ),
     },
@@ -255,9 +234,9 @@ function SeasonGroups() {
       header: "Leaders",
       cell: (row) =>
         row.leaderNames.length === 0 ? (
-          <V1Text className="text-xs italic text-muted-foreground">No leaders</V1Text>
+          <Text className="text-xs italic text-muted-foreground">No leaders</Text>
         ) : (
-          <V1Text className="text-xs text-muted-foreground">{row.leaderNames.join(", ")}</V1Text>
+          <Text className="text-xs text-muted-foreground">{row.leaderNames.join(", ")}</Text>
         ),
     },
     { key: "students", header: "Students", cell: (row) => String(row.studentCount) },
@@ -269,7 +248,7 @@ function SeasonGroups() {
   if (selection.isPending || (season !== null && groups.isPending)) body = <RouteSkeleton />;
   else if (selection.isError) body = <RouteError onRetry={selection.refetch} />;
   else if (season === null)
-    body = <V1EmptyState title="No season" description="You aren't assigned to a season yet." />;
+    body = <EmptyState title="No season" description="You aren't assigned to a season yet." />;
   else if (groups.isError) body = <RouteError onRetry={() => void groups.refetch()} />;
   else
     body = (
@@ -278,11 +257,11 @@ function SeasonGroups() {
         rows={rows}
         rowKey={(r) => r.id}
         emptyState={
-          <V1EmptyState
+          <EmptyState
             icon={Users}
             title="No groups yet"
             description="Create a group to organize students and assign leaders."
-            action={<V1Button onPress={newGroup}>New group</V1Button>}
+            action={<Button onPress={newGroup}>New group</Button>}
           />
         }
       />
@@ -309,15 +288,15 @@ function SeasonGroups() {
           />
           {season ? (
             <View className="shrink-0 flex-col gap-2">
-              <V1Button
+              <Button
                 variant="outline"
                 onPress={() =>
                   router.push({ pathname: "/seasons/[code]/roster", params: { code: season.code } })
                 }
               >
                 Assign to groups
-              </V1Button>
-              <V1Button onPress={newGroup}>New group</V1Button>
+              </Button>
+              <Button onPress={newGroup}>New group</Button>
             </View>
           ) : null}
         </View>
@@ -339,8 +318,8 @@ export default function GroupsScreen() {
   if (role !== null && MY_GROUPS_ROLES.includes(role)) return <MyGroups />;
   // MENTOR: no /groups in its nav, reachable by deep link (spec 05 §9).
   return (
-    <Screen edges={["top", "left", "right"]}>
-      <EmptyState title="Groups" message="Groups aren't available for your role." />
-    </Screen>
+    <ShellFrame>
+      <EmptyState icon={Users} title="Groups" description="Groups aren't available for your role." />
+    </ShellFrame>
   );
 }
