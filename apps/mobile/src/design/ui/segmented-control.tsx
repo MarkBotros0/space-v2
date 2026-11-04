@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { cssInterop } from "nativewind";
 
-import { SPRING } from "../motion";
+import { SPRING, useReducedMotion } from "../motion";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
@@ -21,11 +21,18 @@ function SegmentedControl({
   const index = Math.max(0, options.findIndex((o) => o.value === value));
   const x = useSharedValue(index * segment);
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  const reduced = useReducedMotion();
+  const placed = useRef(false);
   useEffect(() => {
-    x.value = withSpring(index * segment, SPRING.snappy);
-  }, [x, index, segment]);
+    if (segment === 0) return;
+    // First measured position, and reduced motion, set the thumb without travel.
+    if (reduced || !placed.current) x.value = index * segment;
+    else x.value = withSpring(index * segment, SPRING.snappy);
+    placed.current = true;
+  }, [x, index, segment, reduced]);
   return (
     <View
+      testID="segmented-control"
       className={cn("flex-row rounded-xl bg-neutral-soft p-0.5", className)}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
@@ -45,7 +52,7 @@ function SegmentedControl({
             accessibilityLabel={o.label}
             accessibilityState={{ selected }}
             onPress={() => onChange(o.value)}
-            className="min-h-[40px] flex-1 items-center justify-center px-2"
+            className="min-h-[44px] flex-1 items-center justify-center px-2"
           >
             <Text
               variant="subhead"
