@@ -5,6 +5,7 @@ import { Pencil } from "lucide-react-native";
 
 import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
 import { EditSeason } from "../../../../src/components/season/EditSeason";
+import { SeasonAdmins } from "../../../../src/components/season/SeasonAdmins";
 import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
@@ -24,6 +25,7 @@ iconWithClassName(Pencil);
  * whoever the server says administers the season (canAdminister, C4) gets
  * the Roster / New group / New session buttons under the tabs, the group
  * cards open the group, and an ADMIN edits description and budgets (REG-72).
+ * A SUPER gets the Admins card on the overview (owner decision; v1 had none).
  */
 export default function SeasonDetailScreen() {
   const router = useRouter();
@@ -154,7 +156,13 @@ export default function SeasonDetailScreen() {
               </View>
             ) : undefined
           }
-          overviewExtra={isAdmin && canAdminister ? <EditSeason season={s} /> : undefined}
+          overviewExtra={
+            isAdmin && canAdminister ? (
+              <EditSeason season={s} />
+            ) : isSuper ? (
+              <SeasonAdmins seasonId={s.id} seasonTitle={s.title} />
+            ) : undefined
+          }
         />
       </View>
     );

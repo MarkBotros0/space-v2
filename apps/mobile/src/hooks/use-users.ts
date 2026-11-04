@@ -24,6 +24,8 @@ import {
   type UpdateUserBody,
   type UserDetail,
   type UserListResponse,
+  type UserRole,
+  type UserStatus,
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
@@ -50,9 +52,18 @@ function useInvalidateAfterAccountWrite(): () => void {
   };
 }
 
-async function fetchUsersPage(q: string, cursor: number | null): Promise<UserListResponse> {
+/** The list's server-side filters. `role`/`status` are optional so the users screen's key stays `{ q }`. */
+export interface UserListFilters {
+  q: string;
+  role?: UserRole;
+  status?: UserStatus;
+}
+
+async function fetchUsersPage(filters: UserListFilters, cursor: number | null): Promise<UserListResponse> {
   const params = new URLSearchParams();
-  if (q) params.set("q", q);
+  if (filters.q) params.set("q", filters.q);
+  if (filters.role) params.set("role", filters.role);
+  if (filters.status) params.set("status", filters.status);
   if (cursor !== null) params.set("cursor", String(cursor));
   const suffix = params.size > 0 ? `?${params.toString()}` : "";
   const res = await apiClient.get(`/api/v1/users${suffix}`);
@@ -68,12 +79,12 @@ async function fetchUsersPage(q: string, cursor: number | null): Promise<UserLis
  * that depend on something nullable pass `enabled`).
  */
 export function useUsers(
-  filters: { q: string },
+  filters: UserListFilters,
   options: { enabled: boolean },
 ): UseInfiniteQueryResult<InfiniteData<UserListResponse>> {
   return useInfiniteQuery({
     queryKey: queryKeys.users.list(filters),
-    queryFn: ({ pageParam }) => fetchUsersPage(filters.q, pageParam),
+    queryFn: ({ pageParam }) => fetchUsersPage(filters, pageParam),
     initialPageParam: null as number | null,
     getNextPageParam: (last) => last.nextCursor,
     enabled: options.enabled,

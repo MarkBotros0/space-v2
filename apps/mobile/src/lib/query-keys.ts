@@ -87,7 +87,8 @@ export const queryKeys = {
   users: {
     all: ["users"] as const,
     lists: () => [...queryKeys.users.all, "list"] as const,
-    list: (filters: { q: string }) => [...queryKeys.users.lists(), filters] as const,
+    list: (filters: { q: string; role?: string; status?: string }) =>
+      [...queryKeys.users.lists(), filters] as const,
     details: () => [...queryKeys.users.all, "detail"] as const,
     // Nullable, per this file's header convention (a null key never collides
     // with a real id) — not a -1 sentinel.
@@ -121,6 +122,8 @@ export const queryKeys = {
     list: () => [...queryKeys.seasons.all, "list"] as const,
     detail: (id: number | null) => [...queryKeys.seasons.all, "detail", { id }] as const,
     byCode: (code: string | null) => [...queryKeys.seasons.all, "byCode", { code }] as const,
+    /** GET /seasons/:id/admins (SUPER) — under `all`, so a season write refreshes it too. */
+    admins: (id: number | null) => [...queryKeys.seasons.all, "admins", { id }] as const,
   },
   assignments: {
     all: ["assignments"] as const,
