@@ -2,6 +2,7 @@ import { db } from "../db/client";
 import type { NotificationType } from "../generated/prisma/enums";
 
 import { sendNotificationEmail } from "./email";
+import { runInBackground } from "./background";
 
 export interface CreateNotificationInput {
   userId: number;
@@ -89,9 +90,12 @@ export async function createNotificationsBulk(
     });
     // Fire-and-forget: mail must never delay or fail the request that
     // triggered it. allSettled so one bad address cannot reject the batch.
-    void Promise.allSettled(
-      users.map((u) =>
-        sendNotificationEmail(u.email, payload.title, payload.body ?? null, payload.link ?? null),
+    runInBackground(
+      "notification-email",
+      Promise.allSettled(
+        users.map((u) =>
+          sendNotificationEmail(u.email, payload.title, payload.body ?? null, payload.link ?? null),
+        ),
       ),
     );
   }

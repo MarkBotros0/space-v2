@@ -28,6 +28,7 @@ import {
 import { rateLimitHandler } from "../lib/rate-limit";
 import { apiOk, apiError } from "../lib/api-response";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { runInBackground } from "../lib/background";
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, handler: rateLimitHandler });
 const refreshLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, handler: rateLimitHandler });
@@ -173,9 +174,7 @@ authRouter.post("/forgot-password", forgotPasswordLimiter, (req, res) => {
   if (!parsed.success) {
     return apiError(res, "bad_request", "A valid email is required.", 400);
   }
-  void requestPasswordReset(parsed.data.email).catch((err: unknown) => {
-    console.error("[password-reset] request failed:", err instanceof Error ? err.message : err);
-  });
+  runInBackground("password-reset", requestPasswordReset(parsed.data.email));
   return apiOk(res, { ok: true });
 });
 
