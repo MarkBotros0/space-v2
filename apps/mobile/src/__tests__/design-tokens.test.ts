@@ -1,4 +1,4 @@
-import tokens from "../../../../docs/superpowers/ui-rebuild/v1-tokens.json";
+import tokens from "../design/theme/tokens.json";
 const theme = require("../design/theme/tailwind-theme.js");
 const config = require("../../tailwind.config.js");
 import { readFileSync } from "node:fs";
@@ -12,7 +12,7 @@ describe("generated design tokens", () => {
     expect(theme.colors.sidebar).toBe("rgb(var(--sidebar) / <alpha-value>)");
   });
 
-  it("light and dark values come from v1-tokens.json", () => {
+  it("light and dark values come from tokens.json", () => {
     const hexToTriplet = (hex: string) =>
       [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(" ");
     expect(css).toContain(`--card: ${hexToTriplet(tokens.light.card)};`);
