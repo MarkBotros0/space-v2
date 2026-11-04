@@ -154,6 +154,7 @@ export async function seedAdminScenario({ user, superUser, admin, student, seaso
       studentUserId: dropped.id,
       seasonId: season.id,
       status: "WITHDRAWN",
+      enrolledAt: fromToday(-30),
       droppedAt: fromToday(-10),
       dropReason: "Moved away",
     },
