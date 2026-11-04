@@ -1,3 +1,4 @@
+import { db } from "../../db/client";
 import { bestEffort } from "../../lib/best-effort";
 import { createNotificationsBulk } from "../../lib/notifications";
 
@@ -29,4 +30,31 @@ export async function notifyQuizGraded(
       link: QUIZ_GRADED_LINK,
     }),
   );
+}
+
+/**
+ * QUIZ_PUBLISHED: an ONLINE quiz just became visible to students.
+ *
+ * The audience is exactly who the student quiz list now shows it to. That list
+ * (`listQuizResultsForStudent` in ./list.ts) returns every published ONLINE
+ * quiz in the season with no group filter — quizzes carry no group targeting —
+ * so the recipients are every ACTIVE enrolment in the quiz's season. Withdrawn
+ * and completed students are left out: the attempt routes refuse them
+ * (`hasActiveEnrollment`), so there is nothing for them to do. Deleted
+ * accounts are skipped.
+ *
+ * Same link as QUIZ_GRADED — the list, which maps to the `quiz` target.
+ * Best-effort, after the publish has committed (spec D6).
+ */
+export async function notifyQuizPublished(quiz: { seasonId: number; title: string }): Promise<void> {
+  await bestEffort("notify:QUIZ_PUBLISHED", async () => {
+    const enrolled = await db.seasonEnrollment.findMany({
+      where: { seasonId: quiz.seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
+      select: { studentUserId: true },
+    });
+    await createNotificationsBulk(
+      enrolled.map((e) => e.studentUserId),
+      { type: "QUIZ_PUBLISHED", title: `New quiz: ${quiz.title}`, link: QUIZ_GRADED_LINK },
+    );
+  });
 }

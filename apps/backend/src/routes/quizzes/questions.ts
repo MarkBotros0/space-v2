@@ -12,6 +12,7 @@ import {
   reorderQuestionsRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
+import { notifyQuizPublished } from "./notify";
 
 /** The authoring view of a question — the answer key included. */
 const AUTHORING_QUESTION_SELECT = {
@@ -276,11 +277,24 @@ export async function publishQuiz(req: Request, res: Response) {
     }
   }
 
-  const updated = await db.quiz.update({
-    where: { id },
-    data: { publishedAt: parsed.data.publish ? new Date() : null },
-    select: { publishedAt: true },
-  });
+  // Draft → published is a conditional write, so only the request that
+  // actually flips it notifies: a republish (which only moves the timestamp)
+  // and the loser of two racing publishes stay silent.
+  const firstPublish =
+    parsed.data.publish &&
+    (await db.quiz.updateMany({ where: { id, publishedAt: null }, data: { publishedAt: new Date() } }))
+      .count === 1;
+
+  const select = { publishedAt: true, seasonId: true, title: true } as const;
+  const updated = firstPublish
+    ? await db.quiz.findUniqueOrThrow({ where: { id }, select })
+    : await db.quiz.update({
+        where: { id },
+        data: { publishedAt: parsed.data.publish ? new Date() : null },
+        select,
+      });
+
+  if (firstPublish) await notifyQuizPublished(updated);
 
   return apiOk(res, { publishedAt: updated.publishedAt });
 }
