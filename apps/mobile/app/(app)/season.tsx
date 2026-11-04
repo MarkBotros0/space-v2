@@ -1,3 +1,4 @@
+import { CalendarRange } from "lucide-react-native";
 import { useEffect, type ReactNode } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
@@ -10,9 +11,8 @@ import { useCurrentSeasonId, useSeasonDetail, useSeasons } from "../../src/hooks
 import { EditSeason } from "../../src/components/season/EditSeason";
 import { StudentSeason } from "../../src/components/season/StudentSeason";
 import { formatDate } from "../../src/lib/format";
+import { Button, Card, EmptyState, Text } from "../../src/design/ui";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
 /**
  * The season workspace (v1 /admin/season, /student/season). ADMIN is
@@ -20,7 +20,6 @@ import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from
  * the remaining staff roles keep the current-season card until their batch.
  */
 function StaffSeason() {
-  const theme = useTheme();
   const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const current = useCurrentSeasonId();
@@ -33,40 +32,34 @@ function StaffSeason() {
   };
 
   let body: ReactNode;
-  if (current.isPending) body = <LoadingState />;
-  else if (current.isError)
-    body = <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
+  if (current.isPending) body = <RouteSkeleton />;
+  else if (current.isError) body = <RouteError onRetry={current.refetch} />;
   else if (current.seasonId === null)
-    body = <EmptyState title="No season" message="You aren't in a season right now." />;
-  else if (detail.isPending) body = <LoadingState />;
-  else if (detail.isError)
-    body = (
-      <ErrorState message="Couldn't load this season." onRetry={() => void detail.refetch()} />
-    );
+    body = <EmptyState icon={CalendarRange} title="No season" description="You aren't in a season right now." />;
+  else if (detail.isPending) body = <RouteSkeleton />;
+  else if (detail.isError) body = <RouteError onRetry={() => void detail.refetch()} />;
   else {
     const s = detail.data;
     body = (
-      <>
-        <Card>
-          <Text variant="title">{s.title}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>{`${s.code} · ${s.status}`}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>
+      <View className="flex-col gap-4">
+        <Card className="p-4">
+          <Text className="text-2xl font-bold">{s.title}</Text>
+          <Text className="text-sm font-medium text-muted-foreground">{`${s.code} · ${s.status}`}</Text>
+          <Text className="text-sm font-medium text-muted-foreground">
             {`${formatDate(s.startDate)} – ${formatDate(s.endDate)}`}
           </Text>
-          {s.description ? <Text variant="body">{s.description}</Text> : null}
-          <Text variant="label">{`${s.sessionCount} sessions · ${s.studentCount} students`}</Text>
+          {s.description ? <Text>{s.description}</Text> : null}
+          <Text className="text-sm font-medium">{`${s.sessionCount} sessions · ${s.studentCount} students`}</Text>
         </Card>
-        <Card style={{ marginTop: theme.spacing.md }}>
-          <Text variant="heading">Groups</Text>
+        <Card className="p-4">
+          <Text className="text-lg font-semibold">Groups</Text>
           {s.groups.length === 0 ? (
-            <Text variant="body" color={theme.colors.neutral[600]}>
-              No groups yet.
-            </Text>
+            <Text className="text-muted-foreground">No groups yet.</Text>
           ) : (
             s.groups.map((g) => (
-              <View key={g.id} style={{ marginTop: theme.spacing.sm }}>
-                <Text variant="body">{g.name}</Text>
-                <Text variant="caption" color={theme.colors.neutral[600]}>
+              <View key={g.id} className="mt-2">
+                <Text>{g.name}</Text>
+                <Text className="text-xs text-muted-foreground">
                   {g.leaderNames.length > 0
                     ? `${g.studentCount} students · ${g.leaderNames.join(", ")}`
                     : `${g.studentCount} students`}
@@ -75,28 +68,23 @@ function StaffSeason() {
             ))
           )}
         </Card>
-        <View style={{ flexDirection: "row", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-          <Button title="Calendar" variant="secondary" onPress={() => router.push("/calendar")} />
-          <Button
-            title="Assignments"
-            variant="secondary"
-            onPress={() => router.push("/assignments")}
-          />
+        <View className="flex-row flex-wrap gap-2">
+          <Button variant="secondary" size="lg" onPress={() => router.push("/calendar")}>
+            Calendar
+          </Button>
+          <Button variant="secondary" size="lg" onPress={() => router.push("/assignments")}>
+            Assignments
+          </Button>
         </View>
         {canEdit ? <EditSeason season={s} /> : null}
-      </>
+      </View>
     );
   }
 
   return (
-    <Screen
-      edges={["top", "left", "right"]}
-      scroll
-      onRefresh={handleRefresh}
-      refreshing={detail.isRefetching}
-    >
+    <ShellFrame onRefresh={handleRefresh} refreshing={detail.isRefetching}>
       {body}
-    </Screen>
+    </ShellFrame>
   );
 }
 
