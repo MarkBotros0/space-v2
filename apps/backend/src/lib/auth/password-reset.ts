@@ -7,6 +7,7 @@ import { PASSWORD_RESET_TTL_MINUTES } from "../../../../../packages/shared/src/i
 import { db } from "../../db/client";
 import { isEmailConfigured, sendPasswordResetEmail } from "../email";
 import { hashToken, revokeAllRefreshTokensForUser } from "./tokens";
+import { findUserByEmail } from "./find-user-by-email";
 
 /** v1's TTL, unchanged (spec 11 R73). */
 export const PASSWORD_RESET_TTL_MS = PASSWORD_RESET_TTL_MINUTES * 60 * 1000;
@@ -59,10 +60,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
   // No transport → mint nothing: a code nobody can receive is a liability.
   if (!isEmailConfigured()) return;
 
-  const user = await db.user.findUnique({
-    where: { email },
-    select: { id: true, email: true, deletedAt: true },
-  });
+  const user = await findUserByEmail(email, { id: true, email: true, deletedAt: true });
   if (!user || user.deletedAt) return; // R70
 
   const recent = await db.passwordResetToken.findFirst({

@@ -47,13 +47,14 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
     );
   }
   // Only DRAFT and RETURNED are editable, and only by a student still actively
-  // enrolled in the assignment's season (see ./editable.ts).
+  // enrolled in the assignment's season (see ./editable.ts). Order: who may
+  // write (403), then a well-formed body (400), then the row's state (409).
   const refusal = await studentWriteRefusal(user, sub.assignment.seasonId, sub.status);
   if (refusal === "forbidden") return forbidden(res);
-  if (refusal === "not_editable") return submissionLocked(res);
 
   const parsed = updateSubmissionRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid submission body.", 400);
+  if (refusal === "not_editable") return submissionLocked(res);
 
   if (parsed.data.submit) {
     // REG-85: v1's form disabled Submit for blank text with no attached file.

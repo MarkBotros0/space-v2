@@ -1,5 +1,5 @@
 const mockDb = {
-  user: { findUnique: jest.fn(), update: jest.fn() },
+  user: { findUnique: jest.fn(), findMany: jest.fn(async () => []), update: jest.fn() },
   passwordResetToken: { findUnique: jest.fn(), findFirst: jest.fn(), updateMany: jest.fn(), create: jest.fn() },
   inviteToken: { updateMany: jest.fn() },
   refreshToken: { updateMany: jest.fn() },
@@ -27,6 +27,7 @@ import { hashToken } from "../lib/auth/tokens";
 beforeEach(() => {
   jest.resetAllMocks();
   mockDb.$transaction.mockImplementation((fn: (tx: typeof mockDb) => unknown) => fn(mockDb));
+  mockDb.user.findMany.mockResolvedValue([]);
   mockDb.passwordResetToken.updateMany.mockResolvedValue({ count: 1 });
   mockDb.passwordResetToken.create.mockResolvedValue({});
   mockDb.inviteToken.updateMany.mockResolvedValue({ count: 0 });
