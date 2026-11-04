@@ -8,7 +8,9 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -93,6 +95,32 @@ describe("UsersScreen", () => {
     fireEvent.press(inviteButtons[0]!);
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/users/3/invite"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Invite sent to pete@jpc.test."));
+  });
+
+  it("says why a row invite failed instead of failing silently", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue({ data: { data: { users: rows, nextCursor: null, total: 2 } } });
+    post.mockRejectedValue(
+      Object.assign(new Error("503"), {
+        isAxiosError: true,
+        response: { status: 503, data: { error: { code: "email_not_configured", message: "x" } } },
+      }),
+    );
+    renderWithProviders(<UsersScreen />);
+    await screen.findByText("Pending Pete");
+    fireEvent.press(screen.getByText("Send invite"));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/Email isn't set up/)));
+  });
+
+  it("reports a network failure as one", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue({ data: { data: { users: rows, nextCursor: null, total: 2 } } });
+    post.mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }));
+    renderWithProviders(<UsersScreen />);
+    await screen.findByText("Pending Pete");
+    fireEvent.press(screen.getByText("Send invite"));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/Couldn't reach the server/)));
   });
 
   it("navigates to the detail route on row press", async () => {

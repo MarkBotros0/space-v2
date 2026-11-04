@@ -63,6 +63,7 @@ export function UserForm({
   submitting,
   message,
   deactivation,
+  readOnly = false,
   onSubmit,
   onCancel,
 }: {
@@ -72,6 +73,11 @@ export function UserForm({
   message: string | null;
   /** Edit only: omitted when the account is the caller's own. */
   deactivation?: { inactive: boolean; pending: boolean; onToggle: () => void };
+  /**
+   * Fields and Save are disabled (a deactivated account: the server refuses
+   * every edit, REG-104). Reactivate and Cancel stay live.
+   */
+  readOnly?: boolean;
   onSubmit: (submit: Submit) => void;
   onCancel: () => void;
 }) {
@@ -119,6 +125,7 @@ export function UserForm({
       <FormField label="Name" required error={errors.name}>
         <Input
           accessibilityLabel="Name"
+          disabled={readOnly}
           value={v.name}
           onChangeText={(name) => setV({ ...v, name })}
         />
@@ -137,6 +144,7 @@ export function UserForm({
       <FormField label="Role" required error={errors.role}>
         <Select
           items={ROLE_LABELS}
+          disabled={readOnly}
           value={v.role}
           onValueChange={(role) => setV({ ...v, role: role as UserRole })}
         >
@@ -164,6 +172,7 @@ export function UserForm({
       >
         <Input
           accessibilityLabel="Graduation year"
+          disabled={readOnly}
           value={v.graduationYear}
           onChangeText={(graduationYear) => setV({ ...v, graduationYear })}
           keyboardType="number-pad"
@@ -173,7 +182,7 @@ export function UserForm({
 
       <FormErrorBox message={message} />
       <View className="flex-col gap-2">
-        <Button disabled={submitting} onPress={submit}>
+        <Button disabled={submitting || readOnly} onPress={submit}>
           {submitting ? "Saving…" : mode === "create" ? "Create and send invite" : "Save changes"}
         </Button>
         {mode === "edit" && deactivation ? (

@@ -7,7 +7,7 @@ import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { UsersList } from "../../../src/design/users/users-list";
-import { Button, EmptyState, Input } from "../../../src/design/ui";
+import { Button, EmptyState, Input, toast } from "../../../src/design/ui";
 import {
   usePendingInviteCount,
   useSendInvite,
@@ -15,6 +15,7 @@ import {
   useUsers,
 } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
+import { inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
 import { useSessionStore } from "../../../src/store/session";
 
 function bulkSummary(r: BulkInviteResponse): string {
@@ -138,7 +139,15 @@ export default function UsersScreen() {
                     variant="outline"
                     size="sm"
                     disabled={sendInvite.isPending}
-                    onPress={() => sendInvite.mutate({ userId: row.id })}
+                    onPress={() =>
+                      sendInvite.mutate(
+                        { userId: row.id },
+                        {
+                          onSuccess: () => toast.success(inviteSentMessage(row.email)),
+                          onError: (err) => toast.error(inviteErrorMessage(err)),
+                        },
+                      )
+                    }
                   >
                     {row.status === "invited" ? "Resend invite" : "Send invite"}
                   </Button>

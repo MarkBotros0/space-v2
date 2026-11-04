@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import type { SeasonDetail } from "@space/shared";
@@ -13,7 +13,7 @@ import { Button, Card, CardContent, EmptyState } from "../../../../src/design/ui
 import { ConfirmDialog } from "../../../../src/design/ui/confirm-dialog";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useDeleteSeason, useUpdateSeasonAsSuper } from "../../../../src/hooks/use-season-writes";
-import { apiErrorMessage } from "../../../../src/lib/api-error";
+import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { useSessionStore } from "../../../../src/store/session";
 
 iconWithClassName(Trash2);
@@ -83,7 +83,10 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
         open={confirming}
         onOpenChange={setConfirming}
         title={`Delete "${season.title}"?`}
-        description="The season will be hidden from lists. Existing groups, sessions, and attendance are preserved."
+        // Not v1's copy ("groups, sessions, and attendance are preserved"): the
+        // server refuses a season with any session or enrollment
+        // (season_in_use), so promising that would be false.
+        description="Only an empty season can be deleted — one with no sessions and no enrollments. A season in use should be archived instead (Status: Archived)."
         confirmLabel="Delete"
         destructive
         pending={remove.isPending}
@@ -96,6 +99,14 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
             },
             onError: (err) => {
               setConfirming(false);
+              if (apiErrorCode(err) === "season_in_use") {
+                // The common refusal, said where it can't be missed — the
+                // form's message line sits below the fold on a phone.
+                const text = "This season has sessions or enrollments, so it can't be deleted. Archive it instead: set Status to Archived and save.";
+                setDeleteError(text);
+                Alert.alert("Season in use", text);
+                return;
+              }
               setDeleteError(apiErrorMessage(err, "Couldn't delete the season."));
             },
           });

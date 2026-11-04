@@ -9,8 +9,10 @@ import { PageHeader } from "../../src/design/layout/page-header";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { Section } from "../../src/design/settings/section";
 import { Button, FormField, Input, PasswordInput, toast } from "../../src/design/ui";
+import { ConfirmDialog } from "../../src/design/ui/confirm-dialog";
 import { useChangePassword, useLogoutAll, useUpdateProfile } from "../../src/hooks/use-me";
 import { useLogout } from "../../src/hooks/use-session";
+import { apiErrorCode, apiErrorMessage } from "../../src/lib/api-error";
 import { clearSession } from "../../src/lib/token-storage";
 import { useSessionStore } from "../../src/store/session";
 
@@ -40,6 +42,8 @@ export default function SettingsScreen() {
   const [confirm, setConfirm] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [currentPasswordError, setCurrentPasswordError] = useState<string | null>(null);
+  const [confirmingLogoutAll, setConfirmingLogoutAll] = useState(false);
 
   if (!user) return null; // the (app) layout redirects before this renders
 
@@ -68,6 +72,7 @@ export default function SettingsScreen() {
   const submitPassword = () => {
     setPasswordError(null);
     setConfirmError(null);
+    setCurrentPasswordError(null);
     const parsed = passwordSchema.safeParse(newPassword);
     if (!parsed.success) {
       setPasswordError(parsed.error.issues[0]?.message ?? "Invalid password.");
@@ -94,12 +99,27 @@ export default function SettingsScreen() {
                 : ` Signed out of ${data.sessionsRevoked} other devices.`;
           toast.success(`Password updated.${revoked}`);
         },
-        onError: () => toast.error("Couldn't change the password. Check your current password."),
+        onError: (err) => {
+          // Branch on the envelope's code, never the message text.
+          const code = apiErrorCode(err);
+          if (code === "incorrect_password") {
+            setCurrentPasswordError("Current password is incorrect.");
+            toast.error("Your current password is incorrect.");
+          } else if (code === "too_many_requests") {
+            toast.error("Too many attempts. Wait a few minutes, then try again.");
+          } else if (code === "bad_request") {
+            // The server's own password-rule message (passwordSchema).
+            setPasswordError(apiErrorMessage(err, "This password isn't allowed."));
+          } else {
+            toast.error(apiErrorMessage(err, "Couldn't change the password. Try again."));
+          }
+        },
       },
     );
   };
 
   const signOutEverywhere = () => {
+    setConfirmingLogoutAll(false);
     logoutAll.mutate(undefined, {
       // Success or failure, this device signs out locally — same contract as
       // useLogout: never leave someone "signed in" against a dead session.
@@ -139,7 +159,7 @@ export default function SettingsScreen() {
         {user.hasPassword ? (
           <Section icon={Lock} title="Change password" description="Use at least 8 characters.">
             <View className="flex-col gap-4">
-              <FormField label="Current password" required>
+              <FormField label="Current password" required error={currentPasswordError ?? undefined}>
                 <PasswordInput
                   accessibilityLabel="Current password"
                   autoComplete="current-password"
@@ -180,12 +200,22 @@ export default function SettingsScreen() {
               variant="outline"
               textClassName="text-error-700 dark:text-error-200"
               disabled={logoutAll.isPending}
-              onPress={signOutEverywhere}
+              onPress={() => setConfirmingLogoutAll(true)}
             >
               Sign out everywhere
             </Button>
           </View>
         </Section>
+        <ConfirmDialog
+          open={confirmingLogoutAll}
+          onOpenChange={setConfirmingLogoutAll}
+          title="Sign out everywhere?"
+          description="This signs your account out on every device, including this one. You'll need your password to sign back in."
+          confirmLabel="Sign out everywhere"
+          destructive
+          pending={logoutAll.isPending}
+          onConfirm={signOutEverywhere}
+        />
       </View>
     </ShellFrame>
   );

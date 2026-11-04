@@ -131,7 +131,7 @@ describe("GET /api/v1/events — visibility derived from the token", () => {
         db.jpcEvent.create({
           data: {
             title: testEventTitle(`upcoming${n}`),
-            // Inside the default upper bound (now + 365d) so the window keeps them.
+            // Near-future dates, so the upcoming window keeps them.
             date: new Date(Date.now() + n * 24 * 3600 * 1000),
             visibility: "ALL",
           },

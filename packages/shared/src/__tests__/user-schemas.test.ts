@@ -13,6 +13,7 @@ import {
   pendingInvitesResponseSchema,
   updateProfileRequestSchema,
   updateUserRequestSchema,
+  userDetailSchema,
 } from "../index";
 
 describe("passwordSchema — the single definition (spec 11 R65: v1 stated min-8 in four places)", () => {
@@ -27,6 +28,12 @@ describe("passwordSchema — the single definition (spec 11 R65: v1 stated min-8
 
 describe("createUserRequestSchema", () => {
   const valid = { name: "New Person", email: "p@jpc.test", role: "STUDENT" as const };
+
+  it("trims and lower-cases the email, as the importer normalises it", () => {
+    expect(createUserRequestSchema.parse({ ...valid, email: "  Mixed.Case@JPC.test " }).email).toBe(
+      "mixed.case@jpc.test",
+    );
+  });
 
   it("defaults graduationYear to null and trims the name", () => {
     const parsed = createUserRequestSchema.parse({ ...valid, name: "  Padded  " });
@@ -147,6 +154,25 @@ describe("bulk invite contracts (Plan 10 Decision 12)", () => {
   it("states the per-request ceiling once, for the API and the confirm dialog alike", () => {
     expect(BULK_INVITE_BATCH_SIZE).toBe(20);
     expect(pendingInvitesResponseSchema.safeParse({ pending: 0 }).success).toBe(true);
-    expect(createUserResponseSchema.safeParse({ userId: 5 }).success).toBe(true);
+    expect(createUserResponseSchema.safeParse({ userId: 5, inviteSent: true }).success).toBe(true);
+  });
+
+  it("the create response says whether the invite actually went out", () => {
+    expect(createUserResponseSchema.safeParse({ userId: 5 }).success).toBe(false);
+    expect(createUserResponseSchema.parse({ userId: 5, inviteSent: false }).inviteSent).toBe(false);
+  });
+});
+
+describe("user detail carries the seasons a demotion would remove", () => {
+  const detail = {
+    id: 7, name: "Pat", email: "p@jpc.test", role: "ADMIN", graduationYear: 2015,
+    lastLoginAt: null, deletedAt: null, status: "active", invite: null,
+  };
+
+  it("requires adminSeasons", () => {
+    expect(userDetailSchema.safeParse(detail).success).toBe(false);
+    expect(
+      userDetailSchema.safeParse({ ...detail, adminSeasons: [{ id: 1, code: "gbv-2026", title: "GBV 2026" }] }).success,
+    ).toBe(true);
   });
 });

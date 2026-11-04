@@ -139,6 +139,55 @@ describe("SettingsScreen", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Password updated. Signed out of 2 other devices."));
   });
 
+  describe("password-change failures say what actually went wrong", () => {
+    function apiFailure(status: number, code: string, message: string) {
+      return Object.assign(new Error(message), {
+        isAxiosError: true,
+        response: { status, data: { error: { code, message } } },
+      });
+    }
+
+    async function submit() {
+      fireEvent.changeText(screen.getByLabelText("Current password"), "old-password");
+      fireEvent.changeText(screen.getByLabelText("New password"), "new-password-1");
+      fireEvent.changeText(screen.getByLabelText("Confirm new password"), "new-password-1");
+      fireEvent.press(screen.getByText("Update password"));
+      await waitFor(() => expect(post).toHaveBeenCalled());
+    }
+
+    beforeEach(() => useSessionStore.setState(sessionFor("STUDENT")));
+
+    it("a wrong current password is flagged on that field", async () => {
+      post.mockRejectedValue(apiFailure(400, "incorrect_password", "Current password is incorrect."));
+      renderWithProviders(<SettingsScreen />);
+      await submit();
+      await waitFor(() =>
+        expect(screen.getByLabelText("Current password").props.accessibilityHint).toBe(
+          "Current password is incorrect.",
+        ),
+      );
+      expect(toast.error).toHaveBeenCalledWith("Your current password is incorrect.");
+    });
+
+    it("a 429 says to wait, not to check the password", async () => {
+      post.mockRejectedValue(apiFailure(429, "too_many_requests", "Too many requests. Please try again later."));
+      renderWithProviders(<SettingsScreen />);
+      await submit();
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith("Too many attempts. Wait a few minutes, then try again."),
+      );
+    });
+
+    it("a password-rule refusal lands on the new-password field with the server's message", async () => {
+      post.mockRejectedValue(apiFailure(400, "bad_request", "At most 72 bytes."));
+      renderWithProviders(<SettingsScreen />);
+      await submit();
+      await waitFor(() =>
+        expect(screen.getByLabelText("New password").props.accessibilityHint).toBe("At most 72 bytes."),
+      );
+    });
+  });
+
   it("keeps the mismatch check client-side — no request leaves the device", async () => {
     useSessionStore.setState(sessionFor("STUDENT"));
     renderWithProviders(<SettingsScreen />);
@@ -157,12 +206,18 @@ describe("SettingsScreen", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it("logs out everywhere: posts, clears the session, lands on login", async () => {
+  it("logs out everywhere only after a confirmation: posts, clears the session, lands on login", async () => {
     useSessionStore.setState(sessionFor("STUDENT"));
     post.mockResolvedValue({ data: { data: { revoked: 3 } } });
     renderWithProviders(<SettingsScreen />);
 
     fireEvent.press(screen.getByText("Sign out everywhere"));
+    // The first press only opens the dialog — nothing is revoked yet.
+    expect(await screen.findByText("Sign out everywhere?")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+
+    const buttons = screen.getAllByText("Sign out everywhere");
+    fireEvent.press(buttons[buttons.length - 1]!);
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/auth/logout-all"));
     await waitFor(() => expect(useSessionStore.getState().status).toBe("anonymous"));

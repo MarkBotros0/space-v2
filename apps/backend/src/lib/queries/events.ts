@@ -79,11 +79,12 @@ export async function eventVisibilityFilter(
  * every surface. Prisma cannot express COALESCE in a filter, so the null case
  * is spelled out.
  */
-export function eventWindowFilter(from: Date, to: Date): Prisma.JpcEventWhereInput {
+export function eventWindowFilter(from: Date | null, to: Date | null): Prisma.JpcEventWhereInput {
+  // A missing bound is open (v1-parity R57: with neither, every event).
   return {
     AND: [
-      { date: { lte: to } },
-      { OR: [{ endDate: { gte: from } }, { endDate: null, date: { gte: from } }] },
+      ...(to ? [{ date: { lte: to } }] : []),
+      ...(from ? [{ OR: [{ endDate: { gte: from } }, { endDate: null, date: { gte: from } }] }] : []),
     ],
   };
 }

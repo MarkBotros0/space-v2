@@ -64,11 +64,15 @@ export function useStudentImportCommit(): UseMutationResult<
       const res = await apiClient.post("/api/v1/imports/students/commit", input);
       return studentImportResultSchema.parse(res.data.data);
     },
-    // New users, new enrolments and (via enrolment) group rosters all moved.
+    // New users, new enrolments and (via enrolment) group rosters all moved —
+    // and with them the season detail's student counts and the dashboards'
+    // headcounts.
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
     },
   });
 }

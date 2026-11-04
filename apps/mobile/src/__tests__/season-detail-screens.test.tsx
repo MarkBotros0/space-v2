@@ -243,7 +243,7 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
     expect(patch).not.toHaveBeenCalled();
   });
 
-  it("deletes behind v1's confirm dialog and shows season_in_use verbatim", async () => {
+  it("deletes behind v1's confirm dialog and explains season_in_use", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     del.mockRejectedValueOnce(
@@ -266,9 +266,7 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Delete"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/7"));
-    expect(
-      await screen.findByText("This season has sessions or enrollments; archive it instead."),
-    ).toBeTruthy();
+    expect(await screen.findByText(/can't be deleted\. Archive it instead/)).toBeTruthy();
 
     del.mockResolvedValueOnce({ data: { data: { deleted: true } } });
     fireEvent.press(screen.getByText("Delete season"));
