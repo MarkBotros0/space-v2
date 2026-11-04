@@ -6,7 +6,7 @@ import type { CreateUserBody } from "@space/shared";
 import { NEW_USER_VALUES, UserForm } from "../../../src/components/UserForm";
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { Card, CardContent, EmptyState } from "../../../src/design/ui";
+import { Card, CardContent, EmptyState, toast } from "../../../src/design/ui";
 import { useCreateUser } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { useSessionStore } from "../../../src/store/session";
@@ -34,8 +34,17 @@ export default function NewUserScreen() {
 
   const create = (body: CreateUserBody) =>
     createUser.mutate(body, {
-      onSuccess: (created) =>
-        router.replace({ pathname: "/user/[id]", params: { id: String(created.userId) } }),
+      onSuccess: (created) => {
+        // The account exists either way; an undelivered invite is withdrawn
+        // server-side, so the detail screen offers "Send invite" again.
+        if (created.inviteSent) toast.success("User created. Their invite is on its way.");
+        else {
+          toast.error(
+            "User created, but the invite email couldn't be sent. Use Send invite on their page once email works.",
+          );
+        }
+        router.replace({ pathname: "/user/[id]", params: { id: String(created.userId) } });
+      },
       onError: (err) => setServerError(apiErrorMessage(err, "Couldn't create the user.")),
     });
 
