@@ -8,7 +8,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Start or resume the caller's attempt",
       description:
-        "STUDENT only (staff get 403), in a season they can access. Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key.",
+        "STUDENT only (staff get 403), with an ACTIVE enrolment in the quiz's season — a withdrawn or completed student, or an alumnus, gets 403 (the same gate applies to save and submit). Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The open attempt."),
@@ -23,7 +23,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Save a batch of answers",
       description:
-        "STUDENT only. Upserts one answer per question into the open attempt (1-100 per call); saving never grades. Validation, all-or-nothing before any write: 400 `question_not_in_quiz`; 400 `wrong_answer_type` (text on an MCQ, or an option index on an ESSAY); 400 `answer_out_of_range` (`selectedIndex` must be below **that question's** option count). 409 `no_attempt` if the quiz was never started; 409 `attempt_closed` once submitted.",
+        "STUDENT only, with an ACTIVE enrolment in the quiz's season (403 otherwise; 404 for an unknown quiz). Upserts one answer per question into the open attempt (1-100 per call); saving never grades. Validation, all-or-nothing before any write: 400 `question_not_in_quiz`; 400 `wrong_answer_type` (text on an MCQ, or an option index on an ESSAY); 400 `answer_out_of_range` (`selectedIndex` must be below **that question's** option count). 409 `no_attempt` if the quiz was never started; 409 `attempt_closed` once submitted.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -57,6 +57,7 @@ export const quizAttemptsPaths = {
         400: conflict("`bad_request`, `question_not_in_quiz`, `wrong_answer_type` or `answer_out_of_range`."),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
+        404: errRef("NotFound"),
         409: conflict("`no_attempt` or `attempt_closed`."),
       },
     },
@@ -66,7 +67,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Submit the open attempt",
       description:
-        "STUDENT only. Every question must be answered (409 `attempt_incomplete`; an essay must be non-blank). MCQs are scored all-or-nothing against the key, read, scored and written inside ONE transaction that holds a row lock on the attempt (REG-111) — a concurrent answer save or second submit waits and then gets 409 `attempt_closed`. A quiz with an ESSAY becomes `SUBMITTED` with `autoScore` set and no `totalScore` (a human must grade it, and nobody is notified). An all-MCQ quiz becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification (link `/student/quizzes`, v1's format) is created best-effort. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail`, now with `isCorrect`/`pointsAwarded` per MCQ but never the key.",
+        "STUDENT only, with an ACTIVE enrolment in the quiz's season (403 otherwise). Every question must be answered (409 `attempt_incomplete`; an essay must be non-blank). MCQs are scored all-or-nothing against the key, read, scored and written inside ONE transaction that holds a row lock on the attempt (REG-111) — a concurrent answer save or second submit waits and then gets 409 `attempt_closed`. A quiz with an ESSAY becomes `SUBMITTED` with `autoScore` set and no `totalScore` (a human must grade it, and nobody is notified). An all-MCQ quiz becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification (link `/student/quizzes`, v1's format) is created best-effort. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail`, now with `isCorrect`/`pointsAwarded` per MCQ but never the key.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The submitted attempt."),

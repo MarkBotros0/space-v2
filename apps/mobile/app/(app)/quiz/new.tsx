@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { createQuizRequestSchema, type QuizKind } from "@space/shared";
 
 import { FormActions, FormErrorBox, ToggleButtons } from "../../../src/design/forms/form-parts";
@@ -13,6 +13,7 @@ import { useCurrentSeasonId } from "../../../src/hooks/use-seasons";
 import { useSeasonSessions } from "../../../src/hooks/use-sessions";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { formatDayKey } from "../../../src/lib/format";
+import { parsePositiveInt } from "../../../src/lib/params";
 import { useSessionStore } from "../../../src/store/session";
 
 /**
@@ -21,21 +22,31 @@ import { useSessionStore } from "../../../src/store/session";
  * the server stays the gate. Defaults mirror v1: PAPER, max score 100.
  * The season is the staff current season (ruling X8); a session is optional
  * (spec D12 — the column is nullable).
+ *
+ * Opened from a session's "+ Add quiz" (v1's CreateQuizForm lived on the
+ * session page and always sent that session and ITS season), the route
+ * carries `sessionId` and `seasonId`: the session is preselected and the quiz
+ * goes into the session's season, not whichever season is current.
  */
 function NewQuizForm() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ sessionId?: string; seasonId?: string }>();
+  const paramSeasonId = parsePositiveInt(params.seasonId);
+  const paramSessionId = parsePositiveInt(params.sessionId);
   const current = useCurrentSeasonId();
-  const sessions = useSeasonSessions(current.seasonId);
+  const seasonId = paramSeasonId ?? current.seasonId;
+  const sessions = useSeasonSessions(seasonId);
   const create = useCreateQuiz();
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<QuizKind>("PAPER");
   const [maxScore, setMaxScore] = useState("100");
-  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<number | null>(paramSessionId);
   const [error, setError] = useState<string | null>(null);
 
-  if (current.isPending) return <RouteSkeleton />;
-  if (current.isError) return <RouteError onRetry={current.refetch} />;
-  const seasonId = current.seasonId;
+  if (paramSeasonId === null) {
+    if (current.isPending) return <RouteSkeleton />;
+    if (current.isError) return <RouteError onRetry={current.refetch} />;
+  }
   if (seasonId === null) {
     return <EmptyState title="No season" description="You aren't an admin of a season yet." />;
   }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
 import { useSaveAnswers, type AnswerInput } from "../../hooks/use-quizzes";
@@ -36,24 +37,21 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
   answersRef.current = answers;
   const pendingRef = useRef<Set<number>>(new Set());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Flushes run one after another, so a slow PATCH can never land after a
+  // newer one and put an older answer back on the server.
+  const chainRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-
-  /** One batched PATCH of everything edited since the last successful flush. */
-  const flush = async (): Promise<boolean> => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    if (pendingRef.current.size === 0) return true;
+  /** One PATCH of the ids pending right now; edits made meanwhile stay pending. */
+  const sendPending = async (): Promise<boolean> => {
+    const sent = [...pendingRef.current];
+    if (sent.length === 0) return true;
+    // Take exactly these ids out BEFORE the request: a question edited while
+    // the request is in flight is re-added by queueSave and goes out in the
+    // next flush, instead of being cleared along with the batch before it.
+    for (const qid of sent) pendingRef.current.delete(qid);
     const payload: AnswerInput[] = detail.questions
-      .filter((q) => pendingRef.current.has(q.id))
+      .filter((q) => sent.includes(q.id))
       .map((q) => {
         const a = answersRef.current[q.id];
         return q.type === "MCQ"
@@ -63,14 +61,45 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
     setSaveState("saving");
     try {
       await save.mutateAsync(payload);
-      pendingRef.current.clear();
-      setSaveState("saved");
+      const settled = pendingRef.current.size === 0 && timerRef.current === null;
+      setSaveState(settled ? "saved" : "saving");
       return true;
     } catch {
+      // Nothing was saved: put the ids back so the next flush retries them.
+      for (const qid of sent) pendingRef.current.add(qid);
       setSaveState("error");
       return false;
     }
   };
+
+  /** One batched PATCH of everything edited since the last successful flush. */
+  const flush = (): Promise<boolean> => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    const run = chainRef.current.then(sendPending, sendPending);
+    chainRef.current = run;
+    return run;
+  };
+  // The unmount and AppState handlers outlive the render that made them.
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+
+  useEffect(() => {
+    // Backgrounding is where a phone loses an attempt: the OS may kill the app
+    // before the debounce fires, so save now rather than in a second.
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "background" || state === "inactive") void flushRef.current();
+    });
+    return () => {
+      sub.remove();
+      // Leaving the screen inside the debounce window must not drop the edit.
+      // useSaveAnswers' cache merge is hook-level, so it lands even after this
+      // component is gone and a re-open shows the answer.
+      if (timerRef.current !== null || pendingRef.current.size > 0) void flushRef.current();
+    };
+  }, []);
 
   const queueSave = (questionId: number) => {
     pendingRef.current.add(questionId);
