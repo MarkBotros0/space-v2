@@ -97,6 +97,35 @@ describe("refreshAccessToken", () => {
   });
 });
 
+describe("scope sync after rotation", () => {
+  beforeEach(() => {
+    __resetRefreshState();
+    jest.clearAllMocks();
+  });
+
+  it("re-reads /me after a successful rotation and updates the signed-in scopes", async () => {
+    useSessionStore.getState().setSession(user, scopes);
+    const newScopes = { ...scopes, activeSeasonId: 9 };
+    const get = jest
+      .spyOn(apiClient, "get")
+      .mockResolvedValue({ data: { data: { user, scopes: newScopes } } } as never);
+
+    await refreshAccessToken(async () => ({ accessToken: "a", expiresIn: 900, refreshToken: "r" }));
+    await new Promise((r) => setImmediate(r));
+
+    expect(get).toHaveBeenCalledWith("/api/v1/me");
+    expect(useSessionStore.getState().scopes?.activeSeasonId).toBe(9);
+    get.mockRestore();
+  });
+
+  it("does not call /me when no one is signed in", async () => {
+    const get = jest.spyOn(apiClient, "get");
+    await refreshAccessToken(async () => ({ accessToken: "a", expiresIn: 900, refreshToken: "r" }));
+    expect(get).not.toHaveBeenCalled();
+    get.mockRestore();
+  });
+});
+
 describe("login", () => {
   beforeEach(() => {
     __resetRefreshState();

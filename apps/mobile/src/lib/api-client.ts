@@ -1,6 +1,12 @@
 import axios from "axios";
 import Constants from "expo-constants";
-import { loginResponseSchema, sessionSchema, type LoginResponse, type Session } from "@space/shared";
+import {
+  loginResponseSchema,
+  meResponseSchema,
+  sessionSchema,
+  type LoginResponse,
+  type Session,
+} from "@space/shared";
 
 import { clearSession, loadAccessToken, loadRefreshToken, saveSession } from "./token-storage";
 // Only referenced lazily (via `useSessionStore.getState()` inside functions,
@@ -70,6 +76,26 @@ async function rotateViaApi(
 }
 
 /**
+ * Re-read `/me` after a token rotation so the store's role and scopes follow
+ * the new token. Without it, a student enrolled, moved or graduated while the
+ * app stays open keeps the old season and tabs until a restart, while the
+ * server already answers for the new ones. Best-effort: a failure leaves the
+ * current session in place, and nothing runs when no one is signed in.
+ */
+async function syncSessionFromMe(): Promise<void> {
+  if (useSessionStore.getState().status !== "authenticated") return;
+  try {
+    const res = await apiClient.get("/api/v1/me");
+    const me = meResponseSchema.parse(res.data.data);
+    if (me.user && useSessionStore.getState().status === "authenticated") {
+      useSessionStore.getState().setSession(me.user, me.scopes);
+    }
+  } catch {
+    // Keep the scopes we have; the next rotation tries again.
+  }
+}
+
+/**
  * Refresh the access token, collapsing concurrent callers onto a single
  * rotation. Rotation revokes the presented refresh token, so a second
  * simultaneous call would always fail.
@@ -102,6 +128,7 @@ export async function refreshAccessToken(rotate: RotateFn = rotateViaApi): Promi
     }
 
     await saveSession(session);
+    void syncSessionFromMe();
     return session.accessToken;
   })();
 
