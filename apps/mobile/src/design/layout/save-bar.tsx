@@ -5,7 +5,7 @@
  */
 import { View } from "react-native";
 
-import { useKeyboardHeight } from "../lib/keyboard-inset";
+import { useKeyboardBottomOffset } from "../lib/keyboard-offset";
 import { Button } from "../ui/button";
 import { Text } from "../ui/text";
 import { useShellBottomPadding } from "./shell-context";
@@ -28,9 +28,7 @@ function SaveBarBody({ label, onPress, loading, hint }: SaveBarProps) {
 }
 
 function SaveBar(props: SaveBarProps) {
-  const keyboard = useKeyboardHeight();
-  const shell = useShellBottomPadding();
-  const offset = keyboard > 0 ? keyboard : shell;
+  const offset = useKeyboardBottomOffset(useShellBottomPadding());
   return (
     <View testID="save-bar" style={{ position: "absolute", left: 0, right: 0, bottom: offset }}>
       <SaveBarBody {...props} />

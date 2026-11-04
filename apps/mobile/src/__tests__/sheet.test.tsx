@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { Platform, Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { SaveBar } from "../design/layout/save-bar";
@@ -23,7 +23,10 @@ beforeEach(() => {
   mockKeyboard = 0;
   mockWithSpring.mockClear();
 });
-afterEach(() => setReducedMotionForTests(null));
+afterEach(() => {
+  setReducedMotionForTests(null);
+  jest.restoreAllMocks();
+});
 
 describe("Sheet", () => {
   it("renders nothing when closed", () => {
@@ -112,6 +115,13 @@ describe("save bars", () => {
     mockKeyboard = 300;
     renderWithProviders(<Sheet open onClose={() => {}} footer={bar}><Text>x</Text></Sheet>);
     expect(screen.getByTestId("sheet-save-bar").props.style.bottom).toBe(300);
+  });
+
+  it("SheetSaveBar on Android adds the nav-bar inset back to the reported keyboard height", () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    mockKeyboard = 300;
+    renderWithProviders(<Sheet open onClose={() => {}} footer={bar}><Text>x</Text></Sheet>);
+    expect(screen.getByTestId("sheet-save-bar").props.style.bottom).toBe(334);
   });
 
   it("SheetSaveBar fires onPress and shows the hint", () => {

@@ -6,8 +6,10 @@
  * (never overscrolls above rest). Reduced motion: a DURATION.fast opacity
  * crossfade with the sheet at its final position.
  * The Modal is its own window on Android, so it gets its own
- * GestureHandlerRootView. Bottom clearance is the safe-area inset, replaced
- * (not added to) by the keyboard height while the keyboard is open.
+ * GestureHandlerRootView. Bottom clearance is `keyboardBottomOffset`: the
+ * safe-area inset, or while the keyboard is open the keyboard's top (on
+ * Android that is the reported height plus the nav-bar inset, since the
+ * edge-to-edge dialog window is not resized; see lib/keyboard-offset.ts).
  * `SheetSaveBar` is pinned to the sheet's bottom and lifted by the same offset.
  * The Animated.Views take only styles; their classes sit on plain Views inside
  * them (classes on an Animated.View are dropped on device). The panel keeps
@@ -15,14 +17,15 @@
  * parent) and its surface `shrink`s inside it so the ScrollView still scrolls.
  */
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { Modal as RNModal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Platform, Modal as RNModal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from "react-native-gesture-handler";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { DURATION, SPRING, useReducedMotion } from "../motion";
-import { useKeyboardHeight, useKeyboardInset } from "../lib/keyboard-inset";
+import { useKeyboardInset } from "../lib/keyboard-inset";
+import { keyboardBottomOffset, useKeyboardBottomOffset } from "../lib/keyboard-offset";
 import { SaveBarBody, type SaveBarProps } from "../layout/save-bar";
 import { Text } from "./text";
 
@@ -36,19 +39,14 @@ type SheetProps = { open: boolean; onClose: () => void; title?: string; children
 
 const BarHeightContext = createContext<(h: number) => void>(() => {});
 
-/** Bottom clearance: the keyboard height while it is open, else the safe-area inset (never both). */
-function useBottomOffset(keyboard: number): number {
-  const insets = useSafeAreaInsets();
-  return keyboard > 0 ? keyboard : insets.bottom;
-}
-
 function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   const reduced = useReducedMotion();
   const [mounted, setMounted] = useState(open);
   const [height, setHeight] = useState(0);
   const [barHeight, setBarHeight] = useState(0);
   const { inset, scrollProps } = useKeyboardInset();
-  const bottom = useBottomOffset(inset);
+  const insets = useSafeAreaInsets();
+  const bottom = keyboardBottomOffset({ os: Platform.OS, keyboard: inset, insetBottom: insets.bottom });
   const openRef = useRef(open);
   openRef.current = open;
   const translateY = useSharedValue(OFFSCREEN);
@@ -161,7 +159,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
 
 /** Pinned primary action for a sheet: sits at the sheet bottom, lifted by the keyboard. */
 function SheetSaveBar(props: SaveBarProps) {
-  const bottom = useBottomOffset(useKeyboardHeight());
+  const bottom = useKeyboardBottomOffset();
   const setBarHeight = useContext(BarHeightContext);
   return (
     <View
