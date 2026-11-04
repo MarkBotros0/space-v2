@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { TextInput, View } from "react-native";
 import { Search } from "lucide-react-native";
 
@@ -7,13 +8,21 @@ import { iconWithClassName } from "../lib/icon";
 
 iconWithClassName(Search);
 
-/** A filled search box; its `control-border` edge keeps the field 3:1 against the page (R25). */
+/**
+ * A filled search box; its `control-border` edge keeps the field 3:1 against
+ * the page (R25) and turns to the focus ring while typing (R26). The edge is on
+ * the wrapping View, so focus is tracked in state rather than with `focus:`.
+ */
 function SearchField({
   value, onChangeText, placeholder, className,
 }: { value: string; onChangeText: (text: string) => void; placeholder: string; className?: string }) {
   const colors = useThemeColors();
+  const [focused, setFocused] = useState(false);
   return (
-    <View testID="search-field" className={cn("min-h-[44px] flex-row items-center gap-2 rounded-xl border border-control-border bg-neutral-soft px-3", className)}>
+    <View
+      testID="search-field"
+      className={cn("min-h-[44px] flex-row items-center gap-2 rounded-xl border border-control-border bg-neutral-soft px-3", focused && "border-ring", className)}
+    >
       <Search size={16} className="text-muted-foreground" />
       <TextInput
         value={value}
@@ -21,6 +30,8 @@ function SearchField({
         placeholder={placeholder}
         placeholderTextColor={colors["muted-foreground"]}
         accessibilityLabel={placeholder}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         returnKeyType="search"
         autoCapitalize="none"
         autoCorrect={false}

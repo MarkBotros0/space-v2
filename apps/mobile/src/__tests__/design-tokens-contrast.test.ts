@@ -56,6 +56,13 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     expect(contrast(rgbOf(t["control-border"]), rgbOf(t[bg]))).toBeGreaterThanOrEqual(3);
   });
 
+  // R26: the focus ring is a control edge too, and never weaker than the resting border.
+  it.each(["background", "surface"])("ring on %s is at least 3:1 and at least the control border's contrast", (bg) => {
+    const ring = contrast(rgbOf(t.ring), rgbOf(t[bg]));
+    expect(ring).toBeGreaterThanOrEqual(3);
+    expect(ring).toBeGreaterThanOrEqual(contrast(rgbOf(t["control-border"]), rgbOf(t[bg])));
+  });
+
   // SegmentedControl: the selected thumb must read as raised (lighter than its track).
   it("surface-raised is lighter than the neutral-soft track (L5)", () => {
     expect(luminance(rgbOf(t["surface-raised"]))).toBeGreaterThan(luminance(rgbOf(t["neutral-soft"])));

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { Input } from "../design/ui/input";
 import { SearchField } from "../design/ui/search-field";
@@ -19,6 +19,20 @@ describe("control borders", () => {
   it("SearchField has a control-border edge", () => {
     render(<SearchField value="" onChangeText={() => {}} placeholder="Search students" />);
     expect(screen.getByTestId("search-field").props.className).toContain("border-control-border");
+  });
+
+  it("SearchField's edge turns to the focus ring while focused (R26)", () => {
+    render(<SearchField value="" onChangeText={() => {}} placeholder="Search students" />);
+    fireEvent(screen.getByLabelText("Search students"), "focus");
+    expect(screen.getByTestId("search-field").props.className).toContain("border-ring");
+    fireEvent(screen.getByLabelText("Search students"), "blur");
+    expect(screen.getByTestId("search-field").props.className).not.toContain("border-ring");
+  });
+
+  // R26: every text-entry control shows the focus ring while focused.
+  it.each(["input", "textarea", "combobox", "rich-text-editor", "search-field"])("%s.tsx marks focus with border-ring", (name) => {
+    const source = readFileSync(path.resolve(__dirname, `../design/ui/${name}.tsx`), "utf8");
+    expect(source).toMatch(/(focus:border-ring|&& "border-ring")/);
   });
 
   const CONTROLS = ["input", "textarea", "select", "combobox", "date-picker", "multi-select", "rich-text-editor", "checkbox"];
