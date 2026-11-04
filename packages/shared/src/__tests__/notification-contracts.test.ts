@@ -11,6 +11,7 @@ import {
   notificationPreferencesSchema,
   notificationSchema,
   notificationTypeSchema,
+  notificationPreferencesRequestSchema,
   pushContent,
   shouldPush,
 } from "../index";
@@ -223,5 +224,23 @@ describe("deviceRegistrationSchema", () => {
 
   it("maps the lowercase wire platform to Plan 18 M10's DevicePlatform enum", () => {
     expect(DEVICE_PLATFORM_TO_DB).toEqual({ ios: "IOS", android: "ANDROID" });
+  });
+});
+
+describe("notificationPreferencesRequestSchema", () => {
+  it("still accepts the six keys an older app build sends", () => {
+    const six = {
+      assignmentCreated: true,
+      submissionReviewed: false,
+      sessionRescheduled: true,
+      lowAttendanceFlag: true,
+      mentorFollowup: true,
+      quizGraded: true,
+    };
+    expect(notificationPreferencesRequestSchema.parse(six)).toEqual(six);
+  });
+
+  it("still requires each of the original six", () => {
+    expect(notificationPreferencesRequestSchema.safeParse({ quizGraded: true }).success).toBe(false);
   });
 });

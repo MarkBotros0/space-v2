@@ -6,7 +6,7 @@ import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   OWN_PROFILE_FIELDS,
   changePasswordRequestSchema,
-  notificationPreferencesSchema,
+  notificationPreferencesRequestSchema,
   updateOwnProfileInputSchema,
   updateProfileRequestSchema,
 } from "../../../../packages/shared/src/index";
@@ -279,7 +279,7 @@ meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
 meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
-  const parsed = notificationPreferencesSchema.safeParse(req.body);
+  const parsed = notificationPreferencesRequestSchema.safeParse(req.body);
   if (!parsed.success) {
     return apiError(res, "bad_request", "Every notification preference is required.", 400);
   }

@@ -154,6 +154,19 @@ export const notificationPreferencesSchema = z.object({
 }) satisfies z.ZodType<Record<NotificationPreferenceKey, boolean>>;
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
+/**
+ * `PUT /me/notification-preferences` body. The three keys added with push
+ * (2026-11-04) are optional so an app build installed before them, which
+ * sends only the original six, still saves; an absent key keeps its stored
+ * value (or the true default for a new row). Responses always carry all keys.
+ */
+export const notificationPreferencesRequestSchema = notificationPreferencesSchema.partial({
+  quizPublished: true,
+  submissionReceived: true,
+  sessionCancelled: true,
+});
+export type NotificationPreferencesRequest = z.infer<typeof notificationPreferencesRequestSchema>;
+
 /** A user with no preference row is opted in to everything (R6, R58). */
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   assignmentCreated: true,
