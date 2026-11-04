@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 import { PageTitle } from "../../src/design/layout/page-title";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { EmptyState as EmptyStateV1 } from "../../src/design/ui";
+import { EmptyState } from "../../src/design/ui";
 import { AlumniCalendar } from "../../src/screens/calendar/alumni-calendar";
 import {
   AdminCalendar,
@@ -12,7 +12,6 @@ import {
   SuperCalendar,
 } from "../../src/screens/calendar/season-calendars";
 import { useSessionStore } from "../../src/store/session";
-import { EmptyState, Screen } from "../../src/ui";
 
 /**
  * /calendar — one route, every role (Decision D1). STUDENT/ALUMNI keep
@@ -29,9 +28,13 @@ export default function CalendarScreen() {
 
   if (role === "MENTOR") {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <EmptyState title="Calendar" message="The calendar isn't available for your role." />
-      </Screen>
+      <ShellFrame>
+        <EmptyState
+          icon={CalendarIcon}
+          title="Calendar"
+          description="The calendar isn't available for your role."
+        />
+      </ShellFrame>
     );
   }
   if (leadsNothing) {
@@ -39,7 +42,7 @@ export default function CalendarScreen() {
       <ShellFrame>
         <View className="flex-col gap-4">
           <PageTitle title="Calendar" subtitle="You don't lead any groups yet." />
-          <EmptyStateV1
+          <EmptyState
             icon={CalendarIcon}
             title="No calendar"
             description="An admin will add you to a group when you're ready."

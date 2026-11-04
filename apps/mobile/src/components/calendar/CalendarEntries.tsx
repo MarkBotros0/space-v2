@@ -1,12 +1,13 @@
-import { View } from "react-native";
+import type { ReactNode } from "react";
+import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { formatWallTime } from "../../lib/format";
 import { sessionBadge, sessionTone, type DayContents, type SessionTone } from "../../lib/calendar-grid";
 import type { CalendarEntry } from "../../lib/day-groups";
-import { useTheme, type Theme } from "../../theme";
-import { Card, Text } from "../../ui";
+import { cn } from "../../design/lib/cn";
+import { Text } from "../../design/ui/text";
 
 /** What a card needs to colour and badge itself (REG-76). */
 export interface CalendarContext {
@@ -18,120 +19,159 @@ export interface CalendarContext {
   isStaff: boolean;
 }
 
+/** A tint as NativeWind classes: card/chip background, text, the card's left rule, and the month dot. */
 export interface Tint {
-  background: string;
-  foreground: string;
+  box: string;
+  text: string;
+  border: string;
+  dot: string;
 }
 
-/** v1's five-colour SEASON_PALETTE, as light-theme pairs. */
-export function seasonTint(theme: Theme, slot: number): Tint {
-  const c = theme.colors;
-  const pairs: Tint[] = [
-    { background: c.info[100], foreground: c.info[800] },
-    { background: c.success[100], foreground: c.success[800] },
-    { background: c.warning[100], foreground: c.warning[800] },
-    { background: c.error[100], foreground: c.error[800] },
-    { background: c.brand.navy[100], foreground: c.brand.navy[800] },
-  ];
-  return pairs[slot % pairs.length] as Tint;
+/** Light: the 100/800 pairs the legacy calendar used; dark: 950/200, as the design calendar's chips. */
+const SEASON_TINTS: Tint[] = [
+  {
+    box: "bg-info-100 dark:bg-info-950",
+    text: "text-info-800 dark:text-info-200",
+    border: "border-l-info-800 dark:border-l-info-400",
+    dot: "bg-info-800 dark:bg-info-400",
+  },
+  {
+    box: "bg-success-100 dark:bg-success-950",
+    text: "text-success-800 dark:text-success-200",
+    border: "border-l-success-800 dark:border-l-success-400",
+    dot: "bg-success-800 dark:bg-success-400",
+  },
+  {
+    box: "bg-warning-100 dark:bg-warning-950",
+    text: "text-warning-800 dark:text-warning-200",
+    border: "border-l-warning-800 dark:border-l-warning-400",
+    dot: "bg-warning-800 dark:bg-warning-400",
+  },
+  {
+    box: "bg-error-100 dark:bg-error-950",
+    text: "text-error-800 dark:text-error-200",
+    border: "border-l-error-800 dark:border-l-error-400",
+    dot: "bg-error-800 dark:bg-error-400",
+  },
+  {
+    box: "bg-brand-navy-100 dark:bg-brand-navy-900",
+    text: "text-brand-navy-800 dark:text-brand-navy-100",
+    border: "border-l-brand-navy-800 dark:border-l-brand-navy-300",
+    dot: "bg-brand-navy-800 dark:bg-brand-navy-300",
+  },
+];
+
+/** v1's five-colour SEASON_PALETTE, as tinted pairs. */
+export function seasonTint(slot: number): Tint {
+  return SEASON_TINTS[slot % SEASON_TINTS.length]!;
 }
+
+const TONE_TINTS: Record<SessionTone, Tint> = {
+  today: SEASON_TINTS[1]!,
+  past: {
+    box: "bg-muted",
+    text: "text-muted-foreground",
+    border: "border-l-muted-foreground",
+    dot: "bg-muted-foreground",
+  },
+  upcoming: {
+    box: "bg-brand-teal-100 dark:bg-brand-teal-950",
+    text: "text-brand-teal-800 dark:text-brand-teal-200",
+    border: "border-l-brand-teal-800 dark:border-l-brand-teal-400",
+    dot: "bg-brand-teal-800 dark:bg-brand-teal-400",
+  },
+};
 
 /** v1's single-season cue: today green, past muted, upcoming teal. */
-export function toneTint(theme: Theme, tone: SessionTone): Tint {
-  const c = theme.colors;
-  if (tone === "today") return { background: c.success[100], foreground: c.success[800] };
-  if (tone === "past") return { background: c.neutral[100], foreground: c.neutral[600] };
-  return { background: c.brand.teal[100], foreground: c.brand.teal[800] };
+export function toneTint(tone: SessionTone): Tint {
+  return TONE_TINTS[tone];
 }
 
 /** v1's event chip: alumni-only warm, everything else navy. */
-export function eventTint(theme: Theme, e: Pick<JpcEventListItem, "visibility">): Tint {
-  const c = theme.colors;
-  return e.visibility === "ALUMNI_ONLY"
-    ? { background: c.warning[100], foreground: c.warning[800] }
-    : { background: c.brand.navy[100], foreground: c.brand.navy[800] };
+export function eventTint(e: Pick<JpcEventListItem, "visibility">): Tint {
+  return e.visibility === "ALUMNI_ONLY" ? SEASON_TINTS[2]! : SEASON_TINTS[4]!;
 }
 
-export function sessionTint(theme: Theme, s: SessionListItem, ctx: CalendarContext): Tint {
+export function sessionTint(s: SessionListItem, ctx: CalendarContext): Tint {
   const slot = ctx.slots?.[s.seasonCode];
-  return slot !== undefined ? seasonTint(theme, slot) : toneTint(theme, sessionTone(s.dayKey, ctx.today));
+  return slot !== undefined ? seasonTint(slot) : toneTint(sessionTone(s.dayKey, ctx.today));
 }
 
-export function Chip({ label, tint }: { label: string; tint: Tint }) {
-  const theme = useTheme();
+/** A badge chip inside a card: the tint's text on the card background. */
+function onCard(tint: Tint): Pick<Tint, "box" | "text"> {
+  return { box: "bg-card", text: tint.text };
+}
+
+export function Chip({ label, tint }: { label: string; tint: Pick<Tint, "box" | "text"> }) {
   return (
-    <View
-      style={{
-        alignSelf: "flex-start",
-        backgroundColor: tint.background,
-        borderRadius: theme.radii.sm,
-        paddingHorizontal: theme.spacing.sm,
-        paddingVertical: 2,
-      }}
-    >
-      <Text variant="caption" color={tint.foreground}>
-        {label}
-      </Text>
+    <View className={cn("self-start rounded-md px-2 py-0.5", tint.box)}>
+      <Text className={cn("text-xs", tint.text)}>{label}</Text>
     </View>
   );
 }
 
+function EntryCard({
+  tint,
+  title,
+  subtitle,
+  chips,
+  onPress,
+}: {
+  tint: Tint;
+  title: string;
+  subtitle: string;
+  chips: ReactNode;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className={cn("mt-2 rounded-2xl border-l-4 p-4 active:opacity-90", tint.box, tint.border)}
+    >
+      <Text className={tint.text}>{title}</Text>
+      <Text className={cn("text-sm font-medium", tint.text)}>{subtitle}</Text>
+      <View className="mt-1 flex-row flex-wrap gap-1">{chips}</View>
+    </Pressable>
+  );
+}
+
 function SessionCard({ s, ctx }: { s: SessionListItem; ctx: CalendarContext }) {
-  const theme = useTheme();
   const router = useRouter();
-  const tint = sessionTint(theme, s, ctx);
+  const tint = sessionTint(s, ctx);
   const badge = sessionBadge(s, ctx.today, ctx.isStaff);
   return (
-    <Card
-      style={{
-        marginTop: theme.spacing.sm,
-        backgroundColor: tint.background,
-        borderLeftWidth: theme.spacing.xs,
-        borderLeftColor: tint.foreground,
-      }}
+    <EntryCard
+      tint={tint}
+      title={s.title}
+      subtitle={s.location ? `${formatWallTime(s.startTime)} · ${s.location}` : formatWallTime(s.startTime)}
       onPress={() => router.push({ pathname: "/session/[id]", params: { id: String(s.id) } })}
-    >
-      <Text variant="body" color={tint.foreground}>
-        {s.title}
-      </Text>
-      <Text variant="label" color={tint.foreground}>
-        {s.location ? `${formatWallTime(s.startTime)} · ${s.location}` : formatWallTime(s.startTime)}
-      </Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs, marginTop: theme.spacing.xs }}>
-        {badge ? <Chip label={badge} tint={{ background: theme.colors.white, foreground: tint.foreground }} /> : null}
-        {ctx.slots ? <Chip label={s.seasonTitle} tint={tint} /> : null}
-      </View>
-    </Card>
+      chips={
+        <>
+          {badge ? <Chip label={badge} tint={onCard(tint)} /> : null}
+          {ctx.slots ? <Chip label={s.seasonTitle} tint={tint} /> : null}
+        </>
+      }
+    />
   );
 }
 
 function EventCard({ e }: { e: JpcEventListItem }) {
-  const theme = useTheme();
   const router = useRouter();
-  const tint = eventTint(theme, e);
+  const tint = eventTint(e);
   return (
-    <Card
-      style={{
-        marginTop: theme.spacing.sm,
-        backgroundColor: tint.background,
-        borderLeftWidth: theme.spacing.xs,
-        borderLeftColor: tint.foreground,
-      }}
+    <EntryCard
+      tint={tint}
+      title={e.title}
+      subtitle={e.time ? `JPC event · ${formatWallTime(e.time)}` : "JPC event · All day"}
       onPress={() => router.push({ pathname: "/event/[id]", params: { id: String(e.id) } })}
-    >
-      <Text variant="body" color={tint.foreground}>
-        {e.title}
-      </Text>
-      <Text variant="label" color={tint.foreground}>
-        {e.time ? `JPC event · ${formatWallTime(e.time)}` : "JPC event · All day"}
-      </Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs, marginTop: theme.spacing.xs }}>
-        {e.visibility === "ALUMNI_ONLY" ? (
-          <Chip label="Alumni only" tint={{ background: theme.colors.white, foreground: tint.foreground }} />
-        ) : null}
-        {e.seasonCode ? <Chip label={e.seasonCode} tint={tint} /> : null}
-      </View>
-    </Card>
+      chips={
+        <>
+          {e.visibility === "ALUMNI_ONLY" ? <Chip label="Alumni only" tint={onCard(tint)} /> : null}
+          {e.seasonCode ? <Chip label={e.seasonCode} tint={tint} /> : null}
+        </>
+      }
+    />
   );
 }
 
@@ -162,24 +202,20 @@ export function DayEntries({ entries, ctx }: { entries: CalendarEntry[]; ctx: Ca
 
 /** What the colours mean: the season palette when several share the view, else today/upcoming/past. */
 export function Legend({ slots }: { slots: Record<string, number> | null }) {
-  const theme = useTheme();
   const items: { label: string; tint: Tint }[] = slots
-    ? Object.entries(slots).map(([code, slot]) => ({ label: code, tint: seasonTint(theme, slot) }))
+    ? Object.entries(slots).map(([code, slot]) => ({ label: code, tint: seasonTint(slot) }))
     : [
-        { label: "Today", tint: toneTint(theme, "today") },
-        { label: "Upcoming", tint: toneTint(theme, "upcoming") },
-        { label: "Past", tint: toneTint(theme, "past") },
+        { label: "Today", tint: toneTint("today") },
+        { label: "Upcoming", tint: toneTint("upcoming") },
+        { label: "Past", tint: toneTint("past") },
       ];
   return (
-    <View
-      accessibilityLabel="Calendar legend"
-      style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs, marginBottom: theme.spacing.md }}
-    >
+    <View accessibilityLabel="Calendar legend" className="mb-4 flex-row flex-wrap gap-1">
       {items.map((i) => (
         <Chip key={i.label} label={i.label} tint={i.tint} />
       ))}
-      <Chip label="JPC event" tint={eventTint(theme, { visibility: "ALL" })} />
-      <Chip label="Alumni only" tint={eventTint(theme, { visibility: "ALUMNI_ONLY" })} />
+      <Chip label="JPC event" tint={eventTint({ visibility: "ALL" })} />
+      <Chip label="Alumni only" tint={eventTint({ visibility: "ALUMNI_ONLY" })} />
     </View>
   );
 }

@@ -1,3 +1,4 @@
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
@@ -22,9 +23,17 @@ import {
 } from "../../lib/calendar-grid";
 import { groupCalendarByDay } from "../../lib/day-groups";
 import { formatDayKey } from "../../lib/format";
+import { cn } from "../../design/lib/cn";
+import { iconWithClassName } from "../../design/lib/icon";
+import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { ShellFrame } from "../../design/layout/shell-frame";
+import { Button } from "../../design/ui/button";
+import { EmptyState } from "../../design/ui/empty-state";
+import { Text } from "../../design/ui/text";
 import { useSessionStore } from "../../store/session";
-import { useTheme } from "../../theme";
-import { Button, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../ui";
+
+iconWithClassName(ChevronLeft);
+iconWithClassName(ChevronRight);
 
 /**
  * Day-grouped sessions and JPC events. Every day, time and order comes from the
@@ -41,30 +50,23 @@ function CalendarDays({
   events: JpcEventListItem[];
   ctx: CalendarContext;
 }) {
-  const theme = useTheme();
   return (
     <>
       <Legend slots={ctx.slots} />
       {groupCalendarByDay(sessions, events).map((group) => {
         const cue = dayCue(group.dayKey, ctx.today);
         return (
-          <View key={group.dayKey} style={{ marginBottom: theme.spacing.md }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-              }}
-            >
-              <Text variant="heading">{formatDayKey(group.dayKey)}</Text>
+          <View key={group.dayKey} className="mb-4">
+            <View className="flex-row items-baseline justify-between gap-2">
+              <Text className="min-w-0 flex-1 text-lg font-semibold">{formatDayKey(group.dayKey)}</Text>
               {cue ? (
                 <Text
-                  variant="caption"
-                  color={
+                  className={cn(
+                    "shrink-0 text-xs",
                     group.dayKey === ctx.today
-                      ? theme.colors.success[800]
-                      : theme.colors.brand.teal[800]
-                  }
+                      ? "text-success-800 dark:text-success-200"
+                      : "text-brand-teal-800 dark:text-brand-teal-200",
+                  )}
                 >
                   {cue}
                 </Text>
@@ -113,8 +115,9 @@ function CalendarSurface({ source }: { source: Source }) {
     body =
       sessions.length === 0 && events.length === 0 ? (
         <EmptyState
+          icon={CalendarIcon}
           title="Nothing coming up"
-          message="You're all caught up. Switch to Month to review past sessions."
+          description="You're all caught up. Switch to Month to review past sessions."
         />
       ) : (
         <CalendarDays sessions={sessions} events={events} ctx={ctx} />
@@ -138,27 +141,14 @@ function CalendarSurface({ source }: { source: Source }) {
     <>
       <ChoiceChips label="Calendar view" options={VIEW_OPTIONS} value={view} onChange={setView} />
       {view !== "upcoming" ? (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginVertical: 8,
-          }}
-        >
-          <Button
-            title="‹"
-            variant="ghost"
-            accessibilityLabel={`Previous ${view}`}
-            onPress={() => step(-1)}
-          />
-          <Text variant="heading">{rangeLabel(view, anchor)}</Text>
-          <Button
-            title="›"
-            variant="ghost"
-            accessibilityLabel={`Next ${view}`}
-            onPress={() => step(1)}
-          />
+        <View className="my-2 flex-row items-center justify-between">
+          <Button variant="ghost" size="icon" accessibilityLabel={`Previous ${view}`} onPress={() => step(-1)}>
+            <ChevronLeft size={16} className="text-foreground" />
+          </Button>
+          <Text className="text-lg font-semibold">{rangeLabel(view, anchor)}</Text>
+          <Button variant="ghost" size="icon" accessibilityLabel={`Next ${view}`} onPress={() => step(1)}>
+            <ChevronRight size={16} className="text-foreground" />
+          </Button>
         </View>
       ) : null}
       {body}
@@ -180,35 +170,33 @@ export function AlumniCalendar() {
   const eventRows = events.data ?? [];
 
   let body: ReactNode;
-  if (current.isPending) body = <LoadingState />;
-  else if (current.isError)
-    body = <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
+  if (current.isPending) body = <RouteSkeleton />;
+  else if (current.isError) body = <RouteError onRetry={current.refetch} />;
   else if (current.seasonId === null)
     body =
       eventRows.length === 0 ? (
         <EmptyState
+          icon={CalendarIcon}
           title="No season to show"
-          message="You aren't in a season right now, so there are no sessions on your calendar."
+          description="You aren't in a season right now, so there are no sessions on your calendar."
         />
       ) : (
         <CalendarSurface source={{ sessions: [], events: eventRows }} />
       );
-  else if (sessions.isPending) body = <LoadingState />;
-  else if (sessions.isError)
+  else if (sessions.isPending) body = <RouteSkeleton />;
+  else if (sessions.isError) body = <RouteError onRetry={() => void sessions.refetch()} />;
+  else if (sessions.data.length === 0 && eventRows.length === 0)
     body = (
-      <ErrorState
-        message="Couldn't load sessions. Check your connection and try again."
-        onRetry={() => void sessions.refetch()}
+      <EmptyState
+        icon={CalendarIcon}
+        title="No sessions"
+        description="This season doesn't have any sessions yet."
       />
     );
-  else if (sessions.data.length === 0 && eventRows.length === 0)
-    body = <EmptyState title="No sessions" message="This season doesn't have any sessions yet." />;
   else body = <CalendarSurface source={{ sessions: sessions.data, events: eventRows }} />;
 
   return (
-    <Screen
-      edges={["top", "left", "right"]}
-      scroll
+    <ShellFrame
       onRefresh={() => {
         void events.refetch();
         if (current.seasonId !== null) void sessions.refetch();
@@ -217,6 +205,6 @@ export function AlumniCalendar() {
       refreshing={sessions.isRefetching}
     >
       {body}
-    </Screen>
+    </ShellFrame>
   );
 }
