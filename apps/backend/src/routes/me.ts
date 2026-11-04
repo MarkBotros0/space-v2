@@ -1,5 +1,4 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 // Relative, not "@space/shared" — the rootDir emit trap (see routes/auth.ts).
 import {
@@ -25,7 +24,7 @@ import {
 } from "../lib/queries/dashboard";
 import { loadMyAttendance, loadMyProfile, loadMySeason, loadSeasonHistory } from "../lib/queries/me";
 // The one 429 handler (ruling X4) — never a local copy.
-import { rateLimitHandler } from "../lib/rate-limit";
+import { makeLimiter } from "../lib/rate-limit";
 import { isAlumnus } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { meDevicesRouter } from "./me-devices";
@@ -33,7 +32,11 @@ import { forbidden } from "./respond";
 
 // Closes spec 18 R31: v1's current-password check was an unthrottled online
 // oracle for anyone already holding a session.
-const passwordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, handler: rateLimitHandler });
+const passwordLimiter = makeLimiter({
+  name: "password-change",
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+});
 
 export const meRouter = Router();
 meRouter.use(meDevicesRouter);

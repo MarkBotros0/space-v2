@@ -1,5 +1,4 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
 
 import {
   DEVICE_PLATFORM_TO_DB,
@@ -8,7 +7,7 @@ import {
 } from "../../../../packages/shared/src/index";
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
-import { rateLimitHandler } from "../lib/rate-limit";
+import { makeLimiter } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 
 /**
@@ -49,7 +48,11 @@ meDevicesRouter.post("/devices", requireAuth, async (req, res) => {
  * Idempotent and opaque: an unknown token answers the same 200, so the
  * endpoint can't be used to test whether a token is registered.
  */
-const unregisterLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, handler: rateLimitHandler });
+const unregisterLimiter = makeLimiter({
+  name: "device-unregister",
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+});
 
 export const devicesRouter = Router();
 

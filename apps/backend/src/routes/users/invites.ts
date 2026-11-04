@@ -1,18 +1,21 @@
 import type { Request, Response } from "express";
-import rateLimit from "express-rate-limit";
 
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { isEmailConfigured } from "../../lib/email";
 import { listPendingInviteUserIds, resendInvite as resendInviteNow, sendPendingInviteBatch } from "../../lib/invites";
 import { parseId } from "../../lib/parse-id";
-import { rateLimitHandler } from "../../lib/rate-limit";
+import { makeLimiter } from "../../lib/rate-limit";
 import { requireSuper } from "./super-only";
 import { loadUserDetail } from "./views";
 
 // Own bucket (Plan 10 Decision 11). With the 20-user batch ceiling this caps
 // bulk sending at 600 invites an hour.
-export const bulkInviteLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30, handler: rateLimitHandler });
+export const bulkInviteLimiter = makeLimiter({
+  name: "bulk-invite",
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+});
 
 /** The one 503 every invite-sending path answers with no mail transport. */
 function emailNotConfigured(res: Response) {

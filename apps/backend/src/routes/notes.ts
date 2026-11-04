@@ -1,5 +1,4 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
 
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
@@ -8,7 +7,7 @@ import { createNotificationsBulk } from "../lib/notifications";
 import { bestEffort } from "../lib/best-effort";
 import { canEditNote, canViewStudent, canWriteNote } from "../lib/permissions";
 import { listAuthoredNotes, listNotesForStudent, NOTE_SELECT, toNoteSummary } from "../lib/queries/notes";
-import { rateLimitHandler } from "../lib/rate-limit";
+import { makeLimiter } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
   createNoteRequestSchema,
@@ -41,11 +40,7 @@ export const myNotesRouter = Router();
  * would record it. Generous enough for a person paging through a caseload,
  * far below a scripted sweep.
  */
-const noteReadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 300,
-  handler: rateLimitHandler,
-});
+const noteReadLimiter = makeLimiter({ name: "note-read", windowMs: 15 * 60 * 1000, limit: 300 });
 
 // requireAuth is attached to each route below, never with router.use()
 // (ruling X5). studentNotesRouter and myNotesRouter share /api/v1/students

@@ -1,6 +1,5 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import rateLimit from "express-rate-limit";
 // Relative, not "@space/shared": tsc's rootDir here is the repo root (so it can
 // also compile packages/shared), which emits this file to
 // dist/apps/backend/src/routes/auth.js without rewriting bare specifiers. A
@@ -26,18 +25,22 @@ import {
   rotateRefreshToken,
   revokeRefreshToken,
 } from "../lib/auth/tokens";
-import { rateLimitHandler } from "../lib/rate-limit";
+import { makeLimiter } from "../lib/rate-limit";
 import { apiOk, apiError } from "../lib/api-response";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { runInBackground } from "../lib/background";
 
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, handler: rateLimitHandler });
-const refreshLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, handler: rateLimitHandler });
+const authLimiter = makeLimiter({ name: "auth", windowMs: 15 * 60 * 1000, limit: 20 });
+const refreshLimiter = makeLimiter({ name: "refresh", windowMs: 15 * 60 * 1000, limit: 60 });
 
 // Same window and ceiling as authLimiter, but its OWN bucket: sharing the
 // login limiter would let a few failed sign-ins lock a person out of
 // activating, and vice versa.
-const acceptInviteLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, handler: rateLimitHandler });
+const acceptInviteLimiter = makeLimiter({
+  name: "accept-invite",
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+});
 
 export const authRouter = Router();
 
@@ -167,8 +170,16 @@ authRouter.post("/logout-all", requireAuth, async (req, res) => {
 
 // Own buckets (Plan 10 Decision 11), like acceptInviteLimiter: sharing the
 // login limiter would let failed sign-ins lock a person out of recovering.
-const forgotPasswordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, handler: rateLimitHandler });
-const resetPasswordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, handler: rateLimitHandler });
+const forgotPasswordLimiter = makeLimiter({
+  name: "forgot-password",
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+});
+const resetPasswordLimiter = makeLimiter({
+  name: "reset-password",
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+});
 
 /**
  * Anonymous by design (spec 11 §4). The SAME body on every path (R67), and
