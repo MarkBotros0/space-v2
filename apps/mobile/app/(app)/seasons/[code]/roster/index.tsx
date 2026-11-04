@@ -146,11 +146,6 @@ function RosterGrid({ seasonId, onNewGroup }: { seasonId: number; onNewGroup: ()
                 <Text numberOfLines={1} className="text-xs text-muted-foreground">
                   {r.email}
                 </Text>
-                {r.otherSeasonGroup ? (
-                  <Text className="mt-1 text-xs text-muted-foreground">
-                    {`Also in ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — assigning here moves them.`}
-                  </Text>
-                ) : null}
               </View>
               <Select
                 items={groupItems}

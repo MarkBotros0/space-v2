@@ -12,7 +12,7 @@ export const studentPaths = {
       parameters: [
         { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
         { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
-        { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`, the GroupStudent pointer) is this group; `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
+        { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`: their most recent GroupStudent membership, any season) is this group; `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
         { name: "sort", in: "query", description: "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)", schema: { type: "string", enum: ["name", "university", "season", "group"] } },
         { name: "dir", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "asc" } },
         { name: "q", in: "query", schema: { type: "string", maxLength: 120 } },

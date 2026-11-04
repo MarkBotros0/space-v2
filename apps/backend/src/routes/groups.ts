@@ -123,8 +123,8 @@ groupsRouter.get("/:id", async (req, res) => {
         orderBy: { user: { name: "asc" } },
       },
       // Members per SeasonEnrollment.groupId (ruling C9), never GroupStudent:
-      // that table holds one row per student across the whole database, so a
-      // past season's group lost its members the moment they moved on.
+      // while that table was global (before Plan 18 M1), a past season's
+      // group lost its members the moment they moved on.
       seasonEnrollments: {
         where: { status: { in: GROUP_MEMBER_STATUSES }, studentUser: { deletedAt: null } },
         select: {

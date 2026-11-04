@@ -30,8 +30,7 @@ export interface ReceivedSubmission {
  * came in (spec 08 D14).
  *
  * The group is resolved through SeasonEnrollment (`groupIdInSeason`, ruling
- * C9), the same lookup the low-attendance flag uses, never the database-wide
- * GroupStudent row. Season admins are deliberately left out: they would get
+ * C9), the same lookup the low-attendance flag uses, never GroupStudent. Season admins are deliberately left out: they would get
  * one notification per submission across the whole season. An ungrouped
  * student has no leader to tell, so nobody is notified.
  *

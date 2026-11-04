@@ -79,7 +79,6 @@ const roster = [
     email: "sara@jpc.test",
     groupId: 3,
     groupName: "Group A",
-    otherSeasonGroup: null,
   },
   {
     userId: 22,
@@ -87,7 +86,6 @@ const roster = [
     email: "omar@jpc.test",
     groupId: null,
     groupName: null,
-    otherSeasonGroup: { groupName: "Old", seasonCode: "s1" },
   },
 ];
 const seasonDetail = {
@@ -210,9 +208,14 @@ describe("/group/new", () => {
     fireEvent.changeText(await screen.findByLabelText("Name"), "Group C");
     await pickOption("Leaders", "Karim");
     await pickOption("Students", "Omar");
-    // Omar is currently in another season's group — the form says so before saving.
+    // Omar has no group in this season, so no "moves them" hint. A group in
+    // another season is not mentioned: memberships are per season (Plan 18
+    // M1), so saving here leaves it alone.
     fireEvent.press(screen.getByLabelText("Students"));
-    expect(screen.getByText("omar@jpc.test · In Old (s1) — saving moves them here.")).toBeTruthy();
+    expect(screen.getAllByText("omar@jpc.test").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^omar@jpc\.test · /)).toBeNull();
+    // Sara is in another group of THIS season, which saving does change.
+    expect(screen.getByText("sara@jpc.test · Now in Group A — saving moves them here.")).toBeTruthy();
     fireEvent.press(screen.getByText("Create group"));
 
     await waitFor(() =>
@@ -318,9 +321,8 @@ describe("/seasons/[code]/roster (G7)", () => {
     });
     renderWithProviders(<SeasonRosterScreen />);
 
-    expect(await screen.findByText("Also in Old (s1) — assigning here moves them.")).toBeTruthy();
     expect(
-      screen.getByText("2 students in Season 7. Set each student's group and save."),
+      await screen.findByText("2 students in Season 7. Set each student's group and save."),
     ).toBeTruthy();
     expect(screen.getByText("No unsaved changes")).toBeTruthy();
     await choose("Sara", "Unassigned");

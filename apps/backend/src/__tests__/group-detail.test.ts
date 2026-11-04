@@ -1,6 +1,6 @@
 // GET /groups/:id with the database mocked: members come from
 // SeasonEnrollment.groupId (ruling C9), ACTIVE and COMPLETED, live students
-// only — never the global GroupStudent table.
+// only — never the GroupStudent table.
 
 const mockDb = {
   group: { findUnique: jest.fn() },

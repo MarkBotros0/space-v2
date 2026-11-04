@@ -204,9 +204,9 @@ export async function buildEngagementSummary(
   const completion: AssignmentCompletionRow[] = assignments.map((a) => {
     // Ruling C9: the expected set is ACTIVE enrolments in this assignment's
     // season, narrowed by the enrolment's group when the assignment is
-    // targeted. v1 counted GroupStudent rows (R20) — a table unique on
-    // studentUserId across the ENTIRE database (R21), so it holds one group per
-    // student regardless of season and can never answer a per-season question.
+    // targeted. v1 counted GroupStudent rows (R20) — then a table unique on
+    // studentUserId across the ENTIRE database (R21, fixed by Plan 18 M1), so
+    // it held one group per student regardless of season.
     const expectedIds = new Set<number>();
     for (const e of enrollmentsBySeason.get(a.seasonId) ?? []) {
       if (e.status !== "ACTIVE") continue;

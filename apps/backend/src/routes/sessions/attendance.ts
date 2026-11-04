@@ -46,9 +46,8 @@ export async function saveAttendance(req: Request, res: Response) {
 
   // Narrowing the roster on the read only hides the other students; without
   // this, a leader who knows a studentUserId can still write that student's
-  // attendance. Membership resolves through SeasonEnrollment.groupId, not
-  // GroupStudent — the latter is unique on studentUserId across all seasons,
-  // so it cannot answer a season-scoped question.
+  // attendance. Membership resolves through SeasonEnrollment.groupId, the
+  // authority (ruling C9), not its GroupStudent mirror.
   //
   // The season scope (admin, SUPER) is checked too: without it an admin's
   // save accepted any user id at all — a student of another season, a

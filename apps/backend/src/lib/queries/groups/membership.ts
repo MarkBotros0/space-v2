@@ -65,11 +65,10 @@ export async function validateGroupWrite(
 /**
  * Point one student at `groupId` for this season.
  *
- * GroupStudent.studentUserId is @unique STANDALONE (schema.prisma:330): a
- * student is in at most one group across the whole database, so the existing
- * row — whichever season's group it is — has to go first. The fix is a
- * composite key, which is a migration (Plan 18). Meanwhile the per-season truth
- * is SeasonEnrollment.groupId, and every v2 read uses that (C9).
+ * GroupStudent is one row per student per season (Plan 18 M1), so only THIS
+ * season's row is replaced; the student's memberships in other seasons are
+ * history and stay. SeasonEnrollment.groupId is the authority (C9) and is
+ * written alongside.
  */
 async function moveStudentToGroup(
   tx: Prisma.TransactionClient,
@@ -77,8 +76,8 @@ async function moveStudentToGroup(
   studentUserId: number,
   groupId: number,
 ): Promise<void> {
-  await tx.groupStudent.deleteMany({ where: { studentUserId } });
-  await tx.groupStudent.create({ data: { groupId, studentUserId } });
+  await tx.groupStudent.deleteMany({ where: { studentUserId, seasonId } });
+  await tx.groupStudent.create({ data: { groupId, studentUserId, seasonId } });
   await tx.seasonEnrollment.update({
     where: { studentUserId_seasonId: { studentUserId, seasonId } },
     data: { groupId },
@@ -95,10 +94,8 @@ async function moveStudentToGroup(
  * history". The roster grid upserts only groupId and preserves all of it. This
  * is the roster grid's semantics; the form's are not reproduced.
  *
- * GroupStudent is still maintained alongside, because v1 reads it and both
- * systems are live against one database — dropping it here would break v1's
- * pages, not just v2's. It is written as a mirror of the enrolment, never as
- * the source of truth (ruling C9).
+ * GroupStudent is maintained alongside as a per-season mirror of the
+ * enrolment (Plan 18 M1), never as the source of truth (ruling C9).
  */
 export async function setGroupStudents(
   tx: Prisma.TransactionClient,
@@ -127,7 +124,7 @@ export async function setGroupStudents(
       data: { groupId: null },
     });
     await tx.groupStudent.deleteMany({
-      where: { groupId, studentUserId: { in: removedIds } },
+      where: { seasonId, groupId, studentUserId: { in: removedIds } },
     });
   }
 
@@ -236,7 +233,7 @@ export async function unassignStudentsFromGroups(
       skippedStudentIds.push(studentUserId);
       continue;
     }
-    await tx.groupStudent.deleteMany({ where: { studentUserId, group: { seasonId } } });
+    await tx.groupStudent.deleteMany({ where: { studentUserId, seasonId } });
     await tx.seasonEnrollment.update({
       where: { studentUserId_seasonId: { studentUserId, seasonId } },
       data: { groupId: null },

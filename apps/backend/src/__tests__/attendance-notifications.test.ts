@@ -1,6 +1,6 @@
 // flagLowAttendance with the database mocked: the leaders it alerts are those
 // of the student's group IN THE SESSION'S SEASON (ruling C9), never whatever
-// global GroupStudent row the student holds now.
+// GroupStudent row the student holds.
 
 const mockDb = {
   session: { findUnique: jest.fn() },

@@ -34,10 +34,10 @@ export async function flagLowAttendance(
     if (recent.length < 2) continue;
     if (!recent.every((r) => r.status === AttendanceStatus.ABSENT)) continue;
 
-    // The student's group IN THIS SEASON (ruling C9). GroupStudent is unique
-    // per student across the whole database, so it named whatever group they
-    // are in now — another season's leaders got the alert. An ungrouped
-    // student is skipped, as in v1.
+    // The student's group IN THIS SEASON, from the enrolment (ruling C9).
+    // v1 read GroupStudent, which (while it was global, before Plan 18 M1)
+    // named whatever group they were in now — another season's leaders got
+    // the alert. An ungrouped student is skipped, as in v1.
     const groupId = await groupIdInSeason(studentUserId, session.seasonId);
     if (groupId === null) continue;
 

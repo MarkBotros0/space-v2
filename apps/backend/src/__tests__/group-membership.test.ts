@@ -6,11 +6,12 @@ const mockDb = {};
 jest.mock("../db/client", () => ({ db: mockDb }));
 
 import type { Prisma } from "../generated/prisma/client";
-import { setGroupStudents } from "../lib/queries/groups";
+import { assignStudentsToGroups, setGroupStudents, unassignStudentsFromGroups } from "../lib/queries/groups";
 
 const tx = {
   seasonEnrollment: { findMany: jest.fn(), updateMany: jest.fn(), update: jest.fn() },
   groupStudent: { deleteMany: jest.fn(), create: jest.fn() },
+  group: { findMany: jest.fn() },
 };
 const asTx = tx as unknown as Prisma.TransactionClient;
 
@@ -44,12 +45,40 @@ describe("setGroupStudents", () => {
       data: { groupId: null },
     });
     expect(tx.groupStudent.deleteMany).toHaveBeenCalledWith({
-      where: { groupId: 3, studentUserId: { in: [4] } },
+      where: { seasonId: 7, groupId: 3, studentUserId: { in: [4] } },
     });
     // And the listed student is (re)pointed at the group.
     expect(tx.seasonEnrollment.update).toHaveBeenCalledWith({
       where: { studentUserId_seasonId: { studentUserId: 1, seasonId: 7 } },
       data: { groupId: 3 },
     });
+  });
+});
+
+// Plan 18 M1: GroupStudent is one row per student per season. Every write
+// replaces only THIS season's row; another season's membership is history.
+describe("per-season GroupStudent writes (Plan 18 M1)", () => {
+  it("setGroupStudents replaces only this season's row and writes its seasonId", async () => {
+    await setGroupStudents(asTx, 7, 3, [1]);
+    expect(tx.groupStudent.deleteMany).toHaveBeenCalledWith({ where: { studentUserId: 1, seasonId: 7 } });
+    expect(tx.groupStudent.create).toHaveBeenCalledWith({ data: { groupId: 3, studentUserId: 1, seasonId: 7 } });
+  });
+
+  it("assignStudentsToGroups never deletes a membership without a season", async () => {
+    tx.group.findMany.mockResolvedValue([{ id: 3 }]);
+    tx.seasonEnrollment.findMany.mockResolvedValue([{ studentUserId: 1 }]);
+    await expect(assignStudentsToGroups(asTx, 7, [{ studentUserId: 1, groupId: 3 }])).resolves.toEqual({
+      assigned: 1,
+      skippedStudentIds: [],
+    });
+    expect(tx.groupStudent.deleteMany).toHaveBeenCalledTimes(1);
+    expect(tx.groupStudent.deleteMany).toHaveBeenCalledWith({ where: { studentUserId: 1, seasonId: 7 } });
+    expect(tx.groupStudent.create).toHaveBeenCalledWith({ data: { groupId: 3, studentUserId: 1, seasonId: 7 } });
+  });
+
+  it("unassignStudentsFromGroups removes this season's row by its own seasonId", async () => {
+    tx.seasonEnrollment.findMany.mockResolvedValue([{ studentUserId: 1 }]);
+    await expect(unassignStudentsFromGroups(asTx, 7, [1])).resolves.toEqual({ unassigned: 1, skippedStudentIds: [] });
+    expect(tx.groupStudent.deleteMany).toHaveBeenCalledWith({ where: { studentUserId: 1, seasonId: 7 } });
   });
 });

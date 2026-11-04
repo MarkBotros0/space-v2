@@ -75,11 +75,6 @@ export const peopleSchemas = {
       email: { type: "string" },
       groupId: { type: ["integer", "null"], description: "This season's group, from SeasonEnrollment.groupId (C9)." },
       groupName: { type: ["string", "null"] },
-      otherSeasonGroup: {
-        type: ["object", "null"],
-        description: "The student's current group in ANOTHER season. Assigning them here removes it (GroupStudent is globally unique).",
-        properties: { groupName: { type: "string" }, seasonCode: { type: "string" } },
-      },
     },
   },
   GroupAssignmentsRequest: {
@@ -109,7 +104,7 @@ export const peopleSchemas = {
       studentCount: {
         type: "integer",
         description:
-          "ACTIVE season enrolments naming this group — not GroupStudent rows, which are unique per student across the whole database and so report the current roster whichever season is asked about.",
+          "ACTIVE season enrolments naming this group (SeasonEnrollment is the authority, ruling C9).",
       },
       leaderNames: { type: "array", items: { type: "string" } },
       seasonId: { type: "integer" },
@@ -250,7 +245,7 @@ export const peopleSchemas = {
       year: { type: ["string", "null"] },
       graduationYear: { type: ["integer", "null"] },
       activeSeasonTitle: { type: ["string", "null"] },
-      currentGroupName: { type: ["string", "null"], description: "Advisory: from GroupStudent, the one question that table may answer (C9)." },
+      currentGroupName: { type: ["string", "null"], description: "Advisory: the most recent GroupStudent membership, any season (C9)." },
       droppedEnrollment: {
         description: "Non-null only on `status=dropped` rows, which are enrollment-keyed — key rows on `enrollmentId`, not the user id.",
         oneOf: [
@@ -329,7 +324,7 @@ export const peopleSchemas = {
       avatarPath: { type: ["string", "null"] },
       graduationYear: { type: ["integer", "null"] },
       currentGroup: {
-        description: "Advisory current group (GroupStudent).",
+        description: "Advisory current group: the most recent GroupStudent membership, any season.",
         oneOf: [{ type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } }, { type: "null" }],
       },
       enrollments: { type: "array", items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }, description: "`enrolledAt` descending. For a LEADER only the rows naming one of their groups." },

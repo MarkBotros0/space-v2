@@ -14,9 +14,9 @@ import { leadsStudentInSeason } from "./submission";
  * flag, and compares live group membership. Two changes:
  *
  *  1. Membership resolves through `SeasonEnrollment`, not `GroupStudent`
- *     (ruling C9). `GroupStudent.studentUserId` is `@unique` across the whole
- *     database, so it answers "what group is this student in now" — the wrong
- *     question for an assignment in a season they may since have left.
+ *     (ruling C9). Before Plan 18 M1 `GroupStudent` was global and answered
+ *     "what group is this student in now" — the wrong question for an
+ *     assignment in a season they may since have left.
  *  2. LEADER is admitted for groups they lead (spec 14 §10 D3). In v1 both
  *     LEADER and MENTOR fall through to `return false`, so a leader cannot
  *     participate in — or moderate — the discussion of their own group. That is

@@ -105,12 +105,6 @@ export const seasonRosterRowSchema = z.object({
   /** This season's group, from SeasonEnrollment.groupId (C9). */
   groupId: z.number().nullable(),
   groupName: z.string().nullable(),
-  /**
-   * The student's current GroupStudent membership in ANOTHER season's group —
-   * which assigning them here removes, because GroupStudent is globally
-   * unique (spec 05 R1/R82; a Plan 18 item).
-   */
-  otherSeasonGroup: z.object({ groupName: z.string(), seasonCode: z.string() }).nullable(),
 });
 export type SeasonRosterRow = z.infer<typeof seasonRosterRowSchema>;
 

@@ -40,10 +40,10 @@ export async function staffRosterIncludes(
  * canViewStudent by convention before it (R70). Here the gate lives in the
  * handler. One deliberate divergence from v1's gate: the LEADER branch
  * resolves through SeasonEnrollment.groupId, not GroupStudent (ruling C9) —
- * GroupStudent holds one row per student across the whole database, so it
- * answers "are they in my group NOW", denying a leader their own students'
- * history the moment a new season reassigns them. canViewSubmission already
- * made this exact call; the two must not disagree.
+ * while GroupStudent was global (before Plan 18 M1) it answered "are they in
+ * my group NOW", denying a leader their own students' history the moment a
+ * new season reassigned them. canViewSubmission makes this exact call; the
+ * two must not disagree.
  */
 export async function canViewStudent(user: SessionUser, studentUserId: number): Promise<boolean> {
   if (isSuper(user) || isMentor(user)) return true;

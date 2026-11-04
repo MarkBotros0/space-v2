@@ -291,8 +291,7 @@ describe("buildEngagementSummary — assignment completion", () => {
     const row = summary.completion.find((r) => r.assignmentId === groupAAssignmentId)!;
     // Group A's ACTIVE enrolments are early and late. GroupStudent has no rows
     // at all in this fixture — v1's denominator would have been 0 here, and
-    // GroupStudent is unique on studentUserId across the whole database anyway,
-    // so it can never answer a per-season question (R21).
+    // SeasonEnrollment, not GroupStudent, is the authority (R21, ruling C9).
     expect(row).toMatchObject({ targeting: "targeted", expected: 2, completed: 1, completionRate: 50 });
   });
 

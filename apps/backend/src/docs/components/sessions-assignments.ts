@@ -121,7 +121,7 @@ export const sessionsAssignmentsSchemas = {
       expectedCount: {
         type: "integer",
         description:
-          "ACTIVE season enrolments in the targeted groups — not GroupStudent rows, which are unique per student across all seasons and so cannot answer a per-season question.",
+          "ACTIVE season enrolments in the targeted groups (SeasonEnrollment is the authority, ruling C9).",
       },
       seasonCode: { type: "string" },
     },

@@ -73,9 +73,7 @@ export function GroupForm({
     const hint =
       r.groupId !== null && r.groupId !== groupId
         ? `Now in ${r.groupName ?? "another group"} — saving moves them here.`
-        : r.groupId === null && r.otherSeasonGroup
-          ? `In ${r.otherSeasonGroup.groupName} (${r.otherSeasonGroup.seasonCode}) — saving moves them here.`
-          : null;
+        : null;
     return {
       value: String(r.userId),
       label: r.name ?? r.email,

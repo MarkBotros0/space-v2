@@ -84,8 +84,8 @@ beforeAll(async () => {
 
   // A student who has since moved on. Their SeasonEnrollment for *this* season
   // still records Group B — the historic, per-season fact — while their single
-  // GroupStudent row points at a group in a later season, because that table is
-  // unique on studentUserId across the whole database.
+  // GroupStudent row points at a group in a later season, and they have no
+  // GroupStudent row for this one.
   //
   // This is the divergence ruling C9 exists for, and the fixtures above cannot
   // expose it: they keep both tables in agreement, so a GroupStudent-based
@@ -97,7 +97,7 @@ beforeAll(async () => {
   });
   const moved = await createTestUser("moved", "STUDENT");
   movedUserId = moved.id;
-  await db.groupStudent.create({ data: { groupId: laterGroup.id, studentUserId: moved.id } });
+  await db.groupStudent.create({ data: { groupId: laterGroup.id, seasonId: laterSeason.id, studentUserId: moved.id } });
   await db.seasonEnrollment.create({
     data: { seasonId, studentUserId: moved.id, groupId: groupBId, status: "ACTIVE" },
   });

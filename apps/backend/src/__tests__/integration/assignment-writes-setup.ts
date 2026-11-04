@@ -69,8 +69,8 @@ export async function seedAssignmentWriteFixtures(app: Express): Promise<Assignm
       select: { id: true },
     })
   ).id;
-  // The moved student's ONE GroupStudent row (unique per student, database-
-  // wide) points at another season's group. Their enrolment in THIS season
+  // The moved student's only GroupStudent row points at another season's
+  // group (no row for this season). Their enrolment in THIS season
   // records Group A. Ruling C9: this season's targeting must follow the
   // enrolment — GroupStudent would leave them un-notified.
   const otherGroupId = (
