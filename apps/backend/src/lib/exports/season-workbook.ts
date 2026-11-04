@@ -14,7 +14,11 @@ import {
 } from "./workbook-style";
 
 const SUBMISSION_LABEL: Record<SubmissionStatus, string> = {
-  DRAFT: "Draft",
+  // A draft is the student's private work in progress, hidden from staff
+  // everywhere else (the queue, the submission page). In the export it reads
+  // as what it is to staff: nothing submitted yet, i.e. blank. Drafts are
+  // also filtered out of the query; this label is the backstop.
+  DRAFT: "",
   SUBMITTED: "Submitted",
   REVIEWED: "Reviewed",
   RETURNED: "Returned",
@@ -350,7 +354,10 @@ async function loadSeasonExportData(seasonId: number) {
       title: true,
       isAllGroups: true,
       targets: { select: { groupId: true } },
-      submissions: { select: { studentUserId: true, status: true } },
+      submissions: {
+        where: { status: { not: "DRAFT" } },
+        select: { studentUserId: true, status: true },
+      },
     },
   });
 
