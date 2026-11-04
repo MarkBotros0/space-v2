@@ -56,12 +56,11 @@ const ORDER: (keyof Prefs)[] = [
   "mentorFollowup",
 ];
 
-/** One honest sentence per push state. Names the three types that would push
- *  (PUSH_NOTIFICATION_TYPES) rather than promising all six. */
+/** One honest sentence per push state. */
 const PUSH_COPY: Record<PushStatus | "idle", string> = {
-  idle: "Get alerted when a session moves, or when your work or a quiz is graded.",
+  idle: "Get alerted on this phone for anything you get notified about. The switches below choose which.",
   registered: "Push is on for this device.",
-  unavailable: "This device is ready for push. Delivery switches on when the server migration lands.",
+  unavailable: "Push isn't available on the server right now. Try again later.",
   denied: "Notifications are off for JPC Space in your phone's settings.",
   not_configured: "Push isn't set up for this build of the app yet.",
   failed: "Couldn't set up push. Try again.",
@@ -137,7 +136,7 @@ export function NotificationPreferences() {
       <Section icon={Smartphone} title="Push notifications" description="Alerts on this device.">
         <View className="flex-col items-start gap-3">
           <Text className="text-sm text-muted-foreground">
-            {PUSH_COPY[pushStatus ?? (pushToken ? "unavailable" : "idle")]}
+            {PUSH_COPY[pushStatus ?? (pushToken ? "registered" : "idle")]}
           </Text>
           <Button
             variant="outline"
