@@ -1,0 +1,44 @@
+# UI sweep s41 — Dashboard as a mentor, with the user menu and the bell. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${MENTOR_EMAIL}
+- openLink: spacev2://dashboard
+- extendedWaitUntil:
+    visible: 'Cross-season pastoral view.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s41-01-dashboard
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s41-02-dashboard-mid
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s41-03-dashboard-bottom
+# The user menu and the bell popover; Back closes each (rows and Mark all read are never tapped).
+- tapOn: 'User menu'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s41-04-user-menu
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: 'Notifications.*'
+- extendedWaitUntil:
+    visible: 'View all'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s41-05-notification-bell
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 3000
