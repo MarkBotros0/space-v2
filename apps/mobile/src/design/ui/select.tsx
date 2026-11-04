@@ -89,7 +89,7 @@ function SelectTrigger({
         setOpen(true);
       }}
       className={cn(
-        "h-10 w-full flex-row items-center justify-between gap-2 rounded-md border border-input bg-background px-3",
+        "h-10 w-full flex-row items-center justify-between gap-2 rounded-md border border-control-border bg-background px-3",
         invalid && "border-destructive",
         disabled && "opacity-50",
         className,

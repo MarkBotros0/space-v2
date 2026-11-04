@@ -75,7 +75,7 @@ export function MultiSelect({
           setOpen(true);
         }}
         className={cn(
-          "min-h-10 w-full flex-row flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1.5",
+          "min-h-10 w-full flex-row flex-wrap items-center gap-1 rounded-md border border-control-border bg-background px-2 py-1.5",
           invalid && "border-destructive",
           disabled && "opacity-50",
           className,
@@ -117,7 +117,7 @@ export function MultiSelect({
                     onPress={() => toggle(o.value)}
                     className="w-full flex-row items-start gap-2 rounded-sm px-2 py-1.5 active:bg-accent"
                   >
-                    <View className="mt-0.5 size-4 items-center justify-center rounded-sm border border-input">
+                    <View className="mt-0.5 size-4 items-center justify-center rounded-sm border border-control-border">
                       {selected ? <Check size={12} className="text-popover-foreground" /> : null}
                     </View>
                     <View className="flex-1">

@@ -48,7 +48,7 @@ const base = cva(
     variants: {
       variant: {
         primary: "bg-primary",
-        secondary: "border-separator bg-surface",
+        secondary: "border-control-border bg-surface",
         destructive: "bg-bad-soft",
         plain: "bg-transparent",
       },

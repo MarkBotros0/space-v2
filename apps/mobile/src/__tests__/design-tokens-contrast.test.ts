@@ -51,6 +51,11 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     expect(contrast(rgbOf(t[fg]), rgbOf(t[bg]))).toBeGreaterThanOrEqual(4.5);
   });
 
+  // R25: control borders (inputs, secondary buttons, triggers) are 3:1 against what they sit on.
+  it.each(["background", "surface"])("control-border on %s is at least 3:1 (L7)", (bg) => {
+    expect(contrast(rgbOf(t["control-border"]), rgbOf(t[bg]))).toBeGreaterThanOrEqual(3);
+  });
+
   // SegmentedControl: the selected thumb must read as raised (lighter than its track).
   it("surface-raised is lighter than the neutral-soft track (L5)", () => {
     expect(luminance(rgbOf(t["surface-raised"]))).toBeGreaterThan(luminance(rgbOf(t["neutral-soft"])));

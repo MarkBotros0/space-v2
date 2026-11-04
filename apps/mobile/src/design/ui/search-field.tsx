@@ -7,12 +7,13 @@ import { iconWithClassName } from "../lib/icon";
 
 iconWithClassName(Search);
 
+/** A filled search box; its `control-border` edge keeps the field 3:1 against the page (R25). */
 function SearchField({
   value, onChangeText, placeholder, className,
 }: { value: string; onChangeText: (text: string) => void; placeholder: string; className?: string }) {
   const colors = useThemeColors();
   return (
-    <View className={cn("min-h-[44px] flex-row items-center gap-2 rounded-xl bg-neutral-soft px-3", className)}>
+    <View testID="search-field" className={cn("min-h-[44px] flex-row items-center gap-2 rounded-xl border border-control-border bg-neutral-soft px-3", className)}>
       <Search size={16} className="text-muted-foreground" />
       <TextInput
         value={value}

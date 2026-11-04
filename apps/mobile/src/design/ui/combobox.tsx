@@ -45,7 +45,7 @@ export function OptionSearch({ value, onChangeText }: { value: string; onChangeT
         onChangeText={onChangeText}
         placeholder="Search…"
         placeholderTextColor={colors["muted-foreground"]}
-        className="w-full rounded-sm border border-input bg-background px-2 py-1 text-sm font-normal text-foreground focus:border-ring"
+        className="w-full rounded-sm border border-control-border bg-background px-2 py-1 text-sm font-normal text-foreground focus:border-ring"
       />
     </View>
   );
@@ -91,7 +91,7 @@ export function Combobox({
           setOpen(true);
         }}
         className={cn(
-          "h-10 w-full flex-row items-center justify-between gap-2 rounded-md border border-input bg-background px-3",
+          "h-10 w-full flex-row items-center justify-between gap-2 rounded-md border border-control-border bg-background px-3",
           invalid && "border-destructive",
           disabled && "opacity-50",
           className,

@@ -46,7 +46,7 @@ describe("Text", () => {
 describe("Button", () => {
   it("maps v1's variant names onto the redesign classes", () => {
     expect(buttonVariants({ variant: "default" })).toContain("bg-primary");
-    expect(buttonVariants({ variant: "outline" })).toContain("border-separator");
+    expect(buttonVariants({ variant: "outline" })).toContain("border-control-border");
     expect(buttonVariants({ variant: "destructive" })).toContain("bg-bad-soft");
     expect(buttonVariants({ size: "default" })).toContain("min-h-[46px]");
     expect(buttonVariants({ size: "lg" })).toContain("min-h-[46px]");

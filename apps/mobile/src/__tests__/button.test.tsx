@@ -6,7 +6,7 @@ describe("Button redesign", () => {
   it("each variant carries its token classes", () => {
     expect(buttonVariants({ variant: "primary" })).toContain("bg-primary");
     expect(buttonVariants({ variant: "secondary" })).toContain("bg-surface");
-    expect(buttonVariants({ variant: "secondary" })).toContain("border-separator");
+    expect(buttonVariants({ variant: "secondary" })).toContain("border-control-border");
     expect(buttonVariants({ variant: "destructive" })).toContain("bg-bad-soft");
     expect(buttonVariants({ variant: "plain" })).toContain("bg-transparent");
     expect(buttonTextVariants({ variant: "primary" })).toContain("text-primary-foreground");
