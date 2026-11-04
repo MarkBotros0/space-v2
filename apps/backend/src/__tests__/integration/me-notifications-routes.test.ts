@@ -147,18 +147,12 @@ describe("/api/v1/me/devices", () => {
     expect(res.status).toBe(401);
   });
 
-  it("unregisters only the caller's own token, idempotently", async () => {
-    const res = await request(app)
-      .delete("/api/v1/me/devices")
-      .set("authorization", `Bearer ${prefsToken}`)
-      .send({ token });
+  it("unregisters by token with no sign-in, idempotently", async () => {
+    const res = await request(app).post("/api/v1/devices/unregister").send({ token });
     expect(res.status).toBe(200);
     expect(await db.deviceToken.count({ where: { token } })).toBe(0);
 
-    const again = await request(app)
-      .delete("/api/v1/me/devices")
-      .set("authorization", `Bearer ${prefsToken}`)
-      .send({ token });
+    const again = await request(app).post("/api/v1/devices/unregister").send({ token });
     expect(again.status).toBe(200);
   });
 });

@@ -9,6 +9,7 @@ import { authRouter } from "./routes/auth";
 import { assignmentsRouter } from "./routes/assignments";
 import { groupsRouter } from "./routes/groups";
 import { meRouter } from "./routes/me";
+import { devicesRouter } from "./routes/me-devices";
 import { usersRouter } from "./routes/users";
 import { seasonsRouter } from "./routes/seasons";
 import { sessionsRouter } from "./routes/sessions";
@@ -77,6 +78,7 @@ export function createApp(): Express {
 
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/me", meRouter);
+  app.use("/api/v1/devices", devicesRouter);
   app.use("/api/v1/notifications", notificationsRouter);
   app.use("/api/v1/users", usersRouter);
   // forum + video-quiz: mounted at the version root because their paths span

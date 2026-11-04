@@ -49,15 +49,25 @@ describe("POST /api/v1/me/devices", () => {
   });
 });
 
-describe("DELETE /api/v1/me/devices", () => {
-  it("deletes only the caller's own row for that token", async () => {
-    const res = await request(app).delete("/api/v1/me/devices").set(auth()).send({ token: pushToken });
+describe("POST /api/v1/devices/unregister", () => {
+  it("deletes the token with no sign-in — the token is the proof", async () => {
+    const res = await request(app).post("/api/v1/devices/unregister").send({ token: pushToken });
     expect(res.status).toBe(200);
-    expect(mockDb.deviceToken.deleteMany).toHaveBeenCalledWith({ where: { token: pushToken, userId: 7 } });
+    expect(res.body.data).toEqual({ unregistered: true });
+    expect(mockDb.deviceToken.deleteMany).toHaveBeenCalledWith({ where: { token: pushToken } });
   });
 
-  it("refuses an anonymous caller", async () => {
-    const res = await request(app).delete("/api/v1/me/devices").send({ token: pushToken });
-    expect(res.status).toBe(401);
+  it("answers the same for an unknown token, so it can't probe registrations", async () => {
+    mockDb.deviceToken.deleteMany.mockResolvedValue({ count: 0 });
+    const res = await request(app).post("/api/v1/devices/unregister").send({ token: "nope" });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ unregistered: true });
+  });
+
+  it("rejects a missing token or extra keys", async () => {
+    for (const body of [{}, { token: pushToken, userId: 1 }]) {
+      const res = await request(app).post("/api/v1/devices/unregister").send(body);
+      expect(res.status).toBe(400);
+    }
   });
 });

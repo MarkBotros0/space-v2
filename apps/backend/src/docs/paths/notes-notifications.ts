@@ -243,11 +243,13 @@ export const notesNotificationsPaths = {
         401: errRef("Unauthorized"),
       },
     },
-    delete: {
+  },
+  "/api/v1/devices/unregister": {
+    post: {
       tags: ["Me"],
-      summary: "Unregister this device (sign-out)",
+      summary: "Unregister a device (no sign-in needed)",
       description:
-        "Deletes the token only if it belongs to the caller. The token is in the body, not the path, because paths reach access logs. Idempotent: an unknown token still answers 200.",
+        "Deletes the registration for this Expo push token. Needs no sign-in: the token is the proof, and the app must be able to stop pushes after a forced sign-out, when its session is already dead. The token travels in the body because paths reach access logs. Idempotent and opaque: an unknown token answers the same 200. Rate-limited.",
       requestBody: {
         required: true,
         content: {
@@ -262,9 +264,9 @@ export const notesNotificationsPaths = {
         },
       },
       responses: {
-        200: ok({ type: "object", required: ["unregistered"], properties: { unregistered: { type: "boolean", enum: [true] } } }, "Unregistered."),
+        200: ok({ type: "object", required: ["unregistered"], properties: { unregistered: { type: "boolean", enum: [true] } } }, "Unregistered (or never registered)."),
         400: errRef("BadRequest"),
-        401: errRef("Unauthorized"),
+        429: errRef("TooManyRequests"),
       },
     },
   },

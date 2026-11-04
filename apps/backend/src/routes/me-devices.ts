@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 
 import {
   DEVICE_PLATFORM_TO_DB,
@@ -7,6 +8,7 @@ import {
 } from "../../../../packages/shared/src/index";
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
+import { rateLimitHandler } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 
 /**
@@ -36,16 +38,25 @@ meDevicesRouter.post("/devices", requireAuth, async (req, res) => {
 });
 
 /**
- * Unregister on sign-out. The token travels in the body, not the path (it is
- * a credential and paths end up in access logs), and the delete is scoped to
- * the caller so a token string is never a delete primitive for someone else.
- * Idempotent: an unknown token is still a success.
+ * Unregister a device: `POST /api/v1/devices/unregister`, mounted outside
+ * /me because it needs no sign-in. The push token itself is the proof — only
+ * this phone and our server know it — so the app can stop pushes both at
+ * sign-out and after a forced sign-out, when its session is already dead and
+ * an authenticated call is impossible (otherwise that phone would keep getting
+ * the previous user's pushes until the next sign-in re-pointed it).
+ *
+ * The token is in the body, never the path (paths reach access logs).
+ * Idempotent and opaque: an unknown token answers the same 200, so the
+ * endpoint can't be used to test whether a token is registered.
  */
-meDevicesRouter.delete("/devices", requireAuth, async (req, res) => {
+const unregisterLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, handler: rateLimitHandler });
+
+export const devicesRouter = Router();
+
+devicesRouter.post("/unregister", unregisterLimiter, async (req, res) => {
   const parsed = deviceUnregistrationSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid device token.", 400);
 
-  const user = requireUser(req);
-  await db.deviceToken.deleteMany({ where: { token: parsed.data.token, userId: user.userId } });
+  await db.deviceToken.deleteMany({ where: { token: parsed.data.token } });
   return apiOk(res, { unregistered: true });
 });
