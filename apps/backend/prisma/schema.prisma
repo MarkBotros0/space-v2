@@ -72,6 +72,9 @@ enum NotificationType {
   LOW_ATTENDANCE_FLAG
   MENTOR_FOLLOWUP
   QUIZ_GRADED
+  QUIZ_PUBLISHED
+  SUBMISSION_RECEIVED
+  SESSION_CANCELLED
 }
 
 enum JpcVisibility {
@@ -623,6 +626,9 @@ model NotificationPreference {
   lowAttendanceFlag  Boolean @default(true)
   mentorFollowup     Boolean @default(true)
   quizGraded         Boolean @default(true)
+  quizPublished      Boolean @default(true)
+  submissionReceived Boolean @default(true)
+  sessionCancelled   Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
