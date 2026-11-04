@@ -9,6 +9,7 @@ import { parseId } from "../../lib/parse-id";
 import { canReviewSubmission, hasActiveEnrollment } from "../../lib/permissions";
 import { newPublicId } from "../../lib/public-id";
 import { studentCanSeeAssignment } from "../../lib/queries/assignments";
+import { notifySubmissionReceived } from "../../lib/submission-notifications";
 import { requireUser } from "../../middleware/require-auth";
 import {
   htmlToPlainText,
@@ -16,8 +17,7 @@ import {
   updateSubmissionRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
-import { studentWriteRefusal, submissionLocked } from "./editable";
-
+import { EDITABLE_STATUSES, studentWriteRefusal, submissionLocked } from "./editable";
 
 export async function updateSubmission(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);
@@ -27,9 +27,10 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
     where: { publicId: publicId ?? "" },
     select: {
       id: true,
+      publicId: true,
       status: true,
       studentUserId: true,
-      assignment: { select: { seasonId: true, type: true } },
+      assignment: { select: { seasonId: true, type: true, title: true } },
     },
   });
   if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
@@ -71,10 +72,19 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
         );
       }
     }
-    const now = new Date();
-    await db.submission.update({
-      where: { id: sub.id },
-      data: { text: parsed.data.text, status: "SUBMITTED", submittedAt: now },
+    // The transition is conditional on the row still being editable, so two
+    // racing submits produce one SUBMITTED write and one 409 — and the
+    // leaders are told once, by the request that actually moved it.
+    const submitted = await db.submission.updateMany({
+      where: { id: sub.id, status: { in: [...EDITABLE_STATUSES] } },
+      data: { text: parsed.data.text, status: "SUBMITTED", submittedAt: new Date() },
+    });
+    if (submitted.count === 0) return submissionLocked(res);
+    await notifySubmissionReceived({
+      publicId: sub.publicId,
+      studentUserId: sub.studentUserId,
+      seasonId: sub.assignment.seasonId,
+      assignmentTitle: sub.assignment.title,
     });
   } else {
     // Save the text; do NOT touch the status.

@@ -2,12 +2,16 @@
 // (only DRAFT and RETURNED are editable) and the ACTIVE-enrolment gate.
 
 const mockDb = {
-  submission: { findUnique: jest.fn(), update: jest.fn(), upsert: jest.fn() },
+  submission: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn(), upsert: jest.fn() },
   submissionFile: { count: jest.fn(), findUnique: jest.fn(), delete: jest.fn() },
   seasonEnrollment: { findUnique: jest.fn() },
   assignment: { findFirst: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
+const mockNotifyReceived = jest.fn();
+jest.mock("../lib/submission-notifications", () => ({
+  notifySubmissionReceived: (...args: unknown[]) => mockNotifyReceived(...args),
+}));
 const mockStudentCanSee = jest.fn();
 jest.mock("../lib/queries/assignments", () => ({
   ...jest.requireActual("../lib/queries/assignments"),
@@ -42,9 +46,10 @@ const errorCode = (res: ReturnType<typeof fakeRes>) =>
 function ownSubmission(status: string) {
   return {
     id: 1,
+    publicId: "Ab3dE5gH9k",
     status,
     studentUserId: 10,
-    assignment: { seasonId: 7, type: "STANDARD" },
+    assignment: { seasonId: 7, type: "STANDARD", title: "Essay one" },
   };
 }
 
@@ -52,6 +57,7 @@ beforeEach(() => {
   jest.resetAllMocks();
   mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE" });
   mockDb.submission.update.mockResolvedValue({});
+  mockDb.submission.updateMany.mockResolvedValue({ count: 1 });
 });
 
 describe("PATCH /submissions/:publicId — the status lock", () => {
@@ -64,6 +70,8 @@ describe("PATCH /submissions/:publicId — the status lock", () => {
       expect(errorCode(res)).toBe("submission_locked");
     }
     expect(mockDb.submission.update).not.toHaveBeenCalled();
+    expect(mockDb.submission.updateMany).not.toHaveBeenCalled();
+    expect(mockNotifyReceived).not.toHaveBeenCalled();
   });
 
   it.each(["DRAFT", "RETURNED"])("saves and submits a %s row", async (status) => {
@@ -74,9 +82,48 @@ describe("PATCH /submissions/:publicId — the status lock", () => {
       res as unknown as Response,
     );
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockDb.submission.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: "SUBMITTED" }) }),
+    expect(mockDb.submission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 1, status: { in: ["DRAFT", "RETURNED"] } },
+        data: expect.objectContaining({ status: "SUBMITTED" }),
+      }),
     );
+  });
+
+  it("tells the group's leaders once the submit has committed", async () => {
+    mockDb.submission.findUnique.mockResolvedValue(ownSubmission("DRAFT"));
+    const res = fakeRes();
+    await updateSubmission(
+      req({ params: { publicId: "p" }, body: { text: "work", submit: true } }),
+      res as unknown as Response,
+    );
+    expect(mockNotifyReceived).toHaveBeenCalledWith({
+      publicId: "Ab3dE5gH9k",
+      studentUserId: 10,
+      seasonId: 7,
+      assignmentTitle: "Essay one",
+    });
+  });
+
+  it("does not notify on a plain save", async () => {
+    mockDb.submission.findUnique.mockResolvedValue(ownSubmission("DRAFT"));
+    const res = fakeRes();
+    await updateSubmission(req({ params: { publicId: "p" }, body: { text: "work" } }), res as unknown as Response);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockNotifyReceived).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 and stays silent when a racing submit moved the row first", async () => {
+    mockDb.submission.findUnique.mockResolvedValue(ownSubmission("DRAFT"));
+    mockDb.submission.updateMany.mockResolvedValue({ count: 0 });
+    const res = fakeRes();
+    await updateSubmission(
+      req({ params: { publicId: "p" }, body: { text: "work", submit: true } }),
+      res as unknown as Response,
+    );
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(errorCode(res)).toBe("submission_locked");
+    expect(mockNotifyReceived).not.toHaveBeenCalled();
   });
 
   it.each(["WITHDRAWN", "COMPLETED"])("refuses a %s student with 403", async (enrolment) => {
@@ -89,6 +136,7 @@ describe("PATCH /submissions/:publicId — the status lock", () => {
     );
     expect(res.status).toHaveBeenCalledWith(403);
     expect(mockDb.submission.update).not.toHaveBeenCalled();
+    expect(mockDb.submission.updateMany).not.toHaveBeenCalled();
   });
 
   it("refuses a student with no enrolment in the season at all", async () => {
