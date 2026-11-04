@@ -111,6 +111,12 @@ describe("save bars", () => {
     expect(screen.getByTestId("sheet-save-bar").props.style.bottom).toBe(34);
   });
 
+  it("SheetSaveBar keeps its normal 12pt padding below the button, above the inset or keyboard", () => {
+    renderWithProviders(<Sheet open onClose={() => {}} footer={bar}><Text>x</Text></Sheet>);
+    const style = screen.getByTestId("sheet-save-bar").props.style;
+    expect(style.bottom + style.paddingBottom).toBe(34 + 12);
+  });
+
   it("SheetSaveBar bottom offset equals the keyboard inset when it is open", () => {
     mockKeyboard = 300;
     renderWithProviders(<Sheet open onClose={() => {}} footer={bar}><Text>x</Text></Sheet>);

@@ -32,6 +32,12 @@ import { Text } from "./text";
 const DISMISS_FRACTION = 0.3;
 const DISMISS_VELOCITY = 800;
 const OFFSCREEN = 1000;
+/**
+ * The bar's own padding under its button (matching its `pt-3`), kept on top of
+ * the inset or keyboard. Without it the button sat flush on a 3-button nav bar
+ * (sweep s90-11); gesture nav only looked right because its inset is mostly empty.
+ */
+const BAR_BOTTOM_PADDING = 12;
 
 const styles = StyleSheet.create({ panel: { maxHeight: "90%" } });
 
@@ -157,14 +163,15 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   );
 }
 
-/** Pinned primary action for a sheet: sits at the sheet bottom, lifted by the keyboard. */
+/** Pinned primary action for a sheet: sits at the sheet bottom, lifted by the keyboard, 12pt of padding under it. */
 function SheetSaveBar(props: SaveBarProps) {
   const bottom = useKeyboardBottomOffset();
   const setBarHeight = useContext(BarHeightContext);
   return (
     <View
       testID="sheet-save-bar"
-      style={{ position: "absolute", left: 0, right: 0, bottom }}
+      className="bg-surface"
+      style={{ position: "absolute", left: 0, right: 0, bottom, paddingBottom: BAR_BOTTOM_PADDING }}
       onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}
     >
       <SaveBarBody {...props} />
