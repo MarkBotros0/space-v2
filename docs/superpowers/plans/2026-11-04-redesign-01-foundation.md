@@ -271,3 +271,22 @@ iPhone pass and conventions update. Each is its own plan because each ships and 
 - Modify: `docs/superpowers/specs/2026-11-04-mobile-redesign-design.md` (status: step 1 done)
 
 - [ ] **Step 1: Edit both**; **Step 2: Commit** `docs: mobile conventions follow the redesign spec`; push.
+
+### Task 15: Consistency across the whole app (owner, 2026-11-04: "Make sure all the app is consistent")
+
+**Files:**
+- Modify: the legacy shared components still used by un-migrated screens: `apps/mobile/src/design/ui/badge.tsx`, `card.tsx`, `input.tsx`, `select.tsx`, `tabs.tsx`, `modal.tsx`, `confirm-dialog.tsx`, `src/design/layout/page-title.tsx`, `page-header.tsx`, `src/design/dashboard/section-card.tsx`, `src/design/students/stat-card.tsx`
+- Create: `apps/mobile/src/__tests__/design-consistency.test.ts`
+
+**Interfaces:**
+- Consumes: Tasks 1–8, 10.
+- Produces: every legacy component renders with the new tokens, radii (cards and groups 16, buttons 14, chips full), type scale and press feedback, so screens the role batches have not reached yet already look like the new system: `Badge` renders through `StatusChip` tones, `Card` becomes a `surface` group without shadow, `PageTitle` renders the `title`/`largeTitle` variants, inputs use `surface` + `separator`.
+
+- [ ] **Step 1: Failing guard test** `design-consistency.test.ts`: scans `apps/mobile/app/**` and `apps/mobile/src/**` (excluding `__tests__`, `design/theme/`) and fails on any hex colour literal, `rgb(`/`rgba(` literal, `shadow-` class, `rounded-(sm|md|lg|xl)` class outside `src/design/`, or a raw `fontSize:` number outside `src/design/`; prints file:line for each.
+- [ ] **Step 2: Run** → FAIL with the current offenders listed.
+- [ ] **Step 3: Restyle the legacy components** above onto the new tokens and fix every offender the test lists (replace literals with tokens / `useThemeColors()` / `palette`).
+- [ ] **Step 4: Run** the guard and the full unit suite → PASS.
+- [ ] **Step 5: Sweep** one flow per role (s03, s1x leader dashboard, s2x admin, s3x super, s4x mentor, s5x alumni) on the two corner cells and confirm no screen still shows the old look; fix and re-run.
+- [ ] **Step 6: Commit** `feat(mobile): legacy components follow the new design system everywhere`.
+
+Plans 02–05 keep `design-consistency.test.ts` green and delete each legacy component when its last user is migrated.
