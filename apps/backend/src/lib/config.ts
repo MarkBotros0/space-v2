@@ -100,6 +100,18 @@ const envSchema = z.object({
   // Optional Expo access token. Required only if "enhanced push security" is
   // turned on for the project in Expo; then every send must carry it.
   EXPO_ACCESS_TOKEN: z.string().optional(),
+  // Sentry error reporting (lib/sentry.ts). Entirely off while SENTRY_DSN is
+  // unset: nothing initialises and nothing is sent.
+  SENTRY_DSN: z.string().optional(),
+  // Tags each event. Unset falls back to NODE_ENV.
+  SENTRY_ENVIRONMENT: z.string().optional(),
+  // Share of requests traced for performance, 0..1. Defaults to 0: errors
+  // only, no tracing quota spent.
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0),
+  // Release the events belong to. Unset falls back to the commit Vercel
+  // injects (VERCEL_GIT_COMMIT_SHA), so each deploy groups its own errors.
+  SENTRY_RELEASE: z.string().optional(),
+  VERCEL_GIT_COMMIT_SHA: z.string().optional(),
 });
 
 /**
@@ -151,4 +163,8 @@ export const config = {
     parsed.data.RATE_LIMIT_STORE ?? (parsed.data.NODE_ENV === "test" ? "memory" : "postgres"),
   enablePush: parsed.data.ENABLE_PUSH,
   expoAccessToken: parsed.data.EXPO_ACCESS_TOKEN,
+  sentryDsn: parsed.data.SENTRY_DSN,
+  sentryEnvironment: parsed.data.SENTRY_ENVIRONMENT ?? parsed.data.NODE_ENV,
+  sentryTracesSampleRate: parsed.data.SENTRY_TRACES_SAMPLE_RATE,
+  sentryRelease: parsed.data.SENTRY_RELEASE ?? parsed.data.VERCEL_GIT_COMMIT_SHA,
 } as const;

@@ -1,3 +1,6 @@
+// Must stay the first import: Sentry has to initialise before Express loads.
+import "./instrument";
+
 import { createApp } from "./app";
 import { db } from "./db/client";
 import { config } from "./lib/config";

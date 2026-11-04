@@ -32,6 +32,9 @@ let app = null;
 let bootError = null;
 
 try {
+  // Sentry first (a no-op without SENTRY_DSN): it must initialise before
+  // Express and the routes are required.
+  require("../dist/apps/backend/src/instrument");
   const { createApp } = require("../dist/apps/backend/src/app");
   app = createApp();
 } catch (err) {

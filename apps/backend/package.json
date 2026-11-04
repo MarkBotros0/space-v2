@@ -21,6 +21,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "@sentry/node": "^11.10.0",
     "@space/shared": "workspace:*",
     "@vercel/functions": "^3.10.6",
     "bcryptjs": "^3.0.3",
