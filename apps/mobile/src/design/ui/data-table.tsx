@@ -9,7 +9,6 @@ import { Fragment, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 
 import { cn } from "../lib/cn";
-import { shadowStyle } from "../lib/shadow";
 import { Text } from "./text";
 
 export interface DataTableColumn<Row> {
@@ -51,7 +50,7 @@ function DataTable<Row>({
   const actionColumns = rest.filter((col) => col.header === "");
   return (
     <View className={cn("w-full", className)}>
-      <View className="overflow-hidden rounded-2xl border border-border/60 bg-card" style={shadowStyle("soft")}>
+      <View className="overflow-hidden rounded-[16px] bg-surface dark:border dark:border-separator">
         {rows.map((row, i) => {
           const Wrapper = onRowPress ? Pressable : View;
           const pressProps = onRowPress

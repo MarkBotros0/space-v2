@@ -8,7 +8,6 @@ import { Linking, Pressable, View } from "react-native";
 
 import { formatTimeAgo, formatWallTime, formatWeekdayDay } from "../../lib/format";
 import { Eyebrow } from "../layout/page-title";
-import { shadowStyle } from "../lib/shadow";
 import { Badge } from "../ui/badge";
 import { Text } from "../ui/text";
 
@@ -20,7 +19,7 @@ export function NextSessionCard({
   onOpen: (id: number) => void;
 }) {
   return (
-    <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
       <Eyebrow>{next?.isInProgress ? "Happening now" : "Next session"}</Eyebrow>
       {next ? (
         <View className="mt-2 flex-col gap-2">

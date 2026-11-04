@@ -1,32 +1,34 @@
 /**
- * Port of v1 src/components/ui/attendance-pill.tsx — same map.
- * Native differences: classes split between the pill View and its Text/icon.
+ * An attendance status as a chip with its icon: StatusChip's shape and the
+ * tones and labels of statusChip("attendance") (present ok, late warn, absent
+ * bad). Takes no self-alignment, like Badge.
  */
 import { Check, Clock, X, type LucideIcon } from "lucide-react-native";
 import { View } from "react-native";
 
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";
+import { chipTextVariants, chipVariants, statusChip } from "./status-chip";
 import { Text } from "./text";
 
 iconWithClassName(Check, Clock, X);
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
 
-const map: Record<AttendanceStatus, { label: string; box: string; text: string; icon: LucideIcon }> = {
-  PRESENT: { label: "Present", box: "bg-success-100", text: "text-success-800", icon: Check },
-  ABSENT: { label: "Absent", box: "bg-error-100", text: "text-error-800", icon: X },
-  LATE: { label: "Late", box: "bg-warning-100", text: "text-warning-800", icon: Clock },
-};
+const ICON: Record<AttendanceStatus, LucideIcon> = { PRESENT: Check, ABSENT: X, LATE: Clock };
 
 function AttendancePill({ status, className }: { status: AttendanceStatus; className?: string }) {
-  const entry = map[status];
-  const Icon = entry.icon;
+  const { tone, label } = statusChip("attendance", status);
+  const Icon = ICON[status];
   return (
-    <View className={cn("flex-row items-center gap-1 rounded-full px-2 py-0.5", entry.box, className)}>
-      <Icon size={12} className={entry.text} />
-      <Text numberOfLines={1} className={cn("text-xs font-medium", entry.text)}>
-        {entry.label}
+    <View
+      accessible
+      accessibilityLabel={label}
+      className={cn(chipVariants({ tone }), "self-auto gap-1", className)}
+    >
+      <Icon size={12} className={chipTextVariants({ tone })} />
+      <Text variant="caption" numberOfLines={1} maxFontSizeMultiplier={1.3} className={chipTextVariants({ tone })}>
+        {label}
       </Text>
     </View>
   );

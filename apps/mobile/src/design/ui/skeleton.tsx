@@ -18,7 +18,6 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { cn } from "../lib/cn";
-import { shadowStyle } from "../lib/shadow";
 import { useReducedMotion } from "../motion";
 
 const STATIC_OPACITY = 0.7;
@@ -74,7 +73,7 @@ function SkeletonText({ lines = 3, className }: { lines?: number; className?: st
 
 function SkeletonCard({ className }: { className?: string }) {
   return (
-    <View className={cn("flex-col gap-3 rounded-2xl border border-separator bg-surface p-4", className)} style={shadowStyle("soft")}>
+    <View className={cn("flex-col gap-3 rounded-2xl border border-separator bg-surface p-4", className)}>
       <Skeleton className="h-5 w-1/3" />
       <SkeletonText lines={3} />
     </View>

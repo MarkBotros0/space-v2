@@ -49,6 +49,9 @@ const chipTextVariants = cva("font-medium", {
   },
 });
 
+/** The chip's box and label classes, shared with Badge so every pill has one shape and tone set. */
+export { chipVariants, chipTextVariants };
+
 export function StatusChip({ tone, label, className }: ChipSpec & { className?: string }) {
   const reduced = useReducedMotion();
   return (

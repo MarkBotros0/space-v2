@@ -45,7 +45,7 @@ export function OptionSearch({ value, onChangeText }: { value: string; onChangeT
         onChangeText={onChangeText}
         placeholder="Search…"
         placeholderTextColor={colors["muted-foreground"]}
-        className="w-full rounded-sm border border-control-border bg-background px-2 py-1 text-sm font-normal text-foreground focus:border-ring"
+        className="min-h-[40px] w-full rounded-[10px] border border-control-border bg-surface px-2 py-1 text-base font-normal text-foreground focus:border-ring"
       />
     </View>
   );
@@ -91,13 +91,13 @@ export function Combobox({
           setOpen(true);
         }}
         className={cn(
-          "h-10 w-full flex-row items-center justify-between gap-2 rounded-md border border-control-border bg-background px-3",
+          "min-h-[44px] w-full flex-row items-center justify-between gap-2 rounded-xl border border-control-border bg-surface px-3",
           invalid && "border-destructive",
           disabled && "opacity-50",
           className,
         )}
       >
-        <Text numberOfLines={1} className={cn("shrink text-sm", !selected && "text-muted-foreground")}>
+        <Text numberOfLines={1} className={cn("shrink text-base", !selected && "text-muted-foreground")}>
           {selected ? selected.label : placeholder}
         </Text>
         <View className="shrink-0 flex-row items-center gap-1">
@@ -115,7 +115,7 @@ export function Combobox({
         </View>
       </Pressable>
       <AnchoredPopover open={open} onClose={() => setOpen(false)} anchor={anchor.rect} width="anchor">
-        <View className="max-w-[28rem] overflow-hidden rounded-md border border-border bg-popover p-1">
+        <View className="max-w-[28rem] overflow-hidden rounded-xl border border-separator bg-popover p-1">
           <OptionSearch value={query} onChangeText={setQuery} />
           <ScrollView className="max-h-60" keyboardShouldPersistTaps="handled">
             {filtered.length === 0 ? (

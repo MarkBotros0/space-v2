@@ -1,7 +1,7 @@
 /**
- * Port of v1 components/quizzes/quiz-grade-form.tsx (paper quizzes). v1's
- * table is light-only (bg-white, neutral rings, no dark: classes) and scrolls
- * sideways inside its card at phone width; both are kept (B3-11, gap note). The
+ * Port of v1 components/quizzes/quiz-grade-form.tsx (paper quizzes). The table
+ * is a flat `surface` group on the theme tokens (v1's was light-only) and
+ * scrolls sideways inside its card at phone width (B3-11, gap note). The
  * scroll bar stays visible (owner ruling 2026-10-21, UI sweep): without it the
  * Notes column is out of sight on a 360dp phone and nothing says it is there.
  * The screen owns the edits and the save (touched rows only, D7).
@@ -13,8 +13,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Text } from "../ui/text";
 
-const TABLE_SHADOW = { boxShadow: "0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04)" };
-const HEAD = "px-4 py-3 text-sm font-semibold text-brand-navy-900";
+const HEAD = "px-4 py-3 text-sm font-semibold text-foreground";
 
 export function QuizGradeForm({
   sheet,
@@ -40,22 +39,22 @@ export function QuizGradeForm({
   const graded = sheet.rows.filter((r) => scoreOf(r.studentUserId).trim() !== "").length;
   return (
     <View className="flex-col gap-4">
-      <View className="overflow-hidden rounded-xl border border-neutral-200/60 bg-white" style={TABLE_SHADOW}>
+      <View className="overflow-hidden rounded-[16px] bg-surface dark:border dark:border-separator">
         <ScrollView horizontal showsHorizontalScrollIndicator persistentScrollbar>
           <View>
-            <View className="flex-row border-b border-neutral-100">
+            <View className="flex-row border-b border-separator">
               <Text className={`w-40 ${HEAD}`}>Student</Text>
               <Text className={`w-32 ${HEAD}`}>
                 {"Score "}
-                <Text className="text-sm font-normal text-neutral-400">{`/ ${sheet.maxScore}`}</Text>
+                <Text className="text-sm font-normal text-muted-foreground">{`/ ${sheet.maxScore}`}</Text>
               </Text>
               <Text className={`w-64 ${HEAD}`}>Notes</Text>
             </View>
             {sheet.rows.map((r, i) => {
               const name = r.studentName ?? "";
               return (
-                <View key={r.studentUserId} className={`flex-row items-center ${i > 0 ? "border-t border-neutral-100" : ""}`}>
-                  <Text className="w-40 px-4 py-3 text-sm font-medium text-brand-navy-900">{name}</Text>
+                <View key={r.studentUserId} className={`flex-row items-center ${i > 0 ? "border-t border-separator" : ""}`}>
+                  <Text className="w-40 px-4 py-3 text-sm font-medium text-foreground">{name}</Text>
                   <View className="w-32 px-4 py-3">
                     <Input
                       size="sm"
@@ -87,7 +86,7 @@ export function QuizGradeForm({
         <Button onPress={onSave} disabled={pending}>
           {pending ? "Saving..." : "Save grades"}
         </Button>
-        <Text className="text-sm text-neutral-500">{`${graded} / ${sheet.rows.length} graded`}</Text>
+        <Text className="text-sm text-muted-foreground">{`${graded} / ${sheet.rows.length} graded`}</Text>
         {saved ? <Text className="text-sm font-semibold text-success-700">Saved</Text> : null}
         {error ? <Text className="text-sm text-error-600">{error}</Text> : null}
       </View>

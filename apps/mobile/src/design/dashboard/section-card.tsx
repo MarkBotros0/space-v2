@@ -1,18 +1,41 @@
 /**
- * v1 app/leader/dashboard/page.tsx card shell, used by "Your students",
- * "Assignments" and "Quiz corrections" (and the admin dashboard in batch 4):
- * a border-b header row with a teal icon, bold title and a "View all" link,
- * then the body with no padding of its own. FigurePair is the two-column
- * figure grid those cards hold (`grid grid-cols-2 divide-x divide-border`).
+ * Dashboard card shell ("Your students", "Assignments", "Quiz corrections",
+ * the admin dashboard), drawn as a redesign group: `surface`, radius 16, no
+ * shadow, a `separator` hairline under the header row (teal icon, subhead
+ * title, a "View all" link with the press scale), then the body with no
+ * padding of its own. FigurePair is the two-column figure grid those cards
+ * hold, values on the title size with tabular numerals.
  */
 import type { LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
+import Animated from "react-native-reanimated";
 
+import { usePressScale } from "../motion";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
-import { shadowStyle } from "../lib/shadow";
 import { Text } from "../ui/text";
+
+function ViewAll({ title, onPress }: { title: string; onPress: () => void }) {
+  const press = usePressScale();
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`View all ${title}`}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      hitSlop={8}
+      className="ml-auto"
+    >
+      <Animated.View style={press.animatedStyle}>
+        <Text variant="subhead" className="font-medium text-brand-teal-800 dark:text-brand-teal-300">
+          View all
+        </Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export function SectionCard({
   icon: Icon,
@@ -27,20 +50,13 @@ export function SectionCard({
 }) {
   iconWithClassName(Icon);
   return (
-    <View className="rounded-2xl border border-border bg-card" style={shadowStyle("soft")}>
-      <View className="flex-row items-center gap-2 border-b border-border px-4 py-3">
-        <Icon size={16} className="text-brand-teal-600" />
-        <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{title}</Text>
-        {onViewAll ? (
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel={`View all ${title}`}
-            onPress={onViewAll}
-            className="ml-auto"
-          >
-            <Text className="text-xs font-semibold text-brand-teal-700 dark:text-brand-teal-300">View all</Text>
-          </Pressable>
-        ) : null}
+    <View className="overflow-hidden rounded-[16px] bg-surface dark:border dark:border-separator">
+      <View className="min-h-[44px] flex-row items-center gap-2 border-b border-separator px-4 py-2">
+        <Icon size={16} className="text-brand-teal-800 dark:text-brand-teal-300" />
+        <Text variant="subhead" className="min-w-0 flex-1 font-semibold">
+          {title}
+        </Text>
+        {onViewAll ? <ViewAll title={title} onPress={onViewAll} /> : null}
       </View>
       {children}
     </View>
@@ -50,7 +66,7 @@ export function SectionCard({
 export interface Figure {
   label: string;
   value: number | string;
-  /** v1 accent class for the value, e.g. `text-warning-700 dark:text-warning-300`. */
+  /** Accent class for the value, e.g. `text-warning-700 dark:text-warning-300`. */
   accent: string;
 }
 
@@ -58,9 +74,16 @@ export function FigurePair({ items }: { items: [Figure, Figure] }) {
   return (
     <View className="flex-row">
       {items.map((f, i) => (
-        <View key={f.label} className={cn("flex-1 items-center px-4 py-3", i > 0 && "border-l border-border")}>
-          <Text className={cn("text-2xl font-black", f.accent)}>{String(f.value)}</Text>
-          <Text className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        <View key={f.label} className={cn("flex-1 items-center px-4 py-3", i > 0 && "border-l border-separator")}>
+          <Text variant="title" tabular className={cn("font-bold", f.accent)}>
+            {String(f.value)}
+          </Text>
+          <Text
+            variant="caption"
+            numberOfLines={2}
+            maxFontSizeMultiplier={1.3}
+            className="mt-0.5 text-center font-medium uppercase tracking-wide text-muted-foreground"
+          >
             {f.label}
           </Text>
         </View>

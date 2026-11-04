@@ -89,7 +89,7 @@ function SelectTrigger({
         setOpen(true);
       }}
       className={cn(
-        "h-10 w-full flex-row items-center justify-between gap-2 rounded-md border border-control-border bg-background px-3",
+        "min-h-[44px] w-full flex-row items-center justify-between gap-2 rounded-xl border border-control-border bg-surface px-3",
         invalid && "border-destructive",
         disabled && "opacity-50",
         className,
@@ -105,7 +105,7 @@ function SelectValue({ placeholder }: { placeholder?: string }) {
   const { value, label } = useSelect();
   const shown = label(value);
   return (
-    <Text numberOfLines={1} className={cn("shrink text-sm", shown == null ? "text-muted-foreground" : "text-foreground")}>
+    <Text numberOfLines={1} className={cn("shrink text-base", shown == null ? "text-muted-foreground" : "text-foreground")}>
       {shown ?? placeholder ?? ""}
     </Text>
   );
@@ -116,7 +116,7 @@ function SelectContent({ className, children }: { className?: string; children?:
   return (
     <AnchoredPopover open={open} onClose={() => setOpen(false)} anchor={anchor.rect} width="min-anchor">
       <ScrollView
-        className={cn("max-h-80 rounded-md border border-border bg-popover", className)}
+        className={cn("max-h-80 rounded-xl border border-separator bg-popover", className)}
         contentContainerClassName="p-1"
       >
         {children}
@@ -134,10 +134,10 @@ function SelectItem({ value, className, children, disabled }: { value: string; c
       accessibilityState={{ selected, disabled: !!disabled }}
       disabled={disabled}
       onPress={() => select(value)}
-      className={cn("relative w-full flex-row items-center gap-2 rounded-sm py-1.5 pl-2 pr-8 active:bg-accent", disabled && "opacity-50", className)}
+      className={cn("relative min-h-[44px] w-full flex-row items-center gap-2 rounded-[10px] py-2 pl-3 pr-9 active:bg-accent", disabled && "opacity-50", className)}
     >
-      <Text className="text-sm text-popover-foreground">{children}</Text>
-      {selected ? <Check size={16} className="absolute right-2 text-popover-foreground" /> : null}
+      <Text className="text-popover-foreground">{children}</Text>
+      {selected ? <Check size={16} className="absolute right-3 text-popover-foreground" /> : null}
     </Pressable>
   );
 }

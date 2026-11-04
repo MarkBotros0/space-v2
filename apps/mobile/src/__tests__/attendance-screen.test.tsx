@@ -48,7 +48,7 @@ it("heads the page with the session, v1-style, and puts the save bar after the l
   expect(screen.getByText("Sun, Mar 1, 2099 · 8:00 PM")).toBeTruthy();
   // The bar is part of the page, after the list, not pinned over the rows.
   const bar = screen.getByLabelText("Save bar");
-  expect(StyleSheet.flatten(bar.props.style).position).toBeUndefined();
+  expect(StyleSheet.flatten(bar.props.style)?.position).toBeUndefined();
   fireEvent.press(screen.getByText("Cancel"));
   expect(mockBack).toHaveBeenCalledTimes(1);
 });

@@ -15,7 +15,6 @@ import { formatLongDay, splitWallTime } from "../../lib/format";
 import { Eyebrow } from "../layout/page-title";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
-import { shadowStyle } from "../lib/shadow";
 import { EmptyState } from "../ui/empty-state";
 import { Text } from "../ui/text";
 import { FALLBACK_SEASON, type Handlers, type SeasonColors } from "./season-colors";
@@ -33,7 +32,7 @@ function TimeRail({ time }: { time: string | null }) {
 }
 
 const ROW =
-  "flex-row items-center gap-3 rounded-xl border border-border bg-card p-3 active:bg-accent";
+  "flex-row items-center gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-3 active:bg-accent";
 
 function AgendaSession({
   s,
@@ -49,7 +48,6 @@ function AgendaSession({
       accessibilityRole="link"
       onPress={() => onOpenSession(s.id)}
       className={ROW}
-      style={shadowStyle("soft")}
     >
       <TimeRail time={s.startTime} />
       <View className="h-10 w-px shrink-0 bg-border" />
@@ -104,7 +102,6 @@ function AgendaEvent({
       accessibilityRole={e.url ? "link" : "button"}
       onPress={() => onOpenEvent(e)}
       className={ROW}
-      style={shadowStyle("soft")}
     >
       <View className="w-12 shrink-0 items-center justify-center">
         <CalendarIcon size={16} className="text-muted-foreground" />

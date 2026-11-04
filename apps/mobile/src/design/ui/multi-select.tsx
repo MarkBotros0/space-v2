@@ -75,7 +75,7 @@ export function MultiSelect({
           setOpen(true);
         }}
         className={cn(
-          "min-h-10 w-full flex-row flex-wrap items-center gap-1 rounded-md border border-control-border bg-background px-2 py-1.5",
+          "min-h-[44px] w-full flex-row flex-wrap items-center gap-1 rounded-xl border border-control-border bg-surface px-2 py-1.5",
           invalid && "border-destructive",
           disabled && "opacity-50",
           className,
@@ -101,7 +101,7 @@ export function MultiSelect({
         <ChevronDown size={16} className="ml-auto shrink-0 text-muted-foreground" />
       </Pressable>
       <AnchoredPopover open={open} onClose={() => setOpen(false)} anchor={anchor.rect} width="anchor">
-        <View className="max-w-[28rem] overflow-hidden rounded-md border border-border bg-popover p-1">
+        <View className="max-w-[28rem] overflow-hidden rounded-xl border border-separator bg-popover p-1">
           <OptionSearch value={query} onChangeText={setQuery} />
           <ScrollView className="max-h-60" keyboardShouldPersistTaps="handled">
             {filtered.length === 0 ? (

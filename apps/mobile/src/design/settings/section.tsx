@@ -8,7 +8,6 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { iconWithClassName } from "../lib/icon";
-import { shadowStyle } from "../lib/shadow";
 import { Text } from "../ui/text";
 
 export function Section({
@@ -24,7 +23,7 @@ export function Section({
 }) {
   iconWithClassName(Icon);
   return (
-    <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
       <View className="mb-4 flex-row items-start gap-3">
         <View className="size-9 shrink-0 items-center justify-center rounded-lg bg-brand-teal-100 dark:bg-brand-teal-950">
           <Icon size={16} className="text-brand-teal-700 dark:text-brand-teal-300" />

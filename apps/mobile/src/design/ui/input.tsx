@@ -13,13 +13,13 @@ import { cn } from "../lib/cn";
 import { useThemeColors } from "../theme/use-theme-colors";
 
 const inputVariants = cva(
-  "w-full rounded-md border border-control-border bg-card/60 font-normal text-foreground focus:border-ring focus:bg-card dark:bg-card",
+  "w-full rounded-xl border border-control-border bg-surface font-normal text-foreground focus:border-ring",
   {
     variants: {
       size: {
-        sm: "min-h-8 px-2.5 py-0 text-sm",
-        md: "min-h-10 px-3 py-0 text-sm",
-        lg: "min-h-11 px-3.5 py-0 text-base",
+        sm: "min-h-[44px] px-3 py-0 text-subhead",
+        md: "min-h-[44px] px-3 py-0 text-base",
+        lg: "min-h-[48px] px-3.5 py-0 text-base",
       },
     },
     defaultVariants: { size: "md" },

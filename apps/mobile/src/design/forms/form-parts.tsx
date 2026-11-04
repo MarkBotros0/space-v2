@@ -17,8 +17,8 @@ import { Text } from "../ui/text";
 export function FormErrorBox({ message }: { message: string | null | undefined }) {
   if (!message) return null;
   return (
-    <View accessibilityRole="alert" className="rounded-md bg-error-50 px-3 py-2 dark:bg-error-950">
-      <Text className="text-sm text-error-800 dark:text-error-200">{message}</Text>
+    <View accessibilityRole="alert" className="rounded-[14px] bg-bad-soft px-3 py-2">
+      <Text className="text-sm text-bad">{message}</Text>
     </View>
   );
 }
@@ -73,16 +73,16 @@ export function ToggleButtons<T extends string>({
             accessibilityState={{ checked: selected }}
             onPress={() => onChange(o.value)}
             className={cn(
-              "flex-1 items-center rounded-lg border px-3 py-2",
+              "min-h-[44px] flex-1 items-center justify-center rounded-[14px] border px-3 py-2",
               selected
-                ? "border-brand-teal-500 bg-brand-teal-50 dark:bg-brand-teal-950"
-                : "border-border bg-card active:border-brand-teal-300",
+                ? "border-ring bg-accent"
+                : "border-control-border bg-surface active:border-ring",
             )}
           >
             <Text
               className={cn(
                 "text-sm font-semibold",
-                selected ? "text-brand-teal-800 dark:text-brand-teal-200" : "text-muted-foreground",
+                selected ? "text-accent-foreground" : "text-muted-foreground",
               )}
             >
               {o.label}

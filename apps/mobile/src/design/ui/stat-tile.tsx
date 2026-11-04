@@ -41,7 +41,7 @@ function StatTile({
   const reduced = useReducedMotion();
   const shown = useCountUp(value, reduced);
   return (
-    <View accessible accessibilityLabel={`${label}: ${value}${suffix ?? ""}`} className={cn("min-w-[136px] flex-1 gap-0.5 rounded-2xl bg-surface p-4", className)}>
+    <View accessible accessibilityLabel={`${label}: ${value}${suffix ?? ""}`} className={cn("min-w-[136px] flex-1 gap-0.5 rounded-[16px] bg-surface p-4", className)}>
       <Text variant="largeTitle" tabular numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.4} maxFontSizeMultiplier={1.3}>
         {`${shown}${suffix ?? ""}`}
       </Text>

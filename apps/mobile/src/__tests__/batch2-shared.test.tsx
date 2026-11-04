@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { Keyboard, RefreshControl, ScrollView, StyleSheet, Text as RNText } from "react-native";
 
 import { ShellFrame } from "../design/layout/shell-frame";
-import { BackLink, Eyebrow, PageTitle } from "../design/layout/page-title";
+import { Eyebrow, PageTitle } from "../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
 import { StatCard } from "../design/students/stat-card";
 import { renderWithProviders } from "./helpers/render";
@@ -66,11 +66,9 @@ describe("ShellFrame", () => {
 });
 
 describe("page title idiom", () => {
-  it("renders v1's h1 + subtitle, eyebrow and back link", () => {
-    const onBack = jest.fn();
+  it("renders the title on the type scale, its subtitle and an eyebrow", () => {
     render(
       <>
-        <BackLink label="Dashboard" onPress={onBack} />
         <PageTitle title="Attendance" subtitle="Your current season" />
         <Eyebrow tone="teal">Current season</Eyebrow>
       </>,
@@ -78,8 +76,12 @@ describe("page title idiom", () => {
     expect(screen.getByRole("header", { name: "Attendance" })).toBeTruthy();
     expect(screen.getByText("Your current season")).toBeTruthy();
     expect(screen.getByText("Current season")).toBeTruthy();
-    fireEvent.press(screen.getByText("← Dashboard"));
-    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Attendance").props.className).toContain("text-large-title");
+  });
+
+  it("a detail title is the title size", () => {
+    render(<PageTitle title="Quiz 1" size="detail" />);
+    expect(screen.getByText("Quiz 1").props.className).toContain("text-title");
   });
 });
 

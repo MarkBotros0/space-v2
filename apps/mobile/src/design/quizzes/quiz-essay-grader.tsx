@@ -11,7 +11,6 @@ import { View } from "react-native";
 
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
-import { shadowStyle } from "../lib/shadow";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -77,7 +76,7 @@ export function QuizAttemptCard({
 
   const shownError = localError ?? error;
   return (
-    <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
           <Text className={`text-sm font-bold ${NAVY}`}>{attempt.studentName ?? "Student"}</Text>

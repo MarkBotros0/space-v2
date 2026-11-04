@@ -11,7 +11,6 @@ import type { SeasonHistoryRow } from "@space/shared";
 
 import { formatDate, formatDayKey } from "../../lib/format";
 import { cn } from "../lib/cn";
-import { shadowStyle } from "../lib/shadow";
 import { Badge } from "../ui/badge";
 import { EmptyState } from "../ui/empty-state";
 import { Text } from "../ui/text";
@@ -20,7 +19,7 @@ function HistoryRow({ row }: { row: SeasonHistoryRow }) {
   const [open, setOpen] = useState(false);
   const count = row.curriculum.length;
   return (
-    <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
       <View className="flex-row flex-wrap items-start justify-between gap-2">
         <View>
           <Text className="text-base font-bold text-brand-navy-900 dark:text-foreground">{row.title}</Text>

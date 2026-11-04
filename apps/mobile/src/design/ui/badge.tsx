@@ -1,10 +1,14 @@
 /**
- * Port of v1 src/components/ui/badge.tsx.
- * Native differences: v1's single class string is split — box classes on the
- * View (badgeVariants), text classes on the Text (badgeTextVariants);
- * whitespace-nowrap → numberOfLines={1}; [&_svg]:size-3 → icons size 12;
- * inline-flex has no native equivalent: like Button, a Badge takes no
- * self-alignment; a call site that is a block in v1 (or uses w-fit) adds self-start.
+ * Legacy Badge, kept so its call sites compile, drawn as the redesign's
+ * StatusChip: v1's variants map onto the five chip tones (success → ok,
+ * warning → warn, error → bad, info/teal/secondary → info, default/outline →
+ * neutral), with the chip's full-round shape, caption type and colours. A
+ * `role` badge keeps its role colour in the chip shape. Like Button, a Badge
+ * takes no self-alignment (StatusChip's own self-start is reset); a call site
+ * that sits in a block adds `self-start`. A plain-text badge is exactly a
+ * StatusChip, so v1's `textClassName` size tweaks no longer apply to it; a
+ * badge with an icon child or a role keeps `textClassName` on its label.
+ * Plans 02–05 move the call sites to StatusChip and delete this file.
  */
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ReactNode } from "react";
@@ -12,20 +16,25 @@ import { View } from "react-native";
 
 import { cn } from "../lib/cn";
 import { withTextRuns } from "../lib/text-runs";
+import { chipTextVariants, chipVariants, StatusChip, type ChipTone } from "./status-chip";
 import { Text } from "./text";
 
-const badgeVariants = cva("flex-row items-center gap-1 rounded-full border border-transparent px-2 py-0.5", {
+type LegacyVariant = "default" | "secondary" | "outline" | "success" | "warning" | "error" | "info" | "teal";
+type Role = "none" | "super" | "admin" | "leader" | "mentor" | "student";
+
+const TONE: Record<LegacyVariant, ChipTone> = {
+  default: "neutral",
+  secondary: "info",
+  outline: "neutral",
+  success: "ok",
+  warning: "warn",
+  error: "bad",
+  info: "info",
+  teal: "info",
+};
+
+const roleBox = cva("", {
   variants: {
-    variant: {
-      default: "bg-muted",
-      secondary: "bg-secondary",
-      outline: "border-border bg-transparent",
-      success: "bg-success-100",
-      warning: "bg-warning-100",
-      error: "bg-error-100",
-      info: "bg-info-100",
-      teal: "bg-brand-teal-100 border-brand-teal-200",
-    },
     role: {
       none: "",
       super: "bg-role-super",
@@ -35,21 +44,11 @@ const badgeVariants = cva("flex-row items-center gap-1 rounded-full border borde
       student: "bg-role-student",
     },
   },
-  defaultVariants: { variant: "default", role: "none" },
+  defaultVariants: { role: "none" },
 });
 
-const badgeTextVariants = cva("text-xs font-medium", {
+const roleText = cva("", {
   variants: {
-    variant: {
-      default: "text-muted-foreground",
-      secondary: "text-secondary-foreground",
-      outline: "text-foreground",
-      success: "text-success-800",
-      warning: "text-warning-800",
-      error: "text-error-800",
-      info: "text-info-800",
-      teal: "text-brand-teal-800",
-    },
     role: {
       none: "",
       super: "text-role-super-foreground",
@@ -59,20 +58,43 @@ const badgeTextVariants = cva("text-xs font-medium", {
       student: "text-role-student-foreground",
     },
   },
-  defaultVariants: { variant: "default", role: "none" },
+  defaultVariants: { role: "none" },
 });
 
-type BadgeProps = VariantProps<typeof badgeVariants> & {
+type Opts = { variant?: LegacyVariant | null; role?: Role | null };
+
+/** Box classes: the chip's shape and tone, or its role colour. */
+function badgeVariants({ variant, role }: Opts = {}): string {
+  return cn(chipVariants({ tone: TONE[variant ?? "default"] }), "self-auto gap-1", roleBox({ role }));
+}
+
+/** Label classes: the chip tone's text colour, or the role's foreground. */
+function badgeTextVariants({ variant, role }: Opts = {}): string {
+  return cn(chipTextVariants({ tone: TONE[variant ?? "default"] }), roleText({ role }));
+}
+
+type BadgeProps = VariantProps<typeof roleBox> & {
+  variant?: LegacyVariant | null;
   className?: string;
   textClassName?: string;
   children?: ReactNode;
 };
 
 function Badge({ className, textClassName, variant, role, children }: BadgeProps) {
+  const runs = withTextRuns(children, (text) => text);
+  if (runs.length === 1 && typeof runs[0] === "string" && (role ?? "none") === "none") {
+    return <StatusChip tone={TONE[variant ?? "default"]} label={runs[0]} className={cn("self-auto", className)} />;
+  }
   return (
     <View className={cn(badgeVariants({ variant, role }), className)}>
       {withTextRuns(children, (text, key) => (
-        <Text key={key} numberOfLines={1} className={cn(badgeTextVariants({ variant, role }), textClassName)}>
+        <Text
+          key={key}
+          variant="caption"
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          className={cn(badgeTextVariants({ variant, role }), textClassName)}
+        >
           {text}
         </Text>
       ))}

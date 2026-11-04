@@ -81,19 +81,19 @@ function DatePicker({
           setOpen(true);
         }}
         className={cn(
-          "h-10 w-full flex-row items-center justify-between gap-2 rounded-md border border-control-border bg-background px-3",
+          "min-h-[44px] w-full flex-row items-center justify-between gap-2 rounded-xl border border-control-border bg-surface px-3",
           ariaInvalid && "border-destructive",
           disabled && "opacity-50",
           className,
         )}
       >
-        <Text className={cn("text-sm", value ? "text-foreground" : "text-muted-foreground")}>
+        <Text className={cn("text-base", value ? "text-foreground" : "text-muted-foreground")}>
           {value ? format(value, "PPP") : placeholder}
         </Text>
         <CalendarIcon size={16} className="text-muted-foreground" />
       </Pressable>
       <AnchoredPopover open={open} onClose={() => setOpen(false)} anchor={anchor.rect}>
-        <View className="rounded-lg border border-border bg-popover p-3">
+        <View className="rounded-xl border border-separator bg-popover p-3">
           <View className="mb-2 flex-row items-center justify-between">
             <Button size="icon-sm" variant="ghost" onPress={() => setViewMonth((m) => subMonths(m, 1))} accessibilityLabel="Previous month">
               <ChevronLeft size={16} className="text-foreground" />
