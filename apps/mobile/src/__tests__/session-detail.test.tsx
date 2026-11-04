@@ -207,54 +207,6 @@ it("refreshes the leader's roster every 10 seconds while check-in is open", asyn
   }
 });
 
-it("tells a student a session they can't open is not available, with no retry (REG-77)", async () => {
-  useSessionStore.setState(makeSession("STUDENT", {}, { id: 9 }));
-  get.mockRejectedValue(
-    Object.assign(new Error("404"), {
-      isAxiosError: true,
-      response: { status: 404, data: { error: { code: "not_found", message: "Session not found." } } },
-    }),
-  );
-
-  renderWithProviders(<SessionDetailScreen />);
-  expect(await screen.findByText("Not available")).toBeTruthy();
-  expect(screen.queryByText("Try again")).toBeNull();
-});
-
-it("refetches the session detail on the same interval, so the badge and polling follow check-in", async () => {
-  jest.useFakeTimers();
-  try {
-    useSessionStore.setState(leader());
-    const state: RouteState = {
-      detail: { ...baseDetail, checkInOpen: false, canMarkAttendance: true, canManageCheckIn: false },
-      roster: [],
-    };
-    routeGets(state);
-    const calls = (url: string) => get.mock.calls.filter(([u]) => u === url).length;
-    const rosterCalls = () => calls("/api/v1/sessions/12/attendance");
-
-    renderWithProviders(<SessionDetailScreen />);
-    expect(await screen.findByText("Closed")).toBeTruthy();
-    await waitFor(() => expect(rosterCalls()).toBe(1));
-
-    // Check-in is opened elsewhere; the next tick picks it up.
-    state.detail = { ...state.detail, checkInOpen: true };
-    await act(async () => {
-      jest.advanceTimersByTime(10_000);
-    });
-    expect(await screen.findByText("Open")).toBeTruthy();
-    // Closed until now, so the roster was not polled on that tick...
-    expect(rosterCalls()).toBe(1);
-    // ...but it is from the next one on.
-    await act(async () => {
-      jest.advanceTimersByTime(10_000);
-    });
-    await waitFor(() => expect(rosterCalls()).toBe(2));
-  } finally {
-    jest.useRealTimers();
-  }
-});
-
 it("lists who has checked in on the admin console and refreshes it while open (REG-78)", async () => {
   jest.useFakeTimers();
   try {

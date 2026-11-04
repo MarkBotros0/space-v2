@@ -1,0 +1,90 @@
+import { act, screen, waitFor } from "@testing-library/react-native";
+
+jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), post: jest.fn() } }));
+jest.mock("react-native-qrcode-svg", () => "QRCode");
+jest.mock("expo-camera", () => require("./helpers/expo-camera"));
+jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({ id: "12" }),
+  useRouter: () => ({ push: jest.fn() }),
+  // Focused for the whole test: run the effect like a plain useEffect.
+  useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
+}));
+
+import type { SessionDetail } from "@space/shared";
+
+import { apiClient } from "../lib/api-client";
+import { useSessionStore } from "../store/session";
+import { renderWithProviders } from "./helpers/render";
+import { makeSession } from "./helpers/session";
+import SessionDetailScreen from "../../app/(app)/session/[id]/index";
+
+/**
+ * The session detail screen's freshness: the check-in card follows the
+ * session's check-in state, and a 404 is an answer rather than an error.
+ */
+
+const get = apiClient.get as jest.Mock;
+
+const baseDetail: SessionDetail = {
+  id: 12, title: "Week 3", description: null,
+  startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00",
+  durationMinutes: 90, location: null, youtubeUrl: null, recurrenceGroupId: null,
+  seasonId: 7, seasonCode: "s7", seasonTitle: "Spring",
+  checkInOpen: false, myAttendance: null, canMarkAttendance: true, canManageCheckIn: false,
+};
+
+const ok = (data: unknown) => Promise.resolve({ data: { data } });
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  useSessionStore.setState(useSessionStore.getInitialState(), true);
+});
+
+it("tells a student a session they can't open is not available, with no retry (REG-77)", async () => {
+  useSessionStore.setState(makeSession("STUDENT", {}, { id: 9 }));
+  get.mockRejectedValue(
+    Object.assign(new Error("404"), {
+      isAxiosError: true,
+      response: { status: 404, data: { error: { code: "not_found", message: "Session not found." } } },
+    }),
+  );
+
+  renderWithProviders(<SessionDetailScreen />);
+  expect(await screen.findByText("Not available")).toBeTruthy();
+  expect(screen.queryByText("Try again")).toBeNull();
+});
+
+it("refetches the session detail on the same interval, so the badge and polling follow check-in", async () => {
+  jest.useFakeTimers();
+  try {
+    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
+    let detail = baseDetail;
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/sessions/12") return ok(detail);
+      if (url === "/api/v1/sessions/12/attendance") return ok({ roster: [] });
+      if (url === "/api/v1/sessions/12/quizzes") return ok({ quizzes: [] });
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+    const rosterCalls = () => get.mock.calls.filter(([u]) => u === "/api/v1/sessions/12/attendance").length;
+
+    renderWithProviders(<SessionDetailScreen />);
+    expect(await screen.findByText("Closed")).toBeTruthy();
+    await waitFor(() => expect(rosterCalls()).toBe(1));
+
+    // Check-in is opened elsewhere; the next tick picks it up.
+    detail = { ...baseDetail, checkInOpen: true };
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+    expect(await screen.findByText("Open")).toBeTruthy();
+    // Closed until now, so the roster was not polled on that tick...
+    expect(rosterCalls()).toBe(1);
+    // ...but it is from the next one on.
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+    await waitFor(() => expect(rosterCalls()).toBe(2));
+  } finally {
+    jest.useRealTimers();
+  }
+});
