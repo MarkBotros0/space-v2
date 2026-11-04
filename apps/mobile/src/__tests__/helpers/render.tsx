@@ -26,7 +26,9 @@ const initialMetrics = {
  */
 export function renderWithProviders(ui: ReactElement) {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    // gcTime Infinity: the default 5-minute garbage-collection timer outlives
+    // the test and keeps Jest's worker from exiting (TanStack's testing guide).
+    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { gcTime: Infinity } },
   });
 
   return render(
