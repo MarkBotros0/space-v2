@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Inbox } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import type { SubmissionQueueItem } from "@space/shared";
 
 import { PageTitle } from "../../src/design/layout/page-title";
@@ -9,6 +9,7 @@ import { ShellFrame } from "../../src/design/layout/shell-frame";
 import {
   Badge,
   Button,
+  Card,
   DataTable,
   EmptyState,
   SubmissionStatusBadge,
@@ -19,16 +20,6 @@ import { usePrefetchSubmission } from "../../src/hooks/use-submission";
 import { useSubmissionQueue } from "../../src/hooks/use-submission-queue";
 import { formatShortDateTime } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import {
-  Button as LegacyButton,
-  Card as LegacyCard,
-  EmptyState as LegacyEmptyState,
-  ErrorState,
-  LoadingState,
-  Screen,
-  Text as LegacyText,
-} from "../../src/ui";
 
 // v1 lists every SUBMITTED, REVIEWED and RETURNED row, in that order (B3-8).
 const ALL = { pendingOnly: false } as const;
@@ -81,23 +72,20 @@ function columns(): DataTableColumn<SubmissionQueueItem>[] {
 }
 
 function QueueRow({ item }: { item: SubmissionQueueItem }) {
-  const theme = useTheme();
   const router = useRouter();
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <Card
+      className="p-4"
       onPress={() =>
         router.push({ pathname: "/submission/[publicId]", params: { publicId: item.publicId } })
       }
     >
-      <LegacyCard style={{ marginBottom: theme.spacing.sm }}>
-        <LegacyText variant="heading">{item.assignmentTitle}</LegacyText>
-        <LegacyText variant="label" color={theme.colors.neutral[600]}>
-          {`${item.studentName ?? "Unnamed"} · ${item.groupName ?? "No group"}${item.isLate ? " · Late" : ""}`}
-        </LegacyText>
-      </LegacyCard>
-    </Pressable>
+      <Text className="text-lg font-semibold">{item.assignmentTitle}</Text>
+      <Text className="text-sm font-medium text-muted-foreground">
+        {`${item.studentName ?? "Unnamed"} · ${item.groupName ?? "No group"}${item.isLate ? " · Late" : ""}`}
+      </Text>
+    </Card>
   );
 }
 
@@ -105,8 +93,7 @@ function QueueRow({ item }: { item: SubmissionQueueItem }) {
  * ADMIN / SUPER / MENTOR — the pre-batch pending queue, unchanged until their
  * batches (plan: other roles keep their rendering). v1 had no admin queue.
  */
-function LegacyQueue() {
-  const theme = useTheme();
+function PendingQueue() {
   const { data, isPending, isError, refetch, isRefetching, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useSubmissionQueue(PENDING, true);
 
@@ -115,34 +102,38 @@ function LegacyQueue() {
   const counts = data?.pages[0]?.counts;
 
   return (
-    <Screen edges={["top", "left", "right"]} onRefresh={() => void refetch()} refreshing={isRefetching}>
-      {counts ? (
-        <LegacyText variant="label" color={theme.colors.neutral[600]}>
-          {`${counts.pending} pending review · ${counts.total} total${counts.late > 0 ? ` · ${counts.late} late` : ""}`}
-        </LegacyText>
-      ) : null}
-      {isPending ? (
-        <LoadingState />
-      ) : isError ? (
-        <ErrorState message="Couldn't load the review queue." onRetry={refetch} />
-      ) : items.length === 0 ? (
-        <LegacyEmptyState title="All caught up" message="No submissions waiting for review." />
-      ) : (
-        <>
-          {items.map((item) => (
-            <QueueRow key={item.publicId} item={item} />
-          ))}
-          {hasNextPage ? (
-            <LegacyButton
-              title="Load more"
-              variant="secondary"
-              onPress={() => void fetchNextPage()}
-              loading={isFetchingNextPage}
-            />
-          ) : null}
-        </>
-      )}
-    </Screen>
+    <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
+      <View className="flex-col gap-2">
+        {counts ? (
+          <Text className="text-sm font-medium text-muted-foreground">
+            {`${counts.pending} pending review · ${counts.total} total${counts.late > 0 ? ` · ${counts.late} late` : ""}`}
+          </Text>
+        ) : null}
+        {isPending ? (
+          <RouteSkeleton />
+        ) : isError ? (
+          <RouteError onRetry={() => void refetch()} />
+        ) : items.length === 0 ? (
+          <EmptyState icon={Inbox} title="All caught up" description="No submissions waiting for review." />
+        ) : (
+          <>
+            {items.map((item) => (
+              <QueueRow key={item.publicId} item={item} />
+            ))}
+            {hasNextPage ? (
+              <Button
+                variant="secondary"
+                size="lg"
+                disabled={isFetchingNextPage}
+                onPress={() => void fetchNextPage()}
+              >
+                Load more
+              </Button>
+            ) : null}
+          </>
+        )}
+      </View>
+    </ShellFrame>
   );
 }
 
@@ -160,7 +151,7 @@ export default function SubmissionsScreen() {
   const { data, isPending, isError, refetch, isRefetching, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useSubmissionQueue(seasonId === undefined ? ALL : { ...ALL, seasonId }, role === "LEADER");
 
-  if (isStaff && role !== "LEADER") return <LegacyQueue />;
+  if (isStaff && role !== "LEADER") return <PendingQueue />;
   if (!isStaff) {
     return (
       <ShellFrame>
@@ -172,7 +163,7 @@ export default function SubmissionsScreen() {
   const items = data?.pages.flatMap((page) => page.items) ?? [];
   // Counts ignore paging and pendingOnly; only the first page carries them.
   const counts = data?.pages[0]?.counts;
-  const open =(publicId: string) => router.push({ pathname: "/submission/[publicId]", params: { publicId } });
+  const open = (publicId: string) => router.push({ pathname: "/submission/[publicId]", params: { publicId } });
 
   return (
     <ShellFrame refreshing={isRefetching} onRefresh={() => void refetch()}>
