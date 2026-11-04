@@ -1,7 +1,11 @@
 # Mobile redesign: JPC Space as a phone app
 
-Date: 2026-11-04. Status: draft for owner approval (builder check done; owner answers folded in).
+Date: 2026-11-04. Status: step 1 (design system, shell, tabs, motion foundation) done on branch `redesign/foundation` (2026-11-05); steps 2+ pending. Owner answers folded in.
 Visual reference: https://claude.ai/artifact/XziHryJWkx2gEz7XQtcVa3 (private; mockups use fake people).
+
+Changed during step 1: swipe-back is native on iOS and Android gesture-nav only, 3-button Android
+uses the back bar and system Back (R24); no featured disc on the Today tab (R22); `control-border`
+and `ring` tokens measured to 3:1 (R25, R26); active pill label token `pill-active-label` (R18).
 
 ## Intent
 

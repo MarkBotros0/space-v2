@@ -190,12 +190,19 @@ Still outstanding: the mobile screens for the newly-ported endpoints. See
 ## Mobile conventions (Phase 0 established these — follow them)
 
 **Screens are flat and role-driven.** One route per *destination*
-(`/calendar`, `/students`), not per role. The tab bar renders
-`navFor(user).tabs` from `packages/shared/src/navigation.ts`, so a student and
-an admin see different tabs pointing at the same route files. `(app)/_layout.tsx`
-hides non-tab routes with `href: null` — reachable by navigation, absent from
-the bar — and derives the route universe from `ALL_NAV_HREFS`. Never re-derive
-that set from `navByRole`: `ALUMNI` is not in it, only reachable via `navFor`.
+(`/calendar`, `/students`), not per role. `(app)/_layout.tsx` is a native `Stack`
+(anonymous redirect, alumni guard, `UNSTABLE_router={singularTabsRouter}`, anchor
+`(tabs)`); `(app)/(tabs)/_layout.tsx` holds the `Tabs` (`backBehavior` "history" +
+`historyThenHomeTabsRouter`, anchor `dashboard` — its dev warning is expected, do not
+"fix" it). The pill renders `navFor(user).tabs` from `packages/shared/src/navigation.ts`:
+Today first, at most 5 per role. A href that is a tab for some role is in `ALL_TAB_HREFS`
+and its file lives in `(tabs)/`; a nav destination that is a tab for no role is a pushed
+route outside `(tabs)/` (`PUSHED_NAV_ROUTE_NAMES`), and every detail route is listed in
+`DETAIL_ROUTE_NAMES` — both pushed on the stack so Back returns to the screen you came
+from. Never put `href: null` or `hidden` on a `Tabs` screen (expo-router 58 redirects a
+focused hidden tab to the first tab, breaking deep links); the pill rendering `items` is
+what keeps screens out of the bar. Never re-derive hrefs from `navByRole`: `ALUMNI` is
+only reachable via `navFor`.
 
 **Typed routes are on.** Every `href` is compile-checked against the real route
 tree. The types are generated, not written — `turbo.json`'s `routes:generate`
@@ -204,7 +211,7 @@ clean checkout gets correct types. Without them the `Href` type silently
 degrades to `string` and checks nothing. Never silence a route error with
 `as Href`/`as any`.
 
-**Data fetching follows `app/(app)/dashboard.tsx`** — the worked example. Query
+**Data fetching follows `app/(app)/(tabs)/dashboard.tsx`** — the worked example. Query
 keys are hierarchical factories in `src/lib/query-keys.ts`; hooks live in
 `src/hooks/` and **parse responses with a Zod schema from `packages/shared`**
 rather than casting, so a backend drift fails at the boundary. Queries
@@ -218,37 +225,38 @@ wired to `refetch` (`InlineError` for one card's query), `EmptyState`.
 The remaining interfaces in `packages/shared` predate this and should convert
 as each domain lands.
 
-**UI matches v1 exactly** (owner ruling 2026-10-14, spec
-`docs/superpowers/specs/2026-10-14-mobile-ui-v1-match-design.md`). Styling is
-NativeWind with a theme generated from v1's resolved tokens
-(`pnpm --filter @space/mobile design:tokens`). Components live in
-`src/design/` under v1's file names and keep v1's class strings, variants and
-copy; porting rules are in `docs/superpowers/plans/2026-10-14-ui-plan-01-foundations.md`
-Task 6, and known differences in `docs/superpowers/ui-rebuild/gaps-foundations.md`.
-Render text with `src/design/ui/text.tsx` (it carries v1's body defaults:
-16px/24px, Geist, foreground colour — React Native text inherits nothing).
-Button, Badge and the pills carry no self-alignment: where v1 places them in
-a block (or uses `w-fit`), add `self-start`. A screen is done only after a
-side-by-side capture against v1 (`tools/ui-reference/`). The shell
-(`app/(app)/_layout.tsx`) renders v1's top bar as the tab header and the
-floating pill tab bar; every screen inside it renders `ShellFrame`. The legacy
-kit (`src/ui/`, `src/theme/`) is gone: raw colours for charts and SVG come from
-`src/design/theme/palette.ts` (ramps) or `useThemeColors()` (semantic tokens),
-never hard-coded hexes. Student-page idioms shared by later batches: `src/design/layout/page-title.tsx`
-(v1's hand-rolled h1, eyebrow, back link), `route-states.tsx` (v1's route
-skeleton and error), `shell-frame.tsx` (page frame with v1's navy-50 tint and
-pull-to-refresh), `src/design/students/` (StatCard, SeasonHistory),
-`src/design/sessions/season-calendar.tsx`. Leader-page idioms (batch 3), shared with
-admin later: `src/design/dashboard/section-card.tsx` (card with icon header + "View all",
-FigurePair), `src/design/sessions/{next-session-card,check-in-attendance-list,attendance-form}.tsx`,
-`src/design/quizzes/` (attempt grader, paper sheet), `src/design/students/{student-detail,note-form}.tsx`;
-`RouteError` picks "your leader" / "an admin" from the session role. If a capture shows a
-class ignored, restart Metro with `--clear` before working around it. Admin pages (batch 4) share `src/design/forms/form-parts.tsx` (FormErrorBox, FormActions, ToggleButtons),
-`src/design/seasons/*`, `src/components/dashboard/StaffDashboard.tsx`, and the design `StudentDetail`, whose props
-(`canWriteNote`, `actions`, `dropFor`, `staffTabs`) switch it between leader and admin views. Super pages (batch 5) add `src/components/season/SeasonForm.tsx`,
-`src/design/users/users-list.tsx`, and the season palette (`buildSeasonColors`) in `design/sessions/season-calendar.tsx`.
-Remaining
-differences per batch are in `docs/superpowers/ui-rebuild/gaps-batch-<n>.md`; captures still owed are in backlog section 14.
+**The redesign spec is the UI reference** (owner lifted "match v1" on 2026-11-04;
+`docs/superpowers/specs/2026-11-04-mobile-redesign-design.md`). jpc-space stays the source
+of truth for behaviour and copy, not look; the v1 side-by-side is no longer the acceptance
+check, the UI sweep is. Styling is NativeWind over `src/design/theme/tokens.json`, the
+owned token source (`pnpm --filter @space/mobile design:tokens` regenerates `global.css`
+and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raised`,
+`control-border` and `ring` (both >=3:1). Raw colours for charts/SVG come from
+`design/theme/palette.ts` or `useThemeColors()`, never hex literals.
+
+- **Frame.** Every screen renders `Screen` (`design/layout/screen.tsx`): large collapsing
+  title, `back`, `home` (bell + user menu, Today only), the offline banner, and the top
+  inset, which only it owns. `ShellFrame` is the transitional wrapper over it. A screen
+  on the stack gets the pinned back bar by default; `back={null}` opts out, and an
+  in-content back link is a duplicate. Bottom padding comes from `useShellBottomPadding()`,
+  driven by the tab-bar presence context (tab bar vs none).
+- **Components** (`src/design/ui/*`): Button (primary | secondary | destructive | plain),
+  StatusChip / `statusChip` / `dueChip`, GroupedList / ListRow, HeroCard, StatTile,
+  SegmentedControl, SearchField, EmptyState (`tone`), Sheet / SheetSaveBar, Toast
+  (`toaster.tsx`); `src/design/layout/*`: Screen, LargeTitle, PillTabBar, SaveBar,
+  `tab-bar-scroll`. Render text with `ui/text.tsx` and its `variant` scale (largeTitle,
+  title, headline, body, subhead, caption); it carries the body defaults because React
+  Native text inherits nothing. Button, Badge and the pills carry no self-alignment:
+  where one sits in a block, add `self-start`.
+- **Catalogue.** The hidden design catalogue (`spacev2://design-catalogue`, in dev or with
+  `EXPO_PUBLIC_SWEEP_BUILD=1`) shows every component; sweep flow `s90` shoots it.
+- **Motion** (`src/design/motion/`): durations `fast` 150 / `base` 220 / `slow` 320 ms and
+  springs `snappy` / `gentle`; press scale via `usePressScale`; haptics via `haptic()`.
+  Every animated component reads `useReducedMotion` (movement becomes a short crossfade;
+  stagger and count-ups off; press scale stays). Exits are faster than entrances, a new tap
+  cancels motion in flight, and no state depends on an animation finishing.
+
+The legacy kit (`src/ui/`, `src/theme/`) is gone. `tools/ui-reference/` is the sweep rig.
 
 **Testing.** Anything rendering the shell (`ShellFrame`, the bars) must use `renderWithProviders`
 (`src/__tests__/helpers/render.tsx`) — it supplies `SafeAreaProvider` with
@@ -260,11 +268,12 @@ and error caption from the accessibility tree, so query fields with
 neither. `jest.mock` factories may only close over out-of-scope consts named
 `mock*`.
 
-**UI sweep.** Matching v1 at one 375dp phone doesn't show a 360dp phone at font 1.3, the Android nav
+**UI sweep.** One 375dp phone doesn't show a 360dp phone at font 1.3, the Android nav
 bar under the floating tab bar, the keyboard over a form, or dark mode on first launch. After building
 or changing a screen, run the `ui-sweep` skill (`.claude/skills/ui-sweep/`,
 `tools/ui-reference/ui-sweep.mjs`, flows in `apps/mobile/.maestro/sweep/`) and look at the shots
-before calling it done. Sweep flows never save anything (the database is shared with v1).
+before calling it done. Sweep flows never save anything. Maestro on Android often misses
+sonner-native toasts, so flows shoot toasts best-effort.
 
 ### Rules from the UI sweep
 
@@ -288,6 +297,12 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   digits in number fields at font 1.3 (Minutes late, Score, Points). Title text beside a badge takes
   `min-w-0 flex-1` and the badge `shrink-0`; rows of buttons use `flex-wrap`, since two buttons overflow
   a 360dp phone at 1.3.
+- **Never put `className` on a Reanimated `Animated.*` component.** css-interop merges it with
+  the animated style and Reanimated's PropsFilter drops it in builds; put classes on a plain
+  `View` inside. `no-classname-on-animated.test.ts` guards it.
+- **Offsets above the keyboard come from `keyboardBottomOffset`** (`design/lib/keyboard-offset.ts`).
+  Android reports the keyboard height without the nav bar, and an edge-to-edge `Modal` window
+  is never resized.
 
 ## Git
 
