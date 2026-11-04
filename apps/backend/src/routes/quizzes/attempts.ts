@@ -4,12 +4,45 @@ import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
-import { canAccessSeason } from "../../lib/permissions";
+import type { SessionUser } from "../../lib/auth/tokens";
+import { hasActiveEnrollment } from "../../lib/permissions";
+import { isAlumnus } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { saveQuizAnswersRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
 import { notifyQuizGraded } from "./notify";
 import { loadStudentQuizDetail } from "./student-detail";
+
+/**
+ * Whether this student may WRITE an attempt in the quiz's season.
+ *
+ * Deliberately stricter than `canAccessSeason`, whose student branch accepts
+ * any enrolment row: a dropped or completed student, or an alumnus (read-only
+ * by definition, see `isAlumnus`), must not start, save or submit an attempt in
+ * a season they no longer have a live place in. Same rule video-quiz and
+ * check-in already apply (`hasActiveEnrollment`).
+ */
+async function canTakeQuizIn(user: SessionUser, seasonId: number): Promise<boolean> {
+  if (isAlumnus(user)) return false;
+  return hasActiveEnrollment(user, seasonId);
+}
+
+/** Load the quiz and apply the enrolment gate, or answer and return null. */
+async function loadTakeableQuiz(res: Response, user: SessionUser, quizId: number) {
+  const quiz = await db.quiz.findUnique({
+    where: { id: quizId },
+    select: { title: true, seasonId: true },
+  });
+  if (!quiz) {
+    apiError(res, "not_found", "Quiz not found.", 404);
+    return null;
+  }
+  if (!(await canTakeQuizIn(user, quiz.seasonId))) {
+    forbidden(res);
+    return null;
+  }
+  return quiz;
+}
 
 /**
  * Start or resume this student's attempt.
@@ -41,7 +74,7 @@ export async function startAttempt(req: Request, res: Response) {
   if (quiz.kind !== "ONLINE" || quiz.publishedAt === null) {
     return apiError(res, "quiz_not_published", "This quiz is not available.", 409);
   }
-  if (!(await canAccessSeason(user, quiz.seasonId))) return forbidden(res);
+  if (!(await canTakeQuizIn(user, quiz.seasonId))) return forbidden(res);
 
   const latest = await db.quizAttempt.findFirst({
     where: { quizId: id, studentUserId: user.userId },
@@ -133,6 +166,8 @@ export async function saveAttemptAnswers(req: Request, res: Response) {
   const parsed = saveQuizAnswersRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid answers.", 400);
 
+  if (!(await loadTakeableQuiz(res, user, id))) return undefined;
+
   const attempt = await resolveOpenAttempt(res, id, user.userId);
   if (!attempt) return undefined;
 
@@ -198,11 +233,11 @@ export async function submitAttempt(req: Request, res: Response) {
     return apiError(res, "forbidden", "Only a student can take a quiz.", 403);
   }
 
+  const quiz = await loadTakeableQuiz(res, user, id);
+  if (!quiz) return undefined;
+
   const attempt = await resolveOpenAttempt(res, id, user.userId);
   if (!attempt) return undefined;
-
-  const quiz = await db.quiz.findUnique({ where: { id }, select: { title: true } });
-  if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
 
   // REG-111 / R120: read, validate, score and write all inside ONE transaction
   // that holds the attempt row lock (see lockAttemptStatus), so the answers
