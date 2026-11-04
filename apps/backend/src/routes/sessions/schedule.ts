@@ -8,6 +8,7 @@ import { addWeeksInOrgTime, formatInOrgTime, orgDayKey, orgWallTime } from "../.
 import { parseId } from "../../lib/parse-id";
 import { newPublicId } from "../../lib/public-id";
 import { isAdminOfSeason } from "../../lib/rbac";
+import { prepareSessionCancelledNotice, sendSessionCancelledNotice } from "../../lib/session-notifications";
 import { requireUser } from "../../middleware/require-auth";
 import {
   createSessionRequestSchema,
@@ -172,6 +173,10 @@ export async function deleteSession(req: Request, res: Response) {
     );
   }
 
+  // Gathered before the delete (the titles and times go with the rows), sent
+  // after it commits. Never throws into the delete.
+  const notice = await prepareSessionCancelledNotice(existing.seasonId, targetIds);
+
   // Explicit deletes (the FKs cascade anyway) so the transaction states what
   // it destroys. Video questions cascade; assignments/quizzes keep their rows
   // with sessionId set null.
@@ -180,6 +185,8 @@ export async function deleteSession(req: Request, res: Response) {
     db.sessionVideoProgress.deleteMany({ where: inTargets }),
     db.session.deleteMany({ where: { id: { in: targetIds } } }),
   ]);
+
+  if (removed.count > 0) await sendSessionCancelledNotice(notice);
   return apiOk(res, { deleted: removed.count });
 }
 
