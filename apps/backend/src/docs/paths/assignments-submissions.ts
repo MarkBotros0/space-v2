@@ -208,7 +208,7 @@ export const assignmentsSubmissionsPaths = {
               type: "object",
               required: ["text"],
               properties: {
-                text: { type: "string" },
+                text: { type: "string", maxLength: 20000 },
                 submit: { type: "boolean", default: false },
               },
             },

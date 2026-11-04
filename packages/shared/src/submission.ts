@@ -9,7 +9,8 @@ import { submissionStatusSchema } from "./enums";
 // drift fails at the client boundary rather than downstream.
 
 export const updateSubmissionRequestSchema = z.object({
-  text: z.string(),
+  // The same cap as a forum response and a review's feedback.
+  text: z.string().max(20_000),
   /** Omitted or false saves a draft; true submits and stamps submittedAt. */
   submit: z.boolean().optional(),
 });
