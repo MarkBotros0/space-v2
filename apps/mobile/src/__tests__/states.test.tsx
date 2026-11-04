@@ -1,3 +1,4 @@
+import { Inbox } from "lucide-react-native";
 import { StyleSheet } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
@@ -36,6 +37,16 @@ describe("RouteError / InlineError", () => {
     render(<RouteError onRetry={onRetry} />);
     fireEvent.press(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("the full-screen error uses the bad tone, not the empty state's teal disc", () => {
+    render(<RouteError onRetry={() => {}} />);
+    expect(screen.getByTestId("empty-state-disc").props.className).toContain("bg-bad-soft");
+  });
+
+  it("an empty state keeps the info disc", () => {
+    render(<EmptyState icon={Inbox} title="Nothing here" />);
+    expect(screen.getByTestId("empty-state-disc").props.className).toContain("bg-info-soft");
   });
 
   it("inline retry calls onRetry", () => {

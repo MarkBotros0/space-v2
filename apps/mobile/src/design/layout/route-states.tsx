@@ -33,6 +33,7 @@ export function RouteError({ onRetry }: { onRetry: () => void }) {
   return (
     <EmptyState
       icon={AlertTriangle}
+      tone="bad"
       title="Something went wrong"
       description={`We couldn't load this page. Please try again — if it keeps happening, let ${contact} know.`}
       action={{ label: "Try again", onPress: onRetry }}
