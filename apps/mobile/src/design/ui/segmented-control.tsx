@@ -12,7 +12,9 @@ const PAD = 2;
 /**
  * Two-to-four way switch; the thumb slides to the selected segment with SPRING.snappy.
  * The thumb's Animated.View takes only styles; its fill is a plain View inside
- * (classes on an Animated.View are dropped on device).
+ * (classes on an Animated.View are dropped on device). The thumb is
+ * `surface-raised`: white in light, and in dark lighter than the
+ * `neutral-soft` track (plain `surface` is darker there and looked sunken).
  */
 function SegmentedControl({
   options, value, onChange, className,
@@ -39,7 +41,7 @@ function SegmentedControl({
     >
       {segment > 0 ? (
         <Animated.View pointerEvents="none" style={[styles.thumb, { width: segment }, style]}>
-          <View className="flex-1 rounded-[10px] bg-surface" />
+          <View testID="segmented-thumb" className="flex-1 rounded-[10px] bg-surface-raised" />
         </Animated.View>
       ) : null}
       {options.map((o) => {

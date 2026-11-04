@@ -17,7 +17,7 @@ const SEMANTIC = [
   "sidebar-accent", "sidebar-accent-foreground", "sidebar-border", "sidebar-ring",
   // Redesign tokens: surface, separator, status tones, floating pill.
   "surface", "separator", "ok", "ok-soft", "warn", "warn-soft", "bad", "bad-soft",
-  "info", "info-soft", "neutral-soft", "neutral-strong", "pill", "pill-foreground", "pill-active", "pill-active-label",
+  "info", "info-soft", "neutral-soft", "neutral-strong", "surface-raised", "pill", "pill-foreground", "pill-active", "pill-active-label",
 ];
 const RAMPS = ["brand-navy", "brand-teal", "neutral", "success", "warning", "error", "info", "purple"];
 const STEPS = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"];

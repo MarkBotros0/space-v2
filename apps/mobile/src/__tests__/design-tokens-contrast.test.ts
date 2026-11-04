@@ -45,9 +45,15 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     ["bad", "bad-soft"],
     ["info", "info-soft"],
     ["neutral-strong", "neutral-soft"],
+    ["foreground", "surface-raised"],
   ];
   it.each(pairs)("%s on %s is at least 4.5:1", (fg, bg) => {
     expect(contrast(rgbOf(t[fg]), rgbOf(t[bg]))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  // SegmentedControl: the selected thumb must read as raised (lighter than its track).
+  it("surface-raised is lighter than the neutral-soft track (L5)", () => {
+    expect(luminance(rgbOf(t["surface-raised"]))).toBeGreaterThan(luminance(rgbOf(t["neutral-soft"])));
   });
 
   it.each([

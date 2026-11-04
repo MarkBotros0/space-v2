@@ -32,6 +32,12 @@ describe("SegmentedControl", () => {
     expect(screen.getByRole("button", { name: "Upcoming" }).props.accessibilityState.selected).toBe(false);
   });
 
+  it("the thumb is a raised surface, lighter than the track in dark mode too", () => {
+    render(<SegmentedControl options={OPTIONS} value="a" onChange={() => {}} />);
+    fireEvent(screen.getByTestId("segmented-control"), "layout", { nativeEvent: { layout: { width: 204, height: 48 } } });
+    expect(screen.getByTestId("segmented-thumb").props.className).toContain("bg-surface-raised");
+  });
+
   it("segments meet the 44pt tap target", () => {
     render(<SegmentedControl options={OPTIONS} value="a" onChange={() => {}} />);
     expect(screen.getByRole("button", { name: "Past" }).props.className).toContain("min-h-[44px]");

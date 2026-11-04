@@ -480,6 +480,8 @@
   --neutral-soft-alpha: 1;
   --neutral-strong: 75 88 120;
   --neutral-strong-alpha: 1;
+  --surface-raised: 255 255 255;
+  --surface-raised-alpha: 1;
   --pill: 20 32 72;
   --pill-alpha: 0.78;
   --pill-alpha-1: 0.0078;
@@ -1067,6 +1069,8 @@
   --neutral-soft-alpha: 1;
   --neutral-strong: 171 183 212;
   --neutral-strong-alpha: 1;
+  --surface-raised: 52 70 118;
+  --surface-raised-alpha: 1;
   --pill: 36 52 110;
   --pill-alpha: 0.86;
   --pill-alpha-1: 0.0086;
