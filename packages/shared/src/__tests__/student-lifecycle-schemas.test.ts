@@ -44,7 +44,11 @@ describe("lifecycle response schemas (ruling X10 — the client parses, never ca
     expect(
       studentDeletedResponseSchema.safeParse({ id: 1, deletedAt: "2099-01-01T00:00:00.000Z" }).success,
     ).toBe(true);
-    expect(createStudentResponseSchema.safeParse({ id: 1, email: "a@jpc.test" }).success).toBe(true);
+    expect(
+      createStudentResponseSchema.safeParse({ id: 1, email: "a@jpc.test", inviteSent: false }).success,
+    ).toBe(true);
+    // inviteSent is required: a response without it is a backend drift.
+    expect(createStudentResponseSchema.safeParse({ id: 1, email: "a@jpc.test" }).success).toBe(false);
     expect(updateStudentResponseSchema.safeParse({ id: 1 }).success).toBe(true);
     expect(enrollmentTransitionResponseSchema.safeParse({ id: 9, status: "WITHDRAWN" }).success).toBe(true);
     expect(enrollmentTransitionResponseSchema.safeParse({ id: 9, status: "DROPPED" }).success).toBe(false);

@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
-import { issueInvite, type IssuedInvite } from "../../lib/invites";
+import { deliverInvite, mintInvite, type IssuedInvite } from "../../lib/invites";
 import { parseId } from "../../lib/parse-id";
 import { canEditStudent } from "../../lib/permissions";
 import { isUniqueViolation } from "../../lib/prisma-errors";
@@ -13,7 +13,6 @@ import {
   createStudentRequestSchema,
   updateStudentRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { sendInviteEmailBestEffort } from "../invite-email";
 import { forbidden } from "../respond";
 
 /**
@@ -98,8 +97,9 @@ export async function createStudent(req: Request, res: Response) {
       // have an invite) and mailed after commit (a mail failure can't roll
       // back the student). This line stays in the ROUTE, after the row
       // writes: Plan 17 extracts the block above into createStudentRows, and
-      // its importer must keep sending nothing (its R55).
-      const issued = await issueInvite(tx, student.id, user.userId);
+      // its importer must keep sending nothing (its R55). mintInvite, not
+      // issueInvite: a brand-new account holds no older invite to expire.
+      const issued = await mintInvite(tx, student.id, user.userId);
       return { student, issued };
     });
     created = result.student;
@@ -111,10 +111,14 @@ export async function createStudent(req: Request, res: Response) {
     throw err;
   }
 
-  // Best-effort, after commit (R25) — see sendInviteEmailBestEffort.
-  await sendInviteEmailBestEffort(created.id, created.email, invite.raw, invite.expiresAt);
+  // Mail AFTER commit (R25), exactly as POST /users does. The student exists
+  // either way — failing the create over a mail outage would leave the
+  // operator retyping a form for a row that already exists. An undelivered
+  // invite is withdrawn again (deliverInvite), so the account reads "pending"
+  // rather than "invited" with a code nobody received, and the response says so.
+  const delivery = await deliverInvite(created.id, created.email, invite);
 
-  return apiOk(res, created, 201);
+  return apiOk(res, { ...created, inviteSent: delivery === "sent" }, 201);
 }
 
 export async function updateStudent(req: Request, res: Response) {

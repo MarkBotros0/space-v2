@@ -2,10 +2,12 @@
 // reasons Plan 9's invites suite gives — a staging .env with GMAIL_* set would
 // otherwise send real SMTP to @jpc.test addresses on every run, and the stub
 // is how this suite proves the raw code reaches the mailer and nothing else.
+// Mail counts as configured whatever the .env says, so the send path runs.
 // Lazy wrapper: jest.mock is hoisted above this const.
 const mockSendInviteEmail = jest.fn().mockResolvedValue(undefined);
 jest.mock("../../lib/email", () => ({
   ...jest.requireActual("../../lib/email"),
+  isEmailConfigured: () => true,
   sendInviteEmail: (...args: unknown[]) => mockSendInviteEmail(...args),
 }));
 
@@ -46,7 +48,7 @@ describe("POST /api/v1/students — credentials only via Plan 9's invite (Plan 1
       .send({ name: "Invited Student", email });
 
     expect(res.status).toBe(201);
-    expect(res.body.data).toEqual({ id: res.body.data.id, email });
+    expect(res.body.data).toEqual({ id: res.body.data.id, email, inviteSent: true });
 
     const row = await db.user.findUnique({
       where: { id: res.body.data.id },
@@ -66,16 +68,25 @@ describe("POST /api/v1/students — credentials only via Plan 9's invite (Plan 1
     expect(JSON.stringify(res.body)).not.toContain(call[1]);
   });
 
-  it("still creates the student when the mailer throws — the invite row is the truth (R25)", async () => {
+  it("still creates the student when the mailer throws, says so, and withdraws the code (R25)", async () => {
     mockSendInviteEmail.mockRejectedValueOnce(new Error("smtp down"));
+    const error = jest.spyOn(console, "error").mockImplementation(() => undefined);
     const res = await request(app)
       .post("/api/v1/students")
       .set("authorization", `Bearer ${superToken}`)
       .send({ name: "Mail Failure Student", email: testEmail("mail-fail") });
+    error.mockRestore();
 
     expect(res.status).toBe(201);
-    const invites = await db.inviteToken.count({ where: { userId: res.body.data.id } });
-    expect(invites).toBe(1);
+    expect(res.body.data.inviteSent).toBe(false);
+    // The row stays, but expired: the student reads "pending", not "invited"
+    // with a code nobody received, so Send invite picks them up again.
+    const invites = await db.inviteToken.findMany({
+      where: { userId: res.body.data.id },
+      select: { expiresAt: true },
+    });
+    expect(invites).toHaveLength(1);
+    expect(invites[0]!.expiresAt.getTime()).toBeLessThanOrEqual(Date.now());
   });
 });
 

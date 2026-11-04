@@ -11,7 +11,7 @@ import { useSessionStore } from "../../../src/store/session";
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { EmptyState } from "../../../src/design/ui";
+import { EmptyState, toast } from "../../../src/design/ui";
 
 /**
  * /students/new (spec 06 §9). SUPER-only, like POST /students (Plan 7). The
@@ -61,8 +61,18 @@ export default function NewStudentScreen() {
           onSubmit={(values) => {
             setServerError(null);
             createStudent.mutate(toCreateStudentBody(values), {
-              onSuccess: (created) =>
-                router.replace({ pathname: "/student/[id]", params: { id: String(created.id) } }),
+              onSuccess: (created) => {
+                // The student exists either way; an undelivered invite is
+                // withdrawn server-side, so Users offers "Send invite" again.
+                if (created.inviteSent) {
+                  toast.success("Student created. Their invite is on its way.");
+                } else {
+                  toast.error(
+                    "Student created, but the invite email couldn't be sent. Use Send invite on their account in Users once email works.",
+                  );
+                }
+                router.replace({ pathname: "/student/[id]", params: { id: String(created.id) } });
+              },
               onError: (err) =>
                 setServerError(apiErrorMessage(err, "Couldn't create the student.")),
             });

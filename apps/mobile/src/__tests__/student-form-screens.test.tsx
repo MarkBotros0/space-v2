@@ -9,7 +9,9 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "21" }),
   useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: mockBack }),
 }));
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -88,7 +90,7 @@ describe("/students/new", () => {
 
   it("creates with an optional enrollment and no password anywhere — then opens the new student (D1, D7)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
-    post.mockResolvedValue({ data: { data: { id: 77, email: "new@jpc.test" } } });
+    post.mockResolvedValue({ data: { data: { id: 77, email: "new@jpc.test", inviteSent: true } } });
     renderWithProviders(<NewStudentScreen />);
 
     fireEvent.changeText(screen.getByLabelText("Full name"), "New Student");
@@ -111,6 +113,24 @@ describe("/students/new", () => {
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "77" } }),
     );
+    expect(toast.success).toHaveBeenCalledWith("Student created. Their invite is on its way.");
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("says so when the student was created but the invite email couldn't go out", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    post.mockResolvedValue({ data: { data: { id: 78, email: "u@jpc.test", inviteSent: false } } });
+    renderWithProviders(<NewStudentScreen />);
+
+    fireEvent.changeText(screen.getByLabelText("Full name"), "Unmailed Student");
+    fireEvent.changeText(screen.getByLabelText("Email"), "u@jpc.test");
+    fireEvent.press(screen.getByText("Create and send invite"));
+
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "78" } }),
+    );
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/invite email couldn't be sent/));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("validates locally before posting", async () => {
