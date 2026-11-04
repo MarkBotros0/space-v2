@@ -2,8 +2,8 @@
 import { View } from "react-native";
 import Svg, { Circle, G, Line, Polyline } from "react-native-svg";
 
-import { useTheme } from "../../theme";
-import { Text } from "../../ui";
+import { Text } from "../../design/ui/text";
+import { useChartColors } from "../../lib/report-colors";
 
 export interface TrendPoint {
   label: string;
@@ -44,15 +44,8 @@ interface Placed extends TrendPoint {
  * many sessions carried a figure.
  */
 export function TrendLine({ points, height = 160 }: TrendLineProps) {
-  const theme = useTheme();
-  const palette = [
-    theme.colors.brand.teal[700],
-    theme.colors.brand.navy[600],
-    theme.colors.warning[600],
-    theme.colors.success[600],
-    theme.colors.info[600],
-    theme.colors.error[500],
-  ];
+  const chart = useChartColors();
+  const palette = chart.series;
 
   const seriesMap = new Map<string, { label: string; plotted: (Placed & { pct: number })[] }>();
   points.forEach((p, i) => {
@@ -94,7 +87,7 @@ export function TrendLine({ points, height = 160 }: TrendLineProps) {
             x2={width - pad}
             y1={y(tick)}
             y2={y(tick)}
-            stroke={theme.colors.neutral[200]}
+            stroke={chart.track}
             strokeWidth={1}
           />
         ))}
@@ -118,9 +111,9 @@ export function TrendLine({ points, height = 160 }: TrendLineProps) {
         })}
       </Svg>
       {series.length > 1 ? (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm }}>
+        <View className="flex-row flex-wrap gap-2">
           {series.map((s, k) => (
-            <Text key={s.label + k} variant="caption" color={palette[k % palette.length]}>
+            <Text key={s.label + k} className="text-xs" style={{ color: palette[k % palette.length] }}>
               {`● ${s.label}`}
             </Text>
           ))}

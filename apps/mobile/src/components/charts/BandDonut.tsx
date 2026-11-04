@@ -4,8 +4,7 @@ import Svg, { Circle } from "react-native-svg";
 import type { EngagementBand } from "@space/shared";
 import { BAND_LABEL } from "@space/shared";
 
-import { bandColor } from "../../lib/report-colors";
-import { useTheme } from "../../theme";
+import { bandColor, useChartColors } from "../../lib/report-colors";
 
 export interface BandDonutProps {
   bands: Array<{ band: EngagementBand; count: number }>;
@@ -22,7 +21,7 @@ export interface BandDonutProps {
  * that does not exist (R93, R97, spec §9).
  */
 export function BandDonut({ bands, size = 160 }: BandDonutProps) {
-  const theme = useTheme();
+  const chart = useChartColors();
   const total = bands.reduce((n, b) => n + b.count, 0);
   const r = size / 2 - 12;
   const c = 2 * Math.PI * r;
@@ -41,7 +40,7 @@ export function BandDonut({ bands, size = 160 }: BandDonutProps) {
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={theme.colors.neutral[200]}
+          stroke={chart.track}
           strokeWidth={16}
         />
         {total > 0
@@ -54,7 +53,7 @@ export function BandDonut({ bands, size = 160 }: BandDonutProps) {
                   cy={size / 2}
                   r={r}
                   fill="none"
-                  stroke={bandColor(theme, b.band)}
+                  stroke={bandColor(b.band)}
                   strokeWidth={16}
                   strokeDasharray={`${dash} ${c - dash}`}
                   strokeDashoffset={-offset}

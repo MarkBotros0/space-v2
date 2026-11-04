@@ -15,11 +15,9 @@ import { cn } from "../../design/lib/cn";
 import { Card, CardContent, CardHeader, CardTitle, Text } from "../../design/ui";
 import { formatDayKey } from "../../lib/format";
 import { bandColor } from "../../lib/report-colors";
-import { useTheme } from "../../theme";
 
 /** v1 reports-view.tsx at-risk row: name over season, the two percentages on the right. */
 function AtRiskRow({ row, last }: { row: EngagementReportRow; last: boolean }) {
-  const theme = useTheme();
   const router = useRouter();
 
   return (
@@ -36,7 +34,7 @@ function AtRiskRow({ row, last }: { row: EngagementReportRow; last: boolean }) {
       <Text className="text-xs text-muted-foreground">{row.seasonTitle}</Text>
       {/* Server-derived, every one of them (ruling C4). The client renders what
           it is given and computes no threshold of its own. */}
-      <Text className="text-xs" style={{ color: bandColor(theme, row.band) }}>
+      <Text className="text-xs" style={{ color: bandColor(row.band) }}>
         {`${row.attendancePct}% attendance · ${row.submissionPct}% submissions`}
       </Text>
     </Pressable>
@@ -56,7 +54,6 @@ export function EngagementCards({
   atRiskRows: EngagementReportRow[];
   onShowMore: () => void;
 }) {
-  const theme = useTheme();
   return (
     <>
       {/* The at-risk list comes FIRST on mobile. v1 puts it in the
@@ -108,7 +105,7 @@ export function EngagementCards({
           {BAND_ORDER.map((band) => {
             const entry = summary.bands.find((b) => b.band === band);
             return (
-              <Text key={band} className="text-sm" style={{ color: bandColor(theme, band) }}>
+              <Text key={band} className="text-sm" style={{ color: bandColor(band) }}>
                 {`${BAND_LABEL[band]}: ${entry?.count ?? 0}`}
               </Text>
             );
