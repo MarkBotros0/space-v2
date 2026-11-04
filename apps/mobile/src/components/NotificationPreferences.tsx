@@ -12,12 +12,13 @@ import { enablePush, type PushStatus } from "../lib/push";
 import { useSessionStore } from "../store/session";
 
 /**
- * v1 settings-form.tsx's Notifications section — six rows, not v1's five.
+ * v1 settings-form.tsx's Notifications section — nine rows, not v1's five.
  *
  * The labels are keyed off the preference column names so a key that exists in
  * the contract but not here is a compile error (`Record<keyof Prefs, ...>`),
  * which is the UI half of the fix for R56/R57. Copy is v1's except the
- * low-attendance count (spec D12) and the sixth row v1 never had.
+ * low-attendance count (spec D12) and the four rows v1 never had (quiz graded,
+ * quiz published, submission received, session cancelled).
  */
 const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
   assignmentCreated: {
@@ -36,6 +37,18 @@ const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
     label: "Quiz graded",
     help: "When a quiz you took has been graded.",
   },
+  quizPublished: {
+    label: "New quizzes",
+    help: "When an online quiz opens in your season.",
+  },
+  sessionCancelled: {
+    label: "Session cancelled",
+    help: "When an upcoming session in your season is cancelled.",
+  },
+  submissionReceived: {
+    label: "Submissions received",
+    help: "When a student in a group you lead submits their work.",
+  },
   lowAttendanceFlag: {
     label: "Low-attendance flags",
     // Spec D12: v1's copy said three. The rule is two.
@@ -47,11 +60,15 @@ const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
   },
 };
 
+// Student-facing first, then the staff ones.
 const ORDER: (keyof Prefs)[] = [
   "assignmentCreated",
   "submissionReviewed",
-  "sessionRescheduled",
+  "quizPublished",
   "quizGraded",
+  "sessionRescheduled",
+  "sessionCancelled",
+  "submissionReceived",
   "lowAttendanceFlag",
   "mentorFollowup",
 ];
@@ -75,7 +92,7 @@ export function NotificationPreferences() {
 
   const toggle = (key: keyof Prefs, value: boolean) => {
     if (!data) return;
-    // PUT replaces all six: there is no partial form of this contract, which
+    // PUT replaces every key: there is no partial form of this contract, which
     // is exactly what stops a client from leaving a key at its default without
     // saying so.
     update.mutate({ ...data, [key]: value });
