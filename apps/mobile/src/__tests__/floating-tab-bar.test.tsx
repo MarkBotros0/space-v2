@@ -165,6 +165,18 @@ describe("sliding highlight", () => {
   });
 });
 
+describe("navigation the pill did not start", () => {
+  it("follows the navigator to a route nobody pressed", () => {
+    const nav = jest.fn();
+    const view = render(barTree("dashboard", nav));
+    layoutTab("Assignments", 70);
+    layoutTab("History", 210);
+    fireEvent.press(screen.getByLabelText("Assignments"));
+    view.rerender(barTree("history", nav));
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+  });
+});
+
 describe("frosted fill", () => {
   it("blurs the backdrop on iOS", () => {
     renderBar();

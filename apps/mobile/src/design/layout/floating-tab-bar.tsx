@@ -63,16 +63,18 @@ export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & 
   const routeActive = activeTabRoute(state.routes[state.index]?.name, shown.map((i) => routeNameForHref(i.href)));
   // The route the user just pressed, highlighted at once: the highlight must not wait
   // for the navigator, and a second press before the first settles retargets it.
-  const [pressed, setPressed] = useState<string | null>(null);
-  const active = pressed ?? routeActive;
+  const [pending, setPending] = useState<string[]>([]);
+  const active = pending[pending.length - 1] ?? routeActive;
   const [layouts, setLayouts] = useState<Record<string, { x: number; width: number }>>({});
 
-  // The navigator catching up with the press ends it; a report of any other route (an older
-  // press settling, a press that never navigated) must not pull the highlight back. A press
-  // that never navigates is cleared when the next tab press replaces it, or the navigator
-  // reaches the route it shows.
+  // Presses wait in order for the navigator. When it reports a pressed route, that press and
+  // the earlier ones are done (later ones stay pending, so B then C with B reported holds C);
+  // a route nobody pressed (a link, a notification) clears them and the highlight follows it.
   useEffect(() => {
-    setPressed((p) => (p === routeActive ? null : p));
+    setPending((q) => {
+      const i = routeActive ? q.indexOf(routeActive) : -1;
+      return i >= 0 ? q.slice(i + 1) : q.length ? [] : q;
+    });
   }, [routeActive]);
   // A tab change always brings the pill back, however the last screen left it.
   const focusedKey = state.routes[state.index]?.key;
@@ -122,7 +124,7 @@ export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & 
                 );
               }}
               onPress={() => {
-                setPressed(name);
+                setPending((q) => [...q, name]);
                 const key = state.routes.find((r) => r.name === name)?.key;
                 if (key) navigateToTab(key);
               }}
