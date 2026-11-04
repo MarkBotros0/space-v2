@@ -8,10 +8,11 @@ import { BackLink, Eyebrow, PageTitle } from "../../../../src/design/layout/page
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
 import { shadowStyle } from "../../../../src/design/lib/shadow";
-import { QuizAttemptCard, ReopenButton } from "../../../../src/design/quizzes/quiz-essay-grader";
+import { QuizAttemptCard } from "../../../../src/design/quizzes/quiz-essay-grader";
 import { QuizGradeForm } from "../../../../src/design/quizzes/quiz-grade-form";
-import { EmptyState, Text } from "../../../../src/design/ui";
+import { Button, EmptyState, Text } from "../../../../src/design/ui";
 import {
+  flattenGradingPages,
   useGradeEssays,
   useQuizAttempts,
   useQuizAuthoringDetail,
@@ -155,29 +156,20 @@ function AttemptCard({ id, item, maxScore, hasEssays }: { id: number; item: Quiz
   );
 }
 
-/** V2-ONLY (spec 12 D5/R102): students who haven't finished, drawn as v1 cards. */
-function WaitingRow({ id, row }: { id: number; row: { studentUserId: number; studentName: string | null; startedAt: string | null } }) {
-  const reopen = useReopenAttempt(id);
-  const [error, setError] = useState<string | null>(null);
+/**
+ * V2-ONLY (spec 12 D5/R102): students who haven't finished, drawn as v1 cards.
+ *
+ * No Reopen here. A waiting student either never started (the server answers
+ * 409 `no_attempt`) or has an attempt still IN_PROGRESS (409 `attempt_open`) —
+ * they can simply resume it — so the button could only ever fail.
+ */
+function WaitingRow({ row }: { row: { studentUserId: number; studentName: string | null; startedAt: string | null } }) {
   return (
     <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
       <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{row.studentName ?? "Student"}</Text>
       <Text className="text-xs text-muted-foreground">
         {row.startedAt === null ? "Not started" : `In progress since ${formatDate(row.startedAt)}`}
       </Text>
-      {error ? <Text className="mt-2 text-xs text-error-600">{error}</Text> : null}
-      {row.startedAt !== null ? (
-        <View className="mt-3 flex-row">
-          <ReopenButton
-            disabled={reopen.isPending}
-            onPress={() =>
-              reopen.mutate(row.studentUserId, {
-                onError: (err) => setError(apiErrorMessage(err, "Couldn't reopen the attempt.")),
-              })
-            }
-          />
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -187,27 +179,43 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
 
   if (attempts.isPending) return <RouteSkeleton />;
   if (attempts.isError) return <RouteError onRetry={() => void attempts.refetch()} />;
-  const page = attempts.data;
+  const first = attempts.data.pages[0];
+  if (!first) return <RouteError onRetry={() => void attempts.refetch()} />;
+  // The server pages over students, 20 at a time; both lists grow per page.
+  const { items, waiting } = flattenGradingPages(attempts.data.pages);
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = attempts;
 
   return (
     <>
       <Header detail={detail} />
-      {page.items.length === 0 ? (
-        <EmptyState title="No submissions yet" description="Student attempts will appear here once they submit this quiz." />
+      {items.length === 0 ? (
+        hasNextPage ? null : (
+          <EmptyState title="No submissions yet" description="Student attempts will appear here once they submit this quiz." />
+        )
       ) : (
         <View className="flex-col gap-3">
-          {page.items.map((item) => (
-            <AttemptCard key={item.attemptId} id={id} item={item} maxScore={page.maxScore} hasEssays={page.hasEssays} />
+          {items.map((item) => (
+            <AttemptCard key={item.attemptId} id={id} item={item} maxScore={first.maxScore} hasEssays={first.hasEssays} />
           ))}
         </View>
       )}
-      {page.waiting.length > 0 ? (
+      {waiting.length > 0 ? (
         <View className="flex-col gap-3">
           <Eyebrow>Waiting</Eyebrow>
-          {page.waiting.map((row) => (
-            <WaitingRow key={row.studentUserId} id={id} row={row} />
+          {waiting.map((row) => (
+            <WaitingRow key={row.studentUserId} row={row} />
           ))}
         </View>
+      ) : null}
+      {hasNextPage ? (
+        <Button
+          variant="outline"
+          className="self-start"
+          disabled={isFetchingNextPage}
+          onPress={() => void fetchNextPage()}
+        >
+          {isFetchingNextPage ? "Loading…" : "Load more"}
+        </Button>
       ) : null}
     </>
   );

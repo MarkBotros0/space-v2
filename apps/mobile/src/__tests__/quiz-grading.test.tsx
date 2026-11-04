@@ -201,6 +201,54 @@ describe("grading screen — ONLINE", () => {
     expect(screen.getByText("Not started")).toBeTruthy();
   });
 
+  it("offers no Reopen for a student whose attempt is still open (server: 409 attempt_open)", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/quizzes/41"
+        ? Promise.resolve({ data: { data: authoring({ kind: "ONLINE", maxScore: 7,
+            publishedAt: "2099-02-01T00:00:00.000Z" }) } })
+        : Promise.resolve({ data: { data: { ...attemptsPage, items: [],
+            waiting: [{ studentUserId: 10, studentName: "Second student",
+              startedAt: "2099-03-02T10:00:00.000Z" }] } } }),
+    );
+    renderWithProviders(<QuizGradeScreen />);
+
+    expect(await screen.findByText("In progress since Mar 2, 2099")).toBeTruthy();
+    expect(screen.queryByText("Reopen retake")).toBeNull();
+  });
+
+  it("pages through the class with Load more instead of stopping at 20", async () => {
+    const second = {
+      ...attemptsPage,
+      items: [{ ...attemptsPage.items[0]!, attemptId: 950, studentUserId: 30, studentName: "Page two student" }],
+      waiting: [{ studentUserId: 31, studentName: "Late student", startedAt: "2099-03-02T10:00:00.000Z" }],
+      nextCursor: null,
+    };
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/quizzes/41"
+        ? Promise.resolve({ data: { data: authoring({ kind: "ONLINE", maxScore: 7,
+            publishedAt: "2099-02-01T00:00:00.000Z" }) } })
+        : url === "/api/v1/quizzes/41/attempts"
+          ? Promise.resolve({ data: { data: { ...attemptsPage, nextCursor: 20 } } })
+          : url === "/api/v1/quizzes/41/attempts?cursor=20"
+            ? Promise.resolve({ data: { data: second } })
+            : Promise.reject(new Error(`unexpected GET ${url}`)),
+    );
+    renderWithProviders(<QuizGradeScreen />);
+
+    expect(await screen.findByText("Test student")).toBeTruthy();
+    expect(screen.queryByText("Page two student")).toBeNull();
+    fireEvent.press(screen.getByText("Load more"));
+
+    expect(await screen.findByText("Page two student")).toBeTruthy();
+    expect(screen.getByText("Test student")).toBeTruthy();
+    // Waiting rows from both pages, the in-progress one ahead of never-started.
+    const order = screen.UNSAFE_root
+      .findAll((n: { props: { children?: unknown } }) => typeof n.props.children === "string")
+      .map((n: { props: { children?: unknown } }) => n.props.children as string);
+    expect(order.indexOf("Late student")).toBeLessThan(order.indexOf("Second student"));
+    await waitFor(() => expect(screen.queryByText("Load more")).toBeNull());
+  });
+
   it("lets a leader reopen a graded attempt", async () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/quizzes/41"

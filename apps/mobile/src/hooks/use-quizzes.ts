@@ -1,7 +1,10 @@
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
+  type InfiniteData,
+  type UseInfiniteQueryResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
 import {
@@ -228,18 +231,48 @@ export function useSaveQuizGrades(id: number) {
   });
 }
 
+/**
+ * The online grading list, a page of students at a time (20 by default).
+ *
+ * The server pages over the STUDENT set, not the attempts: each page carries
+ * that slice's submitted attempts in `items` and its unfinished students in
+ * `waiting`, so both lists grow as pages load. Flatten with
+ * `flattenGradingPages`.
+ */
 export function useQuizAttempts(
   id: number | null,
   enabled: boolean,
-): UseQueryResult<QuizGradingPage> {
-  return useQuery({
+): UseInfiniteQueryResult<InfiniteData<QuizGradingPage>> {
+  return useInfiniteQuery({
     queryKey: queryKeys.quizzes.attempts(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/quizzes/${id}/attempts`);
+    initialPageParam: null as number | null,
+    queryFn: async ({ pageParam }) => {
+      const after = pageParam === null ? "" : `?cursor=${pageParam}`;
+      const res = await apiClient.get(`/api/v1/quizzes/${id}/attempts${after}`);
       return quizGradingPageSchema.parse(res.data.data);
     },
+    getNextPageParam: (last) => last.nextCursor,
     enabled: enabled && id !== null,
   });
+}
+
+/**
+ * Every loaded page as one list. `waiting` is re-ordered so in-progress
+ * students stay ahead of never-started ones across page boundaries, as they
+ * are within a single page.
+ */
+export function flattenGradingPages(pages: QuizGradingPage[]): {
+  items: QuizGradingPage["items"];
+  waiting: QuizGradingPage["waiting"];
+} {
+  const waiting = pages.flatMap((p) => p.waiting);
+  return {
+    items: pages.flatMap((p) => p.items),
+    waiting: [
+      ...waiting.filter((w) => w.startedAt !== null),
+      ...waiting.filter((w) => w.startedAt === null),
+    ],
+  };
 }
 
 export function useGradeEssays(id: number) {
