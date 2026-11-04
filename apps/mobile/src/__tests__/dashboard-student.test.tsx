@@ -47,7 +47,7 @@ describe("DashboardScreen — STUDENT", () => {
       [EVENTS]: events,
       [UNREAD]: { unreadCount: 0 },
     });
-    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
 
     renderWithProviders(<DashboardScreen />);
 

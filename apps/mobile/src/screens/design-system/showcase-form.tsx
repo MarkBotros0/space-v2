@@ -121,7 +121,7 @@ export function DesignSystemForm() {
       </Field>
       <View className="flex-row justify-end gap-2">
         <Button variant="ghost">Cancel</Button>
-        <Button onPress={handleSubmit(onSubmit)} disabled={isSubmitting}>
+        <Button onPress={() => void handleSubmit(onSubmit)()} disabled={isSubmitting}>
           {isSubmitting ? "Saving…" : "Save"}
         </Button>
       </View>

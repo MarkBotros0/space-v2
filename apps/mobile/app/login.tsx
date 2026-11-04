@@ -88,7 +88,7 @@ export default function LoginScreen() {
         {/* The fields stay mounted with their values (RHF), so a wrong
             password needs no extra tap to get back to a fillable form. */}
         {error ? <AuthNotice tone="error">{error}</AuthNotice> : null}
-        <Button size="lg" className="w-full" disabled={formState.isSubmitting} onPress={handleSubmit(onSubmit)}>
+        <Button size="lg" className="w-full" disabled={formState.isSubmitting} onPress={() => void handleSubmit(onSubmit)()}>
           {formState.isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
         <AuthLink label="Forgot password?" onPress={() => router.push("/forgot-password")} />
