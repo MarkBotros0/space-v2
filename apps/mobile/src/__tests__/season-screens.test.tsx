@@ -11,7 +11,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import SeasonScreen from "../../app/(app)/(tabs)/season";
+import SeasonScreen from "../../app/(app)/season";
 import SeasonsScreen from "../../app/(app)/(tabs)/seasons/index";
 
 const get = apiClient.get as jest.Mock;

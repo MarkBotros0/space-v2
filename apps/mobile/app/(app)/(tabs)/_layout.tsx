@@ -1,14 +1,14 @@
 import { Tabs } from "expo-router";
 import { useMemo } from "react";
 import type { NavItem } from "@space/shared";
-import { ALL_NAV_HREFS } from "@space/shared";
 
 import { ScreenErrorBoundary } from "../../../src/design/layout/error-boundary";
 import { PillTabBar } from "../../../src/design/layout/floating-tab-bar";
 import { TabBarPresenceContext } from "../../../src/design/layout/shell-context";
 import { useResetTabBarOnFocus } from "../../../src/design/layout/use-reset-tab-bar-on-focus";
 import { DURATION, useReducedMotion } from "../../../src/design/motion";
-import { DIRECTORY_ROUTE_HREFS, routeNameForHref } from "../../../src/lib/route-names";
+import { DIRECTORY_ROUTE_HREFS, TAB_ROUTE_NAMES, routeNameForHref } from "../../../src/lib/route-names";
+import { historyThenHomeTabsRouter } from "../../../src/lib/tabs-back-router";
 import { useSessionStore } from "../../../src/store/session";
 
 // Re-exported: tests read these from the layout that consumes them.
@@ -19,40 +19,37 @@ export const ErrorBoundary = ScreenErrorBoundary;
 
 /**
  * Home is the root of the tabs for every role (every nav has `/dashboard`).
- * It is the tab under a detail screen opened cold from a deep link, and what
- * Back from another tab returns to. Without it the seeded tab under a cold
- * deep link is whichever route sorts first in the route tree (it was More).
- * An anchor on a non-stack navigator only takes effect with
- * `backBehavior: "initialRoute"` (expo-router 58 warns otherwise).
+ * It is the tab under a detail screen opened cold from a deep link, and the
+ * tab seeded under a cold link to another tab. Without it the seeded tab is
+ * whichever route sorts first in the route tree (it was More).
+ * Expo Router 58 only goes *Back* to a non-stack anchor with
+ * `backBehavior: "initialRoute"`, and says so in a dev warning; these tabs use
+ * "history" and get Back-to-Home from historyThenHomeTabsRouter instead
+ * (ruling R19, src/lib/tabs-back-router.ts), so that warning is expected.
  */
 export const unstable_settings = { anchor: "dashboard" };
 
 /**
- * The full universe of route files in this group, derived from
- * `ALL_NAV_HREFS` (packages/shared/src/navigation.ts) — the complete href
- * union across every nav's `tabs` + `sidebar`, ALUMNI included. A role
- * gaining a new tab or sidebar entry (with a route file added to match)
- * needs no edit here: this list and role-tabs.test.tsx's route-coverage
- * check both consume that one shared export, so there's nowhere left for
- * the two to independently re-derive the union and drift (ALUMNI is only
- * reachable through `navFor`, not `navByRole`, which is exactly what let
- * this list omit it before `ALL_NAV_HREFS` existed).
- * `Tabs` auto-registers every file in this directory regardless, but this
- * list is also what decides the *order* screens are declared in below,
- * which is what puts "Home" in the middle of a 5-tab bar for a role that
- * has it there. Detail routes are not here: they live one level up, on the
- * stack in `(app)/_layout.tsx` (DETAIL_ROUTE_NAMES).
+ * The route files in this group: every href that is a tab for at least one
+ * role, ALUMNI included (`TAB_ROUTE_NAMES`, derived from
+ * packages/shared's `ALL_TAB_HREFS`). A role gaining a tab needs no edit
+ * here. Nav destinations that are a tab for no role (Settings, Events, …)
+ * are not here: they live one level up and push on the stack in
+ * `(app)/_layout.tsx` (PUSHED_NAV_ROUTE_NAMES), so Back returns to More.
+ * Detail routes are not here either (DETAIL_ROUTE_NAMES). `Tabs`
+ * auto-registers every file in this directory regardless, but this list is
+ * also what decides the *order* screens are declared in below.
+ * app-layout-routes.test.tsx checks it against the files on disk.
  */
-export const ALL_ROUTE_NAMES: readonly string[] = Array.from(
-  new Set(ALL_NAV_HREFS.map(routeNameForHref)),
-);
+export const ALL_ROUTE_NAMES: readonly string[] = TAB_ROUTE_NAMES;
 
 /**
- * `(app)/(tabs)/_layout.tsx` — the `Tabs` navigator for every nav
- * destination (Decision D1), the bottom of the `(app)` stack. `Tabs` picks up
- * all route files in this directory automatically; the floating tab bar
- * draws only the role's `tabs`, so the other destinations (Settings,
- * Notifications, …) are reachable by navigation and absent from the bar.
+ * `(app)/(tabs)/_layout.tsx` — the `Tabs` navigator for every destination
+ * that is a tab for some role (Decision D1), the bottom of the `(app)` stack.
+ * `Tabs` picks up all route files in this directory automatically; the
+ * floating tab bar draws only the role's `tabs`, so the others (a leader's
+ * My notes, an admin's Reports) are reachable by navigation and absent from
+ * the bar.
  *
  * Never mark a screen `href: null` (or `hidden: true`). Since expo-router 58,
  * `Tabs` turns `href: null` into `hidden: true`, and a focused hidden screen
@@ -83,8 +80,8 @@ export default function TabsLayout() {
   const tabs: NavItem[] = nav?.tabs ?? [];
   const tabByRouteName = new Map(tabs.map((tab) => [routeNameForHref(tab.href), tab]));
 
-  // Visible tabs first, in the role's tab order (this is what centers
-  // "Home"); every other destination follows in any order — screens outside
+  // Visible tabs first, in the role's tab order (Today first); every other
+  // destination follows in any order — screens outside
   // the role's tabs don't appear in the bar, so their relative order doesn't
   // matter.
   const orderedRouteNames = [
@@ -100,7 +97,8 @@ export default function TabsLayout() {
   return (
     <TabBarPresenceContext.Provider value={true}>
       <Tabs
-        backBehavior="initialRoute"
+        backBehavior="history"
+        UNSTABLE_router={historyThenHomeTabsRouter}
         screenOptions={screenOptions}
         tabBar={(props) => <PillTabBar {...props} items={tabs} />}
       >

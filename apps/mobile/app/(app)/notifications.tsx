@@ -3,21 +3,21 @@ import { Bell, BellOff } from "lucide-react-native";
 import { FlatList, Pressable, View } from "react-native";
 import type { NotificationItem } from "@space/shared";
 
-import { useShellBottomPadding } from "../../../src/design/layout/shell-context";
-import { cn } from "../../../src/design/lib/cn";
-import { iconWithClassName } from "../../../src/design/lib/icon";
-import { PageHeader } from "../../../src/design/layout/page-header";
-import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ScreenChrome } from "../../../src/design/layout/screen";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../../src/design/ui";
+import { useShellBottomPadding } from "../../src/design/layout/shell-context";
+import { cn } from "../../src/design/lib/cn";
+import { iconWithClassName } from "../../src/design/lib/icon";
+import { PageHeader } from "../../src/design/layout/page-header";
+import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { ScreenChrome } from "../../src/design/layout/screen";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../src/design/ui";
 import {
   flattenNotifications,
   useMarkRead,
   useNotifications,
-} from "../../../src/hooks/use-notifications";
-import { formatStampAgo } from "../../../src/lib/format";
-import { routeForTarget } from "../../../src/lib/notification-route";
+} from "../../src/hooks/use-notifications";
+import { formatStampAgo } from "../../src/lib/format";
+import { routeForTarget } from "../../src/lib/notification-route";
 
 /**
  * The inbox — one route for everybody.

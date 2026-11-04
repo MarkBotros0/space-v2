@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenErrorBoundary } from "../../src/design/layout/error-boundary";
 import { TabBarPresenceContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
+import { PUSHED_NAV_ROUTE_NAMES } from "../../src/lib/route-names";
 import { TABS_ROUTE, singularTabsRouter } from "../../src/lib/tabs-stack-router";
 import { useSessionStore } from "../../src/store/session";
 
@@ -22,8 +23,10 @@ export const unstable_settings = { anchor: "(tabs)" };
  * Detail routes: reachable by navigation, never tabs. They are not in any
  * nav's hrefs, so the tabs' ALL_ROUTE_NAMES cannot know about them; they sit
  * in this directory, outside `(tabs)/`, and push onto this stack above the
- * tabs. Every route file under (app)/ outside `(tabs)/` is listed here;
- * app-layout.test.tsx reads the filesystem and fails if one is missing.
+ * tabs. Every route file under (app)/ outside `(tabs)/` is listed here or in
+ * PUSHED_NAV_ROUTE_NAMES (the nav destinations that are a tab for no role,
+ * derived from packages/shared — never listed here);
+ * app-layout-routes.test.tsx reads the filesystem and fails if one is missing.
  * Plans add a detail route by appending to this list — nothing else.
  */
 export const DETAIL_ROUTE_NAMES: readonly string[] = [
@@ -109,6 +112,11 @@ export default function AppLayout() {
         <Stack UNSTABLE_router={singularTabsRouter}>
           <Stack.Screen name={TABS_ROUTE} options={TABS_SCREEN_OPTIONS} />
           {DETAIL_ROUTE_NAMES.map((name) => (
+            <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
+          ))}
+          {/* Settings, Notifications, Events, …: opened from More (MENTOR: Profile),
+              so they push like a detail and Back returns there (ruling R19). */}
+          {PUSHED_NAV_ROUTE_NAMES.map((name) => (
             <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
           ))}
         </Stack>

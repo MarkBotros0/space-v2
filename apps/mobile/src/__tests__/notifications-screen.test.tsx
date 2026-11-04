@@ -13,7 +13,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import NotificationsScreen from "../../app/(app)/(tabs)/notifications";
+import NotificationsScreen from "../../app/(app)/notifications";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;

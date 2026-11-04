@@ -1,4 +1,4 @@
-import { StudentList } from "../../../../src/components/StudentList";
+import { StudentList } from "../../../src/components/StudentList";
 
 export default function DroppedScreen() {
   // No MENTOR: the endpoint refuses read-all access to drop reasons

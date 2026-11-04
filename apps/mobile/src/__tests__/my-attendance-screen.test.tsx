@@ -7,7 +7,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import AttendanceScreen from "../../app/(app)/(tabs)/attendance";
+import AttendanceScreen from "../../app/(app)/attendance";
 
 const get = apiClient.get as jest.Mock;
 

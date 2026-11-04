@@ -4,15 +4,15 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import type { MyAttendanceSession } from "@space/shared";
 
-import { BackLink, Eyebrow } from "../../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { cn } from "../../../src/design/lib/cn";
-import { shadowStyle } from "../../../src/design/lib/shadow";
-import { Badge, EmptyState, ProgressRing, Text } from "../../../src/design/ui";
-import { useMyAttendance } from "../../../src/hooks/use-self-service";
-import { formatWallTime, formatWeekdayDayYear } from "../../../src/lib/format";
-import { useSessionStore } from "../../../src/store/session";
+import { BackLink, Eyebrow } from "../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { cn } from "../../src/design/lib/cn";
+import { shadowStyle } from "../../src/design/lib/shadow";
+import { Badge, EmptyState, ProgressRing, Text } from "../../src/design/ui";
+import { useMyAttendance } from "../../src/hooks/use-self-service";
+import { formatWallTime, formatWeekdayDayYear } from "../../src/lib/format";
+import { useSessionStore } from "../../src/store/session";
 
 function StatusBadge({ status }: { status: MyAttendanceSession["status"] }) {
   if (status === "PRESENT") return <Badge variant="success">Present</Badge>;

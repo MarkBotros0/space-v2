@@ -9,7 +9,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import SeasonScreen from "../../app/(app)/(tabs)/season";
+import SeasonScreen from "../../app/(app)/season";
 
 const get = apiClient.get as jest.Mock;
 

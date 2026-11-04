@@ -3,20 +3,20 @@ import { useState } from "react";
 import { Alert, View } from "react-native";
 import { BULK_INVITE_BATCH_SIZE, type BulkInviteResponse } from "@space/shared";
 
-import { PageTitle } from "../../../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../../src/design/layout/shell-frame";
-import { UsersList } from "../../../../src/design/users/users-list";
-import { Button, EmptyState, Input, toast } from "../../../../src/design/ui";
+import { PageTitle } from "../../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { UsersList } from "../../../src/design/users/users-list";
+import { Button, EmptyState, Input, toast } from "../../../src/design/ui";
 import {
   usePendingInviteCount,
   useSendInvite,
   useSendPendingInvites,
   useUsers,
-} from "../../../../src/hooks/use-users";
-import { apiErrorMessage } from "../../../../src/lib/api-error";
-import { inviteErrorMessage, inviteSentMessage } from "../../../../src/lib/invite-feedback";
-import { useSessionStore } from "../../../../src/store/session";
+} from "../../../src/hooks/use-users";
+import { apiErrorMessage } from "../../../src/lib/api-error";
+import { inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
+import { useSessionStore } from "../../../src/store/session";
 
 function bulkSummary(r: BulkInviteResponse): string {
   return `Sent ${r.sent} · failed ${r.failed} · skipped ${r.skipped} · ${r.remaining} still pending.`;

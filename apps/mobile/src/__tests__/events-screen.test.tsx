@@ -15,7 +15,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import EventsScreen from "../../app/(app)/(tabs)/events";
+import EventsScreen from "../../app/(app)/events";
 import EventDetailScreen from "../../app/(app)/event/[id]";
 
 const get = apiClient.get as jest.Mock;

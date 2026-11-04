@@ -9,7 +9,11 @@ import type { UserRole } from "./auth";
  * and varies the content by role, so the same item is /calendar for everyone.
  * See Decision D1 in the Phase 0 plan.
  *
- * `tabs` is already mobile-shaped in v1: five entries with Home centred.
+ * `tabs` was mobile-shaped in v1: five entries with Home centred. The
+ * redesign (plan 01 Task 12) puts Today (`/dashboard`, the `home` icon the
+ * pill features) first for every role, at most five tabs. Nothing left the
+ * navs: a destination that stopped being a tab is still in `sidebar`, which
+ * is what More lists. MENTOR has no More tab; Profile links to Settings.
  */
 
 export type NavIconName =
@@ -67,9 +71,9 @@ const SUPER: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
+    { href: "/dashboard", label: "Today", icon: "home" },
     { href: "/seasons", label: "Seasons", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/students", label: "Students", icon: "students" },
     { href: "/more", label: "More", icon: "more" },
   ],
@@ -90,9 +94,9 @@ const ADMIN: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
+    { href: "/dashboard", label: "Today", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/groups", label: "Groups", icon: "groups" },
-    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/students", label: "Students", icon: "students" },
     { href: "/more", label: "More", icon: "more" },
   ],
@@ -110,9 +114,9 @@ const LEADER: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
+    { href: "/dashboard", label: "Today", icon: "home" },
     { href: "/groups", label: "My Group", icon: "groups" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/submissions", label: "Submissions", icon: "submissions" },
     { href: "/more", label: "More", icon: "more" },
   ],
@@ -135,9 +139,9 @@ const STUDENT: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
+    { href: "/dashboard", label: "Today", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/assignments", label: "Assignments", icon: "assignments" },
-    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/more", label: "More", icon: "more" },
   ],
@@ -152,9 +156,9 @@ const MENTOR: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
+    { href: "/dashboard", label: "Today", icon: "home" },
     { href: "/students", label: "Students", icon: "students" },
     { href: "/reports", label: "Reports", icon: "reports" },
-    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/notes", label: "Notes", icon: "notes" },
     { href: "/profile", label: "Profile", icon: "profile" },
   ],
@@ -171,9 +175,9 @@ const ALUMNI: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
+    { href: "/dashboard", label: "Today", icon: "home" },
     { href: "/calendar", label: "Events", icon: "events" },
     { href: "/history", label: "History", icon: "history" },
-    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/more", label: "More", icon: "more" },
   ],
@@ -209,6 +213,9 @@ export function hrefUnion(navs: readonly RoleNav[]): string[] {
   );
 }
 
+/** All six navs: navByRole plus ALUMNI, which only navFor reaches. */
+const ALL_NAVS: readonly RoleNav[] = [SUPER, ADMIN, LEADER, MENTOR, STUDENT, ALUMNI];
+
 /**
  * The complete href union across all six navs, ALUMNI included.
  * `Object.values(navByRole)` alone omits ALUMNI — it's reachable only
@@ -217,11 +224,16 @@ export function hrefUnion(navs: readonly RoleNav[]): string[] {
  * list from this) must consume this export rather than re-deriving the
  * union from `navByRole` and silently dropping every ALUMNI-only href.
  */
-export const ALL_NAV_HREFS: readonly string[] = hrefUnion([
-  SUPER,
-  ADMIN,
-  LEADER,
-  MENTOR,
-  STUDENT,
-  ALUMNI,
-]);
+export const ALL_NAV_HREFS: readonly string[] = hrefUnion(ALL_NAVS);
+
+/**
+ * Every href that is a tab for at least one nav, ALUMNI included — built
+ * from the same six navs as `ALL_NAV_HREFS`. The mobile app keeps these
+ * routes in its `Tabs` group; every other nav href (Settings, Notifications,
+ * Events, …: a More entry for every role that has it, a Profile link for
+ * MENTOR) pushes on the stack above the tabs, so Back from it returns to the
+ * screen it was opened from. Derived, never re-listed.
+ */
+export const ALL_TAB_HREFS: readonly string[] = Array.from(
+  new Set(ALL_NAVS.flatMap((nav) => nav.tabs).map((item) => item.href)),
+);

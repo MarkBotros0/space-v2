@@ -13,8 +13,8 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
 import StudentsScreen from "../../app/(app)/(tabs)/students/index";
-import AlumniScreen from "../../app/(app)/(tabs)/students/alumni";
-import DroppedScreen from "../../app/(app)/(tabs)/students/dropped";
+import AlumniScreen from "../../app/(app)/students/alumni";
+import DroppedScreen from "../../app/(app)/students/dropped";
 
 const get = apiClient.get as jest.Mock;
 

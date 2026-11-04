@@ -3,16 +3,16 @@ import { useEffect, type ReactNode } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { PageTitle } from "../../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { SeasonsList } from "../../../src/design/seasons/seasons-list";
-import { useCurrentSeasonId, useSeasonDetail, useSeasons } from "../../../src/hooks/use-seasons";
-import { EditSeason } from "../../../src/components/season/EditSeason";
-import { StudentSeason } from "../../../src/components/season/StudentSeason";
-import { formatDate } from "../../../src/lib/format";
-import { Button, Card, EmptyState, Text } from "../../../src/design/ui";
-import { useSessionStore } from "../../../src/store/session";
+import { PageTitle } from "../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { SeasonsList } from "../../src/design/seasons/seasons-list";
+import { useCurrentSeasonId, useSeasonDetail, useSeasons } from "../../src/hooks/use-seasons";
+import { EditSeason } from "../../src/components/season/EditSeason";
+import { StudentSeason } from "../../src/components/season/StudentSeason";
+import { formatDate } from "../../src/lib/format";
+import { Button, Card, EmptyState, Text } from "../../src/design/ui";
+import { useSessionStore } from "../../src/store/session";
 
 /**
  * The season workspace (v1 /admin/season, /student/season). ADMIN is

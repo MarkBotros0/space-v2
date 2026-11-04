@@ -11,7 +11,7 @@ export const APP_DIR = path.resolve(__dirname, "../../../app");
 /** `apps/mobile/app/(app)` — the signed-in Stack: detail routes, with the tabs group at its bottom. */
 export const APP_GROUP_DIR = path.join(APP_DIR, "(app)");
 
-/** `apps/mobile/app/(app)/(tabs)` — the Tabs group every nav destination lives in. */
+/** `apps/mobile/app/(app)/(tabs)` — the Tabs group: every href that is a tab for some role. */
 export const TABS_GROUP_DIR = path.join(APP_GROUP_DIR, "(tabs)");
 
 function walkFiles(dir: string): string[] {
@@ -50,7 +50,8 @@ export function listTabRouteNames(): string[] {
 
 /**
  * The route name (the `name` `Stack.Screen` takes) of every screen file under
- * app/(app) outside the tabs group: the detail routes.
+ * app/(app) outside the tabs group: the detail routes and the nav
+ * destinations that are a tab for no role (PUSHED_NAV_ROUTE_NAMES).
  */
 export function listDetailRouteNames(): string[] {
   return screenFiles(APP_GROUP_DIR)
