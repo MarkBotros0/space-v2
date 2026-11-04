@@ -2,8 +2,10 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
+import { auditLog } from "../../lib/audit";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
-import { issueInvite } from "../../lib/invites";
+import { findExistingByEmail } from "../../lib/imports/students/validation";
+import { deliverInvite, issueInvite } from "../../lib/invites";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { isLastActiveSuper, lockActiveSuperIds } from "../../lib/super-guard";
@@ -12,7 +14,6 @@ import {
   createUserRequestSchema,
   updateUserRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { sendInviteEmailBestEffort } from "../invite-email";
 import { requireSuper } from "./super-only";
 import { loadUserDetail } from "./views";
 
@@ -116,13 +117,14 @@ export async function updateUser(req: Request, res: Response) {
       await revokeAllRefreshTokensForUser(tx, id);
     }
 
-    return { fail: null };
+    return { fail: null, roleChanged };
   });
 
   if (outcome.fail) {
     const [code, message, status] = outcome.fail;
     return apiError(res, code, message, status);
   }
+  if (outcome.roleChanged) auditLog("user.role_change", user.userId, id);
 
   // Through the same builder GET /:id uses, so PATCH returns exactly what GET
   // does — invite panel included.
@@ -164,6 +166,7 @@ export async function deactivateUser(req: Request, res: Response) {
   if (outcome === "last_super") {
     return apiError(res, "last_super", "This is the only active SUPER account.", 409);
   }
+  auditLog("user.deactivate", user.userId, id);
   return apiOk(res, { deletedAt: deletedAt.toISOString() });
 }
 
@@ -185,6 +188,7 @@ export async function reactivateUser(req: Request, res: Response) {
     // profile row, and that is fine.
     db.studentProfile.updateMany({ where: { userId: id }, data: { deletedAt: null } }),
   ]);
+  auditLog("user.reactivate", user.userId, id);
   return apiOk(res, { deletedAt: null });
 }
 
@@ -207,10 +211,14 @@ export async function createUser(req: Request, res: Response) {
     return apiError(res, "confirm_super_required", "Granting SUPER requires explicit confirmation.", 400);
   }
 
-  // Pre-check for the friendly 409; the @unique constraint stays the real
-  // guard, so a lost race is caught below rather than surfacing as a 500.
-  const existing = await db.user.findUnique({ where: { email: body.email }, select: { id: true } });
-  if (existing) return apiError(res, "email_taken", "Email already in use.", 409);
+  // Pre-check for the friendly 409, case-insensitive through the importer's
+  // own lookup: `User.email` is a plain unique column, so "Foo@x.com" would
+  // otherwise slip past an existing "foo@x.com" and become a second account.
+  // (The schema already trims and lower-cases what is stored.) Deactivated
+  // accounts count too, as they always did. The @unique constraint stays the
+  // real guard, so a lost race is caught below rather than surfacing as a 500.
+  const existing = await findExistingByEmail(db, [body.email]);
+  if (existing.size > 0) return apiError(res, "email_taken", "Email already in use.", 409);
 
   let created: { id: number; raw: string; expiresAt: Date };
   try {
@@ -240,8 +248,14 @@ export async function createUser(req: Request, res: Response) {
     throw err;
   }
 
-  // Mail AFTER commit, best-effort (R25) — see sendInviteEmailBestEffort.
-  await sendInviteEmailBestEffort(created.id, body.email, created.raw, created.expiresAt);
+  auditLog("user.create", user.userId, created.id);
 
-  return apiOk(res, { userId: created.id }, 201);
+  // Mail AFTER commit (R25). The account is created either way — failing the
+  // create over a mail outage would leave the operator retyping a form for a
+  // row that already exists. An undelivered invite is withdrawn again
+  // (deliverInvite), so the account reads "pending" rather than "invited"
+  // with a code nobody received, and the response says so.
+  const delivery = await deliverInvite(created.id, body.email, created);
+
+  return apiOk(res, { userId: created.id, inviteSent: delivery === "sent" }, 201);
 }

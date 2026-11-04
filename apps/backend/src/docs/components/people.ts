@@ -220,8 +220,20 @@ export const peopleSchemas = {
       { $ref: "#/components/schemas/UserListItem" },
       {
         type: "object",
-        required: ["invite"],
-        properties: { invite: { oneOf: [{ $ref: "#/components/schemas/InviteState" }, { type: "null" }] } },
+        required: ["invite", "adminSeasons"],
+        properties: {
+          invite: { oneOf: [{ $ref: "#/components/schemas/InviteState" }, { type: "null" }] },
+          adminSeasons: {
+            type: "array",
+            description:
+              "Non-deleted seasons the user is a SeasonAdmin of. A role change away from ADMIN deletes these assignments.",
+            items: {
+              type: "object",
+              required: ["id", "code", "title"],
+              properties: { id: { type: "integer" }, code: { type: "string" }, title: { type: "string" } },
+            },
+          },
+        },
       },
     ],
   },

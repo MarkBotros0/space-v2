@@ -37,7 +37,7 @@ export const userPaths = {
       tags: ["Users"],
       summary: "Create a user and issue their invite (SUPER only)",
       description:
-        "Creation and invitation are one operation. The account is created with a NULL password hash (there is no default password anywhere) and an invite is minted in the same transaction; the code goes out by email after commit, best-effort (a mail failure never rolls back the account, re-send from `POST /users/{id}/invite`). The response never carries the code. LEADER, ADMIN and MENTOR require a graduationYear. A STUDENT gets a StudentProfile. Creating a SUPER requires `confirmSuper: true`, otherwise `400 confirm_super_required` (a SUPER grant can never be a mis-tapped picker item).",
+        "Creation and invitation are one operation. The account is created with a NULL password hash (there is no default password anywhere) and an invite is minted in the same transaction; the code goes out by email after commit. A mail failure (or no mail transport) never rolls back the account: the undelivered invite is expired again so the account reads `pending`, and the response says `inviteSent: false` (re-send from `POST /users/{id}/invite`). The email is trimmed and lower-cased, and `409 email_taken` is decided case-insensitively. The response never carries the code. LEADER, ADMIN and MENTOR require a graduationYear. A STUDENT gets a StudentProfile. Creating a SUPER requires `confirmSuper: true`, otherwise `400 confirm_super_required` (a SUPER grant can never be a mis-tapped picker item).",
       requestBody: {
         required: true,
         content: {
@@ -57,7 +57,17 @@ export const userPaths = {
         },
       },
       responses: {
-        201: ok({ type: "object", required: ["userId"], properties: { userId: { type: "integer" } } }, "Created."),
+        201: ok(
+          {
+            type: "object",
+            required: ["userId", "inviteSent"],
+            properties: {
+              userId: { type: "integer" },
+              inviteSent: { type: "boolean", description: "False when the invite email could not be delivered." },
+            },
+          },
+          "Created.",
+        ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
@@ -158,7 +168,7 @@ export const userPaths = {
       tags: ["Users"],
       summary: "Issue (or re-issue) an invite (SUPER only)",
       description:
-        "Mints a fresh invite and expires the target's previous live one (one live invite per user), then emails the code. The response is the invite metadata only; the code is never returned. Refused explicitly: an already-activated target is `409 already_activated`, a deactivated one `409 user_deleted`.",
+        "Mints a fresh invite and emails the code; only once the mail has gone are the target's older live invites expired (one live invite per user). If the send fails the new code is withdrawn and the earlier invite keeps working: `502 email_send_failed`. With no mail transport nothing is minted: `503 email_not_configured`, as the bulk sender answers. The response is the invite metadata only; the code is never returned. Refused explicitly: an already-activated target is `409 already_activated`, a deactivated one `409 user_deleted`.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/InviteState" }, "The new invite's metadata."),
@@ -167,6 +177,8 @@ export const userPaths = {
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
         409: conflict("`already_activated` or `user_deleted`."),
+        502: { description: "`email_send_failed`.", content: { "application/json": { schema: errorResponse } } },
+        503: { description: "`email_not_configured`.", content: { "application/json": { schema: errorResponse } } },
       },
     },
   },

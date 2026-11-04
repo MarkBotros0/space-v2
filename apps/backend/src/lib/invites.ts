@@ -5,7 +5,7 @@ import type { Prisma } from "../generated/prisma/client";
 import { hashToken } from "./auth/tokens";
 import { config } from "./config";
 import { mapWithConcurrency } from "./concurrency";
-import { sendInviteEmail } from "./email";
+import { isEmailConfigured, sendInviteEmail } from "./email";
 import type { BulkInviteResponse } from "@space/shared";
 // Relative, not "@space/shared": a VALUE import (ruling X12 — the rootDir emit trap).
 import { BULK_INVITE_BATCH_SIZE } from "../../../../packages/shared/src/index";
@@ -42,19 +42,99 @@ export async function issueInvite(
   userId: number,
   invitedById: number,
 ): Promise<IssuedInvite> {
-  const raw = randomBytes(24).toString("base64url");
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + config.inviteTokenTtlHours * 60 * 60 * 1000);
-
   await client.inviteToken.updateMany({
     where: { userId, usedAt: null, expiresAt: { gt: now } },
     data: { expiresAt: now },
   });
-  await client.inviteToken.create({
-    data: { token: hashToken(raw), userId, invitedById, expiresAt },
-  });
-
+  const { raw, expiresAt } = await mintInvite(client, userId, invitedById, now);
   return { raw, expiresAt };
+}
+
+/**
+ * Create one invite row WITHOUT touching the user's other invites — the
+ * building block of issueInvite and of resendInvite, which must not kill the
+ * code a person already holds until the new one has actually been mailed.
+ */
+export async function mintInvite(
+  client: InviteWriter,
+  userId: number,
+  invitedById: number,
+  now: Date = new Date(),
+): Promise<IssuedInvite & { id: number }> {
+  const raw = randomBytes(24).toString("base64url");
+  const expiresAt = new Date(now.getTime() + config.inviteTokenTtlHours * 60 * 60 * 1000);
+  const row = await client.inviteToken.create({
+    data: { token: hashToken(raw), userId, invitedById, expiresAt },
+    select: { id: true },
+  });
+  return { id: row.id, raw, expiresAt };
+}
+
+/** Withdraw an invite nobody received, found by its raw code's digest. */
+async function expireUndelivered(raw: string): Promise<void> {
+  await db.inviteToken.updateMany({
+    where: { token: hashToken(raw), usedAt: null },
+    data: { expiresAt: new Date() },
+  });
+}
+
+export type InviteDelivery = "sent" | "email_not_configured" | "send_failed";
+
+/**
+ * Mail a freshly minted invite. On any failure (no transport configured, or
+ * the transport throwing) the invite is expired again, so the person goes
+ * back to "pending" — where the bulk button and the Send invite button pick
+ * them up — instead of sitting "invited" with a code nobody received (R25,
+ * the rule the bulk sender already follows). Logs carry the user id only,
+ * never the address or the code (Plan 9 Decision 2).
+ */
+export async function deliverInvite(
+  userId: number,
+  email: string,
+  invite: IssuedInvite,
+): Promise<InviteDelivery> {
+  if (!isEmailConfigured()) {
+    await expireUndelivered(invite.raw);
+    return "email_not_configured";
+  }
+  try {
+    await sendInviteEmail(email, invite.raw, invite.expiresAt);
+    return "sent";
+  } catch (err) {
+    console.error(
+      `[invites] failed to send the invite email for user ${userId}:`,
+      err instanceof Error ? err.message : err,
+    );
+    await expireUndelivered(invite.raw);
+    return "send_failed";
+  }
+}
+
+/**
+ * Re-send one user's invite (POST /users/:id/invite). Send first, expire
+ * after: the new code is minted beside the old one and mailed, and only once
+ * the mail has gone are the OLDER live invites expired. A failed send
+ * withdraws just the new code, so the person keeps the one they already
+ * hold. "Older" is by id, so two concurrent resends that both succeed leave
+ * the newer one live instead of each expiring the other.
+ */
+export async function resendInvite(
+  userId: number,
+  invitedById: number,
+  email: string,
+): Promise<InviteDelivery> {
+  if (!isEmailConfigured()) return "email_not_configured";
+  const minted = await mintInvite(db, userId, invitedById);
+  const outcome = await deliverInvite(userId, email, minted);
+  if (outcome === "sent") {
+    const now = new Date();
+    await db.inviteToken.updateMany({
+      where: { userId, id: { lt: minted.id }, usedAt: null, expiresAt: { gt: now } },
+      data: { expiresAt: now },
+    });
+  }
+  return outcome;
 }
 
 /** A live, unaccepted invite — moved here from routes/users.ts (Plan 9) so
@@ -168,10 +248,7 @@ export async function sendPendingInviteBatch(
         err instanceof Error ? err.message : err,
       );
       // Back into the pending pool: an invite nobody received is not an invite.
-      await db.inviteToken.updateMany({
-        where: { token: hashToken(invite.raw), usedAt: null },
-        data: { expiresAt: new Date() },
-      });
+      await expireUndelivered(invite.raw);
       return false;
     }
   });

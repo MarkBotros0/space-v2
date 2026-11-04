@@ -53,8 +53,22 @@ export const inviteStateSchema = z.object({
 });
 export type InviteState = z.infer<typeof inviteStateSchema>;
 
+/** A season the user is a SeasonAdmin of (detail screen only). */
+export const userAdminSeasonSchema = z.object({
+  id: z.number().int(),
+  code: z.string(),
+  title: z.string(),
+});
+export type UserAdminSeason = z.infer<typeof userAdminSeasonSchema>;
+
 export const userDetailSchema = userListItemSchema.extend({
   invite: inviteStateSchema.nullable(),
+  /**
+   * The (non-deleted) seasons this user administers. A role change away from
+   * ADMIN deletes these rows, and nothing in the app can recreate them, so
+   * the edit screen names them in its confirmation first.
+   */
+  adminSeasons: z.array(userAdminSeasonSchema),
 });
 export type UserDetail = z.infer<typeof userDetailSchema>;
 
@@ -89,7 +103,9 @@ function checkUserFields(
 export const createUserRequestSchema = z
   .object({
     name: z.string().trim().min(2, "At least 2 characters.").max(120, "At most 120 characters."),
-    email: z.string().email("Must be a valid email."),
+    // Trimmed and lower-cased, as the importer normalises (normaliseEmail):
+    // "Foo@x.com" and "foo@x.com" are one person, never two accounts.
+    email: z.string().trim().toLowerCase().email("Must be a valid email."),
     role: userRoleSchema,
     graduationYear: z.number().int().nullable().default(null),
     /**
@@ -170,8 +186,16 @@ export const logoutAllResponseSchema = z.object({
   revoked: z.number().int().nonnegative(),
 });
 export type LogoutAllResponse = z.infer<typeof logoutAllResponseSchema>;
-/** POST /users — Plan 9's response, given a schema so `/users/new` parses it. */
-export const createUserResponseSchema = z.object({ userId: z.number().int() });
+/**
+ * POST /users — Plan 9's response, given a schema so `/users/new` parses it.
+ * `inviteSent` is false when the account was created but its invite email
+ * could not be delivered (no mail transport, or the send failed): the
+ * account stays "pending", ready for Send invite once mail works.
+ */
+export const createUserResponseSchema = z.object({
+  userId: z.number().int(),
+  inviteSent: z.boolean(),
+});
 export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
 
 /**
