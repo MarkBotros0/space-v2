@@ -27,6 +27,27 @@ describe("StatTile", () => {
     jest.useRealTimers();
   });
 
+  it("shrinks the value to fit one line instead of ellipsizing it", () => {
+    render(<StatTile value="3 / 10" label="Quizzes" />);
+    const value = screen.getByText("3 / 10");
+    expect(value.props.numberOfLines).toBe(1);
+    expect(value.props.adjustsFontSizeToFit).toBe(true);
+    expect(value.props.minimumFontScale).toBeLessThanOrEqual(0.5);
+  });
+
+  it("gives the label two lines, shrinks it before breaking, and caps its font scale", () => {
+    render(<StatTile value={7} label="Open assignments to finish" />);
+    const label = screen.getByText("Open assignments to finish");
+    expect(label.props.numberOfLines).toBe(2);
+    expect(label.props.adjustsFontSizeToFit).toBe(true);
+    expect(label.props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.3);
+  });
+
+  it("keeps a minimum width so a label word never breaks mid-word (rows wrap instead)", () => {
+    render(<StatTile value={92} suffix="%" label="Attendance" />);
+    expect(screen.getByLabelText("Attendance: 92%").props.className).toContain("min-w-[136px]");
+  });
+
   it("renders string values as given", () => {
     render(<StatTile value="A+" label="Grade" />);
     expect(screen.getByText("A+")).toBeTruthy();

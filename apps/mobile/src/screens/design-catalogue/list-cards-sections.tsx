@@ -41,7 +41,7 @@ export function HeroStatsSections() {
         />
       </CatalogueSection>
       <CatalogueSection id="stats" title="Stat tiles">
-        <View className="flex-row gap-3">
+        <View testID="catalogue-stat-row" className="flex-row flex-wrap gap-3">
           <StatTile value={92} suffix="%" label="Attendance" />
           <StatTile value={7} label="Open assignments to finish" />
           <StatTile value="3 / 10" label="Quizzes" />

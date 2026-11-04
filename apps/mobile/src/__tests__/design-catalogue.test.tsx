@@ -28,3 +28,9 @@ it("says Not available outside a dev or sweep build", () => {
     (globalThis as { __DEV__?: boolean }).__DEV__ = dev;
   }
 });
+
+it("lets the row of stat tiles wrap to two columns on a narrow phone", () => {
+  mockSweep = true;
+  renderWithProviders(<DesignCatalogue />);
+  expect(screen.getByTestId("catalogue-stat-row").props.className).toContain("flex-wrap");
+});
