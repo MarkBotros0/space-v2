@@ -1,0 +1,213 @@
+# UI sweep s35 — Students, a student's page and its sheets as a super admin. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${SUPER_EMAIL}
+- openLink: spacev2://students
+- extendedWaitUntil:
+    visible: '\d+ students? in your seasons'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-01-students
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-02-students-bottom
+- scrollUntilVisible:
+    element: 'Search students'
+    direction: UP
+    timeout: 20000
+- tapOn: 'Search students'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-03-students-search-kbd
+- inputText: 'zzzz'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-04-students-search-typed
+# A search is a read: Search shows the no-match state.
+- tapOn: 'Search'
+- extendedWaitUntil:
+    visible: 'No students match your search\.'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-05-students-search-empty
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Sort by'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-06-students-sort-open
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 3000
+# Student ids follow the seed order: super 1, admin 2, leader 3, mentor 4, student 5.
+- openLink: spacev2://student/5
+- extendedWaitUntil:
+    visible: 'Edit profile'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-07-student-detail
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-08-student-detail-mid
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-09-student-detail-bottom
+# Tabs. The tab bar has a Seasons tab too: the student's Seasons tab is the one above the
+# Profile tab's first field.
+- scrollUntilVisible:
+    element: 'University'
+    direction: UP
+    timeout: 20000
+- tapOn:
+    text: 'Seasons'
+    above: 'University'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-10-student-tab-seasons
+- tapOn: 'Attendance'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-11-student-tab-attendance
+- tapOn: 'Submissions'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-12-student-tab-submissions
+# Swiped from the middle tab: at the right edge a gesture-nav swipe is the system Back.
+- swipe:
+    from:
+      text: 'Attendance'
+    direction: LEFT
+- swipe:
+    from:
+      text: 'Attendance'
+    direction: LEFT
+- tapOn: 'Notes'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-13-student-tab-notes
+# The note form: Add note is never tapped.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Reflections.*'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-14-student-note-kbd
+- inputText: 'Sweep note, never saved'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-15-student-note-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-16-student-notes-bottom
+# Graduate opens a sheet: its year is typed, then Cancel (never Graduate student).
+# Still on the same student's page: scroll back up to the actions.
+- scrollUntilVisible:
+    element: 'Graduate'
+    direction: UP
+    timeout: 20000
+- tapOn: 'Graduate'
+- extendedWaitUntil:
+    visible: 'Graduate .*\?'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-17-graduate-sheet
+- tapOn: 'JPCS graduation year'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-18-graduate-year-kbd
+- inputText: '2099'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-19-graduate-year-typed
+- tapOn: 'Cancel'
+- waitForAnimationToEnd:
+    timeout: 5000
+# Delete student is never tapped.
+- openLink: spacev2://student/5/edit
+- extendedWaitUntil:
+    visible: 'Edit Samir Student'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-20-student-edit
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Full name'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-21-student-edit-name-kbd
+- inputText: 'x'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-22-student-edit-name-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-23-student-edit-bottom
+- openLink: spacev2://students/new
+- extendedWaitUntil:
+    visible: 'They.ll get an email invite.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-24-student-new
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Full name'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-25-student-new-name-kbd
+- inputText: 'Sweep Student'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-26-student-new-name-typed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s35-27-student-new-bottom

@@ -1,0 +1,43 @@
+# UI sweep s39 — Reports as a super admin, all seasons and one. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${SUPER_EMAIL}
+- openLink: spacev2://reports
+- extendedWaitUntil:
+    visible: 'Scoped to .*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s39-01-reports
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s39-02-reports-mid
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s39-03-reports-bottom
+# A season filter is a read. Export buttons are never tapped (they open the share sheet).
+- evalScript: ${output.year = new Date().getFullYear()}
+- scrollUntilVisible:
+    element: 'Season filter: GBV ${output.year}'
+    direction: UP
+    timeout: 20000
+- tapOn: 'Season filter: GBV ${output.year}'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s39-04-reports-season
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s39-05-reports-season-bottom
