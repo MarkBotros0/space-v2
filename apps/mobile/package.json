@@ -27,7 +27,7 @@
     "clsx": "2.1.1",
     "date-fns": "^4.4.0",
     "domhandler": "5.0.3",
-    "expo": "~54.0.35",
+    "expo": "~54.0.38",
     "expo-blur": "~15.0.8",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",

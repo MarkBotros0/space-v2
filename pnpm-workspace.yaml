@@ -1,3 +1,12 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# Security overrides for transitive dependencies whose parents pin a vulnerable
+# range. Each stays inside an API the parent already uses:
+# - postcss: @expo/metro-config pins ~8.4.32; 8.5 is the same major.
+# - uuid: exceljs pins ^8.3.0 and only calls `require('uuid').v4`, which uuid 11
+#   still ships as CommonJS (12+ is ESM-only, so stop at 11).
+overrides:
+  '@expo/metro-config>postcss': ^8.5.18
+  'exceljs>uuid': ^11.1.1
