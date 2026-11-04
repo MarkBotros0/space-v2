@@ -8,6 +8,8 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "12" }),
   useRouter: () => ({ push: mockPush }),
+  // The staff cards poll while focused; focused for the whole test.
+  useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
 }));
 
 import type { SessionDetail } from "@space/shared";
