@@ -6,6 +6,8 @@
  * ruling R13), the bottom padding that clears the pill (or, on a detail
  * screen, just the inset: `useShellBottomPadding`), the keyboard inset, and
  * the scroll direction the pill hides and returns on (`useTabBarScroll`).
+ * With `back` the compact header is a bar pinned above the scroll view that
+ * always shows the back link; only its title fades in (ruling R16).
  *
  * Without a `title` there is no large title and no compact header: the
  * screens still on `ShellFrame` render their own `PageTitle` in the content
@@ -143,19 +145,14 @@ export function Screen({
       </>
     ) : null;
   const heading =
-    title || subtitle || back || actions ? (
-      <LargeTitle
-        title={title}
-        subtitle={subtitle}
-        back={back}
-        trailing={actions}
-        onLayout={onTitleLayout}
-      />
+    title || subtitle || actions ? (
+      <LargeTitle title={title} subtitle={subtitle} trailing={actions} onLayout={onTitleLayout} />
     ) : null;
 
   if (!scroll) {
     return (
       <ScreenChrome>
+        {back ? <CompactHeader title={title} back={back} progress={progress} /> : null}
         <View
           className={cn("flex-1 px-4 pt-4", contentClassName)}
           style={{ paddingBottom: bottom }}
@@ -169,6 +166,7 @@ export function Screen({
 
   return (
     <ScreenChrome>
+      {back ? <CompactHeader title={title} back={back} progress={progress} /> : null}
       <View className="flex-1">
         <Animated.ScrollView
           ref={keyboard.scrollProps.ref}
@@ -186,7 +184,7 @@ export function Screen({
           {heading}
           {children}
         </Animated.ScrollView>
-        {title ? <CompactHeader title={title} progress={progress} /> : null}
+        {title && !back ? <CompactHeader title={title} progress={progress} /> : null}
       </View>
     </ScreenChrome>
   );

@@ -40,8 +40,12 @@ export function resetTabBarScroll(): void {
   useTabBarStore.setState({ visible: true });
 }
 
-/** Movement smaller than this is jitter and never changes the direction. */
-export const SCROLL_JITTER = 8;
+/**
+ * How far the list must move from the anchor, in one direction, before the
+ * direction changes: 24px of sustained scroll (Task 11's value), so jitter,
+ * a resting finger or a small reversal mid-fling never flips the bar.
+ */
+export const SCROLL_THRESHOLD = 24;
 /** How close to the bottom of the content counts as the end. */
 const END_SLOP = 4;
 
@@ -52,8 +56,7 @@ export const INITIAL_SCROLL_STEP: ScrollStep = { anchor: 0, dir: null, atEnd: fa
 /**
  * One scroll event folded into the running direction. `anchor` is the offset
  * at which the direction was last confirmed; only a move of more than
- * SCROLL_JITTER away from it counts, so a finger resting on the list or a
- * small reversal mid-fling does not flip the bar. At or above the top
+ * SCROLL_THRESHOLD away from it counts. At or above the top
  * (bounce, pull-to-refresh) is always "up". A worklet: `Screen` runs it in
  * its UI-thread scroll handler.
  */
@@ -67,7 +70,7 @@ export function scrollDirectionStep(
   const atEnd = y + viewport >= content - END_SLOP;
   if (y <= 0) return { anchor: Math.max(y, 0), dir: "up", atEnd };
   const delta = y - prev.anchor;
-  if (delta > SCROLL_JITTER) return { anchor: y, dir: "down", atEnd };
-  if (delta < -SCROLL_JITTER) return { anchor: y, dir: "up", atEnd };
+  if (delta > SCROLL_THRESHOLD) return { anchor: y, dir: "down", atEnd };
+  if (delta < -SCROLL_THRESHOLD) return { anchor: y, dir: "up", atEnd };
   return { anchor: prev.anchor, dir: prev.dir, atEnd };
 }

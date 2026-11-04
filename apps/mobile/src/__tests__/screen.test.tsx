@@ -26,6 +26,20 @@ jest.mock("react-native-reanimated", () => {
   };
 });
 
+// The real fade, recorded: Jest's Reanimated never re-runs an animated style
+// after mount, so the switch is observed at the call that sets the opacity.
+const mockFade = jest.fn();
+jest.mock("../design/layout/large-title", () => {
+  const actual = jest.requireActual("../design/layout/large-title");
+  return {
+    ...actual,
+    compactHeaderFade: (to: 0 | 1, animate: boolean) => {
+      mockFade(to, animate);
+      return actual.compactHeaderFade(to, animate);
+    },
+  };
+});
+
 let mockOnline = true;
 jest.mock("../lib/online", () => ({ useIsOnline: () => mockOnline }));
 
@@ -81,7 +95,7 @@ describe("Screen: title and back link", () => {
     expect(screen.getByText("body")).toBeTruthy();
   });
 
-  it("back link goes back, with a 44pt target and a spoken destination", () => {
+  it("back link goes back, with a 44pt target and a spoken destination, announced once", () => {
     renderWithProviders(
       <Screen title="Sara" back={{ label: "Students" }}>
         {body}
@@ -90,6 +104,7 @@ describe("Screen: title and back link", () => {
     const link = screen.getByRole("link", { name: "Back to Students" });
     expect(link.props.className).toContain("min-h-[44px]");
     expect(screen.getByText("Students")).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: /^Back to/ })).toHaveLength(1);
     fireEvent.press(link);
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockPush).not.toHaveBeenCalled();
@@ -121,6 +136,37 @@ describe("Screen: title and back link", () => {
     expect(screen.queryByTestId("compact-header", { includeHiddenElements: true })).toBeNull();
     expect(screen.queryByTestId("large-title")).toBeNull();
     expect(screen.getByText("body")).toBeTruthy();
+  });
+});
+
+describe("Screen: pinned back link (ruling R16)", () => {
+  it("stays reachable past the collapsed title, outside the scroll content", async () => {
+    renderWithProviders(
+      <Screen title="Sara" back={{ label: "Students", href: "/students" }}>
+        {body}
+      </Screen>,
+    );
+    layoutTitle();
+    await scrollTo(400);
+    const scroll = screen.UNSAFE_getByType(ScrollView);
+    expect(within(scroll).queryByRole("link", { name: "Back to Students" })).toBeNull();
+    expect(screen.getByTestId("back-bar").props.pointerEvents).toBe("box-none");
+    fireEvent.press(screen.getByRole("link", { name: "Back to Students" }));
+    expect(mockPush).toHaveBeenCalledWith("/students");
+    // Only the title fades in beside the link; the bar itself never hides.
+    const compact = screen.getByTestId("compact-header", { includeHiddenElements: true });
+    expect(
+      within(screen.getByTestId("back-bar")).getByText("Sara", { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(compact.props.pointerEvents).toBe("none");
+  });
+
+  it("without a title, still pins the back link and shows no compact title", () => {
+    renderWithProviders(<Screen back={{ label: "Home" }}>{body}</Screen>);
+    fireEvent.press(screen.getByRole("link", { name: "Back to Home" }));
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("compact-header", { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByTestId("large-title")).toBeNull();
   });
 });
 
@@ -235,11 +281,10 @@ describe("Screen: collapsing title", () => {
     renderWithProviders(<Screen title="Students">{body}</Screen>);
     layoutTitle();
     await scrollTo(40);
+    mockFade.mockClear();
     await scrollTo(120);
+    expect(mockFade).toHaveBeenCalledWith(1, false);
     expect(mockWithTiming).not.toHaveBeenCalled();
-    // The same scroll fades it in with motion on (test above). Jest's
-    // Reanimated never re-runs an animated style after mount, so the opacity
-    // the switch sets is checked on compactHeaderFade directly (below).
   });
 
   it("compactHeaderFade sets the opacity outright when it must not animate", () => {
@@ -274,7 +319,7 @@ describe("Screen: tab bar on scroll (ruling R2)", () => {
     );
     await scrollTo(40);
     expect(screen.getByTestId("probe")).toHaveTextContent("hidden");
-    await scrollTo(20);
+    await scrollTo(10);
     expect(screen.getByTestId("probe")).toHaveTextContent("shown");
     await scrollTo(400);
     expect(screen.getByTestId("probe")).toHaveTextContent("hidden");
@@ -282,14 +327,14 @@ describe("Screen: tab bar on scroll (ruling R2)", () => {
     expect(screen.getByTestId("probe")).toHaveTextContent("shown");
   });
 
-  it("ignores jitter under 8px", async () => {
+  it("ignores movement up to 24px", async () => {
     renderWithProviders(
       <>
         <Screen title="Students">{body}</Screen>
         <Probe />
       </>,
     );
-    await scrollTo(6);
+    await scrollTo(20);
     expect(screen.getByTestId("probe")).toHaveTextContent("shown");
   });
 
@@ -321,12 +366,10 @@ describe("Screen: keyboard", () => {
       listeners[event] = cb;
       return { remove: jest.fn() };
     }) as unknown as typeof Keyboard.addListener);
-    const focused = jest
-      .spyOn(TextInput.State, "currentlyFocusedInput")
-      .mockReturnValue({
-        measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) =>
-          cb(0, 600, 300, 40),
-      } as never);
+    const focused = jest.spyOn(TextInput.State, "currentlyFocusedInput").mockReturnValue({
+      measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) =>
+        cb(0, 600, 300, 40),
+    } as never);
     try {
       renderWithProviders(<Screen title="Edit">{body}</Screen>);
       fireEvent.scroll(screen.UNSAFE_getByType(ScrollView), {

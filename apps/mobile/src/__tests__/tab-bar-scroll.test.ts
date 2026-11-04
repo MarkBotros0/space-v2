@@ -59,21 +59,23 @@ describe("scrollDirectionStep", () => {
   const viewport = 600;
   const content = 2000;
 
-  it("ignores jitter under 8px", () => {
-    const next = scrollDirectionStep(INITIAL_SCROLL_STEP, 7, viewport, content);
+  it("ignores movement up to 24px", () => {
+    const next = scrollDirectionStep(INITIAL_SCROLL_STEP, 24, viewport, content);
     expect(next.dir).toBeNull();
     expect(next.anchor).toBe(0);
   });
 
-  it("turns down past 8px and moves its anchor with the scroll", () => {
+  it("turns down past 24px of sustained scroll and moves its anchor with it", () => {
+    const short = scrollDirectionStep(INITIAL_SCROLL_STEP, 20, viewport, content);
+    expect(scrollDirectionStep(short, 23, viewport, content).dir).toBeNull();
     const next = scrollDirectionStep(INITIAL_SCROLL_STEP, 40, viewport, content);
     expect(next).toEqual({ anchor: 40, dir: "down", atEnd: false });
   });
 
   it("keeps its direction through small reversals, turns up on a real one", () => {
     const down = scrollDirectionStep(INITIAL_SCROLL_STEP, 400, viewport, content);
-    expect(scrollDirectionStep(down, 395, viewport, content).dir).toBe("down");
-    expect(scrollDirectionStep(down, 380, viewport, content).dir).toBe("up");
+    expect(scrollDirectionStep(down, 380, viewport, content).dir).toBe("down");
+    expect(scrollDirectionStep(down, 370, viewport, content).dir).toBe("up");
   });
 
   it("is up at or above the top (bounce, pull-to-refresh)", () => {

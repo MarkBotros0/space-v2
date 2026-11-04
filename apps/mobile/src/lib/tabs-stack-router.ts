@@ -8,7 +8,8 @@ export const TABS_ROUTE = "(tabs)";
 
 /**
  * The tabs are one navigator. A push or navigate to any route in the tabs
- * group (Home's bell and user menu, a detail screen linking to a list) would otherwise stack a second `(tabs)` above the detail. This turns
+ * group (Home's bell and user menu, a detail screen linking to a list)
+ * would otherwise stack a second `(tabs)` above the detail. This turns
  * it into "navigate back to the one `(tabs)`": the details above it pop, and
  * the action's nested state switches it to the requested tab.
  * `dangerouslySingular` is not enough: it moves the existing `(tabs)` to the
