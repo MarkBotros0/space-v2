@@ -7,6 +7,7 @@ const mockDb = {
   jpcEvent: { findMany: jest.fn(), count: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
+jest.mock("../lib/auth/session-validity", () => ({ isAccessTokenInvalidated: async () => false }));
 
 import request from "supertest";
 
