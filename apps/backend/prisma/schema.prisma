@@ -810,3 +810,16 @@ model DeviceToken {
   @@index([userId])
   @@index([lastSeenAt])
 }
+
+// express-rate-limit hit counters shared by every serverless instance
+// (lib/rate-limit/postgres-store.ts; v2-only, 2026-11-05). One row per
+// limiter-prefixed client key, e.g. "auth:203.0.113.7". A row whose window has
+// passed is restarted in place by the next hit; rows idle for an hour past
+// their window are swept by the store itself, so the table stays small.
+model RateLimitHit {
+  key     String   @id
+  hits    Int
+  resetAt DateTime @db.Timestamptz(3)
+
+  @@index([resetAt])
+}
