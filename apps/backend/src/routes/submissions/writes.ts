@@ -6,7 +6,7 @@ import { ForbiddenError } from "../../lib/auth/errors";
 import { bestEffort } from "../../lib/best-effort";
 import { createNotificationsBulk } from "../../lib/notifications";
 import { parseId } from "../../lib/parse-id";
-import { canAccessSeason, canReviewSubmission } from "../../lib/permissions";
+import { canReviewSubmission, hasActiveEnrollment } from "../../lib/permissions";
 import { newPublicId } from "../../lib/public-id";
 import { studentCanSeeAssignment } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
@@ -16,6 +16,7 @@ import {
   updateSubmissionRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
+import { studentWriteRefusal, submissionLocked } from "./editable";
 
 
 export async function updateSubmission(req: Request<{ publicId: string }>, res: Response) {
@@ -24,7 +25,12 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
 
   const sub = await db.submission.findUnique({
     where: { publicId: publicId ?? "" },
-    select: { id: true, studentUserId: true, assignment: { select: { dueAt: true, type: true } } },
+    select: {
+      id: true,
+      status: true,
+      studentUserId: true,
+      assignment: { select: { seasonId: true, type: true } },
+    },
   });
   if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
   // Only the author may edit. Season admins and leaders can read a submission
@@ -40,6 +46,11 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
       409,
     );
   }
+  // Only DRAFT and RETURNED are editable, and only by a student still actively
+  // enrolled in the assignment's season (see ./editable.ts).
+  const refusal = await studentWriteRefusal(user, sub.assignment.seasonId, sub.status);
+  if (refusal === "forbidden") return forbidden(res);
+  if (refusal === "not_editable") return submissionLocked(res);
 
   const parsed = updateSubmissionRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid submission body.", 400);
@@ -130,7 +141,9 @@ export async function startSubmission(req: Request, res: Response) {
     );
   }
 
-  if (!(await canAccessSeason(user, assignment.seasonId))) return forbidden(res);
+  // An ACTIVE enrolment, not canAccessSeason: that accepts any enrolment row,
+  // so a dropped, completed or alumni student could start work in a past season.
+  if (!(await hasActiveEnrollment(user, assignment.seasonId))) return forbidden(res);
   // The same targeting rule the assignment reads use, from the same helper —
   // a student must not be able to start a submission on work never set them.
   const targeted = await studentCanSeeAssignment(

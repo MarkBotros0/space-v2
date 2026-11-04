@@ -49,8 +49,15 @@ function EditForm({ detail }: { detail: AssignmentDetail }) {
           onSubmit={(payload) => {
             setServerError(null);
             update.mutate(payload, {
-              onSuccess: () =>
-                router.replace({ pathname: "/assignment/[id]", params: { id: String(detail.id) } }),
+              // Back to the detail screen this was opened from, not a second
+              // copy of it on the stack. useUpdateAssignment has already seeded
+              // that screen's cache with the saved assignment, so it shows the
+              // new values. Opened cold (a deep link), there is nothing to go
+              // back to, so the detail replaces this screen instead.
+              onSuccess: () => {
+                if (router.canGoBack()) router.back();
+                else router.replace({ pathname: "/assignment/[id]", params: { id: String(detail.id) } });
+              },
               onError: (err) =>
                 setServerError(apiErrorMessage(err, "Couldn't save the assignment.")),
             });

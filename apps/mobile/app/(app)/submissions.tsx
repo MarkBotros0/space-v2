@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Inbox } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import type { SubmissionQueueItem } from "@space/shared";
@@ -33,6 +33,12 @@ import {
 // v1 lists every SUBMITTED, REVIEWED and RETURNED row, in that order (B3-8).
 const ALL = { pendingOnly: false } as const;
 const PENDING = { pendingOnly: true } as const;
+
+/** A positive integer season id from the route, or undefined for any other value. */
+function seasonParam(raw: string | undefined): number | undefined {
+  const n = Number(raw);
+  return raw !== undefined && Number.isInteger(n) && n > 0 ? n : undefined;
+}
 
 /**
  * v1 components/assignments/leader-queue-list.tsx columns. The queue item
@@ -105,7 +111,7 @@ function LegacyQueue() {
     useSubmissionQueue(PENDING, true);
 
   const items = data?.pages.flatMap((page) => page.items) ?? [];
-  // Counts ignore paging and pendingOnly, so any page carries the same figures.
+  // Counts ignore paging and pendingOnly; only the first page carries them.
   const counts = data?.pages[0]?.counts;
 
   return (
@@ -147,8 +153,12 @@ export default function SubmissionsScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
   // STUDENT gets 403 from GET /submissions; no user means nothing to ask for.
   const isStaff = role !== null && role !== "STUDENT";
+  // Set when opened from the dashboard's Assignments card, whose figures are
+  // one season's: the queue narrows to match. From the tab bar it is absent
+  // and the queue is v1's cross-season list.
+  const seasonId = seasonParam(useLocalSearchParams<{ seasonId?: string }>().seasonId);
   const { data, isPending, isError, refetch, isRefetching, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useSubmissionQueue(ALL, role === "LEADER");
+    useSubmissionQueue(seasonId === undefined ? ALL : { ...ALL, seasonId }, role === "LEADER");
 
   if (isStaff && role !== "LEADER") return <LegacyQueue />;
   if (!isStaff) {
@@ -160,9 +170,9 @@ export default function SubmissionsScreen() {
   }
 
   const items = data?.pages.flatMap((page) => page.items) ?? [];
-  // Counts ignore paging and pendingOnly, so any page carries the same figures.
+  // Counts ignore paging and pendingOnly; only the first page carries them.
   const counts = data?.pages[0]?.counts;
-  const open = (publicId: string) => router.push({ pathname: "/submission/[publicId]", params: { publicId } });
+  const open =(publicId: string) => router.push({ pathname: "/submission/[publicId]", params: { publicId } });
 
   return (
     <ShellFrame refreshing={isRefetching} onRefresh={() => void refetch()}>
@@ -180,6 +190,21 @@ export default function SubmissionsScreen() {
                 : undefined
             }
           />
+          {seasonId !== undefined ? (
+            // The tab keeps its params, so a season filter set from the
+            // dashboard must be visible and removable, not a silent state.
+            <View className="flex-row flex-wrap items-center gap-2">
+              <Text className="text-sm text-muted-foreground">Current season only</Text>
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start"
+                onPress={() => router.setParams({ seasonId: undefined })}
+              >
+                Show all seasons
+              </Button>
+            </View>
+          ) : null}
           <DataTable
             columns={columns()}
             rows={items}

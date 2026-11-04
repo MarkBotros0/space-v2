@@ -110,7 +110,8 @@ describe("DashboardScreen — ADMIN and LEADER", () => {
     fireEvent.press(screen.getByLabelText("View all Your students at risk"));
     expect(mockPush).toHaveBeenCalledWith("/groups");
     fireEvent.press(screen.getByLabelText("View all Assignments"));
-    expect(mockPush).toHaveBeenCalledWith("/submissions");
+    // The figures are this season's, so the queue opens on the same season.
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
     fireEvent.press(screen.getByLabelText("View all Quiz corrections"));
     expect(mockPush).toHaveBeenCalledWith("/quizzes");
     fireEvent.press(screen.getByLabelText("Quizzes: 2"));
