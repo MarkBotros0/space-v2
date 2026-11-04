@@ -77,6 +77,8 @@ export function useGroupImpact(id: number | null): UseQueryResult<GroupImpact> {
 export function useCreateGroup(seasonId: number) {
   const invalidate = useInvalidateGroupData();
   return useMutation({
+    // Spec 19 D24: a group's leaders and members move a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (body: GroupWriteInput) => {
       const res = await apiClient.post(`/api/v1/seasons/${seasonId}/groups`, body);
       return groupRefResponseSchema.parse(res.data.data);
@@ -88,6 +90,8 @@ export function useCreateGroup(seasonId: number) {
 export function useUpdateGroup(id: number) {
   const invalidate = useInvalidateGroupData();
   return useMutation({
+    // Spec 19 D24: a group's leaders and members move a number on some role's Home.
+    meta: DASHBOARD_META,
     mutationFn: async (body: GroupWriteInput) => {
       const res = await apiClient.patch(`/api/v1/groups/${id}`, body);
       return groupRefResponseSchema.parse(res.data.data);
