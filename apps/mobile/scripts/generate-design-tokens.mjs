@@ -106,6 +106,12 @@ const boxShadow = {
   lift: tokens.shadows.lift,
 };
 
+// Redesign type scale: text-large-title, text-title, text-headline, text-body,
+// text-subhead, text-caption (weights come from font-* classes, see ui/text.tsx).
+const fontSize = Object.fromEntries(
+  Object.entries(tokens.fontSize).map(([k, v]) => [k, [`${v.size}px`, { lineHeight: `${v.lineHeight}px` }]]),
+);
+
 const FACES = { normal: ["400", "Geist_400Regular"], medium: ["500", "Geist_500Medium"],
   semibold: ["600", "Geist_600SemiBold"], bold: ["700", "Geist_700Bold"],
   extrabold: ["800", "Geist_800ExtraBold"], black: ["900", "Geist_900Black"] };
@@ -123,6 +129,7 @@ ${colorSource.join("\n")}
 };
 const borderRadius = ${JSON.stringify(borderRadius, null, 2)};
 const boxShadow = ${JSON.stringify(boxShadow, null, 2)};
+const fontSize = ${JSON.stringify(fontSize, null, 2)};
 const fontFamily = { sans: ["Geist_400Regular"], mono: ["GeistMono_400Regular"] };
 // Resolved semantic values for props that take a colour, not a class
 // (placeholderTextColor, svg fills, gradients): use via useThemeColors().
@@ -134,7 +141,7 @@ const semantic = ${JSON.stringify(
 const fontWeightUtilities = ${JSON.stringify(fontWeightUtilities, null, 2)};
 const fontWeightPlugin = plugin(({ addUtilities }) => addUtilities(fontWeightUtilities));
 
-module.exports = { colors, semantic, borderRadius, boxShadow, fontFamily, fontWeightUtilities, fontWeightPlugin };
+module.exports = { colors, semantic, borderRadius, boxShadow, fontSize, fontFamily, fontWeightUtilities, fontWeightPlugin };
 `;
 
 writeFileSync(path.join(mobile, "global.css"), css);

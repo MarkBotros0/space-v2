@@ -94,6 +94,44 @@ const boxShadow = {
   "pop": "0 4px 12px #0f313212, 0 12px 32px #0f313217",
   "lift": "0 8px 24px #0f31321f"
 };
+const fontSize = {
+  "large-title": [
+    "30px",
+    {
+      "lineHeight": "34px"
+    }
+  ],
+  "title": [
+    "22px",
+    {
+      "lineHeight": "28px"
+    }
+  ],
+  "headline": [
+    "17px",
+    {
+      "lineHeight": "22px"
+    }
+  ],
+  "body": [
+    "16px",
+    {
+      "lineHeight": "24px"
+    }
+  ],
+  "subhead": [
+    "14px",
+    {
+      "lineHeight": "20px"
+    }
+  ],
+  "caption": [
+    "12px",
+    {
+      "lineHeight": "16px"
+    }
+  ]
+};
 const fontFamily = { sans: ["Geist_400Regular"], mono: ["GeistMono_400Regular"] };
 // Resolved semantic values for props that take a colour, not a class
 // (placeholderTextColor, svg fills, gradients): use via useThemeColors().
@@ -207,4 +245,4 @@ const fontWeightUtilities = {
 };
 const fontWeightPlugin = plugin(({ addUtilities }) => addUtilities(fontWeightUtilities));
 
-module.exports = { colors, semantic, borderRadius, boxShadow, fontFamily, fontWeightUtilities, fontWeightPlugin };
+module.exports = { colors, semantic, borderRadius, boxShadow, fontSize, fontFamily, fontWeightUtilities, fontWeightPlugin };

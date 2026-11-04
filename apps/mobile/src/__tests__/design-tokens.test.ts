@@ -45,6 +45,11 @@ describe("generated design tokens", () => {
     expect(theme.colors.role.leader).toBe(tokens.light["role-leader"]);
   });
 
+  it("type scale reaches tailwind as text-* sizes with line heights", () => {
+    expect(config.theme.extend.fontSize["large-title"]).toEqual(["30px", { lineHeight: "34px" }]);
+    expect(config.theme.extend.fontSize.caption).toEqual(["12px", { lineHeight: "16px" }]);
+  });
+
   it("radius scale is v1's, in px", () => {
     expect(theme.borderRadius.lg).toBe(`${tokens.radius.lg}px`);
     expect(theme.borderRadius["2xl"]).toBe(`${tokens.radius["2xl"]}px`);

@@ -15,7 +15,7 @@ module.exports = {
     borderRadius: theme.borderRadius,
     boxShadow: theme.boxShadow,
     fontFamily: theme.fontFamily,
-    extend: { opacity },
+    extend: { opacity, fontSize: theme.fontSize },
   },
   plugins: [theme.fontWeightPlugin],
 };
