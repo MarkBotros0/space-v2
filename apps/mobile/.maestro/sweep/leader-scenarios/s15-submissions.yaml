@@ -38,21 +38,34 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s15-03-submission
+# The feedback form is a sheet behind the pinned bar. Never tap its save button.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Add feedback'
+- extendedWaitUntil:
+    visible: 'What did the student do well.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s15-04-feedback-sheet
 - runFlow:
     file: ../_tap.yaml
     env:
       TARGET: 'What did the student do well.*'
 - waitForAnimationToEnd:
     timeout: 5000
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s15-04-feedback-kbd
+- takeScreenshot: s15-04b-feedback-kbd
 - inputText: 'Sweep feedback, never saved'
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s15-05-feedback-typed
-# Last item has to clear the floating tab bar and the system bar.
+# Dismiss the sheet without saving.
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+# Last item has to clear the pinned bar and the system bar.
 - scroll
 - scroll
 - scroll
@@ -75,7 +88,7 @@ appId: com.jpc.space
           duration: 500
 - waitForAnimationToEnd:
     timeout: 5000
-# The reviewed row, found by its assignment title: the form reads Update feedback.
+# The reviewed row, found by its assignment title: the bar reads Update feedback.
 # The whole row is one button; tap the second Salma row.
 - tapOn:
     text: 'Salma Student.*'

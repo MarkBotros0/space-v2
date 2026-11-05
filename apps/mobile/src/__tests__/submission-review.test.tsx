@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -9,8 +9,16 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ back: mockBack, push: jest.fn() }),
 }));
 
+jest.mock("expo-haptics", () => ({
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  impactAsync: jest.fn(() => Promise.resolve()),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+  NotificationFeedbackType: { Success: "success" },
+  ImpactFeedbackStyle: { Light: "light" },
+}));
 jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
+import * as Haptics from "expo-haptics";
 import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
@@ -47,6 +55,8 @@ it("shows the work, the late flag from the contract, and records a review withou
   expect(screen.getByText("Submitted")).toBeTruthy();
   expect(screen.getByText("Late")).toBeTruthy();
 
+  expect(screen.queryByLabelText("Feedback")).toBeNull();
+  fireEvent.press(screen.getByText("Add feedback"));
   fireEvent.changeText(screen.getByLabelText("Feedback"), "Good work.");
   fireEvent.press(screen.getByText("Mark as reviewed"));
 
@@ -56,6 +66,7 @@ it("shows the work, the late flag from the contract, and records a review withou
     }),
   );
   await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Review saved."));
+  expect(Haptics.impactAsync).toHaveBeenCalledWith("light");
   expect(mockBack).not.toHaveBeenCalled();
 });
 
@@ -67,9 +78,9 @@ it("says Update review, with the earlier feedback in the field, when redoing a r
 
   renderStacked(<SubmissionReviewScreen />);
 
+  fireEvent.press(await screen.findByText("Update feedback"));
   expect(await screen.findByText("Update review")).toBeTruthy();
   expect(screen.queryByText("Mark as reviewed")).toBeNull();
-  expect(screen.getByText("Update feedback")).toBeTruthy();
   expect(screen.getByLabelText("Feedback").props.value).toBe("Good work.");
   fireEvent.changeText(screen.getByLabelText("Feedback"), "Even better.");
   fireEvent.press(screen.getByText("Update review"));
@@ -83,7 +94,8 @@ it("returns for revision with the flag set, then leaves a screen with nothing le
   post.mockResolvedValue({ data: { data: { reviewed: true, returnedForRevision: true } } });
 
   renderStacked(<SubmissionReviewScreen />);
-  fireEvent.changeText(await screen.findByLabelText("Feedback"), "Another pass, please.");
+  fireEvent.press(await screen.findByText("Add feedback"));
+  fireEvent.changeText(screen.getByLabelText("Feedback"), "Another pass, please.");
   fireEvent.press(screen.getByText("Return for revision"));
 
   await waitFor(() =>
@@ -111,7 +123,7 @@ it("shows returned work as waiting on the student instead of the review form", a
   get.mockResolvedValue({ data: { data: { ...detail, status: "RETURNED", feedback: "Another pass." } } });
   renderStacked(<SubmissionReviewScreen />);
 
-  expect(await screen.findByText("Returned to the student")).toBeTruthy();
+  expect(await screen.findByText("RETURNED TO THE STUDENT")).toBeTruthy();
   expect(screen.getByText("Another pass.")).toBeTruthy();
   expect(screen.queryByLabelText("Feedback")).toBeNull();
 });
@@ -121,9 +133,12 @@ it("stays on the screen and says why when the server refuses (403 forbidden)", a
   post.mockRejectedValue({ response: { status: 403, data: { error: { code: "forbidden", message: "x" } } } });
 
   renderStacked(<SubmissionReviewScreen />);
-  fireEvent.press(await screen.findByText("Mark as reviewed"));
+  fireEvent.press(await screen.findByText("Add feedback"));
+  fireEvent.press(screen.getByText("Mark as reviewed"));
 
   expect(await screen.findByText(/Couldn't record the review/)).toBeTruthy();
+  expect(screen.getByLabelText("Feedback")).toBeTruthy();
+  expect(Haptics.impactAsync).not.toHaveBeenCalled();
   expect(mockBack).not.toHaveBeenCalled();
 });
 
@@ -135,6 +150,28 @@ it("hides the verdict controls when the contract says this caller cannot review"
   expect(await screen.findByText("the student's work")).toBeTruthy();
   expect(screen.queryByText("Mark as reviewed")).toBeNull();
   expect(screen.queryByLabelText("Feedback")).toBeNull();
+  expect(screen.queryByText("Add feedback")).toBeNull();
+  expect(screen.queryByTestId("save-bar")).toBeNull();
+});
+
+it("keeps the typed feedback when the sheet is dismissed and reopened, sending nothing", async () => {
+  get.mockResolvedValue({ data: { data: detail } });
+  renderStacked(<SubmissionReviewScreen />);
+
+  fireEvent.press(await screen.findByText("Add feedback"));
+  fireEvent.changeText(screen.getByLabelText("Feedback"), "Half a thought");
+  fireEvent.press(screen.getByLabelText("Close"));
+  // The sheet's title is still on screen while it animates out: press the bar's.
+  fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Add feedback"));
+
+  expect(screen.getByLabelText("Feedback").props.value).toBe("Half a thought");
+  expect(post).not.toHaveBeenCalled();
+});
+
+it("shows the pinned save bar for a reviewer", async () => {
+  get.mockResolvedValue({ data: { data: detail } });
+  renderStacked(<SubmissionReviewScreen />);
+  expect(await screen.findByTestId("save-bar")).toBeTruthy();
 });
 
 it("names the student's group beside them on the detail (REG-89)", async () => {
@@ -154,7 +191,7 @@ it("shows the prompt and the attachments v1-style; the files can't be opened yet
     },
   });
   renderStacked(<SubmissionReviewScreen />);
-  expect(await screen.findByText("Assignment prompt")).toBeTruthy();
+  expect(await screen.findByText("ASSIGNMENT PROMPT")).toBeTruthy();
   expect(screen.getByText("Write 300 words")).toBeTruthy();
   expect(screen.getByText("Attachments")).toBeTruthy();
   expect(screen.getByText("essay.pdf")).toBeTruthy();
@@ -162,15 +199,16 @@ it("shows the prompt and the attachments v1-style; the files can't be opened yet
   expect(screen.getByText("Files can't be opened in the app yet.")).toBeTruthy();
 });
 
-it("shows the feedback card only to someone who can't review (v1)", async () => {
+it("labels the feedback read-only to someone who can't review (v1), and as current to a reviewer", async () => {
   get.mockResolvedValue({ data: { data: { ...detail, feedback: "Nice." } } });
   const { unmount } = renderStacked(<SubmissionReviewScreen />);
   expect(await screen.findByText("Add feedback")).toBeTruthy();
-  expect(screen.queryByText("Feedback")).toBeNull();
+  expect(screen.queryByText("FEEDBACK")).toBeNull();
+  expect(screen.getByText("CURRENT FEEDBACK")).toBeTruthy();
   unmount();
 
   get.mockResolvedValue({ data: { data: { ...detail, feedback: "Nice.", canReview: false } } });
   renderStacked(<SubmissionReviewScreen />);
-  expect(await screen.findByText("Feedback")).toBeTruthy();
+  expect(await screen.findByText("FEEDBACK")).toBeTruthy();
   expect(screen.getByText("Nice.")).toBeTruthy();
 });
