@@ -52,12 +52,9 @@ function EditForm({ detail }: { detail: AssignmentDetail }) {
               // Back to the detail screen this was opened from, not a second
               // copy of it on the stack. useUpdateAssignment has already seeded
               // that screen's cache with the saved assignment, so it shows the
-              // new values. A cold deep link still has Today underneath
-              // (R11), so canGoBack() holds; the replace is only a fallback.
-              onSuccess: () => {
-                if (router.canGoBack()) router.back();
-                else router.replace({ pathname: "/assignment/[id]", params: { id: String(detail.id) } });
-              },
+              // new values. A cold deep link still has Today underneath (R11),
+              // so there is always somewhere to go back to.
+              onSuccess: () => router.back(),
               onError: (err) =>
                 setServerError(apiErrorMessage(err, "Couldn't save the assignment.")),
             });
