@@ -2,17 +2,16 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { Screen } from "../../../../src/design/layout/screen";
 import { SeasonsList } from "../../../../src/design/seasons/seasons-list";
-import { Button, EmptyState } from "../../../../src/design/ui";
+import { Button, ChoiceChip, EmptyState } from "../../../../src/design/ui";
 import { useSeasons } from "../../../../src/hooks/use-seasons";
 import { useSessionStore } from "../../../../src/store/session";
 
 /**
  * SUPER's seasons list (v1 /super/seasons, B5-2): title, "New season" and the
- * program-grouped list with a pencil per row. ADMIN and MENTOR may reach this
+ * program-grouped list (editing is on the season detail). ADMIN and MENTOR may reach this
  * route and see the same list read-only. V2-ONLY kept: the program filter
  * chips (G20; spec 02 §9 — "filters, not routes"), exact string match (v1
  * R44) over the role-scoped list already loaded (Plan 6 D-16.5), standing in
@@ -32,22 +31,9 @@ function ProgramFilter({
   if (programs.length < 2) return null;
   return (
     <View className="flex-row flex-wrap gap-2">
-      <Button
-        size="sm"
-        variant={value === null ? "default" : "outline"}
-        onPress={() => onChange(null)}
-      >
-        All programs
-      </Button>
+      <ChoiceChip label="All programs" selected={value === null} onPress={() => onChange(null)} />
       {programs.map((p) => (
-        <Button
-          key={p}
-          size="sm"
-          variant={value === p ? "default" : "outline"}
-          onPress={() => onChange(p)}
-        >
-          {p}
-        </Button>
+        <ChoiceChip key={p} label={p} selected={value === p} onPress={() => onChange(p)} />
       ))}
     </View>
   );
@@ -63,12 +49,12 @@ export default function SeasonsScreen() {
 
   if (!isStaff) {
     return (
-      <ShellFrame>
+      <Screen title="Seasons">
         <EmptyState
           title="Not available"
           description="The seasons list isn't available for your role."
         />
-      </ShellFrame>
+      </Screen>
     );
   }
 
@@ -81,16 +67,19 @@ export default function SeasonsScreen() {
     : [];
 
   return (
-    <ShellFrame refreshing={seasons.isRefetching} onRefresh={() => void seasons.refetch()}>
+    <Screen
+      title="Seasons"
+      trailing={
+        isSuper ? (
+          <Button size="sm" onPress={newSeason}>
+            New season
+          </Button>
+        ) : undefined
+      }
+      refreshing={seasons.isRefetching}
+      onRefresh={() => void seasons.refetch()}
+    >
       <View className="flex-col gap-4">
-        <View className="flex-row items-start justify-between gap-4">
-          <PageTitle
-            className="min-w-0 flex-1"
-            title="Seasons"
-            subtitle="Create and manage program seasons."
-          />
-          {isSuper ? <Button onPress={newSeason}>New season</Button> : null}
-        </View>
         {seasons.isPending ? (
           <RouteSkeleton />
         ) : seasons.isError ? (
@@ -103,17 +92,11 @@ export default function SeasonsScreen() {
               onOpen={(row) =>
                 router.push({ pathname: "/seasons/[code]", params: { code: row.code } })
               }
-              onEdit={
-                isSuper
-                  ? (row) =>
-                      router.push({ pathname: "/seasons/[code]/edit", params: { code: row.code } })
-                  : undefined
-              }
               emptyAction={isSuper ? <Button onPress={newSeason}>New season</Button> : undefined}
             />
           </>
         )}
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }

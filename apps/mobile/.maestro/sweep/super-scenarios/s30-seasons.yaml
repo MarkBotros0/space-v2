@@ -8,7 +8,7 @@ appId: com.jpc.space
       EMAIL: ${SUPER_EMAIL}
 - openLink: spacev2://seasons
 - extendedWaitUntil:
-    visible: 'Create and manage program seasons\.'
+    visible: 'Seasons'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
