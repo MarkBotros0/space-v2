@@ -143,20 +143,32 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     fireEvent.press(screen.getByText("Write a note"));
   };
 
-  it("writes a note from the sheet, Leaders by default as on the old page", async () => {
+  it("opens the note sheet on Mentors, and again on Mentors after a note is saved", async () => {
     await openSheet();
-    fireEvent.changeText(await screen.findByLabelText("Note"), "Prayed together.");
+    post.mockResolvedValue({ data: { data: { note: mentorNote } } });
+    const selected = (name: string) => screen.getByRole("tab", { name }).props.accessibilityState?.selected;
+    expect(selected("Mentors")).toBe(true);
+    expect(selected("Leaders")).toBe(false);
     for (const name of ["Leaders", "Mentors", "Admins only"]) {
       expect(screen.getByRole("tab", { name })).toBeTruthy();
     }
+    fireEvent.changeText(await screen.findByLabelText("Note"), "Prayed together.");
+    fireEvent.press(screen.getByRole("tab", { name: "Admins only" }));
     fireEvent.press(screen.getByText("Add note"));
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/students/21/notes", {
-        body: "Prayed together.",
-        visibility: "LEADERS",
-        followUpFlagged: false,
-      }),
-    );
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    // Saved and dismissed; the sheet resets to the role's default, not the last choice.
+    await waitFor(() => expect(screen.getByLabelText("Note").props.value).toBe(""));
+    expect(selected("Mentors")).toBe(true);
+    expect(selected("Admins only")).toBe(false);
+  });
+
+  it("sends MENTORS when the mentor keeps the default", async () => {
+    await openSheet();
+    post.mockResolvedValue({ data: { data: { note: mentorNote } } });
+    fireEvent.changeText(await screen.findByLabelText("Note"), "Prayed together.");
+    fireEvent.press(screen.getByText("Add note"));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    expect(post.mock.calls[0]![1]).toEqual(expect.objectContaining({ visibility: "MENTORS" }));
   });
 
   it("writes a note visible to mentors, flagged for follow-up", async () => {

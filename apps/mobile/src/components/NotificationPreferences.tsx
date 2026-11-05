@@ -159,7 +159,8 @@ export function NotificationPreferences() {
                 .finally(() => setEnabling(false));
             }}
           >
-            {pushToken ? "Push enabled on this device" : "Enable push notifications"}
+            {/* Button labels are one line: the long forms ended in an ellipsis at 1.3x on a 360dp phone. */}
+            {pushToken ? "Push enabled" : "Enable push"}
           </Button>
         </View>
       </Section>

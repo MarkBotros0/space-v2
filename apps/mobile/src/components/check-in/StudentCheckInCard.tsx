@@ -1,13 +1,17 @@
+import { useFocusEffect } from "expo-router";
 import { QrCode } from "lucide-react-native";
-import { useRef, useState, type ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { useCallback, useRef, useState, type ReactNode } from "react";
+import { AccessibilityInfo, Pressable, View } from "react-native";
 import { parseCheckInCode, type SessionDetail } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, FormField, Input, Sheet, Text } from "../../design/ui";
-import { useCheckIn } from "../../hooks/use-check-in";
+import { LIVE_ROSTER_REFRESH_MS, useCheckIn } from "../../hooks/use-check-in";
 import { useCheckInTally } from "../../hooks/use-check-in-tally";
-import { checkInRefusalCode, type CheckInOutcome } from "../../lib/check-in-result";
+import { useStudentDashboard } from "../../hooks/use-dashboard";
+import { useSessionDetail } from "../../hooks/use-session-detail";
+import { deviceTodayKey } from "../../lib/calendar-grid";
+import { checkInCopy, checkInRefusalCode, type CheckInOutcome } from "../../lib/check-in-result";
 import { formatSessionTime } from "../../lib/format";
 import { CheckInResult } from "./CheckInResult";
 import { CheckInSuccess } from "./check-in-success";
@@ -16,6 +20,33 @@ import { QrScanner } from "./QrScanner";
 iconWithClassName(QrCode);
 
 const NOT_A_CODE = "That doesn't look like a check-in code";
+
+/**
+ * The leader opens check-in while this card is on screen, and Today stays
+ * mounted: without this the button stays disabled until a pull. Same query key
+ * as the screen's read, so a refetch is what moves `detail`. On focus and on the
+ * staff console's interval, only while focused, the session is today and the
+ * student has no attendance yet. The org's today comes from the server (the
+ * dashboard's cache on Today), the device's only until that answers.
+ */
+function useLiveCheckIn(detail: SessionDetail) {
+  const { refetch, dataUpdatedAt } = useSessionDetail(detail.id);
+  const today = useStudentDashboard(detail.seasonId).data?.todayOrgDay ?? deviceTodayKey();
+  const watching = detail.dayKey === today && detail.myAttendance === null;
+  const updatedAt = useRef(dataUpdatedAt);
+  updatedAt.current = dataUpdatedAt;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!watching) return;
+      // A slow answer must not be cancelled by the next tick, or it never lands.
+      const read = () => void refetch({ cancelRefetch: false });
+      if (Date.now() - updatedAt.current >= LIVE_ROSTER_REFRESH_MS) read();
+      const timer = setInterval(read, LIVE_ROSTER_REFRESH_MS);
+      return () => clearInterval(timer);
+    }, [watching, refetch]),
+  );
+}
 
 /**
  * The student's check-in on /session/[id] (v1 student-checkin-button.tsx): a
@@ -32,6 +63,7 @@ export function StudentCheckInCard({
   detail: SessionDetail;
   onHero?: boolean;
 }) {
+  useLiveCheckIn(detail);
   const checkIn = useCheckIn();
   const tally = useCheckInTally();
   // isPending lags a render behind mutate(); a ref blocks a second submit in between.
@@ -43,6 +75,8 @@ export function StudentCheckInCard({
   const [outcome, setOutcome] = useState<CheckInOutcome | null>(null);
 
   const checkedInAt = detail.myAttendance?.checkedInAt ?? null;
+  // A leader's mark counts as much as a scan: there is nothing left to check in to.
+  const marked = detail.myAttendance !== null && checkedInAt === null;
   const enabled = detail.checkInOpen && checkedInAt === null;
 
   const submit = (token: string) => {
@@ -52,7 +86,12 @@ export function StudentCheckInCard({
     checkIn.mutate(token, {
       onSuccess: (data) =>
         setOutcome({ kind: "checked_in", status: data.status, minutesLate: data.minutesLate }),
-      onError: (err) => setOutcome({ kind: "refused", code: checkInRefusalCode(err) }),
+      onError: (err) => {
+        const refused: CheckInOutcome = { kind: "refused", code: checkInRefusalCode(err) };
+        setOutcome(refused);
+        const copy = checkInCopy(refused);
+        AccessibilityInfo.announceForAccessibility(`${copy.title}. ${copy.message ?? ""}`);
+      },
       onSettled: () => {
         inFlight.current = false;
       },
@@ -135,10 +174,20 @@ export function StudentCheckInCard({
     );
   }
 
+  const sheetTitle = checkIn.isPending
+    ? "Checking in"
+    : outcome?.kind === "checked_in"
+      ? "Checked in"
+      : outcome !== null
+        ? "Check-in"
+        : entering
+          ? "Enter check-in code"
+          : "Scan check-in code";
+
   const caption = onHero ? "text-hero-muted" : "text-muted-foreground";
   return (
     <View className="flex-col items-start gap-1.5">
-      {checkedInAt === null ? (
+      {checkedInAt === null && !marked ? (
         <Button
           variant={onHero ? "onHero" : "primary"}
           size="lg"
@@ -158,12 +207,12 @@ export function StudentCheckInCard({
           variant="subhead"
           className={caption}
         >{`You checked in at ${formatSessionTime(checkedInAt)}.`}</Text>
-      ) : !detail.checkInOpen ? (
+      ) : !detail.checkInOpen && !marked ? (
         <Text variant="subhead" className={caption}>
-          Check-in hasn't opened yet
+          Check-in isn't open right now
         </Text>
       ) : null}
-      <Sheet open={open} onClose={() => setOpen(false)} title="Scan check-in code">
+      <Sheet open={open} onClose={() => setOpen(false)} title={sheetTitle}>
         <View className="pb-4">
           {outcome === null && !checkIn.isPending && !entering ? (
             <Text variant="subhead" className="mb-3 text-muted-foreground">

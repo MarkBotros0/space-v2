@@ -78,7 +78,9 @@ it("shows a student the org-time header and their attendance, and no staff cards
   expect(screen.getByText("Sunday, March 15, 2099")).toBeTruthy();
   expect(screen.getByText("8:00 PM – 9:30 PM · 90 min")).toBeTruthy();
   expect(screen.getByText("Your attendance: Late (10 min)")).toBeTruthy();
-  expect(screen.getByText("Check-in hasn't opened yet")).toBeTruthy();
+  // Already marked by the leader: nothing left to check in to.
+  expect(screen.queryByText("Check In")).toBeNull();
+  expect(screen.queryByText("Check-in isn't open right now")).toBeNull();
   expect(screen.queryByText("Edit session")).toBeNull();
   expect(screen.queryByText("Mark attendance")).toBeNull();
   expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/quizzes");

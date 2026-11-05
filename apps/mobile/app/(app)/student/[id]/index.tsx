@@ -42,7 +42,12 @@ function GroupedStudentPage({ id, role }: { id: number; role: UserRole | null })
   const staff = role !== "STUDENT";
   return (
     <Screen title={data.name} subtitle={data.email} refreshing={isRefetching} onRefresh={refresh}>
-      <StudentDetailGrouped student={data} canWriteNote={staff} staffTabs={staff} />
+      <StudentDetailGrouped
+        student={data}
+        canWriteNote={staff}
+        staffTabs={staff}
+        noteDefaultVisibility={role === "MENTOR" ? "MENTORS" : undefined}
+      />
     </Screen>
   );
 }

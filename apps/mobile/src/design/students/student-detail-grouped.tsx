@@ -7,7 +7,7 @@
  * sideways (five tabs overflow 360dp). `staffTabs={false}` is a student reading
  * their own record: Profile and Seasons only, as the staff endpoints refuse them.
  */
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import { Linking, ScrollView, View } from "react-native";
 
 import { isNoSeasonError, useStudentEngagement } from "../../hooks/use-engagement";
@@ -60,11 +60,14 @@ export function StudentDetailGrouped({
   student,
   canWriteNote,
   staffTabs = true,
+  noteDefaultVisibility,
 }: {
   student: StudentDetailData;
   canWriteNote: boolean;
   /** False for a student viewing their own page: no engagement, attendance, submissions or notes. */
   staffTabs?: boolean;
+  /** Who a new note is visible to until the writer changes it. Omitted: NoteSheet's own default. */
+  noteDefaultVisibility?: ComponentProps<typeof NoteSheet>["defaultVisibility"];
 }) {
   const [tab, setTab] = useState<Tab>("profile");
   // A tab's queries mount the first time it opens and stay mounted (cache kept).
@@ -144,7 +147,12 @@ export function StudentDetailGrouped({
       </Tabs>
 
       {canWriteNote ? (
-        <NoteSheet open={noteOpen} onClose={() => setNoteOpen(false)} studentUserId={student.id} />
+        <NoteSheet
+          open={noteOpen}
+          onClose={() => setNoteOpen(false)}
+          studentUserId={student.id}
+          defaultVisibility={noteDefaultVisibility}
+        />
       ) : null}
     </View>
   );

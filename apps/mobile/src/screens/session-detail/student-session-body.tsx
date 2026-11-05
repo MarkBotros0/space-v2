@@ -7,6 +7,7 @@ import { VideoQuizPlayer, WatchRecordingButton } from "../../components/VideoQui
 import { InlineError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { GroupedList, ListRow, StatusChip, Text, statusChip } from "../../design/ui";
+import { usePullRefresh } from "../../hooks/use-pull-refresh";
 import { useStudentVideoQuiz } from "../../hooks/use-video-quiz";
 import { addMinutesToWallTime, formatLongDayYear, formatWallTime } from "../../lib/format";
 import { attendanceLine } from "./attendance-line";
@@ -15,12 +16,12 @@ import { attendanceLine } from "./attendance-line";
 export function StudentSessionBody({
   data,
   refetch,
-  isRefetching,
 }: {
   data: SessionDetail;
-  refetch: () => void;
-  isRefetching: boolean;
+  refetch: () => Promise<unknown>;
 }) {
+  // The check-in card polls this query, so `isRefetching` isn't the student's pull.
+  const pull = usePullRefresh(refetch);
   const hasVideo = data.youtubeUrl !== null;
   const quiz = useStudentVideoQuiz(data.id, hasVideo);
   // Org wall times from the server (X13); the end is text arithmetic on the org clock.
@@ -46,8 +47,8 @@ export function StudentSessionBody({
     <Screen
       title={data.title}
       subtitle={formatLongDayYear(data.dayKey)}
-      onRefresh={refetch}
-      refreshing={isRefetching}
+      onRefresh={pull.onRefresh}
+      refreshing={pull.refreshing}
     >
       <View className="flex-col gap-4">
         <StatusChip tone={hasVideo ? "info" : "neutral"} label={hasVideo ? "Online" : "In-person"} />

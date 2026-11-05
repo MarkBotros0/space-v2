@@ -4,6 +4,8 @@
  * focus on TextInput); the 3px focus/invalid ring has no native equivalent —
  * the border colour change carries the state; placeholder colour is a prop,
  * so it comes from useThemeColors(); hover:, file:, transitions dropped.
+ * `readOnly` shows a value you cannot change in the muted text token (7:1 on the surface);
+ * `disabled` fades the whole control to half opacity, which is below 4.5:1 for the text.
  */
 import { cva, type VariantProps } from "class-variance-authority";
 import { forwardRef } from "react";
@@ -34,9 +36,9 @@ const Input = forwardRef<TextInputInstance, InputProps>(({ className, size, disa
   return (
     <TextInput
       ref={ref}
-      editable={!disabled}
+      editable={!disabled && !props.readOnly}
       placeholderTextColor={colors["muted-foreground"]}
-      className={cn(inputVariants({ size }), invalid && "border-destructive", disabled && "opacity-50", className)}
+      className={cn(inputVariants({ size }), invalid && "border-destructive", disabled && "opacity-50", props.readOnly && "text-muted-foreground", className)}
       {...props}
     />
   );

@@ -162,7 +162,7 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     serve({ ...detail, checkInOpen: false });
     renderWithProviders(<SessionDetailScreen />);
 
-    expect(await screen.findByText("Check-in hasn't opened yet")).toBeTruthy();
+    expect(await screen.findByText("Check-in isn't open right now")).toBeTruthy();
     // v1 keeps the button visible but disabled.
     expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
   });
@@ -176,6 +176,45 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
 
     expect(await screen.findByText(/You checked in at/)).toBeTruthy();
     expect(screen.queryByText("Check In")).toBeNull();
+  });
+
+  it("a student the leader already marked gets no button and no not-open line", async () => {
+    serve({
+      ...detail,
+      checkInOpen: true,
+      myAttendance: { status: "PRESENT", notes: null, lateMinutes: null, checkedInAt: null },
+    });
+    renderWithProviders(<SessionDetailScreen />);
+    expect(await screen.findByText("ATTENDANCE", { exact: false })).toBeTruthy();
+    expect(screen.queryByText("Check In")).toBeNull();
+    expect(screen.queryByText(/You checked in at/)).toBeNull();
+    expect(screen.queryByText("Check-in isn't open right now")).toBeNull();
+  });
+
+  it("the sheet's title names the state it is in", async () => {
+    serve();
+    post.mockRejectedValueOnce(refusal(400, "invalid_token"));
+    post.mockResolvedValue({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
+    renderWithProviders(<SessionDetailScreen />);
+
+    fireEvent.press(await screen.findByText("Check In"));
+    expect(screen.getByText("Scan check-in code")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Enter code instead"));
+    expect(screen.getByText("Enter check-in code")).toBeTruthy();
+    expect(screen.queryByText("Scan check-in code")).toBeNull();
+
+    fireEvent.changeText(screen.getByLabelText("Check-in code"), "AbC123XyZ0");
+    fireEvent.press(screen.getByText("Check in"));
+    expect(await screen.findByText("This check-in code is not valid.")).toBeTruthy();
+    expect(screen.getByText("Check-in")).toBeTruthy();
+    fireEvent.press(screen.getByText("Done"));
+
+    fireEvent.press(screen.getByText("Check In"));
+    expect(screen.getByText("Scan check-in code")).toBeTruthy();
+    scanMockBarcode("AbC123XyZ0");
+    expect(await screen.findByText("You're checked in!")).toBeTruthy();
+    expect(screen.getByText("Checked in")).toBeTruthy();
   });
 
   it("refreshes the session after a successful check-in", async () => {

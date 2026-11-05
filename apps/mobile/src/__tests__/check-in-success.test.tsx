@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { Pressable, Text } from "react-native";
 import { fireEvent, screen } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 import type { MyAttendanceSession } from "@space/shared";
 
 import { setReducedMotionForTests } from "../design/motion";
 import { attendanceTally } from "../lib/check-in-result";
 import { renderWithProviders } from "./helpers/render";
 
+jest.mock("../lib/api-client", () => ({
+  apiClient: { get: jest.fn(() => Promise.reject(new Error("not served"))) },
+}));
+jest.mock("expo-camera", () => require("./helpers/expo-camera"));
+jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
+}));
 const mockHaptic = jest.fn();
 jest.mock("../design/motion/haptics", () => ({ haptic: (k: string) => mockHaptic(k) }));
 
@@ -67,6 +75,25 @@ describe("CheckInSuccess", () => {
     expect(mockHaptic).toHaveBeenCalledTimes(1);
   });
 
+  it("tells a screen reader the outcome once, whatever the motion setting", () => {
+    const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility");
+    announce.mockClear();
+    const view = renderWithProviders(<CheckInSuccess outcome={present} attendance={null} />);
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith("You're checked in!");
+    view.unmount();
+
+    announce.mockClear();
+    setReducedMotionForTests(false);
+    renderWithProviders(
+      <CheckInSuccess outcome={{ kind: "checked_in", status: "LATE", minutesLate: 12 }} attendance={null} />,
+    );
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith("Checked in — late 12 minutes after session start.");
+    setReducedMotionForTests(true);
+    announce.mockRestore();
+  });
+
   it("a late check-in reads the late copy in the warn tone", () => {
     renderWithProviders(
       <CheckInSuccess outcome={{ kind: "checked_in", status: "LATE", minutesLate: 12 }} attendance={null} />,
@@ -111,7 +138,7 @@ describe("StudentCheckInCard on the hero", () => {
       canMarkAttendance: false, canManageCheckIn: false,
     };
     renderWithProviders(<StudentCheckInCard detail={detail} onHero />);
-    expect(screen.getByText("Check-in hasn't opened yet").props.className).toContain("text-hero-muted");
+    expect(screen.getByText("Check-in isn't open right now").props.className).toContain("text-hero-muted");
     expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
   });
 });

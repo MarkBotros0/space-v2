@@ -162,6 +162,18 @@ describe("SaveBar secondary and disabled", () => {
     expect(secondary).toHaveBeenCalledTimes(1);
   });
 
+  it("disabledReason is the primary's hint only while it is disabled", () => {
+    const view = renderWithProviders(
+      <SaveBar label="Submit" disabled disabledReason="Write a response first" onPress={jest.fn()} />,
+    );
+    expect(screen.getByRole("button", { name: "Submit" }).props.accessibilityHint).toBe("Write a response first");
+    // Spoken, not shown: the bar's visible line stays the caller's `hint`.
+    expect(screen.queryByText("Write a response first")).toBeNull();
+    view.unmount();
+    renderWithProviders(<SaveBar label="Submit" disabledReason="Write a response first" onPress={jest.fn()} />);
+    expect(screen.getByRole("button", { name: "Submit" }).props.accessibilityHint).toBeUndefined();
+  });
+
   it("a disabled secondary does not fire", () => {
     const secondary = jest.fn();
     renderWithProviders(
@@ -171,8 +183,50 @@ describe("SaveBar secondary and disabled", () => {
     expect(secondary).not.toHaveBeenCalled();
   });
 
+  it("compact drops the hint and sets the secondary beside the primary", () => {
+    renderWithProviders(
+      <SaveBar
+        label="Submit"
+        hint="A private hint"
+        compact
+        onPress={() => {}}
+        secondary={{ label: "Save draft", onPress: () => {} }}
+      />,
+    );
+    expect(screen.queryByText("A private hint")).toBeNull();
+    // The jest renderer drops classNames, so the row itself is pinned by the sweep; the bar is
+    // the hint-less pair here.
+    const bar = within(screen.getByTestId("save-bar"));
+    expect(bar.getByRole("button", { name: "Save draft" })).toBeTruthy();
+    expect(bar.getByRole("button", { name: "Submit" })).toBeTruthy();
+  });
+
+  it("without compact the hint shows and the buttons stack", () => {
+    renderWithProviders(
+      <SaveBar
+        label="Submit"
+        hint="A private hint"
+        onPress={() => {}}
+        secondary={{ label: "Save draft", onPress: () => {} }}
+      />,
+    );
+    expect(screen.getByText("A private hint")).toBeTruthy();
+  });
+
   it("is one button without secondary", () => {
     renderWithProviders(<SaveBar label="Save" onPress={() => {}} />);
     expect(screen.getAllByRole("button")).toHaveLength(1);
+  });
+});
+
+describe("HeroCard title lines", () => {
+  const long = "A long discussion for the whole cohort about how we run the opening night";
+  it("the brand tone does not clamp the title", () => {
+    renderWithProviders(<HeroCard tone="brand" eyebrow="Next" title={long} />);
+    expect(screen.getByText(long).props.numberOfLines).toBeUndefined();
+  });
+  it("the default tone still clamps at two lines", () => {
+    renderWithProviders(<HeroCard eyebrow="Next" title={long} />);
+    expect(screen.getByText(long).props.numberOfLines).toBe(2);
   });
 });

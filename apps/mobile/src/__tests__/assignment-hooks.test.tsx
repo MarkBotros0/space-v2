@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 jest.mock("../lib/api-client", () => ({
-  apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+  apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), put: jest.fn(), delete: jest.fn() },
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -14,6 +14,7 @@ import {
   useUpdateAssignment,
 } from "../hooks/use-assignment-writes";
 import { useSeasonGroups } from "../hooks/use-groups";
+import { useEnsureSubmission } from "../hooks/use-submission";
 import { queryKeys } from "../lib/query-keys";
 
 const get = apiClient.get as jest.Mock;
@@ -44,6 +45,21 @@ const staffRow = {
 beforeEach(() => {
   jest.clearAllMocks();
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+});
+
+describe("useEnsureSubmission", () => {
+  it("starting work refreshes the lists, whose row just went from PENDING to DRAFT", async () => {
+    (apiClient.put as jest.Mock).mockResolvedValue({
+      data: { data: { publicId: "abc123defg", status: "DRAFT" } },
+    });
+    const invalidate = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useEnsureSubmission(41), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync();
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.assignments.lists() });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.assignments.detail(41) });
+  });
 });
 
 describe("read hooks", () => {

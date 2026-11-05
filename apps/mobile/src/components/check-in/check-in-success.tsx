@@ -1,12 +1,12 @@
 /**
  * The check-in success moment: a tone disc with a check that draws itself
- * (DURATION.slow), then the season ring pulses once (SPRING.gentle). The
- * haptic fires once on mount. Reduced motion: the check is drawn and the ring
+ * (DURATION.slow), then the season ring pulses once (SPRING.gentle). The haptic
+ * and the screen reader's announcement fire once on mount. Reduced motion: the check is drawn and the ring
  * at rest from the first frame; the haptic stays. No state waits on the motion.
  * Classes stay on plain Views; the animated components take only props/styles.
  */
 import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { AccessibilityInfo, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -52,6 +52,10 @@ export function CheckInSuccess({
     if (fired.current) return;
     fired.current = true;
     haptic("success");
+    // iOS has no live regions, and the disc holds nothing to speak (app/login.tsx).
+    AccessibilityInfo.announceForAccessibility(
+      copy.message ? `${copy.title} ${copy.message}` : copy.title,
+    );
     if (reduced) return;
     draw.value = withTiming(1, { duration: DURATION.slow, easing: Easing.out(Easing.cubic) });
     pulse.value = withSequence(
@@ -72,7 +76,6 @@ export function CheckInSuccess({
     <View className="items-center gap-4 py-2">
       <View
         testID="check-in-disc"
-        accessibilityLiveRegion="polite"
         className={`items-center justify-center rounded-full ${late ? "bg-warn-soft" : "bg-ok-soft"}`}
         style={{ width: DISC, height: DISC }}
       >

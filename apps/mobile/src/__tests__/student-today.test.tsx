@@ -8,6 +8,7 @@ jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: (...args: unknown[]) => mockPush(...args) }),
+  useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
 }));
 jest.mock("../design/layout/home-actions", () => {
   const { Text } = jest.requireActual("react-native");
@@ -188,7 +189,7 @@ describe("StudentToday: To do", () => {
     expect(await screen.findByText("Week 6 quiz")).toBeTruthy();
     expect(screen.getByText("Overdue")).toBeTruthy();
     expect(screen.getByText("Due in 2 days")).toBeTruthy();
-    expect(screen.getByText("Draft saved · Due Mar 3, 2099")).toBeTruthy();
+    expect(screen.getByText("In progress · Due Mar 3, 2099")).toBeTruthy();
     expect(screen.getByText("Take quiz")).toBeTruthy();
     fireEvent.press(screen.getByText("Essay 1"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "1" } });

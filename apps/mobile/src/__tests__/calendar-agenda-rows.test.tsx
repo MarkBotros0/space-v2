@@ -6,10 +6,10 @@ jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush, back: jest
 
 import CalendarScreen from "../../app/(app)/(tabs)/calendar";
 import { sessionChip } from "../design/sessions/session-chip";
-import { dayCue } from "../lib/calendar-grid";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { session, studentSession } from "./helpers/calendar-fixtures";
+import { studentDashboard } from "./helpers/dashboard-fixtures";
 import { renderWithProviders } from "./helpers/render";
 
 const get = apiClient.get as jest.Mock;
@@ -33,7 +33,6 @@ describe("sessionChip: sessionBadge's words on the chip tones", () => {
   const s = { dayKey: "2099-03-07", attendanceMarked: false };
   it("counts an upcoming session in org days, the wording Today uses", () => {
     expect(sessionChip(s, "2099-03-01", false)).toEqual({ tone: "neutral", label: "in 6 days" });
-    expect(sessionChip(s, "2099-03-01", false)?.label).toBe(dayCue(s.dayKey, "2099-03-01"));
   });
   it("says Today for today", () => {
     expect(sessionChip({ ...s, dayKey: "2099-03-01" }, "2099-03-01", false)).toEqual({
@@ -49,6 +48,53 @@ describe("sessionChip: sessionBadge's words on the chip tones", () => {
       tone: "ok",
       label: "Attendance marked",
     });
+  });
+});
+
+describe("the student's calendar counts from the server's day, not the device's", () => {
+  const near = session(1, "Kickoff", "2099-03-07T18:00:00.000Z", "2099-03-07");
+  const earlier = session(2, "Week zero", "2099-03-02T18:00:00.000Z", "2099-03-02");
+
+  function serve(todayOrgDay: string | null, sessions = [near]) {
+    useSessionStore.setState(studentSession);
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/me/dashboard") {
+        return todayOrgDay === null
+          ? Promise.reject(new Error("down"))
+          : Promise.resolve({ data: { data: { ...studentDashboard, todayOrgDay } } });
+      }
+      if (url.includes("/sessions")) return Promise.resolve({ data: { data: { sessions } } });
+      return Promise.resolve({ data: { data: { events: [], total: 0 } } });
+    });
+  }
+
+  it("a device behind the org: the row reads what Today reads, one tab away", async () => {
+    // The device says Mar 1, the org Mar 5.
+    serve("2099-03-05");
+    renderWithProviders(<CalendarScreen />);
+    expect(await screen.findByText("in 2 days")).toBeTruthy();
+    expect(screen.queryByText("in 6 days")).toBeNull();
+  });
+
+  it("a device behind the org: a session already past for the org isn't Upcoming", async () => {
+    serve("2099-03-05", [earlier, near]);
+    renderWithProviders(<CalendarScreen />);
+    expect(await screen.findByText("Kickoff")).toBeTruthy();
+    expect(screen.queryByText("Week zero")).toBeNull();
+  });
+
+  it("a device ahead of the org: tonight's session is still Today, and still Upcoming", async () => {
+    jest.setSystemTime(new Date(2099, 2, 8, 1, 0));
+    serve("2099-03-07");
+    renderWithProviders(<CalendarScreen />);
+    expect(await screen.findByText("Kickoff")).toBeTruthy();
+    expect(screen.getByLabelText(/Kickoff.*Today/)).toBeTruthy();
+  });
+
+  it("the dashboard failing falls back to the device's day", async () => {
+    serve(null);
+    renderWithProviders(<CalendarScreen />);
+    expect(await screen.findByText("in 6 days")).toBeTruthy();
   });
 });
 

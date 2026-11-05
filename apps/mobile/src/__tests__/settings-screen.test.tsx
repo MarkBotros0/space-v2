@@ -101,6 +101,16 @@ describe("SettingsScreen", () => {
     expect(screen.getByText("Profile, password, and notification preferences.")).toBeTruthy();
   });
 
+  it("shows the read-only Email in the muted text token, not a half-faded control (4.5:1)", () => {
+    useSessionStore.setState(sessionFor("STUDENT", null));
+    renderWithProviders(<SettingsScreen />);
+    const email = screen.getByDisplayValue("sp@jpc.test");
+    expect(email.props.editable).toBe(false);
+    // opacity-50 measured 3.26:1 (light) and 4.38:1 (dark); the token is 7.08:1 / 7.81:1.
+    expect(email.props.className).toContain("text-muted-foreground");
+    expect(email.props.className).not.toContain("opacity-50");
+  });
+
   it("keeps section titles as headers for screen readers", () => {
     useSessionStore.setState(sessionFor("STUDENT"));
     renderWithProviders(<SettingsScreen />);

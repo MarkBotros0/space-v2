@@ -1,4 +1,5 @@
 import { act, screen, waitFor } from "@testing-library/react-native";
+import { ScrollView } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("react-native-qrcode-svg", () => "QRCode");
@@ -15,6 +16,7 @@ import type { SessionDetail } from "@space/shared";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
+import { studentDashboard } from "./helpers/dashboard-fixtures";
 import { makeSession } from "./helpers/session";
 import SessionDetailScreen from "../../app/(app)/session/[id]/index";
 
@@ -84,6 +86,92 @@ it("refetches the session detail on the same interval, so the badge and polling 
       jest.advanceTimersByTime(10_000);
     });
     await waitFor(() => expect(rosterCalls()).toBe(2));
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it("a student's session stays on screen when a poll fails, and the poll runs on the server's day", async () => {
+  jest.useFakeTimers();
+  try {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 }));
+    const dashboard = { ...studentDashboard, todayOrgDay: "2099-03-15" };
+    let fail = false;
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/me/dashboard") return ok(dashboard);
+      if (url !== "/api/v1/sessions/12") return Promise.reject(new Error(`not served: ${url}`));
+      return fail
+        ? Promise.reject(new Error("blip"))
+        : ok({ ...baseDetail, canMarkAttendance: false });
+    });
+
+    renderWithProviders(<SessionDetailScreen />);
+    expect(await screen.findByText("Week 3")).toBeTruthy();
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/me/dashboard"));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+    const reads = () => get.mock.calls.filter(([u]) => u === "/api/v1/sessions/12").length;
+    const before = reads();
+
+    fail = true;
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10_000);
+    });
+    expect(reads()).toBe(before + 1);
+    expect(screen.getByText("Week 3")).toBeTruthy();
+    expect(screen.queryByText("Something went wrong")).toBeNull();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it("on a student's session a poll leaves the pull's spinner down, and a pull raises it", async () => {
+  jest.useFakeTimers();
+  try {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 }));
+    const control = () => screen.UNSAFE_getByType(ScrollView).props.refreshControl.props;
+    const student = { ...baseDetail, canMarkAttendance: false };
+    let release: (() => void) | null = null;
+    let hold = false;
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/me/dashboard") return ok({ ...studentDashboard, todayOrgDay: "2099-03-15" });
+      if (url !== "/api/v1/sessions/12") return Promise.reject(new Error(`not served: ${url}`));
+      if (!hold) return ok(student);
+      return new Promise((resolve) => {
+        release = () => resolve({ data: { data: student } });
+      });
+    });
+    const finish = () =>
+      act(async () => {
+        release?.();
+        await jest.advanceTimersByTimeAsync(0);
+      });
+
+    renderWithProviders(<SessionDetailScreen />);
+    expect(await screen.findByText("Week 3")).toBeTruthy();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(0);
+    });
+
+    hold = true;
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10_000);
+    });
+    expect(release).not.toBeNull();
+    // The read is out and still unanswered: let its state reach the screen.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(50);
+    });
+    expect(control().refreshing).toBe(false);
+    await finish();
+
+    await act(async () => {
+      control().onRefresh();
+    });
+    expect(control().refreshing).toBe(true);
+    await finish();
+    expect(control().refreshing).toBe(false);
   } finally {
     jest.useRealTimers();
   }

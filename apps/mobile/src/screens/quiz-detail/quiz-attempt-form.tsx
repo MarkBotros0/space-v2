@@ -7,15 +7,16 @@ import { Screen } from "../../design/layout/screen";
 import { SaveBar } from "../../design/layout/save-bar";
 import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
-import { haptic } from "../../design/motion";
 import { Badge, ConfirmDialog, Text, Textarea } from "../../design/ui";
-import { toast } from "../../design/ui/toaster";
 import { useSubmitAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
+import { reportOutcome } from "../../lib/outcome";
 import { QCARD, quizTitleProps } from "./quiz-header";
 import { useQuizAnswers, type Answer } from "./use-quiz-answers";
 
 iconWithClassName(Check);
+
+const SUBMIT_FAILED = "Couldn't submit the quiz. Check your connection and try again.";
 
 /** One question of the attempt: MCQ options as radios, an essay as a textarea. */
 function AttemptQuestion({
@@ -92,42 +93,41 @@ function AttemptQuestion({
 }
 
 export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: number }) {
-  const { answers, setAnswer, flush, saveState, isComplete, savePending } = useQuizAnswers(
-    detail,
-    id,
-  );
+  const { answers, setAnswer, flush, hasUnsentOffline, saveState, isComplete, savePending } =
+    useQuizAnswers(detail, id);
   const submit = useSubmitAttempt(id);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const onSubmit = async () => {
-    setSubmitError(null);
     // The server checks completeness too (409 attempt_incomplete); the disabled
     // button is the courtesy, this is the rule.
     if (!isComplete) return;
-    if (!(await flush())) return;
+    if (hasUnsentOffline()) {
+      reportOutcome("error", SUBMIT_FAILED);
+      return;
+    }
+    if (!(await flush())) {
+      reportOutcome("error", "Couldn't save your answers, so the quiz wasn't submitted.");
+      return;
+    }
     submit.mutate(undefined, {
       // The screen swaps to the result as the cache updates, so the toast (global) is
       // what confirms it while the bar is still in view.
-      onSuccess: () => {
-        haptic("light");
-        toast.success("Quiz submitted.");
-      },
-      onError: (err) => setSubmitError(apiErrorMessage(err, "Couldn't submit the quiz.")),
+      onSuccess: () => reportOutcome("success", "Quiz submitted."),
+      onError: (err) => reportOutcome("error", apiErrorMessage(err, SUBMIT_FAILED)),
     });
   };
 
   // Feedback lives in the pinned bar's hint, where it stays in view: how many
-  // are answered, the autosave state, and a submit error in place of both.
+  // are answered, and the autosave state.
   const answered = detail.questions.filter((q) => {
     const a = answers[q.id];
     return q.type === "MCQ" ? a?.selectedIndex != null : (a?.text ?? "").trim().length > 0;
   }).length;
   const saveLabel =
     saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Not saved" : null;
-  const hint =
-    submitError ??
-    [`${answered} of ${detail.questions.length} answered`, saveLabel].filter(Boolean).join(" · ");
+  const progress = `${answered} of ${detail.questions.length} answered`;
+  const hint = [progress, saveLabel].filter(Boolean).join(" · ");
 
   return (
     <Screen
@@ -137,6 +137,7 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
           label="Submit quiz"
           hint={hint}
           disabled={!isComplete || savePending || submit.isPending}
+          disabledReason={isComplete ? undefined : progress}
           loading={submit.isPending}
           onPress={() => setConfirmOpen(true)}
           secondary={

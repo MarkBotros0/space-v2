@@ -10,6 +10,7 @@ jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: (...args: unknown[]) => mockPush(...args) }),
+  useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
 }));
 
 // Home's frame carries the bell and the user menu (ruling R13), which fetch

@@ -9,6 +9,7 @@ import { join } from "node:path";
  * means adding a row here.
  */
 const TAGGED: readonly (readonly [file: string, hook: string])[] = [
+  ["use-submission.ts", "useEnsureSubmission"],
   ["use-submission.ts", "useSaveSubmission"],
   ["use-submission.ts", "useReviewSubmission"],
   ["use-attendance.ts", "useSaveAttendance"],

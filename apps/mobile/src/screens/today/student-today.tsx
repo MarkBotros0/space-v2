@@ -5,16 +5,19 @@ import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
-import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
 import { EmptyState, GroupedList, ListRow, Text } from "../../design/ui";
-import { useStudentDashboard } from "../../hooks/use-dashboard";
+import { DASHBOARD_STALE_TIME, useStudentDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useStudentQuizList } from "../../hooks/use-quizzes";
+import { usePullRefresh } from "../../hooks/use-pull-refresh";
+import { useRefreshOnResume } from "../../hooks/use-refresh-on-resume";
 import { useMyAttendance } from "../../hooks/use-self-service";
 import { useSessionDetail } from "../../hooks/use-session-detail";
 import { firstName, formatLongDay } from "../../lib/format";
+import { DEFAULT_STALE_TIME } from "../../lib/query-client";
 import { useSessionStore } from "../../store/session";
 import { NextSessionHero } from "./next-session-hero";
 import { OpenWorkList } from "./open-work-list";
@@ -55,16 +58,41 @@ export function StudentToday() {
   const detail = useSessionDetail(nextId);
   const quizzes = useStudentQuizList(seasonId);
 
-  const refresh = () => {
-    void dash.refetch();
-    void events.refetch();
-    // `enabled` gates only the automatic run: guard the manual ones too.
-    if (activeSeasonId !== null) void attendance.refetch();
-    if (nextId !== null) void detail.refetch();
-    if (seasonId !== null) void quizzes.refetch();
-  };
+  const pull = usePullRefresh(() =>
+    Promise.all([
+      dash.refetch(),
+      events.refetch(),
+      // `enabled` gates only the automatic run: guard the manual ones too.
+      activeSeasonId !== null ? attendance.refetch() : null,
+      nextId !== null ? detail.refetch() : null,
+      seasonId !== null ? quizzes.refetch() : null,
+    ]),
+  );
+
+  // This tab stays mounted, so nothing else re-reads it: back on it, or back in
+  // the app the next morning, whatever is past its freshness is read again. By
+  // the clock: a query's own stale timer may not have fired yet after a sleep.
+  useRefreshOnResume(() => {
+    const queries = [
+      { q: dash, freshFor: DASHBOARD_STALE_TIME },
+      { q: events, freshFor: DEFAULT_STALE_TIME },
+      ...(activeSeasonId !== null ? [{ q: attendance, freshFor: DEFAULT_STALE_TIME }] : []),
+      ...(nextId !== null ? [{ q: detail, freshFor: DEFAULT_STALE_TIME }] : []),
+      ...(seasonId !== null ? [{ q: quizzes, freshFor: DEFAULT_STALE_TIME }] : []),
+    ];
+    for (const { q, freshFor } of queries) {
+      if (q.dataUpdatedAt > 0 && Date.now() - q.dataUpdatedAt >= freshFor) {
+        void q.refetch({ cancelRefetch: false });
+      }
+    }
+  });
 
   const late = data?.assignments?.lateSubmittedCount ?? 0;
+
+  // A failed read keeps what's on screen, but says so: a pull that changes nothing must explain why.
+  const stale = dash.isError ? (
+    <InlineError message="Couldn't refresh. This may be out of date." onRetry={() => void dash.refetch()} />
+  ) : null;
 
   return (
     <Screen
@@ -72,21 +100,17 @@ export function StudentToday() {
       title={`Hi, ${firstName(name)}`}
       subtitle={data ? formatLongDay(data.todayOrgDay) : undefined}
       compactTitle="Today"
-      onRefresh={refresh}
-      refreshing={
-        dash.isRefetching ||
-        attendance.isRefetching ||
-        events.isRefetching ||
-        detail.isRefetching ||
-        quizzes.isRefetching
-      }
+      onRefresh={pull.onRefresh}
+      refreshing={pull.refreshing}
     >
       {dash.isPending ? (
         <RouteSkeleton />
-      ) : dash.isError ? (
+      ) : data === undefined ? (
+        // Only with nothing to show: a failed background read keeps the hero and an open sheet.
         <RouteError onRetry={() => void dash.refetch()} />
-      ) : data?.season ? (
+      ) : data.season ? (
         <View className="flex-col gap-4">
+          {stale}
           <NextSessionHero
             session={data.nextSession}
             todayOrgDay={data.todayOrgDay}
@@ -103,6 +127,7 @@ export function StudentToday() {
         </View>
       ) : (
         <View className="flex-col gap-4">
+          {stale}
           <EmptyState
             icon={NAV_ICONS.season}
             title="Not enrolled yet"

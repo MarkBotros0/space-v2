@@ -49,10 +49,10 @@ describe("assignmentRow", () => {
     });
   });
 
-  it("a draft keeps the due chip and says it is saved", () => {
+  it("a draft keeps the due chip and says it is in progress", () => {
     const row = assignmentRow(assignment({ id: 1, status: "DRAFT" }), TODAY);
     expect(row.chip?.label).toBe("Due in 2 days");
-    expect(row.subtitle).toBe("Draft saved · Due Mar 3, 2099");
+    expect(row.subtitle).toBe("In progress · Due Mar 3, 2099");
   });
 
   it("a returned row says so, even past its due date", () => {
@@ -79,19 +79,51 @@ describe("assignmentRow", () => {
     expect(row.subtitle).toBe("Due Feb 20, 2099");
   });
 
-  it("the date comes from the org day, never dueAt: the two can name different days", () => {
+  it("a chip that already names the date does not repeat it in the subtitle", () => {
     const row = assignmentRow(
-      assignment({ id: 1, dueOrgDay: "2099-04-01", dueAt: "2099-03-31T22:30:00.000Z" }),
+      assignment({ id: 1, dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }),
       TODAY,
     );
-    expect(row.subtitle).toBe("Due Apr 1, 2099");
+    expect(row.chip?.label).toBe("Due Mar 20");
+    expect(row.subtitle).toBeUndefined();
+    const draft = assignmentRow(
+      assignment({ id: 2, status: "DRAFT", dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }),
+      TODAY,
+    );
+    expect(draft.subtitle).toBe("In progress");
+  });
+
+  it("a date chip across a year boundary keeps the year in the subtitle", () => {
+    const row = assignmentRow(
+      assignment({ id: 1, dueOrgDay: "2100-01-20", dueAt: "2100-01-20T10:00:00.000Z" }),
+      TODAY,
+    );
+    expect(row.chip?.label).toBe("Due Jan 20");
+    expect(row.subtitle).toBe("Due Jan 20, 2100");
+  });
+
+  it("a weekday chip is relative wording, so the date stays", () => {
+    const row = assignmentRow(
+      assignment({ id: 1, dueOrgDay: "2099-03-06", dueAt: "2099-03-06T10:00:00.000Z" }),
+      TODAY,
+    );
+    expect(row.chip?.label).toBe("Due Friday");
+    expect(row.subtitle).toBe("Due Mar 6, 2099");
+  });
+
+  it("the date comes from the org day, never dueAt: the two can name different days", () => {
+    const row = assignmentRow(
+      assignment({ id: 1, isOverdue: true, dueOrgDay: "2099-02-01", dueAt: "2099-01-31T22:30:00.000Z" }),
+      TODAY,
+    );
+    expect(row.subtitle).toBe("Due Feb 1, 2099");
   });
 
   it.each([
     ["PENDING", undefined],
     ["SUBMITTED", undefined],
     ["REVIEWED", undefined],
-    ["DRAFT", "Draft saved"],
+    ["DRAFT", "In progress"],
     ["RETURNED", "Returned with comments"],
   ] as const)("an undated %s row names no date", (status, subtitle) => {
     const row = assignmentRow(assignment({ id: 1, status, dueOrgDay: null, dueAt: null }), TODAY);
@@ -124,20 +156,20 @@ describe("quizRow", () => {
     expect(row.key).toBe("quiz-PAPER-5");
   });
 
-  it("scored: score, percent and graded date, no chip, notes appended", () => {
+  it("scored: score in the trailing, graded date in the subtitle without repeating the percent, no chip", () => {
     const row = quizRow(
       quiz({ quizId: 5, score: 8, gradedAt: "2099-03-02T12:00:00.000Z", attemptStatus: "GRADED", notes: "Nice" }),
     );
     expect(row.score).toBe("8/10");
     expect(row.chip).toBeUndefined();
-    expect(row.subtitle).toBe("80% · Graded Mar 2, 2099 · Nice");
+    expect(row.subtitle).toBe("Graded Mar 2, 2099 · Nice");
   });
 
   it("a scored paper quiz stays a plain row; a zero-point quiz does not divide by zero", () => {
     const row = quizRow(quiz({ quizId: 5, kind: "PAPER", score: 0, maxScore: 0 }));
     expect(row.href).toBeNull();
     expect(row.score).toBe("0/0");
-    expect(row.subtitle).toBe("0%");
+    expect(row.subtitle).toBeUndefined();
   });
 
   it("names the session the quiz belongs to, first", () => {
@@ -150,7 +182,7 @@ describe("quizRow", () => {
         sessionDate: "2099-03-01T18:00:00.000Z",
       }),
     );
-    expect(row.subtitle).toBe("Week 1 · Mar 1, 2099 · 75%");
+    expect(row.subtitle).toBe("Week 1 · Mar 1, 2099");
     expect(quizRow(quiz({ quizId: 6, sessionTitle: "Week 2" })).subtitle).toBe("Week 2");
   });
 

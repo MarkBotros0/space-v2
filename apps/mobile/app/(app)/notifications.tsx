@@ -6,6 +6,7 @@ import type { NotificationItem } from "@space/shared";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { Screen } from "../../src/design/layout/screen";
 import { Button, EmptyState } from "../../src/design/ui";
+import { Text } from "../../src/design/ui/text";
 import { GroupedList, ListRow } from "../../src/design/ui/grouped-list";
 import {
   flattenNotifications,
@@ -93,11 +94,12 @@ export default function NotificationsScreen() {
   // The list is the screen's own scroller (infinite scroll, pull to refresh),
   // so Screen frames it without a second ScrollView.
   return (
-    <Screen
-      title="Notifications"
-      subtitle={`${unread} unread`}
-      scroll={false}
-      trailing={
+    <Screen title="Notifications" scroll={false}>
+      {/* Not in Screen's trailing: beside the large title it squeezed "Notifications" mid-word at 1.3x. */}
+      <View className="flex-row flex-wrap items-center justify-between gap-2 pb-2">
+        <Text variant="subhead" className="text-muted-foreground">
+          {`${unread} unread`}
+        </Text>
         <Button
           variant="outline"
           size="sm"
@@ -106,8 +108,7 @@ export default function NotificationsScreen() {
         >
           Mark all read
         </Button>
-      }
-    >
+      </View>
       <FlatList
         className="flex-1"
         contentContainerClassName="gap-2"

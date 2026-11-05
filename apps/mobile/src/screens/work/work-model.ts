@@ -28,9 +28,29 @@ export type WorkRow = {
   href: Href | null;
 };
 
-/** The note, then the date it was due: a chip says "Overdue" or "Reviewed", not when. From the org day, so it is zone-safe. */
-function assignmentSubtitle(note: string | null, dueOrgDay: string | null): { subtitle?: string } {
-  const due = dueOrgDay !== null ? `Due ${formatDayKey(dueOrgDay)}` : null;
+const DATE_CHIP = /^Due [A-Z][a-z]{2} \d{1,2}$/;
+
+/** A deadline chip that names the date itself ("Due Nov 14"), not "Overdue", "Due Fri" or "Due in 2 days". */
+export function chipNamesDate(chip: ChipSpec): boolean {
+  return DATE_CHIP.test(chip.label);
+}
+
+/**
+ * The note, then the date it was due: a status chip or a relative deadline chip
+ * ("Overdue", "Due Fri") does not say when, so the date follows. A chip that
+ * already names the date does not get it repeated, except across a year
+ * boundary, since the chip has no year. From the org day, so it is zone-safe.
+ */
+function assignmentSubtitle(
+  note: string | null,
+  dueOrgDay: string | null,
+  chip: ChipSpec,
+  todayOrgDay: string,
+): { subtitle?: string } {
+  const chipHasDate = chipNamesDate(chip);
+  const sameYear = dueOrgDay !== null && dueOrgDay.slice(0, 4) === todayOrgDay.slice(0, 4);
+  const due =
+    dueOrgDay !== null && !(chipHasDate && sameYear) ? `Due ${formatDayKey(dueOrgDay)}` : null;
   const subtitle = [note, due].filter((part) => part !== null).join(" · ");
   return subtitle ? { subtitle } : {};
 }
@@ -44,31 +64,29 @@ export function assignmentRow(a: StudentAssignmentListItem, todayOrgDay: string)
     href: { pathname: "/assignment/[id]" as const, params: { id: String(a.id) } },
   };
   switch (a.status) {
-    case "RETURNED":
+    case "RETURNED": {
+      const chip = statusChip("submission", "RETURNED");
       return {
         ...row,
-        chip: statusChip("submission", "RETURNED"),
-        ...assignmentSubtitle("Returned with comments", a.dueOrgDay),
+        chip,
+        ...assignmentSubtitle("Returned with comments", a.dueOrgDay, chip, todayOrgDay),
       };
+    }
     case "SUBMITTED":
-    case "REVIEWED":
-      return {
-        ...row,
-        chip: statusChip("submission", a.status),
-        ...assignmentSubtitle(null, a.dueOrgDay),
-      };
-    case "DRAFT":
-      return {
-        ...row,
-        chip: dueChip({ ...a, todayOrgDay }),
-        ...assignmentSubtitle("Draft saved", a.dueOrgDay),
-      };
-    case "PENDING":
-      return {
-        ...row,
-        chip: dueChip({ ...a, todayOrgDay }),
-        ...assignmentSubtitle(null, a.dueOrgDay),
-      };
+    case "REVIEWED": {
+      const chip = statusChip("submission", a.status);
+      return { ...row, chip, ...assignmentSubtitle(null, a.dueOrgDay, chip, todayOrgDay) };
+    }
+    case "DRAFT": {
+      const chip = dueChip({ ...a, todayOrgDay });
+      // Not "Draft saved": Start working makes a DRAFT with nothing in it, and the
+      // list row can't tell that one from a saved draft.
+      return { ...row, chip, ...assignmentSubtitle("In progress", a.dueOrgDay, chip, todayOrgDay) };
+    }
+    case "PENDING": {
+      const chip = dueChip({ ...a, todayOrgDay });
+      return { ...row, chip, ...assignmentSubtitle(null, a.dueOrgDay, chip, todayOrgDay) };
+    }
   }
 }
 
@@ -82,7 +100,6 @@ function quizChip(q: StudentQuizResult): ChipSpec | undefined {
 
 export function quizRow(q: StudentQuizResult): WorkRow {
   const scored = q.score !== null;
-  const pct = scored && q.maxScore > 0 ? Math.round(((q.score as number) / q.maxScore) * 100) : 0;
   const session = q.sessionTitle
     ? q.sessionDate
       ? `${q.sessionTitle} · ${formatDate(q.sessionDate)}`
@@ -90,7 +107,6 @@ export function quizRow(q: StudentQuizResult): WorkRow {
     : null;
   const parts = [
     session,
-    scored ? `${pct}%` : null,
     scored && q.gradedAt ? `Graded ${formatDate(q.gradedAt)}` : null,
     q.notes,
   ].filter((part) => part !== null && part !== "");

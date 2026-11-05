@@ -1,7 +1,7 @@
 /**
- * Alumni History on grouped rows. Behaviour and copy follow
- * design/students/season-history.tsx: v1 always says "sessions", every row is
- * "Participated" (R40), and only attendance % and curriculum are shown (R34,
+ * Alumni History on grouped rows, and the `SeasonGroup` that
+ * design/students/season-history.tsx reuses: v1 always says "sessions", every row
+ * is "Participated" (R40), and only attendance % and curriculum are shown (R34,
  * the contract is strict, so nothing else reaches this screen).
  */
 import { useEffect, useState } from "react";

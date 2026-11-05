@@ -7,15 +7,16 @@
  */
 import { File as FileIcon } from "lucide-react-native";
 import { useState, type ReactNode } from "react";
-import { View } from "react-native";
+import { AccessibilityInfo, View } from "react-native";
 import { plainTextToHtml, type AssignmentDetail, type SubmissionDetail } from "@space/shared";
 
-import { Eyebrow } from "../../design/layout/page-title";
 import { RouteError } from "../../design/layout/route-states";
 import { SaveBar } from "../../design/layout/save-bar";
 import { cn } from "../../design/lib/cn";
+import { useKeyboardHeight } from "../../design/lib/keyboard-events";
 import { iconWithClassName } from "../../design/lib/icon";
 import { GroupedList, ListRow, RichTextView, SkeletonCard, Text, Textarea } from "../../design/ui";
+import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { ConfirmDialog } from "../../design/ui/confirm-dialog";
 import {
   useEnsureSubmission,
@@ -24,16 +25,19 @@ import {
 } from "../../hooks/use-submission";
 import { apiErrorMessage } from "../../lib/api-error";
 import { formatDistanceOnly } from "../../lib/format";
+import { reportOutcome } from "../../lib/outcome";
+import { useDraftFlush } from "./use-draft-flush";
 
 iconWithClassName(FileIcon);
 
 const HINT = "A saved draft is private to you and is not sent to your leader until you submit.";
+const NOTHING_TO_SUBMIT = "Write a response first";
+const START_FAILED = "Couldn't start your submission. Try again.";
 
-type Tone = "bad" | "warn" | "ok" | "info";
+type Tone = "bad" | "warn" | "info";
 const CALLOUT: Record<Tone, string> = {
   bad: "bg-bad-soft text-bad",
   warn: "bg-warn-soft text-warn",
-  ok: "bg-ok-soft text-ok",
   info: "bg-info-soft text-info",
 };
 
@@ -45,9 +49,13 @@ function Callout({ tone, children }: { tone: Tone; children: string }) {
   );
 }
 
-/** v1 student-submission-form.tsx dueBanner; hidden once reviewed. The overdue flag is the server's. */
+/**
+ * v1 student-submission-form.tsx dueBanner; hidden once the work is in the
+ * leader's hands, when there is nothing left to be late with. Returned work is
+ * editable again, so it keeps it. The overdue flag is the server's.
+ */
 function DueBanner({ detail, status }: { detail: AssignmentDetail; status: string | null }) {
-  if (detail.dueAt === null || status === "REVIEWED") return null;
+  if (detail.dueAt === null || status === "REVIEWED" || status === "SUBMITTED") return null;
   if (detail.isOverdue) {
     return <Callout tone="bad">Past due — submitted work will be marked late.</Callout>;
   }
@@ -77,7 +85,7 @@ function FilesGroup({ detail, sub }: { detail: AssignmentDetail; sub: Submission
           ))}
         </GroupedList>
       ) : (
-        <Eyebrow>{`Files (max ${detail.maxFileSizeMb} MB each)`}</Eyebrow>
+        <ListSectionHeader>{`Files (max ${detail.maxFileSizeMb} MB each)`}</ListSectionHeader>
       )}
       {!sub.canUploadFiles ? (
         <Text variant="caption" className="text-muted-foreground">
@@ -96,25 +104,44 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   const query = useSubmissionDetail(summary?.publicId ?? null);
   const save = useSaveSubmission(summary?.publicId ?? "", detail.id);
   const [text, setText] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const keyboardOpen = useKeyboardHeight() > 0;
+  const send = useDraftFlush(
+    save.mutateAsync,
+    query.data
+      ? {
+          text,
+          serverText: query.data.text ?? "",
+          editable: query.data.status === "DRAFT" || query.data.status === "RETURNED",
+        }
+      : null,
+  );
 
   if (summary === null) {
     return {
       body: (
         <View className="gap-4">
           <DueBanner detail={detail} status={null} />
-          {ensure.isError ? <Callout tone="bad">Couldn't start your submission. Try again.</Callout> : null}
+          {ensure.isError ? <Callout tone="bad">{START_FAILED}</Callout> : null}
         </View>
       ),
       footer: (
-        <SaveBar label="Start working" onPress={() => ensure.mutate()} loading={ensure.isPending} />
+        <SaveBar
+          label="Start working"
+          onPress={() =>
+            ensure.mutate(undefined, {
+              onError: () => AccessibilityInfo.announceForAccessibility(START_FAILED),
+            })
+          }
+          loading={ensure.isPending}
+        />
       ),
     };
   }
   // A section of the page, so a card-sized skeleton, not the route's.
   if (query.isPending) return { body: <SkeletonCard />, footer: undefined };
-  if (query.isError) {
+  // A failed pull keeps what's on screen: the editor, and what is typed in it.
+  if (query.data === undefined) {
     return { body: <RouteError onRetry={() => void query.refetch()} />, footer: undefined };
   }
 
@@ -126,18 +153,25 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   // v1 student-submission-form.tsx:158 — and the server's 400 empty_submission rule.
   const nothingToSubmit = value.trim() === "" && sub.files.length === 0;
   const run = (submit: boolean) => {
-    setInfo(null);
-    save.mutate(submit ? { text: value, submit: true } : { text: value }, {
-      onSuccess: () => setInfo(submit ? "Submitted!" : "Draft saved."),
-      onSettled: () => setConfirming(false),
-    });
+    send(submit ? { text: value, submit: true } : { text: value })
+      .then(() => reportOutcome("success", submit ? "Submitted!" : "Draft saved."))
+      .catch((err: unknown) =>
+        reportOutcome(
+          "error",
+          apiErrorMessage(
+            err,
+            `Couldn't ${submit ? "submit" : "save"}. Check your connection and try again.`,
+          ),
+        ),
+      )
+      .finally(() => setConfirming(false));
   };
 
   const body = (
     <View className="gap-4">
       <DueBanner detail={detail} status={sub.status} />
       <View className="gap-2">
-        <Eyebrow>Your submission</Eyebrow>
+        <ListSectionHeader>Your submission</ListSectionHeader>
         <View className="gap-3 rounded-group bg-surface p-4">
           {/* Plain text in and out: the API returns submissions as plain text, so a
               rich editor would lose its formatting on reload (gap note). */}
@@ -158,15 +192,9 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
         </View>
       </View>
       <FilesGroup detail={detail} sub={sub} />
-      {save.isError ? (
-        <Callout tone="bad">
-          {apiErrorMessage(save.error, "Couldn't save. Check your connection and try again.")}
-        </Callout>
-      ) : null}
-      {info && !save.isPending ? <Callout tone="ok">{info}</Callout> : null}
       {sub.feedback ? (
         <View className="gap-2">
-          <Eyebrow>Leader feedback</Eyebrow>
+          <ListSectionHeader>Leader feedback</ListSectionHeader>
           <View className="rounded-group bg-surface p-4">
             <RichTextView html={plainTextToHtml(sub.feedback)} />
           </View>
@@ -194,7 +222,10 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
       label="Submit"
       onPress={() => setConfirming(true)}
       disabled={save.isPending || nothingToSubmit}
-      hint={HINT}
+      disabledReason={nothingToSubmit ? NOTHING_TO_SUBMIT : undefined}
+      hint={nothingToSubmit ? `${NOTHING_TO_SUBMIT}. ${HINT}` : HINT}
+      // Hint and two stacked buttons left ~90dp for the field with the keyboard up.
+      compact={keyboardOpen}
       secondary={{
         label: save.isPending ? "Saving…" : "Save draft",
         onPress: () => run(false),

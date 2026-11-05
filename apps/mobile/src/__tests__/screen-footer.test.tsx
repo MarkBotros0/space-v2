@@ -10,6 +10,7 @@ import {
 
 import { SaveBar } from "../design/layout/save-bar";
 import { Screen } from "../design/layout/screen";
+import { resetTabBarScroll, useTabBarScroll } from "../design/layout/tab-bar-scroll";
 import { renderStacked, renderWithProviders } from "./helpers/render";
 
 // Screen's `footer` slot (final review I4): a SaveBar pinned outside the
@@ -53,6 +54,8 @@ const layoutFooter = (height: number) =>
   fireEvent(screen.getByTestId("screen-footer"), "layout", { nativeEvent: { layout: { height } } });
 
 describe("Screen footer", () => {
+  afterEach(() => act(() => resetTabBarScroll()));
+
   it("renders outside the scroll view, so it never scrolls with the content", () => {
     renderStacked(form);
     expect(screen.getByTestId("save-bar")).toBeTruthy();
@@ -123,6 +126,17 @@ describe("Screen footer", () => {
     } finally {
       focused.mockRestore();
     }
+  });
+
+  it("on a tab drops to the inset while the pill is hidden, and the scroll padding holds", () => {
+    renderWithProviders(form);
+    layoutFooter(70);
+    act(() => useTabBarScroll().onScrollDirection("down", false));
+    expect(footerStyle().bottom).toBe(34);
+    expect(contentPadding()).toBe(70 + 114 + 16);
+
+    act(() => useTabBarScroll().onScrollDirection("up", false));
+    expect(footerStyle().bottom).toBe(114);
   });
 
   it("without a footer the padding is unchanged", () => {

@@ -169,14 +169,14 @@ export function Screen({
     getBarHeight: () => footerHeightRef.current,
   });
   // Above the pill on a tab, on the bottom inset on a detail screen; on the keyboard while it is open.
-  const footerBottom = keyboardBottomOffset({
-    os: Platform.OS,
-    keyboard: keyboard.inset,
-    insetBottom,
-    closed: hasTabBar ? bottom : insetBottom,
-  });
+  const footerOffset = (closed: number) =>
+    keyboardBottomOffset({ os: Platform.OS, keyboard: keyboard.inset, insetBottom, closed });
+  const barVisible = useTabBarVisible();
+  // While the pill is scrolled away the bar drops onto the inset, or the form shows through beneath it.
+  const footerBottom = footerOffset(hasTabBar && barVisible ? bottom : insetBottom);
+  // Reserved for the pill either way, so the padding doesn't move the content as the pill comes and goes.
   const contentBottom = footer
-    ? footerHeight + footerBottom + 16
+    ? footerHeight + footerOffset(hasTabBar ? bottom : insetBottom) + 16
     : Math.max(bottom, keyboard.offset + 16);
   const pinnedFooter = footer ? (
     <View
@@ -219,7 +219,6 @@ export function Screen({
   // the tabs, or the end of the content): forget the "down" it last reported,
   // or the next scroll down would not count as a change and the pill would
   // stay up until the direction flipped once (final review M2).
-  const barVisible = useTabBarVisible();
   useEffect(() => {
     if (barVisible && step.value.dir === "down") step.value = { ...step.value, dir: null };
   }, [barVisible, step]);

@@ -1,8 +1,8 @@
 /**
  * Student history on grouped rows: one GroupedList per season, with the
- * attendance % (neutral tone, never red) and a collapsed curriculum. Shared
- * with the staff student detail, so the props stay as they were. The rows are
- * the alumni screen's `SeasonGroup`, so both read the same.
+ * attendance % (neutral tone, never red) and a collapsed curriculum. Only
+ * /history renders it. The rows are the alumni screen's `SeasonGroup`, so both
+ * read the same.
  * Privacy-critical (spec 02 R34): rows carry attendance % and curriculum only.
  */
 import { View } from "react-native";
