@@ -21,6 +21,7 @@ function SessionRow({ s, today }: { s: SessionListItem; today: string }) {
   return (
     <ListRow
       title={s.title}
+      titleLines={2}
       subtitle={s.location ? `${when} · ${s.location}` : when}
       trailing={badge ? <StatusChip tone="neutral" label={badge} /> : undefined}
       chevron
@@ -36,6 +37,7 @@ function EventRow({ e }: { e: JpcEventListItem }) {
   return (
     <ListRow
       title={e.title}
+      titleLines={2}
       subtitle={e.seasonCode ? `${base} · ${e.seasonCode}` : base}
       trailing={e.visibility === "ALUMNI_ONLY" ? <StatusChip tone="warn" label="Alumni only" /> : undefined}
       chevron

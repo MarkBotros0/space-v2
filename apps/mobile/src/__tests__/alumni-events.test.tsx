@@ -178,4 +178,17 @@ describe("EventDayRows", () => {
     fireEvent.press(screen.getByText("Open day"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "3" } });
   });
+
+  it("lets an event and a session title take two lines beside a chip (360dp at font 1.3)", () => {
+    renderWithProviders(
+      <EventDayRows
+        entries={[
+          { kind: "event", at: 0, event: reunion },
+          { kind: "session", at: 1, session: session(1, "Kickoff", iso(dayKeyIn(3)), dayKeyIn(3)) },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Alumni reunion dinner").props.numberOfLines).toBe(2);
+    expect(screen.getByText("Kickoff").props.numberOfLines).toBe(2);
+  });
 });
