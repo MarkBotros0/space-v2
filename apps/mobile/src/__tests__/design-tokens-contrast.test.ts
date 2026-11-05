@@ -121,11 +121,21 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
   });
 });
 
-// An unread row in dark reads as tinted and lifted, never darker than a read one (sweep
-// s29-05); in light the tint is the pale info-50 on white.
+// An unread row in dark reads as tinted, never darker than a read one (sweep s29-05); in
+// light the tint is the pale info-50 on white.
 it("dark unread-soft is no darker than the popover it sits on", () => {
   const dark = tokens.dark as Theme;
   expect(luminance(rgbOf(dark["unread-soft"]))).toBeGreaterThanOrEqual(luminance(rgbOf(dark.popover)));
+});
+
+// Review r2 Minor 3 asked for a 1.1:1 lift over the popover. Muted text (the row's body and
+// time) sits at 4.58:1 on the popover itself, so the lightest fill that keeps it at 4.5:1 is
+// only ~1.02:1 lighter: the lift cannot be had. The row differs by its blue hue and the dot
+// instead. If the tokens ever make room, this fails: then raise unread-soft.
+it("a 1.1:1 lift is out of reach while muted text keeps 4.5:1 on the row", () => {
+  const dark = tokens.dark as Theme;
+  const lightestFill = (luminance(rgbOf(dark["muted-foreground"])) + 0.05) / 4.5 - 0.05;
+  expect((lightestFill + 0.05) / (luminance(rgbOf(dark.popover)) + 0.05)).toBeLessThan(1.1);
 });
 
 // The unread dot (notification bell) is the row's one non-hue marker: 3:1 on the unread
