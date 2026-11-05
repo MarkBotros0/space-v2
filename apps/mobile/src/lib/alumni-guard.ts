@@ -13,8 +13,8 @@ const hrefsOf = (items: NavItem[]) => items.map((item) => item.href);
  * v1's role-layout.tsx sent an alumnus out of the active-student area to the
  * read-only portal. Flat routes have no such area, so the student-only
  * destinations are derived from the two navs (REG-81): whatever a STUDENT's
- * tabs/sidebar reach that an ALUMNI's do not. Computed from `navFor`, never
- * re-listed by hand.
+ * tabs/sidebar reach that an ALUMNI's do not, computed from `navFor`. Only the
+ * routes those navs cannot show are listed by hand, in STUDENT_ONLY_SEGMENTS.
  */
 function studentOnlySegments(): ReadonlySet<string> {
   const student = navFor({ role: "STUDENT", graduationYear: null });
