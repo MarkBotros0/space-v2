@@ -58,7 +58,10 @@ export function NavLink({
       </Animated.View>
       {/* The pill is 64px tall: a label past 1.15x the font scale pushes "Assignments" into
           its neighbour, so it stops growing there. Across the tab's full width, a label that
-          still does not fit shrinks (down to 0.8) instead of ellipsizing ("Assignme…"). */}
+          still does not fit shrinks (down to 0.8) instead of ellipsizing ("Assignme…").
+          Accepted below the 12px caption floor (final review M6, 2026-11-05): 10px is v1's
+          tab label, and with a 10px floor "Assignments" overflows a 360dp phone's ~62dp tab
+          at 1.15x. */}
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit

@@ -68,6 +68,8 @@ export function NotificationBell({
             testID="bell-count"
             className="absolute right-1 top-1 min-w-4 items-center justify-center rounded-full bg-error-600 px-1"
           >
+            {/* 10px, under the caption floor, accepted with the tab labels (M6): a count badge
+                inside a 36px button; the button's label carries the count for screen readers. */}
             <Text className="text-[10px] font-semibold leading-none text-white">
               {unread > 9 ? "9+" : unread}
             </Text>
