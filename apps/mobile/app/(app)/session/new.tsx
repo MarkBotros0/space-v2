@@ -9,10 +9,9 @@ import {
   sessionWriteFields,
   type SessionFormValues,
 } from "../../../src/components/SessionForm";
-import { FormActions, FormErrorBox } from "../../../src/design/forms/form-parts";
-import { PageTitle } from "../../../src/design/layout/page-title";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { Card, CardContent, EmptyState, FormField, Input } from "../../../src/design/ui";
+import { FormScreen } from "../../../src/design/layout/form-screen";
+import { Screen } from "../../../src/design/layout/screen";
+import { EmptyState, FormField, Input } from "../../../src/design/ui";
 import { useSeasonDetail } from "../../../src/hooks/use-seasons";
 import { useCreateSession } from "../../../src/hooks/use-session-writes";
 import { apiErrorMessage } from "../../../src/lib/api-error";
@@ -37,12 +36,12 @@ export default function NewSessionScreen() {
 
   if (seasonId === null) {
     return (
-      <ShellFrame>
+      <Screen title="New session">
         <EmptyState
           title="No season"
           description="Open a season first, then add a session to it."
         />
-      </ShellFrame>
+      </Screen>
     );
   }
 
@@ -67,41 +66,33 @@ export default function NewSessionScreen() {
   };
 
   return (
-    <ShellFrame>
+    <FormScreen
+      title="New session"
+      subtitle={
+        season.data ? `Add a session to ${season.data.title}.` : "Add a session to this season."
+      }
+      saveLabel="Create session"
+      saving={create.isPending}
+      saveHint={
+        message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
+      }
+      onSave={submit}
+    >
       <View className="flex-col gap-4">
-        <PageTitle
-          title="New session"
-          subtitle={
-            season.data ? `Add a session to ${season.data.title}.` : "Add a session to this season."
-          }
-        />
-        <Card>
-          <CardContent className="pt-6">
-            <View className="flex-col gap-4">
-              <SessionFields values={values} onChange={setValues} errors={errors} />
-              <FormField
-                label="Repeat weekly for…"
-                description="Creates one occurrence per week, sharing a recurrence group."
-                error={errors.repeatWeeks}
-              >
-                <Input
-                  accessibilityLabel="Repeat weekly for (weeks)"
-                  value={repeat}
-                  onChangeText={setRepeat}
-                  keyboardType="number-pad"
-                />
-              </FormField>
-              <FormErrorBox message={message} />
-              <FormActions
-                submitLabel="Create session"
-                pending={create.isPending}
-                onSubmit={submit}
-                onCancel={() => router.back()}
-              />
-            </View>
-          </CardContent>
-        </Card>
+        <SessionFields values={values} onChange={setValues} errors={errors} />
+        <FormField
+          label="Repeat weekly for…"
+          description="Creates one occurrence per week, sharing a recurrence group."
+          error={errors.repeatWeeks}
+        >
+          <Input
+            accessibilityLabel="Repeat weekly for (weeks)"
+            value={repeat}
+            onChangeText={setRepeat}
+            keyboardType="number-pad"
+          />
+        </FormField>
       </View>
-    </ShellFrame>
+    </FormScreen>
   );
 }

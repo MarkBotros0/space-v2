@@ -53,7 +53,7 @@ appId: com.jpc.space
 # New group and new session need ?seasonId=; the seeded current season is id 2.
 - openLink: spacev2://group/new?seasonId=2
 - extendedWaitUntil:
-    visible: 'New group'
+    visible: 'Add a group to .+\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -81,7 +81,7 @@ appId: com.jpc.space
 - takeScreenshot: s32-10-group-new-bottom
 - openLink: spacev2://session/new?seasonId=2
 - extendedWaitUntil:
-    visible: 'Repeat weekly for…|Title'
+    visible: 'Add a session to .+\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

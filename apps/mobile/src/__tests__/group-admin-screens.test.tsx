@@ -166,6 +166,9 @@ describe("/groups — ADMIN/SUPER season branch (G6, D-16.16)", () => {
 
     expect(await screen.findByText("Group A")).toBeTruthy();
     expect(screen.getByText("2 groups in Season 7")).toBeTruthy();
+    // Rows say what the figure counts, and name the leaders (no bare "1").
+    expect(screen.getAllByText("1 student · Lina").length).toBe(2);
+    expect(screen.getByRole("header", { name: "Groups" })).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/groups");
     expect(get).not.toHaveBeenCalledWith("/api/v1/groups");
 
@@ -218,7 +221,7 @@ describe("/group/new", () => {
     expect(screen.queryByText(/^omar@jpc\.test · /)).toBeNull();
     // Sara is in another group of THIS season, which saving does change.
     expect(screen.getByText("sara@jpc.test · Now in Group A — saving moves them here.")).toBeTruthy();
-    fireEvent.press(screen.getByText("Create group"));
+    saveBar("Create group");
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/groups", {
@@ -231,19 +234,39 @@ describe("/group/new", () => {
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "30" } });
   });
 
+  it("shows the replace-lists helper only when editing", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    mockParams = { seasonId: "7" };
+    routeGets();
+    renderWithProviders(<NewGroupScreen />);
+    await screen.findByLabelText("Name");
+    expect(screen.queryByText(/Saving replaces/)).toBeNull();
+  });
+
   it("validates the name with the server's schema", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { seasonId: "7" };
     routeGets();
     renderWithProviders(<NewGroupScreen />);
     fireEvent.changeText(await screen.findByLabelText("Name"), "C");
-    fireEvent.press(screen.getByText("Create group"));
+    saveBar("Create group");
     expect(screen.getByLabelText("Name").props.accessibilityHint).toMatch(/at least 2/);
     expect(post).not.toHaveBeenCalled();
+    expect(
+      within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above."),
+    ).toBeTruthy();
   });
 });
 
 describe("/group/[id]/edit", () => {
+  it("says saving replaces the lists", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    mockParams = { id: "3" };
+    routeGets();
+    renderWithProviders(<EditGroupScreen />);
+    expect(await screen.findByText(/Saving replaces this group's leaders/)).toBeTruthy();
+  });
+
   it("pre-selects members from the ROSTER (SeasonEnrollment, C9) and saves the full lists", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { id: "3" };
@@ -253,7 +276,7 @@ describe("/group/[id]/edit", () => {
 
     expect((await screen.findByLabelText("Name")).props.value).toBe("Group A");
     await pickOption("Students", "Omar");
-    fireEvent.press(screen.getByText("Save changes"));
+    saveBar("Save changes");
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/groups/3", {
         name: "Group A",

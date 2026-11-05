@@ -11,6 +11,10 @@ appId: com.jpc.space
 - extendedWaitUntil:
     visible: 'Assign to groups'
     timeout: 40000
+# Rows read "N students · leaders" under a chevron; the title never breaks mid-word.
+- extendedWaitUntil:
+    visible: '.*students? .*'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s23-01-groups
@@ -58,7 +62,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s23-07-group-edit-description-typed
-# Last item has to clear the floating tab bar and the system bar.
+# Last field has to clear the pinned save bar (and the keyboard when open).
 - scroll
 - scroll
 - scroll
@@ -86,7 +90,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s23-11-group-new-name-typed
-# Last item has to clear the floating tab bar and the system bar.
+# Last field has to clear the pinned save bar.
 - scroll
 - scroll
 - scroll
