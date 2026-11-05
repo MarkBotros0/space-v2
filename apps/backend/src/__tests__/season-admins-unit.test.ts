@@ -134,6 +134,17 @@ describe("POST /seasons/:id/admins", () => {
     expect(mockDb.seasonAdmin.create).not.toHaveBeenCalled();
   });
 
+  it("a user whose role is not ADMIN: 400 not_an_admin with no write, no revoke and no audit", async () => {
+    mockDb.user.findUnique.mockResolvedValue({ role: "LEADER", deletedAt: null });
+    const res = await add({ userId: 7 });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("not_an_admin");
+    expect(mockDb.seasonAdmin.findUnique).not.toHaveBeenCalled();
+    expect(mockDb.seasonAdmin.create).not.toHaveBeenCalled();
+    expect(mockDb.refreshToken.updateMany).not.toHaveBeenCalled();
+    expect(info).not.toHaveBeenCalled();
+  });
+
   it("refuses a deactivated account with 400 user_inactive", async () => {
     mockDb.user.findUnique.mockResolvedValue({ role: "ADMIN", deletedAt: new Date() });
     const res = await add({ userId: 7 });
