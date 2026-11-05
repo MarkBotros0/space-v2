@@ -107,6 +107,7 @@ export function GroupedAttendanceTab({ studentId }: { studentId: number }) {
           key={r.sessionId}
           index={i}
           title={r.sessionTitle}
+          titleLines={2}
           // Instant in the device zone: no org day on this row (X13, gap note).
           subtitle={caption(formatDateTime(r.startsAt), r.seasonTitle)}
           trailing={<StatusChip {...statusChip("attendance", r.status)} />}
