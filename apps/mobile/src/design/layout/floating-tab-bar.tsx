@@ -24,31 +24,14 @@ import { resetTabBarScroll, useTabBarVisible } from "./tab-bar-scroll";
 const PILL_HEIGHT = 64;
 
 /**
- * v2's singular detail routes and the list tab whose v1 URL they sit under
- * (v1: /student/assignments/[id] keeps "Assignments" lit).
- */
-const DETAIL_PARENT: Record<string, string> = {
-  assignment: "assignments",
-  group: "groups",
-  quiz: "quizzes",
-  submission: "submissions",
-  student: "students",
-  user: "users",
-  event: "events",
-};
-
-/**
- * The tab route to highlight for the current route, following v1's
- * nav-link.tsx rule `pathname === href || pathname.startsWith(href + "/")`:
- * exact match, then same first segment (students/alumni → students/index),
- * then a singular detail route's list tab; null when v1 lights nothing.
+ * The tab route to highlight: the focused route when it is in the bar, else
+ * null (the highlight fades out). Only tab routes live in the Tabs navigator
+ * (detail and pushed routes are on the (app) stack above it, Tasks 9 and
+ * 12), so v1's "same first segment / a detail's list tab" fallbacks can no
+ * longer fire and are gone (final review M3).
  */
 export function activeTabRoute(current: string | undefined, tabRoutes: string[]): string | null {
-  if (!current) return null;
-  if (tabRoutes.includes(current)) return current;
-  const first = current.split("/")[0]!;
-  const parent = DETAIL_PARENT[first] ?? first;
-  return tabRoutes.find((t) => t.split("/")[0] === parent) ?? null;
+  return current !== undefined && tabRoutes.includes(current) ? current : null;
 }
 
 /**
