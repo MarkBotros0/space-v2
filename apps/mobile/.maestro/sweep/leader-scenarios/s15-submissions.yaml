@@ -22,11 +22,12 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s15-02-queue-bottom
-# Order is SUBMITTED then REVIEWED, so the first Salma row is the late submission.
+# Waiting rows come before Reviewed ones, so the first Salma row is the late submission.
+# A row's label is "title, subtitle", so match the name as a prefix.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Salma Student'
+      TARGET: 'Salma Student.*'
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
@@ -63,7 +64,7 @@ appId: com.jpc.space
 # The queue keeps its scroll position, so its heading may be off-screen: wait
 # on a row, then swipe back to the top (left margin, like _tap.yaml).
 - extendedWaitUntil:
-    visible: 'Salma Student'
+    visible: 'Salma Student.*'
     timeout: 40000
 - repeat:
     times: 4
@@ -75,9 +76,9 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 # The reviewed row, found by its assignment title: the form reads Update feedback.
-# Only the student's name is a link, so tap the second Salma row.
+# The whole row is one button; tap the second Salma row.
 - tapOn:
-    text: 'Salma Student'
+    text: 'Salma Student.*'
     index: 1
 - waitForAnimationToEnd:
     timeout: 5000
