@@ -21,7 +21,7 @@ export function EventListRow({ event, index }: { event: JpcEventListItem; index?
     <ListRow
       index={index}
       title={event.title}
-      titleLines={2}
+      titleLines={3}
       subtitle={formatEventWhen(event)}
       subtitleLines={3}
       trailing={chip ? <StatusChip {...chip} /> : undefined}

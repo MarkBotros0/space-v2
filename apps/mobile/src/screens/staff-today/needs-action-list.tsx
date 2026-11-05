@@ -69,7 +69,7 @@ export function NeedsActionList({
   return (
     <GroupedList header="Needs action">
       {rows.map((r, i) => (
-        <ListRow key={r.key} index={i} title={r.title} chevron onPress={r.open} />
+        <ListRow key={r.key} index={i} title={r.title} titleLines={2} chevron onPress={r.open} />
       ))}
       {unknown.length > 0 ? (
         <View className="px-4 py-3">

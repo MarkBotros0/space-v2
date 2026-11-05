@@ -65,6 +65,7 @@ export function SeasonsList({
                 row.code,
                 `${formatSeasonDay(row.startDate)} – ${formatSeasonDay(row.endDate)}`,
               ])}
+              subtitleLines={3}
               trailing={<StatusChip {...statusChip("season", row.status)} />}
               chevron
               onPress={() => onOpen(row)}
