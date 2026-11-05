@@ -53,11 +53,17 @@ export function NavLink({
         </View>
       </Animated.View>
       {/* The pill is 64px tall: a label past 1.15x the font scale pushes "Assignments" into
-          its neighbour ("Assignm…" at 1.3), so it stops growing there. */}
+          its neighbour, so it stops growing there. Across the tab's full width, a label that
+          still does not fit shrinks (down to 0.8) instead of ellipsizing ("Assignme…"). */}
       <Text
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
         maxFontSizeMultiplier={1.15}
-        className={cn("text-[10px] font-medium leading-none", active ? "text-pill-active-label" : "text-pill-foreground")}
+        className={cn(
+          "self-stretch text-center text-[10px] font-medium leading-none",
+          active ? "text-pill-active-label" : "text-pill-foreground",
+        )}
       >
         {label}
       </Text>

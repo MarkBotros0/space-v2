@@ -90,6 +90,21 @@ it("labels stay one line however long they are", () => {
   expect(label.props.numberOfLines).toBe(1);
 });
 
+// Sweep at font 1.3: "Assignme…", "Submissi…". A long label shrinks (down to 0.8) to fit
+// its tab before it would ever ellipsize; the font scale still stops at 1.15.
+it("a long label shrinks to fit its tab instead of truncating", () => {
+  renderBar();
+  expect(screen.getByText("Assignments").props).toMatchObject({
+    numberOfLines: 1,
+    adjustsFontSizeToFit: true,
+    minimumFontScale: 0.8,
+    maxFontSizeMultiplier: 1.15,
+  });
+  expect(screen.getByText("Assignments").props.className.split(" ")).toEqual(
+    expect.arrayContaining(["self-stretch", "text-center"]),
+  );
+});
+
 describe("active tab on detail screens (v1: pathname.startsWith(href + '/'))", () => {
   it("keeps the list tab lit on its singular detail route", () => {
     renderBar("assignment/[id]/index");
