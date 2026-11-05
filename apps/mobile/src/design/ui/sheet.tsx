@@ -145,7 +145,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
               <BarHeightContext.Provider value={setBarHeight}>
                 <ScrollView
                   {...scrollProps}
-                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: barHeight + bottom + 16 }}
+                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: barHeight + 16 }}
                 >
                   {children}
                 </ScrollView>
@@ -163,7 +163,11 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   );
 }
 
-/** Pinned primary action for a sheet: sits at the sheet bottom, lifted by the keyboard, 12pt of padding under it. */
+/**
+ * Pinned primary action for a sheet. Its opaque background runs to the sheet's
+ * very bottom and the inset (or the keyboard) is padding inside it, so scrolled
+ * content never shows in a strip under the bar (sweep K2, 3-button phones).
+ */
 function SheetSaveBar(props: SaveBarProps) {
   const bottom = useKeyboardBottomOffset();
   const setBarHeight = useContext(BarHeightContext);
@@ -171,7 +175,7 @@ function SheetSaveBar(props: SaveBarProps) {
     <View
       testID="sheet-save-bar"
       className="bg-surface"
-      style={{ position: "absolute", left: 0, right: 0, bottom, paddingBottom: BAR_BOTTOM_PADDING }}
+      style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingBottom: bottom + BAR_BOTTOM_PADDING }}
       onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}
     >
       <SaveBarBody {...props} />

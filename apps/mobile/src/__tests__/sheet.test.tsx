@@ -122,28 +122,33 @@ describe("save bars", () => {
 
   const bar = <SheetSaveBar label="Save" onPress={() => {}} />;
 
-  it("SheetSaveBar sits on the bottom safe-area inset when the keyboard is closed", () => {
+  it("SheetSaveBar reaches the sheet bottom and pads by the safe-area inset when the keyboard is closed (K2)", () => {
     renderWithProviders(<Sheet open onClose={() => {}} footer={bar}><Text>x</Text></Sheet>);
-    expect(screen.getByTestId("sheet-save-bar").props.style.bottom).toBe(34);
+    const style = screen.getByTestId("sheet-save-bar").props.style;
+    expect(style.bottom).toBe(0);
+    expect(style.paddingBottom).toBe(34 + 12);
   });
 
   it("SheetSaveBar keeps its normal 12pt padding below the button, above the inset or keyboard", () => {
     renderWithProviders(<Sheet open onClose={() => {}} footer={bar}><Text>x</Text></Sheet>);
     const style = screen.getByTestId("sheet-save-bar").props.style;
     expect(style.bottom + style.paddingBottom).toBe(34 + 12);
+    expect(style.bottom).toBe(0);
   });
 
-  it("SheetSaveBar bottom offset equals the keyboard inset when it is open", () => {
+  it("SheetSaveBar padding equals the keyboard inset (plus 12) when it is open", () => {
     mockKeyboard = 300;
     renderWithProviders(<Sheet open onClose={() => {}} footer={bar}><Text>x</Text></Sheet>);
-    expect(screen.getByTestId("sheet-save-bar").props.style.bottom).toBe(300);
+    const style = screen.getByTestId("sheet-save-bar").props.style;
+    expect(style.bottom).toBe(0);
+    expect(style.paddingBottom).toBe(312);
   });
 
   it("SheetSaveBar on Android adds the nav-bar inset back to the reported keyboard height", () => {
     jest.replaceProperty(Platform, "OS", "android");
     mockKeyboard = 300;
     renderWithProviders(<Sheet open onClose={() => {}} footer={bar}><Text>x</Text></Sheet>);
-    expect(screen.getByTestId("sheet-save-bar").props.style.bottom).toBe(334);
+    expect(screen.getByTestId("sheet-save-bar").props.style.paddingBottom).toBe(346);
   });
 
   it("SheetSaveBar fires onPress and shows the hint", () => {
