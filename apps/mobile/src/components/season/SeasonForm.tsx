@@ -151,6 +151,7 @@ export function SeasonForm({
         <FormField label="Year" required error={errors.year}>
           <Input
             accessibilityLabel="Year"
+            maxLength={4}
             value={v.year}
             onChangeText={(year) => patch({ year })}
             keyboardType="number-pad"

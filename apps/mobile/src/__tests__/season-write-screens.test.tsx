@@ -44,6 +44,11 @@ describe("NewSeasonScreen (/seasons/new)", () => {
     expect(screen.getByLabelText("Code").props.value).toBe("mine");
   });
 
+  it("limits Year to four digits so '20262099' can't be typed (sweep F4)", () => {
+    renderWithProviders(<NewSeasonScreen />);
+    expect(screen.getByLabelText("Year").props.maxLength).toBe(4);
+  });
+
   it("creates the season with v1's defaults and opens it", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     post.mockResolvedValue({ data: { data: { id: 99, code: "gbv-2028" } } });
