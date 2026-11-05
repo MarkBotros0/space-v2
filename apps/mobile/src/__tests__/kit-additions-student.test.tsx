@@ -206,3 +206,15 @@ describe("SaveBar secondary and disabled", () => {
     expect(screen.getAllByRole("button")).toHaveLength(1);
   });
 });
+
+describe("HeroCard title lines", () => {
+  const long = "A long discussion for the whole cohort about how we run the opening night";
+  it("the brand tone does not clamp the title", () => {
+    renderWithProviders(<HeroCard tone="brand" eyebrow="Next" title={long} />);
+    expect(screen.getByText(long).props.numberOfLines).toBeUndefined();
+  });
+  it("the default tone still clamps at two lines", () => {
+    renderWithProviders(<HeroCard eyebrow="Next" title={long} />);
+    expect(screen.getByText(long).props.numberOfLines).toBe(2);
+  });
+});
