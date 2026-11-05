@@ -28,8 +28,21 @@ describe("SegmentedControl", () => {
 
   it("marks only the selected option as selected", () => {
     render(<SegmentedControl options={OPTIONS} value="b" onChange={() => {}} />);
-    expect(screen.getByRole("button", { name: "Past" }).props.accessibilityState.selected).toBe(true);
-    expect(screen.getByRole("button", { name: "Upcoming" }).props.accessibilityState.selected).toBe(false);
+    expect(screen.getByRole("tab", { name: "Past" }).props.accessibilityState.selected).toBe(true);
+    expect(screen.getByRole("tab", { name: "Upcoming" }).props.accessibilityState.selected).toBe(false);
+  });
+
+  it("is a tablist of tabs, so a screen reader says 'tab, n of m' (M10)", () => {
+    render(<SegmentedControl options={OPTIONS} value="a" onChange={() => {}} />);
+    expect(screen.getByTestId("segmented-control").props.accessibilityRole).toBe("tablist");
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+  });
+
+  it("the thumb's radius is concentric with the track's (control-inner inside control)", () => {
+    render(<SegmentedControl options={OPTIONS} value="a" onChange={() => {}} />);
+    fireEvent(screen.getByTestId("segmented-control"), "layout", { nativeEvent: { layout: { width: 204, height: 48 } } });
+    expect(screen.getByTestId("segmented-control").props.className).toContain("rounded-control");
+    expect(screen.getByTestId("segmented-thumb").props.className).toContain("rounded-control-inner");
   });
 
   it("the thumb is a raised surface, lighter than the track in dark mode too", () => {
@@ -40,7 +53,7 @@ describe("SegmentedControl", () => {
 
   it("segments meet the 44pt tap target", () => {
     render(<SegmentedControl options={OPTIONS} value="a" onChange={() => {}} />);
-    expect(screen.getByRole("button", { name: "Past" }).props.className).toContain("min-h-[44px]");
+    expect(screen.getByRole("tab", { name: "Past" }).props.className).toContain("min-h-[44px]");
   });
 
   describe("thumb motion", () => {

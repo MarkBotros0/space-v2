@@ -11,9 +11,9 @@ const twMerge = extendTailwindMerge({
   },
   // Redesign type scale: without this text-body etc. read as colours and
   // collide with text-foreground.
-  // and the named radii (rounded-group, rounded-control, rounded-t-sheet) must replace rounded-* like any size.
+  // and the named radii (rounded-group, rounded-control, rounded-control-inner, rounded-t-sheet) must replace rounded-* like any size.
   extend: {
-    theme: { radius: ["group", "control", "sheet"] },
+    theme: { radius: ["group", "control", "control-inner", "sheet"] },
     classGroups: { "font-size": [{ text: ["large-title", "title", "headline", "body", "subhead", "caption"] }] },
   },
 });

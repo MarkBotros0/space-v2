@@ -15,6 +15,9 @@ const PAD = 2;
  * (classes on an Animated.View are dropped on device). The thumb is
  * `surface-raised`: white in light, and in dark lighter than the
  * `neutral-soft` track (plain `surface` is darker there and looked sunken).
+ * Its radius is `control-inner` (12): concentric with the `rounded-control`
+ * track (14) around a 2px inset. The track is a tablist and each segment a
+ * tab, so screen readers say "tab, 1 of 2" (final review M10).
  */
 function SegmentedControl({
   options, value, onChange, className,
@@ -36,12 +39,13 @@ function SegmentedControl({
   return (
     <View
       testID="segmented-control"
+      accessibilityRole="tablist"
       className={cn("flex-row rounded-control bg-neutral-soft p-0.5", className)}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       {segment > 0 ? (
         <Animated.View pointerEvents="none" style={[styles.thumb, { width: segment }, style]}>
-          <View testID="segmented-thumb" className="flex-1 rounded-lg bg-surface-raised" />
+          <View testID="segmented-thumb" className="flex-1 rounded-control-inner bg-surface-raised" />
         </Animated.View>
       ) : null}
       {options.map((o) => {
@@ -49,7 +53,7 @@ function SegmentedControl({
         return (
           <Pressable
             key={o.value}
-            accessibilityRole="button"
+            accessibilityRole="tab"
             accessibilityLabel={o.label}
             accessibilityState={{ selected }}
             onPress={() => onChange(o.value)}

@@ -92,6 +92,7 @@ const borderRadius = {
   "4xl": "26px",
   "group": "16px",
   "control": "14px",
+  "control-inner": "12px",
   "sheet": "24px"
 };
 const boxShadow = {
