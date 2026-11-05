@@ -5,7 +5,7 @@ import type { QuizAuthoringDetail, QuizQuestionAuthoring } from "@space/shared";
 
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { iconWithClassName } from "../../design/lib/icon";
-import { Badge, Button, ConfirmDialog, Text } from "../../design/ui";
+import { Button, ConfirmDialog, StatusChip, Text } from "../../design/ui";
 import {
   useDeleteQuestion,
   useReorderQuestions,
@@ -86,9 +86,10 @@ export function QuestionRow({
       <View className="min-w-0 flex-1">
         <View className="flex-row flex-wrap items-center gap-2">
           <Text className="text-xs font-bold text-muted-foreground">{`Q${n}`}</Text>
-          <Badge variant={question.type === "MCQ" ? "teal" : "outline"}>
-            {question.type === "MCQ" ? "Multiple choice" : "Essay"}
-          </Badge>
+          <StatusChip
+            tone={question.type === "MCQ" ? "info" : "neutral"}
+            label={question.type === "MCQ" ? "Multiple choice" : "Essay"}
+          />
           <Text className="text-xs text-muted-foreground">{`${question.points} pt${question.points === 1 ? "" : "s"}`}</Text>
         </View>
         <Text className="mt-1 text-sm font-semibold text-brand-navy-900 dark:text-foreground">

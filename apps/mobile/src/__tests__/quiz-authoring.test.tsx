@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), put: jest.fn(), delete: jest.fn() },
@@ -267,7 +267,7 @@ describe("QuizEditScreen (the builder)", () => {
     expect(await screen.findByText("This is a paper quiz — it has no questions. Grade it from the grade sheet.")).toBeTruthy();
     expect(screen.queryByText("Add question")).toBeNull();
     fireEvent.changeText(screen.getByLabelText("Quiz title"), "Renamed");
-    fireEvent.press(screen.getByText("Save title"));
+    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Save changes")); // was a per-field "Save title"
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
   });
 
