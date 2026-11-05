@@ -144,6 +144,8 @@ describe("GroupImportScreen", () => {
     ).toBeTruthy();
     expect(screen.getByText("Assign")).toBeTruthy();
     expect(screen.getByText("No group")).toBeTruthy();
+    // The group joins the email in one text run with a separator (final review M3).
+    expect(screen.getByText("ann@jpc.test · Group A")).toBeTruthy();
   });
 
   it("says why the bar does nothing when no row can be assigned", async () => {

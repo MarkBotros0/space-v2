@@ -195,7 +195,7 @@ export default function GroupImportScreen() {
     {
       key: "group",
       header: "Group",
-      cell: (r) => <Text className="font-medium">{r.group || "—"}</Text>,
+      cell: (r) => r.group || "—",
     },
     {
       key: "status",
