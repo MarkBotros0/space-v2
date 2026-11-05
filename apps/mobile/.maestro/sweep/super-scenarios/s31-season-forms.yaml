@@ -103,7 +103,7 @@ appId: com.jpc.space
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Duplicate'
+      TARGET: 'Duplicate season'
 - extendedWaitUntil:
     visible: 'Duplicate GBV .*'
     timeout: 40000
@@ -117,7 +117,7 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s31-13-duplicate-year-kbd
 - hideKeyboard
-# Cancel, never Duplicate season.
-- tapOn: 'Cancel'
+# Close the sheet with Back, never Duplicate.
+- pressKey: back
 - waitForAnimationToEnd:
     timeout: 5000

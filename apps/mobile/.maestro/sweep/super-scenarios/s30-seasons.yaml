@@ -38,10 +38,10 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s30-04-season-overview-bottom
 - scrollUntilVisible:
-    element: 'Groups \(\d+\)'
+    element: 'Groups'
     direction: UP
     timeout: 20000
-- tapOn: 'Groups \(\d+\)'
+- tapOn: 'Groups'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s30-05-season-groups
@@ -74,10 +74,10 @@ appId: com.jpc.space
     direction: UP
     timeout: 40000
 - scrollUntilVisible:
-    element: 'Sessions \(\d+\)'
+    element: 'Sessions'
     direction: UP
     timeout: 20000
-- tapOn: 'Sessions \(\d+\)'
+- tapOn: 'Sessions'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s30-08-season-sessions

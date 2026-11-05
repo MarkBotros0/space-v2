@@ -1,94 +1,103 @@
 /**
- * Port of v1 src/components/seasons/season-detail.tsx: Tabs Overview / Groups
- * (n) / Sessions (n). Overview = Status, Dates and Enrollment cards plus an
- * About card; Groups = one card per group ("{n} students", "Leaders: …") or
- * v1's empty state; Sessions is the caller's slot (CalendarList).
- * v1's tab list sits beside the Edit/Duplicate buttons; on a phone the
- * buttons wrap under it, so `actions` renders below the tabs list. The
- * selected tab is not drawn (a v1 bug reproduced in ui/tabs.tsx).
+ * Port of v1 src/components/seasons/season-detail.tsx as grouped rows: a
+ * SegmentedControl (Overview / Groups / Sessions, no counts in the labels so
+ * the strip fits a 360dp phone at font 1.3). Overview = Status, Dates and
+ * Enrollment rows, the About text, a "Manage" list the caller supplies, then
+ * the caller's extra cards; Groups = a row per group ("{n} students" and
+ * "Leaders: …") or v1's empty state; Sessions is the caller's slot
+ * (CalendarList). The long About text is a Text block, since a ListRow title
+ * is one line.
  */
 import type { SeasonDetail } from "@space/shared";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 
 import { formatSeasonDay } from "../../lib/format";
+import { joinMeta } from "../../lib/join-meta";
+import { countOf } from "../../lib/plural";
 import { NAV_ICONS } from "../icons/nav-icon";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { EmptyState } from "../ui/empty-state";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { GroupedList, ListRow } from "../ui/grouped-list";
+import { SegmentedControl } from "../ui/segmented-control";
+import { StatusChip, statusChip } from "../ui/status-chip";
 import { Text } from "../ui/text";
-import { SeasonStatusBadge } from "./season-status-badge";
+
+type Segment = "overview" | "groups" | "sessions";
+
+const SEGMENTS = [
+  { value: "overview", label: "Overview" },
+  { value: "groups", label: "Groups" },
+  { value: "sessions", label: "Sessions" },
+];
+
+export type ManageItem = { label: string; onPress: () => void };
 
 export function SeasonDetailView({
   season,
-  actions,
+  manage,
   overviewExtra,
   sessionsTab,
   onOpenGroup,
   groupsAction,
 }: {
   season: SeasonDetail;
-  actions?: ReactNode;
+  /** The "Manage" rows, each with a chevron; none renders no list. */
+  manage?: ManageItem[];
   overviewExtra?: ReactNode;
   sessionsTab: ReactNode;
   onOpenGroup?: (id: number) => void;
   groupsAction?: ReactNode;
 }) {
+  const [segment, setSegment] = useState<Segment>("overview");
+  const groupCount = season.groups.length;
+
   return (
-    <Tabs defaultValue="overview">
-      <View className="flex-col gap-3">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="groups">{`Groups (${season.groups.length})`}</TabsTrigger>
-          <TabsTrigger value="sessions">{`Sessions (${season.sessionCount})`}</TabsTrigger>
-        </TabsList>
-        {actions}
-      </View>
+    <View className="flex-col gap-4">
+      <SegmentedControl
+        options={SEGMENTS}
+        value={segment}
+        onChange={(v) => setSegment(v as Segment)}
+      />
 
-      <TabsContent value="overview" className="flex-col gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SeasonStatusBadge status={season.status} className="self-start" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Dates</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Text className="text-sm text-muted-foreground">
-              {`${formatSeasonDay(season.startDate)} – ${formatSeasonDay(season.endDate)}`}
-            </Text>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Enrollment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Text className="text-sm text-muted-foreground">
-              {`${season.studentCount} students across ${season.groups.length} groups`}
-            </Text>
-          </CardContent>
-        </Card>
-        {season.description ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>About</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Text className="text-sm text-foreground">{season.description}</Text>
-            </CardContent>
-          </Card>
-        ) : null}
-        {overviewExtra}
-      </TabsContent>
+      {segment === "overview" ? (
+        <View className="flex-col gap-4">
+          <GroupedList>
+            <ListRow
+              title="Status"
+              trailing={<StatusChip {...statusChip("season", season.status)} />}
+            />
+            <ListRow
+              title="Dates"
+              subtitle={`${formatSeasonDay(season.startDate)} – ${formatSeasonDay(season.endDate)}`}
+            />
+            <ListRow
+              title="Enrollment"
+              subtitle={`${countOf(season.studentCount, "student")} in ${countOf(groupCount, "group")}`}
+            />
+          </GroupedList>
+          {season.description ? (
+            <View className="flex-col gap-1 px-4">
+              <Text variant="subhead" className="text-muted-foreground">
+                About
+              </Text>
+              <Text variant="body" className="text-foreground">
+                {season.description}
+              </Text>
+            </View>
+          ) : null}
+          {manage && manage.length > 0 ? (
+            <GroupedList header="Manage">
+              {manage.map((item) => (
+                <ListRow key={item.label} title={item.label} chevron onPress={item.onPress} />
+              ))}
+            </GroupedList>
+          ) : null}
+          {overviewExtra}
+        </View>
+      ) : null}
 
-      <TabsContent value="groups">
-        {season.groups.length === 0 ? (
+      {segment === "groups" ? (
+        groupCount === 0 ? (
           <EmptyState
             icon={NAV_ICONS.groups}
             title="No groups yet"
@@ -96,26 +105,27 @@ export function SeasonDetailView({
             action={groupsAction}
           />
         ) : (
-          <View className="flex-col gap-3">
-            {season.groups.map((g) => (
-              <Card key={g.id} onPress={onOpenGroup ? () => onOpenGroup(g.id) : undefined}>
-                <CardHeader>
-                  <CardTitle>{g.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-col gap-2">
-                  <Text className="text-sm text-muted-foreground">{`${g.studentCount} students`}</Text>
-                  <Text className="text-sm text-muted-foreground">
-                    {`Leaders: ${g.leaderNames.length ? g.leaderNames.join(", ") : "Unassigned"}`}
-                  </Text>
-                </CardContent>
-              </Card>
-            ))}
+          <View className="flex-col gap-4">
+            <GroupedList header={countOf(groupCount, "group")}>
+              {season.groups.map((g) => (
+                <ListRow
+                  key={g.id}
+                  title={g.name}
+                  subtitle={joinMeta([
+                    countOf(g.studentCount, "student"),
+                    g.leaderNames.length ? `Leaders: ${g.leaderNames.join(", ")}` : "No leader yet",
+                  ])}
+                  chevron={onOpenGroup !== undefined}
+                  onPress={onOpenGroup ? () => onOpenGroup(g.id) : undefined}
+                />
+              ))}
+            </GroupedList>
             {groupsAction ? <View className="items-center">{groupsAction}</View> : null}
           </View>
-        )}
-      </TabsContent>
+        )
+      ) : null}
 
-      <TabsContent value="sessions">{sessionsTab}</TabsContent>
-    </Tabs>
+      {segment === "sessions" ? sessionsTab : null}
+    </View>
   );
 }
