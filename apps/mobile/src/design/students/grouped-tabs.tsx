@@ -62,8 +62,9 @@ export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHist
           key={e.enrollmentId}
           index={i}
           title={e.seasonTitle}
+          titleLines={2}
           subtitle={caption(`${formatDate(e.startDate)} – ${formatDate(e.endDate)}`, e.groupName, e.dropReason)}
-          subtitleLines={3}
+          subtitleLines={null}
           trailing={
             <View className="items-end gap-1">
               <StatusChip {...statusChip("enrollment", e.status)} />
