@@ -37,6 +37,21 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s30-04-season-overview-bottom
+# The Admins section, then its picker opened. Nothing is added: the flow leaves without Add admin.
+- scrollUntilVisible:
+    element: 'Choose an admin.*'
+    direction: DOWN
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s30-04a-season-admins
+- tapOn: 'Choose an admin.*'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s30-04b-admin-picker
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 5000
 - scrollUntilVisible:
     element: 'Groups'
     direction: UP

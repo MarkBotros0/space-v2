@@ -118,6 +118,7 @@ describe("Admins card on the SUPER season detail", () => {
     fireEvent.press(screen.getByLabelText("Choose an admin"));
     fireEvent.press(screen.getByText("Rana Admin"));
     fireEvent.press(screen.getByText("Add admin"));
+    fireEvent.press(screen.getByText("Add"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }),
@@ -148,6 +149,7 @@ describe("Admins card on the SUPER season detail", () => {
     fireEvent.press(screen.getByLabelText("Choose an admin"));
     fireEvent.press(screen.getByText("Rana Admin"));
     fireEvent.press(screen.getByText("Add admin"));
+    fireEvent.press(screen.getByText("Add"));
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Only a user with the ADMIN role can administer a season."),
@@ -164,7 +166,7 @@ describe("Admins card on the SUPER season detail", () => {
 
     fireEvent.press(await screen.findByLabelText("Remove Pat Admin"));
     expect(screen.getByText("Remove admin?")).toBeTruthy();
-    expect(screen.getByText("Pat Admin will no longer be able to administer TEST 2099.")).toBeTruthy();
+    expect(screen.getByText("Pat Admin will no longer be able to administer TEST 2099. They'll be signed out and need to sign in again.")).toBeTruthy();
     expect(del).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByText("Remove"));

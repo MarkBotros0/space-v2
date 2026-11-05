@@ -14,6 +14,9 @@ import { apiErrorMessage } from "../../lib/api-error";
 
 iconWithClassName(Trash2, UserPlus);
 
+/** Both changes revoke the person's refresh tokens (owner ruling), so both dialogs say so. */
+const SIGNED_OUT = "They'll be signed out and need to sign in again.";
+
 /** The users query the picker reads: ADMIN accounts only, server-filtered. */
 const ADMIN_FILTERS = { q: "", role: "ADMIN" } as const;
 
@@ -30,6 +33,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
   const remove = useRemoveSeasonAdmin(seasonId);
   const [picked, setPicked] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ userId: number; name: string } | null>(null);
+  const [confirmingAdd, setConfirmingAdd] = useState(false);
 
   const current = useMemo(() => admins.data ?? [], [admins.data]);
   const options = useMemo(() => {
@@ -41,17 +45,23 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
       .map((u) => ({ value: String(u.id), label: u.name, description: u.email }));
   }, [candidates.data, current]);
 
+  const pickedOption = options.find((o) => o.value === picked);
+
   const submitAdd = () => {
     if (picked === null) return;
-    const option = options.find((o) => o.value === picked);
+    const option = pickedOption;
     add.mutate(
       { userId: Number(picked) },
       {
         onSuccess: () => {
+          setConfirmingAdd(false);
           setPicked(null);
           toast.success(`${option?.label ?? "Admin"} can now administer ${seasonTitle}.`);
         },
-        onError: (err) => toast.error(apiErrorMessage(err, "Couldn't add the admin.")),
+        onError: (err) => {
+          setConfirmingAdd(false);
+          toast.error(apiErrorMessage(err, "Couldn't add the admin."));
+        },
       },
     );
   };
@@ -127,9 +137,9 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
             </Text>
           ) : null}
           <View className="flex-row flex-wrap gap-2">
-            <Button size="sm" disabled={picked === null || add.isPending} onPress={submitAdd}>
+            <Button size="sm" disabled={picked === null || add.isPending} onPress={() => setConfirmingAdd(true)}>
               <UserPlus size={14} className="text-primary-foreground" />
-              {add.isPending ? "Adding…" : "Add admin"}
+              Add admin
             </Button>
             {candidates.hasNextPage ? (
               <Button
@@ -145,13 +155,28 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
         </View>
       </View>
       <ConfirmDialog
+        open={confirmingAdd && pickedOption !== undefined}
+        onOpenChange={setConfirmingAdd}
+        title="Add admin?"
+        description={
+          pickedOption
+            ? `${pickedOption.label} will be able to administer ${seasonTitle}. ${SIGNED_OUT}`
+            : undefined
+        }
+        confirmLabel="Add"
+        pending={add.isPending}
+        onConfirm={submitAdd}
+      />
+      <ConfirmDialog
         open={confirm !== null}
         onOpenChange={(open) => {
           if (!open) setConfirm(null);
         }}
         title="Remove admin?"
         description={
-          confirm ? `${confirm.name} will no longer be able to administer ${seasonTitle}.` : undefined
+          confirm
+            ? `${confirm.name} will no longer be able to administer ${seasonTitle}. ${SIGNED_OUT}`
+            : undefined
         }
         confirmLabel="Remove"
         destructive
