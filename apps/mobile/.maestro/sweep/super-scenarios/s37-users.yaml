@@ -38,7 +38,8 @@ appId: com.jpc.space
 - extendedWaitUntil:
     visible: 'No accounts match this search\.'
     timeout: 40000
-- hideKeyboard
+# No hideKeyboard: Enter on a single-line field already closes the keyboard, and a second
+# hide is a Back press that leaves Users for Today (s37-05 shot).
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s37-05-users-search-empty
@@ -81,9 +82,16 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 3000
 # Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
+# The Role popover's Back hands focus back to the Name field and the keyboard reopens, so the
+# plain scroll (which starts mid-screen, on the field) doesn't move the form: swipe the left
+# margin, inside the strip above the keyboard.
+- repeat:
+    times: 3
+    commands:
+      - swipe:
+          start: 4%, 45%
+          end: 4%, 12%
+          duration: 500
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s37-09-user-active-bottom
@@ -155,9 +163,16 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 3000
 # Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
+# The Role popover's Back hands focus back to the Name field and the keyboard reopens, so the
+# plain scroll (which starts mid-screen, on the field) doesn't move the form: swipe the left
+# margin, inside the strip above the keyboard.
+- repeat:
+    times: 3
+    commands:
+      - swipe:
+          start: 4%, 45%
+          end: 4%, 12%
+          duration: 500
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s37-19-user-new-bottom
