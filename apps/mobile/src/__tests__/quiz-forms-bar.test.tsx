@@ -148,6 +148,40 @@ describe("quiz builder on the fixed save bar", () => {
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
   });
 
+  const refresh = () =>
+    act(async () => {
+      await screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
+    });
+  const HINT = "Finish or cancel the question above first.";
+
+  it("a question deleted elsewhere while its form is open no longer blocks Save (final review I2)", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    patch.mockResolvedValue({ data: { data: { updated: true } } });
+    renderStacked(<QuizEditScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
+    fireEvent.press(screen.getByLabelText("Edit question 1"));
+    expect(bar().getByText(HINT)).toBeTruthy();
+
+    get.mockResolvedValue({ data: { data: authoring({ questions: [] }) } });
+    await refresh();
+    await waitFor(() => expect(bar().queryByText(HINT)).toBeNull());
+    fireEvent.press(bar().getByText("Save changes"));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
+  });
+
+  it("closing one of two open question forms keeps Save blocked by the other (final review I2)", async () => {
+    const mcq2 = { ...mcq, id: 101, order: 1, prompt: "Capital of Spain?", options: ["Madrid", "Paris"], correctIndex: 0 };
+    get.mockResolvedValue({ data: { data: authoring({ questions: [mcq, mcq2] }) } });
+    renderStacked(<QuizEditScreen />);
+    await screen.findByLabelText("Quiz title");
+    fireEvent.press(screen.getByLabelText("Edit question 1"));
+    fireEvent.press(screen.getByLabelText("Edit question 2"));
+    fireEvent.press(screen.getAllByText("Cancel")[0] as never);
+    expect(bar().getByText(HINT)).toBeTruthy();
+    fireEvent.press(screen.getByText("Cancel"));
+    expect(bar().queryByText(HINT)).toBeNull();
+  });
+
   it("a graded paper quiz shows Max score read-only with why, and renames with only the title", async () => {
     get.mockResolvedValue({
       data: { data: authoring({ kind: "PAPER", maxScore: 20, questions: [], gradeCount: 3, canEditStructure: false }) },

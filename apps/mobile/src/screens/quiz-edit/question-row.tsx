@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react-native";
 import { View } from "react-native";
 import type { QuizAuthoringDetail, QuizQuestionAuthoring } from "@space/shared";
@@ -34,11 +34,16 @@ export function QuestionRow({
   const update = useUpdateQuestion(quiz.id);
   const remove = useDeleteQuestion(quiz.id);
   const reorder = useReorderQuestions(quiz.id);
-  const [editing, setEditingState] = useState(false);
-  const setEditing = (next: boolean) => {
-    setEditingState(next);
-    onEditingChange(next);
-  };
+  const [editing, setEditing] = useState(false);
+  // Count open→closed transitions only, so an unmount mid-edit (the question was deleted
+  // elsewhere and a refetch dropped the row) releases the builder's Save, and a second
+  // "closed" report can never cancel out a different row's open form (final review I2).
+  useEffect(() => {
+    if (!editing) return;
+    onEditingChange(true);
+    return () => onEditingChange(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
   const [confirming, setConfirming] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const n = index + 1;
