@@ -50,6 +50,12 @@ function StaffReports() {
       refreshing={refreshing}
     >
       <View className="flex-col gap-4">
+        {/* Outside the loading/error branches: a season that keeps failing must not
+            strand the caller, who can always pick a different one. */}
+        {permitted.length > 0 ? (
+          <SeasonPicker seasons={permitted} selected={seasonId} onSelect={setSeasonId} />
+        ) : null}
+
         {summary.isPending ? (
           <RouteSkeleton />
         ) : summary.isError ? (
@@ -57,8 +63,6 @@ function StaffReports() {
         ) : (
           <>
             {isSuper ? <OrganisationSection /> : null}
-
-            <SeasonPicker seasons={permitted} selected={seasonId} onSelect={setSeasonId} />
 
             {summary.data.scope.truncated ? (
               <Text className="text-xs text-warning-700 dark:text-warning-300">

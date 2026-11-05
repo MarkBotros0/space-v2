@@ -209,6 +209,25 @@ describe("ReportsScreen for admin — at-risk rows and engagement tiles", () => 
   });
 });
 
+describe("ReportsScreen for admin — a failing season", () => {
+  it("keeps the season picker when the chosen season fails, so another can be picked (final review M6)", async () => {
+    useSessionStore.setState(sessionFor("ADMIN"));
+    mockEndpoints();
+    const base = get.getMockImplementation() as (url: string) => Promise<unknown>;
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/reports/engagement") && url.includes("seasonId=8")
+        ? Promise.reject(new Error("boom"))
+        : base(url),
+    );
+    renderWithProviders(<ReportsScreen />);
+
+    fireEvent.press(await screen.findByLabelText("Season filter: Autumn 2099"));
+    expect(await screen.findByText("Try again")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Season filter: Spring 2099"));
+    await waitFor(() => expect(screen.getByText("Students at risk (1 of 34)")).toBeTruthy());
+  });
+});
+
 describe("ReportsScreen for super — organisation tiles and season rows", () => {
   it("shows the three figures as tiles that open their lists", async () => {
     useSessionStore.setState(sessionFor("SUPER"));
