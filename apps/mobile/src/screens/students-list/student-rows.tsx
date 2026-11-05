@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import type { StudentListItem } from "@space/shared";
 
 import { Avatar, AvatarFallback, ListRow } from "../../design/ui";
-import { formatDate } from "../../lib/format";
+import { formatDate, keepTogether } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
 import { yearLabel } from "../../lib/year-label";
@@ -63,7 +63,7 @@ export function DroppedStudentRow({ item, index }: RowProps) {
       title={item.name}
       subtitle={joinMeta([
         d ? `Dropped from ${d.seasonTitle}` : null,
-        d?.droppedAt ? formatDate(d.droppedAt) : null,
+        d?.droppedAt ? keepTogether(formatDate(d.droppedAt)) : null,
         d?.dropReason,
       ])}
       leading={<StudentAvatar item={item} />}

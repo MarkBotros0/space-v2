@@ -9,7 +9,7 @@ import { Calendar as CalendarIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
-import { formatSeasonDay } from "../../lib/format";
+import { formatSeasonDay, keepTogether } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
 import { EmptyState } from "../ui/empty-state";
 import { GroupedList, ListRow } from "../ui/grouped-list";
@@ -63,7 +63,7 @@ export function SeasonsList({
               title={row.title}
               subtitle={joinMeta([
                 row.code,
-                `${formatSeasonDay(row.startDate)} – ${formatSeasonDay(row.endDate)}`,
+                `${keepTogether(formatSeasonDay(row.startDate))} – ${keepTogether(formatSeasonDay(row.endDate))}`,
               ])}
               subtitleLines={3}
               trailing={<StatusChip {...statusChip("season", row.status)} />}
