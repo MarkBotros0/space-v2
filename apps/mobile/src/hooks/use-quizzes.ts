@@ -313,6 +313,8 @@ export function useReopenAttempt(id: number) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
+      // A reopened attempt is no longer graded, so the lists' "2/2 graded" moves.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
   });
 }

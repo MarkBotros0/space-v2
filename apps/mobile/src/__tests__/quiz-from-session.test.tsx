@@ -17,6 +17,7 @@ import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 import { useSessionStore } from "../store/session";
 import { useCreateQuiz, useUpdateQuiz } from "../hooks/use-quiz-authoring";
+import { useReopenAttempt } from "../hooks/use-quizzes";
 import { AdminQuizzesCard } from "../screens/session-detail/quizzes-cards";
 import { renderWithProviders } from "./helpers/render";
 import NewQuizScreen from "../../app/(app)/quiz/new";
@@ -99,6 +100,17 @@ describe("quiz writes refresh the session quiz cards", () => {
     );
     return { spy, wrapper };
   }
+
+  it("reopening an attempt refreshes the quiz lists as well as the attempts (M4)", async () => {
+    post.mockResolvedValue({ data: { data: { attemptId: 1, attemptNumber: 2 } } });
+    const { spy, wrapper } = setup();
+    const { result } = renderHook(() => useReopenAttempt(41), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync(9).catch(() => undefined);
+    });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.quizzes.attempts(41) });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.quizzes.lists() });
+  });
 
   it("invalidates every session's quizzes after a create", async () => {
     post.mockResolvedValue({ data: { data: { id: 80 } } });
