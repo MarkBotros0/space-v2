@@ -31,6 +31,9 @@ appId: com.jpc.space
 - scroll
 - scroll
 - scroll
+- scroll
+- scroll
+- scroll
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s18-04-more-bottom
