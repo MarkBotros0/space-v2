@@ -64,7 +64,9 @@ describe("initSentry", () => {
     });
     const Root = () => null;
     sentry.wrapRoot(Root);
-    expect(mocked.wrap).toHaveBeenCalledWith(Root);
+    expect(mocked.wrap).toHaveBeenCalledWith(Root, {
+      touchEventBoundaryProps: { extractTextFromChildren: false },
+    });
   });
 
   it("sets the user to id and role only on sign-in, and clears it on sign-out", () => {
@@ -136,5 +138,27 @@ describe("scrubbing", () => {
       request_headers: {},
       status_code: 200,
     });
+  });
+
+  it("keeps a touch breadcrumb's label and path out of the event", () => {
+    const crumb = sentry.scrubBreadcrumb({
+      category: "touch",
+      message: "Touch event within element: Sam Student, Nov 1 · Confidential body, Follow-up",
+      data: { path: [{ name: "ListRow", label: "Sam Student, Confidential body" }] },
+    });
+    expect(crumb.category).toBe("touch");
+    expect(crumb.message).toBe("Touch event");
+    expect(crumb.data).toBeUndefined();
+    expect(JSON.stringify(crumb)).not.toMatch(/Sam|Confidential/);
+  });
+
+  it("still scrubs token text in a non-touch breadcrumb's message", () => {
+    const crumb = sentry.scrubBreadcrumb({
+      category: "navigation",
+      message: "spacev2://reset?token=abc",
+      data: { to: "/x" },
+    });
+    expect(crumb.message).toBe("spacev2://reset?token=[redacted]");
+    expect(crumb.data).toEqual({ to: "/x" });
   });
 });

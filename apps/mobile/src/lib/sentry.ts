@@ -51,7 +51,11 @@ export function initSentry(
 export function wrapRoot<P extends Record<string, unknown>>(
   Root: ComponentType<P>,
 ): ComponentType<P> {
-  return enabled ? Sentry.wrap(Root) : Root;
+  // Text extraction would read a touched row's visible text (a student's name,
+  // a note body) into the breadcrumb; scrubBreadcrumb drops what is left.
+  return enabled
+    ? Sentry.wrap(Root, { touchEventBoundaryProps: { extractTextFromChildren: false } })
+    : Root;
 }
 
 /** Report a caught error. A no-op while Sentry is off. */
@@ -92,6 +96,7 @@ const SECRET_HEADERS = new Set(["authorization", "cookie", "set-cookie"]);
 /** `token=…` in a URL or message: reset-password and invite deep links carry one. */
 const TOKEN_IN_TEXT = /((?:token|code|refreshToken|accessToken)=)[^&#\s]+/gi;
 const REDACTED = "[redacted]";
+const TOUCH_MESSAGE = "Touch event";
 
 function scrubText<T>(value: T): T {
   return (typeof value === "string" ? value.replace(TOKEN_IN_TEXT, `$1${REDACTED}`) : value) as T;
@@ -131,6 +136,13 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
 
 /** `beforeBreadcrumb`: the same for breadcrumbs (fetch/xhr URLs, navigation params). */
 export function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
+  // A touch breadcrumb names the touched element from its accessibility label
+  // or text (a ListRow's title, subtitle and chip: a student's name, a note
+  // body). Keep that a touch happened and nothing about what was touched.
+  if (breadcrumb.category === "touch") {
+    const { data: _data, ...rest } = breadcrumb;
+    return { ...rest, message: TOUCH_MESSAGE };
+  }
   return {
     ...breadcrumb,
     message: scrubText(breadcrumb.message),
