@@ -47,7 +47,8 @@ function QuizForm({
 
   const isPaper = data.kind === "PAPER";
   const titleChanged = title !== data.title;
-  const scoreChanged = isPaper && maxScore !== String(data.maxScore);
+  const scoreLocked = data.gradeCount > 0;
+  const scoreChanged = isPaper && !scoreLocked && maxScore !== String(data.maxScore);
   const dirty = titleChanged || scoreChanged;
 
   const questionOpen = adding || editingRows > 0;
@@ -102,6 +103,7 @@ function QuizForm({
           kind={data.kind}
           title={title}
           maxScore={maxScore}
+          locked={scoreLocked}
           errors={errors}
           onTitle={setTitle}
           onMaxScore={setMaxScore}

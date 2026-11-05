@@ -8,6 +8,7 @@ export function QuizSettings({
   kind,
   title,
   maxScore,
+  locked,
   errors,
   onTitle,
   onMaxScore,
@@ -15,6 +16,8 @@ export function QuizSettings({
   kind: QuizKind;
   title: string;
   maxScore: string;
+  /** Grades exist: the server refuses a new max score (quiz_has_grades). */
+  locked: boolean;
   errors: Record<string, string>;
   onTitle: (v: string) => void;
   onMaxScore: (v: string) => void;
@@ -26,11 +29,16 @@ export function QuizSettings({
       </FormField>
       {kind === "PAPER" ? (
         // Refused server-side once grades exist (quiz_has_grades).
-        <FormField label="Max score" error={errors.maxScore}>
+        <FormField
+          label="Max score"
+          description={locked ? "Max score is locked because grades have been entered." : undefined}
+          error={errors.maxScore}
+        >
           <Input
             accessibilityLabel="Max score"
             value={maxScore}
             onChangeText={onMaxScore}
+            disabled={locked}
             keyboardType="number-pad"
           />
         </FormField>

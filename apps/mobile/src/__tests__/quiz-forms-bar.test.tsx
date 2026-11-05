@@ -147,4 +147,18 @@ describe("quiz builder on the fixed save bar", () => {
     fireEvent.press(bar().getByText("Save changes"));
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
   });
+
+  it("a graded paper quiz shows Max score read-only with why, and renames with only the title", async () => {
+    get.mockResolvedValue({
+      data: { data: authoring({ kind: "PAPER", maxScore: 20, questions: [], gradeCount: 3, canEditStructure: false }) },
+    });
+    patch.mockResolvedValue({ data: { data: { updated: true } } });
+    renderStacked(<QuizEditScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
+    expect(screen.getByLabelText("Max score").props.editable).toBe(false);
+    expect(screen.getByText("Max score is locked because grades have been entered.")).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText("Max score"), "99");
+    fireEvent.press(bar().getByText("Save changes"));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
+  });
 });
