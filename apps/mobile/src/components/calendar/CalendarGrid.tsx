@@ -147,7 +147,10 @@ function MonthGrid({
                           "border-brand-teal-700 bg-brand-teal-100 dark:border-brand-teal-400 dark:bg-brand-teal-950",
                   )}
                 >
+                  {/* The disc is a fixed 26px: at font 1.3 a wide "20" wrapped its 0 out of it. */}
                   <Text
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1.15}
                     className={cn(
                       "text-sm font-medium",
                       isToday ? "text-brand-navy-950" : outside && "text-muted-foreground",

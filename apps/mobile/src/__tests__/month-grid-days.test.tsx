@@ -27,6 +27,15 @@ describe("events month grid (CalendarGrid)", () => {
     expect(classes(within(inMonth).getByText("11"))).not.toContain("text-muted-foreground");
   });
 
+  it("a date can't wrap out of its fixed disc at a large font (sweep s48: 20 read 2)", () => {
+    renderWithProviders(
+      <CalendarGrid view="month" anchor="2099-03-10" sessions={[]} events={[]} ctx={ctx} />,
+    );
+    const date = within(screen.getByTestId("day-circle-2099-03-20")).getByText("20");
+    expect(date.props.numberOfLines).toBe(1);
+    expect(date.props.maxFontSizeMultiplier).toBe(1.15);
+  });
+
   it("the selected day is a circle round its date, like today's, not a tinted cell", () => {
     renderWithProviders(
       <CalendarGrid view="month" anchor="2099-03-10" sessions={[]} events={[]} ctx={ctx} />,
