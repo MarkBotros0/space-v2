@@ -53,7 +53,7 @@ function CurriculumToggle({ count, open, onPress }: { count: number; open: boole
   );
 }
 
-function SeasonGroup({ row }: { row: SeasonHistoryRow }) {
+export function SeasonGroup({ row }: { row: SeasonHistoryRow }) {
   const [open, setOpen] = useState(false);
   const count = row.curriculum.length;
   const rows = [

@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { Screen } from "../../../src/design/layout/screen";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { AlumniHistory } from "../../../src/screens/alumni/alumni-history";
 import { SeasonHistory } from "../../../src/design/students/season-history";
@@ -46,29 +47,22 @@ export default function HistoryScreen() {
   }
 
   return (
-    <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
-      <View className="flex-col gap-3">
-        <PageTitle
-          title={alumnus ? "My History" : "History"}
-          subtitle={
-            alumnus ? "The seasons you journeyed through" : "Seasons you've participated in"
-          }
+    <Screen
+      title="History"
+      subtitle="Seasons you've participated in"
+      onRefresh={() => void refetch()}
+      refreshing={isRefetching}
+    >
+      {isPending ? (
+        <RouteSkeleton />
+      ) : isError ? (
+        <RouteError onRetry={() => void refetch()} />
+      ) : (
+        <SeasonHistory
+          rows={data}
+          emptyDescription="Once you complete a season, it'll appear here."
         />
-        {isPending ? (
-          <RouteSkeleton />
-        ) : isError ? (
-          <RouteError onRetry={() => void refetch()} />
-        ) : (
-          <SeasonHistory
-            rows={data}
-            emptyDescription={
-              alumnus
-                ? "Your completed seasons will appear here."
-                : "Once you complete a season, it'll appear here."
-            }
-          />
-        )}
-      </View>
-    </ShellFrame>
+      )}
+    </Screen>
   );
 }
