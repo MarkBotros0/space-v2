@@ -9,7 +9,10 @@
  * build), hence this source scan. Put the classes on a plain View inside or
  * around the Animated one, and give the Animated one only `style`.
  * `Animated.ScrollView` (Screen) is exempt: it takes classes but never an
- * animated style.
+ * animated style. Besides `Animated.*` tags it also checks tags spelled
+ * through another name for Reanimated's default export
+ * (`import Reanimated from "react-native-reanimated"`) and components made
+ * with `createAnimatedComponent` (`const AnimatedPressable = …`), final review M9.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -29,13 +32,48 @@ function sources(dir: string): string[] {
   });
 }
 
+/**
+ * Names that render a Reanimated component in this file: namespaces for
+ * Reanimated's default export (always `Animated`, plus any other local name it
+ * is imported under) and variables holding a `createAnimatedComponent(...)`.
+ */
+function animatedNames(source: ts.SourceFile): { namespaces: Set<string>; components: Set<string> } {
+  const namespaces = new Set(["Animated"]);
+  const components = new Set<string>();
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteral(node.moduleSpecifier) &&
+      node.moduleSpecifier.text === "react-native-reanimated" &&
+      node.importClause?.name
+    ) {
+      namespaces.add(node.importClause.name.text);
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      ts.isCallExpression(node.initializer) &&
+      /(?:^|\.)createAnimatedComponent$/.test(node.initializer.expression.getText(source))
+    ) {
+      components.add(node.name.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return { namespaces, components };
+}
+
 function offenders(label: string, text: string): string[] {
   const source = ts.createSourceFile(label, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const { namespaces, components } = animatedNames(source);
+  const isAnimated = (tag: string) =>
+    components.has(tag) || [...namespaces].some((ns) => tag.startsWith(`${ns}.`));
   const found: string[] = [];
   const visit = (node: ts.Node) => {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tag = node.tagName.getText(source);
-      if (tag.startsWith("Animated.") && !EXEMPT.has(tag)) {
+      if (isAnimated(tag) && !EXEMPT.has(tag.replace(/^\w+\./, "Animated."))) {
         for (const attr of node.attributes.properties) {
           if (!ts.isJsxAttribute(attr)) continue;
           const name = attr.name.getText(source);
@@ -67,6 +105,24 @@ describe("no className on Reanimated components", () => {
     expect(offenders("sample.tsx", sample)).toEqual([
       "sample.tsx:1 <Animated.View className=…>",
       "sample.tsx:4 <Animated.FlatList contentContainerClassName=…>",
+    ]);
+  });
+
+  it("also flags createAnimatedComponent results and a renamed default import (M9)", () => {
+    const sample = [
+      'import Reanimated from "react-native-reanimated";',
+      "const AnimatedPressable = Animated.createAnimatedComponent(Pressable);",
+      "const Fade = createAnimatedComponent(View);",
+      '<AnimatedPressable className="a" />;',
+      '<Fade className="b" style={s} />;',
+      '<Reanimated.View className="c" />;',
+      '<Pressable className="d" />;',
+      '<Reanimated.ScrollView className="e" />;',
+    ].join("\n");
+    expect(offenders("sample.tsx", sample)).toEqual([
+      "sample.tsx:4 <AnimatedPressable className=…>",
+      "sample.tsx:5 <Fade className=…>",
+      "sample.tsx:6 <Reanimated.View className=…>",
     ]);
   });
 
