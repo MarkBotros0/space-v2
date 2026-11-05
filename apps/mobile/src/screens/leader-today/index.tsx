@@ -44,8 +44,20 @@ function Body({ data }: { data: StaffSeasonDashboard }) {
       <LeaderSessionSection session={data.nextSession} checkIn={data.leaderSession} />
 
       <GroupedList header="To review">
-        <ListRow title="Submissions waiting" trailing={count(submissions.pendingReview)} chevron onPress={toSubmissions} />
-        <ListRow title="Reviewed" trailing={count(submissions.reviewed)} chevron onPress={toSubmissions} />
+        <ListRow
+          title="Submissions waiting"
+          trailing={count(submissions.pendingReview)}
+          trailingLabel={String(submissions.pendingReview)}
+          chevron
+          onPress={toSubmissions}
+        />
+        <ListRow
+          title="Reviewed"
+          trailing={count(submissions.reviewed)}
+          trailingLabel={String(submissions.reviewed)}
+          chevron
+          onPress={toSubmissions}
+        />
         {quizzes.total > 0 || quizzes.drafts > 0 ? (
           <ListRow
             title="Quizzes to grade"
@@ -55,12 +67,19 @@ function Body({ data }: { data: StaffSeasonDashboard }) {
                 : undefined
             }
             trailing={count(quizzes.pending)}
+            trailingLabel={String(quizzes.pending)}
             chevron
             onPress={toQuizzes}
           />
         ) : null}
         {quizzes.total > 0 || quizzes.drafts > 0 ? (
-          <ListRow title="Fully graded" trailing={count(quizzes.fullyGraded)} chevron onPress={toQuizzes} />
+          <ListRow
+            title="Fully graded"
+            trailing={count(quizzes.fullyGraded)}
+            trailingLabel={String(quizzes.fullyGraded)}
+            chevron
+            onPress={toQuizzes}
+          />
         ) : null}
       </GroupedList>
 
@@ -86,13 +105,21 @@ function Body({ data }: { data: StaffSeasonDashboard }) {
             />
           ))}
           {cohort.atRiskTotal > cohort.atRisk.length ? (
-            <ListRow title={`See all ${cohort.atRiskTotal}`} chevron onPress={() => router.push("/groups")} />
+            <ListRow
+              title={`See all ${cohort.atRiskTotal}`}
+              chevron
+              onPress={() => router.push("/groups")}
+            />
           ) : null}
         </GroupedList>
       )}
 
       <View className="flex-row flex-wrap gap-3">
-        <StatTile label="Students" value={cohort.studentCount} onPress={() => router.push("/groups")} />
+        <StatTile
+          label="Students"
+          value={cohort.studentCount}
+          onPress={() => router.push("/groups")}
+        />
         <StatTile label="Attendance" value={mean ?? "—"} suffix={mean !== null ? "%" : undefined} />
         <StatTile
           label={`Session ${progress.sessionsHeld} of ${progress.sessionsTotal}`}

@@ -181,6 +181,16 @@ describe("LeaderToday", () => {
     expect(mockPush).toHaveBeenLastCalledWith("/quizzes");
   });
 
+  it("the count rows are spoken with their numbers (M2)", async () => {
+    serveDash(dash({ nextSession: null, leaderSession: null }));
+    renderWithProviders(<LeaderToday />);
+    await screen.findByText("Submissions waiting");
+    expect(screen.getByLabelText("Submissions waiting, 1")).toBeTruthy();
+    expect(screen.getByLabelText("Reviewed, 2")).toBeTruthy();
+    expect(screen.getByLabelText(/^Quizzes to grade, .*, 2$/)).toBeTruthy();
+    expect(screen.getByLabelText("Fully graded, 0")).toBeTruthy();
+  });
+
   it("at risk: reason line, See all to groups, and figures stay", async () => {
     serveDash(dash({ nextSession: null, leaderSession: null }));
     renderWithProviders(<LeaderToday />);
