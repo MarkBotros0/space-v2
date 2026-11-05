@@ -101,6 +101,14 @@ describe("SettingsScreen", () => {
     expect(screen.getByText("Profile, password, and notification preferences.")).toBeTruthy();
   });
 
+  it("keeps section titles as headers for screen readers", () => {
+    useSessionStore.setState(sessionFor("STUDENT"));
+    renderWithProviders(<SettingsScreen />);
+    for (const title of ["PROFILE", "CHANGE PASSWORD", "SECURITY"]) {
+      expect(screen.getByRole("header", { name: title })).toBeTruthy();
+    }
+  });
+
   it("hides the password section for an invited-never-activated account (hasPassword false)", () => {
     const s = sessionFor("STUDENT");
     s.user.hasPassword = false;
