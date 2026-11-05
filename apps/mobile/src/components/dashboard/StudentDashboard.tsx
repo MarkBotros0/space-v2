@@ -14,7 +14,7 @@ import { NextSessionCard } from "../../design/sessions/next-session-card";
 import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
 import { StatCard } from "../../design/students/stat-card";
-import { Badge, EmptyState, ProgressRing, Text } from "../../design/ui";
+import { Badge, EmptyState, ProgressRing, RingCaption, RingValue, Text } from "../../design/ui";
 import { useStudentDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useMyAttendance } from "../../hooks/use-self-service";
@@ -155,8 +155,8 @@ function EnrolledBody({
         <View className={cn(CARD, "p-5")}>
           <View className="flex-row items-center gap-5">
             <ProgressRing value={pct ?? 0} label={`Season ${pct ?? 0}% complete`}>
-              <Text className="text-2xl font-black text-brand-navy-900 dark:text-foreground">{`${pct ?? 0}%`}</Text>
-              <Eyebrow className="mt-1">done</Eyebrow>
+              <RingValue>{`${pct ?? 0}%`}</RingValue>
+              <RingCaption>done</RingCaption>
             </ProgressRing>
             <View className="min-w-0 flex-1">
               <Eyebrow tone="teal">Current season</Eyebrow>

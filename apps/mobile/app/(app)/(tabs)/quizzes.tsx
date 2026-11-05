@@ -14,6 +14,8 @@ import {
   Button,
   EmptyState,
   ProgressRing,
+  RingCaption,
+  RingValue,
   Text,
 } from "../../../src/design/ui";
 import { useQuizList, useStudentQuizList } from "../../../src/hooks/use-quizzes";
@@ -153,10 +155,8 @@ function StudentQuizzes({ seasonId }: { seasonId: number | null }) {
               value={average ?? 0}
               label={average !== null ? `Average quiz score ${average}%` : "No graded quizzes yet"}
             >
-              <Text className="text-2xl font-black text-brand-navy-900 dark:text-foreground">
-                {average !== null ? `${average}%` : "—"}
-              </Text>
-              <Eyebrow className="mt-1">avg</Eyebrow>
+              <RingValue>{average !== null ? `${average}%` : "—"}</RingValue>
+              <RingCaption>avg</RingCaption>
             </ProgressRing>
             <View className="min-w-0 flex-1">
               <Eyebrow tone="teal">Quiz performance</Eyebrow>

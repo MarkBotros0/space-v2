@@ -10,7 +10,7 @@ import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
 import { NextSessionCard } from "../../design/sessions/next-session-card";
 import { StatCard } from "../../design/students/stat-card";
-import { Badge, EmptyState, ProgressRing, Text } from "../../design/ui";
+import { Badge, EmptyState, ProgressRing, RingCaption, RingValue, Text } from "../../design/ui";
 import { useSeasonStaffDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
@@ -63,10 +63,8 @@ function StaffSummary({
                 : "No attendance yet"
             }
           >
-            <Text className={`text-2xl font-black ${NAVY}`}>
-              {mean !== null ? `${mean}%` : "—"}
-            </Text>
-            <Eyebrow className="mt-1">attendance</Eyebrow>
+            <RingValue>{mean !== null ? `${mean}%` : "—"}</RingValue>
+            <RingCaption>attendance</RingCaption>
           </ProgressRing>
           <View className="min-w-0 flex-1">
             <Eyebrow tone="teal">{isAdmin ? "Current season" : data.season.title}</Eyebrow>

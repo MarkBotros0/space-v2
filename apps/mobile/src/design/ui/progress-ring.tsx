@@ -12,6 +12,7 @@ import { View } from "react-native";
 import Svg, { Circle, G } from "react-native-svg";
 
 import { cn } from "../lib/cn";
+import { Text } from "./text";
 
 const { colors, semantic } = require("../theme/tailwind-theme.js") as {
   colors: Record<string, Record<string, string> | string>;
@@ -31,6 +32,44 @@ function strokeColor(className: string, scheme: "light" | "dark"): string | unde
   if (!m) return undefined;
   const ramp = colors[m[1]!];
   return typeof ramp === "object" ? ramp[m[2]!] : undefined;
+}
+
+/** Space between the stroke and the labels inside the ring. */
+const CONTENT_INSET = 6;
+
+/**
+ * One line that shrinks to fit the ring's inside rather than wrapping: a
+ * word never breaks mid-word, and font scaling stops at 1.15x since the ring
+ * is a fixed size (rule "cap font scaling where a fixed-size container holds
+ * the text").
+ */
+const FIT = {
+  numberOfLines: 1,
+  adjustsFontSizeToFit: true,
+  minimumFontScale: 0.6,
+  maxFontSizeMultiplier: 1.15,
+} as const;
+
+/** The figure in the middle of a ring ("100%"). */
+export function RingValue({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <Text {...FIT} className={cn("self-stretch text-center text-2xl font-black text-brand-navy-900 dark:text-foreground", className)}>
+      {children}
+    </Text>
+  );
+}
+
+/** The caption under a ring's figure ("ATTENDANCE"). */
+export function RingCaption({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <Text
+      {...FIT}
+      variant="caption"
+      className={cn("mt-1 self-stretch text-center font-medium uppercase tracking-wide text-muted-foreground", className)}
+    >
+      {children}
+    </Text>
+  );
 }
 
 export function ProgressRing({
@@ -83,7 +122,13 @@ export function ProgressRing({
         </G>
       </Svg>
       {children != null ? (
-        <View className="absolute inset-0 flex-col items-center justify-center">{children}</View>
+        <View
+          testID="ring-content"
+          className="absolute inset-0 flex-col items-center justify-center"
+          style={{ paddingHorizontal: strokeWidth + CONTENT_INSET }}
+        >
+          {children}
+        </View>
       ) : null}
     </View>
   );
