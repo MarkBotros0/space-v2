@@ -53,7 +53,13 @@ const FIT = {
 /** The figure in the middle of a ring ("100%"). */
 export function RingValue({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <Text {...FIT} className={cn("self-stretch text-center text-2xl font-black text-brand-navy-900 dark:text-foreground", className)}>
+    <Text
+      {...FIT}
+      className={cn(
+        "self-stretch text-center text-2xl font-black text-brand-navy-900 dark:text-foreground",
+        className,
+      )}
+    >
       {children}
     </Text>
   );
@@ -65,7 +71,10 @@ export function RingCaption({ children, className }: { children: ReactNode; clas
     <Text
       {...FIT}
       variant="caption"
-      className={cn("mt-1 self-stretch text-center font-medium uppercase tracking-wide text-muted-foreground", className)}
+      className={cn(
+        "mt-1 self-stretch text-center font-medium uppercase tracking-wide text-muted-foreground",
+        className,
+      )}
     >
       {children}
     </Text>
@@ -94,8 +103,12 @@ export function ProgressRing({
   const circumference = 2 * Math.PI * radius;
   const dash = (clamped / 100) * circumference;
   const scheme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
-  const lastStroke = (indicatorClassName ?? "").split(/\s+/).filter((c) => c.startsWith("stroke-")).pop();
-  const indicator = (lastStroke && strokeColor(lastStroke, scheme)) ?? strokeColor("stroke-brand-teal-500", scheme);
+  const lastStroke = (indicatorClassName ?? "")
+    .split(/\s+/)
+    .filter((c) => c.startsWith("stroke-"))
+    .pop();
+  const indicator =
+    (lastStroke && strokeColor(lastStroke, scheme)) ?? strokeColor("stroke-brand-teal-500", scheme);
   const track = strokeColor("stroke-border", scheme);
 
   return (
@@ -108,7 +121,14 @@ export function ProgressRing({
     >
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
-          <Circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={strokeWidth} stroke={track} />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            strokeWidth={strokeWidth}
+            stroke={track}
+          />
           <Circle
             cx={size / 2}
             cy={size / 2}

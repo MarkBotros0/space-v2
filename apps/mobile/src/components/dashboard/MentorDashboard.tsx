@@ -3,6 +3,7 @@ import { AlertCircle, Users } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AT_RISK_PCT, UPCOMING_EVENTS_LIMIT, type ActivityItem } from "@space/shared";
 
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { PageTitle } from "../../design/layout/page-title";
 import { InlineError } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
@@ -13,7 +14,6 @@ import { useUpcomingEvents } from "../../hooks/use-events";
 import { useEngagementReport } from "../../hooks/use-reports";
 import { formatTimeAgo } from "../../lib/format";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
-import { NAV_ICONS } from "../../design/icons/nav-icon";
 
 iconWithClassName(AlertCircle);
 iconWithClassName(Users);

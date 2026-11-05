@@ -10,7 +10,8 @@ const { colors, semantic } = require("../design/theme/tailwind-theme.js") as {
 /** The hex a `text-*`/`bg-*` class resolves to in a theme (dark: classes win in dark). */
 function resolve(className: string, prefix: "text" | "bg", scheme: "light" | "dark"): string {
   const all = className.split(" ");
-  const pick = (cs: string[]) => cs.find((c) => c.startsWith(`${prefix}-`) && !/^text-(xs|sm|base|caption)$/.test(c));
+  const pick = (cs: string[]) =>
+    cs.find((c) => c.startsWith(`${prefix}-`) && !/^text-(xs|sm|base|caption)$/.test(c));
   const dark = pick(all.filter((c) => c.startsWith("dark:")).map((c) => c.slice(5)));
   const cls = (scheme === "dark" && dark) || pick(all.filter((c) => !c.includes(":")));
   const name = cls!.slice(prefix.length + 1);
@@ -33,20 +34,28 @@ const contrast = (a: string, b: string) => {
 
 // alumni s48-01: "Upcoming" and "Past" read at ~3:1 on device: 12px regular text on a tint.
 describe.each(["light", "dark"] as const)("events legend chips (%s)", (scheme) => {
-  it.each(["Today", "Upcoming", "Past", "JPC event", "Alumni only"])("%s is 4.5:1 on its chip, at medium weight", (label) => {
-    render(<Legend slots={null} />);
-    const text = screen.getByText(label);
-    const chip = screen.getByTestId(`chip-${label}`);
-    const fg = resolve(text.props.className, "text", scheme);
-    const bg = resolve(chip.props.className, "bg", scheme);
-    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
-    expect(text.props.className.split(" ")).toContain("font-medium");
-  });
+  it.each(["Today", "Upcoming", "Past", "JPC event", "Alumni only"])(
+    "%s is 4.5:1 on its chip, at medium weight",
+    (label) => {
+      render(<Legend slots={null} />);
+      const text = screen.getByText(label);
+      const chip = screen.getByTestId(`chip-${label}`);
+      const fg = resolve(text.props.className, "text", scheme);
+      const bg = resolve(chip.props.className, "bg", scheme);
+      expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(text.props.className.split(" ")).toContain("font-medium");
+    },
+  );
 
   it("Upcoming keeps a wide margin over 4.5 (it sat at 4.6 with teal-800)", () => {
     render(<Legend slots={null} />);
     const text = screen.getByText("Upcoming");
     const chip = screen.getByTestId("chip-Upcoming");
-    expect(contrast(resolve(text.props.className, "text", scheme), resolve(chip.props.className, "bg", scheme))).toBeGreaterThanOrEqual(6);
+    expect(
+      contrast(
+        resolve(text.props.className, "text", scheme),
+        resolve(chip.props.className, "bg", scheme),
+      ),
+    ).toBeGreaterThanOrEqual(6);
   });
 });

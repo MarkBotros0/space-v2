@@ -9,13 +9,16 @@ import { renderWithProviders } from "./helpers/render";
 
 const ctx = { today: "2099-03-10", slots: null, isStaff: false };
 const classes = (el: { props: { className?: string } }) => (el.props.className ?? "").split(" ");
-const opacity = (el: { props: { style?: unknown } }) => StyleSheet.flatten(el.props.style as never)?.opacity;
+const opacity = (el: { props: { style?: unknown } }) =>
+  StyleSheet.flatten(el.props.style as never)?.opacity;
 
 // alumni s48-04: out-of-month dates were dimmed to ~2.3:1, the selected day a tall
 // rectangle beside the today circle.
 describe("events month grid (CalendarGrid)", () => {
   it("out-of-month dates use muted-foreground (4.5:1 on the page) instead of opacity", () => {
-    renderWithProviders(<CalendarGrid view="month" anchor="2099-03-10" sessions={[]} events={[]} ctx={ctx} />);
+    renderWithProviders(
+      <CalendarGrid view="month" anchor="2099-03-10" sessions={[]} events={[]} ctx={ctx} />,
+    );
     // March 2099 starts on a Sunday: the grid opens on Monday Feb 23.
     const cell = screen.getByLabelText(/Feb 23, 2099/i);
     expect(classes(cell)).not.toContain("opacity-40");
@@ -25,7 +28,9 @@ describe("events month grid (CalendarGrid)", () => {
   });
 
   it("the selected day is a circle round its date, like today's, not a tinted cell", () => {
-    renderWithProviders(<CalendarGrid view="month" anchor="2099-03-10" sessions={[]} events={[]} ctx={ctx} />);
+    renderWithProviders(
+      <CalendarGrid view="month" anchor="2099-03-10" sessions={[]} events={[]} ctx={ctx} />,
+    );
     fireEvent.press(screen.getByLabelText(/Mar 12, 2099/i));
     expect(classes(screen.getByLabelText(/Mar 12, 2099/i)).join(" ")).not.toMatch(/bg-brand-teal/);
     const circle = screen.getByTestId("day-circle-2099-03-12");
@@ -37,7 +42,15 @@ describe("events month grid (CalendarGrid)", () => {
 describe("season calendar month grid", () => {
   it("out-of-month dates use muted-foreground instead of opacity", () => {
     renderWithProviders(
-      <SeasonCalendarGrid view="month" anchor="2099-03-10" sessions={[]} events={[]} today="2099-03-10" onOpenSession={jest.fn()} onOpenEvent={jest.fn()} />,
+      <SeasonCalendarGrid
+        view="month"
+        anchor="2099-03-10"
+        sessions={[]}
+        events={[]}
+        today="2099-03-10"
+        onOpenSession={jest.fn()}
+        onOpenEvent={jest.fn()}
+      />,
     );
     const cell = screen.getByLabelText(/Feb 23, 2099/i);
     expect(opacity(cell)).toBeUndefined();

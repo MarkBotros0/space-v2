@@ -35,7 +35,11 @@ describe("relative day cue: one helper for calendar and dashboard", () => {
   it("a session later today reads Today, as on the calendar", () => {
     render(
       <NextSessionCard
-        session={{ ...session, dayKey: "2099-03-01", startsAt: new Date(2099, 2, 1, 20, 0).toISOString() }}
+        session={{
+          ...session,
+          dayKey: "2099-03-01",
+          startsAt: new Date(2099, 2, 1, 20, 0).toISOString(),
+        }}
         onOpen={jest.fn()}
       />,
     );
@@ -46,7 +50,11 @@ describe("relative day cue: one helper for calendar and dashboard", () => {
     jest.setSystemTime(new Date(2099, 2, 1, 23, 30));
     render(
       <NextSessionCard
-        session={{ ...session, dayKey: "2099-03-02", startsAt: new Date(2099, 2, 2, 0, 30).toISOString() }}
+        session={{
+          ...session,
+          dayKey: "2099-03-02",
+          startsAt: new Date(2099, 2, 2, 0, 30).toISOString(),
+        }}
         onOpen={jest.fn()}
       />,
     );

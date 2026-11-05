@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Linking, Pressable, View } from "react-native";
 import type { MySeason } from "@space/shared";
 
+import { NAV_ICONS, NavIcon } from "../../design/icons/nav-icon";
 import { Eyebrow, PageTitle } from "../../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
@@ -14,7 +15,6 @@ import { useMySeason } from "../../hooks/use-self-service";
 import { formatDate, formatSessionTime } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { useSessionStore } from "../../store/session";
-import { NAV_ICONS, NavIcon } from "../../design/icons/nav-icon";
 
 iconWithClassName(CalendarDays, MapPin);
 
@@ -37,7 +37,11 @@ function GroupCard({ group }: { group: NonNullable<MySeason["group"]> }) {
     <View className={cn(CARD, "p-4")}>
       <View className="mb-3 flex-row items-center gap-2">
         <View className="size-7 items-center justify-center rounded-full bg-brand-navy-100 dark:bg-brand-navy-900">
-          <NavIcon name="groups" size={16} className="text-brand-navy-800 dark:text-brand-navy-100" />
+          <NavIcon
+            name="groups"
+            size={16}
+            className="text-brand-navy-800 dark:text-brand-navy-100"
+          />
         </View>
         <View>
           <Eyebrow>Your group</Eyebrow>
@@ -99,7 +103,10 @@ function GroupCard({ group }: { group: NonNullable<MySeason["group"]> }) {
             )}
           >
             <View className="size-6 items-center justify-center rounded-full bg-card">
-              <Text maxFontSizeMultiplier={1.15} className="text-caption font-bold text-brand-navy-800 dark:text-brand-navy-100">
+              <Text
+                maxFontSizeMultiplier={1.15}
+                className="text-caption font-bold text-brand-navy-800 dark:text-brand-navy-100"
+              >
                 {initialsOf(member.name, "?")}
               </Text>
             </View>
@@ -143,10 +150,16 @@ function UpcomingCard({ upcoming }: { upcoming: MySeason["upcoming"] }) {
             return (
               <View key={s.id} className="flex-row items-center gap-3">
                 <View className="size-11 shrink-0 items-center justify-center rounded-full bg-brand-teal-100 dark:bg-brand-teal-950">
-                  <Text maxFontSizeMultiplier={1.15} className="text-caption font-bold uppercase leading-none text-brand-teal-800 dark:text-brand-teal-200">
+                  <Text
+                    maxFontSizeMultiplier={1.15}
+                    className="text-caption font-bold uppercase leading-none text-brand-teal-800 dark:text-brand-teal-200"
+                  >
                     {tile.month}
                   </Text>
-                  <Text maxFontSizeMultiplier={1.15} className="text-base font-black leading-tight text-brand-teal-800 dark:text-brand-teal-200">
+                  <Text
+                    maxFontSizeMultiplier={1.15}
+                    className="text-base font-black leading-tight text-brand-teal-800 dark:text-brand-teal-200"
+                  >
                     {tile.day}
                   </Text>
                 </View>
@@ -261,7 +274,6 @@ export function StudentSeason() {
 
   return (
     <ShellFrame
-     
       onRefresh={() => {
         if (seasonId !== null) void refetch();
       }}

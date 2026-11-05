@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import type { StaffAssignmentListItem, StudentAssignmentListItem } from "@space/shared";
 
+import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
@@ -27,7 +28,6 @@ import {
   formatShortDate,
 } from "../../../src/lib/format";
 import { useSessionStore } from "../../../src/store/session";
-import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 
 /** v1 student assignments dot + badge. RETURNED is v2's (v1 had no case): warning tone (B2-16). */
 function rowTone(item: StudentAssignmentListItem): { dot: string; badge: ReactNode } {
@@ -236,8 +236,7 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
     body = (
       <EmptyStateV1 title="No season" description="There's no season to show assignments for." />
     );
-  else if (list.isError)
-    body = <RouteError onRetry={() => void list.refetch()} />;
+  else if (list.isError) body = <RouteError onRetry={() => void list.refetch()} />;
   else
     body = (
       <DataTable

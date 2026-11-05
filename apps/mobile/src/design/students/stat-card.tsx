@@ -81,13 +81,18 @@ export function StatCard({
   className?: string;
 }) {
   const press = usePressScale();
-  const look = cn("flex-1 flex-col items-center justify-center gap-0.5 rounded-group p-4", BOX[variant]);
+  const look = cn(
+    "flex-1 flex-col items-center justify-center gap-0.5 rounded-group p-4",
+    BOX[variant],
+  );
   const lines = statLabelLines(label, sublabel);
   const a11y = `${label}: ${value}`;
   const body = (
     <>
       <View className="flex-row items-center justify-center gap-1">
-        {icon === "flame" ? <Flame testID="stat-card-flame" size={24} className="text-warn" /> : null}
+        {icon === "flame" ? (
+          <Flame testID="stat-card-flame" size={24} className="text-warn" />
+        ) : null}
         <Text
           variant="largeTitle"
           tabular

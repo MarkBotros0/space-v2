@@ -12,7 +12,13 @@ import {
 import { formatDayKey, formatWeekdayDay } from "../../lib/format";
 import { cn } from "../../design/lib/cn";
 import { Text } from "../../design/ui/text";
-import { DayEntries, entriesFor, eventTint, sessionTint, type CalendarContext } from "./CalendarEntries";
+import {
+  DayEntries,
+  entriesFor,
+  eventTint,
+  sessionTint,
+  type CalendarContext,
+} from "./CalendarEntries";
 
 const MAX_DOTS = 3;
 
@@ -83,7 +89,8 @@ function MonthGrid({
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const inGrid = (k: string | null): k is string => k !== null && keys.includes(k);
-  const fallback = inGrid(ctx.today) && isSameMonth(ctx.today, anchor) ? ctx.today : `${anchor.slice(0, 7)}-01`;
+  const fallback =
+    inGrid(ctx.today) && isSameMonth(ctx.today, anchor) ? ctx.today : `${anchor.slice(0, 7)}-01`;
   const selected = inGrid(picked) ? picked : fallback;
 
   const rows: string[][] = [];
@@ -126,7 +133,9 @@ function MonthGrid({
                   testID={`day-circle-${key}`}
                   className={cn(
                     "size-[26px] items-center justify-center rounded-full",
-                    isToday ? "bg-brand-teal-500" : isSelected && "bg-brand-teal-100 dark:bg-brand-teal-950",
+                    isToday
+                      ? "bg-brand-teal-500"
+                      : isSelected && "bg-brand-teal-100 dark:bg-brand-teal-950",
                   )}
                 >
                   <Text

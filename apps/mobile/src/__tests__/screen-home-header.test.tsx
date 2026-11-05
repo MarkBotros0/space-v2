@@ -48,16 +48,26 @@ const compact = () => screen.getByTestId("compact-header", { includeHiddenElemen
 
 describe("Screen home: compact header (R31)", () => {
   it("titles the compact header Today and carries the bell and the user menu", () => {
-    renderWithProviders(<Screen home><RNText>body</RNText></Screen>);
+    renderWithProviders(
+      <Screen home>
+        <RNText>body</RNText>
+      </Screen>,
+    );
     expect(within(compact()).getByText("Today", { includeHiddenElements: true })).toBeTruthy();
-    expect(within(compact()).getByLabelText("User menu", { includeHiddenElements: true })).toBeTruthy();
+    expect(
+      within(compact()).getByLabelText("User menu", { includeHiddenElements: true }),
+    ).toBeTruthy();
     expect(
       within(compact()).getByLabelText("Notifications (3 unread)", { includeHiddenElements: true }),
     ).toBeTruthy();
   });
 
   it("while hidden takes no touches and is out of the accessibility tree: one user menu is found", () => {
-    renderWithProviders(<Screen home><RNText>body</RNText></Screen>);
+    renderWithProviders(
+      <Screen home>
+        <RNText>body</RNText>
+      </Screen>,
+    );
     layoutHeading();
     expect(compact().props.pointerEvents).toBe("none");
     expect(compact().props.importantForAccessibility).toBe("no-hide-descendants");
@@ -66,7 +76,11 @@ describe("Screen home: compact header (R31)", () => {
   });
 
   it("once scrolled past the actions row its controls are live and reachable", async () => {
-    renderWithProviders(<Screen home><RNText>body</RNText></Screen>);
+    renderWithProviders(
+      <Screen home>
+        <RNText>body</RNText>
+      </Screen>,
+    );
     layoutHeading();
     await scrollTo(30);
     expect(compact().props.pointerEvents).toBe("none");
@@ -81,7 +95,11 @@ describe("Screen home: compact header (R31)", () => {
   });
 
   it("a screen that is not home keeps a passive compact header", async () => {
-    renderWithProviders(<Screen title="Students"><RNText>body</RNText></Screen>);
+    renderWithProviders(
+      <Screen title="Students">
+        <RNText>body</RNText>
+      </Screen>,
+    );
     layoutHeading();
     await scrollTo(200);
     expect(compact().props.pointerEvents).toBe("none");

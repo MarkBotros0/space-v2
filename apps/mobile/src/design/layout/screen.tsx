@@ -29,7 +29,13 @@ import { cn } from "../lib/cn";
 import { useKeyboardInset } from "../lib/keyboard-inset";
 import { useReducedMotion } from "../motion";
 import { HomeActions } from "./home-actions";
-import { BACK_TO_PREVIOUS, type BackTarget, CompactHeader, compactHeaderFade, LargeTitle } from "./large-title";
+import {
+  BACK_TO_PREVIOUS,
+  type BackTarget,
+  CompactHeader,
+  compactHeaderFade,
+  LargeTitle,
+} from "./large-title";
 import { OfflineBanner } from "./offline-banner";
 import { TabBarPresenceContext, useShellBottomPadding } from "./shell-context";
 import {
@@ -78,7 +84,13 @@ export type ScreenProps = {
  * wraps the list in it so it gets the same top, and passes `back` for the
  * pinned back bar `Screen` would give it (ruling R16).
  */
-export function ScreenChrome({ children, back }: { children: ReactNode; back?: BackTarget | null }) {
+export function ScreenChrome({
+  children,
+  back,
+}: {
+  children: ReactNode;
+  back?: BackTarget | null;
+}) {
   const effective = useEffectiveBack(back);
   const top = useContext(SafeAreaInsetsContext)?.top ?? 0;
   return (

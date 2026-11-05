@@ -18,7 +18,11 @@ function files(dir: string): string[] {
 
 describe("page background (R32)", () => {
   it("ShellFrame draws no v1 navy-50 tint over the Screen's bg-background", () => {
-    renderWithProviders(<ShellFrame><Text>Body</Text></ShellFrame>);
+    renderWithProviders(
+      <ShellFrame>
+        <Text>Body</Text>
+      </ShellFrame>,
+    );
     const [content] = screen.UNSAFE_queryAllByProps({ testID: "screen-scroll" });
     expect(content?.props.contentContainerClassName).toEqual(expect.any(String));
     expect(content?.props.contentContainerClassName).not.toMatch(/brand-navy-50/);

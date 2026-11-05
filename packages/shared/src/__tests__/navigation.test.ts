@@ -25,7 +25,10 @@ describe("navFor", () => {
 
   it("puts Today first for every role, at most five tabs (redesign plan 01 Task 12)", () => {
     for (const [role, nav] of Object.entries(ALL_NAVS)) {
-      expect([role, nav.tabs[0]]).toEqual([role, { href: "/dashboard", label: "Today", icon: "home" }]);
+      expect([role, nav.tabs[0]]).toEqual([
+        role,
+        { href: "/dashboard", label: "Today", icon: "home" },
+      ]);
       expect(nav.tabs.length).toBeLessThanOrEqual(5);
       expect(nav.sidebar.length).toBeGreaterThan(0);
     }
@@ -41,12 +44,77 @@ describe("navFor", () => {
     // Frozen from the pre-Task-12 navs: anything leaving the tabs stays in the
     // sidebar, so it is still listed in More.
     const before: Record<string, string[]> = {
-      SUPER: ["/calendar", "/dashboard", "/events", "/more", "/notes", "/notifications", "/reports", "/seasons", "/settings", "/students", "/students/alumni", "/students/dropped", "/users"],
-      ADMIN: ["/assignments", "/calendar", "/dashboard", "/groups", "/more", "/notes", "/notifications", "/quizzes", "/reports", "/season", "/settings", "/students"],
-      LEADER: ["/calendar", "/dashboard", "/groups", "/more", "/notes", "/notifications", "/quizzes", "/settings", "/submissions"],
-      MENTOR: ["/dashboard", "/notes", "/notifications", "/profile", "/reports", "/settings", "/students"],
-      STUDENT: ["/assignments", "/attendance", "/calendar", "/dashboard", "/history", "/more", "/notifications", "/profile", "/quizzes", "/season", "/settings"],
-      ALUMNI: ["/calendar", "/dashboard", "/history", "/more", "/notifications", "/profile", "/settings"],
+      SUPER: [
+        "/calendar",
+        "/dashboard",
+        "/events",
+        "/more",
+        "/notes",
+        "/notifications",
+        "/reports",
+        "/seasons",
+        "/settings",
+        "/students",
+        "/students/alumni",
+        "/students/dropped",
+        "/users",
+      ],
+      ADMIN: [
+        "/assignments",
+        "/calendar",
+        "/dashboard",
+        "/groups",
+        "/more",
+        "/notes",
+        "/notifications",
+        "/quizzes",
+        "/reports",
+        "/season",
+        "/settings",
+        "/students",
+      ],
+      LEADER: [
+        "/calendar",
+        "/dashboard",
+        "/groups",
+        "/more",
+        "/notes",
+        "/notifications",
+        "/quizzes",
+        "/settings",
+        "/submissions",
+      ],
+      MENTOR: [
+        "/dashboard",
+        "/notes",
+        "/notifications",
+        "/profile",
+        "/reports",
+        "/settings",
+        "/students",
+      ],
+      STUDENT: [
+        "/assignments",
+        "/attendance",
+        "/calendar",
+        "/dashboard",
+        "/history",
+        "/more",
+        "/notifications",
+        "/profile",
+        "/quizzes",
+        "/season",
+        "/settings",
+      ],
+      ALUMNI: [
+        "/calendar",
+        "/dashboard",
+        "/history",
+        "/more",
+        "/notifications",
+        "/profile",
+        "/settings",
+      ],
     };
     for (const [role, nav] of Object.entries(ALL_NAVS)) {
       const union = [...new Set([...nav.tabs, ...nav.sidebar].map((i) => i.href))].sort();

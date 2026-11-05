@@ -1,6 +1,7 @@
 import { isAlumnus } from "@space/shared";
 import { View } from "react-native";
 
+import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
@@ -8,7 +9,6 @@ import { SeasonHistory } from "../../../src/design/students/season-history";
 import { EmptyState } from "../../../src/design/ui";
 import { useSeasonHistory } from "../../../src/hooks/use-self-service";
 import { useSessionStore } from "../../../src/store/session";
-import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 
 /**
  * /history — STUDENT (sidebar) and ALUMNI (tab). One screen for v1's two
@@ -24,14 +24,21 @@ export default function HistoryScreen() {
   const isStudent = role === "STUDENT";
   // navFor's rule (shared): a graduated student.
   const alumnus = role !== null && isAlumnus({ role, graduationYear });
-  const { data, isPending, isError, refetch, isRefetching } = useSeasonHistory(activeSeasonId, isStudent);
+  const { data, isPending, isError, refetch, isRefetching } = useSeasonHistory(
+    activeSeasonId,
+    isStudent,
+  );
 
   if (!isStudent) {
     return (
       <ShellFrame>
         <View className="flex-col gap-3">
           <PageTitle title="History" />
-          <EmptyState icon={NAV_ICONS.history} title="History" description="Season history is for students and alumni." />
+          <EmptyState
+            icon={NAV_ICONS.history}
+            title="History"
+            description="Season history is for students and alumni."
+          />
         </View>
       </ShellFrame>
     );
@@ -42,7 +49,9 @@ export default function HistoryScreen() {
       <View className="flex-col gap-3">
         <PageTitle
           title={alumnus ? "My History" : "History"}
-          subtitle={alumnus ? "The seasons you journeyed through" : "Seasons you've participated in"}
+          subtitle={
+            alumnus ? "The seasons you journeyed through" : "Seasons you've participated in"
+          }
         />
         {isPending ? (
           <RouteSkeleton />
@@ -52,7 +61,9 @@ export default function HistoryScreen() {
           <SeasonHistory
             rows={data}
             emptyDescription={
-              alumnus ? "Your completed seasons will appear here." : "Once you complete a season, it'll appear here."
+              alumnus
+                ? "Your completed seasons will appear here."
+                : "Once you complete a season, it'll appear here."
             }
           />
         )}

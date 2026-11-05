@@ -27,12 +27,16 @@ describe("Avatar adapts to dark mode", () => {
     const disc = screen.getByTestId("avatar").props.className.split(" ");
     expect(disc).toEqual(expect.arrayContaining(["bg-brand-teal-100", "dark:bg-brand-teal-900"]));
     const text = screen.getByText("MM").props.className.split(" ");
-    expect(text).toEqual(expect.arrayContaining(["text-brand-navy-900", "dark:text-brand-teal-50"]));
+    expect(text).toEqual(
+      expect.arrayContaining(["text-brand-navy-900", "dark:text-brand-teal-50"]),
+    );
   });
 
   it("initials are at least 4.5:1 on the disc in both themes", () => {
     const t = tokens.light as Record<string, string>;
-    expect(contrast(hex(t, "brand-navy-900"), hex(t, "brand-teal-100"))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(hex(t, "brand-navy-900"), hex(t, "brand-teal-100"))).toBeGreaterThanOrEqual(
+      4.5,
+    );
     expect(contrast(hex(t, "brand-teal-50"), hex(t, "brand-teal-900"))).toBeGreaterThanOrEqual(4.5);
   });
 });

@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { View } from "react-native";
 import type { SubmissionQueueItem } from "@space/shared";
 
+import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
@@ -19,7 +20,6 @@ import { usePrefetchSubmission } from "../../../src/hooks/use-submission";
 import { useSubmissionQueue } from "../../../src/hooks/use-submission-queue";
 import { formatShortDateTime } from "../../../src/lib/format";
 import { useSessionStore } from "../../../src/store/session";
-import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 
 // v1 lists every SUBMITTED, REVIEWED and RETURNED row, in that order (B3-8).
 const ALL = { pendingOnly: false } as const;
@@ -43,7 +43,9 @@ function columns(): DataTableColumn<SubmissionQueueItem>[] {
       cell: (r) => (
         <View className="flex-col">
           <Text className="font-medium text-foreground">{r.studentName ?? "Student"}</Text>
-          {r.groupName ? <Text className="text-xs text-muted-foreground">{r.groupName}</Text> : null}
+          {r.groupName ? (
+            <Text className="text-xs text-muted-foreground">{r.groupName}</Text>
+          ) : null}
         </View>
       ),
     },
@@ -63,7 +65,9 @@ function columns(): DataTableColumn<SubmissionQueueItem>[] {
       header: "Submitted",
       cell: (r) =>
         r.submittedAt ? (
-          <Text className="text-sm text-muted-foreground">{formatShortDateTime(r.submittedAt)}</Text>
+          <Text className="text-sm text-muted-foreground">
+            {formatShortDateTime(r.submittedAt)}
+          </Text>
         ) : (
           <Text className="text-sm italic text-muted-foreground">—</Text>
         ),
@@ -94,8 +98,16 @@ function QueueRow({ item }: { item: SubmissionQueueItem }) {
  * batches (plan: other roles keep their rendering). v1 had no admin queue.
  */
 function PendingQueue() {
-  const { data, isPending, isError, refetch, isRefetching, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useSubmissionQueue(PENDING, true);
+  const {
+    data,
+    isPending,
+    isError,
+    refetch,
+    isRefetching,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useSubmissionQueue(PENDING, true);
 
   const items = data?.pages.flatMap((page) => page.items) ?? [];
   // Counts ignore paging and pendingOnly; only the first page carries them.
@@ -114,7 +126,11 @@ function PendingQueue() {
         ) : isError ? (
           <RouteError onRetry={() => void refetch()} />
         ) : items.length === 0 ? (
-          <EmptyState icon={NAV_ICONS.submissions} title="All caught up" description="No submissions waiting for review." />
+          <EmptyState
+            icon={NAV_ICONS.submissions}
+            title="All caught up"
+            description="No submissions waiting for review."
+          />
         ) : (
           <>
             {items.map((item) => (
@@ -148,14 +164,26 @@ export default function SubmissionsScreen() {
   // one season's: the queue narrows to match. From the tab bar it is absent
   // and the queue is v1's cross-season list.
   const seasonId = seasonParam(useLocalSearchParams<{ seasonId?: string }>().seasonId);
-  const { data, isPending, isError, refetch, isRefetching, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useSubmissionQueue(seasonId === undefined ? ALL : { ...ALL, seasonId }, role === "LEADER");
+  const {
+    data,
+    isPending,
+    isError,
+    refetch,
+    isRefetching,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useSubmissionQueue(seasonId === undefined ? ALL : { ...ALL, seasonId }, role === "LEADER");
 
   if (isStaff && role !== "LEADER") return <PendingQueue />;
   if (!isStaff) {
     return (
       <ShellFrame>
-        <EmptyState icon={NAV_ICONS.submissions} title="Submissions" description="This screen isn't available for your role." />
+        <EmptyState
+          icon={NAV_ICONS.submissions}
+          title="Submissions"
+          description="This screen isn't available for your role."
+        />
       </ShellFrame>
     );
   }
@@ -163,7 +191,8 @@ export default function SubmissionsScreen() {
   const items = data?.pages.flatMap((page) => page.items) ?? [];
   // Counts ignore paging and pendingOnly; only the first page carries them.
   const counts = data?.pages[0]?.counts;
-  const open = (publicId: string) => router.push({ pathname: "/submission/[publicId]", params: { publicId } });
+  const open = (publicId: string) =>
+    router.push({ pathname: "/submission/[publicId]", params: { publicId } });
 
   return (
     <ShellFrame refreshing={isRefetching} onRefresh={() => void refetch()}>

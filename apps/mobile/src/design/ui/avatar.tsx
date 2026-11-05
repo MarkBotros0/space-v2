@@ -15,10 +15,13 @@ import { Image, type ImageSourcePropType, View } from "react-native";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
-const avatarVariants = cva("relative shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-teal-100 dark:bg-brand-teal-900", {
-  variants: { size: { sm: "size-7", md: "size-10", lg: "size-12", xl: "size-16" } },
-  defaultVariants: { size: "md" },
-});
+const avatarVariants = cva(
+  "relative shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-teal-100 dark:bg-brand-teal-900",
+  {
+    variants: { size: { sm: "size-7", md: "size-10", lg: "size-12", xl: "size-16" } },
+    defaultVariants: { size: "md" },
+  },
+);
 
 const avatarTextVariants = cva("font-semibold text-brand-navy-900 dark:text-brand-teal-50", {
   variants: { size: { sm: "text-xs", md: "text-sm", lg: "text-base", xl: "text-lg" } },
@@ -26,7 +29,11 @@ const avatarTextVariants = cva("font-semibold text-brand-navy-900 dark:text-bran
 });
 
 type Size = NonNullable<VariantProps<typeof avatarVariants>["size"]>;
-const AvatarContext = createContext<{ size: Size; loaded: boolean; setLoaded: (v: boolean) => void }>({
+const AvatarContext = createContext<{
+  size: Size;
+  loaded: boolean;
+  setLoaded: (v: boolean) => void;
+}>({
   size: "md",
   loaded: false,
   setLoaded: () => {},
@@ -37,7 +44,11 @@ function Avatar({
   size = "md",
   children,
   testID,
-}: VariantProps<typeof avatarVariants> & { className?: string; children?: ReactNode; testID?: string }) {
+}: VariantProps<typeof avatarVariants> & {
+  className?: string;
+  children?: ReactNode;
+  testID?: string;
+}) {
   const [loaded, setLoaded] = useState(false);
   const resolved = size ?? "md";
   return (
@@ -49,7 +60,15 @@ function Avatar({
   );
 }
 
-function AvatarImage({ className, src, alt }: { className?: string; src?: string | ImageSourcePropType | null; alt?: string }) {
+function AvatarImage({
+  className,
+  src,
+  alt,
+}: {
+  className?: string;
+  src?: string | ImageSourcePropType | null;
+  alt?: string;
+}) {
   const { loaded, setLoaded } = useContext(AvatarContext);
   if (!src) return null;
   return (
@@ -76,7 +95,15 @@ function AvatarFallback({ className, children }: { className?: string; children?
   );
 }
 
-function AvatarGroup({ className, children, max }: { className?: string; children?: ReactNode; max?: number }) {
+function AvatarGroup({
+  className,
+  children,
+  max,
+}: {
+  className?: string;
+  children?: ReactNode;
+  max?: number;
+}) {
   const all = Children.toArray(children);
   const visible = max ? all.slice(0, max) : all;
   const overflow = max ? all.length - visible.length : 0;

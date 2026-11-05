@@ -25,7 +25,9 @@ iconWithClassName(ChevronRight, LogOut);
 /** v1: first letters of the first two name parts, else the role's initial. */
 function initialsFor(name: string | null, role: UserRole): string {
   const parts = name?.split(/\s+/) ?? [];
-  return name ? ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() : role.charAt(0).toUpperCase();
+  return name
+    ? ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase()
+    : role.charAt(0).toUpperCase();
 }
 
 export function MoreMenu({
@@ -57,7 +59,9 @@ export function MoreMenu({
         </View>
         <View className="flex-1 flex-col gap-1">
           {name ? <Text className="text-sm font-semibold text-foreground">{name}</Text> : null}
-          <Badge role={badge.color} className="self-start">{badge.label}</Badge>
+          <Badge role={badge.color} className="self-start">
+            {badge.label}
+          </Badge>
         </View>
       </View>
       {items.length > 0 ? (
@@ -68,7 +72,10 @@ export function MoreMenu({
                 key={item.href}
                 accessibilityRole="link"
                 onPress={() => onNavigate(item.href)}
-                className={cn("flex-row items-center gap-3 px-4 py-3 active:bg-accent", i > 0 && "border-t border-border")}
+                className={cn(
+                  "flex-row items-center gap-3 px-4 py-3 active:bg-accent",
+                  i > 0 && "border-t border-border",
+                )}
               >
                 <View className="size-9 items-center justify-center rounded-lg bg-muted">
                   <NavIcon name={item.icon} size={16} className="text-foreground" />

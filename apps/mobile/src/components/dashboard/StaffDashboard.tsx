@@ -4,6 +4,7 @@ import { Pressable, View } from "react-native";
 import { AT_RISK_PCT, UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared";
 
 import { FigurePair, SectionCard } from "../../design/dashboard/section-card";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { Eyebrow } from "../../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
@@ -15,7 +16,6 @@ import { useSeasonStaffDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
-import { NAV_ICONS } from "../../design/icons/nav-icon";
 
 iconWithClassName(AlertTriangle);
 
@@ -172,7 +172,10 @@ function StaffSummary({
           // cross-season list showing a different number.
           isAdmin
             ? router.push("/assignments")
-            : router.push({ pathname: "/submissions", params: { seasonId: String(data.season.id) } })
+            : router.push({
+                pathname: "/submissions",
+                params: { seasonId: String(data.season.id) },
+              })
         }
       >
         <FigurePair

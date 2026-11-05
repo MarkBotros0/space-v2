@@ -7,19 +7,69 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const mobile = path.resolve(here, "..");
-const tokens = JSON.parse(readFileSync(path.resolve(mobile, "src/design/theme/tokens.json"), "utf8"));
+const tokens = JSON.parse(
+  readFileSync(path.resolve(mobile, "src/design/theme/tokens.json"), "utf8"),
+);
 
 const SEMANTIC = [
-  "background", "foreground", "card", "card-foreground", "popover", "popover-foreground",
-  "primary", "primary-foreground", "secondary", "secondary-foreground", "muted",
-  "muted-foreground", "accent", "accent-foreground", "destructive", "border", "input", "ring",
-  "sidebar", "sidebar-foreground", "sidebar-primary", "sidebar-primary-foreground",
-  "sidebar-accent", "sidebar-accent-foreground", "sidebar-border", "sidebar-ring",
+  "background",
+  "foreground",
+  "card",
+  "card-foreground",
+  "popover",
+  "popover-foreground",
+  "primary",
+  "primary-foreground",
+  "secondary",
+  "secondary-foreground",
+  "muted",
+  "muted-foreground",
+  "accent",
+  "accent-foreground",
+  "destructive",
+  "border",
+  "input",
+  "ring",
+  "sidebar",
+  "sidebar-foreground",
+  "sidebar-primary",
+  "sidebar-primary-foreground",
+  "sidebar-accent",
+  "sidebar-accent-foreground",
+  "sidebar-border",
+  "sidebar-ring",
   // Redesign tokens: surface, separator, status tones, floating pill.
-  "surface", "separator", "ok", "ok-soft", "warn", "warn-soft", "bad", "bad-soft",
-  "info", "info-soft", "neutral-soft", "neutral-strong", "surface-raised", "control-border", "unread-soft", "pill", "pill-solid", "pill-foreground", "pill-active", "pill-active-label",
+  "surface",
+  "separator",
+  "ok",
+  "ok-soft",
+  "warn",
+  "warn-soft",
+  "bad",
+  "bad-soft",
+  "info",
+  "info-soft",
+  "neutral-soft",
+  "neutral-strong",
+  "surface-raised",
+  "control-border",
+  "unread-soft",
+  "pill",
+  "pill-solid",
+  "pill-foreground",
+  "pill-active",
+  "pill-active-label",
 ];
-const RAMPS = ["brand-navy", "brand-teal", "neutral", "success", "warning", "error", "info", "purple"];
+const RAMPS = [
+  "brand-navy",
+  "brand-teal",
+  "neutral",
+  "success",
+  "warning",
+  "error",
+  "info",
+  "purple",
+];
 const STEPS = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"];
 const ROLES = ["super", "admin", "leader", "student", "mentor", "alumni"];
 
@@ -32,7 +82,8 @@ function parse(value) {
   return { rgb: m.slice(1, 4).map(Number), alpha: Number(m[4]) };
 }
 
-const isTranslucent = (name) => parse(tokens.light[name]).alpha < 1 || parse(tokens.dark[name]).alpha < 1;
+const isTranslucent = (name) =>
+  parse(tokens.light[name]).alpha < 1 || parse(tokens.dark[name]).alpha < 1;
 const round = (n) => Number(n.toFixed(4));
 
 // For translucent tokens, every opacity modifier's product with the token's
@@ -43,7 +94,10 @@ function varsBlock(selector, theme) {
     const { rgb, alpha } = parse(tokens[theme][name]);
     const base = `  --${name}: ${rgb.join(" ")};\n  --${name}-alpha: ${alpha};`;
     if (!isTranslucent(name)) return base;
-    const steps = Array.from({ length: 100 }, (_, i) => `  --${name}-alpha-${i + 1}: ${round((alpha * (i + 1)) / 100)};`);
+    const steps = Array.from(
+      { length: 100 },
+      (_, i) => `  --${name}-alpha-${i + 1}: ${round((alpha * (i + 1)) / 100)};`,
+    );
     return [base, ...steps].join("\n");
   });
   return `${selector} {\n${lines.join("\n")}\n}`;
@@ -77,7 +131,9 @@ for (const name of SEMANTIC) {
 for (const ramp of RAMPS) {
   const ramped = Object.fromEntries(STEPS.map((s) => [s, tokens.light[`${ramp}-${s}`]]));
   const body = JSON.stringify(ramped).slice(1, -1);
-  const extra = MERGED_INTO_RAMP.has(ramp) ? `,"DEFAULT":"rgb(var(--${ramp}) / <alpha-value>)"` : "";
+  const extra = MERGED_INTO_RAMP.has(ramp)
+    ? `,"DEFAULT":"rgb(var(--${ramp}) / <alpha-value>)"`
+    : "";
   colorSource.push(`  ${JSON.stringify(ramp)}: {${body}${extra}},`);
 }
 const role = {};
@@ -89,7 +145,10 @@ colorSource.push(`  role: ${JSON.stringify(role)},`);
 colorSource.push(`  white: "#FFFFFF",\n  black: "#000000",\n  transparent: "transparent",`);
 
 const borderRadius = {
-  none: "0px", xs: "2px", DEFAULT: "4px", full: "9999px",
+  none: "0px",
+  xs: "2px",
+  DEFAULT: "4px",
+  full: "9999px",
   ...Object.fromEntries(Object.entries(tokens.radius).map(([k, v]) => [k, `${v}px`])),
 };
 
@@ -109,12 +168,20 @@ const boxShadow = {
 // Redesign type scale: text-large-title, text-title, text-headline, text-body,
 // text-subhead, text-caption (weights come from font-* classes, see ui/text.tsx).
 const fontSize = Object.fromEntries(
-  Object.entries(tokens.fontSize).map(([k, v]) => [k, [`${v.size}px`, { lineHeight: `${v.lineHeight}px` }]]),
+  Object.entries(tokens.fontSize).map(([k, v]) => [
+    k,
+    [`${v.size}px`, { lineHeight: `${v.lineHeight}px` }],
+  ]),
 );
 
-const FACES = { normal: ["400", "Geist_400Regular"], medium: ["500", "Geist_500Medium"],
-  semibold: ["600", "Geist_600SemiBold"], bold: ["700", "Geist_700Bold"],
-  extrabold: ["800", "Geist_800ExtraBold"], black: ["900", "Geist_900Black"] };
+const FACES = {
+  normal: ["400", "Geist_400Regular"],
+  medium: ["500", "Geist_500Medium"],
+  semibold: ["600", "Geist_600SemiBold"],
+  bold: ["700", "Geist_700Bold"],
+  extrabold: ["800", "Geist_800ExtraBold"],
+  black: ["900", "Geist_900Black"],
+};
 const fontWeightUtilities = Object.fromEntries(
   // Face only — see design-tokens.test.ts: fontWeight >= 700 sends Android to a
   // BOLD variant that expo-font never registers (system-font fallback).
@@ -134,7 +201,9 @@ const fontFamily = { sans: ["Geist_400Regular"], mono: ["GeistMono_400Regular"] 
 // Resolved semantic values for props that take a colour, not a class
 // (placeholderTextColor, svg fills, gradients): use via useThemeColors().
 const semantic = ${JSON.stringify(
-  Object.fromEntries(["light", "dark"].map((t) => [t, Object.fromEntries(SEMANTIC.map((n) => [n, tokens[t][n]]))])),
+  Object.fromEntries(
+    ["light", "dark"].map((t) => [t, Object.fromEntries(SEMANTIC.map((n) => [n, tokens[t][n]]))]),
+  ),
   null,
   2,
 )};

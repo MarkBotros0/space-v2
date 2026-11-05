@@ -101,7 +101,9 @@ describe("DashboardScreen — STUDENT", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Not enrolled yet")).toBeTruthy();
-    expect(screen.getByText("Contact your leader or admin to be enrolled in a season.")).toBeTruthy();
+    expect(
+      screen.getByText("Contact your leader or admin to be enrolled in a season."),
+    ).toBeTruthy();
     expect(screen.getByText("Welcome to JPC Space")).toBeTruthy();
     fireEvent.press(screen.getByText("Complete your profile →"));
     expect(mockPush).toHaveBeenCalledWith("/profile");
@@ -210,14 +212,17 @@ describe("dashboard body", () => {
   it.each([
     ["STUDENT", { activeSeasonId: null }],
     ["STUDENT", { graduationYear: 2024 }],
-  ] as const)("%s %j: Home's frame carries the bell and menu once, the body none", async (role, scopes) => {
-    serve({ [UNREAD]: { unreadCount: 3 }, [EVENTS]: events });
-    useSessionStore.setState(makeSession(role, scopes));
-    renderWithProviders(<DashboardScreen />);
-    await waitFor(() => expect(requested().length).toBeGreaterThan(0));
-    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
-    expect(screen.queryByLabelText(/^Notifications/)).toBeNull();
-  });
+  ] as const)(
+    "%s %j: Home's frame carries the bell and menu once, the body none",
+    async (role, scopes) => {
+      serve({ [UNREAD]: { unreadCount: 3 }, [EVENTS]: events });
+      useSessionStore.setState(makeSession(role, scopes));
+      renderWithProviders(<DashboardScreen />);
+      await waitFor(() => expect(requested().length).toBeGreaterThan(0));
+      expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
+      expect(screen.queryByLabelText(/^Notifications/)).toBeNull();
+    },
+  );
 
   it("the loading frame before the session lands is Home's too", () => {
     renderWithProviders(<DashboardScreen />);

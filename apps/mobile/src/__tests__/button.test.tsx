@@ -37,9 +37,30 @@ describe("Button redesign", () => {
   });
 
   it("renders every legacy variant and size without throwing", () => {
-    for (const variant of ["default", "outline", "secondary", "ghost", "destructive", "link", "primary", "plain"] as const) {
-      for (const size of ["default", "xs", "sm", "lg", "icon", "icon-xs", "icon-sm", "icon-lg", "md"] as const) {
-        const { unmount } = render(<Button variant={variant} size={size}>{`${variant}-${size}`}</Button>);
+    for (const variant of [
+      "default",
+      "outline",
+      "secondary",
+      "ghost",
+      "destructive",
+      "link",
+      "primary",
+      "plain",
+    ] as const) {
+      for (const size of [
+        "default",
+        "xs",
+        "sm",
+        "lg",
+        "icon",
+        "icon-xs",
+        "icon-sm",
+        "icon-lg",
+        "md",
+      ] as const) {
+        const { unmount } = render(
+          <Button variant={variant} size={size}>{`${variant}-${size}`}</Button>,
+        );
         expect(screen.getByText(`${variant}-${size}`)).toBeTruthy();
         unmount();
       }
@@ -48,7 +69,11 @@ describe("Button redesign", () => {
 
   it("loading shows a spinner and blocks presses", () => {
     const onPress = jest.fn();
-    render(<Button loading onPress={onPress}>Save</Button>);
+    render(
+      <Button loading onPress={onPress}>
+        Save
+      </Button>,
+    );
     const btn = screen.getByRole("button", { name: "Save" });
     expect(btn.props.accessibilityState).toMatchObject({ busy: true, disabled: true });
     expect(screen.getByTestId("button-spinner")).toBeTruthy();
@@ -61,7 +86,11 @@ describe("Button redesign", () => {
     const { rerender } = render(<Button onPress={onPress}>Go</Button>);
     fireEvent.press(screen.getByRole("button", { name: "Go" }));
     expect(onPress).toHaveBeenCalledTimes(1);
-    rerender(<Button disabled onPress={onPress}>Go</Button>);
+    rerender(
+      <Button disabled onPress={onPress}>
+        Go
+      </Button>,
+    );
     fireEvent.press(screen.getByRole("button", { name: "Go" }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -69,25 +98,42 @@ describe("Button redesign", () => {
   // Sweep (student s04-04, super s30-04): opacity over the teal fill left the label at
   // ~1.5:1 in dark and ~2:1 in light. Disabled is a neutral fill with the muted
   // foreground instead (muted-foreground on neutral-soft is contrast-tested).
-  it.each(["primary", "secondary", "destructive"] as const)("disabled %s is a neutral fill with a muted label, no opacity", (variant) => {
-    render(<Button variant={variant} disabled>Check In</Button>);
-    const label = screen.getByText("Check In");
-    expect(label.props.className.split(" ")).toContain("text-muted-foreground");
-    const look = screen.getByTestId("button-look").props.className.split(" ");
-    expect(look).toContain("bg-neutral-soft");
-    expect(look).toContain("border-transparent");
-    expect(look).not.toContain("opacity-50");
-    expect(look.filter((c: string) => c.startsWith("bg-"))).toEqual(["bg-neutral-soft"]);
-  });
+  it.each(["primary", "secondary", "destructive"] as const)(
+    "disabled %s is a neutral fill with a muted label, no opacity",
+    (variant) => {
+      render(
+        <Button variant={variant} disabled>
+          Check In
+        </Button>,
+      );
+      const label = screen.getByText("Check In");
+      expect(label.props.className.split(" ")).toContain("text-muted-foreground");
+      const look = screen.getByTestId("button-look").props.className.split(" ");
+      expect(look).toContain("bg-neutral-soft");
+      expect(look).toContain("border-transparent");
+      expect(look).not.toContain("opacity-50");
+      expect(look.filter((c: string) => c.startsWith("bg-"))).toEqual(["bg-neutral-soft"]);
+    },
+  );
 
   it("disabled plain keeps no fill and mutes the label", () => {
-    render(<Button variant="plain" disabled>Skip</Button>);
+    render(
+      <Button variant="plain" disabled>
+        Skip
+      </Button>,
+    );
     expect(screen.getByText("Skip").props.className.split(" ")).toContain("text-muted-foreground");
-    expect(screen.getByTestId("button-look").props.className.split(" ")).toContain("bg-transparent");
+    expect(screen.getByTestId("button-look").props.className.split(" ")).toContain(
+      "bg-transparent",
+    );
   });
 
   it("a caller's label colour does not override the disabled label", () => {
-    render(<Button disabled textClassName="text-primary">Go</Button>);
+    render(
+      <Button disabled textClassName="text-primary">
+        Go
+      </Button>,
+    );
     const classes = screen.getByText("Go").props.className.split(" ");
     expect(classes).toContain("text-muted-foreground");
     expect(classes).not.toContain("text-primary");
@@ -95,7 +141,9 @@ describe("Button redesign", () => {
 
   /** The icon element as written (NativeWind's JSX wraps its type, so find it by its size). */
   const iconClasses = (): string[] =>
-    screen.UNSAFE_root.findAll((n) => n.props.size === 16 && typeof n.props.className === "string")[0]!.props.className.split(" ");
+    screen.UNSAFE_root.findAll(
+      (n) => n.props.size === 16 && typeof n.props.className === "string",
+    )[0]!.props.className.split(" ");
 
   // Review r2 Important 1: the Check In button (StudentCheckInCard, QrCode) and Add admin
   // (SeasonAdmins, UserPlus) passed text-primary-foreground icons, ~1.2:1 on the neutral fill.

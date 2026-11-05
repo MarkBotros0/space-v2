@@ -4,7 +4,10 @@ import { StatCard, statLabelLines } from "../design/students/stat-card";
 
 describe("StatCard label (dashboard stat rows)", () => {
   it("label and sublabel are one text in one style, split into balanced lines at word boundaries", () => {
-    expect(statLabelLines("Absence budget left", "this season")).toEqual(["Absence budget", "left this season"]);
+    expect(statLabelLines("Absence budget left", "this season")).toEqual([
+      "Absence budget",
+      "left this season",
+    ]);
     expect(statLabelLines("Assignments", "pending")).toEqual(["Assignments", "pending"]);
     expect(statLabelLines("Progress", "Session 3/10")).toEqual(["Progress", "Session 3/10"]);
     expect(statLabelLines("Streak")).toEqual(["Streak"]);

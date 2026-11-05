@@ -34,12 +34,25 @@ type VariantInput = Variant | LegacyVariant;
 type SizeInput = Size | LegacySize;
 
 const VARIANT_ALIAS: Record<VariantInput, Variant> = {
-  primary: "primary", secondary: "secondary", destructive: "destructive", plain: "plain",
-  default: "primary", outline: "secondary", ghost: "plain", link: "plain",
+  primary: "primary",
+  secondary: "secondary",
+  destructive: "destructive",
+  plain: "plain",
+  default: "primary",
+  outline: "secondary",
+  ghost: "plain",
+  link: "plain",
 };
 const SIZE_ALIAS: Record<SizeInput, Size> = {
-  md: "md", sm: "sm", default: "md", lg: "md", "icon-lg": "md",
-  xs: "sm", icon: "sm", "icon-xs": "sm", "icon-sm": "sm",
+  md: "md",
+  sm: "sm",
+  default: "md",
+  lg: "md",
+  "icon-lg": "md",
+  xs: "sm",
+  icon: "sm",
+  "icon-xs": "sm",
+  "icon-sm": "sm",
 };
 const ICON_SIZES = new Set<string>(["icon", "icon-xs", "icon-sm", "icon-lg"]);
 
@@ -106,7 +119,11 @@ const DISABLED_TEXT = "text-muted-foreground";
  */
 function muteIcons(children: ReactNode): ReactNode {
   return Children.map(children, (child) => {
-    if (!isValidElement<{ className?: unknown }>(child) || typeof child.props.className !== "string") return child;
+    if (
+      !isValidElement<{ className?: unknown }>(child) ||
+      typeof child.props.className !== "string"
+    )
+      return child;
     const el = child as ReactElement<{ className: string }>;
     return cloneElement(el, { className: cn(el.props.className, DISABLED_TEXT) });
   });
@@ -114,25 +131,47 @@ function muteIcons(children: ReactNode): ReactNode {
 
 /** Icon size for children icons (v1 forced these through [&_svg]). */
 const BUTTON_ICON_SIZE: Record<SizeInput, number> = {
-  md: 16, sm: 16, default: 16, xs: 12, lg: 16, icon: 16, "icon-xs": 12, "icon-sm": 16, "icon-lg": 16,
+  md: 16,
+  sm: 16,
+  default: 16,
+  xs: 12,
+  lg: 16,
+  icon: 16,
+  "icon-xs": 12,
+  "icon-sm": 16,
+  "icon-lg": 16,
 };
 
-type ButtonProps = Omit<PressableProps, "children"> & Opts & {
-  className?: string;
-  textClassName?: string;
-  loading?: boolean;
-  children?: ReactNode;
-};
+type ButtonProps = Omit<PressableProps, "children"> &
+  Opts & {
+    className?: string;
+    textClassName?: string;
+    loading?: boolean;
+    children?: ReactNode;
+  };
 
 function Button({
-  className, textClassName, variant = "primary", size = "md", loading = false, children, disabled, onPress, ...props
+  className,
+  textClassName,
+  variant = "primary",
+  size = "md",
+  loading = false,
+  children,
+  disabled,
+  onPress,
+  ...props
 }: ButtonProps) {
   const press = usePressScale();
   const colors = useThemeColors();
   const blocked = !!disabled || loading;
   const dimmed = blocked && !loading;
   const resolved = VARIANT_ALIAS[variant ?? "primary"];
-  const spinner = resolved === "primary" ? colors["primary-foreground"] : resolved === "destructive" ? colors["bad"] : colors["foreground"];
+  const spinner =
+    resolved === "primary"
+      ? colors["primary-foreground"]
+      : resolved === "destructive"
+        ? colors["bad"]
+        : colors["foreground"];
   return (
     <Pressable
       accessibilityRole="button"
@@ -147,15 +186,24 @@ function Button({
       <Animated.View style={press.animatedStyle}>
         <View
           testID="button-look"
-          className={cn(buttonVariants({ variant, size }), dimmed && (resolved === "plain" ? null : DISABLED_FILL))}
+          className={cn(
+            buttonVariants({ variant, size }),
+            dimmed && (resolved === "plain" ? null : DISABLED_FILL),
+          )}
         >
-          {loading ? <ActivityIndicator testID="button-spinner" size="small" color={spinner} /> : null}
+          {loading ? (
+            <ActivityIndicator testID="button-spinner" size="small" color={spinner} />
+          ) : null}
           {withTextRuns(dimmed ? muteIcons(children) : children, (text, key) => (
             <Text
               key={key}
               variant="headline"
               numberOfLines={1}
-              className={cn(buttonTextVariants({ variant }), textClassName, dimmed && DISABLED_TEXT)}
+              className={cn(
+                buttonTextVariants({ variant }),
+                textClassName,
+                dimmed && DISABLED_TEXT,
+              )}
             >
               {text}
             </Text>

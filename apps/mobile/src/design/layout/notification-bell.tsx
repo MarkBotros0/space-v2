@@ -68,7 +68,9 @@ export function NotificationBell({
             testID="bell-count"
             className="absolute right-1 top-1 min-w-4 items-center justify-center rounded-full bg-error-600 px-1"
           >
-            <Text className="text-[10px] font-semibold leading-none text-white">{unread > 9 ? "9+" : unread}</Text>
+            <Text className="text-[10px] font-semibold leading-none text-white">
+              {unread > 9 ? "9+" : unread}
+            </Text>
           </View>
         ) : null}
       </Pressable>
@@ -87,7 +89,9 @@ export function NotificationBell({
             {items.length === 0 ? (
               <View className="flex-col items-center gap-2 px-3 py-8">
                 <BellOff size={20} className="text-muted-foreground" />
-                <Text className="text-center text-sm text-muted-foreground">No notifications yet.</Text>
+                <Text className="text-center text-sm text-muted-foreground">
+                  No notifications yet.
+                </Text>
               </View>
             ) : (
               items.map((n, i) => (
@@ -148,23 +152,42 @@ function SmallLink({
       onPress={disabled ? undefined : onPress}
       className="min-h-[44px] justify-center rounded-md px-2 active:bg-muted"
     >
-      <Text className={cn("text-sm font-medium", disabled ? "text-muted-foreground" : "text-info")}>{children}</Text>
+      <Text className={cn("text-sm font-medium", disabled ? "text-muted-foreground" : "text-info")}>
+        {children}
+      </Text>
     </Pressable>
   );
 }
 
-function NotificationRow({ item, first, onPress }: { item: NotificationBellItem; first: boolean; onPress?: () => void }) {
+function NotificationRow({
+  item,
+  first,
+  onPress,
+}: {
+  item: NotificationBellItem;
+  first: boolean;
+  onPress?: () => void;
+}) {
   const inner = (
     <View
       testID={`notification-row-${item.id}`}
-      className={cn("flex-col gap-1 px-3 py-2.5", !item.readAt && "bg-unread-soft", !first && "border-t border-border")}
+      className={cn(
+        "flex-col gap-1 px-3 py-2.5",
+        !item.readAt && "bg-unread-soft",
+        !first && "border-t border-border",
+      )}
     >
       <View className="flex-row items-start gap-2">
         {/* The dot is the row's one non-hue marker: 3:1+ on unread-soft (info-300 in dark). */}
         {!item.readAt ? (
-          <View testID={`unread-dot-${item.id}`} className="mt-1.5 size-1.5 shrink-0 rounded-full bg-info-500 dark:bg-info-300" />
+          <View
+            testID={`unread-dot-${item.id}`}
+            className="mt-1.5 size-1.5 shrink-0 rounded-full bg-info-500 dark:bg-info-300"
+          />
         ) : null}
-        <Text className="flex-1 text-sm font-medium leading-snug text-popover-foreground">{item.title}</Text>
+        <Text className="flex-1 text-sm font-medium leading-snug text-popover-foreground">
+          {item.title}
+        </Text>
       </View>
       {item.body ? <Text className="text-xs text-muted-foreground">{item.body}</Text> : null}
       <Text className="text-caption uppercase tracking-wide text-muted-foreground">

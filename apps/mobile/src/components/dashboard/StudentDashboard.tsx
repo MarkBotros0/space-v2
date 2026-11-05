@@ -7,6 +7,7 @@ import {
   type StudentDashboard as StudentData,
 } from "@space/shared";
 
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { Eyebrow } from "../../design/layout/page-title";
 import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
@@ -18,14 +19,9 @@ import { Badge, EmptyState, ProgressRing, RingCaption, RingValue, Text } from ".
 import { useStudentDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useMyAttendance } from "../../hooks/use-self-service";
-import {
-  firstName,
-  formatDistanceOnly,
-  formatShortDay,
-} from "../../lib/format";
+import { firstName, formatDistanceOnly, formatShortDay } from "../../lib/format";
 import { useSessionStore } from "../../store/session";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
-import { NAV_ICONS } from "../../design/icons/nav-icon";
 
 iconWithClassName(AlertTriangle);
 
@@ -92,7 +88,10 @@ export function StudentDashboard() {
     >
       <View className="flex-col gap-3">
         <View>
-          <Text accessibilityRole="header" className="text-2xl font-black text-brand-navy-900 dark:text-foreground">
+          <Text
+            accessibilityRole="header"
+            className="text-2xl font-black text-brand-navy-900 dark:text-foreground"
+          >
             {`Hi, ${firstName(name)} 👋`}
           </Text>
           <Text className="mt-1 text-sm text-muted-foreground">{subtitle(data)}</Text>
@@ -160,7 +159,10 @@ function EnrolledBody({
             </ProgressRing>
             <View className="min-w-0 flex-1">
               <Eyebrow tone="teal">Current season</Eyebrow>
-              <Text numberOfLines={1} className="mt-1 text-lg font-black text-brand-navy-900 dark:text-foreground">
+              <Text
+                numberOfLines={1}
+                className="mt-1 text-lg font-black text-brand-navy-900 dark:text-foreground"
+              >
                 {data.season.title}
               </Text>
               <Text className="text-xs text-muted-foreground">
@@ -226,7 +228,9 @@ function EnrolledBody({
           <View className="flex-row items-center justify-between">
             <Eyebrow>Due soon</Eyebrow>
             <Pressable accessibilityRole="link" onPress={() => router.push("/assignments")}>
-              <Text className="text-xs font-semibold text-brand-teal-700 dark:text-brand-teal-300">See all</Text>
+              <Text className="text-xs font-semibold text-brand-teal-700 dark:text-brand-teal-300">
+                See all
+              </Text>
             </Pressable>
           </View>
           <View className="mt-2 flex-col">
@@ -243,9 +247,14 @@ function EnrolledBody({
                 <Pressable
                   accessibilityRole="link"
                   className="min-w-0 flex-1"
-                  onPress={() => router.push({ pathname: "/assignment/[id]", params: { id: String(a.id) } })}
+                  onPress={() =>
+                    router.push({ pathname: "/assignment/[id]", params: { id: String(a.id) } })
+                  }
                 >
-                  <Text numberOfLines={1} className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+                  <Text
+                    numberOfLines={1}
+                    className="text-sm font-semibold text-brand-navy-900 dark:text-foreground"
+                  >
                     {a.title}
                   </Text>
                 </Pressable>

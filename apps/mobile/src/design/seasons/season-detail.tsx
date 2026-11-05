@@ -12,12 +12,12 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { formatSeasonDay } from "../../lib/format";
+import { NAV_ICONS } from "../icons/nav-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { EmptyState } from "../ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Text } from "../ui/text";
 import { SeasonStatusBadge } from "./season-status-badge";
-import { NAV_ICONS } from "../icons/nav-icon";
 
 export function SeasonDetailView({
   season,

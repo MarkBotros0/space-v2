@@ -141,7 +141,10 @@ export function CompactHeader({
         style={[styles.pinned, fade]}
       >
         {trailing ? (
-          <View pointerEvents="box-none" className="min-h-[44px] flex-row items-center justify-end bg-background px-4 py-1">
+          <View
+            pointerEvents="box-none"
+            className="min-h-[44px] flex-row items-center justify-end bg-background px-4 py-1"
+          >
             <View
               pointerEvents="none"
               accessibilityElementsHidden

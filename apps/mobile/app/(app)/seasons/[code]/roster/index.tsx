@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { SeasonRosterRow } from "@space/shared";
 
+import { NAV_ICONS } from "../../../../../src/design/icons/nav-icon";
 import { PageTitle } from "../../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../../src/design/layout/shell-frame";
@@ -23,7 +24,6 @@ import { useSaveGroupAssignments, useSeasonRoster } from "../../../../../src/hoo
 import { useSeasonGroups } from "../../../../../src/hooks/use-groups";
 import { useSeasonByCode } from "../../../../../src/hooks/use-seasons";
 import { apiErrorMessage } from "../../../../../src/lib/api-error";
-import { NAV_ICONS } from "../../../../../src/design/icons/nav-icon";
 
 export const ROSTER_UNASSIGNED_LABEL = "Unassigned";
 const NONE = "none";
@@ -115,7 +115,11 @@ function RosterGrid({ seasonId, onNewGroup }: { seasonId: number; onNewGroup: ()
             ? "No unsaved changes"
             : `${changes.length} unsaved change${changes.length === 1 ? "" : "s"}`}
         </Text>
-        <Button className="shrink-0" disabled={save.isPending || changes.length === 0} onPress={onSave}>
+        <Button
+          className="shrink-0"
+          disabled={save.isPending || changes.length === 0}
+          onPress={onSave}
+        >
           {save.isPending ? "Saving…" : "Save changes"}
         </Button>
       </View>

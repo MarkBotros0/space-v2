@@ -32,7 +32,9 @@ export function NextSessionCard({
             <View className="mt-1 size-2 shrink-0 rounded-full bg-brand-teal-500" />
             <View className="min-w-0 flex-1 items-start">
               <Pressable accessibilityRole="link" onPress={() => onOpen(next.id)}>
-                <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{next.title}</Text>
+                <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
+                  {next.title}
+                </Text>
               </Pressable>
               <Text className="text-xs text-muted-foreground">
                 {`${formatWeekdayDay(next.dayKey)} · ${formatWallTime(next.time)} · ${next.durationMinutes} min${

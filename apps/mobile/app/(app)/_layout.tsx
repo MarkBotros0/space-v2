@@ -86,7 +86,9 @@ const TABS_SCREEN_OPTIONS = { headerShown: false } as const;
  */
 export default function AppLayout() {
   const status = useSessionStore((s) => s.status);
-  const isAlumnus = useSessionStore((s) => s.user?.role === "STUDENT" && s.scopes?.graduationYear != null);
+  const isAlumnus = useSessionStore(
+    (s) => s.user?.role === "STUDENT" && s.scopes?.graduationYear != null,
+  );
   const segments = useSegments();
 
   // The boot gate (Task 6, app/_layout.tsx) has already resolved "idle" and

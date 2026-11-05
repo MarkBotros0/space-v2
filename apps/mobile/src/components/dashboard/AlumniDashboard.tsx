@@ -3,6 +3,7 @@ import { History } from "lucide-react-native";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
+import { NavIcon } from "../../design/icons/nav-icon";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, Text } from "../../design/ui";
@@ -10,7 +11,6 @@ import { useUpcomingEvents } from "../../hooks/use-events";
 import { firstName } from "../../lib/format";
 import { useSessionStore } from "../../store/session";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
-import { NavIcon } from "../../design/icons/nav-icon";
 
 iconWithClassName(History);
 

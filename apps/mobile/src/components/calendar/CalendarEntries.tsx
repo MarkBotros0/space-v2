@@ -4,7 +4,12 @@ import { useRouter } from "expo-router";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { formatWallTime } from "../../lib/format";
-import { sessionBadge, sessionTone, type DayContents, type SessionTone } from "../../lib/calendar-grid";
+import {
+  sessionBadge,
+  sessionTone,
+  type DayContents,
+  type SessionTone,
+} from "../../lib/calendar-grid";
 import type { CalendarEntry } from "../../lib/day-groups";
 import { cn } from "../../design/lib/cn";
 import { Text } from "../../design/ui/text";
@@ -146,7 +151,9 @@ function SessionCard({ s, ctx }: { s: SessionListItem; ctx: CalendarContext }) {
     <EntryCard
       tint={tint}
       title={s.title}
-      subtitle={s.location ? `${formatWallTime(s.startTime)} · ${s.location}` : formatWallTime(s.startTime)}
+      subtitle={
+        s.location ? `${formatWallTime(s.startTime)} · ${s.location}` : formatWallTime(s.startTime)
+      }
       onPress={() => router.push({ pathname: "/session/[id]", params: { id: String(s.id) } })}
       chips={
         <>
@@ -181,7 +188,11 @@ function EventCard({ e }: { e: JpcEventListItem }) {
 export function entriesFor(day: DayContents | undefined): CalendarEntry[] {
   if (!day) return [];
   const entries: CalendarEntry[] = [
-    ...day.sessions.map((session) => ({ kind: "session" as const, at: Date.parse(session.startsAt), session })),
+    ...day.sessions.map((session) => ({
+      kind: "session" as const,
+      at: Date.parse(session.startsAt),
+      session,
+    })),
     ...day.events.map((event) => ({ kind: "event" as const, at: Date.parse(event.date), event })),
   ];
   return entries.sort((a, b) => a.at - b.at);

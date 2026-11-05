@@ -1,6 +1,7 @@
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
+import { NavIcon } from "../../design/icons/nav-icon";
 import { InlineError } from "../../design/layout/route-states";
 import {
   Badge,
@@ -12,8 +13,6 @@ import {
   Text as TextV1,
 } from "../../design/ui";
 import { useSessionQuizzes } from "../../hooks/use-session-quizzes";
-import { NavIcon } from "../../design/icons/nav-icon";
-
 
 const QUIZZES_ERROR = "Couldn't load this session's quizzes.";
 

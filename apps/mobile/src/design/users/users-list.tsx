@@ -10,12 +10,12 @@ import type { UserListItem, UserStatus } from "@space/shared";
 
 import { formatDate } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
+import { NAV_ICONS } from "../icons/nav-icon";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { DataTable, type DataTableColumn } from "../ui/data-table";
 import { EmptyState } from "../ui/empty-state";
 import { Text } from "../ui/text";
-import { NAV_ICONS } from "../icons/nav-icon";
 
 type RoleBadge = "super" | "admin" | "leader" | "mentor" | "student";
 const ROLE_BADGE: Record<UserListItem["role"], RoleBadge> = {

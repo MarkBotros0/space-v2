@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import type { StudentListItem, StudentListSort, StudentListStatus, UserRole } from "@space/shared";
 
+import { NAV_ICONS } from "../design/icons/nav-icon";
 import { PageTitle } from "../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
 import { ShellFrame } from "../design/layout/shell-frame";
@@ -26,7 +27,6 @@ import { useAllGroups } from "../hooks/use-groups";
 import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
 import { formatDate } from "../lib/format";
 import { useSessionStore } from "../store/session";
-import { NAV_ICONS } from "../design/icons/nav-icon";
 
 /** Who may open each list: the screen mirrors the endpoint's per-surface gate. */
 export const ALUMNI_ROLES: readonly UserRole[] = ["SUPER", "ADMIN", "MENTOR"];

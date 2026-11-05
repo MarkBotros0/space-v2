@@ -34,13 +34,7 @@ export function ShellFrame({
   back?: BackTarget | null;
 }) {
   return (
-    <Screen
-      scroll={scroll}
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      home={home}
-      back={back}
-    >
+    <Screen scroll={scroll} refreshing={refreshing} onRefresh={onRefresh} home={home} back={back}>
       {children}
     </Screen>
   );

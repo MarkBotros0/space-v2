@@ -13,7 +13,13 @@ const classes = (el: { props: { className?: string } }) => (el.props.className ?
 function open(unread = 1) {
   const onMarkAllRead = jest.fn();
   renderWithProviders(
-    <NotificationBell items={items} unread={unread} onMarkAllRead={onMarkAllRead} onViewAll={jest.fn()} onSelect={jest.fn()} />,
+    <NotificationBell
+      items={items}
+      unread={unread}
+      onMarkAllRead={onMarkAllRead}
+      onViewAll={jest.fn()}
+      onSelect={jest.fn()}
+    />,
   );
   fireEvent.press(screen.getByLabelText(/^Notifications/));
   return onMarkAllRead;
@@ -59,7 +65,13 @@ describe("NotificationBell look (super s29-05)", () => {
 
   it("the count badge is white on error-600 (4.8:1), capped at 9+", () => {
     renderWithProviders(
-      <NotificationBell items={items} unread={42} onMarkAllRead={jest.fn()} onViewAll={jest.fn()} onSelect={jest.fn()} />,
+      <NotificationBell
+        items={items}
+        unread={42}
+        onMarkAllRead={jest.fn()}
+        onViewAll={jest.fn()}
+        onSelect={jest.fn()}
+      />,
     );
     expect(screen.getByText("9+")).toBeTruthy();
     expect(classes(screen.getByTestId("bell-count"))).toContain("bg-error-600");

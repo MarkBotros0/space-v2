@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { passwordSchema } from "@space/shared";
 
 import { NotificationPreferences } from "../../src/components/NotificationPreferences";
+import { NAV_ICONS } from "../../src/design/icons/nav-icon";
 import { PageHeader } from "../../src/design/layout/page-header";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { Section } from "../../src/design/settings/section";
@@ -15,7 +16,6 @@ import { useLogout } from "../../src/hooks/use-session";
 import { apiErrorCode, apiErrorMessage } from "../../src/lib/api-error";
 import { clearSession } from "../../src/lib/token-storage";
 import { useSessionStore } from "../../src/store/session";
-import { NAV_ICONS } from "../../src/design/icons/nav-icon";
 
 /**
  * One route, all six navigation roles, ZERO role branches — spec 18 R3: v1's
@@ -141,7 +141,11 @@ export default function SettingsScreen() {
     <ShellFrame>
       <PageHeader title="Settings" description="Profile, password, and notification preferences." />
       <View className="flex-col gap-4">
-        <Section icon={NAV_ICONS.profile} title="Profile" description="Your name as it appears across JPC Space.">
+        <Section
+          icon={NAV_ICONS.profile}
+          title="Profile"
+          description="Your name as it appears across JPC Space."
+        >
           <View className="flex-col gap-4">
             <FormField label="Name" required error={nameError ?? undefined}>
               <Input accessibilityLabel="Name" value={name} onChangeText={setName} />
@@ -150,7 +154,10 @@ export default function SettingsScreen() {
               <Input accessibilityLabel="Email" value={user.email} editable={false} disabled />
             </FormField>
             <View className="flex-row justify-end">
-              <Button onPress={saveName} disabled={updateProfile.isPending || !nameChanged || !nameValid}>
+              <Button
+                onPress={saveName}
+                disabled={updateProfile.isPending || !nameChanged || !nameValid}
+              >
                 {updateProfile.isPending ? "Saving…" : "Save profile"}
               </Button>
             </View>
@@ -160,7 +167,11 @@ export default function SettingsScreen() {
         {user.hasPassword ? (
           <Section icon={Lock} title="Change password" description="Use at least 8 characters.">
             <View className="flex-col gap-4">
-              <FormField label="Current password" required error={currentPasswordError ?? undefined}>
+              <FormField
+                label="Current password"
+                required
+                error={currentPasswordError ?? undefined}
+              >
                 <PasswordInput
                   accessibilityLabel="Current password"
                   autoComplete="current-password"
@@ -169,15 +180,25 @@ export default function SettingsScreen() {
                 />
               </FormField>
               <FormField label="New password" required error={passwordError ?? undefined}>
-                <PasswordInput accessibilityLabel="New password" value={newPassword} onChangeText={setNewPassword} />
+                <PasswordInput
+                  accessibilityLabel="New password"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
               </FormField>
               <FormField label="Confirm new password" required error={confirmError ?? undefined}>
-                <PasswordInput accessibilityLabel="Confirm new password" value={confirm} onChangeText={setConfirm} />
+                <PasswordInput
+                  accessibilityLabel="Confirm new password"
+                  value={confirm}
+                  onChangeText={setConfirm}
+                />
               </FormField>
               <View className="flex-row justify-end">
                 <Button
                   onPress={submitPassword}
-                  disabled={changePassword.isPending || !currentPassword || !newPassword || !confirm}
+                  disabled={
+                    changePassword.isPending || !currentPassword || !newPassword || !confirm
+                  }
                 >
                   {changePassword.isPending ? "Updating…" : "Update password"}
                 </Button>

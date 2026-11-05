@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import type { OrganisationReport } from "@space/shared";
 
 import { RankedBars } from "../../components/charts/RankedBars";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { SeasonStatusBadge } from "../../design/seasons/season-status-badge";
 import { StatCard } from "../../design/students/stat-card";
@@ -17,7 +18,6 @@ import {
   type DataTableColumn,
 } from "../../design/ui";
 import { useOrganisationReport } from "../../hooks/use-reports";
-import { NAV_ICONS } from "../../design/icons/nav-icon";
 
 /**
  * v1 super/reports/page.tsx (B5-4): three StatCards, "Active members per

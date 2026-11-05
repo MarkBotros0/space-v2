@@ -11,13 +11,13 @@ import { LogOut, Moon, Sun } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 
+import { NavIcon } from "../icons/nav-icon";
 import { AnchoredPopover, useAnchor } from "../lib/anchored-popover";
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Text } from "../ui/text";
-import { NavIcon } from "../icons/nav-icon";
 
 iconWithClassName(LogOut, Moon, Sun);
 
@@ -34,8 +34,12 @@ export const ROLE_COLOR: Record<UserRole, RoleColor> = {
  * The badge naming who is signed in: the role, except that a graduated
  * student (navFor's isAlumnus rule: role stays STUDENT) is ALUMNI.
  */
-export function roleBadge(role: UserRole, graduationYear: number | null | undefined): { color: RoleColor; label: string } {
-  if (isAlumnus({ role, graduationYear: graduationYear ?? null })) return { color: "alumni", label: "ALUMNI" };
+export function roleBadge(
+  role: UserRole,
+  graduationYear: number | null | undefined,
+): { color: RoleColor; label: string } {
+  if (isAlumnus({ role, graduationYear: graduationYear ?? null }))
+    return { color: "alumni", label: "ALUMNI" };
   return { color: ROLE_COLOR[role], label: role };
 }
 
@@ -99,7 +103,9 @@ export function UserMenu({
                 {userName}
               </Text>
             ) : null}
-            <Badge role={badge.color} className="self-start">{badge.label}</Badge>
+            <Badge role={badge.color} className="self-start">
+              {badge.label}
+            </Badge>
           </Pressable>
           <View className="my-1 h-px bg-border" />
           <Pressable
@@ -114,8 +120,14 @@ export function UserMenu({
             <Text className="text-sm text-popover-foreground">Profile settings</Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={onToggleTheme} className={itemClass}>
-            {isDark ? <Sun size={16} className="text-popover-foreground" /> : <Moon size={16} className="text-popover-foreground" />}
-            <Text className="text-sm text-popover-foreground">{isDark ? "Light mode" : "Dark mode"}</Text>
+            {isDark ? (
+              <Sun size={16} className="text-popover-foreground" />
+            ) : (
+              <Moon size={16} className="text-popover-foreground" />
+            )}
+            <Text className="text-sm text-popover-foreground">
+              {isDark ? "Light mode" : "Dark mode"}
+            </Text>
           </Pressable>
           <View className="my-1 h-px bg-border" />
           <Pressable

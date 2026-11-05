@@ -37,14 +37,22 @@ describe("ShellFrame", () => {
         <RNText>body</RNText>
       </ShellFrame>,
     );
-    const style = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
+    const style = StyleSheet.flatten(
+      screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
+    );
     expect(style.paddingBottom).toBe(114);
   });
 
   it("pads past an open keyboard so a form's last field can scroll above it", () => {
     jest.useFakeTimers();
-    const listeners: Record<string, (e: { endCoordinates: { height: number; screenY: number } }) => void> = {};
-    const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((event: string, cb: never) => {
+    const listeners: Record<
+      string,
+      (e: { endCoordinates: { height: number; screenY: number } }) => void
+    > = {};
+    const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((
+      event: string,
+      cb: never,
+    ) => {
       listeners[event] = cb;
       return { remove: jest.fn() };
     }) as unknown as typeof Keyboard.addListener);
@@ -56,7 +64,9 @@ describe("ShellFrame", () => {
       );
       const show = listeners.keyboardWillShow ?? listeners.keyboardDidShow;
       act(() => show!({ endCoordinates: { height: 300, screenY: 500 } }));
-      const style = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
+      const style = StyleSheet.flatten(
+        screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
+      );
       expect(style.paddingBottom).toBe(316);
     } finally {
       spy.mockRestore();
@@ -104,7 +114,9 @@ describe("route states", () => {
 describe("StatCard", () => {
   it("labels itself label: value and presses when given onPress", () => {
     const onPress = jest.fn();
-    render(<StatCard label="Absence budget left" value="42%" sublabel="this season" onPress={onPress} />);
+    render(
+      <StatCard label="Absence budget left" value="42%" sublabel="this season" onPress={onPress} />,
+    );
     fireEvent.press(screen.getByLabelText("Absence budget left: 42%"));
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Absence budget\nleft this season")).toBeTruthy();
@@ -177,4 +189,3 @@ describe("Text letter spacing", () => {
     expect(spacing("text-sm")).toBeUndefined();
   });
 });
-

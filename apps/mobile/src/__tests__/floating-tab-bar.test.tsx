@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import type { BottomTabBarProps } from "expo-router/js-tabs";
 import { BlurView } from "expo-blur";
 import { Platform } from "react-native";
 import type { NavItem } from "@space/shared";
@@ -49,9 +50,20 @@ function barTree(activeRoute: string, navigateToTab = jest.fn()) {
     routes: names.map((name) => ({ key: `${name}-key`, name })),
   };
   return (
-    <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 375, height: 812 }, insets: { top: 0, left: 0, right: 0, bottom: 34 } }}>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <PillTabBar items={items} state={state} navigateToTab={navigateToTab} emitter={{} as any} descriptors={{} as any} insets={{ top: 0, left: 0, right: 0, bottom: 34 }} />
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 375, height: 812 },
+        insets: { top: 0, left: 0, right: 0, bottom: 34 },
+      }}
+    >
+      <PillTabBar
+        items={items}
+        state={state}
+        navigateToTab={navigateToTab}
+        emitter={{} as unknown as BottomTabBarProps["emitter"]}
+        descriptors={{} as unknown as BottomTabBarProps["descriptors"]}
+        insets={{ top: 0, left: 0, right: 0, bottom: 34 }}
+      />
     </SafeAreaProvider>
   );
 }
@@ -62,7 +74,9 @@ function renderBar(activeRoute = "dashboard", navigateToTab = jest.fn()) {
 }
 
 function layoutTab(label: string, x: number, width = 70) {
-  fireEvent(screen.getByLabelText(label), "layout", { nativeEvent: { layout: { x, y: 0, width, height: 62 } } });
+  fireEvent(screen.getByLabelText(label), "layout", {
+    nativeEvent: { layout: { x, y: 0, width, height: 62 } },
+  });
 }
 const highlightTarget = () => screen.UNSAFE_getByType(PillHighlight).props.target;
 
@@ -74,7 +88,9 @@ it("shows at most five tabs, like v1 tabItems.slice(0, 5)", () => {
 
 it("marks the current route as selected", () => {
   renderBar("history");
-  expect(screen.getByLabelText("History").props.accessibilityState).toMatchObject({ selected: true });
+  expect(screen.getByLabelText("History").props.accessibilityState).toMatchObject({
+    selected: true,
+  });
   expect(screen.getByLabelText("Home").props.accessibilityState).toMatchObject({ selected: false });
 });
 
@@ -108,12 +124,16 @@ it("a long label shrinks to fit its tab instead of truncating", () => {
 describe("active tab on detail screens (v1: pathname.startsWith(href + '/'))", () => {
   it("keeps the list tab lit on its singular detail route", () => {
     renderBar("assignment/[id]/index");
-    expect(screen.getByLabelText("Assignments").props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getByLabelText("Assignments").props.accessibilityState).toMatchObject({
+      selected: true,
+    });
   });
 
   it("keeps a directory tab lit on its child routes", () => {
     const { activeTabRoute } = jest.requireActual("../design/layout/floating-tab-bar");
-    expect(activeTabRoute("students/alumni", ["students/index", "dashboard"])).toBe("students/index");
+    expect(activeTabRoute("students/alumni", ["students/index", "dashboard"])).toBe(
+      "students/index",
+    );
     expect(activeTabRoute("seasons/[code]/roster/index", ["seasons/index"])).toBe("seasons/index");
     expect(activeTabRoute("student/[id]/index", ["students/index"])).toBe("students/index");
   });
@@ -222,7 +242,8 @@ describe("frosted fill", () => {
 
 describe("hide on scroll", () => {
   const touches = () => screen.getByTestId("pill-root").props.pointerEvents;
-  const scroll = (dir: "up" | "down", atEnd = false) => act(() => useTabBarScroll().onScrollDirection(dir, atEnd));
+  const scroll = (dir: "up" | "down", atEnd = false) =>
+    act(() => useTabBarScroll().onScrollDirection(dir, atEnd));
 
   it("stops intercepting touches while hidden, and returns on scroll up", () => {
     renderBar();

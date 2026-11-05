@@ -4,6 +4,7 @@ import { SearchX } from "lucide-react-native";
 import { View } from "react-native";
 import type { QuizAuthoringDetail, QuizGradeSheet, QuizGradingAttempt } from "@space/shared";
 
+import { NAV_ICONS } from "../../../../src/design/icons/nav-icon";
 import { Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
@@ -24,7 +25,6 @@ import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { formatDate } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { useSessionStore } from "../../../../src/store/session";
-import { NAV_ICONS } from "../../../../src/design/icons/nav-icon";
 
 type Edit = { score: string; notes: string };
 
@@ -58,17 +58,24 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
   if (sheetQuery.isError) return <RouteError onRetry={() => void sheetQuery.refetch()} />;
   const sheet: QuizGradeSheet = sheetQuery.data;
 
-  const rowOf = (studentUserId: number) => sheet.rows.find((r) => r.studentUserId === studentUserId);
+  const rowOf = (studentUserId: number) =>
+    sheet.rows.find((r) => r.studentUserId === studentUserId);
   const scoreOf = (studentUserId: number) => {
     const row = rowOf(studentUserId);
     return edits[studentUserId]?.score ?? (row?.score == null ? "" : String(row.score));
   };
-  const notesOf = (studentUserId: number) => edits[studentUserId]?.notes ?? rowOf(studentUserId)?.notes ?? "";
+  const notesOf = (studentUserId: number) =>
+    edits[studentUserId]?.notes ?? rowOf(studentUserId)?.notes ?? "";
   const edit = (studentUserId: number, patch: Partial<Edit>) => {
     setSaved(false);
     setEdits((prev) => ({
       ...prev,
-      [studentUserId]: { score: scoreOf(studentUserId), notes: notesOf(studentUserId), ...prev[studentUserId], ...patch },
+      [studentUserId]: {
+        score: scoreOf(studentUserId),
+        notes: notesOf(studentUserId),
+        ...prev[studentUserId],
+        ...patch,
+      },
     }));
   };
 
@@ -86,7 +93,11 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
         setError(`Score for ${row.studentName ?? "a student"} must be a whole number.`);
         return;
       }
-      entries.push({ studentUserId: row.studentUserId, score, notes: e.notes === "" ? null : e.notes });
+      entries.push({
+        studentUserId: row.studentUserId,
+        score,
+        notes: e.notes === "" ? null : e.notes,
+      });
     }
     if (entries.length === 0) return;
     save.mutate(entries, {
@@ -119,7 +130,17 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
   );
 }
 
-function AttemptCard({ id, item, maxScore, hasEssays }: { id: number; item: QuizGradingAttempt; maxScore: number; hasEssays: boolean }) {
+function AttemptCard({
+  id,
+  item,
+  maxScore,
+  hasEssays,
+}: {
+  id: number;
+  item: QuizGradingAttempt;
+  maxScore: number;
+  hasEssays: boolean;
+}) {
   const gradeEssays = useGradeEssays(id);
   const reopen = useReopenAttempt(id);
   const [error, setError] = useState<string | null>(null);
@@ -154,10 +175,16 @@ function AttemptCard({ id, item, maxScore, hasEssays }: { id: number; item: Quiz
  * 409 `no_attempt`) or has an attempt still IN_PROGRESS (409 `attempt_open`) —
  * they can simply resume it — so the button could only ever fail.
  */
-function WaitingRow({ row }: { row: { studentUserId: number; studentName: string | null; startedAt: string | null } }) {
+function WaitingRow({
+  row,
+}: {
+  row: { studentUserId: number; studentName: string | null; startedAt: string | null };
+}) {
   return (
     <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
-      <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{row.studentName ?? "Student"}</Text>
+      <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
+        {row.studentName ?? "Student"}
+      </Text>
       <Text className="text-xs text-muted-foreground">
         {row.startedAt === null ? "Not started" : `In progress since ${formatDate(row.startedAt)}`}
       </Text>
@@ -181,12 +208,21 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
       <Header detail={detail} />
       {items.length === 0 ? (
         hasNextPage ? null : (
-          <EmptyState title="No submissions yet" description="Student attempts will appear here once they submit this quiz." />
+          <EmptyState
+            title="No submissions yet"
+            description="Student attempts will appear here once they submit this quiz."
+          />
         )
       ) : (
         <View className="flex-col gap-3">
           {items.map((item) => (
-            <AttemptCard key={item.attemptId} id={id} item={item} maxScore={first.maxScore} hasEssays={first.hasEssays} />
+            <AttemptCard
+              key={item.attemptId}
+              id={id}
+              item={item}
+              maxScore={first.maxScore}
+              hasEssays={first.hasEssays}
+            />
           ))}
         </View>
       )}
@@ -224,8 +260,16 @@ export default function QuizGradeScreen() {
   const detail = useQuizAuthoringDetail(id, isStaff);
 
   let body: ReactNode;
-  if (!isStaff) body = <EmptyState icon={NAV_ICONS.quizzes} title="Quizzes" description="This screen isn't available for your role." />;
-  else if (id === null) body = <EmptyState icon={SearchX} title="Not found" description="That quiz doesn't exist." />;
+  if (!isStaff)
+    body = (
+      <EmptyState
+        icon={NAV_ICONS.quizzes}
+        title="Quizzes"
+        description="This screen isn't available for your role."
+      />
+    );
+  else if (id === null)
+    body = <EmptyState icon={SearchX} title="Not found" description="That quiz doesn't exist." />;
   else if (detail.isPending) body = <RouteSkeleton />;
   else if (detail.isError) body = <RouteError onRetry={() => void detail.refetch()} />;
   else

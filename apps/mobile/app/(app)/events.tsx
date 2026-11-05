@@ -5,6 +5,7 @@ import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react-native";
 import type { JpcEventListItem } from "@space/shared";
 
 import { EMPTY_EVENT_VALUES, EventForm, VISIBILITY_LABELS } from "../../src/components/EventForm";
+import { NAV_ICONS } from "../../src/design/icons/nav-icon";
 import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
@@ -15,7 +16,6 @@ import { useCreateEvent, useDeleteEvent, useEventPages } from "../../src/hooks/u
 import { apiErrorMessage } from "../../src/lib/api-error";
 import { formatEventWhen } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
-import { NAV_ICONS } from "../../src/design/icons/nav-icon";
 
 iconWithClassName(ExternalLink);
 iconWithClassName(Pencil);

@@ -5,6 +5,7 @@ import type { GroupDetail, GroupListItem } from "@space/shared";
 
 import { SeasonSwitcher } from "../../../src/components/SeasonSwitcher";
 import { SEASON_GROUPS_ROLES } from "../../../src/hooks/use-group-admin";
+import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { Eyebrow, PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
@@ -28,7 +29,6 @@ import {
 import { useSeasons } from "../../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../../src/hooks/use-season-selection";
 import { useSessionStore } from "../../../src/store/session";
-import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 
 function GroupRow({ group, subtitle }: { group: GroupListItem; subtitle: string }) {
   const router = useRouter();
@@ -69,9 +69,7 @@ function LeaderGroupCard({
       </CardHeader>
       <CardContent>
         {detail.isError ? (
-          <Text className="text-sm italic text-muted-foreground">
-            Couldn't load the members.
-          </Text>
+          <Text className="text-sm italic text-muted-foreground">Couldn't load the members.</Text>
         ) : students === null ? null : students.length === 0 ? (
           <Text className="text-sm italic text-muted-foreground">No students yet.</Text>
         ) : (
@@ -85,9 +83,7 @@ function LeaderGroupCard({
                   router.push({ pathname: "/student/[id]", params: { id: String(st.id) } })
                 }
               >
-                <Text className="text-sm text-foreground">
-                  {st.name ?? st.email ?? "Student"}
-                </Text>
+                <Text className="text-sm text-foreground">{st.name ?? st.email ?? "Student"}</Text>
               </Pressable>
             ))}
           </View>
@@ -186,7 +182,11 @@ function MyGroups() {
       ) : isError ? (
         <RouteError onRetry={() => void refetch()} />
       ) : data.length === 0 ? (
-        <EmptyState icon={NAV_ICONS.groups} title="No groups" description="You aren't in any groups yet." />
+        <EmptyState
+          icon={NAV_ICONS.groups}
+          title="No groups"
+          description="You aren't in any groups yet."
+        />
       ) : (
         <View className="flex-col gap-2">
           {data.map((group) => (
@@ -319,7 +319,11 @@ export default function GroupsScreen() {
   // MENTOR: no /groups in its nav, reachable by deep link (spec 05 §9).
   return (
     <ShellFrame>
-      <EmptyState icon={NAV_ICONS.groups} title="Groups" description="Groups aren't available for your role." />
+      <EmptyState
+        icon={NAV_ICONS.groups}
+        title="Groups"
+        description="Groups aren't available for your role."
+      />
     </ShellFrame>
   );
 }

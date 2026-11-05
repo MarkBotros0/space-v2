@@ -5,6 +5,7 @@ import type { SessionDetail } from "@space/shared";
 
 import { StudentCheckInCard } from "../../components/check-in/StudentCheckInCard";
 import { VideoQuizPlayer, WatchRecordingButton } from "../../components/VideoQuizPlayer";
+import { NavIcon } from "../../design/icons/nav-icon";
 import { Eyebrow, PageTitle } from "../../design/layout/page-title";
 import { InlineError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
@@ -13,7 +14,6 @@ import { Badge, Text as TextV1 } from "../../design/ui";
 import { useStudentVideoQuiz } from "../../hooks/use-video-quiz";
 import { addMinutesToWallTime, formatLongDayYear, formatWallTime } from "../../lib/format";
 import { attendanceLine } from "./attendance-line";
-import { NavIcon } from "../../design/icons/nav-icon";
 
 iconWithClassName(Clock, MapPin);
 
@@ -51,9 +51,7 @@ export function StudentSessionBody({
     <ShellFrame onRefresh={refetch} refreshing={isRefetching}>
       <View className="flex-col gap-3">
         <View>
-          <View
-            className="rounded-group bg-surface dark:border dark:border-separator p-5"
-          >
+          <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
             <View className="mb-2 flex-row items-center gap-2">
               <Badge variant={hasVideo ? "teal" : "outline"}>
                 {hasVideo ? "Online" : "In-person"}
@@ -95,9 +93,7 @@ export function StudentSessionBody({
         </View>
 
         {data.description ? (
-          <View
-            className="rounded-group bg-surface dark:border dark:border-separator p-4"
-          >
+          <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
             <Eyebrow className="mb-2">About</Eyebrow>
             <TextV1 className="text-sm text-foreground/90">{data.description}</TextV1>
           </View>

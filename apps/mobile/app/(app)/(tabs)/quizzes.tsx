@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { QuizSummary, StudentQuizResult } from "@space/shared";
 
+import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { Eyebrow, PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
@@ -22,7 +23,6 @@ import { useQuizList, useStudentQuizList } from "../../../src/hooks/use-quizzes"
 import { useCurrentSeasonId, useSeasonDetail } from "../../../src/hooks/use-seasons";
 import { formatDate } from "../../../src/lib/format";
 import { useSessionStore } from "../../../src/store/session";
-import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 
 /**
  * Three v1 pages collapse into this one: /student/quizzes, /leader/quizzes and
@@ -88,11 +88,7 @@ function StudentQuizRow({ row }: { row: StudentQuizResult }) {
   const box = "rounded-group bg-surface dark:border dark:border-separator px-4 py-4";
   // v1: a PAPER row is a plain card, not a link.
   if (!online) {
-    return (
-      <View className={box}>
-        {body}
-      </View>
-    );
+    return <View className={box}>{body}</View>;
   }
   return (
     <Pressable
@@ -208,9 +204,7 @@ function QuizSummaryRow({
       className="flex-row items-center justify-between gap-4 rounded-group bg-surface dark:border dark:border-separator px-4 py-4"
     >
       <View className="min-w-0 flex-1">
-        <Text
-          className="text-sm font-bold text-brand-navy-900 dark:text-foreground"
-        >
+        <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
           {row.title}
         </Text>
         <Text className="mt-0.5 text-xs text-muted-foreground">
@@ -378,7 +372,11 @@ export default function QuizzesScreen() {
   // nav (spec D11). Confirmed as deliberate rather than widened here.
   return (
     <ShellFrame>
-      <EmptyState icon={NAV_ICONS.quizzes} title="Quizzes" description="This screen isn't available for your role." />
+      <EmptyState
+        icon={NAV_ICONS.quizzes}
+        title="Quizzes"
+        description="This screen isn't available for your role."
+      />
     </ShellFrame>
   );
 }

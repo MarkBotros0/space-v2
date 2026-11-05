@@ -33,7 +33,14 @@ describe("role badge", () => {
   it("the More page's identity card does too", () => {
     const nav = { tabs: [], sidebar: [] };
     renderWithProviders(
-      <MoreMenu role="STUDENT" graduationYear={2025} userName="Sara Adel" nav={nav} onNavigate={jest.fn()} onSignOut={jest.fn()} />,
+      <MoreMenu
+        role="STUDENT"
+        graduationYear={2025}
+        userName="Sara Adel"
+        nav={nav}
+        onNavigate={jest.fn()}
+        onSignOut={jest.fn()}
+      />,
     );
     expect(screen.getByText("ALUMNI")).toBeTruthy();
   });

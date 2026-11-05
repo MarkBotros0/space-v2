@@ -49,7 +49,11 @@ export function NavLink({
     >
       <Animated.View style={iconStyle}>
         <View className="size-9 items-center justify-center rounded-full">
-          <NavIcon name={icon} size={20} className={active ? "text-pill-active" : "text-pill-foreground"} />
+          <NavIcon
+            name={icon}
+            size={20}
+            className={active ? "text-pill-active" : "text-pill-foreground"}
+          />
         </View>
       </Animated.View>
       {/* The pill is 64px tall: a label past 1.15x the font scale pushes "Assignments" into

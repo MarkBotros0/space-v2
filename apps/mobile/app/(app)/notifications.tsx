@@ -44,21 +44,24 @@ function NotificationRow({
   // v1 wraps the card in a Link only when there is a target; here the whole
   // card is pressable because a tap also marks it read (spec D2).
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected: isUnread }} onPress={() => onPress(item)}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: isUnread }}
+      onPress={() => onPress(item)}
+    >
       <Card>
-        <CardContent className={cn("flex-row items-start gap-3 pt-4", isUnread && "border-l-4 border-info-500")}>
+        <CardContent
+          className={cn(
+            "flex-row items-start gap-3 pt-4",
+            isUnread && "border-l-4 border-info-500",
+          )}
+        >
           <Bell size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
           <View className="flex-1 flex-col gap-1">
             <View className="flex-row flex-wrap items-center gap-2">
               <Text className="text-sm font-medium">{item.title}</Text>
-              <Badge variant="outline">
-                {item.type.replace(/_/g, " ")}
-              </Badge>
-              {isUnread ? (
-                <Badge variant="info">
-                  New
-                </Badge>
-              ) : null}
+              <Badge variant="outline">{item.type.replace(/_/g, " ")}</Badge>
+              {isUnread ? <Badge variant="info">New</Badge> : null}
             </View>
             {item.body ? <Text className="text-sm text-muted-foreground">{item.body}</Text> : null}
             <Text className="text-xs text-muted-foreground">{formatStampAgo(item.createdAt)}</Text>
@@ -71,7 +74,8 @@ function NotificationRow({
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage } = useNotifications();
+  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage } =
+    useNotifications();
   const markRead = useMarkRead();
   const bottomPadding = useShellBottomPadding();
 

@@ -56,12 +56,19 @@ export function activeTabRoute(current: string | undefined, tabRoutes: string[])
  * navigation object, so a tab's route name is looked up in the navigator
  * state for its key.
  */
-export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & { items: NavItem[] }) {
+export function PillTabBar({
+  items,
+  state,
+  navigateToTab,
+}: BottomTabBarProps & { items: NavItem[] }) {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const visible = useTabBarVisible();
   const shown = items.slice(0, 5);
-  const routeActive = activeTabRoute(state.routes[state.index]?.name, shown.map((i) => routeNameForHref(i.href)));
+  const routeActive = activeTabRoute(
+    state.routes[state.index]?.name,
+    shown.map((i) => routeNameForHref(i.href)),
+  );
   // The route the user just pressed, highlighted at once: the highlight must not wait
   // for the navigator, and a second press before the first settles retargets it.
   const [pending, setPending] = useState<string[]>([]);
@@ -109,10 +116,14 @@ export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & 
           className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
           style={shadowStyle("lift")}
         >
-          {Platform.OS === "ios" ? <BlurView intensity={40} style={StyleSheet.absoluteFill} /> : null}
+          {Platform.OS === "ios" ? (
+            <BlurView intensity={40} style={StyleSheet.absoluteFill} />
+          ) : null}
           <View
             testID="pill-fill"
-            className={Platform.OS === "ios" ? "absolute inset-0 bg-pill" : "absolute inset-0 bg-pill-solid"}
+            className={
+              Platform.OS === "ios" ? "absolute inset-0 bg-pill" : "absolute inset-0 bg-pill-solid"
+            }
           />
           <PillHighlight target={active ? (layouts[active] ?? null) : null} />
           {shown.map((item) => {
@@ -126,7 +137,9 @@ export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & 
                 onLayout={(e) => {
                   const { x, width } = e.nativeEvent.layout;
                   setLayouts((prev) =>
-                    prev[name]?.x === x && prev[name]?.width === width ? prev : { ...prev, [name]: { x, width } },
+                    prev[name]?.x === x && prev[name]?.width === width
+                      ? prev
+                      : { ...prev, [name]: { x, width } },
                   );
                 }}
                 onPress={() => {

@@ -2,7 +2,12 @@ import { render, screen } from "@testing-library/react-native";
 
 import { ProgressRing, RingCaption, RingValue } from "../design/ui/progress-ring";
 
-const FIT = { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.6, maxFontSizeMultiplier: 1.15 };
+const FIT = {
+  numberOfLines: 1,
+  adjustsFontSizeToFit: true,
+  minimumFontScale: 0.6,
+  maxFontSizeMultiplier: 1.15,
+};
 
 describe("ring labels fit inside the inner circle (leader s10-01, admin s20-01)", () => {
   it("the value and the caption shrink to one line instead of wrapping mid-word", () => {
