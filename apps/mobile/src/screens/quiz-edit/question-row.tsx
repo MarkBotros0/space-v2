@@ -1,0 +1,154 @@
+import { useState } from "react";
+import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react-native";
+import { View } from "react-native";
+import type { QuizAuthoringDetail, QuizQuestionAuthoring } from "@space/shared";
+
+import { QuestionEditor } from "../../components/QuestionEditor";
+import { iconWithClassName } from "../../design/lib/icon";
+import { Badge, Button, ConfirmDialog, Text } from "../../design/ui";
+import {
+  useDeleteQuestion,
+  useReorderQuestions,
+  useUpdateQuestion,
+} from "../../hooks/use-quiz-authoring";
+import { apiErrorMessage } from "../../lib/api-error";
+
+iconWithClassName(ChevronDown, ChevronUp, Pencil, Trash2);
+
+export function QuestionRow({
+  quiz,
+  question,
+  index,
+  editable,
+  onError,
+}: {
+  quiz: QuizAuthoringDetail;
+  question: QuizQuestionAuthoring;
+  index: number;
+  editable: boolean;
+  onError: (m: string | null) => void;
+}) {
+  const update = useUpdateQuestion(quiz.id);
+  const remove = useDeleteQuestion(quiz.id);
+  const reorder = useReorderQuestions(quiz.id);
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const n = index + 1;
+  const ids = quiz.questions.map((q) => q.id);
+
+  const move = (delta: -1 | 1) => {
+    const target = index + delta;
+    const next = [...ids];
+    [next[index], next[target]] = [next[target] as number, next[index] as number];
+    onError(null);
+    reorder.mutate(next, { onError: (err) => onError(apiErrorMessage(err, "Couldn't reorder.")) });
+  };
+
+  const onDelete = () => {
+    onError(null);
+    remove.mutate(question.id, {
+      onSuccess: () => setConfirming(false),
+      onError: (err) => {
+        setConfirming(false);
+        onError(apiErrorMessage(err, "Couldn't delete the question."));
+      },
+    });
+  };
+
+  if (editing) {
+    return (
+      <QuestionEditor
+        initial={question}
+        submitting={update.isPending}
+        serverError={serverError}
+        onCancel={() => setEditing(false)}
+        onSubmit={(body) =>
+          update.mutate(
+            { questionId: question.id, body },
+            {
+              onSuccess: () => setEditing(false),
+              onError: (err) => setServerError(apiErrorMessage(err, "Couldn't save the question.")),
+            },
+          )
+        }
+      />
+    );
+  }
+
+  const correct =
+    question.type === "MCQ" && question.correctIndex !== null
+      ? question.options[question.correctIndex]
+      : undefined;
+
+  return (
+    <View className="flex-row items-start justify-between gap-3 rounded-group bg-surface p-4 dark:border dark:border-separator">
+      <View className="min-w-0 flex-1">
+        <View className="flex-row flex-wrap items-center gap-2">
+          <Text className="text-xs font-bold text-muted-foreground">{`Q${n}`}</Text>
+          <Badge variant={question.type === "MCQ" ? "teal" : "outline"}>
+            {question.type === "MCQ" ? "Multiple choice" : "Essay"}
+          </Badge>
+          <Text className="text-xs text-muted-foreground">{`${question.points} pt${question.points === 1 ? "" : "s"}`}</Text>
+        </View>
+        <Text className="mt-1 text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+          {question.prompt}
+        </Text>
+        {question.type === "MCQ" ? (
+          <Text numberOfLines={1} className="mt-0.5 text-xs text-muted-foreground">
+            {`Correct: ${correct ?? "—"}`}
+          </Text>
+        ) : null}
+      </View>
+      {editable ? (
+        <View className="shrink-0 flex-row flex-wrap justify-end">
+          {/* V2-ONLY: reorder (v1 had none; PATCH /quizzes/:id/order, spec 12). */}
+          <Button
+            variant="ghost"
+            size="sm"
+            accessibilityLabel={`Move question ${n} up`}
+            disabled={index === 0 || reorder.isPending}
+            onPress={() => move(-1)}
+          >
+            <ChevronUp size={16} className="text-foreground" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            accessibilityLabel={`Move question ${n} down`}
+            disabled={index === ids.length - 1 || reorder.isPending}
+            onPress={() => move(1)}
+          >
+            <ChevronDown size={16} className="text-foreground" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            accessibilityLabel={`Edit question ${n}`}
+            onPress={() => setEditing(true)}
+          >
+            <Pencil size={16} className="text-foreground" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            accessibilityLabel={`Delete question ${n}`}
+            onPress={() => setConfirming(true)}
+          >
+            <Trash2 size={16} className="text-error-600" />
+          </Button>
+        </View>
+      ) : null}
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Delete question?"
+        description="This removes the question and any recorded answers. This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        pending={remove.isPending}
+        onConfirm={onDelete}
+      />
+    </View>
+  );
+}
