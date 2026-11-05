@@ -278,4 +278,3 @@ function StaffDashboard({ variant }: { variant: Variant }) {
 }
 
 export const AdminDashboard = () => <StaffDashboard variant="ADMIN" />;
-export const LeaderDashboard = () => <StaffDashboard variant="LEADER" />;

@@ -1,8 +1,9 @@
 import { AlumniDashboard } from "../../../src/components/dashboard/AlumniDashboard";
 import { MentorDashboard } from "../../../src/components/dashboard/MentorDashboard";
-import { AdminDashboard, LeaderDashboard } from "../../../src/components/dashboard/StaffDashboard";
+import { AdminDashboard } from "../../../src/components/dashboard/StaffDashboard";
 import { SuperDashboard } from "../../../src/components/dashboard/SuperDashboard";
 import { dashboardBranchFor } from "../../../src/lib/dashboard-branch";
+import { LeaderToday } from "../../../src/screens/leader-today";
 import { RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { StudentToday } from "../../../src/screens/today/student-today";
@@ -36,7 +37,7 @@ export default function DashboardScreen() {
     case "ADMIN":
       return <AdminDashboard />;
     case "LEADER":
-      return <LeaderDashboard />;
+      return <LeaderToday />;
     case "MENTOR":
       return <MentorDashboard />;
     case "STUDENT":

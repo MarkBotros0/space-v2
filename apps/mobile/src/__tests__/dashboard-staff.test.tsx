@@ -1,5 +1,4 @@
 import { fireEvent, screen } from "@testing-library/react-native";
-import { AxiosError } from "axios";
 
 // `jest.mock` factories may only close over `mock*` consts (CLAUDE.md).
 jest.mock("../lib/api-client", () => ({
@@ -27,7 +26,6 @@ import {
   UNREAD,
   engagementSummary,
   events,
-  get,
   mentorDashboard,
   organisation,
   requested,
@@ -43,7 +41,7 @@ beforeEach(() => {
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
-describe("DashboardScreen — ADMIN and LEADER", () => {
+describe("DashboardScreen — ADMIN", () => {
   it("admin: current season from useCurrentSeasonId, the at-risk preview, no roster, no reports read", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     serve({
@@ -91,66 +89,6 @@ describe("DashboardScreen — ADMIN and LEADER", () => {
 
     expect(await screen.findByText("No season yet")).toBeTruthy();
     expect(requested().some((u) => u.startsWith("/api/v1/me/dashboard"))).toBe(false);
-  });
-
-  it("leader: v1 layout — every group named, neutral ring, stat row, at-risk card and the cards' View all links", async () => {
-    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5, 6] }));
-    serve({
-      "/api/v1/seasons": { seasons: [seasonRow] },
-      "/api/v1/me/dashboard?seasonId=7": staffDashboard("groups"),
-      [EVENTS]: events,
-      [UNREAD]: { unreadCount: 0 },
-    });
-
-    renderWithProviders(<DashboardScreen />);
-
-    expect(await screen.findByText("Group A, Group B")).toBeTruthy();
-    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
-    expect(screen.getByLabelText("Group average attendance 33%")).toBeTruthy();
-    expect(screen.getAllByText("33%").length).toBeGreaterThan(0);
-    expect(screen.getByText("3 students · Session 3 of 4")).toBeTruthy();
-    expect(screen.getByLabelText("Students: 3")).toBeTruthy();
-    expect(screen.getByLabelText("Progress: 75%")).toBeTruthy();
-    expect(screen.getByLabelText("Quizzes: 2")).toBeTruthy();
-    expect(screen.getByText("Your students at risk")).toBeTruthy();
-    expect(screen.getByText("1/3 submitted")).toBeTruthy();
-    expect(screen.getByText("12 students at risk")).toBeTruthy();
-    expect(screen.getByText("1 quiz draft not yet published")).toBeTruthy();
-
-    fireEvent.press(screen.getByLabelText("View all Your students at risk"));
-    expect(mockPush).toHaveBeenCalledWith("/groups");
-    fireEvent.press(screen.getByLabelText("View all Assignments"));
-    // The figures are this season's, so the queue opens on the same season.
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
-    fireEvent.press(screen.getByLabelText("View all Quiz corrections"));
-    expect(mockPush).toHaveBeenCalledWith("/quizzes");
-    fireEvent.press(screen.getByLabelText("Quizzes: 2"));
-    expect(mockPush).toHaveBeenCalledWith("/quizzes");
-    fireEvent.press(screen.getAllByText("Sara Student")[0]!);
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
-  });
-
-  it("leader refused for the season: v1's leader error page", async () => {
-    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5] }));
-    get.mockImplementation((url: string) => {
-      if (url === "/api/v1/seasons")
-        return Promise.resolve({ data: { data: { seasons: [seasonRow] } } });
-      if (url === EVENTS) return Promise.resolve({ data: { data: events } });
-      if (url === UNREAD) return Promise.resolve({ data: { data: { unreadCount: 0 } } });
-      return Promise.reject(
-        Object.assign(new AxiosError("Forbidden"), {
-          response: {
-            status: 403,
-            data: { error: { code: "forbidden", message: "You don't have access to this." } },
-          },
-        }),
-      );
-    });
-
-    renderWithProviders(<DashboardScreen />);
-
-    expect(await screen.findByText("Something went wrong")).toBeTruthy();
-    expect(screen.getByText(/let an admin know/)).toBeTruthy();
   });
 });
 

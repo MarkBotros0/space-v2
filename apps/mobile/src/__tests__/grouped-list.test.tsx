@@ -58,6 +58,26 @@ describe("GroupedList / ListRow", () => {
     expect(title.props.maxFontSizeMultiplier).toBeUndefined();
   });
 
+  it("titleLines and subtitleLines pass through, defaulting to 1 and 2", () => {
+    render(
+      <>
+        <ListRow title="Default row" subtitle="Default sub" />
+        <ListRow title="Wide row" subtitle="Wide sub" titleLines={2} subtitleLines={3} />
+      </>,
+    );
+    expect(screen.getByText("Default row").props.numberOfLines).toBe(1);
+    expect(screen.getByText("Default sub").props.numberOfLines).toBe(2);
+    expect(screen.getByText("Wide row").props.numberOfLines).toBe(2);
+    expect(screen.getByText("Wide sub").props.numberOfLines).toBe(3);
+  });
+
+  it("onPressIn fires when a touch lands on a pressable row", () => {
+    const onPressIn = jest.fn();
+    render(<ListRow title="Warm me" onPress={() => {}} onPressIn={onPressIn} />);
+    fireEvent(screen.getByRole("button", { name: /Warm me/ }), "pressIn");
+    expect(onPressIn).toHaveBeenCalledTimes(1);
+  });
+
   it("section header renders uppercase label", () => {
     render(<ListSectionHeader>Past</ListSectionHeader>);
     expect(screen.getByText("PAST")).toBeTruthy();

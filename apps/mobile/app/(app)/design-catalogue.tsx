@@ -9,6 +9,7 @@ import { useState } from "react";
 import { EmptyState } from "../../src/design/ui/empty-state";
 import { Screen } from "../../src/design/layout/screen";
 import { isSweepBuild } from "../../src/lib/app-config";
+import { LeaderSection } from "../../src/screens/design-catalogue/leader-section";
 import { ChipsSection } from "../../src/screens/design-catalogue/chips-section";
 import {
   ControlsSection,
@@ -53,6 +54,7 @@ export default function DesignCatalogue() {
       <ToastSection />
       <SheetSection />
       <SaveBarSection shown={saveBar} onToggle={() => setSaveBar((on) => !on)} />
+      <LeaderSection />
     </Screen>
   );
 }

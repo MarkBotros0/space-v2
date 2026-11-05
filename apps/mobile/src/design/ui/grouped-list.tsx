@@ -74,6 +74,8 @@ type ListRowProps = {
   trailingLabel?: string;
   chevron?: boolean;
   onPress?: () => void;
+  /** Fires when a touch lands, alongside the press scale (a screen warms a screen it is about to open). */
+  onPressIn?: () => void;
   /** Lines the title may take before it ellipsizes. Default 1. */
   titleLines?: number;
   /** Lines the subtitle may take before it ellipsizes. Default 2. */
@@ -92,7 +94,7 @@ function spokenTrailing(trailing: ReactNode, trailingLabel: string | undefined):
 }
 
 function ListRow({
-  title, subtitle, leading, trailing, trailingLabel, chevron, onPress, titleLines = 1, subtitleLines = 2, index = 0, className,
+  title, subtitle, leading, trailing, trailingLabel, chevron, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
 }: ListRowProps) {
   const reduced = useReducedMotion();
   const press = usePressScale(0.985);
@@ -122,7 +124,10 @@ function ListRow({
             .filter(Boolean)
             .join(", ")}
           onPress={onPress}
-          onPressIn={press.onPressIn}
+          onPressIn={() => {
+            press.onPressIn();
+            onPressIn?.();
+          }}
           onPressOut={press.onPressOut}
         >
           <Animated.View style={press.animatedStyle}>{content}</Animated.View>

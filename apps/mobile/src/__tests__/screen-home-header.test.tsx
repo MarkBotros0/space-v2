@@ -62,6 +62,17 @@ describe("Screen home: compact header (R31)", () => {
     ).toBeTruthy();
   });
 
+  it("compactTitle overrides the collapsed title while the large title stays", () => {
+    renderWithProviders(
+      <Screen home title="Hi, Sam" compactTitle="Today">
+        <RNText>body</RNText>
+      </Screen>,
+    );
+    expect(screen.getByText("Hi, Sam")).toBeTruthy();
+    expect(within(compact()).getByText("Today", { includeHiddenElements: true })).toBeTruthy();
+    expect(within(compact()).queryByText("Hi, Sam", { includeHiddenElements: true })).toBeNull();
+  });
+
   it("while hidden takes no touches and is out of the accessibility tree: one user menu is found", () => {
     renderWithProviders(
       <Screen home>
