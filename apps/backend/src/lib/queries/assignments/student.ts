@@ -8,6 +8,8 @@ export interface StudentAssignmentRow {
   id: number;
   title: string;
   dueAt: Date | null;
+  /** Org-calendar day of `dueAt` (X13). */
+  dueOrgDay: string | null;
   isOverdue: boolean;
   status: SubmissionStatus | "PENDING";
   reviewedAt: Date | null;
@@ -32,13 +34,10 @@ export async function studentCanSeeAssignment(
 }
 
 /**
- * The student list row plus two server-derived facts the dashboard needs:
- * the org-calendar due day (X13) and `isLate` (D16). Kept off
- * StudentAssignmentRow so `GET /seasons/:id/assignments` — which returns those
- * rows as-is — does not change shape.
+ * The student list row plus `isLate` (D16), which the dashboard needs and the
+ * list wire shape does not carry.
  */
 export interface StudentAssignmentStateRow extends StudentAssignmentRow {
-  dueOrgDay: string | null;
   isLate: boolean;
 }
 
@@ -97,6 +96,7 @@ export async function listAssignmentsForStudent(
   seasonId: number | null,
 ): Promise<StudentAssignmentRow[]> {
   const rows = await listAssignmentStatesForStudent(studentUserId, seasonId);
-  // The list endpoint's wire shape is unchanged: drop the dashboard-only fields.
-  return rows.map(({ dueOrgDay: _day, isLate: _late, ...row }) => row);
+  // `dueOrgDay` rides along so a chip never formats `dueAt` in the device zone;
+  // `isLate` stays dashboard-only.
+  return rows.map(({ isLate: _late, ...row }) => row);
 }

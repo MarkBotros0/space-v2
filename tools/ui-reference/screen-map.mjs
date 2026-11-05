@@ -20,7 +20,7 @@ const SECTION_OF = {
 };
 // Hand-review notes printed beside a row (keyed by v1 pattern or v2 route).
 const NOTES = {
-  "/dev/design-system": "counterpart is Plan 01's showcase `dev/design-system`",
+  "/dev/design-system": "v1-only; v2's catalogue is `/design-catalogue` (redesign)",
   "/forbidden": "no v2 page",
   "/mentor/profile": "v1 itself returns 404 here (no mentor profile page)",
   "/super/seasons/year/[year]": "gap — owner decides",
@@ -71,11 +71,13 @@ function seasonFree(parts) {
   return out;
 }
 
+// The tabs group `(app)/(tabs)/` is listed flat, so tab screens keep the ids
+// this map uses ("(app)/calendar"); groups add no URL segment anyway.
 function listRoutes(dir, prefix = "") {
   const out = [];
   for (const name of readdirSync(dir)) {
     const full = path.join(dir, name);
-    if (statSync(full).isDirectory()) out.push(...listRoutes(full, `${prefix}${name}/`));
+    if (statSync(full).isDirectory()) out.push(...listRoutes(full, name === "(tabs)" ? prefix : `${prefix}${name}/`));
     else if (name.endsWith(".tsx") && !name.startsWith("_")) out.push(`${prefix}${name.replace(/\.tsx$/, "")}`);
   }
   return out;

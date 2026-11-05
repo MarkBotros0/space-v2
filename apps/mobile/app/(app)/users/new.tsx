@@ -1,12 +1,11 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert } from "react-native";
 import type { CreateUserBody } from "@space/shared";
 
 import { NEW_USER_VALUES, UserForm } from "../../../src/components/UserForm";
-import { PageTitle } from "../../../src/design/layout/page-title";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { Card, CardContent, EmptyState } from "../../../src/design/ui";
+import { Screen } from "../../../src/design/layout/screen";
+import { EmptyState, toast } from "../../../src/design/ui";
 import { useCreateUser } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { useSessionStore } from "../../../src/store/session";
@@ -26,57 +25,55 @@ export default function NewUserScreen() {
 
   if (!isSuper) {
     return (
-      <ShellFrame>
-        <EmptyState title="New user" description="Only SUPER accounts can create users." />
-      </ShellFrame>
+      <Screen title="New user">
+        <EmptyState title="Not available" description="Only SUPER accounts can create users." />
+      </Screen>
     );
   }
 
   const create = (body: CreateUserBody) =>
     createUser.mutate(body, {
-      onSuccess: (created) =>
-        router.replace({ pathname: "/user/[id]", params: { id: String(created.userId) } }),
+      onSuccess: (created) => {
+        // The account exists either way; an undelivered invite is withdrawn
+        // server-side, so the detail screen offers "Send invite" again.
+        if (created.inviteSent) toast.success("User created. Their invite is on its way.");
+        else {
+          toast.error(
+            "User created, but the invite email couldn't be sent. Use Send invite on their page once email works.",
+          );
+        }
+        router.replace({ pathname: "/user/[id]", params: { id: String(created.userId) } });
+      },
       onError: (err) => setServerError(apiErrorMessage(err, "Couldn't create the user.")),
     });
 
   return (
-    <ShellFrame>
-      <View className="flex-col gap-4">
-        <PageTitle
-          title="New user"
-          subtitle="They'll get an email invite to choose their own password. No temporary password is created."
-        />
-        <Card>
-          <CardContent className="pt-6">
-            <UserForm
-              mode="create"
-              initial={NEW_USER_VALUES}
-              submitting={createUser.isPending}
-              message={serverError}
-              onCancel={() => router.back()}
-              onSubmit={(submit) => {
-                setServerError(null);
-                if (submit.mode !== "create") return;
-                if (submit.body.role === "SUPER") {
-                  Alert.alert(
-                    "Create a SUPER account?",
-                    "SUPER can manage every user and season, and can't be limited by scope.",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Create SUPER",
-                        onPress: () => create({ ...submit.body, confirmSuper: true }),
-                      },
-                    ],
-                  );
-                  return;
-                }
-                create(submit.body);
-              }}
-            />
-          </CardContent>
-        </Card>
-      </View>
-    </ShellFrame>
+    <UserForm
+      mode="create"
+      title="New user"
+      subtitle="They'll get an email invite to choose their own password. No temporary password is created."
+      initial={NEW_USER_VALUES}
+      submitting={createUser.isPending}
+      message={serverError}
+      onSubmit={(submit) => {
+        setServerError(null);
+        if (submit.mode !== "create") return;
+        if (submit.body.role === "SUPER") {
+          Alert.alert(
+            "Create a SUPER account?",
+            "SUPER can manage every user and season, and can't be limited by scope.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Create SUPER",
+                onPress: () => create({ ...submit.body, confirmSuper: true }),
+              },
+            ],
+          );
+          return;
+        }
+        create(submit.body);
+      }}
+    />
   );
 }

@@ -8,7 +8,7 @@ import { importLimiter } from "../routes/imports";
 describe("importLimiter", () => {
   it("answers the 429 envelope once the limit is spent", async () => {
     const app = express();
-    app.post("/x", importLimiter(1), (_req, res) => {
+    app.post("/x", importLimiter("import-test", 1), (_req, res) => {
       res.json({ data: { ok: true } });
     });
     expect((await request(app).post("/x")).status).toBe(200);

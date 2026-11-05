@@ -16,9 +16,9 @@ import { staffScopeForSeason } from "./permissions";
  * as the confirmed attendance defect — a group-scoped read feeding an unscoped
  * write — and ruling C8 exists to end it.
  *
- * Ruling C9: membership is the per-season enrolment's groupId. GroupStudent is
- * unique on studentUserId across the entire database, so it answers "what group
- * is this student in *now*", which is the wrong question for any past season.
+ * Ruling C9: membership is the per-season enrolment's groupId, the authority.
+ * GroupStudent is only its per-season mirror (Plan 18 M1); before M1 it was
+ * global and answered "what group is this student in *now*".
  *
  * Returns null when the caller has no staff scope in the season at all.
  */

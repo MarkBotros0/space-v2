@@ -84,7 +84,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Write something
   return (
     <View
       className={cn(
-        "relative overflow-hidden rounded-md border border-input bg-background",
+        "relative overflow-hidden rounded-md border border-control-border bg-background",
         state.isFocused && "border-ring",
         invalid && "border-destructive",
         disabled && "opacity-50",

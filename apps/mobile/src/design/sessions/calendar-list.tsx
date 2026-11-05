@@ -62,7 +62,7 @@ export function CalendarList({
   return (
     <View className="flex-col gap-3">
       {sessions.map((s) => (
-        <View key={s.id} className="flex-col gap-3 rounded-lg border border-border bg-card p-4">
+        <View key={s.id} className="flex-col gap-3 rounded-group bg-surface dark:border dark:border-separator p-4">
           <View className="flex-col gap-1">
             <View className="flex-row flex-wrap items-center gap-2">
               <Pressable accessibilityRole="link" onPress={() => onOpen(s.id)}>

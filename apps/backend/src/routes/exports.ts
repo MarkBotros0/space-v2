@@ -1,7 +1,6 @@
 // apps/backend/src/routes/exports.ts
 import { Router } from "express";
 import type { Response } from "express";
-import rateLimit from "express-rate-limit";
 
 // VALUE imports — relative, four levels up from src/routes/ (CLAUDE.md's
 // rootDir trap; the emitted file sits at dist/apps/backend/src/routes/).
@@ -20,7 +19,7 @@ import { orgDayKey } from "../lib/org-time";
 import { parseId } from "../lib/parse-id";
 import { canExportSeasonWorkbook, reportScopeFor } from "../lib/permissions";
 import { listEngagementRows, resolveReportScope } from "../lib/queries/reports";
-import { rateLimitHandler } from "../lib/rate-limit";
+import { makeLimiter } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";
 
@@ -46,10 +45,10 @@ export const seasonExportsRouter = Router();
  * The 429 body is the same `too_many_requests` envelope the login limiter
  * already returns.
  */
-const exportLimiter = rateLimit({
+const exportLimiter = makeLimiter({
+  name: "export",
   windowMs: 15 * 60 * 1000,
   limit: 10,
-  handler: rateLimitHandler,
   keyGenerator: (req) => String(requireUser(req).userId),
 });
 

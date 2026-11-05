@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
-import { RefreshControl, ScrollView, StyleSheet, Text as RNText } from "react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { Keyboard, RefreshControl, ScrollView, StyleSheet, Text as RNText } from "react-native";
 
 import { ShellFrame } from "../design/layout/shell-frame";
-import { BackLink, Eyebrow, PageTitle } from "../design/layout/page-title";
+import { Eyebrow, PageTitle } from "../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
 import { StatCard } from "../design/students/stat-card";
 import { renderWithProviders } from "./helpers/render";
@@ -37,17 +37,48 @@ describe("ShellFrame", () => {
         <RNText>body</RNText>
       </ShellFrame>,
     );
-    const style = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
+    const style = StyleSheet.flatten(
+      screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
+    );
     expect(style.paddingBottom).toBe(114);
+  });
+
+  it("pads past an open keyboard so a form's last field can scroll above it", () => {
+    jest.useFakeTimers();
+    const listeners: Record<
+      string,
+      (e: { endCoordinates: { height: number; screenY: number } }) => void
+    > = {};
+    const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((
+      event: string,
+      cb: never,
+    ) => {
+      listeners[event] = cb;
+      return { remove: jest.fn() };
+    }) as unknown as typeof Keyboard.addListener);
+    try {
+      renderWithProviders(
+        <ShellFrame>
+          <RNText>body</RNText>
+        </ShellFrame>,
+      );
+      const show = listeners.keyboardWillShow ?? listeners.keyboardDidShow;
+      act(() => show!({ endCoordinates: { height: 300, screenY: 500 } }));
+      const style = StyleSheet.flatten(
+        screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
+      );
+      expect(style.paddingBottom).toBe(316);
+    } finally {
+      spy.mockRestore();
+      jest.useRealTimers();
+    }
   });
 });
 
 describe("page title idiom", () => {
-  it("renders v1's h1 + subtitle, eyebrow and back link", () => {
-    const onBack = jest.fn();
+  it("renders the title on the type scale, its subtitle and an eyebrow", () => {
     render(
       <>
-        <BackLink label="Dashboard" onPress={onBack} />
         <PageTitle title="Attendance" subtitle="Your current season" />
         <Eyebrow tone="teal">Current season</Eyebrow>
       </>,
@@ -55,8 +86,12 @@ describe("page title idiom", () => {
     expect(screen.getByRole("header", { name: "Attendance" })).toBeTruthy();
     expect(screen.getByText("Your current season")).toBeTruthy();
     expect(screen.getByText("Current season")).toBeTruthy();
-    fireEvent.press(screen.getByText("← Dashboard"));
-    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Attendance").props.className).toContain("text-large-title");
+  });
+
+  it("a detail title is the title size", () => {
+    render(<PageTitle title="Quiz 1" size="detail" />);
+    expect(screen.getByText("Quiz 1").props.className).toContain("text-title");
   });
 });
 
@@ -79,10 +114,12 @@ describe("route states", () => {
 describe("StatCard", () => {
   it("labels itself label: value and presses when given onPress", () => {
     const onPress = jest.fn();
-    render(<StatCard label="Absence budget left" value="42%" sublabel="this season" onPress={onPress} />);
+    render(
+      <StatCard label="Absence budget left" value="42%" sublabel="this season" onPress={onPress} />,
+    );
     fireEvent.press(screen.getByLabelText("Absence budget left: 42%"));
     expect(onPress).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("this season")).toBeTruthy();
+    expect(screen.getByText("Absence budget\nleft this season")).toBeTruthy();
   });
 
   it("keeps the label to at most two lines, so a long word shrinks instead of splitting", () => {
@@ -119,13 +156,13 @@ describe("ProgressRing stroke colours", () => {
   it("draws a border-coloured track and a teal indicator by default", () => {
     const r = render(<ProgressRing value={50} />);
     const [track, indicator] = r.UNSAFE_getAllByType(Circle);
-    expect(track.props.stroke).toBe("#E5E7EB");
-    expect(indicator.props.stroke).toBe("#7DCED1");
+    expect(track?.props.stroke).toBe("#E5E7EB");
+    expect(indicator?.props.stroke).toBe("#7DCED1");
   });
 
   it("takes v1's indicator override as a stroke-<ramp>-<step> class", () => {
     const r = render(<ProgressRing value={80} indicatorClassName="stroke-error-500" />);
-    expect(r.UNSAFE_getAllByType(Circle)[1].props.stroke).toBe("#EF4444");
+    expect(r.UNSAFE_getAllByType(Circle)[1]?.props.stroke).toBe("#EF4444");
   });
 });
 
@@ -152,4 +189,3 @@ describe("Text letter spacing", () => {
     expect(spacing("text-sm")).toBeUndefined();
   });
 });
-

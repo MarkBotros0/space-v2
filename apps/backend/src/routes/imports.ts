@@ -1,6 +1,5 @@
 // apps/backend/src/routes/imports.ts
 import express, { Router } from "express";
-import rateLimit from "express-rate-limit";
 
 import { db } from "../db/client";
 import { isUniqueViolation } from "../lib/prisma-errors";
@@ -9,7 +8,7 @@ import { config } from "../lib/config";
 import { ImportParseError, parseDelimited } from "../lib/imports/delimited";
 import { buildGroupImportPreview } from "../lib/imports/groups";
 // The one 429 handler (ruling X4: Plan 9 extracted it; no copies anywhere).
-import { rateLimitHandler } from "../lib/rate-limit";
+import { makeLimiter } from "../lib/rate-limit";
 import {
   buildStudentImportPreview,
   commitStudentImport,
@@ -64,13 +63,13 @@ const IMPORT_FILE_UPLOAD_SUPPORTED = false;
  * A factory, and the limits come from config (defaults 30 / 10 per 15 min):
  * the integration suite commits ~22 times from one IP, so jest.setup.ts lifts
  * both limits under test, and the 429 behaviour itself is proven by a unit
- * test that builds `importLimiter(1)` directly (import-limits.test.ts).
+ * test that builds `importLimiter("import-test", 1)` directly (import-limits.test.ts).
  */
-export function importLimiter(limit: number) {
-  return rateLimit({ windowMs: 15 * 60 * 1000, limit, handler: rateLimitHandler });
+export function importLimiter(name: string, limit: number) {
+  return makeLimiter({ name, windowMs: 15 * 60 * 1000, limit });
 }
-const previewLimiter = importLimiter(config.importPreviewRateLimit);
-const commitLimiter = importLimiter(config.importCommitRateLimit);
+const previewLimiter = importLimiter("import-preview", config.importPreviewRateLimit);
+const commitLimiter = importLimiter("import-commit", config.importCommitRateLimit);
 
 /**
  * This router's own JSON parser, with an explicit limit.

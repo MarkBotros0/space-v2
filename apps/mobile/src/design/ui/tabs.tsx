@@ -1,16 +1,16 @@
 /**
- * Port of v1 src/components/ui/tabs.tsx (Base UI Tabs) — controlled
- * (value/onValueChange) or uncontrolled (defaultValue).
- * v1 styles the selected tab with data-[selected]:…, but Base UI marks it
- * data-active, so in v1 no tab ever looks selected (all muted, no teal
- * underline). That is reproduced here (owner rule: match v1 exactly) and
- * listed in gaps-foundations.md as a v1 bug; the selected state is still
- * exposed to accessibility. v1's inline-flex list stretches to full width
- * inside the flex-col root, as a View does. Hover/focus dropped.
+ * Underlined tabs — controlled (value/onValueChange) or uncontrolled
+ * (defaultValue). On the redesign tokens: a `separator` hairline under the
+ * list, the selected tab in foreground semibold over a 2px `ring` underline
+ * (3:1 in both themes), the rest in muted foreground; 44pt tall, with the
+ * spring press scale on the label (classes stay off the Animated.View).
+ * Plans 02–05 move the call sites to SegmentedControl and delete this file.
  */
 import { createContext, type ReactNode, useContext, useState } from "react";
 import { Pressable, View } from "react-native";
+import Animated from "react-native-reanimated";
 
+import { usePressScale } from "../motion";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
@@ -45,7 +45,7 @@ function Tabs({
 
 function TabsList({ className, children }: { className?: string; children?: ReactNode }) {
   return (
-    <View accessibilityRole="tablist" className={cn("relative flex-row items-center gap-1 border-b border-border", className)}>
+    <View accessibilityRole="tablist" className={cn("relative flex-row items-center gap-1 border-b border-separator", className)}>
       {children}
     </View>
   );
@@ -53,6 +53,7 @@ function TabsList({ className, children }: { className?: string; children?: Reac
 
 function TabsTrigger({ value, className, children, disabled }: { value: string; className?: string; children?: ReactNode; disabled?: boolean }) {
   const ctx = useContext(TabsContext);
+  const press = usePressScale();
   const selected = ctx.value === value;
   return (
     <Pressable
@@ -60,13 +61,28 @@ function TabsTrigger({ value, className, children, disabled }: { value: string; 
       accessibilityState={{ selected, disabled: !!disabled }}
       disabled={disabled}
       onPress={() => ctx.setValue(value)}
-      className={cn("relative -mb-px flex-row items-center gap-1.5 border-b-2 border-transparent px-3 py-2", className)}
-    >
-      {typeof children === "string" ? (
-        <Text className="text-sm font-medium text-muted-foreground">{children}</Text>
-      ) : (
-        children
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      className={cn(
+        "relative -mb-px min-h-[44px] justify-center border-b-2 px-3",
+        selected ? "border-ring" : "border-transparent",
+        disabled && "opacity-50",
+        className,
       )}
+    >
+      <Animated.View style={press.animatedStyle}>
+        {typeof children === "string" ? (
+          <Text
+            variant="subhead"
+            numberOfLines={1}
+            className={selected ? "font-semibold text-foreground" : "font-medium text-muted-foreground"}
+          >
+            {children}
+          </Text>
+        ) : (
+          <View className="flex-row items-center gap-1.5">{children}</View>
+        )}
+      </Animated.View>
     </Pressable>
   );
 }

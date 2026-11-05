@@ -23,7 +23,7 @@ appId: com.jpc.space
 - hideKeyboard
 # The phone pad often survives hideKeyboard on the CI emulator and covers the
 # rest of the form. Its Done key closes it; Phone has no onSubmitEditing in
-# app/(app)/profile.tsx, so nothing is submitted or saved.
+# app/(app)/(tabs)/profile.tsx, so nothing is submitted or saved.
 - pressKey: Enter
 # Gifts / interests sits near the bottom. Swipe the left margin to the end first
 # (Maestro's own scroll starts on a field and doesn't move the page here), so it is

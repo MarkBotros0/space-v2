@@ -1,22 +1,17 @@
-import type { ReactNode } from "react";
-import { View } from "react-native";
+import { useState, type ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pencil } from "lucide-react-native";
 
 import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
 import { EditSeason } from "../../../../src/components/season/EditSeason";
-import { PageTitle } from "../../../../src/design/layout/page-title";
+import { SeasonAdmins } from "../../../../src/components/season/SeasonAdmins";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../../src/design/layout/shell-frame";
-import { iconWithClassName } from "../../../../src/design/lib/icon";
-import { SeasonDetailView } from "../../../../src/design/seasons/season-detail";
+import { Screen } from "../../../../src/design/layout/screen";
+import { SeasonDetailView, type ManageItem } from "../../../../src/design/seasons/season-detail";
 import { CalendarList } from "../../../../src/design/sessions/calendar-list";
 import { Button, EmptyState } from "../../../../src/design/ui";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useSeasonSessions } from "../../../../src/hooks/use-sessions";
 import { useSessionStore } from "../../../../src/store/session";
-
-iconWithClassName(Pencil);
 
 /**
  * /seasons/[code] — any season, any role that may see it (spec 02 §9; G4).
@@ -24,6 +19,7 @@ iconWithClassName(Pencil);
  * whoever the server says administers the season (canAdminister, C4) gets
  * the Roster / New group / New session buttons under the tabs, the group
  * cards open the group, and an ADMIN edits description and budgets (REG-72).
+ * A SUPER gets the Admins card on the overview (owner decision; v1 had none).
  */
 export default function SeasonDetailScreen() {
   const router = useRouter();
@@ -31,6 +27,7 @@ export default function SeasonDetailScreen() {
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
   const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
   const isAdmin = useSessionStore((s) => s.user?.role === "ADMIN");
+  const [duplicating, setDuplicating] = useState(false);
   const detail = useSeasonByCode(code);
   const sessions = useSeasonSessions(detail.data?.id ?? null);
 
@@ -72,9 +69,39 @@ export default function SeasonDetailScreen() {
         />
       );
 
+    const manageItems: ManageItem[] = [];
+    if (canAdminister) {
+      manageItems.push(
+        {
+          label: "Roster",
+          onPress: () =>
+            router.push({ pathname: "/seasons/[code]/roster", params: { code: s.code } }),
+        },
+        {
+          label: "New group",
+          onPress: () =>
+            router.push({ pathname: "/group/new", params: { seasonId: String(s.id) } }),
+        },
+        {
+          label: "New session",
+          onPress: () =>
+            router.push({ pathname: "/session/new", params: { seasonId: String(s.id) } }),
+        },
+      );
+    }
+    if (isSuper) {
+      manageItems.push(
+        {
+          label: "Edit season",
+          onPress: () =>
+            router.push({ pathname: "/seasons/[code]/edit", params: { code: s.code } }),
+        },
+        { label: "Duplicate season", onPress: () => setDuplicating(true) },
+      );
+    }
+
     body = (
-      <View className="flex-col gap-4">
-        <PageTitle title={s.title} subtitle={`Code: ${s.code}`} />
+      <>
         <SeasonDetailView
           season={s}
           sessionsTab={sessionsTab}
@@ -82,7 +109,7 @@ export default function SeasonDetailScreen() {
           groupsAction={
             canAdminister ? (
               <Button
-                variant="outline"
+                variant="secondary"
                 onPress={() =>
                   router.push({ pathname: "/seasons/[code]/roster", params: { code: s.code } })
                 }
@@ -91,78 +118,37 @@ export default function SeasonDetailScreen() {
               </Button>
             ) : undefined
           }
-          actions={
-            isSuper || canAdminister ? (
-              <View className="flex-row flex-wrap gap-2">
-                {isSuper ? (
-                  <>
-                    <DuplicateSeasonDialog
-                      season={s}
-                      onDuplicated={(newCode) =>
-                        router.push({ pathname: "/seasons/[code]", params: { code: newCode } })
-                      }
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onPress={() =>
-                        router.push({ pathname: "/seasons/[code]/edit", params: { code: s.code } })
-                      }
-                    >
-                      <Pencil size={14} className="text-foreground" />
-                      Edit season
-                    </Button>
-                  </>
-                ) : null}
-                {canAdminister ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onPress={() =>
-                        router.push({
-                          pathname: "/seasons/[code]/roster",
-                          params: { code: s.code },
-                        })
-                      }
-                    >
-                      Roster
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onPress={() =>
-                        router.push({ pathname: "/group/new", params: { seasonId: String(s.id) } })
-                      }
-                    >
-                      New group
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onPress={() =>
-                        router.push({
-                          pathname: "/session/new",
-                          params: { seasonId: String(s.id) },
-                        })
-                      }
-                    >
-                      New session
-                    </Button>
-                  </>
-                ) : null}
-              </View>
+          manage={manageItems}
+          overviewExtra={
+            isAdmin && canAdminister ? (
+              <EditSeason season={s} />
+            ) : isSuper ? (
+              <SeasonAdmins seasonId={s.id} seasonTitle={s.title} />
             ) : undefined
           }
-          overviewExtra={isAdmin && canAdminister ? <EditSeason season={s} /> : undefined}
         />
-      </View>
+        {isSuper ? (
+          <DuplicateSeasonDialog
+            season={s}
+            open={duplicating}
+            onClose={() => setDuplicating(false)}
+            onDuplicated={(newCode) =>
+              router.push({ pathname: "/seasons/[code]", params: { code: newCode } })
+            }
+          />
+        ) : null}
+      </>
     );
   }
 
   return (
-    <ShellFrame refreshing={detail.isRefetching} onRefresh={refresh}>
+    <Screen
+      title={detail.data?.title}
+      subtitle={detail.data ? `Code: ${detail.data.code}` : undefined}
+      refreshing={detail.isRefetching}
+      onRefresh={refresh}
+    >
       {body}
-    </ShellFrame>
+    </Screen>
   );
 }

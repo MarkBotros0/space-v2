@@ -1,28 +1,20 @@
 import { View } from "react-native";
 
-import { PageTitle } from "../../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
-import { ShellFrame } from "../../design/layout/shell-frame";
-import { Badge, Card, CardContent, Text as TextV1 } from "../../design/ui";
+import { Screen } from "../../design/layout/screen";
+import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { StatusChip } from "../../design/ui/status-chip";
+import { Text } from "../../design/ui/text";
 import { useMyProfile } from "../../hooks/use-self-service";
 
-function Field({ label, value, badge }: { label: string; value: string | null; badge?: boolean }) {
+/** A value over its label, like the other rows (ListRow's title over its subtitle), but holding a chip: at font 1.3 a long chip would crush a trailing slot. */
+function StatusRow({ label, chip }: { label: string; chip: string }) {
   return (
-    <View>
-      <TextV1 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <View className="min-h-[52px] flex-col items-start gap-1 px-4 py-2">
+      <StatusChip tone="ok" label={chip} />
+      <Text variant="caption" className="text-muted-foreground">
         {label}
-      </TextV1>
-      {value ? (
-        badge ? (
-          <Badge variant="success" className="mt-1 self-start">
-            {value}
-          </Badge>
-        ) : (
-          <TextV1 className="mt-1 text-sm text-foreground">{value}</TextV1>
-        )
-      ) : (
-        <TextV1 className="mt-1 text-sm italic text-muted-foreground">—</TextV1>
-      )}
+      </Text>
     </View>
   );
 }
@@ -33,37 +25,39 @@ export function AlumniProfile() {
 
   if (profile.isPending || profile.isError) {
     return (
-      <ShellFrame>
+      <Screen title="Profile" subtitle="Your alumni record">
         {profile.isPending ? (
           <RouteSkeleton />
         ) : (
           <RouteError onRetry={() => void profile.refetch()} />
         )}
-      </ShellFrame>
+      </Screen>
     );
   }
 
   const p = profile.data;
   return (
-    <ShellFrame onRefresh={() => void profile.refetch()} refreshing={profile.isRefetching}>
-      <View className="flex-col gap-3">
-        <PageTitle title="Profile" subtitle="Your alumni record" />
-        <Card>
-          <CardContent className="flex-col gap-3 pt-6">
-            <Field label="Name" value={p.name} />
-            <Field label="Email" value={p.email} />
-            <Field
-              label="Status"
-              value={p.graduationYear !== null ? `Alumnus · Class of ${p.graduationYear}` : null}
-              badge
-            />
-            <Field label="University" value={p.university} />
-          </CardContent>
-        </Card>
-        <TextV1 className="text-xs text-muted-foreground">
+    <Screen
+      title="Profile"
+      subtitle="Your alumni record"
+      onRefresh={() => void profile.refetch()}
+      refreshing={profile.isRefetching}
+    >
+      <View className="flex-col gap-4">
+        <GroupedList>
+          <ListRow title={p.name} subtitle="Name" titleLines={2} />
+          <ListRow title={p.email} subtitle="Email" titleLines={2} />
+          <ListRow title={p.university || "—"} subtitle="University" titleLines={2} />
+          {p.graduationYear !== null ? (
+            <StatusRow label="Status" chip={`Alumnus · Class of ${p.graduationYear}`} />
+          ) : (
+            <ListRow title="—" subtitle="Status" />
+          )}
+        </GroupedList>
+        <Text variant="caption" className="text-muted-foreground">
           To update your details, please contact the JPC team.
-        </TextV1>
+        </Text>
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }

@@ -104,19 +104,27 @@ describe("rotateRefreshToken", () => {
   ])("rejects a %s and revokes nothing", async (_l, record) => {
     mockDb.refreshToken.findUnique.mockResolvedValue(record);
     await expect(rotateRefreshToken("raw")).resolves.toBeNull();
-    expect(mockDb.refreshToken.update).not.toHaveBeenCalled();
+    expect(mockDb.refreshToken.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("returns null when a concurrent refresh already revoked the token", async () => {
+    mockDb.refreshToken.findUnique.mockResolvedValue({ id: 1, userId: 5, revokedAt: null, expiresAt: future });
+    mockDb.refreshToken.updateMany.mockResolvedValue({ count: 0 });
+    await expect(rotateRefreshToken("raw")).resolves.toBeNull();
+    expect(mockDb.user.findUnique).not.toHaveBeenCalled();
   });
 
   it("revokes the old token and returns a new session", async () => {
     stubScopes();
+    mockDb.refreshToken.updateMany.mockResolvedValue({ count: 1 });
     mockDb.refreshToken.findUnique.mockResolvedValue({ id: 1, userId: 5, revokedAt: null, expiresAt: future });
     mockDb.user.findUnique
       .mockResolvedValueOnce({ id: 5, role: "STUDENT", deletedAt: null })
       .mockResolvedValueOnce({ graduationYear: null });
     const session = await rotateRefreshToken("raw");
     expect(mockDb.refreshToken.findUnique).toHaveBeenCalledWith({ where: { tokenHash: hashToken("raw") } });
-    expect(mockDb.refreshToken.update).toHaveBeenCalledWith({
-      where: { id: 1 }, data: { revokedAt: expect.any(Date) },
+    expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { id: 1, revokedAt: null }, data: { revokedAt: expect.any(Date) },
     });
     expect(session?.refreshToken).toEqual(expect.any(String));
   });

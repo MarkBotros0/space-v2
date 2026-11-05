@@ -1,18 +1,18 @@
+import { CalendarRange } from "lucide-react-native";
 import { useEffect, type ReactNode } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { Screen } from "../../src/design/layout/screen";
 import { SeasonsList } from "../../src/design/seasons/seasons-list";
 import { useCurrentSeasonId, useSeasonDetail, useSeasons } from "../../src/hooks/use-seasons";
 import { EditSeason } from "../../src/components/season/EditSeason";
 import { StudentSeason } from "../../src/components/season/StudentSeason";
 import { formatDate } from "../../src/lib/format";
+import { joinMeta } from "../../src/lib/join-meta";
+import { EmptyState, GroupedList, ListRow, StatusChip, statusChip, Text } from "../../src/design/ui";
 import { useSessionStore } from "../../src/store/session";
-import { useTheme } from "../../src/theme";
-import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../src/ui";
 
 /**
  * The season workspace (v1 /admin/season, /student/season). ADMIN is
@@ -20,7 +20,6 @@ import { Button, Card, EmptyState, ErrorState, LoadingState, Screen, Text } from
  * the remaining staff roles keep the current-season card until their batch.
  */
 function StaffSeason() {
-  const theme = useTheme();
   const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const current = useCurrentSeasonId();
@@ -33,68 +32,57 @@ function StaffSeason() {
   };
 
   let body: ReactNode;
-  if (current.isPending) body = <LoadingState />;
-  else if (current.isError)
-    body = <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
+  if (current.isPending) body = <RouteSkeleton />;
+  else if (current.isError) body = <RouteError onRetry={current.refetch} />;
   else if (current.seasonId === null)
-    body = <EmptyState title="No season" message="You aren't in a season right now." />;
-  else if (detail.isPending) body = <LoadingState />;
-  else if (detail.isError)
-    body = (
-      <ErrorState message="Couldn't load this season." onRetry={() => void detail.refetch()} />
-    );
+    body = <EmptyState icon={CalendarRange} title="No season" description="You aren't in a season right now." />;
+  else if (detail.isPending) body = <RouteSkeleton />;
+  else if (detail.isError) body = <RouteError onRetry={() => void detail.refetch()} />;
   else {
     const s = detail.data;
     body = (
-      <>
-        <Card>
-          <Text variant="title">{s.title}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>{`${s.code} · ${s.status}`}</Text>
-          <Text variant="label" color={theme.colors.neutral[600]}>
-            {`${formatDate(s.startDate)} – ${formatDate(s.endDate)}`}
+      <View className="flex-col gap-4">
+        <GroupedList>
+          <ListRow
+            title={s.title}
+            subtitle={joinMeta([
+              s.code,
+              `${formatDate(s.startDate)} – ${formatDate(s.endDate)}`,
+              `${s.sessionCount} sessions`,
+              `${s.studentCount} students`,
+            ])}
+            trailing={<StatusChip {...statusChip("season", s.status)} />}
+          />
+        </GroupedList>
+        {s.description ? (
+          <Text variant="body" className="px-4 text-foreground">
+            {s.description}
           </Text>
-          {s.description ? <Text variant="body">{s.description}</Text> : null}
-          <Text variant="label">{`${s.sessionCount} sessions · ${s.studentCount} students`}</Text>
-        </Card>
-        <Card style={{ marginTop: theme.spacing.md }}>
-          <Text variant="heading">Groups</Text>
+        ) : null}
+        <GroupedList header="Groups">
           {s.groups.length === 0 ? (
-            <Text variant="body" color={theme.colors.neutral[600]}>
-              No groups yet.
-            </Text>
+            <ListRow title="No groups yet." />
           ) : (
             s.groups.map((g) => (
-              <View key={g.id} style={{ marginTop: theme.spacing.sm }}>
-                <Text variant="body">{g.name}</Text>
-                <Text variant="caption" color={theme.colors.neutral[600]}>
-                  {g.leaderNames.length > 0
-                    ? `${g.studentCount} students · ${g.leaderNames.join(", ")}`
-                    : `${g.studentCount} students`}
-                </Text>
-              </View>
+              <ListRow
+                key={g.id}
+                title={g.name}
+                subtitle={joinMeta([`${g.studentCount} students`, g.leaderNames.join(", ")])}
+              />
             ))
           )}
-        </Card>
-        <View style={{ flexDirection: "row", gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-          <Button title="Calendar" variant="secondary" onPress={() => router.push("/calendar")} />
-          <Button
-            title="Assignments"
-            variant="secondary"
-            onPress={() => router.push("/assignments")}
-          />
-        </View>
+        </GroupedList>
+        <GroupedList>
+          <ListRow title="Calendar" chevron onPress={() => router.push("/calendar")} />
+          <ListRow title="Assignments" chevron onPress={() => router.push("/assignments")} />
+        </GroupedList>
         {canEdit ? <EditSeason season={s} /> : null}
-      </>
+      </View>
     );
   }
 
   return (
-    <Screen
-      edges={["top", "left", "right"]}
-      scroll
-      onRefresh={handleRefresh}
-      refreshing={detail.isRefetching}
-    >
+    <Screen title="My Season" onRefresh={handleRefresh} refreshing={detail.isRefetching}>
       {body}
     </Screen>
   );
@@ -119,26 +107,28 @@ function AdminSeason() {
   else if (seasons.isError) body = <RouteError onRetry={() => void seasons.refetch()} />;
   else if (seasons.data.length === 0)
     body = (
-      <PageTitle
-        title="My Season"
-        subtitle="You aren't assigned to a season yet. Contact a super-admin to be added."
+      <EmptyState
+        icon={CalendarRange}
+        title="No season"
+        description="You aren't assigned to a season yet. Contact a super-admin to be added."
       />
     );
   else
     body = (
-      <View className="flex-col gap-4">
-        <PageTitle title="My Season" subtitle="Seasons you administer." />
-        <SeasonsList
-          rows={seasons.data}
-          onOpen={(row) => router.push({ pathname: "/seasons/[code]", params: { code: row.code } })}
-        />
-      </View>
+      <SeasonsList
+        rows={seasons.data}
+        onOpen={(row) => router.push({ pathname: "/seasons/[code]", params: { code: row.code } })}
+      />
     );
 
   return (
-    <ShellFrame refreshing={seasons.isRefetching} onRefresh={() => void seasons.refetch()}>
+    <Screen
+      title="My Season"
+      refreshing={seasons.isRefetching}
+      onRefresh={() => void seasons.refetch()}
+    >
       {body}
-    </ShellFrame>
+    </Screen>
   );
 }
 

@@ -8,8 +8,9 @@ import {
   login,
   logout,
   ROTATE_INDETERMINATE,
+  forgetDevice,
 } from "../lib/api-client";
-import { saveSession, clearSession } from "../lib/token-storage";
+import { saveSession, clearSession, loadPushToken } from "../lib/token-storage";
 import { useSessionStore } from "../store/session";
 
 jest.mock("../lib/token-storage", () => ({
@@ -17,6 +18,7 @@ jest.mock("../lib/token-storage", () => ({
   loadRefreshToken: jest.fn(async () => "old-refresh"),
   saveSession: jest.fn(async () => undefined),
   clearSession: jest.fn(async () => undefined),
+  loadPushToken: jest.fn(async () => null),
 }));
 
 const user = { id: 1, name: "A", email: "a@b.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true };
@@ -94,6 +96,35 @@ describe("refreshAccessToken", () => {
 
     expect(useSessionStore.getState().status).toBe("authenticated");
     expect(useSessionStore.getState().user).toEqual(user);
+  });
+});
+
+describe("scope sync after rotation", () => {
+  beforeEach(() => {
+    __resetRefreshState();
+    jest.clearAllMocks();
+  });
+
+  it("re-reads /me after a successful rotation and updates the signed-in scopes", async () => {
+    useSessionStore.getState().setSession(user, scopes);
+    const newScopes = { ...scopes, activeSeasonId: 9 };
+    const get = jest
+      .spyOn(apiClient, "get")
+      .mockResolvedValue({ data: { data: { user, scopes: newScopes } } } as never);
+
+    await refreshAccessToken(async () => ({ accessToken: "a", expiresIn: 900, refreshToken: "r" }));
+    await new Promise((r) => setImmediate(r));
+
+    expect(get).toHaveBeenCalledWith("/api/v1/me");
+    expect(useSessionStore.getState().scopes?.activeSeasonId).toBe(9);
+    get.mockRestore();
+  });
+
+  it("does not call /me when no one is signed in", async () => {
+    const get = jest.spyOn(apiClient, "get");
+    await refreshAccessToken(async () => ({ accessToken: "a", expiresIn: 900, refreshToken: "r" }));
+    expect(get).not.toHaveBeenCalled();
+    get.mockRestore();
   });
 });
 
@@ -208,5 +239,39 @@ describe("logout", () => {
     jest.spyOn(axios, "post").mockRejectedValue(new Error("Network Error"));
 
     await expect(logout()).rejects.toThrow("Network Error");
+  });
+});
+
+describe("forgetDevice", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("unregisters this phone's push token without needing a session", async () => {
+    (loadPushToken as jest.Mock).mockResolvedValueOnce("ExponentPushToken[x]");
+    const post = jest.spyOn(axios, "post").mockResolvedValue({ data: {} });
+    await forgetDevice();
+    expect(post).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/devices\/unregister$/),
+      { token: "ExponentPushToken[x]" },
+      { timeout: 5000 },
+    );
+    post.mockRestore();
+  });
+
+  it("does nothing without a stored token, and never throws", async () => {
+    const post = jest.spyOn(axios, "post").mockRejectedValue(new Error("Network Error"));
+    await forgetDevice();
+    expect(post).not.toHaveBeenCalled();
+    (loadPushToken as jest.Mock).mockResolvedValueOnce("t");
+    await expect(forgetDevice()).resolves.toBeUndefined();
+    post.mockRestore();
+  });
+
+  it("runs before the stored tokens are cleared on a forced sign-out", async () => {
+    __resetRefreshState();
+    (loadPushToken as jest.Mock).mockResolvedValueOnce("ExponentPushToken[x]");
+    const post = jest.spyOn(axios, "post").mockResolvedValue({ data: {} });
+    await refreshAccessToken(async () => null);
+    expect(post.mock.invocationCallOrder[0]).toBeLessThan((clearSession as jest.Mock).mock.invocationCallOrder[0] ?? 0);
+    post.mockRestore();
   });
 });

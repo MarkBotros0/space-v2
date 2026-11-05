@@ -3,6 +3,7 @@ export * from "./enums";
 export * from "./org-time";
 export * from "./navigation";
 export * from "./season";
+export * from "./season-admins";
 export * from "./group";
 export * from "./session";
 export * from "./assignment";

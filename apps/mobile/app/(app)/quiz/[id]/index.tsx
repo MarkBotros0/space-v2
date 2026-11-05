@@ -1,10 +1,13 @@
 import { useLocalSearchParams } from "expo-router";
+import { SearchX } from "lucide-react-native";
 
+import { NAV_ICONS } from "../../../../src/design/icons/nav-icon";
+import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { EmptyState } from "../../../../src/design/ui";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { StaffPreview } from "../../../../src/screens/quiz-detail/staff-quiz-preview";
 import { StudentRunner } from "../../../../src/screens/quiz-detail/student-quiz-runner";
 import { useSessionStore } from "../../../../src/store/session";
-import { EmptyState, Screen } from "../../../../src/ui";
 
 export default function QuizDetailScreen() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
@@ -13,16 +16,20 @@ export default function QuizDetailScreen() {
 
   if (id === null) {
     return (
-      <Screen edges={["top", "left", "right"]}>
-        <EmptyState title="Not found" message="That quiz doesn't exist." />
-      </Screen>
+      <ShellFrame>
+        <EmptyState icon={SearchX} title="Not found" description="That quiz doesn't exist." />
+      </ShellFrame>
     );
   }
   if (role === "STUDENT") return <StudentRunner id={id} />;
   if (role === "LEADER" || role === "ADMIN" || role === "SUPER") return <StaffPreview id={id} />;
   return (
-    <Screen edges={["top", "left", "right"]}>
-      <EmptyState title="Quizzes" message="This screen isn't available for your role." />
-    </Screen>
+    <ShellFrame>
+      <EmptyState
+        icon={NAV_ICONS.quizzes}
+        title="Quizzes"
+        description="This screen isn't available for your role."
+      />
+    </ShellFrame>
   );
 }

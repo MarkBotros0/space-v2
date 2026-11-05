@@ -1,14 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { AssignmentForm, NEW_ASSIGNMENT_VALUES } from "../../../src/components/assignment-form";
 import { useCreateAssignment } from "../../../src/hooks/use-assignment-writes";
 import { useSeasonGroups } from "../../../src/hooks/use-groups";
-import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { Card, CardContent, EmptyState } from "../../../src/design/ui";
+import { Screen } from "../../../src/design/layout/screen";
+import { EmptyState } from "../../../src/design/ui";
 import { useCurrentSeasonId, useSeasonDetail } from "../../../src/hooks/use-seasons";
 import { useSeasonSessions } from "../../../src/hooks/use-sessions";
 import { apiErrorMessage } from "../../../src/lib/api-error";
@@ -29,6 +27,7 @@ function NewAssignment() {
   const [serverError, setServerError] = useState<string | null>(null);
 
   const seasonId = current.seasonId;
+  const subtitle = season.data ? `Add to ${season.data.title}.` : "Add to this season.";
   let body: ReactNode;
   if (current.isPending) {
     body = <RouteSkeleton />;
@@ -50,47 +49,39 @@ function NewAssignment() {
       />
     );
   } else {
-    body = (
-      <Card>
-        <CardContent className="pt-6">
-          <AssignmentForm
-            initial={NEW_ASSIGNMENT_VALUES}
-            groups={groups.data}
-            sessions={sessions.data}
-            submitLabel="Create assignment"
-            submitting={create.isPending}
-            serverError={serverError}
-            onSubmit={(payload) => {
-              setServerError(null);
-              create.mutate(
-                { seasonId, body: payload },
-                {
-                  onSuccess: (created) =>
-                    router.replace({
-                      pathname: "/assignment/[id]",
-                      params: { id: String(created.id) },
-                    }),
-                  onError: (err) =>
-                    setServerError(apiErrorMessage(err, "Couldn't create the assignment.")),
-                },
-              );
-            }}
-          />
-        </CardContent>
-      </Card>
+    return (
+      <AssignmentForm
+        title="New assignment"
+        subtitle={subtitle}
+        initial={NEW_ASSIGNMENT_VALUES}
+        groups={groups.data}
+        sessions={sessions.data}
+        submitLabel="Create assignment"
+        submitting={create.isPending}
+        serverError={serverError}
+        onSubmit={(payload) => {
+          setServerError(null);
+          create.mutate(
+            { seasonId, body: payload },
+            {
+              onSuccess: (created) =>
+                router.replace({
+                  pathname: "/assignment/[id]",
+                  params: { id: String(created.id) },
+                }),
+              onError: (err) =>
+                setServerError(apiErrorMessage(err, "Couldn't create the assignment.")),
+            },
+          );
+        }}
+      />
     );
   }
 
   return (
-    <ShellFrame>
-      <View className="flex-col gap-4">
-        <PageTitle
-          title="New assignment"
-          subtitle={season.data ? `Add to ${season.data.title}.` : "Add to this season."}
-        />
-        {body}
-      </View>
-    </ShellFrame>
+    <Screen title="New assignment" subtitle={subtitle}>
+      {body}
+    </Screen>
   );
 }
 
@@ -99,12 +90,12 @@ export default function NewAssignmentScreen() {
   // Checked before any hook runs in NewAssignment, so other roles cost no request.
   if (role !== "ADMIN" && role !== "SUPER") {
     return (
-      <ShellFrame>
+      <Screen title="New assignment">
         <EmptyState
           title="Not available"
           description="Only season admins can create assignments."
         />
-      </ShellFrame>
+      </Screen>
     );
   }
   return <NewAssignment />;

@@ -1,16 +1,17 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Lock, ShieldCheck, UserRound } from "lucide-react-native";
 import { View } from "react-native";
 import { passwordSchema } from "@space/shared";
 
 import { NotificationPreferences } from "../../src/components/NotificationPreferences";
-import { PageHeader } from "../../src/design/layout/page-header";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { Screen } from "../../src/design/layout/screen";
 import { Section } from "../../src/design/settings/section";
 import { Button, FormField, Input, PasswordInput, toast } from "../../src/design/ui";
+import { ConfirmDialog } from "../../src/design/ui/confirm-dialog";
+import { GroupedList, ListRow } from "../../src/design/ui/grouped-list";
 import { useChangePassword, useLogoutAll, useUpdateProfile } from "../../src/hooks/use-me";
 import { useLogout } from "../../src/hooks/use-session";
+import { apiErrorCode, apiErrorMessage } from "../../src/lib/api-error";
 import { clearSession } from "../../src/lib/token-storage";
 import { useSessionStore } from "../../src/store/session";
 
@@ -40,6 +41,8 @@ export default function SettingsScreen() {
   const [confirm, setConfirm] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [currentPasswordError, setCurrentPasswordError] = useState<string | null>(null);
+  const [confirmingLogoutAll, setConfirmingLogoutAll] = useState(false);
 
   if (!user) return null; // the (app) layout redirects before this renders
 
@@ -68,6 +71,7 @@ export default function SettingsScreen() {
   const submitPassword = () => {
     setPasswordError(null);
     setConfirmError(null);
+    setCurrentPasswordError(null);
     const parsed = passwordSchema.safeParse(newPassword);
     if (!parsed.success) {
       setPasswordError(parsed.error.issues[0]?.message ?? "Invalid password.");
@@ -94,12 +98,27 @@ export default function SettingsScreen() {
                 : ` Signed out of ${data.sessionsRevoked} other devices.`;
           toast.success(`Password updated.${revoked}`);
         },
-        onError: () => toast.error("Couldn't change the password. Check your current password."),
+        onError: (err) => {
+          // Branch on the envelope's code, never the message text.
+          const code = apiErrorCode(err);
+          if (code === "incorrect_password") {
+            setCurrentPasswordError("Current password is incorrect.");
+            toast.error("Your current password is incorrect.");
+          } else if (code === "too_many_requests") {
+            toast.error("Too many attempts. Wait a few minutes, then try again.");
+          } else if (code === "bad_request") {
+            // The server's own password-rule message (passwordSchema).
+            setPasswordError(apiErrorMessage(err, "This password isn't allowed."));
+          } else {
+            toast.error(apiErrorMessage(err, "Couldn't change the password. Try again."));
+          }
+        },
       },
     );
   };
 
   const signOutEverywhere = () => {
+    setConfirmingLogoutAll(false);
     logoutAll.mutate(undefined, {
       // Success or failure, this device signs out locally — same contract as
       // useLogout: never leave someone "signed in" against a dead session.
@@ -117,10 +136,12 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ShellFrame>
-      <PageHeader title="Settings" description="Profile, password, and notification preferences." />
-      <View className="flex-col gap-4">
-        <Section icon={UserRound} title="Profile" description="Your name as it appears across JPC Space.">
+    <Screen title="Settings" subtitle="Profile, password, and notification preferences.">
+      <View className="flex-col gap-6">
+        <Section
+          title="Profile"
+          description="Your name as it appears across JPC Space."
+        >
           <View className="flex-col gap-4">
             <FormField label="Name" required error={nameError ?? undefined}>
               <Input accessibilityLabel="Name" value={name} onChangeText={setName} />
@@ -129,7 +150,10 @@ export default function SettingsScreen() {
               <Input accessibilityLabel="Email" value={user.email} editable={false} disabled />
             </FormField>
             <View className="flex-row justify-end">
-              <Button onPress={saveName} disabled={updateProfile.isPending || !nameChanged || !nameValid}>
+              <Button
+                onPress={saveName}
+                disabled={updateProfile.isPending || !nameChanged || !nameValid}
+              >
                 {updateProfile.isPending ? "Saving…" : "Save profile"}
               </Button>
             </View>
@@ -137,9 +161,13 @@ export default function SettingsScreen() {
         </Section>
 
         {user.hasPassword ? (
-          <Section icon={Lock} title="Change password" description="Use at least 8 characters.">
+          <Section title="Change password" description="Use at least 8 characters.">
             <View className="flex-col gap-4">
-              <FormField label="Current password" required>
+              <FormField
+                label="Current password"
+                required
+                error={currentPasswordError ?? undefined}
+              >
                 <PasswordInput
                   accessibilityLabel="Current password"
                   autoComplete="current-password"
@@ -148,15 +176,25 @@ export default function SettingsScreen() {
                 />
               </FormField>
               <FormField label="New password" required error={passwordError ?? undefined}>
-                <PasswordInput accessibilityLabel="New password" value={newPassword} onChangeText={setNewPassword} />
+                <PasswordInput
+                  accessibilityLabel="New password"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
               </FormField>
               <FormField label="Confirm new password" required error={confirmError ?? undefined}>
-                <PasswordInput accessibilityLabel="Confirm new password" value={confirm} onChangeText={setConfirm} />
+                <PasswordInput
+                  accessibilityLabel="Confirm new password"
+                  value={confirm}
+                  onChangeText={setConfirm}
+                />
               </FormField>
               <View className="flex-row justify-end">
                 <Button
                   onPress={submitPassword}
-                  disabled={changePassword.isPending || !currentPassword || !newPassword || !confirm}
+                  disabled={
+                    changePassword.isPending || !currentPassword || !newPassword || !confirm
+                  }
                 >
                   {changePassword.isPending ? "Updating…" : "Update password"}
                 </Button>
@@ -167,26 +205,29 @@ export default function SettingsScreen() {
 
         <NotificationPreferences />
 
-        <Section
-          icon={ShieldCheck}
-          title="Security"
-          description="Signs this account out on every device — use it if a phone is lost."
-        >
-          <View className="flex-row justify-end gap-2">
-            <Button variant="outline" onPress={() => void signOut()}>
-              Sign out
-            </Button>
-            <Button
-              variant="outline"
-              textClassName="text-error-700 dark:text-error-200"
-              disabled={logoutAll.isPending}
-              onPress={signOutEverywhere}
-            >
-              Sign out everywhere
-            </Button>
-          </View>
-        </Section>
+        <GroupedList header="Security">
+          <ListRow title="Sign out" onPress={() => void signOut()} />
+          <ListRow
+            title="Sign out everywhere"
+            subtitle="Signs this account out on every device — use it if a phone is lost."
+            subtitleLines={3}
+            destructive
+            onPress={() => {
+              if (!logoutAll.isPending) setConfirmingLogoutAll(true);
+            }}
+          />
+        </GroupedList>
+        <ConfirmDialog
+          open={confirmingLogoutAll}
+          onOpenChange={setConfirmingLogoutAll}
+          title="Sign out everywhere?"
+          description="This signs your account out on every device, including this one. You'll need your password to sign back in."
+          confirmLabel="Sign out everywhere"
+          destructive
+          pending={logoutAll.isPending}
+          onConfirm={signOutEverywhere}
+        />
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }

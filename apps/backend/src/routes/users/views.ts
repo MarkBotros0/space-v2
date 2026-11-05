@@ -65,6 +65,14 @@ export async function loadUserDetail(id: number): Promise<UserDetail | null> {
     },
   });
 
+  // The seasons a demotion away from ADMIN would take away (updateUser
+  // deletes the SeasonAdmin rows), so the edit screen can name them first.
+  const adminRows = await db.seasonAdmin.findMany({
+    where: { userId: id, season: { deletedAt: null } },
+    select: { season: { select: { id: true, code: true, title: true } } },
+    orderBy: { season: { startDate: "desc" } },
+  });
+
   const now = new Date();
   const hasLiveInvite =
     invite !== null && invite.usedAt === null && invite.expiresAt > now;
@@ -79,5 +87,6 @@ export async function loadUserDetail(id: number): Promise<UserDetail | null> {
           invitedByName: invite.invitedBy?.name ?? null,
         }
       : null,
+    adminSeasons: adminRows.map((r) => r.season),
   };
 }

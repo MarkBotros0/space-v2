@@ -7,7 +7,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import HistoryScreen from "../../app/(app)/history";
+import HistoryScreen from "../../app/(app)/(tabs)/history";
 
 const get = apiClient.get as jest.Mock;
 
@@ -39,8 +39,9 @@ describe("HistoryScreen", () => {
     expect(await screen.findByText("GBV 2025")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/me/season-history");
     expect(screen.getByText("History")).toBeTruthy();
-    expect(screen.getByText("50% attended")).toBeTruthy();
-    expect(screen.getByText("Participated")).toBeTruthy();
+    // Status chips, each a spoken word; the percentage is neutral, never a warning.
+    expect(screen.getByLabelText("50% attended")).toBeTruthy();
+    expect(screen.getByLabelText("Participated")).toBeTruthy();
     expect(screen.getByText("Seasons you've participated in")).toBeTruthy();
     expect(screen.getByText(/Group A1/)).toBeTruthy();
     expect(screen.queryByText("Opening night")).toBeNull();
@@ -48,8 +49,19 @@ describe("HistoryScreen", () => {
     fireEvent.press(screen.getByText("Curriculum (1 sessions)"));
 
     expect(screen.getByText("Opening night")).toBeTruthy();
+    expect(screen.getByRole("button", { expanded: true })).toBeTruthy();
     // The server's org-calendar day, not the device's reading of startsAt (X13).
     expect(screen.getByText("Mar 2, 2025")).toBeTruthy();
+  });
+
+  it("tells a student with no past seasons what will appear", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
+    get.mockResolvedValue({ data: { data: { seasons: [] } } });
+
+    renderWithProviders(<HistoryScreen />);
+
+    expect(await screen.findByText("No past seasons")).toBeTruthy();
+    expect(screen.getByText("Once you complete a season, it'll appear here.")).toBeTruthy();
   });
 
   it("titles the alumni variant and uses its empty copy", async () => {

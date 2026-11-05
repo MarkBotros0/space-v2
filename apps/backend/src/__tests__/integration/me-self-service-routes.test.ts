@@ -59,9 +59,9 @@ beforeAll(async () => {
     select: { id: true },
   });
 
-  // Ruling C9 trap: GroupStudent (one row per student, database-wide) still
-  // points at LAST season's group. /me/season must not read it.
-  await db.groupStudent.create({ data: { groupId: pastGroup.id, studentUserId: student.id } });
+  // Ruling C9 trap: GroupStudent holds only LAST season's membership and no
+  // row for the current season. /me/season must not read it.
+  await db.groupStudent.create({ data: { groupId: pastGroup.id, seasonId: past.id, studentUserId: student.id } });
 
   await db.seasonEnrollment.createMany({
     data: [

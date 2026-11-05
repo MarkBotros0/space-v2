@@ -9,7 +9,6 @@ jest.mock("../lib/api-client", () => ({
 }));
 
 import { SectionCard } from "../design/dashboard/section-card";
-import { BackLink } from "../design/layout/page-title";
 import { RouteError } from "../design/layout/route-states";
 import { Checkbox } from "../design/ui";
 import { useGroupDetails } from "../hooks/use-groups";
@@ -50,21 +49,6 @@ describe("RouteError", () => {
     expect(screen.getByText(/let an admin know/)).toBeTruthy();
     fireEvent.press(screen.getByText("Try again"));
     expect(onRetry).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("BackLink", () => {
-  it("renders the arrow-icon form", () => {
-    const onPress = jest.fn();
-    render(<BackLink icon label="Back to session" onPress={onPress} />);
-    fireEvent.press(screen.getByText("Back to session"));
-    expect(onPress).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText("← Back to session")).toBeNull();
-  });
-
-  it("keeps the arrow-text form by default", () => {
-    render(<BackLink label="Back" onPress={jest.fn()} />);
-    expect(screen.getByText("← Back")).toBeTruthy();
   });
 });
 

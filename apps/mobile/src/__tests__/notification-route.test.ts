@@ -28,6 +28,13 @@ describe("routeForTarget", () => {
     });
   });
 
+  it("opens the review screen for a submission target, by publicId", () => {
+    expect(routeForTarget({ entityType: "submission", entityId: "Ab3dE5gH9k" })).toEqual({
+      pathname: "/submission/[publicId]",
+      params: { publicId: "Ab3dE5gH9k" },
+    });
+  });
+
   it("returns null for a notification with no resolvable target", () => {
     expect(routeForTarget(null)).toBeNull();
   });

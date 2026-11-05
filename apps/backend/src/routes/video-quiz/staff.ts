@@ -74,8 +74,8 @@ export async function createVideoQuestion(req: Request, res: Response) {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid question.", 400);
   const body = parsed.data;
 
-  // createdById is stamped on create only — there is no updatedById column and
-  // none can be added (C1), so it means "who first authored this". Deliberately
+  // createdById is stamped on create only — there is no updatedById column,
+  // so it means "who first authored this". Deliberately
   // no check that the session has a youtubeUrl or that atSeconds fits the video
   // (v1 R14/R18; the length is not stored). The client guards the deadlock.
   const created = await db.sessionVideoQuestion.create({

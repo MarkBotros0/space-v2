@@ -11,6 +11,7 @@ import { BAND_ORDER } from "../../../../../../packages/shared/src/index";
 import { db } from "../../../db/client";
 import { orgDayKey } from "../../org-time";
 import { computeEngagementForSeasons } from "../engagement";
+import { expectedStudentIds } from "./expected";
 import { byScoreThenId, toReportRows, withEmails } from "./rows";
 
 export interface EngagementSummaryOptions {
@@ -202,18 +203,10 @@ export async function buildEngagementSummary(
   }
 
   const completion: AssignmentCompletionRow[] = assignments.map((a) => {
-    // Ruling C9: the expected set is ACTIVE enrolments in this assignment's
-    // season, narrowed by the enrolment's group when the assignment is
-    // targeted. v1 counted GroupStudent rows (R20) — a table unique on
-    // studentUserId across the ENTIRE database (R21), so it holds one group per
-    // student regardless of season and can never answer a per-season question.
-    const expectedIds = new Set<number>();
-    for (const e of enrollmentsBySeason.get(a.seasonId) ?? []) {
-      if (e.status !== "ACTIVE") continue;
-      if (a.isAllGroups || (e.groupId !== null && a.targets.some((t) => t.groupId === e.groupId))) {
-        expectedIds.add(e.studentUserId);
-      }
-    }
+    // v1 counted GroupStudent rows (R20) — then a table unique on
+    // studentUserId across the ENTIRE database (R21, fixed by Plan 18 M1), so
+    // it held one group per student regardless of season.
+    const expectedIds = expectedStudentIds(enrollmentsBySeason.get(a.seasonId) ?? [], a);
     // Intersecting the numerator is the fix for R23: v1 counted submissions
     // from ANY student against a denominator of targeted students, so the bar
     // could exceed 100 and neither end was clamped.

@@ -2,10 +2,10 @@ import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), delete: jest.fn() } }));
 const mockPush = jest.fn();
-const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "55" }),
-  useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, dismissTo: mockDismissTo, back: jest.fn() }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -116,7 +116,7 @@ describe("AssignmentDetailScreen (staff)", () => {
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Really delete?"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/assignments/55"));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/assignments"));
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/assignments"));
   });
 
   it("shows the server's refusal when students have started it (409 has_submissions)", async () => {
@@ -138,7 +138,7 @@ describe("AssignmentDetailScreen (staff)", () => {
     expect(
       await screen.findByText("Students have already started this assignment, so it can't be deleted."),
     ).toBeTruthy();
-    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockDismissTo).not.toHaveBeenCalled();
     expect(screen.getByText("Delete assignment")).toBeTruthy(); // disarmed again
   });
 

@@ -270,8 +270,8 @@ export async function gradeAttempt(req: Request, res: Response) {
  * Gated on canGradeQuiz, not canManageQuiz — spec D5's recommendation. v1 made
  * this admin-only (R79), so the leader actually looking at the grading screen
  * could see a student stuck behind a dead attempt and had to find an admin. And
- * because there is no expiry, no timeout and no ABANDONED status (R47, and
- * adding one is a schema change under C1), a dropped connection mid-quiz makes
+ * because there is no expiry, no timeout and no ABANDONED status (R47), a
+ * dropped connection mid-quiz makes
  * this endpoint the ONLY way that student ever takes the quiz.
  */
 export async function reopenAttempt(req: Request, res: Response) {
@@ -321,7 +321,7 @@ export async function reopenAttempt(req: Request, res: Response) {
   });
 
   // v1 sent nothing at all, so a student was never told a retake existed. There
-  // is no dedicated NotificationType and adding one is a schema change (C1), so
+  // is no dedicated NotificationType, so
   // QUIZ_GRADED is reused with copy that says what actually happened — D5's
   // explicit second option.
   await notifyQuizGraded(

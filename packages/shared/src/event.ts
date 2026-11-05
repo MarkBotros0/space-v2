@@ -57,17 +57,26 @@ export type JpcEventDetail = z.infer<typeof jpcEventDetailSchema>;
 /**
  * Org wall-clock fields, not an instant (D-15.6, ruling X13). The server
  * composes the instant in `config.orgTimezone`; `time: null` means all-day and
- * is stored as org midnight — no `allDay` column exists or can be added (C1).
+ * is stored as org midnight — there is no `allDay` column.
  */
-const eventWriteBase = z.object({
+const eventFields = z.object({
   title: z.string().trim().min(1).max(200),
   day: isoDaySchema,
-  time: wallTimeSchema.nullable().default(null),
-  endDay: isoDaySchema.nullable().default(null),
-  description: z.string().max(2000).nullable().default(null),
-  url: z.string().url().nullable().default(null),
+  time: wallTimeSchema.nullable(),
+  endDay: isoDaySchema.nullable(),
+  description: z.string().max(2000).nullable(),
+  url: z.string().url().nullable(),
   visibility: jpcVisibilitySchema,
-  seasonId: z.number().int().positive().nullable().default(null),
+  seasonId: z.number().int().positive().nullable(),
+});
+
+/** Create: the optional fields default to null. */
+const eventWriteBase = eventFields.extend({
+  time: eventFields.shape.time.default(null),
+  endDay: eventFields.shape.endDay.default(null),
+  description: eventFields.shape.description.default(null),
+  url: eventFields.shape.url.default(null),
+  seasonId: eventFields.shape.seasonId.default(null),
 });
 
 /**
@@ -102,18 +111,33 @@ export type CreateJpcEventBody = z.output<typeof createJpcEventRequestSchema>;
  * to resend every field. Both refinements re-apply against the *merged* row in
  * the route (`mergedEventSchema` below), not against the patch, because
  * `{ visibility: "SEASON" }` alone cannot know whether the stored row already
- * has a season. `.partial()` wraps each defaulted field in an optional, so an
- * omitted field parses to `undefined` and does not reset the stored value.
+ * has a season. Built from the fields *without* their create defaults: zod 4
+ * applies a `.default()` even inside `.partial()`, so a PATCH of `{ title }`
+ * would otherwise reset time, description, url and season to null. An omitted
+ * field must parse to absent and keep the stored value.
  */
-export const updateJpcEventRequestSchema = eventWriteBase.partial();
+export const updateJpcEventRequestSchema = eventFields.partial();
 export type UpdateJpcEventBody = z.output<typeof updateJpcEventRequestSchema>;
 
 /** The PATCH handler parses `{ ...storedAsWallClock, ...patch }` with this. */
 export const mergedEventSchema = eventWriteBase.superRefine(refineEvent);
 
+/** Default page size for `GET /events?paged=true`. */
+export const EVENT_PAGE_SIZE = 25;
+
+/**
+ * The paged list's cursor: `<date epoch ms>_<id>` of the last row served.
+ * Events are ordered by date, not id, so an id alone cannot say where the next
+ * page starts — and a keyset carrying the date stays valid when the row it
+ * names is deleted between pages (an id-only Prisma cursor would come back
+ * empty). Opaque to the client: it only ever echoes `nextCursor` back.
+ */
+export const eventCursorSchema = z.string().regex(/^\d{1,15}_\d{1,10}$/, "Invalid cursor.");
+
 /**
  * The window bounds stored instants and carries no day semantics, so instants
- * are right here. Omitted, the server picks the default (D-15.5).
+ * are right here. Omitted, that side of the window is open: with neither, every
+ * visible event (v1 parity, audit R57 REVERT of D-15.5).
  */
 export const eventListQuerySchema = z
   .object({
@@ -131,10 +155,32 @@ export const eventListQuerySchema = z
       .transform((v) => v === "true"),
     /** Cap on `events` (spec 19 §7: 1–20). `total` is counted before it. */
     limit: z.coerce.number().int().min(1).max(20).optional(),
+    /**
+     * Owner decision (2026-11): `paged=true` switches to cursor paging, newest
+     * first — the SUPER events list. Opt-in, because the calendars need every
+     * event in date order and read the unpaged form. Combines with
+     * `from`/`to`/`upcoming`; not with `limit`, which is the unpaged cap.
+     */
+    paged: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((v) => v === "true"),
+    /** Page size when paged (default {@link EVENT_PAGE_SIZE}). */
+    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+    /** The previous page's `nextCursor`, echoed back verbatim. */
+    cursor: eventCursorSchema.optional(),
   })
   .refine((q) => !(q.upcoming && q.from !== undefined), {
     message: "Use either upcoming or from, not both.",
     path: ["from"],
+  })
+  .refine((q) => q.paged || (q.cursor === undefined && q.pageSize === undefined), {
+    message: "cursor and pageSize need paged=true.",
+    path: ["paged"],
+  })
+  .refine((q) => !(q.paged && q.limit !== undefined), {
+    message: "Use pageSize, not limit, with paged=true.",
+    path: ["limit"],
   });
 export type EventListQuery = z.output<typeof eventListQuerySchema>;
 
@@ -148,5 +194,14 @@ export const jpcEventListResponseSchema = z.object({
   total: z.number().int().min(0),
 });
 export type JpcEventListResponse = z.infer<typeof jpcEventListResponseSchema>;
+
+/**
+ * `GET /events?paged=true`: newest first. `total` counts every visible event
+ * in the window (not just this page); `nextCursor` is null on the last page.
+ */
+export const jpcEventPageResponseSchema = jpcEventListResponseSchema.extend({
+  nextCursor: eventCursorSchema.nullable(),
+});
+export type JpcEventPageResponse = z.infer<typeof jpcEventPageResponseSchema>;
 
 export const deleteJpcEventResponseSchema = z.object({ deleted: z.literal(true) });

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn() },
@@ -189,5 +189,88 @@ describe("submission editor", () => {
     // canUploadFiles=false + maxFileSizeMb set: the assignment expects a file
     // the app cannot take yet. Say so; never render an attach button that 503s.
     expect(await screen.findByText(/attachments aren't available/i)).toBeTruthy();
+  });
+});
+
+const withStatus = (status: "DRAFT" | "RETURNED" | "REVIEWED", text = "first draft") => {
+  get.mockImplementation((url: string) =>
+    Promise.resolve({
+      data: {
+        data:
+          url === "/api/v1/assignments/41"
+            ? { ...detailNoSubmission, mySubmission: { ...draftSummary, status } }
+            : { ...submissionDetail, status, text },
+      },
+    }),
+  );
+};
+const bar = () => within(screen.getByTestId("save-bar"));
+
+describe("submission editor: the fixed save bar", () => {
+  it("no submission: Start working is the bar's primary and nothing else is offered", async () => {
+    serve(detailNoSubmission);
+    put.mockResolvedValue({ data: { data: { publicId: "abc123defg", status: "DRAFT" } } });
+    renderWithProviders(<AssignmentDetailScreen />);
+    await screen.findByTestId("save-bar");
+    fireEvent.press(bar().getByText("Start working"));
+    await waitFor(() => expect(put).toHaveBeenCalledWith("/api/v1/submissions/by-assignment/41"));
+    expect(screen.queryByText("Save draft")).toBeNull();
+    expect(screen.queryByText("Submit")).toBeNull();
+  });
+
+  it("a draft with no text: Submit is disabled, Save draft is not", async () => {
+    withStatus("DRAFT", "");
+    renderWithProviders(<AssignmentDetailScreen />);
+    await screen.findByLabelText("Your response");
+    expect(bar().getByRole("button", { name: "Submit" }).props.accessibilityState?.disabled).toBe(true);
+    expect(bar().getByRole("button", { name: "Save draft" }).props.accessibilityState?.disabled).toBeFalsy();
+    expect(bar().getByText(/saved draft is private to you/i)).toBeTruthy();
+  });
+
+  it("returned work is editable, and the confirmation says it will be reviewed again", async () => {
+    withStatus("RETURNED");
+    renderWithProviders(<AssignmentDetailScreen />);
+    await screen.findByLabelText("Your response");
+    fireEvent.press(bar().getByText("Submit"));
+    expect(await screen.findByText(/review this again/)).toBeTruthy();
+  });
+
+  it("reviewed work is read-only with no bar", async () => {
+    withStatus("REVIEWED", "the final work");
+    renderWithProviders(<AssignmentDetailScreen />);
+    expect(await screen.findByText("the final work")).toBeTruthy();
+    expect(screen.queryByTestId("save-bar")).toBeNull();
+    expect(screen.queryByLabelText("Your response")).toBeNull();
+  });
+
+  it("a failed save shows the server's message and keeps what was typed", async () => {
+    withStatus("DRAFT");
+    patch.mockRejectedValue(
+      Object.assign(new Error("400"), {
+        isAxiosError: true,
+        response: { status: 400, data: { error: { code: "deadline_closed", message: "This assignment is closed." } } },
+      }),
+    );
+    renderWithProviders(<AssignmentDetailScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Your response"), "my words");
+    fireEvent.press(bar().getByText("Save draft"));
+    expect(await screen.findByText("This assignment is closed.")).toBeTruthy();
+    expect(screen.getByDisplayValue("my words")).toBeTruthy();
+  });
+
+  it("the server's overdue flag says Past due whatever the device clock", async () => {
+    get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: {
+          data:
+            url === "/api/v1/assignments/41"
+              ? { ...detailNoSubmission, dueAt: "2099-01-01T00:00:00.000Z", dueOrgDay: "2099-01-01", isOverdue: true, mySubmission: draftSummary }
+              : submissionDetail,
+        },
+      }),
+    );
+    renderWithProviders(<AssignmentDetailScreen />);
+    expect(await screen.findByText(/Past due/)).toBeTruthy();
+    expect(screen.getByText("Overdue")).toBeTruthy();
   });
 });

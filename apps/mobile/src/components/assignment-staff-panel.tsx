@@ -49,7 +49,8 @@ export function ManageActions({ detail }: { detail: AssignmentDetail }) {
     }
     setMessage(null);
     remove.mutate(detail.id, {
-      onSuccess: () => router.replace("/assignments"),
+      // Pops the deleted assignment's detail rather than leaving it under Back.
+      onSuccess: () => router.dismissTo("/assignments"),
       onError: (err) => {
         setArmed(false);
         setMessage(apiErrorMessage(err, "Couldn't delete the assignment."));
@@ -145,7 +146,7 @@ function TrackerBlock({ assignmentId }: { assignmentId: number }) {
   const router = useRouter();
   const tracker = useAssignmentTracker(assignmentId);
 
-  if (tracker.isPending) return <Skeleton className="h-24 w-full rounded-2xl" />;
+  if (tracker.isPending) return <Skeleton className="h-24 w-full rounded-group" />;
   if (tracker.isError) return <RouteError onRetry={() => void tracker.refetch()} />;
 
   // The handoff into the review screen (v1 submission-tracker.tsx:60-67).
@@ -158,7 +159,7 @@ function TrackerBlock({ assignmentId }: { assignmentId: number }) {
         {`${tracker.data.submittedCount}/${tracker.data.expectedCount} submitted`}
       </Badge>
       {tracker.data.rows.length === 0 ? (
-        <Text className="rounded-lg border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-muted-foreground">
+        <Text className="rounded-group border border-dashed border-separator bg-muted/40 p-6 text-center text-sm text-muted-foreground">
           No students targeted by this assignment.
         </Text>
       ) : (

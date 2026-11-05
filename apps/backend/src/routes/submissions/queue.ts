@@ -8,6 +8,7 @@ import { isLate } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
 import { submissionQueueQuerySchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
+import { countQueue } from "./queue-counts";
 
 /**
  * A reviewer's queue.
@@ -33,7 +34,11 @@ export async function listSubmissionQueue(req: Request, res: Response) {
 
   const scope = await submissionQueueScopeFor(user);
   if (scope === null) {
-    return apiOk(res, { items: [], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null });
+    return apiOk(res, {
+      items: [],
+      counts: cursor ? null : { pending: 0, total: 0, late: 0 },
+      nextCursor: null,
+    });
   }
 
   // AND rather than spreading, so the scope's own `assignment` constraint (the
@@ -56,18 +61,9 @@ export async function listSubmissionQueue(req: Request, res: Response) {
     ? { AND: [reachable, { status: "SUBMITTED" as const }] }
     : reachable;
 
-  // Lateness compares two columns, which Prisma cannot express in a filter, so
-  // the header's three numbers come from one narrow select (v1 counted the same
-  // way, over its whole unpaginated list).
-  const countRows = await db.submission.findMany({
-    where: reachable,
-    select: { status: true, submittedAt: true, assignment: { select: { dueAt: true } } },
-  });
-  const counts = {
-    pending: countRows.filter((r) => r.status === "SUBMITTED").length,
-    total: countRows.length,
-    late: countRows.filter((r) => isLate(r.submittedAt, r.assignment.dueAt)).length,
-  };
+  // The header's numbers do not move as the list scrolls (the client reads the
+  // first page's), so a cursor page skips them. See ./queue-counts.ts.
+  const counts = cursor ? null : await countQueue(reachable);
 
   // v1's order (REG-89): status ascending (SUBMITTED, REVIEWED, RETURNED — the
   // enum's declaration order, so what needs a verdict comes first), then most

@@ -9,6 +9,7 @@ import { authRouter } from "./routes/auth";
 import { assignmentsRouter } from "./routes/assignments";
 import { groupsRouter } from "./routes/groups";
 import { meRouter } from "./routes/me";
+import { devicesRouter } from "./routes/me-devices";
 import { usersRouter } from "./routes/users";
 import { seasonsRouter } from "./routes/seasons";
 import { sessionsRouter } from "./routes/sessions";
@@ -61,7 +62,9 @@ export function createApp(): Express {
   app.use("/api/v1/seasons", seasonImportsRouter);
   app.use(express.json());
   if (config.nodeEnv !== "test") {
-    app.use(morgan("dev"));
+    // Coloured "dev" lines locally; Apache combined format in production,
+    // which log drains parse. Neither logs bodies or the Authorization header.
+    app.use(morgan(config.nodeEnv === "production" ? "combined" : "dev"));
   }
 
   app.use(healthRouter);
@@ -75,6 +78,7 @@ export function createApp(): Express {
 
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/me", meRouter);
+  app.use("/api/v1/devices", devicesRouter);
   app.use("/api/v1/notifications", notificationsRouter);
   app.use("/api/v1/users", usersRouter);
   // forum + video-quiz: mounted at the version root because their paths span

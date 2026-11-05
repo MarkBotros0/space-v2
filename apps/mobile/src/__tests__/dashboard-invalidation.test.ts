@@ -30,6 +30,8 @@ const TAGGED: readonly (readonly [file: string, hook: string])[] = [
   ["use-session-writes.ts", "useUpdateSession"],
   ["use-session-writes.ts", "useDeleteSession"],
   ["use-group-admin.ts", "useSaveGroupAssignments"],
+  ["use-group-admin.ts", "useCreateGroup"],
+  ["use-group-admin.ts", "useUpdateGroup"],
   ["use-group-admin.ts", "useDeleteGroup"],
   ["use-forum.ts", "useSubmitForumResponse"],
 ];

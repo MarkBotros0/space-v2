@@ -1,15 +1,21 @@
 // apps/mobile/src/components/ExportMenu.tsx
+import { useState } from "react";
 import { View } from "react-native";
 import { exportFilename } from "@space/shared";
 
 import { useReportExport, useSeasonWorkbookManifest } from "../hooks/use-report-export";
-import { Button, Text } from "../design/ui";
+import { Button, GroupedList, ListRow, Sheet, Text } from "../design/ui";
 
 export interface ExportMenuProps {
   seasonId: number | null;
   scopeLabel: string;
   canExportWorkbook: boolean;
   exportDay: string;
+  /**
+   * Admin and super: one "Export" button (for the title row) that opens a
+   * sheet with the same actions. Default false keeps the mentor's inline buttons.
+   */
+  sheet?: boolean;
 }
 
 function kb(bytes: number): string {
@@ -33,54 +39,44 @@ export function ExportMenu({
   scopeLabel,
   canExportWorkbook,
   exportDay,
+  sheet = false,
 }: ExportMenuProps) {
   const exportMutation = useReportExport();
   const manifest = useSeasonWorkbookManifest(seasonId, canExportWorkbook);
+  const [open, setOpen] = useState(false);
 
-  return (
-    <View className="flex-col gap-2">
-      <Button
-        className="self-start"
-        variant="outline"
-        onPress={() =>
-          exportMutation.mutate({
-            path:
-              seasonId === null
-                ? "/api/v1/reports/engagement/export"
-                : `/api/v1/reports/engagement/export?seasonId=${seasonId}`,
-            // The SAME builder the server uses for Content-Disposition, so the
-            // name in the share sheet and the name in the header cannot drift
-            // (D-17.16). The local path must be chosen before any header is
-            // visible, which is why this is shared code and not a header parse.
-            // exportDay is the server's org-zone day (ruling X13), not
-            // `new Date()` on the device: the server stamps
-            // orgDayKey(now) on Content-Disposition, and a device clock
-            // in UTC or another zone names a different day near midnight.
-            filename: exportFilename("engagement", scopeLabel, exportDay),
-            dialogTitle: `Engagement — ${scopeLabel}`,
-          })
-        }
-      >
-        Export engagement
-      </Button>
+  const exportEngagement = () =>
+    exportMutation.mutate({
+      path:
+        seasonId === null
+          ? "/api/v1/reports/engagement/export"
+          : `/api/v1/reports/engagement/export?seasonId=${seasonId}`,
+      // The SAME builder the server uses for Content-Disposition, so the
+      // name in the share sheet and the name in the header cannot drift
+      // (D-17.16). The local path must be chosen before any header is
+      // visible, which is why this is shared code and not a header parse.
+      // exportDay is the server's org-zone day (ruling X13), not
+      // `new Date()` on the device: the server stamps
+      // orgDayKey(now) on Content-Disposition, and a device clock
+      // in UTC or another zone names a different day near midnight.
+      filename: exportFilename("engagement", scopeLabel, exportDay),
+      dialogTitle: `Engagement — ${scopeLabel}`,
+    });
 
-      {canExportWorkbook && manifest.data ? (
-        <Button
-          className="self-start"
-          variant="outline"
-          onPress={() =>
-            exportMutation.mutate({
-              path: `/api/v1/seasons/${seasonId}/exports/workbook`,
-              filename: manifest.data!.filename,
-              dialogTitle: manifest.data!.scopeDescription,
-              estimatedBytes: manifest.data!.estimatedBytes,
-            })
-          }
-        >
-          {`Export season workbook (~${kb(manifest.data.estimatedBytes)})`}
-        </Button>
-      ) : null}
+  const exportWorkbook = () =>
+    exportMutation.mutate({
+      path: `/api/v1/seasons/${seasonId}/exports/workbook`,
+      filename: manifest.data!.filename,
+      dialogTitle: manifest.data!.scopeDescription,
+      estimatedBytes: manifest.data!.estimatedBytes,
+    });
 
+  const workbookTitle = manifest.data
+    ? `Export season workbook (~${kb(manifest.data.estimatedBytes)})`
+    : "";
+
+  const status = (
+    <>
       {exportMutation.isPending ? (
         <Text className="text-xs text-muted-foreground">Preparing your file…</Text>
       ) : null}
@@ -88,6 +84,45 @@ export function ExportMenu({
       {exportMutation.isError ? (
         <Text className="text-xs text-error-600">{errorText(exportMutation.error)}</Text>
       ) : null}
+    </>
+  );
+
+  if (sheet) {
+    // The sheet stays open while the file prepares, so "Preparing your file…"
+    // and a failure are read in the same place the action was taken.
+    return (
+      <>
+        <Button variant="outline" accessibilityLabel="Export" onPress={() => setOpen(true)}>
+          Export
+        </Button>
+        <Sheet open={open} onClose={() => setOpen(false)} title="Export">
+          <View className="flex-col gap-3 pb-4">
+            <GroupedList>
+              <ListRow title="Export engagement" subtitle={scopeLabel} onPress={exportEngagement} />
+              {canExportWorkbook && manifest.data ? (
+                <ListRow title={workbookTitle} onPress={exportWorkbook} />
+              ) : null}
+            </GroupedList>
+            {status}
+          </View>
+        </Sheet>
+      </>
+    );
+  }
+
+  return (
+    <View className="flex-col gap-2">
+      <Button className="self-start" variant="outline" onPress={exportEngagement}>
+        Export engagement
+      </Button>
+
+      {canExportWorkbook && manifest.data ? (
+        <Button className="self-start" variant="outline" onPress={exportWorkbook}>
+          {workbookTitle}
+        </Button>
+      ) : null}
+
+      {status}
     </View>
   );
 }

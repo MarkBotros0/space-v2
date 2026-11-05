@@ -24,7 +24,7 @@ export function ImportResultStep({
   return (
     <View className="flex-col gap-4">
       {header}
-      <View className="flex-row items-start gap-3 rounded-lg bg-success-50 px-4 py-3 dark:bg-success-950">
+      <View className="flex-row items-start gap-3 rounded-control bg-ok-soft px-4 py-3">
         <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-success-600" />
         <View className="min-w-0 flex-1">
           <Text className="text-sm font-semibold text-success-800 dark:text-success-200">
@@ -45,7 +45,7 @@ export function ImportResultStep({
         duplicated.
       </Text>
       {notCreated.map((r) => (
-        <View key={r.rowNumber} className="rounded-lg border border-border bg-card p-3">
+        <View key={r.rowNumber} className="rounded-group bg-surface p-3 dark:border dark:border-separator">
           <Text className="text-sm font-medium">{`Row ${r.rowNumber} · ${r.email}`}</Text>
           <Text className="text-xs text-muted-foreground">{r.message ?? r.outcome}</Text>
         </View>

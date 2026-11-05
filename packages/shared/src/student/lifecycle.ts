@@ -41,10 +41,16 @@ export const studentDeletedResponseSchema = z.object({
 });
 export type StudentDeletedResponse = z.infer<typeof studentDeletedResponseSchema>;
 
-/** POST /students — Plan 7's response, given a schema so the create screen parses it. */
+/**
+ * POST /students — Plan 7's response, given a schema so the create screen
+ * parses it. `inviteSent` means what it does on POST /users: false when the
+ * student was created but the invite email could not be delivered (no mail
+ * transport, or the send failed), so the account stays "pending".
+ */
 export const createStudentResponseSchema = z.object({
   id: z.number().int(),
   email: z.string(),
+  inviteSent: z.boolean(),
 });
 export type CreateStudentResponse = z.infer<typeof createStudentResponseSchema>;
 

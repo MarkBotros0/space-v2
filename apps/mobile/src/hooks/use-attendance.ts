@@ -39,6 +39,10 @@ export function useSaveAttendance(sessionId: number) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.attendance.roster(sessionId) });
       // Session lists carry `attendanceMarked`.
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+      // A student's detail and attendance tab show these marks, and the
+      // engagement score counts them.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.students.details() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.engagement.all });
     },
   });
 }

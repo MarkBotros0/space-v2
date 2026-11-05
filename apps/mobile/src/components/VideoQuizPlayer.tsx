@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pause, Play, Video } from "lucide-react-native";
-import { AppState, Linking, Pressable, View } from "react-native";
+import { AppState, Linking, View } from "react-native";
 import { useRouter } from "expo-router";
 import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-iframe";
 import type { StudentVideoQuestion, StudentVideoQuiz } from "@space/shared";
@@ -8,7 +8,6 @@ import type { StudentVideoQuestion, StudentVideoQuiz } from "@space/shared";
 import { useSaveVideoProgress, useSubmitVideoAnswer } from "../hooks/use-video-quiz";
 import { apiErrorMessage } from "../lib/api-error";
 import { iconWithClassName } from "../design/lib/icon";
-import { shadowStyle } from "../design/lib/shadow";
 import { Eyebrow } from "../design/layout/page-title";
 import { InlineError } from "../design/layout/route-states";
 import { Button, Text } from "../design/ui";
@@ -38,18 +37,13 @@ export interface VideoQuizPlayerProps {
   readCurrentTime?: () => Promise<number>;
 }
 
-/** v1's "Watch recording" link button (sessions/[id]/page.tsx). */
+/** v1's "Watch recording" link, as the primary Button with the video icon. */
 export function WatchRecordingButton({ youtubeUrl }: { youtubeUrl: string }) {
   return (
-    <Pressable
-      accessibilityRole="link"
-      onPress={() => void Linking.openURL(youtubeUrl)}
-      className="flex-row items-center justify-center gap-2 rounded-lg bg-brand-teal-600 px-4 py-3 active:bg-brand-teal-700"
-      style={{ boxShadow: "0px 2px 8px 0px rgba(93, 185, 188, 0.35)" }}
-    >
-      <Video size={16} className="shrink-0 text-white" />
-      <Text className="text-sm font-bold text-white">Watch recording</Text>
-    </Pressable>
+    <Button accessibilityRole="link" onPress={() => void Linking.openURL(youtubeUrl)}>
+      <Video size={16} className="shrink-0 text-primary-foreground" />
+      Watch recording
+    </Button>
   );
 }
 
@@ -182,7 +176,7 @@ export function VideoQuizPlayer({
       .then((d) => {
         setDuration(d);
         // Deadlock guard (spec 13 §10 D2): a question past the end of the
-        // recording can never be reached. The duration is not stored (C1).
+        // recording can never be reached. The duration is not stored, so it is read here.
         if (Number.isFinite(barrierRef.current) && barrierRef.current > d + 1) setDeadlocked(true);
       })
       .catch(() => undefined);
@@ -237,14 +231,13 @@ export function VideoQuizPlayer({
     <View className="flex-col gap-3">
       {deadlocked ? (
         <InlineError
-          className="rounded-2xl border border-border bg-card p-4"
+          className="rounded-group bg-surface dark:border dark:border-separator p-4"
           message={deadlockMessage}
           onRetry={() => onRetry?.()}
         />
       ) : (
         <View
-          className="overflow-hidden rounded-2xl border border-border bg-black"
-          style={shadowStyle("soft")}
+          className="overflow-hidden rounded-group border border-border bg-black"
         >
           <YoutubePlayer
             ref={playerRef}
@@ -300,7 +293,7 @@ export function VideoQuizPlayer({
         </View>
       )}
 
-      <View className="flex-row items-center justify-between rounded-xl border border-border bg-card p-4">
+      <View className="flex-row items-center justify-between rounded-group bg-surface p-4 dark:border dark:border-separator">
         <View>
           <Text className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
             {quiz.completedAt !== null ? "Quiz complete" : "In progress"}
@@ -308,7 +301,7 @@ export function VideoQuizPlayer({
           <Text className="text-xs text-muted-foreground">{`${quiz.answeredCount} of ${quiz.questions.length} answered`}</Text>
         </View>
         <View className="items-end">
-          <Text className="text-lg font-black text-brand-teal-700 dark:text-brand-teal-300">
+          <Text className="text-lg font-black text-brand-teal-800 dark:text-brand-teal-300">
             {String(quiz.earnedPoints)}
             <Text className="text-sm font-semibold text-muted-foreground">{`/${quiz.totalPoints}`}</Text>
           </Text>

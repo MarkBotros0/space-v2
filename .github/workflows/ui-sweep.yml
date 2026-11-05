@@ -72,8 +72,14 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sweep
       AUTH_SECRET: ci-only-sweep-secret-not-used-anywhere-else
+      # ci-sweep.sh restarts the backend before each cell to reset the login
+      # limiter (20 sign-ins / 15 min). Only the in-memory store resets on a
+      # restart; the default Postgres store would 429 the sweep after a few cells.
+      RATE_LIMIT_STORE: memory
       # 10.0.2.2 is the emulator's alias for the runner's localhost.
       EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:4100
+      # Unlocks the hidden design catalogue (flow s90) in the release APK.
+      EXPO_PUBLIC_SWEEP_BUILD: "1"
       # A pull request sweeps every flow on the two corner cells; Run workflow
       # defaults to all 16 cells.
       SWEEP_CELLS: ${{ matrix.cells }}

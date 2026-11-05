@@ -63,6 +63,7 @@ export async function seedLeaderScenario(
     where: { quizId: onlineQuiz.id },
     orderBy: { order: "asc" },
   });
+  if (!mcq1 || !mcq2 || !essay) throw new Error("seed-sweep: the online quiz needs two MCQs and an essay");
   const attempt = await db.quizAttempt.create({
     data: {
       quizId: onlineQuiz.id,
@@ -153,6 +154,7 @@ export async function seedAdminScenario({ user, superUser, admin, student, seaso
       studentUserId: dropped.id,
       seasonId: season.id,
       status: "WITHDRAWN",
+      enrolledAt: fromToday(-30),
       droppedAt: fromToday(-10),
       dropReason: "Moved away",
     },

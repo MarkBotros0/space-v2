@@ -32,3 +32,11 @@ process.env.READ_ONLY = "false";
 // builds a limit-1 instance directly.
 process.env.IMPORT_COMMIT_RATE_LIMIT = "1000";
 process.env.IMPORT_PREVIEW_RATE_LIMIT = "1000";
+
+// Per-process counters for both suites. config.ts already picks "memory" under
+// NODE_ENV=test; forced here too so a developer's .env with
+// RATE_LIMIT_STORE=postgres cannot make the integration suite share buckets
+// with earlier runs (logins from one IP would 429 within a few runs). The
+// Postgres store is proven by rate-limit-store.test.ts (mocked) and
+// integration/rate-limit-store.test.ts (live), which build it explicitly.
+process.env.RATE_LIMIT_STORE = "memory";

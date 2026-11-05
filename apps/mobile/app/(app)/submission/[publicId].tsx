@@ -1,94 +1,83 @@
 import { useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { File as FileIcon, SearchX } from "lucide-react-native";
+import { SearchX } from "lucide-react-native";
 import { View } from "react-native";
-import { plainTextToHtml } from "@space/shared";
+import { type SubmissionDetail } from "@space/shared";
 
-import { BackLink, PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { iconWithClassName } from "../../../src/design/lib/icon";
-import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  EmptyState,
-  RichTextView,
-  SubmissionStatusBadge,
-  Text,
-  Textarea,
-  toast,
-} from "../../../src/design/ui";
-import { useReviewSubmission, useSubmissionDetail } from "../../../src/hooks/use-submission";
-import { apiErrorMessage } from "../../../src/lib/api-error";
+import { SaveBar } from "../../../src/design/layout/save-bar";
+import { Screen } from "../../../src/design/layout/screen";
+import { EmptyState } from "../../../src/design/ui";
+import { StatusChip, statusChip } from "../../../src/design/ui/status-chip";
+import { useSubmissionDetail } from "../../../src/hooks/use-submission";
 import { formatShortDateTime } from "../../../src/lib/format";
-import { storedTextToHtml } from "../../../src/lib/stored-text";
+import { FeedbackSheet } from "../../../src/screens/submission-review/feedback-sheet";
+import {
+  FeedbackSection,
+  PromptSection,
+  ReturnedSection,
+  WorkSection,
+} from "../../../src/screens/submission-review/work-sections";
 
-iconWithClassName(FileIcon);
-
-/**
- * v1 components/assignments/submission-review-form.tsx. Feedback travels as
- * plain text, so this is a plain Textarea (C11, B2-16). "Return for revision"
- * is v2's (spec 08 D11). Like v1, a verdict keeps the reviewer on the page:
- * the detail refetches and the title flips to "Update feedback" (B3-9).
- */
-function ReviewForm({
-  publicId,
-  initialFeedback,
-  alreadyReviewed,
-  onReturned,
+/** The loaded submission. Keyed by id by the caller, so the feedback draft is this submission's. */
+function SubmissionReview({
+  data,
+  refreshing,
+  onRefresh,
 }: {
-  publicId: string;
-  initialFeedback: string;
-  alreadyReviewed: boolean;
-  onReturned: () => void;
+  data: SubmissionDetail;
+  refreshing: boolean;
+  onRefresh: () => void;
 }) {
-  const review = useReviewSubmission(publicId);
-  const [feedback, setFeedback] = useState(initialFeedback);
-
-  const submit = (returnForRevision: boolean) =>
-    review.mutate(
-      { feedback, returnForRevision },
-      {
-        onSuccess: () => {
-          toast.success(returnForRevision ? "Returned for revision." : "Review saved.");
-          // Returned work is the student's to edit now, so there is nothing left to do here.
-          if (returnForRevision) onReturned();
-        },
-      },
-    );
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [feedback, setFeedback] = useState(data.feedback ?? "");
+  const alreadyReviewed = data.reviewedAt !== null;
+  // C4: the flag drives the UI; the server gate is what protects the write.
+  const canGive = data.canReview && data.status !== "RETURNED";
+  const label = alreadyReviewed ? "Update feedback" : "Add feedback";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{alreadyReviewed ? "Update feedback" : "Add feedback"}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-col gap-4">
-        <Textarea
-          accessibilityLabel="Feedback"
-          placeholder="What did the student do well? What could be stronger?"
-          value={feedback}
-          onChangeText={setFeedback}
-          className="min-h-32"
-        />
-        {review.isError ? (
-          <Text className="rounded-md bg-error-50 px-3 py-2 text-sm text-error-800 dark:bg-error-950 dark:text-error-200">
-            {apiErrorMessage(review.error, "Couldn't record the review. It may not have been submitted yet.")}
-          </Text>
-        ) : null}
-        <View className="flex-row flex-wrap justify-end gap-2">
-          <Button variant="outline" disabled={review.isPending} onPress={() => submit(true)}>
-            Return for revision
-          </Button>
-          <Button disabled={review.isPending} onPress={() => submit(false)}>
-            {review.isPending ? "Saving…" : alreadyReviewed ? "Update review" : "Mark as reviewed"}
-          </Button>
+    <Screen
+      title={data.assignmentTitle}
+      subtitle={`${data.studentName ?? data.studentEmail}${data.groupName ? ` · ${data.groupName}` : ""}`}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      footer={canGive ? <SaveBar label={label} onPress={() => setOpen(true)} /> : undefined}
+    >
+      <View className="flex-col gap-4">
+        <View className="flex-row flex-wrap gap-2">
+          <StatusChip {...statusChip("submission", data.status)} />
+          {data.isLate ? <StatusChip tone="warn" label="Late" /> : null}
+          {data.submittedAt ? (
+            <StatusChip tone="neutral" label={`Submitted ${formatShortDateTime(data.submittedAt)}`} />
+          ) : null}
+          {data.assignmentDueAt ? (
+            <StatusChip tone="neutral" label={`Due ${formatShortDateTime(data.assignmentDueAt)}`} />
+          ) : null}
         </View>
-      </CardContent>
-    </Card>
+        <PromptSection description={data.assignmentDescription} />
+        <WorkSection text={data.text} files={data.files} />
+        {data.canReview && data.status === "RETURNED" ? (
+          <ReturnedSection feedback={data.feedback} />
+        ) : canGive ? (
+          data.feedback ? <FeedbackSection header="Current feedback" feedback={data.feedback} /> : null
+        ) : data.feedback ? (
+          <FeedbackSection header="Feedback" feedback={data.feedback} />
+        ) : null}
+      </View>
+      {canGive ? (
+        <FeedbackSheet
+          open={open}
+          onClose={() => setOpen(false)}
+          publicId={data.publicId}
+          alreadyReviewed={alreadyReviewed}
+          feedback={feedback}
+          onFeedback={setFeedback}
+          onReturned={() => router.back()}
+        />
+      ) : null}
+    </Screen>
   );
 }
 
@@ -96,119 +85,28 @@ function ReviewForm({
 export default function SubmissionReviewScreen() {
   const { publicId: rawPublicId } = useLocalSearchParams<{ publicId: string }>();
   const publicId = typeof rawPublicId === "string" && rawPublicId.length > 0 ? rawPublicId : null;
-
-  const router = useRouter();
   const { data, isPending, isError, refetch, isRefetching } = useSubmissionDetail(publicId);
-
-  // A deep link (notification, push) has no history to go back to.
-  const leave = () => (router.canGoBack() ? router.back() : router.replace("/submissions"));
 
   if (publicId === null) {
     return (
-      <ShellFrame>
+      <Screen title="Submission">
         <EmptyState icon={SearchX} title="Not found" description="That submission link isn't valid." />
-      </ShellFrame>
+      </Screen>
     );
   }
-
+  if (isPending || isError) {
+    return (
+      <Screen title="Submission">
+        {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
+      </Screen>
+    );
+  }
   return (
-    <ShellFrame refreshing={isRefetching} onRefresh={() => void refetch()}>
-      {isPending ? (
-        <RouteSkeleton />
-      ) : isError ? (
-        <RouteError onRetry={() => void refetch()} />
-      ) : (
-        <View className="flex-col gap-4">
-          <BackLink label="Submissions" onPress={leave} />
-          <PageTitle
-            title={data.assignmentTitle}
-            subtitle={`${data.studentName ?? data.studentEmail}${data.groupName ? ` · ${data.groupName}` : ""}`}
-          />
-          {/* v1's mb-4 on top of the page's gap-4: 32px before the first card. */}
-          <View className="mb-4 flex-row flex-wrap gap-2">
-            <SubmissionStatusBadge status={data.status} />
-            {data.isLate ? <Badge variant="warning">Late</Badge> : null}
-            {data.submittedAt ? (
-              <Badge variant="outline">{`Submitted ${formatShortDateTime(data.submittedAt)}`}</Badge>
-            ) : null}
-            {data.assignmentDueAt ? (
-              <Badge variant="outline">{`Due ${formatShortDateTime(data.assignmentDueAt)}`}</Badge>
-            ) : null}
-          </View>
-
-          {data.assignmentDescription ? (
-            <Card className="mb-4">
-              <CardHeader>
-                <CardTitle className="text-base">Assignment prompt</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <RichTextView html={storedTextToHtml(data.assignmentDescription)} />
-              </CardContent>
-            </Card>
-          ) : null}
-
-          <Card className="mb-4">
-            <CardHeader>
-              <CardTitle className="text-base">Submission</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-col gap-4">
-              <RichTextView html={data.text ? plainTextToHtml(data.text) : null} emptyText="No written response." />
-              {data.files.length > 0 ? (
-                <View className="flex-col gap-1.5">
-                  <Text className="text-sm font-medium">Attachments</Text>
-                  {data.files.map((f) => (
-                    <View
-                      key={f.id}
-                      className="flex-row items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2"
-                    >
-                      <View className="min-w-0 flex-1 flex-row items-center gap-2">
-                        <FileIcon size={16} className="shrink-0 text-muted-foreground" />
-                        <Text numberOfLines={1} className="shrink text-sm">
-                          {f.originalName}
-                        </Text>
-                      </View>
-                      <Text className="shrink-0 text-xs text-muted-foreground">{`${(f.sizeBytes / 1024).toFixed(1)} KB`}</Text>
-                    </View>
-                  ))}
-                  <Text className="text-xs italic text-muted-foreground">Files can't be opened in the app yet.</Text>
-                </View>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          {/* C4: the flag drives the UI; the server gate is what protects the write. */}
-          {data.canReview && data.status === "RETURNED" ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Returned to the student</CardTitle>
-              </CardHeader>
-              <CardContent className="flex-col gap-3">
-                <Text className="text-sm text-muted-foreground">
-                  They can edit and submit again. You'll review it once they do.
-                </Text>
-                {data.feedback ? <RichTextView html={plainTextToHtml(data.feedback)} /> : null}
-              </CardContent>
-            </Card>
-          ) : data.canReview ? (
-            <ReviewForm
-              key={data.publicId}
-              publicId={data.publicId}
-              initialFeedback={data.feedback ?? ""}
-              alreadyReviewed={data.reviewedAt !== null}
-              onReturned={leave}
-            />
-          ) : data.feedback ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Feedback</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <RichTextView html={plainTextToHtml(data.feedback)} />
-              </CardContent>
-            </Card>
-          ) : null}
-        </View>
-      )}
-    </ShellFrame>
+    <SubmissionReview
+      key={data.publicId}
+      data={data}
+      refreshing={isRefetching}
+      onRefresh={() => void refetch()}
+    />
   );
 }

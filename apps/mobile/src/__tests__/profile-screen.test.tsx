@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), patch: jest.fn() } }));
 const mockPush = jest.fn();
@@ -15,7 +15,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import ProfileScreen from "../../app/(app)/profile";
+import ProfileScreen from "../../app/(app)/(tabs)/profile";
 
 const get = apiClient.get as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
@@ -73,19 +73,37 @@ describe("ProfileScreen — STUDENT", () => {
     expect(screen.getByText("MA")).toBeTruthy(); // initials — no avatar read path in v2
     expect(screen.getByText("mina@jpc.test")).toBeTruthy();
     // Spec 19 D14 / spec 09 R68: the server's remainingPct, under a label that says what it is.
-    expect(await screen.findByText("Absence budget left")).toBeTruthy();
-    expect(screen.getByText("42%")).toBeTruthy();
-    expect(screen.getByText("Streak")).toBeTruthy();
-    expect(screen.getByText("3")).toBeTruthy();
+    expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
+    expect(await screen.findByLabelText("Streak: 3")).toBeTruthy();
     expect(screen.getByLabelText("University").props.value).toBe("Cairo University");
     // v1's DatePicker (PPP format) in place of a typed field.
     expect(screen.getByLabelText("Date of birth")).toHaveTextContent("April 5th, 2001");
     // The student's own engagement (self arm): completed / expected.
     expect(await screen.findByLabelText("Assignments: 1/4")).toBeTruthy();
-    expect(screen.getByText("Your details")).toBeTruthy();
+    expect(screen.getByText("YOUR DETAILS")).toBeTruthy();
     // Decision 1: no name or email field on this screen.
     expect(screen.queryByLabelText("Name")).toBeNull();
     expect(screen.queryByLabelText("Email")).toBeNull();
+  });
+
+  it("lays the figures out as a pair, then Streak at half width: never an orphan full-width tile", async () => {
+    renderWithProviders(<ProfileScreen />);
+
+    const pair = await screen.findByTestId("profile-figures-pair");
+    expect(within(pair).getByLabelText(/^Absence budget left/)).toBeTruthy();
+    expect(within(pair).getByLabelText(/^Assignments/)).toBeTruthy();
+    const last = screen.getByTestId("profile-figures-last");
+    expect(within(last).getByLabelText(/^Streak/)).toBeTruthy();
+    // The empty half keeps Streak the width of one column.
+    expect(within(last).getByTestId("profile-figures-spacer")).toBeTruthy();
+  });
+
+  it("pins Save changes in the screen footer, not among the fields", async () => {
+    renderWithProviders(<ProfileScreen />);
+
+    await screen.findByLabelText("University");
+    expect(within(screen.getByTestId("screen-footer")).getByText("Save changes")).toBeTruthy();
+    expect(within(screen.getByTestId("screen-scroll")).queryByText("Save changes")).toBeNull();
   });
 
   it("saves through PATCH /me/profile with the six fields only", async () => {
@@ -144,6 +162,8 @@ describe("ProfileScreen — STUDENT", () => {
 
     expect(await screen.findByText("Mina Adel")).toBeTruthy();
     expect(screen.queryByText("Absence budget left")).toBeNull();
+    expect(screen.queryByText("Assignments")).toBeNull();
+    expect(screen.queryByText("Streak")).toBeNull();
     expect(get).not.toHaveBeenCalledWith("/api/v1/me/attendance");
   });
 });

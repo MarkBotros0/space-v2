@@ -7,7 +7,8 @@
 # job's backend restarted before each cell. The login limiter allows 20
 # sign-ins per 15 minutes and every signed-in flow signs in afresh, so one
 # run across all 16 cells would hit 429s within a few cells; a restart
-# empties the limiter's in-memory store.
+# empties the limiter's in-memory store. The workflow sets
+# RATE_LIMIT_STORE=memory for that: the default Postgres store survives it.
 #
 # Env: SWEEP_CELLS / SWEEP_FLOWS (comma-separated prefixes, blank = all),
 # SWEEP_MODULE (student, leader, admin, ...: whose flows to run),

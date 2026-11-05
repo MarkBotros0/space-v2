@@ -38,6 +38,7 @@ export const queryKeys = {
     all: ["notes"] as const,
     lists: () => [...queryKeys.notes.all, "list"] as const,
     authored: () => [...queryKeys.notes.lists(), "authored"] as const,
+    visible: (limit: number) => [...queryKeys.notes.lists(), "visible", { limit }] as const,
     // Nullable per this file's header convention — no -1 sentinel.
     byStudent: (studentId: number | null) => [...queryKeys.notes.lists(), { studentId }] as const,
   },
@@ -71,7 +72,9 @@ export const queryKeys = {
     series: (id: number | null, scope: RecurrenceScope) =>
       [...queryKeys.sessions.all, "series", { id, scope }] as const,
     checkIn: (id: number | null) => [...queryKeys.sessions.all, "checkIn", { id }] as const,
-    quizzes: (id: number | null) => [...queryKeys.sessions.all, "quizzes", { id }] as const,
+    /** Every session's quiz card — what a quiz write invalidates (it may move sessions). */
+    allQuizzes: () => [...queryKeys.sessions.all, "quizzes"] as const,
+    quizzes: (id: number | null) => [...queryKeys.sessions.allQuizzes(), { id }] as const,
   },
   notifications: {
     all: ["notifications"] as const,
@@ -85,7 +88,8 @@ export const queryKeys = {
   users: {
     all: ["users"] as const,
     lists: () => [...queryKeys.users.all, "list"] as const,
-    list: (filters: { q: string }) => [...queryKeys.users.lists(), filters] as const,
+    list: (filters: { q: string; role?: string; status?: string }) =>
+      [...queryKeys.users.lists(), filters] as const,
     details: () => [...queryKeys.users.all, "detail"] as const,
     // Nullable, per this file's header convention (a null key never collides
     // with a real id) — not a -1 sentinel.
@@ -119,6 +123,8 @@ export const queryKeys = {
     list: () => [...queryKeys.seasons.all, "list"] as const,
     detail: (id: number | null) => [...queryKeys.seasons.all, "detail", { id }] as const,
     byCode: (code: string | null) => [...queryKeys.seasons.all, "byCode", { code }] as const,
+    /** GET /seasons/:id/admins (SUPER) — under `all`, so a season write refreshes it too. */
+    admins: (id: number | null) => [...queryKeys.seasons.all, "admins", { id }] as const,
   },
   assignments: {
     all: ["assignments"] as const,
@@ -209,6 +215,8 @@ export const queryKeys = {
   events: {
     all: ["events"] as const,
     list: () => [...queryKeys.events.all, "list"] as const,
+    /** The /events screen's cursor-paged read (newest first). */
+    paged: () => [...queryKeys.events.all, "paged"] as const,
     // Plan 16's UpcomingEventsCard (spec 19 §7). Under `all`, so every event
     // write's prefix invalidation refreshes the dashboards too.
     upcoming: (limit: number) => [...queryKeys.events.all, "upcoming", limit] as const,

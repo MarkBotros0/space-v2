@@ -205,3 +205,8 @@ export function formatShortDateTime(iso: string | null): string {
 export function formatSeasonDay(iso: string): string {
   return formatDayKey(iso.slice(0, 10));
 }
+
+/** e.g. "Mon 3 Nov, 10:00" — when a hand-in arrived, in a queue row. */
+export function formatQueueWhen(iso: string | null): string {
+  return formatIso(iso, "EEE d MMM, HH:mm");
+}

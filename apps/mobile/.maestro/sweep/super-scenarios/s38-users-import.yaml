@@ -1,0 +1,107 @@
+# UI sweep s38 — Importing profiles as a super admin, up to the preview. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${SUPER_EMAIL}
+# Preview only parses the paste and reads which emails exist (POST .../students/preview
+# writes nothing); the Import button is never tapped.
+- openLink: spacev2://users/import
+- extendedWaitUntil:
+    visible: 'Import profiles batch'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-01-import
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Season'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-02-import-season-open
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Paste your spreadsheet'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-03-import-paste-kbd
+# Three rows: one new, one existing (in CI), one invalid. Enter is a newline in the textarea.
+- inputText: 'name,email'
+- pressKey: Enter
+- inputText: 'New Person,new.person@sweep.jpc.test'
+- pressKey: Enter
+- inputText: 'Samir Student,student@sweep.jpc.test'
+- pressKey: Enter
+- inputText: 'Bad Row,not-an-email'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-04-import-pasted
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-05-import-bottom
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Preview'
+- extendedWaitUntil:
+    visible: 'Needs attention'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-06-import-preview
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'All'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-07-import-preview-all
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-08-import-preview-bottom
+# Back to the paste step, then the alumni mode and its year field.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Back'
+- extendedWaitUntil:
+    visible: 'Paste your spreadsheet'
+    timeout: 40000
+- scrollUntilVisible:
+    element: 'Alumni'
+    direction: UP
+    timeout: 20000
+- tapOn: 'Alumni'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-09-import-alumni-mode
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Graduation year'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-10-import-graduation-year-kbd
+- inputText: '2020'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s38-11-import-graduation-year-typed

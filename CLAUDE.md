@@ -21,8 +21,14 @@ Mobile-first rebuild of JPC Space (`D:\Projects\JPC\jpc-space` is v1 and still r
   and super surfaces. jpc-space is retired once that is done, not before.
 - **Everything goes in the mobile app.** All 104 of v1's pages, admin and
   super included, become React Native screens. There is no `apps/admin`.
-- **Shared staging database with v1.** No migrations are created here.
-  `prisma/migrations/` is a verbatim copy of v1's.
+- **The database serves v2 only (owner ruling 2026-11-04).** The schema
+  freeze that kept the database shareable with v1 (`_DECISIONS.md` C1) is
+  lifted: v2 owns the schema and may add migrations. v1 must no longer write
+  to this database. `prisma/migrations/` starts with v1's history; add new
+  migrations after it (`pnpm --filter @space/backend db:migrate:deploy`
+  applies them through `prisma.config.ts`). Keep migrations additive unless a
+  destructive change is explicitly planned, and say in the commit which
+  environments they were applied to.
 - **Passwords are bcryptjs.** Existing hashes are bcrypt; any other algorithm
   locks out every user.
 - **Tokens must stay v1-compatible:** `jose` HS256, secret `AUTH_SECRET`
@@ -112,6 +118,14 @@ client together under the proxy's IP. `MOBILE_APP_ORIGIN` — CORS origin
 allowed to call the API; default `"*"` (matches the app this backend was
 ported from).
 
+**Sentry is opt-in on both sides.** It stays off until `SENTRY_DSN` (backend)
+or `EXPO_PUBLIC_SENTRY_DSN` (mobile, read only in `src/lib/app-config.ts`) is
+set. Report through `reportError` in each app's `lib/sentry.ts`, never
+`Sentry.*` directly, so the off state stays a no-op. `src/instrument.ts` must
+stay the first import of both backend entrypoints. Never put an email or a
+name into an event. Setup steps are in `apps/backend/README.md` under
+"Turning on Sentry".
+
 ## API surface
 
 `apps/backend` now serves all of v1's `/api/v1` — every route file v1 had
@@ -176,12 +190,34 @@ Still outstanding: the mobile screens for the newly-ported endpoints. See
 ## Mobile conventions (Phase 0 established these — follow them)
 
 **Screens are flat and role-driven.** One route per *destination*
-(`/calendar`, `/students`), not per role. The tab bar renders
-`navFor(user).tabs` from `packages/shared/src/navigation.ts`, so a student and
-an admin see different tabs pointing at the same route files. `(app)/_layout.tsx`
-hides non-tab routes with `href: null` — reachable by navigation, absent from
-the bar — and derives the route universe from `ALL_NAV_HREFS`. Never re-derive
-that set from `navByRole`: `ALUMNI` is not in it, only reachable via `navFor`.
+(`/calendar`, `/students`), not per role. `(app)/_layout.tsx` is a native `Stack`
+(anonymous redirect, alumni guard, `UNSTABLE_router={singularTabsRouter}`, anchor
+`(tabs)`); `(app)/(tabs)/_layout.tsx` holds the `Tabs` (`backBehavior` "history" +
+`historyThenHomeTabsRouter`, anchor `dashboard` — its dev warning is expected, do not
+"fix" it). The pill renders `navFor(user).tabs` from `packages/shared/src/navigation.ts`:
+Today first, at most 5 per role. A href that is a tab for some role is in `ALL_TAB_HREFS`
+and its file lives in `(tabs)/`; a nav destination that is a tab for no role is a pushed
+route outside `(tabs)/` (`PUSHED_NAV_ROUTE_NAMES`), and every detail route is listed in
+`DETAIL_ROUTE_NAMES` — both pushed on the stack so Back returns to the screen you came
+from. Never put `href: null` or `hidden` on a `Tabs` screen (expo-router 58 redirects a
+focused hidden tab to the first tab, breaking deep links); the pill rendering `items` is
+what keeps screens out of the bar. Never re-derive hrefs from `navByRole`: `ALUMNI` is
+only reachable via `navFor`.
+
+**Navigation actions we support** (pinned by the `deep-links`, `more-back` and
+`stack-actions` tests; extend them when you dispatch anything new):
+
+| Action | In this shell | Use it for |
+|---|---|---|
+| `push(href)` | a detail/pushed route stacks above; a tab route pops back to the one `(tabs)` and switches tab (`singularTabsRouter`) | opening anything |
+| `navigate(href)` | same as `push` for a tab route | rarely needed |
+| `replace(href)` | swaps the top screen; a tab route pops to the one `(tabs)` instead of stacking a second | create → show the new record (`seasons/new` → `/seasons/[code]`) |
+| `back()` | pops one screen; on a tab, tab history then Today (`historyThenHomeTabsRouter`) | cancel; save → show the record below |
+| `dismissTo(href)` | pops to the nearest matching route below (taking the href's params), or swaps the top screen for it | deleted → the list (`/groups`, `/students`); save under a new URL (a season's new code) |
+| `dismissAll()` then `push(href)` | pops to `(tabs)`, then opens `href` | deleted, and the target may not be on the stack (session → its season) |
+
+Never `replace` to a list after a delete: the deleted record's detail stays under Back.
+A cold deep link always has `(tabs)` under it, so a `canGoBack()` fallback is dead code.
 
 **Typed routes are on.** Every `href` is compile-checked against the real route
 tree. The types are generated, not written — `turbo.json`'s `routes:generate`
@@ -190,52 +226,69 @@ clean checkout gets correct types. Without them the `Href` type silently
 degrades to `string` and checks nothing. Never silence a route error with
 `as Href`/`as any`.
 
-**Data fetching follows `app/(app)/dashboard.tsx`** — the worked example. Query
+**Data fetching follows `app/(app)/(tabs)/dashboard.tsx`** — the worked example. Query
 keys are hierarchical factories in `src/lib/query-keys.ts`; hooks live in
 `src/hooks/` and **parse responses with a Zod schema from `packages/shared`**
 rather than casting, so a backend drift fails at the boundary. Queries
 depending on `scopes.activeSeasonId` (or any nullable id) must pass `enabled`
 — and guard manual `refetch()` too, since `enabled` only gates the automatic
-run. Map states to the primitives: `LoadingState`, `ErrorState` with `onRetry`
-wired to `refetch`, `EmptyState`.
+run. Map states to the primitives: `RouteSkeleton`, `RouteError` with `onRetry`
+wired to `refetch` (`InlineError` for one card's query), `EmptyState`.
 
 **Domain contracts are Zod, not bare interfaces.** `session.ts`'s
 `sessionListItemSchema` is the source of truth and its type is `z.infer` of it.
 The remaining interfaces in `packages/shared` predate this and should convert
 as each domain lands.
 
-**UI matches v1 exactly** (owner ruling 2026-10-14, spec
-`docs/superpowers/specs/2026-10-14-mobile-ui-v1-match-design.md`). Styling is
-NativeWind with a theme generated from v1's resolved tokens
-(`pnpm --filter @space/mobile design:tokens`). Components live in
-`src/design/` under v1's file names and keep v1's class strings, variants and
-copy; porting rules are in `docs/superpowers/plans/2026-10-14-ui-plan-01-foundations.md`
-Task 6, and known differences in `docs/superpowers/ui-rebuild/gaps-foundations.md`.
-Render text with `src/design/ui/text.tsx` (it carries v1's body defaults:
-16px/24px, Geist, foreground colour — React Native text inherits nothing).
-Button, Badge and the pills carry no self-alignment: where v1 places them in
-a block (or uses `w-fit`), add `self-start`. A screen is done only after a
-side-by-side capture against v1 (`tools/ui-reference/`). The shell
-(`app/(app)/_layout.tsx`) renders v1's top bar as the tab header and the
-floating pill tab bar; legacy `Screen` drops its top inset and pads the bottom
-by 96px inside it. `src/ui/` and `src/theme/` are legacy and are deleted when
-the last screen stops importing them. Student-page idioms shared by later batches: `src/design/layout/page-title.tsx`
-(v1's hand-rolled h1, eyebrow, back link), `route-states.tsx` (v1's route
-skeleton and error), `shell-frame.tsx` (page frame with v1's navy-50 tint and
-pull-to-refresh), `src/design/students/` (StatCard, SeasonHistory),
-`src/design/sessions/season-calendar.tsx`. Leader-page idioms (batch 3), shared with
-admin later: `src/design/dashboard/section-card.tsx` (card with icon header + "View all",
-FigurePair), `src/design/sessions/{next-session-card,check-in-attendance-list,attendance-form}.tsx`,
-`src/design/quizzes/` (attempt grader, paper sheet), `src/design/students/{student-detail,note-form}.tsx`;
-`RouteError` picks "your leader" / "an admin" from the session role. If a capture shows a
-class ignored, restart Metro with `--clear` before working around it. Admin pages (batch 4) share `src/design/forms/form-parts.tsx` (FormErrorBox, FormActions, ToggleButtons),
-`src/design/seasons/*`, `src/components/dashboard/StaffDashboard.tsx`, and the design `StudentDetail`, whose props
-(`canWriteNote`, `actions`, `dropFor`, `staffTabs`) switch it between leader and admin views. Super pages (batch 5) add `src/components/season/SeasonForm.tsx`,
-`src/design/users/users-list.tsx`, and the season palette (`buildSeasonColors`) in `design/sessions/season-calendar.tsx`.
-Remaining
-differences per batch are in `docs/superpowers/ui-rebuild/gaps-batch-<n>.md`; captures still owed are in backlog section 14.
+**The redesign spec is the UI reference** (owner lifted "match v1" on 2026-11-04;
+`docs/superpowers/specs/2026-11-04-mobile-redesign-design.md`). jpc-space stays the source
+of truth for behaviour and copy, not look; the v1 side-by-side is no longer the acceptance
+check, the UI sweep is. Styling is NativeWind over `src/design/theme/tokens.json`, the
+owned token source (`pnpm --filter @space/mobile design:tokens` regenerates `global.css`
+and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raised`,
+`control-border` and `ring` (both >=3:1). Raw colours for charts/SVG come from
+`design/theme/palette.ts` or `useThemeColors()`, never hex literals.
 
-**Testing.** Anything rendering `Screen` must use `renderWithProviders`
+- **Frame.** Every screen renders `Screen` (`design/layout/screen.tsx`): large collapsing
+  title, `back`, `home` (bell + user menu, Today only), the offline banner, and the top
+  inset, which only it owns. `ShellFrame` is the transitional wrapper over it. A screen
+  on the stack gets the pinned back bar by default; `back={null}` opts out, and an
+  in-content back link is a duplicate. Bottom padding comes from `useShellBottomPadding()`,
+  driven by the tab-bar presence context (tab bar vs none). A long form's pinned Save goes in
+  `Screen`'s `footer` (`footer={<SaveBar … />}`): outside the scroll view, above the pill or
+  the inset, riding the keyboard, with the content padded by its measured height. Never put a
+  `SaveBar` among a `Screen`'s children.
+- **Components** (`src/design/ui/*`): Button (primary | secondary | destructive | plain),
+  StatusChip / `statusChip` / `dueChip`, GroupedList / ListRow, HeroCard, StatTile,
+  SegmentedControl, SearchField, EmptyState (`tone`), Sheet / SheetSaveBar, Toast
+  (`toaster.tsx`); `src/design/layout/*`: Screen, LargeTitle, PillTabBar, SaveBar,
+  `tab-bar-scroll`. The pill is solid on iOS and Android (owner 2026-11-05, R38): one
+  opaque `bg-pill`, no blur, no per-platform fill. Render text with `ui/text.tsx` and its `variant` scale (largeTitle,
+  title, headline, body, subhead, caption); it carries the body defaults because React
+  Native text inherits nothing. Button, Badge and the pills carry no self-alignment:
+  where one sits in a block, add `self-start`.
+- **Shapes and the consistency guard.** Radii are named tokens: `rounded-group` (16: cards,
+  groups, popovers), `rounded-control` (14: buttons, fields, option rows, callouts),
+  `rounded-full` (chips, discs), `rounded-t-sheet` (24, kit only). `src/__tests__/design-consistency.test.ts`
+  fails on hex / `rgb()` literals and `shadow-` classes anywhere in `app/` and `src/`; outside
+  `src/design/` it allows only `rounded-group|control|full|none` (and side variants), no raw
+  font size (`fontSize:`, `text-[10px]`, `leading-[…]`: use a Text variant, never under
+  caption) and no elevation (`shadowStyle`, `elevation:`, `boxShadow:`; only the design
+  catalogue's sections in `src/screens/design-catalogue/` may demo it). The legacy kit (Card, Badge, Modal, Tabs,
+  StatCard, SectionCard, PageTitle, ...) already draws on the new tokens and cards are flat;
+  plans 02–05 keep the guard green and delete each legacy component when its last user migrates.
+- **Catalogue.** The hidden design catalogue (`spacev2://design-catalogue`, in dev or with
+  `EXPO_PUBLIC_SWEEP_BUILD=1`) is the one catalogue: it shows every component; sweep flow
+  `s90` shoots it. Add a component's states there when you add the component.
+- **Motion** (`src/design/motion/`): durations `fast` 150 / `base` 220 / `slow` 320 ms and
+  springs `snappy` / `gentle`; press scale via `usePressScale`; haptics via `haptic()`.
+  Every animated component reads `useReducedMotion` (movement becomes a short crossfade;
+  stagger and count-ups off; press scale stays). Exits are faster than entrances, a new tap
+  cancels motion in flight, and no state depends on an animation finishing.
+
+The legacy kit (`src/ui/`, `src/theme/`) is gone. `tools/ui-reference/` is the sweep rig.
+
+**Testing.** Anything rendering the shell (`ShellFrame`, the bars) must use `renderWithProviders`
 (`src/__tests__/helpers/render.tsx`) — it supplies `SafeAreaProvider` with
 explicit `initialMetrics` and a `QueryClientProvider`. A *bare*
 `SafeAreaProvider` renders no children at all while `render()` still returns a
@@ -245,11 +298,12 @@ and error caption from the accessibility tree, so query fields with
 neither. `jest.mock` factories may only close over out-of-scope consts named
 `mock*`.
 
-**UI sweep.** Matching v1 at one 375dp phone doesn't show a 360dp phone at font 1.3, the Android nav
+**UI sweep.** One 375dp phone doesn't show a 360dp phone at font 1.3, the Android nav
 bar under the floating tab bar, the keyboard over a form, or dark mode on first launch. After building
 or changing a screen, run the `ui-sweep` skill (`.claude/skills/ui-sweep/`,
 `tools/ui-reference/ui-sweep.mjs`, flows in `apps/mobile/.maestro/sweep/`) and look at the shots
-before calling it done. Sweep flows never save anything (the database is shared with v1).
+before calling it done. Sweep flows never save anything. Maestro on Android often misses
+sonner-native toasts, so flows shoot toasts best-effort.
 
 ### Rules from the UI sweep
 
@@ -259,7 +313,7 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   submit button must be scrollable above the keyboard. A `KeyboardAvoidingView` with
   `behavior={undefined}` on Android does nothing here (found on every signed-out form, Oct 2026).
   The app is edge-to-edge, so Android never resizes the window for the keyboard: put a form in
-  `ShellFrame`, `AuthCard` or legacy `Screen scroll`, which pad their scroll content by the keyboard
+  `ShellFrame` or `AuthCard`, which pad their scroll content by the keyboard
   height and scroll the focused field above it (`design/lib/keyboard-inset.ts`). A bare `ScrollView` or
   `View` form hides its lower fields.
 - **Last content clears the floating tab bar by the inset, not a flat 96px.** The bar sits at
@@ -273,6 +327,12 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   digits in number fields at font 1.3 (Minutes late, Score, Points). Title text beside a badge takes
   `min-w-0 flex-1` and the badge `shrink-0`; rows of buttons use `flex-wrap`, since two buttons overflow
   a 360dp phone at 1.3.
+- **Never put `className` on a Reanimated `Animated.*` component.** css-interop merges it with
+  the animated style and Reanimated's PropsFilter drops it in builds; put classes on a plain
+  `View` inside. `no-classname-on-animated.test.ts` guards it.
+- **Offsets above the keyboard come from `keyboardBottomOffset`** (`design/lib/keyboard-offset.ts`).
+  Android reports the keyboard height without the nav bar, and an edge-to-edge `Modal` window
+  is never resized.
 
 ## Git
 

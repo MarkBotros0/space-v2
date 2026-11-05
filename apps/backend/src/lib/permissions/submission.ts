@@ -8,11 +8,10 @@ import { isAdminOfSeason, isLeaderOfGroup, isMentor, isSuper } from "../rbac";
  * Does this LEADER lead the group the student is enrolled in *for this season*?
  *
  * Ruling C9: the group comes from SeasonEnrollment, never GroupStudent.
- * GroupStudent is unique on studentUserId across the whole database, so it
- * holds one row per student regardless of season — asking it answers "what
- * group are they in now", which is the wrong question and gives a leader access
- * to old work from students who have since joined their group, while denying
- * access to their own students' past work.
+ * While GroupStudent was global (before Plan 18 M1) asking it answered "what
+ * group are they in now", which gave a leader access to old work from
+ * students who had since joined their group, while denying access to their
+ * own students' past work. The enrolment is still the authority.
  */
 export async function leadsStudentInSeason(
   user: SessionUser,
@@ -36,6 +35,22 @@ async function submissionSubject(
   });
   if (!submission) return null;
   return { studentUserId: submission.studentUserId, seasonId: submission.assignment.seasonId };
+}
+
+/**
+ * Is this submission a DRAFT someone other than its author is asking for?
+ *
+ * A DRAFT is the student's unfinished work (owner decision, 2026-11): it
+ * exists only for its author. Every route that addresses a submission by
+ * publicId answers a hidden draft with 404, exactly as if the row did not
+ * exist, before any role check — a 403 would tell staff the draft is there.
+ * RETURNED is not a draft: it was turned in and sent back, and stays visible.
+ */
+export function isHiddenDraft(
+  user: SessionUser,
+  submission: { status: string; studentUserId: number },
+): boolean {
+  return submission.status === "DRAFT" && submission.studentUserId !== user.userId;
 }
 
 export async function canViewSubmission(user: SessionUser, submissionId: number): Promise<boolean> {

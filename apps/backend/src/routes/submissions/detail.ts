@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { config } from "../../lib/config";
-import { canReviewSubmission, canViewSubmission } from "../../lib/permissions";
+import { canReviewSubmission, canViewSubmission, isHiddenDraft } from "../../lib/permissions";
 import { isLate } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
 import { htmlToPlainText } from "../../../../../packages/shared/src/index";
@@ -58,7 +58,10 @@ export async function getSubmission(req: Request<{ publicId: string }>, res: Res
   const { publicId } = req.params;
 
   const sub = await loadSubmissionForApi(publicId ?? "");
-  if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
+  // A draft is its author's alone: anyone else is told it does not exist.
+  if (!sub || isHiddenDraft(user, sub)) {
+    return apiError(res, "not_found", "Submission not found.", 404);
+  }
 
   // The three reads below depend only on the row just loaded, not on each
   // other, so they run together: each is a round trip to the database, and

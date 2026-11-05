@@ -84,6 +84,9 @@ describe("submission queue order and header counts (REG-89)", () => {
     expect(new Set(ids).size).toBe(4);
     const full = (res.body.data.items as { publicId: string }[]).map((i) => i.publicId);
     expect(ids).toEqual(full.slice(0, 4));
+    // Counts ride on the first page only; a cursor page does not recount.
+    expect(p1.body.data.counts).toEqual(counts);
+    expect(p2.body.data.counts).toBeNull();
   });
 });
 

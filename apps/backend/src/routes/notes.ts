@@ -1,5 +1,4 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
 
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
@@ -7,8 +6,14 @@ import { parseId } from "../lib/parse-id";
 import { createNotificationsBulk } from "../lib/notifications";
 import { bestEffort } from "../lib/best-effort";
 import { canEditNote, canViewStudent, canWriteNote } from "../lib/permissions";
-import { listAuthoredNotes, listNotesForStudent, NOTE_SELECT, toNoteSummary } from "../lib/queries/notes";
-import { rateLimitHandler } from "../lib/rate-limit";
+import {
+  listAuthoredNotes,
+  listNotesForStudent,
+  listVisibleNotes,
+  NOTE_SELECT,
+  toNoteSummary,
+} from "../lib/queries/notes";
+import { makeLimiter } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
   createNoteRequestSchema,
@@ -41,11 +46,7 @@ export const myNotesRouter = Router();
  * would record it. Generous enough for a person paging through a caseload,
  * far below a scripted sweep.
  */
-const noteReadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 300,
-  handler: rateLimitHandler,
-});
+const noteReadLimiter = makeLimiter({ name: "note-read", windowMs: 15 * 60 * 1000, limit: 300 });
 
 // requireAuth is attached to each route below, never with router.use()
 // (ruling X5). studentNotesRouter and myNotesRouter share /api/v1/students
@@ -82,7 +83,7 @@ studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, r
   if (user.role === "STUDENT") return forbidden(res);
 
   const student = await db.user.findFirst({
-    where: { id: studentUserId, role: "STUDENT" },
+    where: { id: studentUserId, role: "STUDENT", deletedAt: null },
     select: { id: true },
   });
   if (!student) return apiError(res, "not_found", "Student not found.", 404);
@@ -113,13 +114,40 @@ myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
   return apiOk(res, await listAuthoredNotes(user, parsed.data));
 });
 
+/**
+ * The newest notes a mentor may read across students (read-only). MENTOR only:
+ * the spec names mentors and no other role has a caller. canViewStudent is
+ * true for every student for a mentor, so the visibility clause in the query
+ * is the only gate needed. Audit: ids and a count, never a body or a name.
+ */
+myNotesRouter.get("/visible-notes", requireAuth, noteReadLimiter, async (req, res) => {
+  const user = requireUser(req);
+  if (user.role !== "MENTOR") return forbidden(res);
+
+  const parsed = noteListQuerySchema.safeParse(req.query);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
+
+  const page = await listVisibleNotes(user, parsed.data);
+  if (page === null) return forbidden(res);
+
+  console.info(
+    JSON.stringify({
+      event: "note_feed_read",
+      viewerId: user.userId,
+      noteCount: page.notes.length,
+      at: new Date().toISOString(),
+    }),
+  );
+  return apiOk(res, page);
+});
+
 studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const studentUserId = parseId(req.params.id);
   if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
 
   const student = await db.user.findFirst({
-    where: { id: studentUserId, role: "STUDENT" },
+    where: { id: studentUserId, role: "STUDENT", deletedAt: null },
     select: { id: true },
   });
   if (!student) return apiError(res, "not_found", "Student not found.", 404);
@@ -137,8 +165,17 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   // kept. When the caller names a season it must be one this student is
   // actually enrolled in, or the note files itself under a season nobody can
   // reach it from.
+  //
+  // An ADMIN files notes only under seasons they run, explicit or defaulted:
+  // a follow-up flag notifies the note's season's admins, so a note filed
+  // under a season the author doesn't run alerts people who never saw it.
+  // canWriteNote already admits an admin only through an enrolment in one of
+  // their seasons, so there is always one to default to. LEADER, MENTOR and
+  // SUPER keep v1's rule (canWriteNote, permissions.ts:405-427).
+  const adminSeasons = user.role === "ADMIN" ? user.seasonAdminIds : null;
   let seasonId: number | null = null;
   if (parsed.data.seasonId !== undefined) {
+    if (adminSeasons && !adminSeasons.includes(parsed.data.seasonId)) return forbidden(res);
     const enrollment = await db.seasonEnrollment.findUnique({
       where: {
         studentUserId_seasonId: { studentUserId, seasonId: parsed.data.seasonId },
@@ -149,6 +186,14 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
       return apiError(res, "season_not_enrolled", "That student is not enrolled in that season.", 400);
     }
     seasonId = enrollment.seasonId;
+  } else if (adminSeasons) {
+    // Newest enrolment in a season this admin runs, an ACTIVE one first.
+    const enrolments = await db.seasonEnrollment.findMany({
+      where: { studentUserId, seasonId: { in: adminSeasons } },
+      orderBy: { enrolledAt: "desc" },
+      select: { seasonId: true, status: true },
+    });
+    seasonId = (enrolments.find((e) => e.status === "ACTIVE") ?? enrolments[0])?.seasonId ?? null;
   } else {
     const active = await db.seasonEnrollment.findFirst({
       where: { studentUserId, status: "ACTIVE" },
@@ -193,9 +238,9 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
             // the note in the app at all (spec D2, R16/R17, R36). The
             // notification says a follow-up exists and links to it.
             body: "A member of staff flagged a note for follow-up. Open the student to read it.",
-            // v1's link, verbatim. Rewriting notification links to v2's route
-            // tree is one change across every notification type and is a
-            // cutover item, not this plan's.
+            // v1's link, verbatim: lib/notification-target.ts parses v1's
+            // shapes, and rewriting links to v2's route tree would be one
+            // change across every notification type, not one producer.
             link: `/admin/students/${studentUserId}`,
           },
         ),
@@ -242,8 +287,8 @@ notesRouter.patch("/:id", requireAuth, async (req, res) => {
  * caller anywhere — in practice v1 notes are permanent. Shipping a hard delete
  * that v1's users never had, and adding soft delete later, destroys every note
  * removed in between, irrecoverably, about named young people. Soft delete
- * needs a deletedAt column; C1 forbids the migration while v1 writes to this
- * table. So the capability waits for cutover.
+ * needs a deletedAt column, which Note does not have. So the capability is
+ * refused until it does.
  *
  * 501 rather than 404 so a client can tell "this note does not exist" from
  * "this system cannot delete notes yet" and say the right thing.

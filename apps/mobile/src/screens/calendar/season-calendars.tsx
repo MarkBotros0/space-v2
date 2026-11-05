@@ -5,15 +5,14 @@ import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { SeasonSwitcher } from "../../components/SeasonSwitcher";
-import { PageTitle } from "../../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
-import { ShellFrame } from "../../design/layout/shell-frame";
+import { Screen } from "../../design/layout/screen";
 import {
   buildSeasonColors,
   SeasonCalendar,
   type SeasonColors,
 } from "../../design/sessions/season-calendar";
-import { Button as ButtonV1, EmptyState as EmptyStateV1 } from "../../design/ui";
+import { Button, EmptyState } from "../../design/ui";
 import { useEvents } from "../../hooks/use-events";
 import { useMyGroups } from "../../hooks/use-groups";
 import { useCurrentSeasonId, useSeasons } from "../../hooks/use-seasons";
@@ -27,7 +26,7 @@ function sessionCount(n: number): string {
 
 function NothingScheduled() {
   return (
-    <EmptyStateV1
+    <EmptyState
       icon={CalendarIcon}
       title="Nothing scheduled yet"
       description="Sessions and events will appear here once they're added."
@@ -75,16 +74,13 @@ export function StudentCalendar() {
 
   if (current.seasonId === null && !current.isPending) {
     return (
-      <ShellFrame>
-        <View className="flex-col gap-3">
-          <PageTitle title="Calendar" />
-          <EmptyStateV1
-            icon={CalendarIcon}
-            title="No active season"
-            description="An admin will enroll you in a season when you're ready."
-          />
-        </View>
-      </ShellFrame>
+      <Screen title="Calendar">
+        <EmptyState
+          icon={CalendarIcon}
+          title="No active season"
+          description="An admin will enroll you in a season when you're ready."
+        />
+      </Screen>
     );
   }
   return <StudentSeasonCalendar seasonId={current.seasonId} onRetrySeason={current.refetch} />;
@@ -108,7 +104,8 @@ function StudentSeasonCalendar({
   else body = <RoutedSeasonCalendar sessions={sessions.data} events={eventRows} />;
 
   return (
-    <ShellFrame
+    <Screen
+      title="Calendar"
       onRefresh={() => {
         void events.refetch();
         if (seasonId !== null) void sessions.refetch();
@@ -116,11 +113,8 @@ function StudentSeasonCalendar({
       }}
       refreshing={sessions.isRefetching}
     >
-      <View className="flex-col gap-3">
-        <PageTitle title="Calendar" />
-        {body}
-      </View>
-    </ShellFrame>
+      {body}
+    </Screen>
   );
 }
 
@@ -152,22 +146,18 @@ export function LeaderCalendar() {
   else body = <RoutedSeasonCalendar sessions={led.sessions} events={eventRows} />;
 
   return (
-    <ShellFrame
+    <Screen
+      title="Calendar"
       onRefresh={() => {
         void groups.refetch();
         led.refetch();
         void events.refetch();
       }}
       refreshing={groups.isRefetching || led.isRefetching}
+      subtitle={groups.isPending || led.isPending ? undefined : sessionCount(n)}
     >
-      <View className="flex-col gap-4">
-        <PageTitle
-          title="Calendar"
-          subtitle={groups.isPending || led.isPending ? undefined : sessionCount(n)}
-        />
-        {body}
-      </View>
-    </ShellFrame>
+      {body}
+    </Screen>
   );
 }
 
@@ -207,19 +197,18 @@ export function SuperCalendar() {
     );
 
   return (
-    <ShellFrame
+    <Screen
+      title="Calendar"
       onRefresh={() => {
         void seasons.refetch();
         all.refetch();
         void events.refetch();
       }}
       refreshing={seasons.isRefetching || all.isRefetching}
+      subtitle="All active seasons across JPC."
     >
-      <View className="flex-col gap-4">
-        <PageTitle title="Calendar" subtitle="All active seasons across JPC." />
-        {body}
-      </View>
-    </ShellFrame>
+      {body}
+    </Screen>
   );
 }
 
@@ -244,7 +233,7 @@ export function AdminCalendar() {
   else if (selection.isError) body = <RouteError onRetry={selection.refetch} />;
   else if (selection.seasonId === null)
     body = (
-      <EmptyStateV1
+      <EmptyState
         icon={CalendarIcon}
         title="No season to show"
         description="You aren't assigned to a season yet."
@@ -258,38 +247,33 @@ export function AdminCalendar() {
     );
 
   return (
-    <ShellFrame
+    <Screen
+      title="Calendar"
       onRefresh={() => {
         selection.refetch();
         void sessions.refetch();
         void events.refetch();
       }}
       refreshing={sessions.isRefetching}
+      subtitle={
+        sessions.isPending || selection.seasonId === null ? undefined : sessionCount(rows.length)
+      }
+      trailing={
+        selection.seasonId !== null ? (
+          <Button
+            onPress={() =>
+              router.push({
+                pathname: "/session/new",
+                params: { seasonId: String(selection.seasonId) },
+              })
+            }
+          >
+            Add session
+          </Button>
+        ) : undefined
+      }
     >
       <View className="flex-col gap-4">
-        <View className="flex-row items-start justify-between gap-4">
-          <PageTitle
-            className="min-w-0 flex-1"
-            title="Calendar"
-            subtitle={
-              sessions.isPending || selection.seasonId === null
-                ? undefined
-                : sessionCount(rows.length)
-            }
-          />
-          {selection.seasonId !== null ? (
-            <ButtonV1
-              onPress={() =>
-                router.push({
-                  pathname: "/session/new",
-                  params: { seasonId: String(selection.seasonId) },
-                })
-              }
-            >
-              Add session
-            </ButtonV1>
-          ) : null}
-        </View>
         <SeasonSwitcher
           seasons={selection.seasons}
           selectedId={selection.seasonId}
@@ -297,6 +281,6 @@ export function AdminCalendar() {
         />
         {body}
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }

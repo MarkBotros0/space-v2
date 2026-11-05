@@ -1,5 +1,6 @@
+import { useFocusEffect } from "expo-router";
 import { QrCode, RotateCcw } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import type { SessionDetail } from "@space/shared";
@@ -9,7 +10,6 @@ import { InlineError } from "../../design/layout/route-states";
 import { iconWithClassName } from "../../design/lib/icon";
 import { CheckInAttendanceList } from "../../design/sessions/check-in-attendance-list";
 import {
-  Badge,
   Button as ButtonV1,
   Card as CardV1,
   CardContent,
@@ -17,9 +17,10 @@ import {
   CardTitle,
   Text as TextV1,
 } from "../../design/ui";
+import { StatusChip } from "../../design/ui/status-chip";
 import { useAttendanceRoster, useSaveAttendance } from "../../hooks/use-attendance";
 import { useCheckInState, useRegenerateCheckIn } from "../../hooks/use-check-in";
-import { useCloseCheckIn, useOpenCheckIn } from "../../hooks/use-session-detail";
+import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../hooks/use-session-detail";
 import { apiErrorMessage } from "../../lib/api-error";
 import { formatWallTime } from "../../lib/format";
 
@@ -38,12 +39,22 @@ function CheckInRoster({ detail }: { detail: SessionDetail }) {
   const roster = useAttendanceRoster(detail.id);
   const save = useSaveAttendance(detail.id);
   const { refetch } = roster;
+  // Same query key as the screen's own read, so this refetch is what moves
+  // `detail` — the Open/Closed badge, and whether the roster polls at all.
+  // Polling only the roster left both stuck at whatever they were on entry:
+  // check-in opened or closed elsewhere (or expired) was never noticed.
+  const { refetch: refetchDetail } = useSessionDetail(detail.id);
 
-  useEffect(() => {
-    if (!detail.checkInOpen) return undefined;
-    const timer = setInterval(() => void refetch(), LIVE_ROSTER_REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [detail.checkInOpen, refetch]);
+  // While the screen is focused only: tab screens stay mounted when left.
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setInterval(() => {
+        void refetchDetail();
+        if (detail.checkInOpen) void refetch();
+      }, LIVE_ROSTER_REFRESH_MS);
+      return () => clearInterval(timer);
+    }, [detail.checkInOpen, refetch, refetchDetail]),
+  );
 
   if (roster.isPending) {
     return <TextV1 className="py-4 text-center text-sm text-muted-foreground">Loading…</TextV1>;
@@ -55,6 +66,7 @@ function CheckInRoster({ detail }: { detail: SessionDetail }) {
     <CheckInAttendanceList
       rows={roster.data}
       pending={save.isPending}
+      onDismiss={save.reset}
       error={save.isError ? apiErrorMessage(save.error, "Couldn't save the attendance.") : null}
       onOverride={(row, status, done) =>
         save.mutate(
@@ -81,22 +93,19 @@ function CheckInRoster({ detail }: { detail: SessionDetail }) {
 /** Leader, and a SUPER who is not this season's admin: v1's read-only card with an Open/Closed badge. */
 export function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
   return (
-    <CardV1>
-      <CardHeader className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
+    <View className="flex-col gap-4 rounded-group bg-surface p-4">
+      <View className="flex-row items-center justify-between gap-3">
+        <View className="min-w-0 flex-1 flex-row items-center gap-2">
           <QrCode size={16} className="text-foreground" />
-          <CardTitle className="text-base">Check-in</CardTitle>
+          <TextV1 variant="headline">Check-in</TextV1>
         </View>
-        {detail.checkInOpen ? (
-          <Badge variant="success">Open</Badge>
-        ) : (
-          <Badge variant="outline">Closed</Badge>
-        )}
-      </CardHeader>
-      <CardContent className="flex-col gap-6">
-        <CheckInRoster detail={detail} />
-      </CardContent>
-    </CardV1>
+        <StatusChip
+          tone={detail.checkInOpen ? "ok" : "neutral"}
+          label={detail.checkInOpen ? "Open" : "Closed"}
+        />
+      </View>
+      <CheckInRoster detail={detail} />
+    </View>
   );
 }
 

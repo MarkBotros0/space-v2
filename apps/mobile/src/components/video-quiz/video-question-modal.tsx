@@ -58,10 +58,10 @@ export function VideoQuestionModal({
                     disabled={pending || feedback !== null}
                     onPress={() => onAnswer(index)}
                     className={cn(
-                      "flex-row items-center justify-between gap-2 rounded-xl border px-4 py-3",
+                      "flex-row items-center justify-between gap-2 rounded-control border px-4 py-3",
                       correct
                         ? "border-success-600 bg-success-600/10"
-                        : "border-border bg-card active:border-brand-teal-500",
+                        : "border-control-border bg-surface active:border-ring",
                     )}
                   >
                     <Text

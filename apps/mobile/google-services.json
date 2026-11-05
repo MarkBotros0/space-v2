@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "334467367676",
+    "project_id": "jpc-space",
+    "storage_bucket": "jpc-space.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:334467367676:android:b705acbe57ac26aa7b0d79",
+        "android_client_info": {
+          "package_name": "com.jpc.space"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3nvU3eWxNe_b1ijdcPqjv8MSkWD5Kw8Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

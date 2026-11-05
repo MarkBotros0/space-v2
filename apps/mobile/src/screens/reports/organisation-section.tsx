@@ -1,23 +1,34 @@
-import { GraduationCap } from "lucide-react-native";
+import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
-import type { OrganisationReport } from "@space/shared";
 
 import { RankedBars } from "../../components/charts/RankedBars";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
-import { SeasonStatusBadge } from "../../design/seasons/season-status-badge";
-import { StatCard } from "../../design/students/stat-card";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  DataTable,
   EmptyState,
+  GroupedList,
+  ListRow,
+  StatTile,
+  StatusChip,
   Text,
-  type DataTableColumn,
+  statusChip,
 } from "../../design/ui";
 import { useOrganisationReport } from "../../hooks/use-reports";
+import { joinMeta } from "../../lib/join-meta";
+
+/** A tile that opens its list: the wrapper takes the tile's flex so tiles still wrap in pairs. */
+function TilePress({ onPress, children }: { onPress: () => void; children: ReactNode }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} className="min-w-[136px] flex-1">
+      {children}
+    </Pressable>
+  );
+}
 
 /**
  * v1 super/reports/page.tsx (B5-4): three StatCards, "Active members per
@@ -38,57 +49,18 @@ export function OrganisationSection() {
   const active = data.seasons.filter((s) => s.activeCount > 0);
   const maxActive = active.reduce((n, x) => Math.max(n, x.activeCount), 0);
 
-  const columns: DataTableColumn<OrganisationReport["seasons"][number]>[] = [
-    {
-      key: "season",
-      header: "Season",
-      cell: (r) => (
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={`Open ${r.title}`}
-          onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: r.code } })}
-        >
-          <Text className="font-medium text-foreground">{r.title}</Text>
-        </Pressable>
-      ),
-    },
-    { key: "status", header: "Status", cell: (r) => <SeasonStatusBadge status={r.status} /> },
-    { key: "leaders", header: "Leaders", cell: (r) => `${r.leaderCount} leaders` },
-    { key: "active", header: "Active", cell: (r) => `${r.activeCount} active` },
-    { key: "completed", header: "Completed", cell: (r) => `${r.completedCount} completed` },
-    {
-      key: "dropped",
-      header: "Dropped",
-      cell: (r) =>
-        r.withdrawnCount > 0 ? (
-          <Text className="text-xs font-medium text-error-600 dark:text-error-400">
-            {`${r.withdrawnCount} dropped`}
-          </Text>
-        ) : (
-          `${r.withdrawnCount} dropped`
-        ),
-    },
-  ];
-
   return (
     <View className="flex-col gap-4">
-      <View className="flex-row gap-3">
-        <StatCard
-          label="Student accounts"
-          value={String(data.totalStudentsNotGraduated)}
-          onPress={() => router.push("/students")}
-        />
-        <StatCard
-          label="Alumni"
-          value={String(data.totalAlumni)}
-          variant="teal"
-          onPress={() => router.push("/students/alumni")}
-        />
-        <StatCard
-          label="Active seasons"
-          value={String(data.activeSeasonCount)}
-          onPress={() => router.push("/seasons")}
-        />
+      <View testID="organisation-tiles" className="flex-row flex-wrap gap-3">
+        <TilePress onPress={() => router.push("/students")}>
+          <StatTile className="flex-none" label="Student accounts" value={data.totalStudentsNotGraduated} />
+        </TilePress>
+        <TilePress onPress={() => router.push("/students/alumni")}>
+          <StatTile className="flex-none" label="Alumni" value={data.totalAlumni} />
+        </TilePress>
+        <TilePress onPress={() => router.push("/seasons")}>
+          <StatTile className="flex-none" label="Active seasons" value={data.activeSeasonCount} />
+        </TilePress>
       </View>
 
       <Card>
@@ -98,7 +70,7 @@ export function OrganisationSection() {
         <CardContent className="pt-0">
           {active.length === 0 ? (
             <EmptyState
-              icon={GraduationCap}
+              icon={NAV_ICONS.students}
               title="No active members"
               description="Enroll students in a season to see the breakdown."
             />
@@ -124,7 +96,7 @@ export function OrganisationSection() {
         <CardContent className="pt-0">
           {data.alumniByYear.length === 0 ? (
             <EmptyState
-              icon={GraduationCap}
+              icon={NAV_ICONS.alumni}
               title="No alumni yet"
               description="Graduated students will be counted here by class year."
             />
@@ -138,25 +110,42 @@ export function OrganisationSection() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Students per season</CardTitle>
-          <Text className="text-sm text-muted-foreground">
-            Active, completed, and dropped counts
-          </Text>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {data.seasons.length === 0 ? (
-            <EmptyState
-              icon={GraduationCap}
-              title="No seasons yet"
-              description="Create a season to see enrollment breakdowns."
-            />
-          ) : (
-            <DataTable columns={columns} rows={data.seasons} rowKey={(r) => r.seasonId} />
-          )}
-        </CardContent>
-      </Card>
+      <View className="flex-col gap-2">
+        <Text variant="headline" accessibilityRole="header">
+          Students per season
+        </Text>
+        <Text variant="subhead" className="text-muted-foreground">
+          Active, completed, and dropped counts
+        </Text>
+        {data.seasons.length === 0 ? (
+          <EmptyState
+            icon={NAV_ICONS.season}
+            title="No seasons yet"
+            description="Create a season to see enrollment breakdowns."
+          />
+        ) : (
+          <GroupedList>
+            {data.seasons.map((r) => (
+              <ListRow
+                key={r.seasonId}
+                title={r.title}
+                subtitle={joinMeta([
+                  `${r.leaderCount} leaders`,
+                  `${r.activeCount} active`,
+                  `${r.completedCount} completed`,
+                  `${r.withdrawnCount} dropped`,
+                ])}
+                subtitleLines={3}
+                trailing={<StatusChip {...statusChip("season", r.status)} />}
+                chevron
+                onPress={() =>
+                  router.push({ pathname: "/seasons/[code]", params: { code: r.code } })
+                }
+              />
+            ))}
+          </GroupedList>
+        )}
+      </View>
     </View>
   );
 }

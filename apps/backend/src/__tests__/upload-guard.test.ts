@@ -17,6 +17,9 @@ jest.mock("../lib/config", () => {
   const actual: { config: Record<string, unknown> } = jest.requireActual("../lib/config");
   return { config: { ...actual.config, enableUploads: false } };
 });
+// requireAuth's Plan 18 M13 check reads User.sessionsValidFrom; no session
+// has been invalidated in this suite.
+jest.mock("../lib/auth/session-validity", () => ({ isAccessTokenInvalidated: async () => false }));
 
 import request from "supertest";
 

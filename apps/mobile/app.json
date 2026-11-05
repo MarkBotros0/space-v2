@@ -7,7 +7,6 @@
     "scheme": "spacev2",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "plugins": [
       "expo-router",
       "expo-secure-store",
@@ -20,7 +19,22 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-sharing",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/adaptive-icon.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#243559",
+          "dark": {
+            "image": "./assets/adaptive-icon.png",
+            "backgroundColor": "#142048"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -39,7 +53,12 @@
       }
     },
     "android": {
-      "package": "com.jpc.space"
+      "package": "com.jpc.space",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#243559"
+      }
     }
   }
 }

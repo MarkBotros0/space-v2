@@ -1,6 +1,7 @@
 /**
- * v1 app/checkin/[token]/page.tsx result block: a 64px status circle, h1 and
- * message, centred. Also used inside the session screen's check-in modal.
+ * v1 app/checkin/[token]/page.tsx result block: a 64px status circle, title and
+ * message, centred, in the status tones. Refusals and the link's confirm step
+ * use it; a successful check-in is `CheckInSuccess`.
  */
 import { CheckCircle, Clock, QrCode, XCircle, type LucideIcon } from "lucide-react-native";
 import { View } from "react-native";
@@ -14,15 +15,16 @@ iconWithClassName(CheckCircle, Clock, QrCode, XCircle);
 
 type Tone = "success" | "error" | "neutral";
 
+// Status tones (ok / bad / info), the same pairs StatusChip uses.
 const CIRCLE: Record<Tone, string> = {
-  success: "bg-success-100 dark:bg-success-900",
-  error: "bg-error-100 dark:bg-error-900",
-  neutral: "bg-brand-teal-100 dark:bg-brand-teal-950",
+  success: "bg-ok-soft",
+  error: "bg-bad-soft",
+  neutral: "bg-info-soft",
 };
 const ICON: Record<Tone, string> = {
-  success: "text-success-700 dark:text-success-200",
-  error: "text-error-700 dark:text-error-200",
-  neutral: "text-brand-teal-700 dark:text-brand-teal-300",
+  success: "text-ok",
+  error: "text-bad",
+  neutral: "text-info",
 };
 
 /** v1's `span.inline-flex size-16 … rounded-full` + 32px icon. */
@@ -49,10 +51,14 @@ export function CheckInMessage({
   return (
     <View accessibilityLiveRegion="polite" className="items-center gap-4">
       <StatusCircle icon={icon} tone={tone} />
-      <Text accessibilityRole="header" className="text-center text-2xl font-semibold text-foreground">
+      <Text variant="title" accessibilityRole="header" className="text-center">
         {title}
       </Text>
-      {message ? <Text className="text-center text-muted-foreground">{message}</Text> : null}
+      {message ? (
+        <Text variant="body" className="text-center text-muted-foreground">
+          {message}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -60,7 +66,9 @@ export function CheckInMessage({
 export function CheckInResult({ outcome }: { outcome: CheckInOutcome }) {
   const copy = checkInCopy(outcome);
   if (outcome.kind === "checked_in") {
-    return <CheckInMessage icon={CheckCircle} tone="success" title={copy.title} message={copy.message} />;
+    return (
+      <CheckInMessage icon={CheckCircle} tone="success" title={copy.title} message={copy.message} />
+    );
   }
   const icon = outcome.code === "already_checked_in" ? Clock : XCircle;
   return <CheckInMessage icon={icon} tone="error" title={copy.title} message={copy.message} />;

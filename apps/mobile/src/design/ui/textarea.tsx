@@ -7,12 +7,12 @@
  * grows with its content.
  */
 import { forwardRef } from "react";
-import { TextInput, type TextInputProps } from "react-native";
+import { TextInput, type TextInputInstance, type TextInputProps } from "react-native";
 
 import { cn } from "../lib/cn";
 import { useThemeColors } from "../theme/use-theme-colors";
 
-const Textarea = forwardRef<TextInput, TextInputProps & { className?: string; disabled?: boolean; "aria-invalid"?: boolean }>(
+const Textarea = forwardRef<TextInputInstance, TextInputProps & { className?: string; disabled?: boolean; "aria-invalid"?: boolean }>(
   ({ className, disabled, "aria-invalid": invalid, numberOfLines: _rows, ...props }, ref) => {
     const colors = useThemeColors();
     return (
@@ -23,7 +23,7 @@ const Textarea = forwardRef<TextInput, TextInputProps & { className?: string; di
         editable={!disabled}
         placeholderTextColor={colors["muted-foreground"]}
         className={cn(
-          "min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-normal text-foreground focus:border-ring",
+          "min-h-20 w-full rounded-control border border-control-border bg-surface px-3 py-2.5 text-base font-normal text-foreground focus:border-ring",
           invalid && "border-destructive",
           disabled && "opacity-50",
           className,

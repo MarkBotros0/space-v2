@@ -2,13 +2,16 @@
  * v1's "Next session" card, identical on the student and leader dashboards:
  * eyebrow, teal dot + title link, org date line, relative badge, and the
  * stream link only while the session runs (spec 19 D13).
+ * The badge is the calendar's day cue (dayCue: "Today", "in N days" by
+ * calendar day), so the dashboard and the calendar never disagree; v1's
+ * rounded instant said "in 7 days" for a session 6½ days off.
  */
 import type { DashboardSession } from "@space/shared";
 import { Linking, Pressable, View } from "react-native";
 
-import { formatTimeAgo, formatWallTime, formatWeekdayDay } from "../../lib/format";
+import { dayCue, deviceTodayKey } from "../../lib/calendar-grid";
+import { formatWallTime, formatWeekdayDay } from "../../lib/format";
 import { Eyebrow } from "../layout/page-title";
-import { shadowStyle } from "../lib/shadow";
 import { Badge } from "../ui/badge";
 import { Text } from "../ui/text";
 
@@ -19,8 +22,9 @@ export function NextSessionCard({
   session: DashboardSession | null;
   onOpen: (id: number) => void;
 }) {
+  const cue = next ? dayCue(next.dayKey, deviceTodayKey()) : null;
   return (
-    <View className="rounded-2xl border border-border bg-card p-4" style={shadowStyle("soft")}>
+    <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
       <Eyebrow>{next?.isInProgress ? "Happening now" : "Next session"}</Eyebrow>
       {next ? (
         <View className="mt-2 flex-col gap-2">
@@ -28,16 +32,18 @@ export function NextSessionCard({
             <View className="mt-1 size-2 shrink-0 rounded-full bg-brand-teal-500" />
             <View className="min-w-0 flex-1 items-start">
               <Pressable accessibilityRole="link" onPress={() => onOpen(next.id)}>
-                <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{next.title}</Text>
+                <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
+                  {next.title}
+                </Text>
               </Pressable>
               <Text className="text-xs text-muted-foreground">
                 {`${formatWeekdayDay(next.dayKey)} · ${formatWallTime(next.time)} · ${next.durationMinutes} min${
                   next.location ? ` · ${next.location}` : ""
                 }`}
               </Text>
-              {next.isInProgress ? null : (
-                <Badge variant="teal" className="mt-1.5" textClassName="text-[10px]">
-                  {formatTimeAgo(next.startsAt)}
+              {next.isInProgress || !cue ? null : (
+                <Badge variant="teal" className="mt-1.5">
+                  {cue}
                 </Badge>
               )}
             </View>

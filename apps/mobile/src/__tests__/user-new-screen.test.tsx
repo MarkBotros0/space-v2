@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { post: jest.fn() } }));
@@ -6,7 +6,9 @@ const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ replace: mockReplace, push: jest.fn(), back: jest.fn() }),
 }));
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -24,7 +26,7 @@ beforeEach(() => {
 describe("/users/new (spec 11 §9)", () => {
   it("creates invite-first and opens the new account — no temp-password notice (R43 not ported)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
-    post.mockResolvedValue({ data: { data: { userId: 40 } } });
+    post.mockResolvedValue({ data: { data: { userId: 40, inviteSent: true } } });
     renderWithProviders(<NewUserScreen />);
 
     expect(screen.queryByText(/ChangeMe/)).toBeNull();
@@ -43,6 +45,23 @@ describe("/users/new (spec 11 §9)", () => {
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith({ pathname: "/user/[id]", params: { id: "40" } }),
     );
+    expect(toast.success).toHaveBeenCalledWith("User created. Their invite is on its way.");
+  });
+
+  it("says so when the account was created but the invite email couldn't go out", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    post.mockResolvedValue({ data: { data: { userId: 42, inviteSent: false } } });
+    renderWithProviders(<NewUserScreen />);
+
+    fireEvent.changeText(screen.getByLabelText("Name"), "Unmailed Person");
+    fireEvent.changeText(screen.getByLabelText("Email"), "u@jpc.test");
+    fireEvent.press(screen.getByText("Create and send invite"));
+
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/user/[id]", params: { id: "42" } }),
+    );
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/invite email couldn't be sent/));
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("requires a graduation year for alumni-only roles, using the shared schema's message (R2/R3)", async () => {
@@ -65,7 +84,7 @@ describe("/users/new (spec 11 §9)", () => {
 
   it("asks before creating a SUPER and sends confirmSuper only after the confirm (Decision 13)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
-    post.mockResolvedValue({ data: { data: { userId: 41 } } });
+    post.mockResolvedValue({ data: { data: { userId: 41, inviteSent: true } } });
     const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
       buttons?.find((b) => b.text === "Create SUPER")?.onPress?.();
     });
@@ -89,6 +108,16 @@ describe("/users/new (spec 11 §9)", () => {
       ),
     );
     alert.mockRestore();
+  });
+
+  it("says in the save bar when a field above has an error", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(<NewUserScreen />);
+    fireEvent.press(screen.getByText("Create and send invite"));
+    await waitFor(() =>
+      expect(within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above.")).toBeTruthy(),
+    );
+    expect(post).not.toHaveBeenCalled();
   });
 
   it("guards itself for a non-SUPER", () => {

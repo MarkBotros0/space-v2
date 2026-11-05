@@ -6,7 +6,7 @@ import { PASSWORD_RESET_TTL_MINUTES, forgotPasswordRequestSchema } from "@space/
 import { AuthCard, AuthField, AuthLink, AuthNotice } from "../src/design/layout/auth-card";
 import { Button, Input } from "../src/design/ui";
 import { useForgotPassword } from "../src/hooks/use-password-reset";
-import { apiErrorMessage } from "../src/lib/api-error";
+import { authErrorMessage } from "../src/lib/auth-error";
 
 /**
  * v1's /forgot-password (app/forgot-password/page.tsx), anonymous, outside
@@ -34,8 +34,7 @@ export default function ForgotPasswordScreen() {
     forgot.mutate(parsed.data, {
       onSuccess: () => setSent(true),
       // Only transport trouble or the rate limiter can land here.
-      onError: (err) =>
-        setFailure(apiErrorMessage(err, "Couldn't send the request. Check your connection and try again.")),
+      onError: (err) => setFailure(authErrorMessage(err, "Couldn't send the request. Try again.")),
     });
   };
 

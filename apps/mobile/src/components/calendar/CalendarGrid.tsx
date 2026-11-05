@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
@@ -10,9 +10,16 @@ import {
   type CalendarView,
 } from "../../lib/calendar-grid";
 import { formatDayKey, formatWeekdayDay } from "../../lib/format";
-import { useTheme } from "../../theme";
-import { Text } from "../../ui";
-import { DayEntries, entriesFor, eventTint, sessionTint, type CalendarContext } from "./CalendarEntries";
+import { cn } from "../../design/lib/cn";
+import { Text } from "../../design/ui/text";
+import type { CalendarEntry } from "../../lib/day-groups";
+import {
+  DayEntries,
+  entriesFor,
+  eventTint,
+  sessionTint,
+  type CalendarContext,
+} from "./CalendarEntries";
 
 const MAX_DOTS = 3;
 
@@ -22,6 +29,8 @@ export interface CalendarGridProps {
   sessions: SessionListItem[];
   events: JpcEventListItem[];
   ctx: CalendarContext;
+  /** How a day's entries render; defaults to the card list (`DayEntries`). */
+  renderEntries?: (entries: CalendarEntry[]) => ReactNode;
 }
 
 /**
@@ -31,35 +40,39 @@ export interface CalendarGridProps {
  * a 50 px column cannot hold a title. Week is the same seven days as stacked
  * rows, each with its full cards.
  */
-export function CalendarGrid({ view, anchor, sessions, events, ctx }: CalendarGridProps) {
+export function CalendarGrid({ view, anchor, sessions, events, ctx, renderEntries }: CalendarGridProps) {
   const byDay = bucketByDay(sessions, events);
   const keys = visibleKeys(view, anchor);
+  const render = renderEntries ?? ((entries: CalendarEntry[]) => <DayEntries entries={entries} ctx={ctx} />);
   return view === "week" ? (
-    <WeekRows keys={keys} byDay={byDay} ctx={ctx} />
+    <WeekRows keys={keys} byDay={byDay} ctx={ctx} render={render} />
   ) : (
-    <MonthGrid keys={keys} anchor={anchor} byDay={byDay} ctx={ctx} />
+    <MonthGrid keys={keys} anchor={anchor} byDay={byDay} ctx={ctx} render={render} />
   );
 }
 
 type ByDay = ReturnType<typeof bucketByDay>;
+type Render = (entries: CalendarEntry[]) => ReactNode;
 
-function WeekRows({ keys, byDay, ctx }: { keys: string[]; byDay: ByDay; ctx: CalendarContext }) {
-  const theme = useTheme();
+function WeekRows({ keys, byDay, ctx, render }: { keys: string[]; byDay: ByDay; ctx: CalendarContext; render: Render }) {
   return (
     <>
       {keys.map((key) => {
         const entries = entriesFor(byDay.get(key));
         return (
-          <View key={key} style={{ marginBottom: theme.spacing.md }}>
-            <Text variant="heading" color={key === ctx.today ? theme.colors.success[800] : undefined}>
+          <View key={key} className="mb-4">
+            <Text
+              className={cn(
+                "text-lg font-semibold",
+                key === ctx.today && "text-success-800 dark:text-success-200",
+              )}
+            >
               {formatWeekdayDay(key)}
             </Text>
             {entries.length === 0 ? (
-              <Text variant="caption" color={theme.colors.neutral[600]}>
-                Nothing scheduled
-              </Text>
+              <Text className="text-xs text-muted-foreground">Nothing scheduled</Text>
             ) : (
-              <DayEntries entries={entries} ctx={ctx} />
+              render(entries)
             )}
           </View>
         );
@@ -73,16 +86,18 @@ function MonthGrid({
   anchor,
   byDay,
   ctx,
+  render,
 }: {
   keys: string[];
   anchor: string;
   byDay: ByDay;
   ctx: CalendarContext;
+  render: Render;
 }) {
-  const theme = useTheme();
   const [picked, setPicked] = useState<string | null>(null);
   const inGrid = (k: string | null): k is string => k !== null && keys.includes(k);
-  const fallback = inGrid(ctx.today) && isSameMonth(ctx.today, anchor) ? ctx.today : `${anchor.slice(0, 7)}-01`;
+  const fallback =
+    inGrid(ctx.today) && isSameMonth(ctx.today, anchor) ? ctx.today : `${anchor.slice(0, 7)}-01`;
   const selected = inGrid(picked) ? picked : fallback;
 
   const rows: string[][] = [];
@@ -90,26 +105,25 @@ function MonthGrid({
 
   return (
     <>
-      <View style={{ flexDirection: "row" }}>
+      <View className="flex-row">
         {WEEKDAYS.map((d) => (
-          <View key={d} style={{ flex: 1, alignItems: "center", paddingVertical: theme.spacing.xs }}>
-            <Text variant="caption" color={theme.colors.neutral[600]}>
-              {d}
-            </Text>
+          <View key={d} className="flex-1 items-center py-1">
+            <Text className="text-xs text-muted-foreground">{d}</Text>
           </View>
         ))}
       </View>
       {rows.map((row) => (
-        <View key={row[0]} style={{ flexDirection: "row" }}>
+        <View key={row[0]} className="flex-row">
           {row.map((key) => {
             const day = byDay.get(key);
             const count = (day?.sessions.length ?? 0) + (day?.events.length ?? 0);
             const dots = [
-              ...(day?.sessions ?? []).map((s) => sessionTint(theme, s, ctx).foreground),
-              ...(day?.events ?? []).map((e) => eventTint(theme, e).foreground),
+              ...(day?.sessions ?? []).map((s) => sessionTint(s, ctx).dot),
+              ...(day?.events ?? []).map((e) => eventTint(e).dot),
             ];
             const isToday = key === ctx.today;
             const isSelected = key === selected;
+            const outside = !isSameMonth(key, anchor);
             return (
               <Pressable
                 key={key}
@@ -117,39 +131,37 @@ function MonthGrid({
                 accessibilityLabel={`${formatDayKey(key)}, ${count === 0 ? "nothing scheduled" : `${count} scheduled`}`}
                 accessibilityState={{ selected: isSelected }}
                 onPress={() => setPicked(key)}
-                style={{
-                  flex: 1,
-                  minHeight: 56,
-                  alignItems: "center",
-                  paddingVertical: theme.spacing.xs,
-                  // v1 dims days outside the anchor month.
-                  opacity: isSameMonth(key, anchor) ? 1 : 0.4,
-                  backgroundColor: isSelected ? theme.colors.brand.teal[100] : theme.colors.transparent,
-                  borderRadius: theme.radii.sm,
-                }}
+                className="min-h-14 flex-1 items-center py-1"
               >
+                {/* Today is the filled circle, the selected day the same circle tinted with a 3:1
+                    border (the tint alone is ~1.05:1 in light); every state carries a transparent
+                    border so the digit never shifts (a tinted cell read as a tall rectangle). Days outside the month take the
+                    muted foreground, 4.5:1 on the page; v1's opacity-40 left them at ~2.3:1. */}
                 <View
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: theme.radii.full,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: isToday ? theme.colors.brand.teal[500] : theme.colors.transparent,
-                  }}
+                  testID={`day-circle-${key}`}
+                  className={cn(
+                    "size-[26px] items-center justify-center rounded-full border border-transparent",
+                    isToday
+                      ? "bg-brand-teal-500"
+                      : isSelected &&
+                          "border-brand-teal-700 bg-brand-teal-100 dark:border-brand-teal-400 dark:bg-brand-teal-950",
+                  )}
                 >
-                  <Text variant="label" color={isToday ? theme.colors.brand.navy[950] : undefined}>
+                  <Text
+                    className={cn(
+                      "text-sm font-medium",
+                      isToday ? "text-brand-navy-950" : outside && "text-muted-foreground",
+                    )}
+                  >
                     {String(Number(key.slice(8, 10)))}
                   </Text>
                 </View>
-                <View style={{ flexDirection: "row", gap: 2, marginTop: 2, alignItems: "center" }}>
-                  {dots.slice(0, MAX_DOTS).map((color, i) => (
-                    <View key={i} style={{ width: 6, height: 6, borderRadius: theme.radii.full, backgroundColor: color }} />
+                <View className="mt-0.5 flex-row items-center gap-0.5">
+                  {dots.slice(0, MAX_DOTS).map((dot, i) => (
+                    <View key={i} className={cn("size-1.5 rounded-full", dot)} />
                   ))}
                   {dots.length > MAX_DOTS ? (
-                    <Text variant="caption" color={theme.colors.neutral[600]}>
-                      {`+${dots.length - MAX_DOTS}`}
-                    </Text>
+                    <Text className="text-xs text-muted-foreground">{`+${dots.length - MAX_DOTS}`}</Text>
                   ) : null}
                 </View>
               </Pressable>
@@ -157,14 +169,12 @@ function MonthGrid({
           })}
         </View>
       ))}
-      <View style={{ marginTop: theme.spacing.md }}>
-        <Text variant="heading">{formatDayKey(selected)}</Text>
+      <View className="mt-4">
+        <Text className="text-lg font-semibold">{formatDayKey(selected)}</Text>
         {entriesFor(byDay.get(selected)).length === 0 ? (
-          <Text variant="caption" color={theme.colors.neutral[600]}>
-            Nothing scheduled
-          </Text>
+          <Text className="text-xs text-muted-foreground">Nothing scheduled</Text>
         ) : (
-          <DayEntries entries={entriesFor(byDay.get(selected))} ctx={ctx} />
+          render(entriesFor(byDay.get(selected)))
         )}
       </View>
     </>

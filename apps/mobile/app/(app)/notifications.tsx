@@ -1,21 +1,19 @@
 import { useRouter } from "expo-router";
-import { Bell, BellOff } from "lucide-react-native";
-import { FlatList, Pressable, View } from "react-native";
+import { BellOff } from "lucide-react-native";
+import { FlatList, View } from "react-native";
 import type { NotificationItem } from "@space/shared";
 
-import { useShellBottomPadding } from "../../src/design/layout/shell-context";
-import { cn } from "../../src/design/lib/cn";
-import { iconWithClassName } from "../../src/design/lib/icon";
-import { PageHeader } from "../../src/design/layout/page-header";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../src/design/ui";
+import { Screen } from "../../src/design/layout/screen";
+import { Button, EmptyState } from "../../src/design/ui";
+import { GroupedList, ListRow } from "../../src/design/ui/grouped-list";
 import {
   flattenNotifications,
   useMarkRead,
   useNotifications,
 } from "../../src/hooks/use-notifications";
 import { formatStampAgo } from "../../src/lib/format";
+import { joinMeta } from "../../src/lib/join-meta";
 import { routeForTarget } from "../../src/lib/notification-route";
 
 /**
@@ -30,7 +28,11 @@ import { routeForTarget } from "../../src/lib/notification-route";
  * Layout is v1's app/(notifications)/notifications-page.tsx.
  */
 
-iconWithClassName(Bell);
+/** Wide enough to keep the text column aligned between unread and read rows. */
+function UnreadDot({ unread }: { unread: boolean }) {
+  return <View className={unread ? "size-2.5 rounded-full bg-info" : "size-2.5"} />;
+}
+
 function NotificationRow({
   item,
   onPress,
@@ -39,40 +41,32 @@ function NotificationRow({
   onPress: (item: NotificationItem) => void;
 }) {
   const isUnread = item.readAt === null;
-
-  // v1 wraps the card in a Link only when there is a target; here the whole
-  // card is pressable because a tap also marks it read (spec D2).
+  // The whole row is pressable because a tap also marks it read (spec D2). The
+  // dot is colour only, so an unread row says "Unread" through trailingLabel.
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected: isUnread }} onPress={() => onPress(item)}>
-      <Card>
-        <CardContent className={cn("flex-row items-start gap-3 pt-4", isUnread && "border-l-4 border-info-500")}>
-          <Bell size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
-          <View className="flex-1 flex-col gap-1">
-            <View className="flex-row flex-wrap items-center gap-2">
-              <Text className="text-sm font-medium">{item.title}</Text>
-              <Badge variant="outline" textClassName="text-[10px]">
-                {item.type.replace(/_/g, " ")}
-              </Badge>
-              {isUnread ? (
-                <Badge variant="info" textClassName="text-[10px]">
-                  New
-                </Badge>
-              ) : null}
-            </View>
-            {item.body ? <Text className="text-sm text-muted-foreground">{item.body}</Text> : null}
-            <Text className="text-xs text-muted-foreground">{formatStampAgo(item.createdAt)}</Text>
-          </View>
-        </CardContent>
-      </Card>
-    </Pressable>
+    <GroupedList>
+      <ListRow
+        title={item.title}
+        titleLines={2}
+        subtitle={joinMeta([
+          item.body,
+          item.type.replace(/_/g, " "),
+          formatStampAgo(item.createdAt),
+        ])}
+        subtitleLines={4}
+        leading={<UnreadDot unread={isUnread} />}
+        trailingLabel={isUnread ? "Unread" : undefined}
+        onPress={() => onPress(item)}
+      />
+    </GroupedList>
   );
 }
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage } = useNotifications();
+  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage } =
+    useNotifications();
   const markRead = useMarkRead();
-  const bottomPadding = useShellBottomPadding();
 
   const items = flattenNotifications(data?.pages);
   // The API pages by cursor and has no total, so v1's "X unread of Y" keeps
@@ -90,51 +84,50 @@ export default function NotificationsScreen() {
 
   if (isPending || isError) {
     return (
-      <ShellFrame>
-        <PageHeader title="Notifications" />
+      <Screen title="Notifications">
         {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
-      </ShellFrame>
+      </Screen>
     );
   }
 
+  // The list is the screen's own scroller (infinite scroll, pull to refresh),
+  // so Screen frames it without a second ScrollView.
   return (
-    <FlatList
-      className="flex-1 bg-background"
-      contentContainerClassName="gap-2 bg-brand-navy-50 px-4 pt-4 dark:bg-background"
-      contentContainerStyle={{ paddingBottom: bottomPadding }}
-      data={items}
-      keyExtractor={(item) => String(item.id)}
-      ListHeaderComponent={
-        <PageHeader
-          title="Notifications"
-          description={`${unread} unread`}
-          actions={
-            <Button
-              variant="outline"
-              size="sm"
-              className="self-start"
-              disabled={markRead.isPending}
-              onPress={() => markRead.mutate({ all: true })}
-            >
-              Mark all read
-            </Button>
-          }
-        />
+    <Screen
+      title="Notifications"
+      subtitle={`${unread} unread`}
+      scroll={false}
+      trailing={
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={markRead.isPending}
+          onPress={() => markRead.mutate({ all: true })}
+        >
+          Mark all read
+        </Button>
       }
-      ListEmptyComponent={
-        <EmptyState
-          icon={BellOff}
-          title="No notifications"
-          description="Activity that involves you will appear here."
-        />
-      }
-      renderItem={({ item }) => <NotificationRow item={item} onPress={handlePress} />}
-      onEndReachedThreshold={0.5}
-      onEndReached={() => {
-        if (hasNextPage) void fetchNextPage();
-      }}
-      refreshing={isRefetching}
-      onRefresh={() => void refetch()}
-    />
+    >
+      <FlatList
+        className="flex-1"
+        contentContainerClassName="gap-2"
+        data={items}
+        keyExtractor={(item) => String(item.id)}
+        ListEmptyComponent={
+          <EmptyState
+            icon={BellOff}
+            title="No notifications"
+            description="Activity that involves you will appear here."
+          />
+        }
+        renderItem={({ item }) => <NotificationRow item={item} onPress={handlePress} />}
+        onEndReachedThreshold={0.5}
+        onEndReached={() => {
+          if (hasNextPage) void fetchNextPage();
+        }}
+        refreshing={isRefetching}
+        onRefresh={() => void refetch()}
+      />
+    </Screen>
   );
 }

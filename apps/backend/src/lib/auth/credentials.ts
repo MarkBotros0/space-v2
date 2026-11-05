@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import type { UserRole } from "@space/shared";
 
 import { db } from "../../db/client";
+import { findUserByEmail } from "./find-user-by-email";
 
 export interface VerifiedUser {
   id: number;
@@ -14,7 +15,14 @@ export async function verifyCredentials(
   email: string,
   password: string,
 ): Promise<VerifiedUser | null> {
-  const user = await db.user.findUnique({ where: { email } });
+  const user = await findUserByEmail(email, {
+    id: true,
+    email: true,
+    name: true,
+    role: true,
+    deletedAt: true,
+    passwordHash: true,
+  });
   if (!user) return null;
   if (user.deletedAt) return null;
   if (!user.passwordHash) return null; // invite not yet accepted

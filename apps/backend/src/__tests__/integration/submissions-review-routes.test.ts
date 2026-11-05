@@ -61,20 +61,33 @@ describe("GET /api/v1/submissions/:publicId", () => {
   });
 
   it("allows the student's group leader and the season admin", async () => {
+    const pid = await seedSubmission("SUBMITTED", "Staff read");
     const asLeader = await request(app)
-      .get(`/api/v1/submissions/${publicId}`)
+      .get(`/api/v1/submissions/${pid}`)
       .set("authorization", `Bearer ${leaderToken}`);
     expect(asLeader.status).toBe(200);
 
     const asAdmin = await request(app)
-      .get(`/api/v1/submissions/${publicId}`)
+      .get(`/api/v1/submissions/${pid}`)
       .set("authorization", `Bearer ${adminToken}`);
     expect(asAdmin.status).toBe(200);
   });
 
+  it("hides a DRAFT from everyone but its author, as if it did not exist", async () => {
+    // publicId is the owner's DRAFT. A 403 would confirm it exists.
+    for (const token of [leaderToken, adminToken, mentorToken, peerToken]) {
+      const res = await request(app)
+        .get(`/api/v1/submissions/${publicId}`)
+        .set("authorization", `Bearer ${token}`);
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe("not_found");
+    }
+  });
+
   it("refuses a peer student in the same season", async () => {
+    const pid = await seedSubmission("SUBMITTED", "Peer read");
     const res = await request(app)
-      .get(`/api/v1/submissions/${publicId}`)
+      .get(`/api/v1/submissions/${pid}`)
       .set("authorization", `Bearer ${peerToken}`);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("forbidden");
@@ -170,17 +183,23 @@ describe("PATCH /api/v1/submissions/:publicId", () => {
 
     // v1 set status: "DRAFT" unconditionally on a draft save, so an autosave
     // after review dropped the submission out of the reviewer's queue while the
-    // stale feedback stayed on screen for the student.
-    await request(app)
-      .patch(`/api/v1/submissions/${pid}`)
-      .set("authorization", `Bearer ${ownerToken}`)
-      .send({ text: "edited after review" });
+    // stale feedback stayed on screen for the student. A REVIEWED row is no
+    // longer the student's to change at all: neither a save nor a re-submit.
+    for (const body of [{ text: "edited after review" }, { text: "resubmit", submit: true }]) {
+      const res = await request(app)
+        .patch(`/api/v1/submissions/${pid}`)
+        .set("authorization", `Bearer ${ownerToken}`)
+        .send(body);
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("submission_locked");
+    }
 
     const row = await db.submission.findUnique({
       where: { publicId: pid },
       select: { status: true, text: true },
     });
-    expect(row).toMatchObject({ status: "REVIEWED", text: "edited after review" });
+    expect(row?.status).toBe("REVIEWED");
+    expect(row?.text).not.toBe("edited after review");
   });
 });
 
@@ -243,14 +262,18 @@ describe("POST /api/v1/submissions/:publicId/review", () => {
     expect(read.body.data.canReview).toBe(false);
   });
 
-  it("refuses to mark a never-submitted draft as reviewed", async () => {
+  it("answers a review of a DRAFT with 404, verdict or return alike", async () => {
     const pid = await seedSubmission("DRAFT", "Never submitted");
-    const res = await request(app)
-      .post(`/api/v1/submissions/${pid}/review`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ feedback: "?" });
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("not_submitted");
+    for (const body of [{ feedback: "?" }, { feedback: "?", returnForRevision: true }]) {
+      const res = await request(app)
+        .post(`/api/v1/submissions/${pid}/review`)
+        .set("authorization", `Bearer ${adminToken}`)
+        .send(body);
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe("not_found");
+    }
+    const row = await db.submission.findUnique({ where: { publicId: pid }, select: { status: true } });
+    expect(row?.status).toBe("DRAFT");
   });
 });
 

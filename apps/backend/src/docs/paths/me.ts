@@ -118,6 +118,11 @@ export const mePaths = {
                 description: "variant STUDENT",
                 properties: {
                   variant: { const: "STUDENT" },
+                  todayOrgDay: {
+                    type: "string",
+                    format: "date",
+                    description: "Today's organisation-calendar day (ORG_TIMEZONE). Always present, also when the student is not enrolled.",
+                  },
                   season: { type: ["object", "null"] },
                   progress: {
                     type: ["object", "null"],
@@ -134,7 +139,12 @@ export const mePaths = {
                       outstandingCount: { type: "integer", description: "PENDING or DRAFT, targeted assignments only." },
                       overdueCount: { type: "integer" },
                       lateSubmittedCount: { type: "integer" },
-                      dueSoon: { type: "array", maxItems: 3, items: { type: "object" } },
+                      dueSoon: { type: "array", maxItems: 3, items: { $ref: "#/components/schemas/StudentAssignmentListItem" } },
+                      open: {
+                        type: "array",
+                        description: "Every PENDING, DRAFT or RETURNED assignment, uncapped, `dueAt` ascending with undated last, then id. RETURNED rows are open work but not in `outstandingCount`.",
+                        items: { $ref: "#/components/schemas/StudentAssignmentListItem" },
+                      },
                     },
                   },
                 },
@@ -169,6 +179,26 @@ export const mePaths = {
                       pending: { type: "integer" },
                       fullyGraded: { type: "integer" },
                       drafts: { type: "integer" },
+                    },
+                  },
+                  leaderSession: {
+                    type: ["object", "null"],
+                    description:
+                      "Present only for `scope: \"groups\"` (a LEADER): the check-in counts of the leader's groups for `nextSession` (read-only). Null when there is no next session; the key is absent for ADMIN/SUPER.",
+                    properties: {
+                      sessionId: { type: "integer", description: "Equals `nextSession.id`." },
+                      total: { type: "integer", description: "ACTIVE students in the leader's groups." },
+                      present: { type: "integer" },
+                      late: { type: "integer" },
+                      absent: { type: "integer" },
+                      notCheckedIn: {
+                        type: "array",
+                        description: "Students with no attendance mark yet; name falls back to the email when blank.",
+                        items: {
+                          type: "object",
+                          properties: { id: { type: "integer" }, name: { type: "string" } },
+                        },
+                      },
                     },
                   },
                 },

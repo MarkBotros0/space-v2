@@ -16,8 +16,8 @@ export async function validateGroupWrite(
 ): Promise<{ code: string; message: string } | null> {
   // v1 has no uniqueness on group name within a season, and the CSV importer
   // matches groups *by name* — so two groups called "Tuesday" silently make the
-  // import assign everyone to whichever one it found last. A real constraint
-  // needs a migration (ruling C1); this is the check that can be made now.
+  // import assign everyone to whichever one it found last. There is no unique
+  // constraint on (seasonId, name), so this check is what refuses the clash.
   const clash = await db.group.findFirst({
     where: {
       seasonId,
@@ -65,11 +65,10 @@ export async function validateGroupWrite(
 /**
  * Point one student at `groupId` for this season.
  *
- * GroupStudent.studentUserId is @unique STANDALONE (schema.prisma:330): a
- * student is in at most one group across the whole database, so the existing
- * row — whichever season's group it is — has to go first. The fix is a
- * composite key, which is a migration (Plan 18). Meanwhile the per-season truth
- * is SeasonEnrollment.groupId, and every v2 read uses that (C9).
+ * GroupStudent is one row per student per season (Plan 18 M1), so only THIS
+ * season's row is replaced; the student's memberships in other seasons are
+ * history and stay. SeasonEnrollment.groupId is the authority (C9) and is
+ * written alongside.
  */
 async function moveStudentToGroup(
   tx: Prisma.TransactionClient,
@@ -77,8 +76,8 @@ async function moveStudentToGroup(
   studentUserId: number,
   groupId: number,
 ): Promise<void> {
-  await tx.groupStudent.deleteMany({ where: { studentUserId } });
-  await tx.groupStudent.create({ data: { groupId, studentUserId } });
+  await tx.groupStudent.deleteMany({ where: { studentUserId, seasonId } });
+  await tx.groupStudent.create({ data: { groupId, studentUserId, seasonId } });
   await tx.seasonEnrollment.update({
     where: { studentUserId_seasonId: { studentUserId, seasonId } },
     data: { groupId },
@@ -95,10 +94,8 @@ async function moveStudentToGroup(
  * history". The roster grid upserts only groupId and preserves all of it. This
  * is the roster grid's semantics; the form's are not reproduced.
  *
- * GroupStudent is still maintained alongside, because v1 reads it and both
- * systems are live against one database — dropping it here would break v1's
- * pages, not just v2's. It is written as a mirror of the enrolment, never as
- * the source of truth (ruling C9).
+ * GroupStudent is maintained alongside as a per-season mirror of the
+ * enrolment (Plan 18 M1), never as the source of truth (ruling C9).
  */
 export async function setGroupStudents(
   tx: Prisma.TransactionClient,
@@ -109,13 +106,27 @@ export async function setGroupStudents(
   // Students previously in this group who are not in the new list keep their
   // enrolment and lose only the group pointer. Removing the enrolment would
   // discard the fact that they were ever in the season.
-  await tx.seasonEnrollment.updateMany({
-    where: { seasonId, groupId, studentUserId: { notIn: studentIds } },
-    data: { groupId: null },
+  //
+  // ACTIVE enrolments only. The form's list is built from the season roster,
+  // which holds ACTIVE enrolments and nothing else, so a COMPLETED or
+  // WITHDRAWN member is never in it — "not in the list" says nothing about
+  // them. Without this, renaming a group in a finished season stripped every
+  // COMPLETED student's group. v1's form only removed the rows it diffed out
+  // of its own list (group-actions.ts:118-131), which never touched them.
+  const removed = await tx.seasonEnrollment.findMany({
+    where: { seasonId, groupId, status: "ACTIVE", studentUserId: { notIn: studentIds } },
+    select: { studentUserId: true },
   });
-  await tx.groupStudent.deleteMany({
-    where: { groupId, studentUserId: { notIn: studentIds } },
-  });
+  const removedIds = removed.map((r) => r.studentUserId);
+  if (removedIds.length > 0) {
+    await tx.seasonEnrollment.updateMany({
+      where: { seasonId, groupId, studentUserId: { in: removedIds } },
+      data: { groupId: null },
+    });
+    await tx.groupStudent.deleteMany({
+      where: { seasonId, groupId, studentUserId: { in: removedIds } },
+    });
+  }
 
   for (const studentUserId of studentIds) {
     await moveStudentToGroup(tx, seasonId, studentUserId, groupId);
@@ -222,7 +233,7 @@ export async function unassignStudentsFromGroups(
       skippedStudentIds.push(studentUserId);
       continue;
     }
-    await tx.groupStudent.deleteMany({ where: { studentUserId, group: { seasonId } } });
+    await tx.groupStudent.deleteMany({ where: { studentUserId, seasonId } });
     await tx.seasonEnrollment.update({
       where: { studentUserId_seasonId: { studentUserId, seasonId } },
       data: { groupId: null },

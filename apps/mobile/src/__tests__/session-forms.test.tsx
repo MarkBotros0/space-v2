@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { format } from "date-fns";
 
 jest.mock("../lib/api-client", () => ({
@@ -6,19 +6,24 @@ jest.mock("../lib/api-client", () => ({
 }));
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
+const mockDismissAll = jest.fn();
+const mockPush = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
-  useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: mockBack }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, back: mockBack, dismissAll: mockDismissAll }),
 }));
 
 import { apiClient } from "../lib/api-client";
+import { TabBarPresenceContext } from "../design/layout/shell-context";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import NewSessionScreen from "../../app/(app)/session/new";
 import EditSessionScreen from "../../app/(app)/session/[id]/edit";
 
+const saveBar = (label: string) =>
+  fireEvent.press(within(screen.getByTestId("save-bar")).getByText(label));
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
@@ -111,7 +116,7 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
     fireEvent.press(screen.getByLabelText("Minute"));
     fireEvent.press(screen.getByText("30"));
     fireEvent.changeText(screen.getByLabelText("Repeat weekly for (weeks)"), "3");
-    fireEvent.press(screen.getByText("Create session"));
+    saveBar("Create session");
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/sessions", {
@@ -132,9 +137,12 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
   it("validates with the server's schema before sending", async () => {
     renderWithProviders(<NewSessionScreen />);
     pickToday();
-    fireEvent.press(screen.getByText("Create session"));
+    saveBar("Create session");
     expect(screen.getByLabelText("Title").props.accessibilityHint).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
+    expect(
+      within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above."),
+    ).toBeTruthy();
   });
 
   it("defaults the start to 18:00 and picks minutes on a 15-minute grid (REG-73)", () => {
@@ -158,7 +166,7 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
     fireEvent.changeText(screen.getByLabelText("YouTube link"), "https://youtube.com/watch?v=abc");
     fireEvent.changeText(screen.getByLabelText("Title"), "Remote");
     pickToday();
-    fireEvent.press(screen.getByText("Create session"));
+    saveBar("Create session");
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
         "/api/v1/sessions",
@@ -171,9 +179,13 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
     );
   });
 
-  it("cancels back", () => {
-    renderWithProviders(<NewSessionScreen />);
-    fireEvent.press(screen.getByText("Cancel"));
+  it("goes back from the pinned back bar (the old Cancel)", () => {
+    renderWithProviders(
+      <TabBarPresenceContext.Provider value={false}>
+        <NewSessionScreen />
+      </TabBarPresenceContext.Provider>,
+    );
+    fireEvent.press(screen.getByLabelText("Back"));
     expect(mockBack).toHaveBeenCalled();
   });
 
@@ -228,7 +240,7 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
 
     fireEvent.press(screen.getByLabelText("Hour"));
     fireEvent.press(screen.getByText("19"));
-    fireEvent.press(screen.getByText("Save changes"));
+    saveBar("Save changes");
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/sessions/12", {
         title: "Week 3",
@@ -279,7 +291,9 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
         data: { scope: "one", force: true },
       }),
     );
-    expect(mockReplace).toHaveBeenCalledWith({
+    // Pops to the tabs first, so the deleted session's detail is not left under Back.
+    expect(mockDismissAll).toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith({
       pathname: "/seasons/[code]",
       params: { code: "s7" },
     });

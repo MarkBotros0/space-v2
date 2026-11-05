@@ -10,7 +10,12 @@ import {
   targetedStudentIds,
   validateAssignmentRefs,
 } from "../lib/assignment-writes";
-import { canAccessSeason, canManageAssignment, staffScopeForSeason } from "../lib/permissions";
+import {
+  canAccessSeason,
+  canManageAssignment,
+  hasActiveEnrollment,
+  staffScopeForSeason,
+} from "../lib/permissions";
 import {
   assignmentDetailPayload,
   isLate,
@@ -37,7 +42,22 @@ assignmentsRouter.get("/:id", async (req, res) => {
   });
   if (!assignment) return apiError(res, "not_found", "Assignment not found.", 404);
 
-  if (!(await canAccessSeason(user, assignment.seasonId))) return forbidden(res);
+  // A student reads an assignment in their current season, or in a season
+  // where they still hold an ACTIVE enrolment. canAccessSeason's student branch
+  // accepts any enrolment row, so a withdrawn, completed or alumni student could
+  // reopen past-season work. v1's page was stricter still (it redirected unless
+  // activeSeasonId matched), but ruling C9 resolves a student's place from the
+  // season's own enrolment, not the token's pinned season — so an ACTIVE
+  // enrolment keeps counting. Nothing in the app links a student to an earlier
+  // season's assignment: History shows summaries, the list is the active season's.
+  if (user.role === "STUDENT") {
+    const current =
+      user.activeSeasonId === assignment.seasonId ||
+      (await hasActiveEnrollment(user, assignment.seasonId));
+    if (!current) return forbidden(res);
+  } else if (!(await canAccessSeason(user, assignment.seasonId))) {
+    return forbidden(res);
+  }
 
   const detail = await loadAssignmentById(id);
   // Unreachable in practice — the existence check above already passed — but

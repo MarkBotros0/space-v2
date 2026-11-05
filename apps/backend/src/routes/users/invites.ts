@@ -1,19 +1,31 @@
 import type { Request, Response } from "express";
-import rateLimit from "express-rate-limit";
 
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { isEmailConfigured } from "../../lib/email";
-import { issueInvite, listPendingInviteUserIds, sendPendingInviteBatch } from "../../lib/invites";
+import { listPendingInviteUserIds, resendInvite as resendInviteNow, sendPendingInviteBatch } from "../../lib/invites";
 import { parseId } from "../../lib/parse-id";
-import { rateLimitHandler } from "../../lib/rate-limit";
-import { sendInviteEmailBestEffort } from "../invite-email";
+import { makeLimiter } from "../../lib/rate-limit";
 import { requireSuper } from "./super-only";
 import { loadUserDetail } from "./views";
 
 // Own bucket (Plan 10 Decision 11). With the 20-user batch ceiling this caps
 // bulk sending at 600 invites an hour.
-export const bulkInviteLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30, handler: rateLimitHandler });
+export const bulkInviteLimiter = makeLimiter({
+  name: "bulk-invite",
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+});
+
+/** The one 503 every invite-sending path answers with no mail transport. */
+function emailNotConfigured(res: Response) {
+  return apiError(
+    res,
+    "email_not_configured",
+    "Email isn't configured on this server, so invites can't be delivered.",
+    503,
+  );
+}
 
 /** How many accounts the bulk button would reach (R87: hidden at zero). */
 export async function countPendingInvites(req: Request, res: Response) {
@@ -33,14 +45,7 @@ export async function countPendingInvites(req: Request, res: Response) {
 export async function sendPendingInvites(req: Request, res: Response) {
   const user = requireSuper(req, res);
   if (!user) return;
-  if (!isEmailConfigured()) {
-    return apiError(
-      res,
-      "email_not_configured",
-      "Email isn't configured on this server, so invites can't be delivered.",
-      503,
-    );
-  }
+  if (!isEmailConfigured()) return emailNotConfigured(res);
   const result = await sendPendingInviteBatch(user.userId);
   return apiOk(res, result);
 }
@@ -63,9 +68,18 @@ export async function resendInvite(req: Request, res: Response) {
     return apiError(res, "already_activated", "This account is already activated.", 409);
   }
 
-  const invite = await db.$transaction((tx) => issueInvite(tx, id, user.userId));
-
-  await sendInviteEmailBestEffort(id, target.email, invite.raw, invite.expiresAt);
+  // Send first, expire the old code only after the mail went (resendInvite):
+  // a failure here must never leave the person without a working code.
+  const outcome = await resendInviteNow(id, user.userId, target.email);
+  if (outcome === "email_not_configured") return emailNotConfigured(res);
+  if (outcome === "send_failed") {
+    return apiError(
+      res,
+      "email_send_failed",
+      "The invite email couldn't be sent. Any earlier invite still works — try again later.",
+      502,
+    );
+  }
 
   // The panel the detail screen renders, read back from the row just written
   // (loadUserDetail returns the latest invite, which is this one).

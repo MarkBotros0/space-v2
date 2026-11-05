@@ -6,9 +6,10 @@ import { ForbiddenError } from "../../lib/auth/errors";
 import { bestEffort } from "../../lib/best-effort";
 import { createNotificationsBulk } from "../../lib/notifications";
 import { parseId } from "../../lib/parse-id";
-import { canAccessSeason, canReviewSubmission } from "../../lib/permissions";
+import { canReviewSubmission, hasActiveEnrollment, isHiddenDraft } from "../../lib/permissions";
 import { newPublicId } from "../../lib/public-id";
 import { studentCanSeeAssignment } from "../../lib/queries/assignments";
+import { notifySubmissionReceived } from "../../lib/submission-notifications";
 import { requireUser } from "../../middleware/require-auth";
 import {
   htmlToPlainText,
@@ -16,7 +17,7 @@ import {
   updateSubmissionRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
-
+import { EDITABLE_STATUSES, studentWriteRefusal, submissionLocked } from "./editable";
 
 export async function updateSubmission(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);
@@ -24,9 +25,18 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
 
   const sub = await db.submission.findUnique({
     where: { publicId: publicId ?? "" },
-    select: { id: true, studentUserId: true, assignment: { select: { dueAt: true, type: true } } },
+    select: {
+      id: true,
+      publicId: true,
+      status: true,
+      studentUserId: true,
+      assignment: { select: { seasonId: true, type: true, title: true } },
+    },
   });
-  if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
+  // A draft is its author's alone: anyone else is told it does not exist.
+  if (!sub || isHiddenDraft(user, sub)) {
+    return apiError(res, "not_found", "Submission not found.", 404);
+  }
   // Only the author may edit. Season admins and leaders can read a submission
   // (canViewSubmission) but must never rewrite a student's words.
   if (sub.studentUserId !== user.userId) throw new ForbiddenError();
@@ -40,9 +50,15 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
       409,
     );
   }
+  // Only DRAFT and RETURNED are editable, and only by a student still actively
+  // enrolled in the assignment's season (see ./editable.ts). Order: who may
+  // write (403), then a well-formed body (400), then the row's state (409).
+  const refusal = await studentWriteRefusal(user, sub.assignment.seasonId, sub.status);
+  if (refusal === "forbidden") return forbidden(res);
 
   const parsed = updateSubmissionRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid submission body.", 400);
+  if (refusal === "not_editable") return submissionLocked(res);
 
   if (parsed.data.submit) {
     // REG-85: v1's form disabled Submit for blank text with no attached file.
@@ -59,10 +75,19 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
         );
       }
     }
-    const now = new Date();
-    await db.submission.update({
-      where: { id: sub.id },
-      data: { text: parsed.data.text, status: "SUBMITTED", submittedAt: now },
+    // The transition is conditional on the row still being editable, so two
+    // racing submits produce one SUBMITTED write and one 409 — and the
+    // leaders are told once, by the request that actually moved it.
+    const submitted = await db.submission.updateMany({
+      where: { id: sub.id, status: { in: [...EDITABLE_STATUSES] } },
+      data: { text: parsed.data.text, status: "SUBMITTED", submittedAt: new Date() },
+    });
+    if (submitted.count === 0) return submissionLocked(res);
+    await notifySubmissionReceived({
+      publicId: sub.publicId,
+      studentUserId: sub.studentUserId,
+      seasonId: sub.assignment.seasonId,
+      assignmentTitle: sub.assignment.title,
     });
   } else {
     // Save the text; do NOT touch the status.
@@ -130,7 +155,9 @@ export async function startSubmission(req: Request, res: Response) {
     );
   }
 
-  if (!(await canAccessSeason(user, assignment.seasonId))) return forbidden(res);
+  // An ACTIVE enrolment, not canAccessSeason: that accepts any enrolment row,
+  // so a dropped, completed or alumni student could start work in a past season.
+  if (!(await hasActiveEnrollment(user, assignment.seasonId))) return forbidden(res);
   // The same targeting rule the assignment reads use, from the same helper —
   // a student must not be able to start a submission on work never set them.
   const targeted = await studentCanSeeAssignment(
@@ -174,20 +201,16 @@ export async function reviewSubmission(req: Request<{ publicId: string }>, res: 
       assignment: { select: { title: true } },
     },
   });
-  if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
+  // A draft is its author's alone, and the author never reviews, so nobody can
+  // review a DRAFT: to everyone but its author it does not exist.
+  if (!sub || isHiddenDraft(user, sub)) {
+    return apiError(res, "not_found", "Submission not found.", 404);
+  }
 
   if (!(await canReviewSubmission(user, sub.id))) return forbidden(res);
 
   const parsed = reviewSubmissionRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid review body.", 400);
-
-  // Reviewing something the student never submitted is legal in v1 and stays
-  // legal — a reviewer may return an untouched draft for revision — but a
-  // DRAFT that has never been submitted cannot be marked REVIEWED, because
-  // there is nothing to have reviewed.
-  if (sub.status === "DRAFT" && !parsed.data.returnForRevision) {
-    return apiError(res, "not_submitted", "That submission has not been submitted yet.", 409);
-  }
 
   const now = new Date();
   await db.submission.update({

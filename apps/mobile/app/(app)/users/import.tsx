@@ -1,8 +1,7 @@
 import { useRouter } from "expo-router";
 
-import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState } from "../../../src/design/ui";
 import { useImportTemplate } from "../../../src/hooks/use-import";
 import { useSeasons } from "../../../src/hooks/use-seasons";
@@ -18,6 +17,12 @@ import { useSessionStore } from "../../../src/store/session";
  * owner decision 2, 2026-10-10). The steps live in local state, never
  * persisted — see useStudentImportFlow.
  */
+const frame = {
+  title: "Import profiles batch",
+  subtitle:
+    "Bulk-create profiles from pasted rows with name and email columns. Choose whether to import them as active students in a season or as alumni of a graduation year. Invites are sent separately once you're ready.",
+} as const;
+
 export default function ImportScreen() {
   const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
@@ -30,61 +35,58 @@ export default function ImportScreen() {
 
   if (!isSuper) {
     return (
-      <ShellFrame>
+      <Screen {...frame}>
         <EmptyState
-          title="Import profiles batch"
+          title="Not available"
           description="This screen isn't available for your role."
         />
-      </ShellFrame>
+      </Screen>
     );
   }
 
-  const header = (
-    <PageTitle
-      title="Import profiles batch"
-      subtitle="Bulk-create profiles from pasted rows with name and email columns. Choose whether to import them as active students in a season or as alumni of a graduation year. Invites are sent separately once you're ready."
-    />
-  );
+  // The title and its explanation sit in the Screen's large title; the steps
+  // start at their cards.
+  const header = null;
 
   if (flow.step === "result" && flow.result) {
     return (
-      <ShellFrame>
+      <Screen {...frame}>
         <ImportResultStep
           header={header}
           result={flow.result}
           onViewUsers={() => router.push("/users")}
           onStartOver={flow.startOver}
         />
-      </ShellFrame>
+      </Screen>
     );
   }
 
   if (flow.step === "preview" && flow.preview) {
     return (
-      <ShellFrame>
+      <Screen {...frame}>
         <ImportPreviewStep header={header} preview={flow.preview} flow={flow} />
-      </ShellFrame>
+      </Screen>
     );
   }
 
   if (template.isLoading) {
     return (
-      <ShellFrame>
+      <Screen {...frame}>
         <RouteSkeleton />
-      </ShellFrame>
+      </Screen>
     );
   }
   if (template.isError) {
     return (
-      <ShellFrame>
+      <Screen {...frame}>
         <RouteError onRetry={() => void template.refetch()} />
-      </ShellFrame>
+      </Screen>
     );
   }
 
   return (
-    <ShellFrame>
+    <Screen {...frame}>
       <ImportPasteStep header={header} flow={flow} template={template} seasons={seasons} />
-    </ShellFrame>
+    </Screen>
   );
 }

@@ -10,35 +10,47 @@ import { notificationTypeSchema, type NotificationType } from "./enums";
  *
  * `Notification.link` is a v1 role-prefixed web path chosen by the producer
  * (R3), and v2's routes are flat, so `/admin/students/12` resolves to nothing
- * in the mobile app. The schema is frozen (C1), so the columns this wants
- * cannot exist yet: until cutover the API derives the target from the stored
- * string in one place (apps/backend/src/lib/notification-target.ts) and keeps
- * writing `link` verbatim so v1 — still in production against the same
- * database — keeps working. No client may parse the path itself.
+ * in the mobile app. Notification has no entity columns, so the API derives
+ * the target from the stored string in one place
+ * (apps/backend/src/lib/notification-target.ts), and producers keep writing
+ * `link` in v1's shapes, the ones that parser knows. No client may parse the
+ * path itself.
  *
  * `calendar` is a destination rather than an entity because one of the five
  * link shapes v1 actually emits is the bare `/student/calendar` (R67), and
  * pretending it names a session would be a lie the resolver has to keep.
  *
- * Wire values are lowercase. Plan 18's M4 stores the same set as the
- * uppercase Postgres enum `NotificationEntityType` (ASSIGNMENT, QUIZ,
- * CALENDAR, STUDENT, plus SUBMISSION/SESSION which nothing writes yet); the
- * mapping is written out in the cutover doc (Task 5) so the wire contract —
- * and every client built against it — does not change at cutover.
+ * Wire values are lowercase, and they are the wire contract: if the target
+ * is ever stored in its own column, the column maps to these values rather
+ * than clients changing.
  */
 export const notificationEntityTypeSchema = z.enum([
   "assignment",
   "quiz",
   "calendar",
   "student",
+  "submission",
 ]);
 export type NotificationEntityType = z.infer<typeof notificationEntityTypeSchema>;
 
-export const notificationTargetSchema = z.object({
-  entityType: notificationEntityTypeSchema,
-  /** Null for the two list-level links v1 emits (`/student/quizzes`, `/student/calendar`). */
-  entityId: z.number().int().positive().nullable(),
-});
+/**
+ * Two shapes, one discriminant. Every entity but a submission is addressed by
+ * its numeric id; a submission is addressed by its `publicId` — the only id
+ * any submission route (and the mobile `/submission/[publicId]` screen) takes,
+ * so a numeric id there would need a second lookup the client cannot make.
+ */
+export const notificationTargetSchema = z.discriminatedUnion("entityType", [
+  z.object({
+    entityType: notificationEntityTypeSchema.exclude(["submission"]),
+    /** Null for the two list-level links (`/student/quizzes`, `/student/calendar`). */
+    entityId: z.number().int().positive().nullable(),
+  }),
+  z.object({
+    entityType: z.literal("submission"),
+    /** The submission's publicId (SUBMISSION_RECEIVED). */
+    entityId: z.string().min(1),
+  }),
+]);
 export type NotificationTarget = z.infer<typeof notificationTargetSchema>;
 
 export const notificationSchema = z.object({
@@ -110,6 +122,9 @@ export const NOTIFICATION_PREFERENCE_KEY_BY_TYPE = {
   LOW_ATTENDANCE_FLAG: "lowAttendanceFlag",
   MENTOR_FOLLOWUP: "mentorFollowup",
   QUIZ_GRADED: "quizGraded",
+  QUIZ_PUBLISHED: "quizPublished",
+  SUBMISSION_RECEIVED: "submissionReceived",
+  SESSION_CANCELLED: "sessionCancelled",
 } as const satisfies Record<NotificationType, string>;
 
 export type NotificationPreferenceKey =
@@ -119,7 +134,7 @@ export const NOTIFICATION_PREFERENCE_KEYS: readonly NotificationPreferenceKey[] 
   notificationTypeSchema.options.map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t]);
 
 /**
- * All six keys, required. The `satisfies` below is the structural fix for
+ * Every key, required. The `satisfies` below is the structural fix for
  * R56/R57: drop a key and the object no longer satisfies
  * `Record<NotificationPreferenceKey, boolean>`, which is a compile error rather
  * than a preference nobody can set.
@@ -131,6 +146,9 @@ export const notificationPreferencesSchema = z.object({
   lowAttendanceFlag: z.boolean(),
   mentorFollowup: z.boolean(),
   quizGraded: z.boolean(),
+  quizPublished: z.boolean(),
+  submissionReceived: z.boolean(),
+  sessionCancelled: z.boolean(),
 }) satisfies z.ZodType<Record<NotificationPreferenceKey, boolean>>;
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
@@ -142,6 +160,9 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   lowAttendanceFlag: true,
   mentorFollowup: true,
   quizGraded: true,
+  quizPublished: true,
+  submissionReceived: true,
+  sessionCancelled: true,
 };
 
 export const notificationPreferencesResponseSchema = z.object({
@@ -149,22 +170,49 @@ export const notificationPreferencesResponseSchema = z.object({
 });
 
 /**
- * Which types warrant an interruptive push (spec D5 item 2, narrowed).
+ * Every notification type pushes (owner ruling 2026-11-04, when push landed):
+ * each one is something the recipient acts on — new work, feedback, a moved
+ * session, a grade, a student missing sessions, a follow-up request, a newly
+ * published quiz, work handed in to a leader, a cancelled session. The
+ * recipient's per-type preference still turns a type off for every outbound
+ * channel at once.
  *
- * ASSIGNMENT_CREATED is the highest-volume fan-out in the system and is not
- * time-critical. LOW_ATTENDANCE_FLAG can burst (04 R87 gives it no dedupe) and
- * waits on 04's D7/D12. MENTOR_FOLLOWUP names a student flagged for pastoral
- * follow-up in its title, which must never reach a lock screen (R64, D8) —
- * Plan 12 removed v1's note excerpt from the body, but the name remains.
+ * The spec's earlier narrowing (D5 item 2) is answered instead of kept:
+ * - LOW_ATTENDANCE_FLAG no longer bursts — it fires only on a change to ABSENT;
+ * - MENTOR_FOLLOWUP names a student flagged for pastoral follow-up, which must
+ *   never reach a lock screen (R64, D8), so its push carries neutral text
+ *   (`pushContent`) and the name stays inside the app.
  */
 export const PUSH_NOTIFICATION_TYPES = [
-  "SESSION_RESCHEDULED",
+  "ASSIGNMENT_CREATED",
   "SUBMISSION_REVIEWED",
+  "SESSION_RESCHEDULED",
+  "LOW_ATTENDANCE_FLAG",
+  "MENTOR_FOLLOWUP",
   "QUIZ_GRADED",
+  "QUIZ_PUBLISHED",
+  "SUBMISSION_RECEIVED",
+  "SESSION_CANCELLED",
 ] as const satisfies readonly NotificationType[];
 
 export function shouldPush(type: NotificationType): boolean {
   return (PUSH_NOTIFICATION_TYPES as readonly NotificationType[]).includes(type);
+}
+
+/**
+ * What a push shows on the lock screen. Most types reuse the in-app title and
+ * body; a type whose text can name a student in a pastoral context is replaced
+ * with neutral copy.
+ */
+export function pushContent(
+  type: NotificationType,
+  title: string,
+  body: string | null,
+): { title: string; body: string | null } {
+  if (type === "MENTOR_FOLLOWUP") {
+    return { title: "Follow-up requested", body: "A note was flagged for follow-up. Open JPC Space to read it." };
+  }
+  return { title, body };
 }
 
 /**
@@ -176,17 +224,13 @@ export function shouldPush(type: NotificationType): boolean {
 export const devicePlatformSchema = z.enum(["ios", "android"]);
 export type DevicePlatform = z.infer<typeof devicePlatformSchema>;
 
-/** Wire → database enum value, for the cutover upsert (Task 5's doc, Plan 18 M10). */
+/** Wire → database enum value, for the DeviceToken upsert in POST /me/devices. */
 export const DEVICE_PLATFORM_TO_DB = {
   ios: "IOS",
   android: "ANDROID",
 } as const satisfies Record<DevicePlatform, string>;
 
-/**
- * Device registration (spec D5). The row this writes does not exist yet — the
- * schema is frozen and there is no DeviceToken model — so the endpoint answers
- * 503 until cutover. The contract is fixed now so the client is built once.
- */
+/** `POST /me/devices`: register this device's Expo push token. */
 export const deviceRegistrationSchema = z
   .object({
     token: z.string().min(1).max(200),
@@ -194,3 +238,7 @@ export const deviceRegistrationSchema = z
   })
   .strict();
 export type DeviceRegistration = z.infer<typeof deviceRegistrationSchema>;
+
+/** `DELETE /me/devices`: the token in the body (a credential — never in a path). */
+export const deviceUnregistrationSchema = z.object({ token: z.string().min(1).max(200) }).strict();
+export type DeviceUnregistration = z.infer<typeof deviceUnregistrationSchema>;

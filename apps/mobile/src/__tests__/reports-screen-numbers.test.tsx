@@ -18,7 +18,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import ReportsScreen from "../../app/(app)/reports";
+import ReportsScreen from "../../app/(app)/(tabs)/reports";
 
 import { mockEndpoints, row, sessionFor, summary } from "./helpers/reports-fixtures";
 
@@ -55,10 +55,10 @@ describe("ReportsScreen — the numbers it renders", () => {
     renderWithProviders(<ReportsScreen />);
 
     expect(await screen.findByText("Students at risk (1 of 1)")).toBeTruthy();
-    expect(screen.getByText("50% attendance · 100% submissions")).toBeTruthy();
+    expect(screen.getByText(/50% attendance · 100% submissions/)).toBeTruthy();
   });
 
-  it("labels the band donut by enrolments when the scope spans seasons (R32)", async () => {
+  it("shows enrolments and students side by side when the scope spans seasons (R32)", async () => {
     useSessionStore.setState(sessionFor("MENTOR"));
     mockEndpoints();
 
@@ -66,7 +66,9 @@ describe("ReportsScreen — the numbers it renders", () => {
 
     // Bucket counts count ENROLMENTS, so the total exceeds the headcount and a
     // reader comparing the donut to "40 students" is looking at two numbers.
-    expect(await screen.findByText("44 enrolments · 40 students")).toBeTruthy();
+    expect(await screen.findByText("Enrolments")).toBeTruthy();
+    expect(screen.getByLabelText(/Enrolments.*44|44.*Enrolments/)).toBeTruthy();
+    expect(screen.getByLabelText(/Students.*40|40.*Students/)).toBeTruthy();
   });
 
   it("renders a completion row with no cohort as — rather than 0% (R22)", async () => {

@@ -1,8 +1,9 @@
 // apps/mobile/src/components/charts/RankedBars.tsx
 import { View } from "react-native";
 
-import { useTheme } from "../../theme";
-import { Text } from "../../ui";
+import { Text } from "../../design/ui/text";
+import { palette } from "../../design/theme/palette";
+import { useChartColors } from "../../lib/report-colors";
 
 export interface RankedBar {
   key: string;
@@ -21,10 +22,10 @@ export interface RankedBar {
  * row label, not an axis."
  */
 export function RankedBars({ bars }: { bars: RankedBar[] }) {
-  const theme = useTheme();
+  const chart = useChartColors();
 
   return (
-    <View style={{ gap: theme.spacing.sm }}>
+    <View className="flex-col gap-2">
       {bars.map((bar) => (
         <View
           key={bar.key}
@@ -35,31 +36,17 @@ export function RankedBars({ bars }: { bars: RankedBar[] }) {
               : `${bar.label}: ${bar.value}%${bar.caption ? `, ${bar.caption}` : ""}`
           }
         >
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text variant="body">{bar.label}</Text>
-            <Text variant="body">{bar.value === null ? "—" : `${bar.value}%`}</Text>
+          <View className="flex-row justify-between gap-2">
+            <Text className="min-w-0 flex-1">{bar.label}</Text>
+            <Text className="shrink-0">{bar.value === null ? "—" : `${bar.value}%`}</Text>
           </View>
-          <View
-            style={{
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: theme.colors.neutral[200],
-              overflow: "hidden",
-            }}
-          >
+          <View className="h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: chart.track }}>
             <View
-              style={{
-                width: `${bar.value ?? 0}%`,
-                height: 6,
-                backgroundColor: theme.colors.brand.teal[600],
-              }}
+              className="h-1.5"
+              style={{ width: `${bar.value ?? 0}%`, backgroundColor: palette["brand-teal"]["600"] }}
             />
           </View>
-          {bar.caption ? (
-            <Text variant="caption" color={theme.colors.neutral[600]}>
-              {bar.caption}
-            </Text>
-          ) : null}
+          {bar.caption ? <Text className="text-xs text-muted-foreground">{bar.caption}</Text> : null}
         </View>
       ))}
     </View>

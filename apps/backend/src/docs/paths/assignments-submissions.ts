@@ -58,7 +58,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Assignments"],
       summary: "Who was given this assignment, and what they have done about it",
       description:
-        "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
+        "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker. A student whose work is still a DRAFT shows as `PENDING` with no `submissionPublicId`: a draft exists only for its author.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/AssignmentTracker" }, "The tracker."),
@@ -110,7 +110,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Submissions"],
       summary: "Start (or fetch) this student's submission for an assignment",
       description:
-        "Idempotent: the first call creates a DRAFT, later calls return the same row untouched. Never overwrites saved work.\n\nThis exists because v1 created the row as a side effect of *rendering* the assignment page. A read that writes is wrong on its own terms, and React Query would make it far worse — it refetches on mount, on focus and on reconnect, so the write would fire every time the app is tabbed back to.\n\nSTUDENT only, and only for an assignment actually targeted at them.",
+        "Idempotent: the first call creates a DRAFT, later calls return the same row untouched. Never overwrites saved work.\n\nThis exists because v1 created the row as a side effect of *rendering* the assignment page. A read that writes is wrong on its own terms, and React Query would make it far worse — it refetches on mount, on focus and on reconnect, so the write would fire every time the app is tabbed back to.\n\nSTUDENT only, with an ACTIVE enrolment in the assignment's season, and only for an assignment actually targeted at them.",
       parameters: [
         { name: "assignmentId", in: "path", required: true, schema: { type: "integer" } },
       ],
@@ -170,10 +170,9 @@ export const assignmentsSubmissionsPaths = {
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
-        404: errRef("NotFound"),
-        409: {
+        404: {
           description:
-            "`not_submitted` — a DRAFT that was never submitted cannot be marked REVIEWED. It can still be returned for revision.",
+            "No such submission, or it is a DRAFT — a draft exists only for its author, so it can be neither reviewed nor returned.",
           content: { "application/json": { schema: errorResponse } },
         },
       },
@@ -185,7 +184,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Submissions"],
       summary: "Submission detail",
       description:
-        "Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's submission. `text` and `feedback` are plain text (stored HTML is converted on read, ruling C11); `groupId`/`groupName` name the student's group in the assignment's season.",
+        "Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's submission. A DRAFT is the student's unfinished work and exists only for its author: to anyone else — staff included — it is `404`, as if it did not exist (on this route, its files, PATCH and review alike). RETURNED is not a draft and stays visible. `text` and `feedback` are plain text (stored HTML is converted on read, ruling C11); `groupId`/`groupName` name the student's group in the assignment's season.",
       parameters: [publicIdParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/SubmissionDetail" }, "The submission."),
@@ -198,7 +197,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Submissions"],
       summary: "Save a draft or submit",
       description:
-        "**Author only** — reading and writing are different rights, so a season admin who can read this submission still cannot edit it. `submit: true` sets status SUBMITTED and stamps `submittedAt`; omitting it returns the row to DRAFT, so saving a draft after submitting un-submits it.\n\nSubmitting blank text with no attached file is `400 empty_submission` (v1's rule, REG-85); saving a blank draft stays legal.",
+        "**Author only** — reading and writing are different rights, so a season admin who can read this submission still cannot edit it. The author must also hold an ACTIVE enrolment in the assignment's season (a withdrawn, completed or alumni student gets 403).\n\nOnly a DRAFT or RETURNED submission can be changed; a SUBMITTED or REVIEWED one is `409 submission_locked`, for a save and a submit alike — the way back to editable is a reviewer's `returnForRevision`. `submit: true` sets status SUBMITTED and stamps `submittedAt` (a submit that loses a race to another is `409 submission_locked`), and tells the leaders of the student's group in the assignment's season with one `SUBMISSION_RECEIVED` notification each (link `/leader/submissions/{publicId}`, target `submission`; season admins are not notified; best-effort). Omitting it saves the text, leaves the status alone and notifies nobody.\n\nSubmitting blank text with no attached file is `400 empty_submission` (v1's rule, REG-85); saving a blank draft stays legal.",
       parameters: [publicIdParam],
       requestBody: {
         required: true,
@@ -208,7 +207,7 @@ export const assignmentsSubmissionsPaths = {
               type: "object",
               required: ["text"],
               properties: {
-                text: { type: "string" },
+                text: { type: "string", maxLength: 20000 },
                 submit: { type: "boolean", default: false },
               },
             },
@@ -224,7 +223,9 @@ export const assignmentsSubmissionsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`use_forum_endpoint` —A FORUM assignment is written only through `PUT /assignments/{id}/forum/response`."),
+        409: conflict(
+          "`use_forum_endpoint` — a FORUM assignment is written only through `PUT /assignments/{id}/forum/response`; `submission_locked` — the submission is SUBMITTED or REVIEWED.",
+        ),
       },
     },
   },
@@ -238,7 +239,8 @@ export const assignmentsSubmissionsPaths = {
         "request body is read, so a large upload costs the server nothing. Reading and deleting",
         "files already recorded are unaffected.",
         "",
-        "When enabled: author only. The assignment's own `maxFileSizeMb` and",
+        "When enabled: author only, ACTIVE enrolment in the season, and only while the",
+        "submission is DRAFT or RETURNED (otherwise `409 submission_locked`). The assignment's own `maxFileSizeMb` and",
         "`allowedMimeCategories` are enforced after upload; a process-level ceiling",
         "(`MAX_UPLOAD_BYTES`, 25 MB by default) rejects anything larger before the handler runs.",
       ].join("\n"),
@@ -290,7 +292,8 @@ export const assignmentsSubmissionsPaths = {
     delete: {
       tags: ["Submissions"],
       summary: "Remove an attached file",
-      description: "Author only. The file must belong to this submission.",
+      description:
+        "Author only, with an ACTIVE enrolment in the season. The file must belong to this submission, and the submission must be DRAFT or RETURNED.",
       parameters: [
         publicIdParam,
         { name: "fileId", in: "query", required: true, schema: { type: "integer", minimum: 1 } },
@@ -301,6 +304,7 @@ export const assignmentsSubmissionsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
+        409: conflict("`submission_locked` — the submission is SUBMITTED or REVIEWED."),
       },
     },
   },
@@ -332,7 +336,8 @@ export const assignmentsSubmissionsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: {
-          description: "No such file, it belongs to another submission, or the stored blob is missing.",
+          description:
+            "No such file, it belongs to another submission, it is on someone else's DRAFT, or the stored blob is missing.",
           content: { "application/json": { schema: errorResponse } },
         },
       },

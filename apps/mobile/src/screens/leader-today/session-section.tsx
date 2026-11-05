@@ -1,0 +1,91 @@
+import type { DashboardSession, LeaderSessionCheckIn } from "@space/shared";
+import { useRouter } from "expo-router";
+import { Linking, View } from "react-native";
+
+import { Button } from "../../design/ui/button";
+import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { HeroCard } from "../../design/ui/hero-card";
+import { dayCue, deviceTodayKey } from "../../lib/calendar-grid";
+import { formatWallTime, formatWeekdayDay } from "../../lib/format";
+
+/** Names shown before "See all N". */
+const NAMED = 5;
+
+/**
+ * The session to run and, on its day, who is still unmarked. A session that is
+ * not today shows only its day cue; `checkIn` is the leader's own groups and
+ * absent (`undefined`) is the same as `null`.
+ */
+export function LeaderSessionSection({
+  session,
+  checkIn,
+  now,
+}: {
+  session: DashboardSession | null;
+  checkIn?: LeaderSessionCheckIn | null;
+  now?: Date;
+}) {
+  const router = useRouter();
+  if (!session) return <HeroCard eyebrow="Next session" title="No upcoming sessions." />;
+
+  const id = String(session.id);
+  const today = deviceTodayKey(now);
+  const onTheDay = session.isInProgress || session.dayKey === today;
+  const missing = onTheDay ? (checkIn?.notCheckedIn ?? []) : [];
+  const attendance = { pathname: "/session/[id]/attendance", params: { id } } as const;
+  const openSession = () => router.push({ pathname: "/session/[id]", params: { id } });
+
+  let meta = `${formatWeekdayDay(session.dayKey)} · ${formatWallTime(session.time)} · ${session.durationMinutes} min${
+    session.location ? ` · ${session.location}` : ""
+  }`;
+  if (onTheDay) {
+    if (checkIn) meta += ` · ${checkIn.present + checkIn.late} present · ${checkIn.notCheckedIn.length} not checked in`;
+  } else {
+    const cue = dayCue(session.dayKey, today);
+    if (cue) meta += ` · ${cue}`;
+  }
+
+  return (
+    <View className="gap-4">
+      <HeroCard
+        eyebrow={session.isInProgress ? "Happening now" : "Next session"}
+        title={session.title}
+        meta={meta}
+        action={
+          onTheDay ? (
+            <>
+              <Button onPress={() => router.push(attendance)}>Take attendance</Button>
+              <Button variant="secondary" onPress={openSession}>
+                Open session
+              </Button>
+              {/* D13: a stream link only while the session is running. */}
+              {session.isInProgress && session.youtubeUrl ? (
+                <Button variant="secondary" onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}>
+                  Join stream
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <Button onPress={openSession}>Open session</Button>
+          )
+        }
+      />
+      {missing.length > 0 ? (
+        <GroupedList header="Not checked in">
+          {missing.slice(0, NAMED).map((s) => (
+            <ListRow
+              key={s.id}
+              title={s.name}
+              titleLines={2}
+              chevron
+              onPress={() => router.push({ pathname: "/student/[id]", params: { id: String(s.id) } })}
+            />
+          ))}
+          {missing.length > NAMED ? (
+            <ListRow title={`See all ${missing.length}`} chevron onPress={() => router.push(attendance)} />
+          ) : null}
+        </GroupedList>
+      ) : null}
+    </View>
+  );
+}

@@ -3,20 +3,16 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
-import { ShellFrame } from "../../design/layout/shell-frame";
+import { Screen } from "../../design/layout/screen";
+import { SaveBar } from "../../design/layout/save-bar";
 import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
-import {
-  Badge,
-  Button as ButtonV1,
-  ConfirmDialog,
-  Text as TextV1,
-  Textarea,
-} from "../../design/ui";
+import { haptic } from "../../design/motion";
+import { Badge, ConfirmDialog, Text, Textarea } from "../../design/ui";
+import { toast } from "../../design/ui/toaster";
 import { useSubmitAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
-import { QCARD, QuizHeader } from "./quiz-header";
+import { QCARD, quizTitleProps } from "./quiz-header";
 import { useQuizAnswers, type Answer } from "./use-quiz-answers";
 
 iconWithClassName(Check);
@@ -34,17 +30,17 @@ function AttemptQuestion({
   onChange: (patch: { selectedIndex?: number | null; text?: string }) => void;
 }) {
   return (
-    <View className={QCARD} style={shadowStyle("soft")}>
+    <View className={QCARD}>
       <View className="flex-row items-center gap-2">
-        <TextV1 className="text-xs font-bold text-muted-foreground">{`Q${index + 1}`}</TextV1>
+        <Text variant="caption" className="font-bold text-muted-foreground">{`Q${index + 1}`}</Text>
         <Badge variant={q.type === "MCQ" ? "teal" : "outline"}>
           {q.type === "MCQ" ? "Multiple choice" : "Essay"}
         </Badge>
-        <TextV1 className="text-xs text-muted-foreground">{`${q.points} pt${q.points === 1 ? "" : "s"}`}</TextV1>
+        <Text variant="caption" className="text-muted-foreground">{`${q.points} pt${q.points === 1 ? "" : "s"}`}</Text>
       </View>
-      <TextV1 className="mt-2 text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+      <Text variant="headline" className="mt-2">
         {q.prompt}
-      </TextV1>
+      </Text>
       {q.type === "MCQ" ? (
         <View className="mt-3 flex-col gap-2">
           {q.options.map((option, optionIndex) => {
@@ -57,26 +53,27 @@ function AttemptQuestion({
                 accessibilityLabel={`Answer ${index + 1} option ${optionIndex + 1}: ${option}`}
                 onPress={() => onChange({ selectedIndex: optionIndex })}
                 className={cn(
-                  "flex-row items-center gap-3 rounded-xl border px-4 py-3",
-                  selected ? "border-brand-teal-600 bg-brand-teal-600/10" : "border-border bg-card",
+                  "min-h-11 flex-row items-center gap-3 rounded-control border px-4 py-3",
+                  selected ? "border-ring bg-accent" : "border-control-border bg-surface",
                 )}
               >
                 <View
                   className={cn(
                     "size-5 shrink-0 items-center justify-center rounded-full border",
-                    selected ? "border-brand-teal-600 bg-brand-teal-600" : "border-border",
+                    selected ? "border-ring bg-ring" : "border-control-border",
                   )}
                 >
-                  {selected ? <Check size={12} className="text-white" /> : null}
+                  {selected ? <Check size={12} className="text-primary-foreground" /> : null}
                 </View>
-                <TextV1
+                <Text
+                  variant="subhead"
                   className={cn(
-                    "flex-1 text-sm font-medium",
-                    selected ? "text-brand-teal-700 dark:text-brand-teal-300" : "text-foreground",
+                    "min-w-0 flex-1 font-medium",
+                    selected ? "text-accent-foreground" : "text-foreground",
                   )}
                 >
                   {option}
-                </TextV1>
+                </Text>
               </Pressable>
             );
           })}
@@ -110,14 +107,45 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
     if (!isComplete) return;
     if (!(await flush())) return;
     submit.mutate(undefined, {
+      // The screen swaps to the result as the cache updates, so the toast (global) is
+      // what confirms it while the bar is still in view.
+      onSuccess: () => {
+        haptic("light");
+        toast.success("Quiz submitted.");
+      },
       onError: (err) => setSubmitError(apiErrorMessage(err, "Couldn't submit the quiz.")),
     });
   };
 
+  // Feedback lives in the pinned bar's hint, where it stays in view: how many
+  // are answered, the autosave state, and a submit error in place of both.
+  const answered = detail.questions.filter((q) => {
+    const a = answers[q.id];
+    return q.type === "MCQ" ? a?.selectedIndex != null : (a?.text ?? "").trim().length > 0;
+  }).length;
+  const saveLabel =
+    saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Not saved" : null;
+  const hint =
+    submitError ??
+    [`${answered} of ${detail.questions.length} answered`, saveLabel].filter(Boolean).join(" · ");
+
   return (
-    <ShellFrame>
+    <Screen
+      {...quizTitleProps(detail)}
+      footer={
+        <SaveBar
+          label="Submit quiz"
+          hint={hint}
+          disabled={!isComplete || savePending || submit.isPending}
+          loading={submit.isPending}
+          onPress={() => setConfirmOpen(true)}
+          secondary={
+            saveState === "error" ? { label: "Retry save", onPress: () => void flush() } : undefined
+          }
+        />
+      }
+    >
       <View className="flex-col gap-3">
-        <QuizHeader detail={detail} />
         {detail.questions.map((q, index) => (
           <AttemptQuestion
             key={q.id}
@@ -127,35 +155,6 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
             onChange={(patch) => setAnswer(q, patch)}
           />
         ))}
-
-        {saveState !== "idle" ? (
-          <TextV1
-            className={cn(
-              "text-xs",
-              saveState === "error" ? "text-error-600" : "text-muted-foreground",
-            )}
-          >
-            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : "Not saved"}
-          </TextV1>
-        ) : null}
-        {saveState === "error" ? (
-          <ButtonV1 variant="outline" size="sm" className="self-start" onPress={() => void flush()}>
-            Retry save
-          </ButtonV1>
-        ) : null}
-        {submitError ? <TextV1 className="text-xs text-error-600">{submitError}</TextV1> : null}
-        <ButtonV1
-          className="self-start"
-          disabled={!isComplete || savePending || submit.isPending}
-          onPress={() => setConfirmOpen(true)}
-        >
-          Submit quiz
-        </ButtonV1>
-        {!isComplete ? (
-          <TextV1 className="text-xs text-muted-foreground">
-            Answer every question to submit.
-          </TextV1>
-        ) : null}
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
@@ -169,6 +168,6 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
           }}
         />
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }

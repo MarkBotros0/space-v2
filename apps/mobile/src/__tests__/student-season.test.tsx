@@ -1,4 +1,5 @@
 import { fireEvent, screen } from "@testing-library/react-native";
+import { Linking } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
@@ -56,10 +57,10 @@ describe("SeasonScreen — STUDENT branch (v1 student/season)", () => {
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons");
     expect(screen.getByText("Session 3 of 7")).toBeTruthy(); // R29, not "Week N of M"
     expect(screen.getByText("4 to go")).toBeTruthy();
-    expect(screen.getByText("Your group")).toBeTruthy();
-    // The outline badge in the hero and the group card both name it (v1).
-    expect(screen.getAllByText("Group B1")).toHaveLength(2);
-    expect(screen.getByText("ACTIVE")).toBeTruthy();
+    expect(screen.getByText("YOUR GROUP")).toBeTruthy();
+    expect(screen.getByText("Group B1")).toBeTruthy();
+    expect(screen.getByText("Tuesday group")).toBeTruthy();
+    expect(screen.getByText("Active")).toBeTruthy(); // the season status chip, a word
     expect(screen.getByText("Leader")).toBeTruthy();
     expect(screen.getByText("Lina Leader")).toBeTruthy();
     expect(screen.getByText("lina@jpc.test")).toBeTruthy(); // R89: leaders' emails, not peers'
@@ -78,7 +79,7 @@ describe("SeasonScreen — STUDENT branch (v1 student/season)", () => {
 
     renderWithProviders(<SeasonScreen />);
 
-    fireEvent.press(await screen.findByText("Week 4"));
+    fireEvent.press(await screen.findByLabelText(/^Week 4,/));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "41" } });
     fireEvent.press(screen.getByText("See calendar"));
     expect(mockPush).toHaveBeenCalledWith("/calendar");
@@ -91,7 +92,41 @@ describe("SeasonScreen — STUDENT branch (v1 student/season)", () => {
     renderWithProviders(<SeasonScreen />);
 
     expect(await screen.findByText("No upcoming sessions.")).toBeTruthy();
-    expect(screen.queryByText("Your group")).toBeNull();
+    expect(screen.queryByText("YOUR GROUP")).toBeNull();
+  });
+
+  it("says so when the group has no leaders yet", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
+    const group = { ...mySeason.group, leaders: [] };
+    get.mockResolvedValue({ data: { data: { season: { ...mySeason, group } } } });
+
+    renderWithProviders(<SeasonScreen />);
+
+    expect(await screen.findByText("No leaders assigned yet.")).toBeTruthy();
+    expect(screen.queryByText("Leader")).toBeNull();
+  });
+
+  it("opens mail to a leader from their row", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
+    get.mockResolvedValue({ data: { data: { season: mySeason } } });
+    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
+
+    renderWithProviders(<SeasonScreen />);
+
+    fireEvent.press(await screen.findByLabelText("Lina Leader, lina@jpc.test, Leader"));
+    expect(openURL).toHaveBeenCalledWith("mailto:lina@jpc.test");
+    openURL.mockRestore();
+  });
+
+  it("titles the screen with the season and says which session it is on", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
+    get.mockResolvedValue({ data: { data: { season: mySeason } } });
+
+    renderWithProviders(<SeasonScreen />);
+
+    expect(await screen.findByText("GBV 2026")).toBeTruthy();
+    expect(screen.getByText("Session 3 of 7")).toBeTruthy();
+    expect(screen.getByText("UPCOMING SESSIONS")).toBeTruthy();
   });
 
   it("shows the no-season state without a request when the student has no active season (R28)", async () => {

@@ -36,10 +36,10 @@ export function SeasonSwitcher({ seasons, selectedId, onSelect }: SeasonSwitcher
             accessibilityState={{ selected }}
             onPress={() => onSelect(s.id)}
             className={cn(
-              "rounded-lg border px-3 py-2",
+              "min-h-[44px] justify-center rounded-full border px-3",
               selected
-                ? "border-brand-teal-500 bg-brand-teal-50 dark:bg-brand-teal-950"
-                : "border-border bg-card",
+                ? "border-ring bg-accent"
+                : "border-control-border bg-surface",
             )}
           >
             <Text

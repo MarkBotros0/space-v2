@@ -3,12 +3,17 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn(), post: jest.fn() },
 }));
+jest.mock("../design/ui/toaster", () => ({
+  toast: { success: jest.fn(), error: jest.fn() },
+  Toaster: () => null,
+}));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41" }),
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -98,7 +103,7 @@ describe("quiz runner", () => {
         ],
       }),
     );
-    expect(await screen.findByText("Saved")).toBeTruthy();
+    expect(await screen.findByText(/Saved/)).toBeTruthy();
   });
 
   it("says so when a save fails instead of pretending it worked", async () => {
@@ -113,7 +118,7 @@ describe("quiz runner", () => {
       jest.advanceTimersByTime(1000);
     });
 
-    expect(await screen.findByText("Not saved")).toBeTruthy();
+    expect(await screen.findByText(/Not saved/)).toBeTruthy();
   });
 
   it("keeps Submit disabled until every question is answered (R59)", async () => {
@@ -136,7 +141,7 @@ describe("quiz runner", () => {
     renderWithProviders(<QuizDetailScreen />);
 
     fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
-    expect(screen.getByText("Answer every question to submit.")).toBeTruthy();
+    expect(screen.getByText(/1 of 2 answered/)).toBeTruthy();
     fireEvent.press(screen.getByText("Submit quiz"));
     // Still incomplete: the essay is blank. The server refuses this too
     // (409 attempt_incomplete) — the disabled control is the courtesy, the
@@ -171,7 +176,8 @@ describe("quiz runner", () => {
 
     renderWithProviders(<QuizDetailScreen />);
 
-    expect(await screen.findByText("5/7")).toBeTruthy(); // "/7" is a nested span
+    // The tile counts up; its accessibility label carries the final figure.
+    expect(await screen.findByLabelText("Score: 5/7")).toBeTruthy();
     expect(screen.getByText("Score")).toBeTruthy();
     expect(screen.getByText("Your quiz has been graded.")).toBeTruthy();
     expect(screen.getByText("Q1")).toBeTruthy();
@@ -180,6 +186,83 @@ describe("quiz runner", () => {
     // R34: the student is told which MCQ was wrong, and never what was right —
     // there is no correctIndex in the contract to render.
     expect(screen.getByText("Incorrect")).toBeTruthy();
+    // Correctness is a word on every question, never colour alone: the essay says it is graded.
+    expect(screen.getAllByText("Graded").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("says in words that an essay is still awaiting grading, and a correct MCQ is Correct", async () => {
+    get.mockResolvedValue({
+      data: {
+        data: detail({
+          attemptId: 900, attemptNumber: 1, status: "SUBMITTED",
+          questions: [
+            { ...mcq, selectedIndex: 1, isCorrect: true, pointsAwarded: 2 },
+            { ...essay, text: "Because." },
+          ],
+        }),
+      },
+    });
+
+    renderWithProviders(<QuizDetailScreen />);
+
+    expect(await screen.findByText("Correct")).toBeTruthy();
+    expect(screen.getByText("Awaiting grading")).toBeTruthy();
+  });
+
+  it("counts answered questions in the pinned bar's hint", async () => {
+    get.mockResolvedValue({
+      data: { data: detail({ attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS" }) },
+    });
+    patch.mockResolvedValue({ data: { data: { saved: 1 } } });
+
+    renderWithProviders(<QuizDetailScreen />);
+
+    expect(await screen.findByText(/^0 of 2 answered/)).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Answer 1 option 2: Paris"));
+    expect(screen.getByText(/^1 of 2 answered/)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText("Answer 2"), "Because.");
+    expect(screen.getByText(/^2 of 2 answered/)).toBeTruthy();
+    // The bar is pinned in the screen's footer, not among the scrolled questions.
+    expect(screen.getByTestId("save-bar")).toBeTruthy();
+  });
+
+  it("resumes an attempt with its saved answers restored", async () => {
+    get.mockResolvedValue({
+      data: {
+        data: detail({
+          attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
+          questions: [{ ...mcq, selectedIndex: 1 }, { ...essay, text: "Half done." }],
+        }),
+      },
+    });
+
+    renderWithProviders(<QuizDetailScreen />);
+
+    expect(await screen.findByText(/^2 of 2 answered/)).toBeTruthy();
+    expect(
+      screen.getByLabelText("Answer 1 option 2: Paris").props.accessibilityState.selected,
+    ).toBe(true);
+    expect(screen.getByLabelText("Answer 2").props.value).toBe("Half done.");
+  });
+
+  it("confirms the submission with a toast, not an inline note", async () => {
+    get.mockResolvedValue({
+      data: {
+        data: detail({
+          attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
+          questions: [{ ...mcq, selectedIndex: 1 }, { ...essay, text: "Done." }],
+        }),
+      },
+    });
+    post.mockResolvedValue({
+      data: { data: detail({ attemptId: 900, attemptNumber: 1, status: "SUBMITTED" }) },
+    });
+
+    renderWithProviders(<QuizDetailScreen />);
+    fireEvent.press(await screen.findByText("Submit quiz"));
+    fireEvent.press(await screen.findByText("Submit"));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Quiz submitted."));
   });
 
   it("tells a submitted student to wait rather than offering the form again", async () => {

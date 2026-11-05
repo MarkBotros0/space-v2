@@ -1,17 +1,17 @@
 import { useRouter } from "expo-router";
-import { AlertTriangle, ClipboardList, PenLine, Users } from "lucide-react-native";
+import { AlertTriangle, ClipboardList } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AT_RISK_PCT, UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared";
 
 import { FigurePair, SectionCard } from "../../design/dashboard/section-card";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { Eyebrow } from "../../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
 import { NextSessionCard } from "../../design/sessions/next-session-card";
 import { StatCard } from "../../design/students/stat-card";
-import { Badge, EmptyState, ProgressRing, Text } from "../../design/ui";
+import { Badge, EmptyState, ProgressRing, RingCaption, RingValue, Text } from "../../design/ui";
 import { useSeasonStaffDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
@@ -21,7 +21,7 @@ iconWithClassName(AlertTriangle);
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 const NAVY = "text-brand-navy-900 dark:text-foreground";
-const COLUMN = "text-[10px] font-bold uppercase tracking-widest text-muted-foreground";
+const COLUMN = "text-caption font-medium uppercase tracking-wide text-muted-foreground";
 
 type Variant = "ADMIN" | "LEADER";
 
@@ -45,7 +45,6 @@ function StaffSummary({
 }) {
   const isAdmin = variant === "ADMIN";
   const studentsHref = isAdmin ? "/students" : "/groups";
-  const assignmentsHref = isAdmin ? "/assignments" : "/submissions";
   const router = useRouter();
   const { progress, cohort, submissions, quizzes } = data;
   const mean = cohort.meanAttendancePct;
@@ -54,7 +53,7 @@ function StaffSummary({
 
   return (
     <>
-      <View className="rounded-2xl border border-border bg-card p-5" style={shadowStyle("soft")}>
+      <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
         <View className="flex-row items-center gap-5">
           <ProgressRing
             value={mean ?? 0}
@@ -64,10 +63,8 @@ function StaffSummary({
                 : "No attendance yet"
             }
           >
-            <Text className={`text-2xl font-black ${NAVY}`}>
-              {mean !== null ? `${mean}%` : "—"}
-            </Text>
-            <Eyebrow className="mt-1">attendance</Eyebrow>
+            <RingValue>{mean !== null ? `${mean}%` : "—"}</RingValue>
+            <RingCaption>attendance</RingCaption>
           </ProgressRing>
           <View className="min-w-0 flex-1">
             <Eyebrow tone="teal">{isAdmin ? "Current season" : data.season.title}</Eyebrow>
@@ -111,14 +108,14 @@ function StaffSummary({
       {isAdmin ? null : <UpcomingEventsCard query={events} />}
 
       <SectionCard
-        icon={Users}
+        icon={NAV_ICONS.students}
         title={isAdmin ? "Students at risk" : "Your students at risk"}
         onViewAll={() => router.push(studentsHref)}
       >
         {cohort.atRisk.length === 0 ? (
           <View className="px-4 py-6">
             <EmptyState
-              icon={Users}
+              icon={NAV_ICONS.students}
               title="Nobody at risk"
               description={`No student has attendance or submissions below ${AT_RISK_PCT}%.`}
             />
@@ -156,7 +153,7 @@ function StaffSummary({
                   {r.attendanceTotal > 0 ? (
                     <Text className="text-xs font-bold text-error-600 dark:text-error-400">{`${r.attendancePct}%`}</Text>
                   ) : null}
-                  <Badge variant="warning" textClassName="text-[10px]">
+                  <Badge variant="warning">
                     {`${r.submissionsCompleted}/${r.submissionsExpected} submitted`}
                   </Badge>
                 </View>
@@ -169,7 +166,17 @@ function StaffSummary({
       <SectionCard
         icon={ClipboardList}
         title="Assignments"
-        onViewAll={() => router.push(assignmentsHref)}
+        onViewAll={() =>
+          // The figures below count this season only, so the leader's queue
+          // opens on the same season — otherwise "3 pending" lands on a
+          // cross-season list showing a different number.
+          isAdmin
+            ? router.push("/assignments")
+            : router.push({
+                pathname: "/submissions",
+                params: { seasonId: String(data.season.id) },
+              })
+        }
       >
         <FigurePair
           items={[
@@ -190,7 +197,7 @@ function StaffSummary({
 
       {quizzes.total > 0 || quizzes.drafts > 0 ? (
         <SectionCard
-          icon={PenLine}
+          icon={NAV_ICONS.quizzes}
           title={isAdmin ? "Quizzes" : "Quiz corrections"}
           onViewAll={() => router.push("/quizzes")}
         >
@@ -217,7 +224,7 @@ function StaffSummary({
       ) : null}
 
       {cohort.atRiskTotal > 0 ? (
-        <View className="flex-row items-start gap-3 rounded-2xl border border-error-200 bg-error-50 p-4 dark:border-error-900 dark:bg-error-950">
+        <View className="flex-row items-start gap-3 rounded-group border border-error-200 bg-error-50 p-4 dark:border-error-900 dark:bg-error-950">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-error-500" />
           <View className="min-w-0 flex-1">
             <Text className="text-xs font-bold text-error-800 dark:text-error-200">
@@ -259,7 +266,7 @@ function StaffDashboard({ variant }: { variant: Variant }) {
   ) : null;
 
   return (
-    <ShellFrame refreshing={dash.isRefetching || events.isRefetching} onRefresh={refresh}>
+    <ShellFrame home refreshing={dash.isRefetching || events.isRefetching} onRefresh={refresh}>
       <View className="flex-col gap-4">
         {body ??
           (dash.data ? <StaffSummary data={dash.data} events={events} variant={variant} /> : null)}
@@ -271,4 +278,3 @@ function StaffDashboard({ variant }: { variant: Variant }) {
 }
 
 export const AdminDashboard = () => <StaffDashboard variant="ADMIN" />;
-export const LeaderDashboard = () => <StaffDashboard variant="LEADER" />;

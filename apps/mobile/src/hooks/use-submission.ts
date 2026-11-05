@@ -90,8 +90,46 @@ export function useReviewSubmission(publicId: string) {
       return reviewSubmissionResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.submissions.detail(publicId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.submissions.queues() });
+      // Read before invalidating: the detail names the student and assignment
+      // whose other screens this verdict changes.
+      const detail = queryClient.getQueryData<SubmissionDetail>(
+        queryKeys.submissions.detail(publicId),
+      );
+      for (const queryKey of reviewInvalidations(publicId, detail)) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
     },
   });
+}
+
+/**
+ * Every cache a verdict makes stale: the submission and the queues, the
+ * student's submissions tab and engagement score, and the assignment's detail
+ * and tracker (both show per-student status). Without the detail in cache the
+ * student and assignment are unknown, so their subtrees are invalidated whole.
+ */
+export function reviewInvalidations(
+  publicId: string,
+  detail: Pick<SubmissionDetail, "studentUserId" | "assignmentId"> | undefined,
+): readonly (readonly unknown[])[] {
+  const common = [
+    queryKeys.submissions.detail(publicId),
+    queryKeys.submissions.queues(),
+    // Both the staff read and the student's own "self" arm sit under student(id).
+    detail ? queryKeys.engagement.student(detail.studentUserId) : queryKeys.engagement.all,
+  ];
+  if (!detail) {
+    return [
+      ...common,
+      queryKeys.students.details(),
+      queryKeys.assignments.details(),
+      queryKeys.assignments.trackers(),
+    ];
+  }
+  return [
+    ...common,
+    queryKeys.students.submissions(detail.studentUserId),
+    queryKeys.assignments.detail(detail.assignmentId),
+    queryKeys.assignments.tracker(detail.assignmentId),
+  ];
 }

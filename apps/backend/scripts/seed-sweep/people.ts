@@ -61,9 +61,10 @@ export async function seedPeople() {
   });
   await db.groupLeader.create({ data: { groupId: group.id, userId: leader.id } });
   for (const s of [student, classmate]) {
-    await db.groupStudent.create({ data: { groupId: group.id, studentUserId: s.id } });
+    await db.groupStudent.create({ data: { groupId: group.id, seasonId: season.id, studentUserId: s.id } });
     await db.seasonEnrollment.create({
-      data: { studentUserId: s.id, seasonId: season.id, groupId: group.id, status: "ACTIVE" },
+      // Joined at the season start, so the reports trend counts them for its past sessions.
+      data: { studentUserId: s.id, seasonId: season.id, groupId: group.id, status: "ACTIVE", enrolledAt: fromToday(-30) },
     });
     await db.studentProfile.create({
       data: { userId: s.id, activeSeasonId: season.id, university: "Cairo University", year: "3" },
@@ -74,6 +75,7 @@ export async function seedPeople() {
       studentUserId: alumni.id,
       seasonId: pastSeason.id,
       status: "COMPLETED",
+      enrolledAt: fromToday(-500),
       completedAt: fromToday(-380),
     },
   });

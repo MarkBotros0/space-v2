@@ -15,19 +15,11 @@ import {
   sessionWriteFields,
   type SessionFormValues,
 } from "../../../../src/components/SessionForm";
-import { FormActions, FormErrorBox } from "../../../../src/design/forms/form-parts";
-import { PageTitle } from "../../../../src/design/layout/page-title";
+import { FormErrorBox } from "../../../../src/design/forms/form-parts";
+import { FormScreen } from "../../../../src/design/layout/form-screen";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../../src/design/layout/shell-frame";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  EmptyState,
-  Text,
-} from "../../../../src/design/ui";
+import { Screen } from "../../../../src/design/layout/screen";
+import { Button, EmptyState, Text } from "../../../../src/design/ui";
 import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
 import {
   useDeleteSession,
@@ -86,6 +78,7 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
   const [scope, setScope] = useState<RecurrenceScope>("one");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
   const [needsForce, setNeedsForce] = useState(false);
 
@@ -110,16 +103,21 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
       return;
     }
     setArmed(false);
-    setMessage(null);
+    setDeleteMessage(null);
     remove.mutate(
       { scope, force },
       {
-        onSuccess: () =>
-          router.replace({ pathname: "/seasons/[code]", params: { code: detail.seasonCode } }),
+        // The deleted session's detail sits under this edit, and the season
+        // may not be on the stack at all (opened from the calendar): pop to
+        // the tabs, then show the season, so Back never lands on the deleted session.
+        onSuccess: () => {
+          router.dismissAll();
+          router.push({ pathname: "/seasons/[code]", params: { code: detail.seasonCode } });
+        },
         onError: (err) => {
           // Plan 3 refuses to destroy attendance/video progress without force (C12).
           if (apiErrorCode(err) === "has_student_records") setNeedsForce(true);
-          setMessage(apiErrorMessage(err, "Couldn't delete."));
+          setDeleteMessage(apiErrorMessage(err, "Couldn't delete."));
         },
       },
     );
@@ -136,40 +134,37 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
         : "Delete sessions";
 
   return (
-    <View className="flex-col gap-4">
-      <Card>
-        <CardContent className="pt-6">
-          <View className="flex-col gap-4">
-            <SessionFields values={values} onChange={setValues} errors={errors} />
-            {isSeries ? (
-              <>
-                <ScopeSelector
-                  value={scope}
-                  onChange={(s) => {
-                    setScope(s);
-                    setArmed(false);
-                    setNeedsForce(false);
-                  }}
-                />
-                <SeriesImpact sessionId={detail.id} scope={scope} />
-              </>
-            ) : null}
-            <FormErrorBox message={message} />
-            <FormActions
-              submitLabel="Save changes"
-              pending={update.isPending}
-              onSubmit={save}
-              onCancel={() => router.back()}
+    <FormScreen
+      title="Edit session"
+      subtitle={`Update ${detail.title}.`}
+      saveLabel="Save changes"
+      saving={update.isPending}
+      saveHint={
+        message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
+      }
+      onSave={save}
+    >
+      <View className="flex-col gap-4">
+        <SessionFields values={values} onChange={setValues} errors={errors} />
+        {isSeries ? (
+          <>
+            <ScopeSelector
+              value={scope}
+              onChange={(s) => {
+                setScope(s);
+                setArmed(false);
+                setNeedsForce(false);
+              }}
             />
-          </View>
-        </CardContent>
-      </Card>
-      {/* V2-ONLY: v1 deletes sessions from its session page console. */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Delete</CardTitle>
-        </CardHeader>
-        <CardContent>
+            <SeriesImpact sessionId={detail.id} scope={scope} />
+          </>
+        ) : null}
+        {/* V2-ONLY: v1 deletes sessions from its session page console. */}
+        <View className="flex-col gap-3">
+          <Text variant="headline" accessibilityRole="header">
+            Delete
+          </Text>
+          <FormErrorBox message={deleteMessage} />
           <Button
             variant="destructive"
             className="self-start"
@@ -178,9 +173,9 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
           >
             {deleteTitle}
           </Button>
-        </CardContent>
-      </Card>
-    </View>
+        </View>
+      </View>
+    </FormScreen>
   );
 }
 
@@ -188,27 +183,19 @@ export default function EditSessionScreen() {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
   const id = parsePositiveInt(raw);
   const detail = useSessionDetail(id);
+  const shell = (child: ReactNode) => <Screen title="Edit session">{child}</Screen>;
 
-  let body: ReactNode;
   if (id === null)
-    body = <EmptyState title="Not found" description="That session doesn't exist." />;
-  else if (detail.isPending) body = <RouteSkeleton />;
-  else if (detail.isError) body = <RouteError onRetry={() => void detail.refetch()} />;
-  else if (!detail.data.canManageCheckIn)
-    // canManageCheckIn IS isAdminOfSeason (Plan 4) — the same gate PATCH/DELETE enforce.
-    body = (
+    return shell(<EmptyState title="Not found" description="That session doesn't exist." />);
+  if (detail.isPending) return shell(<RouteSkeleton />);
+  if (detail.isError) return shell(<RouteError onRetry={() => void detail.refetch()} />);
+  // canManageCheckIn IS isAdminOfSeason (Plan 4) — the same gate PATCH/DELETE enforce.
+  if (!detail.data.canManageCheckIn)
+    return shell(
       <EmptyState
         title="Not available"
         description="Only this season's admins can edit its sessions."
-      />
+      />,
     );
-  else
-    body = (
-      <View className="flex-col gap-4">
-        <PageTitle title="Edit session" subtitle={`Update ${detail.data.title}.`} />
-        <EditSessionForm key={detail.data.id} detail={detail.data} />
-      </View>
-    );
-
-  return <ShellFrame>{body}</ShellFrame>;
+  return <EditSessionForm key={detail.data.id} detail={detail.data} />;
 }

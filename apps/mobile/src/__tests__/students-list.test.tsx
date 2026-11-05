@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { ScrollView, StyleSheet } from "react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
@@ -12,7 +13,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import StudentsScreen from "../../app/(app)/students/index";
+import StudentsScreen from "../../app/(app)/(tabs)/students/index";
 import AlumniScreen from "../../app/(app)/students/alumni";
 import DroppedScreen from "../../app/(app)/students/dropped";
 
@@ -69,6 +70,7 @@ describe("StudentsScreen (active)", () => {
     expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText(/Spring 2099/)).toBeTruthy();
     expect(screen.getByText("1 student in your seasons")).toBeTruthy();
+    expect(screen.getByText("Cairo University · 3rd · Spring 2099 · Group A")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=active");
   });
 
@@ -77,7 +79,7 @@ describe("StudentsScreen (active)", () => {
     get.mockResolvedValue(page([activeRow]));
 
     renderWithProviders(<StudentsScreen />);
-    fireEvent.press(await screen.findByText("Sara Student"));
+    fireEvent.press(await screen.findByLabelText(/^Sara Student, /));
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/student/[id]",
@@ -108,6 +110,59 @@ describe("StudentsScreen (active)", () => {
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&q=sara"),
     );
+    // Committed at once: the pending debounce is cancelled, so one request.
+    await new Promise((r) => setTimeout(r, 400));
+    expect(get.mock.calls.filter(([u]) => String(u).includes("q=sara"))).toHaveLength(1);
+  });
+
+  it("searches 300ms after typing stops, as one request", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue(page([activeRow]));
+    renderWithProviders(<StudentsScreen />);
+    await screen.findByText("Sara Student");
+
+    jest.useFakeTimers();
+    try {
+      const input = screen.getByLabelText("Search students");
+      fireEvent.changeText(input, "sa");
+      await act(async () => { jest.advanceTimersByTime(200); });
+      fireEvent.changeText(input, "sara");
+      await act(async () => { jest.advanceTimersByTime(200); });
+      expect(get.mock.calls.some(([u]) => String(u).includes("q="))).toBe(false);
+      await act(async () => { jest.advanceTimersByTime(100); });
+      const searched = get.mock.calls.filter(([u]) => String(u).includes("q="));
+      expect(searched).toEqual([["/api/v1/students?status=active&q=sara"]]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("pads the list's bottom by the shell's inset (the tab bar is present)", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue(page([activeRow]));
+    renderWithProviders(<StudentsScreen />);
+    await screen.findByText("Sara Student");
+    const style = StyleSheet.flatten(
+      screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
+    );
+    expect(style.paddingBottom).toBeGreaterThanOrEqual(96);
+  });
+
+  it("links to Alumni and Dropped by role, as before", async () => {
+    get.mockResolvedValue(page([activeRow]));
+    useSessionStore.setState(superSession);
+    const { unmount } = renderWithProviders(<StudentsScreen />);
+    fireEvent.press(await screen.findByLabelText("Alumni"));
+    fireEvent.press(screen.getByLabelText("Dropped students"));
+    expect(mockPush).toHaveBeenCalledWith("/students/alumni");
+    expect(mockPush).toHaveBeenCalledWith("/students/dropped");
+    unmount();
+
+    useSessionStore.setState(mentorSession);
+    renderWithProviders(<StudentsScreen />);
+    await screen.findByText("Sara Student");
+    expect(screen.getByLabelText("Alumni")).toBeTruthy();
+    expect(screen.queryByLabelText("Dropped students")).toBeNull();
   });
 
   it("loads the next page through the cursor", async () => {
@@ -136,7 +191,7 @@ describe("AlumniScreen", () => {
 
     renderWithProviders(<AlumniScreen />);
 
-    expect(await screen.findByText("2024")).toBeTruthy();
+    expect(await screen.findByLabelText(/Class of 2024/)).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=alumni");
   });
 });
@@ -175,6 +230,7 @@ describe("DroppedScreen", () => {
     // The same student twice — enrollment-keyed, never collapsed by user id.
     expect(await screen.findAllByText("Dina Dropped")).toHaveLength(2);
     expect(screen.getByText(/Moved away/)).toBeTruthy();
+    expect(screen.getByText(/Dropped from Fall 2099/)).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=dropped");
   });
 
@@ -217,26 +273,27 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     });
   }
 
-  it("sends groupId, sort and dir to the list endpoint", async () => {
+  it("applies group, sort and direction from the filter sheet, immediately per pick", async () => {
     useSessionStore.setState(superSession);
     serve();
     renderWithProviders(<StudentsScreen />);
     await screen.findByText("Sara Student");
 
-    fireEvent.press(screen.getByLabelText("Group"));
-    fireEvent.press(await screen.findByRole("menuitem", { name: "Group A · Spring 2099" }));
+    fireEvent.press(screen.getByLabelText("Filter"));
+    fireEvent.press(await screen.findByLabelText(/^Group A/));
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=3"));
 
-    fireEvent.press(screen.getByLabelText("Group"));
-    fireEvent.press(screen.getByRole("menuitem", { name: "Unassigned" }));
+    fireEvent.press(screen.getByLabelText("Unassigned"));
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none"));
 
-    fireEvent.press(screen.getByLabelText("Sort by"));
-    fireEvent.press(screen.getByRole("menuitem", { name: "Sort: University" }));
-    fireEvent.press(screen.getByLabelText("Toggle sort direction"));
+    fireEvent.press(screen.getByLabelText("University"));
+    fireEvent.press(screen.getByRole("tab", { name: "Z to A" }));
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none&sort=university&dir=desc"),
     );
+    // The chip counts the filters in force: a group and a sort.
+    fireEvent.press(screen.getByText("Done"));
+    expect(screen.getByLabelText("Filter, 2 active")).toBeTruthy();
   });
 
   it("offers no filter on the dropped list, whose rows are enrollments", async () => {
@@ -244,6 +301,6 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     serve();
     renderWithProviders(<DroppedScreen />);
     await waitFor(() => expect(get).toHaveBeenCalled());
-    expect(screen.queryByLabelText("Group")).toBeNull();
+    expect(screen.queryByLabelText(/^Filter/)).toBeNull();
   });
 });

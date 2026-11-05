@@ -1,4 +1,8 @@
-/** Port of v1 src/components/ui/confirm-dialog.tsx — same props and copy. Native differences: none beyond Modal's. */
+/**
+ * Confirm dialog: v1's props and copy on the redesign Modal, with the
+ * redesign Button variants (secondary cancel; primary or destructive confirm,
+ * stacked confirm-first, full width).
+ */
 import type { ReactNode } from "react";
 
 import { Button } from "./button";
@@ -33,10 +37,10 @@ function ConfirmDialog({
           {description ? <ModalDescription>{description}</ModalDescription> : null}
         </ModalHeader>
         <ModalFooter>
-          <Button variant="outline" onPress={() => onOpenChange(false)} disabled={pending}>
+          <Button variant="secondary" onPress={() => onOpenChange(false)} disabled={pending}>
             {cancelLabel}
           </Button>
-          <Button variant={destructive ? "destructive" : "default"} onPress={() => void onConfirm()} disabled={pending}>
+          <Button variant={destructive ? "destructive" : "primary"} onPress={() => void onConfirm()} disabled={pending}>
             {pending ? "Working…" : confirmLabel}
           </Button>
         </ModalFooter>

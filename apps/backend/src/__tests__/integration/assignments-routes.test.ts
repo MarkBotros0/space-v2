@@ -84,8 +84,8 @@ beforeAll(async () => {
 
   // A student who has since moved on. Their SeasonEnrollment for *this* season
   // still records Group B — the historic, per-season fact — while their single
-  // GroupStudent row points at a group in a later season, because that table is
-  // unique on studentUserId across the whole database.
+  // GroupStudent row points at a group in a later season, and they have no
+  // GroupStudent row for this one.
   //
   // This is the divergence ruling C9 exists for, and the fixtures above cannot
   // expose it: they keep both tables in agreement, so a GroupStudent-based
@@ -97,7 +97,7 @@ beforeAll(async () => {
   });
   const moved = await createTestUser("moved", "STUDENT");
   movedUserId = moved.id;
-  await db.groupStudent.create({ data: { groupId: laterGroup.id, studentUserId: moved.id } });
+  await db.groupStudent.create({ data: { groupId: laterGroup.id, seasonId: laterSeason.id, studentUserId: moved.id } });
   await db.seasonEnrollment.create({
     data: { seasonId, studentUserId: moved.id, groupId: groupBId, status: "ACTIVE" },
   });
@@ -164,6 +164,7 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
         id: allGroupsAssignmentId,
         title: "Open To All",
         dueAt: expect.any(String),
+        dueOrgDay: "2099-04-01",
         isOverdue: false,
         status: "PENDING",
         reviewedAt: null,
@@ -333,6 +334,9 @@ describe("GET /api/v1/assignments/:id/tracker", () => {
     const pairs = rows.map((r) => `${r.groupName}/${r.name}`);
     // Name-only order would put "Test moved" first and "Test student" last.
     expect(pairs).toEqual(["Group A/Test student", "Group B/Test moved", "Group B/Test other"]);
+    // "Test student" holds a DRAFT here (seeded above). A draft exists only for
+    // its author, so staff see that student as PENDING with nothing to open.
+    expect(res.body.data.rows[0]).toMatchObject({ status: "PENDING", submissionPublicId: null });
   });
 
   it("narrows the roster to a leader's own groups", async () => {

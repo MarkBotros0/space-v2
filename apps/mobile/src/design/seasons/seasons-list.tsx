@@ -1,38 +1,29 @@
 /**
- * Port of v1 src/components/seasons/seasons-list.tsx: seasons grouped by
- * program (A–Z, newest year first), each group a heading with a "{n} year(s)"
- * outline badge over a DataTable. The phone DataTable shows the first column
- * as the primary cell, so the year link leads; v1's Groups column is absent
- * (the list contract carries no group count — gap note).
+ * Seasons grouped by program (A-Z, newest year first): one GroupedList per
+ * program, a row per season with its code and dates beneath the title, its
+ * status as a chip and a chevron that opens it. Editing a season lives on the
+ * season detail ("Edit season"), not on the row.
  */
 import type { SeasonListItem } from "@space/shared";
-import { Calendar as CalendarIcon, Pencil } from "lucide-react-native";
+import { Calendar as CalendarIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 
 import { formatSeasonDay } from "../../lib/format";
-import { iconWithClassName } from "../lib/icon";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { DataTable, type DataTableColumn } from "../ui/data-table";
+import { joinMeta } from "../../lib/join-meta";
 import { EmptyState } from "../ui/empty-state";
-import { Text } from "../ui/text";
-import { SeasonStatusBadge } from "./season-status-badge";
-
-iconWithClassName(Pencil);
+import { GroupedList, ListRow } from "../ui/grouped-list";
+import { StatusChip, statusChip } from "../ui/status-chip";
 
 export function SeasonsList({
   rows,
   onOpen,
-  onEdit,
   emptyTitle = "No seasons yet",
   emptyDescription = "Create your first season to get started.",
   emptyAction,
 }: {
   rows: SeasonListItem[];
   onOpen: (row: SeasonListItem) => void;
-  /** v1 getEditHref: a pencil action per row (SUPER). */
-  onEdit?: (row: SeasonListItem) => void;
   emptyAction?: ReactNode;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -47,55 +38,6 @@ export function SeasonsList({
       />
     );
   }
-
-  const columns: DataTableColumn<SeasonListItem>[] = [
-    {
-      key: "year",
-      header: "Year",
-      cell: (row) => (
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={`Open ${row.title}`}
-          onPress={() => onOpen(row)}
-        >
-          <Text className="font-medium text-foreground">{String(row.year)}</Text>
-        </Pressable>
-      ),
-    },
-    {
-      key: "code",
-      header: "Code",
-      cell: (row) => <Text className="font-mono text-xs">{row.code}</Text>,
-    },
-    { key: "status", header: "Status", cell: (row) => <SeasonStatusBadge status={row.status} /> },
-    {
-      key: "dates",
-      header: "Dates",
-      cell: (row) => (
-        <Text className="text-xs text-muted-foreground">
-          {`${formatSeasonDay(row.startDate)} – ${formatSeasonDay(row.endDate)}`}
-        </Text>
-      ),
-    },
-    ...(onEdit
-      ? [
-          {
-            key: "actions",
-            header: "",
-            cell: (row: SeasonListItem) => (
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                accessibilityLabel={`Edit ${row.title}`}
-                onPress={() => onEdit(row)}
-              >
-                <Pencil size={16} className="text-foreground" />
-              </Button>
-            ),
-          } satisfies DataTableColumn<SeasonListItem>,
-        ]
-      : []),
-  ];
 
   const programs = new Map<string, SeasonListItem[]>();
   for (const row of rows) {
@@ -113,15 +55,22 @@ export function SeasonsList({
   return (
     <View className="flex-col gap-6">
       {groups.map((g) => (
-        <View key={g.program} className="flex-col gap-2">
-          <View className="flex-row items-baseline gap-2">
-            <Text accessibilityRole="header" className="text-base font-semibold text-foreground">
-              {g.program}
-            </Text>
-            <Badge variant="outline">{`${g.seasons.length} year${g.seasons.length === 1 ? "" : "s"}`}</Badge>
-          </View>
-          <DataTable columns={columns} rows={g.seasons} rowKey={(r) => r.id} />
-        </View>
+        <GroupedList key={g.program} header={g.program}>
+          {g.seasons.map((row, i) => (
+            <ListRow
+              key={row.id}
+              index={i}
+              title={row.title}
+              subtitle={joinMeta([
+                row.code,
+                `${formatSeasonDay(row.startDate)} – ${formatSeasonDay(row.endDate)}`,
+              ])}
+              trailing={<StatusChip {...statusChip("season", row.status)} />}
+              chevron
+              onPress={() => onOpen(row)}
+            />
+          ))}
+        </GroupedList>
       ))}
     </View>
   );

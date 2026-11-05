@@ -10,10 +10,17 @@ import {
   orgWallTime,
 } from "../lib/org-time";
 import { parseId } from "../lib/parse-id";
-import { eventVisibilityFilter, eventWindowFilter } from "../lib/queries/events";
+import {
+  EVENT_PAGE_ORDER,
+  encodeEventCursor,
+  eventCursorFilter,
+  eventVisibilityFilter,
+  eventWindowFilter,
+} from "../lib/queries/events";
 import { isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
+  EVENT_PAGE_SIZE,
   createJpcEventRequestSchema,
   eventListQuerySchema,
   mergedEventSchema,
@@ -26,8 +33,6 @@ import {
  */
 export const eventsRouter = Router();
 eventsRouter.use(requireAuth);
-
-const DAY_MS = 24 * 3600 * 1000;
 
 const LIST_SELECT = {
   id: true,
@@ -89,23 +94,53 @@ function toDetail(row: ListRow & { description: string | null }, canManage: bool
   };
 }
 
+/** A season an event may be attached to: exists and is not soft-deleted. */
+async function isLiveSeason(seasonId: number): Promise<boolean> {
+  const season = await db.season.findFirst({ where: { id: seasonId, deletedAt: null }, select: { id: true } });
+  return season !== null;
+}
+
 eventsRouter.get("/", async (req, res) => {
   const user = requireUser(req);
   const parsed = eventListQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { from: fromRaw, to: toRaw, upcoming, limit } = parsed.data;
+  const { from: fromRaw, to: toRaw, upcoming, limit, paged, pageSize, cursor } = parsed.data;
 
-  // Spec 15 item 10: v1 returns every event ever created on every calendar
-  // render. The server owns the default window (D-15.5).
-  const now = Date.now();
-  const to = toRaw ? new Date(toRaw) : new Date(now + 365 * DAY_MS);
+  // v1 parity (audit 2026-cutover, v1-parity-classification 15-events R57
+  // REVERT): with no from/to, every visible event, ordered by date — v1's
+  // listJpcEvents had no window and no limit, and a default -30d..+365d window
+  // hid older and far-future events from the SUPER managing them. `from`/`to`
+  // remain optional narrowing; `upcoming` is v1's dashboard-card filter
+  // ((endDate ?? date) >= start of today, org zone) moved server-side.
+  const to = toRaw ? new Date(toRaw) : null;
   const from = upcoming
-    ? orgWallClockToInstant(orgDayKey(new Date(now)), null)
+    ? orgWallClockToInstant(orgDayKey(new Date()), null)
     : fromRaw
       ? new Date(fromRaw)
-      : new Date(now - 30 * DAY_MS);
+      : null;
 
   const where = { AND: [await eventVisibilityFilter(user), eventWindowFilter(from, to)] };
+
+  if (paged) {
+    // Owner decision: the SUPER list pages, newest first. Opt-in — the
+    // calendars read the unpaged form below and need every event.
+    const size = pageSize ?? EVENT_PAGE_SIZE;
+    const [pageRows, total] = await Promise.all([
+      db.jpcEvent.findMany({
+        where: cursor ? { AND: [where, eventCursorFilter(cursor)] } : where,
+        orderBy: EVENT_PAGE_ORDER,
+        take: size + 1,
+        select: LIST_SELECT,
+      }),
+      // The window's total, not the remainder after the cursor.
+      db.jpcEvent.count({ where }),
+    ]);
+    const page = pageRows.slice(0, size);
+    const last = page[page.length - 1];
+    const nextCursor = pageRows.length > size && last ? encodeEventCursor(last) : null;
+    return apiOk(res, { events: page.map(toListItem), total, nextCursor });
+  }
+
   const [rows, total] = await Promise.all([
     db.jpcEvent.findMany({
       where,
@@ -146,7 +181,7 @@ eventsRouter.post("/", async (req, res) => {
   // v1 force-nulls the season whenever visibility is not SEASON (R13); kept,
   // because a detached seasonId on an ALL event is unreachable data.
   const seasonId = body.visibility === "SEASON" ? body.seasonId : null;
-  if (seasonId !== null && !(await db.season.findFirst({ where: { id: seasonId }, select: { id: true } }))) {
+  if (seasonId !== null && !(await isLiveSeason(seasonId))) {
     return apiError(res, "bad_request", "Season not found.", 400);
   }
 
@@ -200,12 +235,15 @@ eventsRouter.patch("/:id", async (req, res) => {
   const m = merged.data;
 
   const seasonId = m.visibility === "SEASON" ? m.seasonId : null;
-  if (seasonId !== null && !(await db.season.findFirst({ where: { id: seasonId }, select: { id: true } }))) {
+  // Only a season being newly attached must be live: an event already on a
+  // season that was deleted afterwards stays editable (title, date, ...)
+  // without first being moved.
+  if (seasonId !== null && seasonId !== row.seasonId && !(await isLiveSeason(seasonId))) {
     return apiError(res, "bad_request", "Season not found.", 400);
   }
 
-  // `createdById` is untouched: it means "who first authored this", and there
-  // is no `updatedById` column to add under C1 (spec 15 R34).
+  // `createdById` is untouched: it means "who first authored this". JpcEvent
+  // has no `updatedById` column, so the last editor is not recorded (spec 15 R34).
   const updated = await db.jpcEvent.update({
     where: { id },
     data: {

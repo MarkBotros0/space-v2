@@ -1,64 +1,79 @@
 import type { NavIconName } from "@space/shared";
 import {
+  Backpack,
   Bell,
+  BookOpen,
   Calendar,
-  CalendarDays,
-  CheckCheck,
+  ChartColumn,
+  CircleUserRound,
   ClipboardList,
-  FileText,
-  Folders,
+  Ellipsis,
   GraduationCap,
   History,
   Home,
+  Inbox,
   LayoutDashboard,
-  MoreHorizontal,
-  Notebook,
-  PenLine,
+  ListChecks,
+  NotebookPen,
   Settings,
-  Sparkles,
-  User,
+  Ticket,
   UserCheck,
+  UserCog,
   UserMinus,
-  Users,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react-native";
 import { cssInterop } from "nativewind";
 
 /**
- * v1 src/components/layout/nav-link.tsx iconMap, verbatim. `attendance` and
- * `notifications` are v2 NavIconNames with no v1 entry (v1 has no such nav
- * destinations); CheckCheck and Bell follow v1's attendance/bell visuals.
+ * The one icon map for navigation destinations. The tab bar (NavLink), the
+ * More page rows and every other place that stands for a destination (card
+ * headers, empty states, quick links) draw from it, so a concept looks the
+ * same wherever it appears. Revised by the owner (2026-11-05; the v1 match is
+ * lifted): each destination gets its own icon that says what it opens (v1
+ * used FileText for both reports and submissions, Folders for groups,
+ * Sparkles for seasons, PenLine for quizzes); GraduationCap is alumni, a
+ * Backpack is students; groups are people (UsersRound) and admin user
+ * management a person with a cog (UserCog), so the two never look alike.
  */
-const ICONS: Record<NavIconName, LucideIcon> = {
+export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   home: Home,
   dashboard: LayoutDashboard,
-  users: Users,
+  users: UserCog,
   calendar: Calendar,
-  events: CalendarDays,
+  events: Ticket,
   assignments: ClipboardList,
-  attendance: CheckCheck,
-  submissions: FileText,
+  attendance: UserCheck,
+  submissions: Inbox,
   history: History,
-  profile: User,
-  reports: FileText,
-  groups: Folders,
-  season: Sparkles,
-  students: GraduationCap,
-  alumni: UserCheck,
+  profile: CircleUserRound,
+  reports: ChartColumn,
+  groups: UsersRound,
+  season: BookOpen,
+  students: Backpack,
+  alumni: GraduationCap,
   dropped: UserMinus,
-  notes: Notebook,
+  notes: NotebookPen,
   notifications: Bell,
-  quizzes: PenLine,
-  more: MoreHorizontal,
+  quizzes: ListChecks,
+  more: Ellipsis,
   settings: Settings,
 };
 
 // Lets `className="text-white/55"` colour the icon, as v1's classes do.
-for (const Icon of Object.values(ICONS)) {
+for (const Icon of Object.values(NAV_ICONS)) {
   cssInterop(Icon, { className: { target: "style", nativeStyleToProp: { color: true } } });
 }
 
-export function NavIcon({ name, size = 20, className }: { name: NavIconName; size?: number; className?: string }) {
-  const Icon = ICONS[name];
+export function NavIcon({
+  name,
+  size = 20,
+  className,
+}: {
+  name: NavIconName;
+  size?: number;
+  className?: string;
+}) {
+  const Icon = NAV_ICONS[name];
   return <Icon size={size} className={className} strokeWidth={2} />;
 }

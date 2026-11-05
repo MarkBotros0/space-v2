@@ -18,7 +18,7 @@ function makeWrapper() {
   );
 }
 
-const notEnrolled = { variant: "STUDENT", season: null, progress: null, nextSession: null, assignments: null };
+const notEnrolled = { variant: "STUDENT", todayOrgDay: "2099-03-01", season: null, progress: null, nextSession: null, assignments: null };
 
 beforeEach(() => jest.clearAllMocks());
 

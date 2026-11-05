@@ -1,45 +1,33 @@
-import { Redirect, Tabs, useSegments } from "expo-router";
+import { isAlumnus } from "@space/shared";
+import { Redirect, Stack, useSegments } from "expo-router";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { NavItem } from "@space/shared";
-import { ALL_NAV_HREFS } from "@space/shared";
 
-import { AppTopBar } from "../../src/design/layout/app-top-bar";
-import { FloatingTabBar } from "../../src/design/layout/floating-tab-bar";
-import { ShellContext } from "../../src/design/layout/shell-context";
+import { ScreenErrorBoundary } from "../../src/design/layout/error-boundary";
+import { TabBarPresenceContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
-import { DIRECTORY_ROUTE_HREFS, routeNameForHref } from "../../src/lib/route-names";
+import { PUSHED_NAV_ROUTE_NAMES } from "../../src/lib/route-names";
+import { TABS_ROUTE, singularTabsRouter } from "../../src/lib/tabs-stack-router";
 import { useSessionStore } from "../../src/store/session";
 
-// Re-exported: tests and older imports read these from the layout.
-export { DIRECTORY_ROUTE_HREFS, routeNameForHref };
+/** A detail screen that throws while rendering shows a retry, not a crashed app. */
+export const ErrorBoundary = ScreenErrorBoundary;
 
 /**
- * The full universe of route files under this group, derived from
- * `ALL_NAV_HREFS` (packages/shared/src/navigation.ts) — the complete href
- * union across every nav's `tabs` + `sidebar`, ALUMNI included. A role
- * gaining a new tab or sidebar entry (with a route file added to match)
- * needs no edit here: this list and role-tabs.test.tsx's route-coverage
- * check both consume that one shared export, so there's nowhere left for
- * the two to independently re-derive the union and drift (ALUMNI is only
- * reachable through `navFor`, not `navByRole`, which is exactly what let
- * this list omit it before `ALL_NAV_HREFS` existed).
- * `Tabs` auto-registers every file in this directory regardless, but this
- * list is also what decides the *order* screens are declared in below,
- * which is what puts "Home" in the middle of a 5-tab bar for a role that
- * has it there.
+ * A cold deep link to a detail screen (`/student/12`, a notification tap)
+ * still gets the tabs underneath it, so Back lands on a tab rather than
+ * leaving the app. The tab it lands on is Home, the tabs' own anchor.
  */
-export const ALL_ROUTE_NAMES: readonly string[] = Array.from(
-  new Set(ALL_NAV_HREFS.map(routeNameForHref)),
-);
+export const unstable_settings = { anchor: "(tabs)" };
 
 /**
  * Detail routes: reachable by navigation, never tabs. They are not in any
- * nav's hrefs, so ALL_ROUTE_NAMES cannot know about them — but `Tabs`
- * auto-registers every file in this directory, and an undeclared screen
- * appears IN the tab bar. Every route file under (app)/ that is not a nav
- * href is listed here; app-layout.test.tsx reads the filesystem and fails if
- * one is missing, and pins that each entry is declared with href: null.
+ * nav's hrefs, so the tabs' ALL_ROUTE_NAMES cannot know about them; they sit
+ * in this directory, outside `(tabs)/`, and push onto this stack above the
+ * tabs. Every route file under (app)/ outside `(tabs)/` is listed here or in
+ * PUSHED_NAV_ROUTE_NAMES (the nav destinations that are a tab for no role,
+ * derived from packages/shared — never listed here);
+ * app-layout-routes.test.tsx reads the filesystem and fails if one is missing.
  * Plans add a detail route by appending to this list — nothing else.
  */
 export const DETAIL_ROUTE_NAMES: readonly string[] = [
@@ -68,25 +56,44 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "students/new",
   "users/new",
   "users/import",
+  "design-catalogue",
   "user/[id]",
   "event/[id]",
+  "attention/sessions",
+  "attention/at-risk",
 ];
 
 /**
- * `(app)/_layout.tsx` — the `Tabs` navigator every authenticated screen
- * plugs into (Decision D1). `Tabs` picks up all route files in this
- * directory automatically, so every screen not in the current role's
- * `tabs` gets `options={{ href: null }}`: reachable by navigation, absent
- * from the bar.
+ * Detail screens slide in from the right and swipe back from anywhere on the
+ * screen. No navigator header: the screen's frame (`Screen`) owns the top
+ * inset, the offline strip and the title (rulings R9, R14).
+ */
+export const DETAIL_SCREEN_OPTIONS = {
+  animation: "slide_from_right",
+  gestureEnabled: true,
+  fullScreenGestureEnabled: true,
+  headerShown: false,
+} as const;
+
+const TABS_SCREEN_OPTIONS = { headerShown: false } as const;
+
+/**
+ * `(app)/_layout.tsx` — the signed-in area: a `Stack` with the tabs
+ * (`(tabs)/_layout.tsx`, the `Tabs` navigator and the pill) at the bottom
+ * and every detail route pushed above them, so Back returns to the screen a
+ * detail was opened from. Groups add no URL segment: `/settings` and
+ * `/student/12` are the same URLs they were when everything was one `Tabs`.
+ *
+ * The anonymous redirect and the alumni guard live here, above both
+ * navigators, so they cover detail routes as well as tabs.
  */
 export default function AppLayout() {
   const status = useSessionStore((s) => s.status);
-  // Selector-call form (ruling P11): `nav` is a stable function, calling it
-  // here (not just selecting it) is what makes this re-render when the
-  // user's role/scopes change. navFor() returns module-level constants, so
-  // Object.is holds across calls with the same inputs and this can't loop.
-  const nav = useSessionStore((s) => s.nav());
-  const isAlumnus = useSessionStore((s) => s.user?.role === "STUDENT" && s.scopes?.graduationYear != null);
+  const alumnus = useSessionStore(
+    (s) =>
+      s.user != null &&
+      isAlumnus({ role: s.user.role, graduationYear: s.scopes?.graduationYear ?? null }),
+  );
   const segments = useSegments();
 
   // The boot gate (Task 6, app/_layout.tsx) has already resolved "idle" and
@@ -96,44 +103,42 @@ export default function AppLayout() {
 
   // v1 role-layout.tsx: an alumnus is kept out of the active-student area and sent
   // to the read-only portal (here: Home). Reaching a student-only destination by
-  // deep link or stale navigation state lands here (REG-81).
-  if (isAlumnus && isBlockedForAlumni(segments)) return <Redirect href="/dashboard" />;
+  // deep link or stale navigation state lands here (REG-81). A tab's segments
+  // carry the "(tabs)" group; isBlockedForAlumni skips groups.
+  if (alumnus && isBlockedForAlumni(segments)) return <Redirect href="/dashboard" />;
 
-  const tabs: NavItem[] = nav?.tabs ?? [];
-  const tabByRouteName = new Map(tabs.map((tab) => [routeNameForHref(tab.href), tab]));
-
-  // Visible tabs first, in the role's tab order (this is what centers
-  // "Home"); every other route follows in any order — hidden screens don't
-  // appear in the bar, so their relative order doesn't matter.
-  const orderedRouteNames = [
-    ...tabs.map((tab) => routeNameForHref(tab.href)),
-    ...ALL_ROUTE_NAMES.filter((name) => !tabByRouteName.has(name)),
-    ...DETAIL_ROUTE_NAMES,
-  ];
-
-  // v1's shell (shell-frame.tsx): the top bar above every screen and the
-  // floating pill tab bar, which renders the role's tabs itself.
+  // The tabs are one navigator (singularTabsRouter): a push to a tab route
+  // from a detail (a link to a list, Home's bell and user menu) returns to
+  // the one Tabs at the bottom, popping the details above it.
+  // The scrim sits beside the Stack so tabs and detail screens both get it.
+  // Detail screens have no pill, so their content only clears the bottom
+  // inset; the tabs layout says otherwise for its own screens (ruling R15).
   return (
-    <ShellContext.Provider value={true}>
+    <>
       <SystemBarScrim />
-      <Tabs
-        screenOptions={{ header: () => <AppTopBar /> }}
-        tabBar={(props) => <FloatingTabBar {...props} items={tabs} />}
-      >
-        {orderedRouteNames.map((name) => {
-          const tab = tabByRouteName.get(name);
-          return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : { href: null }} />;
-        })}
-      </Tabs>
-    </ShellContext.Provider>
+      <TabBarPresenceContext.Provider value={false}>
+        <Stack UNSTABLE_router={singularTabsRouter}>
+          <Stack.Screen name={TABS_ROUTE} options={TABS_SCREEN_OPTIONS} />
+          {DETAIL_ROUTE_NAMES.map((name) => (
+            <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
+          ))}
+          {/* Settings, Notifications, Events, …: opened from More (MENTOR: Profile),
+              so they push like a detail and Back returns there (ruling R19). */}
+          {PUSHED_NAV_ROUTE_NAMES.map((name) => (
+            <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
+          ))}
+        </Stack>
+      </TabBarPresenceContext.Provider>
+    </>
   );
 }
 
 /**
  * Edge-to-edge Android draws the translucent system bar over the page, so
  * page text showed through behind it (3-button nav, seen in the leader sweep).
- * A solid strip the height of the bottom inset, in the shell's page tint,
- * sits under the floating tab bar (whose bottom is that same inset).
+ * A solid strip the height of the bottom inset, in the page background,
+ * under the floating tab bar (whose bottom is that same inset) on a tab, and
+ * under the last content of a detail screen.
  */
 function SystemBarScrim() {
   const { bottom } = useSafeAreaInsets();
@@ -142,7 +147,7 @@ function SystemBarScrim() {
     <View
       pointerEvents="none"
       testID="system-bar-scrim"
-      className="bg-brand-navy-50 dark:bg-background"
+      className="bg-background"
       style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: bottom, zIndex: 5 }}
     />
   );

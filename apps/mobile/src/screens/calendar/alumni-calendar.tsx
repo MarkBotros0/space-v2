@@ -1,19 +1,14 @@
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { CalendarGrid } from "../../components/calendar/CalendarGrid";
-import {
-  DayEntries,
-  Legend,
-  type CalendarContext,
-} from "../../components/calendar/CalendarEntries";
-import { ChoiceChips } from "../../components/ChoiceChips";
+import { Legend, type CalendarContext } from "../../components/calendar/CalendarEntries";
 import { useEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { useSeasonSessions } from "../../hooks/use-sessions";
 import {
-  dayCue,
   deviceTodayKey,
   initialAnchor,
   rangeLabel,
@@ -21,68 +16,23 @@ import {
   type CalendarView,
 } from "../../lib/calendar-grid";
 import { groupCalendarByDay } from "../../lib/day-groups";
-import { formatDayKey } from "../../lib/format";
-import { useSessionStore } from "../../store/session";
-import { useTheme } from "../../theme";
-import { Button, EmptyState, ErrorState, LoadingState, Screen, Text } from "../../ui";
+import { iconWithClassName } from "../../design/lib/icon";
+import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { Screen } from "../../design/layout/screen";
+import { Button } from "../../design/ui/button";
+import { EmptyState } from "../../design/ui/empty-state";
+import { SegmentedControl } from "../../design/ui/segmented-control";
+import { Text } from "../../design/ui/text";
+import { EventDayList, EventDayRows } from "../alumni/event-day-list";
 
-/**
- * Day-grouped sessions and JPC events. Every day, time and order comes from the
- * server's org-clock values (X13) — never a device-zone formatter, which would
- * split an org-midnight event from its day's sessions on a phone west of Cairo.
- * Headings carry v1's "Today" / "in N days" cue (REG-76).
- */
-function CalendarDays({
-  sessions,
-  events,
-  ctx,
-}: {
-  sessions: SessionListItem[];
-  events: JpcEventListItem[];
-  ctx: CalendarContext;
-}) {
-  const theme = useTheme();
-  return (
-    <>
-      <Legend slots={ctx.slots} />
-      {groupCalendarByDay(sessions, events).map((group) => {
-        const cue = dayCue(group.dayKey, ctx.today);
-        return (
-          <View key={group.dayKey} style={{ marginBottom: theme.spacing.md }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-              }}
-            >
-              <Text variant="heading">{formatDayKey(group.dayKey)}</Text>
-              {cue ? (
-                <Text
-                  variant="caption"
-                  color={
-                    group.dayKey === ctx.today
-                      ? theme.colors.success[800]
-                      : theme.colors.brand.teal[800]
-                  }
-                >
-                  {cue}
-                </Text>
-              ) : null}
-            </View>
-            <DayEntries entries={group.entries} ctx={ctx} />
-          </View>
-        );
-      })}
-    </>
-  );
-}
+iconWithClassName(ChevronLeft);
+iconWithClassName(ChevronRight);
 
 const VIEW_OPTIONS = [
   { value: "upcoming", label: "Upcoming" },
   { value: "week", label: "Week" },
   { value: "month", label: "Month" },
-] as const;
+];
 
 interface Source {
   sessions: SessionListItem[];
@@ -91,16 +41,15 @@ interface Source {
 
 /**
  * The Upcoming / Week / Month toggle with its stepper (REG-75) around a
- * pinned season's sessions already in hand. "Today" is the device's date.
+ * pinned season's sessions already in hand. "Today" is the device's date;
+ * every day, time and order comes from the server's org-clock values (X13).
  */
 function CalendarSurface({ source }: { source: Source }) {
-  const role = useSessionStore((s) => s.user?.role ?? null);
-  const isStaff = role !== null && role !== "STUDENT";
   const today = deviceTodayKey();
   const [view, setView] = useState<CalendarView>("upcoming");
   const [anchor, setAnchor] = useState(() => initialAnchor(source.sessions, today));
 
-  const ctx: CalendarContext = { today, isStaff, slots: null };
+  const ctx: CalendarContext = { today, isStaff: false, slots: null };
 
   const step = (dir: 1 | -1) => {
     if (view !== "upcoming") setAnchor((a) => stepAnchor(view, a, dir));
@@ -113,60 +62,53 @@ function CalendarSurface({ source }: { source: Source }) {
     body =
       sessions.length === 0 && events.length === 0 ? (
         <EmptyState
+          icon={CalendarIcon}
           title="Nothing coming up"
-          message="You're all caught up. Switch to Month to review past sessions."
+          description="You're all caught up. Switch to Month to review past sessions."
         />
       ) : (
-        <CalendarDays sessions={sessions} events={events} ctx={ctx} />
+        <EventDayList groups={groupCalendarByDay(sessions, events)} today={today} />
       );
   } else {
     body = (
       <>
-        <Legend slots={ctx.slots} />
         <CalendarGrid
           view={view}
           anchor={anchor}
           sessions={source.sessions}
           events={source.events}
           ctx={ctx}
+          renderEntries={(entries) => <EventDayRows entries={entries} today={today} />}
         />
+        {view === "month" ? (
+          <View className="mt-6">
+            <Legend slots={ctx.slots} />
+          </View>
+        ) : null}
       </>
     );
   }
 
   return (
     <>
-      <ChoiceChips label="Calendar view" options={VIEW_OPTIONS} value={view} onChange={setView} />
+      <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={(v) => setView(v as CalendarView)} />
       {view !== "upcoming" ? (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginVertical: 8,
-          }}
-        >
-          <Button
-            title="‹"
-            variant="ghost"
-            accessibilityLabel={`Previous ${view}`}
-            onPress={() => step(-1)}
-          />
-          <Text variant="heading">{rangeLabel(view, anchor)}</Text>
-          <Button
-            title="›"
-            variant="ghost"
-            accessibilityLabel={`Next ${view}`}
-            onPress={() => step(1)}
-          />
+        <View className="mt-3 flex-row items-center justify-between">
+          <Button variant="plain" size="icon" accessibilityLabel={`Previous ${view}`} onPress={() => step(-1)}>
+            <ChevronLeft size={16} className="text-foreground" />
+          </Button>
+          <Text variant="headline">{rangeLabel(view, anchor)}</Text>
+          <Button variant="plain" size="icon" accessibilityLabel={`Next ${view}`} onPress={() => step(1)}>
+            <ChevronRight size={16} className="text-foreground" />
+          </Button>
         </View>
       ) : null}
-      {body}
+      <View className="mt-4">{body}</View>
     </>
   );
 }
 
-/** ALUMNI — Plan 4's pinned-season calendar, pre-rebuild UI until batch 6 (v1 alumni get an Events page). */
+/** ALUMNI — the pinned season's sessions and the org's events, on grouped rows. */
 export function AlumniCalendar() {
   const current = useCurrentSeasonId();
   const sessions = useSeasonSessions(current.seasonId);
@@ -180,41 +122,46 @@ export function AlumniCalendar() {
   const eventRows = events.data ?? [];
 
   let body: ReactNode;
-  if (current.isPending) body = <LoadingState />;
-  else if (current.isError)
-    body = <ErrorState message="Couldn't load your seasons." onRetry={current.refetch} />;
+  if (current.isPending) body = <RouteSkeleton />;
+  else if (current.isError) body = <RouteError onRetry={current.refetch} />;
   else if (current.seasonId === null)
+    // No season: events are all there is, so (unlike the with-season path) their
+    // loading and failure are the screen's own states.
     body =
-      eventRows.length === 0 ? (
+      eventRows.length === 0 && events.isPending ? (
+        <RouteSkeleton />
+      ) : eventRows.length === 0 && events.isError ? (
+        <RouteError onRetry={() => void events.refetch()} />
+      ) : eventRows.length === 0 ? (
         <EmptyState
+          icon={CalendarIcon}
           title="No season to show"
-          message="You aren't in a season right now, so there are no sessions on your calendar."
+          description="You aren't in a season right now, so there are no sessions on your calendar."
         />
       ) : (
         <CalendarSurface source={{ sessions: [], events: eventRows }} />
       );
-  else if (sessions.isPending) body = <LoadingState />;
-  else if (sessions.isError)
+  else if (sessions.isPending) body = <RouteSkeleton />;
+  else if (sessions.isError) body = <RouteError onRetry={() => void sessions.refetch()} />;
+  else if (sessions.data.length === 0 && eventRows.length === 0)
     body = (
-      <ErrorState
-        message="Couldn't load sessions. Check your connection and try again."
-        onRetry={() => void sessions.refetch()}
+      <EmptyState
+        icon={CalendarIcon}
+        title="No sessions"
+        description="This season doesn't have any sessions yet."
       />
     );
-  else if (sessions.data.length === 0 && eventRows.length === 0)
-    body = <EmptyState title="No sessions" message="This season doesn't have any sessions yet." />;
   else body = <CalendarSurface source={{ sessions: sessions.data, events: eventRows }} />;
 
   return (
     <Screen
-      edges={["top", "left", "right"]}
-      scroll
+      title="Events"
       onRefresh={() => {
         void events.refetch();
         if (current.seasonId !== null) void sessions.refetch();
         else current.refetch();
       }}
-      refreshing={sessions.isRefetching}
+      refreshing={sessions.isRefetching || events.isRefetching}
     >
       {body}
     </Screen>

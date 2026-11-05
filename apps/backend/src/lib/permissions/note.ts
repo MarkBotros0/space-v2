@@ -103,10 +103,9 @@ export async function canEditNote(user: SessionUser, noteId: number): Promise<bo
  *    page. "Why can't I write a note about this student I can clearly see" is
  *    a support question with a code answer.
  * 2. LEADER resolves through SeasonEnrollment.groupId, not GroupStudent
- *    (ruling C9, R49/R50). GroupStudent.studentUserId is @unique across the
- *    whole database, so it holds one group per student for all time; asking it
- *    here follows a student's CURRENT group across every season and refuses
- *    any student who has no GroupStudent row at all.
+ *    (ruling C9, R49/R50). v1 asked GroupStudent, which (while it was global,
+ *    before Plan 18 M1) followed a student's CURRENT group across every
+ *    season and refused any student who had no GroupStudent row at all.
  *
  * SUPER and MENTOR write about any student with no scope check — v1's R46,
  * kept. It matches canReadAllStudents, and spec §4 item 7 records the
