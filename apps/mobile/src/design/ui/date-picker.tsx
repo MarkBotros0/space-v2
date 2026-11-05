@@ -105,7 +105,13 @@ function DatePicker({
           </View>
           <View className="flex-row gap-0.5">
             {WEEKDAYS.map((w) => (
-              <Text key={w} className="w-9 py-1 text-center text-caption font-medium uppercase tracking-wide text-muted-foreground">
+              <Text
+                key={w}
+                testID="date-picker-weekday"
+                numberOfLines={1}
+                maxFontSizeMultiplier={1}
+                className="w-9 py-1 text-center text-caption font-medium uppercase text-muted-foreground"
+              >
                 {w}
               </Text>
             ))}

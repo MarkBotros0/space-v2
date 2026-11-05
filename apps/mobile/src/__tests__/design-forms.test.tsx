@@ -130,6 +130,17 @@ it("DatePicker shows v1's PPP format and picks a day", () => {
   expect(onChange.mock.calls[0][0].getDate()).toBe(20);
 });
 
+it("DatePicker weekday headers stay on one line and ignore font scaling (K4)", () => {
+  render(<DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={() => {}} />);
+  fireEvent.press(screen.getByLabelText("Start"));
+  const heads = screen.getAllByTestId("date-picker-weekday");
+  expect(heads).toHaveLength(7);
+  for (const h of heads) {
+    expect(h.props.numberOfLines).toBe(1);
+    expect(h.props.maxFontSizeMultiplier).toBe(1);
+  }
+});
+
 it("TimePicker shows padded hour and minute", () => {
   render(<TimePicker value={{ hour: 9, minute: 5 }} onChange={() => {}} />);
   expect(screen.getByText("09")).toBeTruthy();
