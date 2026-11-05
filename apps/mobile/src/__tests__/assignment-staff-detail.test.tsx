@@ -112,6 +112,8 @@ describe("AssignmentDetailScreen (staff)", () => {
     fireEvent.press(await screen.findByText("Edit"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]/edit", params: { id: "55" } });
 
+    // The destructive tone from the first press, as Delete group has (corner sweep 7).
+    expect(screen.getByText("Delete assignment").props.className).toContain("text-bad");
     fireEvent.press(screen.getByText("Delete assignment"));
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Really delete?"));

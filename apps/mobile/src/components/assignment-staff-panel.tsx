@@ -70,7 +70,7 @@ export function ManageActions({ detail }: { detail: AssignmentDetail }) {
           Edit
         </Button>
         <Button
-          variant={armed ? "destructive" : "ghost"}
+          variant="destructive"
           disabled={remove.isPending}
           onPress={onDelete}
         >
