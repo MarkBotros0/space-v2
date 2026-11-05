@@ -17,15 +17,14 @@
  * parent) and its surface `shrink`s inside it so the ScrollView still scrolls.
  */
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { Platform, Modal as RNModal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Modal as RNModal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from "react-native-gesture-handler";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { DURATION, SPRING, useReducedMotion } from "../motion";
 import { useKeyboardInset } from "../lib/keyboard-inset";
-import { keyboardBottomOffset, useKeyboardBottomOffset } from "../lib/keyboard-offset";
+import { useKeyboardBottomOffset } from "../lib/keyboard-offset";
 import { SaveBarBody, type SaveBarProps } from "../layout/save-bar";
 import { Text } from "./text";
 
@@ -50,9 +49,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   const [mounted, setMounted] = useState(open);
   const [height, setHeight] = useState(0);
   const [barHeight, setBarHeight] = useState(0);
-  const { inset, scrollProps } = useKeyboardInset({ clampToViewport: true });
-  const insets = useSafeAreaInsets();
-  const bottom = keyboardBottomOffset({ os: Platform.OS, keyboard: inset, insetBottom: insets.bottom });
+  const { scrollProps } = useKeyboardInset({ clampToViewport: true });
   const openRef = useRef(open);
   openRef.current = open;
   const translateY = useSharedValue(OFFSCREEN);
