@@ -3,6 +3,10 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn() },
 }));
+jest.mock("../design/ui/toaster", () => ({
+  toast: { success: jest.fn(), error: jest.fn() },
+  Toaster: () => null,
+}));
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
@@ -10,6 +14,7 @@ jest.mock("expo-router", () => ({
 
 import { Keyboard } from "react-native";
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -107,7 +112,7 @@ describe("submission editor", () => {
         text: "better draft",
       }),
     );
-    expect(await screen.findByText("Draft saved.")).toBeTruthy();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Draft saved."));
 
     patch.mockResolvedValue({ data: { data: { saved: true, submitted: true } } });
     fireEvent.press(screen.getByText("Submit"));
@@ -121,7 +126,7 @@ describe("submission editor", () => {
         submit: true,
       }),
     );
-    expect(await screen.findByText("Submitted!")).toBeTruthy();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Submitted!"));
   });
 
   it("backs out of the confirmation without submitting", async () => {
@@ -180,7 +185,9 @@ describe("submission editor", () => {
     renderWithProviders(<AssignmentDetailScreen />);
     fireEvent.press(await screen.findByText("Save draft"));
 
-    expect(await screen.findByText(/Couldn't save/)).toBeTruthy();
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't save. Check your connection and try again."),
+    );
   });
 
   it("explains why attachments are unavailable instead of showing a dead control", async () => {
@@ -256,8 +263,34 @@ describe("submission editor: the fixed save bar", () => {
     renderWithProviders(<AssignmentDetailScreen />);
     fireEvent.changeText(await screen.findByLabelText("Your response"), "my words");
     fireEvent.press(bar().getByText("Save draft"));
-    expect(await screen.findByText("This assignment is closed.")).toBeTruthy();
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("This assignment is closed."));
     expect(screen.getByDisplayValue("my words")).toBeTruthy();
+  });
+
+  it("a failed submit reads as an error, closes the dialog and keeps the text", async () => {
+    withStatus("DRAFT");
+    patch.mockRejectedValue(new Error("Network Error"));
+    renderWithProviders(<AssignmentDetailScreen />);
+    await screen.findByLabelText("Your response");
+    fireEvent.press(bar().getByText("Submit"));
+    fireEvent.press(await screen.findByText("Yes, submit"));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't submit. Check your connection and try again."),
+    );
+    await waitFor(() => expect(screen.queryByText("Submit your work?")).toBeNull());
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue("first draft")).toBeTruthy();
+  });
+
+  it("nothing about a save stays on the page to go stale after further typing", async () => {
+    withStatus("DRAFT");
+    patch.mockResolvedValue({ data: { data: { saved: true, submitted: false } } });
+    renderWithProviders(<AssignmentDetailScreen />);
+    const input = await screen.findByLabelText("Your response");
+    fireEvent.press(bar().getByText("Save draft"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Draft saved."));
+    fireEvent.changeText(input, "more words");
+    expect(screen.queryByText("Draft saved.")).toBeNull();
   });
 
   it("the server's overdue flag says Past due whatever the device clock", async () => {

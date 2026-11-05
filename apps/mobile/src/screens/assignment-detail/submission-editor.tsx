@@ -25,16 +25,16 @@ import {
 } from "../../hooks/use-submission";
 import { apiErrorMessage } from "../../lib/api-error";
 import { formatDistanceOnly } from "../../lib/format";
+import { reportOutcome } from "../../lib/outcome";
 
 iconWithClassName(FileIcon);
 
 const HINT = "A saved draft is private to you and is not sent to your leader until you submit.";
 
-type Tone = "bad" | "warn" | "ok" | "info";
+type Tone = "bad" | "warn" | "info";
 const CALLOUT: Record<Tone, string> = {
   bad: "bg-bad-soft text-bad",
   warn: "bg-warn-soft text-warn",
-  ok: "bg-ok-soft text-ok",
   info: "bg-info-soft text-info",
 };
 
@@ -101,7 +101,6 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   const query = useSubmissionDetail(summary?.publicId ?? null);
   const save = useSaveSubmission(summary?.publicId ?? "", detail.id);
   const [text, setText] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const keyboardOpen = useKeyboardHeight() > 0;
 
@@ -132,9 +131,16 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   // v1 student-submission-form.tsx:158 — and the server's 400 empty_submission rule.
   const nothingToSubmit = value.trim() === "" && sub.files.length === 0;
   const run = (submit: boolean) => {
-    setInfo(null);
     save.mutate(submit ? { text: value, submit: true } : { text: value }, {
-      onSuccess: () => setInfo(submit ? "Submitted!" : "Draft saved."),
+      onSuccess: () => reportOutcome("success", submit ? "Submitted!" : "Draft saved."),
+      onError: (err) =>
+        reportOutcome(
+          "error",
+          apiErrorMessage(
+            err,
+            `Couldn't ${submit ? "submit" : "save"}. Check your connection and try again.`,
+          ),
+        ),
       onSettled: () => setConfirming(false),
     });
   };
@@ -164,12 +170,6 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
         </View>
       </View>
       <FilesGroup detail={detail} sub={sub} />
-      {save.isError ? (
-        <Callout tone="bad">
-          {apiErrorMessage(save.error, "Couldn't save. Check your connection and try again.")}
-        </Callout>
-      ) : null}
-      {info && !save.isPending ? <Callout tone="ok">{info}</Callout> : null}
       {sub.feedback ? (
         <View className="gap-2">
           <ListSectionHeader>Leader feedback</ListSectionHeader>

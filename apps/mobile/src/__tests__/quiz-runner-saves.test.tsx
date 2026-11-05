@@ -7,11 +7,16 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn(), post: jest.fn() },
 }));
+jest.mock("../design/ui/toaster", () => ({
+  toast: { success: jest.fn(), error: jest.fn() },
+  Toaster: () => null,
+}));
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -20,6 +25,7 @@ import QuizDetailScreen from "../../app/(app)/quiz/[id]/index";
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
+const post = apiClient.post as jest.Mock;
 
 const mcq = {
   id: 100, order: 0, type: "MCQ" as const, prompt: "Capital of France?", points: 2,
@@ -158,5 +164,61 @@ describe("quiz runner saves", () => {
     const paris = await screen.findByLabelText("Answer 1 option 2: Paris");
     expect(paris.props.accessibilityState).toMatchObject({ selected: true });
     expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  describe("when saving or submitting fails", () => {
+    const answered = () =>
+      detail({
+        attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
+        questions: [{ ...mcq, selectedIndex: 1 }, { ...essay, text: "An answer." }],
+      });
+
+    it("a failed submit is an error toast, with the form still there to try again", async () => {
+      get.mockResolvedValue({ data: { data: answered() } });
+      post.mockRejectedValue(new Error("offline"));
+      renderWithProviders(<QuizDetailScreen />);
+      fireEvent.press(await screen.findByText("Submit quiz"));
+      fireEvent.press(await screen.findByText("Submit"));
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't submit the quiz."));
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Submit quiz" }).props.accessibilityState?.disabled).toBeFalsy();
+      // The bar's hint stays a status line; the error isn't dressed as one.
+      expect(screen.getByText("2 of 2 answered")).toBeTruthy();
+    });
+
+    it("answers that won't save stop the submit, and say why", async () => {
+      get.mockResolvedValue({ data: { data: answered() } });
+      patch.mockRejectedValue(new Error("offline"));
+      renderWithProviders(<QuizDetailScreen />);
+      fireEvent.changeText(await screen.findByLabelText("Answer 2"), "A better answer.");
+      fireEvent.press(screen.getByText("Submit quiz"));
+      fireEvent.press(await screen.findByText("Submit"));
+
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith(
+          "Couldn't save your answers, so the quiz wasn't submitted.",
+        ),
+      );
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it("Retry save sends what failed, and clears the error", async () => {
+      get.mockResolvedValue({ data: { data: inProgress() } });
+      patch.mockRejectedValueOnce(new Error("offline"));
+      patch.mockResolvedValue({ data: { data: { saved: 1 } } });
+      renderWithProviders(<QuizDetailScreen />);
+      fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
+      act(() => { jest.advanceTimersByTime(1000); });
+      expect(await screen.findByText(/Not saved/)).toBeTruthy();
+
+      fireEvent.press(screen.getByText("Retry save"));
+      await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));
+      expect(patch).toHaveBeenLastCalledWith("/api/v1/quizzes/41/attempt", {
+        answers: [{ questionId: 100, selectedIndex: 1, text: null }],
+      });
+      expect(await screen.findByText(/· Saved/)).toBeTruthy();
+      expect(screen.queryByText("Retry save")).toBeNull();
+    });
   });
 });

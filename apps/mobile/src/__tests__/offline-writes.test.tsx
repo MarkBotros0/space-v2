@@ -4,6 +4,10 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn(), post: jest.fn() },
 }));
+jest.mock("../design/ui/toaster", () => ({
+  toast: { success: jest.fn(), error: jest.fn() },
+  Toaster: () => null,
+}));
 jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 jest.mock("react-native-qrcode-svg", () => "QRCode");
 jest.mock("expo-router", () => ({
@@ -13,6 +17,7 @@ jest.mock("expo-router", () => ({
 }));
 
 import { StudentCheckInCard } from "../components/check-in/StudentCheckInCard";
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -118,6 +123,7 @@ describe("offline writes fail at once instead of hanging", () => {
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByText("Submit your work?")).toBeNull());
     expect(screen.queryByText("Working…")).toBeNull();
+    expect(toast.error).toHaveBeenCalledWith("Couldn't submit. Check your connection and try again.");
     expect(screen.getByDisplayValue("my essay")).toBeTruthy();
   });
 
@@ -130,6 +136,9 @@ describe("offline writes fail at once instead of hanging", () => {
 
     fireEvent.press(screen.getByText("Save draft"));
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't save. Check your connection and try again."),
+    );
     expect(await screen.findByText("Save draft")).toBeTruthy();
     expect(screen.queryByText("Saving…")).toBeNull();
   });
