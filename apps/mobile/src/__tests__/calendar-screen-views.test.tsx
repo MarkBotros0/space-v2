@@ -212,3 +212,22 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     expect(screen.getByText("Mar 9 – 15")).toBeTruthy();
   });
 });
+
+describe("calendar — Week chips", () => {
+  it("keeps a chip title on one line so a word never breaks mid-way", async () => {
+    useSessionStore.setState(studentSession);
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/events")
+        ? Promise.resolve({ data: { data: { events: [], total: 0 } } })
+        : Promise.resolve({
+            data: {
+              data: { sessions: [session(2, "Opening night", "2099-03-12T18:00:00.000Z", "2099-03-12")] },
+            },
+          }),
+    );
+    renderWithProviders(<CalendarScreen />);
+    await screen.findByText("Opening night");
+    fireEvent.press(screen.getByLabelText("Week"));
+    expect(screen.getByText("Opening night").props.numberOfLines).toBe(1);
+  });
+});

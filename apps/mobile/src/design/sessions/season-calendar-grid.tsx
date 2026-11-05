@@ -45,7 +45,8 @@ export function CalendarGrid({
 } & Handlers) {
   const keys = visibleKeys(view, anchor);
   // A month cell is ~40dp wide on a phone: a title breaks mid-word, so month shows colour bars and
-  // the title lives in the accessibility label; Week and Upcoming carry the text.
+  // the title lives in the accessibility label. Week carries the text on one line with an ellipsis:
+  // two lines break the word mid-way in a ~45dp cell ("Ope / ning ni..."); Upcoming has the full title.
   const compact = view === "month";
   const weeks: string[][] = [];
   for (let i = 0; i < keys.length; i += 7) weeks.push(keys.slice(i, i + 7));
@@ -117,7 +118,7 @@ export function CalendarGrid({
                           <View className={cn("h-2 rounded-sm", tone.bar ?? tone.box)} />
                         ) : (
                           <Text
-                            numberOfLines={2}
+                            numberOfLines={1}
                             maxFontSizeMultiplier={1}
                             className={cn("text-[10px] font-medium leading-tight", tone.text)}
                           >
@@ -155,7 +156,7 @@ export function CalendarGrid({
                           />
                         ) : (
                           <Text
-                            numberOfLines={2}
+                            numberOfLines={1}
                             maxFontSizeMultiplier={1}
                             className={cn(
                               "shrink text-[10px] leading-tight",
