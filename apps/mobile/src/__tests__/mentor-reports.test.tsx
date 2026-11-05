@@ -79,6 +79,28 @@ describe("MentorReports", () => {
     });
   });
 
+  it("Show more retries a failed first page", async () => {
+    mockEndpoints();
+    const base = get.getMockImplementation()!;
+    let failed = false;
+    get.mockImplementation((url: string) => {
+      if (url.startsWith("/api/v1/reports/engagement/students") && !failed) {
+        failed = true;
+        return Promise.reject(new Error("offline"));
+      }
+      return base(url);
+    });
+    renderWithProviders(<MentorReports />);
+    const rows = () =>
+      get.mock.calls.filter((c) => String(c[0]).includes("/reports/engagement/students")).length;
+    fireEvent.press(await screen.findByText("Show more"));
+    await waitFor(() => expect(rows()).toBe(1));
+    // The page failed: the button must ask again rather than do nothing.
+    await waitFor(() => expect(failed).toBe(true));
+    fireEvent.press(await screen.findByText("Show more"));
+    await waitFor(() => expect(rows()).toBe(2));
+  });
+
   it("pull-to-refresh refreshes the summary, and the Show-more rows once they're open", async () => {
     mockEndpoints();
     const view = renderWithProviders(<MentorReports />);

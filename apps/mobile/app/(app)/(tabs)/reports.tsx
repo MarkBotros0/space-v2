@@ -19,7 +19,7 @@ function StaffReports() {
   const canView = role === "SUPER" || role === "ADMIN";
   const isSuper = role === "SUPER";
 
-  const { seasonId, setSeasonId, permitted, summary, atRiskRows, showMore, refresh } =
+  const { seasonId, setSeasonId, permitted, summary, atRiskRows, showMore, refresh, refreshing } =
     useReportsScope(canView);
 
   if (!canView) {
@@ -46,7 +46,7 @@ function StaffReports() {
         ) : undefined
       }
       onRefresh={refresh}
-      refreshing={summary.isRefetching}
+      refreshing={refreshing}
     >
       <View className="flex-col gap-4">
         {summary.isPending ? (

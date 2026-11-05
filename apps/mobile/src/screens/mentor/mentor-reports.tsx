@@ -13,7 +13,7 @@ import { useReportsScope } from "../reports/use-reports-scope";
  * roll-up and never the workbook export (those are admin/super, plan 04).
  */
 export function MentorReports() {
-  const { seasonId, setSeasonId, permitted, summary, atRiskRows, showMore, refresh } =
+  const { seasonId, setSeasonId, permitted, summary, atRiskRows, showMore, refresh, refreshing } =
     useReportsScope(true);
 
   return (
@@ -21,7 +21,7 @@ export function MentorReports() {
       title="Reports"
       subtitle={summary.data ? `Scoped to ${summary.data.scope.label}.` : undefined}
       onRefresh={refresh}
-      refreshing={summary.isRefetching}
+      refreshing={refreshing}
     >
       <View className="flex-col gap-4">
         {summary.isPending ? (
