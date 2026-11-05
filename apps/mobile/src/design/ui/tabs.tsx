@@ -7,7 +7,7 @@
  * Plans 02–05 move the call sites to SegmentedControl and delete this file.
  */
 import { createContext, type ReactNode, useContext, useState } from "react";
-import { Pressable, View } from "react-native";
+import { type LayoutChangeEvent, Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { usePressScale } from "../motion";
@@ -51,7 +51,19 @@ function TabsList({ className, children }: { className?: string; children?: Reac
   );
 }
 
-function TabsTrigger({ value, className, children, disabled }: { value: string; className?: string; children?: ReactNode; disabled?: boolean }) {
+function TabsTrigger({
+  value,
+  className,
+  children,
+  disabled,
+  onLayout,
+}: {
+  value: string;
+  className?: string;
+  children?: ReactNode;
+  disabled?: boolean;
+  onLayout?: (e: LayoutChangeEvent) => void;
+}) {
   const ctx = useContext(TabsContext);
   const press = usePressScale();
   const selected = ctx.value === value;
@@ -60,6 +72,7 @@ function TabsTrigger({ value, className, children, disabled }: { value: string; 
       accessibilityRole="tab"
       accessibilityState={{ selected, disabled: !!disabled }}
       disabled={disabled}
+      onLayout={onLayout}
       onPress={() => ctx.setValue(value)}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}

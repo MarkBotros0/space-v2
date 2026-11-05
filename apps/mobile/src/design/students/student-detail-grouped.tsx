@@ -7,8 +7,8 @@
  * sideways (five tabs overflow 360dp). `staffTabs={false}` is a student reading
  * their own record: Profile and Seasons only, as the staff endpoints refuse them.
  */
-import { useState, type ComponentProps, type ReactNode } from "react";
-import { Linking, ScrollView, View } from "react-native";
+import { useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { type LayoutChangeEvent, Linking, ScrollView, type ScrollViewInstance, View } from "react-native";
 
 import { isNoSeasonError, useStudentEngagement } from "../../hooks/use-engagement";
 import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
@@ -25,6 +25,21 @@ import {
   GroupedSubmissionsTab,
 } from "./grouped-tabs";
 import { NoteSheet } from "./note-sheet";
+
+/** Breathing room kept beside a tab that was scrolled into view. */
+const TAB_PAD = 16;
+
+/**
+ * Where to scroll a tab row so the tab at [x, x + w) is fully visible, or null
+ * when it already is. Moves the least that works; the clipped neighbour that
+ * hints at more tabs (F8) stays wherever it already was.
+ */
+export function tabScrollTarget(x: number, w: number, offset: number, viewport: number): number | null {
+  if (viewport <= 0) return null;
+  if (x - TAB_PAD < offset) return Math.max(0, x - TAB_PAD);
+  if (x + w + TAB_PAD > offset + viewport) return x + w + TAB_PAD - viewport;
+  return null;
+}
 
 type Tab = "profile" | "seasons" | "attendance" | "submissions" | "notes";
 
@@ -74,7 +89,18 @@ export function StudentDetailGrouped({
   const [opened, setOpened] = useState<Set<Tab>>(() => new Set<Tab>(["profile"]));
   // Always mounted, so a dismissed note keeps its text.
   const [noteOpen, setNoteOpen] = useState(false);
+  const tabScroll = useRef<ScrollViewInstance>(null);
+  const tabX = useRef<Partial<Record<Tab, { x: number; w: number }>>>({});
+  const tabOffset = useRef(0);
+  const tabViewport = useRef(0);
+  const trackTab = (t: Tab) => (e: LayoutChangeEvent) => {
+    const { x, width } = e.nativeEvent.layout;
+    tabX.current[t] = { x, w: width };
+  };
   const open = (t: string) => {
+    const at = tabX.current[t as Tab];
+    const to = at ? tabScrollTarget(at.x, at.w, tabOffset.current, tabViewport.current) : null;
+    if (to !== null) tabScroll.current?.scrollTo({ x: to, animated: true });
     setTab(t as Tab);
     setOpened((prev) => new Set(prev).add(t as Tab));
   };
@@ -113,13 +139,24 @@ export function StudentDetailGrouped({
       {staffTabs ? <EngagementTiles studentId={student.id} /> : null}
 
       <Tabs value={tab} onValueChange={open}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          ref={tabScroll}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            tabOffset.current = e.nativeEvent.contentOffset.x;
+          }}
+          onLayout={(e) => {
+            tabViewport.current = e.nativeEvent.layout.width;
+          }}
+        >
           <TabsList>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="seasons">Seasons</TabsTrigger>
-            {staffTabs ? <TabsTrigger value="attendance">Attendance</TabsTrigger> : null}
-            {staffTabs ? <TabsTrigger value="submissions">Submissions</TabsTrigger> : null}
-            {staffTabs ? <TabsTrigger value="notes">Notes</TabsTrigger> : null}
+            <TabsTrigger value="profile" onLayout={trackTab("profile")}>Profile</TabsTrigger>
+            <TabsTrigger value="seasons" onLayout={trackTab("seasons")}>Seasons</TabsTrigger>
+            {staffTabs ? <TabsTrigger value="attendance" onLayout={trackTab("attendance")}>Attendance</TabsTrigger> : null}
+            {staffTabs ? <TabsTrigger value="submissions" onLayout={trackTab("submissions")}>Submissions</TabsTrigger> : null}
+            {staffTabs ? <TabsTrigger value="notes" onLayout={trackTab("notes")}>Notes</TabsTrigger> : null}
           </TabsList>
         </ScrollView>
         <TabsContent value="profile">
