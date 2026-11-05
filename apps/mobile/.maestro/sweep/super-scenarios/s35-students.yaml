@@ -71,8 +71,8 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-09-student-detail-bottom
-# Tabs. The tab bar has a Seasons tab too: the student's Seasons tab is the one above the
-# Profile tab's first field.
+# Sections. The tab bar has a Seasons tab too: the student's Seasons chip is the one above the
+# Profile section's first field.
 - scrollUntilVisible:
     element: 'University'
     direction: UP
@@ -91,20 +91,23 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-12-student-tab-submissions
-# Swiped from the middle tab: at the right edge a gesture-nav swipe is the system Back.
-- swipe:
-    from:
-      text: 'Attendance'
-    direction: LEFT
-- swipe:
-    from:
-      text: 'Attendance'
-    direction: LEFT
-- tapOn: 'Notes'
+# The sections are wrapping chips: Notes is on screen, no swiping.
+- tapOn:
+    text: 'Notes'
+    above: 'University'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-13-student-tab-notes
-# The note form: Add note is never tapped.
+# The note is written in a sheet behind "Write a note": Add note is never tapped.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Write a note'
+- extendedWaitUntil:
+    visible: 'Flag for admin follow-up'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
 - runFlow:
     file: ../_tap.yaml
     env:
@@ -119,14 +122,15 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-15-student-note-typed
-# Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
+# The sheet is dismissed with Back; Add note is never tapped.
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 5000
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-16-student-notes-bottom
-# Graduate opens a sheet: its year is typed, then Cancel (never Graduate student).
+# Graduate opens a sheet: its year is typed, then Back (never Graduate student).
 # Still on the same student's page: scroll back up to the actions.
 - scrollUntilVisible:
     element: 'Graduate'
@@ -150,7 +154,8 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-19-graduate-year-typed
-- tapOn: 'Cancel'
+# The sheet has no Cancel: Back dismisses it.
+- pressKey: back
 - waitForAnimationToEnd:
     timeout: 5000
 # Delete student is never tapped.
