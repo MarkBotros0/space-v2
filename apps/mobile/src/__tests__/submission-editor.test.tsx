@@ -290,6 +290,9 @@ describe("submission editor: the fixed save bar", () => {
     await screen.findByLabelText("Your response");
     expect(bar().getByText(/not sent to your leader/)).toBeTruthy();
 
+    // The keyboard arms Screen's scroll-into-view retries; on real timers one fires
+    // after the environment is gone and fails whichever suite runs next.
+    jest.useFakeTimers();
     act(() => {
       for (const cb of listeners.keyboardWillShow ?? listeners.keyboardDidShow ?? []) {
         cb({ endCoordinates: { height: 300, screenY: 400 } });
@@ -301,6 +304,8 @@ describe("submission editor: the fixed save bar", () => {
     const draft = bar().getByRole("button", { name: "Save draft" });
     expect(submit).toBeTruthy();
     expect(draft).toBeTruthy();
+    screen.unmount();
+    jest.useRealTimers();
     spy.mockRestore();
   });
 
