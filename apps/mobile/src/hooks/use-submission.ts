@@ -19,6 +19,9 @@ import { queryKeys } from "../lib/query-keys";
 export function useEnsureSubmission(assignmentId: number) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Offline, fail now into the screen's own copy rather than pause with the
+    // button spinning; see useSaveSubmission.
+    networkMode: "always",
     mutationFn: async () => {
       const res = await apiClient.put(`/api/v1/submissions/by-assignment/${assignmentId}`);
       return ensureSubmissionResponseSchema.parse(res.data.data);
@@ -59,6 +62,9 @@ export function useSaveSubmission(publicId: string, assignmentId: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
+    // Paused offline, the confirm dialog sits on "Working…" with Cancel disabled
+    // and the submit goes out on reconnect. Fail now and let the student retry.
+    networkMode: "always",
     mutationFn: async (input: { text: string; submit?: boolean }) => {
       // `submit` is omitted (not sent as false) on a plain save — the wire
       // contract treats absence and false identically, and omitting keeps the

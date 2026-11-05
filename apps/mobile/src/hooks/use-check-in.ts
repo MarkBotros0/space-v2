@@ -56,6 +56,10 @@ export function useRegenerateCheckIn(id: number) {
 export function useCheckIn(): UseMutationResult<CheckInResponse, Error, string> {
   const queryClient = useQueryClient();
   return useMutation({
+    // Never paused for the network: offline it fails now, into the refusal copy,
+    // instead of hanging and then sending the check-in on reconnect, when the
+    // student may have left the room.
+    networkMode: "always",
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
     mutationFn: async (token: string) => {
