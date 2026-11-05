@@ -87,6 +87,7 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
       <ListRow
         key="activation"
         title={inactive ? "Reactivate" : "Deactivate"}
+        destructive={!inactive}
         subtitle={
           inactive ? "They will be able to sign in again." : "They will be signed out everywhere."
         }

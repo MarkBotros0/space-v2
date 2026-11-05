@@ -156,6 +156,7 @@ describe("UserDetailScreen", () => {
     fireEvent.press(screen.getByText("Save changes"));
     expect(patch).not.toHaveBeenCalled();
     expect(screen.getByText("Reactivate")).toBeTruthy();
+    expect(screen.getByText("Reactivate").props.className ?? "").not.toContain("text-bad");
   });
 
   it.each([
@@ -227,7 +228,8 @@ describe("UserDetailScreen", () => {
       buttons?.find((b) => b.style !== "cancel")?.onPress?.();
     });
     renderWithProviders(<UserDetailScreen />);
-    fireEvent.press(await screen.findByText("Deactivate"));
+    expect((await screen.findByText("Deactivate")).props.className).toContain("text-bad");
+    fireEvent.press(screen.getByText("Deactivate"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/users/7/deactivate"));
     alertSpy.mockRestore();
   });
