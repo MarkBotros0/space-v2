@@ -285,7 +285,7 @@ export function AssignmentForm({
                 checked={v.acceptsFiles}
                 onCheckedChange={(on) => set("acceptsFiles", on)}
               />
-              <Text className="text-sm">Accept file uploads from students</Text>
+              <Text className="min-w-0 flex-1 text-sm">Accept file uploads from students</Text>
             </View>
             {v.acceptsFiles ? (
               <View className="mt-1 flex-col gap-4">
