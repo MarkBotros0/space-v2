@@ -1,75 +1,12 @@
-import { useRouter } from "expo-router";
 import { Flag } from "lucide-react-native";
-import { Pressable, View } from "react-native";
-import type { AuthoredNote, NoteVisibility } from "@space/shared";
+import { View } from "react-native";
 
-import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { Badge, Button, Card, CardContent, EmptyState, Text } from "../../../src/design/ui";
+import { Screen } from "../../../src/design/layout/screen";
+import { Button, EmptyState, GroupedList } from "../../../src/design/ui";
 import { flattenNotePages, useAuthoredNotes } from "../../../src/hooks/use-notes";
-import { formatDate } from "../../../src/lib/format";
+import { NoteRow } from "../../../src/screens/staff-notes/note-row";
 import { useSessionStore } from "../../../src/store/session";
-
-/**
- * The truth about the visibility setting, in the words the API enforces.
- *
- * v1's composer said "Who can read this note (in addition to you and admins)",
- * which was simply false: filterVisibleNotes matches the viewer's role against
- * the setting by EQUALITY, so an admin reads none of the LEADERS notes the
- * schema defaults to and none of the MENTORS notes the mentor composer
- * hard-coded (spec R36, D3). Widening the rule to match the old copy would
- * retroactively expose historic notes; fixing the copy does not.
- */
-const VISIBILITY_LABEL: Record<NoteVisibility, string> = {
-  LEADERS: "Visible to group leaders only",
-  MENTORS: "Visible to mentors only",
-  ADMINS: "Visible to season admins only",
-};
-
-/** v1 app/mentor/notes/page.tsx — one card per note: who, when, season, visibility, then the body. */
-function NoteRow({ item }: { item: AuthoredNote }) {
-  const router = useRouter();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() =>
-        router.push({ pathname: "/student/[id]", params: { id: String(item.student.id) } })
-      }
-    >
-      <Card>
-        <CardContent className="flex-col gap-2 pt-4">
-          <View className="flex-row flex-wrap items-center gap-2">
-            <Text className="text-xs font-medium text-foreground">{item.student.name}</Text>
-            <Text className="text-xs text-muted-foreground">·</Text>
-            <Text className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</Text>
-            {item.seasonTitle ? (
-              <>
-                <Text className="text-xs text-muted-foreground">·</Text>
-                <Text className="text-xs text-muted-foreground">{item.seasonTitle}</Text>
-              </>
-            ) : null}
-            {item.followUpFlagged ? (
-              <Badge variant="warning">
-                Follow-up flagged
-              </Badge>
-            ) : null}
-          </View>
-          <Text className="text-sm">{item.body}</Text>
-          <View className="flex-row flex-wrap items-center gap-2">
-            {/* Its own node, so the label is findable and read out on its own. */}
-            <Badge variant="outline">
-              {VISIBILITY_LABEL[item.visibility]}
-            </Badge>
-            {/* Server-derived (ruling C4): the client never compares timestamps. */}
-            {item.edited ? <Text className="text-xs text-muted-foreground">Edited</Text> : null}
-          </View>
-        </CardContent>
-      </Card>
-    </Pressable>
-  );
-}
 
 export default function NotesScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
@@ -88,23 +25,25 @@ export default function NotesScreen() {
   } = useAuthoredNotes(canAuthor);
   const notes = flattenNotePages(data?.pages);
 
+  // Plan 05 replaces this with a mentor-specific branch; until then one list
+  // serves every authoring role, so there is no `role === "MENTOR"` return here.
   if (!canAuthor) {
     return (
-      <ShellFrame>
+      <Screen>
         <EmptyState
           icon={Flag}
           title="Notes"
           description="This screen is for staff who write pastoral notes."
         />
-      </ShellFrame>
+      </Screen>
     );
   }
 
   if (isPending || isError) {
     return (
-      <ShellFrame>
+      <Screen title="My notes">
         {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
-      </ShellFrame>
+      </Screen>
     );
   }
 
@@ -112,36 +51,37 @@ export default function NotesScreen() {
   const count = `${notes.length}${hasNextPage ? "+" : ""}`;
 
   return (
-    <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
-      <View className="flex-col gap-4">
-        <PageTitle
-          title="My notes"
-          subtitle={`${count} note${notes.length === 1 && !hasNextPage ? "" : "s"} you've authored`}
+    <Screen
+      title="My notes"
+      subtitle={`${count} note${notes.length === 1 && !hasNextPage ? "" : "s"} you've authored`}
+      onRefresh={() => void refetch()}
+      refreshing={isRefetching}
+    >
+      {notes.length === 0 ? (
+        <EmptyState
+          icon={Flag}
+          title="No notes yet"
+          description="Notes you write about a student appear here. Open a student to write one."
         />
-        {notes.length === 0 ? (
-          <EmptyState
-            icon={Flag}
-            title="No notes yet"
-            description="Notes you write about a student appear here. Open a student to write one."
-          />
-        ) : (
-          <View className="flex-col gap-3">
-            {notes.map((item) => (
-              <NoteRow key={item.id} item={item} />
+      ) : (
+        <View className="flex-col gap-4">
+          <GroupedList>
+            {notes.map((item, i) => (
+              <NoteRow key={item.id} item={item} index={i} />
             ))}
-            {hasNextPage ? (
-              <Button
-                variant="outline"
-                className="self-start"
-                disabled={isFetchingNextPage}
-                onPress={() => void fetchNextPage()}
-              >
-                Load more
-              </Button>
-            ) : null}
-          </View>
-        )}
-      </View>
-    </ShellFrame>
+          </GroupedList>
+          {hasNextPage ? (
+            <Button
+              variant="secondary"
+              className="self-center"
+              disabled={isFetchingNextPage}
+              onPress={() => void fetchNextPage()}
+            >
+              Load more
+            </Button>
+          ) : null}
+        </View>
+      )}
+    </Screen>
   );
 }
