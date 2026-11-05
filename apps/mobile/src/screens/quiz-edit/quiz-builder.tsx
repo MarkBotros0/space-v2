@@ -79,15 +79,17 @@ function QuizForm({
     });
   };
 
-  const saveHint = questionOpen
-    ? "Finish or cancel the question above first."
-    : (saveError ??
-      errors.form ??
-      (Object.keys(errors).length > 0
-        ? "Fix the fields marked above."
-        : dirty
-          ? undefined
-          : "Nothing to save yet."));
+  // A failed save stays visible even if a question form is opened afterwards.
+  const saveHint = saveError
+    ? saveError
+    : questionOpen
+      ? "Finish or cancel the question above first."
+      : (errors.form ??
+        (Object.keys(errors).length > 0
+          ? "Fix the fields marked above."
+          : dirty
+            ? undefined
+            : "Nothing to save yet."));
 
   const published = data.publishedAt !== null;
   const count = data.questions.length;

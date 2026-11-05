@@ -129,6 +129,22 @@ describe("quiz builder on the fixed save bar", () => {
     expect(await bar().findByText("Grades exist.")).toBeTruthy();
   });
 
+  it("a failed save stays visible when a question form is opened afterwards (final review M5a)", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    patch.mockRejectedValue(
+      Object.assign(new Error("409"), {
+        isAxiosError: true,
+        response: { status: 409, data: { error: { code: "quiz_has_grades", message: "Grades exist." } } },
+      }),
+    );
+    renderStacked(<QuizEditScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
+    fireEvent.press(bar().getByText("Save changes"));
+    expect(await bar().findByText("Grades exist.")).toBeTruthy();
+    fireEvent.press(screen.getByText("Add question"));
+    expect(bar().getByText("Grades exist.")).toBeTruthy();
+  });
+
   it("with a question editor open, Save sends nothing and says to finish it; once closed the title saves", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
     patch.mockResolvedValue({ data: { data: { updated: true } } });
