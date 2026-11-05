@@ -8,7 +8,9 @@ import { DropEnrollmentSheet } from "../../../../src/components/DropEnrollmentSh
 import { GraduateStudentSheet } from "../../../../src/components/GraduateStudentSheet";
 import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { Screen } from "../../../../src/design/layout/screen";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { StudentDetailGrouped } from "../../../../src/design/students/student-detail-grouped";
 import { StudentDetail as StudentDetailView } from "../../../../src/design/students/student-detail";
 import { Button, EmptyState } from "../../../../src/design/ui";
 import { useDeleteStudent, useStudentDetail } from "../../../../src/hooks/use-students";
@@ -35,20 +37,18 @@ function LeaderStudentDetail({ id }: { id: number }) {
       void queryClient.invalidateQueries({ queryKey: key });
     }
   };
+  if (isPending || isError) {
+    return (
+      <Screen title="Student">
+        {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
+      </Screen>
+    );
+  }
   return (
-    <ShellFrame refreshing={isRefetching} onRefresh={refresh}>
-      {isPending ? (
-        <RouteSkeleton />
-      ) : isError ? (
-        <RouteError onRetry={() => void refetch()} />
-      ) : (
-        <View className="flex-col gap-4">
-          <PageTitle title={data.name} subtitle={`${data.email} · leader view`} />
-          {/* A leader who can open this page can write a note about the student (v1 canWriteNote). */}
-          <StudentDetailView student={data} canWriteNote />
-        </View>
-      )}
-    </ShellFrame>
+    <Screen title={data.name} subtitle={data.email} refreshing={isRefetching} onRefresh={refresh}>
+      {/* A leader who can open this page can write a note about the student (v1 canWriteNote). */}
+      <StudentDetailGrouped student={data} canWriteNote />
+    </Screen>
   );
 }
 

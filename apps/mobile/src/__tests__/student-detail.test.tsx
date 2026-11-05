@@ -227,26 +227,28 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
   }
   const requested = () => get.mock.calls.map(([u]) => u as string);
 
-  it("shows v1's leader header and hero without the fields a leader doesn't receive", async () => {
+  it("shows the leader header and hero without the fields a leader doesn't receive", async () => {
     useSessionStore.setState(leaderSession);
     serveLeader();
     renderWithProviders(<StudentDetailScreen />);
-    expect(await screen.findByText("sara@jpc.test · leader view")).toBeTruthy();
+    expect(await screen.findByText("sara@jpc.test")).toBeTruthy();
+    expect(screen.queryByText(/leader view/)).toBeNull();
     expect(screen.getByText("Email")).toBeTruthy();
     expect(screen.queryByText("Call")).toBeNull();
     expect(screen.queryByText("Phone")).toBeNull();
     expect(screen.queryByText("Date of birth")).toBeNull();
     for (const label of ["University", "Year / faculty", "Gifts / interests"]) expect(screen.getByText(label)).toBeTruthy();
-    expect(await screen.findByText("Engagement (current season)")).toBeTruthy();
-    expect(screen.getByText("75%")).toBeTruthy();
-    expect(screen.getByText("Attendance: 2/4 (50%)")).toBeTruthy();
+    expect(await screen.findByText("Attendance 2/4")).toBeTruthy();
+    expect(screen.getByText("Submissions 2/2")).toBeTruthy();
+    expect(screen.getByLabelText("Score: 75%")).toBeTruthy();
+    expect(screen.queryByText("At risk")).toBeNull();
   });
 
   it("fetches a tab's data only when the tab opens (spec 06 §9)", async () => {
     useSessionStore.setState(leaderSession);
     serveLeader();
     renderWithProviders(<StudentDetailScreen />);
-    expect(await screen.findByText("sara@jpc.test · leader view")).toBeTruthy();
+    expect(await screen.findByText("sara@jpc.test")).toBeTruthy();
     expect(requested().some((u) => u.endsWith("/submissions") || u.endsWith("/attendance") || u.includes("/notes"))).toBe(false);
 
     fireEvent.press(screen.getByText("Submissions"));
@@ -259,22 +261,23 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     expect(await screen.findByText("83% attendance")).toBeTruthy();
   });
 
-  it("writes a note with v1's composer: visibility, follow-up flag, and the empty-note check", async () => {
+  it("writes a note from the sheet: visibility, follow-up flag, and the empty-note check", async () => {
     useSessionStore.setState(leaderSession);
     serveLeader();
     post.mockResolvedValue({ data: { data: { note: { id: 1 } } } });
     renderWithProviders(<StudentDetailScreen />);
     fireEvent.press(await screen.findByText("Notes"));
     expect(await screen.findByText("No notes yet")).toBeTruthy();
+    expect(screen.queryByLabelText("Note")).toBeNull();
 
-    fireEvent.changeText(screen.getByLabelText("Note"), "x");
+    fireEvent.press(screen.getByText("Write a note"));
+    fireEvent.changeText(await screen.findByLabelText("Note"), "x");
     fireEvent.press(screen.getByText("Add note"));
     expect(await screen.findByText("Note can't be empty.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
 
     fireEvent.changeText(screen.getByLabelText("Note"), "Prayed together after the session.");
-    fireEvent.press(screen.getByLabelText("Visible to"));
-    fireEvent.press(await screen.findByText("Admins only"));
+    fireEvent.press(screen.getByRole("tab", { name: "Admins only" }));
     fireEvent.press(screen.getByLabelText("Flag for admin follow-up"));
     fireEvent.press(screen.getByText("Add note"));
     await waitFor(() =>
@@ -286,11 +289,24 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     );
   });
 
+  it("shows an at-risk chip when the engagement says so", async () => {
+    useSessionStore.setState(leaderSession);
+    serveLeader();
+    const orig = get.getMockImplementation()!;
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/students/21/engagement"
+        ? Promise.resolve({ data: { data: { ...engagement, atRisk: true } } })
+        : orig(url),
+    );
+    renderWithProviders(<StudentDetailScreen />);
+    expect(await screen.findByText("At risk")).toBeTruthy();
+  });
+
   it("shows no engagement card when the student has no season (v1)", async () => {
     useSessionStore.setState(leaderSession);
     serveLeader({ engagementError: true });
     renderWithProviders(<StudentDetailScreen />);
-    expect(await screen.findByText("sara@jpc.test · leader view")).toBeTruthy();
+    expect(await screen.findByText("sara@jpc.test")).toBeTruthy();
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement"));
     expect(screen.queryByText("Engagement (current season)")).toBeNull();
   });

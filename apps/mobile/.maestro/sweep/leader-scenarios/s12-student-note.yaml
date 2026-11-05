@@ -1,4 +1,4 @@
-# UI sweep s12 — Student page and note form as a leader. Read-only: nothing is saved, the flow only
+# UI sweep s12 — Student page and note sheet as a leader. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
 ---
@@ -20,7 +20,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
-    visible: '.*leader view'
+    visible: 'student@sweep.jpc.test'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -58,28 +58,40 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s12-05-tab-notes
-# The note form: placeholder text finds the textarea. Add note is never tapped.
+# The note sheet. Its "Visible to" label is not on any tab or the page, so waiting on
+# it means the sheet is up. Add note is never tapped; back closes the sheet unsaved.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Reflections.*'
+      TARGET: 'Write a note'
+- extendedWaitUntil:
+    visible: 'Visible to'
+    timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s12-06-note-kbd
+- takeScreenshot: s12-06-note-sheet
+- tapOn: 'Reflections.*'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s12-07-note-kbd
 - inputText: 'Sweep note, never saved'
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s12-07-note-typed
+- takeScreenshot: s12-08-note-typed
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s12-09-note-dismissed
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s12-08-note-form-scrolled
+- takeScreenshot: s12-10-notes-scrolled
 # Last item has to clear the floating tab bar and the system bar.
 - scroll
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s12-09-student-bottom
+- takeScreenshot: s12-11-student-bottom
