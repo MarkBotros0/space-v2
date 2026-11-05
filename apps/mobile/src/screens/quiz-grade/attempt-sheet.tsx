@@ -38,6 +38,16 @@ export function AttemptSheet({
   const gradeEssays = useGradeEssays(quizId);
   const reopen = useReopenAttempt(quizId);
   const [awards, setAwards] = useState(() => initialAwards(attempt));
+  // The server's awarded points, as a value: a refetch makes new objects, so
+  // identity says nothing. Unchanged keeps the draft across dismiss and reopen;
+  // changed (a save here, or a co-grader's) re-seeds so a later save cannot
+  // overwrite their mark with a stale typed one.
+  const seed = JSON.stringify(Object.entries(initialAwards(attempt)));
+  const [seeded, setSeeded] = useState(seed);
+  if (seed !== seeded) {
+    setSeeded(seed);
+    setAwards(initialAwards(attempt));
+  }
   const [error, setError] = useState<string | null>(null);
   // A failure belongs to the visit that caused it: a reopened sheet starts clean.
   useEffect(() => {

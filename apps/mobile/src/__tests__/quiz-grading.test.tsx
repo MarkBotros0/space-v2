@@ -401,5 +401,35 @@ describe("grading screen — ONLINE", () => {
 
       expect(await screen.findByDisplayValue("3")).toBeTruthy();
     });
+
+    it("re-seeds from the server when the awarded points change after a refetch", async () => {
+      post.mockResolvedValue({ data: { data: attemptsPage.items[0] } });
+      renderStacked(<QuizGradeScreen />);
+      await screen.findByText("Test student");
+
+      openRow("Test student");
+      fireEvent.changeText(await screen.findByLabelText("Marks for Discuss."), "3");
+      // A co-grader's 4 lands before this save's refetch.
+      const coGraded = {
+        ...attemptsPage,
+        items: [{ ...attemptsPage.items[0]!, answers: [
+          attemptsPage.items[0]!.answers[0]!,
+          { ...attemptsPage.items[0]!.answers[1]!, pointsAwarded: 4 },
+        ] }],
+      };
+      get.mockImplementation((url: string) =>
+        url === "/api/v1/quizzes/41"
+          ? Promise.resolve({ data: { data: authoring({ kind: "ONLINE", maxScore: 7,
+              publishedAt: "2099-02-01T00:00:00.000Z" }) } })
+          : Promise.resolve({ data: { data: coGraded } }),
+      );
+      fireEvent.press(screen.getByText("Save marks"));
+      await waitFor(() => expect(post).toHaveBeenCalled());
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Marks saved."));
+
+      openRow("Test student");
+      expect(await screen.findByDisplayValue("4")).toBeTruthy();
+      expect(screen.queryByDisplayValue("3")).toBeNull();
+    });
   });
 });
