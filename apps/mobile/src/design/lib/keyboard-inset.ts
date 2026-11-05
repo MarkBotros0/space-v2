@@ -1,28 +1,23 @@
-import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { Keyboard, type KeyboardEvent, type NativeScrollEvent, type NativeSyntheticEvent, Platform, type ScrollViewInstance, TextInput } from "react-native";
+import { type RefObject, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Dimensions, type NativeScrollEvent, type NativeSyntheticEvent, Platform, type ScrollViewInstance, TextInput } from "react-native";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
+
+import { subscribeKeyboard, useKeyboardHeight } from "./keyboard-events";
+import { keyboardBottomOffset, keyboardTopInWindow } from "./keyboard-offset";
 
 /**
  * Space kept between the focused field and the top of the keyboard. Generous
  * on purpose: on the CI emulator the keyboard's reported top sat about 45dp
  * below where it is drawn, so a 24dp gap left every focused field half hidden
- * (UI sweep run 40, small phones). The scroll range allows it, so extra room
- * costs nothing.
+ * (UI sweep run 40, small phones). The keyboard's top now also comes from
+ * `keyboardBottomOffset` (the nav bar added back, final review I2), which
+ * should account for most of that miss, but the gap stays at 96 until a
+ * 3-button device cell confirms it: extra room only costs scroll range, which
+ * the padding (offset + 16) provides.
  */
 const FIELD_GAP = 96;
 /** Retries after the keyboard opens: the padding below lands a layout pass or two later. */
 const RETRY_MS = [0, 150, 400];
-
-/** Subscribes to the platform's keyboard show/hide events; returns the unsubscribe. */
-function subscribeKeyboard(onShow: (e: KeyboardEvent) => void, onHide: () => void): () => void {
-  const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-  const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-  const show = Keyboard.addListener(showEvent, onShow);
-  const hide = Keyboard.addListener(hideEvent, onHide);
-  return () => {
-    show.remove();
-    hide.remove();
-  };
-}
 
 type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: number) => void) => void };
 
@@ -32,12 +27,15 @@ type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: 
  * resizes the window for the keyboard, so `adjustResize` does nothing, and
  * KeyboardAvoidingView measures its frame relative to its parent, which is
  * wrong under anything drawn above the scroll view. Instead:
- * - `inset` is the keyboard's height while it is open; the caller adds it to
- *   the scroll content's bottom padding so every field and the submit button
- *   below it can be scrolled above the keyboard;
+ * - `inset` is the keyboard's height while it is open, as RN reports it;
+ *   `offset` is how far the keyboard reaches up from the window's bottom
+ *   (`keyboardBottomOffset`: on Android the nav bar under it added back, 0
+ *   when closed). The caller adds `offset` to the scroll content's bottom
+ *   padding so every field and the submit button below it can be scrolled
+ *   above the keyboard;
  * - once the keyboard is open and again when the content has grown by that
- *   padding, the focused input is measured in window coordinates (the space
- *   of the keyboard's `screenY`) and the scroll view moved up by however much
+ *   padding, the focused input is measured in window coordinates against the
+ *   keyboard's top (`keyboardTopInWindow`) and the scroll view moved up by however much
  *   the field overlaps the keyboard. Android scrolls a focused field into view
  *   itself, but the first time it does so before the padding exists, so it
  *   runs out of scroll range short of the keyboard (UI sweep, Oct 2026).
@@ -47,6 +45,7 @@ type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: 
  */
 export function useKeyboardInset(options?: { getOffset?: () => number }): {
   inset: number;
+  offset: number;
   scrollProps: {
     ref: RefObject<ScrollViewInstance | null>;
     onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
@@ -59,6 +58,9 @@ export function useKeyboardInset(options?: { getOffset?: () => number }): {
   const offset = useRef(0);
   const keyboardTop = useRef<number | null>(null);
   const [inset, setInset] = useState(0);
+  const insetBottom = useContext(SafeAreaInsetsContext)?.bottom ?? 0;
+  const insetBottomRef = useRef(insetBottom);
+  insetBottomRef.current = insetBottom;
   const getOffset = useRef(options?.getOffset);
   getOffset.current = options?.getOffset;
 
@@ -77,8 +79,13 @@ export function useKeyboardInset(options?: { getOffset?: () => number }): {
     let timers: ReturnType<typeof setTimeout>[] = [];
     const unsubscribe = subscribeKeyboard(
       (e) => {
-        keyboardTop.current = e.endCoordinates.screenY;
-        setInset(e.endCoordinates.height);
+        const { height, screenY } = e.endCoordinates;
+        keyboardTop.current = keyboardTopInWindow({
+          screenY,
+          windowHeight: Dimensions.get("window").height,
+          offset: keyboardBottomOffset({ os: Platform.OS, keyboard: height, insetBottom: insetBottomRef.current }),
+        });
+        setInset(height);
         timers.forEach(clearTimeout);
         timers = RETRY_MS.map((ms) => setTimeout(ensureVisible, ms));
       },
@@ -99,6 +106,7 @@ export function useKeyboardInset(options?: { getOffset?: () => number }): {
 
   return {
     inset,
+    offset: keyboardBottomOffset({ os: Platform.OS, keyboard: inset, insetBottom, closed: 0 }),
     scrollProps: {
       ref,
       onScroll,
@@ -109,12 +117,4 @@ export function useKeyboardInset(options?: { getOffset?: () => number }): {
   };
 }
 
-/**
- * Just the keyboard's height (0 when closed), for pinned bars that sit above
- * the keyboard rather than inside a scroll view (sheets, save bars).
- */
-export function useKeyboardHeight(): number {
-  const [height, setHeight] = useState(0);
-  useEffect(() => subscribeKeyboard((e) => setHeight(e.endCoordinates.height), () => setHeight(0)), []);
-  return height;
-}
+export { useKeyboardHeight };

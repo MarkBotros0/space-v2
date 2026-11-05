@@ -8,9 +8,13 @@ import { Sheet, SheetSaveBar } from "../design/ui/sheet";
 import { renderWithProviders } from "./helpers/render";
 
 let mockKeyboard = 0;
+jest.mock("../design/lib/keyboard-events", () => ({
+  subscribeKeyboard: () => () => {},
+  useKeyboardHeight: () => mockKeyboard,
+}));
 jest.mock("../design/lib/keyboard-inset", () => ({
   useKeyboardHeight: () => mockKeyboard,
-  useKeyboardInset: () => ({ inset: mockKeyboard, scrollProps: {} }),
+  useKeyboardInset: () => ({ inset: mockKeyboard, offset: mockKeyboard, scrollProps: {} }),
 }));
 
 const mockWithSpring = jest.fn((to: number) => to);

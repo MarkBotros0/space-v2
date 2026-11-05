@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useKeyboardHeight } from "./keyboard-inset";
+import { useKeyboardHeight } from "./keyboard-events";
 
 type OffsetInput = {
   os: string;
@@ -40,4 +40,26 @@ export function useKeyboardBottomOffset(closed?: number): number {
   const keyboard = useKeyboardHeight();
   const insets = useSafeAreaInsets();
   return keyboardBottomOffset({ os: Platform.OS, keyboard, insetBottom: insets.bottom, closed });
+}
+
+/**
+ * The keyboard's top edge in window coordinates (the space `measureInWindow`
+ * reports a field in), for scrolling the focused field above it. RN's
+ * `screenY` is one answer; the window's height less `keyboardBottomOffset`
+ * (which adds back the Android nav bar RN leaves out of the height) is the
+ * other. They agree when RN measures right; when they don't, the higher edge
+ * wins, so a field is never left behind the part of the keyboard one of them
+ * missed (final review I2).
+ */
+export function keyboardTopInWindow({
+  screenY,
+  windowHeight,
+  offset,
+}: {
+  screenY: number;
+  windowHeight: number;
+  /** `keyboardBottomOffset` for the open keyboard. */
+  offset: number;
+}): number {
+  return Math.min(screenY, windowHeight - offset);
 }

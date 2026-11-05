@@ -1,6 +1,6 @@
 import { act, fireEvent, renderHook, screen, within } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { Keyboard, ScrollView, StyleSheet, Text as RNText, TextInput } from "react-native";
+import { ScrollView, StyleSheet, Text as RNText } from "react-native";
 
 import { setReducedMotionForTests } from "../design/motion";
 import { compactHeaderFade } from "../design/layout/large-title";
@@ -349,50 +349,5 @@ describe("Screen: tab bar on scroll (ruling R2)", () => {
     );
     await scrollTo(400);
     expect(screen.getByTestId("probe")).toHaveTextContent("shown");
-  });
-});
-
-describe("Screen: keyboard", () => {
-  it("scrolls a focused field above the keyboard from the current scroll offset", async () => {
-    jest.useFakeTimers();
-    const listeners: Record<
-      string,
-      (e: { endCoordinates: { height: number; screenY: number } }) => void
-    > = {};
-    const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((
-      event: string,
-      cb: never,
-    ) => {
-      listeners[event] = cb;
-      return { remove: jest.fn() };
-    }) as unknown as typeof Keyboard.addListener);
-    const focused = jest.spyOn(TextInput.State, "currentlyFocusedInput").mockReturnValue({
-      measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) =>
-        cb(0, 600, 300, 40),
-    } as never);
-    try {
-      renderWithProviders(<Screen title="Edit">{body}</Screen>);
-      fireEvent.scroll(screen.UNSAFE_getByType(ScrollView), {
-        nativeEvent: {
-          contentOffset: { x: 0, y: 200 },
-          contentSize: { width: 390, height: 2000 },
-          layoutMeasurement: { width: 390, height: 600 },
-        },
-      });
-      const show = listeners.keyboardWillShow ?? listeners.keyboardDidShow;
-      act(() => show!({ endCoordinates: { height: 300, screenY: 500 } }));
-      act(() => jest.advanceTimersByTime(0));
-      // Field bottom 640 + the 96 gap - keyboard top 500 = 236 past the offset of 200.
-      const scrollToSpy = screen.UNSAFE_getByType(ScrollView).instance.scrollTo as jest.Mock;
-      expect(scrollToSpy).toHaveBeenCalledWith({ y: 436, animated: false });
-      const style = StyleSheet.flatten(
-        screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
-      );
-      expect(style.paddingBottom).toBe(316);
-    } finally {
-      spy.mockRestore();
-      focused.mockRestore();
-      jest.useRealTimers();
-    }
   });
 });

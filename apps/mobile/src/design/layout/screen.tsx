@@ -220,7 +220,7 @@ export function Screen({
           keyboardShouldPersistTaps={keyboard.scrollProps.keyboardShouldPersistTaps}
           className="flex-1"
           contentContainerClassName={cn("px-4 pt-4", contentClassName)}
-          contentContainerStyle={{ paddingBottom: Math.max(bottom, keyboard.inset + 16) }}
+          contentContainerStyle={{ paddingBottom: Math.max(bottom, keyboard.offset + 16) }}
           refreshControl={
             onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined
           }

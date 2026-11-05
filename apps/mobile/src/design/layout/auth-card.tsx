@@ -40,7 +40,7 @@ export function AuthCard({
         contentContainerClassName="min-h-full items-center justify-center px-4"
         contentContainerStyle={{
           paddingTop: (insets?.top ?? 0) + 48,
-          paddingBottom: Math.max((insets?.bottom ?? 0) + 48, keyboard.inset + 16),
+          paddingBottom: Math.max((insets?.bottom ?? 0) + 48, keyboard.offset + 16),
         }}
       >
         <View className="w-full max-w-sm rounded-group bg-surface p-6 dark:border dark:border-separator">
