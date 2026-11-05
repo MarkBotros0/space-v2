@@ -17,6 +17,13 @@ import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 
+/**
+ * How often an open screen re-reads a session's check-in state. v1's leader
+ * page refreshed every 10s while check-in was open
+ * (check-in-attendance-list.tsx:58); the student's card uses the same value.
+ */
+export const LIVE_ROSTER_REFRESH_MS = 10_000;
+
 /** Admin-only check-in state (D-16.9) — the console's token source after a restart. */
 export function useCheckInState(id: number, enabled: boolean): UseQueryResult<CheckInStateResponse> {
   return useQuery({

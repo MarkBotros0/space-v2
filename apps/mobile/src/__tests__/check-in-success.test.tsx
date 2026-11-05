@@ -7,6 +7,13 @@ import { setReducedMotionForTests } from "../design/motion";
 import { attendanceTally } from "../lib/check-in-result";
 import { renderWithProviders } from "./helpers/render";
 
+jest.mock("../lib/api-client", () => ({
+  apiClient: { get: jest.fn(() => Promise.reject(new Error("not served"))) },
+}));
+jest.mock("expo-camera", () => require("./helpers/expo-camera"));
+jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
+}));
 const mockHaptic = jest.fn();
 jest.mock("../design/motion/haptics", () => ({ haptic: (k: string) => mockHaptic(k) }));
 

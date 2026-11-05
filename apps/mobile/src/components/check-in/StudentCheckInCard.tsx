@@ -1,12 +1,16 @@
+import { useFocusEffect } from "expo-router";
 import { QrCode } from "lucide-react-native";
-import { useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { parseCheckInCode, type SessionDetail } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, FormField, Input, Sheet, Text } from "../../design/ui";
-import { useCheckIn } from "../../hooks/use-check-in";
+import { LIVE_ROSTER_REFRESH_MS, useCheckIn } from "../../hooks/use-check-in";
 import { useCheckInTally } from "../../hooks/use-check-in-tally";
+import { useStudentDashboard } from "../../hooks/use-dashboard";
+import { useSessionDetail } from "../../hooks/use-session-detail";
+import { deviceTodayKey } from "../../lib/calendar-grid";
 import { checkInRefusalCode, type CheckInOutcome } from "../../lib/check-in-result";
 import { formatSessionTime } from "../../lib/format";
 import { CheckInResult } from "./CheckInResult";
@@ -16,6 +20,33 @@ import { QrScanner } from "./QrScanner";
 iconWithClassName(QrCode);
 
 const NOT_A_CODE = "That doesn't look like a check-in code";
+
+/**
+ * The leader opens check-in while this card is on screen, and Today stays
+ * mounted: without this the button stays disabled until a pull. Same query key
+ * as the screen's read, so a refetch is what moves `detail`. On focus and on the
+ * staff console's interval, only while focused, the session is today and the
+ * student has no attendance yet. The org's today comes from the server (the
+ * dashboard's cache on Today), the device's only until that answers.
+ */
+function useLiveCheckIn(detail: SessionDetail) {
+  const { refetch, dataUpdatedAt } = useSessionDetail(detail.id);
+  const today = useStudentDashboard(detail.seasonId).data?.todayOrgDay ?? deviceTodayKey();
+  const watching = detail.dayKey === today && detail.myAttendance === null;
+  const updatedAt = useRef(dataUpdatedAt);
+  updatedAt.current = dataUpdatedAt;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!watching) return;
+      // A slow answer must not be cancelled by the next tick, or it never lands.
+      const read = () => void refetch({ cancelRefetch: false });
+      if (Date.now() - updatedAt.current >= LIVE_ROSTER_REFRESH_MS) read();
+      const timer = setInterval(read, LIVE_ROSTER_REFRESH_MS);
+      return () => clearInterval(timer);
+    }, [watching, refetch]),
+  );
+}
 
 /**
  * The student's check-in on /session/[id] (v1 student-checkin-button.tsx): a
@@ -32,6 +63,7 @@ export function StudentCheckInCard({
   detail: SessionDetail;
   onHero?: boolean;
 }) {
+  useLiveCheckIn(detail);
   const checkIn = useCheckIn();
   const tally = useCheckInTally();
   // isPending lags a render behind mutate(); a ref blocks a second submit in between.

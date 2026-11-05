@@ -4,6 +4,9 @@ import { useSessionStore } from "../store/session";
 import { connectOnlineManager } from "./online";
 import { queryKeys } from "./query-keys";
 
+/** How long a query counts as fresh, unless it sets its own `staleTime`. */
+export const DEFAULT_STALE_TIME = 30_000;
+
 /**
  * The one place React Query defaults are set — every screen's `useQuery`
  * inherits these rather than repeating them.
@@ -36,7 +39,7 @@ export function createQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         retry: 1,
-        staleTime: 30_000,
+        staleTime: DEFAULT_STALE_TIME,
         refetchOnWindowFocus: false,
       },
     },

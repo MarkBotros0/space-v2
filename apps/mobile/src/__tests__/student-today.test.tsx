@@ -8,6 +8,7 @@ jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: (...args: unknown[]) => mockPush(...args) }),
+  useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
 }));
 jest.mock("../design/layout/home-actions", () => {
   const { Text } = jest.requireActual("react-native");

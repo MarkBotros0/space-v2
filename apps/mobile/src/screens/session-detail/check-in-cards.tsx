@@ -19,13 +19,16 @@ import {
 } from "../../design/ui";
 import { StatusChip } from "../../design/ui/status-chip";
 import { useAttendanceRoster, useSaveAttendance } from "../../hooks/use-attendance";
-import { useCheckInState, useRegenerateCheckIn } from "../../hooks/use-check-in";
+import {
+  LIVE_ROSTER_REFRESH_MS,
+  useCheckInState,
+  useRegenerateCheckIn,
+} from "../../hooks/use-check-in";
 import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../hooks/use-session-detail";
 import { apiErrorMessage } from "../../lib/api-error";
 import { formatWallTime } from "../../lib/format";
 
-/** v1's leader page refreshed every 10s while check-in was open (check-in-attendance-list.tsx:58). */
-export const LIVE_ROSTER_REFRESH_MS = 10_000;
+export { LIVE_ROSTER_REFRESH_MS };
 
 iconWithClassName(QrCode, RotateCcw);
 
