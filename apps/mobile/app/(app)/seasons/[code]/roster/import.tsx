@@ -243,7 +243,7 @@ export default function GroupImportScreen() {
               setText(t);
               setPreview(null);
             }}
-            placeholder={"email\tgroup"}
+            placeholder="email | group"
             autoCapitalize="none"
           />
         </FormField>

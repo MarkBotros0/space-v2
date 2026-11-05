@@ -99,6 +99,14 @@ describe("GroupImportScreen", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
+  it("the paste placeholder shows visible separators, never a tab that collapses on a phone (final review M2)", async () => {
+    useSessionStore.setState(adminOf7);
+    renderWithProviders(<GroupImportScreen />);
+    const field = await screen.findByLabelText("Paste your spreadsheet");
+    expect(field.props.placeholder).not.toMatch(/\t/);
+    expect(field.props.placeholder).toContain("email | group");
+  });
+
   it("an empty paste leaves Preview disabled, says why in the bar and never calls the import API (K8)", async () => {
     useSessionStore.setState(adminOf7);
     renderWithProviders(<GroupImportScreen />);
