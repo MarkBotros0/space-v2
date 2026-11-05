@@ -25,6 +25,8 @@ const patch = apiClient.patch as jest.Mock;
 
 const URL = "/api/v1/submissions/abc123defg";
 const FAILED = "Your draft wasn't saved. Check your connection.";
+const rejected = (status: number) =>
+  Object.assign(new Error(String(status)), { isAxiosError: true, response: { status, data: {} } });
 const saved = { data: { data: { saved: true, submitted: false } } };
 
 const assignment = {
@@ -209,6 +211,21 @@ describe("leaving the screen saves what was written", () => {
     fireEvent.changeText(await screen.findByLabelText("Your response"), "my essay");
     view.unmount();
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(FAILED));
+  });
+});
+
+describe("a flush the server refused doesn't blame the connection", () => {
+  it.each([
+    [409, "Your draft wasn't saved. This assignment can't be edited any more."],
+    [500, "Your draft wasn't saved."],
+    [403, "Your draft wasn't saved."],
+  ])("status %s", async (status, message) => {
+    serve();
+    patch.mockRejectedValue(rejected(status));
+    const view = open();
+    fireEvent.changeText(await screen.findByLabelText("Your response"), "my essay");
+    view.unmount();
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message));
   });
 });
 

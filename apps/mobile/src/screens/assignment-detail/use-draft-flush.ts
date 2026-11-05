@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import axios from "axios";
 import { AppState } from "react-native";
 
 import { reportOutcome } from "../../lib/outcome";
@@ -9,6 +10,18 @@ type SaveInput = { text: string; submit?: boolean };
 export type DraftState = { text: string | null; serverText: string; editable: boolean };
 
 const FLUSH_FAILED = "Your draft wasn't saved. Check your connection.";
+const FLUSH_REFUSED = "Your draft wasn't saved.";
+const FLUSH_LOCKED = "Your draft wasn't saved. This assignment can't be edited any more.";
+
+/**
+ * Why a flush failed. A reply from the server (any status) means the network was fine, so
+ * "Check your connection" would be wrong: 409 is the assignment having closed to edits.
+ */
+function flushFailedMessage(err: unknown): string {
+  const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+  if (status === undefined) return FLUSH_FAILED;
+  return status === 409 ? FLUSH_LOCKED : FLUSH_REFUSED;
+}
 
 /**
  * The response is only local state, so an edge swipe, the pinned Back or the OS
@@ -46,7 +59,7 @@ export function useDraftFlush(
     if (draft === null || !draft.editable || handedIn.current) return;
     const { text, serverText } = draft;
     if (text === null || text.trim() === "" || text === serverText || text === sent.current) return;
-    send({ text }).catch(() => reportOutcome("error", FLUSH_FAILED));
+    send({ text }).catch((err: unknown) => reportOutcome("error", flushFailedMessage(err)));
   };
   // The unmount and AppState handlers outlive the render that made them.
   const flushRef = useRef(flush);
