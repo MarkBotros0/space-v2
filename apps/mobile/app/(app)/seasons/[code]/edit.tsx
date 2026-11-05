@@ -1,15 +1,14 @@
 import { useState, type ReactNode } from "react";
-import { Alert, View } from "react-native";
+import { Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import type { SeasonDetail } from "@space/shared";
 
 import { SeasonForm, type SeasonFormValues } from "../../../../src/components/season/SeasonForm";
-import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { Screen } from "../../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../../src/design/lib/icon";
-import { Button, Card, CardContent, EmptyState } from "../../../../src/design/ui";
+import { Button, EmptyState } from "../../../../src/design/ui";
 import { ConfirmDialog } from "../../../../src/design/ui/confirm-dialog";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useDeleteSeason, useUpdateSeasonAsSuper } from "../../../../src/hooks/use-season-writes";
@@ -47,40 +46,29 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   return (
-    <View className="flex-col gap-4">
-      <View className="flex-row items-start justify-between gap-4">
-        <PageTitle
-          className="min-w-0 flex-1"
-          title={`Edit · ${season.title}`}
-          subtitle={`Code: ${season.code}`}
-        />
-        <Button variant="destructive" size="sm" onPress={() => setConfirming(true)}>
-          <Trash2 size={14} className="text-white" />
-          Delete season
-        </Button>
-      </View>
-      <Card>
-        <CardContent className="pt-6">
-          <SeasonForm
-            mode="edit"
-            initial={fromDetail(season)}
-            submitting={update.isPending}
-            message={message ?? deleteError}
-            onCancel={() => router.back()}
-            onSubmit={(body) => {
-              setMessage(null);
-              update.mutate(body, {
-                // The code may have changed — every URL addressing the season moves (spec 02 D8).
-                // dismissTo pops back to the detail this was opened from and gives it the
-                // (possibly new) code, so there is one season detail, at the right URL.
-                onSuccess: (ref) =>
-                  router.dismissTo({ pathname: "/seasons/[code]", params: { code: ref.code } }),
-                onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the season.")),
-              });
-            }}
-          />
-        </CardContent>
-      </Card>
+    <SeasonForm
+      mode="edit"
+      title={`Edit · ${season.title}`}
+      subtitle={`Code: ${season.code}`}
+      initial={fromDetail(season)}
+      submitting={update.isPending}
+      message={message ?? deleteError}
+      onSubmit={(body) => {
+        setMessage(null);
+        update.mutate(body, {
+          // The code may have changed — every URL addressing the season moves (spec 02 D8).
+          // dismissTo pops back to the detail this was opened from and gives it the
+          // (possibly new) code, so there is one season detail, at the right URL.
+          onSuccess: (ref) =>
+            router.dismissTo({ pathname: "/seasons/[code]", params: { code: ref.code } }),
+          onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the season.")),
+        });
+      }}
+    >
+      <Button variant="destructive" className="self-start" onPress={() => setConfirming(true)}>
+        <Trash2 size={14} className="text-white" />
+        Delete season
+      </Button>
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
@@ -105,7 +93,8 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
               if (apiErrorCode(err) === "season_in_use") {
                 // The common refusal, said where it can't be missed — the
                 // form's message line sits below the fold on a phone.
-                const text = "This season has sessions or enrollments, so it can't be deleted. Archive it instead: set Status to Archived and save.";
+                const text =
+                  "This season has sessions or enrollments, so it can't be deleted. Archive it instead: set Status to Archived and save.";
                 setDeleteError(text);
                 Alert.alert("Season in use", text);
                 return;
@@ -115,7 +104,7 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
           });
         }}
       />
-    </View>
+    </SeasonForm>
   );
 }
 
@@ -124,6 +113,11 @@ export default function SeasonEditScreen() {
   const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
   const code = isSuper && typeof raw === "string" && raw.length > 0 ? raw : null;
   const detail = useSeasonByCode(code);
+
+  if (isSuper && code !== null && detail.isSuccess) {
+    // key: a refetch after save must not keep the old form state.
+    return <SeasonEdit key={`${detail.data.id}-${detail.data.code}`} season={detail.data} />;
+  }
 
   let body: ReactNode;
   if (!isSuper) {
@@ -135,14 +129,10 @@ export default function SeasonEditScreen() {
     );
   } else if (code === null) {
     body = <EmptyState title="Not found" description="That season link isn't valid." />;
-  } else if (detail.isPending) {
-    body = <RouteSkeleton />;
   } else if (detail.isError) {
     body = <RouteError onRetry={() => void detail.refetch()} />;
   } else {
-    // key: a refetch after save must not keep the old form state.
-    body = <SeasonEdit key={`${detail.data.id}-${detail.data.code}`} season={detail.data} />;
+    body = <RouteSkeleton />;
   }
-
-  return <ShellFrame>{body}</ShellFrame>;
+  return <Screen title="Edit season">{body}</Screen>;
 }

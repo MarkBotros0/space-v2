@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { format } from "date-fns";
 
 jest.mock("../lib/api-client", () => ({
@@ -12,7 +12,7 @@ jest.mock("expo-router", () => ({
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { renderWithProviders } from "./helpers/render";
+import { renderStacked, renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import NewSeasonScreen from "../../app/(app)/seasons/new";
 
@@ -99,15 +99,17 @@ describe("NewSeasonScreen (/seasons/new)", () => {
   it("validates with the server's schema before posting", () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<NewSeasonScreen />);
-    fireEvent.press(screen.getByText("Create season"));
+    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Create season"));
     expect(screen.getByLabelText("Program").props.accessibilityHint).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
   });
 
-  it("cancels back", () => {
+  it("submits from the fixed save bar, and the pinned back link leaves", () => {
     useSessionStore.setState(makeSession("SUPER"));
-    renderWithProviders(<NewSeasonScreen />);
-    fireEvent.press(screen.getByText("Cancel"));
+    renderStacked(<NewSeasonScreen />);
+    expect(within(screen.getByTestId("save-bar")).getByText("Create season")).toBeTruthy();
+    expect(screen.queryByText("Cancel")).toBeNull();
+    fireEvent.press(screen.getByLabelText("Back"));
     expect(mockBack).toHaveBeenCalled();
   });
 

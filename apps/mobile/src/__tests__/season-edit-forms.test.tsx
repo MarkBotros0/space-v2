@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
@@ -6,8 +6,15 @@ jest.mock("../lib/api-client", () => ({
 }));
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
+const mockDismissTo = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace, back: mockBack, push: jest.fn() }),
+  useRouter: () => ({
+    replace: mockReplace,
+    back: mockBack,
+    push: jest.fn(),
+    dismissTo: mockDismissTo,
+    dismissAll: jest.fn(),
+  }),
   useLocalSearchParams: () => ({ code: "gbv-2026" }),
 }));
 
@@ -89,6 +96,50 @@ describe("EditSeason (admin season settings)", () => {
     fireEvent.press(screen.getByText("Save changes"));
     expect(await screen.findByText(/must be whole numbers of minutes/)).toBeTruthy();
     expect(patch).not.toHaveBeenCalled();
+  });
+});
+
+describe("SeasonEditScreen save", () => {
+  beforeEach(() => {
+    useSessionStore.setState(makeSession("SUPER", {}, { id: 1 }));
+    get.mockResolvedValue({ data: { data: season } });
+  });
+
+  it("saves the full body from the fixed save bar and dismisses to the (possibly new) code", async () => {
+    patch.mockResolvedValue({ data: { data: { id: 7, code: "gbv-2027" } } });
+    renderWithProviders(<SeasonEditScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Code"), "gbv-2027");
+    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Save changes"));
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/api/v1/seasons/7", {
+        code: "gbv-2027",
+        program: "GBV",
+        year: 2026,
+        description: "A season",
+        startDate: "2026-01-01T00:00:00.000Z",
+        endDate: "2026-12-31T00:00:00.000Z",
+        status: "ACTIVE",
+        absenceBudgetMinutes: 240,
+        absenceWeightMinutes: 60,
+      }),
+    );
+    expect(mockDismissTo).toHaveBeenCalledWith({
+      pathname: "/seasons/[code]",
+      params: { code: "gbv-2027" },
+    });
+  });
+
+  it("shows the server's field error from a failed save", async () => {
+    patch.mockRejectedValue(
+      Object.assign(new Error("409"), {
+        isAxiosError: true,
+        response: { status: 409, data: { error: { code: "code_taken", message: "Code taken." } } },
+      }),
+    );
+    renderWithProviders(<SeasonEditScreen />);
+    await screen.findByLabelText("Code");
+    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Save changes"));
+    expect(await screen.findByText("Code taken.")).toBeTruthy();
   });
 });
 
