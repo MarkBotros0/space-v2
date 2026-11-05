@@ -12,11 +12,14 @@ appId: com.jpc.space
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-- extendedWaitUntil:
-    visible: 'Students at risk.*|No data in this scope'
-    timeout: 40000
 - takeScreenshot: s39-01-reports
-- scroll
+# A super admin's Organisation tiles and cards come first, so the at-risk heading (or the
+# empty state) is below the fold on a small phone: scroll to it. Not optional, so a screen
+# that renders neither still fails here.
+- scrollUntilVisible:
+    element: 'Students at risk.*|No data in this scope'
+    direction: DOWN
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s39-02-reports-mid
