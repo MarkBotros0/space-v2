@@ -11,10 +11,11 @@ jest.mock("../lib/api-client", () => ({
 }));
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
-  useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, dismissTo: mockDismissTo, back: jest.fn() }),
 }));
 
 jest.mock("../design/ui/toaster", () => ({
@@ -307,7 +308,7 @@ describe("/group/[id]/edit", () => {
     renderWithProviders(<EditGroupScreen />);
     fireEvent.press(await screen.findByText("Delete group"));
     fireEvent.press(screen.getByText("Really delete?"));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/groups"));
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/groups"));
   });
 });
 

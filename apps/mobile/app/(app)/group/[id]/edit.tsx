@@ -45,7 +45,8 @@ function DeleteGroup({ groupId }: { groupId: number }) {
     setArmed(false);
     setMessage(null);
     remove.mutate(groupId, {
-      onSuccess: () => router.replace("/groups"),
+      // Pops this edit and the deleted group's detail under it.
+      onSuccess: () => router.dismissTo("/groups"),
       onError: (err) => setMessage(apiErrorMessage(err, "Couldn't delete the group.")),
     });
   };

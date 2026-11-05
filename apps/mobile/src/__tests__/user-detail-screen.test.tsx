@@ -5,9 +5,9 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
 }));
 const mockBack = jest.fn();
-const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: mockBack, replace: mockReplace }),
+  useRouter: () => ({ back: mockBack, dismissTo: mockDismissTo }),
   useLocalSearchParams: () => ({ id: "7" }),
 }));
 jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
@@ -92,7 +92,7 @@ describe("UserDetailScreen", () => {
       }),
     );
     // v1 user-form.tsx:117: a save lands back on the users list, with a word.
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/users"));
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/users"));
     expect(toast.success).toHaveBeenCalledWith("Changes saved.");
   });
 

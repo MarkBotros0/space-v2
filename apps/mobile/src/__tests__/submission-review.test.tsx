@@ -4,11 +4,9 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
 }));
 const mockBack = jest.fn();
-const mockReplace = jest.fn();
-let mockCanGoBack = true;
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ publicId: "aaa1111111" }),
-  useRouter: () => ({ back: mockBack, push: jest.fn(), replace: mockReplace, canGoBack: () => mockCanGoBack }),
+  useRouter: () => ({ back: mockBack, push: jest.fn() }),
 }));
 
 jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
@@ -35,7 +33,6 @@ const detail = {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockCanGoBack = true;
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
 });

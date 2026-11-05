@@ -6,9 +6,10 @@ jest.mock("../lib/api-client", () => ({
 }));
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "21" }),
-  useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, dismissTo: mockDismissTo, back: jest.fn() }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -175,7 +176,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
 
     fireEvent.press(await screen.findByText("Delete student"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/students/21"));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/students"));
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/students"));
     alert.mockRestore();
   });
 });

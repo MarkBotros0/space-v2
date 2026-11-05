@@ -204,6 +204,21 @@ focused hidden tab to the first tab, breaking deep links); the pill rendering `i
 what keeps screens out of the bar. Never re-derive hrefs from `navByRole`: `ALUMNI` is
 only reachable via `navFor`.
 
+**Navigation actions we support** (pinned by the `deep-links`, `more-back` and
+`stack-actions` tests; extend them when you dispatch anything new):
+
+| Action | In this shell | Use it for |
+|---|---|---|
+| `push(href)` | a detail/pushed route stacks above; a tab route pops back to the one `(tabs)` and switches tab (`singularTabsRouter`) | opening anything |
+| `navigate(href)` | same as `push` for a tab route | rarely needed |
+| `replace(href)` | swaps the top screen; a tab route pops to the one `(tabs)` instead of stacking a second | create → show the new record (`seasons/new` → `/seasons/[code]`) |
+| `back()` | pops one screen; on a tab, tab history then Today (`historyThenHomeTabsRouter`) | cancel; save → show the record below |
+| `dismissTo(href)` | pops to the nearest matching route below (taking the href's params), or swaps the top screen for it | deleted → the list (`/groups`, `/students`); save under a new URL (a season's new code) |
+| `dismissAll()` then `push(href)` | pops to `(tabs)`, then opens `href` | deleted, and the target may not be on the stack (session → its season) |
+
+Never `replace` to a list after a delete: the deleted record's detail stays under Back.
+A cold deep link always has `(tabs)` under it, so a `canGoBack()` fallback is dead code.
+
 **Typed routes are on.** Every `href` is compile-checked against the real route
 tree. The types are generated, not written — `turbo.json`'s `routes:generate`
 task runs `expo customize tsconfig.json` and `typecheck` depends on it, so a

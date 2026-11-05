@@ -95,7 +95,9 @@ function StaffStudentDetail({ id }: { id: number }) {
             deleteStudent.mutate(
               { id: studentId },
               {
-                onSuccess: () => router.replace("/students"),
+                // dismissTo, not replace: pops this deleted student's detail
+                // (and anything above the tabs) rather than leaving it under Back.
+                onSuccess: () => router.dismissTo("/students"),
                 onError: (err) =>
                   Alert.alert("Couldn't delete", apiErrorMessage(err, "Try again.")),
               },

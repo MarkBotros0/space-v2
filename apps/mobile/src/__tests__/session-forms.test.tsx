@@ -6,10 +6,12 @@ jest.mock("../lib/api-client", () => ({
 }));
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
+const mockDismissAll = jest.fn();
+const mockPush = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
-  useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: mockBack }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, back: mockBack, dismissAll: mockDismissAll }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -279,7 +281,9 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
         data: { scope: "one", force: true },
       }),
     );
-    expect(mockReplace).toHaveBeenCalledWith({
+    // Pops to the tabs first, so the deleted session's detail is not left under Back.
+    expect(mockDismissAll).toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith({
       pathname: "/seasons/[code]",
       params: { code: "s7" },
     });

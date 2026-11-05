@@ -138,7 +138,9 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
                     // v1 user-form.tsx:117 goes back to the users list on save.
                     onSuccess: () => {
                       toast.success("Changes saved.");
-                      router.replace("/users");
+                      // Back to the list this was opened from (or the list in this
+                      // detail's place, if it was opened elsewhere): never a second list.
+                      router.dismissTo("/users");
                     },
                     onError: (err) =>
                       setMessage(

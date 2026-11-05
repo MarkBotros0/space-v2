@@ -5,10 +5,11 @@ jest.mock("../lib/api-client", () => ({
 }));
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 let mockParams: Record<string, string> = { code: "s7" };
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
-  useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, dismissTo: mockDismissTo, back: jest.fn() }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -226,7 +227,7 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
         absenceWeightMinutes: 90,
       }),
     );
-    expect(mockReplace).toHaveBeenCalledWith({
+    expect(mockDismissTo).toHaveBeenCalledWith({
       pathname: "/seasons/[code]",
       params: { code: "gbv-2099" },
     });
@@ -271,7 +272,7 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
     del.mockResolvedValueOnce({ data: { data: { deleted: true } } });
     fireEvent.press(screen.getByText("Delete season"));
     fireEvent.press(await screen.findByText("Delete"));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/seasons"));
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/seasons"));
   });
 
   it("refuses a non-SUPER without fetching", async () => {

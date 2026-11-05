@@ -49,7 +49,8 @@ export function ManageActions({ detail }: { detail: AssignmentDetail }) {
     }
     setMessage(null);
     remove.mutate(detail.id, {
-      onSuccess: () => router.replace("/assignments"),
+      // Pops the deleted assignment's detail rather than leaving it under Back.
+      onSuccess: () => router.dismissTo("/assignments"),
       onError: (err) => {
         setArmed(false);
         setMessage(apiErrorMessage(err, "Couldn't delete the assignment."));

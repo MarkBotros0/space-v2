@@ -71,8 +71,10 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
               setMessage(null);
               update.mutate(body, {
                 // The code may have changed — every URL addressing the season moves (spec 02 D8).
+                // dismissTo pops back to the detail this was opened from and gives it the
+                // (possibly new) code, so there is one season detail, at the right URL.
                 onSuccess: (ref) =>
-                  router.replace({ pathname: "/seasons/[code]", params: { code: ref.code } }),
+                  router.dismissTo({ pathname: "/seasons/[code]", params: { code: ref.code } }),
                 onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the season.")),
               });
             }}
@@ -95,7 +97,8 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
           remove.mutate(season.id, {
             onSuccess: () => {
               setConfirming(false);
-              router.replace("/seasons");
+              // Pops this edit and the deleted season's detail under it.
+              router.dismissTo("/seasons");
             },
             onError: (err) => {
               setConfirming(false);

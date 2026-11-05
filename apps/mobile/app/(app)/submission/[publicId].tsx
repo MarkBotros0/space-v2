@@ -100,8 +100,9 @@ export default function SubmissionReviewScreen() {
   const router = useRouter();
   const { data, isPending, isError, refetch, isRefetching } = useSubmissionDetail(publicId);
 
-  // A deep link (notification, push) has no history to go back to.
-  const leave = () => (router.canGoBack() ? router.back() : router.replace("/submissions"));
+  // A cold deep link (notification, push) still has the tabs under it (the
+  // (app) stack's anchor), so there is always somewhere to go back to.
+  const leave = () => router.back();
 
   if (publicId === null) {
     return (

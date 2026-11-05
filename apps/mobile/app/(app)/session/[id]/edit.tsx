@@ -114,8 +114,13 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
     remove.mutate(
       { scope, force },
       {
-        onSuccess: () =>
-          router.replace({ pathname: "/seasons/[code]", params: { code: detail.seasonCode } }),
+        // The deleted session's detail sits under this edit, and the season
+        // may not be on the stack at all (opened from the calendar): pop to
+        // the tabs, then show the season, so Back never lands on the deleted session.
+        onSuccess: () => {
+          router.dismissAll();
+          router.push({ pathname: "/seasons/[code]", params: { code: detail.seasonCode } });
+        },
         onError: (err) => {
           // Plan 3 refuses to destroy attendance/video progress without force (C12).
           if (apiErrorCode(err) === "has_student_records") setNeedsForce(true);
