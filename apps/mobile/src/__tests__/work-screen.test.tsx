@@ -86,6 +86,14 @@ describe("WorkScreen: states", () => {
     expect(screen.queryByText("You're all caught up.")).toBeNull();
   });
 
+  it("a scored quiz row speaks its score", async () => {
+    serve(routes([assignment(1)], [quiz(2, { score: 7, maxScore: 10 })]));
+    renderWithProviders(<WorkScreen />);
+    await screen.findByText("Essay 1");
+    done(1);
+    expect(await screen.findByRole("button", { name: /Quiz 2.*, 7\/10$/ })).toBeTruthy();
+  });
+
   it("Done with nothing in it says so, and hides an empty group", async () => {
     serve(routes([assignment(1)], []));
     renderWithProviders(<WorkScreen />);

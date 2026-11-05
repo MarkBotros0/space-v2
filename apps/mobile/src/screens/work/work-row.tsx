@@ -36,6 +36,7 @@ export function WorkListRow({
       titleLines={2}
       subtitleLines={subtitleLines}
       trailing={trailing(row)}
+      trailingLabel={row.score}
       chevron={href !== null}
       onPress={href !== null ? () => router.push(href) : undefined}
     />
