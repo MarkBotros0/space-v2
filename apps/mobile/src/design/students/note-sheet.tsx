@@ -11,6 +11,7 @@ import { View } from "react-native";
 
 import { useCreateNote } from "../../hooks/use-notes";
 import { apiErrorMessage } from "../../lib/api-error";
+import { VISIBILITY_DESCRIPTION } from "../../lib/note-visibility";
 import { haptic } from "../motion";
 import { SegmentedControl } from "../ui/segmented-control";
 import { Sheet, SheetSaveBar } from "../ui/sheet";
@@ -96,8 +97,7 @@ export function NoteSheet({
             onChange={(v) => setVisibility(v as NoteVisibility)}
           />
           <Text variant="caption" className="text-muted-foreground">
-            Only the group you choose can read this note, plus you and SUPER users. Season admins do not
-            automatically see leader or mentor notes.
+            {VISIBILITY_DESCRIPTION}
           </Text>
         </View>
         <View className="flex-row items-center gap-3">

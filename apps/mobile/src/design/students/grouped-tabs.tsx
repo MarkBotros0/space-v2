@@ -2,7 +2,7 @@
  * The student-page tab bodies as grouped lists, for the leader's and mentor's
  * page (StudentDetailGrouped) and the admin's (AdminStudentDetail).
  */
-import { dateOnlyFromIso, type EnrollmentHistoryItem, type NoteSummary } from "@space/shared";
+import { dateOnlyFromIso, type EnrollmentHistoryItem } from "@space/shared";
 import { useRouter } from "expo-router";
 import { Calendar, Flag, MapPin } from "lucide-react-native";
 import { View } from "react-native";
@@ -11,6 +11,7 @@ import { flattenNotePages, useStudentNotes } from "../../hooks/use-notes";
 import { useStudentAttendanceHistory, useStudentSubmissions } from "../../hooks/use-students";
 import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
 import { formatDate, formatDateTime, formatDayKey } from "../../lib/format";
+import { VISIBILITY_LABEL } from "../../lib/note-visibility";
 import { NAV_ICONS } from "../icons/nav-icon";
 import { InlineError } from "../layout/route-states";
 import { Button } from "../ui/button";
@@ -20,7 +21,11 @@ import { StatusChip, statusChip } from "../ui/status-chip";
 import { Text } from "../ui/text";
 
 function Loading() {
-  return <Text className="py-4 text-center text-sm text-muted-foreground">Loading…</Text>;
+  return (
+    <Text variant="subhead" className="py-4 text-center text-muted-foreground">
+      Loading…
+    </Text>
+  );
 }
 
 /** Caption parts joined with a separator, skipping the empty ones: no dangling dot. */
@@ -154,12 +159,6 @@ export function GroupedSubmissionsTab({ studentId }: { studentId: number }) {
   );
 }
 
-const NOTE_VISIBILITY: Record<NoteSummary["visibility"], string> = {
-  LEADERS: "Visible to group leaders only",
-  MENTORS: "Visible to mentors only",
-  ADMINS: "Visible to season admins only",
-};
-
 export function GroupedNotesTab({
   studentId,
   canWriteNote,
@@ -199,7 +198,7 @@ export function GroupedNotesTab({
                   formatDate(n.createdAt),
                   n.seasonTitle,
                   n.edited && "Edited",
-                  NOTE_VISIBILITY[n.visibility],
+                  VISIBILITY_LABEL[n.visibility],
                 )}
                 subtitleLines={null}
                 trailing={n.followUpFlagged ? <StatusChip tone="warn" label="Follow up" /> : undefined}
