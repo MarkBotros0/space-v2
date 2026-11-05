@@ -223,6 +223,11 @@ export default function GroupImportScreen() {
       subtitle={subtitle}
       saveLabel={preview ? applyLabel : previewMutation.isPending ? "Reading…" : "Preview"}
       saving={preview ? commitMutation.isPending : previewMutation.isPending}
+      saveHint={
+        preview && toAssign.length === 0
+          ? "No row can be assigned. Fix the sheet and preview again."
+          : undefined
+      }
       onSave={preview ? runCommit : runPreview}
     >
       <View className="flex-col gap-4">

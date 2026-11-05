@@ -136,6 +136,20 @@ describe("GroupImportScreen", () => {
     expect(screen.getByText("No group")).toBeTruthy();
   });
 
+  it("says why the bar does nothing when no row can be assigned", async () => {
+    useSessionStore.setState(adminOf7);
+    post.mockResolvedValue({
+      data: { data: { ...preview, rows: preview.rows.slice(1, 3), counts: { ...preview.counts, assign: 0 } } },
+    });
+    renderWithProviders(<GroupImportScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "email\tgroup\nx");
+    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Preview"));
+    const bar = within(screen.getByTestId("save-bar"));
+    fireEvent.press(await bar.findByText("Nothing to assign"));
+    expect(bar.getByText(/No row can be assigned/)).toBeTruthy();
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
   it("commits only the assign rows, as resolved id pairs, and reports what was APPLIED", async () => {
     useSessionStore.setState(adminOf7);
     post
