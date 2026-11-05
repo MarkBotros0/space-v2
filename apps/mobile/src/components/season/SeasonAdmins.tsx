@@ -3,8 +3,7 @@ import { useMemo, useState } from "react";
 import { View } from "react-native";
 
 import { iconWithClassName } from "../../design/lib/icon";
-import { Card, CardContent, CardHeader, CardTitle } from "../../design/ui/card";
-import { Button, Combobox, ConfirmDialog, Skeleton, Text, toast } from "../../design/ui";
+import { Button, Combobox, ConfirmDialog, GroupedList, ListRow, Skeleton, Text, toast } from "../../design/ui";
 import {
   useAddSeasonAdmin,
   useRemoveSeasonAdmin,
@@ -58,55 +57,60 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
   };
 
   let list;
-  if (admins.isPending) list = <Skeleton className="h-10 w-full" />;
+  if (admins.isPending)
+    list = (
+      <GroupedList header="Admins">
+        <View className="p-4">
+          <Skeleton className="h-10 w-full" />
+        </View>
+      </GroupedList>
+    );
   else if (admins.isError)
     list = (
-      <View className="flex-col gap-2">
-        <Text className="text-sm text-error-600">Couldn't load the admins.</Text>
-        <Button variant="outline" size="sm" className="self-start" onPress={() => void admins.refetch()}>
-          Try again
-        </Button>
-      </View>
+      <GroupedList header="Admins">
+        <View className="flex-col gap-2 p-4">
+          <Text variant="subhead" className="text-bad">
+            Couldn't load the admins.
+          </Text>
+          <Button variant="secondary" size="sm" className="self-start" onPress={() => void admins.refetch()}>
+            Try again
+          </Button>
+        </View>
+      </GroupedList>
     );
   else if (current.length === 0)
-    list = <Text className="text-sm text-muted-foreground">No admins yet.</Text>;
+    list = (
+      <GroupedList header="Admins">
+        <ListRow title="No admins yet." />
+      </GroupedList>
+    );
   else
     list = (
-      <View className="flex-col gap-2">
+      <GroupedList header="Admins">
         {current.map((a) => (
-          <View
+          <ListRow
             key={a.userId}
-            className="flex-row items-center gap-3 rounded-group bg-surface p-3 dark:border dark:border-separator"
-          >
-            <View className="min-w-0 flex-1">
-              <Text numberOfLines={1} className="text-sm font-medium">
-                {a.name}
-              </Text>
-              <Text numberOfLines={1} className="text-xs text-muted-foreground">
-                {a.email}
-              </Text>
-            </View>
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              accessibilityLabel={`Remove ${a.name}`}
-              onPress={() => setConfirm({ userId: a.userId, name: a.name })}
-            >
-              <Trash2 size={14} className="text-error-500" />
-            </Button>
-          </View>
+            title={a.name}
+            subtitle={a.email}
+            trailing={
+              <Button
+                variant="secondary"
+                size="sm"
+                accessibilityLabel={`Remove ${a.name}`}
+                onPress={() => setConfirm({ userId: a.userId, name: a.name })}
+              >
+                <Trash2 size={14} className="text-bad" />
+              </Button>
+            }
+          />
         ))}
-      </View>
+      </GroupedList>
     );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Admins</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-col gap-4">
-        {list}
+    <View className="flex-col gap-4">
+      {list}
+      <View className="flex-col gap-4">
         <View className="flex-col gap-2">
           <Combobox
             accessibilityLabel="Choose an admin"
@@ -118,7 +122,9 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
             onChange={setPicked}
           />
           {candidates.isError ? (
-            <Text className="text-sm text-error-600">Couldn't load the users with the ADMIN role.</Text>
+            <Text variant="subhead" className="text-bad">
+              Couldn't load the users with the ADMIN role.
+            </Text>
           ) : null}
           <View className="flex-row flex-wrap gap-2">
             <Button size="sm" disabled={picked === null || add.isPending} onPress={submitAdd}>
@@ -127,7 +133,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
             </Button>
             {candidates.hasNextPage ? (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 disabled={candidates.isFetchingNextPage}
                 onPress={() => void candidates.fetchNextPage()}
@@ -137,7 +143,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
             ) : null}
           </View>
         </View>
-      </CardContent>
+      </View>
       <ConfirmDialog
         open={confirm !== null}
         onOpenChange={(open) => {
@@ -168,6 +174,6 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
           );
         }}
       />
-    </Card>
+    </View>
   );
 }

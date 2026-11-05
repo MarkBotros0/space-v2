@@ -2,7 +2,6 @@ import { useState } from "react";
 import { View } from "react-native";
 import type { SeasonDetail } from "@space/shared";
 
-import { Card, CardContent, CardHeader, CardTitle } from "../../design/ui/card";
 import { Button, FormField, Input, Text, Textarea } from "../../design/ui";
 import { useUpdateSeason, type UpdateSeasonInput } from "../../hooks/use-season-writes";
 import { apiErrorMessage } from "../../lib/api-error";
@@ -22,7 +21,7 @@ export function parseMinutes(raw: string): number | null {
 /**
  * An ADMIN's allowlisted season edit (description and absence budget) — shared
  * by /season and /seasons/[code]. V2-ONLY: v1's admin season page is read-only
- * (`canEdit={false}`), so this is a v1 Card with v1 form fields. The budget
+ * (`canEdit={false}`), so this is a plain section of v1 form fields. The budget
  * fields start from the season's stored values, which the detail carries.
  */
 export function EditSeason({ season }: { season: SeasonDetail }) {
@@ -56,11 +55,10 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Season settings</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-col gap-4">
+    <View className="flex-col gap-4">
+      <Text variant="headline" accessibilityRole="header">
+        Season settings
+      </Text>
         <FormField label="Description">
           <Textarea
             accessibilityLabel="Description"
@@ -87,9 +85,8 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
         {message ? (
           <View accessibilityRole={message.error ? "alert" : undefined}>
             <Text
-              className={
-                message.error ? "text-sm text-destructive" : "text-sm text-muted-foreground"
-              }
+              variant="subhead"
+              className={message.error ? "text-bad" : "text-muted-foreground"}
             >
               {message.text}
             </Text>
@@ -98,7 +95,6 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
         <Button className="self-start" disabled={update.isPending} onPress={save}>
           {update.isPending ? "Saving…" : "Save changes"}
         </Button>
-      </CardContent>
-    </Card>
+    </View>
   );
 }
