@@ -130,6 +130,21 @@ describe("Screen: title and back link", () => {
     expect(screen.getByText("ADD")).toBeTruthy();
   });
 
+  it("K1: the title row wraps and the title sizes to its content, never a zero-basis flex-1", () => {
+    renderWithProviders(
+      <Screen title="Roster" trailing={<RNText>ADD</RNText>}>
+        {body}
+      </Screen>,
+    );
+    const row = screen.getByTestId("large-title-row").props.className as string;
+    const title = screen.getByTestId("large-title-text").props.className as string;
+    const trailing = screen.getByTestId("large-title-trailing").props.className as string;
+    expect(row).toContain("flex-wrap");
+    expect(title).not.toMatch(/(^|\s)flex-1(\s|$)/);
+    expect(title).toContain("max-w-full");
+    expect(trailing).toContain("ml-auto");
+  });
+
   it("without a title: no header, no compact header, just the content", () => {
     renderWithProviders(<Screen>{body}</Screen>);
     expect(screen.queryByRole("header")).toBeNull();

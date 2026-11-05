@@ -64,8 +64,8 @@ export function LargeTitle({
   return (
     <View testID="large-title" onLayout={onLayout} className="mb-4">
       {row ? (
-        <View className="flex-row items-center gap-3">
-          <View className="min-w-0 flex-1">
+        <View testID="large-title-row" className="flex-row flex-wrap items-center gap-x-3 gap-y-2">
+          <View testID="large-title-text" className="max-w-full shrink">
             {title ? (
               <Text variant="largeTitle" accessibilityRole="header" className="text-foreground">
                 {title}
@@ -73,7 +73,7 @@ export function LargeTitle({
             ) : null}
           </View>
           {trailing ? (
-            <View className="shrink-0 flex-row flex-wrap items-center justify-end gap-2">
+            <View testID="large-title-trailing" className="ml-auto shrink-0 flex-row flex-wrap items-center justify-end gap-2">
               {trailing}
             </View>
           ) : null}
