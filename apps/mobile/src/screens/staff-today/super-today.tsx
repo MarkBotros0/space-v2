@@ -81,12 +81,14 @@ export function SuperToday() {
             <ListRow
               title="Students (not graduated)"
               trailing={<Count value={String(org.data.totalStudentsNotGraduated)} />}
+              trailingLabel={String(org.data.totalStudentsNotGraduated)}
               chevron
               onPress={() => router.push("/students")}
             />
             <ListRow
               title="Alumni"
               trailing={<Count value={String(org.data.totalAlumni)} />}
+              trailingLabel={String(org.data.totalAlumni)}
               chevron
               onPress={() => router.push("/students/alumni")}
             />
@@ -94,6 +96,7 @@ export function SuperToday() {
               title="Seasons"
               subtitle="All statuses"
               trailing={<Count value={String(org.data.seasons.length)} />}
+              trailingLabel={String(org.data.seasons.length)}
               chevron
               onPress={() => router.push("/seasons")}
             />
@@ -101,6 +104,7 @@ export function SuperToday() {
               title="Upcoming events"
               subtitle="From today, next 12 months"
               trailing={<Count value={events.data ? String(events.data.total) : "—"} />}
+              trailingLabel={events.data ? String(events.data.total) : "not loaded"}
               chevron
               onPress={() => router.push("/events")}
             />

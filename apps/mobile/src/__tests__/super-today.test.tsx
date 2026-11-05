@@ -93,6 +93,14 @@ describe("Super Today", () => {
     expect(screen.queryByText("Happening now")).toBeNull();
   });
 
+  it("the figure rows speak their count with the title", async () => {
+    serveStaff(get, { table: base() });
+    renderWithProviders(<DashboardScreen />);
+
+    expect(await screen.findByRole("button", { name: "Alumni, 12" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Students (not graduated), 40" })).toBeTruthy();
+  });
+
   it("the figure rows open what the old stat cards opened", async () => {
     serveStaff(get, { table: base() });
     renderWithProviders(<DashboardScreen />);
