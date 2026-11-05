@@ -380,7 +380,7 @@ it("shows a leader the video quiz results, and nothing for a video with no quest
 
   const first = renderStacked(<SessionDetailScreen />);
   expect(await screen.findByText("Video quiz results")).toBeTruthy();
-  expect(screen.getByText("1/2 answered")).toBeTruthy();
+  expect(screen.getByText("1/2 answered · 1/2 pts")).toBeTruthy();
   expect(screen.getByText("In progress")).toBeTruthy();
   first.unmount();
 
