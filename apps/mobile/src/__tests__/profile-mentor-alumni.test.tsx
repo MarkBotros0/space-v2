@@ -103,6 +103,17 @@ describe("AlumniProfile", () => {
     expect(screen.getByText("To update your details, please contact the JPC team.")).toBeTruthy();
   });
 
+  it("puts the Status chip above its label, like the other rows' value over label", async () => {
+    serveProfile({});
+    renderWithProviders(<AlumniProfile />);
+    const chip = await screen.findByText("Alumnus · Class of 2025");
+    const order = (n: unknown): string[] =>
+      typeof n === "string" ? [n] : ((n as { children?: unknown[] })?.children ?? []).flatMap(order);
+    const texts = order(screen.toJSON());
+    expect(texts.indexOf("Status")).toBeGreaterThan(texts.indexOf("Alumnus · Class of 2025"));
+    expect(chip).toBeTruthy();
+  });
+
   it("shows a dash for a missing university", async () => {
     serveProfile({ university: null });
     renderWithProviders(<AlumniProfile />);

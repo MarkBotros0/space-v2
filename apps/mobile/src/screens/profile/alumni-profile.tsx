@@ -7,14 +7,14 @@ import { StatusChip } from "../../design/ui/status-chip";
 import { Text } from "../../design/ui/text";
 import { useMyProfile } from "../../hooks/use-self-service";
 
-/** A value over its label, like the other rows, but holding a chip: at font 1.3 a long chip would crush a trailing slot. */
+/** A value over its label, like the other rows (ListRow's title over its subtitle), but holding a chip: at font 1.3 a long chip would crush a trailing slot. */
 function StatusRow({ label, chip }: { label: string; chip: string }) {
   return (
     <View className="min-h-[52px] flex-col items-start gap-1 px-4 py-2">
+      <StatusChip tone="ok" label={chip} />
       <Text variant="caption" className="text-muted-foreground">
         {label}
       </Text>
-      <StatusChip tone="ok" label={chip} />
     </View>
   );
 }

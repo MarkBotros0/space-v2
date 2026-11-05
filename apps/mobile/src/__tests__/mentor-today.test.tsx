@@ -155,6 +155,27 @@ describe("MentorDashboard (Today)", () => {
     expect(await screen.findByText("Sam Student")).toBeTruthy();
   });
 
+  it.each([
+    [ENGAGEMENT, "Couldn't load the at-risk list.", ["Sam Student"]],
+    [FEED, "Couldn't load recent activity.", ["Sara Student", "Sam Student"]],
+  ])("a failed %s request leaves the other sections intact and Retry refetches only it", async (failing, message, kept) => {
+    get.mockImplementation((url: string) => {
+      if (url === failing) return Promise.reject(new Error("boom"));
+      const r = routes() as Record<string, unknown>;
+      return url in r
+        ? Promise.resolve({ data: { data: r[url] } })
+        : Promise.reject(new Error(`not served: ${url}`));
+    });
+    renderWithProviders(<MentorDashboard />);
+    expect(await screen.findByText(message)).toBeTruthy();
+    for (const text of kept) expect(await screen.findByText(text)).toBeTruthy();
+    get.mockClear();
+    serve(routes());
+    fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(requested()).toEqual([failing]));
+    await waitFor(() => expect(screen.queryByText(message)).toBeNull());
+  });
+
   it("pull to refresh refetches engagement, notes, activity and events", async () => {
     serve(routes());
     const view = renderWithProviders(<MentorDashboard />);
