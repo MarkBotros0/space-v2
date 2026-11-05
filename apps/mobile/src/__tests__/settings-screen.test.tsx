@@ -98,6 +98,9 @@ describe("SettingsScreen", () => {
     // Email is shown, not editable — and the caption is TRUE in v2, unlike
     // v1's "change via the admin console" lie for students (spec 18 R20/D8).
     expect(screen.getByDisplayValue("sp@jpc.test")).toBeTruthy();
+    // v2 has no admin console, so the email caption points at an admin instead (sweep F5).
+    expect(screen.getByText("Ask an admin to change this.")).toBeTruthy();
+    expect(screen.queryByText(/admin console/i)).toBeNull();
     expect(screen.getByText("Profile, password, and notification preferences.")).toBeTruthy();
   });
 
