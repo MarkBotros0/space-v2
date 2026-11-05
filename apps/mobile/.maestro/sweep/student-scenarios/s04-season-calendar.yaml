@@ -33,7 +33,7 @@ appId: com.jpc.space
 # (the page opens on it). Optional: an empty calendar has none, which is a
 # state to report, not a failure.
 - tapOn:
-    text: '.*\d+ min.*'
+    text: '.*\d+.min.*'
     optional: true
 - waitForAnimationToEnd:
     timeout: 5000
