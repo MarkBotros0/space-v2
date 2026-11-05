@@ -9,13 +9,14 @@ import { View } from "react-native";
 
 import type { StudentDetail } from "../../hooks/use-students";
 import { formatDayKey } from "../../lib/format";
+import { yearLabel } from "../../lib/year-label";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { Text } from "../../design/ui/text";
 
 export function AdminProfileSection({ profile: p }: { profile: StudentDetail["profile"] }) {
   const rows: [label: string, value: string | null][] = [
     ["University", p.university],
-    ["Year / faculty", p.year],
+    ["Year / faculty", yearLabel(p.year)],
     ["Gifts / interests", p.gifts],
   ];
   if ("phone" in p) rows.push(["Phone", p.phone]);

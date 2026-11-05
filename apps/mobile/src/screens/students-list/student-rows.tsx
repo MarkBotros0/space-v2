@@ -5,12 +5,7 @@ import { Avatar, AvatarFallback, ListRow } from "../../design/ui";
 import { formatDate } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
-
-/** A bare number ("3") reads as "Year 3"; anything else ("3rd", "Medicine") is shown as typed. */
-function yearLabel(year: string | null): string | null {
-  const y = year?.trim();
-  return y && /^\d+$/.test(y) ? `Year ${y}` : (y ?? null);
-}
+import { yearLabel } from "../../lib/year-label";
 
 type RowProps = { item: StudentListItem; index?: number };
 

@@ -13,6 +13,7 @@ import type { StudentDetail as StudentDetailData } from "../../hooks/use-student
 import { formatDate, formatDateTime, formatDayKey, formatSeasonDay, unbreakable } from "../../lib/format";
 import { VISIBILITY_LABEL } from "../../lib/note-visibility";
 import { NAV_ICONS } from "../icons/nav-icon";
+import { yearLabel } from "../../lib/year-label";
 import { InlineError } from "../layout/route-states";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
@@ -35,7 +36,7 @@ const caption = (...parts: (string | null | undefined | false)[]) => parts.filte
 export function GroupedProfileTab({ profile: p }: { profile: StudentDetailData["profile"] }) {
   const rows: [string, string | null][] = [
     ["University", p.university],
-    ["Year / faculty", p.year],
+    ["Year / faculty", yearLabel(p.year)],
     ["Gifts / interests", p.gifts],
   ];
   if ("phone" in p) rows.push(["Phone", p.phone]);

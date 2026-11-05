@@ -48,6 +48,19 @@ describe("grouped tabs read free text in full (I1, M2)", () => {
   });
 });
 
+describe("Year value (corner sweep 9)", () => {
+  it("a bare number reads 'Year 3' on the profile tab, as the list row does; text stays as typed", () => {
+    render(<GroupedProfileTab profile={{ university: "AUC", year: "3", gifts: "x" } as never} />);
+    expect(screen.getByText("Year 3")).toBeTruthy();
+    expect(screen.queryByText("3")).toBeNull();
+  });
+
+  it("leaves '3rd' as typed", () => {
+    render(<GroupedProfileTab profile={{ university: "AUC", year: "3rd", gifts: "x" } as never} />);
+    expect(screen.getByText("3rd")).toBeTruthy();
+  });
+});
+
 describe("Seasons row (M1)", () => {
   it("never cuts a long drop reason", () => {
     const { GroupedSeasonsTab } = jest.requireActual("../design/students/grouped-tabs");
