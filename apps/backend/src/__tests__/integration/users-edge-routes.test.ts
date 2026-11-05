@@ -4,6 +4,17 @@
  */
 import request from "supertest";
 
+// Stub the mailer the way invites-routes.test.ts does: invite sending is
+// send-first and answers 503 email_not_configured with no transport, and a
+// staging .env with GMAIL_* set would otherwise mail @jpc.test addresses.
+// Lazy wrapper: jest.mock is hoisted above this const.
+const mockSendInviteEmail = jest.fn().mockResolvedValue(undefined);
+jest.mock("../../lib/email", () => ({
+  ...jest.requireActual("../../lib/email"),
+  sendInviteEmail: (...args: unknown[]) => mockSendInviteEmail(...args),
+  isEmailConfigured: () => true,
+}));
+
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import {
