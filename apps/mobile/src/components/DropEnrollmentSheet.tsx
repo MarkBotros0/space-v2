@@ -1,12 +1,12 @@
 import { useState } from "react";
+import { View } from "react-native";
 import type { EnrollmentHistoryItem } from "@space/shared";
 
 import { useDropEnrollment } from "../hooks/use-students";
 import { apiErrorMessage } from "../lib/api-error";
-import { FormErrorBox } from "../design/forms/form-parts";
-import { Button } from "../design/ui/button";
 import { FormField } from "../design/ui/form-field";
-import { Modal, ModalContent, ModalDescription, ModalFooter, ModalHeader, ModalTitle } from "../design/ui/modal";
+import { Sheet, SheetSaveBar } from "../design/ui/sheet";
+import { Text } from "../design/ui/text";
 import { Textarea } from "../design/ui/textarea";
 
 export interface DropEnrollmentSheetProps {
@@ -49,19 +49,26 @@ export function DropEnrollmentSheet({ studentId, enrollment, onClose }: DropEnro
   };
 
   return (
-    <Modal
+    <Sheet
       open={enrollment !== null}
-      onOpenChange={(open) => {
-        if (!open && !drop.isPending) close();
+      onClose={() => {
+        if (!drop.isPending) close();
       }}
+      title={`Drop from ${enrollment?.seasonTitle ?? "this season"}?`}
+      footer={
+        <SheetSaveBar
+          label="Drop student"
+          loading={drop.isPending}
+          onPress={submit}
+          hint={error ?? fieldError ?? undefined}
+        />
+      }
     >
-      <ModalContent>
-        <ModalHeader>
-          <ModalTitle>{`Drop from ${enrollment?.seasonTitle ?? "this season"}?`}</ModalTitle>
-          <ModalDescription>
-            The student leaves this season without graduating and appears on the dropped list. The record is kept.
-          </ModalDescription>
-        </ModalHeader>
+      <View className="flex-col gap-4 pb-4">
+        <Text variant="subhead" className="text-muted-foreground">
+          The student leaves this season without graduating and appears on the dropped list. The
+          record is kept.
+        </Text>
         <FormField
           label="Reason"
           description="Optional — visible in the dropped-students list."
@@ -74,16 +81,7 @@ export function DropEnrollmentSheet({ studentId, enrollment, onClose }: DropEnro
             placeholder="e.g. Moved cities, stopped attending, personal reasons…"
           />
         </FormField>
-        <FormErrorBox message={error} />
-        <ModalFooter>
-          <Button variant="outline" onPress={close} disabled={drop.isPending}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onPress={submit} disabled={drop.isPending}>
-            {drop.isPending ? "Dropping…" : "Drop student"}
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+      </View>
+    </Sheet>
   );
 }
