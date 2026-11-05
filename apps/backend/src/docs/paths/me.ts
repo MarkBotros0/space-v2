@@ -154,6 +154,11 @@ export const mePaths = {
                 description: "variant SEASON_STAFF",
                 properties: {
                   variant: { const: "SEASON_STAFF" },
+                  todayOrgDay: {
+                    type: "string",
+                    format: "date",
+                    description: "Today's organisation-calendar day (ORG_TIMEZONE). Staff screens count past, live and next sessions from this, not from the device's day.",
+                  },
                   scope: { enum: ["season", "groups"] },
                   season: { type: "object" },
                   groups: { type: "array", items: { type: "object" } },

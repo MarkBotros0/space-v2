@@ -117,6 +117,8 @@ export type LeaderSessionCheckIn = z.infer<typeof leaderSessionCheckInSchema>;
 export const staffSeasonDashboardSchema = z
   .object({
     variant: z.literal("SEASON_STAFF"),
+    /** Today's org-calendar day. Staff screens compare session days to this, not the device's. */
+    todayOrgDay: isoDaySchema,
     scope: z.enum(["season", "groups"]),
     season: dashboardSeasonSchema,
     /** Every group the leader leads in this season (D7); empty for `"season"`. */

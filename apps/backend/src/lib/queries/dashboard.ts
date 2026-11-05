@@ -180,6 +180,7 @@ export async function loadSeasonStaffDashboard(
 
   return {
     variant: "SEASON_STAFF" as const,
+    todayOrgDay: orgDayKey(now),
     scope: scope.kind,
     season,
     groups,

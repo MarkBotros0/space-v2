@@ -180,6 +180,7 @@ export const engagementRow = (studentUserId: number, studentName: string, score:
 
 export const staffDashboard = (scope: "season" | "groups") => ({
   variant: "SEASON_STAFF",
+  todayOrgDay: "2099-03-01",
   scope,
   season: { id: 7, code: "spring-2099", title: "Spring 2099", status: "ACTIVE" },
   groups:

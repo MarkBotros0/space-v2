@@ -3,6 +3,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { orgDayKey } from "../../lib/org-time";
 import { newPublicId } from "../../lib/public-id";
 import {
   mentorDashboardSchema,
@@ -272,6 +273,11 @@ describe("SEASON_STAFF", () => {
     const d = staffSeasonDashboardSchema.parse(res.body.data);
 
     expect(d.scope).toBe("season");
+    // The org's day, so staff screens count sessions from it rather than the device's.
+    expect(d.todayOrgDay).toBe(orgDayKey(new Date()));
+    expect(Object.keys(res.body.data).sort()).toEqual([
+      "cohort", "groups", "nextSession", "progress", "quizzes", "scope", "season", "submissions", "todayOrgDay", "variant",
+    ]);
     expect(d.groups).toEqual([]);
     expect(d.season).toMatchObject({ id: seasonId, status: "ACTIVE" });
     expect(d.progress).toEqual({ sessionsHeld: 3, sessionsTotal: 4, pct: 75 });

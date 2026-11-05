@@ -83,6 +83,7 @@ describe("leaderSession on the staff dashboard", () => {
   };
   const staff = {
     variant: "SEASON_STAFF",
+    todayOrgDay: "2099-03-01",
     scope: "groups",
     season: { id: 1, code: "S1", title: "Season", status: "ACTIVE" },
     groups: [{ id: 2, name: "A" }],
@@ -97,6 +98,12 @@ describe("leaderSession on the staff dashboard", () => {
     expect(staffSeasonDashboardSchema.safeParse(staff).success).toBe(true);
     expect(staffSeasonDashboardSchema.safeParse({ ...staff, leaderSession: null }).success).toBe(true);
     expect(staffSeasonDashboardSchema.parse({ ...staff, leaderSession }).leaderSession).toEqual(leaderSession);
+  });
+
+  it("requires todayOrgDay, an org day key, as the student arm does", () => {
+    const { todayOrgDay: _day, ...without } = staff;
+    expect(staffSeasonDashboardSchema.safeParse(without).success).toBe(false);
+    expect(staffSeasonDashboardSchema.safeParse({ ...staff, todayOrgDay: "tomorrow" }).success).toBe(false);
   });
 
   it("is strict: an extra field on a not-checked-in student fails", () => {
