@@ -107,7 +107,7 @@ describe("StatCard", () => {
     render(<StatCard label="Absence budget left" value="42%" sublabel="this season" onPress={onPress} />);
     fireEvent.press(screen.getByLabelText("Absence budget left: 42%"));
     expect(onPress).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("this season")).toBeTruthy();
+    expect(screen.getByText("Absence budget\nleft this season")).toBeTruthy();
   });
 
   it("keeps the label to at most two lines, so a long word shrinks instead of splitting", () => {
