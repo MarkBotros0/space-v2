@@ -11,7 +11,7 @@ const MAX_PAGES_PER_ROLE = 120;
 const MAX_DIALOGS_PER_PAGE = 4;
 const PAGE_DEADLINE_MS = 420000;
 // Pages not reachable by links but part of the reference.
-const EXTRA_PATHS = { super: ["/dev/design-system"] };
+const EXTRA_PATHS = {};
 
 const allUsers = JSON.parse(readFileSync(USERS_FILE, "utf8"));
 // `--role <name>` captures one role into manifest.<role>.json so roles can run
