@@ -171,3 +171,10 @@ it("Modal renders its content as a sheet with a Close button", () => {
   fireEvent.press(screen.getByLabelText("Close"));
   expect(onOpenChange).toHaveBeenCalledWith(false);
 });
+
+it("Label has a real line height, so descenders in 'graduation year' are not clipped (K6)", () => {
+  render(<FormField label="JPCS graduation year" required />);
+  const label = screen.getByText(/JPCS graduation year/);
+  expect(label.props.className).toContain("leading-5");
+  expect(label.props.className).not.toContain("leading-none");
+});
