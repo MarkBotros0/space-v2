@@ -104,7 +104,8 @@ describe("deleted, go to the list: nothing of the deleted record stays under Bac
 
     await act(() => router.dismissTo("/assignments"));
     expect(result.getPathname()).toBe("/assignments");
-    expect(stack(result)).toEqual(["(tabs)"]);
+    // /assignments is a stacked route since P2-2: it swaps the deleted detail out, Back goes to the tabs.
+    expect(stack(result)).toEqual(["(tabs)", "assignments"]);
   });
 
   it("session from a season: dismissAll then push the season leaves one season detail", async () => {
