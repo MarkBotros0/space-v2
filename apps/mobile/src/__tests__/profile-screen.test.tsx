@@ -77,7 +77,7 @@ describe("ProfileScreen — STUDENT", () => {
     expect(await screen.findByLabelText("Streak: 3")).toBeTruthy();
     expect(screen.getByLabelText("University").props.value).toBe("Cairo University");
     // v1's DatePicker (PPP format) in place of a typed field.
-    expect(screen.getByLabelText("Date of birth")).toHaveTextContent("April 5th, 2001");
+    expect(screen.getByLabelText("Date of birth")).toHaveTextContent("Apr 5, 2001");
     // The student's own engagement (self arm): completed / expected.
     expect(await screen.findByLabelText("Assignments: 1/4")).toBeTruthy();
     expect(screen.getByText("YOUR DETAILS")).toBeTruthy();

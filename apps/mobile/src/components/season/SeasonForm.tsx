@@ -233,12 +233,12 @@ export function SeasonForm({
           </Text>
           <View className="mt-2 flex-col gap-4">
             <FormField
-              label="Total Absence budget (minutes)"
+              label="Total absence budget (minutes)"
               description="Total minutes a student may miss before being flagged."
               error={errors.absenceBudgetMinutes}
             >
               <Input
-                accessibilityLabel="Total Absence budget (minutes)"
+                accessibilityLabel="Total absence budget (minutes)"
                 value={v.budget}
                 onChangeText={(budget) => patch({ budget })}
                 keyboardType="number-pad"
@@ -246,7 +246,7 @@ export function SeasonForm({
             </FormField>
             <FormField
               label="Absence weight (minutes)"
-              description="How many budget minutes one ABSENT consumes."
+              description="How many budget minutes a missed session uses up."
               error={errors.absenceWeightMinutes}
             >
               <Input

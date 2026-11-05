@@ -130,7 +130,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
           <Combobox
             accessibilityLabel="Choose an admin"
             placeholder={candidates.isPending ? "Loading admins…" : "Choose an admin…"}
-            emptyMessage="No other users have the ADMIN role."
+            emptyMessage="There are no other admins to add."
             disabled={candidates.isPending || candidates.isError}
             options={options}
             value={picked}

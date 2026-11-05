@@ -1,6 +1,6 @@
 /**
  * Port of v1 src/components/ui/date-picker.tsx — v1's own month grid (not
- * the OS picker): same "PPP" trigger format, "MMMM yyyy" header, Sun-first
+ * the OS picker): "PP" trigger format ("Oct 5, 2026", the app's date format), "MMMM yyyy" header, Sun-first
  * weekdays, h-9 w-9 day cells, today/selected styles.
  * Native differences: Base UI Popover → AnchoredPopover; grid-cols-7 → rows
  * of seven; ring-1 ring-inset (today) → border; hover:bg-muted → active:.
@@ -88,7 +88,7 @@ function DatePicker({
         )}
       >
         <Text className={cn("text-base", value ? "text-foreground" : "text-muted-foreground")}>
-          {value ? format(value, "PPP") : placeholder}
+          {value ? format(value, "PP") : placeholder}
         </Text>
         <CalendarIcon size={16} className="text-muted-foreground" />
       </Pressable>

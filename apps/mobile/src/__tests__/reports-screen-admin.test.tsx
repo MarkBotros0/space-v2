@@ -21,7 +21,7 @@ import { renderWithProviders } from "./helpers/render";
 
 import ReportsScreen from "../../app/(app)/(tabs)/reports";
 
-import { mockEndpoints, sessionFor, summary } from "./helpers/reports-fixtures";
+import { mockEndpoints, organisation, sessionFor, summary } from "./helpers/reports-fixtures";
 
 const get = apiClient.get as jest.Mock;
 
@@ -244,6 +244,19 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     fireEvent.press(screen.getByLabelText("Active seasons: 2"));
     expect(mockPush).toHaveBeenCalledWith("/seasons");
     expect(screen.getByTestId("organisation-tiles").props.className).toContain("flex-wrap");
+  });
+
+  it("says 1 Active season, not 1 Active seasons", async () => {
+    useSessionStore.setState(sessionFor("SUPER"));
+    mockEndpoints({ withOrg: true });
+    const was = organisation.activeSeasonCount;
+    organisation.activeSeasonCount = 1;
+    try {
+      renderWithProviders(<ReportsScreen />);
+      expect(await screen.findByLabelText("Active season: 1")).toBeTruthy();
+    } finally {
+      organisation.activeSeasonCount = was;
+    }
   });
 
   it("lists students per season as a grouped row with all four counts and a status chip", async () => {

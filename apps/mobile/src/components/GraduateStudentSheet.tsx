@@ -32,6 +32,14 @@ export function GraduateStudentSheet({
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Live, like the import sheet's year field: "12345678" is flagged as it is typed, not on Save.
+  const trimmedYear = year.trim();
+  const yearNum = Number(trimmedYear);
+  const currentYear = new Date().getFullYear();
+  const yearInvalid =
+    trimmedYear !== "" && !(/^\d{4}$/.test(trimmedYear) && yearNum >= 1990 && yearNum <= currentYear);
+  const yearError = yearInvalid ? `Enter a year between 1990 and ${currentYear}.` : null;
+
   const close = () => {
     setFieldError(null);
     setError(null);
@@ -43,7 +51,7 @@ export function GraduateStudentSheet({
     setError(null);
     const trimmed = year.trim();
     if (!/^\d{4}$/.test(trimmed)) {
-      setFieldError("Enter a four-digit year.");
+      setFieldError(`Enter a year between 1990 and ${currentYear}.`);
       return;
     }
     const parsed = graduateStudentRequestSchema.safeParse({ graduationYear: Number(trimmed) });
@@ -72,7 +80,7 @@ export function GraduateStudentSheet({
           label="Graduate student"
           loading={graduate.isPending}
           onPress={submit}
-          hint={error ?? fieldError ?? undefined}
+          hint={error ?? yearError ?? fieldError ?? undefined}
         />
       }
     >
@@ -80,7 +88,7 @@ export function GraduateStudentSheet({
         <Text variant="subhead" className="text-muted-foreground">
           {`Marks ${studentName} as a JPCS alumnus, completes every active season enrollment, and removes them from the active roster. They become eligible for leader, admin or mentor roles. This can't be undone.`}
         </Text>
-        <FormField label="JPCS graduation year" required error={fieldError ?? undefined}>
+        <FormField label="JPCS graduation year" required error={yearError ?? fieldError ?? undefined}>
           <Input
             accessibilityLabel="JPCS graduation year"
             value={year}

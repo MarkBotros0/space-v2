@@ -120,10 +120,10 @@ it("MultiSelect toggles several options (v1 onChange)", () => {
   expect(onChange).toHaveBeenCalledWith(["a", "b"]);
 });
 
-it("DatePicker shows v1's PPP format and picks a day", () => {
+it('DatePicker shows the app format (Oct 14, 2026) and picks a day', () => {
   const onChange = jest.fn();
   render(<DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={onChange} />);
-  expect(screen.getByLabelText("Start")).toHaveTextContent("October 14th, 2026");
+  expect(screen.getByLabelText("Start")).toHaveTextContent("Oct 14, 2026");
   fireEvent.press(screen.getByLabelText("Start"));
   expect(screen.getByText("October 2026")).toBeTruthy();
   fireEvent.press(screen.getByText("20"));

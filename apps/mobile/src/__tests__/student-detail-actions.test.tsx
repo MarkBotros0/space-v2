@@ -162,6 +162,17 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
+  it("flags an eight-digit year as it is typed, like the import sheet", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(<StudentDetailScreen />);
+
+    fireEvent.press(await screen.findByText("Graduate"));
+    fireEvent.changeText(screen.getByLabelText("JPCS graduation year"), "20262026");
+    expect(screen.getByLabelText("JPCS graduation year").props.accessibilityHint).toBe(
+      `Enter a year between 1990 and ${new Date().getFullYear()}.`,
+    );
+  });
+
   it("drops one season's enrollment with a reason through the sheet", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     patch.mockResolvedValue({ data: { data: { id: 507, status: "WITHDRAWN" } } });

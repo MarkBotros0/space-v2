@@ -319,7 +319,7 @@ describe("EditAssignmentScreen", () => {
     renderWithProviders(<EditAssignmentScreen />);
 
     const title = await screen.findByDisplayValue("Essay one");
-    expect(screen.getByText(format(new Date(2099, 3, 1), "PPP"))).toBeTruthy();
+    expect(screen.getByText(format(new Date(2099, 3, 1), "PP"))).toBeTruthy();
     expect(screen.getByDisplayValue("10")).toBeTruthy(); // acceptsFiles re-derived from the size (R10)
     fireEvent.changeText(title, "Essay two");
     fireEvent.press(screen.getByText("Save changes"));

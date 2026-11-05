@@ -232,7 +232,7 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
     patch.mockResolvedValue({ data: { data: { updated: 2 } } });
     renderWithProviders(<EditSessionScreen />);
 
-    expect(await screen.findByLabelText("Date")).toHaveTextContent("March 15th, 2099");
+    expect(await screen.findByLabelText("Date")).toHaveTextContent("Mar 15, 2099");
     expect(screen.getByText("20")).toBeTruthy();
     expect(screen.getByLabelText("Location")).toBeTruthy(); // no YouTube link -> in-person
 

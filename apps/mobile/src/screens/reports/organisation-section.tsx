@@ -60,7 +60,7 @@ export function OrganisationSection() {
           <StatTile className="flex-none" label="Alumni" value={data.totalAlumni} />
         </TilePress>
         <TilePress onPress={() => router.push("/seasons")}>
-          <StatTile className="flex-none" label="Active seasons" value={data.activeSeasonCount} />
+          <StatTile className="flex-none" label={data.activeSeasonCount === 1 ? "Active season" : "Active seasons"} value={data.activeSeasonCount} />
         </TilePress>
       </View>
 
