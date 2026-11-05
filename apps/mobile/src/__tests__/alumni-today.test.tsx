@@ -112,8 +112,8 @@ describe("AlumniDashboard", () => {
     expect(screen.getByText("YOUR HISTORY")).toBeTruthy();
     expect(screen.queryByText("Season D")).toBeNull();
     expect(screen.getAllByText("85% attended")).toHaveLength(3);
-    expect(screen.getByLabelText("Season B, Jan 5, 2025 – Mar 20, 2025")).toBeTruthy();
-    expect(screen.getByLabelText("Season A, Jan 5, 2025 – Mar 20, 2025 · Group A")).toBeTruthy();
+    expect(screen.getByLabelText("Season B, Jan 5, 2025 – Mar 20, 2025, 85% attended")).toBeTruthy();
+    expect(screen.getByLabelText("Season A, Jan 5, 2025 – Mar 20, 2025 · Group A, 85% attended")).toBeTruthy();
     fireEvent.press(screen.getByText("Season A"));
     expect(mockPush).toHaveBeenLastCalledWith("/history");
     mockPush.mockClear();
