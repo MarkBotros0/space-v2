@@ -146,6 +146,20 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     });
   });
 
+  it("clears the year error as soon as the year is edited to a valid one", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(<StudentDetailScreen />);
+
+    fireEvent.press(await screen.findByText("Graduate"));
+    fireEvent.changeText(screen.getByLabelText("JPCS graduation year"), "");
+    fireEvent.press(screen.getByText("Graduate student"));
+    await waitFor(() =>
+      expect(screen.getByLabelText("JPCS graduation year").props.accessibilityHint).toBeTruthy(),
+    );
+    fireEvent.changeText(screen.getByLabelText("JPCS graduation year"), String(new Date().getFullYear()));
+    expect(screen.getByLabelText("JPCS graduation year").props.accessibilityHint).toBeFalsy();
+  });
+
   it("refuses an out-of-range year in the sheet without calling the API (R58's bound, one schema)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);

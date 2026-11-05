@@ -92,7 +92,10 @@ export function GraduateStudentSheet({
           <Input
             accessibilityLabel="JPCS graduation year"
             value={year}
-            onChangeText={setYear}
+            onChangeText={(v) => {
+              setYear(v);
+              setFieldError(null);
+            }}
             keyboardType="number-pad"
           />
         </FormField>
