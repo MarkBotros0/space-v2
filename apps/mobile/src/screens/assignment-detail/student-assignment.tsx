@@ -4,7 +4,7 @@ import { View } from "react-native";
 import type { AssignmentDetail } from "@space/shared";
 
 import { ForumThread } from "../../components/ForumThread";
-import { Eyebrow } from "../../design/layout/page-title";
+import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { RichTextView, StatusChip, dueChip, statusChip } from "../../design/ui";
@@ -52,8 +52,8 @@ function StudentAssignment({
       <View className="gap-4">
         <ChipRow detail={detail} todayOrgDay={dash.data?.todayOrgDay ?? deviceTodayKey()} />
         {detail.description ? (
-          <View className="gap-2">
-            <Eyebrow>{forum ? "Question" : "Brief"}</Eyebrow>
+          <View>
+            <ListSectionHeader>{forum ? "Question" : "Brief"}</ListSectionHeader>
             <View className="rounded-group bg-surface p-4">
               <RichTextView html={storedTextToHtml(detail.description)} />
             </View>

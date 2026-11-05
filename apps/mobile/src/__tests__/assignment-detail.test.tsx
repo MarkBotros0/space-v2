@@ -69,7 +69,7 @@ describe("AssignmentDetailScreen", () => {
     expect(screen.getByText("Write about the thing.")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1); // the pinned bar (R23)
     expect(screen.queryByText("← Assignments")).toBeNull();
-    expect(screen.getByText("Brief")).toBeTruthy();
+    expect(screen.getByText("BRIEF")).toBeTruthy();
     expect(screen.getByText("Spring 2026")).toBeTruthy(); // the Screen subtitle
     expect(get).toHaveBeenCalledWith("/api/v1/assignments/41");
   });
