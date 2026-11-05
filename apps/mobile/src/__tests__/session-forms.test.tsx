@@ -268,6 +268,19 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
     expect(screen.queryByLabelText("Apply to")).toBeNull();
   });
 
+  it("Save is disabled until a field changes, and no 'Delete' heading sits above the delete button (corner sweep 6)", async () => {
+    routeGets(detail({ recurrenceGroupId: null }));
+    renderWithProviders(<EditSessionScreen />);
+    await screen.findByLabelText("Title");
+    const bar = within(screen.getByTestId("save-bar"));
+    expect(bar.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(bar.getByText("Nothing to save yet.")).toBeTruthy();
+    expect(screen.queryByRole("header", { name: "Delete" })).toBeNull();
+    expect(screen.getByText("Delete session")).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText("Title"), "Week 3b");
+    expect(bar.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  });
+
   it("deletes on a second press; a has_student_records 409 offers the forced delete", async () => {
     routeGets(detail({ recurrenceGroupId: null }));
     del

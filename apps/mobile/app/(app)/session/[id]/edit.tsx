@@ -64,7 +64,7 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
   const update = useUpdateSession(detail.id);
   const remove = useDeleteSession(detail.id);
   // Pre-filled from the server's org day and time (X13) — nothing converts zones here.
-  const [values, setValues] = useState<SessionFormValues>({
+  const [initial] = useState<SessionFormValues>(() => ({
     title: detail.title,
     day: detail.dayKey,
     time: detail.startTime,
@@ -73,7 +73,8 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
     location: detail.location ?? "",
     youtubeUrl: detail.youtubeUrl ?? "",
     description: detail.description ?? "",
-  });
+  }));
+  const [values, setValues] = useState<SessionFormValues>(initial);
   const isSeries = detail.recurrenceGroupId !== null;
   const [scope, setScope] = useState<RecurrenceScope>("one");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -82,7 +83,13 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
   const [armed, setArmed] = useState(false);
   const [needsForce, setNeedsForce] = useState(false);
 
+  // Nothing to save until a field changes (or the scope widens past this session).
+  const dirty =
+    scope !== "one" ||
+    (Object.keys(initial) as Array<keyof SessionFormValues>).some((k) => values[k] !== initial[k]);
+
   const save = () => {
+    if (!dirty) return;
     setMessage(null);
     const body: UpdateSessionInput = { ...sessionWriteFields(values), scope };
     const parsed = updateSessionRequestSchema.safeParse(body);
@@ -140,8 +147,14 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
       saveLabel="Save changes"
       saving={update.isPending}
       saveHint={
-        message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
+        message ??
+        (Object.keys(errors).length > 0
+          ? "Fix the fields marked above."
+          : dirty
+            ? undefined
+            : "Nothing to save yet.")
       }
+      disabled={!dirty}
       onSave={save}
     >
       <View className="flex-col gap-4">
@@ -161,9 +174,6 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
         ) : null}
         {/* V2-ONLY: v1 deletes sessions from its session page console. */}
         <View className="flex-col gap-3">
-          <Text variant="headline" accessibilityRole="header">
-            Delete
-          </Text>
           <FormErrorBox message={deleteMessage} />
           <Button
             variant="destructive"
