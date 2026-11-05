@@ -174,3 +174,15 @@ Mentor Notes is inherited from plan 03's Task (`src/screens/staff-notes/note-row
 - [ ] **Step 5: Final whole-branch review on opus,** one fix wave, scoped re-review.
 - [ ] **Step 6: Land per the brief.** Wait for `git merge-base --is-ancestor 55d5c52 origin/main`, re-checking about every 30 minutes. `git rebase origin/main`, keep both sides' intent, and where a sibling landed a redesign covering the mentor or alumni view, drop our branch for it. Delete `shell-frame.tsx` only if nothing uses it after the rebase; otherwise it goes on the pending list. Re-run mobile `test:unit`, `typecheck`, `lint`, backend unit tests. `gh auth switch --hostname github.com --user MarkBotros0 && git push origin HEAD:main`; on rejection, repeat. Delete `.superpowers/sdd/<plan>/`; leave the worktree.
 - [ ] **Step 7: Tell the owner** the pending list and every ruling.
+
+### Task 10: Mentor's note default is Mentors (owner, 2026-11-05)
+
+**Files:** `apps/mobile/src/design/students/student-detail-grouped.tsx` (or the seam passing the role to it), `apps/mobile/app/(app)/student/[id]/index.tsx`, a test beside the mentor's student page tests, `apps/mobile/.maestro/sweep/mentor-scenarios/s43-student-note.yaml` if it reads the default.
+
+- [ ] Test: a MENTOR opening the note sheet sees "Mentors" selected; a LEADER sees "Leaders"; after dismissing and reopening, the default is still the role's.
+- [ ] Pass `defaultVisibility="MENTORS"` to `NoteSheet` for a mentor only. `NoteSheet`'s own default stays LEADERS. No backend change: the server already validates visibility.
+- [ ] Mobile `test:unit`, `typecheck`, `lint`; commit.
+
+### Task 11: Alumni-side event copy says "Alumni only" (owner, 2026-11-05)
+
+Plan 04 owns the events screens and `EventForm`'s label. Alumni rows already read "Alumni only" (`event-day-list.tsx`, `CalendarEntries.tsx`, `season-calendar-agenda.tsx`). Verify on the sweep; no code unless an alumni-only surface still says otherwise.
