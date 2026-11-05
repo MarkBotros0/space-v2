@@ -224,3 +224,8 @@ export function unbreakable(text: string): string {
 export function formatMinutes(minutes: number): string {
   return `${minutes} min`;
 }
+
+/** Swaps spaces for non-breaking ones so a date or time wraps as a whole, never across its words. */
+export function keepTogether(text: string): string {
+  return text.replace(/ /g, "\u00a0");
+}

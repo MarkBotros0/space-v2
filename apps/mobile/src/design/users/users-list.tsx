@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import { userStatusSchema, type UserListItem, type UserStatus } from "@space/shared";
 
-import { formatDate } from "../../lib/format";
+import { formatDate, keepTogether } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
 import { USER_ROLE_LABELS } from "../../lib/user-role-labels";
@@ -28,16 +28,12 @@ export function parseUserStatus(value: unknown): UserStatus | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
-/**
- * The email on its own line (it never shares a line with the role, so a wrap can't
- * strand a "·" or split the address), then role and last login joined by joinMeta.
- */
-function rowSubtitle(row: UserListItem): string {
-  const meta = joinMeta([
+/** Role and last login; the date stays whole when the line wraps, the rest may wrap. */
+function rowMeta(row: UserListItem): string {
+  return joinMeta([
     USER_ROLE_LABELS[row.role],
-    row.lastLoginAt ? `Last login ${formatDate(row.lastLoginAt)}` : "Never signed in",
+    row.lastLoginAt ? `Last login ${keepTogether(formatDate(row.lastLoginAt))}` : "Never signed in",
   ]);
-  return row.name ? `${row.email}\n${meta}` : meta;
 }
 
 export function UsersList({
@@ -58,9 +54,10 @@ export function UsersList({
             <ListRow
               index={i}
               title={row.name || row.email}
-              subtitle={rowSubtitle(row)}
+              detail={row.name ? row.email : undefined}
+              subtitle={rowMeta(row)}
               titleLines={2}
-              subtitleLines={4}
+              subtitleLines={3}
               leading={
                 <Avatar size="sm">
                   <AvatarFallback>

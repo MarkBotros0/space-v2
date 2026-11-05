@@ -258,9 +258,12 @@ describe("UsersScreen — status filter and rows", () => {
 
   it("keeps the email on its own line and gives the meta room (no stranded dot, no cut date)", async () => {
     renderWithProviders(<UsersScreen />);
-    const meta = await screen.findByText(/^ann@jpc\.test\sAdmin · Last login/);
-    expect(meta.props.children).toMatch(/^ann@jpc\.test\nAdmin/);
+    const email = await screen.findByText("ann@jpc.test");
+    expect(email.props.numberOfLines).toBe(1);
+    const meta = screen.getByText(/^Admin · Last login/);
     expect(meta.props.numberOfLines).toBeGreaterThanOrEqual(3);
+    // the date never splits across lines
+    expect(meta.props.children).toMatch(/Last login \w{3}\u00a0\d{1,2},\u00a0\d{4}$/);
   });
 
   it("shows the email once, as the title, for a user with no name", async () => {

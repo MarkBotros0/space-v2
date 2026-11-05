@@ -67,6 +67,8 @@ function GroupedList({
 type ListRowProps = {
   title: string;
   subtitle?: string;
+  /** One line under the title, ellipsized, above the subtitle: a value that must not wrap (an email). */
+  detail?: string;
   /** Left of the title (an avatar or icon). */
   leading?: ReactNode;
   trailing?: ReactNode;
@@ -108,7 +110,7 @@ function spokenTrailing(trailing: ReactNode, trailingLabel: string | undefined):
 }
 
 function ListRow({
-  title, subtitle, leading, trailing, footer, trailingLabel, trailingPlacement = "side", chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
+  title, subtitle, detail, leading, trailing, footer, trailingLabel, trailingPlacement = "side", chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
 }: ListRowProps) {
   const reduced = useReducedMotion();
   const press = usePressScale(0.985);
@@ -119,6 +121,11 @@ function ListRow({
         <Text variant="body" numberOfLines={titleLines ?? undefined} ellipsizeMode="tail" className={destructive ? "text-bad" : undefined}>
           {title}
         </Text>
+        {detail ? (
+          <Text variant="caption" numberOfLines={1} ellipsizeMode="tail" className="text-muted-foreground">
+            {detail}
+          </Text>
+        ) : null}
         {subtitle ? (
           <Text variant="caption" numberOfLines={subtitleLines ?? undefined} className="text-muted-foreground">
             {subtitle}
@@ -140,7 +147,7 @@ function ListRow({
       {onPress ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={[title, subtitle, spokenTrailing(trailing, trailingLabel)]
+          accessibilityLabel={[title, [detail, subtitle].filter(Boolean).join("\n"), spokenTrailing(trailing, trailingLabel)]
             .filter(Boolean)
             .join(", ")}
           onPress={onPress}
