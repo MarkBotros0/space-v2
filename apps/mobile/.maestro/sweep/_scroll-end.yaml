@@ -1,0 +1,16 @@
+# Scrolls to the real end of the page, then lets it settle. A bare `scroll` x3 stopped
+# halfway on long screens (reports, settings, forms), so the bottom shots weren't the bottom.
+# Swipes along the left margin inside the strip above where a keyboard would be, so it moves
+# the page even over a text field (see _tap.yaml); 10 steps of a third of the screen each is
+# longer than any screen here. Dismiss the keyboard first where one is open: it covers the end.
+appId: com.jpc.space
+---
+- repeat:
+    times: 10
+    commands:
+      - swipe:
+          start: 4%, 45%
+          end: 4%, 12%
+          duration: 400
+- waitForAnimationToEnd:
+    timeout: 5000

@@ -178,11 +178,8 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s35-22-student-edit-name-typed
 # Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
-- waitForAnimationToEnd:
-    timeout: 5000
+- runFlow:
+    file: ../_scroll-end.yaml
 - takeScreenshot: s35-23-student-edit-bottom
 - openLink: spacev2://students/new
 - extendedWaitUntil:
@@ -206,9 +203,6 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s35-26-student-new-name-typed
 # Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
-- waitForAnimationToEnd:
-    timeout: 5000
+- runFlow:
+    file: ../_scroll-end.yaml
 - takeScreenshot: s35-27-student-new-bottom

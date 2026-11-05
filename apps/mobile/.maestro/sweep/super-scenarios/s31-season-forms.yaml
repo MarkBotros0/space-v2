@@ -63,11 +63,8 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 3000
 # Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
-- waitForAnimationToEnd:
-    timeout: 5000
+- runFlow:
+    file: ../_scroll-end.yaml
 - takeScreenshot: s31-08-season-new-bottom
 # Create season is never tapped.
 - evalScript: ${output.year = new Date().getFullYear()}

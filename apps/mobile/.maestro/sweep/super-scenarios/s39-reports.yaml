@@ -24,11 +24,8 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s39-02-reports-mid
 # Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
-- waitForAnimationToEnd:
-    timeout: 5000
+- runFlow:
+    file: ../_scroll-end.yaml
 - takeScreenshot: s39-03-reports-bottom
 # A season filter is a read. Export buttons are never tapped (they open the share sheet).
 - evalScript: ${output.year = new Date().getFullYear()}
@@ -41,9 +38,6 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s39-04-reports-season
 # Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
-- waitForAnimationToEnd:
-    timeout: 5000
+- runFlow:
+    file: ../_scroll-end.yaml
 - takeScreenshot: s39-05-reports-season-bottom

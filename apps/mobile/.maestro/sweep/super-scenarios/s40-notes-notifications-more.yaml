@@ -67,9 +67,6 @@ appId: com.jpc.space
 - takeScreenshot: s40-08-settings-name-kbd
 - hideKeyboard
 # Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
-- waitForAnimationToEnd:
-    timeout: 5000
+- runFlow:
+    file: ../_scroll-end.yaml
 - takeScreenshot: s40-09-settings-bottom
