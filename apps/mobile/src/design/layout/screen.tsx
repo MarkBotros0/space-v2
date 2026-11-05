@@ -239,10 +239,9 @@ export function Screen({
   // (bell, user menu) is live, so the compact bar takes over as soon as the row
   // starts to go under the top: waiting for its bottom left it half under the
   // status bar with no bar shown, on a short page partly scrolled (sweep s47-03).
-  const collapseAtRowTop = home && !title;
   const onTitleLayout = (e: LayoutChangeEvent) => {
     const { y, height } = e.nativeEvent.layout;
-    titleBottom.value = collapseAtRowTop ? y : y + height;
+    titleBottom.value = home ? y : y + height;
   };
 
   // Home has no large title; once its actions row scrolls away the compact

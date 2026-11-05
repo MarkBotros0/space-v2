@@ -101,6 +101,20 @@ describe("Screen home: compact header (R31)", () => {
     expect(compact().props.pointerEvents).toBe("box-none");
   });
 
+  it("takes over at the row's top with a title too: the bell and menu sit beside it", async () => {
+    // Sweep s47 (alumni "Hi, <name>" + subtitle): partly scrolled, the row had gone and no bar showed.
+    renderWithProviders(
+      <Screen home title="Hi, Sam" subtitle="Class of 2025">
+        <RNText>body</RNText>
+      </Screen>,
+    );
+    layoutHeading();
+    await scrollTo(10);
+    expect(compact().props.pointerEvents).toBe("none");
+    await scrollTo(20);
+    expect(compact().props.pointerEvents).toBe("box-none");
+  });
+
   it("once scrolled its controls are live and reachable", async () => {
     renderWithProviders(
       <Screen home>
