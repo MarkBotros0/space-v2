@@ -143,7 +143,10 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     fireEvent.press(await screen.findByText("Attendance"));
     expect(await screen.findByText("Week 4")).toBeTruthy();
     fireEvent.press(screen.getByText("Submissions"));
-    fireEvent.press(await screen.findByText("Essay one"));
+    const essay = await screen.findByText("Essay one");
+    expect(essay.props.numberOfLines).toBe(2);
+    expect(screen.getByText(/submitted Mar 2, 2099/).props.numberOfLines).toBeUndefined();
+    fireEvent.press(essay);
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
   });
 

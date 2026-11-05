@@ -142,7 +142,9 @@ export function GroupedSubmissionsTab({ studentId }: { studentId: number }) {
             key={s.publicId}
             index={i}
             title={s.assignmentTitle}
+            titleLines={2}
             subtitle={caption(s.seasonTitle, s.submittedAt && `submitted ${formatDate(s.submittedAt)}`)}
+            subtitleLines={null}
             chevron
             onPress={() =>
               router.push({ pathname: "/submission/[publicId]", params: { publicId: s.publicId } })
