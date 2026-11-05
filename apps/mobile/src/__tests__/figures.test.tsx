@@ -27,6 +27,38 @@ describe("StatTile", () => {
     jest.useRealTimers();
   });
 
+  it("does not count up again when a refetch brings the same number back", () => {
+    jest.useFakeTimers();
+    setReducedMotionForTests(false);
+    const { rerender } = render(<StatTile value={10} label="Done" />);
+    act(() => jest.advanceTimersByTime(1000));
+    // A refetch: a placeholder for a moment, then the same figure.
+    rerender(<StatTile value="—" label="Done" />);
+    rerender(<StatTile value={10} label="Done" />);
+    act(() => jest.advanceTimersByTime(16));
+    expect(screen.getByText("10")).toBeTruthy();
+    jest.useRealTimers();
+  });
+
+  it("counts from the shown number on a change, not from 0", () => {
+    jest.useFakeTimers();
+    setReducedMotionForTests(false);
+    const { rerender } = render(<StatTile value={10} label="Done" />);
+    act(() => jest.advanceTimersByTime(1000));
+    rerender(<StatTile value={12} label="Done" />);
+    act(() => jest.advanceTimersByTime(16));
+    const mid = Number(
+      screen
+        .getByLabelText("Done: 12")
+        .findAll((n) => typeof n.props.children === "string" && /^\d+$/.test(n.props.children))[0]
+        ?.props.children,
+    );
+    expect(mid).toBeGreaterThanOrEqual(10);
+    act(() => jest.advanceTimersByTime(1000));
+    expect(screen.getByText("12")).toBeTruthy();
+    jest.useRealTimers();
+  });
+
   it("shrinks the value to fit one line instead of ellipsizing it", () => {
     render(<StatTile value="3 / 10" label="Quizzes" />);
     const value = screen.getByText("3 / 10");
@@ -56,7 +88,14 @@ describe("StatTile", () => {
 
 describe("HeroCard", () => {
   it("renders eyebrow, title, meta and action", () => {
-    render(<HeroCard eyebrow="Next session" title="Intro" meta="Tue 6pm" action={<Button>Check in</Button>} />);
+    render(
+      <HeroCard
+        eyebrow="Next session"
+        title="Intro"
+        meta="Tue 6pm"
+        action={<Button>Check in</Button>}
+      />,
+    );
     expect(screen.getByText("Next session")).toBeTruthy();
     expect(screen.getByText("Intro")).toBeTruthy();
     expect(screen.getByText("Tue 6pm")).toBeTruthy();

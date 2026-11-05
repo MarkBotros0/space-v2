@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 
 import { DURATION, useReducedMotion } from "../motion";
@@ -7,18 +7,33 @@ import { Text } from "./text";
 
 const FRAME_MS = 16;
 
-/** Eases a number from 0 to `target` over DURATION.slow; returns `target` at once when reduced. */
+/**
+ * Eases the shown number to `target` over DURATION.slow: from 0 on first
+ * mount, from wherever it is on a change. A refetch that brings the same
+ * number back (even after a string placeholder in between) shows it at once
+ * instead of counting up again; reduced motion always shows `target` at once.
+ */
 function useCountUp(target: number | string, reduced: boolean): number | string {
   const [shown, setShown] = useState<number | string>(reduced || typeof target === "string" ? target : 0);
+  // The last number on screen, so a change or a refetch starts from it, not from 0.
+  const last = useRef<number | null>(null);
   useEffect(() => {
-    if (reduced || typeof target === "string") {
+    if (typeof target === "string") {
+      setShown(target);
+      return;
+    }
+    const from = last.current ?? 0;
+    if (reduced || from === target) {
+      last.current = target;
       setShown(target);
       return;
     }
     const start = Date.now();
     const id = setInterval(() => {
       const t = Math.min(1, (Date.now() - start) / DURATION.slow);
-      setShown(t >= 1 ? target : Math.round(target * (1 - (1 - t) ** 3)));
+      const value = t >= 1 ? target : Math.round(from + (target - from) * (1 - (1 - t) ** 3));
+      last.current = value;
+      setShown(value);
       if (t >= 1) clearInterval(id);
     }, FRAME_MS);
     return () => clearInterval(id);
