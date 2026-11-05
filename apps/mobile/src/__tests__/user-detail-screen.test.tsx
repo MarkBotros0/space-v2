@@ -150,8 +150,9 @@ describe("UserDetailScreen", () => {
     renderWithProviders(<UserDetailScreen />);
     expect(await screen.findByText(/can't be edited — reactivate it first/)).toBeTruthy();
     expect(screen.getByLabelText("Name").props.editable).toBe(false);
-    // The pinned bar can't be disabled: it says why, and pressing it saves nothing.
+    // The pinned bar is disabled (K8) and says why; pressing it saves nothing.
     expect(within(screen.getByTestId("save-bar")).getByText("Reactivate this account to edit it.")).toBeTruthy();
+    expect(within(screen.getByTestId("save-bar")).getByRole("button", { name: "Save changes" })).toBeDisabled();
     fireEvent.press(screen.getByText("Save changes"));
     expect(patch).not.toHaveBeenCalled();
     expect(screen.getByText("Reactivate")).toBeTruthy();

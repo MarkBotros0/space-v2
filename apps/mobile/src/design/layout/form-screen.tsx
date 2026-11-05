@@ -19,6 +19,8 @@ export type FormScreenProps = {
   /** Greys Save out, e.g. while nothing has changed. */
   saveDisabled?: boolean;
   saveHint?: string;
+  /** Blocks Save and draws it as disabled (nothing to save); keep `saveHint` saying why. */
+  disabled?: boolean;
   /** Adds pull-to-refresh, as `Screen`'s. */
   onRefresh?: () => void;
   refreshing?: boolean;
@@ -34,6 +36,7 @@ export function FormScreen({
   saving = false,
   saveDisabled = false,
   saveHint,
+  disabled,
   onRefresh,
   refreshing,
   children,
@@ -45,7 +48,7 @@ export function FormScreen({
       back={back}
       onRefresh={onRefresh}
       refreshing={refreshing}
-      footer={<SaveBar label={saveLabel} onPress={onSave} loading={saving} disabled={saveDisabled} hint={saveHint} />}
+      footer={<SaveBar label={saveLabel} onPress={onSave} loading={saving} disabled={saveDisabled || disabled} hint={saveHint} />}
     >
       {children}
     </Screen>

@@ -122,6 +122,7 @@ export function UserForm({
       saveLabel={mode === "create" ? "Create and send invite" : "Save changes"}
       saving={submitting}
       saveHint={saveHint}
+      disabled={readOnly}
       onSave={submit}
     >
       <View className="flex-col gap-4">

@@ -99,15 +99,17 @@ describe("GroupImportScreen", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it("blocks an empty paste from the save bar without calling the import API", async () => {
+  it("an empty paste leaves Preview disabled, says why in the bar and never calls the import API (K8)", async () => {
     useSessionStore.setState(adminOf7);
     renderWithProviders(<GroupImportScreen />);
     await screen.findByLabelText("Paste your spreadsheet");
-    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Preview"));
-    expect(
-      await screen.findByText("Paste a header row and at least one data row first."),
-    ).toBeTruthy();
+    const bar = within(screen.getByTestId("save-bar"));
+    expect(bar.getByRole("button", { name: "Preview" })).toBeDisabled();
+    expect(bar.getByText("Paste a header row and at least one data row first.")).toBeTruthy();
+    fireEvent.press(bar.getByText("Preview"));
     expect(post).not.toHaveBeenCalled();
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "email\tgroup\nx");
+    expect(bar.getByRole("button", { name: "Preview" })).toBeEnabled();
   });
 
   it("previews against the season resolved from the route's code", async () => {

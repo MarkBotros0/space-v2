@@ -206,6 +206,10 @@ describe("/seasons/[code]/roster (G7)", () => {
     ).toBeTruthy();
     expect(screen.getByText("sara@jpc.test · Group A")).toBeTruthy();
     expect(screen.getByText("omar@jpc.test · Unassigned")).toBeTruthy();
+    // K8: nothing staged, so the bar is disabled and still says how to stage a change.
+    const idleBar = within(screen.getByTestId("save-bar"));
+    expect(idleBar.getByRole("button", { name: "No changes to save" })).toBeDisabled();
+    expect(idleBar.getByText("Pick a group for a student to stage a change.")).toBeTruthy();
     await choose("Sara", "Unassigned");
     await choose("Omar", "Group B");
     expect(screen.getAllByText("Not saved")).toHaveLength(2);

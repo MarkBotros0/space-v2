@@ -21,6 +21,28 @@ describe("FormScreen", () => {
     expect(onSave).toHaveBeenCalledTimes(1);
   });
 
+  it("K8: disabled blocks Save, marks it disabled and keeps the hint visible", () => {
+    const onSave = jest.fn();
+    renderWithProviders(
+      <FormScreen title="T" saveLabel="Save" onSave={onSave} disabled saveHint="Nothing to save yet.">
+        <Text>x</Text>
+      </FormScreen>,
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    fireEvent.press(screen.getByText("Save"));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(within(screen.getByTestId("save-bar")).getByText("Nothing to save yet.")).toBeTruthy();
+  });
+
+  it("stays enabled by default", () => {
+    renderWithProviders(
+      <FormScreen title="T" saveLabel="Save" onSave={() => {}}>
+        <Text>x</Text>
+      </FormScreen>,
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
   it("does not save while saving", () => {
     const onSave = jest.fn();
     renderWithProviders(

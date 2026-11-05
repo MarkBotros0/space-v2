@@ -171,6 +171,7 @@ export function RosterList({
           : `Save ${changes.length} change${changes.length === 1 ? "" : "s"}`
       }
       loading={save.isPending}
+      disabled={changes.length === 0}
       onPress={onSave}
       hint={changes.length === 0 ? "Pick a group for a student to stage a change." : undefined}
     />,

@@ -226,8 +226,11 @@ export default function GroupImportScreen() {
       saveHint={
         preview && toAssign.length === 0
           ? "No row can be assigned. Fix the sheet and preview again."
-          : undefined
+          : !preview && text.trim() === ""
+            ? "Paste a header row and at least one data row first."
+            : undefined
       }
+      disabled={preview ? toAssign.length === 0 : text.trim() === ""}
       onSave={preview ? runCommit : runPreview}
     >
       <View className="flex-col gap-4">
