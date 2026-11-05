@@ -28,13 +28,14 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 # Own scroll, faster than _catalogue-section: this section is near the catalogue's end, too far
-# for the slow scroll on the small phone at font 1.3.
+# for the slow scroll on the small phone at font 1.3. Not speed 100: Maestro turns that into a
+# 1ms swipe, which does not scroll at all.
 - scrollUntilVisible:
     element:
       id: catalogue-leader-today-title
     direction: DOWN
     centerElement: true
-    speed: 100
+    speed: 60
     timeout: 180000
 - waitForAnimationToEnd:
     timeout: 3000
