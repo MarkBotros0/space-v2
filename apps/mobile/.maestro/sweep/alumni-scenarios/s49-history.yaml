@@ -8,7 +8,7 @@ appId: com.jpc.space
       EMAIL: ${ALUMNI_EMAIL}
 - openLink: spacev2://history
 - extendedWaitUntil:
-    visible: 'The seasons you journeyed through'
+    visible: 'Participated'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

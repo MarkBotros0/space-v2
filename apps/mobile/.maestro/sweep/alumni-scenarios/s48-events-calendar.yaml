@@ -8,9 +8,6 @@ appId: com.jpc.space
       EMAIL: ${ALUMNI_EMAIL}
 - openLink: spacev2://calendar
 - extendedWaitUntil:
-    visible: 'Events'
-    timeout: 40000
-- extendedWaitUntil:
     visible: 'Upcoming'
     timeout: 40000
 - waitForAnimationToEnd:
