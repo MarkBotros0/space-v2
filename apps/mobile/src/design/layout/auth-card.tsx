@@ -49,11 +49,14 @@ export function AuthCard({
             <View className="flex-col gap-1">
               <Text
                 accessibilityRole="header"
-                className="text-center text-2xl font-semibold tracking-tight text-foreground"
+                variant="title"
+                className="text-center text-foreground"
               >
                 {title}
               </Text>
-              <Text className="text-center text-sm text-muted-foreground">{description}</Text>
+              <Text variant="subhead" className="text-center text-muted-foreground">
+                {description}
+              </Text>
             </View>
           </View>
           {children}
@@ -66,8 +69,14 @@ export function AuthCard({
 /** v1's "Forgot password?" link: `text-center text-sm text-muted-foreground`. */
 export function AuthLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="link" onPress={onPress} className="active:opacity-70">
-      <Text className="text-center text-sm text-muted-foreground">{label}</Text>
+    <Pressable
+      accessibilityRole="link"
+      onPress={onPress}
+      className="min-h-[44px] items-center justify-center active:opacity-70"
+    >
+      <Text variant="subhead" className="text-center text-muted-foreground">
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -76,20 +85,13 @@ export function AuthLink({ label, onPress }: { label: string; onPress: () => voi
 export function AuthNotice({ tone, children }: { tone: "error" | "success"; children: ReactNode }) {
   return (
     <View
-      className={cn(
-        "rounded-lg border px-3 py-2",
-        tone === "error"
-          ? "border-error-200 bg-error-50 dark:border-error-900 dark:bg-error-950"
-          : "border-success-200 bg-success-50 dark:border-success-900 dark:bg-success-950",
-      )}
+      className={cn("rounded-control px-3 py-2", tone === "error" ? "bg-bad-soft" : "bg-ok-soft")}
     >
       <Text
         accessibilityRole="alert"
         accessibilityLiveRegion="assertive"
-        className={cn(
-          "text-sm",
-          tone === "error" ? "text-error-700 dark:text-error-200" : "text-success-700 dark:text-success-200",
-        )}
+        variant="subhead"
+        className={tone === "error" ? "text-bad" : "text-ok"}
       >
         {children}
       </Text>
@@ -102,12 +104,23 @@ export function AuthNotice({ tone, children }: { tone: "error" | "success"; chil
  * `font-medium text-foreground` (body line height, not Label's leading-none).
  * An error reaches the control as its accessibilityHint, like FormField.
  */
-export function AuthField({ label, error, children }: { label: string; error?: string; children: ReactElement }) {
+export function AuthField({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: ReactElement;
+}) {
   const control = error
-    ? cloneElement(children as ReactElement<{ accessibilityHint?: string; "aria-invalid"?: boolean }>, {
-        accessibilityHint: error,
-        "aria-invalid": true,
-      })
+    ? cloneElement(
+        children as ReactElement<{ accessibilityHint?: string; "aria-invalid"?: boolean }>,
+        {
+          accessibilityHint: error,
+          "aria-invalid": true,
+        },
+      )
     : children;
   return (
     <View className="flex-col gap-1.5">
