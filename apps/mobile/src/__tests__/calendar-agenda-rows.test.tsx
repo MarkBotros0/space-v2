@@ -141,3 +141,15 @@ describe("calendar agenda rows", () => {
     expect(day).toHaveStyle({ fontVariant: ["tabular-nums"] });
   });
 });
+
+describe("calendar chip (K5)", () => {
+  it("keeps a long label on one line with an ellipsis and may shrink inside its row", () => {
+    const { Chip } = require("../components/calendar/CalendarEntries");
+    const { render } = require("@testing-library/react-native");
+    const utils = render(<Chip label="Opening night with the whole cohort" tint={{ box: "bg-muted", text: "text-foreground" }} />);
+    const text = utils.getByText("Opening night with the whole cohort");
+    expect(text.props.numberOfLines).toBe(1);
+    expect(text.props.ellipsizeMode).toBe("tail");
+    expect(utils.getByTestId("chip-Opening night with the whole cohort").props.className).toContain("max-w-full");
+  });
+});

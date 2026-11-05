@@ -111,8 +111,10 @@ function onCard(tint: Tint): Pick<Tint, "box" | "text"> {
 /** 12px text on a tint: medium weight, since regular strokes antialiased to ~3:1 on device. */
 export function Chip({ label, tint }: { label: string; tint: Pick<Tint, "box" | "text"> }) {
   return (
-    <View testID={`chip-${label}`} className={cn("self-start rounded-full px-2 py-0.5", tint.box)}>
-      <Text className={cn("text-xs font-medium", tint.text)}>{label}</Text>
+    <View testID={`chip-${label}`} className={cn("max-w-full shrink self-start rounded-full px-2 py-0.5", tint.box)}>
+      <Text numberOfLines={1} ellipsizeMode="tail" className={cn("text-xs font-medium", tint.text)}>
+        {label}
+      </Text>
     </View>
   );
 }
