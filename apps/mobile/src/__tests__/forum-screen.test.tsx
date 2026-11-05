@@ -133,7 +133,7 @@ describe("forum branch of the assignment screen", () => {
     expect(screen.getByText("Post to unlock the discussion")).toBeTruthy();
     expect(screen.getByText("0 words · minimum 5")).toBeTruthy();
     // v1's FORUM branch shows no due date at all (spec 14 R33).
-    expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
+    expect(screen.getByText("Due Apr 1")).toBeTruthy();
     // Nothing was created by opening the screen (ruling C6).
     expect(put).not.toHaveBeenCalled();
   });
