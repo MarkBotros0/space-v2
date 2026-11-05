@@ -27,11 +27,8 @@ import {
   engagementSummary,
   events,
   mentorDashboard,
-  organisation,
   requested,
-  seasonRow,
   serve,
-  staffDashboard,
 } from "./helpers/dashboard-fixtures";
 
 import DashboardScreen from "../../app/(app)/(tabs)/dashboard";
@@ -39,57 +36,6 @@ import DashboardScreen from "../../app/(app)/(tabs)/dashboard";
 beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
-});
-
-describe("DashboardScreen — ADMIN", () => {
-  it("admin: current season from useCurrentSeasonId, the at-risk preview, no roster, no reports read", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    serve({
-      "/api/v1/seasons": { seasons: [seasonRow] },
-      "/api/v1/me/dashboard?seasonId=7": staffDashboard("season"),
-      [EVENTS]: events,
-      [UNREAD]: { unreadCount: 0 },
-    });
-
-    renderWithProviders(<DashboardScreen />);
-
-    expect(await screen.findByText("Spring 2099")).toBeTruthy();
-    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
-    expect(screen.getByText("Current season")).toBeTruthy();
-    expect(screen.getByLabelText("Season average attendance 33%")).toBeTruthy();
-    expect(screen.getByText("3 students · Session 3 of 4")).toBeTruthy();
-    expect(screen.getByText("Happening now")).toBeTruthy();
-    expect(screen.getByLabelText("Students: 3")).toBeTruthy();
-    expect(screen.getByLabelText("Progress: 75%")).toBeTruthy();
-    expect(screen.getByLabelText("Quizzes: 2")).toBeTruthy();
-    expect(screen.getByText("Students at risk")).toBeTruthy();
-    expect(screen.getByText("1/3 submitted")).toBeTruthy();
-    expect(screen.getByText("12 students at risk")).toBeTruthy();
-    expect(screen.getByText("1 quiz draft not yet published")).toBeTruthy();
-
-    fireEvent.press(screen.getAllByText("Sara Student")[0]!);
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
-    fireEvent.press(screen.getByLabelText("View all Assignments"));
-    expect(mockPush).toHaveBeenCalledWith("/assignments");
-    fireEvent.press(screen.getByLabelText("View all Quizzes"));
-    expect(mockPush).toHaveBeenCalledWith("/quizzes");
-    fireEvent.press(screen.getByLabelText("Students: 3"));
-    expect(mockPush).toHaveBeenCalledWith("/students");
-    fireEvent.press(screen.getByLabelText("View all Students at risk"));
-    expect(mockPush).toHaveBeenCalledWith("/students");
-
-    expect(requested().some((u) => u.startsWith("/api/v1/reports"))).toBe(false);
-  });
-
-  it("admin with no season: 'No season yet', and no dashboard request (enabled guard)", async () => {
-    useSessionStore.setState(makeSession("ADMIN"));
-    serve({ "/api/v1/seasons": { seasons: [] }, [EVENTS]: events, [UNREAD]: { unreadCount: 0 } });
-
-    renderWithProviders(<DashboardScreen />);
-
-    expect(await screen.findByText("No season yet")).toBeTruthy();
-    expect(requested().some((u) => u.startsWith("/api/v1/me/dashboard"))).toBe(false);
-  });
 });
 
 describe("DashboardScreen — MENTOR", () => {
@@ -136,29 +82,5 @@ describe("DashboardScreen — MENTOR", () => {
     expect(await screen.findByText("Nobody at risk")).toBeTruthy();
     expect(screen.getByText("No student has attendance or submissions below 60%.")).toBeTruthy();
     expect(await screen.findByText("No recent activity.")).toBeTruthy();
-  });
-});
-
-describe("DashboardScreen — SUPER", () => {
-  it("organisation tiles share Reports' cache; the events tile reads `total` from the card's response (D19, D20)", async () => {
-    useSessionStore.setState(makeSession("SUPER"));
-    serve({
-      "/api/v1/reports/organisation": organisation,
-      [EVENTS]: events,
-      [UNREAD]: { unreadCount: 0 },
-    });
-
-    renderWithProviders(<DashboardScreen />);
-
-    expect(await screen.findByLabelText("Students (not graduated): 40")).toBeTruthy();
-    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
-    expect(screen.getByLabelText("Alumni: 12")).toBeTruthy();
-    // seasons.length (all statuses), NOT activeSeasonCount (2).
-    expect(screen.getByLabelText("Seasons: 1")).toBeTruthy();
-    expect(await screen.findByLabelText("Upcoming events: 9")).toBeTruthy();
-
-    fireEvent.press(screen.getByLabelText("Alumni: 12"));
-    expect(mockPush).toHaveBeenCalledWith("/students/alumni");
-    expect(requested().some((u) => u.startsWith("/api/v1/me/dashboard"))).toBe(false);
   });
 });

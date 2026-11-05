@@ -1,11 +1,11 @@
 import { AlumniDashboard } from "../../../src/components/dashboard/AlumniDashboard";
 import { MentorDashboard } from "../../../src/components/dashboard/MentorDashboard";
-import { AdminDashboard } from "../../../src/components/dashboard/StaffDashboard";
-import { SuperDashboard } from "../../../src/components/dashboard/SuperDashboard";
 import { dashboardBranchFor } from "../../../src/lib/dashboard-branch";
 import { LeaderToday } from "../../../src/screens/leader-today";
 import { RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { AdminToday } from "../../../src/screens/staff-today/admin-today";
+import { SuperToday } from "../../../src/screens/staff-today/super-today";
 import { StudentToday } from "../../../src/screens/today/student-today";
 import { useSessionStore } from "../../../src/store/session";
 
@@ -33,9 +33,9 @@ export default function DashboardScreen() {
 
   switch (dashboardBranchFor({ role, graduationYear })) {
     case "SUPER":
-      return <SuperDashboard />;
+      return <SuperToday />;
     case "ADMIN":
-      return <AdminDashboard />;
+      return <AdminToday />;
     case "LEADER":
       return <LeaderToday />;
     case "MENTOR":

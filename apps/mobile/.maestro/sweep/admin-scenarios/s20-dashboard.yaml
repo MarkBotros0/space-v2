@@ -8,7 +8,7 @@ appId: com.jpc.space
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://dashboard
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: '(?i)needs action'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

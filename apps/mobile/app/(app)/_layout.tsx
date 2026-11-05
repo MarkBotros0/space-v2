@@ -59,6 +59,8 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "design-catalogue",
   "user/[id]",
   "event/[id]",
+  "attention/sessions",
+  "attention/at-risk",
 ];
 
 /**
