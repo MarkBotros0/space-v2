@@ -162,6 +162,15 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     expect(selected("Admins only")).toBe(false);
   });
 
+  it("sends MENTORS when the mentor keeps the default", async () => {
+    await openSheet();
+    post.mockResolvedValue({ data: { data: { note: mentorNote } } });
+    fireEvent.changeText(await screen.findByLabelText("Note"), "Prayed together.");
+    fireEvent.press(screen.getByText("Add note"));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    expect(post.mock.calls[0]![1]).toEqual(expect.objectContaining({ visibility: "MENTORS" }));
+  });
+
   it("writes a note visible to mentors, flagged for follow-up", async () => {
     await openSheet();
     fireEvent.changeText(await screen.findByLabelText("Note"), "For mentors, flagged.");
