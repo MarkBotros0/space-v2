@@ -84,6 +84,12 @@ describe("Screen footer", () => {
     expect(contentPadding()).toBe(70 + 114 + 16);
   });
 
+  it("on a tab its backdrop reaches the screen's edge, so no content shows round the pill", () => {
+    renderWithProviders(<Screen footer={<SaveBar label="Save" onPress={jest.fn()} />}>{null}</Screen>);
+    const style = StyleSheet.flatten(screen.getByTestId("screen-footer-backdrop").props.style);
+    expect(style).toMatchObject({ position: "absolute", top: "100%", height: 114 });
+  });
+
   it("rides the keyboard (iOS: the keyboard's height)", () => {
     withKeyboard((show) => {
       renderStacked(form);

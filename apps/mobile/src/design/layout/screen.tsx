@@ -193,6 +193,12 @@ export function Screen({
       onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
     >
       <ScreenFooterContext.Provider value={true}>{footer}</ScreenFooterContext.Provider>
+      {/* The pill floats clear of the bar: without this, the content shows through the gap. */}
+      <View
+        testID="screen-footer-backdrop"
+        className="bg-surface"
+        style={{ position: "absolute", left: 0, right: 0, top: "100%", height: footerBottom }}
+      />
     </View>
   ) : null;
 
