@@ -6,7 +6,7 @@ import { extractResetToken, passwordSchema } from "@space/shared";
 import { AuthCard, AuthField, AuthLink, AuthNotice } from "../src/design/layout/auth-card";
 import { Button, Input, PasswordInput } from "../src/design/ui";
 import { useResetPassword } from "../src/hooks/use-password-reset";
-import { apiErrorMessage } from "../src/lib/api-error";
+import { authErrorMessage } from "../src/lib/auth-error";
 
 /**
  * v1's /reset-password, anonymous, outside (app). The code arrives three
@@ -64,8 +64,7 @@ export default function ResetPasswordScreen() {
       {
         onSuccess: () => setDone(true),
         // The API has one refusal for every bad code; show its words.
-        onError: (err) =>
-          setFailure(apiErrorMessage(err, "Couldn't reset your password. Check your connection and try again.")),
+        onError: (err) => setFailure(authErrorMessage(err, "Couldn't reset your password. Try again.")),
       },
     );
   };

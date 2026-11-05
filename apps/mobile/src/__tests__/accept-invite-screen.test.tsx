@@ -41,7 +41,9 @@ describe("AcceptInviteScreen", () => {
   });
 
   it("shows the one opaque failure message — the screen can't know more than the API tells it", async () => {
-    post.mockRejectedValue(new Error("400"));
+    post.mockRejectedValue(
+      Object.assign(new Error("400"), { isAxiosError: true, response: { status: 400, data: {} } }),
+    );
     renderWithProviders(<AcceptInviteScreen />);
 
     fireEvent.changeText(screen.getByLabelText("Invite code"), "an-expired-or-bogus-code-000000");
@@ -51,6 +53,20 @@ describe("AcceptInviteScreen", () => {
 
     expect(
       await screen.findByText("That invite is invalid or has expired. Ask for a new one."),
+    ).toBeTruthy();
+  });
+
+  it("says it can't reach the server when the request never got an answer", async () => {
+    post.mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }));
+    renderWithProviders(<AcceptInviteScreen />);
+
+    fireEvent.changeText(screen.getByLabelText("Invite code"), "the-code-from-the-email-123456");
+    fireEvent.changeText(screen.getByLabelText("Choose a password"), "brand-new-password");
+    fireEvent.changeText(screen.getByLabelText("Confirm password"), "brand-new-password");
+    fireEvent.press(screen.getByText("Activate account"));
+
+    expect(
+      await screen.findByText("Can't reach JPC Space. Check your connection and try again."),
     ).toBeTruthy();
   });
 
