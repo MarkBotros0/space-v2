@@ -7,10 +7,10 @@ appId: com.jpc.space
     env:
       EMAIL: ${STUDENT_EMAIL}
 - openLink: spacev2://season
-# The student season page (StudentSeason) is titled with the season itself; the
-# Upcoming sessions group is always there, in capitals on screen.
+# The student season page (StudentSeason) is titled with the season itself; its
+# progress row is always there, and at font 1.3 Upcoming sessions is below the fold.
 - extendedWaitUntil:
-    visible: '(?i)upcoming sessions'
+    visible: 'Season progress'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

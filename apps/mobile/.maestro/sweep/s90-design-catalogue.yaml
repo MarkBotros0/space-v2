@@ -104,8 +104,8 @@ appId: com.jpc.space
 # before the sheet states below, so the shot is taken either way.
 - takeScreenshot: s90-09-toast
 
-# The sheet section is the last: scrolled to the end, the title is collapsed
-# into the pinned bar and the last section must clear the system bar.
+# Scrolled to the end, the title is collapsed into the pinned bar and the last
+# section must clear the system bar.
 - scrollUntilVisible:
     element:
       id: catalogue-open-sheet
@@ -118,6 +118,13 @@ appId: com.jpc.space
     timeout: 3000
 - takeScreenshot: s90-10-collapsed-bottom
 
+# Later sections sit below the sheet section, so the end of the page is past it.
+- scrollUntilVisible:
+    element:
+      id: catalogue-open-sheet
+    direction: UP
+    centerElement: true
+    timeout: 20000
 - runFlow:
     file: _tap-id.yaml
     env:
