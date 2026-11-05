@@ -24,7 +24,7 @@ function Progress({ className, value, label, showValue }: { className?: string; 
           {showValue ? <Text className="text-sm text-muted-foreground tabular-nums">{`${Math.round(value ?? 0)}%`}</Text> : null}
         </View>
       ) : null}
-      <View className="h-2 w-full overflow-hidden rounded-full bg-muted">
+      <View className="h-2 w-full overflow-hidden rounded-full bg-separator">
         <View className="h-full bg-brand-teal-500" style={{ width: `${now}%` }} />
       </View>
     </View>
