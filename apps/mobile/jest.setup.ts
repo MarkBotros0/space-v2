@@ -53,3 +53,15 @@ jest.mock("@sentry/react-native", () => ({
   setUser: jest.fn(),
   setTag: jest.fn(),
 }));
+
+// expo-notifications warns, on import, that remote push left Expo Go (SDK 53). Under Jest
+// that one line repeated in every suite whose tree reaches src/lib/push.ts. Only that exact
+// message is dropped: the module itself is not mocked, so nothing under test changes, and a
+// test that spies on console.warn still sees every other warning.
+const EXPO_GO_PUSH_WARNING =
+  "expo-notifications: Android Push notifications (remote notifications)";
+const forwardWarn = console.warn.bind(console);
+console.warn = (...args: unknown[]) => {
+  if (typeof args[0] === "string" && args[0].startsWith(EXPO_GO_PUSH_WARNING)) return;
+  forwardWarn(...args);
+};

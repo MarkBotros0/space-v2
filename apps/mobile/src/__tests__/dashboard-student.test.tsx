@@ -41,7 +41,16 @@ beforeEach(() => {
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
+/**
+ * Lets the queries a test did not wait for (events, the budget, a refetch) land inside
+ * act() before the tree unmounts, instead of warning "not wrapped in act". Registered in
+ * each describe so it runs before Testing Library's own root-level cleanup.
+ */
+const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
+
 describe("DashboardScreen — STUDENT", () => {
+  afterEach(settle);
+
   beforeEach(() => {
     useSessionStore.setState(
       makeSession("STUDENT", { activeSeasonId: 7 }, { name: "Sara Mansour" }),
@@ -186,6 +195,8 @@ describe("DashboardScreen — STUDENT", () => {
 });
 
 describe("DashboardScreen — ALUMNI", () => {
+  afterEach(settle);
+
   it("greets by first name with the class year and never calls /me/dashboard (D21)", async () => {
     useSessionStore.setState(
       makeSession("STUDENT", { graduationYear: 2024 }, { name: "  Nour Adel " }),
@@ -209,6 +220,8 @@ describe("DashboardScreen — ALUMNI", () => {
 // in shell-menus.test.tsx and screen.test.tsx). v1's dashboards have no bell
 // of their own, so the body must not render a second one.
 describe("dashboard body", () => {
+  afterEach(settle);
+
   it.each([
     ["STUDENT", { activeSeasonId: null }],
     ["STUDENT", { graduationYear: 2024 }],
