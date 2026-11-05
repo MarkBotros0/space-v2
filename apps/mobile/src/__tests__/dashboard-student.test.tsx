@@ -201,17 +201,19 @@ describe("DashboardScreen — ALUMNI", () => {
     useSessionStore.setState(
       makeSession("STUDENT", { graduationYear: 2024 }, { name: "  Nour Adel " }),
     );
-    serve({ [EVENTS]: events, [UNREAD]: { unreadCount: 0 } });
+    serve({
+      [EVENTS]: events,
+      [UNREAD]: { unreadCount: 0 },
+      "/api/v1/me/season-history": { seasons: [] },
+    });
 
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("Welcome back, Nour")).toBeTruthy();
-    // The eyebrow takes the info tone, 4.5:1+ on the surface in both themes (teal-700 was 3.3:1).
-    expect(screen.getByText("JPCS Alumnus · Class of 2024").props.className).toContain("text-info");
-    fireEvent.press(screen.getByText("View my history"));
+    expect(await screen.findByText("Welcome back, Nour · Class of 2024")).toBeTruthy();
+    fireEvent.press(await screen.findByText("View my history"));
     expect(mockPush).toHaveBeenCalledWith("/history");
     expect(await screen.findByText("Open day")).toBeTruthy();
-    expect(new Set(requested())).toEqual(new Set([EVENTS]));
+    expect(new Set(requested())).toEqual(new Set([EVENTS, "/api/v1/me/season-history"]));
   });
 });
 
