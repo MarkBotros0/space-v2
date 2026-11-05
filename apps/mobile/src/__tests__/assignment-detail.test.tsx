@@ -305,6 +305,36 @@ describe("AssignmentDetailScreen", () => {
       expect(screen.getByText("Reviewed")).toBeTruthy();
     });
 
+    it("the spinner is the pull's and holds until both reads land", async () => {
+      let release: () => void = () => undefined;
+      const slow = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let hold = false;
+      get.mockImplementation(async (url: string) => {
+        const isAssignment = url === "/api/v1/assignments/41";
+        if (!isAssignment && hold) await slow;
+        return {
+          data: {
+            data: isAssignment ? { ...detail, mySubmission: summary("SUBMITTED") } : submissionFor("SUBMITTED", false, null),
+          },
+        };
+      });
+      renderStacked(<AssignmentDetailScreen />);
+      await screen.findByText("the work");
+      const refreshing = () => screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.refreshing;
+      expect(refreshing()).toBe(false);
+
+      hold = true;
+      await pull();
+      expect(refreshing()).toBe(true);
+      release();
+      await act(async () => {
+        await slow;
+      });
+      expect(refreshing()).toBe(false);
+    });
+
     it("with no submission yet, reads only the assignment", async () => {
       get.mockResolvedValue({ data: { data: detail } });
       renderStacked(<AssignmentDetailScreen />);

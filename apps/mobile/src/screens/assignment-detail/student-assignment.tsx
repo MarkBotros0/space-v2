@@ -9,6 +9,7 @@ import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { RichTextView, StatusChip, Text, dueChip, statusChip, type ChipSpec } from "../../design/ui";
 import { useStudentDashboard } from "../../hooks/use-dashboard";
+import { usePullRefresh } from "../../hooks/use-pull-refresh";
 import { useSubmissionDetail } from "../../hooks/use-submission";
 import { deviceTodayKey } from "../../lib/calendar-grid";
 import { formatOrgDue } from "../../lib/format";
@@ -55,12 +56,10 @@ function ChipRow({ detail, todayOrgDay }: { detail: AssignmentDetail; todayOrgDa
 
 function StudentAssignment({
   detail,
-  onRefresh,
-  refreshing,
+  refresh,
 }: {
   detail: AssignmentDetail;
-  onRefresh: () => void;
-  refreshing: boolean;
+  refresh: () => Promise<unknown>;
 }) {
   const forum = detail.type === "FORUM";
   const dash = useStudentDashboard(detail.seasonId);
@@ -69,17 +68,18 @@ function StudentAssignment({
   // reads both, or the chip can say Returned over a body with no feedback in it.
   const publicId = detail.mySubmission?.publicId ?? null;
   const submission = useSubmissionDetail(publicId);
+  // The spinner is the pull's own, so a save or a poll never raises it, and it waits for
+  // both reads. `enabled` gates only the automatic run, so the submission read is guarded.
+  const pull = usePullRefresh(() =>
+    Promise.all([refresh(), publicId !== null ? submission.refetch() : undefined]),
+  );
   const subtitle = [detail.seasonTitle, detail.sessionTitle].filter(Boolean).join(" · ");
   return (
     <Screen
       title={detail.title}
       subtitle={subtitle || undefined}
-      onRefresh={() => {
-        onRefresh();
-        // `enabled` gates only the automatic run.
-        if (publicId !== null) void submission.refetch();
-      }}
-      refreshing={refreshing || submission.isRefetching}
+      onRefresh={pull.onRefresh}
+      refreshing={pull.refreshing}
       footer={forum ? undefined : footer}
     >
       <View className="gap-4">
@@ -110,10 +110,6 @@ export function StudentAssignmentView({ query }: { query: UseQueryResult<Assignm
     );
   }
   return (
-    <StudentAssignment
-      detail={query.data}
-      onRefresh={() => void query.refetch()}
-      refreshing={query.isRefetching}
-    />
+    <StudentAssignment detail={query.data} refresh={() => query.refetch()} />
   );
 }
