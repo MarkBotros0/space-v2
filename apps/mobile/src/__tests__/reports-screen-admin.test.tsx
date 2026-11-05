@@ -78,6 +78,34 @@ describe("ReportsScreen for admin and super — frame and export", () => {
     expect(screen.queryByText("Scoped to GBV 2026.")).toBeNull();
   });
 
+  it("labels the engagement donut with a legend of each band's name and count, not colour alone (sweep F7)", async () => {
+    useSessionStore.setState(sessionFor("ADMIN"));
+    mockEndpoints();
+    renderWithProviders(<ReportsScreen />);
+
+    const legend = await screen.findByTestId("band-legend");
+    for (const text of ["High 3", "Medium 5", "Low 2", "At risk 34"]) {
+      expect(within(legend).getByText(text)).toBeTruthy();
+    }
+  });
+
+  it("reads a one-point attendance trend as a single date, not a range from a date to itself (sweep F7)", async () => {
+    useSessionStore.setState(sessionFor("ADMIN"));
+    mockEndpoints();
+    const base = get.getMockImplementation() as (url: string) => Promise<unknown>;
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/reports/engagement") && !url.includes("/students")
+        ? Promise.resolve({
+            data: { data: { ...summary, attendanceTrend: [summary.attendanceTrend[0]!] } },
+          })
+        : base(url),
+    );
+    renderWithProviders(<ReportsScreen />);
+
+    expect(await screen.findByText("Mar 1, 2099")).toBeTruthy();
+    expect(screen.queryByText("Mar 1, 2099 – Mar 1, 2099")).toBeNull();
+  });
+
   it("keeps the mentor's inline export buttons", async () => {
     useSessionStore.setState(sessionFor("MENTOR"));
     mockEndpoints();

@@ -125,6 +125,11 @@ export function EngagementCards({
   );
 }
 
+/** "Mar 1, 2099 – Mar 8, 2099", or just the one date when first and last are the same day. */
+function trendRange(first: string, last: string): string {
+  return first === last ? formatDayKey(first) : `${formatDayKey(first)} – ${formatDayKey(last)}`;
+}
+
 /** Trend, completion and method cards: the same for every role. */
 function TrendCompletionNotes({ summary }: { summary: EngagementSummary }) {
   return (
@@ -150,9 +155,10 @@ function TrendCompletionNotes({ summary }: { summary: EngagementSummary }) {
         />
         {summary.attendanceTrend.length > 0 ? (
           <Text className="text-xs text-muted-foreground">
-            {`${formatDayKey(summary.attendanceTrend[0]!.dayKey)} – ${formatDayKey(
+            {trendRange(
+              summary.attendanceTrend[0]!.dayKey,
               summary.attendanceTrend[summary.attendanceTrend.length - 1]!.dayKey,
-            )}`}
+            )}
           </Text>
         ) : null}
       </CardContent>
