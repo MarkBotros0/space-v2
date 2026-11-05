@@ -327,6 +327,22 @@ describe("Screen: tab bar on scroll (ruling R2)", () => {
     expect(screen.getByTestId("probe")).toHaveTextContent("shown");
   });
 
+  it("hides again on the next scroll down after the pill was reset elsewhere (M2)", async () => {
+    renderWithProviders(
+      <>
+        <Screen title="Students">{body}</Screen>
+        <Probe />
+      </>,
+    );
+    await scrollTo(400);
+    expect(screen.getByTestId("probe")).toHaveTextContent("hidden");
+    // A tab change or a pop back to the tabs shows the pill.
+    act(() => resetTabBarScroll());
+    expect(screen.getByTestId("probe")).toHaveTextContent("shown");
+    await scrollTo(440);
+    expect(screen.getByTestId("probe")).toHaveTextContent("hidden");
+  });
+
   it("ignores movement up to 24px", async () => {
     renderWithProviders(
       <>

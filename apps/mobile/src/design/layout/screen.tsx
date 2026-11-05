@@ -21,7 +21,7 @@
  * `PageTitle` in the content until their batch moves them here.
  */
 import { cssInterop } from "nativewind";
-import { type ReactNode, useContext, useRef, useState } from "react";
+import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { type LayoutChangeEvent, Platform, RefreshControl, View } from "react-native";
 import Animated, {
   useAnimatedReaction,
@@ -50,6 +50,7 @@ import {
   type ScrollStep,
   scrollDirectionStep,
   useTabBarScroll,
+  useTabBarVisible,
 } from "./tab-bar-scroll";
 
 // Safe only while this ScrollView gets no animated style: css-interop flattens every
@@ -209,6 +210,15 @@ export function Screen({
       }
     },
   });
+
+  // The pill came back without this screen asking (a tab change, a pop back to
+  // the tabs, or the end of the content): forget the "down" it last reported,
+  // or the next scroll down would not count as a change and the pill would
+  // stay up until the direction flipped once (final review M2).
+  const barVisible = useTabBarVisible();
+  useEffect(() => {
+    if (barVisible && step.value.dir === "down") step.value = { ...step.value, dir: null };
+  }, [barVisible, step]);
 
   // Home's compact header carries live controls, so JS must know when it shows.
   const [collapsed, setCollapsed] = useState(false);
