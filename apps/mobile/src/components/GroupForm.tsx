@@ -16,7 +16,7 @@ export interface GroupFormValues {
 
 /**
  * Create/edit a group (v1 group-form.tsx: Name, Description, Leaders and
- * Students as MultiSelects, error box, Cancel + submit; spec 05 §9). Students
+ * Students as MultiSelects; spec 05 §9), on `FormScreen`'s pinned save bar with the server message as its hint. Students
  * are picked from the season ROSTER (ACTIVE enrolments, C9), never the global
  * student table. The server validates leaders are LEADERs and students are
  * enrolled (Plan 2's validateGroupWrite) and returns name_taken /
@@ -160,7 +160,7 @@ export function GroupForm({
           />
         </FormField>
 
-          {children}
+        {children}
       </View>
     </FormScreen>
   );
