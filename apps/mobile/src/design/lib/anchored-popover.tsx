@@ -7,6 +7,8 @@
 import { type ReactNode, useCallback, useRef, useState } from "react";
 import { Modal, Platform, Pressable, StatusBar, useWindowDimensions, View, type ViewInstance } from "react-native";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { cn } from "./cn";
 import { shadowStyle } from "./shadow";
 
@@ -14,6 +16,32 @@ type Rect = { x: number; y: number; width: number; height: number };
 
 const SIDE_OFFSET = 6;
 const EDGE = 8; // keep popups off the screen edge, like Base UI's collision padding
+
+/**
+ * Where a popup of `popupHeight` goes: below the trigger if it fits above the
+ * bottom inset, else above it, else shifted up to sit flush on the bottom
+ * limit (never under the nav bar), with `maxHeight` when even that is too tall.
+ * Sweep K3: a date picker at 360x640 ran under the nav bar and covered Save.
+ */
+export function popoverVertical(args: {
+  anchor: Rect;
+  popupHeight: number;
+  sideOffset: number;
+  winHeight: number;
+  insetTop: number;
+  insetBottom: number;
+}): { top?: number; bottom?: number; maxHeight: number } {
+  const { anchor, popupHeight, sideOffset, winHeight, insetTop, insetBottom } = args;
+  const topLimit = insetTop + EDGE;
+  const bottomLimit = winHeight - insetBottom - EDGE;
+  const maxHeight = Math.max(0, bottomLimit - topLimit);
+  const below = anchor.y + anchor.height + sideOffset;
+  if (below + popupHeight <= bottomLimit) return { top: below, maxHeight };
+  if (anchor.y - sideOffset - popupHeight >= topLimit) {
+    return { bottom: winHeight - anchor.y + sideOffset, maxHeight };
+  }
+  return { top: Math.max(topLimit, bottomLimit - popupHeight), maxHeight };
+}
 
 /** Ref for the trigger plus a measure() that records its window position. */
 export function useAnchor() {
@@ -50,16 +78,25 @@ export function AnchoredPopover({
   children: ReactNode;
 }) {
   const win = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [popupHeight, setPopupHeight] = useState(0);
   const [popupWidth, setPopupWidth] = useState(0);
 
-  let position: { top?: number; bottom?: number; left: number } = { top: 0, left: EDGE };
+  let position: { top?: number; bottom?: number; left: number; maxHeight?: number } = { top: 0, left: EDGE };
   if (anchor) {
-    const below = anchor.y + anchor.height + sideOffset;
-    const fitsBelow = below + popupHeight <= win.height - EDGE;
     const wanted = align === "end" ? anchor.x + anchor.width - popupWidth : anchor.x;
     const left = Math.max(EDGE, Math.min(wanted, win.width - EDGE - popupWidth));
-    position = fitsBelow || anchor.y < popupHeight ? { top: below, left } : { bottom: win.height - anchor.y + sideOffset, left };
+    position = {
+      left,
+      ...popoverVertical({
+        anchor,
+        popupHeight,
+        sideOffset,
+        winHeight: win.height,
+        insetTop: insets.top,
+        insetBottom: insets.bottom,
+      }),
+    };
   }
   const sizing =
     anchor && width === "anchor"
