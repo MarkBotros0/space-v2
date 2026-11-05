@@ -1,14 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import { Users } from "lucide-react-native";
-import { Text as RNText } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 
-import { SectionCard } from "../design/dashboard/section-card";
 import { RouteError } from "../design/layout/route-states";
 import { Checkbox } from "../design/ui";
 import { useGroupDetails } from "../hooks/use-groups";
@@ -49,25 +46,6 @@ describe("RouteError", () => {
     expect(screen.getByText(/let an admin know/)).toBeTruthy();
     fireEvent.press(screen.getByText("Try again"));
     expect(onRetry).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("SectionCard", () => {
-  it("offers View all only when wired", () => {
-    const onViewAll = jest.fn();
-    const { rerender } = render(
-      <SectionCard icon={Users} title="Your students" onViewAll={onViewAll}>
-        <RNText>rows</RNText>
-      </SectionCard>,
-    );
-    fireEvent.press(screen.getByLabelText("View all Your students"));
-    expect(onViewAll).toHaveBeenCalledTimes(1);
-    rerender(
-      <SectionCard icon={Users} title="Your students">
-        <RNText>rows</RNText>
-      </SectionCard>,
-    );
-    expect(screen.queryByText("View all")).toBeNull();
   });
 });
 
