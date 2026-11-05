@@ -6,6 +6,12 @@ import { formatDate } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
 
+/** A bare number ("3") reads as "Year 3"; anything else ("3rd", "Medicine") is shown as typed. */
+function yearLabel(year: string | null): string | null {
+  const y = year?.trim();
+  return y && /^\d+$/.test(y) ? `Year ${y}` : (y ?? null);
+}
+
 type RowProps = { item: StudentListItem; index?: number };
 
 function useOpenStudent(item: StudentListItem) {
@@ -25,7 +31,7 @@ function StudentAvatar({ item }: { item: StudentListItem }) {
 /** An active student: name over university, year, season and group; the email when none of those is known. */
 export function ActiveStudentRow({ item, index }: RowProps) {
   const open = useOpenStudent(item);
-  const meta = joinMeta([item.university, item.year, item.activeSeasonTitle, item.currentGroupName]);
+  const meta = joinMeta([item.university, yearLabel(item.year), item.activeSeasonTitle, item.currentGroupName]);
   return (
     <ListRow
       index={index}

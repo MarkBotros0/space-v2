@@ -38,6 +38,19 @@ describe("ActiveStudentRow", () => {
     expect(screen.queryByText(/—/)).toBeNull();
   });
 
+  it("reads a bare numeric year as Year N and leaves other values alone", () => {
+    renderWithProviders(
+      <GroupedList>
+        <ActiveStudentRow item={{ ...base, university: "Cairo University", year: "3", currentGroupName: "Group A" }} />
+        <ActiveStudentRow item={{ ...base, id: 22, name: "Omar", year: "3rd" }} />
+        <ActiveStudentRow item={{ ...base, id: 23, name: "Nour", year: "Medicine" }} />
+      </GroupedList>,
+    );
+    expect(screen.getByText("Cairo University · Year 3 · Group A")).toBeTruthy();
+    expect(screen.getByText("3rd")).toBeTruthy();
+    expect(screen.getByText("Medicine")).toBeTruthy();
+  });
+
   it("joins university, year, season and group, and opens the student", () => {
     renderWithProviders(
       <GroupedList>
