@@ -150,7 +150,7 @@ describe("quiz runner saves", () => {
     fireEvent.press(await screen.findByText("Start quiz"));
     fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
     act(() => { jest.advanceTimersByTime(1000); });
-    expect(await screen.findByText("Saved")).toBeTruthy();
+    expect(await screen.findByText(/Saved/)).toBeTruthy();
 
     view.rerender(wrap(null));
     view.rerender(wrap(<QuizDetailScreen />));

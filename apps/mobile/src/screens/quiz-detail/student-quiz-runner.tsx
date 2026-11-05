@@ -2,12 +2,12 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
-import { ShellFrame } from "../../design/layout/shell-frame";
-import { Button as ButtonV1, Text as TextV1 } from "../../design/ui";
+import { Screen } from "../../design/layout/screen";
+import { Button, Text } from "../../design/ui";
 import { useStartAttempt, useStudentQuizDetail } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
 import { AttemptForm } from "./quiz-attempt-form";
-import { QuizHeader } from "./quiz-header";
+import { quizTitleProps } from "./quiz-header";
 import { ResultView } from "./quiz-result-view";
 
 /** STUDENT: the start card, the attempt in progress, or the result. */
@@ -18,9 +18,9 @@ export function StudentRunner({ id }: { id: number }) {
 
   if (isPending || isError) {
     return (
-      <ShellFrame>
+      <Screen>
         {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
-      </ShellFrame>
+      </Screen>
     );
   }
 
@@ -29,17 +29,14 @@ export function StudentRunner({ id }: { id: number }) {
 
   const n = data.questions.length;
   return (
-    <ShellFrame>
+    <Screen {...quizTitleProps(data)}>
       <View className="flex-col gap-3">
-        <QuizHeader detail={data} />
-        <View
-          className="flex-col gap-3 rounded-group bg-surface dark:border dark:border-separator p-5"
-        >
-          <TextV1 className="text-sm text-muted-foreground">
+        <View className="flex-col gap-3 rounded-group bg-surface p-5">
+          <Text variant="subhead" className="text-muted-foreground">
             {`${n} question${n === 1 ? "" : "s"} · ${data.maxScore} points. You have one attempt — answer every question before submitting.`}
-          </TextV1>
+          </Text>
           {/* The only thing that creates an attempt — never a render (ruling C6). */}
-          <ButtonV1
+          <Button
             className="self-start"
             disabled={start.isPending}
             onPress={() => {
@@ -50,10 +47,10 @@ export function StudentRunner({ id }: { id: number }) {
             }}
           >
             {start.isPending ? "Starting…" : "Start quiz"}
-          </ButtonV1>
-          {startError ? <TextV1 className="text-xs text-error-600">{startError}</TextV1> : null}
+          </Button>
+          {startError ? <Text variant="caption" className="text-bad">{startError}</Text> : null}
         </View>
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }
