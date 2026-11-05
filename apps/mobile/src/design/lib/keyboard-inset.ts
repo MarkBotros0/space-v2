@@ -39,11 +39,17 @@ type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: 
  *   the field overlaps the keyboard. Android scrolls a focused field into view
  *   itself, but the first time it does so before the padding exists, so it
  *   runs out of scroll range short of the keyboard (UI sweep, Oct 2026).
+ * A bar pinned on the keyboard (`Screen`'s footer) passes `getBarHeight`, and
+ * the field is kept above it as well.
  * Spread `scrollProps` onto the ScrollView. A scroll view whose `onScroll` is
  * taken by something else (a Reanimated handler: `Screen`) passes
  * `getOffset` instead and leaves `scrollProps.onScroll` off.
  */
-export function useKeyboardInset(options?: { getOffset?: () => number }): {
+export function useKeyboardInset(options?: {
+  getOffset?: () => number;
+  /** Height of a bar riding on the keyboard (a screen's footer) the focused field must also clear. */
+  getBarHeight?: () => number;
+}): {
   inset: number;
   offset: number;
   scrollProps: {
@@ -63,13 +69,15 @@ export function useKeyboardInset(options?: { getOffset?: () => number }): {
   insetBottomRef.current = insetBottom;
   const getOffset = useRef(options?.getOffset);
   getOffset.current = options?.getOffset;
+  const getBarHeight = useRef(options?.getBarHeight);
+  getBarHeight.current = options?.getBarHeight;
 
   const ensureVisible = useCallback(() => {
     const top = keyboardTop.current;
     if (top === null) return;
     const input = TextInput.State.currentlyFocusedInput() as unknown as Measurable | null;
     input?.measureInWindow?.((_x, y, _w, h) => {
-      const overlap = y + h + FIELD_GAP - top;
+      const overlap = y + h + FIELD_GAP + (getBarHeight.current?.() ?? 0) - top;
       const from = getOffset.current ? getOffset.current() : offset.current;
       if (overlap > 1) ref.current?.scrollTo({ y: from + overlap, animated: false });
     });

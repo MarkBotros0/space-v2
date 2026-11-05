@@ -10,13 +10,19 @@
  * With `back` the compact header is a bar pinned above the scroll view that
  * always shows the back link; only its title fades in (ruling R16).
  *
+ * `footer` (a `SaveBar`) is pinned outside the scroll view: above the pill
+ * on a tab, on the bottom inset on a detail screen, and riding the keyboard
+ * (`keyboardBottomOffset`) while it is open. It is measured, and the scroll
+ * content pads by its height so the last field scrolls clear of it (final
+ * review I4).
+ *
  * Without a `title` there is no large title and no compact header (Home
  * excepted, above): the screens still on `ShellFrame` render their own
  * `PageTitle` in the content until their batch moves them here.
  */
 import { cssInterop } from "nativewind";
-import { type ReactNode, useContext, useState } from "react";
-import { type LayoutChangeEvent, RefreshControl, View } from "react-native";
+import { type ReactNode, useContext, useRef, useState } from "react";
+import { type LayoutChangeEvent, Platform, RefreshControl, View } from "react-native";
 import Animated, {
   useAnimatedReaction,
   useAnimatedScrollHandler,
@@ -27,6 +33,7 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import { cn } from "../lib/cn";
 import { useKeyboardInset } from "../lib/keyboard-inset";
+import { keyboardBottomOffset } from "../lib/keyboard-offset";
 import { useReducedMotion } from "../motion";
 import { HomeActions } from "./home-actions";
 import {
@@ -37,7 +44,7 @@ import {
   LargeTitle,
 } from "./large-title";
 import { OfflineBanner } from "./offline-banner";
-import { TabBarPresenceContext, useShellBottomPadding } from "./shell-context";
+import { ScreenFooterContext, TabBarPresenceContext, useShellBottomPadding } from "./shell-context";
 import {
   INITIAL_SCROLL_STEP,
   type ScrollStep,
@@ -55,6 +62,8 @@ cssInterop(Animated.ScrollView, {
 
 /** Until the large title has been laid out, nothing counts as scrolled past it. */
 const NOT_MEASURED = Number.MAX_SAFE_INTEGER;
+/** Padding under the footer's content, as under a sheet's save bar. */
+const FOOTER_BOTTOM_PADDING = 12;
 
 export type ScreenProps = {
   children: ReactNode;
@@ -76,6 +85,12 @@ export type ScreenProps = {
   scroll?: boolean;
   /** Extra classes on the content container. */
   contentClassName?: string;
+  /**
+   * Pinned under the content, outside the scroll view: a `SaveBar`. It sits
+   * above the pill (tab) or the bottom inset (detail), rides the keyboard,
+   * and the content pads by its measured height.
+   */
+  footer?: ReactNode;
 };
 
 /**
@@ -126,8 +141,13 @@ export function Screen({
   onRefresh,
   scroll = true,
   contentClassName,
+  footer,
 }: ScreenProps) {
   const bottom = useShellBottomPadding();
+  const insetBottom = useContext(SafeAreaInsetsContext)?.bottom ?? 0;
+  const [footerHeight, setFooterHeight] = useState(0);
+  const footerHeightRef = useRef(0);
+  footerHeightRef.current = footer ? footerHeight : 0;
   const hasTabBar = useContext(TabBarPresenceContext);
   const back = useEffectiveBack(backProp);
   const reduced = useReducedMotion();
@@ -139,7 +159,37 @@ export function Screen({
   const step = useSharedValue<ScrollStep>(INITIAL_SCROLL_STEP);
   // The scroll handler runs on the UI thread, so the keyboard reads the
   // offset from it when it needs one instead of tracking every frame.
-  const keyboard = useKeyboardInset({ getOffset: () => scrollY.value });
+  const keyboard = useKeyboardInset({
+    getOffset: () => scrollY.value,
+    getBarHeight: () => footerHeightRef.current,
+  });
+  // Above the pill on a tab, on the bottom inset on a detail screen; on the keyboard while it is open.
+  const footerBottom = keyboardBottomOffset({
+    os: Platform.OS,
+    keyboard: keyboard.inset,
+    insetBottom,
+    closed: hasTabBar ? bottom : insetBottom,
+  });
+  const contentBottom = footer
+    ? footerHeight + footerBottom + 16
+    : Math.max(bottom, keyboard.offset + 16);
+  const pinnedFooter = footer ? (
+    <View
+      testID="screen-footer"
+      pointerEvents="box-none"
+      className="bg-surface"
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: footerBottom,
+        paddingBottom: FOOTER_BOTTOM_PADDING,
+      }}
+      onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
+    >
+      <ScreenFooterContext.Provider value={true}>{footer}</ScreenFooterContext.Provider>
+    </View>
+  ) : null;
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: (e) => {
@@ -198,11 +248,12 @@ export function Screen({
         {back ? <CompactHeader title={title} back={back} progress={progress} /> : null}
         <View
           className={cn("flex-1 px-4 pt-4", contentClassName)}
-          style={{ paddingBottom: bottom }}
+          style={{ paddingBottom: footer ? contentBottom : bottom }}
         >
           {heading}
           {children}
         </View>
+        {pinnedFooter}
       </ScreenChrome>
     );
   }
@@ -220,7 +271,7 @@ export function Screen({
           keyboardShouldPersistTaps={keyboard.scrollProps.keyboardShouldPersistTaps}
           className="flex-1"
           contentContainerClassName={cn("px-4 pt-4", contentClassName)}
-          contentContainerStyle={{ paddingBottom: Math.max(bottom, keyboard.offset + 16) }}
+          contentContainerStyle={{ paddingBottom: contentBottom }}
           refreshControl={
             onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined
           }
@@ -237,6 +288,7 @@ export function Screen({
           />
         ) : null}
       </View>
+      {pinnedFooter}
     </ScreenChrome>
   );
 }

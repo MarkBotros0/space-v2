@@ -1,14 +1,19 @@
 /**
- * Pinned primary action. `SaveBar` is for full screens: it sits above the
- * floating tab bar (useShellBottomPadding) and rides up with the keyboard.
- * `SaveBarBody` is the shared look, reused by the sheet's `SheetSaveBar`.
+ * Pinned primary action. `SaveBar` is for full screens: pass it as
+ * `Screen`'s `footer`, which pins it outside the scroll view, rides it on the
+ * keyboard and pads the content by its height; there it draws only its body.
+ * Rendered anywhere else it pins itself above the floating tab bar
+ * (useShellBottomPadding) and rides up with the keyboard, but nothing pads
+ * the content for it. `SaveBarBody` is the shared look, reused by the
+ * sheet's `SheetSaveBar`.
  */
+import { useContext } from "react";
 import { View } from "react-native";
 
 import { useKeyboardBottomOffset } from "../lib/keyboard-offset";
 import { Button } from "../ui/button";
 import { Text } from "../ui/text";
-import { useShellBottomPadding } from "./shell-context";
+import { ScreenFooterContext, useShellBottomPadding } from "./shell-context";
 
 type SaveBarProps = { label: string; onPress: () => void; loading?: boolean; hint?: string };
 
@@ -28,7 +33,15 @@ function SaveBarBody({ label, onPress, loading, hint }: SaveBarProps) {
 }
 
 function SaveBar(props: SaveBarProps) {
+  const inFooter = useContext(ScreenFooterContext);
   const offset = useKeyboardBottomOffset(useShellBottomPadding());
+  if (inFooter) {
+    return (
+      <View testID="save-bar">
+        <SaveBarBody {...props} />
+      </View>
+    );
+  }
   return (
     <View testID="save-bar" style={{ position: "absolute", left: 0, right: 0, bottom: offset }}>
       <SaveBarBody {...props} />

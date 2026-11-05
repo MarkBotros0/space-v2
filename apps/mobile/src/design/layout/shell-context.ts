@@ -26,3 +26,10 @@ export function useShellBottomPadding(): number {
   const bottom = Math.max(16, insets?.bottom ?? 0);
   return hasTabBar ? bottom + SHELL_BOTTOM_PADDING - 16 : bottom + 16;
 }
+
+/**
+ * True inside `Screen`'s `footer` slot. The slot positions, measures and
+ * lifts its content with the keyboard, so a `SaveBar` there draws only its
+ * body instead of pinning itself a second time.
+ */
+export const ScreenFooterContext = createContext(false);

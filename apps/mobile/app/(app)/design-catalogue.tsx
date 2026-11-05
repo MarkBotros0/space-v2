@@ -4,6 +4,8 @@
  * made with EXPO_PUBLIC_SWEEP_BUILD=1; otherwise "Not available". Fake data,
  * no network, nothing is saved. A detail route, not a nav destination.
  */
+import { useState } from "react";
+
 import { EmptyState } from "../../src/design/ui/empty-state";
 import { Screen } from "../../src/design/layout/screen";
 import { isSweepBuild } from "../../src/lib/app-config";
@@ -14,6 +16,10 @@ import {
   ListSection,
 } from "../../src/screens/design-catalogue/list-cards-sections";
 import {
+  CatalogueSaveBar,
+  SaveBarSection,
+} from "../../src/screens/design-catalogue/save-bar-section";
+import {
   SheetSection,
   StatesSection,
   ToastSection,
@@ -21,6 +27,7 @@ import {
 import { ButtonsSection, TypeSection } from "../../src/screens/design-catalogue/type-buttons-sections";
 
 export default function DesignCatalogue() {
+  const [saveBar, setSaveBar] = useState(false);
   if (!__DEV__ && !isSweepBuild()) {
     return (
       <Screen title="Design catalogue">
@@ -29,7 +36,11 @@ export default function DesignCatalogue() {
     );
   }
   return (
-    <Screen title="Design catalogue" subtitle="Every component in every state.">
+    <Screen
+      title="Design catalogue"
+      subtitle="Every component in every state."
+      footer={saveBar ? <CatalogueSaveBar onDone={() => setSaveBar(false)} /> : undefined}
+    >
       <TypeSection />
       <ButtonsSection />
       <ChipsSection />
@@ -39,6 +50,7 @@ export default function DesignCatalogue() {
       <StatesSection />
       <ToastSection />
       <SheetSection />
+      <SaveBarSection shown={saveBar} onToggle={() => setSaveBar((on) => !on)} />
     </Screen>
   );
 }

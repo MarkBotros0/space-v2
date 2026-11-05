@@ -1,4 +1,5 @@
-import { screen } from "@testing-library/react-native";
+import { fireEvent, screen, within } from "@testing-library/react-native";
+import { ScrollView } from "react-native";
 
 let mockSweep = true;
 jest.mock("../lib/app-config", () => ({ ...jest.requireActual("../lib/app-config"), isSweepBuild: () => mockSweep }));
@@ -7,7 +8,7 @@ jest.mock("expo-router", () => ({ ...jest.requireActual("expo-router"), useRoute
 import DesignCatalogue from "../../app/(app)/design-catalogue";
 import { renderWithProviders } from "./helpers/render";
 
-const SECTIONS = ["type", "buttons", "chips", "list", "hero", "stats", "controls", "states", "toast", "sheet"];
+const SECTIONS = ["type", "buttons", "chips", "list", "hero", "stats", "controls", "states", "toast", "sheet", "save-bar"];
 
 it("renders every section when this is a sweep build", () => {
   mockSweep = true;
@@ -39,4 +40,15 @@ it("gives every section title the testID the sweep flow swipes from", () => {
   mockSweep = true;
   renderWithProviders(<DesignCatalogue />);
   for (const id of SECTIONS) expect(screen.getByTestId(`catalogue-${id}-title`)).toBeTruthy();
+});
+
+it("shows a full-screen SaveBar in the screen's footer, outside the scroll view, and hides it on Save", () => {
+  mockSweep = true;
+  renderWithProviders(<DesignCatalogue />);
+  expect(screen.queryByTestId("save-bar")).toBeNull();
+  fireEvent.press(screen.getByTestId("catalogue-toggle-save-bar"));
+  expect(screen.getByTestId("screen-footer")).toBeTruthy();
+  expect(within(screen.UNSAFE_getByType(ScrollView)).queryByTestId("save-bar")).toBeNull();
+  fireEvent.press(screen.getByText("Save changes"));
+  expect(screen.queryByTestId("save-bar")).toBeNull();
 });

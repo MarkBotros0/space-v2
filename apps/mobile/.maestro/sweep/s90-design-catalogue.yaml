@@ -1,8 +1,9 @@
 # UI sweep 90 - the hidden design catalogue (spacev2://design-catalogue), as a
 # student: every redesign component in every state, each section's title
 # scrolled into view (_catalogue-section.yaml), the
-# collapsed header, the toast, and a sheet with its keyboard. Needs a dev bundle or a build made with EXPO_PUBLIC_SWEEP_BUILD=1.
-# Nothing is saved: the sheet's Save only closes it and the flow never taps it.
+# collapsed header, the toast, a sheet with its keyboard, and a full-screen
+# save bar (Screen's footer) with its keyboard. Needs a dev bundle or a build made with EXPO_PUBLIC_SWEEP_BUILD=1.
+# Nothing is saved: the sheet's and the save bar's Save only close them and the flow never taps either.
 appId: com.jpc.space
 ---
 - runFlow:
@@ -137,3 +138,29 @@ appId: com.jpc.space
     timeout: 3000
 - assertNotVisible: 'Add a note'
 - takeScreenshot: s90-13-sheet-closed
+
+# Full-screen save bar (final review I4): "Show save bar" puts a SaveBar in
+# the catalogue Screen's footer. Scrolled to the end, the last field must
+# clear the bar; with the keyboard up, the bar rides on it and the focused
+# field sits above both.
+- runFlow:
+    file: _tap-id.yaml
+    env:
+      TARGET_ID: catalogue-toggle-save-bar
+- extendedWaitUntil:
+    visible: 'Save changes'
+    timeout: 10000
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s90-14-save-bar
+
+- tapOn:
+    id: catalogue-save-bar-input
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s90-15-save-bar-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
