@@ -39,6 +39,19 @@ export function DuplicateSeasonDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
 
+  // Sheet unmounts its children when closed, but this state lives above it:
+  // a reopen must start from the defaults, not from what was typed before.
+  const close = () => {
+    setYear(String(nextYear));
+    setCode(autoSeasonCode(season.program, nextYear));
+    setCodeTouched(false);
+    setStartDay(addYearsIso(season.startDate, 1).slice(0, 10));
+    setEndDay(addYearsIso(season.endDate, 1).slice(0, 10));
+    setErrors({});
+    setMessage(null);
+    onClose();
+  };
+
   const submit = () => {
     setMessage(null);
     const body = {
@@ -55,7 +68,7 @@ export function DuplicateSeasonDialog({
     setErrors({});
     duplicate.mutate(body, {
       onSuccess: (created) => {
-        onClose();
+        close();
         onDuplicated(created.code);
       },
       onError: (err) => setMessage(apiErrorMessage(err, "Couldn't duplicate the season.")),
@@ -66,7 +79,7 @@ export function DuplicateSeasonDialog({
     <Sheet
       open={open}
       onClose={() => {
-        if (!duplicate.isPending) onClose();
+        if (!duplicate.isPending) close();
       }}
       title={`Duplicate ${season.program} ${season.year}`}
       footer={<SheetSaveBar label="Duplicate" loading={duplicate.isPending} onPress={submit} />}
