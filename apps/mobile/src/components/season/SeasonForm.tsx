@@ -99,6 +99,8 @@ export function SeasonForm({
 }) {
   const [v, setV] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // The "Fix the fields" hint belongs to the values that failed; any edit makes a new object.
+  const [failedValues, setFailedValues] = useState<typeof initial | null>(null);
   // v1: an edit never auto-fills the code.
   const [codeTouched, setCodeTouched] = useState(mode === "edit" || initial.code !== "");
 
@@ -117,6 +119,7 @@ export function SeasonForm({
     const parsed = seasonWriteRequestSchema.safeParse(body);
     if (!parsed.success) {
       setErrors(firstErrorByField(parsed.error));
+      setFailedValues(v);
       return;
     }
     setErrors({});
@@ -130,7 +133,10 @@ export function SeasonForm({
       saveLabel={mode === "create" ? "Create season" : "Save changes"}
       saving={submitting}
       saveHint={
-        message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
+        message ??
+        (Object.keys(errors).length > 0 && failedValues === v
+          ? "Fix the fields marked above."
+          : undefined)
       }
       onSave={submit}
     >

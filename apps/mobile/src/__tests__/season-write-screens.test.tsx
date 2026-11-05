@@ -113,6 +113,10 @@ describe("NewSeasonScreen (/seasons/new)", () => {
       within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above."),
     ).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
+    fireEvent.changeText(screen.getByLabelText("Program"), "GBV");
+    expect(
+      within(screen.getByTestId("save-bar")).queryByText("Fix the fields marked above."),
+    ).toBeNull();
   });
 
   it("submits from the fixed save bar, and the pinned back link leaves", () => {

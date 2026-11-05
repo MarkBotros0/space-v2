@@ -202,6 +202,8 @@ describe("/group/new", () => {
     expect(
       within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above."),
     ).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText("Name"), "Alpha");
+    expect(within(screen.getByTestId("save-bar")).queryByText("Fix the fields marked above.")).toBeNull();
   });
 });
 
