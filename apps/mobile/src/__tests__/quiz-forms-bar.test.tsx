@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { ScrollView } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
@@ -127,5 +127,24 @@ describe("quiz builder on the fixed save bar", () => {
     fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
     fireEvent.press(bar().getByText("Save changes"));
     expect(await bar().findByText("Grades exist.")).toBeTruthy();
+  });
+
+  it("with a question editor open, Save sends nothing and says to finish it; once closed the title saves", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    patch.mockResolvedValue({ data: { data: { updated: true } } });
+    renderStacked(<QuizEditScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
+    fireEvent.press(screen.getByText("Add question"));
+    fireEvent.press(bar().getByText("Save changes"));
+    expect(bar().getByText("Finish or cancel the question above first.")).toBeTruthy();
+    expect(patch).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByText("Cancel"));
+    fireEvent.press(screen.getByLabelText("Edit question 1"));
+    expect(bar().getByText("Finish or cancel the question above first.")).toBeTruthy();
+    fireEvent.press(screen.getByText("Cancel"));
+    expect(bar().queryByText("Finish or cancel the question above first.")).toBeNull();
+    fireEvent.press(bar().getByText("Save changes"));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
   });
 });

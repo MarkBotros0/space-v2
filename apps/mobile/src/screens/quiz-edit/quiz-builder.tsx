@@ -37,6 +37,7 @@ function QuizForm({
   const publish = usePublishQuiz(id);
   const update = useUpdateQuiz(id);
   const [adding, setAdding] = useState(false);
+  const [editingRows, setEditingRows] = useState(0);
   const [addError, setAddError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState(data.title);
@@ -49,8 +50,10 @@ function QuizForm({
   const scoreChanged = isPaper && maxScore !== String(data.maxScore);
   const dirty = titleChanged || scoreChanged;
 
+  const questionOpen = adding || editingRows > 0;
+
   const save = () => {
-    if (!dirty) return;
+    if (!dirty || questionOpen) return;
     const body: { title?: string; maxScore?: number } = {};
     if (titleChanged) body.title = title;
     if (scoreChanged) body.maxScore = maxScore.trim() === "" ? Number.NaN : Number(maxScore);
@@ -72,14 +75,15 @@ function QuizForm({
     });
   };
 
-  const saveHint =
-    saveError ??
-    errors.form ??
-    (Object.keys(errors).length > 0
-      ? "Fix the fields marked above."
-      : dirty
-        ? undefined
-        : "Nothing to save yet.");
+  const saveHint = questionOpen
+    ? "Finish or cancel the question above first."
+    : (saveError ??
+      errors.form ??
+      (Object.keys(errors).length > 0
+        ? "Fix the fields marked above."
+        : dirty
+          ? undefined
+          : "Nothing to save yet."));
 
   const published = data.publishedAt !== null;
   const count = data.questions.length;
@@ -167,6 +171,7 @@ function QuizForm({
                     index={index}
                     editable={data.canEditStructure}
                     onError={setError}
+                    onEditingChange={(on) => setEditingRows((n) => Math.max(0, n + (on ? 1 : -1)))}
                   />
                 ))}
               </View>

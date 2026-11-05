@@ -21,17 +21,24 @@ export function QuestionRow({
   index,
   editable,
   onError,
+  onEditingChange,
 }: {
   quiz: QuizAuthoringDetail;
   question: QuizQuestionAuthoring;
   index: number;
   editable: boolean;
   onError: (m: string | null) => void;
+  /** The builder blocks its Save while any question form is open. */
+  onEditingChange: (editing: boolean) => void;
 }) {
   const update = useUpdateQuestion(quiz.id);
   const remove = useDeleteQuestion(quiz.id);
   const reorder = useReorderQuestions(quiz.id);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditingState] = useState(false);
+  const setEditing = (next: boolean) => {
+    setEditingState(next);
+    onEditingChange(next);
+  };
   const [confirming, setConfirming] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const n = index + 1;
