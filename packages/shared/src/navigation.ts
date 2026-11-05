@@ -10,8 +10,8 @@ import type { UserRole } from "./auth";
  * See Decision D1 in the Phase 0 plan.
  *
  * `tabs` was mobile-shaped in v1: five entries with Home centred. The
- * redesign (plan 01 Task 12) puts Today (`/dashboard`, the `home` icon the
- * pill features) first for every role, at most five tabs. Nothing left the
+ * redesign (plan 01 Task 12) puts Today (`/dashboard`, the `home` icon)
+ * first for every role, at most five tabs. Nothing left the
  * navs: a destination that stopped being a tab is still in `sidebar`, which
  * is what More lists. MENTOR has no More tab; Profile links to Settings.
  */
