@@ -150,8 +150,9 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
         };
         const lost = adminSeasonsLostBy(data, submit.body.role);
         if (lost.length > 0) {
-          // The server deletes their SeasonAdmin rows on this change and
-          // nothing in the app can put them back — say so, by name.
+          // The server deletes their SeasonAdmin rows on this change. Changing the
+          // role back does not restore them (a season's Admins list can add them
+          // again, one by one), so say so, by name.
           Alert.alert(
             "Remove season admin rights?",
             `${data.name || data.email} will stop being an admin of ${lost.join(", ")}. ` +
