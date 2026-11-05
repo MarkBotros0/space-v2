@@ -16,6 +16,7 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
 
+import { ConfirmDialog } from "../design/ui";
 import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
@@ -206,6 +207,30 @@ describe("quiz runner saves", () => {
       fireEvent.press(await screen.findByText("Submit quiz"));
       fireEvent.press(await screen.findByText("Submit"));
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Answer every question."));
+    });
+
+    it("a second press of Submit while the first is in flight is a no-op, and the first's outcome shows", async () => {
+      get.mockResolvedValue({ data: { data: answered() } });
+      const first = deferred<unknown>();
+      post.mockReturnValueOnce(first.promise);
+      post.mockRejectedValue(new Error("duplicate"));
+      renderWithProviders(<QuizDetailScreen />);
+      fireEvent.press(await screen.findByText("Submit quiz"));
+      await screen.findByText("Submit");
+      // A double tap lands before the dialog has closed, so both reach the handler.
+      const { onConfirm } = screen.UNSAFE_getByType(ConfirmDialog).props;
+      act(() => {
+        onConfirm();
+        onConfirm();
+      });
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(10);
+      });
+      expect(post).toHaveBeenCalledTimes(1);
+
+      first.resolve({ data: { data: { ...answered(), status: "SUBMITTED", totalScore: 2 } } });
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Quiz submitted."));
+      expect(toast.error).not.toHaveBeenCalled();
     });
 
     it("answers that won't save stop the submit, and say why", async () => {

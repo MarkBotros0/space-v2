@@ -1,5 +1,5 @@
 import { Check } from "lucide-react-native";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
@@ -100,15 +100,24 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
   const online = useIsOnline();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // One hand-in at a time. `submit.isPending` is only true once `mutate` has run, after the
+  // flush; a double tap on Confirm reaches here twice before that. A second `mutate`
+  // would also take over the first's callbacks and show its 409 as "Couldn't submit".
+  const submitting = useRef(false);
+
   const onSubmit = async () => {
+    if (submitting.current) return;
     // The server checks completeness too (409 attempt_incomplete); the disabled
     // button is the courtesy, this is the rule.
     if (!isComplete) return;
+    submitting.current = true;
     if (hasUnsentOffline()) {
+      submitting.current = false;
       reportOutcome("error", SUBMIT_FAILED);
       return;
     }
     if (!(await flush())) {
+      submitting.current = false;
       reportOutcome("error", "Couldn't save your answers, so the quiz wasn't submitted.");
       return;
     }
@@ -117,6 +126,9 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
       // what confirms it while the bar is still in view.
       onSuccess: () => reportOutcome("success", "Quiz submitted."),
       onError: (err) => reportOutcome("error", apiErrorMessage(err, SUBMIT_FAILED)),
+      onSettled: () => {
+        submitting.current = false;
+      },
     });
   };
 
