@@ -3,9 +3,10 @@
  * bar). It owns the top safe-area inset and the offline strip under it, a
  * large title in the scroll content that collapses into a pinned
  * `CompactHeader` once scrolled past, Home's bell and user menu (`home`,
- * ruling R13; once they scroll away the compact header, titled "Today",
- * carries them, R31), the bottom padding that clears the pill (or, on a detail
- * screen, just the inset: `useShellBottomPadding`), the keyboard inset, and
+ * ruling R13; as soon as they start to scroll under the top the compact
+ * header, titled "Today", carries them, R31), the bottom padding that clears
+ * the pill (or, on a detail screen, just the inset: `useShellBottomPadding`),
+ * the keyboard inset, and
  * the scroll direction the pill hides and returns on (`useTabBarScroll`).
  * With `back` the compact header is a bar pinned above the scroll view that
  * always shows the back link; only its title fades in (ruling R16).
@@ -232,9 +233,14 @@ export function Screen({
     },
   );
 
+  // A large title collapses once scrolled past its bottom. Home's actions row
+  // (bell, user menu) is live, so the compact bar takes over as soon as the row
+  // starts to go under the top: waiting for its bottom left it half under the
+  // status bar with no bar shown, on a short page partly scrolled (sweep s47-03).
+  const collapseAtRowTop = home && !title;
   const onTitleLayout = (e: LayoutChangeEvent) => {
     const { y, height } = e.nativeEvent.layout;
-    titleBottom.value = y + height;
+    titleBottom.value = collapseAtRowTop ? y : y + height;
   };
 
   // Home has no large title; once its actions row scrolls away the compact

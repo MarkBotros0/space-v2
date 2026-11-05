@@ -75,15 +75,28 @@ describe("Screen home: compact header (R31)", () => {
     expect(screen.getAllByLabelText("User menu")).toHaveLength(1);
   });
 
-  it("once scrolled past the actions row its controls are live and reachable", async () => {
+  it("takes over as soon as the actions row starts to go under the top, not once it is gone", async () => {
+    // Sweep s47-03 (alumni, small phone, 1.3): on a short page partly scrolled the row was
+    // half under the status bar with no bar shown. The row's top is at 16 (the content's pt-4).
     renderWithProviders(
       <Screen home>
         <RNText>body</RNText>
       </Screen>,
     );
     layoutHeading();
-    await scrollTo(30);
+    await scrollTo(10);
     expect(compact().props.pointerEvents).toBe("none");
+    await scrollTo(20);
+    expect(compact().props.pointerEvents).toBe("box-none");
+  });
+
+  it("once scrolled its controls are live and reachable", async () => {
+    renderWithProviders(
+      <Screen home>
+        <RNText>body</RNText>
+      </Screen>,
+    );
+    layoutHeading();
     await scrollTo(120);
     expect(compact().props.pointerEvents).toBe("box-none");
     expect(compact().props.accessibilityElementsHidden).toBe(false);
