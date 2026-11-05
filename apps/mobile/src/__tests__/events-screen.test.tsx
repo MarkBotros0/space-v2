@@ -1,13 +1,14 @@
 // apps/mobile/src/__tests__/events-screen.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { format } from "date-fns";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 const mockPush = jest.fn();
+const mockDismissTo = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush, back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, back: jest.fn(), dismissTo: mockDismissTo }),
   useLocalSearchParams: () => ({ id: "3" }),
 }));
 
@@ -93,7 +94,7 @@ describe("events screen", () => {
     fireEvent.changeText(screen.getByLabelText("Title"), "Graduation");
     const day = pickToday("Date");
     fireEvent.changeText(screen.getByLabelText("Time"), "18:30");
-    fireEvent.press(screen.getByText("Create event"));
+    fireEvent.press(within(screen.getByTestId("sheet-save-bar")).getByText("Create event"));
 
     // Wall-clock fields only — the device composes no instant and applies no
     // zone; the server does that in the org zone (ruling X13).
@@ -119,22 +120,11 @@ describe("events screen", () => {
     fireEvent.changeText(screen.getByLabelText("Title"), "Graduation");
     pickToday("Date");
     fireEvent.changeText(screen.getByLabelText("Time"), "6pm");
-    fireEvent.press(screen.getByText("Create event"));
+    fireEvent.press(within(screen.getByTestId("sheet-save-bar")).getByText("Create event"));
 
     await waitFor(() => expect(post).not.toHaveBeenCalled());
     expect(screen.getByLabelText("Time").props.accessibilityHint).toContain("HH:mm");
-  });
-
-  it("deletes a row behind v1's confirm dialog, SUPER only", async () => {
-    useSessionStore.setState(superSession);
-    del.mockResolvedValue({ data: { data: { deleted: true } } });
-    renderWithProviders(<EventsScreen />);
-
-    fireEvent.press(await screen.findByLabelText("Delete Summer retreat"));
-    expect(await screen.findByText("Delete event?")).toBeTruthy();
-    expect(del).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByText("Delete"));
-    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/events/3"));
+    expect(within(screen.getByTestId("sheet-save-bar")).getByText("Fix the fields marked above.")).toBeTruthy();
   });
 
   it("shows a non-SUPER role the same list with no write controls", async () => {
@@ -146,7 +136,7 @@ describe("events screen", () => {
 
     expect(await screen.findByText("Summer retreat")).toBeTruthy();
     expect(screen.queryByText("New event")).toBeNull();
-    expect(screen.queryByLabelText("Delete Summer retreat")).toBeNull();
+    expect(screen.queryByLabelText("New event")).toBeNull();
   });
 
   it("renders an empty state rather than nothing (spec 15 R75)", async () => {
@@ -190,6 +180,35 @@ describe("events screen", () => {
     expect(screen.queryByText("Load more")).toBeNull();
   });
 
+  it("never truncates a row's date and time to one line", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue({
+      data: { data: { events: [{ ...listRow, time: "18:30", endDayKey: null }], total: 1, nextCursor: null } },
+    });
+    renderWithProviders(<EventsScreen />);
+    const when = await screen.findByText("Jul 1, 2099 · 6:30 PM");
+    expect(when.props.numberOfLines === undefined || when.props.numberOfLines >= 2).toBe(true);
+  });
+
+  it("marks a past event and an alumni-only event with a worded chip", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue({
+      data: {
+        data: {
+          events: [
+            { ...listRow, id: 5, title: "Old fair", dayKey: "2001-03-01", endDayKey: null },
+            { ...listRow, id: 6, title: "Alumni night", visibility: "ALUMNI_ONLY" as const },
+          ],
+          total: 2,
+          nextCursor: null,
+        },
+      },
+    });
+    renderWithProviders(<EventsScreen />);
+    expect(await screen.findByText("Past")).toBeTruthy();
+    expect(screen.getByText("Alumni & staff")).toBeTruthy();
+  });
+
   it("navigates to the detail v1 has no page for", async () => {
     useSessionStore.setState(alumnusSession);
     renderWithProviders(<EventsScreen />);
@@ -220,5 +239,44 @@ describe("event detail screen", () => {
 
     renderWithProviders(<EventDetailScreen />);
     expect(await screen.findByText("Delete event")).toBeTruthy();
+  });
+
+  it("edits from a sheet with the same body shape as create", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue({ data: { data: { ...detailRow, time: "18:30" } } });
+    const patch = apiClient.patch as jest.Mock;
+    patch.mockResolvedValue({ data: { data: detailRow } });
+
+    renderWithProviders(<EventDetailScreen />);
+    fireEvent.press(await screen.findByText("Edit"));
+    fireEvent.changeText(screen.getByLabelText("Title"), "Summer camp");
+    fireEvent.press(within(screen.getByTestId("sheet-save-bar")).getByText("Save changes"));
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/api/v1/events/3", {
+        title: "Summer camp",
+        day: "2099-07-01",
+        time: "18:30",
+        endDay: "2099-07-05",
+        description: "Five days away.",
+        url: null,
+        visibility: "ALL",
+        seasonId: null,
+      }),
+    );
+  });
+
+  it("deletes behind a confirm, then dismisses to the list", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue({ data: { data: detailRow } });
+    del.mockResolvedValue({ data: { data: { deleted: true } } });
+    renderWithProviders(<EventDetailScreen />);
+
+    fireEvent.press(await screen.findByText("Delete event"));
+    expect(await screen.findByText("Delete event?")).toBeTruthy();
+    expect(del).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText("Delete"));
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/events/3"));
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/events"));
   });
 });
