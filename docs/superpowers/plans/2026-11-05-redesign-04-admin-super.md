@@ -23,6 +23,8 @@
 - Don't touch another role's tabs in `navigation.ts`. Don't implement the season-admin assignment UI change or super events paging (open owner decisions).
 - No backend changes, no migrations, no integration tests. No sweep screenshots in git. Long commands in tmux with prefix `space-v2-r04-`, logs in `~/logs/`.
 - Sweep flows never save anything; pushed screens wait on screen-specific text, never `User menu`. A task that changes a screen updates its flow's waits in the same commit.
+- Plan 01's final wave (owner, BRIEF-common "Owner updates") lands before this plan pushes. After save `router.back()`; after delete `router.dismissTo(<list>)`; never `router.replace` to a tab from a stacked screen. A fixed save bar only through `FormScreen`, which moves onto `Screen`'s `footer` prop at rebase. No own trailing-status label on `ListRow`, no local Android nav-inset keyboard compensation, nothing depending on `app/dev/design-system`.
+- The pill is solid (owner R38, plan 01's change): don't touch it, don't flag translucency.
 - Commit every fix one by one; messages end with the session's Co-Authored-By / Claude-Session lines. No push until the end (Task 15).
 - Verify each task: `pnpm --filter @space/mobile test:unit -- <its tests>`, then `pnpm --filter @space/mobile typecheck` and `lint`.
 
@@ -264,5 +266,5 @@ All root at `FormScreen`. Series scope choice on session edit stays (a `Segmente
 - [ ] **Step 3: All 16 cells** once corners are clean; repeat Step 2 for what's new.
 - [ ] **Step 4: Full checks in tmux:** `pnpm --filter @space/mobile test:unit`, `typecheck`, `lint`. Expected: all pass, guard and contrast tests included.
 - [ ] **Step 5: Final review, one fix wave, scoped re-review (SDD).**
-- [ ] **Step 6: Push per the brief** once `git merge-base --is-ancestor 55d5c52 origin/main` succeeds: rebase on `origin/main`, re-run Step 4, then `gh auth switch --hostname github.com --user MarkBotros0 && git push origin HEAD:main`; retry on a sibling's push. Re-check every ~30 min until plan 01 lands.
+- [ ] **Step 6: Push per the brief** once `git merge-base --is-ancestor 55d5c52 origin/main` succeeds: rebase on `origin/main`, move `FormScreen` onto `Screen`'s `footer` (drop `SaveBar`'s `onLayout` and the spacer), merge `ListRow`'s `leading` with plan 01's trailing label, grep `router.replace`, re-run Step 4, then `gh auth switch --hostname github.com --user MarkBotros0 && git push origin HEAD:main`; retry on a sibling's push. Re-check every ~30 min until plan 01 lands.
 - [ ] **Step 7: Write `pending-04.md`, tell the owner the pending list and rulings; delete `.superpowers/sdd/<plan>/`.**
