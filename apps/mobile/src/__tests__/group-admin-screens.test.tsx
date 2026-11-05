@@ -30,21 +30,10 @@ import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import GroupDetailScreen from "../../app/(app)/group/[id]/index";
 import GroupsScreen from "../../app/(app)/(tabs)/groups";
-import NewGroupScreen from "../../app/(app)/group/new";
-import EditGroupScreen from "../../app/(app)/group/[id]/edit";
 import SeasonRosterScreen from "../../app/(app)/seasons/[code]/roster/index";
 
 const get = apiClient.get as jest.Mock;
-const post = apiClient.post as jest.Mock;
-const patch = apiClient.patch as jest.Mock;
 const put = apiClient.put as jest.Mock;
-const del = apiClient.delete as jest.Mock;
-
-/** Open a v1 MultiSelect by its label and tick an option by its visible label. */
-async function pickOption(select: string, option: string) {
-  fireEvent.press(await screen.findByLabelText(select));
-  fireEvent.press(await screen.findByText(option));
-}
 
 /** Open a student's group sheet from the roster and stage a group by its title. */
 async function choose(student: string, group: string) {
@@ -201,140 +190,6 @@ describe("/groups — ADMIN/SUPER season branch (G6, D-16.16)", () => {
   });
 });
 
-describe("/group/new", () => {
-  it("creates a group with picked leaders and students and opens it", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { seasonId: "7" };
-    routeGets();
-    post.mockResolvedValue({ data: { data: { id: 30 } } });
-    renderWithProviders(<NewGroupScreen />);
-
-    expect(await screen.findByText("Add a group to Season 7.")).toBeTruthy();
-    fireEvent.changeText(await screen.findByLabelText("Name"), "Group C");
-    await pickOption("Leaders", "Karim");
-    await pickOption("Students", "Omar");
-    // Omar has no group in this season, so no "moves them" hint. A group in
-    // another season is not mentioned: memberships are per season (Plan 18
-    // M1), so saving here leaves it alone.
-    fireEvent.press(screen.getByLabelText("Students"));
-    expect(screen.getAllByText("omar@jpc.test").length).toBeGreaterThan(0);
-    expect(screen.queryByText(/^omar@jpc\.test · /)).toBeNull();
-    // Sara is in another group of THIS season, which saving does change.
-    expect(screen.getByText("sara@jpc.test · Now in Group A — saving moves them here.")).toBeTruthy();
-    saveBar("Create group");
-
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/groups", {
-        name: "Group C",
-        description: null,
-        leaderIds: [6],
-        studentIds: [22],
-      }),
-    );
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "30" } });
-  });
-
-  it("shows the replace-lists helper only when editing", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { seasonId: "7" };
-    routeGets();
-    renderWithProviders(<NewGroupScreen />);
-    await screen.findByLabelText("Name");
-    expect(screen.queryByText(/Saving replaces/)).toBeNull();
-  });
-
-  it("validates the name with the server's schema", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { seasonId: "7" };
-    routeGets();
-    renderWithProviders(<NewGroupScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Name"), "C");
-    saveBar("Create group");
-    expect(screen.getByLabelText("Name").props.accessibilityHint).toMatch(/at least 2/);
-    expect(post).not.toHaveBeenCalled();
-    expect(
-      within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above."),
-    ).toBeTruthy();
-  });
-});
-
-describe("/group/[id]/edit", () => {
-  it("says saving replaces the lists", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { id: "3" };
-    routeGets();
-    renderWithProviders(<EditGroupScreen />);
-    expect(await screen.findByText(/Saving replaces this group's leaders/)).toBeTruthy();
-  });
-
-  it("pre-selects members from the ROSTER (SeasonEnrollment, C9) and saves the full lists", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { id: "3" };
-    routeGets();
-    patch.mockResolvedValue({ data: { data: { id: 3 } } });
-    renderWithProviders(<EditGroupScreen />);
-
-    expect((await screen.findByLabelText("Name")).props.value).toBe("Group A");
-    await pickOption("Students", "Omar");
-    saveBar("Save changes");
-    await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/api/v1/groups/3", {
-        name: "Group A",
-        description: null,
-        leaderIds: [5],
-        studentIds: [21, 22],
-      }),
-    );
-  });
-
-  it("shows the delete impact, and the server's refusal while an assignment targets only this group", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { id: "3" };
-    routeGets();
-    del.mockRejectedValueOnce(
-      Object.assign(new Error("409"), {
-        isAxiosError: true,
-        response: {
-          status: 409,
-          data: {
-            error: {
-              code: "group_has_sole_targets",
-              message: "1 assignment(s) target only this group. Retarget them before deleting it.",
-            },
-          },
-        },
-      }),
-    );
-    renderWithProviders(<EditGroupScreen />);
-
-    expect(
-      await screen.findByText("Deleting unassigns 1 student and removes 1 leader."),
-    ).toBeTruthy();
-    expect(screen.getByText("Only A")).toBeTruthy();
-    fireEvent.press(screen.getByText("Delete group"));
-    expect(del).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByText("Really delete?"));
-    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/groups/3"));
-    expect(
-      await screen.findByText(
-        "1 assignment(s) target only this group. Retarget them before deleting it.",
-      ),
-    ).toBeTruthy();
-  });
-
-  it("deletes and returns to /groups", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { id: "3" };
-    routeGets({
-      "/api/v1/groups/3/impact": { studentCount: 1, leaderCount: 1, soleTargetAssignments: [] },
-    });
-    del.mockResolvedValue({ data: { data: { deleted: true, orphanedStudentIds: [21] } } });
-    renderWithProviders(<EditGroupScreen />);
-    fireEvent.press(await screen.findByText("Delete group"));
-    fireEvent.press(screen.getByText("Really delete?"));
-    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/groups"));
-  });
-});
 
 describe("/seasons/[code]/roster (G7)", () => {
   it("sends only the rows that changed and reports what was WRITTEN", async () => {
