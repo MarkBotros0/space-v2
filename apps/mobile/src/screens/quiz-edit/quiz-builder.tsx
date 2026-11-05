@@ -97,6 +97,7 @@ function QuizForm({
       saveLabel="Save changes"
       saving={update.isPending}
       saveHint={saveHint}
+      disabled={!dirty || questionOpen}
       onSave={save}
       onRefresh={onRefresh}
       refreshing={refreshing}

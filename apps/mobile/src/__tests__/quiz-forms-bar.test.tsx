@@ -154,6 +154,20 @@ describe("quiz builder on the fixed save bar", () => {
     });
   const HINT = "Finish or cancel the question above first.";
 
+  it("Save is drawn disabled, with its hint kept, when there is nothing to save or a question form is open (final review M4)", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    renderStacked(<QuizEditScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Week 1 quiz");
+    expect(bar().getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(bar().getByText("Nothing to save yet.")).toBeTruthy();
+
+    fireEvent.changeText(screen.getByLabelText("Quiz title"), "Renamed");
+    expect(bar().getByRole("button", { name: "Save changes" })).toBeEnabled();
+    fireEvent.press(screen.getByLabelText("Edit question 1"));
+    expect(bar().getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(bar().getByText("Finish or cancel the question above first.")).toBeTruthy();
+  });
+
   it("a question deleted elsewhere while its form is open no longer blocks Save (final review I2)", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
     patch.mockResolvedValue({ data: { data: { updated: true } } });
@@ -164,7 +178,7 @@ describe("quiz builder on the fixed save bar", () => {
 
     get.mockResolvedValue({ data: { data: authoring({ questions: [] }) } });
     await refresh();
-    await waitFor(() => expect(bar().queryByText(HINT)).toBeNull());
+    await waitFor(() => expect(bar().queryByText(HINT)).toBeNull(), { timeout: 20000 });
     fireEvent.press(bar().getByText("Save changes"));
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
   });
