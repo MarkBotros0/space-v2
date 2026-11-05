@@ -93,14 +93,15 @@ describe("GET /api/v1/seasons/:id", () => {
   });
 
   it("doesn't count a withdrawn student, and keeps counting a completed one", async () => {
-    const read = async () =>
-      (await request(app).get(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${superToken}`)).body.data
-        .studentCount;
+    const read = async () => {
+      const { data } = (await request(app).get(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${superToken}`)).body;
+      return [data.studentCount, data.groups[0].studentCount];
+    };
     try {
       await db.seasonEnrollment.updateMany({ where: { seasonId }, data: { status: "WITHDRAWN" } });
-      expect(await read()).toBe(0);
+      expect(await read()).toEqual([0, 0]);
       await db.seasonEnrollment.updateMany({ where: { seasonId }, data: { status: "COMPLETED" } });
-      expect(await read()).toBe(1);
+      expect(await read()).toEqual([1, 1]);
     } finally {
       await db.seasonEnrollment.updateMany({ where: { seasonId }, data: { status: "ACTIVE" } });
     }

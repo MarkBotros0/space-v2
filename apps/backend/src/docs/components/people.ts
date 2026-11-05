@@ -47,7 +47,7 @@ export const peopleSchemas = {
       startDate: { type: "string", format: "date-time" },
       endDate: { type: "string", format: "date-time" },
       sessionCount: { type: "integer" },
-      studentCount: { type: "integer" },
+      studentCount: { type: "integer", description: "Enrolments in the season, leaving out withdrawn students." },
       absenceBudgetMinutes: { type: "integer" },
       absenceWeightMinutes: { type: "integer" },
       canAdminister: { type: "boolean", description: "isAdminOfSeason for the caller (C4)." },

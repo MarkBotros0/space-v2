@@ -50,7 +50,14 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
         select: {
           id: true,
           name: true,
-          _count: { select: { students: true } },
+          // A drop leaves the GroupStudent row, so leave those students out to agree with the season's count.
+          _count: {
+            select: {
+              students: {
+                where: { NOT: { studentUser: { seasonEnrollments: { some: { seasonId: id, status: "WITHDRAWN" } } } } },
+              },
+            },
+          },
           leaders: { select: { user: { select: { name: true } } } },
         },
       },
