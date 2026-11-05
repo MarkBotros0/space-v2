@@ -32,10 +32,12 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s33-05-calendar-bottom
-# The same screen again, still on Month and scrolled: scroll up to the view switch.
+# The same screen again, still on Month and scrolled: scroll up to its own subtitle (the
+# calendar has no user menu, R13), then to the view switch.
 - openLink: spacev2://calendar
-- extendedWaitUntil:
-    visible: 'User menu'
+- scrollUntilVisible:
+    element: 'All active seasons across JPC\.'
+    direction: UP
     timeout: 40000
 - scrollUntilVisible:
     element: 'Upcoming'

@@ -1,6 +1,7 @@
 # UI sweep s24 — Students as a season admin. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
+# Only Home has the user menu (R13): each screen is waited on by its own text.
 ---
 - runFlow:
     file: ../_sign-in.yaml
@@ -8,7 +9,7 @@ appId: com.jpc.space
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://students
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: '\d+ students? in your seasons'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -22,7 +23,7 @@ appId: com.jpc.space
 - takeScreenshot: s24-02-students-bottom
 - openLink: spacev2://students/dropped
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: '\d+ students? dropped from your seasons'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -36,7 +37,7 @@ appId: com.jpc.space
 - takeScreenshot: s24-04-dropped-bottom
 - openLink: spacev2://students/alumni
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: '\d+ graduated students? from your seasons'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -50,7 +51,7 @@ appId: com.jpc.space
 - takeScreenshot: s24-06-alumni-bottom
 - openLink: spacev2://students
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: '\d+ students? in your seasons'
     timeout: 40000
 - runFlow:
     file: ../_tap.yaml
@@ -114,7 +115,7 @@ appId: com.jpc.space
 # Student ids follow the seed order: super 1, admin 2, leader 3, mentor 4, student 5.
 - openLink: spacev2://student/5/edit
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Edit Samir Student'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

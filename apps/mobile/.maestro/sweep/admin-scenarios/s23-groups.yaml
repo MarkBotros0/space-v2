@@ -1,6 +1,7 @@
 # UI sweep s23 — Groups as a season admin. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
+# Only Home has the user menu (R13): each screen is waited on by its own text.
 ---
 - runFlow:
     file: ../_sign-in.yaml
@@ -8,7 +9,7 @@ appId: com.jpc.space
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://groups
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Assign to groups'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -38,7 +39,7 @@ appId: com.jpc.space
 - takeScreenshot: s23-04-group-detail-bottom
 - openLink: spacev2://group/1/edit
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Update group details and membership\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -66,7 +67,7 @@ appId: com.jpc.space
 - takeScreenshot: s23-08-group-edit-bottom
 - openLink: spacev2://group/new?seasonId=2
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Add a group to .+\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

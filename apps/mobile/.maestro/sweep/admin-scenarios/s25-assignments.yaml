@@ -1,6 +1,7 @@
 # UI sweep s25 — Assignments and submissions as a season admin. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
+# Only Home has the user menu (R13): each screen is waited on by its own text.
 ---
 - runFlow:
     file: ../_sign-in.yaml
@@ -8,7 +9,7 @@ appId: com.jpc.space
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://assignments
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: '\d+ assignments?'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -69,7 +70,7 @@ appId: com.jpc.space
 - takeScreenshot: s25-08-submission-review-bottom
 - openLink: spacev2://assignment/1/edit
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Edit assignment'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -97,7 +98,7 @@ appId: com.jpc.space
 - takeScreenshot: s25-12-assignment-edit-bottom
 - openLink: spacev2://assignment/new
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'New assignment'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

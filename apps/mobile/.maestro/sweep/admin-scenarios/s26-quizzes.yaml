@@ -1,6 +1,7 @@
 # UI sweep s26 — Quizzes as a season admin. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
+# Only Home has the user menu (R13): each screen is waited on by its own text.
 ---
 - runFlow:
     file: ../_sign-in.yaml
@@ -8,7 +9,7 @@ appId: com.jpc.space
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://quizzes
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'All quizzes for .+'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -22,7 +23,7 @@ appId: com.jpc.space
 - takeScreenshot: s26-02-quizzes-bottom
 - openLink: spacev2://quiz/1
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Grade this quiz'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -37,7 +38,7 @@ appId: com.jpc.space
 # Grading sheet: scores are typed, never saved.
 - openLink: spacev2://quiz/1/grade
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: '.*Max score: \d+'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -51,7 +52,7 @@ appId: com.jpc.space
 - takeScreenshot: s26-06-quiz-grade-bottom
 - openLink: spacev2://quiz/2
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Online · Published'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -65,7 +66,7 @@ appId: com.jpc.space
 - takeScreenshot: s26-08-quiz-online-bottom
 - openLink: spacev2://quiz/2/edit
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Quiz title'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -93,7 +94,7 @@ appId: com.jpc.space
 - takeScreenshot: s26-12-quiz-edit-bottom
 - openLink: spacev2://quiz/new
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Add a quiz to this season\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
