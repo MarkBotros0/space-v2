@@ -172,7 +172,8 @@ describe("WorkScreen: rows", () => {
     renderWithProviders(<WorkScreen />);
     expect(await screen.findByText("Due in 2 days")).toBeTruthy();
     expect(screen.getByText("Overdue")).toBeTruthy();
-    expect(screen.getByText("Draft saved")).toBeTruthy();
+    expect(screen.getByText("Draft saved · Due Mar 3, 2099")).toBeTruthy();
+    expect(screen.getByText("Due Mar 3, 2099")).toBeTruthy();
   });
 
   it("rows open the assignment and the quiz", async () => {

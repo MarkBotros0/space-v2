@@ -52,22 +52,50 @@ describe("assignmentRow", () => {
   it("a draft keeps the due chip and says it is saved", () => {
     const row = assignmentRow(assignment({ id: 1, status: "DRAFT" }), TODAY);
     expect(row.chip?.label).toBe("Due in 2 days");
-    expect(row.subtitle).toBe("Draft saved");
+    expect(row.subtitle).toBe("Draft saved · Due Mar 3, 2099");
   });
 
   it("a returned row says so, even past its due date", () => {
     const row = assignmentRow(assignment({ id: 1, status: "RETURNED", isOverdue: true }), TODAY);
     expect(row.chip).toEqual({ tone: "warn", label: "Returned" });
-    expect(row.subtitle).toBe("Returned with comments");
+    expect(row.subtitle).toBe("Returned with comments · Due Mar 3, 2099");
   });
 
   it.each([
     ["SUBMITTED", "Submitted"],
     ["REVIEWED", "Reviewed"],
-  ] as const)("%s shows its status, not a deadline", (status, label) => {
+  ] as const)("%s chips its status, and the subtitle keeps the date it was due", (status, label) => {
     const row = assignmentRow(assignment({ id: 1, status, isOverdue: true }), TODAY);
     expect(row.chip?.label).toBe(label);
-    expect(row.subtitle).toBeUndefined();
+    expect(row.subtitle).toBe("Due Mar 3, 2099");
+  });
+
+  it("an overdue row says when it was due: the chip alone does not", () => {
+    const row = assignmentRow(
+      assignment({ id: 1, isOverdue: true, dueOrgDay: "2099-02-20", dueAt: "2099-02-20T10:00:00.000Z" }),
+      TODAY,
+    );
+    expect(row.chip?.label).toBe("Overdue");
+    expect(row.subtitle).toBe("Due Feb 20, 2099");
+  });
+
+  it("the date comes from the org day, never dueAt: the two can name different days", () => {
+    const row = assignmentRow(
+      assignment({ id: 1, dueOrgDay: "2099-04-01", dueAt: "2099-03-31T22:30:00.000Z" }),
+      TODAY,
+    );
+    expect(row.subtitle).toBe("Due Apr 1, 2099");
+  });
+
+  it.each([
+    ["PENDING", undefined],
+    ["SUBMITTED", undefined],
+    ["REVIEWED", undefined],
+    ["DRAFT", "Draft saved"],
+    ["RETURNED", "Returned with comments"],
+  ] as const)("an undated %s row names no date", (status, subtitle) => {
+    const row = assignmentRow(assignment({ id: 1, status, dueOrgDay: null, dueAt: null }), TODAY);
+    expect(row.subtitle).toBe(subtitle);
   });
 });
 

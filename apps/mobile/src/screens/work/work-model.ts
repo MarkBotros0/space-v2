@@ -8,7 +8,7 @@ import type { DashboardDueItem, StudentAssignmentListItem, StudentQuizResult } f
 
 import { dueChip, statusChip, type ChipSpec } from "../../design/ui/status-chip";
 import { daysBetween } from "../../lib/calendar-grid";
-import { formatDate } from "../../lib/format";
+import { formatDate, formatDayKey } from "../../lib/format";
 
 /** Where "See all" and the Assignments tile go. */
 export const WORK_HREF = "/work" as const;
@@ -28,6 +28,13 @@ export type WorkRow = {
   href: Href | null;
 };
 
+/** The note, then the date it was due: a chip says "Overdue" or "Reviewed", not when. From the org day, so it is zone-safe. */
+function assignmentSubtitle(note: string | null, dueOrgDay: string | null): { subtitle?: string } {
+  const due = dueOrgDay !== null ? `Due ${formatDayKey(dueOrgDay)}` : null;
+  const subtitle = [note, due].filter((part) => part !== null).join(" · ");
+  return subtitle ? { subtitle } : {};
+}
+
 export function assignmentRow(a: StudentAssignmentListItem, todayOrgDay: string): WorkRow {
   const row = {
     key: `assignment-${a.id}`,
@@ -38,14 +45,30 @@ export function assignmentRow(a: StudentAssignmentListItem, todayOrgDay: string)
   };
   switch (a.status) {
     case "RETURNED":
-      return { ...row, chip: statusChip("submission", "RETURNED"), subtitle: "Returned with comments" };
+      return {
+        ...row,
+        chip: statusChip("submission", "RETURNED"),
+        ...assignmentSubtitle("Returned with comments", a.dueOrgDay),
+      };
     case "SUBMITTED":
     case "REVIEWED":
-      return { ...row, chip: statusChip("submission", a.status) };
+      return {
+        ...row,
+        chip: statusChip("submission", a.status),
+        ...assignmentSubtitle(null, a.dueOrgDay),
+      };
     case "DRAFT":
-      return { ...row, chip: dueChip({ ...a, todayOrgDay }), subtitle: "Draft saved" };
+      return {
+        ...row,
+        chip: dueChip({ ...a, todayOrgDay }),
+        ...assignmentSubtitle("Draft saved", a.dueOrgDay),
+      };
     case "PENDING":
-      return { ...row, chip: dueChip({ ...a, todayOrgDay }) };
+      return {
+        ...row,
+        chip: dueChip({ ...a, todayOrgDay }),
+        ...assignmentSubtitle(null, a.dueOrgDay),
+      };
   }
 }
 
