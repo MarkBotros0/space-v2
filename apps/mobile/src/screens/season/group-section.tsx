@@ -4,6 +4,7 @@ import type { MySeason } from "@space/shared";
 import { NavIcon } from "../../design/icons/nav-icon";
 import { cn } from "../../design/lib/cn";
 import { GroupedList, ListRow, Text } from "../../design/ui";
+import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { initialsOf } from "../../lib/initials";
 
 function Initials({ text }: { text: string }) {
@@ -22,12 +23,9 @@ function Initials({ text }: { text: string }) {
 
 function Members({ members }: { members: NonNullable<MySeason["group"]>["members"] }) {
   return (
-    <View className="mt-3 px-4">
-      <Text variant="subhead" className="mb-2 font-bold">
-        Members
-        <Text variant="subhead" className="font-normal text-muted-foreground">{` (${members.length})`}</Text>
-      </Text>
-      <View className="flex-row flex-wrap gap-1.5">
+    <View className="mt-3">
+      <ListSectionHeader>{`Members (${members.length})`}</ListSectionHeader>
+      <View className="flex-row flex-wrap gap-1.5 px-4">
         {members.map((member) => (
           <View
             key={member.id}

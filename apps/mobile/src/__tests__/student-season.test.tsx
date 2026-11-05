@@ -64,8 +64,8 @@ describe("SeasonScreen — STUDENT branch (v1 student/season)", () => {
     expect(screen.getByText("Leader")).toBeTruthy();
     expect(screen.getByText("Lina Leader")).toBeTruthy();
     expect(screen.getByText("lina@jpc.test")).toBeTruthy(); // R89: leaders' emails, not peers'
-    expect(screen.getByText(/^Members/)).toBeTruthy();
-    expect(screen.getByText("(2)")).toBeTruthy();
+    // The kit's all-caps header with the count in it, like "YOUR GROUP" above.
+    expect(screen.getByRole("header", { name: "MEMBERS (2)" })).toBeTruthy();
     expect(screen.getByText("Peer Person")).toBeTruthy();
     expect(screen.getByText("You")).toBeTruthy();
     expect(screen.getByText("The spring season.")).toBeTruthy();
