@@ -50,7 +50,7 @@ export const EMPTY_EVENT_VALUES: EventFormValues = {
 /** Who can see an event — ALUMNI_ONLY is alumni *and* staff, never current students (D-15.2). */
 export const VISIBILITY_LABELS: Record<JpcVisibility, string> = {
   ALL: "Everyone",
-  ALUMNI_ONLY: "Alumni & staff",
+  ALUMNI_ONLY: "Alumni only",
   SEASON: "One season",
 };
 

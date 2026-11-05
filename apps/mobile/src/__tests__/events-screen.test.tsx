@@ -207,7 +207,7 @@ describe("events screen", () => {
     expect(await screen.findByText("Old fair")).toBeTruthy();
     expect(screen.getByText("Mar 1, 2001")).toBeTruthy();
     expect(screen.queryByText("Past")).toBeNull();
-    expect(screen.getByText("Alumni & staff")).toBeTruthy();
+    expect(screen.getByText("Alumni only")).toBeTruthy();
   });
 
   it("navigates to the detail v1 has no page for", async () => {

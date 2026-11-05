@@ -5,7 +5,7 @@ import { ListRow, StatusChip, type ChipSpec } from "../../design/ui";
 import { formatEventWhen } from "../../lib/format";
 import { VISIBILITY_LABELS } from "../../components/EventForm";
 
-/** At most one chip: who can see it when that is not everyone (Alumni & staff, or the season code). */
+/** At most one chip: who can see it when that is not everyone (Alumni only, or the season code). */
 export function eventChip(e: JpcEventListItem): ChipSpec | null {
   if (e.visibility === "ALUMNI_ONLY") return { tone: "warn", label: VISIBILITY_LABELS.ALUMNI_ONLY };
   if (e.visibility === "SEASON")
