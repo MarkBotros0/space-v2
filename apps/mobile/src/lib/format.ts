@@ -184,7 +184,7 @@ export function formatStampAgo(iso: string | null): string {
   if (iso == null) return PLACEHOLDER;
   const date = parseISO(iso);
   if (!isValid(date)) return PLACEHOLDER;
-  return `${format(date, "MMM d, yyyy · h:mm\u00A0a")} · ${formatDistanceToNowStrict(date, { addSuffix: true })}`;
+  return `${format(date, "MMM\u00A0d,\u00A0yyyy · h:mm\u00A0a")} · ${formatDistanceToNowStrict(date, { addSuffix: true })}`;
 }
 
 /** e.g. "Apr 1" — v1's short badge date for an instant with no org day key (device zone, gap note). */
