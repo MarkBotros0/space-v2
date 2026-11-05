@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useLocalSearchParams } from "expo-router";
-import { PenLine, SearchX } from "lucide-react-native";
+import { SearchX } from "lucide-react-native";
 import { View } from "react-native";
 import type { QuizAuthoringDetail, QuizGradeSheet, QuizGradingAttempt } from "@space/shared";
 
@@ -24,6 +24,7 @@ import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { formatDate } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { useSessionStore } from "../../../../src/store/session";
+import { NAV_ICONS } from "../../../../src/design/icons/nav-icon";
 
 type Edit = { score: string; notes: string };
 
@@ -223,7 +224,7 @@ export default function QuizGradeScreen() {
   const detail = useQuizAuthoringDetail(id, isStaff);
 
   let body: ReactNode;
-  if (!isStaff) body = <EmptyState icon={PenLine} title="Quizzes" description="This screen isn't available for your role." />;
+  if (!isStaff) body = <EmptyState icon={NAV_ICONS.quizzes} title="Quizzes" description="This screen isn't available for your role." />;
   else if (id === null) body = <EmptyState icon={SearchX} title="Not found" description="That quiz doesn't exist." />;
   else if (detail.isPending) body = <RouteSkeleton />;
   else if (detail.isError) body = <RouteError onRetry={() => void detail.refetch()} />;

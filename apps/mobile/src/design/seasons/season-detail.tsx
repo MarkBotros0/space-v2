@@ -8,7 +8,6 @@
  * selected tab is not drawn (a v1 bug reproduced in ui/tabs.tsx).
  */
 import type { SeasonDetail } from "@space/shared";
-import { Users } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
@@ -18,6 +17,7 @@ import { EmptyState } from "../ui/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Text } from "../ui/text";
 import { SeasonStatusBadge } from "./season-status-badge";
+import { NAV_ICONS } from "../icons/nav-icon";
 
 export function SeasonDetailView({
   season,
@@ -90,7 +90,7 @@ export function SeasonDetailView({
       <TabsContent value="groups">
         {season.groups.length === 0 ? (
           <EmptyState
-            icon={Users}
+            icon={NAV_ICONS.groups}
             title="No groups yet"
             description="Add groups so students can be placed and leaders assigned."
             action={groupsAction}

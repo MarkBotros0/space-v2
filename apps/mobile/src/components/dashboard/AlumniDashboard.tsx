@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { GraduationCap, History } from "lucide-react-native";
+import { History } from "lucide-react-native";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
@@ -10,8 +10,8 @@ import { useUpcomingEvents } from "../../hooks/use-events";
 import { firstName } from "../../lib/format";
 import { useSessionStore } from "../../store/session";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
+import { NavIcon } from "../../design/icons/nav-icon";
 
-iconWithClassName(GraduationCap);
 iconWithClassName(History);
 
 /**
@@ -30,7 +30,7 @@ export function AlumniDashboard() {
       <View className="flex-col gap-4">
         <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
           <View className="flex-row items-center gap-2">
-            <GraduationCap size={16} className="text-brand-teal-700 dark:text-brand-teal-300" />
+            <NavIcon name="alumni" size={16} className="text-brand-teal-700 dark:text-brand-teal-300" />
             <Text className="text-xs font-semibold uppercase tracking-wide text-brand-teal-700 dark:text-brand-teal-300">
               {`JPCS Alumnus · Class of ${graduationYear ?? "—"}`}
             </Text>

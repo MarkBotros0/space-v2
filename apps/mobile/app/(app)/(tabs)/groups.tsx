@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Users } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import type { GroupDetail, GroupListItem } from "@space/shared";
 
@@ -29,6 +28,7 @@ import {
 import { useSeasons } from "../../../src/hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../../src/hooks/use-season-selection";
 import { useSessionStore } from "../../../src/store/session";
+import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 
 function GroupRow({ group, subtitle }: { group: GroupListItem; subtitle: string }) {
   const router = useRouter();
@@ -116,7 +116,7 @@ function LeaderGroups() {
         <View className="flex-col gap-4">
           <PageTitle title="My groups" subtitle="You don't lead any groups yet." />
           <EmptyState
-            icon={Users}
+            icon={NAV_ICONS.groups}
             title="No groups"
             description="An admin will add you to a group when you're ready."
           />
@@ -159,7 +159,7 @@ function LeaderGroups() {
           />
           {rows.length === 0 ? (
             <EmptyState
-              icon={Users}
+              icon={NAV_ICONS.groups}
               title="No groups"
               description="An admin will add you to a group when you're ready."
             />
@@ -186,7 +186,7 @@ function MyGroups() {
       ) : isError ? (
         <RouteError onRetry={() => void refetch()} />
       ) : data.length === 0 ? (
-        <EmptyState icon={Users} title="No groups" description="You aren't in any groups yet." />
+        <EmptyState icon={NAV_ICONS.groups} title="No groups" description="You aren't in any groups yet." />
       ) : (
         <View className="flex-col gap-2">
           {data.map((group) => (
@@ -258,7 +258,7 @@ function SeasonGroups() {
         rowKey={(r) => r.id}
         emptyState={
           <EmptyState
-            icon={Users}
+            icon={NAV_ICONS.groups}
             title="No groups yet"
             description="Create a group to organize students and assign leaders."
             action={<Button onPress={newGroup}>New group</Button>}
@@ -319,7 +319,7 @@ export default function GroupsScreen() {
   // MENTOR: no /groups in its nav, reachable by deep link (spec 05 §9).
   return (
     <ShellFrame>
-      <EmptyState icon={Users} title="Groups" description="Groups aren't available for your role." />
+      <EmptyState icon={NAV_ICONS.groups} title="Groups" description="Groups aren't available for your role." />
     </ShellFrame>
   );
 }

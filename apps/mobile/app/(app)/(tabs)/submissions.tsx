@@ -1,5 +1,4 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Inbox } from "lucide-react-native";
 import { View } from "react-native";
 import type { SubmissionQueueItem } from "@space/shared";
 
@@ -20,6 +19,7 @@ import { usePrefetchSubmission } from "../../../src/hooks/use-submission";
 import { useSubmissionQueue } from "../../../src/hooks/use-submission-queue";
 import { formatShortDateTime } from "../../../src/lib/format";
 import { useSessionStore } from "../../../src/store/session";
+import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 
 // v1 lists every SUBMITTED, REVIEWED and RETURNED row, in that order (B3-8).
 const ALL = { pendingOnly: false } as const;
@@ -114,7 +114,7 @@ function PendingQueue() {
         ) : isError ? (
           <RouteError onRetry={() => void refetch()} />
         ) : items.length === 0 ? (
-          <EmptyState icon={Inbox} title="All caught up" description="No submissions waiting for review." />
+          <EmptyState icon={NAV_ICONS.submissions} title="All caught up" description="No submissions waiting for review." />
         ) : (
           <>
             {items.map((item) => (
@@ -155,7 +155,7 @@ export default function SubmissionsScreen() {
   if (!isStaff) {
     return (
       <ShellFrame>
-        <EmptyState icon={Inbox} title="Submissions" description="This screen isn't available for your role." />
+        <EmptyState icon={NAV_ICONS.submissions} title="Submissions" description="This screen isn't available for your role." />
       </ShellFrame>
     );
   }
@@ -204,7 +204,7 @@ export default function SubmissionsScreen() {
             onRowPressIn={(r) => prefetch(r.publicId)}
             emptyState={
               <EmptyState
-                icon={Inbox}
+                icon={NAV_ICONS.submissions}
                 title="No submissions yet"
                 description="Submissions from students in your groups will appear here."
               />

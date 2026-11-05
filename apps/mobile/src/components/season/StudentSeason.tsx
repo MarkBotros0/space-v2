@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { CalendarDays, MapPin, Users } from "lucide-react-native";
+import { CalendarDays, MapPin } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Linking, Pressable, View } from "react-native";
 import type { MySeason } from "@space/shared";
@@ -14,8 +14,9 @@ import { useMySeason } from "../../hooks/use-self-service";
 import { formatDate, formatSessionTime } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { useSessionStore } from "../../store/session";
+import { NAV_ICONS, NavIcon } from "../../design/icons/nav-icon";
 
-iconWithClassName(CalendarDays, MapPin, Users);
+iconWithClassName(CalendarDays, MapPin);
 
 const CARD = "rounded-group bg-surface dark:border dark:border-separator";
 
@@ -36,7 +37,7 @@ function GroupCard({ group }: { group: NonNullable<MySeason["group"]> }) {
     <View className={cn(CARD, "p-4")}>
       <View className="mb-3 flex-row items-center gap-2">
         <View className="size-7 items-center justify-center rounded-full bg-brand-navy-100 dark:bg-brand-navy-900">
-          <Users size={16} className="text-brand-navy-800 dark:text-brand-navy-100" />
+          <NavIcon name="groups" size={16} className="text-brand-navy-800 dark:text-brand-navy-100" />
         </View>
         <View>
           <Eyebrow>Your group</Eyebrow>
@@ -197,7 +198,7 @@ export function StudentSeason() {
     <View className="flex-col gap-3">
       <PageTitle title="Current season" />
       <EmptyState
-        icon={Users}
+        icon={NAV_ICONS.season}
         title="No active season"
         description="An admin will enroll you when you're ready."
       />

@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { GraduationCap, UserMinus, Users } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import type { StudentListItem, StudentListSort, StudentListStatus, UserRole } from "@space/shared";
 
@@ -27,6 +26,7 @@ import { useAllGroups } from "../hooks/use-groups";
 import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
 import { formatDate } from "../lib/format";
 import { useSessionStore } from "../store/session";
+import { NAV_ICONS } from "../design/icons/nav-icon";
 
 /** Who may open each list: the screen mirrors the endpoint's per-surface gate. */
 export const ALUMNI_ROLES: readonly UserRole[] = ["SUPER", "ADMIN", "MENTOR"];
@@ -163,21 +163,21 @@ const DROPPED_COLUMNS: DataTableColumn<StudentListItem>[] = [
 const COPY = {
   active: {
     columns: ACTIVE_COLUMNS,
-    icon: Users,
+    icon: NAV_ICONS.students,
     emptyTitle: "No students yet",
     emptyDescription: "Students will appear here once they're enrolled.",
     subtitle: (n: number) => `${n} ${n === 1 ? "student" : "students"} in your seasons`,
   },
   alumni: {
     columns: ALUMNI_COLUMNS,
-    icon: GraduationCap,
+    icon: NAV_ICONS.alumni,
     emptyTitle: "No alumni yet",
     emptyDescription: "Students you graduate will appear here.",
     subtitle: (n: number) => `${n} graduated ${n === 1 ? "student" : "students"} from your seasons`,
   },
   dropped: {
     columns: DROPPED_COLUMNS,
-    icon: UserMinus,
+    icon: NAV_ICONS.dropped,
     emptyTitle: "No dropped students",
     emptyDescription: "Students who leave a season without graduating will show up here.",
     subtitle: (n: number) => `${n} ${n === 1 ? "student" : "students"} dropped from your seasons`,

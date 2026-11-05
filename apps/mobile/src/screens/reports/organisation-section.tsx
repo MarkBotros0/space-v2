@@ -1,4 +1,3 @@
-import { GraduationCap } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { OrganisationReport } from "@space/shared";
@@ -18,6 +17,7 @@ import {
   type DataTableColumn,
 } from "../../design/ui";
 import { useOrganisationReport } from "../../hooks/use-reports";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 
 /**
  * v1 super/reports/page.tsx (B5-4): three StatCards, "Active members per
@@ -98,7 +98,7 @@ export function OrganisationSection() {
         <CardContent className="pt-0">
           {active.length === 0 ? (
             <EmptyState
-              icon={GraduationCap}
+              icon={NAV_ICONS.students}
               title="No active members"
               description="Enroll students in a season to see the breakdown."
             />
@@ -124,7 +124,7 @@ export function OrganisationSection() {
         <CardContent className="pt-0">
           {data.alumniByYear.length === 0 ? (
             <EmptyState
-              icon={GraduationCap}
+              icon={NAV_ICONS.alumni}
               title="No alumni yet"
               description="Graduated students will be counted here by class year."
             />
@@ -148,7 +148,7 @@ export function OrganisationSection() {
         <CardContent className="pt-0">
           {data.seasons.length === 0 ? (
             <EmptyState
-              icon={GraduationCap}
+              icon={NAV_ICONS.season}
               title="No seasons yet"
               description="Create a season to see enrollment breakdowns."
             />

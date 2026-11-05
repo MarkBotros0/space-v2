@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Linking, Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
-import { CalendarDays, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react-native";
+import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react-native";
 import type { JpcEventListItem } from "@space/shared";
 
 import { EMPTY_EVENT_VALUES, EventForm, VISIBILITY_LABELS } from "../../src/components/EventForm";
@@ -15,6 +15,7 @@ import { useCreateEvent, useDeleteEvent, useEventPages } from "../../src/hooks/u
 import { apiErrorMessage } from "../../src/lib/api-error";
 import { formatEventWhen } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
+import { NAV_ICONS } from "../../src/design/icons/nav-icon";
 
 iconWithClassName(ExternalLink);
 iconWithClassName(Pencil);
@@ -150,7 +151,7 @@ export default function EventsScreen() {
     // v1's card renders nothing at all here (R75); say so instead.
     body = (
       <EmptyState
-        icon={CalendarDays}
+        icon={NAV_ICONS.events}
         title={isSuper ? "No JPC events yet" : "No upcoming events"}
         description={
           isSuper

@@ -1,4 +1,4 @@
-import { CheckCheck, Clock, MapPin } from "lucide-react-native";
+import { Clock, MapPin } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import type { SessionDetail } from "@space/shared";
@@ -13,8 +13,9 @@ import { Badge, Text as TextV1 } from "../../design/ui";
 import { useStudentVideoQuiz } from "../../hooks/use-video-quiz";
 import { addMinutesToWallTime, formatLongDayYear, formatWallTime } from "../../lib/format";
 import { attendanceLine } from "./attendance-line";
+import { NavIcon } from "../../design/icons/nav-icon";
 
-iconWithClassName(CheckCheck, Clock, MapPin);
+iconWithClassName(Clock, MapPin);
 
 /** v1 app/student/sessions/[id]/page.tsx + the v2 extras kept by B2-14. */
 export function StudentSessionBody({
@@ -84,7 +85,7 @@ export function StudentSessionBody({
             ) : null}
             {data.myAttendance ? (
               <View className="flex-row items-center gap-2">
-                <CheckCheck size={16} className="shrink-0 text-brand-teal-600" />
+                <NavIcon name="attendance" size={16} className="shrink-0 text-brand-teal-600" />
                 <TextV1 className="text-sm text-muted-foreground">
                   {attendanceLine(data.myAttendance)}
                 </TextV1>

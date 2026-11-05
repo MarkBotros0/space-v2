@@ -1,15 +1,13 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { CalendarDays } from "lucide-react-native";
 import { Linking, Pressable, View } from "react-native";
 import type { JpcEventListResponse } from "@space/shared";
 
 import { Eyebrow } from "../../design/layout/page-title";
-import { iconWithClassName } from "../../design/lib/icon";
 import { Button, Skeleton, Text } from "../../design/ui";
 import { formatEventWhenShort } from "../../lib/format";
+import { NavIcon } from "../../design/icons/nav-icon";
 
-iconWithClassName(CalendarDays);
 
 /**
  * v1 components/events/upcoming-events-card.tsx — the card on all six
@@ -57,7 +55,7 @@ export function UpcomingEventsCard({ query }: { query: UseQueryResult<JpcEventLi
                   else router.push({ pathname: "/event/[id]", params: { id: String(e.id) } });
                 }}
               >
-                <CalendarDays size={16} className="mt-0.5 shrink-0 text-brand-teal-500" />
+                <NavIcon name="events" size={16} className="mt-0.5 shrink-0 text-brand-teal-500" />
                 <View className="min-w-0 flex-1">
                   <Text numberOfLines={1} className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
                     {e.title}

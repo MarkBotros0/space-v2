@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Lock, ShieldCheck, UserRound } from "lucide-react-native";
+import { Lock, ShieldCheck } from "lucide-react-native";
 import { View } from "react-native";
 import { passwordSchema } from "@space/shared";
 
@@ -15,6 +15,7 @@ import { useLogout } from "../../src/hooks/use-session";
 import { apiErrorCode, apiErrorMessage } from "../../src/lib/api-error";
 import { clearSession } from "../../src/lib/token-storage";
 import { useSessionStore } from "../../src/store/session";
+import { NAV_ICONS } from "../../src/design/icons/nav-icon";
 
 /**
  * One route, all six navigation roles, ZERO role branches — spec 18 R3: v1's
@@ -140,7 +141,7 @@ export default function SettingsScreen() {
     <ShellFrame>
       <PageHeader title="Settings" description="Profile, password, and notification preferences." />
       <View className="flex-col gap-4">
-        <Section icon={UserRound} title="Profile" description="Your name as it appears across JPC Space.">
+        <Section icon={NAV_ICONS.profile} title="Profile" description="Your name as it appears across JPC Space.">
           <View className="flex-col gap-4">
             <FormField label="Name" required error={nameError ?? undefined}>
               <Input accessibilityLabel="Name" value={name} onChangeText={setName} />

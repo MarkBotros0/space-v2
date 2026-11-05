@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { AlertCircle, Sparkles, Users } from "lucide-react-native";
+import { AlertCircle, Users } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AT_RISK_PCT, UPCOMING_EVENTS_LIMIT, type ActivityItem } from "@space/shared";
 
@@ -13,6 +13,7 @@ import { useUpcomingEvents } from "../../hooks/use-events";
 import { useEngagementReport } from "../../hooks/use-reports";
 import { formatTimeAgo } from "../../lib/format";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 
 iconWithClassName(AlertCircle);
 iconWithClassName(Users);
@@ -127,7 +128,7 @@ export function MentorDashboard() {
           ) : engagement.data.atRisk.length === 0 ? (
             <View className="px-4 pb-4">
               <EmptyState
-                icon={Sparkles}
+                icon={NAV_ICONS.students}
                 title="Nobody at risk"
                 description={`No student has attendance or submissions below ${AT_RISK_PCT}%.`}
               />

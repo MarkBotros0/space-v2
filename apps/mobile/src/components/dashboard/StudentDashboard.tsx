@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { AlertTriangle, Sparkles } from "lucide-react-native";
+import { AlertTriangle } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import {
   UPCOMING_EVENTS_LIMIT,
@@ -25,6 +25,7 @@ import {
 } from "../../lib/format";
 import { useSessionStore } from "../../store/session";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 
 iconWithClassName(AlertTriangle);
 
@@ -106,7 +107,7 @@ export function StudentDashboard() {
             {/* v1 keeps the empty `{season && …}` slot, an extra 12px. */}
             <View />
             <EmptyState
-              icon={Sparkles}
+              icon={NAV_ICONS.season}
               title="Not enrolled yet"
               description="Contact your leader or admin to be enrolled in a season."
             />

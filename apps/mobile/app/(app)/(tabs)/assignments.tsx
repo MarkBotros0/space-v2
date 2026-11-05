@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { FileText } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import type { StaffAssignmentListItem, StudentAssignmentListItem } from "@space/shared";
 
@@ -28,6 +27,7 @@ import {
   formatShortDate,
 } from "../../../src/lib/format";
 import { useSessionStore } from "../../../src/store/session";
+import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 
 /** v1 student assignments dot + badge. RETURNED is v2's (v1 had no case): warning tone (B2-16). */
 function rowTone(item: StudentAssignmentListItem): { dot: string; badge: ReactNode } {
@@ -101,7 +101,7 @@ function StudentAssignments({ seasonId }: { seasonId: number | null }) {
     // v2-only: no season means no request at all.
     body = (
       <EmptyStateV1
-        icon={FileText}
+        icon={NAV_ICONS.assignments}
         title="No active season"
         description="You don't have an active season right now, so there are no assignments to show."
       />
@@ -111,7 +111,7 @@ function StudentAssignments({ seasonId }: { seasonId: number | null }) {
   else if (data.length === 0)
     body = (
       <EmptyStateV1
-        icon={FileText}
+        icon={NAV_ICONS.assignments}
         title="No assignments yet"
         description="Check back when your leader posts one."
       />
@@ -246,7 +246,7 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
         rowKey={(r) => r.id}
         emptyState={
           <EmptyStateV1
-            icon={FileText}
+            icon={NAV_ICONS.assignments}
             title="No assignments yet"
             description={
               canCreate

@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Users } from "lucide-react-native";
 import type { SeasonRosterRow } from "@space/shared";
 
 import { PageTitle } from "../../../../../src/design/layout/page-title";
@@ -24,6 +23,7 @@ import { useSaveGroupAssignments, useSeasonRoster } from "../../../../../src/hoo
 import { useSeasonGroups } from "../../../../../src/hooks/use-groups";
 import { useSeasonByCode } from "../../../../../src/hooks/use-seasons";
 import { apiErrorMessage } from "../../../../../src/lib/api-error";
+import { NAV_ICONS } from "../../../../../src/design/icons/nav-icon";
 
 export const ROSTER_UNASSIGNED_LABEL = "Unassigned";
 const NONE = "none";
@@ -49,7 +49,7 @@ function RosterGrid({ seasonId, onNewGroup }: { seasonId: number; onNewGroup: ()
   if (roster.data.length === 0) {
     return (
       <EmptyState
-        icon={Users}
+        icon={NAV_ICONS.students}
         title="No students in this season"
         description="Students appear here once their active season is set for this season (e.g. via the profile import)."
       />
@@ -58,7 +58,7 @@ function RosterGrid({ seasonId, onNewGroup }: { seasonId: number; onNewGroup: ()
   if (groups.data.length === 0) {
     return (
       <EmptyState
-        icon={Users}
+        icon={NAV_ICONS.groups}
         title="No groups yet"
         description="Create at least one group before assigning students."
         action={<Button onPress={onNewGroup}>New group</Button>}

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ChevronRight, PenLine } from "lucide-react-native";
+import { ChevronRight } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { QuizSummary, StudentQuizResult } from "@space/shared";
@@ -20,6 +20,7 @@ import { useQuizList, useStudentQuizList } from "../../../src/hooks/use-quizzes"
 import { useCurrentSeasonId, useSeasonDetail } from "../../../src/hooks/use-seasons";
 import { formatDate } from "../../../src/lib/format";
 import { useSessionStore } from "../../../src/store/session";
+import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 
 /**
  * Three v1 pages collapse into this one: /student/quizzes, /leader/quizzes and
@@ -129,7 +130,7 @@ function StudentQuizzes({ seasonId }: { seasonId: number | null }) {
   else if (rows.length === 0)
     list = (
       <EmptyState
-        icon={PenLine}
+        icon={NAV_ICONS.quizzes}
         title="No quizzes yet"
         description="Your quiz results will appear here once graded."
       />
@@ -242,7 +243,7 @@ function LeaderQuizzes() {
   else if (rows.length === 0)
     body = (
       <EmptyState
-        icon={PenLine}
+        icon={NAV_ICONS.quizzes}
         title="No quizzes yet"
         description="Quizzes created by your admin will appear here."
       />
@@ -308,7 +309,7 @@ function StaffQuizzes() {
   else if (items.length === 0)
     body = (
       <EmptyState
-        icon={PenLine}
+        icon={NAV_ICONS.quizzes}
         title="No quizzes yet"
         description="Open a session from the calendar, then use the Quizzes card to add one."
       />
@@ -377,7 +378,7 @@ export default function QuizzesScreen() {
   // nav (spec D11). Confirmed as deliberate rather than widened here.
   return (
     <ShellFrame>
-      <EmptyState icon={PenLine} title="Quizzes" description="This screen isn't available for your role." />
+      <EmptyState icon={NAV_ICONS.quizzes} title="Quizzes" description="This screen isn't available for your role." />
     </ShellFrame>
   );
 }

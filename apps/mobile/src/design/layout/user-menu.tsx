@@ -7,7 +7,7 @@
  * closeOnClick={false}, keeps the menu open.
  */
 import type { UserRole } from "@space/shared";
-import { LogOut, Moon, Sun, UserRound } from "lucide-react-native";
+import { LogOut, Moon, Sun } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 
@@ -17,8 +17,9 @@ import { cn } from "../lib/cn";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Text } from "../ui/text";
+import { NavIcon } from "../icons/nav-icon";
 
-iconWithClassName(LogOut, Moon, Sun, UserRound);
+iconWithClassName(LogOut, Moon, Sun);
 
 type RoleColor = "super" | "admin" | "leader" | "mentor" | "student";
 export const ROLE_COLOR: Record<UserRole, RoleColor> = {
@@ -96,7 +97,7 @@ export function UserMenu({
             }}
             className={itemClass}
           >
-            <UserRound size={16} className="text-popover-foreground" />
+            <NavIcon name="profile" size={16} className="text-popover-foreground" />
             <Text className="text-sm text-popover-foreground">Profile settings</Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={onToggleTheme} className={itemClass}>

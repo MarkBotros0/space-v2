@@ -4,7 +4,6 @@
  * and Last login. The phone DataTable leads with the user and joins the rest
  * under it. `renderActions` is v2-only: the row-level invite button.
  */
-import { Users } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { UserListItem, UserStatus } from "@space/shared";
@@ -16,6 +15,7 @@ import { Badge } from "../ui/badge";
 import { DataTable, type DataTableColumn } from "../ui/data-table";
 import { EmptyState } from "../ui/empty-state";
 import { Text } from "../ui/text";
+import { NAV_ICONS } from "../icons/nav-icon";
 
 type RoleBadge = "super" | "admin" | "leader" | "mentor" | "student";
 const ROLE_BADGE: Record<UserListItem["role"], RoleBadge> = {
@@ -111,7 +111,7 @@ export function UsersList({
       rowKey={(r) => r.id}
       emptyState={
         <EmptyState
-          icon={Users}
+          icon={NAV_ICONS.users}
           title="No users yet"
           description="Add the first user to get started."
         />

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { AlertTriangle, ClipboardList, PenLine, Users } from "lucide-react-native";
+import { AlertTriangle, ClipboardList } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AT_RISK_PCT, UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared";
 
@@ -15,6 +15,7 @@ import { useSeasonStaffDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
 
 iconWithClassName(AlertTriangle);
 
@@ -109,14 +110,14 @@ function StaffSummary({
       {isAdmin ? null : <UpcomingEventsCard query={events} />}
 
       <SectionCard
-        icon={Users}
+        icon={NAV_ICONS.students}
         title={isAdmin ? "Students at risk" : "Your students at risk"}
         onViewAll={() => router.push(studentsHref)}
       >
         {cohort.atRisk.length === 0 ? (
           <View className="px-4 py-6">
             <EmptyState
-              icon={Users}
+              icon={NAV_ICONS.students}
               title="Nobody at risk"
               description={`No student has attendance or submissions below ${AT_RISK_PCT}%.`}
             />
@@ -195,7 +196,7 @@ function StaffSummary({
 
       {quizzes.total > 0 || quizzes.drafts > 0 ? (
         <SectionCard
-          icon={PenLine}
+          icon={NAV_ICONS.quizzes}
           title={isAdmin ? "Quizzes" : "Quiz corrections"}
           onViewAll={() => router.push("/quizzes")}
         >

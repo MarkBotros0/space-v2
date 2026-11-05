@@ -1,9 +1,7 @@
-import { PenLine } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { InlineError } from "../../design/layout/route-states";
-import { iconWithClassName } from "../../design/lib/icon";
 import {
   Badge,
   Button as ButtonV1,
@@ -14,8 +12,8 @@ import {
   Text as TextV1,
 } from "../../design/ui";
 import { useSessionQuizzes } from "../../hooks/use-session-quizzes";
+import { NavIcon } from "../../design/icons/nav-icon";
 
-iconWithClassName(PenLine);
 
 const QUIZZES_ERROR = "Couldn't load this session's quizzes.";
 
@@ -33,7 +31,7 @@ export function LeaderQuizzesCard({ sessionId }: { sessionId: number }) {
     <CardV1>
       <CardHeader>
         <View className="flex-row items-center gap-2">
-          <PenLine size={16} className="text-brand-teal-600" />
+          <NavIcon name="quizzes" size={16} className="text-brand-teal-600" />
           <CardTitle className="text-base">Quizzes</CardTitle>
         </View>
       </CardHeader>
@@ -87,7 +85,7 @@ export function AdminQuizzesCard({
     <CardV1>
       <CardHeader className="flex-row items-center justify-between gap-3">
         <View className="flex-row items-center gap-2">
-          <PenLine size={16} className="text-brand-teal-600" />
+          <NavIcon name="quizzes" size={16} className="text-brand-teal-600" />
           <CardTitle className="text-base">Quizzes</CardTitle>
         </View>
         {/* V2-ONLY: v1's inline "+ Add quiz" form; v2 opens the new-quiz screen. */}

@@ -4,7 +4,6 @@
  * ▶/▼ marker drawn as text; first:border-0 → index.
  * Privacy-critical (spec 02 R34): rows carry attendance % and curriculum only.
  */
-import { Sparkles } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import type { SeasonHistoryRow } from "@space/shared";
@@ -14,6 +13,7 @@ import { cn } from "../lib/cn";
 import { Badge } from "../ui/badge";
 import { EmptyState } from "../ui/empty-state";
 import { Text } from "../ui/text";
+import { NAV_ICONS } from "../icons/nav-icon";
 
 function HistoryRow({ row }: { row: SeasonHistoryRow }) {
   const [open, setOpen] = useState(false);
@@ -68,7 +68,7 @@ function HistoryRow({ row }: { row: SeasonHistoryRow }) {
 
 export function SeasonHistory({ rows, emptyDescription }: { rows: SeasonHistoryRow[]; emptyDescription: string }) {
   if (rows.length === 0) {
-    return <EmptyState icon={Sparkles} title="No past seasons" description={emptyDescription} />;
+    return <EmptyState icon={NAV_ICONS.season} title="No past seasons" description={emptyDescription} />;
   }
   return (
     <View className="flex-col gap-3">
