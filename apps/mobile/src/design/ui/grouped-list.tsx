@@ -3,8 +3,13 @@
  * ListRow (min-height 52, one-line title, caption subtitle, optional trailing
  * node and chevron) and ListSectionHeader. A row is a button only when it has
  * onPress; `index` staggers its entrance via listItemEntering.
+ *
+ * A pressable row's accessibility label replaces its children's text, so
+ * whatever the trailing slot says is spoken through the label: `trailingLabel`,
+ * or else the `label` prop of a trailing element that has one (StatusChip),
+ * so "Overdue" is never colour alone to a screen reader (final review I3).
  */
-import { Children, Fragment, type ReactNode } from "react";
+import { Children, Fragment, isValidElement, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { ChevronRight } from "lucide-react-native";
@@ -49,13 +54,24 @@ type ListRowProps = {
   title: string;
   subtitle?: string;
   trailing?: ReactNode;
+  /** What `trailing` says, for screen readers. Defaults to its `label` prop (StatusChip). */
+  trailingLabel?: string;
   chevron?: boolean;
   onPress?: () => void;
   index?: number;
   className?: string;
 };
 
-function ListRow({ title, subtitle, trailing, chevron, onPress, index = 0, className }: ListRowProps) {
+/** The trailing slot's words: explicit, or a chip-like element's `label` prop. */
+function spokenTrailing(trailing: ReactNode, trailingLabel: string | undefined): string | undefined {
+  if (trailingLabel !== undefined) return trailingLabel || undefined;
+  if (isValidElement<{ label?: unknown }>(trailing) && typeof trailing.props.label === "string") {
+    return trailing.props.label;
+  }
+  return undefined;
+}
+
+function ListRow({ title, subtitle, trailing, trailingLabel, chevron, onPress, index = 0, className }: ListRowProps) {
   const reduced = useReducedMotion();
   const press = usePressScale(0.985);
   const content = (
@@ -79,7 +95,9 @@ function ListRow({ title, subtitle, trailing, chevron, onPress, index = 0, class
       {onPress ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
+          accessibilityLabel={[title, subtitle, spokenTrailing(trailing, trailingLabel)]
+            .filter(Boolean)
+            .join(", ")}
           onPress={onPress}
           onPressIn={press.onPressIn}
           onPressOut={press.onPressOut}
