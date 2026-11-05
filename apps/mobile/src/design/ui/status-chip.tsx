@@ -2,8 +2,8 @@
  * StatusChip and the status vocabulary: one tone + label per backend status.
  * The label crossfades (DURATION.fast) when it changes; reduced motion swaps
  * it instantly. Never wraps mid-word and never shrinks in a row.
- * Day maths in dueChip uses device-local calendar days: the mobile app has no
- * org-timezone helper (the server sends org-clock `dayKey` strings instead).
+ * dueChip never reads the device clock: the server sends `isOverdue` and org-clock
+ * day keys, so a student and their leader see the same chip in any timezone.
  */
 import { cva } from "class-variance-authority";
 import { View } from "react-native";
@@ -16,8 +16,8 @@ import type {
   SubmissionStatus,
   UserStatus,
 } from "@space/shared";
-import { differenceInCalendarDays, format } from "date-fns";
 
+import { daysBetween } from "../../lib/calendar-grid";
 import { DURATION, useReducedMotion } from "../motion";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
@@ -130,11 +130,25 @@ export function statusChip<K extends keyof Vocabulary>(kind: K, value: Vocabular
   return (TABLES[kind] as Record<string, ChipSpec>)[value]!;
 }
 
-/** Deadline chip: overdue, then today / within two days (warn), else the weekday. */
-export function dueChip(dueAt: Date, now: Date): ChipSpec {
-  if (dueAt.getTime() < now.getTime()) return { tone: "bad", label: "Overdue" };
-  const days = differenceInCalendarDays(dueAt, now);
-  if (days === 0) return { tone: "warn", label: "Due today" };
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Deadline chip from server fields: overdue flag, then today / within two days (warn), a weekday inside a week, else the date. */
+export function dueChip({
+  isOverdue,
+  dueOrgDay,
+  todayOrgDay,
+}: {
+  isOverdue: boolean;
+  dueOrgDay: string | null;
+  todayOrgDay: string;
+}): ChipSpec {
+  if (isOverdue) return { tone: "bad", label: "Overdue" };
+  if (dueOrgDay === null) return { tone: "neutral", label: "No due date" };
+  const days = daysBetween(todayOrgDay, dueOrgDay);
+  if (days <= 0) return { tone: "warn", label: "Due today" };
   if (days <= 2) return { tone: "warn", label: `Due in ${days} ${days === 1 ? "day" : "days"}` };
-  return { tone: "neutral", label: `Due ${format(dueAt, "EEEE")}` };
+  const [y, m, d] = dueOrgDay.split("-").map(Number) as [number, number, number];
+  if (days < 7) return { tone: "neutral", label: `Due ${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}` };
+  return { tone: "neutral", label: `Due ${MONTHS[m - 1]} ${d}` };
 }

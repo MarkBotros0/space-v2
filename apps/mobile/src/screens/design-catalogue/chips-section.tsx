@@ -31,9 +31,16 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const DAY = 24 * 60 * 60 * 1000;
-const NOW = new Date(2026, 10, 4, 12, 0, 0);
-const DUE = [-DAY, 0, DAY, 2 * DAY, 5 * DAY].map((offset) => new Date(NOW.getTime() + offset + (offset === 0 ? 60_000 : 0)));
+const TODAY = "2026-11-04";
+const DUE: { isOverdue: boolean; dueOrgDay: string | null }[] = [
+  { isOverdue: true, dueOrgDay: "2026-11-03" },
+  { isOverdue: false, dueOrgDay: "2026-11-04" },
+  { isOverdue: false, dueOrgDay: "2026-11-05" },
+  { isOverdue: false, dueOrgDay: "2026-11-06" },
+  { isOverdue: false, dueOrgDay: "2026-11-09" },
+  { isOverdue: false, dueOrgDay: "2026-11-12" },
+  { isOverdue: false, dueOrgDay: null },
+];
 
 export function ChipsSection() {
   return (
@@ -57,7 +64,7 @@ export function ChipsSection() {
         {USER.map((v) => <StatusChip key={v} {...statusChip("user", v)} />)}
       </Row>
       <Row label="Due (dueChip)">
-        {DUE.map((d) => <StatusChip key={d.getTime()} {...dueChip(d, NOW)} />)}
+        {DUE.map((d) => <StatusChip key={`${d.dueOrgDay}-${d.isOverdue}`} {...dueChip({ ...d, todayOrgDay: TODAY })} />)}
       </Row>
     </CatalogueSection>
   );

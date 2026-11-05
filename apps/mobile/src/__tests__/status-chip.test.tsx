@@ -49,21 +49,18 @@ describe("statusChip vocabulary", () => {
 });
 
 describe("dueChip", () => {
-  const now = new Date(2026, 10, 4, 12, 0, 0); // Wed 4 Nov 2026, local
-
-  it("is overdue one minute past due", () => {
-    expect(dueChip(new Date(now.getTime() - 60_000), now)).toEqual({ tone: "bad", label: "Overdue" });
-  });
-  it("is due today later the same day", () => {
-    expect(dueChip(new Date(2026, 10, 4, 23, 0), now)).toEqual({ tone: "warn", label: "Due today" });
-  });
-  it("counts calendar days up to two", () => {
-    expect(dueChip(new Date(2026, 10, 5, 8, 0), now)).toEqual({ tone: "warn", label: "Due in 1 day" });
-    expect(dueChip(new Date(2026, 10, 6, 23, 59), now)).toEqual({ tone: "warn", label: "Due in 2 days" });
-  });
-  it("names the weekday from three days out", () => {
-    expect(dueChip(new Date(2026, 10, 7, 9, 0), now)).toEqual({ tone: "neutral", label: "Due Saturday" });
-    expect(dueChip(new Date(2026, 10, 6, 9, 0), now).label).toBe("Due in 2 days");
+  const today = "2026-11-05"; // a Thursday
+  it.each([
+    ["overdue flag wins whatever the days say", true, "2026-11-09", { tone: "bad", label: "Overdue" }],
+    ["no due date", false, null, { tone: "neutral", label: "No due date" }],
+    ["same day", false, "2026-11-05", { tone: "warn", label: "Due today" }],
+    ["+1 day", false, "2026-11-06", { tone: "warn", label: "Due in 1 day" }],
+    ["+2 days", false, "2026-11-07", { tone: "warn", label: "Due in 2 days" }],
+    ["+3 days names the weekday", false, "2026-11-08", { tone: "neutral", label: "Due Sunday" }],
+    ["+6 days names the weekday", false, "2026-11-11", { tone: "neutral", label: "Due Wednesday" }],
+    ["+7 days names the date", false, "2026-11-12", { tone: "neutral", label: "Due Nov 12" }],
+  ] as const)("%s", (_name, isOverdue, dueOrgDay, expected) => {
+    expect(dueChip({ isOverdue, dueOrgDay, todayOrgDay: today })).toEqual(expected);
   });
 });
 
