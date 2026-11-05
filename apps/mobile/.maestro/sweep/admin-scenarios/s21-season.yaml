@@ -7,9 +7,10 @@ appId: com.jpc.space
     env:
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://season
-# Only Home has the user menu now (R13); wait on the screen's own title.
+# Only Home has the user menu now (R13). /season shows the admin's season by
+# name ("GBV 2026"), never the words "My Season"; its code line is stable.
 - extendedWaitUntil:
-    visible: 'My Season'
+    visible: 'Code: .*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
