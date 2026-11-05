@@ -16,8 +16,8 @@
  *     `leading-[18px]`: use a Text `variant` (never under the caption, 12);
  *   - elevation: `shadowStyle(…)`, `elevation:` or `boxShadow:`; elevation is
  *     the kit's call (overlays), never a screen's. The one exception is the
- *     design catalogue (`src/screens/design-system/`), whose Elevation section
- *     demonstrates the shadow tokens.
+ *     design catalogue's sections (`src/screens/design-catalogue/`), which may
+ *     demonstrate the shadow tokens.
  * `src/design/theme/` (the token source and its generated output) and tests
  * are not scanned. Plans 02–05 keep this green and delete each legacy
  * component when its last user migrates.
@@ -29,7 +29,7 @@ import ts from "typescript";
 const ROOT = join(__dirname, "..", "..");
 const DESIGN = `src${sep}design${sep}`;
 const THEME = `src${sep}design${sep}theme${sep}`;
-const SHOWCASE = `src${sep}screens${sep}design-system${sep}`;
+const SHOWCASE = `src${sep}screens${sep}design-catalogue${sep}`;
 
 type Scope = { inDesign: boolean; showcase: boolean };
 

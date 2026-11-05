@@ -272,12 +272,13 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
   fails on hex / `rgb()` literals and `shadow-` classes anywhere in `app/` and `src/`; outside
   `src/design/` it allows only `rounded-group|control|full|none` (and side variants), no raw
   font size (`fontSize:`, `text-[10px]`, `leading-[…]`: use a Text variant, never under
-  caption) and no elevation (`shadowStyle`, `elevation:`, `boxShadow:`; only the catalogue in
-  `src/screens/design-system/` may demo it). The legacy kit (Card, Badge, Modal, Tabs,
+  caption) and no elevation (`shadowStyle`, `elevation:`, `boxShadow:`; only the design
+  catalogue's sections in `src/screens/design-catalogue/` may demo it). The legacy kit (Card, Badge, Modal, Tabs,
   StatCard, SectionCard, PageTitle, ...) already draws on the new tokens and cards are flat;
   plans 02–05 keep the guard green and delete each legacy component when its last user migrates.
 - **Catalogue.** The hidden design catalogue (`spacev2://design-catalogue`, in dev or with
-  `EXPO_PUBLIC_SWEEP_BUILD=1`) shows every component; sweep flow `s90` shoots it.
+  `EXPO_PUBLIC_SWEEP_BUILD=1`) is the one catalogue: it shows every component; sweep flow
+  `s90` shoots it. Add a component's states there when you add the component.
 - **Motion** (`src/design/motion/`): durations `fast` 150 / `base` 220 / `slow` 320 ms and
   springs `snappy` / `gentle`; press scale via `usePressScale`; haptics via `haptic()`.
   Every animated component reads `useReducedMotion` (movement becomes a short crossfade;

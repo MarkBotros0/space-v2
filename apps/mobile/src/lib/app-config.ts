@@ -13,14 +13,6 @@ export function easProjectId(): string | null {
 }
 
 /**
- * Hidden developer routes (the design-system showcase) are compiled in only
- * when the build sets EXPO_PUBLIC_SHOW_DEV_ROUTES=1.
- */
-export function showDevRoutes(): boolean {
-  return process.env.EXPO_PUBLIC_SHOW_DEV_ROUTES === "1";
-}
-
-/**
  * True in a build made with EXPO_PUBLIC_SWEEP_BUILD=1 (the UI sweep's APK):
  * it unlocks the hidden design catalogue in a release bundle.
  */

@@ -20,7 +20,7 @@ const SECTION_OF = {
 };
 // Hand-review notes printed beside a row (keyed by v1 pattern or v2 route).
 const NOTES = {
-  "/dev/design-system": "counterpart is Plan 01's showcase `dev/design-system`",
+  "/dev/design-system": "v1-only; v2's catalogue is `/design-catalogue` (redesign)",
   "/forbidden": "no v2 page",
   "/mentor/profile": "v1 itself returns 404 here (no mentor profile page)",
   "/super/seasons/year/[year]": "gap — owner decides",

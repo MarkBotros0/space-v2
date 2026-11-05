@@ -28,10 +28,9 @@ describe("page background (R32)", () => {
     expect(content?.props.contentContainerClassName).not.toMatch(/brand-navy-50/);
   });
 
-  it("no page, list or system-bar strip paints the old tint (the showcase swatch excepted)", () => {
+  it("no page, list or system-bar strip paints the old tint", () => {
     const root = path.join(__dirname, "../..");
     const offenders = [...files(path.join(root, "app")), ...files(path.join(root, "src"))]
-      .filter((f) => !f.endsWith("showcase-data.tsx"))
       .filter((f) => /bg-brand-navy-50\b/.test(readFileSync(f, "utf8")))
       .map((f) => path.relative(root, f));
     expect(offenders).toEqual([]);
