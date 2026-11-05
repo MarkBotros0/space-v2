@@ -6,7 +6,7 @@ import { Button } from "../../design/ui/button";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { HeroCard } from "../../design/ui/hero-card";
 import { dayCue, deviceTodayKey } from "../../lib/calendar-grid";
-import { formatWallTime, formatWeekdayDay } from "../../lib/format";
+import { formatWallTime, formatWeekdayDay, unbreakable } from "../../lib/format";
 
 /** Names shown before "See all N". */
 const NAMED = 5;
@@ -35,14 +35,15 @@ export function LeaderSessionSection({
   const attendance = { pathname: "/session/[id]/attendance", params: { id } } as const;
   const openSession = () => router.push({ pathname: "/session/[id]", params: { id } });
 
-  let meta = `${formatWeekdayDay(session.dayKey)} · ${formatWallTime(session.time)} · ${session.durationMinutes} min${
+  // Each unit is one unbreakable run: the line breaks between them, never inside one.
+  let meta = `${unbreakable(formatWeekdayDay(session.dayKey))} · ${unbreakable(formatWallTime(session.time))} · ${unbreakable(`${session.durationMinutes} min`)}${
     session.location ? ` · ${session.location}` : ""
   }`;
   if (onTheDay) {
-    if (checkIn) meta += ` · ${checkIn.present + checkIn.late} present · ${checkIn.notCheckedIn.length} not checked in`;
+    if (checkIn) meta += ` · ${unbreakable(`${checkIn.present + checkIn.late} present`)} · ${unbreakable(`${checkIn.notCheckedIn.length} not checked in`)}`;
   } else {
     const cue = dayCue(session.dayKey, today);
-    if (cue) meta += ` · ${cue}`;
+    if (cue) meta += ` · ${unbreakable(cue)}`;
   }
 
   return (

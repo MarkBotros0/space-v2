@@ -18,7 +18,7 @@ import {
   type AttendanceMarks,
   type LateMinutesText,
 } from "../../../../src/lib/attendance-entries";
-import { formatWallTime, formatWeekdayDay } from "../../../../src/lib/format";
+import { formatWallTime, formatWeekdayDay, unbreakable } from "../../../../src/lib/format";
 
 /**
  * v1 app/leader/sessions/[id]/attendance (and the identical admin page): the
@@ -86,7 +86,7 @@ export default function AttendanceScreen() {
       title="Attendance"
       subtitle={
         detail
-          ? `${detail.title} · ${formatWeekdayDay(detail.dayKey)} · ${formatWallTime(detail.startTime)}`
+          ? `${detail.title} · ${unbreakable(formatWeekdayDay(detail.dayKey))} · ${unbreakable(formatWallTime(detail.startTime))}`
           : undefined
       }
       refreshing={isRefetching}
