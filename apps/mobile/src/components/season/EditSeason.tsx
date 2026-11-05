@@ -36,6 +36,12 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
     budget !== String(season.absenceBudgetMinutes) ||
     weight !== String(season.absenceWeightMinutes);
 
+  // An error belongs to the values that caused it: any edit clears it.
+  const edit = (set: (v: string) => void) => (v: string) => {
+    set(v);
+    setMessage((m) => (m?.error ? null : m));
+  };
+
   const save = () => {
     const budgetMinutes = parseMinutes(budget);
     const weightMinutes = parseMinutes(weight);
@@ -68,14 +74,14 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
           <Textarea
             accessibilityLabel="Description"
             value={description}
-            onChangeText={setDescription}
+            onChangeText={edit(setDescription)}
           />
         </FormField>
         <FormField label="Absence budget (minutes)">
           <Input
             accessibilityLabel="Absence budget (minutes)"
             value={budget}
-            onChangeText={setBudget}
+            onChangeText={edit(setBudget)}
             keyboardType="number-pad"
           />
         </FormField>
@@ -83,7 +89,7 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
           <Input
             accessibilityLabel="Absence weight (minutes)"
             value={weight}
-            onChangeText={setWeight}
+            onChangeText={edit(setWeight)}
             keyboardType="number-pad"
           />
         </FormField>

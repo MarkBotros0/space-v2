@@ -261,6 +261,20 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
     expect(mockBack).toHaveBeenCalled();
   });
 
+  it("clears a field's error when that field changes, so retyping the original leaves no error beside a disabled Save", async () => {
+    routeGets(detail({ recurrenceGroupId: null }));
+    renderWithProviders(<EditSessionScreen />);
+    await screen.findByLabelText("Title");
+    fireEvent.changeText(screen.getByLabelText("Title"), "");
+    saveBar("Save changes");
+    expect(screen.getByLabelText("Title").props.accessibilityHint).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText("Title"), "Week 3");
+    expect(screen.getByLabelText("Title").props.accessibilityHint).toBeFalsy();
+    expect(
+      within(screen.getByTestId("save-bar")).queryByText("Fix the fields marked above."),
+    ).toBeNull();
+  });
+
   it("hides the scope selector for a one-off session (spec 03 R29)", async () => {
     routeGets(detail({ recurrenceGroupId: null }));
     renderWithProviders(<EditSessionScreen />);

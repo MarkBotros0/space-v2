@@ -103,6 +103,17 @@ describe("EditSeason (admin season settings)", () => {
   });
 });
 
+describe("EditSeason error clearing", () => {
+  it("drops the error once a field changes, even back to the original", async () => {
+    renderWithProviders(<EditSeason season={season} />);
+    fireEvent.changeText(screen.getByLabelText("Absence budget (minutes)"), "abc");
+    fireEvent.press(screen.getByText("Save changes"));
+    expect(await screen.findByText(/must be whole numbers of minutes/)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText("Absence budget (minutes)"), "240");
+    expect(screen.queryByText(/must be whole numbers of minutes/)).toBeNull();
+  });
+});
+
 describe("SeasonEditScreen save", () => {
   beforeEach(() => {
     useSessionStore.setState(makeSession("SUPER", {}, { id: 1 }));

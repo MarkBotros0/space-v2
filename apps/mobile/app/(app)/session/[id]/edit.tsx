@@ -88,6 +88,21 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
     scope !== "one" ||
     (Object.keys(initial) as Array<keyof SessionFormValues>).some((k) => values[k] !== initial[k]);
 
+  // A field's error goes as soon as that field changes (retyping the original too).
+  const onValuesChange = (next: SessionFormValues) => {
+    setValues(next);
+    setErrors((prev) => {
+      const keys = Object.keys(prev);
+      if (keys.length === 0) return prev;
+      const kept: Record<string, string> = {};
+      for (const [k, msg] of Object.entries(prev)) {
+        if (next[k as keyof SessionFormValues] === values[k as keyof SessionFormValues])
+          kept[k] = msg;
+      }
+      return kept;
+    });
+  };
+
   const save = () => {
     if (!dirty) return;
     setMessage(null);
@@ -158,7 +173,7 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
       onSave={save}
     >
       <View className="flex-col gap-4">
-        <SessionFields values={values} onChange={setValues} errors={errors} />
+        <SessionFields values={values} onChange={onValuesChange} errors={errors} />
         {isSeries ? (
           <>
             <ScopeSelector
