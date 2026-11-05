@@ -57,16 +57,16 @@
 **Files:**
 - Modify: `apps/mobile/src/design/ui/grouped-list.tsx` (additive `titleLines?: number`, default 1)
 - Rewrite in place: `apps/mobile/src/components/dashboard/MentorDashboard.tsx`
-- Create: `apps/mobile/src/screens/mentor/at-risk-group.tsx`, `src/screens/mentor/recent-notes-group.tsx`, `src/screens/mentor/recent-activity-group.tsx`, `src/screens/events/upcoming-events-group.tsx`
+- Create: `apps/mobile/src/screens/mentor/at-risk-group.tsx`, `src/screens/mentor/recent-notes-group.tsx`, `src/screens/mentor/recent-activity-group.tsx`
 - Modify: `apps/mobile/.maestro/sweep/mentor-scenarios/s41-dashboard.yaml`
 - Test: `apps/mobile/src/__tests__/mentor-today.test.tsx`, extend `src/__tests__/grouped-list*.test.tsx`
 
 **Interfaces:**
 - Consumes: `useVisibleNotes` (Task 1).
-- Produces: `AtRiskGroup({ rows: EngagementReportRow[]; total: number; footer?: ReactNode; emptyText?: string })`; `UpcomingEventsGroup({ query: UseQueryResult<JpcEventListResponse>; skip?: number; header?: string })`. Tasks 3 and 5 reuse them.
+- Produces: `AtRiskGroup({ rows: EngagementReportRow[]; total: number; footer?: ReactNode })`.
 
 - [ ] **Step 1: Failing tests** with `renderWithProviders`, mocked `apiClient.get`, MENTOR session:
-  - section headers read `AT RISK`, `RECENT NOTES`, `RECENT ACTIVITY`, `UPCOMING EVENTS`, in that order;
+  - section headers read `AT RISK`, `RECENT NOTES`, `RECENT ACTIVITY` in that order, followed by the unchanged `UpcomingEventsCard` (every sibling Today keeps it, spec 19 R5);
   - at-risk row title is the name, subtitle contains `GBV 2026`, `40% attendance`, `55% submissions`; pressing pushes `/student/[id]`;
   - with `atRiskTotal: 12` and 3 rows the header reads `AT RISK · 3 OF 12`, and an `All students` row pushes `/students`;
   - a note row shows student name, the body, and a `Follow-up` chip only when `followUpFlagged`; pressing pushes the student;
@@ -75,7 +75,7 @@
   - `refreshing` refetches engagement, notes, activity and events;
   - `ListRow titleLines={2}` sets `numberOfLines` 2 on the title; default stays 1.
 - [ ] **Step 2: Run** `pnpm --filter @space/mobile exec jest mentor-today grouped-list` → FAIL.
-- [ ] **Step 3: Implement.** `<Screen home title="Today" onRefresh refreshing>`, sections in the order above with `gap-6`. Rows are `ListRow` with `index` for stagger. At-risk subtitle `${seasonTitle} · ${attendancePct}% attendance · ${submissionPct}% submissions`, no chips (no colour-only meaning, and this is what stops the name truncating, R33), `titleLines={2}`. Empty at-risk: a non-pressable row `Nobody at risk` / `No student has attendance or submissions below ${AT_RISK_PCT}%.`. Note row: title student name, subtitle `${formatDate(createdAt)} · ${authorName} · ${body}`, trailing `Follow-up` warn chip when flagged; `useVisibleNotes(5, true)`. Empty notes: row `No notes yet`. Activity keeps `activityParts`: title name, subtitle `${rest.trim()} · ${formatTimeAgo(at)}`, same `open` routing. Each section maps pending → `Skeleton` rows, error → `InlineError` with its own retry. Events per v1 R11: a row with `url` opens it, otherwise pushes `/event/[id]`. Drop the "Mentor dashboard" title and subtitle.
+- [ ] **Step 3: Implement.** `<Screen home title="Today" onRefresh refreshing>`, sections in the order above with `gap-6`. Rows are `ListRow` with `index` for stagger. At-risk subtitle `${seasonTitle} · ${attendancePct}% attendance · ${submissionPct}% submissions`, no chips (no colour-only meaning, and this is what stops the name truncating, R33), `titleLines={2}`. Empty at-risk: a non-pressable row `Nobody at risk` / `No student has attendance or submissions below ${AT_RISK_PCT}%.`. Note row: title student name, subtitle `${formatDate(createdAt)} · ${authorName} · ${body}`, trailing `Follow-up` warn chip when flagged; `useVisibleNotes(5, true)`. Empty notes: row `No notes yet`. Activity keeps `activityParts`: title name, subtitle `${rest.trim()} · ${formatTimeAgo(at)}`, same `open` routing. Each section maps pending → `Skeleton` rows, error → `InlineError` with its own retry. Drop the "Mentor dashboard" title and subtitle.
 - [ ] **Step 4: Update `s41`:** wait on `At risk`; scroll; user menu via the compact header as today. **Run** test → PASS; `pnpm --filter @space/mobile typecheck` → PASS.
 - [ ] **Step 5: Commit** `feat(mobile): mentor Today, at-risk and newest notes first`.
 
@@ -83,11 +83,13 @@
 
 **Files:**
 - Rewrite in place: `apps/mobile/src/components/dashboard/AlumniDashboard.tsx`
+- Create: `apps/mobile/src/screens/events/upcoming-events-group.tsx`
 - Modify: `apps/mobile/src/lib/dashboard-branch.ts` (use `isAlumnus` unless already fixed on `redesign/foundation`), `apps/mobile/.maestro/sweep/alumni-scenarios/s47-dashboard.yaml`
 - Test: `apps/mobile/src/__tests__/alumni-today.test.tsx`
 
 **Interfaces:**
-- Consumes: `UpcomingEventsGroup` (Task 2), `useSeasonHistory`, `useUpcomingEvents`.
+- Consumes: `ListRow titleLines` (Task 2), `useSeasonHistory`, `useUpcomingEvents`.
+- Produces: `UpcomingEventsGroup({ events: JpcEventListItem[]; header: string })`; per v1 R11 a row with `url` opens it, otherwise pushes `/event/[id]`.
 
 - [ ] **Step 1: Failing tests** with an alumnus session (`role: STUDENT`, `graduationYear: 2025`), asserting: title `Today`, subtitle `Welcome back, Aya · Class of 2025`; the first event is a `HeroCard` with eyebrow `NEXT EVENT` and only the others are listed under `ALSO COMING UP`; the hero action reads `Open link` and calls `Linking.openURL` when `url` is set, else `View event` and pushes `/event/[id]`; no events → `No upcoming events` and no hero; history rows show season title and `85% attended`, at most 3; `View my history` pushes `/history`; no seasons → `No past seasons`; the history request failing leaves events rendered; `/api/v1/me/dashboard` is never requested (an alumnus gets 403 there, spec 19 §7).
 - [ ] **Step 2: Run** `pnpm --filter @space/mobile exec jest alumni-today` → FAIL.
@@ -95,41 +97,25 @@
 - [ ] **Step 4: Update `s47`:** wait on `View my history`; `Sweep kickoff event` is now the hero or a row, so tap `View event` if it is the hero. **Run** test → PASS.
 - [ ] **Step 5: Commit** `feat(mobile): alumni Today, next event and history`.
 
-### Task 4: Mentor Students
+### Task 4: Mentor Students (inherited from plan 04)
+
+No code. Plan 04's Task 8 redesigns the shared `StudentList` to the same design (one `SearchField` debounced 300ms, a filter sheet, chevron rows, no dangling separators, empty title not repeating the page) and states the mentor gets it. A second list for one role would be two implementations of one screen. At rebase (Task 9): if plan 04 has landed, update `s42`/`s43` to its copy and sweep the mentor view, fixing mentor-specific faults (the no-match state under the pill, R33); if not, it goes on the pending list.
+
+### Task 5: Mentor Reports frame
+
+Mentor Notes is inherited from plan 03's Task (`src/screens/staff-notes/note-row.tsx` and its list, with a `MENTOR` seam), same reasoning as Task 4. Plan 04 redesigns the report sections and leaves the mentor's frame to this plan.
 
 **Files:**
-- Modify (one branch): `apps/mobile/app/(app)/(tabs)/students/index.tsx`
-- Create: `apps/mobile/src/screens/mentor/mentor-students.tsx`, `src/screens/mentor/student-filter-sheet.tsx`
-- Modify: `apps/mobile/.maestro/sweep/mentor-scenarios/s42-students.yaml`, `s43-student-note.yaml` (first wait only)
-- Test: `apps/mobile/src/__tests__/mentor-students.test.tsx`
+- Modify (wrapper only): `apps/mobile/app/(app)/(tabs)/reports.tsx`
+- Create: `apps/mobile/src/screens/mentor/mentor-reports.tsx`
+- Modify: `apps/mobile/.maestro/sweep/mentor-scenarios/s44-reports.yaml` if a wait changed
+- Test: `apps/mobile/src/__tests__/mentor-reports.test.tsx`; `reports-screen.test.tsx` stays green
 
-**Interfaces:**
-- Consumes: `useStudentList`, `DEFAULT_STUDENT_VIEW`, `useAllGroups`, `SearchField`, `Sheet`.
-- Produces: `MentorStudents()`; `StudentFilterSheet({ open, onClose, view, onChange })`.
-
-- [ ] **Step 1: Failing tests:** title `Students`, subtitle `3 students in your seasons`; `Alumni` row pushes `/students/alumni`; there is no `Search` button and no `Dropped students`; a row subtitle with null university and null group has no `·`, `—` or dangling separator (`Cairo University · Year 3 · GBV 2026 · Group A` when all present); typing `sa` then advancing fake timers 300ms requests `q=sa` once, and the field stays mounted (same test instance) across the reload; two quick terms request only the last; no match shows title `No matches` with `No students match your search.`, never the page title; `Filters` opens the sheet, choosing a group and `Z–A` requests them and the button reads `Filters · 2`; `Load more` fetches the next page. A non-MENTOR session on the route still renders `StudentList` (`students-list.test.tsx` stays green unchanged).
-- [ ] **Step 2: Run** `pnpm --filter @space/mobile exec jest mentor-students` → FAIL.
-- [ ] **Step 3: Implement.** `<Screen title="Students" subtitle onRefresh refreshing>`. Row of `SearchField` (placeholder `Search students`, `flex-1`) and a secondary `Filters` button, `flex-wrap`. Group list: `Alumni` chevron row first, then students as `ListRow` with `titleLines={2}`, chevron. Debounce with a local effect + `setTimeout`, trimmed; nothing else re-keys the field. Sheet content: group option rows (`All groups`, `Unassigned`, one per group) with a check on the selected one, sort `SegmentedControl` (Name, University, Season, Group), direction `SegmentedControl` (A–Z, Z–A); selections apply at once, a `Done` button closes. No-match `EmptyState` gets `py-6` so it sits above the pill at 360dp@1.3. Route branch: `if (role === "MENTOR") return <MentorStudents />;` in a wrapper above the existing body so hook order holds.
-- [ ] **Step 4: Update `s42`/`s43`:** drop `tapOn: 'Search'`; shoot the filter sheet; wait on `\d+ students? in your seasons` still holds. **Run** tests → PASS.
-- [ ] **Step 5: Commit** `feat(mobile): mentor Students, one search field and a filter sheet` (noting the one-line branch in plan 04's route).
-
-### Task 5: Mentor Reports and Notes
-
-**Files:**
-- Modify (branch only): `apps/mobile/app/(app)/(tabs)/reports.tsx`, `apps/mobile/app/(app)/(tabs)/notes.tsx`
-- Modify (additive prop `atRisk?: ReactNode`, default the current card): `apps/mobile/src/screens/reports/engagement-cards.tsx`
-- Create: `apps/mobile/src/screens/mentor/mentor-reports.tsx`, `src/screens/mentor/mentor-notes.tsx`
-- Modify: `apps/mobile/.maestro/sweep/mentor-scenarios/s44-reports.yaml`, `s45-notes.yaml` if a wait changed
-- Test: `apps/mobile/src/__tests__/mentor-reports.test.tsx`, `src/__tests__/mentor-notes.test.tsx`; move the mentor session in `notes-screen.test.tsx` / `reports-screen.test.tsx` to a non-mentor role only where a case asserts the old layout
-
-**Interfaces:**
-- Consumes: `AtRiskGroup` (Task 2), `useEngagementReport`, `useEngagementStudents`, `useAuthoredNotes`, `flattenNotePages`, `SeasonPicker`, `ExportMenu`, `EngagementCards`.
-
-- [ ] **Step 1: Failing tests.** Reports: title `Reports`, subtitle `Scoped to …`; `canExportWorkbook` false for a mentor even with a season chosen; at-risk renders as `AtRiskGroup` with `Show more` calling `fetchNextPage`; no `OrganisationSection`; empty scope shows `No data in this scope`. Notes: title `Notes`, subtitle `2 notes you've authored` (`2+` with a next page); a row shows student, `formatDate`, season, the full body, the exact `Visible to mentors only` label as a neutral chip, `Follow-up flagged` warn chip when set, `Edited` when `edited`; no dangling `·` when `seasonTitle` is null; `Load more`; empty → `No notes yet` with its description.
-- [ ] **Step 2: Run** `pnpm --filter @space/mobile exec jest mentor-reports mentor-notes` → FAIL.
-- [ ] **Step 3: Implement.** Reports route: rename the default function `StaffReports`, add a default wrapper choosing `MentorReports` for `MENTOR`. `MentorReports` keeps the route's `permitted`/`seasonId`/`showAllAtRisk` logic and renders `<Screen title="Reports" …>`, passing `atRisk={<AtRiskGroup … />}`. Notes route: same wrapper. Mentor notes rows are full-body pressable rows in a `GroupedList` pushing `/student/[id]`; export `VISIBILITY_LABEL` from one place so route and component share the copy (spec D3: this wording is deliberate).
-- [ ] **Step 4: Run** tests and the existing `notes-screen`, `reports-screen` → PASS.
-- [ ] **Step 5: Commit** `feat(mobile): mentor Reports and Notes on Screen` (noting the branches in plans 03's and 04's routes), as two commits if the diff splits cleanly.
+- [ ] **Step 1: Failing test:** title `Reports`, subtitle `Scoped to …`, rendered by `Screen` (no `PageTitle`); `canExportWorkbook` false for a mentor even with a season chosen; no `OrganisationSection`; `Show more` still fetches the next page; empty scope shows `No data in this scope`.
+- [ ] **Step 2: Run** `pnpm --filter @space/mobile exec jest mentor-reports` → FAIL.
+- [ ] **Step 3: Implement.** Rename the route's default function `StaffReports`, add a default wrapper choosing `MentorReports` for `MENTOR`. `MentorReports` keeps the `permitted`/`seasonId`/`showAllAtRisk` logic and renders `SeasonPicker`, `ExportMenu`, `EngagementCards` unchanged inside `<Screen title="Reports" subtitle=… onRefresh refreshing>`.
+- [ ] **Step 4: Run** tests with `reports-screen` → PASS.
+- [ ] **Step 5: Commit** `feat(mobile): mentor Reports on Screen` (noting the wrapper in plan 04's route).
 
 ### Task 6: Mentor and alumni Profile
 
