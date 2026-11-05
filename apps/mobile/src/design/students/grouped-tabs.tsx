@@ -201,7 +201,7 @@ export function GroupedNotesTab({
                   n.edited && "Edited",
                   NOTE_VISIBILITY[n.visibility],
                 )}
-                subtitleLines={4}
+                subtitleLines={null}
                 trailing={n.followUpFlagged ? <StatusChip tone="warn" label="Follow up" /> : undefined}
                 trailingPlacement="below"
               />
