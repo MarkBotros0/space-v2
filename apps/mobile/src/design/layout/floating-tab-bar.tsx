@@ -7,6 +7,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-na
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { routeNameForHref } from "../../lib/route-names";
+import { useScreenReaderEnabled } from "../lib/screen-reader";
 import { shadowStyle } from "../lib/shadow";
 import { DURATION, useReducedMotion } from "../motion";
 import { NavLink } from "./nav-link";
@@ -46,7 +47,11 @@ export function PillTabBar({
 }: BottomTabBarProps & { items: NavItem[] }) {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
-  const visible = useTabBarVisible();
+  // A screen reader keeps the pill up (M7): VoiceOver could otherwise focus a
+  // tab moved off-screen, and activating it through `pointerEvents="none"` is
+  // unreliable on iOS.
+  const screenReader = useScreenReaderEnabled();
+  const visible = useTabBarVisible() || screenReader;
   const shown = items.slice(0, 5);
   const routeActive = activeTabRoute(
     state.routes[state.index]?.name,
@@ -88,14 +93,19 @@ export function PillTabBar({
     // classes on an Animated.View are dropped on device (no-classname-on-animated.test.ts).
     <View
       testID="pill-root"
-      // Hidden: never block the touches of the screen the pill used to cover. It stays in
-      // the accessibility tree (a screen reader does not scroll-hide).
+      // Hidden: never block the touches of the screen the pill used to cover, and leave
+      // the accessibility tree too (only possible with no screen reader on, above).
       pointerEvents={visible ? "box-none" : "none"}
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
       className="absolute inset-x-4"
       style={{ bottom: offset }}
     >
       <Animated.View testID="pill-slide" pointerEvents="box-none" style={[styles.center, slide]}>
         <View
+          // The row is the tablist, so iOS announces "tab, n of m" (M8).
+          testID="pill-row"
+          accessibilityRole="tablist"
           className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
           style={shadowStyle("lift")}
         >

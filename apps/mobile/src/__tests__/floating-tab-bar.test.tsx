@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import type { BottomTabBarProps } from "expo-router/js-tabs";
 import { BlurView } from "expo-blur";
-import { Platform } from "react-native";
+import { AccessibilityInfo, Platform } from "react-native";
 import type { NavItem } from "@space/shared";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -88,6 +88,11 @@ it("shows at most five tabs, like v1 tabItems.slice(0, 5)", () => {
   renderBar();
   expect(screen.getAllByRole("tab")).toHaveLength(5);
   expect(screen.queryByLabelText("Settings")).toBeNull();
+});
+
+it("groups the tabs in a tablist, so iOS reads 'tab, n of m' (M8)", () => {
+  renderBar();
+  expect(screen.getByTestId("pill-row").props.accessibilityRole).toBe("tablist");
 });
 
 it("marks the current route as selected", () => {
@@ -246,7 +251,8 @@ describe("frosted fill", () => {
 });
 
 describe("hide on scroll", () => {
-  const touches = () => screen.getByTestId("pill-root").props.pointerEvents;
+  const touches = () =>
+    screen.getByTestId("pill-root", { includeHiddenElements: true }).props.pointerEvents;
   const scroll = (dir: "up" | "down", atEnd = false) =>
     act(() => useTabBarScroll().onScrollDirection(dir, atEnd));
 
@@ -259,9 +265,20 @@ describe("hide on scroll", () => {
     expect(touches()).toBe("box-none");
   });
 
-  it("stays in the accessibility tree while hidden", () => {
+  it("leaves the accessibility tree while hidden (M7)", () => {
     renderBar();
     scroll("down");
+    expect(screen.queryAllByRole("tab")).toHaveLength(0);
+    scroll("up");
+    expect(screen.getAllByRole("tab")).toHaveLength(5);
+  });
+
+  it("stays shown while a screen reader is on (M7)", async () => {
+    jest.spyOn(AccessibilityInfo, "isScreenReaderEnabled").mockResolvedValue(true);
+    renderBar();
+    await act(async () => {});
+    scroll("down");
+    expect(touches()).toBe("box-none");
     expect(screen.getAllByRole("tab")).toHaveLength(5);
   });
 
