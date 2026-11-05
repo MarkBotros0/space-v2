@@ -126,6 +126,24 @@ describe("ProfileScreen — STUDENT", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Profile saved."));
   });
 
+  it("enables Save only while something differs from what is saved", async () => {
+    patch.mockResolvedValue({ data: { data: { profile: { ...profile, phone: "+20 122" } } } });
+    renderWithProviders(<ProfileScreen />);
+    const phone = await screen.findByLabelText("Phone");
+    const save = () => screen.getByRole("button", { name: "Save changes" });
+
+    expect(save().props.accessibilityState?.disabled).toBe(true);
+    fireEvent.changeText(phone, "+20 122");
+    expect(save().props.accessibilityState?.disabled).toBeFalsy();
+    fireEvent.changeText(phone, "+20 100");
+    expect(save().props.accessibilityState?.disabled).toBe(true);
+
+    fireEvent.changeText(phone, "+20 122");
+    fireEvent.press(save());
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Profile saved."));
+    await waitFor(() => expect(save().props.accessibilityState?.disabled).toBe(true));
+  });
+
   it("sends the picked date of birth as the org-free yyyy-MM-dd string", async () => {
     patch.mockResolvedValue({ data: { data: { profile: { ...profile, dateOfBirth: "2001-04-20" } } } });
     renderWithProviders(<ProfileScreen />);
@@ -143,7 +161,8 @@ describe("ProfileScreen — STUDENT", () => {
     patch.mockResolvedValue({ data: { data: { profile: { ...profile, notes: "internal" } } } });
     renderWithProviders(<ProfileScreen />);
 
-    fireEvent.press(await screen.findByText("Save changes"));
+    fireEvent.changeText(await screen.findByLabelText("Phone"), "+20 122");
+    fireEvent.press(screen.getByText("Save changes"));
 
     expect(await screen.findByText("Couldn't save your profile.")).toBeTruthy();
   });

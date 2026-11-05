@@ -55,9 +55,14 @@ export function useProfileForm(profile: MyProfile): {
   fields: ReactNode;
   save: () => void;
   saving: boolean;
+  /** True while the fields differ from what is saved; Save is enabled only then. */
+  dirty: boolean;
 } {
   const update = useUpdateStudentProfile();
   const [values, setValues] = useState<FormValues>(() => toFormValues(profile));
+  // What the server holds: the opening values, then whatever the last save landed.
+  const [saved, setSaved] = useState<FormValues>(() => toFormValues(profile));
+  const dirty = OWN_PROFILE_FIELDS.some((field) => values[field] !== saved[field]);
   const [errors, setErrors] = useState<Partial<Record<OwnProfileField, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const set = (field: OwnProfileField) => (text: string) =>
@@ -82,7 +87,10 @@ export function useProfileForm(profile: MyProfile): {
     }
     setErrors({});
     update.mutate(body, {
-      onSuccess: () => toast.success("Profile saved."),
+      onSuccess: () => {
+        setSaved(body);
+        toast.success("Profile saved.");
+      },
       onError: (err) => setSubmitError(apiErrorMessage(err, "Couldn't save your profile.")),
     });
   };
@@ -157,5 +165,5 @@ export function useProfileForm(profile: MyProfile): {
       ) : null}
     </View>
   );
-  return { fields, save, saving: update.isPending };
+  return { fields, save, saving: update.isPending, dirty };
 }

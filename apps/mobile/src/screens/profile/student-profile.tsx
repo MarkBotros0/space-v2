@@ -56,6 +56,7 @@ function LoadedProfile({
       saveLabel="Save changes"
       onSave={form.save}
       saving={form.saving}
+      saveDisabled={!form.dirty}
       onRefresh={() => {
         refetch();
         if (activeSeasonId !== null) {
