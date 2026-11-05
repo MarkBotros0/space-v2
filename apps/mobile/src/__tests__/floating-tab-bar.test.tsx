@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import type { BottomTabBarProps } from "expo-router/js-tabs";
-import { AccessibilityInfo, Platform } from "react-native";
+import { Platform } from "react-native";
 import type { NavItem } from "@space/shared";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -24,8 +24,11 @@ jest.mock("react-native-reanimated", () => {
   });
 });
 jest.mock("expo-haptics");
+let mockScreenReader = false;
+jest.mock("../design/lib/screen-reader", () => ({ useScreenReaderEnabled: () => mockScreenReader }));
 
 afterEach(() => {
+  mockScreenReader = false;
   setReducedMotionForTests(null);
   resetTabBarScroll();
   mockWithSpring.mockClear();
@@ -257,10 +260,9 @@ describe("hide on scroll", () => {
     expect(screen.getAllByRole("tab")).toHaveLength(5);
   });
 
-  it("stays shown while a screen reader is on (M7)", async () => {
-    jest.spyOn(AccessibilityInfo, "isScreenReaderEnabled").mockResolvedValue(true);
+  it("stays shown while a screen reader is on (M7)", () => {
+    mockScreenReader = true;
     renderBar();
-    await act(async () => {});
     scroll("down");
     expect(touches()).toBe("box-none");
     expect(screen.getAllByRole("tab")).toHaveLength(5);
