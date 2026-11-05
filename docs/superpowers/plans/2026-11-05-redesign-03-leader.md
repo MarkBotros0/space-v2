@@ -21,6 +21,7 @@
 - Goal 5 rule: quick action = `Sheet` + `SheetSaveBar`; long form = full screen + `SaveBar`. A write success gives `haptic("light")` plus a `toast.success` line.
 - No backend rule, permission or write changes. No migrations. Do not run integration tests against the shared staging DB.
 - Ruling R38 (owner): the pill becomes solid on both platforms; plan 01 makes that change. Do not touch the pill or flag its translucency.
+- Plan 01's final wave (BRIEF-common, Owner updates): fixed save bars use `Screen footer`; after a save `router.back()`, after a delete `router.dismissTo(<list>)`, never `router.replace` to a tab from a stacked screen; use `design-catalogue`, not `app/dev/design-system`. Do not build parallel versions.
 - Do not implement PR #44's SUBMISSION_SUBMITTED notification (open owner decision).
 - Behaviour and copy come from v1 and the current screens unless a task says otherwise; nothing a leader can do today disappears.
 - Sweep flows never save anything. Never commit screenshots.
@@ -36,7 +37,7 @@
 - **P5:** the leader's student page is a new `StudentDetailGrouped`, not a change to `StudentDetail`, whose admin mode is plan 04's; 04 may adopt it. Cost if wrong: temporary duplicate tab bodies.
 - **P6:** three leader branches no brief names are taken here, as they are on the leader's path and sweep flows s14/s16: `LeaderSessionBody`, `LeaderQuizzes`, and the check-in override (Modal → Sheet, which admin's session page inherits as goal 5 asks). Cost if wrong: a rebase conflict with 02/04.
 - **P7:** paper grading becomes rows that open one sheet per student and save that one row, replacing the sideways-scrolling table with a batch Save. Spec goal 5 lists "grade" as a sheet; it also makes "untouched rows are never re-sent" true by construction. Cost if wrong: slower bulk entry from a paper pile; the owner can ask for inline fields.
-- **P8:** attendance's Cancel button goes: the Back bar is cancel. The attendance save bar is pinned again (spec goal 5). The 2026-10-21 ruling put it in the flow because it covered rows; a measured spacer now reserves its height. Cost if wrong: one component.
+- **P8:** attendance's Cancel button goes: the Back bar is cancel. The attendance save bar is pinned again (spec goal 5). The 2026-10-21 ruling put it in the flow because it covered rows; plan 01's `Screen footer` now reserves its height. Cost if wrong: one component.
 - **P9:** the Groups "Calendar →" link goes: Calendar is a tab for this role, so nothing is lost. Cost if wrong: one row.
 
 ## Review Focus
@@ -148,19 +149,18 @@ Layout, top to bottom, inside `<Screen home title="Today" subtitle={groupNames |
 
 **Files:**
 - Create: `apps/mobile/src/screens/submission-review/feedback-sheet.tsx`, `apps/mobile/src/screens/submission-review/work-sections.tsx`
-- Modify: `apps/mobile/app/(app)/submission/[publicId].tsx`, `apps/mobile/src/design/layout/save-bar.tsx` (additive `onHeight?: (h: number) => void` on `SaveBar`, reported from the wrapper's `onLayout`)
+- Modify: `apps/mobile/app/(app)/submission/[publicId].tsx`, no kit change: the pinned bar is plan 01's `Screen footer`
 - Modify: `s15-submissions.yaml` (review half)
-- Test: `apps/mobile/src/__tests__/submission-review.test.tsx`, `save-bar` test if one exists, else add the case to the sheet's test file
+- Test: `apps/mobile/src/__tests__/submission-review.test.tsx`
 
 **Interfaces:**
-- Produces: `SaveBar` `onHeight` (Task 6 uses the same pattern: `useState(72)`, a `<View style={{ height }} />` at the end of the content).
 - `FeedbackSheet({ open, onClose, publicId, alreadyReviewed, feedback, onFeedback, onReturned })`: the parent owns `feedback` so dismissal keeps it.
 
 This route is staff review for every staff role, and plan 02 owns only its student side; the screen today has no role branches (a student page is elsewhere or goes through `canReview`). Keep every condition on the contract's `canReview`, not on role.
 
-`<Screen title={assignmentTitle} subtitle="student · group">`: chips row (`StatusChip` status; Late; `Submitted …` and `Due …` as neutral chips in `flex-row flex-wrap`); `Assignment prompt` and `Submission` under `ListSectionHeader`, each on one `rounded-group bg-surface p-4` surface (attachments list kept, with "Files can't be opened in the app yet."); returned and read-only states as they are on the same surface. When `canReview && status !== "RETURNED"`: `SaveBar` label "Update feedback" if reviewed else "Add feedback" opens the sheet, and the current feedback, if any, shows on a surface above it. Sheet: title = same words; `Textarea` with the current placeholder; error box (current copy); Button `variant="secondary"` "Return for revision"; `SheetSaveBar` label "Update review" or "Mark as reviewed", `loading` on pending. Success: `haptic("light")`, the current toast, sheet closes; returned → `onReturned`.
+`<Screen title={assignmentTitle} subtitle="student · group">`: chips row (`StatusChip` status; Late; `Submitted …` and `Due …` as neutral chips in `flex-row flex-wrap`); `Assignment prompt` and `Submission` under `ListSectionHeader`, each on one `rounded-group bg-surface p-4` surface (attachments list kept, with "Files can't be opened in the app yet."); returned and read-only states as they are on the same surface. When `canReview && status !== "RETURNED"`: `<Screen footer={<SaveBar .../>}>` label "Update feedback" if reviewed else "Add feedback" opens the sheet, and the current feedback, if any, shows on a surface above it. Sheet: title = same words; `Textarea` with the current placeholder; error box (current copy); Button `variant="secondary"` "Return for revision"; `SheetSaveBar` label "Update review" or "Mark as reviewed", `loading` on pending. Success: `haptic("light")`, the current toast, sheet closes; returned → `onReturned`, which is `router.back()` (drop the `replace("/submissions")` fallback: never replace to a tab from a stacked screen).
 
-- [ ] **Step 1: Update tests:** feedback is reached by pressing "Add feedback"; "Mark as reviewed" posts `{ feedback, returnForRevision: false }` and stays on the screen; dismiss the sheet (`onClose`) then reopen: the typed text is still there and no request was made; 403 keeps the sheet open with the message and calls no haptic; "Return for revision" posts the flag, then leaves; can't-review shows no save bar; exactly one back link (existing test); `SaveBar` calls `onHeight` on layout.
+- [ ] **Step 1: Update tests:** feedback is reached by pressing "Add feedback"; "Mark as reviewed" posts `{ feedback, returnForRevision: false }` and stays on the screen; dismiss the sheet (`onClose`) then reopen: the typed text is still there and no request was made; 403 keeps the sheet open with the message and calls no haptic; "Return for revision" posts the flag, then leaves; can't-review shows no save bar; exactly one back link (existing test).
 - [ ] **Step 2: Run** `pnpm --filter @space/mobile exec jest submission-review` → FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Update s15:** tap `'Add feedback'`, wait for the placeholder, shot; tap the placeholder, shot with keyboard; type, hide keyboard, shot; drag the sheet down or `back`, never tap save; s15-07 waits on `'Update feedback'` as before.
@@ -175,7 +175,7 @@ This route is staff review for every staff role, and plan 02 owns only its stude
 - Modify: `apps/mobile/.maestro/sweep/leader-scenarios/s14-session-attendance.yaml`
 - Test: `apps/mobile/src/__tests__/attendance-screen.test.tsx`, the check-in override test (grep `Override attendance`)
 
-**Attendance:** `<Screen title="Attendance" subtitle="Session title · weekday · time">`. Summary card "Quick mark all as" with three `Button variant="secondary" size="sm"`. Roster: one `GroupedList` holding a custom row per student: name `titleLines`-equivalent `numberOfLines={2}`, caption `group · email`, then three toggles `min-h-[44px] flex-1 rounded-control border` that fill the row: active uses `bg-ok-soft text-ok` / `bg-warn-soft text-warn` / `bg-bad-soft text-bad`, inactive `border-control-border` and `text-muted-foreground`, icon + word kept. Late shows "Minutes late" and an `Input` (`min-h-*`, `py-0`, no fixed height). Pressing a toggle fires `haptic("selection")`. `SaveBar` label "Save attendance", `loading`, `hint` "N changed" when N > 0, `onHeight` + spacer (P8). Remove `AttendanceSaveBar` and Cancel. Success: `haptic("light")`, `toast.success("Attendance saved.")`, `router.back()`. Errors stay in the form, above the spacer. Touched-rows-only logic (`buildAttendanceEntries`) is unchanged.
+**Attendance:** `<Screen title="Attendance" subtitle="Session title · weekday · time">`. Summary card "Quick mark all as" with three `Button variant="secondary" size="sm"`. Roster: one `GroupedList` holding a custom row per student: name `titleLines`-equivalent `numberOfLines={2}`, caption `group · email`, then three toggles `min-h-[44px] flex-1 rounded-control border` that fill the row: active uses `bg-ok-soft text-ok` / `bg-warn-soft text-warn` / `bg-bad-soft text-bad`, inactive `border-control-border` and `text-muted-foreground`, icon + word kept. Late shows "Minutes late" and an `Input` (`min-h-*`, `py-0`, no fixed height). Pressing a toggle fires `haptic("selection")`. `<Screen footer={<SaveBar label="Save attendance" loading hint="N changed" (when N > 0) />}>` (P8). Remove `AttendanceSaveBar` and Cancel. Success: `haptic("light")`, `toast.success("Attendance saved.")`, `router.back()`. Errors stay in the form. Touched-rows-only logic (`buildAttendanceEntries`) is unchanged.
 
 **Override:** `CheckInAttendanceList`: rows `StatusChip` (or neutral "Not recorded") and the Edit button at `size="sm"`; `Modal` → `Sheet title="Override attendance"` with the name as caption and three full-width Buttons; error stays in the sheet. Keep accessibility labels.
 
