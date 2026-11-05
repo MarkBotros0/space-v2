@@ -1,12 +1,11 @@
 import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
+import { Pressable } from "react-native";
 import type { StaffAssignmentListItem } from "@space/shared";
 
 import { NAV_ICONS } from "../../src/design/icons/nav-icon";
-import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { Screen } from "../../src/design/layout/screen";
 import {
   Badge,
   Button,
@@ -124,27 +123,23 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
     );
 
   return (
-    <ShellFrame onRefresh={handleRefresh} refreshing={list.isRefetching}>
-      <View className="flex-col gap-4">
-        <View className="flex-row flex-wrap items-start justify-between gap-4">
-          <PageTitle
-            className="min-w-[150px] flex-1"
-            title="Assignments"
-            subtitle={
-              list.data
-                ? `${list.data.length} ${list.data.length === 1 ? "assignment" : "assignments"}`
-                : undefined
-            }
-          />
-          {canCreate && current.seasonId !== null ? (
-            <Button className="shrink-0" onPress={newAssignment}>
-              New assignment
-            </Button>
-          ) : null}
-        </View>
-        {body}
-      </View>
-    </ShellFrame>
+    <Screen
+      title="Assignments"
+      subtitle={
+        list.data
+          ? `${list.data.length} ${list.data.length === 1 ? "assignment" : "assignments"}`
+          : undefined
+      }
+      trailing={
+        canCreate && current.seasonId !== null ? (
+          <Button onPress={newAssignment}>New assignment</Button>
+        ) : undefined
+      }
+      onRefresh={handleRefresh}
+      refreshing={list.isRefetching}
+    >
+      {body}
+    </Screen>
   );
 }
 

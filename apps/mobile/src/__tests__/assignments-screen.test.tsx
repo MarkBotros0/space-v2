@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react-native";
+import { screen, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockReplace = jest.fn();
@@ -42,7 +42,9 @@ describe("/assignments on the stack", () => {
   it("an admin keeps the staff screen", async () => {
     useSessionStore.setState(makeSession("ADMIN"));
     renderStacked(<AssignmentsScreen />);
-    expect(await screen.findByText("Assignments")).toBeTruthy();
+    // The kit's title row, whose action drops below rather than breaking the word.
+    await screen.findByTestId("large-title-text");
+    expect(within(screen.getByTestId("large-title-text")).getByText("Assignments")).toBeTruthy();
     expect(screen.queryByText("Your current season")).toBeNull();
     expect(mockReplace).not.toHaveBeenCalled();
   });
