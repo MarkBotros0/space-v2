@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { RouteError, RouteSkeleton } from "../../../../../src/design/layout/route-states";
 import { Screen } from "../../../../../src/design/layout/screen";
 import { Button, EmptyState } from "../../../../../src/design/ui";
-import { useSeasonRoster } from "../../../../../src/hooks/use-group-admin";
 import { useSeasonByCode } from "../../../../../src/hooks/use-seasons";
 import { RosterList } from "../../../../../src/screens/season-roster/roster-list";
 
@@ -14,43 +13,15 @@ export default function SeasonRosterScreen() {
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
   const season = useSeasonByCode(code);
-  const roster = useSeasonRoster(season.data?.canAdminister ? season.data.id : null);
 
-  let body: ReactNode;
-  if (code === null)
-    body = <EmptyState title="Not found" description="That season link isn't valid." />;
-  else if (season.isPending) body = <RouteSkeleton />;
-  else if (season.isError) body = <RouteError onRetry={() => void season.refetch()} />;
-  else if (!season.data.canAdminister)
-    body = (
-      <EmptyState
-        title="Not available"
-        description="Only this season's admins can manage its roster."
-      />
-    );
-  else
-    body = (
+  if (code !== null && season.isSuccess && season.data.canAdminister) {
+    return (
       <RosterList
         seasonId={season.data.id}
-        onNewGroup={() =>
-          router.push({ pathname: "/group/new", params: { seasonId: String(season.data.id) } })
-        }
-      />
-    );
-
-  const count = roster.data?.length;
-  return (
-    <Screen
-      title="Roster"
-      subtitle={
-        season.data && count !== undefined
-          ? `${count} student${count === 1 ? "" : "s"} in ${season.data.title}. Tap a student to set their group.`
-          : undefined
-      }
-      // Spec 16 §9 / v1 roster/page.tsx:42: same predicate as the list — the
-      // server's own canAdminister, not a client re-derivation.
-      trailing={
-        code !== null && season.data?.canAdminister ? (
+        seasonTitle={season.data.title}
+        // Spec 16 §9 / v1 roster/page.tsx:42: the server's own canAdminister,
+        // not a client re-derivation.
+        trailing={
           <Button
             variant="secondary"
             onPress={() =>
@@ -59,10 +30,25 @@ export default function SeasonRosterScreen() {
           >
             Import assignments
           </Button>
-        ) : undefined
-      }
-    >
-      {body}
-    </Screen>
-  );
+        }
+        onNewGroup={() =>
+          router.push({ pathname: "/group/new", params: { seasonId: String(season.data.id) } })
+        }
+      />
+    );
+  }
+
+  let body: ReactNode;
+  if (code === null)
+    body = <EmptyState title="Not found" description="That season link isn't valid." />;
+  else if (season.isError) body = <RouteError onRetry={() => void season.refetch()} />;
+  else if (season.isPending) body = <RouteSkeleton />;
+  else
+    body = (
+      <EmptyState
+        title="Not available"
+        description="Only this season's admins can manage its roster."
+      />
+    );
+  return <Screen title="Roster">{body}</Screen>;
 }

@@ -46,12 +46,12 @@ async function pickOption(select: string, option: string) {
   fireEvent.press(await screen.findByText(option));
 }
 
-/** Open a student's assign sheet from the roster and pick a group row by its title. */
+/** Open a student's group sheet from the roster and stage a group by its title. */
 async function choose(student: string, group: string) {
   fireEvent.press(await screen.findByText(student));
   fireEvent.press(await screen.findByText(group));
 }
-const saveSheet = () => fireEvent.press(within(screen.getByTestId("sheet-save-bar")).getByText("Save"));
+const saveBar = (label: string) => fireEvent.press(within(screen.getByTestId("save-bar")).getByText(label));
 
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
 const seasonRow = (id: number, status: "DRAFT" | "ACTIVE", startDate: string) => ({
@@ -329,25 +329,24 @@ describe("/seasons/[code]/roster (G7)", () => {
     expect(screen.getByText("sara@jpc.test · Group A")).toBeTruthy();
     expect(screen.getByText("omar@jpc.test · Unassigned")).toBeTruthy();
     await choose("Sara", "Unassigned");
-    saveSheet();
+    await choose("Omar", "Group B");
+    expect(screen.getAllByText("Not saved")).toHaveLength(2);
+    expect(screen.getByText("omar@jpc.test · Group B")).toBeTruthy();
+    // Picking a student's own group again unstages them.
+    await choose("Omar", "Unassigned");
+    expect(screen.getAllByText("Not saved")).toHaveLength(1);
+    await choose("Omar", "Group B");
+    saveBar("Save 2 changes");
 
     await waitFor(() =>
       expect(put).toHaveBeenCalledWith("/api/v1/seasons/7/group-assignments", {
-        assignments: [{ studentUserId: 21, groupId: null }],
+        assignments: [
+          { studentUserId: 21, groupId: null },
+          { studentUserId: 22, groupId: 4 },
+        ],
       }),
     );
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Assigned 1, unassigned 1."));
-  });
-
-  it("sends nothing when the picked group is the student's own", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { code: "s7" };
-    routeGets();
-    renderWithProviders(<SeasonRosterScreen />);
-    await choose("Omar", "Group B");
-    await choose("Omar", "Unassigned");
-    fireEvent.press(within(screen.getByTestId("sheet-save-bar")).getByText("No change"));
-    expect(put).not.toHaveBeenCalled();
   });
 
   it("offers Import groups to a season admin, pushing the importer route", async () => {
