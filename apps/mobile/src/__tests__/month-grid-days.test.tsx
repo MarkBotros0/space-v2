@@ -37,6 +37,22 @@ describe("events month grid (CalendarGrid)", () => {
     expect(classes(circle)).toEqual(expect.arrayContaining(["rounded-full", "bg-brand-teal-100"]));
     expect(classes(screen.getByTestId("day-circle-2099-03-10"))).toContain("bg-brand-teal-500");
   });
+
+  it("the selected non-today day has a 3:1 border; today and other days keep it transparent", () => {
+    renderWithProviders(
+      <CalendarGrid view="month" anchor="2099-03-10" sessions={[]} events={[]} ctx={ctx} />,
+    );
+    fireEvent.press(screen.getByLabelText(/Mar 12, 2099/i));
+    const selected = classes(screen.getByTestId("day-circle-2099-03-12"));
+    expect(selected).toEqual(
+      expect.arrayContaining(["border", "border-brand-teal-700", "dark:border-brand-teal-400"]),
+    );
+    for (const key of ["2099-03-10", "2099-03-11"]) {
+      const c = classes(screen.getByTestId(`day-circle-${key}`));
+      expect(c).toContain("border-transparent");
+      expect(c).not.toContain("border-brand-teal-700");
+    }
+  });
 });
 
 describe("season calendar month grid", () => {

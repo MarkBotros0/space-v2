@@ -133,16 +133,18 @@ function MonthGrid({
                 onPress={() => setPicked(key)}
                 className="min-h-14 flex-1 items-center py-1"
               >
-                {/* Today is the filled circle, the selected day the same circle tinted (a tinted
-                    cell read as a tall rectangle beside it). Days outside the month take the
+                {/* Today is the filled circle, the selected day the same circle tinted with a 3:1
+                    border (the tint alone is ~1.05:1 in light); every state carries a transparent
+                    border so the digit never shifts (a tinted cell read as a tall rectangle). Days outside the month take the
                     muted foreground, 4.5:1 on the page; v1's opacity-40 left them at ~2.3:1. */}
                 <View
                   testID={`day-circle-${key}`}
                   className={cn(
-                    "size-[26px] items-center justify-center rounded-full",
+                    "size-[26px] items-center justify-center rounded-full border border-transparent",
                     isToday
                       ? "bg-brand-teal-500"
-                      : isSelected && "bg-brand-teal-100 dark:bg-brand-teal-950",
+                      : isSelected &&
+                          "border-brand-teal-700 bg-brand-teal-100 dark:border-brand-teal-400 dark:bg-brand-teal-950",
                   )}
                 >
                   <Text
