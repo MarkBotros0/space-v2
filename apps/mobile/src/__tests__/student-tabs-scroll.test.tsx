@@ -44,4 +44,25 @@ describe("StudentDetailGrouped tab row", () => {
     expect(scrollTo).toHaveBeenCalledWith({ x: 340 + 80 + 16 - 360, animated: true });
     scrollTo.mockRestore();
   });
+
+  it("measures from the real offset once a tab's layout changes mid-flight (font size change)", () => {
+    const scrollTo = jest.spyOn(ScrollView.prototype as unknown as { scrollTo: () => void }, "scrollTo").mockImplementation(() => {});
+    const student = {
+      id: 21, name: "Sara", email: "s@jpc.test", avatarPath: null, graduationYear: null, currentGroup: null, enrollments: [],
+      profile: { university: null, year: null, gifts: null, activeSeasonId: null, activeSeasonTitle: null, activeSeasonCode: null },
+    } as never;
+    renderWithProviders(<StudentDetailGrouped student={student} canWriteNote={false} />);
+    const row = screen.UNSAFE_getAllByType(ScrollView).find((s) => s.props.horizontal)!;
+    const lay = (x: number, width: number) => ({ nativeEvent: { layout: { x, y: 0, width, height: 44 } } });
+    fireEvent(row, "layout", lay(0, 360));
+    fireEvent(screen.getByRole("tab", { name: "Notes" }), "layout", lay(700, 80));
+    fireEvent(screen.getByRole("tab", { name: "Submissions" }), "layout", lay(500, 100));
+    fireEvent.press(screen.getByRole("tab", { name: "Notes" }));
+    expect(scrollTo).toHaveBeenLastCalledWith({ x: 700 + 80 + 16 - 360, animated: true });
+    // The font shrank: Submissions now sits near the start, while the row is still at offset 0.
+    fireEvent(screen.getByRole("tab", { name: "Submissions" }), "layout", lay(300, 80));
+    fireEvent.press(screen.getByRole("tab", { name: "Submissions" }));
+    expect(scrollTo).toHaveBeenLastCalledWith({ x: 300 + 80 + 16 - 360, animated: true });
+    scrollTo.mockRestore();
+  });
 });

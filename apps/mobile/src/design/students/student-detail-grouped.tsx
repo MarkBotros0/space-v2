@@ -98,6 +98,9 @@ export function StudentDetailGrouped({
   const tabHeading = useRef<number | null>(null);
   const trackTab = (t: Tab) => (e: LayoutChangeEvent) => {
     const { x, width } = e.nativeEvent.layout;
+    const prev = tabX.current[t];
+    // A re-measure (font size change) invalidates where the last scroll was heading.
+    if (prev && (prev.x !== x || prev.w !== width)) tabHeading.current = null;
     tabX.current[t] = { x, w: width };
   };
   const open = (t: string) => {
