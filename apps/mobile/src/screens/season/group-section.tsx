@@ -33,7 +33,7 @@ function Members({ members }: { members: NonNullable<MySeason["group"]>["members
               "flex-row items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5",
               member.isYou
                 ? "border border-brand-teal-300 bg-brand-teal-100 dark:border-brand-teal-900 dark:bg-brand-teal-950"
-                : "bg-muted/60",
+                : "border border-separator bg-muted/60",
             )}
           >
             <View className="size-6 items-center justify-center rounded-full bg-card">
