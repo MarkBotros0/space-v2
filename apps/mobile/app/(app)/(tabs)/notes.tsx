@@ -25,8 +25,8 @@ export default function NotesScreen() {
   } = useAuthoredNotes(canAuthor);
   const notes = flattenNotePages(data?.pages);
 
-  // Plan 05 replaces this with a mentor-specific branch; until then one list
-  // serves every authoring role, so there is no `role === "MENTOR"` return here.
+  // One list serves every authoring role, the mentor included (R05-4), so there
+  // is no `role === "MENTOR"` return here.
   if (!canAuthor) {
     return (
       <Screen>

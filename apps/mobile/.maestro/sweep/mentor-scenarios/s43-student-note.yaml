@@ -1,4 +1,4 @@
-# UI sweep s43 — A student's page and the note form as a mentor. Read-only: nothing is saved, the flow only
+# UI sweep s43 — A student's page and the note sheet as a mentor. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
 ---
@@ -32,8 +32,9 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s43-03-student-bottom
-# Tabs. The mentor's tab bar has Notes and Profile tabs too, so Notes is picked as the one
-# above the Submissions tab's first row.
+# Tabs. The row scrolls sideways: Notes is off screen until it is swiped. Each tab loads
+# its data the first time it opens. The mentor's tab bar has a Notes tab too, under this
+# pushed page, so Notes is picked as the one above the Submissions tab's first row.
 - scrollUntilVisible:
     element: 'Seasons'
     direction: UP
@@ -47,14 +48,17 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s43-05-tab-attendance
 - tapOn: 'Submissions'
-# At font 1.3 on a short phone the row starts below the fold.
+# At font 1.3 on a short phone the row starts below the fold. The row's own label also
+# carries its season and status, hence the wildcard.
 - scrollUntilVisible:
-    element: 'Opening night reflection'
+    element: 'Opening night reflection.*'
     direction: DOWN
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s43-06-tab-submissions
+# Swiped from the middle tab: at font 1.3 'Submissions' sits against the right
+# edge, where a gesture-nav swipe is the system Back gesture and leaves the page.
 - swipe:
     from:
       text: 'Attendance'
@@ -65,29 +69,39 @@ appId: com.jpc.space
     direction: LEFT
 - tapOn:
     text: 'Notes'
-    above: 'Opening night reflection'
+    above: 'Opening night reflection.*'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s43-07-tab-notes
-# The note form: Add note is never tapped.
+# The note sheet. Its "Visible to" label is not on any tab or the page, so waiting on
+# it means the sheet is up. Add note is never tapped; back closes the sheet unsaved.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Reflections.*'
+      TARGET: 'Write a note'
+- extendedWaitUntil:
+    visible: 'Visible to'
+    timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
+- takeScreenshot: s43-08-note-sheet
+- tapOn: 'Reflections.*'
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s43-08-note-kbd
+- takeScreenshot: s43-09-note-kbd
 - inputText: 'Sweep note, never saved'
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s43-09-note-typed
-# Last item has to clear the floating tab bar and the system bar.
+- takeScreenshot: s43-10-note-typed
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s43-11-note-dismissed
+# Last item has to clear the system bar: this page has no floating tab bar.
 - scroll
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s43-10-note-form-bottom
+- takeScreenshot: s43-12-notes-bottom

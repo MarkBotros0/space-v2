@@ -24,6 +24,20 @@ appId: com.jpc.space
     element: 'Search students'
     direction: UP
     timeout: 20000
+# The filter sheet: looked at only, Done and its rows are never tapped.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Filter'
+- extendedWaitUntil:
+    visible: 'Filter students'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s42-02b-students-filter-sheet
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
 - tapOn: 'Search students'
 - waitForAnimationToEnd:
     timeout: 5000
@@ -41,7 +55,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s42-05-students-search-empty
-# A mentor reaches Alumni from the Students header (no nav entry).
+# A mentor reaches Alumni from the row at the top of Students (no nav entry).
 - openLink: spacev2://students/alumni
 - extendedWaitUntil:
     visible: '\d+ graduated students? from your seasons'
