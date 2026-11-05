@@ -23,8 +23,8 @@ function item(publicId: string, studentName: string | null, over: Record<string,
     seasonCode: "S26", studentUserId: 9, studentName, groupId: 3, groupName: "Group A", ...over,
   };
 }
-const page = (items: unknown[], pending: number, nextCursor: string | null = null) => ({
-  data: { data: { items, counts: { pending, total: 9, late: 0 }, nextCursor } },
+const page = (items: unknown[], pending: number, nextCursor: string | null = null, late = 0) => ({
+  data: { data: { items, counts: { pending, total: 9, late }, nextCursor } },
 });
 
 beforeEach(() => {
@@ -41,7 +41,7 @@ describe("staff pending queue (/submissions for ADMIN, SUPER, MENTOR)", () => {
 
     expect(await screen.findByText("Sara")).toBeTruthy();
     expect(screen.getByText("Omar")).toBeTruthy();
-    expect(screen.getByText("2 waiting for review")).toBeTruthy();
+    expect(screen.getByText("2 waiting for review · 9 total")).toBeTruthy();
     expect(screen.getAllByText("Essay one · Group A")).toHaveLength(2);
     expect(screen.getAllByText("Submitted")).toHaveLength(2);
     expect(screen.getAllByText("Late")).toHaveLength(1);
@@ -49,6 +49,12 @@ describe("staff pending queue (/submissions for ADMIN, SUPER, MENTOR)", () => {
 
     fireEvent.press(screen.getByText("Sara"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "aaa1111111" } });
+  });
+
+  it("adds the late count to the header only when there are late submissions", async () => {
+    get.mockResolvedValue(page([item("aaa1111111", "Sara", { isLate: true })], 1, null, 4));
+    renderWithProviders(<SubmissionsScreen />);
+    expect(await screen.findByText("1 waiting for review · 9 total · 4 late")).toBeTruthy();
   });
 
   it("passes a valid seasonId into the request and ignores a non-numeric one", async () => {

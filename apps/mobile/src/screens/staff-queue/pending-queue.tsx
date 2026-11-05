@@ -67,7 +67,11 @@ export function StaffPendingQueue({ seasonId }: { seasonId: number | undefined }
   return (
     <Screen
       title="Submissions"
-      subtitle={counts ? `${counts.pending} waiting for review` : undefined}
+      subtitle={
+        counts
+          ? joinMeta([`${counts.pending} waiting for review`, `${counts.total} total`, counts.late > 0 && `${counts.late} late`])
+          : undefined
+      }
       refreshing={q.isRefetching}
       onRefresh={refetch}
     >
