@@ -7,23 +7,44 @@ import { ForumThread } from "../../components/ForumThread";
 import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { RichTextView, StatusChip, dueChip, statusChip } from "../../design/ui";
+import { RichTextView, StatusChip, Text, dueChip, statusChip, type ChipSpec } from "../../design/ui";
 import { useStudentDashboard } from "../../hooks/use-dashboard";
 import { deviceTodayKey } from "../../lib/calendar-grid";
+import { formatOrgDue } from "../../lib/format";
 import { storedTextToHtml } from "../../lib/stored-text";
 import { useSubmissionEditor } from "./submission-editor";
+
+/**
+ * `isOverdue` only compares the due instant with now, whatever was handed in,
+ * so it says nothing once work is in the leader's hands: the date stays, plainly.
+ * RETURNED agrees with its Work row, where "Returned" stands in for "Overdue"; the
+ * deadline still applies to it, and DueBanner says so.
+ */
+function dateChip(detail: AssignmentDetail, todayOrgDay: string): ChipSpec {
+  const status = detail.mySubmission?.status;
+  if (detail.dueOrgDay !== null && (status === "SUBMITTED" || status === "REVIEWED" || status === "RETURNED")) {
+    return { tone: "neutral", label: `Due ${formatOrgDue(detail.dueOrgDay, null)}` };
+  }
+  return dueChip({ isOverdue: detail.isOverdue, dueOrgDay: detail.dueOrgDay, todayOrgDay });
+}
 
 function ChipRow({ detail, todayOrgDay }: { detail: AssignmentDetail; todayOrgDay: string }) {
   const forum = detail.type === "FORUM";
   const sub = detail.mySubmission;
-  const due = dueChip({ isOverdue: detail.isOverdue, dueOrgDay: detail.dueOrgDay, todayOrgDay });
   return (
-    <View className="flex-row flex-wrap gap-1.5">
-      {forum ? <StatusChip tone="info" label="Forum" /> : null}
-      {/* The forum keeps v2's due chip (spec 14 D10) and shows none without a date. */}
-      {!forum || detail.dueOrgDay !== null ? <StatusChip {...due} /> : null}
-      {sub ? <StatusChip {...statusChip("submission", sub.status)} /> : null}
-      {sub?.isLate ? <StatusChip tone="warn" label="Late" /> : null}
+    <View className="gap-1.5">
+      <View className="flex-row flex-wrap gap-1.5">
+        {forum ? <StatusChip tone="info" label="Forum" /> : null}
+        {/* The forum keeps v2's due chip (spec 14 D10) and shows none without a date. */}
+        {!forum || detail.dueOrgDay !== null ? <StatusChip {...dateChip(detail, todayOrgDay)} /> : null}
+        {sub ? <StatusChip {...statusChip("submission", sub.status)} /> : null}
+        {sub?.isLate ? <StatusChip tone="warn" label="Late" /> : null}
+      </View>
+      {detail.dueOrgDay !== null ? (
+        <Text variant="subhead" className="text-muted-foreground">
+          {`Due ${formatOrgDue(detail.dueOrgDay, detail.dueOrgTime)}`}
+        </Text>
+      ) : null}
     </View>
   );
 }

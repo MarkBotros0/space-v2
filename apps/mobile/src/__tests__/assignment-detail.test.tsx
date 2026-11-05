@@ -131,4 +131,110 @@ describe("AssignmentDetailScreen", () => {
     expect(await screen.findByText("Late")).toBeTruthy();
     expect(screen.getByText("Submitted")).toBeTruthy();
   });
+
+  describe("the deadline once work is handed in", () => {
+    const serveStatus = (
+      status: "SUBMITTED" | "REVIEWED" | "RETURNED" | "DRAFT",
+      over: Record<string, unknown> = {},
+    ) => {
+      const assignment = {
+        ...detail,
+        isOverdue: true,
+        ...over,
+        mySubmission: {
+          publicId: "abc123defg", status, submittedAt: "2099-03-30T10:00:00.000Z",
+          reviewedAt: null, feedback: null, isLate: false,
+        },
+      };
+      get.mockImplementation((url: string) =>
+        Promise.resolve({
+          data: {
+            data:
+              url === "/api/v1/assignments/41"
+                ? assignment
+                : { ...submissionFor("SUBMITTED", false, null), status },
+          },
+        }),
+      );
+    };
+
+    it.each(["SUBMITTED", "REVIEWED"] as const)(
+      "%s on time, past the date: a plain date, no Overdue and no Past due",
+      async (status) => {
+        serveStatus(status);
+        renderStacked(<AssignmentDetailScreen />);
+        expect(await screen.findByText("the work")).toBeTruthy();
+        expect(screen.queryByText("Overdue")).toBeNull();
+        expect(screen.queryByText(/Past due/)).toBeNull();
+        expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
+        expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+      },
+    );
+
+    it("SUBMITTED before the date has no countdown left to show", async () => {
+      serveStatus("SUBMITTED", { isOverdue: false });
+      renderStacked(<AssignmentDetailScreen />);
+      expect(await screen.findByText("the work")).toBeTruthy();
+      expect(screen.queryByText(/Due in/)).toBeNull();
+      expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+    });
+
+    it("RETURNED agrees with its Work row: Returned, not Overdue, and the deadline still counts", async () => {
+      serveStatus("RETURNED");
+      renderStacked(<AssignmentDetailScreen />);
+      expect(await screen.findByLabelText("Your response")).toBeTruthy();
+      expect(screen.getByText("Returned")).toBeTruthy();
+      expect(screen.queryByText("Overdue")).toBeNull();
+      expect(screen.getByText(/Past due/)).toBeTruthy();
+      expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+    });
+
+    it("a draft keeps Overdue and the banner, with the date", async () => {
+      serveStatus("DRAFT");
+      renderStacked(<AssignmentDetailScreen />);
+      expect(await screen.findByLabelText("Your response")).toBeTruthy();
+      expect(screen.getByText("Overdue")).toBeTruthy();
+      expect(screen.getByText(/Past due/)).toBeTruthy();
+      expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+    });
+
+    it("no submission yet shows the date too", async () => {
+      get.mockResolvedValue({ data: { data: detail } });
+      renderStacked(<AssignmentDetailScreen />);
+      expect(await screen.findByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+    });
+
+    it("no due date names none", async () => {
+      get.mockResolvedValue({
+        data: { data: { ...detail, dueAt: null, dueOrgDay: null, dueOrgTime: null } },
+      });
+      renderStacked(<AssignmentDetailScreen />);
+      expect(await screen.findByText("No due date")).toBeTruthy();
+      expect(screen.queryByText(/^Due /)).toBeNull();
+    });
+
+    it("a forum post handed in uses the same chip row", async () => {
+      get.mockImplementation((url: string) => {
+        if (url === "/api/v1/assignments/41") {
+          return Promise.resolve({
+            data: {
+              data: {
+                ...detail, type: "FORUM", isOverdue: true,
+                mySubmission: {
+                  publicId: "abc123defg", status: "SUBMITTED", submittedAt: "2099-03-30T10:00:00.000Z",
+                  reviewedAt: null, feedback: null, isLate: false,
+                },
+              },
+            },
+          });
+        }
+        return Promise.reject(new Error(`not served: ${url}`));
+      });
+      renderStacked(<AssignmentDetailScreen />);
+      expect(await screen.findByText("Submitted")).toBeTruthy();
+      expect(screen.queryByText("Overdue")).toBeNull();
+      expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
+      expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+    });
+  });
 });

@@ -46,9 +46,13 @@ function Callout({ tone, children }: { tone: Tone; children: string }) {
   );
 }
 
-/** v1 student-submission-form.tsx dueBanner; hidden once reviewed. The overdue flag is the server's. */
+/**
+ * v1 student-submission-form.tsx dueBanner; hidden once the work is in the
+ * leader's hands, when there is nothing left to be late with. Returned work is
+ * editable again, so it keeps it. The overdue flag is the server's.
+ */
 function DueBanner({ detail, status }: { detail: AssignmentDetail; status: string | null }) {
-  if (detail.dueAt === null || status === "REVIEWED") return null;
+  if (detail.dueAt === null || status === "REVIEWED" || status === "SUBMITTED") return null;
   if (detail.isOverdue) {
     return <Callout tone="bad">Past due — submitted work will be marked late.</Callout>;
   }
