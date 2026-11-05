@@ -186,8 +186,10 @@ describe("events screen", () => {
       data: { data: { events: [{ ...listRow, time: "18:30", endDayKey: null }], total: 1, nextCursor: null } },
     });
     renderWithProviders(<EventsScreen />);
-    const when = await screen.findByText("Jul 1, 2099 · 6:30 PM");
+    const when = await screen.findByText("Jul 1, 2099 · 6:30\u00a0PM");
     expect(when.props.numberOfLines === undefined || when.props.numberOfLines >= 2).toBe(true);
+    // The time stays whole when the line wraps (corner sweep 11).
+    expect(when.props.children).toBe("Jul 1, 2099 · 6:30\u00a0PM");
   });
 
   it("shows Past from the server flag alone, and Past wins over the audience chip", async () => {

@@ -22,7 +22,8 @@ export function EventListRow({ event, index }: { event: JpcEventListItem; index?
       index={index}
       title={event.title}
       titleLines={3}
-      subtitle={formatEventWhen(event)}
+      // A non-breaking space keeps "8:00 PM" from wrapping between the time and AM/PM.
+      subtitle={formatEventWhen(event).replace(/ (AM|PM)$/, "\u00a0$1")}
       subtitleLines={3}
       trailing={chip ? <StatusChip {...chip} /> : undefined}
       chevron
