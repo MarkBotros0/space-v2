@@ -11,8 +11,8 @@ import { makeSession } from "./helpers/session";
 
 const get = apiClient.get as jest.Mock;
 
+let client: QueryClient;
 function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
@@ -59,6 +59,7 @@ const urls = () => get.mock.calls.map((c) => c[0] as string);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   sessionsFail = [];
   get.mockImplementation(route);
   useSessionStore.setState(useSessionStore.getInitialState(), true);
