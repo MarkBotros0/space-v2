@@ -6,7 +6,8 @@ import { SPRING, useReducedMotion } from "../motion";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
-type Option = { value: string; label: string };
+/** `accessibilityLabel` overrides the spoken name when the visible label is shortened to fit. */
+type Option = { value: string; label: string; accessibilityLabel?: string };
 const PAD = 2;
 
 /**
@@ -54,7 +55,7 @@ function SegmentedControl({
           <Pressable
             key={o.value}
             accessibilityRole="tab"
-            accessibilityLabel={o.label}
+            accessibilityLabel={o.accessibilityLabel ?? o.label}
             accessibilityState={{ selected }}
             onPress={() => onChange(o.value)}
             className="min-h-[44px] flex-1 items-center justify-center px-2"

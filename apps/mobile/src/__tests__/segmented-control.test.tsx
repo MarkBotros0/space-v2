@@ -26,6 +26,18 @@ describe("SegmentedControl", () => {
     expect(onChange).toHaveBeenCalledWith("b");
   });
 
+  it("shows the short label but speaks the option's accessibilityLabel", () => {
+    render(
+      <SegmentedControl
+        options={[{ value: "a", label: "Admins", accessibilityLabel: "Admins only" }, { value: "b", label: "Past" }]}
+        value="a"
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.getByRole("tab", { name: "Admins only" })).toBeTruthy();
+    expect(screen.getByText("Admins")).toBeTruthy();
+  });
+
   it("marks only the selected option as selected", () => {
     render(<SegmentedControl options={OPTIONS} value="b" onChange={() => {}} />);
     expect(screen.getByRole("tab", { name: "Past" }).props.accessibilityState.selected).toBe(true);

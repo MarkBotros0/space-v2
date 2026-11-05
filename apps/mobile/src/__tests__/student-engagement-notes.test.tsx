@@ -206,7 +206,7 @@ describe("student detail — notes", () => {
     fireEvent.press(await screen.findByText("Write a note"));
     const input = await screen.findByLabelText("Note");
     fireEvent.changeText(input, "space-v2-test new observation");
-    fireEvent.press(await screen.findByText("Admins only"));
+    fireEvent.press(await screen.findByText("Admins"));
     fireEvent.press(screen.getByText("Add note"));
 
     await waitFor(() =>

@@ -19,10 +19,10 @@ import { Text } from "../ui/text";
 import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toaster";
 
-const VISIBILITY_OPTIONS: { value: NoteVisibility; label: string }[] = [
+const VISIBILITY_OPTIONS: { value: NoteVisibility; label: string; accessibilityLabel?: string }[] = [
   { value: "LEADERS", label: "Leaders" },
   { value: "MENTORS", label: "Mentors" },
-  { value: "ADMINS", label: "Admins only" },
+  { value: "ADMINS", label: "Admins", accessibilityLabel: "Admins only" },
 ];
 const NOTE_BODY_MIN = 2;
 
