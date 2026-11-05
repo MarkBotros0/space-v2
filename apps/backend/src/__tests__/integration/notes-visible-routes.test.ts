@@ -67,8 +67,9 @@ describe("GET /api/v1/me/visible-notes", () => {
       createdAt: string;
       student: { id: number };
     }[];
-    expect(notes.length).toBeGreaterThan(0);
-    for (const n of notes) expect(n.student.id).toBe(f.studentUserId);
+    // The feed spans every student the mentor can read, so a shared database may hold other rows.
+    expect(notes.find((n) => n.id === f.mentorsNoteId)?.student.id).toBe(f.studentUserId);
+    for (const n of notes) expect(typeof n.student.id).toBe("number");
     const times = notes.map((n) => Date.parse(n.createdAt));
     expect(times).toEqual([...times].sort((a, b) => b - a));
   });
