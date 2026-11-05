@@ -50,6 +50,13 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s24-06-alumni-bottom
 - openLink: spacev2://students
+# The Students tab keeps its scroll position (the three scrolls above), so the
+# count under the title is off screen on the small phone: scroll back up to it.
+- scrollUntilVisible:
+    element: '\d+ students? in your seasons'
+    direction: UP
+    timeout: 15000
+    optional: true
 - extendedWaitUntil:
     visible: '\d+ students? in your seasons'
     timeout: 40000
