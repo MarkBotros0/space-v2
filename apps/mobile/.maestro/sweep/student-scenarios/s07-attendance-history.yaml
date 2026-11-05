@@ -8,7 +8,7 @@ appId: com.jpc.space
       EMAIL: ${STUDENT_EMAIL}
 - openLink: spacev2://attendance
 - extendedWaitUntil:
-    visible: 'Absence budget'
+    visible: 'Budget used'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

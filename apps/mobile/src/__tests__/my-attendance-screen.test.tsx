@@ -42,25 +42,36 @@ describe("AttendanceScreen", () => {
       </TabBarPresenceContext.Provider>,
     );
 
-    expect(await screen.findByLabelText("Absence budget 58% used")).toBeTruthy();
-    expect(screen.getByText("58%")).toBeTruthy();
-    expect(screen.getByText("used")).toBeTruthy();
+    expect(await screen.findByLabelText("Budget used: 58%")).toBeTruthy();
+    expect(screen.getByLabelText("Minutes used: 105/180")).toBeTruthy();
+    expect(screen.getByText("Attendance")).toBeTruthy();
     // One back link: the frame's pinned bar (R23), not the old in-content "← Dashboard".
     expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1);
     expect(screen.queryByText("← Dashboard")).toBeNull();
     expect(get).toHaveBeenCalledWith("/api/v1/me/attendance");
-    expect(screen.getByText("105 of 180 min")).toBeTruthy();
     expect(screen.getByText("Absent = 90 min · Late = actual minutes late")).toBeTruthy(); // R96
     expect(screen.queryByText(/^Streak/)).toBeNull(); // v1 shows the streak on the dashboard only
-    expect(screen.getByText("12 min late")).toBeTruthy();
-    expect(screen.getByText("−12 min from budget")).toBeTruthy();
-    expect(screen.getByText("−90 min from budget")).toBeTruthy(); // R95, from costMinutes
-    expect(screen.getByText("Late")).toBeTruthy();
-    expect(screen.getByText("Absent")).toBeTruthy();
-    expect(screen.getByText("No record")).toBeTruthy();
+    expect(screen.getByText(/12 min late/)).toBeTruthy();
+    expect(screen.getByText(/−12 min from budget/)).toBeTruthy();
+    expect(screen.getByText(/−90 min from budget/)).toBeTruthy(); // R95, from costMinutes
+    // Each row's status is a chip word, spoken as such.
+    expect(screen.getByLabelText("Late")).toBeTruthy();
+    expect(screen.getByLabelText("Absent")).toBeTruthy();
+    expect(screen.getByLabelText("No record")).toBeTruthy();
+    expect(screen.queryByLabelText("Present")).toBeNull();
     expect(screen.getByText(/Mar 8, 2099/)).toBeTruthy(); // from dayKey (X13)
     // Time is the org-clock startTime, not startsAt read in the device zone: 18:00Z fixture, 20:00 org.
-    expect(screen.getAllByText(/ · 8:00 PM$/)).toHaveLength(3);
+    expect(screen.getAllByText(/ · 8:00 PM/)).toHaveLength(3);
+  });
+
+  it("says Present for an attended session", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
+    const present = { ...payload.sessions[2]!, status: "PRESENT" as const };
+    get.mockResolvedValue({ data: { data: { ...payload, sessions: [present] } } });
+
+    renderWithProviders(<AttendanceScreen />);
+
+    expect(await screen.findByLabelText("Present")).toBeTruthy();
   });
 
   it("shows the empty state when no session has happened yet", async () => {
