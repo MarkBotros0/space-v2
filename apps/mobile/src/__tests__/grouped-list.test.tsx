@@ -1,3 +1,4 @@
+import { Text } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { GroupedList, ListRow, ListSectionHeader } from "../design/ui/grouped-list";
@@ -76,6 +77,15 @@ describe("GroupedList / ListRow", () => {
     render(<ListRow title="Warm me" onPress={() => {}} onPressIn={onPressIn} />);
     fireEvent(screen.getByRole("button", { name: /Warm me/ }), "pressIn");
     expect(onPressIn).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders leading before the title and nothing extra without it", () => {
+    render(<ListRow title="With" leading={<Text>LEAD</Text>} />);
+    expect(screen.getByText("LEAD")).toBeTruthy();
+    const plain = render(<ListRow title="Without" />);
+    expect(screen.queryByText("LEAD")).toBeNull();
+    // Without leading the row is title column + nothing: no shrink-0 wrapper.
+    expect(JSON.stringify(plain.toJSON())).not.toContain("shrink-0");
   });
 
   it("section header renders uppercase label", () => {

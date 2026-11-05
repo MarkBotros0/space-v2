@@ -8,7 +8,7 @@
  * sheet's `SheetSaveBar`.
  */
 import { useContext } from "react";
-import { View } from "react-native";
+import { type LayoutChangeEvent, View } from "react-native";
 
 import { useKeyboardBottomOffset } from "../lib/keyboard-offset";
 import { Button } from "../ui/button";
@@ -24,9 +24,11 @@ type SaveBarProps = {
   disabled?: boolean;
   /** A second, quieter action beside the primary (Save draft beside Submit). */
   secondary?: { label: string; onPress: () => void; disabled?: boolean };
+  /** `SaveBar` only: reports the bar's height, so the screen can leave room under its content. */
+  onLayout?: (e: LayoutChangeEvent) => void;
 };
 
-function SaveBarBody({ label, onPress, loading, hint, disabled, secondary }: SaveBarProps) {
+function SaveBarBody({ label, onPress, loading, hint, disabled, secondary }: Omit<SaveBarProps, "onLayout">) {
   return (
     <View className="gap-2 border-t border-separator bg-surface px-4 pt-3">
       {hint ? (
@@ -46,7 +48,7 @@ function SaveBarBody({ label, onPress, loading, hint, disabled, secondary }: Sav
   );
 }
 
-function SaveBar(props: SaveBarProps) {
+function SaveBar({ onLayout, ...props }: SaveBarProps) {
   const inFooter = useContext(ScreenFooterContext);
   const offset = useKeyboardBottomOffset(useShellBottomPadding());
   if (inFooter) {
@@ -57,7 +59,7 @@ function SaveBar(props: SaveBarProps) {
     );
   }
   return (
-    <View testID="save-bar" style={{ position: "absolute", left: 0, right: 0, bottom: offset }}>
+    <View testID="save-bar" onLayout={onLayout} style={{ position: "absolute", left: 0, right: 0, bottom: offset }}>
       <SaveBarBody {...props} />
     </View>
   );

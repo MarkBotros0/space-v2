@@ -4,6 +4,7 @@ export * from "./badge";
 export * from "./button";
 export * from "./card";
 export * from "./checkbox";
+export * from "./choice-chip";
 export * from "./combobox";
 export * from "./confirm-dialog";
 export * from "./data-table";

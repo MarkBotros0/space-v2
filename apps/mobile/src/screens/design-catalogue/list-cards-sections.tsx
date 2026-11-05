@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { View } from "react-native";
 
+import { Avatar, AvatarFallback } from "../../design/ui/avatar";
 import { Button } from "../../design/ui/button";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { ChoiceChip } from "../../design/ui/choice-chip";
 import { HeroCard } from "../../design/ui/hero-card";
 import { SearchField } from "../../design/ui/search-field";
 import { SegmentedControl } from "../../design/ui/segmented-control";
@@ -22,6 +24,7 @@ export function ListSection() {
         <ListRow title="With subtitle" subtitle="Tuesday, 6:30 PM" />
         <ListRow title={LONG_TITLE} subtitle="A long title next to a trailing value and a chevron" trailing={<Text variant="body" tabular>12 / 20</Text>} chevron onPress={() => {}} />
         <ListRow title="With chip" subtitle="Group A" trailing={<StatusChip tone="ok" label="Present" />} chevron onPress={() => {}} />
+        <ListRow title="With leading" subtitle="Cairo University · 3" leading={<Avatar size="sm"><AvatarFallback>SA</AvatarFallback></Avatar>} chevron onPress={() => {}} />
         <ListRow title="Chevron only" chevron onPress={() => {}} />
         <ListRow title="Trailing value" trailing={<Text variant="body" tabular>92%</Text>} />
         <ListRow title={LONG_TITLE} titleLines={2} subtitle="Two title lines, three subtitle lines" subtitleLines={3} trailing={<StatusChip tone="warn" label="Due soon" />} />
@@ -65,6 +68,7 @@ export function ControlsSection() {
   const [two, setTwo] = useState("a");
   const [four, setFour] = useState("w");
   const [query, setQuery] = useState("");
+  const [chip, setChip] = useState("Student");
   return (
     <CatalogueSection id="controls" title="Segmented control and search">
       <SegmentedControl
@@ -83,6 +87,11 @@ export function ControlsSection() {
         onChange={setFour}
       />
       <SearchField value={query} onChangeText={setQuery} placeholder="Search students" />
+      <View testID="catalogue-choice-chips" className="flex-row flex-wrap gap-2">
+        {["Student", "Mentor", "Group leader"].map((label) => (
+          <ChoiceChip key={label} label={label} selected={chip === label} onPress={() => setChip(label)} />
+        ))}
+      </View>
     </CatalogueSection>
   );
 }
