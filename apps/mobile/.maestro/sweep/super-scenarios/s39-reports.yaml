@@ -1,4 +1,4 @@
-# UI sweep s39 — Reports as a super admin, all seasons and one. Read-only: nothing is saved, the flow only
+# UI sweep s39 — Reports (title row Export, tiles, grouped rows) as a super admin, all seasons and one. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
 ---
@@ -12,6 +12,9 @@ appId: com.jpc.space
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
+- extendedWaitUntil:
+    visible: 'Students at risk.*|No data in this scope'
+    timeout: 40000
 - takeScreenshot: s39-01-reports
 - scroll
 - waitForAnimationToEnd:

@@ -76,7 +76,8 @@ describe("ReportsScreen — role branches", () => {
     // them exactly that data (R45).
     expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText("Student accounts")).toBeTruthy();
-    expect(screen.getByText("40")).toBeTruthy();
+    // Tiles count up to their figure; the number is on screen once they settle.
+    expect((await screen.findAllByText("40")).length).toBeGreaterThan(0);
   });
 });
 
@@ -91,7 +92,8 @@ describe("ReportsScreen — SUPER's organisation roll-up (v1 super/reports)", ()
     expect(screen.getByText("Active seasons")).toBeTruthy();
     expect(screen.getByText("2098: 12")).toBeTruthy();
     expect(screen.getAllByText("20 active").length).toBeGreaterThan(0);
-    fireEvent.press(screen.getByLabelText("Open Spring 2099"));
+    // The season is a grouped row: its label is the title, then the counts it carries.
+    fireEvent.press(screen.getByLabelText(/^Spring 2099, 2 leaders/));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/seasons/[code]",
       params: { code: "spring-2099" },

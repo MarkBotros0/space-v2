@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { ExportMenu } from "../../../src/components/ExportMenu";
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { Screen } from "../../../src/design/layout/screen";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { EmptyState, Text } from "../../../src/design/ui";
 import { useEngagementReport, useEngagementStudents } from "../../../src/hooks/use-reports";
@@ -20,6 +21,8 @@ function StaffReports() {
   // refuses them explicitly. The screen does not ask.
   const canView = role === "SUPER" || role === "ADMIN" || role === "MENTOR";
   const isSuper = role === "SUPER";
+  // Admin and super are on Screen; the mentor's frame is plan 05's.
+  const staff = role === "SUPER" || role === "ADMIN";
 
   const [seasonId, setSeasonId] = useState<number | null>(null);
   const [showAllAtRisk, setShowAllAtRisk] = useState(false);
@@ -57,6 +60,76 @@ function StaffReports() {
   const atRiskRows =
     showAllAtRisk && extraRows.length > 0 ? extraRows : (summary.data?.atRisk ?? []);
 
+  const body = summary.isPending ? (
+    <RouteSkeleton />
+  ) : summary.isError ? (
+    <RouteError onRetry={() => void summary.refetch()} />
+  ) : (
+    <>
+      {isSuper ? <OrganisationSection /> : null}
+
+      <SeasonPicker seasons={permitted} selected={seasonId} onSelect={setSeasonId} chips={staff} />
+
+      {summary.data.scope.truncated ? (
+        <Text className="text-xs text-warning-700 dark:text-warning-300">
+          Some seasons you asked for aren&apos;t in your scope.
+        </Text>
+      ) : null}
+
+      {/* Admin and super get the Export button in the title row; the mentor's
+          frame (plan 05) keeps the inline buttons. */}
+      {staff ? null : (
+        <ExportMenu
+          seasonId={seasonId}
+          scopeLabel={summary.data.scope.label}
+          canExportWorkbook={false}
+          exportDay={summary.data.exportDay}
+        />
+      )}
+
+      {summary.data.enrollmentCount === 0 && summary.data.attendanceTrend.length === 0 ? (
+        <EmptyState
+          title="No data in this scope"
+          description="Pick a season with activity, or wait until the first session has run."
+        />
+      ) : (
+        <EngagementCards
+          summary={summary.data}
+          atRiskRows={atRiskRows}
+          grouped={staff}
+          onShowMore={() => {
+            setShowAllAtRisk(true);
+            if (more.hasNextPage) void more.fetchNextPage();
+          }}
+        />
+      )}
+    </>
+  );
+
+  if (staff) {
+    return (
+      <Screen
+        title="Reports"
+        subtitle={summary.data ? `Scoped to ${summary.data.scope.label}.` : undefined}
+        trailing={
+          summary.data ? (
+            <ExportMenu
+              sheet
+              seasonId={seasonId}
+              scopeLabel={summary.data.scope.label}
+              canExportWorkbook={seasonId !== null}
+              exportDay={summary.data.exportDay}
+            />
+          ) : undefined
+        }
+        onRefresh={handleRefresh}
+        refreshing={summary.isRefetching}
+      >
+        <View className="flex-col gap-4">{body}</View>
+      </Screen>
+    );
+  }
+
   return (
     <ShellFrame onRefresh={handleRefresh} refreshing={summary.isRefetching}>
       <View className="flex-col gap-4">
@@ -64,47 +137,7 @@ function StaffReports() {
           title="Reports"
           subtitle={summary.data ? `Scoped to ${summary.data.scope.label}.` : undefined}
         />
-
-        {summary.isPending ? (
-          <RouteSkeleton />
-        ) : summary.isError ? (
-          <RouteError onRetry={() => void summary.refetch()} />
-        ) : (
-          <>
-            {isSuper ? <OrganisationSection /> : null}
-
-            <SeasonPicker seasons={permitted} selected={seasonId} onSelect={setSeasonId} />
-
-            {summary.data.scope.truncated ? (
-              <Text className="text-xs text-warning-700 dark:text-warning-300">
-                Some seasons you asked for aren&apos;t in your scope.
-              </Text>
-            ) : null}
-
-            <ExportMenu
-              seasonId={seasonId}
-              scopeLabel={summary.data.scope.label}
-              canExportWorkbook={seasonId !== null && (role === "SUPER" || role === "ADMIN")}
-              exportDay={summary.data.exportDay}
-            />
-
-            {summary.data.enrollmentCount === 0 && summary.data.attendanceTrend.length === 0 ? (
-              <EmptyState
-                title="No data in this scope"
-                description="Pick a season with activity, or wait until the first session has run."
-              />
-            ) : (
-              <EngagementCards
-                summary={summary.data}
-                atRiskRows={atRiskRows}
-                onShowMore={() => {
-                  setShowAllAtRisk(true);
-                  if (more.hasNextPage) void more.fetchNextPage();
-                }}
-              />
-            )}
-          </>
-        )}
+        {body}
       </View>
     </ShellFrame>
   );

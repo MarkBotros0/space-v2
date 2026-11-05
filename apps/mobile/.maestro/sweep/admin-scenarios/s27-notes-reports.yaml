@@ -27,6 +27,9 @@ appId: com.jpc.space
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
+- extendedWaitUntil:
+    visible: 'Students at risk.*|No data in this scope'
+    timeout: 40000
 - takeScreenshot: s27-03-reports
 - scroll
 - waitForAnimationToEnd:
