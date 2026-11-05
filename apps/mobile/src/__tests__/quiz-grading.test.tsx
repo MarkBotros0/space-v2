@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -113,6 +113,42 @@ describe("grading screen — PAPER", () => {
     );
     expect(post).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Saved."));
+  });
+
+  it("Save on a row nobody typed in closes without a request, graded or not (M1)", async () => {
+    renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+
+    openRow("Test student");
+    fireEvent.press(await screen.findByText("Save"));
+    await act(async () => {});
+
+    openRow("Second student");
+    expect((await screen.findByLabelText("Score for Second student")).props.value).toBe("18");
+    fireEvent.press(screen.getByText("Save"));
+    await act(async () => {});
+    expect(post).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("a row typed back to what the server has sends nothing either (M1)", async () => {
+    renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+    openRow("Second student");
+    const field = await screen.findByLabelText("Score for Second student");
+    fireEvent.changeText(field, "17");
+    fireEvent.changeText(field, "18");
+    fireEvent.press(screen.getByText("Save"));
+    await act(async () => {});
+    expect(post).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("speaks the score as 'N of max' and 'Not graded' on the rows (M2)", async () => {
+    renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+    expect(screen.getByLabelText(/^Second student, Good\., 18 of 20$/)).toBeTruthy();
+    expect(screen.getByLabelText(/^Test student, Not graded$/)).toBeTruthy();
   });
 
   it("sends the typed notes with the score", async () => {

@@ -55,7 +55,15 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
   const onSave = () => {
     if (!row) return;
     setError(null);
-    const d = draftOf(row);
+    // Nothing typed (absent, or equal to what the server sent): close without
+    // a request, or the seed would restamp a co-leader's mark as this caller's.
+    const typed = drafts[row.studentUserId];
+    const seed = seedDraft(row);
+    if (!typed || (typed.score === seed.score && typed.notes === seed.notes)) {
+      setOpen(false);
+      return;
+    }
+    const d = typed;
     // An emptied field is an explicit clear. Anything above max is NOT
     // clamped here: the server is the bound (D7).
     const score = d.score.trim() === "" ? null : parseMark(d.score);
@@ -83,7 +91,12 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
   };
 
   return (
-    <Screen title={detail.title} subtitle={subtitle}>
+    <Screen
+      title={detail.title}
+      subtitle={subtitle}
+      refreshing={sheetQuery.isRefetching}
+      onRefresh={() => void sheetQuery.refetch()}
+    >
       {sheetQuery.isPending ? (
         <RouteSkeleton />
       ) : sheetQuery.isError || !sheet ? (
@@ -102,7 +115,7 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
                   {r.score == null ? "—" : unbreakable(`${r.score} / ${sheet.maxScore}`)}
                 </Text>
               }
-              trailingLabel={r.score == null ? "Not graded" : undefined}
+              trailingLabel={r.score == null ? "Not graded" : `${r.score} of ${sheet.maxScore}`}
               chevron
               onPress={() => {
                 setError(null);
@@ -226,7 +239,12 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
   }
 
   return (
-    <Screen title={detail.title} subtitle={`Max score: ${detail.maxScore}`}>
+    <Screen
+      title={detail.title}
+      subtitle={`Max score: ${detail.maxScore}`}
+      refreshing={attempts.isRefetching && !attempts.isFetchingNextPage}
+      onRefresh={() => void attempts.refetch()}
+    >
       {body}
       {sheet}
     </Screen>
