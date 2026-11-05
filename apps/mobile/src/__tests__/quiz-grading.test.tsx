@@ -3,12 +3,14 @@ import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
 }));
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41" }),
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
@@ -70,6 +72,9 @@ beforeEach(() => {
   useSessionStore.setState(leaderSession);
 });
 
+const openRow = (name: string) => fireEvent.press(screen.getByLabelText(new RegExp(`^${name}`)));
+const dismiss = () => fireEvent.press(screen.getByTestId("sheet-backdrop"));
+
 describe("grading screen — PAPER", () => {
   beforeEach(() => {
     get.mockImplementation((url: string) =>
@@ -79,28 +84,35 @@ describe("grading screen — PAPER", () => {
     );
   });
 
-  it("renders the grid with existing marks and saves only edited rows", async () => {
-    post.mockResolvedValue({ data: { data: gradeSheet } });
-
+  it("lists students as rows with their mark, and the graded count in the subtitle", async () => {
     renderStacked(<QuizGradeScreen />);
 
     expect(await screen.findByText("Test student")).toBeTruthy();
-    expect(screen.getByDisplayValue("18")).toBeTruthy();
-    expect(screen.getByText("1 / 2 graded")).toBeTruthy();
-    expect(screen.getByText("Week 1 · Max score: 20")).toBeTruthy();
+    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.getByText("18 / 20")).toBeTruthy();
+    expect(screen.getByText("Good.")).toBeTruthy();
+    expect(screen.getByText("Week 1 · Max score: 20 · 1 / 2 graded")).toBeTruthy();
+    expect(screen.queryByLabelText("Score for Test student")).toBeNull();
+  });
 
-    fireEvent.changeText(screen.getByLabelText("Score for Test student"), "15");
-    fireEvent.press(screen.getByText("Save grades"));
+  it("opens a sheet from a row and saves exactly that student's entry", async () => {
+    post.mockResolvedValue({ data: { data: gradeSheet } });
+    renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+
+    openRow("Test student");
+    fireEvent.changeText(await screen.findByLabelText("Score for Test student"), "15");
+    fireEvent.press(screen.getByText("Save"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/grades", {
-        // Only the touched row. Sending every row would restamp gradedBy and
-        // gradedAt on marks this caller never made — the same reasoning as the
-        // attendance screen's untouched-row rule.
+        // One entry: the open row. The other student's mark is never re-sent,
+        // which would restamp gradedBy and gradedAt on marks this caller never made.
         entries: [{ studentUserId: 9, score: 15, notes: null }],
       }),
     );
-    expect(await screen.findByText("Saved")).toBeTruthy();
+    expect(post).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Saved."));
   });
 
   it("has one back link, the frame's pinned bar; no in-content 'Back to session' (R23)", async () => {
@@ -117,17 +129,18 @@ describe("grading screen — PAPER", () => {
         : Promise.resolve({ data: { data: { ...gradeSheet, sessionTitle: null } } }),
     );
     renderStacked(<QuizGradeScreen />);
-    expect(await screen.findByText("Max score: 20")).toBeTruthy();
+    expect(await screen.findByText("Max score: 20 · 1 / 2 graded")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1);
   });
 
   it("clears a grade when the field is emptied", async () => {
     post.mockResolvedValue({ data: { data: gradeSheet } });
-
     renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Second student");
 
+    openRow("Second student");
     fireEvent.changeText(await screen.findByLabelText("Score for Second student"), "");
-    fireEvent.press(screen.getByText("Save grades"));
+    fireEvent.press(screen.getByText("Save"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/grades", {
@@ -136,7 +149,32 @@ describe("grading screen — PAPER", () => {
     );
   });
 
-  it("surfaces the server's over-max refusal instead of clamping locally", async () => {
+  it("refuses a non-whole score with a message and sends nothing", async () => {
+    renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+
+    openRow("Test student");
+    fireEvent.changeText(await screen.findByLabelText("Score for Test student"), "abc");
+    fireEvent.press(screen.getByText("Save"));
+
+    expect(await screen.findByText("Score for Test student must be a whole number.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("keeps a typed score when the sheet is dismissed and reopened", async () => {
+    renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+
+    openRow("Test student");
+    fireEvent.changeText(await screen.findByLabelText("Score for Test student"), "13");
+    dismiss();
+    openRow("Test student");
+
+    expect(await screen.findByDisplayValue("13")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the server's over-max refusal and keeps the typed score", async () => {
     // apiErrorMessage only trusts a real axios error (isAxiosError), so the
     // fixture carries that flag like the other screens' rejection fixtures.
     post.mockRejectedValue(
@@ -146,14 +184,17 @@ describe("grading screen — PAPER", () => {
           message: "This quiz is out of 20." } } },
       }),
     );
-
     renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+
+    openRow("Test student");
     fireEvent.changeText(await screen.findByLabelText("Score for Test student"), "25");
-    fireEvent.press(screen.getByText("Save grades"));
+    fireEvent.press(screen.getByText("Save"));
 
     // v1's only bound was Math.min in the form, so an above-max score was
     // silently rewritten on the way in and nobody ever saw the mistake.
     expect(await screen.findByText("This quiz is out of 20.")).toBeTruthy();
+    expect(screen.getByDisplayValue("25")).toBeTruthy();
   });
 });
 
@@ -175,17 +216,21 @@ describe("grading screen — ONLINE", () => {
     renderStacked(<QuizGradeScreen />);
 
     expect(await screen.findByText("Test student")).toBeTruthy();
-    expect(screen.getByText("Because of the river.")).toBeTruthy();
+    expect(screen.getByText("Attempt 1 · Awaiting grading · Mar 2, 2099")).toBeTruthy();
+    expect(screen.getByText("Submitted")).toBeTruthy();
+    expect(screen.queryByText("Because of the river.")).toBeNull();
+
+    openRow("Test student");
+    expect(await screen.findByText("Because of the river.")).toBeTruthy();
     // R103: the grader sees what was right. This is the audience the answer key
     // exists for — and the student contract has no field to carry it.
     // v1 names the right option only when the student missed it.
     expect(screen.getByText("Paris")).toBeTruthy();
     expect(screen.getByText("2/2")).toBeTruthy();
     expect(screen.queryByText(/correct:/)).toBeNull();
-    expect(screen.getByText("Attempt 1 · Awaiting grading")).toBeTruthy();
 
     fireEvent.changeText(screen.getByLabelText("Marks for Discuss."), "4");
-    fireEvent.press(screen.getByText("Save grade"));
+    fireEvent.press(screen.getByText("Save marks"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/900/grade", {
@@ -197,9 +242,13 @@ describe("grading screen — ONLINE", () => {
   it("shows students who have not finished rather than dropping them (R102, D5)", async () => {
     renderStacked(<QuizGradeScreen />);
 
-    expect(await screen.findByText("Waiting")).toBeTruthy();
+    expect(await screen.findByText("WAITING")).toBeTruthy();
     expect(screen.getByText("Second student")).toBeTruthy();
     expect(screen.getByText("Not started")).toBeTruthy();
+    // Waiting rows are not pressable: nothing to open, and no Reopen to offer.
+    fireEvent.press(screen.getAllByText("Second student")[0]!);
+    expect(screen.queryByText("Reopen retake")).toBeNull();
+    expect(screen.queryByTestId("sheet")).toBeNull();
   });
 
   it("offers no Reopen for a student whose attempt is still open (server: 409 attempt_open)", async () => {
@@ -271,8 +320,10 @@ describe("grading screen — ONLINE", () => {
 
     renderStacked(<QuizGradeScreen />);
 
-    expect(await screen.findByText("Attempt 1 · Graded · 6/7")).toBeTruthy();
-    expect(screen.getByText("Update grade")).toBeTruthy();
+    expect(await screen.findByText("Attempt 1 · 6/7 · Mar 2, 2099")).toBeTruthy();
+    expect(screen.getByText("Graded")).toBeTruthy();
+    openRow("Test student");
+    expect(await screen.findByText("Save marks")).toBeTruthy();
     fireEvent.press(screen.getByText("Reopen retake"));
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/reopen", {
@@ -292,6 +343,8 @@ describe("grading screen — ONLINE", () => {
         : Promise.resolve({ data: { data: wrong } }),
     );
     renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+    openRow("Test student");
     expect(await screen.findByText("London (correct: Paris)")).toBeTruthy();
     expect(screen.getByText(" (correct: Paris)")).toBeTruthy();
     expect(screen.getByText("0/2")).toBeTruthy();

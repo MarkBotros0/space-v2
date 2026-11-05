@@ -2,255 +2,239 @@ import { useState, type ReactNode } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { SearchX } from "lucide-react-native";
 import { View } from "react-native";
-import type { QuizAuthoringDetail, QuizGradeSheet, QuizGradingAttempt } from "@space/shared";
+import type { QuizAuthoringDetail, QuizGradeSheet } from "@space/shared";
 
 import { NAV_ICONS } from "../../../../src/design/icons/nav-icon";
-import { Eyebrow, PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../../src/design/layout/shell-frame";
-import { QuizAttemptCard } from "../../../../src/design/quizzes/quiz-essay-grader";
-import { QuizGradeForm } from "../../../../src/design/quizzes/quiz-grade-form";
-import { Button, EmptyState, Text } from "../../../../src/design/ui";
+import { Screen } from "../../../../src/design/layout/screen";
+import { haptic } from "../../../../src/design/motion";
+import { Button, EmptyState, Text, toast } from "../../../../src/design/ui";
+import { GroupedList, ListRow } from "../../../../src/design/ui/grouped-list";
+import { StatusChip, statusChip } from "../../../../src/design/ui/status-chip";
 import {
   flattenGradingPages,
-  useGradeEssays,
   useQuizAttempts,
   useQuizAuthoringDetail,
   useQuizGradeSheet,
-  useReopenAttempt,
   useSaveQuizGrades,
   type GradeEntryInput,
 } from "../../../../src/hooks/use-quizzes";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { formatDate } from "../../../../src/lib/format";
+import { parseMark } from "../../../../src/lib/parse-mark";
 import { parsePositiveInt } from "../../../../src/lib/params";
+import { AttemptSheet } from "../../../../src/screens/quiz-grade/attempt-sheet";
+import {
+  PaperGradeSheet,
+  seedDraft,
+  type PaperDraft,
+} from "../../../../src/screens/quiz-grade/paper-grade-sheet";
 import { useSessionStore } from "../../../../src/store/session";
-
-type Edit = { score: string; notes: string };
-
-/** A whole non-negative number from a text field, or null when it is not one. */
-function parseMark(value: string): number | null {
-  const trimmed = value.trim();
-  return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
-}
-
-/** The quiz title and its subtitle; Back is the screen's pinned back bar (R23). */
-function Header({ detail, subtitle }: { detail: QuizAuthoringDetail; subtitle?: string }) {
-  return (
-    <View>
-      <PageTitle title={detail.title} />
-      {subtitle ? <Text className="mt-2 text-sm text-muted-foreground">{subtitle}</Text> : null}
-    </View>
-  );
-}
 
 function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) {
   const sheetQuery = useQuizGradeSheet(id, true);
   const save = useSaveQuizGrades(id);
   // Touched rows only — seeded lazily on first edit, so an untouched row is
   // never re-sent (which would restamp gradedBy/gradedAt on marks this caller
-  // never made).
-  const [edits, setEdits] = useState<Record<number, Edit>>({});
+  // never made). Cleared per student when that student's save lands.
+  const [drafts, setDrafts] = useState<Record<number, PaperDraft>>({});
+  // The row the sheet shows; it stays set while the sheet animates out.
+  const [shown, setShown] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
-  if (sheetQuery.isPending) return <RouteSkeleton />;
-  if (sheetQuery.isError) return <RouteError onRetry={() => void sheetQuery.refetch()} />;
-  const sheet: QuizGradeSheet = sheetQuery.data;
+  const sheet: QuizGradeSheet | undefined = sheetQuery.data;
+  const row = sheet?.rows.find((r) => r.studentUserId === shown);
+  const graded = sheet ? sheet.rows.filter((r) => r.score != null).length : 0;
+  const subtitle = sheet
+    ? `${sheet.sessionTitle ? `${sheet.sessionTitle} · ` : ""}Max score: ${sheet.maxScore} · ${graded} / ${sheet.rows.length} graded`
+    : undefined;
 
-  const rowOf = (studentUserId: number) =>
-    sheet.rows.find((r) => r.studentUserId === studentUserId);
-  const scoreOf = (studentUserId: number) => {
-    const row = rowOf(studentUserId);
-    return edits[studentUserId]?.score ?? (row?.score == null ? "" : String(row.score));
-  };
-  const notesOf = (studentUserId: number) =>
-    edits[studentUserId]?.notes ?? rowOf(studentUserId)?.notes ?? "";
-  const edit = (studentUserId: number, patch: Partial<Edit>) => {
-    setSaved(false);
-    setEdits((prev) => ({
-      ...prev,
-      [studentUserId]: {
-        score: scoreOf(studentUserId),
-        notes: notesOf(studentUserId),
-        ...prev[studentUserId],
-        ...patch,
-      },
-    }));
-  };
+  const draftOf = (r: NonNullable<typeof row>): PaperDraft => drafts[r.studentUserId] ?? seedDraft(r);
 
   const onSave = () => {
+    if (!row) return;
     setError(null);
-    setSaved(false);
-    const entries: GradeEntryInput[] = [];
-    for (const row of sheet.rows) {
-      const e = edits[row.studentUserId];
-      if (!e) continue;
-      // An emptied field is an explicit clear. Anything above max is NOT
-      // clamped here: the server is the bound (D7).
-      const score = e.score.trim() === "" ? null : parseMark(e.score);
-      if (e.score.trim() !== "" && score === null) {
-        setError(`Score for ${row.studentName ?? "a student"} must be a whole number.`);
-        return;
-      }
-      entries.push({
-        studentUserId: row.studentUserId,
-        score,
-        notes: e.notes === "" ? null : e.notes,
-      });
+    const d = draftOf(row);
+    // An emptied field is an explicit clear. Anything above max is NOT
+    // clamped here: the server is the bound (D7).
+    const score = d.score.trim() === "" ? null : parseMark(d.score);
+    if (d.score.trim() !== "" && score === null) {
+      setError(`Score for ${row.studentName ?? "a student"} must be a whole number.`);
+      return;
     }
-    if (entries.length === 0) return;
-    save.mutate(entries, {
+    const entry: GradeEntryInput = {
+      studentUserId: row.studentUserId,
+      score,
+      notes: d.notes === "" ? null : d.notes,
+    };
+    save.mutate([entry], {
       onSuccess: () => {
-        setEdits({});
-        setSaved(true);
+        setDrafts((prev) => {
+          const { [row.studentUserId]: _done, ...rest } = prev;
+          return rest;
+        });
+        haptic("light");
+        toast.success("Saved.");
+        setOpen(false);
       },
       onError: (err) => setError(apiErrorMessage(err, "Couldn't save the grades.")),
     });
   };
 
   return (
-    <>
-      <Header
-        detail={detail}
-        subtitle={`${sheet.sessionTitle ? `${sheet.sessionTitle} · ` : ""}Max score: ${sheet.maxScore}`}
-      />
-      <QuizGradeForm
-        sheet={sheet}
-        scoreOf={scoreOf}
-        notesOf={notesOf}
-        onScore={(sid, score) => edit(sid, { score })}
-        onNotes={(sid, notes) => edit(sid, { notes })}
-        onSave={onSave}
-        pending={save.isPending}
-        saved={saved}
-        error={error}
-      />
-    </>
-  );
-}
-
-function AttemptCard({
-  id,
-  item,
-  maxScore,
-  hasEssays,
-}: {
-  id: number;
-  item: QuizGradingAttempt;
-  maxScore: number;
-  hasEssays: boolean;
-}) {
-  const gradeEssays = useGradeEssays(id);
-  const reopen = useReopenAttempt(id);
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <QuizAttemptCard
-      attempt={item}
-      maxScore={maxScore}
-      hasEssays={hasEssays && item.answers.some((a) => a.type === "ESSAY")}
-      saving={gradeEssays.isPending}
-      reopening={reopen.isPending}
-      error={error}
-      onSave={(awards) => {
-        setError(null);
-        gradeEssays.mutate(
-          { attemptId: item.attemptId, awards },
-          { onError: (err) => setError(apiErrorMessage(err, "Couldn't save the marks.")) },
-        );
-      }}
-      onReopen={() =>
-        reopen.mutate(item.studentUserId, {
-          onError: (err) => setError(apiErrorMessage(err, "Couldn't reopen the attempt.")),
-        })
-      }
-    />
-  );
-}
-
-/**
- * V2-ONLY (spec 12 D5/R102): students who haven't finished, drawn as v1 cards.
- *
- * No Reopen here. A waiting student either never started (the server answers
- * 409 `no_attempt`) or has an attempt still IN_PROGRESS (409 `attempt_open`) —
- * they can simply resume it — so the button could only ever fail.
- */
-function WaitingRow({
-  row,
-}: {
-  row: { studentUserId: number; studentName: string | null; startedAt: string | null };
-}) {
-  return (
-    <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
-      <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
-        {row.studentName ?? "Student"}
-      </Text>
-      <Text className="text-xs text-muted-foreground">
-        {row.startedAt === null ? "Not started" : `In progress since ${formatDate(row.startedAt)}`}
-      </Text>
-    </View>
+    <Screen title={detail.title} subtitle={subtitle}>
+      {sheetQuery.isPending ? (
+        <RouteSkeleton />
+      ) : sheetQuery.isError || !sheet ? (
+        <RouteError onRetry={() => void sheetQuery.refetch()} />
+      ) : (
+        <GroupedList>
+          {sheet.rows.map((r, i) => (
+            <ListRow
+              key={r.studentUserId}
+              index={i}
+              title={r.studentName ?? "Student"}
+              titleLines={2}
+              subtitle={r.notes ?? undefined}
+              trailing={
+                <Text variant="body" tabular className="text-foreground">
+                  {r.score == null ? "—" : `${r.score} / ${sheet.maxScore}`}
+                </Text>
+              }
+              chevron
+              onPress={() => {
+                setError(null);
+                setShown(r.studentUserId);
+                setOpen(true);
+              }}
+            />
+          ))}
+        </GroupedList>
+      )}
+      {sheet && row ? (
+        <PaperGradeSheet
+          row={row}
+          maxScore={sheet.maxScore}
+          open={open}
+          onClose={() => setOpen(false)}
+          draft={draftOf(row)}
+          onDraft={(patch) =>
+            setDrafts((prev) => ({
+              ...prev,
+              [row.studentUserId]: { ...(prev[row.studentUserId] ?? seedDraft(row)), ...patch },
+            }))
+          }
+          onSave={onSave}
+          saving={save.isPending}
+          error={error}
+        />
+      ) : null}
+    </Screen>
   );
 }
 
 function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail }) {
   const attempts = useQuizAttempts(id, true);
+  const [shown, setShown] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
 
-  if (attempts.isPending) return <RouteSkeleton />;
-  if (attempts.isError) return <RouteError onRetry={() => void attempts.refetch()} />;
-  const first = attempts.data.pages[0];
-  if (!first) return <RouteError onRetry={() => void attempts.refetch()} />;
-  // The server pages over students, 20 at a time; both lists grow per page.
-  const { items, waiting } = flattenGradingPages(attempts.data.pages);
-  const { hasNextPage, isFetchingNextPage, fetchNextPage } = attempts;
+  const first = attempts.data?.pages[0];
+  let body: ReactNode;
+  let sheet: ReactNode = null;
+  if (attempts.isPending) body = <RouteSkeleton />;
+  else if (attempts.isError || !first) body = <RouteError onRetry={() => void attempts.refetch()} />;
+  else {
+    // The server pages over students, 20 at a time; both lists grow per page.
+    const { items, waiting } = flattenGradingPages(attempts.data.pages);
+    const { hasNextPage, isFetchingNextPage, fetchNextPage } = attempts;
+    const attempt = items.find((a) => a.attemptId === shown);
+    if (attempt)
+      sheet = (
+        <AttemptSheet
+          key={attempt.attemptId}
+          quizId={id}
+          attempt={attempt}
+          maxScore={first.maxScore}
+          hasEssays={first.hasEssays}
+          open={open}
+          onClose={() => setOpen(false)}
+        />
+      );
+    body = (
+      <View className="flex-col gap-4">
+        {items.length === 0 ? (
+          hasNextPage ? null : (
+            <EmptyState
+              title="No submissions yet"
+              description="Student attempts will appear here once they submit this quiz."
+            />
+          )
+        ) : (
+          <GroupedList>
+            {items.map((a, i) => (
+              <ListRow
+                key={a.attemptId}
+                index={i}
+                title={a.studentName ?? "Student"}
+                titleLines={2}
+                subtitle={`Attempt ${a.attemptNumber} · ${a.status === "GRADED" ? `${a.totalScore ?? 0}/${first.maxScore}` : "Awaiting grading"} · ${formatDate(a.submittedAt)}`}
+                trailing={<StatusChip {...statusChip("quizAttempt", a.status)} />}
+                chevron
+                onPress={() => {
+                  setShown(a.attemptId);
+                  setOpen(true);
+                }}
+              />
+            ))}
+          </GroupedList>
+        )}
+        {waiting.length > 0 ? (
+          /**
+           * V2-ONLY (spec 12 D5/R102): students who haven't finished.
+           *
+           * No Reopen here, and no press at all. A waiting student either never
+           * started (the server answers 409 `no_attempt`) or has an attempt still
+           * IN_PROGRESS (409 `attempt_open`) — they can simply resume it — so the
+           * button could only ever fail.
+           */
+          <GroupedList header="Waiting">
+            {waiting.map((w, i) => (
+              <ListRow
+                key={w.studentUserId}
+                index={i}
+                title={w.studentName ?? "Student"}
+                titleLines={2}
+                subtitle={w.startedAt === null ? "Not started" : `In progress since ${formatDate(w.startedAt)}`}
+              />
+            ))}
+          </GroupedList>
+        ) : null}
+        {hasNextPage ? (
+          <Button
+            variant="secondary"
+            className="self-center"
+            disabled={isFetchingNextPage}
+            onPress={() => void fetchNextPage()}
+          >
+            {isFetchingNextPage ? "Loading…" : "Load more"}
+          </Button>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
-    <>
-      <Header detail={detail} />
-      {items.length === 0 ? (
-        hasNextPage ? null : (
-          <EmptyState
-            title="No submissions yet"
-            description="Student attempts will appear here once they submit this quiz."
-          />
-        )
-      ) : (
-        <View className="flex-col gap-3">
-          {items.map((item) => (
-            <AttemptCard
-              key={item.attemptId}
-              id={id}
-              item={item}
-              maxScore={first.maxScore}
-              hasEssays={first.hasEssays}
-            />
-          ))}
-        </View>
-      )}
-      {waiting.length > 0 ? (
-        <View className="flex-col gap-3">
-          <Eyebrow>Waiting</Eyebrow>
-          {waiting.map((row) => (
-            <WaitingRow key={row.studentUserId} row={row} />
-          ))}
-        </View>
-      ) : null}
-      {hasNextPage ? (
-        <Button
-          variant="outline"
-          className="self-start"
-          disabled={isFetchingNextPage}
-          onPress={() => void fetchNextPage()}
-        >
-          {isFetchingNextPage ? "Loading…" : "Load more"}
-        </Button>
-      ) : null}
-    </>
+    <Screen title={detail.title} subtitle={`Max score: ${detail.maxScore}`}>
+      {body}
+      {sheet}
+    </Screen>
   );
 }
 
 /**
  * v1 app/leader/sessions/[id]/quiz/[quizId] and the admin grade page — one
- * screen for every grader (B3-11).
+ * screen for every grader (B3-11): LEADER, ADMIN and SUPER.
  */
 export default function QuizGradeScreen() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
@@ -258,6 +242,14 @@ export default function QuizGradeScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
   const isStaff = role === "LEADER" || role === "ADMIN" || role === "SUPER";
   const detail = useQuizAuthoringDetail(id, isStaff);
+
+  if (isStaff && id !== null && detail.data) {
+    return detail.data.kind === "PAPER" ? (
+      <PaperGrid id={id} detail={detail.data} />
+    ) : (
+      <OnlineGrading id={id} detail={detail.data} />
+    );
+  }
 
   let body: ReactNode;
   if (!isStaff)
@@ -270,19 +262,7 @@ export default function QuizGradeScreen() {
     );
   else if (id === null)
     body = <EmptyState icon={SearchX} title="Not found" description="That quiz doesn't exist." />;
-  else if (detail.isPending) body = <RouteSkeleton />;
   else if (detail.isError) body = <RouteError onRetry={() => void detail.refetch()} />;
-  else
-    body =
-      detail.data.kind === "PAPER" ? (
-        <PaperGrid id={id} detail={detail.data} />
-      ) : (
-        <OnlineGrading id={id} detail={detail.data} />
-      );
-
-  return (
-    <ShellFrame>
-      <View className="flex-col gap-4">{body}</View>
-    </ShellFrame>
-  );
+  else body = <RouteSkeleton />;
+  return <Screen title="Quiz">{body}</Screen>;
 }

@@ -11,6 +11,8 @@ import { Badge, Button, EmptyState, Text } from "../../src/design/ui";
 import { useQuizList } from "../../src/hooks/use-quizzes";
 import { useCurrentSeasonId, useSeasonDetail } from "../../src/hooks/use-seasons";
 import { formatDate } from "../../src/lib/format";
+import { bySessionDate } from "../../src/lib/quiz-order";
+import { LeaderQuizzes } from "../../src/screens/leader-quizzes";
 import { WorkScreen } from "../../src/screens/work/work-screen";
 import { useSessionStore } from "../../src/store/session";
 
@@ -29,14 +31,6 @@ function GradedBadge({ row }: { row: QuizSummary }) {
     return <Badge variant="success">Done</Badge>;
   if (row.gradedCount > 0) return <Badge variant="warning">Partial</Badge>;
   return <Badge variant="outline">Pending</Badge>;
-}
-
-/** v1 order: session date, newest first; quizzes without a session last (B3-10). */
-function bySessionDate(a: QuizSummary, b: QuizSummary): number {
-  if (a.sessionDate === b.sessionDate) return b.id - a.id;
-  if (a.sessionDate === null) return 1;
-  if (b.sessionDate === null) return -1;
-  return b.sessionDate.localeCompare(a.sessionDate);
 }
 
 /** v1's quiz card (leader and admin lists share it): title, session · date · Max, graded count and badge. */
@@ -68,57 +62,6 @@ function QuizSummaryRow({
         {badge ?? <GradedBadge row={row} />}
       </View>
     </Pressable>
-  );
-}
-
-/**
- * LEADER — v1 app/leader/quizzes/page.tsx. Every row opens grading (spec 12
- * D12: the flat route has no orphan "#" links).
- */
-function LeaderQuizzes() {
-  const router = useRouter();
-  const current = useCurrentSeasonId();
-  const seasonId = current.seasonId;
-  const { data, isPending, isError, refetch, isRefetching } = useQuizList(seasonId);
-  const rows = [...(data?.items ?? [])].sort(bySessionDate);
-
-  let body: ReactNode;
-  if (current.isPending || (seasonId !== null && isPending)) body = <RouteSkeleton />;
-  else if (current.isError) body = <RouteError onRetry={current.refetch} />;
-  else if (seasonId !== null && isError) body = <RouteError onRetry={() => void refetch()} />;
-  else if (rows.length === 0)
-    body = (
-      <EmptyState
-        icon={NAV_ICONS.quizzes}
-        title="No quizzes yet"
-        description="Quizzes created by your admin will appear here."
-      />
-    );
-  else
-    body = (
-      <View className="flex-col gap-3">
-        {rows.map((row) => (
-          <QuizSummaryRow
-            key={row.id}
-            row={row}
-            onPress={() =>
-              router.push({ pathname: "/quiz/[id]/grade", params: { id: String(row.id) } })
-            }
-          />
-        ))}
-      </View>
-    );
-
-  return (
-    <ShellFrame
-      refreshing={isRefetching}
-      onRefresh={() => (seasonId !== null ? void refetch() : current.refetch())}
-    >
-      <View className="flex-col gap-4">
-        <PageTitle title="Quizzes" subtitle="Grade paper quizzes for your group" />
-        {body}
-      </View>
-    </ShellFrame>
   );
 }
 

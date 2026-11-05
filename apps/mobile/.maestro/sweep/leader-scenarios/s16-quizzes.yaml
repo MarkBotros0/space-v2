@@ -32,6 +32,20 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s16-03-paper-grade
+# A row's label is "title, subtitle", so match the name as a prefix. The sheet's field is
+# the proof it opened: "Score for ..." exists nowhere on the list.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Samir Student.*'
+- extendedWaitUntil:
+    visible: 'Score for Samir Student'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-04-paper-sheet
 - runFlow:
     file: ../_tap.yaml
     env:
@@ -40,30 +54,53 @@ appId: com.jpc.space
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s16-04-paper-score-kbd
+- takeScreenshot: s16-05-paper-score-kbd
 - eraseText: 10
 - inputText: '90'
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s16-05-paper-score-typed
+- takeScreenshot: s16-06-paper-score-typed
+# Save is never tapped: back dismisses the sheet.
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-07-paper-grade-dismissed
+- openLink: spacev2://quiz/2/grade
+- extendedWaitUntil:
+    visible: '.*Awaiting grading.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-08-online-grade
 # Last item has to clear the floating tab bar and the system bar.
 - scroll
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s16-06-paper-grade-bottom
+- takeScreenshot: s16-09-online-grade-bottom
+# Reopen the screen so the rows are back at the top.
 - openLink: spacev2://quiz/2/grade
 - extendedWaitUntil:
-    visible: '.*Awaiting grading'
+    visible: '.*Awaiting grading.*'
+    timeout: 40000
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: '.*Awaiting grading.*'
+# Save marks is only in the sheet.
+- extendedWaitUntil:
+    visible: 'Save marks'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s16-07-online-grade
-# Marks fields. Save grade is never tapped.
+- takeScreenshot: s16-10-attempt-sheet
+# Marks fields. Save marks is never tapped.
 - runFlow:
     file: ../_tap.yaml
     env:
@@ -72,17 +109,13 @@ appId: com.jpc.space
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s16-08-essay-marks-kbd
+- takeScreenshot: s16-11-essay-marks-kbd
 - eraseText: 10
 - inputText: '1'
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s16-09-essay-marks-typed
-# Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
+- takeScreenshot: s16-12-essay-marks-typed
+- back
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s16-10-online-grade-bottom

@@ -1,95 +1,49 @@
 /**
- * Port of v1 components/quizzes/quiz-grade-form.tsx (paper quizzes). The table
- * is a flat `surface` group on the theme tokens (v1's was light-only) and
- * scrolls sideways inside its card at phone width (B3-11, gap note). The
- * scroll bar stays visible (owner ruling 2026-10-21, UI sweep): without it the
- * Notes column is out of sight on a 360dp phone and nothing says it is there.
- * The screen owns the edits and the save (touched rows only, D7).
+ * Port of v1 components/quizzes/quiz-grade-form.tsx (paper quizzes), as the
+ * fields of one student's grade sheet: a score and a note. The screen owns the
+ * drafts and the save (one student at a time; the server is the bound on the
+ * score, D7), so this only draws what it is given.
  */
-import type { QuizGradeSheet } from "@space/shared";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 
-import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Text } from "../ui/text";
+import { Textarea } from "../ui/textarea";
 
-const HEAD = "px-4 py-3 text-sm font-semibold text-foreground";
-
-export function QuizGradeForm({
-  sheet,
-  scoreOf,
-  notesOf,
+export function QuizGradeFields({
+  name,
+  maxScore,
+  score,
+  notes,
   onScore,
   onNotes,
-  onSave,
-  pending,
-  saved,
   error,
 }: {
-  sheet: QuizGradeSheet;
-  scoreOf: (studentUserId: number) => string;
-  notesOf: (studentUserId: number) => string;
-  onScore: (studentUserId: number, value: string) => void;
-  onNotes: (studentUserId: number, value: string) => void;
-  onSave: () => void;
-  pending: boolean;
-  saved: boolean;
+  name: string;
+  maxScore: number;
+  score: string;
+  notes: string;
+  onScore: (value: string) => void;
+  onNotes: (value: string) => void;
   error: string | null;
 }) {
-  const graded = sheet.rows.filter((r) => scoreOf(r.studentUserId).trim() !== "").length;
   return (
-    <View className="flex-col gap-4">
-      <View className="overflow-hidden rounded-group bg-surface dark:border dark:border-separator">
-        <ScrollView horizontal showsHorizontalScrollIndicator persistentScrollbar>
-          <View>
-            <View className="flex-row border-b border-separator">
-              <Text className={`w-40 ${HEAD}`}>Student</Text>
-              <Text className={`w-32 ${HEAD}`}>
-                {"Score "}
-                <Text className="text-sm font-normal text-muted-foreground">{`/ ${sheet.maxScore}`}</Text>
-              </Text>
-              <Text className={`w-64 ${HEAD}`}>Notes</Text>
-            </View>
-            {sheet.rows.map((r, i) => {
-              const name = r.studentName ?? "";
-              return (
-                <View key={r.studentUserId} className={`flex-row items-center ${i > 0 ? "border-t border-separator" : ""}`}>
-                  <Text className="w-40 px-4 py-3 text-sm font-medium text-foreground">{name}</Text>
-                  <View className="w-32 px-4 py-3">
-                    <Input
-                      size="sm"
-                      accessibilityLabel={`Score for ${name || "Student"}`}
-                      keyboardType="number-pad"
-                      placeholder="-"
-                      value={scoreOf(r.studentUserId)}
-                      onChangeText={(v) => onScore(r.studentUserId, v)}
-                      className="w-24"
-                    />
-                  </View>
-                  <View className="w-64 px-4 py-3">
-                    <Input
-                      size="sm"
-                      accessibilityLabel={`Notes for ${name || "Student"}`}
-                      placeholder="Optional note..."
-                      value={notesOf(r.studentUserId)}
-                      onChangeText={(v) => onNotes(r.studentUserId, v)}
-                    />
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </View>
-
-      <View className="flex-row flex-wrap items-center gap-3">
-        <Button onPress={onSave} disabled={pending}>
-          {pending ? "Saving..." : "Save grades"}
-        </Button>
-        <Text className="text-sm text-muted-foreground">{`${graded} / ${sheet.rows.length} graded`}</Text>
-        {saved ? <Text className="text-sm font-semibold text-success-700">Saved</Text> : null}
-        {error ? <Text className="text-sm text-error-600">{error}</Text> : null}
-      </View>
+    <View className="flex-col gap-3 pb-4">
+      <Text variant="subhead" className="text-muted-foreground">{`Out of ${maxScore}`}</Text>
+      <Input
+        accessibilityLabel={`Score for ${name}`}
+        keyboardType="number-pad"
+        placeholder="-"
+        value={score}
+        onChangeText={onScore}
+      />
+      <Textarea
+        accessibilityLabel={`Notes for ${name}`}
+        placeholder="Optional note..."
+        value={notes}
+        onChangeText={onNotes}
+      />
+      {error ? <Text variant="subhead" className="text-bad">{error}</Text> : null}
     </View>
   );
 }
