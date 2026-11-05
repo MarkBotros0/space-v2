@@ -182,8 +182,3 @@ export function initialAnchor(sessions: readonly SessionListItem[], today: strin
   const next = sessions.find((s) => s.dayKey >= today);
   return next?.dayKey ?? sessions[sessions.length - 1]?.dayKey ?? today;
 }
-
-/** v1's SeasonCalendar opening month: startOfMonth(initialAnchor) as a day key. */
-export function initialMonthAnchor(sessions: readonly SessionListItem[], today: string): string {
-  return `${initialAnchor(sessions, today).slice(0, 8)}01`;
-}

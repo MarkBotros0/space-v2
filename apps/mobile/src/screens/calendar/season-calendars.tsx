@@ -19,7 +19,7 @@ import { useMyGroups } from "../../hooks/use-groups";
 import { useCurrentSeasonId, useSeasons } from "../../hooks/use-seasons";
 import { useStaffSeasonSelection } from "../../hooks/use-season-selection";
 import { useLedSeasonSessions, useSeasonSessions } from "../../hooks/use-sessions";
-import { deviceTodayKey, initialMonthAnchor } from "../../lib/calendar-grid";
+import { deviceTodayKey, initialAnchor } from "../../lib/calendar-grid";
 
 function sessionCount(n: number): string {
   return `${n} ${n === 1 ? "session" : "sessions"}`;
@@ -36,8 +36,8 @@ function NothingScheduled() {
 }
 
 /**
- * v1's SeasonCalendar opened on its anchor month (v1: startOfMonth(next
- * session, else last, else today) — Week opens on that day's week), with a
+ * v1's SeasonCalendar opened on its anchor (the next session's day, else the
+ * last, else today): Month shows that day's month, Week that day's week; with a
  * tap on a session or an event opening its detail page.
  */
 function RoutedSeasonCalendar({
@@ -59,7 +59,7 @@ function RoutedSeasonCalendar({
       sessions={sessions}
       events={events}
       today={today}
-      initialAnchor={initialMonthAnchor(sessions, today)}
+      initialAnchor={initialAnchor(sessions, today)}
       seasonColors={seasonColors}
       onOpenSession={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
       onOpenEvent={(e) => router.push({ pathname: "/event/[id]", params: { id: String(e.id) } })}

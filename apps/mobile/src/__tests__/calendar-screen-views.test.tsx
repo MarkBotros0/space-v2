@@ -192,7 +192,7 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     expect(screen.queryByText("Kickoff")).toBeNull();
   });
 
-  it("opens Week on the week of the anchor month's first day, like v1", async () => {
+  it("opens Week on the week of the anchor day, not the month's first", async () => {
     useSessionStore.setState(studentSession);
     get.mockImplementation((url: string) =>
       url.startsWith("/api/v1/events")
@@ -209,6 +209,6 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     await screen.findByText("Week two");
 
     fireEvent.press(screen.getByLabelText("Week"));
-    expect(screen.getByText("Feb 23 – Mar 1")).toBeTruthy();
+    expect(screen.getByText("Mar 9 – 15")).toBeTruthy();
   });
 });
