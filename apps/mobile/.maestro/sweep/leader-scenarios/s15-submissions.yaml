@@ -31,7 +31,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
-    visible: 'Assignment prompt'
+    visible: 'ASSIGNMENT PROMPT'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
