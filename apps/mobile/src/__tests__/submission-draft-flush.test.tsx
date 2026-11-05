@@ -119,7 +119,7 @@ describe("leaving the screen saves what was written", () => {
     expect(patch).not.toHaveBeenCalled();
   });
 
-  it("sends nothing more after Save draft, and sends what came after it", async () => {
+  it("sends nothing more after Save draft", async () => {
     serve();
     patch.mockResolvedValue(saved);
     const view = open();
@@ -131,6 +131,21 @@ describe("leaving the screen saves what was written", () => {
     view.unmount();
     await settle();
     expect(patch).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends what was typed after Save draft", async () => {
+    serve();
+    patch.mockResolvedValue(saved);
+    const view = open();
+    const input = await screen.findByLabelText("Your response");
+    fireEvent.changeText(input, "saved text");
+    fireEvent.press(screen.getByText("Save draft"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Draft saved."));
+    fireEvent.changeText(input, "saved text, and more");
+
+    view.unmount();
+    await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));
+    expect(patch).toHaveBeenLastCalledWith(URL, { text: "saved text, and more" });
   });
 
   it("a slower save can't overwrite newer text: writes go out in order", async () => {
