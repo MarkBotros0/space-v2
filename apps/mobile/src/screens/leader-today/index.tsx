@@ -114,18 +114,21 @@ function Body({ data }: { data: StaffSeasonDashboard }) {
         </GroupedList>
       )}
 
-      <View className="flex-row flex-wrap gap-3">
-        <StatTile
-          label="Students"
-          value={cohort.studentCount}
-          onPress={() => router.push("/groups")}
-        />
-        <StatTile label="Attendance" value={mean ?? "—"} suffix={mean !== null ? "%" : undefined} />
-        <StatTile
-          label={`Session ${progress.sessionsHeld} of ${progress.sessionsTotal}`}
-          value={progress.pct ?? 0}
-          suffix="%"
-        />
+      <View className="gap-1.5">
+        <ListSectionHeader>This season</ListSectionHeader>
+        <View className="flex-row flex-wrap gap-3">
+          <StatTile
+            label="Students"
+            value={cohort.studentCount}
+            onPress={() => router.push("/groups")}
+          />
+          <StatTile label="Attendance" value={mean ?? "—"} suffix={mean !== null ? "%" : undefined} />
+          <StatTile
+            label={`Season progress · Session ${progress.sessionsHeld} of ${progress.sessionsTotal}`}
+            value={progress.pct ?? 0}
+            suffix="%"
+          />
+        </View>
       </View>
     </>
   );

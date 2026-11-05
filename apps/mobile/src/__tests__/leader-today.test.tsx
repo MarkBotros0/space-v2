@@ -201,7 +201,8 @@ describe("LeaderToday", () => {
     expect(mockPush).toHaveBeenCalledWith("/groups");
     expect(screen.getByLabelText("Students: 3")).toBeTruthy();
     expect(screen.getByLabelText("Attendance: 33%")).toBeTruthy();
-    expect(screen.getByLabelText("Session 3 of 4: 75%")).toBeTruthy();
+    expect(screen.getByLabelText("Season progress · Session 3 of 4: 75%")).toBeTruthy();
+    expect(screen.getByText("THIS SEASON")).toBeTruthy();
     fireEvent.press(screen.getByLabelText("Students: 3"));
     expect(mockPush).toHaveBeenLastCalledWith("/groups");
     fireEvent.press(screen.getByText("Sara Student"));
