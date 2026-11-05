@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import type { SessionDetail } from "@space/shared";
 
 import { PageTitle } from "../../design/layout/page-title";
+import { Screen } from "../../design/layout/screen";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
 import {
@@ -13,6 +14,7 @@ import {
   CardContent,
   Text as TextV1,
 } from "../../design/ui";
+import { Button } from "../../design/ui/button";
 import { formatDayKey, formatWallTime, formatWeekdayDay } from "../../lib/format";
 import { attendanceLine } from "./attendance-line";
 import { CheckInConsoleCard, LeaderCheckInCard } from "./check-in-cards";
@@ -31,29 +33,30 @@ interface BodyProps {
 export function LeaderSessionBody({ data, refetch, isRefetching }: BodyProps) {
   const router = useRouter();
   return (
-    <ShellFrame refreshing={isRefetching} onRefresh={refetch}>
+    <Screen
+      title={data.title}
+      // Org day and wall time from the server (X13).
+      subtitle={`${formatWeekdayDay(data.dayKey)} · ${formatWallTime(data.startTime)}`}
+      refreshing={isRefetching}
+      onRefresh={refetch}
+    >
       <View className="flex-col gap-4">
-        {/* Org day and wall time from the server (X13). */}
-        <PageTitle
-          title={data.title}
-          subtitle={`${formatWeekdayDay(data.dayKey)} · ${formatWallTime(data.startTime)}`}
-        />
         {/* V2-ONLY entry: v1 leaders had no link to their attendance page; v1 admin's button. */}
         {data.canMarkAttendance ? (
-          <ButtonV1
+          <Button
             className="self-start"
             onPress={() =>
               router.push({ pathname: "/session/[id]/attendance", params: { id: String(data.id) } })
             }
           >
             Mark attendance
-          </ButtonV1>
+          </Button>
         ) : null}
         {data.canMarkAttendance ? <LeaderQuizzesCard sessionId={data.id} /> : null}
         {data.canMarkAttendance ? <LeaderCheckInCard detail={data} /> : null}
         {data.youtubeUrl !== null ? <LeaderVideoResults sessionId={data.id} /> : null}
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }
 

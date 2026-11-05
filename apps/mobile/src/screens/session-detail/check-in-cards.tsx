@@ -10,7 +10,6 @@ import { InlineError } from "../../design/layout/route-states";
 import { iconWithClassName } from "../../design/lib/icon";
 import { CheckInAttendanceList } from "../../design/sessions/check-in-attendance-list";
 import {
-  Badge,
   Button as ButtonV1,
   Card as CardV1,
   CardContent,
@@ -18,6 +17,7 @@ import {
   CardTitle,
   Text as TextV1,
 } from "../../design/ui";
+import { StatusChip } from "../../design/ui/status-chip";
 import { useAttendanceRoster, useSaveAttendance } from "../../hooks/use-attendance";
 import { useCheckInState, useRegenerateCheckIn } from "../../hooks/use-check-in";
 import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../hooks/use-session-detail";
@@ -92,22 +92,19 @@ function CheckInRoster({ detail }: { detail: SessionDetail }) {
 /** Leader, and a SUPER who is not this season's admin: v1's read-only card with an Open/Closed badge. */
 export function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
   return (
-    <CardV1>
-      <CardHeader className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
+    <View className="flex-col gap-4 rounded-group bg-surface p-4">
+      <View className="flex-row items-center justify-between gap-3">
+        <View className="min-w-0 flex-1 flex-row items-center gap-2">
           <QrCode size={16} className="text-foreground" />
-          <CardTitle className="text-base">Check-in</CardTitle>
+          <TextV1 variant="headline">Check-in</TextV1>
         </View>
-        {detail.checkInOpen ? (
-          <Badge variant="success">Open</Badge>
-        ) : (
-          <Badge variant="outline">Closed</Badge>
-        )}
-      </CardHeader>
-      <CardContent className="flex-col gap-6">
-        <CheckInRoster detail={detail} />
-      </CardContent>
-    </CardV1>
+        <StatusChip
+          tone={detail.checkInOpen ? "ok" : "neutral"}
+          label={detail.checkInOpen ? "Open" : "Closed"}
+        />
+      </View>
+      <CheckInRoster detail={detail} />
+    </View>
   );
 }
 

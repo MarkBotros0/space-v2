@@ -299,7 +299,7 @@ it("shows staff the session's quizzes (G18; v1 leader/sessions/[id])", async () 
     ],
   });
   renderStacked(<SessionDetailScreen />);
-  expect(await screen.findByText("Quizzes")).toBeTruthy();
+  expect(await screen.findByText("QUIZZES")).toBeTruthy();
   expect(screen.getByText("Paper quiz")).toBeTruthy();
   expect(screen.getByText("Max score: 20")).toBeTruthy();
   expect(screen.getByText("Max score: 10 · Draft")).toBeTruthy();
@@ -311,10 +311,10 @@ it("hides the quiz card when the session has none", async () => {
   renderStacked(<SessionDetailScreen />);
   expect(await screen.findByText("Week 3")).toBeTruthy();
   await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/quizzes"));
-  expect(screen.queryByText("Quizzes")).toBeNull();
+  expect(screen.queryByText("QUIZZES")).toBeNull();
 });
 
-it("goes straight to grading from a quiz's Grade → link (v1)", async () => {
+it("goes straight to grading from a quiz row (v1's Grade link)", async () => {
   useSessionStore.setState(leader());
   routeGets({
     detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
@@ -323,7 +323,7 @@ it("goes straight to grading from a quiz's Grade → link (v1)", async () => {
   renderStacked(<SessionDetailScreen />);
 
   expect(await screen.findByText("Online quiz")).toBeTruthy();
-  fireEvent.press(screen.getByText("Grade →"));
+  fireEvent.press(screen.getByLabelText("Online quiz, Max score: 10 · Draft"));
 
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/quiz/[id]/grade", params: { id: "41" } });
 });
@@ -341,6 +341,8 @@ it("lets a leader override one student's attendance, keeping stored notes (v1 mo
   renderStacked(<SessionDetailScreen />);
   fireEvent.press(await screen.findByLabelText("Edit attendance for Sara Student"));
   expect(screen.getByText("Override attendance")).toBeTruthy();
+  // The name in the roster row and as the sheet's caption.
+  expect(screen.getAllByText("Sara Student")).toHaveLength(2);
   fireEvent.press(screen.getByLabelText("Mark Sara Student ABSENT"));
 
   await waitFor(() =>
@@ -348,7 +350,8 @@ it("lets a leader override one student's attendance, keeping stored notes (v1 mo
       entries: [{ studentUserId: 21, status: "ABSENT", notes: "Bus strike", lateMinutes: null }],
     }),
   );
-  await waitFor(() => expect(screen.queryByText("Override attendance")).toBeNull());
+  // The sheet is closing: its title stays on screen while it animates out, its caption is gone.
+  await waitFor(() => expect(screen.getAllByText("Sara Student")).toHaveLength(1));
 });
 
 it("shows a leader the video quiz results, and nothing for a video with no questions (spec 13 D10)", async () => {
