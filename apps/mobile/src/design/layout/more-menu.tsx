@@ -3,37 +3,15 @@
  * identity card (initials, name, role badge), the sidebar destinations that
  * are not tabs, Appearance with the theme toggle, and Sign out.
  * Native differences: rows navigate through onNavigate; hover → active:;
- * md: padding dropped. v1's icon map here differs from nav-link's
- * (history → FileText) and is kept as v1 has it.
+ * md: padding dropped. Row icons come from the tab bar's map (NavIcon), so a
+ * destination looks the same in the bar and here (v1 kept a second map).
  */
-import type { NavIconName, RoleNav, UserRole } from "@space/shared";
-import {
-  Bell,
-  Calendar,
-  CalendarDays,
-  CheckCheck,
-  ChevronRight,
-  ClipboardList,
-  FileText,
-  Folders,
-  GraduationCap,
-  Home,
-  LayoutDashboard,
-  LogOut,
-  MoreHorizontal,
-  Notebook,
-  PenLine,
-  Settings,
-  Sparkles,
-  User,
-  UserCheck,
-  UserMinus,
-  Users,
-  type LucideIcon,
-} from "lucide-react-native";
+import type { RoleNav, UserRole } from "@space/shared";
+import { ChevronRight, LogOut } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
 import { moreItemsFor } from "../../lib/nav-routes";
+import { NavIcon } from "../icons/nav-icon";
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";
 import { Badge } from "../ui/badge";
@@ -42,31 +20,7 @@ import { ThemeToggle } from "../ui/theme-toggle";
 import { PageHeader } from "./page-header";
 import { ROLE_COLOR } from "./user-menu";
 
-/** v1 more-menu.tsx iconMap; attendance/notifications are v2-only names. */
-const ICONS: Record<NavIconName, LucideIcon> = {
-  home: Home,
-  dashboard: LayoutDashboard,
-  users: Users,
-  calendar: Calendar,
-  events: CalendarDays,
-  assignments: ClipboardList,
-  attendance: CheckCheck,
-  submissions: FileText,
-  history: FileText,
-  profile: User,
-  reports: FileText,
-  groups: Folders,
-  season: Sparkles,
-  students: GraduationCap,
-  alumni: UserCheck,
-  dropped: UserMinus,
-  notes: Notebook,
-  notifications: Bell,
-  quizzes: PenLine,
-  more: MoreHorizontal,
-  settings: Settings,
-};
-iconWithClassName(...Object.values(ICONS), ChevronRight, LogOut);
+iconWithClassName(ChevronRight, LogOut);
 
 /** v1: first letters of the first two name parts, else the role's initial. */
 function initialsFor(name: string | null, role: UserRole): string {
@@ -105,7 +59,6 @@ export function MoreMenu({
       {items.length > 0 ? (
         <View className="overflow-hidden rounded-group bg-surface dark:border dark:border-separator">
           {items.map((item, i) => {
-            const Icon = ICONS[item.icon];
             return (
               <Pressable
                 key={item.href}
@@ -114,7 +67,7 @@ export function MoreMenu({
                 className={cn("flex-row items-center gap-3 px-4 py-3 active:bg-accent", i > 0 && "border-t border-border")}
               >
                 <View className="size-9 items-center justify-center rounded-lg bg-muted">
-                  <Icon size={16} className="text-foreground" />
+                  <NavIcon name={item.icon} size={16} className="text-foreground" />
                 </View>
                 <Text numberOfLines={1} className="flex-1 text-sm font-medium text-foreground">
                   {item.label}
