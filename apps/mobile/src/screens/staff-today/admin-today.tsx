@@ -25,7 +25,7 @@ function Figures({ data }: { data: StaffSeasonDashboard }) {
     <>
       <View className="flex-row flex-wrap gap-3">
         <StatTile label="Attendance" value={mean ?? "—"} suffix={mean === null ? undefined : "%"} />
-        <StatTile label="Progress" value={`Session ${progress.sessionsHeld}/${progress.sessionsTotal}`} />
+        <StatTile label={`Progress · Session ${progress.sessionsHeld}/${progress.sessionsTotal}`} value={`${progress.pct ?? 0}%`} />
         <StatTile label="Students" value={cohort.studentCount} />
       </View>
       <GroupedList>

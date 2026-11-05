@@ -52,7 +52,7 @@ describe("Admin Today", () => {
     expect(at[2]).toBeGreaterThan(at[1]!);
     expect(at[3]).toBeGreaterThan(at[2]!);
     expect(screen.getByLabelText("Students: 3")).toBeTruthy();
-    expect(screen.getByLabelText("Progress: Session 3/4")).toBeTruthy();
+    expect(screen.getByLabelText("Progress · Session 3/4: 75%")).toBeTruthy();
     expect(screen.getByLabelText("Attendance: 33%")).toBeTruthy();
   });
 
