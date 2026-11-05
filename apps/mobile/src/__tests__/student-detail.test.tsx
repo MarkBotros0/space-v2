@@ -290,6 +290,18 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     );
   });
 
+  it("opens the note sheet on Leaders for a leader", async () => {
+    useSessionStore.setState(leaderSession);
+    serveLeader();
+    renderWithProviders(<StudentDetailScreen />);
+    fireEvent.press(await screen.findByText("Notes"));
+    await screen.findByText("No notes yet");
+    fireEvent.press(screen.getByText("Write a note"));
+    await screen.findByLabelText("Note");
+    expect(screen.getByRole("tab", { name: "Leaders" }).props.accessibilityState?.selected).toBe(true);
+    expect(screen.getByRole("tab", { name: "Mentors" }).props.accessibilityState?.selected).toBe(false);
+  });
+
   it("shows an at-risk chip when the engagement says so", async () => {
     useSessionStore.setState(leaderSession);
     serveLeader();
