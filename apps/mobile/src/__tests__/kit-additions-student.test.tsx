@@ -40,6 +40,18 @@ describe("HeroCard tone", () => {
     expect(screen.getByText("Next").props.className).toContain("text-hero-eyebrow");
     expect(screen.getByText("Tue").props.className).toContain("text-hero-muted");
   });
+
+  it("onTitlePress makes the title a link; without it the title is plain text", () => {
+    const onTitlePress = jest.fn();
+    const { unmount } = render(<HeroCard tone="brand" eyebrow="Next" title="Intro" onTitlePress={onTitlePress} />);
+    fireEvent.press(screen.getByRole("link", { name: "Intro" }));
+    expect(onTitlePress).toHaveBeenCalledTimes(1);
+    unmount();
+
+    render(<HeroCard eyebrow="Next" title="Intro" />);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("Intro")).toBeTruthy();
+  });
 });
 
 describe("Button onHero", () => {
