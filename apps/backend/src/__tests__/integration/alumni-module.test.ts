@@ -35,7 +35,6 @@ describe("alumni reads", () => {
       ["get", "/api/v1/me/attendance", 200],
       ["get", "/api/v1/notifications", 200],
       ["get", `/api/v1/seasons/${w.otherSeasonId}`, 200],
-      ["get", `/api/v1/assignments/${w.otherAssignmentId}`, 200],
       ["get", "/api/v1/events", 200],
     ]);
   });
@@ -59,6 +58,10 @@ describe("alumni reads", () => {
       ["get", `/api/v1/seasons/${w.seasonId}`, 403],
       ["get", `/api/v1/seasons/${w.seasonId}/sessions`, 403],
       ["get", `/api/v1/assignments/${w.assignmentId}`, 403],
+      // Their own past season's assignment too: a student reads an assignment
+      // only in the active season or with an ACTIVE enrolment (main 423ce932),
+      // and the alumnus's enrolment there is COMPLETED.
+      ["get", `/api/v1/assignments/${w.otherAssignmentId}`, 403],
       ["get", `/api/v1/sessions/${w.sessionId}/video-quiz`, 403],
       ["get", `/api/v1/groups/${w.groupAId}`, 403],
       ["get", `/api/v1/students/${w.ids.studentA}`, 403],
