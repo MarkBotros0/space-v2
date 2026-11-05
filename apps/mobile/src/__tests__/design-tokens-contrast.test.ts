@@ -46,6 +46,15 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     ["info", "info-soft"],
     ["neutral-strong", "neutral-soft"],
     ["foreground", "surface-raised"],
+    // Menus and pickers (popover is surface-raised in dark).
+    ["popover-foreground", "popover"],
+    ["muted-foreground", "popover"],
+    // Role badges: each role's label on its own fill.
+    ["role-super-foreground", "role-super"],
+    ["role-admin-foreground", "role-admin"],
+    ["role-leader-foreground", "role-leader"],
+    ["role-mentor-foreground", "role-mentor"],
+    ["role-student-foreground", "role-student"],
   ];
   it.each(pairs)("%s on %s is at least 4.5:1", (fg, bg) => {
     expect(contrast(rgbOf(t[fg]), rgbOf(t[bg]))).toBeGreaterThanOrEqual(4.5);

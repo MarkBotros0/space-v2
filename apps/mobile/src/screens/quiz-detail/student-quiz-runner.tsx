@@ -33,7 +33,7 @@ export function StudentRunner({ id }: { id: number }) {
       <View className="flex-col gap-3">
         <QuizHeader detail={data} />
         <View
-          className="flex-col gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-5"
+          className="flex-col gap-3 rounded-group bg-surface dark:border dark:border-separator p-5"
         >
           <TextV1 className="text-sm text-muted-foreground">
             {`${n} question${n === 1 ? "" : "s"} · ${data.maxScore} points. You have one attempt — answer every question before submitting.`}

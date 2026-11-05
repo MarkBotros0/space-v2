@@ -69,13 +69,13 @@ export function StudentProfile() {
             />
           </View>
         ) : null}
-        <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+        <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
           <Eyebrow className="mb-4">Your details</Eyebrow>
           <ProfileForm profile={p} />
         </View>
         {/* Decision 1: name and email are not edited here (PATCH /me owns User.name). */}
         <View
-          className="flex-col items-start gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-4"
+          className="flex-col items-start gap-3 rounded-group bg-surface dark:border dark:border-separator p-4"
         >
           <TextV1 className="text-sm text-muted-foreground">
             Change your name in Settings. To change your email, contact the JPC team.

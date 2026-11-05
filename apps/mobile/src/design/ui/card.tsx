@@ -18,7 +18,7 @@ import { Text } from "./text";
 
 type Box = ViewProps & { className?: string; children?: ReactNode };
 
-const CARD = "rounded-[16px] bg-surface dark:border dark:border-separator";
+const CARD = "rounded-group bg-surface dark:border dark:border-separator";
 
 function PressableCard({ className, onPress, ...props }: Box & { onPress?: () => void }) {
   const press = usePressScale(0.985);

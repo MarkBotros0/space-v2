@@ -73,7 +73,7 @@ function SkeletonText({ lines = 3, className }: { lines?: number; className?: st
 
 function SkeletonCard({ className }: { className?: string }) {
   return (
-    <View className={cn("flex-col gap-3 rounded-2xl border border-separator bg-surface p-4", className)}>
+    <View className={cn("flex-col gap-3 rounded-group bg-surface p-4 dark:border dark:border-separator", className)}>
       <Skeleton className="h-5 w-1/3" />
       <SkeletonText lines={3} />
     </View>

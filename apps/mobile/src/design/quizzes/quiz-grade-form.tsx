@@ -39,7 +39,7 @@ export function QuizGradeForm({
   const graded = sheet.rows.filter((r) => scoreOf(r.studentUserId).trim() !== "").length;
   return (
     <View className="flex-col gap-4">
-      <View className="overflow-hidden rounded-[16px] bg-surface dark:border dark:border-separator">
+      <View className="overflow-hidden rounded-group bg-surface dark:border dark:border-separator">
         <ScrollView horizontal showsHorizontalScrollIndicator persistentScrollbar>
           <View>
             <View className="flex-row border-b border-separator">

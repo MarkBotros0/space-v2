@@ -28,7 +28,7 @@ export function AlumniDashboard() {
   return (
     <ShellFrame home onRefresh={() => void events.refetch()} refreshing={events.isRefetching}>
       <View className="flex-col gap-4">
-        <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
+        <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
           <View className="flex-row items-center gap-2">
             <GraduationCap size={16} className="text-brand-teal-700 dark:text-brand-teal-300" />
             <Text className="text-xs font-semibold uppercase tracking-wide text-brand-teal-700 dark:text-brand-teal-300">

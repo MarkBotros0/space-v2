@@ -18,7 +18,7 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
       <View className="flex-col gap-3">
         <QuizHeader detail={detail} />
         <View
-          className="flex-row items-center justify-between rounded-[16px] bg-surface dark:border dark:border-separator p-5"
+          className="flex-row items-center justify-between rounded-group bg-surface dark:border dark:border-separator p-5"
         >
           <View className="min-w-0 flex-1">
             <TextV1 className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
@@ -76,7 +76,7 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
                 {`Your answer: ${q.selectedIndex !== null ? (q.options[q.selectedIndex] ?? "—") : "—"}`}
               </TextV1>
             ) : (
-              <TextV1 className="mt-1 rounded-[14px] bg-muted/40 px-3 py-2 text-sm text-foreground">
+              <TextV1 className="mt-1 rounded-control bg-muted/40 px-3 py-2 text-sm text-foreground">
                 {q.text || "—"}
               </TextV1>
             )}

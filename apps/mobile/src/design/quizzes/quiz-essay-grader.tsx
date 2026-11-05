@@ -76,7 +76,7 @@ export function QuizAttemptCard({
 
   const shownError = localError ?? error;
   return (
-    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+    <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
           <Text className={`text-sm font-bold ${NAVY}`}>{attempt.studentName ?? "Student"}</Text>

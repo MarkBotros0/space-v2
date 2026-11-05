@@ -26,7 +26,7 @@ function ViewAll({ title, onPress }: { title: string; onPress: () => void }) {
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       hitSlop={8}
-      className="ml-auto"
+      className="ml-auto min-h-[44px] justify-center"
     >
       <Animated.View style={press.animatedStyle}>
         <Text variant="subhead" className="font-medium text-brand-teal-800 dark:text-brand-teal-300">
@@ -50,8 +50,8 @@ export function SectionCard({
 }) {
   iconWithClassName(Icon);
   return (
-    <View className="overflow-hidden rounded-[16px] bg-surface dark:border dark:border-separator">
-      <View className="min-h-[44px] flex-row items-center gap-2 border-b border-separator px-4 py-2">
+    <View className="overflow-hidden rounded-group bg-surface dark:border dark:border-separator">
+      <View className="min-h-[44px] flex-row items-center gap-2 border-b border-separator px-4">
         <Icon size={16} className="text-brand-teal-800 dark:text-brand-teal-300" />
         <Text variant="subhead" className="min-w-0 flex-1 font-semibold">
           {title}

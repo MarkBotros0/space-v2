@@ -106,7 +106,7 @@ export function MentorDashboard() {
 
         <UpcomingEventsCard query={events} />
 
-        <View className="rounded-[16px] bg-surface dark:border dark:border-separator">
+        <View className="rounded-group bg-surface dark:border dark:border-separator">
           <CardTitleRow
             icon={<AlertCircle size={16} className="text-warning-600" />}
             title="At risk"
@@ -170,7 +170,7 @@ export function MentorDashboard() {
           )}
         </View>
 
-        <View className="rounded-[16px] bg-surface dark:border dark:border-separator">
+        <View className="rounded-group bg-surface dark:border dark:border-separator">
           <CardTitleRow
             icon={<Users size={16} className="text-info-600" />}
             title="Recent activity"

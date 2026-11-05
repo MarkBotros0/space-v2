@@ -16,7 +16,6 @@ import type { JpcEventListItem, SessionListItem } from "@space/shared";
 import { rangeLabel, stepAnchor, type CalendarView } from "../../lib/calendar-grid";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
-import { shadowStyle } from "../lib/shadow";
 import { Button } from "../ui/button";
 import { Text } from "../ui/text";
 import { AgendaView } from "./season-calendar-agenda";
@@ -61,7 +60,7 @@ function ViewSwitch({
     <View
       accessibilityRole="tablist"
       accessibilityLabel="Calendar view"
-      className="flex-row self-start rounded-xl border border-border bg-muted/40 p-0.5"
+      className="flex-row self-start rounded-control bg-neutral-soft p-0.5"
     >
       {VIEWS.map((v) => {
         const selected = v.value === value;
@@ -72,8 +71,7 @@ function ViewSwitch({
             accessibilityLabel={v.label}
             accessibilityState={{ selected }}
             onPress={() => onChange(v.value)}
-            className={cn("rounded-lg px-3 py-1.5", selected && "bg-card")}
-            style={selected ? shadowStyle("soft") : undefined}
+            className={cn("min-h-[40px] justify-center rounded-lg px-3", selected && "bg-surface-raised")}
           >
             <Text
               className={cn(

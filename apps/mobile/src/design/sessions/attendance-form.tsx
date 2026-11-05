@@ -47,14 +47,14 @@ export function AttendanceRosterForm({
 }) {
   if (rows.length === 0) {
     return (
-      <Text className="rounded-[16px] bg-surface dark:border dark:border-separator p-8 text-center text-sm text-muted-foreground">
+      <Text className="rounded-group bg-surface dark:border dark:border-separator p-8 text-center text-sm text-muted-foreground">
         No students are enrolled in this scope.
       </Text>
     );
   }
   return (
     <View className="flex-col gap-4">
-      <View className="flex-row flex-wrap items-center justify-between gap-2 rounded-[16px] bg-surface dark:border dark:border-separator p-3">
+      <View className="flex-row flex-wrap items-center justify-between gap-2 rounded-group bg-surface dark:border dark:border-separator p-3">
         <Text className="text-sm text-muted-foreground">Quick mark all as</Text>
         <View className="flex-row flex-wrap gap-1">
           {OPTIONS.map((o) => (
@@ -77,7 +77,7 @@ export function AttendanceRosterForm({
           const name = row.name ?? row.email;
           const current = statusOf(row);
           return (
-            <View key={row.studentUserId} className="rounded-[16px] bg-surface dark:border dark:border-separator p-3">
+            <View key={row.studentUserId} className="rounded-group bg-surface dark:border dark:border-separator p-3">
               <View className="flex-col gap-2">
                 <View className="min-w-0">
                   <Text numberOfLines={1} className="font-medium">
@@ -144,7 +144,7 @@ export function AttendanceSaveBar({ pending, onSave, onCancel }: { pending: bool
   return (
     <View
       accessibilityLabel="Save bar"
-      className="flex-row items-center gap-2 rounded-[16px] bg-surface dark:border dark:border-separator p-3"
+      className="flex-row items-center gap-2 rounded-group bg-surface dark:border dark:border-separator p-3"
     >
       <Button variant="outline" className="flex-1" disabled={pending} onPress={onCancel}>
         Cancel

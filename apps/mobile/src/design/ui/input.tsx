@@ -13,7 +13,7 @@ import { cn } from "../lib/cn";
 import { useThemeColors } from "../theme/use-theme-colors";
 
 const inputVariants = cva(
-  "w-full rounded-xl border border-control-border bg-surface font-normal text-foreground focus:border-ring",
+  "w-full rounded-control border border-control-border bg-surface font-normal text-foreground focus:border-ring",
   {
     variants: {
       size: {

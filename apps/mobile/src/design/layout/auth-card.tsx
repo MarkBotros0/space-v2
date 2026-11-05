@@ -4,7 +4,8 @@
  * `w-full max-w-sm rounded-2xl border border-border/60 bg-card/90 p-6
  * shadow-[var(--shadow-pop)] backdrop-blur-md` > header `mb-6 flex flex-col
  * items-center gap-3 text-center` (Logo lg, h1, description).
- * Native differences: no backdrop blur (bg-card/90 kept); the frame scrolls,
+ * Redesign: the card is a flat `surface` group (rounded-group, no pop shadow:
+ * it sits on the page, it is not an overlay). Native differences: the frame scrolls,
  * keeps py-12 clear of the status and navigation bars (the app draws
  * edge-to-edge), and keeps the focused field above the keyboard
  * (useKeyboardInset; KeyboardAvoidingView does nothing on edge-to-edge
@@ -16,7 +17,6 @@ import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { cn } from "../lib/cn";
 import { useKeyboardInset } from "../lib/keyboard-inset";
-import { shadowStyle } from "../lib/shadow";
 import { FieldError } from "../ui/field";
 import { Logo } from "../ui/logo";
 import { Text } from "../ui/text";
@@ -43,7 +43,7 @@ export function AuthCard({
           paddingBottom: Math.max((insets?.bottom ?? 0) + 48, keyboard.inset + 16),
         }}
       >
-        <View className="w-full max-w-sm rounded-2xl border border-border/60 bg-card/90 p-6" style={shadowStyle("pop")}>
+        <View className="w-full max-w-sm rounded-group bg-surface p-6 dark:border dark:border-separator">
           <View className="mb-6 flex-col items-center gap-3">
             <Logo size="lg" />
             <View className="flex-col gap-1">

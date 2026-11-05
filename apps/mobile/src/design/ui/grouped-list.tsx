@@ -33,7 +33,7 @@ function GroupedList({ children, header, className }: { children: ReactNode; hea
   return (
     <View className={className}>
       {header ? <ListSectionHeader>{header}</ListSectionHeader> : null}
-      <View className="overflow-hidden rounded-[16px] bg-surface">
+      <View className="overflow-hidden rounded-group bg-surface">
         {rows.map((row, i) => (
           <Fragment key={i}>
             {i > 0 ? <View className="ml-4 h-px bg-separator" /> : null}

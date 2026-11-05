@@ -200,7 +200,7 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
       <Text className="text-lg font-semibold">Video questions</Text>
       {questions.isPending ? (
         <View accessible accessibilityLabel="Loading">
-          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-group" />
         </View>
       ) : questions.isError ? (
         <InlineError message="Couldn't load the questions." onRetry={() => void questions.refetch()} />

@@ -93,7 +93,7 @@ export function MoreMenu({
   return (
     <View className="flex-col gap-6">
       <PageHeader title="More" description="Account, settings, and more places to go." />
-      <View className="flex-row items-center gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+      <View className="flex-row items-center gap-3 rounded-group bg-surface dark:border dark:border-separator p-4">
         <View className="size-12 items-center justify-center rounded-full bg-muted">
           <Text className="text-base font-semibold text-foreground">{initialsFor(name, role)}</Text>
         </View>
@@ -103,7 +103,7 @@ export function MoreMenu({
         </View>
       </View>
       {items.length > 0 ? (
-        <View className="overflow-hidden rounded-[16px] bg-surface dark:border dark:border-separator">
+        <View className="overflow-hidden rounded-group bg-surface dark:border dark:border-separator">
           {items.map((item, i) => {
             const Icon = ICONS[item.icon];
             return (
@@ -125,7 +125,7 @@ export function MoreMenu({
           })}
         </View>
       ) : null}
-      <View className="flex-row items-center justify-between rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+      <View className="flex-row items-center justify-between rounded-group bg-surface dark:border dark:border-separator p-4">
         <View className="flex-col gap-0.5">
           <Text className="text-sm font-medium text-foreground">Appearance</Text>
           <Text className="text-xs text-muted-foreground">Switch between light and dark.</Text>
@@ -135,7 +135,7 @@ export function MoreMenu({
       <Pressable
         accessibilityRole="button"
         onPress={onSignOut}
-        className="w-full flex-row items-center justify-center gap-2 rounded-[16px] bg-surface dark:border dark:border-separator p-4 active:bg-error-50 dark:active:bg-error-950"
+        className="w-full flex-row items-center justify-center gap-2 rounded-group bg-surface dark:border dark:border-separator p-4 active:bg-error-50 dark:active:bg-error-950"
       >
         <LogOut size={16} className="text-error-700 dark:text-error-200" />
         <Text className="text-sm font-medium text-error-700 dark:text-error-200">Sign out</Text>

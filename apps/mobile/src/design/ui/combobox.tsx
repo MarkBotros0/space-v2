@@ -45,7 +45,7 @@ export function OptionSearch({ value, onChangeText }: { value: string; onChangeT
         onChangeText={onChangeText}
         placeholder="Search…"
         placeholderTextColor={colors["muted-foreground"]}
-        className="min-h-[40px] w-full rounded-[10px] border border-control-border bg-surface px-2 py-1 text-base font-normal text-foreground focus:border-ring"
+        className="min-h-[44px] w-full rounded-lg border border-control-border bg-surface px-2 py-1 text-base font-normal text-foreground focus:border-ring"
       />
     </View>
   );
@@ -91,7 +91,7 @@ export function Combobox({
           setOpen(true);
         }}
         className={cn(
-          "min-h-[44px] w-full flex-row items-center justify-between gap-2 rounded-xl border border-control-border bg-surface px-3",
+          "min-h-[44px] w-full flex-row items-center justify-between gap-2 rounded-control border border-control-border bg-surface px-3",
           invalid && "border-destructive",
           disabled && "opacity-50",
           className,
@@ -115,7 +115,7 @@ export function Combobox({
         </View>
       </Pressable>
       <AnchoredPopover open={open} onClose={() => setOpen(false)} anchor={anchor.rect} width="anchor">
-        <View className="max-w-[28rem] overflow-hidden rounded-xl border border-separator bg-popover p-1">
+        <View className="max-w-[28rem] overflow-hidden rounded-group border border-separator bg-popover p-1">
           <OptionSearch value={query} onChangeText={setQuery} />
           <ScrollView className="max-h-60" keyboardShouldPersistTaps="handled">
             {filtered.length === 0 ? (

@@ -9,7 +9,7 @@ function HeroCard({
   eyebrow, title, meta, action, className,
 }: { eyebrow: string; title: string; meta?: string; action?: ReactNode; className?: string }) {
   return (
-    <View className={cn("gap-1 rounded-[16px] bg-surface p-5", className)}>
+    <View className={cn("gap-1 rounded-group bg-surface p-5", className)}>
       <Text variant="caption" className="font-medium uppercase tracking-wide text-muted-foreground">
         {eyebrow}
       </Text>

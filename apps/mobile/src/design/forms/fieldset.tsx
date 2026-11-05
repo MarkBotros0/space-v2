@@ -11,7 +11,7 @@ import { Text } from "../ui/text";
 
 export function Fieldset({ legend, children }: { legend: string; children?: ReactNode }) {
   return (
-    <View className="rounded-[16px] border border-separator bg-surface p-4">
+    <View className="rounded-group border border-separator bg-surface p-4">
       <View className="absolute -top-2.5 left-3 bg-surface px-1">
         <Text accessibilityRole="header" className="text-sm font-semibold text-foreground">
           {legend}

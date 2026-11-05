@@ -15,7 +15,7 @@ describe("Button redesign", () => {
   });
 
   it("uses radius 14 and the min heights", () => {
-    expect(buttonVariants({})).toContain("rounded-[14px]");
+    expect(buttonVariants({})).toContain("rounded-control"); // 14px, tokens.json radius.control
     expect(buttonVariants({ size: "md" })).toContain("min-h-[46px]");
     expect(buttonVariants({ size: "sm" })).toContain("min-h-[44px]");
   });

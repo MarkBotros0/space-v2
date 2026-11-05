@@ -121,7 +121,7 @@ function ModalContent({
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 justify-end" pointerEvents="box-none">
         <Animated.View style={{ transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [0, 600] }) }] }}>
           <View
-            className={cn("max-h-[90vh] flex-col gap-4 rounded-t-[24px] bg-surface p-4 pt-6", className)}
+            className={cn("max-h-[90vh] flex-col gap-4 rounded-t-sheet bg-surface p-4 pt-6", className)}
             style={{ paddingBottom: Math.max(16, bottomInset) }}
           >
             <View className="absolute left-1/2 top-3 -ml-5 h-1 w-10 rounded-full bg-separator" />

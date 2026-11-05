@@ -44,7 +44,7 @@ export {
 /** v1's `<fieldset className="rounded-lg border border-border p-4">` with its `<legend>`. */
 function Fieldset({ legend, children }: { legend: string; children: ReactNode }) {
   return (
-    <View className="flex-col gap-2 rounded-[16px] border border-separator p-4">
+    <View className="flex-col gap-2 rounded-group border border-separator p-4">
       <Text className="text-sm font-medium">{legend}</Text>
       {children}
     </View>

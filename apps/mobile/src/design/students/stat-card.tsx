@@ -56,7 +56,7 @@ export function StatCard({
   className?: string;
 }) {
   const press = usePressScale();
-  const look = cn("flex-1 flex-col items-center justify-center gap-0.5 rounded-[16px] p-4", BOX[variant]);
+  const look = cn("flex-1 flex-col items-center justify-center gap-0.5 rounded-group p-4", BOX[variant]);
   const a11y = `${label}: ${value}`;
   const body = (
     <>

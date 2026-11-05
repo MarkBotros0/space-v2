@@ -51,7 +51,7 @@ export function StudentSessionBody({
       <View className="flex-col gap-3">
         <View>
           <View
-            className="rounded-[16px] bg-surface dark:border dark:border-separator p-5"
+            className="rounded-group bg-surface dark:border dark:border-separator p-5"
           >
             <View className="mb-2 flex-row items-center gap-2">
               <Badge variant={hasVideo ? "teal" : "outline"}>
@@ -67,7 +67,7 @@ export function StudentSessionBody({
 
         {video}
 
-        <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+        <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
           <Eyebrow>Details</Eyebrow>
           <View className="mt-2 flex-col gap-2">
             <View className="flex-row items-center gap-2">
@@ -95,7 +95,7 @@ export function StudentSessionBody({
 
         {data.description ? (
           <View
-            className="rounded-[16px] bg-surface dark:border dark:border-separator p-4"
+            className="rounded-group bg-surface dark:border dark:border-separator p-4"
           >
             <Eyebrow className="mb-2">About</Eyebrow>
             <TextV1 className="text-sm text-foreground/90">{data.description}</TextV1>

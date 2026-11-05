@@ -1,16 +1,23 @@
 /**
  * Guard: every screen draws with the design system's tokens, not literals.
- * Scans the string literals (class strings, style values) of `app/**` and
- * `src/**` — comments are not code, so a v1 class quoted in a comment is
- * fine — and fails on:
+ * Scans the string literals (class strings, style values) and style objects
+ * of `app/**` and `src/**` — comments are not code, so a v1 class quoted in a
+ * comment is fine — and fails on:
  *   - a hex colour (`#1F3260`) or an `rgb(`/`rgba(` colour: use a token class,
  *     `useThemeColors()` or `palette` (src/design/theme/);
- *   - a `shadow-` class: cards are flat surfaces in the redesign; elevation is
- *     the design kit's call (`design/lib/shadow.ts`), never a screen's;
- * and, outside `src/design/` (which owns the scale):
- *   - a `rounded-sm|md|lg|xl` class (also per side/corner): groups are 16,
- *     buttons 14, chips full — take the shape from a component;
- *   - a raw `fontSize: <number>`: use a Text `variant`.
+ *   - a `shadow-` class: cards are flat surfaces in the redesign;
+ * and, outside `src/design/` (which owns the scales):
+ *   - any radius but the named shapes: `rounded-full` (chips, discs),
+ *     `rounded-group` (16: cards, groups), `rounded-control` (14: buttons,
+ *     fields, option rows, callouts), `rounded-none`, each also per side or
+ *     corner (`rounded-t-group`); never a step (`rounded-lg`, `rounded-2xl`), a
+ *     bare `rounded` or a bracket value (`rounded-[16px]`);
+ *   - a raw font size: `fontSize: <number>`, `text-[11px]`, `text-[0.7rem]`,
+ *     `leading-[18px]`: use a Text `variant` (never under the caption, 12);
+ *   - elevation: `shadowStyle(…)`, `elevation:` or `boxShadow:`; elevation is
+ *     the kit's call (overlays), never a screen's. The one exception is the
+ *     design catalogue (`src/screens/design-system/`), whose Elevation section
+ *     demonstrates the shadow tokens.
  * `src/design/theme/` (the token source and its generated output) and tests
  * are not scanned. Plans 02–05 keep this green and delete each legacy
  * component when its last user migrates.
@@ -22,15 +29,35 @@ import ts from "typescript";
 const ROOT = join(__dirname, "..", "..");
 const DESIGN = `src${sep}design${sep}`;
 const THEME = `src${sep}design${sep}theme${sep}`;
+const SHOWCASE = `src${sep}screens${sep}design-system${sep}`;
+
+type Scope = { inDesign: boolean; showcase: boolean };
 
 const EVERYWHERE: [RegExp, string][] = [
   [/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/, "hex colour"],
   [/\brgba?\(/, "rgb()/rgba() colour"],
   [/(?:^|[\s:"'`])shadow-/, "shadow- class"],
 ];
-const OUTSIDE_DESIGN: [RegExp, string][] = [
-  [/(?:^|[\s:"'`])rounded(?:-[trblse]{1,2})?-(?:sm|md|lg|xl)(?![\w-])/, "rounded-sm|md|lg|xl class"],
-];
+
+const RADIUS = /^rounded(?:-(?:t|r|b|l|s|e|tl|tr|br|bl|ss|se|es|ee))?(?:-(.+))?$/;
+const SHAPES = new Set(["full", "group", "control", "none"]);
+const FONT_SIZE = /^(?:text-\[\d+(?:\.\d+)?(?:px|rem|em)?\]|leading-\[\d+(?:\.\d+)?(?:px|rem|em)?\])$/;
+const ELEVATION_PROPS = new Set(["elevation", "boxShadow"]);
+
+/** Class names in a string, without variant prefixes (`dark:`, `active:`). */
+function classesOf(text: string): string[] {
+  return text.split(/[\s"'`]+/).map((c) => c.slice(c.lastIndexOf(":") + 1)).filter(Boolean);
+}
+
+function classRules(text: string): string[] {
+  const hits: string[] = [];
+  for (const c of classesOf(text)) {
+    const radius = RADIUS.exec(c);
+    if (radius && !SHAPES.has(radius[1] ?? "")) hits.push(`radius ${c} (use rounded-group|control|full)`);
+    if (FONT_SIZE.test(c)) hits.push(`raw font size ${c} (use a Text variant)`);
+  }
+  return hits;
+}
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -41,9 +68,8 @@ function sources(dir: string): string[] {
 }
 
 /** Offences in one file, as `label:line what — text`. */
-function offences(label: string, text: string, inDesign: boolean): string[] {
+function offences(label: string, text: string, { inDesign, showcase }: Scope): string[] {
   const source = ts.createSourceFile(label, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const rules = inDesign ? EVERYWHERE : [...EVERYWHERE, ...OUTSIDE_DESIGN];
   const found: string[] = [];
   const report = (node: ts.Node, what: string) => {
     const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
@@ -60,16 +86,23 @@ function offences(label: string, text: string, inDesign: boolean): string[] {
     ) {
       // `import "x"` / `require("x")` paths are not styles.
       if (!ts.isImportDeclaration(node.parent) && !ts.isExternalModuleReference(node.parent)) {
-        for (const [pattern, what] of rules) if (pattern.test(node.text)) report(node, what);
+        for (const [pattern, what] of EVERYWHERE) if (pattern.test(node.text)) report(node, what);
+        if (!inDesign) for (const what of classRules(node.text)) report(node, what);
       }
+    }
+    if (!inDesign && ts.isPropertyAssignment(node)) {
+      const name = node.name.getText(source);
+      if (name === "fontSize" && ts.isNumericLiteral(node.initializer)) report(node, "raw fontSize");
+      if (ELEVATION_PROPS.has(name) && !showcase) report(node, `elevation (${name}:)`);
     }
     if (
       !inDesign &&
-      ts.isPropertyAssignment(node) &&
-      node.name.getText(source) === "fontSize" &&
-      ts.isNumericLiteral(node.initializer)
+      !showcase &&
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "shadowStyle"
     ) {
-      report(node, "raw fontSize");
+      report(node, "elevation (shadowStyle)");
     }
     ts.forEachChild(node, visit);
   };
@@ -83,26 +116,41 @@ describe("design consistency", () => {
     expect(sources(join(ROOT, "app")).length).toBeGreaterThan(50);
   });
 
-  it("flags literals, shadows, radii and font sizes, and skips comments", () => {
+  it("flags literals, shadows, radii, font sizes and elevation, and skips comments", () => {
     const sample = [
-      "// v1: rounded-lg shadow-sm #fff",
+      "// v1: rounded-lg shadow-sm #fff text-[10px]",
       'const a = "rounded-lg border";',
       'const b = { color: "#1F3260", fontSize: 13 };',
       "const c = `px-2 ${x} shadow-soft`;",
       'const d = "rgba(0, 0, 0, 0.5)";',
-      'const e = "rounded-2xl rounded-full rounded-[14px] rounded-t-md";',
+      'const e = "rounded-full rounded-group rounded-t-control dark:rounded-none";',
+      'const f = "rounded-2xl active:rounded-[16px] rounded";',
+      'const g = "text-[9px] leading-[18px] text-caption text-sm";',
+      "const h = <View style={shadowStyle(\"soft\")} />;",
+      "const i = { elevation: 4, boxShadow: x };",
     ].join("\n");
-    const lines = offences("s.tsx", sample, false).map((o) => o.split(" — ")[0]);
-    expect(lines).toEqual([
-      "s.tsx:2 rounded-sm|md|lg|xl class",
+    const out = (scope: Scope) => offences("s.tsx", sample, scope).map((o) => o.split(" — ")[0] ?? o);
+    expect(out({ inDesign: false, showcase: false })).toEqual([
+      "s.tsx:2 radius rounded-lg (use rounded-group|control|full)",
       "s.tsx:3 hex colour",
       "s.tsx:3 raw fontSize",
       "s.tsx:4 shadow- class",
       "s.tsx:5 rgb()/rgba() colour",
-      "s.tsx:6 rounded-sm|md|lg|xl class",
+      "s.tsx:7 radius rounded-2xl (use rounded-group|control|full)",
+      "s.tsx:7 radius rounded-[16px] (use rounded-group|control|full)",
+      "s.tsx:7 radius rounded (use rounded-group|control|full)",
+      "s.tsx:8 raw font size text-[9px] (use a Text variant)",
+      "s.tsx:8 raw font size leading-[18px] (use a Text variant)",
+      "s.tsx:9 elevation (shadowStyle)",
+      "s.tsx:10 elevation (elevation:)",
+      "s.tsx:10 elevation (boxShadow:)",
     ]);
-    // src/design owns the radius and type scales, not the colours.
-    expect(offences("s.tsx", sample, true).map((o) => o.split(" — ")[0])).toEqual([
+    // The catalogue may demo elevation; it still follows every other rule.
+    const showcase = out({ inDesign: false, showcase: true });
+    expect(showcase.filter((l) => l.includes("elevation"))).toEqual([]);
+    expect(showcase).toContain("s.tsx:7 radius rounded-2xl (use rounded-group|control|full)");
+    // src/design owns the radius, type and elevation scales, not the colours.
+    expect(out({ inDesign: true, showcase: false })).toEqual([
       "s.tsx:3 hex colour",
       "s.tsx:4 shadow- class",
       "s.tsx:5 rgb()/rgba() colour",
@@ -114,12 +162,15 @@ describe("design consistency", () => {
     const found = files.flatMap((file) => {
       const label = relative(ROOT, file);
       if (label.startsWith(THEME)) return [];
-      return offences(label, readFileSync(file, "utf8"), label.startsWith(DESIGN));
+      return offences(label, readFileSync(file, "utf8"), {
+        inDesign: label.startsWith(DESIGN),
+        showcase: label.startsWith(SHOWCASE),
+      });
     });
     if (found.length) {
       throw new Error(
         `${found.length} design-consistency offences (use tokens / useThemeColors() / palette, ` +
-          `component shapes and Text variants):\n${found.join("\n")}`,
+          `named radii, Text variants and kit elevation):\n${found.join("\n")}`,
       );
     }
   });

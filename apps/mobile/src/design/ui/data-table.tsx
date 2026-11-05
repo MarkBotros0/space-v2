@@ -50,7 +50,7 @@ function DataTable<Row>({
   const actionColumns = rest.filter((col) => col.header === "");
   return (
     <View className={cn("w-full", className)}>
-      <View className="overflow-hidden rounded-[16px] bg-surface dark:border dark:border-separator">
+      <View className="overflow-hidden rounded-group bg-surface dark:border dark:border-separator">
         {rows.map((row, i) => {
           const Wrapper = onRowPress ? Pressable : View;
           const pressProps = onRowPress

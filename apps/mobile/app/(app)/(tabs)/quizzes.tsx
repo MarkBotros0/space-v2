@@ -73,16 +73,16 @@ function StudentQuizRow({ row }: { row: StudentQuizResult }) {
         </View>
       </View>
       {row.notes ? (
-        <Text className="mt-2 rounded-[14px] bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        <Text className="mt-2 rounded-control bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           {row.notes}
         </Text>
       ) : null}
       {row.gradedAt ? (
-        <Text className="mt-2 text-[10px] text-muted-foreground">{`Graded ${formatDate(row.gradedAt)}`}</Text>
+        <Text className="mt-2 text-caption text-muted-foreground">{`Graded ${formatDate(row.gradedAt)}`}</Text>
       ) : null}
     </>
   );
-  const box = "rounded-[16px] bg-surface dark:border dark:border-separator px-4 py-4";
+  const box = "rounded-group bg-surface dark:border dark:border-separator px-4 py-4";
   // v1: a PAPER row is a plain card, not a link.
   if (!online) {
     return (
@@ -146,7 +146,7 @@ function StudentQuizzes({ seasonId }: { seasonId: number | null }) {
   return (
     <ShellFrame onRefresh={handleRefresh} refreshing={isRefetching}>
       <View className="flex-col gap-3">
-        <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
+        <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
           <View className="flex-row items-center gap-5">
             <ProgressRing
               value={average ?? 0}
@@ -204,7 +204,7 @@ function QuizSummaryRow({
     <Pressable
       accessibilityRole="link"
       onPress={onPress}
-      className="flex-row items-center justify-between gap-4 rounded-[16px] bg-surface dark:border dark:border-separator px-4 py-4"
+      className="flex-row items-center justify-between gap-4 rounded-group bg-surface dark:border dark:border-separator px-4 py-4"
     >
       <View className="min-w-0 flex-1">
         <Text

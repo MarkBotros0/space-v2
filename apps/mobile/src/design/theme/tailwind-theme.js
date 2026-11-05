@@ -68,7 +68,7 @@ const colors = {
   "error": {"50":"#FEF2F2","100":"#FEE2E2","200":"#FECACA","300":"#FCA5A5","400":"#F87171","500":"#EF4444","600":"#DC2626","700":"#B91C1C","800":"#991B1B","900":"#7F1D1D","950":"#450A0A"},
   "info": {"50":"#EFF6FF","100":"#DBEAFE","200":"#BFDBFE","300":"#93C5FD","400":"#60A5FA","500":"#3B82F6","600":"#2563EB","700":"#1D4ED8","800":"#1E40AF","900":"#1E3A8A","950":"#172554","DEFAULT":"rgb(var(--info) / <alpha-value>)"},
   "purple": {"50":"#F5F3FF","100":"#EDE9FE","200":"#DDD6FE","300":"#C4B5FD","400":"#A78BFA","500":"#8B5CF6","600":"#7C3AED","700":"#6D28D9","800":"#5B21B6","900":"#4C1D95","950":"#2E1065"},
-  role: {"super":"#1F3260","super-foreground":"#FFFFFF","admin":"#7DCED1","admin-foreground":"#1F3260","leader":"#8B5CF6","leader-foreground":"#FFFFFF","student":"#F59E0B","student-foreground":"#FFFFFF","mentor":"#10B981","mentor-foreground":"#FFFFFF"},
+  role: {"super":"#1F3260","super-foreground":"#FFFFFF","admin":"#7DCED1","admin-foreground":"#1F3260","leader":"#7C3AED","leader-foreground":"#FFFFFF","student":"#F59E0B","student-foreground":"#142048","mentor":"#10B981","mentor-foreground":"#142048"},
   white: "#FFFFFF",
   black: "#000000",
   transparent: "transparent",
@@ -84,7 +84,10 @@ const borderRadius = {
   "xl": "14px",
   "2xl": "18px",
   "3xl": "22px",
-  "4xl": "26px"
+  "4xl": "26px",
+  "group": "16px",
+  "control": "14px",
+  "sheet": "24px"
 };
 const boxShadow = {
   "xs": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
@@ -190,7 +193,7 @@ const semantic = {
     "foreground": "#ECEFF7",
     "card": "#16204A",
     "card-foreground": "#ECEFF7",
-    "popover": "#16204A",
+    "popover": "#344676",
     "popover-foreground": "#ECEFF7",
     "primary": "#7DCED1",
     "primary-foreground": "#103436",

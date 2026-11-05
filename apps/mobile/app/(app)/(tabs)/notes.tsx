@@ -51,7 +51,7 @@ function NoteRow({ item }: { item: AuthoredNote }) {
               </>
             ) : null}
             {item.followUpFlagged ? (
-              <Badge variant="warning" textClassName="text-[10px]">
+              <Badge variant="warning">
                 Follow-up flagged
               </Badge>
             ) : null}
@@ -59,7 +59,7 @@ function NoteRow({ item }: { item: AuthoredNote }) {
           <Text className="text-sm">{item.body}</Text>
           <View className="flex-row flex-wrap items-center gap-2">
             {/* Its own node, so the label is findable and read out on its own. */}
-            <Badge variant="outline" textClassName="text-[10px]">
+            <Badge variant="outline">
               {VISIBILITY_LABEL[item.visibility]}
             </Badge>
             {/* Server-derived (ruling C4): the client never compares timestamps. */}

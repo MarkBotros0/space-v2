@@ -74,7 +74,7 @@ export function QuestionEditor({
 
   return (
     // v1 quiz-builder.tsx QuestionForm: `rounded-xl border border-brand-teal-600/40 bg-card p-4`.
-    <View className="flex-col gap-3 rounded-[16px] border border-ring bg-surface p-4">
+    <View className="flex-col gap-3 rounded-group border border-separator bg-surface p-4">
       <View className="flex-row flex-wrap items-center gap-2">
         {(["MCQ", "ESSAY"] as const).map((t) => (
           <Pressable
@@ -93,9 +93,7 @@ export function QuestionEditor({
             <Text
               className={cn(
                 "text-xs font-bold",
-                type === t
-                  ? "text-brand-teal-700 dark:text-brand-teal-300"
-                  : "text-muted-foreground",
+                type === t ? "text-accent-foreground" : "text-muted-foreground",
               )}
             >
               {t === "MCQ" ? "Multiple choice" : "Essay"}
@@ -139,12 +137,12 @@ export function QuestionEditor({
                 onPress={() => setCorrectIndex(index)}
                 className={cn(
                   "size-9 shrink-0 items-center justify-center rounded-full border",
-                  correctIndex === index ? "border-success-600 bg-success-600" : "border-control-border",
+                  correctIndex === index ? "border-ring bg-ring" : "border-control-border",
                 )}
               >
                 <Check
                   size={16}
-                  className={correctIndex === index ? "text-white" : "text-transparent"}
+                  className={correctIndex === index ? "text-primary-foreground" : "text-transparent"}
                 />
               </Pressable>
               <Input

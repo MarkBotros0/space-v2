@@ -131,7 +131,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
             style={[styles.panel, sheetStyle]}
             onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
           >
-            <View className="shrink rounded-t-[24px] bg-surface">
+            <View className="shrink rounded-t-sheet bg-surface">
               <GestureDetector gesture={pan}>
                 <View testID="sheet-header" className="min-h-[44px] items-center justify-center pb-2 pt-3">
                   <View className="h-1 w-10 rounded-full bg-separator" />

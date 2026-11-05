@@ -134,7 +134,7 @@ function StudentAssignments({ seasonId }: { seasonId: number | null }) {
           />
           <StatCard label="Reviewed" value={String(reviewed)} />
         </View>
-        <View className="rounded-[16px] bg-surface dark:border dark:border-separator">
+        <View className="rounded-group bg-surface dark:border dark:border-separator">
           {data.map((item, i) => (
             <AssignmentRow key={item.id} item={item} first={i === 0} last={i === data.length - 1} />
           ))}

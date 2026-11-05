@@ -14,7 +14,7 @@ export function IdentityCard({
   badge: string;
 }) {
   return (
-    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
+    <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
       <View className="flex-row items-center gap-4">
         {/* Initials only: v2 has no avatar read path and uploads are off (gap note). */}
         <Avatar size="xl" className="shrink-0">

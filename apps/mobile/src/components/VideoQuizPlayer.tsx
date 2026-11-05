@@ -231,13 +231,13 @@ export function VideoQuizPlayer({
     <View className="flex-col gap-3">
       {deadlocked ? (
         <InlineError
-          className="rounded-[16px] bg-surface dark:border dark:border-separator p-4"
+          className="rounded-group bg-surface dark:border dark:border-separator p-4"
           message={deadlockMessage}
           onRetry={() => onRetry?.()}
         />
       ) : (
         <View
-          className="overflow-hidden rounded-2xl border border-border bg-black"
+          className="overflow-hidden rounded-group border border-border bg-black"
         >
           <YoutubePlayer
             ref={playerRef}
@@ -293,7 +293,7 @@ export function VideoQuizPlayer({
         </View>
       )}
 
-      <View className="flex-row items-center justify-between rounded-[16px] bg-surface p-4 dark:border dark:border-separator">
+      <View className="flex-row items-center justify-between rounded-group bg-surface p-4 dark:border dark:border-separator">
         <View>
           <Text className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
             {quiz.completedAt !== null ? "Quiz complete" : "In progress"}

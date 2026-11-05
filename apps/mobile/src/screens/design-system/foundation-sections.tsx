@@ -32,7 +32,7 @@ export function FoundationSections() {
             <Logo size="md" />
             <Logo size="lg" />
           </View>
-          <View className="flex-row flex-wrap items-center gap-6 rounded-2xl border border-border/60 bg-card p-4">
+          <View className="flex-row flex-wrap items-center gap-6 rounded-group border border-border/60 bg-card p-4">
             <Logo size="md" showWordmark />
             <Logo size="lg" showWordmark />
           </View>
@@ -93,7 +93,7 @@ export function FoundationSections() {
           ).map(([name, caption]) => (
             <View
               key={name}
-              className="rounded-2xl border border-border/60 bg-card p-6"
+              className="rounded-group border border-border/60 bg-card p-6"
               style={shadowStyle(name)}
             >
               <Text className="text-lg font-semibold tracking-tight">shadow-{name}</Text>
@@ -115,9 +115,9 @@ export function FoundationSections() {
                   <View key={cls} className="flex-col gap-1">
                     <View
                       accessibilityLabel={`${scale.name}-${STEPS[i]}`}
-                      className={`h-10 rounded-[10px] border border-separator ${cls}`}
+                      className={`h-10 rounded-control border border-separator ${cls}`}
                     />
-                    <Text className="text-[10px] text-muted-foreground">{STEPS[i]}</Text>
+                    <Text className="text-caption text-muted-foreground">{STEPS[i]}</Text>
                   </View>
                 ))}
               </Grid>
@@ -130,7 +130,7 @@ export function FoundationSections() {
         <Grid cols={2} gap={12}>
           {SEMANTIC.map(([name, cls]) => (
             <View key={name} className="flex-col gap-1">
-              <View className={`h-12 rounded-[10px] border border-separator ${cls}`} />
+              <View className={`h-12 rounded-control border border-separator ${cls}`} />
               <Text className="text-xs text-muted-foreground">{name}</Text>
             </View>
           ))}

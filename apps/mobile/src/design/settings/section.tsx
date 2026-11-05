@@ -23,7 +23,7 @@ export function Section({
 }) {
   iconWithClassName(Icon);
   return (
-    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+    <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
       <View className="mb-4 flex-row items-start gap-3">
         <View className="size-9 shrink-0 items-center justify-center rounded-lg bg-brand-teal-100 dark:bg-brand-teal-950">
           <Icon size={16} className="text-brand-teal-700 dark:text-brand-teal-300" />

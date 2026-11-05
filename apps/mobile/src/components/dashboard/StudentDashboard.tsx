@@ -29,7 +29,7 @@ import { UpcomingEventsCard } from "./UpcomingEventsCard";
 iconWithClassName(AlertTriangle);
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
-const CARD = "rounded-[16px] bg-surface dark:border dark:border-separator";
+const CARD = "rounded-group bg-surface dark:border dark:border-separator";
 
 function subtitle(data: StudentData | undefined): string {
   if (!data?.season || !data.assignments) return "Welcome to JPC Space";
@@ -44,14 +44,14 @@ function subtitle(data: StudentData | undefined): string {
 function DueBadge({ a }: { a: DashboardDueItem }) {
   if (a.isOverdue) {
     return (
-      <Badge variant="error" className="shrink-0" textClassName="text-[10px]">
+      <Badge variant="error" className="shrink-0">
         {`Due ${formatShortDay(a.dueOrgDay)}`}
       </Badge>
     );
   }
   if (!a.dueAt) return null;
   return (
-    <Badge variant="warning" className="shrink-0" textClassName="text-[10px]">
+    <Badge variant="warning" className="shrink-0">
       {`Due in ${formatDistanceOnly(a.dueAt)}`}
     </Badge>
   );
@@ -110,7 +110,7 @@ export function StudentDashboard() {
               title="Not enrolled yet"
               description="Contact your leader or admin to be enrolled in a season."
             />
-            <View className="rounded-2xl border border-brand-teal-200 bg-brand-teal-100 p-4 dark:border-brand-teal-900 dark:bg-brand-teal-950">
+            <View className="rounded-group border border-brand-teal-200 bg-brand-teal-100 p-4 dark:border-brand-teal-900 dark:bg-brand-teal-950">
               <Eyebrow tone="teal">While you wait</Eyebrow>
               <Pressable accessibilityRole="link" onPress={() => router.push("/profile")}>
                 <Text className="mt-1 text-sm font-bold text-brand-teal-900 dark:text-brand-teal-100">
@@ -203,7 +203,7 @@ function EnrolledBody({
       )}
 
       {late > 0 ? (
-        <View className="rounded-2xl border border-warning-200 bg-warning-50 p-3 dark:border-warning-900 dark:bg-warning-950">
+        <View className="rounded-group border border-warning-200 bg-warning-50 p-3 dark:border-warning-900 dark:bg-warning-950">
           <View className="flex-row items-center gap-1.5">
             <AlertTriangle size={14} className="shrink-0 text-warning-800 dark:text-warning-200" />
             <Text className="text-xs font-bold text-warning-800 dark:text-warning-200">

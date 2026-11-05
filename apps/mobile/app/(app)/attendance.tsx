@@ -78,7 +78,7 @@ export default function AttendanceScreen() {
     const tone = pct >= 100 ? "stroke-error-500" : pct >= 70 ? "stroke-warning-500" : undefined;
     body = (
       <>
-        <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
+        <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
           <View className="flex-row items-center gap-5">
             <ProgressRing value={pct} label={`Absence budget ${pct}% used`} indicatorClassName={tone}>
               <Text className="text-2xl font-black text-brand-navy-900 dark:text-foreground">{`${pct}%`}</Text>
@@ -98,7 +98,7 @@ export default function AttendanceScreen() {
         {sessions.length === 0 ? (
           <EmptyState icon={Calendar} title="No sessions yet" description="Past sessions will appear here." />
         ) : (
-          <View className="rounded-[16px] bg-surface dark:border dark:border-separator">
+          <View className="rounded-group bg-surface dark:border dark:border-separator">
             <Eyebrow className="px-4 pt-4">Session history</Eyebrow>
             <View className="mt-2">
               {sessions.map((row, i) => (

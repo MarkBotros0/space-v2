@@ -23,7 +23,7 @@ const Textarea = forwardRef<TextInputInstance, TextInputProps & { className?: st
         editable={!disabled}
         placeholderTextColor={colors["muted-foreground"]}
         className={cn(
-          "min-h-20 w-full rounded-xl border border-control-border bg-surface px-3 py-2.5 text-base font-normal text-foreground focus:border-ring",
+          "min-h-20 w-full rounded-control border border-control-border bg-surface px-3 py-2.5 text-base font-normal text-foreground focus:border-ring",
           invalid && "border-destructive",
           disabled && "opacity-50",
           className,

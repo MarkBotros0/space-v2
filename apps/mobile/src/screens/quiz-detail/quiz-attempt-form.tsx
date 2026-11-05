@@ -56,22 +56,22 @@ function AttemptQuestion({
                 accessibilityLabel={`Answer ${index + 1} option ${optionIndex + 1}: ${option}`}
                 onPress={() => onChange({ selectedIndex: optionIndex })}
                 className={cn(
-                  "flex-row items-center gap-3 rounded-[14px] border px-4 py-3",
+                  "flex-row items-center gap-3 rounded-control border px-4 py-3",
                   selected ? "border-ring bg-accent" : "border-control-border bg-surface",
                 )}
               >
                 <View
                   className={cn(
                     "size-5 shrink-0 items-center justify-center rounded-full border",
-                    selected ? "border-brand-teal-600 bg-brand-teal-600" : "border-control-border",
+                    selected ? "border-ring bg-ring" : "border-control-border",
                   )}
                 >
-                  {selected ? <Check size={12} className="text-white" /> : null}
+                  {selected ? <Check size={12} className="text-primary-foreground" /> : null}
                 </View>
                 <TextV1
                   className={cn(
                     "flex-1 text-sm font-medium",
-                    selected ? "text-brand-teal-700 dark:text-brand-teal-300" : "text-foreground",
+                    selected ? "text-accent-foreground" : "text-foreground",
                   )}
                 >
                   {option}

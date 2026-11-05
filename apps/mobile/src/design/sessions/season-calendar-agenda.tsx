@@ -26,13 +26,13 @@ function TimeRail({ time }: { time: string | null }) {
   return (
     <View className="w-12 shrink-0 flex-col items-center justify-center">
       <Text className="text-sm font-bold leading-none text-foreground">{clock}</Text>
-      <Text className="mt-0.5 text-[10px] uppercase text-muted-foreground">{meridiem}</Text>
+      <Text className="mt-0.5 text-caption uppercase text-muted-foreground">{meridiem}</Text>
     </View>
   );
 }
 
 const ROW =
-  "flex-row items-center gap-3 rounded-[16px] bg-surface dark:border dark:border-separator p-3 active:bg-accent";
+  "flex-row items-center gap-3 rounded-group bg-surface dark:border dark:border-separator p-3 active:bg-accent";
 
 function AgendaSession({
   s,
@@ -75,7 +75,7 @@ function AgendaSession({
             >
               <Text
                 className={cn(
-                  "text-[10px] font-medium",
+                  "text-caption font-medium",
                   (seasonColors[s.seasonCode] ?? FALLBACK_SEASON).text,
                 )}
               >
@@ -154,7 +154,7 @@ export function AgendaView({
             <View className="flex-row items-baseline justify-between gap-2">
               <Eyebrow>{formatLongDay(group.dayKey)}</Eyebrow>
               {cue ? (
-                <Text className="text-[10px] font-medium text-brand-teal-700 dark:text-brand-teal-300">
+                <Text className="text-caption font-medium text-brand-teal-700 dark:text-brand-teal-300">
                   {cue}
                 </Text>
               ) : null}

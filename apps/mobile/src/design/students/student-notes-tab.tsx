@@ -26,11 +26,11 @@ function NoteCard({ note }: { note: NoteSummary }) {
       <CardContent className="flex-col gap-2 pt-4">
         <View className="flex-row flex-wrap items-center gap-2">
           <Text className="text-xs font-medium text-foreground">{note.authorName}</Text>
-          <Badge variant="outline" textClassName="text-[10px]">
+          <Badge variant="outline">
             {note.authorRole}
           </Badge>
           {note.followUpFlagged ? (
-            <Badge variant="warning" textClassName="text-[10px]">
+            <Badge variant="warning">
               Follow up
             </Badge>
           ) : null}

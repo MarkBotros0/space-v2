@@ -20,7 +20,7 @@ iconWithClassName(AlertTriangle);
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 const NAVY = "text-brand-navy-900 dark:text-foreground";
-const COLUMN = "text-[10px] font-bold uppercase tracking-widest text-muted-foreground";
+const COLUMN = "text-caption font-medium uppercase tracking-wide text-muted-foreground";
 
 type Variant = "ADMIN" | "LEADER";
 
@@ -52,7 +52,7 @@ function StaffSummary({
 
   return (
     <>
-      <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-5">
+      <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
         <View className="flex-row items-center gap-5">
           <ProgressRing
             value={mean ?? 0}
@@ -154,7 +154,7 @@ function StaffSummary({
                   {r.attendanceTotal > 0 ? (
                     <Text className="text-xs font-bold text-error-600 dark:text-error-400">{`${r.attendancePct}%`}</Text>
                   ) : null}
-                  <Badge variant="warning" textClassName="text-[10px]">
+                  <Badge variant="warning">
                     {`${r.submissionsCompleted}/${r.submissionsExpected} submitted`}
                   </Badge>
                 </View>
@@ -222,7 +222,7 @@ function StaffSummary({
       ) : null}
 
       {cohort.atRiskTotal > 0 ? (
-        <View className="flex-row items-start gap-3 rounded-2xl border border-error-200 bg-error-50 p-4 dark:border-error-900 dark:bg-error-950">
+        <View className="flex-row items-start gap-3 rounded-group border border-error-200 bg-error-50 p-4 dark:border-error-900 dark:bg-error-950">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-error-500" />
           <View className="min-w-0 flex-1">
             <Text className="text-xs font-bold text-error-800 dark:text-error-200">

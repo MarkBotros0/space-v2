@@ -17,7 +17,7 @@ import { useSessionStore } from "../../store/session";
 
 iconWithClassName(CalendarDays, MapPin, Users);
 
-const CARD = "rounded-[16px] bg-surface dark:border dark:border-separator";
+const CARD = "rounded-group bg-surface dark:border dark:border-separator";
 
 /** "MMM" / "d" for the date tile, read from the org day key (X13). */
 function dayTile(dayKey: string): { month: string; day: string } {
@@ -98,7 +98,7 @@ function GroupCard({ group }: { group: NonNullable<MySeason["group"]> }) {
             )}
           >
             <View className="size-6 items-center justify-center rounded-full bg-card">
-              <Text className="text-[10px] font-bold text-brand-navy-800 dark:text-brand-navy-100">
+              <Text maxFontSizeMultiplier={1.15} className="text-caption font-bold text-brand-navy-800 dark:text-brand-navy-100">
                 {initialsOf(member.name, "?")}
               </Text>
             </View>
@@ -142,10 +142,10 @@ function UpcomingCard({ upcoming }: { upcoming: MySeason["upcoming"] }) {
             return (
               <View key={s.id} className="flex-row items-center gap-3">
                 <View className="size-11 shrink-0 items-center justify-center rounded-full bg-brand-teal-100 dark:bg-brand-teal-950">
-                  <Text className="text-[9px] font-bold uppercase leading-none text-brand-teal-800 dark:text-brand-teal-200">
+                  <Text maxFontSizeMultiplier={1.15} className="text-caption font-bold uppercase leading-none text-brand-teal-800 dark:text-brand-teal-200">
                     {tile.month}
                   </Text>
-                  <Text className="text-base font-black leading-tight text-brand-teal-800 dark:text-brand-teal-200">
+                  <Text maxFontSizeMultiplier={1.15} className="text-base font-black leading-tight text-brand-teal-800 dark:text-brand-teal-200">
                     {tile.day}
                   </Text>
                 </View>

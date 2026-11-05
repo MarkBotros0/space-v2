@@ -152,7 +152,7 @@ export default function GroupImportScreen() {
       <ShellFrame>
         <View className="flex-col gap-4">
           {header}
-          <View className="flex-row items-start gap-3 rounded-[14px] bg-ok-soft px-4 py-3">
+          <View className="flex-row items-start gap-3 rounded-control bg-ok-soft px-4 py-3">
             <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-success-600" />
             <View className="min-w-0 flex-1">
               <Text className="text-sm font-semibold text-success-800 dark:text-success-200">
@@ -165,7 +165,7 @@ export default function GroupImportScreen() {
             </View>
           </View>
           {skippedRows.map((r) => (
-            <View key={r.rowNumber} className="rounded-[16px] bg-surface p-3 dark:border dark:border-separator">
+            <View key={r.rowNumber} className="rounded-group bg-surface p-3 dark:border dark:border-separator">
               <Text className="text-sm font-medium">{`Row ${r.rowNumber} · ${r.email}`}</Text>
               <Text className="text-xs text-muted-foreground">
                 Not placed — no active enrolment in this season.

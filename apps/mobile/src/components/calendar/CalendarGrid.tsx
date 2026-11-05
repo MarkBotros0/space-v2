@@ -117,7 +117,7 @@ function MonthGrid({
                 accessibilityState={{ selected: isSelected }}
                 onPress={() => setPicked(key)}
                 className={cn(
-                  "min-h-14 flex-1 items-center rounded-[10px] py-1",
+                  "min-h-14 flex-1 items-center rounded-control py-1",
                   isSelected && "bg-brand-teal-100 dark:bg-brand-teal-950",
                   // v1 dims days outside the anchor month.
                   !isSameMonth(key, anchor) && "opacity-40",

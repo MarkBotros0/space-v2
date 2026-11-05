@@ -135,7 +135,7 @@ function RosterGrid({ seasonId, onNewGroup }: { seasonId: number; onNewGroup: ()
             <View
               key={r.userId}
               className={cn(
-                "flex-col gap-2 rounded-[16px] border bg-surface p-3",
+                "flex-col gap-2 rounded-group border bg-surface p-3",
                 dirty ? "border-brand-teal-400" : "border-border",
               )}
             >

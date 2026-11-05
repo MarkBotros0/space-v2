@@ -76,7 +76,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
         {current.map((a) => (
           <View
             key={a.userId}
-            className="flex-row items-center gap-3 rounded-[16px] bg-surface p-3 dark:border dark:border-separator"
+            className="flex-row items-center gap-3 rounded-group bg-surface p-3 dark:border dark:border-separator"
           >
             <View className="min-w-0 flex-1">
               <Text numberOfLines={1} className="text-sm font-medium">

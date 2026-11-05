@@ -155,7 +155,7 @@ function AttemptCard({ id, item, maxScore, hasEssays }: { id: number; item: Quiz
  */
 function WaitingRow({ row }: { row: { studentUserId: number; studentName: string | null; startedAt: string | null } }) {
   return (
-    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+    <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
       <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{row.studentName ?? "Student"}</Text>
       <Text className="text-xs text-muted-foreground">
         {row.startedAt === null ? "Not started" : `In progress since ${formatDate(row.startedAt)}`}

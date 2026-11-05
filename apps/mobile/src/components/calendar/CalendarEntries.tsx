@@ -127,7 +127,7 @@ function EntryCard({
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className={cn("mt-2 rounded-2xl border-l-4 p-4 active:opacity-90", tint.box, tint.border)}
+      className={cn("mt-2 rounded-group border-l-4 p-4 active:opacity-90", tint.box, tint.border)}
     >
       <Text className={tint.text}>{title}</Text>
       <Text className={cn("text-sm font-medium", tint.text)}>{subtitle}</Text>

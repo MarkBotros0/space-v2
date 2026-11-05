@@ -40,9 +40,9 @@ iconWithClassName(FileIcon);
 
 const NOTICE = {
   error:
-    "rounded-[14px] bg-bad-soft px-3 py-2 text-sm text-bad",
+    "rounded-control bg-bad-soft px-3 py-2 text-sm text-bad",
   success:
-    "rounded-[14px] bg-ok-soft px-3 py-2 text-sm text-ok",
+    "rounded-control bg-ok-soft px-3 py-2 text-sm text-ok",
 };
 
 /** v1's hero due badge: overdue → "Due MMM d, yyyy" (org day), else "Due in …", or "No due date". */
@@ -59,7 +59,7 @@ function DueBanner({ detail, status }: { detail: AssignmentDetail; status: strin
   if (detail.dueAt === null || status === "REVIEWED") return null;
   if (detail.isOverdue) {
     return (
-      <TextV1 className="rounded-[14px] bg-bad-soft px-3 py-2 text-sm text-bad">
+      <TextV1 className="rounded-control bg-bad-soft px-3 py-2 text-sm text-bad">
         Past due — submitted work will be marked late.
       </TextV1>
     );
@@ -68,7 +68,7 @@ function DueBanner({ detail, status }: { detail: AssignmentDetail; status: strin
   return (
     <TextV1
       className={cn(
-        "rounded-[14px] px-3 py-2 text-sm",
+        "rounded-control px-3 py-2 text-sm",
         urgent
           ? "bg-warn-soft text-warn"
           : "bg-info-soft text-info",
@@ -191,7 +191,7 @@ function SubmissionEditor({
                   {sub.files.map((f) => (
                     <View
                       key={f.originalName}
-                      className="flex-row items-center justify-between gap-2 rounded-[14px] border border-separator bg-surface px-3 py-2"
+                      className="flex-row items-center justify-between gap-2 rounded-control border border-separator bg-surface px-3 py-2"
                     >
                       <View className="min-w-0 flex-1 flex-row items-center gap-2">
                         <FileIcon size={16} className="shrink-0 text-muted-foreground" />
@@ -278,7 +278,7 @@ function StudentAssignmentDetail({
       <View className="flex-col gap-3">
         <View>
           <View
-            className="rounded-[16px] bg-surface dark:border dark:border-separator p-5"
+            className="rounded-group bg-surface dark:border dark:border-separator p-5"
           >
             {forum ? (
               <View className="mb-2 flex-row items-center gap-2">
@@ -300,7 +300,7 @@ function StudentAssignmentDetail({
         </View>
         {detail.description ? (
           <View
-            className="rounded-[16px] bg-surface dark:border dark:border-separator p-4"
+            className="rounded-group bg-surface dark:border dark:border-separator p-4"
           >
             <Eyebrow className="mb-2">{forum ? "Question" : "Brief"}</Eyebrow>
             <RichTextView html={storedTextToHtml(detail.description)} />

@@ -126,7 +126,7 @@ function NotificationRow({ item, first, onPress }: { item: NotificationBellItem;
         <Text className="flex-1 text-sm font-medium leading-snug text-popover-foreground">{item.title}</Text>
       </View>
       {item.body ? <Text className="text-xs text-muted-foreground">{item.body}</Text> : null}
-      <Text className="text-[10px] uppercase tracking-wide text-muted-foreground">
+      <Text className="text-caption uppercase tracking-wide text-muted-foreground">
         {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
       </Text>
     </View>

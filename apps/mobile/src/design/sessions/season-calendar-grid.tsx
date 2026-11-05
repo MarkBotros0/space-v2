@@ -51,7 +51,7 @@ export function CalendarGrid({
   for (let i = 0; i < keys.length; i += 7) weeks.push(keys.slice(i, i + 7));
   return (
     // v1: grid gap-px over bg-border draws the 1px lines.
-    <View className="overflow-hidden rounded-xl border border-border bg-border" style={{ gap: 1 }}>
+    <View className="overflow-hidden rounded-group border border-separator bg-separator" style={{ gap: 1 }}>
       <View className="flex-row" style={{ gap: 1 }}>
         {WEEKDAYS.map((d) => (
           <View key={d} className="flex-1 bg-card py-2">

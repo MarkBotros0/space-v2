@@ -36,12 +36,12 @@ function SegmentedControl({
   return (
     <View
       testID="segmented-control"
-      className={cn("flex-row rounded-xl bg-neutral-soft p-0.5", className)}
+      className={cn("flex-row rounded-control bg-neutral-soft p-0.5", className)}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       {segment > 0 ? (
         <Animated.View pointerEvents="none" style={[styles.thumb, { width: segment }, style]}>
-          <View testID="segmented-thumb" className="flex-1 rounded-[10px] bg-surface-raised" />
+          <View testID="segmented-thumb" className="flex-1 rounded-lg bg-surface-raised" />
         </Animated.View>
       ) : null}
       {options.map((o) => {

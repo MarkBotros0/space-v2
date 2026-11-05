@@ -51,11 +51,11 @@ function NotificationRow({
           <View className="flex-1 flex-col gap-1">
             <View className="flex-row flex-wrap items-center gap-2">
               <Text className="text-sm font-medium">{item.title}</Text>
-              <Badge variant="outline" textClassName="text-[10px]">
+              <Badge variant="outline">
                 {item.type.replace(/_/g, " ")}
               </Badge>
               {isUnread ? (
-                <Badge variant="info" textClassName="text-[10px]">
+                <Badge variant="info">
                   New
                 </Badge>
               ) : null}

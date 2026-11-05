@@ -22,7 +22,7 @@ export function UpcomingEventsCard({ query }: { query: UseQueryResult<JpcEventLi
   const router = useRouter();
 
   return (
-    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+    <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
       <Eyebrow>Upcoming events</Eyebrow>
       {query.isPending ? (
         <View accessible accessibilityLabel="Loading" className="mt-2 flex-col gap-2.5">

@@ -61,7 +61,7 @@ function FileUpload({
       {files.length > 0 ? (
         <View className="flex-col gap-1.5">
           {files.map((f, i) => (
-            <View key={`${f.name}-${i}`} className="flex-row items-center justify-between gap-2 rounded-[14px] border border-separator bg-surface px-3 py-2">
+            <View key={`${f.name}-${i}`} className="flex-row items-center justify-between gap-2 rounded-control border border-separator bg-surface px-3 py-2">
               <Text numberOfLines={1} className="shrink text-sm text-foreground">
                 {f.name}
               </Text>

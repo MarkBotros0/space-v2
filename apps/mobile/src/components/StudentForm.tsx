@@ -27,7 +27,7 @@ export interface StudentFormProps {
 /** v1's `<fieldset className="rounded-lg border border-border bg-card p-4 md:p-6">` with its legend. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <View className="flex-col gap-4 rounded-[16px] bg-surface p-4 dark:border dark:border-separator">
+    <View className="flex-col gap-4 rounded-group bg-surface p-4 dark:border dark:border-separator">
       <Text className="text-sm font-semibold text-foreground">{title}</Text>
       {children}
     </View>

@@ -61,7 +61,7 @@ export function QrScanner({ onCode, onCancel }: QrScannerProps) {
   } else {
     body = (
       <>
-        <View className="aspect-video w-full overflow-hidden rounded-[16px] bg-black">
+        <View className="aspect-video w-full overflow-hidden rounded-group bg-black">
           <CameraView
             style={{ flex: 1 }}
             facing="back"

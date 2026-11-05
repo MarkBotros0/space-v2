@@ -19,7 +19,7 @@ export function NextSessionCard({
   onOpen: (id: number) => void;
 }) {
   return (
-    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+    <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
       <Eyebrow>{next?.isInProgress ? "Happening now" : "Next session"}</Eyebrow>
       {next ? (
         <View className="mt-2 flex-col gap-2">
@@ -35,7 +35,7 @@ export function NextSessionCard({
                 }`}
               </Text>
               {next.isInProgress ? null : (
-                <Badge variant="teal" className="mt-1.5" textClassName="text-[10px]">
+                <Badge variant="teal" className="mt-1.5">
                   {formatTimeAgo(next.startsAt)}
                 </Badge>
               )}

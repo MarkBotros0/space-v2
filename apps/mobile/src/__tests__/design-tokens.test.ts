@@ -54,6 +54,10 @@ describe("generated design tokens", () => {
     expect(theme.borderRadius.lg).toBe(`${tokens.radius.lg}px`);
     expect(theme.borderRadius["2xl"]).toBe(`${tokens.radius["2xl"]}px`);
     expect(theme.borderRadius.DEFAULT).toBe("4px");
+    // Named shapes (spec: groups 16, buttons and fields 14; sheets 24).
+    expect(theme.borderRadius.group).toBe("16px");
+    expect(theme.borderRadius.control).toBe("14px");
+    expect(theme.borderRadius.sheet).toBe("24px");
   });
 
   it("v1 shadow tokens exist as named shadows", () => {

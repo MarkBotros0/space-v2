@@ -43,7 +43,7 @@ const SIZE_ALIAS: Record<SizeInput, Size> = {
 const ICON_SIZES = new Set<string>(["icon", "icon-xs", "icon-sm", "icon-lg"]);
 
 const base = cva(
-  "shrink-0 flex-row items-center justify-center gap-2 rounded-[14px] border border-transparent px-4",
+  "shrink-0 flex-row items-center justify-center gap-2 rounded-control border border-transparent px-4",
   {
     variants: {
       variant: {

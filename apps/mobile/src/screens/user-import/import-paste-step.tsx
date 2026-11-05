@@ -42,7 +42,7 @@ function ModeTile({
       accessibilityState={{ selected }}
       onPress={onPress}
       className={cn(
-        "rounded-[14px] border px-4 py-3",
+        "rounded-control border px-4 py-3",
         selected
           ? "border-ring bg-accent"
           : "border-control-border bg-surface active:bg-accent",
@@ -108,7 +108,7 @@ export function ImportPasteStep({
               ) : seasons.isError ? (
                 <RouteError onRetry={() => void seasons.refetch()} />
               ) : (seasons.data ?? []).length === 0 ? (
-                <View className="rounded-[14px] bg-warn-soft px-3 py-2">
+                <View className="rounded-control bg-warn-soft px-3 py-2">
                   <Text className="text-sm text-warning-800 dark:text-warning-200">
                     No seasons yet — create a season first, or import these people as alumni
                     instead.

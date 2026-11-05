@@ -19,7 +19,7 @@ function HistoryRow({ row }: { row: SeasonHistoryRow }) {
   const [open, setOpen] = useState(false);
   const count = row.curriculum.length;
   return (
-    <View className="rounded-[16px] bg-surface dark:border dark:border-separator p-4">
+    <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
       <View className="flex-row flex-wrap items-start justify-between gap-2">
         <View>
           <Text className="text-base font-bold text-brand-navy-900 dark:text-foreground">{row.title}</Text>
@@ -41,7 +41,7 @@ function HistoryRow({ row }: { row: SeasonHistoryRow }) {
             onPress={() => setOpen((o) => !o)}
             className="flex-row items-center gap-1"
           >
-            <Text className="text-[10px] text-brand-navy-700 dark:text-brand-navy-200">{open ? "▼" : "▶"}</Text>
+            <Text className="text-caption text-brand-navy-700 dark:text-brand-navy-200">{open ? "▼" : "▶"}</Text>
             {/* v1 always says "sessions", even for one. */}
             <Text className="text-sm font-semibold text-brand-navy-700 dark:text-brand-navy-200">
               {`Curriculum (${count} sessions)`}

@@ -42,7 +42,7 @@ function EmptyState({
 }) {
   if (Icon) iconWithClassName(Icon);
   return (
-    <View className={cn("flex-col items-center justify-center gap-4 rounded-2xl bg-surface px-6 py-12", className)}>
+    <View className={cn("flex-col items-center justify-center gap-4 rounded-group bg-surface px-6 py-12", className)}>
       {Icon ? (
         <View testID="empty-state-disc" className={cn("h-14 w-14 items-center justify-center rounded-full", TONES[tone].disc)}>
           <Icon size={24} className={TONES[tone].icon} />
