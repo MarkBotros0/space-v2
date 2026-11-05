@@ -6,7 +6,13 @@ import { parseId } from "../lib/parse-id";
 import { createNotificationsBulk } from "../lib/notifications";
 import { bestEffort } from "../lib/best-effort";
 import { canEditNote, canViewStudent, canWriteNote } from "../lib/permissions";
-import { listAuthoredNotes, listNotesForStudent, NOTE_SELECT, toNoteSummary } from "../lib/queries/notes";
+import {
+  listAuthoredNotes,
+  listNotesForStudent,
+  listVisibleNotes,
+  NOTE_SELECT,
+  toNoteSummary,
+} from "../lib/queries/notes";
 import { makeLimiter } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
@@ -106,6 +112,33 @@ myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
 
   return apiOk(res, await listAuthoredNotes(user, parsed.data));
+});
+
+/**
+ * The newest notes a mentor may read across students (read-only). MENTOR only:
+ * the spec names mentors and no other role has a caller. canViewStudent is
+ * true for every student for a mentor, so the visibility clause in the query
+ * is the only gate needed. Audit: ids and a count, never a body or a name.
+ */
+myNotesRouter.get("/visible-notes", requireAuth, noteReadLimiter, async (req, res) => {
+  const user = requireUser(req);
+  if (user.role !== "MENTOR") return forbidden(res);
+
+  const parsed = noteListQuerySchema.safeParse(req.query);
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
+
+  const page = await listVisibleNotes(user, parsed.data);
+  if (page === null) return forbidden(res);
+
+  console.info(
+    JSON.stringify({
+      event: "note_feed_read",
+      viewerId: user.userId,
+      noteCount: page.notes.length,
+      at: new Date().toISOString(),
+    }),
+  );
+  return apiOk(res, page);
 });
 
 studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {

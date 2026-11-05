@@ -301,6 +301,36 @@ export const notesNotificationsPaths = {
     },
   },
 
+  "/api/v1/me/visible-notes": {
+    get: {
+      tags: ["Notes"],
+      summary: "Newest notes a mentor may read, across students",
+      description:
+        "MENTOR only; every other role receives `403 forbidden`. Narrowed in the query by the note visibility rule (the mentor's own notes plus those visible to mentors); notes of soft-deleted students are omitted. Rows are `AuthoredNote` (carry `student`). `body` is plain text. Cursor-paged, newest first. Read-only. Rate-limited; each read is audit-logged with ids and a count only.",
+      parameters: [
+        { name: "cursor", in: "query", schema: { type: "string" } },
+        { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+      ],
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            required: ["notes", "nextCursor"],
+            properties: {
+              notes: { type: "array", items: { $ref: "#/components/schemas/AuthoredNote" } },
+              nextCursor: { type: ["string", "null"] },
+            },
+          },
+          "A page of visible notes.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        429: errRef("TooManyRequests"),
+      },
+    },
+  },
+
   "/api/v1/students/{id}/engagement": {
     get: {
       tags: ["Notes"],

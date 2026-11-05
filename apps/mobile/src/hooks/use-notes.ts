@@ -1,14 +1,17 @@
 import {
   useInfiniteQuery,
+  useQuery,
   useMutation,
   useQueryClient,
   type InfiniteData,
   type UseInfiniteQueryResult,
+  type UseQueryResult,
 } from "@tanstack/react-query";
 import {
   authoredNoteListResponseSchema,
   noteListResponseSchema,
   noteSummarySchema,
+  type AuthoredNote,
   type NoteVisibility,
 } from "@space/shared";
 import type { z } from "zod";
@@ -48,6 +51,21 @@ export function useAuthoredNotes(
       return authoredNoteListResponseSchema.parse(res.data.data);
     },
     getNextPageParam: (last) => last.nextCursor,
+    enabled,
+  });
+}
+
+/**
+ * The newest `limit` notes a mentor may read across students (first page only).
+ * `enabled` is the caller's: every role but MENTOR gets a 403 here.
+ */
+export function useVisibleNotes(limit: number, enabled: boolean): UseQueryResult<AuthoredNote[]> {
+  return useQuery({
+    queryKey: queryKeys.notes.visible(limit),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/me/visible-notes?limit=${limit}`);
+      return authoredNoteListResponseSchema.parse(res.data.data).notes;
+    },
     enabled,
   });
 }
