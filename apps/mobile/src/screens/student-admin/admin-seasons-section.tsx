@@ -4,13 +4,12 @@ import { View } from "react-native";
 import type { EnrollmentHistoryItem } from "@space/shared";
 
 import { formatDate } from "../../lib/format";
+import { joinMeta } from "../../lib/join-meta";
 import { Button } from "../../design/ui/button";
 import { EmptyState } from "../../design/ui/empty-state";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { StatusChip, statusChip } from "../../design/ui/status-chip";
 import { Text } from "../../design/ui/text";
-
-const join = (...parts: (string | null | false)[]) => parts.filter(Boolean).join(" · ");
 
 export function AdminSeasonsSection({
   enrollments,
@@ -39,11 +38,11 @@ export function AdminSeasonsSection({
             key={e.enrollmentId}
             index={i}
             title={e.seasonTitle}
-            subtitle={join(
+            subtitle={joinMeta([
               `${formatDate(e.startDate)} – ${formatDate(e.endDate)}`,
               e.groupName,
               e.dropReason,
-            )}
+            ])}
             subtitleLines={3}
             trailing={
               <View className="items-end gap-1">
@@ -60,10 +59,10 @@ export function AdminSeasonsSection({
                 ) : null}
               </View>
             }
-            trailingLabel={join(
+            trailingLabel={joinMeta([
               chip.label,
               e.attendancePct !== null && `${e.attendancePct}% attendance`,
-            )}
+            ])}
           />
         );
       })}
