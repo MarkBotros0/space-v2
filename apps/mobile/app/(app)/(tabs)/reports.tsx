@@ -10,9 +10,10 @@ import { useEngagementReport, useEngagementStudents } from "../../../src/hooks/u
 import { EngagementCards } from "../../../src/screens/reports/engagement-cards";
 import { OrganisationSection } from "../../../src/screens/reports/organisation-section";
 import { SeasonPicker } from "../../../src/screens/reports/season-picker";
+import { MentorReports } from "../../../src/screens/mentor/mentor-reports";
 import { useSessionStore } from "../../../src/store/session";
 
-export default function ReportsScreen() {
+function StaffReports() {
   const role = useSessionStore((s) => s.user?.role ?? null);
 
   // LEADER and STUDENT have no surface in this domain (R109, R110) and the API
@@ -107,4 +108,10 @@ export default function ReportsScreen() {
       </View>
     </ShellFrame>
   );
+}
+
+// Mentors get their own frame (plan 05); every other role keeps the staff screen.
+export default function ReportsScreen() {
+  const role = useSessionStore((s) => s.user?.role ?? null);
+  return role === "MENTOR" ? <MentorReports /> : <StaffReports />;
 }
