@@ -13,16 +13,11 @@ import { Text } from "../../design/ui/text";
 import { usePrefetchSubmission } from "../../hooks/use-submission";
 import { useSubmissionQueue } from "../../hooks/use-submission-queue";
 import { formatShortDateTime, unbreakable } from "../../lib/format";
+import { seasonParam } from "../../lib/season-param";
 import { queueSections } from "./queue-sections";
 
 // v1 lists every SUBMITTED, REVIEWED and RETURNED row, in that order (B3-8).
 const ALL = { pendingOnly: false } as const;
-
-/** A positive integer season id from the route, or undefined for any other value. */
-function seasonParam(raw: string | undefined): number | undefined {
-  const n = Number(raw);
-  return raw !== undefined && Number.isInteger(n) && n > 0 ? n : undefined;
-}
 
 function subtitleOf(item: SubmissionQueueItem): string {
   return [
