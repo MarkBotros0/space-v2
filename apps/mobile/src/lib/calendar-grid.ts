@@ -107,7 +107,11 @@ export function sessionTone(dayKey: string, today: string): SessionTone {
   return dayKey < today ? "past" : "upcoming";
 }
 
-/** v1's agenda heading cue: "Today" or "in N days"; nothing for a past day. */
+/**
+ * The app's one relative-day cue: "Today" or "in N days" by calendar day
+ * (day keys, so the hour never rounds it up); nothing for a past day. The
+ * calendar's agenda headings and the dashboard's next-session badge both use it.
+ */
 export function dayCue(dayKey: string, today: string): string | null {
   const n = daysBetween(today, dayKey);
   if (n < 0) return null;
