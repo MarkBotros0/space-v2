@@ -307,6 +307,7 @@ The feature already exists: `routes/seasons/admins.ts` (4ce95ca2, SUPER only, au
 
 - [ ] **Step 1: Backend unit gap.** Add the missing case: POST for a user whose role is not ADMIN answers 400 `not_an_admin` with no write, revoke or audit.
 - [ ] **Step 2: Integration test.** Non-SUPER gets 403 on all three routes; add, idempotent add and remove against a real row, and the assigned admin's `canAdminister`. Follow the setup and cleanup of the neighbouring integration tests, delete every row it creates. Run this file only, `--runInBand`, on staging.
+- [ ] **Step 2b: Confirm copy (owner ruling).** Adding or removing a season admin signs that person out. Both go through `ConfirmDialog` and both descriptions include exactly `They'll be signed out and need to sign in again.` Remove: `${name} will no longer be able to administer ${seasonTitle}. They'll be signed out and need to sign in again.` Add (today it has no dialog, add one; title `Add admin?`, confirm label `Add`): `${name} will be able to administer ${seasonTitle}. They'll be signed out and need to sign in again.` Tests pin both.
 - [ ] **Step 3: Mobile tests.** SUPER season overview shows Admins and ADMIN's does not; the picker excludes current admins and deactivated users; add calls POST and toasts; remove goes through the confirm dialog; load error offers Try again.
 - [ ] **Step 4: Sweep flow.** `s30` shoots the Admins section and the opened picker without saving, using the seeded season.
 - [ ] **Step 5: Verify and commit.**
