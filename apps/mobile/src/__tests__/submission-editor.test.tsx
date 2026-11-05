@@ -12,7 +12,7 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
 
-import { Keyboard } from "react-native";
+import { AccessibilityInfo, Keyboard } from "react-native";
 
 import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
@@ -25,6 +25,7 @@ import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
+const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility");
 
 const detailNoSubmission = {
   id: 41, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026",
@@ -156,6 +157,8 @@ describe("submission editor", () => {
     expect(submitDisabled()).toBe(true);
     fireEvent.changeText(input, "an answer");
     expect(submitDisabled()).toBe(false);
+    expect(screen.getByRole("button", { name: "Submit" }).props.accessibilityHint).toBeUndefined();
+    expect(screen.queryByText(/Write a response first/)).toBeNull();
   });
 
   it("lets Submit through with no text when a file is already attached (REG-85)", async () => {
@@ -233,7 +236,8 @@ describe("submission editor: the fixed save bar", () => {
     await screen.findByLabelText("Your response");
     expect(bar().getByRole("button", { name: "Submit" }).props.accessibilityState?.disabled).toBe(true);
     expect(bar().getByRole("button", { name: "Save draft" }).props.accessibilityState?.disabled).toBeFalsy();
-    expect(bar().getByText(/saved draft is private to you/i)).toBeTruthy();
+    expect(bar().getByText(/^Write a response first\. A saved draft is private to you/)).toBeTruthy();
+    expect(bar().getByRole("button", { name: "Submit" }).props.accessibilityHint).toBe("Write a response first");
   });
 
   it("returned work is editable, and the confirmation says it will be reviewed again", async () => {
@@ -289,6 +293,7 @@ describe("submission editor: the fixed save bar", () => {
     const input = await screen.findByLabelText("Your response");
     fireEvent.press(bar().getByText("Save draft"));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Draft saved."));
+    expect(announce).toHaveBeenCalledWith("Draft saved.");
     fireEvent.changeText(input, "more words");
     expect(screen.queryByText("Draft saved.")).toBeNull();
   });

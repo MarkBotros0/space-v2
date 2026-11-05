@@ -122,9 +122,8 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
   }).length;
   const saveLabel =
     saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Not saved" : null;
-  const hint = [`${answered} of ${detail.questions.length} answered`, saveLabel]
-    .filter(Boolean)
-    .join(" · ");
+  const progress = `${answered} of ${detail.questions.length} answered`;
+  const hint = [progress, saveLabel].filter(Boolean).join(" · ");
 
   return (
     <Screen
@@ -134,6 +133,7 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
           label="Submit quiz"
           hint={hint}
           disabled={!isComplete || savePending || submit.isPending}
+          disabledReason={isComplete ? undefined : progress}
           loading={submit.isPending}
           onPress={() => setConfirmOpen(true)}
           secondary={

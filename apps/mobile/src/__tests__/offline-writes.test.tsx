@@ -1,5 +1,6 @@
 import { onlineManager } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn(), post: jest.fn() },
@@ -59,6 +60,8 @@ const submission = {
   canUploadFiles: false, canReview: false,
 };
 
+const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility");
+
 function serveAssignment(mySubmission: typeof draft | null) {
   get.mockImplementation((url: string) =>
     Promise.resolve({
@@ -104,6 +107,9 @@ describe("offline writes fail at once instead of hanging", () => {
     expect(await screen.findByText(/Check your connection and try again/)).toBeTruthy();
     expect(screen.queryByText("Checking you in…")).toBeNull();
     expect(post).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith(
+      "Can't check in. Couldn't check you in. Check your connection and try again.",
+    );
 
     act(() => onlineManager.setOnline(true));
     await act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
@@ -124,6 +130,7 @@ describe("offline writes fail at once instead of hanging", () => {
     await waitFor(() => expect(screen.queryByText("Submit your work?")).toBeNull());
     expect(screen.queryByText("Working…")).toBeNull();
     expect(toast.error).toHaveBeenCalledWith("Couldn't submit. Check your connection and try again.");
+    expect(announce).toHaveBeenCalledWith("Couldn't submit. Check your connection and try again.");
     expect(screen.getByDisplayValue("my essay")).toBeTruthy();
   });
 
@@ -153,5 +160,6 @@ describe("offline writes fail at once instead of hanging", () => {
     fireEvent.press(start);
     expect(await screen.findByText(/Couldn't start your submission/)).toBeTruthy();
     expect(put).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith("Couldn't start your submission. Try again.");
   });
 });

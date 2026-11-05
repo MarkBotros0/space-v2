@@ -7,7 +7,7 @@
  */
 import { File as FileIcon } from "lucide-react-native";
 import { useState, type ReactNode } from "react";
-import { View } from "react-native";
+import { AccessibilityInfo, View } from "react-native";
 import { plainTextToHtml, type AssignmentDetail, type SubmissionDetail } from "@space/shared";
 
 import { RouteError } from "../../design/layout/route-states";
@@ -30,6 +30,8 @@ import { reportOutcome } from "../../lib/outcome";
 iconWithClassName(FileIcon);
 
 const HINT = "A saved draft is private to you and is not sent to your leader until you submit.";
+const NOTHING_TO_SUBMIT = "Write a response first";
+const START_FAILED = "Couldn't start your submission. Try again.";
 
 type Tone = "bad" | "warn" | "info";
 const CALLOUT: Record<Tone, string> = {
@@ -109,11 +111,19 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
       body: (
         <View className="gap-4">
           <DueBanner detail={detail} status={null} />
-          {ensure.isError ? <Callout tone="bad">Couldn't start your submission. Try again.</Callout> : null}
+          {ensure.isError ? <Callout tone="bad">{START_FAILED}</Callout> : null}
         </View>
       ),
       footer: (
-        <SaveBar label="Start working" onPress={() => ensure.mutate()} loading={ensure.isPending} />
+        <SaveBar
+          label="Start working"
+          onPress={() =>
+            ensure.mutate(undefined, {
+              onError: () => AccessibilityInfo.announceForAccessibility(START_FAILED),
+            })
+          }
+          loading={ensure.isPending}
+        />
       ),
     };
   }
@@ -200,7 +210,8 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
       label="Submit"
       onPress={() => setConfirming(true)}
       disabled={save.isPending || nothingToSubmit}
-      hint={HINT}
+      disabledReason={nothingToSubmit ? NOTHING_TO_SUBMIT : undefined}
+      hint={nothingToSubmit ? `${NOTHING_TO_SUBMIT}. ${HINT}` : HINT}
       // Hint and two stacked buttons left ~90dp for the field with the keyboard up.
       compact={keyboardOpen}
       secondary={{

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { ReactElement } from "react";
-import { AppState, type AppStateStatus } from "react-native";
+import { AccessibilityInfo, AppState, type AppStateStatus } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 jest.mock("../lib/api-client", () => ({
@@ -167,6 +167,10 @@ describe("quiz runner saves", () => {
   });
 
   describe("when saving or submitting fails", () => {
+    let announce: jest.SpyInstance;
+    beforeEach(() => {
+      announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility");
+    });
     const answered = () =>
       detail({
         attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
@@ -181,6 +185,7 @@ describe("quiz runner saves", () => {
       fireEvent.press(await screen.findByText("Submit"));
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't submit the quiz."));
+      expect(announce).toHaveBeenCalledWith("Couldn't submit the quiz.");
       expect(toast.success).not.toHaveBeenCalled();
       expect(screen.getByRole("button", { name: "Submit quiz" }).props.accessibilityState?.disabled).toBeFalsy();
       // The bar's hint stays a status line; the error isn't dressed as one.
@@ -201,6 +206,17 @@ describe("quiz runner saves", () => {
         ),
       );
       expect(post).not.toHaveBeenCalled();
+    });
+
+    it("a disabled Submit says how far along the student is, to a screen reader too", async () => {
+      get.mockResolvedValue({ data: { data: inProgress() } });
+      renderWithProviders(<QuizDetailScreen />);
+      const submit = () => screen.getByRole("button", { name: "Submit quiz" }).props;
+      await screen.findByLabelText("Answer 2");
+      expect(submit().accessibilityState?.disabled).toBe(true);
+      expect(submit().accessibilityHint).toBe("0 of 2 answered");
+      fireEvent.press(screen.getByLabelText("Answer 1 option 2: Paris"));
+      expect(submit().accessibilityHint).toBe("1 of 2 answered");
     });
 
     it("Retry save sends what failed, and clears the error", async () => {

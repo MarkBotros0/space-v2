@@ -1,7 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { QrCode } from "lucide-react-native";
 import { useCallback, useRef, useState, type ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { AccessibilityInfo, Pressable, View } from "react-native";
 import { parseCheckInCode, type SessionDetail } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
@@ -11,7 +11,7 @@ import { useCheckInTally } from "../../hooks/use-check-in-tally";
 import { useStudentDashboard } from "../../hooks/use-dashboard";
 import { useSessionDetail } from "../../hooks/use-session-detail";
 import { deviceTodayKey } from "../../lib/calendar-grid";
-import { checkInRefusalCode, type CheckInOutcome } from "../../lib/check-in-result";
+import { checkInCopy, checkInRefusalCode, type CheckInOutcome } from "../../lib/check-in-result";
 import { formatSessionTime } from "../../lib/format";
 import { CheckInResult } from "./CheckInResult";
 import { CheckInSuccess } from "./check-in-success";
@@ -84,7 +84,12 @@ export function StudentCheckInCard({
     checkIn.mutate(token, {
       onSuccess: (data) =>
         setOutcome({ kind: "checked_in", status: data.status, minutesLate: data.minutesLate }),
-      onError: (err) => setOutcome({ kind: "refused", code: checkInRefusalCode(err) }),
+      onError: (err) => {
+        const refused: CheckInOutcome = { kind: "refused", code: checkInRefusalCode(err) };
+        setOutcome(refused);
+        const copy = checkInCopy(refused);
+        AccessibilityInfo.announceForAccessibility(`${copy.title}. ${copy.message ?? ""}`);
+      },
       onSettled: () => {
         inFlight.current = false;
       },

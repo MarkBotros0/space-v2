@@ -162,6 +162,18 @@ describe("SaveBar secondary and disabled", () => {
     expect(secondary).toHaveBeenCalledTimes(1);
   });
 
+  it("disabledReason is the primary's hint only while it is disabled", () => {
+    const view = renderWithProviders(
+      <SaveBar label="Submit" disabled disabledReason="Write a response first" onPress={jest.fn()} />,
+    );
+    expect(screen.getByRole("button", { name: "Submit" }).props.accessibilityHint).toBe("Write a response first");
+    // Spoken, not shown: the bar's visible line stays the caller's `hint`.
+    expect(screen.queryByText("Write a response first")).toBeNull();
+    view.unmount();
+    renderWithProviders(<SaveBar label="Submit" disabledReason="Write a response first" onPress={jest.fn()} />);
+    expect(screen.getByRole("button", { name: "Submit" }).props.accessibilityHint).toBeUndefined();
+  });
+
   it("a disabled secondary does not fire", () => {
     const secondary = jest.fn();
     renderWithProviders(

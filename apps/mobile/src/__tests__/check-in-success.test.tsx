@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text } from "react-native";
 import { fireEvent, screen } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 import type { MyAttendanceSession } from "@space/shared";
 
 import { setReducedMotionForTests } from "../design/motion";
@@ -72,6 +73,25 @@ describe("CheckInSuccess", () => {
     fireEvent.press(screen.getByText("again 0"));
     expect(screen.getByText("again 1")).toBeTruthy();
     expect(mockHaptic).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells a screen reader the outcome once, whatever the motion setting", () => {
+    const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility");
+    announce.mockClear();
+    const view = renderWithProviders(<CheckInSuccess outcome={present} attendance={null} />);
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith("You're checked in!");
+    view.unmount();
+
+    announce.mockClear();
+    setReducedMotionForTests(false);
+    renderWithProviders(
+      <CheckInSuccess outcome={{ kind: "checked_in", status: "LATE", minutesLate: 12 }} attendance={null} />,
+    );
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith("Checked in — late 12 minutes after session start.");
+    setReducedMotionForTests(true);
+    announce.mockRestore();
   });
 
   it("a late check-in reads the late copy in the warn tone", () => {

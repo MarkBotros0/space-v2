@@ -22,6 +22,8 @@ type SaveBarProps = {
   hint?: string;
   /** Blocks the primary action only. */
   disabled?: boolean;
+  /** Why the primary is disabled, spoken as its accessibility hint. Default none. */
+  disabledReason?: string;
   /** A second, quieter action beside the primary (Save draft beside Submit). */
   secondary?: { label: string; onPress: () => void; disabled?: boolean };
   /** The button look; a bar that confirms a destructive action passes "destructive". Default "primary". */
@@ -33,7 +35,17 @@ type SaveBarProps = {
   compact?: boolean;
 };
 
-function SaveBarBody({ label, onPress, loading, hint, disabled, secondary, variant = "primary", compact }: SaveBarProps) {
+function SaveBarBody({
+  label,
+  onPress,
+  loading,
+  hint,
+  disabled,
+  disabledReason,
+  secondary,
+  variant = "primary",
+  compact,
+}: SaveBarProps) {
   const sideBySide = compact && secondary;
   return (
     <View className="gap-2 border-t border-separator bg-surface px-4 pt-3">
@@ -58,6 +70,7 @@ function SaveBarBody({ label, onPress, loading, hint, disabled, secondary, varia
           onPress={onPress}
           loading={loading}
           disabled={disabled}
+          accessibilityHint={disabled ? disabledReason : undefined}
           className={sideBySide ? "min-w-0 flex-1" : "w-full"}
         >
           {label}
