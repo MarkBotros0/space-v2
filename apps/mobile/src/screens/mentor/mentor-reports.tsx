@@ -30,7 +30,7 @@ export function MentorReports() {
           <RouteError onRetry={() => void summary.refetch()} />
         ) : (
           <>
-            <SeasonPicker seasons={permitted} selected={seasonId} onSelect={setSeasonId} />
+            <SeasonPicker chips seasons={permitted} selected={seasonId} onSelect={setSeasonId} />
 
             {summary.data.scope.truncated ? (
               <Text className="text-xs text-warning-700 dark:text-warning-300">
@@ -54,6 +54,7 @@ export function MentorReports() {
               <EngagementCards
                 summary={summary.data}
                 atRiskRows={atRiskRows}
+                grouped
                 onShowMore={showMore}
               />
             )}

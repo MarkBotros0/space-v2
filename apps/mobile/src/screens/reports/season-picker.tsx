@@ -5,7 +5,7 @@ import { ChoiceChip, Text } from "../../design/ui";
 
 /**
  * V2-ONLY: v1 scoped each report page to one season by URL; v2 filters in place.
- * `chips` (admin and super) draws the kit's ChoiceChip; the default is the
+ * `chips` draws the kit's ChoiceChip; the default is the
  * mentor's original pill.
  */
 export function SeasonPicker({

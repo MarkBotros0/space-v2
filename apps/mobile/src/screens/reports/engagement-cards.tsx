@@ -51,7 +51,7 @@ function AtRiskRow({ row, last }: { row: EngagementReportRow; last: boolean }) {
   );
 }
 
-/** Admin and super: the same row as a ListRow, season and both percentages in its meta line. */
+/** The same row as a ListRow, season and both percentages in its meta line. */
 function AtRiskGroupedRow({ row }: { row: EngagementReportRow }) {
   const router = useRouter();
   return (
@@ -84,7 +84,7 @@ export function EngagementCards({
   atRiskRows: EngagementReportRow[];
   onShowMore: () => void;
   /**
-   * Admin and super: at-risk as grouped rows and the engagement figures as
+   * At-risk as grouped rows and the engagement figures as
    * tiles. Default false is the mentor's look (plan 05 owns that frame).
    */
   grouped?: boolean;
