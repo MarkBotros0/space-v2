@@ -23,6 +23,7 @@ export function CheckInAttendanceList({
   pending,
   error,
   onOverride,
+  onDismiss,
 }: {
   rows: AttendanceRosterRow[];
   pending: boolean;
@@ -30,12 +31,20 @@ export function CheckInAttendanceList({
   error: string | null;
   /** Resolves when the write settles; the sheet closes on success. */
   onOverride: (row: AttendanceRosterRow, status: AttendanceStatus, done: () => void) => void;
+  /** The sheet closed without a save (backdrop, drag, back): clear the last failure so the next student's sheet starts clean. */
+  onDismiss?: () => void;
 }) {
   const [editing, setEditing] = useState<AttendanceRosterRow | null>(null);
+  // The last edited row, kept so the caption does not blank while the sheet animates out.
+  const [shown, setShown] = useState<AttendanceRosterRow | null>(null);
   const nameOf = (r: AttendanceRosterRow) => r.name ?? r.email;
 
   if (rows.length === 0) {
-    return <Text variant="subhead" className="py-4 text-center text-muted-foreground">No students have scanned yet.</Text>;
+    return (
+      <Text variant="subhead" className="py-4 text-center text-muted-foreground">
+        No students have scanned yet.
+      </Text>
+    );
   }
 
   return (
@@ -52,7 +61,9 @@ export function CheckInAttendanceList({
             )}
           >
             <View className="min-w-0 flex-1 flex-col gap-0.5">
-              <Text variant="body" numberOfLines={2}>{nameOf(r)}</Text>
+              <Text variant="body" numberOfLines={2}>
+                {nameOf(r)}
+              </Text>
             </View>
             <View className="shrink-0 flex-row items-center gap-2">
               {r.status !== null ? (
@@ -64,7 +75,10 @@ export function CheckInAttendanceList({
                 variant="secondary"
                 size="sm"
                 accessibilityLabel={`Edit attendance for ${nameOf(r)}`}
-                onPress={() => setEditing(r)}
+                onPress={() => {
+                  setShown(r);
+                  setEditing(r);
+                }}
               >
                 Edit
               </Button>
@@ -73,10 +87,17 @@ export function CheckInAttendanceList({
         ))}
       </View>
 
-      <Sheet open={editing !== null} onClose={() => setEditing(null)} title="Override attendance">
+      <Sheet
+        open={editing !== null}
+        onClose={() => {
+          setEditing(null);
+          onDismiss?.();
+        }}
+        title="Override attendance"
+      >
         <View className="flex-col gap-3 pb-4">
           <Text variant="subhead" className="text-muted-foreground">
-            {editing ? nameOf(editing) : ""}
+            {shown ? nameOf(shown) : ""}
           </Text>
           {ORDER.map((status) => (
             <Button
@@ -93,7 +114,11 @@ export function CheckInAttendanceList({
             </Button>
           ))}
           {error ? (
-            <Text testID="override-error" variant="subhead" className="rounded-control bg-bad-soft px-3 py-2 text-bad">
+            <Text
+              testID="override-error"
+              variant="subhead"
+              className="rounded-control bg-bad-soft px-3 py-2 text-bad"
+            >
               {error}
             </Text>
           ) : null}

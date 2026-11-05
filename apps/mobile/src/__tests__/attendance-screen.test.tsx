@@ -188,3 +188,23 @@ it("refuses to save with nothing marked, without a request (v1)", async () => {
   expect(await screen.findByText("Mark at least one student before saving.")).toBeTruthy();
   expect(post).not.toHaveBeenCalled();
 });
+
+it("a mark replaces the stored status in the selected state", async () => {
+  renderStacked(<AttendanceScreen />);
+  expect((await screen.findByLabelText("Mark Second student PRESENT")).props.accessibilityState.selected).toBe(true);
+  fireEvent.press(screen.getByLabelText("Mark Second student LATE"));
+  expect(screen.getByLabelText("Mark Second student PRESENT").props.accessibilityState.selected).toBe(false);
+  expect(screen.getByLabelText("Mark Second student LATE").props.accessibilityState.selected).toBe(true);
+});
+
+it("counts a minutes edit on an already-LATE row as changed", async () => {
+  get.mockImplementation((url: string) =>
+    url === "/api/v1/sessions/12"
+      ? Promise.resolve({ data: { data: sessionDetail } })
+      : Promise.resolve({ data: { data: { roster: [{ ...roster[0], status: "LATE", lateMinutes: 5 }] } } }),
+  );
+  renderStacked(<AttendanceScreen />);
+  expect(screen.queryByText(/changed/)).toBeNull();
+  fireEvent.changeText(await screen.findByLabelText("Minutes late for Test student"), "12");
+  expect(within(screen.getByTestId("save-bar")).getByText("1 changed")).toBeTruthy();
+});

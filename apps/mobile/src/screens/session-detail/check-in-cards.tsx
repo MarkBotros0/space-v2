@@ -66,6 +66,7 @@ function CheckInRoster({ detail }: { detail: SessionDetail }) {
     <CheckInAttendanceList
       rows={roster.data}
       pending={save.isPending}
+      onDismiss={save.reset}
       error={save.isError ? apiErrorMessage(save.error, "Couldn't save the attendance.") : null}
       onOverride={(row, status, done) =>
         save.mutate(
