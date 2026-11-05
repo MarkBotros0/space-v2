@@ -188,6 +188,21 @@ describe("frosted fill", () => {
     renderBar();
     expect(screen.UNSAFE_queryByType(BlurView)).toBeNull();
   });
+
+  // R30: with no blur behind it, the translucent fill let scrolled content read through
+  // the labels. Android takes the near-opaque pill-solid; iOS keeps bg-pill over the blur.
+  it("uses the near-opaque pill-solid fill on Android", () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    renderBar();
+    expect(screen.getByTestId("pill-fill").props.className).toContain("bg-pill-solid");
+  });
+
+  it("keeps the translucent bg-pill over the blur on iOS", () => {
+    renderBar();
+    const fill = screen.getByTestId("pill-fill").props.className as string;
+    expect(fill.split(" ")).toContain("bg-pill");
+    expect(fill).not.toContain("pill-solid");
+  });
 });
 
 describe("hide on scroll", () => {

@@ -81,9 +81,18 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     ["white", "#FFFFFF"],
     ["brand-navy-950", (tokens.light as Theme)["brand-navy-950"]],
   ])("pill text reads over %s", (_label, under) => {
-    const bg = composite(t.pill, under as string);
-    expect(contrast(rgbOf(t["pill-foreground"]), bg)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(rgbOf(t["pill-active"]), bg)).toBeGreaterThanOrEqual(3);
+    for (const fill of [t.pill, t["pill-solid"]]) {
+      const bg = composite(fill, under as string);
+      expect(contrast(rgbOf(t["pill-foreground"]), bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(rgbOf(t["pill-active"]), bg)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  // R30: Android has no blur, so its fill must all but hide what scrolls beneath it.
+  it("pill-solid is at least 0.9 opaque and more opaque than pill", () => {
+    const solid = parse(t["pill-solid"] ?? "").alpha;
+    expect(solid).toBeGreaterThanOrEqual(0.9);
+    expect(solid).toBeGreaterThan(parse(t.pill ?? "").alpha);
   });
 
   // The active tab: the pill over white (worst case), then the 20% teal highlight over that.

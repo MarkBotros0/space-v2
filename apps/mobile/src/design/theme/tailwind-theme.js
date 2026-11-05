@@ -57,6 +57,10 @@ const colors = {
     opacityValue === undefined
       ? "rgb(var(--pill) / var(--pill-alpha))"
       : `rgb(var(--pill) / var(--pill-alpha-${Math.round(Number(opacityValue) * 100)}))`,
+  "pill-solid": ({ opacityValue }) =>
+    opacityValue === undefined
+      ? "rgb(var(--pill-solid) / var(--pill-solid-alpha))"
+      : `rgb(var(--pill-solid) / var(--pill-solid-alpha-${Math.round(Number(opacityValue) * 100)}))`,
   "pill-foreground": "rgb(var(--pill-foreground) / <alpha-value>)",
   "pill-active": "rgb(var(--pill-active) / <alpha-value>)",
   "pill-active-label": "rgb(var(--pill-active-label) / <alpha-value>)",
@@ -184,6 +188,7 @@ const semantic = {
     "surface-raised": "#FFFFFF",
     "control-border": "#7486B4",
     "pill": "rgba(20, 32, 72, 0.78)",
+    "pill-solid": "rgba(20, 32, 72, 0.92)",
     "pill-foreground": "#D4DAEA",
     "pill-active": "#ABDFE2",
     "pill-active-label": "#FFFFFF"
@@ -230,6 +235,7 @@ const semantic = {
     "surface-raised": "#344676",
     "control-border": "#6E84BA",
     "pill": "rgba(36, 52, 110, 0.86)",
+    "pill-solid": "rgba(36, 52, 110, 0.94)",
     "pill-foreground": "#D4DAEA",
     "pill-active": "#ABDFE2",
     "pill-active-label": "#FFFFFF"

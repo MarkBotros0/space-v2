@@ -14,11 +14,12 @@ import { PillHighlight } from "./pill-highlight";
 import { resetTabBarScroll, useTabBarVisible } from "./tab-bar-scroll";
 
 /**
- * The frosted floating pill: `bg-pill` fill over a blur. iOS blurs the
- * backdrop (BlurView intensity 40 under the fill). Android renders the fill
- * alone: since Expo SDK 55 a real blur needs a `blurTarget` the tab navigator
- * cannot give a bar it renders beside its scenes, and the fill is opaque
- * enough (alpha .78 / .86) to hold contrast without it.
+ * The floating pill. iOS frosts it: the translucent `bg-pill` fill (alpha
+ * .78 / .86) over a BlurView (intensity 40). Android has no blur: since Expo
+ * SDK 55 a real blur needs a `blurTarget` the tab navigator cannot give a bar
+ * it renders beside its scenes, and the translucent fill alone let scrolled
+ * content read through the labels (R30). So Android takes the near-opaque
+ * `bg-pill-solid` (alpha .92 / .94) instead.
  */
 const PILL_HEIGHT = 64;
 
@@ -109,7 +110,10 @@ export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & 
           style={shadowStyle("lift")}
         >
           {Platform.OS === "ios" ? <BlurView intensity={40} style={StyleSheet.absoluteFill} /> : null}
-          <View className="absolute inset-0 bg-pill" />
+          <View
+            testID="pill-fill"
+            className={Platform.OS === "ios" ? "absolute inset-0 bg-pill" : "absolute inset-0 bg-pill-solid"}
+          />
           <PillHighlight target={active ? (layouts[active] ?? null) : null} />
           {shown.map((item) => {
             const name = routeNameForHref(item.href);
