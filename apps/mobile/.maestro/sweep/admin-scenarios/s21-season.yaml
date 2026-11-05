@@ -7,8 +7,9 @@ appId: com.jpc.space
     env:
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://season
+# Only Home has the user menu now (R13); wait on the screen's own title.
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'My Season'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -38,7 +39,7 @@ appId: com.jpc.space
 - evalScript: ${output.year = new Date().getFullYear()}
 - openLink: spacev2://seasons/gbv-${output.year}
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Code: gbv-${output.year}'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -66,7 +67,7 @@ appId: com.jpc.space
 - takeScreenshot: s21-08-roster-bottom
 - openLink: spacev2://seasons/gbv-${output.year}/roster/import
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Import group assignments'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

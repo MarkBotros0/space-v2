@@ -63,10 +63,10 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s30-07-group-detail-bottom
 # Back to the season: the link may land on the screen already mounted, scrolled, so wait
-# on the top bar and scroll up to the tabs.
+# on the pinned Back bar (a pushed screen has no user menu) and scroll up to the tabs.
 - openLink: spacev2://seasons/gbv-${output.year}
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Back'
     timeout: 40000
 - scrollUntilVisible:
     element: 'Sessions \(\d+\)'

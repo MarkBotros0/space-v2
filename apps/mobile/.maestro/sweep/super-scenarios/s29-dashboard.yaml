@@ -25,6 +25,11 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s29-03-dashboard-bottom
 # The user menu and the bell popover; Back closes each (rows and Mark all read are never tapped).
+# Scrolled down: the in-content bell and user menu are gone, the compact header
+# (titled "Today", R31) carries them once it has faded in.
+- extendedWaitUntil:
+    visible: 'User menu'
+    timeout: 10000
 - tapOn: 'User menu'
 - waitForAnimationToEnd:
     timeout: 5000
