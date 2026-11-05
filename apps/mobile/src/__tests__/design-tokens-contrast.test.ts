@@ -68,9 +68,18 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     ["role-mentor-foreground", "role-mentor"],
     ["role-student-foreground", "role-student"],
     ["role-alumni-foreground", "role-alumni"],
+    // Brand hero card (HeroCard tone="brand"): its text, and its action button.
+    ["hero-foreground", "hero"],
+    ["hero-eyebrow", "hero"],
+    ["hero-muted", "hero"],
+    ["on-hero-foreground", "on-hero"],
   ];
   it.each(pairs)("%s on %s is at least 4.5:1", (fg, bg) => {
     expect(contrast(rgbOf(t[fg]), rgbOf(t[bg]))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the hero action fill is at least 3:1 against the hero", () => {
+    expect(contrast(rgbOf(t["on-hero"]), rgbOf(t.hero))).toBeGreaterThanOrEqual(3);
   });
 
   // R25: control borders (inputs, secondary buttons, triggers) are 3:1 against what they sit on.

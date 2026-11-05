@@ -58,6 +58,12 @@ const SEMANTIC = [
   "pill-foreground",
   "pill-active",
   "pill-active-label",
+  "hero",
+  "hero-foreground",
+  "hero-eyebrow",
+  "hero-muted",
+  "on-hero",
+  "on-hero-foreground",
 ];
 const RAMPS = [
   "brand-navy",

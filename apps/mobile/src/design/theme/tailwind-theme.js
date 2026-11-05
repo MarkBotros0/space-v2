@@ -58,6 +58,12 @@ const colors = {
   "pill-foreground": "rgb(var(--pill-foreground) / <alpha-value>)",
   "pill-active": "rgb(var(--pill-active) / <alpha-value>)",
   "pill-active-label": "rgb(var(--pill-active-label) / <alpha-value>)",
+  "hero": "rgb(var(--hero) / <alpha-value>)",
+  "hero-foreground": "rgb(var(--hero-foreground) / <alpha-value>)",
+  "hero-eyebrow": "rgb(var(--hero-eyebrow) / <alpha-value>)",
+  "hero-muted": "rgb(var(--hero-muted) / <alpha-value>)",
+  "on-hero": "rgb(var(--on-hero) / <alpha-value>)",
+  "on-hero-foreground": "rgb(var(--on-hero-foreground) / <alpha-value>)",
   "brand-navy": {"50":"#ECEFF7","100":"#D4DAEA","200":"#ABB7D4","300":"#8294BF","400":"#5A72A9","500":"#3F558E","600":"#344676","700":"#2A3A63","800":"#243559","900":"#1F3260","950":"#142048"},
   "brand-teal": {"50":"#F2FAFA","100":"#E2F4F5","200":"#C7EAEC","300":"#ABDFE2","400":"#94D5D8","500":"#7DCED1","600":"#5DB9BC","700":"#429A9D","800":"#2E7679","900":"#1E5254","950":"#103436"},
   "neutral": {"50":"#FAFAFB","100":"#F4F4F6","200":"#E5E7EB","300":"#D1D5DB","400":"#9CA3AF","500":"#6B7280","600":"#4B5563","700":"#374151","800":"#1F2937","900":"#111827","950":"#0B0F19"},
@@ -186,7 +192,13 @@ const semantic = {
     "pill": "#142048",
     "pill-foreground": "#D4DAEA",
     "pill-active": "#ABDFE2",
-    "pill-active-label": "#FFFFFF"
+    "pill-active-label": "#FFFFFF",
+    "hero": "#142048",
+    "hero-foreground": "#FFFFFF",
+    "hero-eyebrow": "#ABDFE2",
+    "hero-muted": "#D4DAEA",
+    "on-hero": "#7DCED1",
+    "on-hero-foreground": "#103436"
   },
   "dark": {
     "background": "#0B1230",
@@ -233,7 +245,13 @@ const semantic = {
     "pill": "#24346E",
     "pill-foreground": "#D4DAEA",
     "pill-active": "#ABDFE2",
-    "pill-active-label": "#FFFFFF"
+    "pill-active-label": "#FFFFFF",
+    "hero": "#24346E",
+    "hero-foreground": "#FFFFFF",
+    "hero-eyebrow": "#ABDFE2",
+    "hero-muted": "#D4DAEA",
+    "on-hero": "#7DCED1",
+    "on-hero-foreground": "#103436"
   }
 };
 const fontWeightUtilities = {
