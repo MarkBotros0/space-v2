@@ -74,7 +74,7 @@ describe("ReportsScreen for admin and super — frame and export", () => {
     );
     renderWithProviders(<ReportsScreen />);
 
-    expect(await screen.findByText("Scoped to All seasons (GBV 2026).")).toBeTruthy();
+    expect(await screen.findByText("Showing all seasons (GBV 2026).")).toBeTruthy();
     expect(screen.queryByText("Scoped to GBV 2026.")).toBeNull();
   });
 
@@ -104,6 +104,9 @@ describe("ReportsScreen for admin and super — frame and export", () => {
 
     expect(await screen.findByText("Mar 1, 2099")).toBeTruthy();
     expect(screen.queryByText("Mar 1, 2099 – Mar 1, 2099")).toBeNull();
+    // A lone point is a caption, not a dot on a bare axis.
+    expect(screen.getByText("One session so far: the trend starts after the next one.")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Attendance trend, 1 session/)).toBeNull();
   });
 
   it("keeps the mentor's inline export buttons", async () => {
@@ -158,9 +161,9 @@ describe("ReportsScreen for admin — at-risk rows and engagement tiles", () => 
     const expected: Array<[string, string]> = [
       ["Enrolments", "44"],
       ["Students", "40"],
-      ["High", "3"],
-      ["Medium", "5"],
-      ["Low", "2"],
+      ["High engagement", "3"],
+      ["Medium engagement", "5"],
+      ["Low engagement", "2"],
       ["At risk", "34"],
     ];
     for (const [label, value] of expected) {

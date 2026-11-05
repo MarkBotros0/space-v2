@@ -87,7 +87,9 @@ export function EngagementCards({
             ))}
           </GroupedList>
         )}
-        {moreFailed ? <InlineError message="Couldn't load more students." onRetry={onShowMore} /> : null}
+        {moreFailed ? (
+          <InlineError message="Couldn't load more students." onRetry={onShowMore} />
+        ) : null}
       </View>
       {summary.atRiskTotal > atRiskRows.length ? (
         <Pressable
@@ -95,7 +97,10 @@ export function EngagementCards({
           className="min-h-[44px] justify-center self-start"
           onPress={onShowMore}
         >
-          <Text variant="subhead" className="font-medium text-brand-teal-800 dark:text-brand-teal-300">
+          <Text
+            variant="subhead"
+            className="font-medium text-brand-teal-800 dark:text-brand-teal-300"
+          >
             Show more
           </Text>
         </Pressable>
@@ -110,7 +115,7 @@ export function EngagementCards({
         {BAND_ORDER.map((band) => (
           <StatTile
             key={band}
-            label={BAND_LABEL[band]}
+            label={band === "AT_RISK" ? BAND_LABEL[band] : `${BAND_LABEL[band]} engagement`}
             value={summary.bands.find((b) => b.band === band)?.count ?? 0}
           />
         ))}
@@ -139,76 +144,84 @@ function trendRange(first: string, last: string): string {
 function TrendCompletionNotes({ summary }: { summary: EngagementSummary }) {
   return (
     <>
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Attendance trend</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-col gap-1">
-        <TrendLine
-          points={summary.attendanceTrend.map((p) => ({
-            // The server's org-calendar day, labelled with the
-            // timezone-free formatDayKey (X13). v1 formatted on the
-            // server with date-fns and no year, so sessions from
-            // different years collapsed onto one label (R15, R101, D12);
-            // formatting startsAt on the device would instead show the
-            // phone's calendar day.
-            label: formatDayKey(p.dayKey),
-            pct: p.pct,
-            // One line per season (REG-117).
-            series: { key: String(p.seasonId), label: p.seasonTitle },
-          }))}
-        />
-        {summary.attendanceTrend.length > 0 ? (
-          <Text className="text-xs text-muted-foreground">
-            {trendRange(
-              summary.attendanceTrend[0]!.dayKey,
-              summary.attendanceTrend[summary.attendanceTrend.length - 1]!.dayKey,
-            )}
-          </Text>
-        ) : null}
-      </CardContent>
-    </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Attendance trend</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-col gap-1">
+          {summary.attendanceTrend.length < 2 ? (
+            <Text variant="subhead" className="text-muted-foreground">
+              {summary.attendanceTrend.length === 0
+                ? "No sessions yet: the trend starts after the first one."
+                : "One session so far: the trend starts after the next one."}
+            </Text>
+          ) : (
+            <TrendLine
+              points={summary.attendanceTrend.map((p) => ({
+                // The server's org-calendar day, labelled with the
+                // timezone-free formatDayKey (X13). v1 formatted on the
+                // server with date-fns and no year, so sessions from
+                // different years collapsed onto one label (R15, R101, D12);
+                // formatting startsAt on the device would instead show the
+                // phone's calendar day.
+                label: formatDayKey(p.dayKey),
+                pct: p.pct,
+                // One line per season (REG-117).
+                series: { key: String(p.seasonId), label: p.seasonTitle },
+              }))}
+            />
+          )}
+          {summary.attendanceTrend.length > 0 ? (
+            <Text className="text-xs text-muted-foreground">
+              {trendRange(
+                summary.attendanceTrend[0]!.dayKey,
+                summary.attendanceTrend[summary.attendanceTrend.length - 1]!.dayKey,
+              )}
+            </Text>
+          ) : null}
+        </CardContent>
+      </Card>
 
-    <Card>
-      <CardHeader>
-        {/* Named "Completion rate", not "Submission %": it is a
+      <Card>
+        <CardHeader>
+          {/* Named "Completion rate", not "Submission %": it is a
           property of an assignment, and v1 calling both by one name
           is spec D2's most consequential ambiguity (D-17.1). */}
-        <CardTitle className="text-base">Completion rate</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <RankedBars
-          bars={summary.completion.map((r) => ({
-            key: String(r.assignmentId),
-            label: r.title,
-            value: r.completionRate,
-            caption:
-              r.expected === 0
-                ? "No students targeted"
-                : `${r.completed} of ${r.expected} ${
-                    r.targeting === "all_groups" ? "in the season" : "in the target groups"
-                  }`,
-          }))}
-        />
-      </CardContent>
-    </Card>
+          <CardTitle className="text-base">Completion rate</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RankedBars
+            bars={summary.completion.map((r) => ({
+              key: String(r.assignmentId),
+              label: r.title,
+              value: r.completionRate,
+              caption:
+                r.expected === 0
+                  ? "No students targeted"
+                  : `${r.completed} of ${r.expected} ${
+                      r.targeting === "all_groups" ? "in the season" : "in the target groups"
+                    }`,
+            }))}
+          />
+        </CardContent>
+      </Card>
 
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">How these numbers are calculated</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-col gap-2">
-        {/* The same strings the workbook's Key sheet renders. One
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">How these numbers are calculated</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-col gap-2">
+          {/* The same strings the workbook's Key sheet renders. One
           definition, two renderers — the C4 discipline applied to
           prose, so a spreadsheet and the app cannot describe the same
           metric differently. */}
-        {REPORT_METRIC_NOTES.map((note) => (
-          <Text key={note} className="text-xs text-muted-foreground">
-            {note}
-          </Text>
-        ))}
-      </CardContent>
-    </Card>
+          {REPORT_METRIC_NOTES.map((note) => (
+            <Text key={note} className="text-xs text-muted-foreground">
+              {note}
+            </Text>
+          ))}
+        </CardContent>
+      </Card>
     </>
   );
 }
