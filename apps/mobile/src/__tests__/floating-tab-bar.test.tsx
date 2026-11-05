@@ -11,6 +11,7 @@ import { resetTabBarScroll, useTabBarScroll } from "../design/layout/tab-bar-scr
 import { setReducedMotionForTests } from "../design/motion";
 
 const mockWithSpring = jest.fn();
+const mockWithTiming = jest.fn();
 jest.mock("react-native-reanimated", () => {
   const actual = jest.requireActual("react-native-reanimated");
   // A Proxy keeps `default` and the ES-module flag that a spread would drop.
@@ -18,7 +19,9 @@ jest.mock("react-native-reanimated", () => {
     get: (target, key) =>
       key === "withSpring"
         ? (...a: unknown[]) => (mockWithSpring(...a), target.withSpring(...a))
-        : target[key],
+        : key === "withTiming"
+          ? (...a: unknown[]) => (mockWithTiming(...a), target.withTiming(...a))
+          : target[key],
   });
 });
 jest.mock("expo-haptics");
@@ -27,6 +30,7 @@ afterEach(() => {
   setReducedMotionForTests(null);
   resetTabBarScroll();
   mockWithSpring.mockClear();
+  mockWithTiming.mockClear();
   jest.restoreAllMocks();
 });
 
@@ -197,6 +201,20 @@ describe("sliding highlight", () => {
     // pressed was cleared: the highlight now follows the navigator again.
     view.rerender(barTree("assignments", nav));
     expect(highlightTarget()).toEqual({ x: 70, width: 70 });
+  });
+});
+
+describe("no active tab (M1)", () => {
+  it("fades the highlight out when the focused tab is not in this role's bar", () => {
+    const view = render(barTree("history"));
+    layoutTab("History", 210);
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    mockWithTiming.mockClear();
+    // More → My notes: a tab route for another role, not in this bar.
+    view.rerender(barTree("notes"));
+    expect(highlightTarget()).toBeNull();
+    expect(mockWithTiming).toHaveBeenCalledWith(0, { duration: 150 });
+    expect(screen.getByLabelText("History").props.accessibilityState).toMatchObject({ selected: false });
   });
 });
 
