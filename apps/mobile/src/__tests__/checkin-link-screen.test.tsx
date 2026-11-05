@@ -2,12 +2,12 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { post: jest.fn() } }));
 let mockParams: Record<string, string> = { token: "AbC123XyZ0" };
-const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 jest.mock("expo-router", () => {
   const { Text } = require("react-native");
   return {
     useLocalSearchParams: () => mockParams,
-    useRouter: () => ({ replace: mockReplace }),
+    useRouter: () => ({ dismissTo: mockDismissTo, replace: jest.fn() }),
     Redirect: ({ href }: { href: unknown }) => <Text testID="redirect">{JSON.stringify(href)}</Text>,
   };
 });
@@ -88,10 +88,10 @@ describe("CheckInLinkScreen", () => {
     expect(JSON.parse(screen.getByTestId("redirect").props.children)).toBe("/login");
   });
 
-  it("goes to the dashboard on request", () => {
+  it("goes to Today by dismissing to it, never replacing", () => {
     useSessionStore.setState(makeSession("STUDENT"));
     renderWithProviders(<CheckInLinkScreen />);
-    fireEvent.press(screen.getByText("Go to dashboard"));
-    expect(mockReplace).toHaveBeenCalledWith("/dashboard");
+    fireEvent.press(screen.getByText("Go to Today"));
+    expect(mockDismissTo).toHaveBeenCalledWith("/dashboard");
   });
 });

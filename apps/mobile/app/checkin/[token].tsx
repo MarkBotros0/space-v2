@@ -1,12 +1,15 @@
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { XCircle as InvalidIcon } from "lucide-react-native";
 import { parseCheckInCode } from "@space/shared";
 
 import { CheckInIcon, CheckInMessage, CheckInResult } from "../../src/components/check-in/CheckInResult";
-import { Button, Text } from "../../src/design/ui";
+import { CheckInSuccess } from "../../src/components/check-in/check-in-success";
+import { Screen } from "../../src/design/layout/screen";
+import { Button } from "../../src/design/ui";
 import { useCheckIn } from "../../src/hooks/use-check-in";
+import { useCheckInTally } from "../../src/hooks/use-check-in-tally";
 import { checkInRefusalCode, type CheckInOutcome } from "../../src/lib/check-in-result";
 import { useSessionStore } from "../../src/store/session";
 
@@ -25,6 +28,7 @@ export default function CheckInLinkScreen() {
   const { token: raw } = useLocalSearchParams<{ token: string }>();
   const status = useSessionStore((s) => s.status);
   const checkIn = useCheckIn();
+  const tally = useCheckInTally();
   const [outcome, setOutcome] = useState<CheckInOutcome | null>(null);
   const token = typeof raw === "string" ? parseCheckInCode(raw) : null;
 
@@ -41,27 +45,32 @@ export default function CheckInLinkScreen() {
     });
 
   return (
-    <View className="flex-1 items-center justify-center gap-4 bg-background px-4">
-      {token === null ? (
-        <CheckInMessage icon={InvalidIcon} tone="error" title="Can't check in" message="This check-in link is not valid." />
-      ) : outcome ? (
-        <CheckInResult outcome={outcome} />
-      ) : (
-        <>
-          <CheckInMessage
-            icon={CheckInIcon}
-            tone="neutral"
-            title="Check in to this session?"
-            message="Check in to the session this code belongs to?"
-          />
-          <Button size="lg" disabled={checkIn.isPending} onPress={() => confirm(token)}>
-            Check in
-          </Button>
-        </>
-      )}
-      <Pressable accessibilityRole="link" className="mt-2" onPress={() => router.replace("/dashboard")}>
-        <Text className="text-sm text-brand-teal-800 dark:text-brand-teal-400">Go to dashboard</Text>
-      </Pressable>
-    </View>
+    <Screen title="Session check-in" back={null}>
+      <View className="items-center gap-4 py-6">
+        {token === null ? (
+          <CheckInMessage icon={InvalidIcon} tone="error" title="Can't check in" message="This check-in link is not valid." />
+        ) : outcome?.kind === "checked_in" ? (
+          <CheckInSuccess outcome={outcome} attendance={tally} />
+        ) : outcome ? (
+          <CheckInResult outcome={outcome} />
+        ) : (
+          <>
+            <CheckInMessage
+              icon={CheckInIcon}
+              tone="neutral"
+              title="Check in to this session?"
+              message="Check in to the session this code belongs to?"
+            />
+            <Button size="lg" disabled={checkIn.isPending} onPress={() => confirm(token)}>
+              Check in
+            </Button>
+          </>
+        )}
+        {/* A root route: dismissTo lands on Today (the (app) stack mounts, Today under it) rather than replacing. */}
+        <Button variant="plain" onPress={() => router.dismissTo("/dashboard")}>
+          Go to Today
+        </Button>
+      </View>
+    </Screen>
   );
 }

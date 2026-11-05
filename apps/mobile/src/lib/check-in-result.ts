@@ -4,6 +4,7 @@ import {
   checkInErrorCodeSchema,
   type CheckInErrorCode,
   type CheckInResponse,
+  type MyAttendanceSession,
 } from "@space/shared";
 
 export type CheckInOutcome =
@@ -45,4 +46,14 @@ export function checkInCopy(outcome: CheckInOutcome): CheckInCopy {
     default:
       return { title: "Can't check in", message: "Couldn't check you in. Check your connection and try again." };
   }
+}
+
+/**
+ * "3 of 4 sessions": marked past sessions only (an unmarked row is "No record",
+ * not a miss), LATE counts as attended. Null when nothing is marked yet.
+ */
+export function attendanceTally(rows: MyAttendanceSession[]): { attended: number; total: number } | null {
+  const marked = rows.filter((r) => r.status !== null);
+  if (marked.length === 0) return null;
+  return { attended: marked.filter((r) => r.status !== "ABSENT").length, total: marked.length };
 }

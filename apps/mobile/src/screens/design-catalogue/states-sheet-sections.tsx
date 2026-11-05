@@ -3,6 +3,7 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { InlineError, RouteError } from "../../design/layout/route-states";
+import { CheckInSuccess } from "../../components/check-in/check-in-success";
 import { Button } from "../../design/ui/button";
 import { EmptyState } from "../../design/ui/empty-state";
 import { Input } from "../../design/ui/input";
@@ -27,6 +28,19 @@ export function StatesSection() {
         <Skeleton height={64} radius={16} />
         <SkeletonCard />
       </View>
+    </CatalogueSection>
+  );
+}
+
+/** The check-in success moment, on fake data: it is not reachable in a read-only sweep. */
+export function CheckInSuccessSection() {
+  return (
+    <CatalogueSection id="checkin" title="Check-in success">
+      <CheckInSuccess
+        outcome={{ kind: "checked_in", status: "PRESENT", minutesLate: 0 }}
+        attendance={{ attended: 3, total: 4 }}
+      />
+      <CheckInSuccess outcome={{ kind: "checked_in", status: "LATE", minutesLate: 12 }} attendance={null} />
     </CatalogueSection>
   );
 }

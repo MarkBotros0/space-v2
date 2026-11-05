@@ -66,6 +66,12 @@ appId: com.jpc.space
       SECTION: states
 - takeScreenshot: s90-08-states
 
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: checkin
+- takeScreenshot: s90-08b-checkin-success
+
 - scrollUntilVisible:
     element:
       id: catalogue-toast

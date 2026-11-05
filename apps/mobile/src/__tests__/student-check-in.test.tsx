@@ -175,7 +175,7 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     renderWithProviders(<SessionDetailScreen />);
 
     expect(await screen.findByText(/You checked in at/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
+    expect(screen.queryByText("Check In")).toBeNull();
   });
 
   it("refreshes the session after a successful check-in", async () => {
@@ -190,6 +190,51 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     await waitFor(() =>
       expect(get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12").length).toBeGreaterThanOrEqual(2),
     );
+  });
+
+  it("opens the kit Sheet with the scanner first, then the code fallback", async () => {
+    serve();
+    renderWithProviders(<SessionDetailScreen />);
+    expect(screen.queryByTestId("sheet")).toBeNull();
+
+    fireEvent.press(await screen.findByText("Check In"));
+    expect(screen.getByTestId("sheet")).toBeTruthy();
+    expect(screen.getByText("Scan check-in code")).toBeTruthy();
+    expect(screen.getByTestId("mock-camera")).toBeTruthy();
+    expect(screen.getByText("Enter code instead")).toBeTruthy();
+  });
+
+  it("blocks a second submit while the first is pending", async () => {
+    serve();
+    let resolve!: (v: unknown) => void;
+    post.mockReturnValue(new Promise((r) => (resolve = r)));
+    renderWithProviders(<SessionDetailScreen />);
+
+    fireEvent.press(await screen.findByText("Check In"));
+    fireEvent.press(screen.getByText("Enter code instead"));
+    fireEvent.changeText(screen.getByLabelText("Check-in code"), "AbC123XyZ0");
+    fireEvent.press(screen.getByText("Check in"));
+    expect(await screen.findByText("Checking you in…")).toBeTruthy();
+    expect(screen.queryByLabelText("Check-in code")).toBeNull();
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    resolve({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
+    expect(await screen.findByText("You're checked in!")).toBeTruthy();
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the season tally on the success moment", async () => {
+    const attended = { sessionId: 1, title: "A", startsAt: "2099-01-01T10:00:00.000Z", dayKey: "2099-01-01", startTime: "10:00", status: "PRESENT", checkedInAt: null, lateMinutes: null, costMinutes: null };
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/sessions/12") return Promise.resolve({ data: { data: detail } });
+      if (url === "/api/v1/me/attendance")
+        return Promise.resolve({ data: { data: { season: null, budget: null, streak: 1, sessions: [attended, { ...attended, sessionId: 2, status: "ABSENT" }] } } });
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+    post.mockResolvedValue({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
+    renderWithProviders(<SessionDetailScreen />);
+    fireEvent.press(await screen.findByText("Check In"));
+    scanMockBarcode("AbC123XyZ0");
+    expect(await screen.findByText("Season attendance · 1 of 2 sessions")).toBeTruthy();
   });
 
   it("is not shown to staff", async () => {

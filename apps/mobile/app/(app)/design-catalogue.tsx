@@ -20,6 +20,7 @@ import {
   SaveBarSection,
 } from "../../src/screens/design-catalogue/save-bar-section";
 import {
+  CheckInSuccessSection,
   SheetSection,
   StatesSection,
   ToastSection,
@@ -48,6 +49,7 @@ export default function DesignCatalogue() {
       <HeroStatsSections />
       <ControlsSection />
       <StatesSection />
+      <CheckInSuccessSection />
       <ToastSection />
       <SheetSection />
       <SaveBarSection shown={saveBar} onToggle={() => setSaveBar((on) => !on)} />
