@@ -11,6 +11,7 @@
  * device css-interop merges them with the animated style and Reanimated drops
  * them (no-classname-on-animated.test.ts). No haptic here: haptics are for
  * selection and success moments.
+ * Disabled is a neutral fill and a muted label, never opacity (see DISABLED_FILL).
  * Native note: a React Native column stretches a button, so a call site that
  * is a block in v1 adds `self-start`.
  */
@@ -85,6 +86,15 @@ function buttonTextVariants({ variant }: Pick<Opts, "variant"> = {}) {
   return baseText({ variant: VARIANT_ALIAS[variant ?? "primary"], link: variant === "link" });
 }
 
+/**
+ * Disabled (not loading): a neutral fill with the muted foreground, which is
+ * 4.5:1 in both themes (design-tokens-contrast.test.ts). Opacity over the
+ * variant's own fill left the label at ~1.5:1 on dark teal. A plain button
+ * keeps no fill and only mutes its label.
+ */
+const DISABLED_FILL = "border-transparent bg-neutral-soft";
+const DISABLED_TEXT = "text-muted-foreground";
+
 /** Icon size for children icons (v1 forced these through [&_svg]). */
 const BUTTON_ICON_SIZE: Record<SizeInput, number> = {
   md: 16, sm: 16, default: 16, xs: 12, lg: 16, icon: 16, "icon-xs": 12, "icon-sm": 16, "icon-lg": 16,
@@ -103,6 +113,7 @@ function Button({
   const press = usePressScale();
   const colors = useThemeColors();
   const blocked = !!disabled || loading;
+  const dimmed = blocked && !loading;
   const resolved = VARIANT_ALIAS[variant ?? "primary"];
   const spinner = resolved === "primary" ? colors["primary-foreground"] : resolved === "destructive" ? colors["bad"] : colors["foreground"];
   return (
@@ -117,14 +128,17 @@ function Button({
       {...props}
     >
       <Animated.View style={press.animatedStyle}>
-        <View className={cn(buttonVariants({ variant, size }), blocked && !loading && "opacity-50")}>
+        <View
+          testID="button-look"
+          className={cn(buttonVariants({ variant, size }), dimmed && (resolved === "plain" ? null : DISABLED_FILL))}
+        >
           {loading ? <ActivityIndicator testID="button-spinner" size="small" color={spinner} /> : null}
           {withTextRuns(children, (text, key) => (
             <Text
               key={key}
               variant="headline"
               numberOfLines={1}
-              className={cn(buttonTextVariants({ variant }), textClassName)}
+              className={cn(buttonTextVariants({ variant }), textClassName, dimmed && DISABLED_TEXT)}
             >
               {text}
             </Text>

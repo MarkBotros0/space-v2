@@ -45,6 +45,8 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     ["bad", "bad-soft"],
     ["info", "info-soft"],
     ["neutral-strong", "neutral-soft"],
+    // A disabled button: the muted label on the neutral fill.
+    ["muted-foreground", "neutral-soft"],
     ["foreground", "surface-raised"],
     // Menus and pickers (popover is surface-raised in dark).
     ["popover-foreground", "popover"],

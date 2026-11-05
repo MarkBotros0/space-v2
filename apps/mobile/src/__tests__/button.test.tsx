@@ -60,4 +60,31 @@ describe("Button redesign", () => {
     fireEvent.press(screen.getByRole("button", { name: "Go" }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  // Sweep (student s04-04, super s30-04): opacity over the teal fill left the label at
+  // ~1.5:1 in dark and ~2:1 in light. Disabled is a neutral fill with the muted
+  // foreground instead (muted-foreground on neutral-soft is contrast-tested).
+  it.each(["primary", "secondary", "destructive"] as const)("disabled %s is a neutral fill with a muted label, no opacity", (variant) => {
+    render(<Button variant={variant} disabled>Check In</Button>);
+    const label = screen.getByText("Check In");
+    expect(label.props.className.split(" ")).toContain("text-muted-foreground");
+    const look = screen.getByTestId("button-look").props.className.split(" ");
+    expect(look).toContain("bg-neutral-soft");
+    expect(look).toContain("border-transparent");
+    expect(look).not.toContain("opacity-50");
+    expect(look.filter((c: string) => c.startsWith("bg-"))).toEqual(["bg-neutral-soft"]);
+  });
+
+  it("disabled plain keeps no fill and mutes the label", () => {
+    render(<Button variant="plain" disabled>Skip</Button>);
+    expect(screen.getByText("Skip").props.className.split(" ")).toContain("text-muted-foreground");
+    expect(screen.getByTestId("button-look").props.className.split(" ")).toContain("bg-transparent");
+  });
+
+  it("a caller's label colour does not override the disabled label", () => {
+    render(<Button disabled textClassName="text-primary">Go</Button>);
+    const classes = screen.getByText("Go").props.className.split(" ");
+    expect(classes).toContain("text-muted-foreground");
+    expect(classes).not.toContain("text-primary");
+  });
 });
