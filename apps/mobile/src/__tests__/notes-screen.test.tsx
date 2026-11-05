@@ -96,6 +96,36 @@ describe("NotesScreen", () => {
     expect(screen.getByText("Edited")).toBeTruthy();
   });
 
+  it("gives Back to a leader, for whom My notes is not a tab, but not to a mentor, for whom it is", async () => {
+    get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
+    const { TabBarPresenceContext } = jest.requireActual("../design/layout/shell-context");
+
+    useSessionStore.setState({ ...mentorSession, user: { ...mentorSession.user, role: "LEADER" as const } });
+    const leader = renderWithProviders(
+      <TabBarPresenceContext.Provider value={true}><NotesScreen /></TabBarPresenceContext.Provider>,
+    );
+    await screen.findByText("Sara Student");
+    expect(screen.getAllByLabelText("Back").length).toBeGreaterThan(0);
+    leader.unmount();
+
+    useSessionStore.setState(mentorSession);
+    renderWithProviders(
+      <TabBarPresenceContext.Provider value={true}><NotesScreen /></TabBarPresenceContext.Provider>,
+    );
+    await screen.findByText("Sara Student");
+    expect(screen.queryByLabelText("Back")).toBeNull();
+  });
+
+  it("marks each note row as opening the student with a chevron", async () => {
+    useSessionStore.setState(mentorSession);
+    get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
+
+    renderWithProviders(<NotesScreen />);
+    await screen.findByText("Sara Student");
+
+    expect(screen.getAllByTestId("list-row-chevron", { includeHiddenElements: true }).length).toBe(1);
+  });
+
   it("navigates to the student on press", async () => {
     useSessionStore.setState(mentorSession);
     get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });

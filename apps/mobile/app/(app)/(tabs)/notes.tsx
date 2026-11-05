@@ -2,6 +2,7 @@ import { Flag } from "lucide-react-native";
 import { View } from "react-native";
 
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { BACK_TO_PREVIOUS } from "../../../src/design/layout/large-title";
 import { Screen } from "../../../src/design/layout/screen";
 import { Button, EmptyState, GroupedList } from "../../../src/design/ui";
 import { flattenNotePages, useAuthoredNotes } from "../../../src/hooks/use-notes";
@@ -12,6 +13,10 @@ export default function NotesScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
   // Four roles can author (spec R46–R49); a STUDENT never can (R51) and the
   // API refuses them, so the screen does not ask.
+  // My notes is a tab for the mentor only; for any other role it was opened from More,
+  // which the pill does not show, so the screen offers its own Back (R19).
+  const isTab = useSessionStore((s) => s.nav()?.tabs.some((t) => t.href === "/notes") ?? false);
+  const back = isTab ? undefined : BACK_TO_PREVIOUS;
   const canAuthor = role !== null && role !== "STUDENT";
   const {
     data,
@@ -29,7 +34,7 @@ export default function NotesScreen() {
   // is no `role === "MENTOR"` return here.
   if (!canAuthor) {
     return (
-      <Screen>
+      <Screen back={back}>
         <EmptyState
           icon={Flag}
           title="Notes"
@@ -41,7 +46,7 @@ export default function NotesScreen() {
 
   if (isPending || isError) {
     return (
-      <Screen title="My notes">
+      <Screen title="My notes" back={back}>
         {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
       </Screen>
     );
@@ -53,6 +58,7 @@ export default function NotesScreen() {
   return (
     <Screen
       title="My notes"
+      back={back}
       subtitle={`${count} note${notes.length === 1 && !hasNextPage ? "" : "s"} you've authored`}
       onRefresh={() => void refetch()}
       refreshing={isRefetching}
