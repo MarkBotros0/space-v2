@@ -1,5 +1,5 @@
 import type { QuizGradingAttempt } from "@space/shared";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 
 import {
@@ -39,6 +39,10 @@ export function AttemptSheet({
   const reopen = useReopenAttempt(quizId);
   const [awards, setAwards] = useState(() => initialAwards(attempt));
   const [error, setError] = useState<string | null>(null);
+  // A failure belongs to the visit that caused it: a reopened sheet starts clean.
+  useEffect(() => {
+    if (open) setError(null);
+  }, [open]);
   const hasEssayAnswers = hasEssays && attempt.answers.some((a) => a.type === "ESSAY");
   const graded = attempt.status === "GRADED";
 

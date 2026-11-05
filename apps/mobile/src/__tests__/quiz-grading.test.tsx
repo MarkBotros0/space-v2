@@ -115,6 +115,23 @@ describe("grading screen — PAPER", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Saved."));
   });
 
+  it("sends the typed notes with the score", async () => {
+    post.mockResolvedValue({ data: { data: gradeSheet } });
+    renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+
+    openRow("Test student");
+    fireEvent.changeText(await screen.findByLabelText("Score for Test student"), "12");
+    fireEvent.changeText(screen.getByLabelText("Notes for Test student"), "Needs work.");
+    fireEvent.press(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/grades", {
+        entries: [{ studentUserId: 9, score: 12, notes: "Needs work." }],
+      }),
+    );
+  });
+
   it("has one back link, the frame's pinned bar; no in-content 'Back to session' (R23)", async () => {
     renderStacked(<QuizGradeScreen />);
     expect(await screen.findByText("Test student")).toBeTruthy();
@@ -348,5 +365,41 @@ describe("grading screen — ONLINE", () => {
     expect(await screen.findByText("London (correct: Paris)")).toBeTruthy();
     expect(screen.getByText(" (correct: Paris)")).toBeTruthy();
     expect(screen.getByText("0/2")).toBeTruthy();
+  });
+
+  describe("attempt sheet drafts", () => {
+    const axiosError = (message: string) =>
+      Object.assign(new Error("400"), {
+        isAxiosError: true,
+        response: { status: 400, data: { error: { code: "bad_request", message } } },
+      });
+    const dismissSheet = () => fireEvent.press(screen.getByTestId("sheet-backdrop"));
+
+    it("shows a failed save's message, and not again after dismiss and reopen", async () => {
+      post.mockRejectedValue(axiosError("Marks are out of range."));
+      renderStacked(<QuizGradeScreen />);
+      await screen.findByText("Test student");
+
+      openRow("Test student");
+      fireEvent.changeText(await screen.findByLabelText("Marks for Discuss."), "9");
+      fireEvent.press(screen.getByText("Save marks"));
+      expect(await screen.findByText("Marks are out of range.")).toBeTruthy();
+
+      dismissSheet();
+      openRow("Test student");
+      await waitFor(() => expect(screen.queryByText("Marks are out of range.")).toBeNull());
+    });
+
+    it("keeps a typed award across dismiss and reopen while the server's value is unchanged", async () => {
+      renderStacked(<QuizGradeScreen />);
+      await screen.findByText("Test student");
+
+      openRow("Test student");
+      fireEvent.changeText(await screen.findByLabelText("Marks for Discuss."), "3");
+      dismissSheet();
+      openRow("Test student");
+
+      expect(await screen.findByDisplayValue("3")).toBeTruthy();
+    });
   });
 });
