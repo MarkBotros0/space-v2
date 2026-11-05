@@ -53,7 +53,10 @@ it("fires sign-out once per press and leaves navigation alone", () => {
 
 it("keeps the theme toggle reachable on the Appearance row", () => {
   renderWithProviders(<MoreMenu role="STUDENT" userName="Sara Adel" nav={nav} onNavigate={jest.fn()} onSignOut={jest.fn()} />);
-  expect(screen.getByLabelText(/Switch to (dark|light) mode/)).toBeTruthy();
+  const toggle = screen.getByLabelText(/Switch to (dark|light) mode/);
+  const before = toggle.props.accessibilityLabel;
+  fireEvent.press(toggle);
+  expect(screen.getByLabelText(/Switch to (dark|light) mode/).props.accessibilityLabel).not.toBe(before);
 });
 
 it("speaks the role badge with the identity row", () => {
