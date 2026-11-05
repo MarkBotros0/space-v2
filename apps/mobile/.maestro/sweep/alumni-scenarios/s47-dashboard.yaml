@@ -43,16 +43,13 @@ appId: com.jpc.space
 - pressKey: back
 - waitForAnimationToEnd:
     timeout: 3000
-# The next event is the hero (action "View event") or a row under Also coming up; either opens the event
-# (the seeded events have no link, so nothing leaves the app).
+# The seeded kickoff event is the only upcoming event, so it is the hero and 'View event' opens it (the event has
+# no link, so nothing leaves the app). Exactly one tap, so the detail wait below always sees this event.
 - scrollUntilVisible:
     element: 'Sweep kickoff event.*'
     direction: UP
     timeout: 20000
 - tapOn: 'View event'
-    optional: true
-- tapOn: 'Sweep kickoff event.*'
-    optional: true
 - extendedWaitUntil:
     visible: 'Fake organisation-wide event for the UI sweep\.'
     timeout: 40000
