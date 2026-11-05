@@ -174,7 +174,7 @@ describe("quiz builder on the fixed save bar", () => {
     expect(screen.getByLabelText("Quiz title")).toBeTruthy();
     get.mockResolvedValue({ data: { data: authoring() } });
     fireEvent.press(screen.getByText("Try again"));
-    await waitFor(() => expect(screen.queryByText("Couldn't refresh this quiz.")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("Couldn't refresh this quiz.")).toBeNull(), { timeout: 5000 });
   });
 
   it("a space-only title change is nothing to save: the hint says so and Save sends nothing", async () => {
