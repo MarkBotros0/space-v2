@@ -21,7 +21,7 @@ const SEMANTIC = [
 ];
 const RAMPS = ["brand-navy", "brand-teal", "neutral", "success", "warning", "error", "info", "purple"];
 const STEPS = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"];
-const ROLES = ["super", "admin", "leader", "student", "mentor"];
+const ROLES = ["super", "admin", "leader", "student", "mentor", "alumni"];
 
 function parse(value) {
   if (value.startsWith("#")) {

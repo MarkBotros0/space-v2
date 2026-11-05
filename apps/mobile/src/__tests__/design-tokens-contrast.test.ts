@@ -62,6 +62,7 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     ["role-leader-foreground", "role-leader"],
     ["role-mentor-foreground", "role-mentor"],
     ["role-student-foreground", "role-student"],
+    ["role-alumni-foreground", "role-alumni"],
   ];
   it.each(pairs)("%s on %s is at least 4.5:1", (fg, bg) => {
     expect(contrast(rgbOf(t[fg]), rgbOf(t[bg]))).toBeGreaterThanOrEqual(4.5);

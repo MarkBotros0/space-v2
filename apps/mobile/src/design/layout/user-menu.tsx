@@ -6,7 +6,7 @@
  * callbacks (wired in the app shell). The theme item, like v1's
  * closeOnClick={false}, keeps the menu open.
  */
-import type { UserRole } from "@space/shared";
+import { isAlumnus, type UserRole } from "@space/shared";
 import { LogOut, Moon, Sun } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -21,7 +21,7 @@ import { NavIcon } from "../icons/nav-icon";
 
 iconWithClassName(LogOut, Moon, Sun);
 
-type RoleColor = "super" | "admin" | "leader" | "mentor" | "student";
+type RoleColor = "super" | "admin" | "leader" | "mentor" | "student" | "alumni";
 export const ROLE_COLOR: Record<UserRole, RoleColor> = {
   SUPER: "super",
   ADMIN: "admin",
@@ -30,10 +30,20 @@ export const ROLE_COLOR: Record<UserRole, RoleColor> = {
   STUDENT: "student",
 };
 
+/**
+ * The badge naming who is signed in: the role, except that a graduated
+ * student (navFor's isAlumnus rule: role stays STUDENT) is ALUMNI.
+ */
+export function roleBadge(role: UserRole, graduationYear: number | null | undefined): { color: RoleColor; label: string } {
+  if (isAlumnus({ role, graduationYear: graduationYear ?? null })) return { color: "alumni", label: "ALUMNI" };
+  return { color: ROLE_COLOR[role], label: role };
+}
+
 const itemClass = "w-full flex-row items-center gap-2 rounded-sm px-2 py-1.5 active:bg-accent";
 
 export function UserMenu({
   role,
+  graduationYear = null,
   userName,
   initials,
   avatarUrl,
@@ -43,6 +53,8 @@ export function UserMenu({
   onSignOut,
 }: {
   role: UserRole;
+  /** Set for a graduated student, whose badge reads ALUMNI. */
+  graduationYear?: number | null;
   userName: string | null;
   initials: string;
   avatarUrl?: string | null;
@@ -53,6 +65,7 @@ export function UserMenu({
 }) {
   const [open, setOpen] = useState(false);
   const anchor = useAnchor();
+  const badge = roleBadge(role, graduationYear);
   const close = () => setOpen(false);
   return (
     <>
@@ -86,7 +99,7 @@ export function UserMenu({
                 {userName}
               </Text>
             ) : null}
-            <Badge role={ROLE_COLOR[role]} className="self-start">{role}</Badge>
+            <Badge role={badge.color} className="self-start">{badge.label}</Badge>
           </Pressable>
           <View className="my-1 h-px bg-border" />
           <Pressable

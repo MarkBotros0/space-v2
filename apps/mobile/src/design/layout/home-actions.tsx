@@ -26,6 +26,7 @@ import { UserMenu } from "./user-menu";
 export function HomeActions() {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
+  const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
   const { data: unread = 0 } = useUnreadCount();
   const { data } = useNotifications();
   const markRead = useMarkRead();
@@ -54,6 +55,7 @@ export function HomeActions() {
       />
       <UserMenu
         role={user.role}
+        graduationYear={graduationYear}
         userName={name}
         initials={initialsOf(name, user.role.charAt(0))}
         isDark={resolved === "dark"}

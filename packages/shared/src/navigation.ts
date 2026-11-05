@@ -197,8 +197,13 @@ export interface NavAudience {
 }
 
 /** An alumnus is a graduated student — role stays STUDENT, graduationYear is set. */
+export function isAlumnus(user: NavAudience): boolean {
+  return user.role === "STUDENT" && user.graduationYear != null;
+}
+
+/** Alumni get their own nav (isAlumnus); everyone else their role's. */
 export function navFor(user: NavAudience): RoleNav {
-  if (user.role === "STUDENT" && user.graduationYear != null) return ALUMNI;
+  if (isAlumnus(user)) return ALUMNI;
   return navByRole[user.role];
 }
 

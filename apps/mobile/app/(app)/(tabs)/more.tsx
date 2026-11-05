@@ -10,6 +10,7 @@ import { useSessionStore } from "../../../src/store/session";
 export default function MoreScreen() {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
+  const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
   const nav = useSessionStore((s) => s.nav());
   const logout = useLogout();
 
@@ -19,6 +20,7 @@ export default function MoreScreen() {
     <ShellFrame>
       <MoreMenu
         role={user.role}
+        graduationYear={graduationYear}
         userName={user.name}
         nav={nav}
         onNavigate={(href) => {

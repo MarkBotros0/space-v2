@@ -20,7 +20,7 @@ import { chipTextVariants, chipVariants, StatusChip, type ChipTone } from "./sta
 import { Text } from "./text";
 
 type LegacyVariant = "default" | "secondary" | "outline" | "success" | "warning" | "error" | "info" | "teal";
-type Role = "none" | "super" | "admin" | "leader" | "mentor" | "student";
+type Role = "none" | "super" | "admin" | "leader" | "mentor" | "student" | "alumni";
 
 const TONE: Record<LegacyVariant, ChipTone> = {
   default: "neutral",
@@ -42,6 +42,7 @@ const roleBox = cva("", {
       leader: "bg-role-leader",
       mentor: "bg-role-mentor",
       student: "bg-role-student",
+      alumni: "bg-role-alumni",
     },
   },
   defaultVariants: { role: "none" },
@@ -56,6 +57,7 @@ const roleText = cva("", {
       leader: "text-role-leader-foreground",
       mentor: "text-role-mentor-foreground",
       student: "text-role-student-foreground",
+      alumni: "text-role-alumni-foreground",
     },
   },
   defaultVariants: { role: "none" },

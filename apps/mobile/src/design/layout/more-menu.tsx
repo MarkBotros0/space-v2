@@ -18,7 +18,7 @@ import { Badge } from "../ui/badge";
 import { Text } from "../ui/text";
 import { ThemeToggle } from "../ui/theme-toggle";
 import { PageHeader } from "./page-header";
-import { ROLE_COLOR } from "./user-menu";
+import { roleBadge } from "./user-menu";
 
 iconWithClassName(ChevronRight, LogOut);
 
@@ -30,12 +30,15 @@ function initialsFor(name: string | null, role: UserRole): string {
 
 export function MoreMenu({
   role,
+  graduationYear = null,
   userName,
   nav,
   onNavigate,
   onSignOut,
 }: {
   role: UserRole;
+  /** Set for a graduated student, whose badge reads ALUMNI. */
+  graduationYear?: number | null;
   userName: string | null;
   nav: RoleNav;
   onNavigate: (href: string) => void;
@@ -44,6 +47,7 @@ export function MoreMenu({
   // The same list more-back.test.tsx walks: sidebar entries that are not a tab.
   const items = moreItemsFor(nav);
   const name = userName?.trim() || null;
+  const badge = roleBadge(role, graduationYear);
   return (
     <View className="flex-col gap-6">
       <PageHeader title="More" description="Account, settings, and more places to go." />
@@ -53,7 +57,7 @@ export function MoreMenu({
         </View>
         <View className="flex-1 flex-col gap-1">
           {name ? <Text className="text-sm font-semibold text-foreground">{name}</Text> : null}
-          <Badge role={ROLE_COLOR[role]} className="self-start">{role}</Badge>
+          <Badge role={badge.color} className="self-start">{badge.label}</Badge>
         </View>
       </View>
       {items.length > 0 ? (

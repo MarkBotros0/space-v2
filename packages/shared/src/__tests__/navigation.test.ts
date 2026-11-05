@@ -1,4 +1,4 @@
-import { ALL_NAV_HREFS, ALL_TAB_HREFS, navByRole, navFor } from "../navigation";
+import { ALL_NAV_HREFS, ALL_TAB_HREFS, isAlumnus, navByRole, navFor } from "../navigation";
 import type { RoleNav } from "../navigation";
 
 const base = { role: "STUDENT" as const, graduationYear: null as number | null };
@@ -204,5 +204,13 @@ describe("navFor", () => {
         ["/more", "More", "more"],
       ],
     });
+  });
+});
+
+describe("isAlumnus", () => {
+  it("is a graduated student only: navFor's ALUMNI rule", () => {
+    expect(isAlumnus({ role: "STUDENT", graduationYear: 2025 })).toBe(true);
+    expect(isAlumnus({ role: "STUDENT", graduationYear: null })).toBe(false);
+    expect(isAlumnus({ role: "LEADER", graduationYear: 2025 })).toBe(false);
   });
 });
