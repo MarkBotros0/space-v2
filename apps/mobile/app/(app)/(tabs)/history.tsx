@@ -5,6 +5,7 @@ import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { AlumniHistory } from "../../../src/screens/alumni/alumni-history";
 import { SeasonHistory } from "../../../src/design/students/season-history";
 import { EmptyState } from "../../../src/design/ui";
 import { useSeasonHistory } from "../../../src/hooks/use-self-service";
@@ -24,10 +25,10 @@ export default function HistoryScreen() {
   const isStudent = role === "STUDENT";
   // navFor's rule (shared): a graduated student.
   const alumnus = role !== null && isAlumnus({ role, graduationYear });
-  const { data, isPending, isError, refetch, isRefetching } = useSeasonHistory(
-    activeSeasonId,
-    isStudent,
-  );
+  const query = useSeasonHistory(activeSeasonId, isStudent);
+  const { data, isPending, isError, refetch, isRefetching } = query;
+
+  if (alumnus) return <AlumniHistory query={query} />;
 
   if (!isStudent) {
     return (
