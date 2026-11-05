@@ -40,7 +40,7 @@ describe("Super Today", () => {
     expect(await screen.findByText("3 submissions waiting for review")).toBeTruthy();
     expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     fireEvent.press(screen.getByText("3 submissions waiting for review"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { pending: "1" } });
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: {} });
     fireEvent.press(screen.getByText("1 session with no attendance"));
     expect(mockPush).toHaveBeenCalledWith("/attention/sessions");
     fireEvent.press(screen.getByText("2 students at risk"));

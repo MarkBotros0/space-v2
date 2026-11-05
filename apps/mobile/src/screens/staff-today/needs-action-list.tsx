@@ -36,7 +36,7 @@ export function NeedsActionList({
     rows.push({
       key: "review",
       title: `${review} ${plural(review, "submission", "submissions")} waiting for review`,
-      open: () => router.push({ pathname: "/submissions", params: { pending: "1", ...season } }),
+      open: () => router.push({ pathname: "/submissions", params: season }),
     });
   if (unmarked === null) unknown.push("sessions with no attendance");
   else if (unmarked > 0)

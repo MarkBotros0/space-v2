@@ -83,7 +83,7 @@ describe("Admin Today", () => {
     renderWithProviders(<DashboardScreen />);
 
     fireEvent.press(await screen.findByText("3 submissions waiting for review"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { pending: "1", seasonId: "7" } });
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
     fireEvent.press(screen.getByText("1 session with no attendance"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/attention/sessions", params: { seasonId: "7" } });
     fireEvent.press(screen.getByText("2 students at risk"));

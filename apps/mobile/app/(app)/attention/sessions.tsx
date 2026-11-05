@@ -1,6 +1,14 @@
-import { Screen } from "../../../src/design/layout/screen";
+import { useLocalSearchParams } from "expo-router";
 
-/** Placeholder: plan 04 Task 4 fills this in. */
+import { seasonParam } from "../../../src/lib/season-param";
+import { NotAvailable } from "../../../src/screens/attention/not-available";
+import { SessionsWithoutAttendance } from "../../../src/screens/attention/sessions-list";
+import { useSessionStore } from "../../../src/store/session";
+
+/** Opened from Today's "N sessions with no attendance" (ADMIN, SUPER). */
 export default function AttentionSessionsScreen() {
-  return <Screen title="Sessions with no attendance">{null}</Screen>;
+  const role = useSessionStore((s) => s.user?.role ?? null);
+  const seasonId = seasonParam(useLocalSearchParams<{ seasonId?: string }>().seasonId);
+  if (role !== "ADMIN" && role !== "SUPER") return <NotAvailable title="Sessions with no attendance" />;
+  return <SessionsWithoutAttendance role={role} seasonId={seasonId} />;
 }
