@@ -38,7 +38,7 @@ appId: com.jpc.space
 # Grading sheet: scores are typed, never saved.
 - openLink: spacev2://quiz/1/grade
 - extendedWaitUntil:
-    visible: '.*Max score: \d+'
+    visible: '.*Max score: \d+.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
