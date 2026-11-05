@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { AppState, type AppStateStatus } from "react-native";
+import { AppState, ScrollView, type AppStateStatus } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn() },
@@ -211,6 +211,48 @@ describe("leaving the screen saves what was written", () => {
     fireEvent.changeText(await screen.findByLabelText("Your response"), "my essay");
     view.unmount();
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(FAILED));
+  });
+});
+
+describe("work returned while the screen stays open", () => {
+  it("is flushed again after a submit has landed and the leader sends it back", async () => {
+    let status: "DRAFT" | "SUBMITTED" | "RETURNED" = "DRAFT";
+    get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: {
+          data:
+            url === "/api/v1/assignments/41"
+              ? {
+                  ...assignment,
+                  mySubmission: {
+                    publicId: "abc123defg", status, submittedAt: null, reviewedAt: null,
+                    feedback: null, isLate: false,
+                  },
+                }
+              : { ...submission, status, text: "final" },
+        },
+      }),
+    );
+    patch.mockImplementation(() => {
+      status = "SUBMITTED";
+      return Promise.resolve({ data: { data: { saved: true, submitted: true } } });
+    });
+    const view = open();
+    fireEvent.changeText(await screen.findByLabelText("Your response"), "final");
+    fireEvent.press(screen.getByText("Submit"));
+    fireEvent.press(await screen.findByText("Yes, submit"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Submitted!"));
+    await waitFor(() => expect(screen.queryByLabelText("Your response")).toBeNull());
+
+    // The leader sends it back; the student pulls, then rewrites.
+    status = "RETURNED";
+    await act(async () => {
+      screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
+    });
+    fireEvent.changeText(await screen.findByLabelText("Your response"), "revised");
+    view.unmount();
+    await waitFor(() => expect(patch).toHaveBeenLastCalledWith(URL, { text: "revised" }));
+    expect(patch).toHaveBeenCalledTimes(2);
   });
 });
 

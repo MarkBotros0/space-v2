@@ -40,7 +40,19 @@ export function useDraftFlush(
 ): (input: SaveInput) => Promise<unknown> {
   const sent = useRef<string | null>(null);
   const handedIn = useRef(false);
+  // Returned work is editable again: the submit that locked it is over, so it no longer
+  // blocks a flush, and its text is no longer "what was last sent".
+  const wasEditable = useRef(draft?.editable ?? false);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
+
+  const editable = draft?.editable ?? false;
+  useEffect(() => {
+    if (editable && !wasEditable.current && handedIn.current) {
+      handedIn.current = false;
+      sent.current = null;
+    }
+    wasEditable.current = editable;
+  }, [editable]);
 
   const send = (input: SaveInput) => {
     sent.current = input.text;
