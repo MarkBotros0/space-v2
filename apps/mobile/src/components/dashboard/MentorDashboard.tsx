@@ -9,9 +9,11 @@ import { useMentorDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useVisibleNotes } from "../../hooks/use-notes";
 import { useEngagementReport } from "../../hooks/use-reports";
+import { firstName } from "../../lib/format";
 import { AtRiskGroup } from "../../screens/mentor/at-risk-group";
 import { RecentActivityGroup } from "../../screens/mentor/recent-activity-group";
 import { RecentNotesGroup } from "../../screens/mentor/recent-notes-group";
+import { useSessionStore } from "../../store/session";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
 
 const NOTES_LIMIT = 5;
@@ -42,6 +44,9 @@ function GroupError({ header, message, onRetry }: { header: string; message: str
  */
 export function MentorDashboard() {
   const router = useRouter();
+  const name = useSessionStore((s) => s.user?.name ?? null);
+  // As the leader's Today: a blank name keeps the plain title, not "Hi, there".
+  const named = (name ?? "").trim() !== "";
   // D17: the SAME query key as the mentor's Reports tab, so Home and Reports
   // cannot show different at-risk sets. No seasonId = the mentor's whole scope.
   const engagement = useEngagementReport(null, true);
@@ -59,7 +64,8 @@ export function MentorDashboard() {
   return (
     <Screen
       home
-      title="Today"
+      title={named ? `Hi, ${firstName(name)}` : "Today"}
+      compactTitle="Today"
       onRefresh={refresh}
       refreshing={
         engagement.isRefetching || notes.isRefetching || feed.isRefetching || events.isRefetching

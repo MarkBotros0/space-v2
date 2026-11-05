@@ -46,11 +46,11 @@ beforeEach(() => {
 afterEach(settle);
 
 describe("AlumniDashboard", () => {
-  it("titles Today with the welcome subtitle and never asks /me/dashboard", async () => {
+  it("greets by first name with the class in the subtitle and never asks /me/dashboard", async () => {
     serve({ [EVENTS]: { events: [event], total: 1 }, [HISTORY]: { seasons: [] } });
     renderWithProviders(<AlumniDashboard />);
-    expect(await screen.findByText("Today")).toBeTruthy();
-    expect(screen.getByText("Welcome back, Aya · Class of 2025")).toBeTruthy();
+    expect(await screen.findByText("Hi, Aya")).toBeTruthy();
+    expect(screen.getByText("Class of 2025")).toBeTruthy();
     await screen.findByText("No past seasons");
     expect(requested()).not.toContain("/api/v1/me/dashboard");
   });

@@ -69,6 +69,23 @@ beforeEach(() => {
 });
 
 describe("MentorDashboard (Today)", () => {
+  it("greets by first name like the leader's Today", async () => {
+    useSessionStore.setState(makeSession("MENTOR", {}, { name: "Mina Mentor" }));
+    serve(routes());
+    renderWithProviders(<MentorDashboard />);
+    expect(await screen.findByText("Hi, Mina")).toBeTruthy();
+    await screen.findByText("Open day");
+  });
+
+  it("keeps the plain Today title when the mentor has no name", async () => {
+    useSessionStore.setState(makeSession("MENTOR", {}, { name: "  " }));
+    serve(routes());
+    renderWithProviders(<MentorDashboard />);
+    expect((await screen.findAllByText("Today")).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^Hi,/)).toBeNull();
+    await screen.findByText("Open day");
+  });
+
   it("orders the sections At risk, Recent notes, Recent activity, then upcoming events", async () => {
     serve(routes());
     renderWithProviders(<MentorDashboard />);
