@@ -158,7 +158,9 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     renderWithProviders(<ReportsScreen />);
 
     expect(await screen.findByText("Students per season")).toBeTruthy();
-    expect(screen.getByText("2 leaders · 20 active · 3 completed · 1 dropped")).toBeTruthy();
+    const meta = screen.getByText("2 leaders · 20 active · 3 completed · 1 dropped");
+    // Each count stays with its noun when the line wraps (sweep R6).
+    expect(meta.props.children).toBe("2\u00a0leaders · 20\u00a0active · 3\u00a0completed · 1\u00a0dropped");
     expect(screen.getByText("Active members per season")).toBeTruthy();
     expect(screen.getByText("2098: 12")).toBeTruthy();
     fireEvent.press(screen.getByLabelText(/^Spring 2099, 2 leaders/));

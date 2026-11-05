@@ -20,6 +20,7 @@ import {
 } from "../../design/ui";
 import { useOrganisationReport } from "../../hooks/use-reports";
 import { joinMeta } from "../../lib/join-meta";
+import { countOf } from "../../lib/plural";
 
 /** A tile that opens its list: the wrapper takes the tile's flex so tiles still wrap in pairs. */
 function TilePress({ onPress, children }: { onPress: () => void; children: ReactNode }) {
@@ -130,10 +131,10 @@ export function OrganisationSection() {
                 key={r.seasonId}
                 title={r.title}
                 subtitle={joinMeta([
-                  `${r.leaderCount} leaders`,
-                  `${r.activeCount} active`,
-                  `${r.completedCount} completed`,
-                  `${r.withdrawnCount} dropped`,
+                  countOf(r.leaderCount, "leader"),
+                  `${r.activeCount}\u00a0active`,
+                  `${r.completedCount}\u00a0completed`,
+                  `${r.withdrawnCount}\u00a0dropped`,
                 ])}
                 subtitleLines={3}
                 trailing={<StatusChip {...statusChip("season", r.status)} />}
