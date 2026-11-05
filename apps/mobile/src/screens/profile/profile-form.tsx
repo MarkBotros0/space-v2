@@ -86,9 +86,10 @@ export function useProfileForm(profile: MyProfile): {
       return;
     }
     setErrors({});
+    const sent = values;
     update.mutate(body, {
       onSuccess: () => {
-        setSaved(body);
+        setSaved(sent);
         toast.success("Profile saved.");
       },
       onError: (err) => setSubmitError(apiErrorMessage(err, "Couldn't save your profile.")),
