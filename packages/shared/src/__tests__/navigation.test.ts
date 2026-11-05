@@ -197,7 +197,7 @@ describe("navFor", () => {
     expect(shape(navByRole.LEADER)).toEqual({
       sidebar: [
         ["/dashboard", "Dashboard", "dashboard"],
-        ["/groups", "My Groups", "groups"],
+        ["/groups", "Groups", "groups"],
         ["/notes", "My notes", "notes"],
         ["/calendar", "Calendar", "calendar"],
         ["/submissions", "Submissions", "submissions"],
@@ -207,7 +207,7 @@ describe("navFor", () => {
       ],
       tabs: [
         ["/dashboard", "Today", "home"],
-        ["/groups", "My Group", "groups"],
+        ["/groups", "Groups", "groups"],
         ["/calendar", "Calendar", "calendar"],
         ["/submissions", "Submissions", "submissions"],
         ["/more", "More", "more"],

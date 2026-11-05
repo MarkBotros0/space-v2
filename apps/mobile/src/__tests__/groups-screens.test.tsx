@@ -64,31 +64,30 @@ function serveLeaderGroups() {
   });
 }
 
-it("lists my groups v1-style: members, past seasons apart, student and calendar links", async () => {
+it("lists my groups as grouped rows: members, past seasons apart, group and student links", async () => {
   useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3, 2] }, { id: 5, name: "Test leader", email: "l@jpc.test" }));
   serveLeaderGroups();
 
   renderWithProviders(<GroupsScreen />);
 
   expect(await screen.findByText("Sara Student")).toBeTruthy();
-  expect(screen.getByText("My groups")).toBeTruthy();
+  expect(screen.getByText("Groups")).toBeTruthy();
   expect(screen.getByText("3 groups")).toBeTruthy();
-  expect(screen.getByText("Spring 2026")).toBeTruthy();
+  expect(screen.getByText("SPRING 2026")).toBeTruthy();
   expect(screen.getByText("noname@jpc.test")).toBeTruthy();
   expect((await screen.findAllByText("No students yet.")).length).toBe(2);
   // Past seasons render after the current ones, under their own eyebrow (spec 05 §9).
   const order = screen.UNSAFE_root.findAll((n: { props: { children?: unknown } }) => typeof n.props.children === "string").map((n: { props: { children?: unknown } }) => n.props.children as string);
-  expect(order.indexOf("Group A")).toBeLessThan(order.indexOf("Past seasons"));
-  expect(order.indexOf("Past seasons")).toBeLessThan(order.indexOf("Older group"));
+  expect(order.indexOf("Group A")).toBeLessThan(order.indexOf("PAST SEASONS"));
+  expect(order.indexOf("PAST SEASONS")).toBeLessThan(order.indexOf("Older group"));
   // A season being set up (DRAFT) is upcoming, not past.
-  expect(order.indexOf("Next group")).toBeLessThan(order.indexOf("Past seasons"));
+  expect(order.indexOf("Next group")).toBeLessThan(order.indexOf("PAST SEASONS"));
 
   fireEvent.press(screen.getByText("Group A"));
-  expect(mockPush).not.toHaveBeenCalled();
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "3" } });
   fireEvent.press(screen.getByText("Sara Student"));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
-  fireEvent.press(screen.getAllByText("Calendar →")[0]!);
-  expect(mockPush).toHaveBeenCalledWith("/calendar");
+  expect(screen.queryByText("Calendar →")).toBeNull();
 });
 
 it("a leader who leads nothing gets v1's empty page and no request (R87)", () => {
@@ -142,4 +141,32 @@ it("renders a student's member list without emails (the contract omits them)", a
 
   expect(await screen.findByText("Unnamed")).toBeTruthy();
   expect(screen.queryByText("s@jpc.test")).toBeNull();
+  // A student does not open another student's page: no chevron.
+  expect(screen.queryAllByTestId("list-row-chevron")).toHaveLength(0);
+  fireEvent.press(screen.getByText("Unnamed"));
+  expect(mockPush).not.toHaveBeenCalled();
+});
+
+it("a leader pressing a student row in a group opens the student", async () => {
+  get.mockResolvedValue({
+    data: {
+      data: {
+        id: 3, name: "Group A", description: null, seasonId: 7,
+        seasonCode: "S26", seasonTitle: "Spring 2026",
+        leaders: [{ id: 5, name: "Test leader", email: "l@jpc.test" }],
+        students: [{ id: 9, name: "Test student", email: "s@jpc.test" }],
+        canManage: false,
+      },
+    },
+  });
+
+  renderWithProviders(<GroupDetailScreen />);
+
+  fireEvent.press(await screen.findByText("Test student"));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "9" } });
+  expect(screen.getByText("LEADERS (1)")).toBeTruthy();
+  expect(screen.getByText("STUDENTS (1)")).toBeTruthy();
+  mockPush.mockClear();
+  fireEvent.press(screen.getByText("Test leader"));
+  expect(mockPush).not.toHaveBeenCalled();
 });

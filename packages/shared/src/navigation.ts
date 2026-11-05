@@ -105,7 +105,7 @@ const ADMIN: RoleNav = {
 const LEADER: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-    { href: "/groups", label: "My Groups", icon: "groups" },
+    { href: "/groups", label: "Groups", icon: "groups" },
     { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/submissions", label: "Submissions", icon: "submissions" },
@@ -115,7 +115,7 @@ const LEADER: RoleNav = {
   ],
   tabs: [
     { href: "/dashboard", label: "Today", icon: "home" },
-    { href: "/groups", label: "My Group", icon: "groups" },
+    { href: "/groups", label: "Groups", icon: "groups" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/submissions", label: "Submissions", icon: "submissions" },
     { href: "/more", label: "More", icon: "more" },

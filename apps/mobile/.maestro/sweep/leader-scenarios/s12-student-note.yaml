@@ -8,11 +8,11 @@ appId: com.jpc.space
       EMAIL: ${LEADER_EMAIL}
 - openLink: spacev2://groups
 - extendedWaitUntil:
-    visible: 'My groups'
+    visible: 'Groups'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-# Reached through the group card's member link, as a leader would.
+# Reached through the group's student row, as a leader would.
 - runFlow:
     file: ../_tap.yaml
     env:
