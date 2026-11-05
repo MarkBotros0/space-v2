@@ -153,8 +153,8 @@ appId: com.jpc.space
 - takeScreenshot: s90-13-sheet-closed
 
 # Full-screen save bar (final review I4): "Show save bar" puts a SaveBar in
-# the catalogue Screen's footer. Scrolled to the end, the last field must
-# clear the bar; with the keyboard up, the bar rides on it and the focused
+# the catalogue Screen's footer. The field must scroll clear of the bar; with
+# the keyboard up, the bar rides on it and the focused
 # field sits above both.
 - runFlow:
     file: _tap-id.yaml
@@ -163,8 +163,14 @@ appId: com.jpc.space
 - extendedWaitUntil:
     visible: 'Save changes'
     timeout: 10000
-- scroll
-- scroll
+# Sections follow this one now, so two blind scrolls overshoot the field.
+- scrollUntilVisible:
+    element:
+      id: catalogue-save-bar-input
+    direction: DOWN
+    timeout: 20000
+    speed: 40
+    visibilityPercentage: 100
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: s90-14-save-bar
