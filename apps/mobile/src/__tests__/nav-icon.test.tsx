@@ -1,14 +1,25 @@
 import { screen } from "@testing-library/react-native";
 import {
   Backpack,
+  Bell,
   BookOpen,
+  Calendar,
   ChartColumn,
+  CircleUserRound,
+  ClipboardList,
+  Ellipsis,
   GraduationCap,
   History,
+  Home,
   Inbox,
+  LayoutDashboard,
   ListChecks,
+  NotebookPen,
+  Settings,
   Ticket,
+  UserCheck,
   UserCog,
+  UserMinus,
   UsersRound,
 } from "lucide-react-native";
 
@@ -21,14 +32,31 @@ it("groups read as people and admin user management as a person with a cog", () 
   expect(NAV_ICONS.users).toBe(UserCog);
 });
 
-it("each destination says what it opens (owner revision 2026-11-05)", () => {
-  expect(NAV_ICONS.reports).toBe(ChartColumn);
-  expect(NAV_ICONS.submissions).toBe(Inbox);
-  expect(NAV_ICONS.season).toBe(BookOpen);
-  expect(NAV_ICONS.quizzes).toBe(ListChecks);
-  expect(NAV_ICONS.events).toBe(Ticket);
-  expect(NAV_ICONS.students).toBe(Backpack);
-  expect(NAV_ICONS.alumni).toBe(GraduationCap);
+// R35, entry by entry: the whole map, so no destination's icon can drift unnoticed.
+it("each destination says what it opens (owner revision R35, 2026-11-05)", () => {
+  expect(NAV_ICONS).toEqual({
+    home: Home,
+    dashboard: LayoutDashboard,
+    users: UserCog,
+    calendar: Calendar,
+    events: Ticket,
+    assignments: ClipboardList,
+    attendance: UserCheck,
+    submissions: Inbox,
+    history: History,
+    profile: CircleUserRound,
+    reports: ChartColumn,
+    groups: UsersRound,
+    season: BookOpen,
+    students: Backpack,
+    alumni: GraduationCap,
+    dropped: UserMinus,
+    notes: NotebookPen,
+    notifications: Bell,
+    quizzes: ListChecks,
+    more: Ellipsis,
+    settings: Settings,
+  });
 });
 
 it("no two destinations share an icon", () => {
