@@ -128,7 +128,11 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/students/21/graduate", { graduationYear: year }),
     );
-    await waitFor(() => expect(screen.queryByText("Graduate Sara Student?")).toBeNull());
+    // Asked to close: gone, or on its way out and no longer taking touches (jest never ends the slide).
+    await waitFor(() => {
+      const backdrop = screen.queryByTestId("sheet-backdrop");
+      if (backdrop) expect(backdrop.parent?.props.pointerEvents).toBe("none");
+    });
   });
 
   it("refuses an out-of-range year in the sheet without calling the API (R58's bound, one schema)", async () => {

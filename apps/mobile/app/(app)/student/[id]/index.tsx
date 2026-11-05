@@ -11,6 +11,7 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { Screen } from "../../../../src/design/layout/screen";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
 import { StudentDetailGrouped } from "../../../../src/design/students/student-detail-grouped";
+import { AdminStudentDetail } from "../../../../src/screens/student-admin/admin-student-detail";
 import { StudentDetail as StudentDetailView } from "../../../../src/design/students/student-detail";
 import { Button, EmptyState } from "../../../../src/design/ui";
 import { useDeleteStudent, useStudentDetail } from "../../../../src/hooks/use-students";
@@ -53,7 +54,7 @@ function LeaderStudentDetail({ id }: { id: number }) {
 }
 
 /**
- * SUPER, ADMIN, MENTOR (and a student on their own page) — v1 app/admin/students/[id]
+ * MENTOR (and a student; ADMIN and SUPER use AdminStudentDetail on their own page) — v1 app/admin/students/[id]
  * (and /super, /mentor): the same StudentDetail as the leader's, with the admin
  * payload's extra profile fields, Edit profile / Graduate, and V2-ONLY Delete
  * and per-season Drop. The server decides what each role may do
@@ -186,5 +187,6 @@ export default function StudentDetailScreen() {
     );
   }
   if (role === "LEADER") return <LeaderStudentDetail id={id} />;
+  if (role === "ADMIN" || role === "SUPER") return <AdminStudentDetail id={id} />;
   return <StaffStudentDetail id={id} />;
 }

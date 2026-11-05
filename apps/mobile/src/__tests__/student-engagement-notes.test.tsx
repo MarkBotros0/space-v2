@@ -8,6 +8,8 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
 
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
+
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -115,10 +117,12 @@ describe("student detail — engagement block", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("Engagement (current season)")).toBeTruthy();
-    expect(screen.getByText("75%")).toBeTruthy();
-    expect(screen.getByText("Attendance: 2/4 (50%)")).toBeTruthy();
-    expect(screen.getByText("Submissions: 2/2 (100%)")).toBeTruthy();
+    expect(await screen.findByText("Score")).toBeTruthy();
+    expect(await screen.findByText("75%")).toBeTruthy();
+    expect(screen.getByText("Attendance 2/4")).toBeTruthy();
+    expect(await screen.findByText("50%")).toBeTruthy();
+    expect(screen.getByText("Submissions 2/2")).toBeTruthy();
+    expect(await screen.findByText("100%")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement");
   });
 
@@ -150,7 +154,7 @@ describe("student detail — engagement block", () => {
 
     // v1 draws no card for a student with no season.
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement"));
-    expect(screen.queryByText("Engagement (current season)")).toBeNull();
+    expect(screen.queryByText("Score")).toBeNull();
   });
 
   it("shows a retryable error — not 'no season' — for any other failure", async () => {
@@ -168,7 +172,7 @@ describe("student detail — engagement block", () => {
     renderWithProviders(<StudentDetailScreen />);
 
     expect(await screen.findByText("Couldn't load engagement.")).toBeTruthy();
-    expect(screen.queryByText("Engagement (current season)")).toBeNull();
+    expect(screen.queryByText("Score")).toBeNull();
   });
 });
 
@@ -189,7 +193,7 @@ describe("student detail — notes", () => {
     renderWithProviders(<StudentDetailScreen />);
 
     fireEvent.press(await screen.findByText("Notes"));
-    expect(await screen.findByText("Visible to group leaders only")).toBeTruthy();
+    expect(await screen.findByText(/Visible to group leaders only/)).toBeTruthy();
   });
 
   it("posts a new note with the chosen visibility and clears the field", async () => {
@@ -199,9 +203,9 @@ describe("student detail — notes", () => {
     renderWithProviders(<StudentDetailScreen />);
 
     fireEvent.press(await screen.findByText("Notes"));
+    fireEvent.press(await screen.findByText("Write a note"));
     const input = await screen.findByLabelText("Note");
     fireEvent.changeText(input, "space-v2-test new observation");
-    fireEvent.press(screen.getByLabelText("Visible to"));
     fireEvent.press(await screen.findByText("Admins only"));
     fireEvent.press(screen.getByText("Add note"));
 
@@ -221,6 +225,7 @@ describe("student detail — notes", () => {
 
     // v1's copy said "in addition to you and admins" and was wrong (R36, D3).
     fireEvent.press(await screen.findByText("Notes"));
+    fireEvent.press(await screen.findByText("Write a note"));
     expect(await screen.findByText(/Only the group you choose can read this note/)).toBeTruthy();
   });
 });

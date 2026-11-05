@@ -105,7 +105,8 @@ describe("StudentDetailScreen", () => {
     fireEvent.press(await screen.findByText("Seasons"));
     expect((await screen.findAllByText("Spring 2099")).length).toBeGreaterThan(0);
     expect(screen.getByText("Dropped")).toBeTruthy();
-    expect(screen.getByText("Moved away")).toBeTruthy();
+    // Meta lines join through one subtitle now.
+    expect(screen.getByText(/Moved away/)).toBeTruthy();
   });
 
   it("shows no notes or phone to MENTOR — the public arm has no such fields", async () => {
