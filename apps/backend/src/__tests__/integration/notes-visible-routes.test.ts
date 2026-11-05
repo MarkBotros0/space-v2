@@ -35,6 +35,31 @@ describe("GET /api/v1/me/visible-notes", () => {
     expect(JSON.stringify(res.body)).not.toContain("admins-only");
   });
 
+  it("audits a feed read with ids and a count only, never a body or a name", async () => {
+    // The route writes one JSON line through console.info.
+    const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
+    try {
+      const res = await get(f.mentorToken);
+      expect(res.status).toBe(200);
+      const lines = info.mock.calls
+        .map((c) => String(c[0]))
+        .filter((l) => l.includes("note_feed_read"));
+      expect(lines).toHaveLength(1);
+      const line = lines[0] as string;
+      const entry = JSON.parse(line) as Record<string, unknown>;
+      expect(Object.keys(entry).sort()).toEqual(["at", "event", "noteCount", "viewerId"]);
+      expect(entry.noteCount).toBe(res.body.data.notes.length);
+      expect(typeof entry.viewerId).toBe("number");
+      for (const n of res.body.data.notes as { body: string; student: { name: string } }[]) {
+        expect(line).not.toContain(n.body);
+        expect(line).not.toContain(n.student.name);
+      }
+      expect(line).not.toContain("space-v2-test");
+    } finally {
+      info.mockRestore();
+    }
+  });
+
   it("carries the student on every row, newest first", async () => {
     const res = await get(f.mentorToken);
     const notes = res.body.data.notes as {
