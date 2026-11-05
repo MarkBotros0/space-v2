@@ -14,6 +14,7 @@ import { Eyebrow } from "../../design/layout/page-title";
 import { RouteError } from "../../design/layout/route-states";
 import { SaveBar } from "../../design/layout/save-bar";
 import { cn } from "../../design/lib/cn";
+import { useKeyboardHeight } from "../../design/lib/keyboard-events";
 import { iconWithClassName } from "../../design/lib/icon";
 import { GroupedList, ListRow, RichTextView, SkeletonCard, Text, Textarea } from "../../design/ui";
 import { ConfirmDialog } from "../../design/ui/confirm-dialog";
@@ -98,6 +99,7 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   const [text, setText] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const keyboardOpen = useKeyboardHeight() > 0;
 
   if (summary === null) {
     return {
@@ -195,6 +197,8 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
       onPress={() => setConfirming(true)}
       disabled={save.isPending || nothingToSubmit}
       hint={HINT}
+      // Hint and two stacked buttons left ~90dp for the field with the keyboard up.
+      compact={keyboardOpen}
       secondary={{
         label: save.isPending ? "Saving…" : "Save draft",
         onPress: () => run(false),

@@ -171,6 +171,36 @@ describe("SaveBar secondary and disabled", () => {
     expect(secondary).not.toHaveBeenCalled();
   });
 
+  it("compact drops the hint and sets the secondary beside the primary", () => {
+    renderWithProviders(
+      <SaveBar
+        label="Submit"
+        hint="A private hint"
+        compact
+        onPress={() => {}}
+        secondary={{ label: "Save draft", onPress: () => {} }}
+      />,
+    );
+    expect(screen.queryByText("A private hint")).toBeNull();
+    // The jest renderer drops classNames, so the row itself is pinned by the sweep; the bar is
+    // the hint-less pair here.
+    const bar = within(screen.getByTestId("save-bar"));
+    expect(bar.getByRole("button", { name: "Save draft" })).toBeTruthy();
+    expect(bar.getByRole("button", { name: "Submit" })).toBeTruthy();
+  });
+
+  it("without compact the hint shows and the buttons stack", () => {
+    renderWithProviders(
+      <SaveBar
+        label="Submit"
+        hint="A private hint"
+        onPress={() => {}}
+        secondary={{ label: "Save draft", onPress: () => {} }}
+      />,
+    );
+    expect(screen.getByText("A private hint")).toBeTruthy();
+  });
+
   it("is one button without secondary", () => {
     renderWithProviders(<SaveBar label="Save" onPress={() => {}} />);
     expect(screen.getAllByRole("button")).toHaveLength(1);

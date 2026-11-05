@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn() },
@@ -7,6 +7,8 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
+
+import { Keyboard } from "react-native";
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
@@ -272,5 +274,33 @@ describe("submission editor: the fixed save bar", () => {
     renderWithProviders(<AssignmentDetailScreen />);
     expect(await screen.findByText(/Past due/)).toBeTruthy();
     expect(screen.getByText("Overdue")).toBeTruthy();
+  });
+
+  it("with the keyboard open the footer drops the hint and sets Save draft beside Submit", async () => {
+    const listeners: Record<string, ((e: unknown) => void)[]> = {};
+    const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((
+      event: string,
+      cb: never,
+    ) => {
+      (listeners[event] ??= []).push(cb);
+      return { remove: jest.fn() };
+    }) as unknown as typeof Keyboard.addListener);
+    withStatus("DRAFT");
+    renderWithProviders(<AssignmentDetailScreen />);
+    await screen.findByLabelText("Your response");
+    expect(bar().getByText(/not sent to your leader/)).toBeTruthy();
+
+    act(() => {
+      for (const cb of listeners.keyboardWillShow ?? listeners.keyboardDidShow ?? []) {
+        cb({ endCoordinates: { height: 300, screenY: 400 } });
+      }
+    });
+
+    expect(bar().queryByText(/not sent to your leader/)).toBeNull();
+    const submit = bar().getByRole("button", { name: "Submit" });
+    const draft = bar().getByRole("button", { name: "Save draft" });
+    expect(submit).toBeTruthy();
+    expect(draft).toBeTruthy();
+    spy.mockRestore();
   });
 });
