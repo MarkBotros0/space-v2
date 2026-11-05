@@ -39,6 +39,8 @@ export function useReportsScope(enabled: boolean) {
     permitted,
     summary,
     atRiskRows,
+    /** Show more failed (first page or a later one): the screen says so and offers `showMore` again. */
+    moreFailed: showAllAtRisk && more.isError,
     /**
      * Pull-to-refresh spinner: the summary or the opened at-risk rows are refetching.
      * Not while Show more loads a later page, which isRefetching alone would count.

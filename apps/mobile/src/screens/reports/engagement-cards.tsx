@@ -21,6 +21,7 @@ import {
   StatTile,
   Text,
 } from "../../design/ui";
+import { InlineError } from "../../design/layout/route-states";
 import { formatDayKey } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
 
@@ -58,10 +59,13 @@ export function EngagementCards({
   summary,
   atRiskRows,
   onShowMore,
+  moreFailed = false,
 }: {
   summary: EngagementSummary;
   atRiskRows: EngagementReportRow[];
   onShowMore: () => void;
+  /** Show more failed: say so under the list; `onShowMore` is the retry. */
+  moreFailed?: boolean;
 }) {
   return (
     <>
@@ -83,6 +87,7 @@ export function EngagementCards({
             ))}
           </GroupedList>
         )}
+        {moreFailed ? <InlineError message="Couldn't load more students." onRetry={onShowMore} /> : null}
       </View>
       {summary.atRiskTotal > atRiskRows.length ? (
         <Pressable

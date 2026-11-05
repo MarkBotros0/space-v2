@@ -113,6 +113,18 @@ describe("MentorReports", () => {
     });
   });
 
+  it("a failed Show more says so with a Try again (final review I4)", async () => {
+    mockEndpoints();
+    const base = get.getMockImplementation()!;
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/reports/engagement/students") ? Promise.reject(new Error("offline")) : base(url),
+    );
+    renderWithProviders(<MentorReports />);
+    fireEvent.press(await screen.findByText("Show more"));
+    expect(await screen.findByText("Couldn't load more students.")).toBeTruthy();
+    expect(screen.getByText("Try again")).toBeTruthy();
+  });
+
   it("pull-to-refresh refreshes the summary, and the Show-more rows once they're open", async () => {
     mockEndpoints();
     const view = renderWithProviders(<MentorReports />);

@@ -20,7 +20,7 @@ function StaffReports() {
   const canView = role === "SUPER" || role === "ADMIN";
   const isSuper = role === "SUPER";
 
-  const { seasonId, setSeasonId, permitted, summary, atRiskRows, showMore, refresh, refreshing } =
+  const { seasonId, setSeasonId, permitted, summary, atRiskRows, moreFailed, showMore, refresh, refreshing } =
     useReportsScope(canView);
 
   if (!canView) {
@@ -76,6 +76,7 @@ function StaffReports() {
                 summary={summary.data}
                 atRiskRows={atRiskRows}
                 onShowMore={showMore}
+                moreFailed={moreFailed}
               />
             )}
           </>

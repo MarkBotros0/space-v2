@@ -13,7 +13,7 @@ import { useReportsScope } from "../reports/use-reports-scope";
  * roll-up and never the workbook export (those are admin/super, plan 04).
  */
 export function MentorReports() {
-  const { seasonId, setSeasonId, permitted, summary, atRiskRows, showMore, refresh, refreshing } =
+  const { seasonId, setSeasonId, permitted, summary, atRiskRows, moreFailed, showMore, refresh, refreshing } =
     useReportsScope(true);
 
   return (
@@ -55,6 +55,7 @@ export function MentorReports() {
                 summary={summary.data}
                 atRiskRows={atRiskRows}
                 onShowMore={showMore}
+                moreFailed={moreFailed}
               />
             )}
           </>

@@ -129,6 +129,27 @@ describe("ReportsScreen for admin — at-risk rows and engagement tiles", () => 
     expect(screen.getByText("Show more")).toBeTruthy();
   });
 
+  it("a failed Show more says so under the list and Try again asks again (final review I4)", async () => {
+    useSessionStore.setState(sessionFor("ADMIN"));
+    mockEndpoints();
+    const base = get.getMockImplementation() as (url: string) => Promise<unknown>;
+    let failing = true;
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/reports/engagement/students") && failing
+        ? Promise.reject(new Error("offline"))
+        : base(url),
+    );
+    renderWithProviders(<ReportsScreen />);
+
+    fireEvent.press(await screen.findByText("Show more"));
+    expect(await screen.findByText("Couldn't load more students.")).toBeTruthy();
+    expect(screen.getByText("Students at risk (1 of 34)")).toBeTruthy();
+
+    failing = false;
+    fireEvent.press(screen.getByText("Try again"));
+    await waitFor(() => expect(screen.queryByText("Couldn't load more students.")).toBeNull());
+  });
+
   it("keeps every engagement figure as a tile in a wrapping row", async () => {
     useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
