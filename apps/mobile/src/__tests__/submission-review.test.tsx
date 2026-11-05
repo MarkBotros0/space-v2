@@ -108,6 +108,16 @@ it("returns for revision with the flag set, then leaves a screen with nothing le
   await waitFor(() => expect(mockBack).toHaveBeenCalled());
 });
 
+it("keeps both verdicts in the pinned bar, so the keyboard can't push Return for revision away", async () => {
+  get.mockResolvedValue({ data: { data: detail } });
+
+  renderStacked(<SubmissionReviewScreen />);
+  fireEvent.press(await screen.findByText("Add feedback"));
+  const bar = within(await screen.findByTestId("sheet-save-bar"));
+  expect(bar.getByText("Return for revision")).toBeTruthy();
+  expect(bar.getByText("Mark as reviewed")).toBeTruthy();
+});
+
 it("has exactly one back link: the frame's pinned bar, not an in-content one (R23)", async () => {
   get.mockResolvedValue({ data: { data: detail } });
   renderStacked(<SubmissionReviewScreen />);

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 
+import { useKeyboardHeight } from "../../design/lib/keyboard-events";
 import { haptic } from "../../design/motion";
-import { Button } from "../../design/ui/button";
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { Textarea } from "../../design/ui/textarea";
 import { toast } from "../../design/ui/toaster";
@@ -33,6 +33,7 @@ export function FeedbackSheet({
 }) {
   const review = useReviewSubmission(publicId);
   const [error, setError] = useState<string | null>(null);
+  const keyboardOpen = useKeyboardHeight() > 0;
   // A failure belongs to the visit that caused it: a reopened sheet starts clean.
   useEffect(() => {
     if (open) setError(null);
@@ -67,6 +68,9 @@ export function FeedbackSheet({
           onPress={() => submit(false)}
           loading={review.isPending}
           error={error}
+          secondary={{ label: "Return for revision", onPress: () => submit(true), disabled: review.isPending }}
+          // Two stacked buttons leave too little of the field on a small phone with the keyboard up.
+          compact={keyboardOpen}
         />
       }
     >
@@ -78,9 +82,6 @@ export function FeedbackSheet({
           onChangeText={onFeedback}
           className="min-h-32"
         />
-        <Button variant="secondary" disabled={review.isPending} onPress={() => submit(true)}>
-          Return for revision
-        </Button>
       </View>
     </Sheet>
   );
