@@ -28,12 +28,16 @@ export function parseUserStatus(value: unknown): UserStatus | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
+/**
+ * The email on its own line (it never shares a line with the role, so a wrap can't
+ * strand a "·" or split the address), then role and last login joined by joinMeta.
+ */
 function rowSubtitle(row: UserListItem): string {
-  return joinMeta([
-    row.name ? row.email : null,
+  const meta = joinMeta([
     USER_ROLE_LABELS[row.role],
     row.lastLoginAt ? `Last login ${formatDate(row.lastLoginAt)}` : "Never signed in",
   ]);
+  return row.name ? `${row.email}\n${meta}` : meta;
 }
 
 export function UsersList({
@@ -55,6 +59,8 @@ export function UsersList({
               index={i}
               title={row.name || row.email}
               subtitle={rowSubtitle(row)}
+              titleLines={2}
+              subtitleLines={4}
               leading={
                 <Avatar size="sm">
                   <AvatarFallback>

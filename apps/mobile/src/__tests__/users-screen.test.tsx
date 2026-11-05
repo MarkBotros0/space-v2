@@ -250,10 +250,17 @@ describe("UsersScreen — status filter and rows", () => {
 
   it("draws a row as avatar, name over email, role and last login, with a status chip and chevron", async () => {
     renderWithProviders(<UsersScreen />);
-    const ann = await screen.findByLabelText(/^Active Ann, ann@jpc.test · Admin · Last login/);
+    const ann = await screen.findByLabelText(/^Active Ann, ann@jpc.test\sAdmin · Last login/);
     expect(ann).toBeTruthy();
-    expect(screen.getByLabelText(/^Pending Pete, pete@jpc.test · Student · Never signed in, No invite$/)).toBeTruthy();
+    expect(screen.getByLabelText(/^Pending Pete, pete@jpc.test\sStudent · Never signed in, No invite$/)).toBeTruthy();
     expect(screen.getAllByTestId("list-row-chevron", { includeHiddenElements: true }).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps the email on its own line and gives the meta room (no stranded dot, no cut date)", async () => {
+    renderWithProviders(<UsersScreen />);
+    const meta = await screen.findByText(/^ann@jpc\.test\sAdmin · Last login/);
+    expect(meta.props.children).toMatch(/^ann@jpc\.test\nAdmin/);
+    expect(meta.props.numberOfLines).toBeGreaterThanOrEqual(3);
   });
 
   it("shows the email once, as the title, for a user with no name", async () => {
