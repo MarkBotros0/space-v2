@@ -5,7 +5,6 @@ import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { AlumniHistory } from "../../../src/screens/alumni/alumni-history";
 import { SeasonHistory } from "../../../src/design/students/season-history";
 import { EmptyState } from "../../../src/design/ui";
@@ -33,7 +32,7 @@ export default function HistoryScreen() {
 
   if (!isStudent) {
     return (
-      <ShellFrame>
+      <Screen>
         <View className="flex-col gap-3">
           <PageTitle title="History" />
           <EmptyState
@@ -42,7 +41,7 @@ export default function HistoryScreen() {
             description="Season history is for students and alumni."
           />
         </View>
-      </ShellFrame>
+      </Screen>
     );
   }
 

@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
 
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../../src/design/layout/shell-frame";
+import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState } from "../../../../src/design/ui";
 import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
 import { isNotFoundError } from "../../../../src/lib/api-error";
@@ -22,9 +22,9 @@ function SessionDetailBody({ id }: { id: number }) {
 
   if (isPending) {
     return (
-      <ShellFrame>
+      <Screen>
         <RouteSkeleton />
-      </ShellFrame>
+      </Screen>
     );
   }
   // A 404 is an answer, not a failure: a student whose enrolment is no
@@ -32,20 +32,20 @@ function SessionDetailBody({ id }: { id: number }) {
   // API refuses them the detail (REG-77). A retry could never succeed.
   if (isError && isNotFoundError(error)) {
     return (
-      <ShellFrame>
+      <Screen>
         <EmptyState
           title="Not available"
           description="This session isn't available to you."
         />
-      </ShellFrame>
+      </Screen>
     );
   }
   // A failed background read keeps the session on screen: this query polls.
   if (data === undefined) {
     return (
-      <ShellFrame>
+      <Screen>
         <RouteError onRetry={() => void refetch()} />
-      </ShellFrame>
+      </Screen>
     );
   }
 
@@ -66,9 +66,9 @@ export default function SessionDetailScreen() {
   const id = parsePositiveInt(raw);
   if (id === null) {
     return (
-      <ShellFrame>
+      <Screen>
         <EmptyState title="Not found" description="That session doesn't exist." />
-      </ShellFrame>
+      </Screen>
     );
   }
   return <SessionDetailBody id={id} />;
