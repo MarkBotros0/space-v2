@@ -138,7 +138,7 @@ describe("StudentCheckInCard on the hero", () => {
       canMarkAttendance: false, canManageCheckIn: false,
     };
     renderWithProviders(<StudentCheckInCard detail={detail} onHero />);
-    expect(screen.getByText("Check-in hasn't opened yet").props.className).toContain("text-hero-muted");
+    expect(screen.getByText("Check-in isn't open right now").props.className).toContain("text-hero-muted");
     expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
   });
 });

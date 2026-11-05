@@ -75,6 +75,8 @@ export function StudentCheckInCard({
   const [outcome, setOutcome] = useState<CheckInOutcome | null>(null);
 
   const checkedInAt = detail.myAttendance?.checkedInAt ?? null;
+  // A leader's mark counts as much as a scan: there is nothing left to check in to.
+  const marked = detail.myAttendance !== null && checkedInAt === null;
   const enabled = detail.checkInOpen && checkedInAt === null;
 
   const submit = (token: string) => {
@@ -172,10 +174,20 @@ export function StudentCheckInCard({
     );
   }
 
+  const sheetTitle = checkIn.isPending
+    ? "Checking in"
+    : outcome?.kind === "checked_in"
+      ? "Checked in"
+      : outcome !== null
+        ? "Check-in"
+        : entering
+          ? "Enter check-in code"
+          : "Scan check-in code";
+
   const caption = onHero ? "text-hero-muted" : "text-muted-foreground";
   return (
     <View className="flex-col items-start gap-1.5">
-      {checkedInAt === null ? (
+      {checkedInAt === null && !marked ? (
         <Button
           variant={onHero ? "onHero" : "primary"}
           size="lg"
@@ -195,12 +207,12 @@ export function StudentCheckInCard({
           variant="subhead"
           className={caption}
         >{`You checked in at ${formatSessionTime(checkedInAt)}.`}</Text>
-      ) : !detail.checkInOpen ? (
+      ) : !detail.checkInOpen && !marked ? (
         <Text variant="subhead" className={caption}>
-          Check-in hasn't opened yet
+          Check-in isn't open right now
         </Text>
       ) : null}
-      <Sheet open={open} onClose={() => setOpen(false)} title="Scan check-in code">
+      <Sheet open={open} onClose={() => setOpen(false)} title={sheetTitle}>
         <View className="pb-4">
           {outcome === null && !checkIn.isPending && !entering ? (
             <Text variant="subhead" className="mb-3 text-muted-foreground">
