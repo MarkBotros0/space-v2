@@ -28,6 +28,11 @@ appId: com.jpc.space
 - tapOn:
     text: '(Due|Overdue).*'
     optional: true
+# The pinned bar (Start working, or Save draft / Submit) is the screen's footer.
+- extendedWaitUntil:
+    visible: '(Start working|Save draft|Submit)'
+    timeout: 20000
+    optional: true
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s05-03-assignment-detail
