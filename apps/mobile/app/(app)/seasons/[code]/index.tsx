@@ -32,7 +32,8 @@ export default function SeasonDetailScreen() {
   const detail = useSeasonByCode(code);
   const sessions = useSeasonSessions(detail.data?.id ?? null);
   // The org's day for the status badges; never waited on, and a failure leaves the device's.
-  const orgToday = useStaffOrgToday(detail.data?.id ?? null).today;
+  // Only those who can read this season's dashboard ask for it: anyone else would get a 403.
+  const orgToday = useStaffOrgToday(detail.data && (detail.data.canAdminister || isSuper) ? detail.data.id : null).today;
 
   const refresh = () => {
     if (code !== null) void detail.refetch();
