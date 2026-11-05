@@ -10,7 +10,7 @@ import { View } from "react-native";
 import { flattenNotePages, useStudentNotes } from "../../hooks/use-notes";
 import { useStudentAttendanceHistory, useStudentSubmissions } from "../../hooks/use-students";
 import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
-import { formatDate, formatDateTime, formatDayKey, unbreakable } from "../../lib/format";
+import { formatDate, formatDateTime, formatDayKey, formatSeasonDay, unbreakable } from "../../lib/format";
 import { VISIBILITY_LABEL } from "../../lib/note-visibility";
 import { NAV_ICONS } from "../icons/nav-icon";
 import { InlineError } from "../layout/route-states";
@@ -70,7 +70,7 @@ export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHist
           index={i}
           title={e.seasonTitle}
           titleLines={2}
-          subtitle={caption(`${formatDate(e.startDate)} – ${formatDate(e.endDate)}`, e.groupName && unbreakable(e.groupName), e.dropReason)}
+          subtitle={caption(`${formatSeasonDay(e.startDate)} – ${formatSeasonDay(e.endDate)}`, e.groupName && unbreakable(e.groupName), e.dropReason)}
           subtitleLines={null}
           trailing={
             <View className="items-end gap-1">
@@ -90,7 +90,7 @@ export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHist
 export function GroupedAttendanceTab({ studentId }: { studentId: number }) {
   const q = useStudentAttendanceHistory(studentId, true);
   if (q.isPending) return <Loading />;
-  if (q.isError)
+  if (!q.data)
     return <InlineError message="Couldn't load attendance." onRetry={() => void q.refetch()} />;
   if (q.data.history.length === 0) {
     return (
@@ -122,7 +122,7 @@ export function GroupedSubmissionsTab({ studentId }: { studentId: number }) {
   const router = useRouter();
   const q = useStudentSubmissions(studentId, true);
   if (q.isPending) return <Loading />;
-  if (q.isError)
+  if (!q.data)
     return <InlineError message="Couldn't load submissions." onRetry={() => void q.refetch()} />;
   if (q.data.submissions.length === 0) {
     return (
@@ -181,7 +181,7 @@ export function GroupedNotesTab({
       ) : null}
       {q.isPending ? (
         <Loading />
-      ) : q.isError ? (
+      ) : !q.data ? (
         <InlineError message="Couldn't load notes." onRetry={() => void q.refetch()} />
       ) : notes.length === 0 ? (
         <EmptyState icon={Flag} title="No notes yet" description="Notes you can see will appear here." />

@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { ScrollView } from "react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -105,6 +106,25 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     expect(screen.queryByText("Engagement (current season)")).toBeNull();
   });
 
+  it("keeps the loaded page when a background refresh fails", async () => {
+    renderWithProviders(<StudentDetailScreen />);
+    await screen.findByText("sara@jpc.test");
+    let refused = false;
+    get.mockImplementation(() => {
+      refused = true;
+      return Promise.reject(new Error("offline"));
+    });
+    await act(async () => {
+      await screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
+    });
+    await waitFor(() => expect(refused).toBe(true));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(screen.getByText("sara@jpc.test")).toBeTruthy();
+    expect(screen.queryByText("Try again")).toBeNull();
+  });
+
   it("offers no action a mentor doesn't have, and no field the public arm doesn't carry", async () => {
     renderWithProviders(<StudentDetailScreen />);
     await screen.findByText("sara@jpc.test");
@@ -114,6 +134,7 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     expect(screen.queryByText("Phone")).toBeNull();
     fireEvent.press(screen.getByText("Seasons"));
     expect(await screen.findByText("83% attendance")).toBeTruthy();
+    expect(screen.getByText(/Jan 1, 2099 – Dec 31, 2099/)).toBeTruthy();
     expect(screen.queryByText("Drop")).toBeNull();
   });
 

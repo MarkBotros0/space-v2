@@ -20,7 +20,7 @@ import { useSessionStore } from "../../../../src/store/session";
  */
 function GroupedStudentPage({ id, role }: { id: number; role: UserRole | null }) {
   const queryClient = useQueryClient();
-  const { data, isPending, isError, refetch, isRefetching } = useStudentDetail(id, role);
+  const { data, isPending, refetch, isRefetching } = useStudentDetail(id, role);
   const refresh = () => {
     void refetch();
     for (const key of [
@@ -32,7 +32,9 @@ function GroupedStudentPage({ id, role }: { id: number; role: UserRole | null })
       void queryClient.invalidateQueries({ queryKey: key });
     }
   };
-  if (isPending || isError) {
+  // A failed background refresh keeps `data`: only a first load that failed
+  // replaces the page, so an open tab and a dismissed note draft survive.
+  if (!data) {
     return (
       <Screen title="Student" refreshing={isRefetching} onRefresh={refresh}>
         {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}

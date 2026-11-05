@@ -47,7 +47,7 @@ type Tab = "profile" | "seasons" | "attendance" | "submissions" | "notes";
 function EngagementTiles({ studentId }: { studentId: number }) {
   const q = useStudentEngagement(studentId, true);
   if (q.isPending || (q.isError && isNoSeasonError(q.error))) return null;
-  if (q.isError)
+  if (!q.data)
     return <InlineError message="Couldn't load engagement." onRetry={() => void q.refetch()} />;
   const e = q.data;
   return (
