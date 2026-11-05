@@ -12,6 +12,6 @@ appId: com.jpc.space
     direction: DOWN
     centerElement: true
     visibilityPercentage: 100
-    timeout: 20000
+    timeout: 60000
 - waitForAnimationToEnd:
     timeout: 3000

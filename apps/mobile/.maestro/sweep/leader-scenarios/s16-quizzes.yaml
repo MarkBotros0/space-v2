@@ -46,10 +46,9 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s16-04-paper-sheet
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Score for Samir Student'
+# Tapped directly: _tap's centring scroll starts mid-screen, which on a tall phone is the
+# backdrop and dismisses the sheet. The field is always on screen here.
+- tapOn: 'Score for Samir Student'
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
