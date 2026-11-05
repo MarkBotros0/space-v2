@@ -1,3 +1,4 @@
+import { isAlumnus } from "@space/shared";
 import { View } from "react-native";
 
 import { PageTitle } from "../../../src/design/layout/page-title";
@@ -21,7 +22,8 @@ export default function HistoryScreen() {
   const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const isStudent = role === "STUDENT";
-  const isAlumnus = isStudent && graduationYear !== null;
+  // navFor's rule (shared): a graduated student.
+  const alumnus = role !== null && isAlumnus({ role, graduationYear });
   const { data, isPending, isError, refetch, isRefetching } = useSeasonHistory(activeSeasonId, isStudent);
 
   if (!isStudent) {
@@ -39,8 +41,8 @@ export default function HistoryScreen() {
     <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
       <View className="flex-col gap-3">
         <PageTitle
-          title={isAlumnus ? "My History" : "History"}
-          subtitle={isAlumnus ? "The seasons you journeyed through" : "Seasons you've participated in"}
+          title={alumnus ? "My History" : "History"}
+          subtitle={alumnus ? "The seasons you journeyed through" : "Seasons you've participated in"}
         />
         {isPending ? (
           <RouteSkeleton />
@@ -50,7 +52,7 @@ export default function HistoryScreen() {
           <SeasonHistory
             rows={data}
             emptyDescription={
-              isAlumnus ? "Your completed seasons will appear here." : "Once you complete a season, it'll appear here."
+              alumnus ? "Your completed seasons will appear here." : "Once you complete a season, it'll appear here."
             }
           />
         )}
