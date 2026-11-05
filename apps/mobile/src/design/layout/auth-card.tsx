@@ -62,6 +62,13 @@ export function AuthCard({
           {children}
         </View>
       </ScrollView>
+      {/* The page scrolls under the clock; a solid strip keeps text from colliding with the status bar. */}
+      <View
+        testID="auth-top-strip"
+        pointerEvents="none"
+        className="absolute inset-x-0 top-0 bg-background"
+        style={{ height: insets?.top ?? 0 }}
+      />
     </View>
   );
 }
