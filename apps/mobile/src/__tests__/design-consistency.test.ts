@@ -6,6 +6,9 @@
  *   - a hex colour (`#1F3260`) or an `rgb(`/`rgba(` colour: use a token class,
  *     `useThemeColors()` or `palette` (src/design/theme/);
  *   - a `shadow-` class: cards are flat surfaces in the redesign;
+ *   - a light-mode `text-brand-teal-50`…`-600`: under 3:1 on a white card, so
+ *     neither text nor icons pass (use 700 for icons, 800 for text, and a
+ *     `dark:` 300/400). Chips on a navy box (`season-colors.ts`) are exempt;
  * and, outside `src/design/` (which owns the scales):
  *   - any radius but the named shapes: `rounded-full` (chips, discs),
  *     `rounded-group` (16: cards, groups), `rounded-control` (14: buttons,
@@ -31,13 +34,24 @@ const DESIGN = `src${sep}design${sep}`;
 const THEME = `src${sep}design${sep}theme${sep}`;
 const SHOWCASE = `src${sep}screens${sep}design-catalogue${sep}`;
 
-type Scope = { inDesign: boolean; showcase: boolean };
+type Scope = { inDesign: boolean; showcase: boolean; paleTealOk?: boolean };
 
 const EVERYWHERE: [RegExp, string][] = [
   [/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/, "hex colour"],
   [/\brgba?\(/, "rgb()/rgba() colour"],
   [/(?:^|[\s:"'`])shadow-/, "shadow- class"],
 ];
+
+/** Light-mode teal shades too pale for a white card; `dark:` variants are fine. */
+const PALE_TEAL = /^text-brand-teal-(?:50|[1-6]00)$/;
+const PALE_TEAL_OK = `src${sep}design${sep}sessions${sep}season-colors.ts`;
+
+function paleTeal(text: string): string[] {
+  return text
+    .split(/[\s"'`]+/)
+    .filter((c) => !c.includes("dark:") && PALE_TEAL.test(c.slice(c.lastIndexOf(":") + 1)))
+    .map((c) => `pale teal ${c} (under 3:1 on white: 700 icons, 800 text)`);
+}
 
 const RADIUS = /^rounded(?:-(?:t|r|b|l|s|e|tl|tr|br|bl|ss|se|es|ee))?(?:-(.+))?$/;
 const SHAPES = new Set(["full", "group", "control", "none"]);
@@ -68,7 +82,7 @@ function sources(dir: string): string[] {
 }
 
 /** Offences in one file, as `label:line what — text`. */
-function offences(label: string, text: string, { inDesign, showcase }: Scope): string[] {
+function offences(label: string, text: string, { inDesign, showcase, paleTealOk }: Scope): string[] {
   const source = ts.createSourceFile(label, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const found: string[] = [];
   const report = (node: ts.Node, what: string) => {
@@ -87,6 +101,7 @@ function offences(label: string, text: string, { inDesign, showcase }: Scope): s
       // `import "x"` / `require("x")` paths are not styles.
       if (!ts.isImportDeclaration(node.parent) && !ts.isExternalModuleReference(node.parent)) {
         for (const [pattern, what] of EVERYWHERE) if (pattern.test(node.text)) report(node, what);
+        if (!paleTealOk) for (const what of paleTeal(node.text)) report(node, what);
         if (!inDesign) for (const what of classRules(node.text)) report(node, what);
       }
     }
@@ -128,6 +143,7 @@ describe("design consistency", () => {
       'const g = "text-[9px] leading-[18px] text-caption text-sm";',
       "const h = <View style={shadowStyle(\"soft\")} />;",
       "const i = { elevation: 4, boxShadow: x };",
+      'const j = "text-brand-teal-600 active:text-brand-teal-500 dark:text-brand-teal-400 text-brand-teal-700";',
     ].join("\n");
     const out = (scope: Scope) => offences("s.tsx", sample, scope).map((o) => o.split(" — ")[0] ?? o);
     expect(out({ inDesign: false, showcase: false })).toEqual([
@@ -144,6 +160,8 @@ describe("design consistency", () => {
       "s.tsx:9 elevation (shadowStyle)",
       "s.tsx:10 elevation (elevation:)",
       "s.tsx:10 elevation (boxShadow:)",
+      "s.tsx:11 pale teal text-brand-teal-600 (under 3:1 on white: 700 icons, 800 text)",
+      "s.tsx:11 pale teal active:text-brand-teal-500 (under 3:1 on white: 700 icons, 800 text)",
     ]);
     // The catalogue may demo elevation; it still follows every other rule.
     const showcase = out({ inDesign: false, showcase: true });
@@ -154,7 +172,12 @@ describe("design consistency", () => {
       "s.tsx:3 hex colour",
       "s.tsx:4 shadow- class",
       "s.tsx:5 rgb()/rgba() colour",
+      "s.tsx:11 pale teal text-brand-teal-600 (under 3:1 on white: 700 icons, 800 text)",
+      "s.tsx:11 pale teal active:text-brand-teal-500 (under 3:1 on white: 700 icons, 800 text)",
     ]);
+    expect(out({ inDesign: true, showcase: false, paleTealOk: true })).not.toContain(
+      "s.tsx:11 pale teal text-brand-teal-600 (under 3:1 on white: 700 icons, 800 text)",
+    );
   });
 
   it("app/ and src/ use tokens, not literals", () => {
@@ -165,6 +188,7 @@ describe("design consistency", () => {
       return offences(label, readFileSync(file, "utf8"), {
         inDesign: label.startsWith(DESIGN),
         showcase: label.startsWith(SHOWCASE),
+        paleTealOk: label === PALE_TEAL_OK,
       });
     });
     if (found.length) {
