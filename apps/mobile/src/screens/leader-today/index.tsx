@@ -138,7 +138,9 @@ export function LeaderToday() {
   const dash = useSeasonStaffDashboard(current.seasonId);
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
   useLiveTodayRefresh({
-    refetch: dash.refetch,
+    enabled: current.seasonId !== null,
+    // Never restarts a read already in flight (the first load on a cold launch).
+    refetch: () => dash.refetch({ cancelRefetch: false }),
     isStale: dash.isStale,
     live: current.seasonId !== null && isOnTheDay(dash.data?.nextSession ?? null),
   });

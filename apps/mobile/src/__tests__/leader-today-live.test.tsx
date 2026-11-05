@@ -28,17 +28,17 @@ afterEach(() => {
 describe("useLiveTodayRefresh", () => {
   it("refetches on focus when the data is stale, and not when it is fresh", () => {
     const stale = jest.fn();
-    renderHook(() => useLiveTodayRefresh({ refetch: stale, isStale: true, live: false }));
+    renderHook(() => useLiveTodayRefresh({ enabled: true, refetch: stale, isStale: true, live: false }));
     expect(stale).toHaveBeenCalledTimes(1);
 
     const fresh = jest.fn();
-    renderHook(() => useLiveTodayRefresh({ refetch: fresh, isStale: false, live: false }));
+    renderHook(() => useLiveTodayRefresh({ enabled: true, refetch: fresh, isStale: false, live: false }));
     expect(fresh).not.toHaveBeenCalled();
   });
 
   it("polls every 30s while the session is on the day or running", () => {
     const refetch = jest.fn();
-    renderHook(() => useLiveTodayRefresh({ refetch, isStale: false, live: true }));
+    renderHook(() => useLiveTodayRefresh({ enabled: true, refetch, isStale: false, live: true }));
     expect(refetch).not.toHaveBeenCalled();
     act(() => {
       jest.advanceTimersByTime(LIVE_TODAY_REFRESH_MS);
@@ -52,7 +52,7 @@ describe("useLiveTodayRefresh", () => {
 
   it("does not poll when the session is not on the day", () => {
     const refetch = jest.fn();
-    renderHook(() => useLiveTodayRefresh({ refetch, isStale: false, live: false }));
+    renderHook(() => useLiveTodayRefresh({ enabled: true, refetch, isStale: false, live: false }));
     act(() => {
       jest.advanceTimersByTime(LIVE_TODAY_REFRESH_MS * 3);
     });
@@ -61,16 +61,42 @@ describe("useLiveTodayRefresh", () => {
 
   it("refetches when the app returns to the foreground, not when it leaves", () => {
     const refetch = jest.fn();
-    renderHook(() => useLiveTodayRefresh({ refetch, isStale: false, live: false }));
+    renderHook(() => useLiveTodayRefresh({ enabled: true, refetch, isStale: false, live: false }));
     act(() => appStateHandler?.("background"));
     expect(refetch).not.toHaveBeenCalled();
     act(() => appStateHandler?.("active"));
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  it("does nothing at all until there is a season to read", () => {
+    const refetch = jest.fn();
+    renderHook(() => useLiveTodayRefresh({ enabled: false, refetch, isStale: true, live: true }));
+    act(() => appStateHandler?.("active"));
+    act(() => {
+      jest.advanceTimersByTime(LIVE_TODAY_REFRESH_MS * 2);
+    });
+    expect(refetch).not.toHaveBeenCalled();
+  });
+
+  it("does not poll while the app is in the background", () => {
+    const refetch = jest.fn();
+    renderHook(() => useLiveTodayRefresh({ enabled: true, refetch, isStale: false, live: true }));
+    act(() => appStateHandler?.("background"));
+    act(() => {
+      jest.advanceTimersByTime(LIVE_TODAY_REFRESH_MS * 2);
+    });
+    expect(refetch).not.toHaveBeenCalled();
+    act(() => appStateHandler?.("active"));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    act(() => {
+      jest.advanceTimersByTime(LIVE_TODAY_REFRESH_MS);
+    });
+    expect(refetch).toHaveBeenCalledTimes(2);
+  });
+
   it("stops the interval and the AppState listener when unfocused", () => {
     const refetch = jest.fn();
-    const { unmount } = renderHook(() => useLiveTodayRefresh({ refetch, isStale: false, live: true }));
+    const { unmount } = renderHook(() => useLiveTodayRefresh({ enabled: true, refetch, isStale: false, live: true }));
     unmount();
     expect(remove).toHaveBeenCalled();
     act(() => {

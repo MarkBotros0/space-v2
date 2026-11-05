@@ -11,14 +11,18 @@ export const LIVE_TODAY_REFRESH_MS = 30_000;
  * their own phone would never move "not checked in". While focused it
  * refetches when stale on focus, whenever the app returns to the foreground,
  * and, only when the session is on the day or in progress, every 30 seconds.
- * Unfocused, it does nothing. Local to this screen on purpose: other roles'
+ * Unfocused or in the background, it does nothing, and with no season to read
+ * (`enabled` false) it never fires: `refetch` ignores a query's `enabled`. Local to this screen on purpose: other roles'
  * Today keep their cache behaviour.
  */
 export function useLiveTodayRefresh({
+  enabled,
   refetch,
   isStale,
   live,
 }: {
+  /** There is a season to read. */
+  enabled: boolean;
   refetch: () => unknown;
   isStale: boolean;
   /** The session is on its day or in progress: poll. */
@@ -26,18 +30,27 @@ export function useLiveTodayRefresh({
 }) {
   // The latest values, read when an event fires, so a re-render never re-runs
   // the focus effect (and so never refetches by itself).
-  const latest = useRef({ refetch, isStale });
+  const latest = useRef({ enabled, refetch, isStale });
   useEffect(() => {
-    latest.current = { refetch, isStale };
+    latest.current = { enabled, refetch, isStale };
   });
 
   useFocusEffect(
     useCallback(() => {
-      if (latest.current.isStale) void latest.current.refetch();
+      const read = () => {
+        if (latest.current.enabled) void latest.current.refetch();
+      };
+      if (latest.current.isStale) read();
+      let foreground = true;
       const sub = AppState.addEventListener("change", (state) => {
-        if (state === "active") void latest.current.refetch();
+        foreground = state === "active";
+        if (foreground) read();
       });
-      const timer = live ? setInterval(() => void latest.current.refetch(), LIVE_TODAY_REFRESH_MS) : null;
+      const timer = live
+        ? setInterval(() => {
+            if (foreground) read();
+          }, LIVE_TODAY_REFRESH_MS)
+        : null;
       return () => {
         sub.remove();
         if (timer) clearInterval(timer);
