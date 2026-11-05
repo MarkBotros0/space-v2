@@ -3,6 +3,12 @@
 import { EVENTS, UNREAD, events, seasonRow, staffDashboard } from "./dashboard-fixtures";
 
 const MIN = 60_000;
+/**
+ * One day for every row and the dashboard's todayOrgDay, so the instants decide
+ * whether a row is live or over. A row's own start day would be yesterday just
+ * after UTC midnight, which fails the live tests for half an hour a day.
+ */
+const FIXTURE_DAY = new Date().toISOString().slice(0, 10);
 
 /** A season-sessions row. `startedMinAgo` > duration puts it in the past. */
 export function sessionRow(id: number, seasonId: number, startedMinAgo: number, marked = false, durationMinutes = 90) {
@@ -11,7 +17,7 @@ export function sessionRow(id: number, seasonId: number, startedMinAgo: number, 
     id,
     title: `Week ${id}`,
     startsAt,
-    dayKey: startsAt.slice(0, 10),
+    dayKey: FIXTURE_DAY,
     startTime: "18:00",
     durationMinutes,
     location: "Hall",
@@ -48,10 +54,9 @@ export type Table = Record<string, unknown>;
 export function staffRoutes(over: Table = {}): Table {
   return {
     "/api/v1/seasons": { seasons: [seasonFixture(7)] },
-    // sessionRow's dayKey is the real day, so the org's today is too (else live rows read as past).
     "/api/v1/me/dashboard?seasonId=7": {
       ...staffDashboard("season"),
-      todayOrgDay: new Date().toISOString().slice(0, 10),
+      todayOrgDay: FIXTURE_DAY,
     },
     "/api/v1/seasons/7/sessions": { sessions: [sessionRow(1, 7, 600), sessionRow(2, 7, 700, true)] },
     [EVENTS]: events,
