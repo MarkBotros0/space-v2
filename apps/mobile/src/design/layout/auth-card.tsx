@@ -73,7 +73,7 @@ export function AuthCard({
   );
 }
 
-/** v1's "Forgot password?" link: `text-center text-sm text-muted-foreground`. */
+/** v1's "Forgot password?" link: centred, muted, the `subhead` variant, a 44pt target. */
 export function AuthLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
