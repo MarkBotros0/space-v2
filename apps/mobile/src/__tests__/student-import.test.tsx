@@ -58,6 +58,16 @@ describe("ImportScreen — step 1, paste", () => {
     expect(await screen.findByText(/name, student/i)).toBeTruthy();
   });
 
+  it("shows the sample header with visible separators, never a tab that collapses on a phone (sweep F1)", async () => {
+    useSessionStore.setState(superSession);
+    renderWithProviders(<ImportScreen />);
+
+    const field = await screen.findByLabelText("Paste your spreadsheet");
+    expect(field.props.placeholder).not.toMatch(/\t/);
+    expect(field.props.placeholder).toContain("name | email");
+    expect(screen.getAllByText("name | email").length).toBeGreaterThan(0);
+  });
+
   it("refuses an over-long paste locally, without spending a request", async () => {
     useSessionStore.setState(superSession);
     renderWithProviders(<ImportScreen />);

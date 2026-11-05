@@ -24,6 +24,11 @@ import type { StudentImportFlow } from "./use-student-import-flow";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+/** The template's header row is tab-separated; tabs collapse on a phone, so show pipes. */
+function readableHeader(headerRow: string | undefined): string | undefined {
+  return headerRow?.split("\t").join(" | ");
+}
+
 /** v1's two "Import as" tiles: `flex-1 rounded-lg border px-4 py-3`. */
 function ModeTile({
   title,
@@ -70,6 +75,7 @@ export function ImportPasteStep({
   const seasonItems: Record<string, string> = Object.fromEntries(
     (seasons.data ?? []).map((s) => [String(s.id), s.title]),
   );
+  const sampleHeader = readableHeader(template.data?.headerRow);
   const yearNum = Number(graduationYear);
   const yearInvalid =
     graduationYear !== "" &&
@@ -155,7 +161,9 @@ export function ImportPasteStep({
                 className="min-h-40"
                 value={flow.text}
                 onChangeText={flow.setText}
-                placeholder={template.data?.headerRow}
+                placeholder={
+                  sampleHeader ? `One person per line, starting with:\n${sampleHeader}` : undefined
+                }
                 autoCapitalize="none"
               />
               <View className="mt-1 flex-col gap-0.5">
@@ -168,7 +176,7 @@ export function ImportPasteStep({
                   </Text>
                 ))}
                 <Text selectable className="text-xs text-muted-foreground">
-                  {template.data?.headerRow}
+                  {sampleHeader}
                 </Text>
               </View>
             </FormField>
