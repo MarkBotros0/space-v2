@@ -37,6 +37,7 @@ const listRow = {
   endDate: "2099-07-04T21:00:00.000Z",
   dayKey: "2099-07-01",
   endDayKey: "2099-07-05",
+  isPast: false,
   time: null,
   allDay: true,
   url: null,
@@ -189,16 +190,18 @@ describe("events screen", () => {
     expect(when.props.numberOfLines === undefined || when.props.numberOfLines >= 2).toBe(true);
   });
 
-  it("shows no Past chip (no server flag) and an alumni-only chip", async () => {
+  it("shows Past from the server flag alone, and Past wins over the audience chip", async () => {
     useSessionStore.setState(superSession);
     get.mockResolvedValue({
       data: {
         data: {
           events: [
+            // A 2001 day with the flag false: the device must not compare dates.
             { ...listRow, id: 5, title: "Old fair", dayKey: "2001-03-01", endDayKey: null },
             { ...listRow, id: 6, title: "Alumni night", visibility: "ALUMNI_ONLY" as const },
+            { ...listRow, id: 7, title: "Gone gala", isPast: true, visibility: "ALUMNI_ONLY" as const },
           ],
-          total: 2,
+          total: 3,
           nextCursor: null,
         },
       },
@@ -206,8 +209,9 @@ describe("events screen", () => {
     renderWithProviders(<EventsScreen />);
     expect(await screen.findByText("Old fair")).toBeTruthy();
     expect(screen.getByText("Mar 1, 2001")).toBeTruthy();
-    expect(screen.queryByText("Past")).toBeNull();
-    expect(screen.getByText("Alumni only")).toBeTruthy();
+    expect(screen.getAllByText("Past")).toHaveLength(1);
+    // One chip per row: the past alumni-only row shows Past, not Alumni only.
+    expect(screen.getAllByText("Alumni only")).toHaveLength(1);
   });
 
   it("navigates to the detail v1 has no page for", async () => {
@@ -233,6 +237,24 @@ describe("event detail screen", () => {
     expect(screen.getByText("Jul 1, 2099 – Jul 5, 2099")).toBeTruthy();
     expect(screen.queryByText("Delete event")).toBeNull();
     expect(screen.queryByText("Edit")).toBeNull();
+  });
+
+  it("shows Past beside the audience chip on the detail", async () => {
+    useSessionStore.setState(alumnusSession);
+    get.mockResolvedValue({
+      data: { data: { ...detailRow, isPast: true, visibility: "ALUMNI_ONLY", canManage: false } },
+    });
+    renderWithProviders(<EventDetailScreen />);
+    expect(await screen.findByText("Past")).toBeTruthy();
+    expect(screen.getByText("Alumni only")).toBeTruthy();
+  });
+
+  it("shows no Past chip on a current event's detail", async () => {
+    useSessionStore.setState(alumnusSession);
+    get.mockResolvedValue({ data: { data: { ...detailRow, canManage: false } } });
+    renderWithProviders(<EventDetailScreen />);
+    expect(await screen.findByText("Five days away.")).toBeTruthy();
+    expect(screen.queryByText("Past")).toBeNull();
   });
 
   it("offers edit and delete to SUPER only", async () => {

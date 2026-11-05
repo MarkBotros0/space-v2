@@ -69,13 +69,19 @@ function toListItem(row: ListRow) {
   // (ruling X13) — the client buckets and labels by these strings and never
   // turns `date` into a day itself.
   const allDay = isOrgMidnight(row.date);
+  const dayKey = orgDayKey(row.date);
+  const endDayKey = row.endDate ? orgDayKey(row.endDate) : null;
   return {
     id: row.id,
     title: row.title,
     date: row.date,
     endDate: row.endDate,
-    dayKey: orgDayKey(row.date),
-    endDayKey: row.endDate ? orgDayKey(row.endDate) : null,
+    dayKey,
+    endDayKey,
+    // The exact complement of the `upcoming` filter: day granularity, org
+    // clock. The device never compares dates (D23/R75). Not a second
+    // parameter: this is passed straight to `.map`.
+    isPast: (endDayKey ?? dayKey) < orgDayKey(new Date()),
     time: allDay ? null : orgWallTime(row.date),
     allDay,
     url: row.url,

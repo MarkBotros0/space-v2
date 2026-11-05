@@ -45,6 +45,7 @@ export const eventRow = (
   endDate: null,
   dayKey,
   endDayKey: null,
+  isPast: false,
   time,
   allDay: time === null,
   url: null,

@@ -17,6 +17,12 @@ export const jpcEventListItemSchema = z.object({
   /** The org-calendar day `date` falls on, computed server-side (ruling X13). */
   dayKey: isoDaySchema,
   endDayKey: isoDaySchema.nullable(),
+  /**
+   * `(endDayKey ?? dayKey)` is before today on the organisation clock, computed
+   * server-side (day granularity; the complement of `upcoming`). The device
+   * never compares dates (D23/R75).
+   */
+  isPast: z.boolean(),
   /** Org wall-clock start, `HH:mm`; null exactly when `allDay`. */
   time: wallTimeSchema.nullable(),
   /**

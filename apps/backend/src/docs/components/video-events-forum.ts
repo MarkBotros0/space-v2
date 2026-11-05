@@ -28,7 +28,7 @@ export const videoEventsForumSchemas = {
   JpcEventListItem: {
     type: "object",
     description: "Every day and time here is computed on the server in the organisation timezone; the client never derives a day from `date`.",
-    required: ["id", "title", "date", "endDate", "dayKey", "endDayKey", "time", "allDay", "url", "visibility", "seasonId", "seasonCode"],
+    required: ["id", "title", "date", "endDate", "dayKey", "endDayKey", "isPast", "time", "allDay", "url", "visibility", "seasonId", "seasonCode"],
     properties: {
       id: { type: "integer" },
       title: { type: "string" },
@@ -36,6 +36,7 @@ export const videoEventsForumSchemas = {
       endDate: { type: ["string", "null"], format: "date-time" },
       dayKey: { type: "string", description: "`YYYY-MM-DD`, the organisation day `date` falls on." },
       endDayKey: { type: ["string", "null"] },
+      isPast: { type: "boolean", description: "Server-derived: `(endDayKey ?? dayKey)` is before today on the organisation clock (day granularity; the complement of `upcoming`)." },
       time: { type: ["string", "null"], description: "Organisation wall-clock `HH:mm`; null exactly when `allDay`." },
       allDay: { type: "boolean", description: "Server-derived: `date` is midnight on the organisation clock (there is no column)." },
       url: { type: ["string", "null"] },

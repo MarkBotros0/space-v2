@@ -17,7 +17,7 @@ const session = (id: number, title: string, dayKey: string, startsAt: string): S
 });
 
 const event = (id: number, title: string, dayKey: string, over: Partial<JpcEventListItem> = {}): JpcEventListItem => ({
-  id, title, date: `${dayKey}T10:00:00.000Z`, endDate: null, dayKey, endDayKey: null,
+  id, title, date: `${dayKey}T10:00:00.000Z`, endDate: null, dayKey, endDayKey: null, isPast: false,
   time: "12:00", allDay: false, visibility: "ALL", seasonId: null, seasonCode: null, ...over,
 } as JpcEventListItem);
 

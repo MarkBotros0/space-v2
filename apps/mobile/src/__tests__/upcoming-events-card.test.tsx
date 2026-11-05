@@ -24,6 +24,7 @@ const event = {
   endDate: null,
   dayKey: "2099-03-05",
   endDayKey: null,
+  isPast: false,
   time: "18:30",
   allDay: false,
   url: null,

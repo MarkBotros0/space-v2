@@ -64,11 +64,24 @@ describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
       .send({ ...body, title: `space-v2-test-${Date.now()}` });
 
     expect(res.status).toBe(201);
-    expect(res.body.data).toMatchObject({ allDay: true, dayKey: "2099-01-20", time: null });
+    expect(res.body.data).toMatchObject({ allDay: true, dayKey: "2099-01-20", time: null, isPast: false });
     // Africa/Cairo midnight on 2099-01-20 is 22:00Z on the 19th (UTC+2).
     expect(res.body.data.date).toBe("2099-01-19T22:00:00.000Z");
     // v1 returns only { success: true } and the client refetches (R39).
     expect(res.body.data.id).toEqual(expect.any(Number));
+  });
+
+  it("flags a past event isPast on create and on the detail read", async () => {
+    const res = await request(app)
+      .post("/api/v1/events")
+      .set("authorization", `Bearer ${superToken}`)
+      .send({ ...body, title: `space-v2-test-past-${Date.now()}`, day: "2001-01-20" });
+    expect(res.status).toBe(201);
+    expect(res.body.data.isPast).toBe(true);
+    const read = await request(app)
+      .get(`/api/v1/events/${res.body.data.id}`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(read.body.data.isPast).toBe(true);
   });
 
   it("composes a timed event in the org zone, not the caller's", async () => {
@@ -80,7 +93,7 @@ describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
       .send({ ...body, title: `space-v2-test-timed-${Date.now()}`, time: "18:30" });
 
     expect(res.status).toBe(201);
-    expect(res.body.data).toMatchObject({ allDay: false, dayKey: "2099-01-20", time: "18:30" });
+    expect(res.body.data).toMatchObject({ allDay: false, dayKey: "2099-01-20", time: "18:30", isPast: false });
     expect(res.body.data.date).toBe("2099-01-20T16:30:00.000Z");
   });
 

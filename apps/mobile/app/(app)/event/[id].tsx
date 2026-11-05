@@ -134,11 +134,13 @@ export default function EventDetailScreen() {
         : VISIBILITY_LABELS[e.visibility];
     body = (
       <View className="flex-col gap-4">
-        <StatusChip
-          tone={e.visibility === "ALL" ? "neutral" : e.visibility === "SEASON" ? "info" : "warn"}
-          label={visibility}
-          className="self-start"
-        />
+        <View className="flex-row flex-wrap gap-2">
+          {e.isPast ? <StatusChip tone="neutral" label="Past" /> : null}
+          <StatusChip
+            tone={e.visibility === "ALL" ? "neutral" : e.visibility === "SEASON" ? "info" : "warn"}
+            label={visibility}
+          />
+        </View>
         {e.description ? <Text variant="body">{e.description}</Text> : null}
         {e.url ? (
           <GroupedList>
