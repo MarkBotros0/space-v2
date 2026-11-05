@@ -1,8 +1,8 @@
-import { fireEvent, screen } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { fireEvent, screen, within } from "@testing-library/react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 
 import { FormScreen } from "../design/layout/form-screen";
-import { renderWithProviders } from "./helpers/render";
+import { renderStacked, renderWithProviders } from "./helpers/render";
 
 jest.mock("expo-router", () => ({ ...jest.requireActual("expo-router"), useRouter: () => ({ back: jest.fn(), push: jest.fn() }), Link: "Link" }));
 
@@ -32,15 +32,18 @@ describe("FormScreen", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it("leaves room under the content equal to the measured bar height", () => {
-    renderWithProviders(
+  it("pins the save bar in Screen's footer and pads the content by its height", () => {
+    renderStacked(
       <FormScreen title="T" saveLabel="Save" onSave={() => {}} saveHint="hint">
         <Text>x</Text>
       </FormScreen>,
     );
-    expect(screen.getByTestId("form-screen-spacer").props.style).toEqual({ height: 0 });
-    fireEvent(screen.getByTestId("save-bar"), "layout", { nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 120 } } });
-    expect(screen.getByTestId("form-screen-spacer").props.style).toEqual({ height: 120 });
+    expect(within(screen.getByTestId("screen-footer")).getByTestId("save-bar")).toBeTruthy();
+    expect(within(screen.UNSAFE_getByType(ScrollView)).queryByTestId("save-bar")).toBeNull();
+    expect(screen.queryByTestId("form-screen-spacer")).toBeNull();
+    fireEvent(screen.getByTestId("screen-footer"), "layout", { nativeEvent: { layout: { height: 120 } } });
+    const pad = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle).paddingBottom;
+    expect(pad).toBe(120 + 34 + 16);
     expect(screen.getByText("hint")).toBeTruthy();
   });
 });
