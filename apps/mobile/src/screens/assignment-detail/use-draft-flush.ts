@@ -24,6 +24,12 @@ function flushFailedMessage(err: unknown): string {
 }
 
 /**
+ * The last write of each submission. It lives outside the screen: leaving flushes, and
+ * coming straight back mounts a new editor whose save must still wait for that flush.
+ */
+const lastWrite = new Map<string, Promise<unknown>>();
+
+/**
  * The response is only local state, so an edge swipe, the pinned Back or the OS
  * killing the app in the background would lose an essay typed on a phone. Like
  * the quiz (use-quiz-answers.ts), it is written out on leaving and on backgrounding:
@@ -31,10 +37,12 @@ function flushFailedMessage(err: unknown): string {
  * isn't blank, can still be edited, and hasn't been handed in. Beyond v1, which
  * lost it. A failed flush is a toast, since the screen may be gone.
  *
- * `send` is every write the editor makes: they run one after another, so a slow
- * save can't land after a newer one and put older text back on the server.
+ * `send` is every write the editor makes: they run one after another, across
+ * re-opening the screen too, so a slow save can't land after a newer one and put older
+ * text back on the server.
  */
 export function useDraftFlush(
+  publicId: string,
   save: (input: SaveInput) => Promise<unknown>,
   draft: DraftState | null,
 ): (input: SaveInput) => Promise<unknown> {
@@ -43,7 +51,6 @@ export function useDraftFlush(
   // Returned work is editable again: the submit that locked it is over, so it no longer
   // blocks a flush, and its text is no longer "what was last sent".
   const wasEditable = useRef(draft?.editable ?? false);
-  const chain = useRef<Promise<unknown>>(Promise.resolve());
 
   const editable = draft?.editable ?? false;
   useEffect(() => {
@@ -57,8 +64,13 @@ export function useDraftFlush(
   const send = (input: SaveInput) => {
     sent.current = input.text;
     if (input.submit) handedIn.current = true;
-    const run = chain.current.then(() => save(input));
-    chain.current = run.catch(() => undefined);
+    const run = (lastWrite.get(publicId) ?? Promise.resolve()).then(() => save(input));
+    const settled = run
+      .catch(() => undefined)
+      .then(() => {
+        if (lastWrite.get(publicId) === settled) lastWrite.delete(publicId);
+      });
+    lastWrite.set(publicId, settled);
     return run.catch((err: unknown) => {
       // Nothing landed: the next chance to flush must try this text again.
       if (sent.current === input.text) sent.current = null;

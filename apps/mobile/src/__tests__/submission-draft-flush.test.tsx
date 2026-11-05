@@ -169,6 +169,26 @@ describe("leaving the screen saves what was written", () => {
     await waitFor(() => expect(patch).toHaveBeenLastCalledWith(URL, { text: "newer" }));
   });
 
+  it("re-opening while a flush is in flight: the new save waits for it", async () => {
+    serve();
+    let finishFlush: (value: unknown) => void = () => undefined;
+    patch.mockImplementationOnce(() => new Promise((resolve) => { finishFlush = resolve; }));
+    patch.mockResolvedValue(saved);
+    const first = open();
+    fireEvent.changeText(await screen.findByLabelText("Your response"), "older");
+    first.unmount();
+    await waitFor(() => expect(patch).toHaveBeenCalledWith(URL, { text: "older" }));
+
+    open();
+    fireEvent.changeText(await screen.findByLabelText("Your response"), "newer");
+    fireEvent.press(screen.getByText("Save draft"));
+    await settle();
+    expect(patch).toHaveBeenCalledTimes(1);
+
+    await act(async () => finishFlush(saved));
+    await waitFor(() => expect(patch).toHaveBeenLastCalledWith(URL, { text: "newer" }));
+  });
+
   it("does not flush after a submit, even with the submit still in flight", async () => {
     serve();
     let finish!: (v: unknown) => void;

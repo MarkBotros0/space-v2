@@ -107,6 +107,7 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   const [confirming, setConfirming] = useState(false);
   const keyboardOpen = useKeyboardHeight() > 0;
   const send = useDraftFlush(
+    summary?.publicId ?? "",
     save.mutateAsync,
     query.data
       ? {
