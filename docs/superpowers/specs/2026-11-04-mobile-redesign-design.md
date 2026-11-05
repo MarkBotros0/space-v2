@@ -27,9 +27,10 @@ page on a phone.
    - mentor: students flagged at risk and recent notes;
    - alumni: upcoming events.
    The current dashboards' figures stay, below the action, not as the opener.
-2. **The floating pill tab bar stays (owner, 2026-11-04), made frosted and semi-transparent**, so
-   the page shows through as it scrolls. iOS uses a real blur (`expo-blur`, already a dependency);
-   Android uses a translucent fill without blur (blur on Android is unreliable). The existing rule
+2. **The floating pill tab bar stays (owner, 2026-11-04), solid (owner 2026-11-05)**: one opaque
+   navy fill (`bg-pill`) on iOS and Android, no blur, so nothing scrolled beneath it shows through
+   its labels. It keeps its floating shape, shadow, sliding highlight and hide-on-scroll motion.
+   (The first draft made it frosted and semi-transparent; the owner replaced that.) The existing rule
    still holds: the last item of every scroll view clears the pill by the bottom inset
    (`useShellBottomPadding`), and the pill sits above the system bar on 3-button phones.
 3. **Large screen titles instead of the web top bar.** The logo + bell + avatar header goes. The
@@ -122,7 +123,7 @@ page on a phone.
 |---|---|
 | Lift the v1-match ruling; full redesign | Owner, 2026-11-04 |
 | Keep navy, teal, JPC mark, Geist | Owner (approved proposal) |
-| Keep the floating pill tab bar, frosted and semi-transparent | Owner, 2026-11-04 |
+| Keep the floating pill tab bar; solid on iOS and Android (no blur) | Owner, 2026-11-04; solid 2026-11-05 |
 | Today-first Home per role; large titles; grouped lists; bottom sheets; one chip set | Owner (approved proposal) |
 | Build order: design system → student → leader → admin/super/mentor/alumni → iPhone pass | Owner (approved proposal) |
 | Motion throughout the app, especially navigation | Owner, 2026-11-04 |
@@ -146,7 +147,7 @@ Tokens (replacing `pnpm design:tokens`' v1-derived output as the source of truth
 Motion tokens and helpers (`src/design/motion/`): durations, the two springs, a `usePressScale`
 hook, a staggered-entry helper, and a `useReducedMotion` gate every animated component reads.
 
-Components (about 15, in `src/design/`): frosted `PillTabBar` (sliding highlight, hide on scroll), `LargeTitle` (with optional back
+Components (about 15, in `src/design/`): solid `PillTabBar` (sliding highlight, hide on scroll), `LargeTitle` (with optional back
 link and trailing actions), `GroupedList` / `ListRow` (title, subtitle, trailing value, chip or
 chevron), `StatusChip`, `HeroCard`, `StatTile`, `Sheet` (with `SheetSaveBar`), `SaveBar` for full
 screens, `Button` (primary, secondary, destructive, plain), `SegmentedControl`, `SearchField`,
@@ -180,10 +181,10 @@ including mentors, who have no More tab today.
 2. Student screens (plus signed-out and settings), then sweep.
 3. Leader screens, then sweep.
 4. Admin, super, mentor, alumni screens, then sweep per role.
-5. iPhone pass on a real device (notch, home indicator, iOS sheets and keyboard, the pill's real
-   blur and its contrast over content). This is the first iOS check (owner, 2026-11-04): the
+5. iPhone pass on a real device (notch, home indicator, iOS sheets and keyboard, the solid pill
+   over content). This is the first iOS check (owner, 2026-11-04): the
    sweep is Android-only, so iOS-only problems surface here and may need rework. To limit that,
-   the pill and sheets stay on platform-standard pieces (`expo-blur`, native stack, a
+   the pill and sheets stay on platform-standard pieces (a plain view, native stack, a
    well-supported sheet) rather than custom native code.
 6. Update CLAUDE.md "Mobile conventions" (drop "UI matches v1 exactly") and retire the v1
    capture tooling's role as the acceptance check.
@@ -196,5 +197,5 @@ typecheck, lint, unit tests and the sweep before the next starts.
 - Exact screen-by-screen layouts within the rules above, starting from the mockups.
 - Whether student Assignments and Quizzes merge into one "Work" tab.
 - Which actions are sheets versus full screens, by the rule in goal 5.
-- Icon set (keep the current one unless it fails the 3:1 rule in the frosted pill).
+- Icon set (keep the current one unless it fails the 3:1 rule in the pill).
 - Copy: keep v1's wording where it is clear; plainer wording where it is not.

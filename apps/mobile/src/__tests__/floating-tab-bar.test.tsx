@@ -1,6 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import type { BottomTabBarProps } from "expo-router/js-tabs";
-import { BlurView } from "expo-blur";
 import { AccessibilityInfo, Platform } from "react-native";
 import type { NavItem } from "@space/shared";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -222,31 +221,16 @@ describe("navigation the pill did not start", () => {
   });
 });
 
-describe("frosted fill", () => {
-  it("blurs the backdrop on iOS", () => {
-    renderBar();
-    expect(screen.UNSAFE_queryByType(BlurView)).not.toBeNull();
-  });
-
-  it("renders the fill alone on Android", () => {
-    jest.replaceProperty(Platform, "OS", "android");
-    renderBar();
-    expect(screen.UNSAFE_queryByType(BlurView)).toBeNull();
-  });
-
-  // R30: with no blur behind it, the translucent fill let scrolled content read through
-  // the labels. Android takes the near-opaque pill-solid; iOS keeps bg-pill over the blur.
-  it("uses the near-opaque pill-solid fill on Android", () => {
-    jest.replaceProperty(Platform, "OS", "android");
-    renderBar();
-    expect(screen.getByTestId("pill-fill").props.className).toContain("bg-pill-solid");
-  });
-
-  it("keeps the translucent bg-pill over the blur on iOS", () => {
+describe("solid fill (owner ruling R38)", () => {
+  it.each(["ios", "android"] as const)("is one opaque bg-pill on %s, with no blur", (os) => {
+    jest.replaceProperty(Platform, "OS", os);
     renderBar();
     const fill = screen.getByTestId("pill-fill").props.className as string;
     expect(fill.split(" ")).toContain("bg-pill");
     expect(fill).not.toContain("pill-solid");
+    const name = (type: unknown) =>
+      typeof type === "string" ? type : ((type as { name?: string } | null)?.name ?? "");
+    expect(screen.UNSAFE_root.findAll((n) => name(n.type).includes("Blur"))).toHaveLength(0);
   });
 });
 

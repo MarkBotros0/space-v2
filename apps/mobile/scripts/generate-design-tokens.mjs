@@ -55,7 +55,6 @@ const SEMANTIC = [
   "control-border",
   "unread-soft",
   "pill",
-  "pill-solid",
   "pill-foreground",
   "pill-active",
   "pill-active-label",

@@ -1,8 +1,7 @@
 import type { BottomTabBarProps } from "expo-router/js-tabs";
 import type { NavItem } from "@space/shared";
-import { BlurView } from "expo-blur";
 import { useEffect, useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -15,12 +14,10 @@ import { PillHighlight } from "./pill-highlight";
 import { resetTabBarScroll, useTabBarVisible } from "./tab-bar-scroll";
 
 /**
- * The floating pill. iOS frosts it: the translucent `bg-pill` fill (alpha
- * .78 / .86) over a BlurView (intensity 40). Android has no blur: since Expo
- * SDK 55 a real blur needs a `blurTarget` the tab navigator cannot give a bar
- * it renders beside its scenes, and the translucent fill alone let scrolled
- * content read through the labels (R30). So Android takes the near-opaque
- * `bg-pill-solid` (alpha .92 / .94) instead.
+ * The floating pill: solid on iOS and Android (owner ruling R38, 2026-11-05),
+ * one opaque navy `bg-pill` fill, no blur and no per-platform fill. It keeps
+ * its floating shape, shadow, hide-on-scroll motion and sliding highlight.
+ * (R5/R30/R37's frosted and near-opaque variants are superseded.)
  */
 const PILL_HEIGHT = 64;
 
@@ -109,15 +106,7 @@ export function PillTabBar({
           className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
           style={shadowStyle("lift")}
         >
-          {Platform.OS === "ios" ? (
-            <BlurView intensity={40} style={StyleSheet.absoluteFill} />
-          ) : null}
-          <View
-            testID="pill-fill"
-            className={
-              Platform.OS === "ios" ? "absolute inset-0 bg-pill" : "absolute inset-0 bg-pill-solid"
-            }
-          />
+          <View testID="pill-fill" className="absolute inset-0 bg-pill" />
           <PillHighlight target={active ? (layouts[active] ?? null) : null} />
           {shown.map((item) => {
             const name = routeNameForHref(item.href);

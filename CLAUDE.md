@@ -262,7 +262,8 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
   StatusChip / `statusChip` / `dueChip`, GroupedList / ListRow, HeroCard, StatTile,
   SegmentedControl, SearchField, EmptyState (`tone`), Sheet / SheetSaveBar, Toast
   (`toaster.tsx`); `src/design/layout/*`: Screen, LargeTitle, PillTabBar, SaveBar,
-  `tab-bar-scroll`. Render text with `ui/text.tsx` and its `variant` scale (largeTitle,
+  `tab-bar-scroll`. The pill is solid on iOS and Android (owner 2026-11-05, R38): one
+  opaque `bg-pill`, no blur, no per-platform fill. Render text with `ui/text.tsx` and its `variant` scale (largeTitle,
   title, headline, body, subhead, caption); it carries the body defaults because React
   Native text inherits nothing. Button, Badge and the pills carry no self-alignment:
   where one sits in a block, add `self-start`.
