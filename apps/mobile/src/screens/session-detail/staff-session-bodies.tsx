@@ -15,7 +15,7 @@ import {
   Text as TextV1,
 } from "../../design/ui";
 import { Button } from "../../design/ui/button";
-import { formatDayKey, formatWallTime, formatWeekdayDay } from "../../lib/format";
+import { formatDayKey, formatWallTime, formatWeekdayDay, formatMinutes } from "../../lib/format";
 import { attendanceLine } from "./attendance-line";
 import { CheckInConsoleCard, LeaderCheckInCard } from "./check-in-cards";
 import { AdminQuizzesCard, LeaderQuizzesCard } from "./quizzes-cards";
@@ -79,7 +79,7 @@ export function AdminSessionBody({
         {/* Org day and wall time from the server (X13) — the device zone never re-reads startsAt. */}
         <PageTitle
           title={data.title}
-          subtitle={`${formatDayKey(data.dayKey)} · ${formatWallTime(data.startTime)} · ${data.durationMinutes} min`}
+          subtitle={`${formatDayKey(data.dayKey)} · ${formatWallTime(data.startTime)} · ${formatMinutes(data.durationMinutes)}`}
         />
         {data.canManageCheckIn || data.canMarkAttendance ? (
           <View className="flex-row flex-wrap gap-2">

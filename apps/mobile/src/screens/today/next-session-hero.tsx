@@ -6,7 +6,7 @@ import type { DashboardSession, SessionDetail } from "@space/shared";
 import { StudentCheckInCard } from "../../components/check-in/StudentCheckInCard";
 import { Button, HeroCard } from "../../design/ui";
 import { dayCue } from "../../lib/calendar-grid";
-import { formatWallTime, formatWeekdayDay } from "../../lib/format";
+import { formatWallTime, formatWeekdayDay, formatMinutes } from "../../lib/format";
 
 const NEXT_SESSION = "Next session";
 
@@ -43,7 +43,7 @@ export function NextSessionHero({
       tone="brand"
       eyebrow={eyebrow}
       title={session.title}
-      meta={`${formatWeekdayDay(session.dayKey)} · ${formatWallTime(session.time)} · ${session.durationMinutes} min${where}`}
+      meta={`${formatWeekdayDay(session.dayKey)} · ${formatWallTime(session.time)} · ${formatMinutes(session.durationMinutes)}${where}`}
       onTitlePress={() =>
         router.push({ pathname: "/session/[id]", params: { id: String(session.id) } })
       }

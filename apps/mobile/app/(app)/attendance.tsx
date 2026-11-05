@@ -16,7 +16,7 @@ import {
   Text,
 } from "../../src/design/ui";
 import { useMyAttendance } from "../../src/hooks/use-self-service";
-import { formatWallTime, formatWeekdayDayYear } from "../../src/lib/format";
+import { formatWallTime, formatWeekdayDayYear, formatMinutes } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
 
 /** The old ring's thresholds (70 warn, 100 error), as a word so it is never colour alone. */
@@ -33,8 +33,8 @@ function SessionRow({ row }: { row: MyAttendanceSession }) {
   // Day and time are both the server's org-clock strings (X13), never the device zone.
   const lines = [`${formatWeekdayDayYear(row.dayKey)} · ${formatWallTime(row.startTime)}`];
   const cost = [
-    row.status === "LATE" && row.lateMinutes !== null && row.lateMinutes > 0 ? `${row.lateMinutes} min late` : null,
-    row.costMinutes !== null && row.costMinutes > 0 ? `−${row.costMinutes} min from budget` : null,
+    row.status === "LATE" && row.lateMinutes !== null && row.lateMinutes > 0 ? `${formatMinutes(row.lateMinutes)} late` : null,
+    row.costMinutes !== null && row.costMinutes > 0 ? `−${formatMinutes(row.costMinutes)} from budget` : null,
   ].filter(Boolean);
   if (cost.length > 0) lines.push(cost.join(" · "));
   return (
@@ -89,7 +89,7 @@ export default function AttendanceScreen() {
           </View>
           {warning ? <StatusChip {...warning} /> : null}
           <Text variant="caption" className="text-muted-foreground">
-            {`Absent = ${season.absenceWeightMinutes} min · Late = actual minutes late`}
+            {`Absent = ${formatMinutes(season.absenceWeightMinutes)} · Late = actual minutes late`}
           </Text>
         </View>
         {sessions.length === 0 ? (

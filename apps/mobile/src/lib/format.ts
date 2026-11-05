@@ -219,3 +219,8 @@ export const NBSP = "\u00A0";
 export function unbreakable(text: string): string {
   return text.replace(/ /g, NBSP);
 }
+
+/** "90 min" with a non-breaking space, so the number and its unit never split across lines. */
+export function formatMinutes(minutes: number): string {
+  return `${minutes} min`;
+}

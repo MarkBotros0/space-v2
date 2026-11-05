@@ -9,7 +9,7 @@ import { Screen } from "../../design/layout/screen";
 import { GroupedList, ListRow, StatusChip, Text, statusChip } from "../../design/ui";
 import { usePullRefresh } from "../../hooks/use-pull-refresh";
 import { useStudentVideoQuiz } from "../../hooks/use-video-quiz";
-import { addMinutesToWallTime, formatLongDayYear, formatWallTime } from "../../lib/format";
+import { addMinutesToWallTime, formatLongDayYear, formatWallTime, formatMinutes } from "../../lib/format";
 import { attendanceLine } from "./attendance-line";
 
 /** v1 app/student/sessions/[id]/page.tsx + the v2 extras kept by B2-14. */
@@ -61,7 +61,7 @@ export function StudentSessionBody({
         <GroupedList header="Details">
           <ListRow
             title="Time"
-            subtitle={`${formatWallTime(data.startTime)} – ${formatWallTime(end)} · ${data.durationMinutes} min`}
+            subtitle={`${formatWallTime(data.startTime)} – ${formatWallTime(end)} · ${formatMinutes(data.durationMinutes)}`}
             subtitleLines={3}
           />
           {data.location ? (

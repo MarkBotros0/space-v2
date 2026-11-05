@@ -3,7 +3,7 @@ import { Linking } from "react-native";
 import type { DashboardSession, SessionListItem } from "@space/shared";
 
 import { Button, HeroCard } from "../../design/ui";
-import { formatWallTime, formatWeekdayDay } from "../../lib/format";
+import { formatWallTime, formatWeekdayDay, formatMinutes } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
 
 export type HeroSession = {
@@ -17,7 +17,7 @@ export type HeroSession = {
 
 type Parts = { seasonTitle: string; dayKey: string; time: string; durationMinutes: number; location: string | null };
 const metaOf = (p: Parts) =>
-  joinMeta([p.seasonTitle, formatWeekdayDay(p.dayKey), formatWallTime(p.time), `${p.durationMinutes} min`, p.location]);
+  joinMeta([p.seasonTitle, formatWeekdayDay(p.dayKey), formatWallTime(p.time), formatMinutes(p.durationMinutes), p.location]);
 
 /** The admin's session: the dashboard's own `isInProgress` decides live. */
 export function fromDashboardSession(s: DashboardSession, seasonTitle: string): HeroSession {
