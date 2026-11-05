@@ -19,19 +19,35 @@ let sessionId: number;
 let notCheckedInId: number;
 let noNameId: number;
 let noNameEmail: string;
+let secondGroupUnmarkedId: number;
 const tokens: Record<string, string> = {};
 const token = (k: string) => tokens[k] as string;
 
 const dashboard = (season: number, token: string) =>
-  request(app).get(`/api/v1/me/dashboard?seasonId=${season}`).set("authorization", `Bearer ${token}`);
+  request(app)
+    .get(`/api/v1/me/dashboard?seasonId=${season}`)
+    .set("authorization", `Bearer ${token}`);
 
 beforeAll(async () => {
   await cleanupTestData();
   seasonId = (await createTestSeason()).id;
   emptySeasonId = (await createTestSeason()).id;
-  const groupA = (await db.group.create({ data: { seasonId, name: "Group A" }, select: { id: true } })).id;
-  const groupB = (await db.group.create({ data: { seasonId, name: "Group B" }, select: { id: true } })).id;
-  const emptyGroup = (await db.group.create({ data: { seasonId: emptySeasonId, name: "Empty" }, select: { id: true } })).id;
+  const groupA = (
+    await db.group.create({ data: { seasonId, name: "Group A" }, select: { id: true } })
+  ).id;
+  const groupB = (
+    await db.group.create({ data: { seasonId, name: "Group B" }, select: { id: true } })
+  ).id;
+  // A second group the same leader leads, in the same season.
+  const groupC = (
+    await db.group.create({ data: { seasonId, name: "Group C" }, select: { id: true } })
+  ).id;
+  const emptyGroup = (
+    await db.group.create({
+      data: { seasonId: emptySeasonId, name: "Empty" },
+      select: { id: true },
+    })
+  ).id;
 
   const present = await createTestUser("ls-present", "STUDENT");
   const late = await createTestUser("ls-late", "STUDENT");
@@ -39,6 +55,11 @@ beforeAll(async () => {
   const unmarked = await createTestUser("ls-unmarked", "STUDENT");
   const noName = await createTestUser("ls-noname", "STUDENT");
   const other = await createTestUser("ls-other-group", "STUDENT");
+  const secondPresent = await createTestUser("ls-second-present", "STUDENT");
+  const secondUnmarked = await createTestUser("ls-second-unmarked", "STUDENT");
+  // Enrolled in a group the leader leads, but in ANOTHER season: never counted here.
+  const elsewhere = await createTestUser("ls-elsewhere", "STUDENT");
+  secondGroupUnmarkedId = secondUnmarked.id;
   await db.user.update({ where: { id: noName.id }, data: { name: "  " } });
   notCheckedInId = unmarked.id;
   noNameId = noName.id;
@@ -47,6 +68,9 @@ beforeAll(async () => {
   const emptyLeader = await createTestUser("ls-leader-empty", "LEADER");
   const admin = await createTestUser("ls-admin", "ADMIN");
   await db.groupLeader.create({ data: { groupId: groupA, userId: leader.id } });
+  await db.groupLeader.create({ data: { groupId: groupC, userId: leader.id } });
+  // The same leader also leads a group in another season.
+  await db.groupLeader.create({ data: { groupId: emptyGroup, userId: leader.id } });
   await db.groupLeader.create({ data: { groupId: emptyGroup, userId: emptyLeader.id } });
   await db.seasonAdmin.create({ data: { seasonId, userId: admin.id } });
 
@@ -66,13 +90,21 @@ beforeAll(async () => {
       enrol(unmarked.id, groupA),
       enrol(noName.id, groupA),
       enrol(other.id, groupB),
+      enrol(secondPresent.id, groupC),
+      enrol(secondUnmarked.id, groupC),
+      { ...enrol(elsewhere.id, emptyGroup), seasonId: emptySeasonId },
     ],
   });
 
   // The next session: in the future, so it is "next" rather than a past one.
   sessionId = (
     await db.session.create({
-      data: { seasonId, title: "Next", startsAt: new Date("2099-01-01T16:00:00.000Z"), durationMinutes: 90 },
+      data: {
+        seasonId,
+        title: "Next",
+        startsAt: new Date("2099-01-01T16:00:00.000Z"),
+        durationMinutes: 90,
+      },
       select: { id: true },
     })
   ).id;
@@ -81,6 +113,7 @@ beforeAll(async () => {
       { sessionId, studentUserId: present.id, status: "PRESENT" },
       { sessionId, studentUserId: late.id, status: "LATE", lateMinutes: 5 },
       { sessionId, studentUserId: absent.id, status: "ABSENT" },
+      { sessionId, studentUserId: secondPresent.id, status: "PRESENT" },
       // Another group's student is marked too, and must never be counted.
       { sessionId, studentUserId: other.id, status: "PRESENT" },
     ],
@@ -102,16 +135,19 @@ describe("GET /api/v1/me/dashboard — leaderSession", () => {
     expect(res.status).toBe(200);
     const d = staffSeasonDashboardSchema.parse(res.body.data);
 
-    expect(d.leaderSession).toMatchObject({ sessionId, total: 5, present: 1, late: 1, absent: 1 });
+    // Two led groups in this season add up (5 + 2); the led group in another season adds nothing.
+    expect(d.leaderSession).toMatchObject({ sessionId, total: 7, present: 2, late: 1, absent: 1 });
+    expect(d.groups.map((g) => g.name).sort()).toEqual(["Group A", "Group C"]);
     expect(d.leaderSession?.sessionId).toBe(d.nextSession?.id);
     // The other group's student is neither counted nor listed; a blank name (the column is NOT NULL, so blank is the real case) falls back to the email.
     expect(d.leaderSession?.notCheckedIn).toEqual(
       expect.arrayContaining([
         { id: notCheckedInId, name: "Test ls-unmarked" },
         { id: noNameId, name: noNameEmail },
+        { id: secondGroupUnmarkedId, name: "Test ls-second-unmarked" },
       ]),
     );
-    expect(d.leaderSession?.notCheckedIn).toHaveLength(2);
+    expect(d.leaderSession?.notCheckedIn).toHaveLength(3);
   });
 
   it("has no leaderSession key for an admin (season scope)", async () => {
