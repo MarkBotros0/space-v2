@@ -43,8 +43,9 @@ appId: com.jpc.space
 - pressKey: back
 - waitForAnimationToEnd:
     timeout: 3000
-# The seeded kickoff event is the only upcoming event, so it is the hero and 'View event' opens it (the event has
-# no link, so nothing leaves the app). Exactly one tap, so the detail wait below always sees this event.
+# The seeded kickoff event is the earliest upcoming event, so it is the hero and 'View event' opens it (the sweep DB
+# also has 'Alumni reunion dinner', id 2, 2026-11-25, ALUMNI_ONLY, listed below it; the kickoff event has no link,
+# so nothing leaves the app). Exactly one tap, so the detail wait below always sees this event.
 - scrollUntilVisible:
     element: 'Sweep kickoff event.*'
     direction: UP

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
@@ -12,6 +12,7 @@ import {
 import { formatDayKey, formatWeekdayDay } from "../../lib/format";
 import { cn } from "../../design/lib/cn";
 import { Text } from "../../design/ui/text";
+import type { CalendarEntry } from "../../lib/day-groups";
 import {
   DayEntries,
   entriesFor,
@@ -28,6 +29,8 @@ export interface CalendarGridProps {
   sessions: SessionListItem[];
   events: JpcEventListItem[];
   ctx: CalendarContext;
+  /** How a day's entries render; defaults to the card list (`DayEntries`). */
+  renderEntries?: (entries: CalendarEntry[]) => ReactNode;
 }
 
 /**
@@ -37,19 +40,21 @@ export interface CalendarGridProps {
  * a 50 px column cannot hold a title. Week is the same seven days as stacked
  * rows, each with its full cards.
  */
-export function CalendarGrid({ view, anchor, sessions, events, ctx }: CalendarGridProps) {
+export function CalendarGrid({ view, anchor, sessions, events, ctx, renderEntries }: CalendarGridProps) {
   const byDay = bucketByDay(sessions, events);
   const keys = visibleKeys(view, anchor);
+  const render = renderEntries ?? ((entries: CalendarEntry[]) => <DayEntries entries={entries} ctx={ctx} />);
   return view === "week" ? (
-    <WeekRows keys={keys} byDay={byDay} ctx={ctx} />
+    <WeekRows keys={keys} byDay={byDay} ctx={ctx} render={render} />
   ) : (
-    <MonthGrid keys={keys} anchor={anchor} byDay={byDay} ctx={ctx} />
+    <MonthGrid keys={keys} anchor={anchor} byDay={byDay} ctx={ctx} render={render} />
   );
 }
 
 type ByDay = ReturnType<typeof bucketByDay>;
+type Render = (entries: CalendarEntry[]) => ReactNode;
 
-function WeekRows({ keys, byDay, ctx }: { keys: string[]; byDay: ByDay; ctx: CalendarContext }) {
+function WeekRows({ keys, byDay, ctx, render }: { keys: string[]; byDay: ByDay; ctx: CalendarContext; render: Render }) {
   return (
     <>
       {keys.map((key) => {
@@ -67,7 +72,7 @@ function WeekRows({ keys, byDay, ctx }: { keys: string[]; byDay: ByDay; ctx: Cal
             {entries.length === 0 ? (
               <Text className="text-xs text-muted-foreground">Nothing scheduled</Text>
             ) : (
-              <DayEntries entries={entries} ctx={ctx} />
+              render(entries)
             )}
           </View>
         );
@@ -81,11 +86,13 @@ function MonthGrid({
   anchor,
   byDay,
   ctx,
+  render,
 }: {
   keys: string[];
   anchor: string;
   byDay: ByDay;
   ctx: CalendarContext;
+  render: Render;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const inGrid = (k: string | null): k is string => k !== null && keys.includes(k);
@@ -165,7 +172,7 @@ function MonthGrid({
         {entriesFor(byDay.get(selected)).length === 0 ? (
           <Text className="text-xs text-muted-foreground">Nothing scheduled</Text>
         ) : (
-          <DayEntries entries={entriesFor(byDay.get(selected))} ctx={ctx} />
+          render(entriesFor(byDay.get(selected)))
         )}
       </View>
     </>
