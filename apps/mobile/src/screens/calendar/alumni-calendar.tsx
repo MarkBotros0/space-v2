@@ -125,8 +125,14 @@ export function AlumniCalendar() {
   if (current.isPending) body = <RouteSkeleton />;
   else if (current.isError) body = <RouteError onRetry={current.refetch} />;
   else if (current.seasonId === null)
+    // No season: events are all there is, so (unlike the with-season path) their
+    // loading and failure are the screen's own states.
     body =
-      eventRows.length === 0 ? (
+      eventRows.length === 0 && events.isPending ? (
+        <RouteSkeleton />
+      ) : eventRows.length === 0 && events.isError ? (
+        <RouteError onRetry={() => void events.refetch()} />
+      ) : eventRows.length === 0 ? (
         <EmptyState
           icon={CalendarIcon}
           title="No season to show"
@@ -155,7 +161,7 @@ export function AlumniCalendar() {
         if (current.seasonId !== null) void sessions.refetch();
         else current.refetch();
       }}
-      refreshing={sessions.isRefetching}
+      refreshing={sessions.isRefetching || events.isRefetching}
     >
       {body}
     </Screen>

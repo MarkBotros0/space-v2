@@ -47,7 +47,7 @@ function EventRow({ e }: { e: JpcEventListItem }) {
 }
 
 /** One day's entries in a single grouped list; `today` only drives a session's badge. */
-export function EventDayRows({ entries, today = "" }: { entries: CalendarEntry[]; today?: string }) {
+export function EventDayRows({ entries, today }: { entries: CalendarEntry[]; today: string }) {
   return (
     <GroupedList className="mt-1">
       {entries.map((entry) =>

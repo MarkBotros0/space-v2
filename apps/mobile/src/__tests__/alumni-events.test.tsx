@@ -132,6 +132,8 @@ describe("AlumniCalendar — Events", () => {
     const legend = screen.getByLabelText("Calendar legend");
     expect(within(legend).getByText("Upcoming")).toBeTruthy();
     const json = dump(screen.toJSON());
+    expect(json.indexOf("Nothing scheduled")).not.toBe(-1);
+    expect(json.indexOf("Today")).not.toBe(-1);
     expect(json.indexOf("Nothing scheduled")).toBeLessThan(json.indexOf("Today"));
   });
 
@@ -163,6 +165,27 @@ describe("AlumniCalendar — Events", () => {
     expect(await screen.findAllByText("Try again")).toBeTruthy();
   });
 
+  it("with no season: a skeleton while events load, not the empty state", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2025 }));
+    get.mockImplementation(() => new Promise(() => {}));
+    renderWithProviders(<AlumniCalendar />);
+    expect(await screen.findByLabelText("Loading")).toBeTruthy();
+    expect(screen.queryByText("No season to show")).toBeNull();
+  });
+
+  it("with no season: a failed events query shows Try again, and it refetches", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2025 }));
+    serve({ events: "fail" });
+    renderWithProviders(<AlumniCalendar />);
+    const retry = await screen.findByText("Try again");
+    expect(screen.queryByText("No season to show")).toBeNull();
+    serve({ events: [open] });
+    get.mockClear();
+    fireEvent.press(retry);
+    expect(await screen.findByText("Open day")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/events");
+  });
+
   it("still shows sessions when the events query fails", async () => {
     serve({ events: "fail", sessions: [session(5, "Mentor chat", iso(dayKeyIn(2), "18"), dayKeyIn(2))] });
     renderWithProviders(<AlumniCalendar />);
@@ -173,7 +196,7 @@ describe("AlumniCalendar — Events", () => {
 describe("EventDayRows", () => {
   it("renders one grouped list of rows", () => {
     renderWithProviders(
-      <EventDayRows entries={[{ kind: "event", at: 0, event: open }]} />,
+      <EventDayRows entries={[{ kind: "event", at: 0, event: open }]} today={deviceTodayKey()} />,
     );
     fireEvent.press(screen.getByText("Open day"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "3" } });
@@ -182,6 +205,7 @@ describe("EventDayRows", () => {
   it("lets an event and a session title take two lines beside a chip (360dp at font 1.3)", () => {
     renderWithProviders(
       <EventDayRows
+        today={deviceTodayKey()}
         entries={[
           { kind: "event", at: 0, event: reunion },
           { kind: "session", at: 1, session: session(1, "Kickoff", iso(dayKeyIn(3)), dayKeyIn(3)) },
