@@ -45,6 +45,7 @@ describe("NewSeasonScreen (/seasons/new)", () => {
   });
 
   it("limits Year to four digits so '20262099' can't be typed (sweep F4)", () => {
+    useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<NewSeasonScreen />);
     expect(screen.getByLabelText("Year").props.maxLength).toBe(4);
   });
