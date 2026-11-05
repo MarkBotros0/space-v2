@@ -76,7 +76,8 @@ const TONE_TINTS: Record<SessionTone, Tint> = {
   },
   upcoming: {
     box: "bg-brand-teal-100 dark:bg-brand-teal-950",
-    text: "text-brand-teal-800 dark:text-brand-teal-200",
+    // teal-900 (7.7:1 on teal-100); teal-800 sat at 4.6.
+    text: "text-brand-teal-900 dark:text-brand-teal-200",
     border: "border-l-brand-teal-800 dark:border-l-brand-teal-400",
     dot: "bg-brand-teal-800 dark:bg-brand-teal-400",
   },
@@ -102,10 +103,11 @@ function onCard(tint: Tint): Pick<Tint, "box" | "text"> {
   return { box: "bg-card", text: tint.text };
 }
 
+/** 12px text on a tint: medium weight, since regular strokes antialiased to ~3:1 on device. */
 export function Chip({ label, tint }: { label: string; tint: Pick<Tint, "box" | "text"> }) {
   return (
-    <View className={cn("self-start rounded-full px-2 py-0.5", tint.box)}>
-      <Text className={cn("text-xs", tint.text)}>{label}</Text>
+    <View testID={`chip-${label}`} className={cn("self-start rounded-full px-2 py-0.5", tint.box)}>
+      <Text className={cn("text-xs font-medium", tint.text)}>{label}</Text>
     </View>
   );
 }

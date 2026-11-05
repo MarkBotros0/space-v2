@@ -25,7 +25,7 @@ const CHIP_TONE: Record<SessionTone, { box: string; text: string; bar: string }>
   upcoming: {
     box: "bg-brand-teal-100 dark:bg-brand-teal-950",
     bar: "bg-brand-teal-600 dark:bg-brand-teal-400",
-    text: "text-brand-teal-800 dark:text-brand-teal-200",
+    text: "text-brand-teal-900 dark:text-brand-teal-200",
   },
 };
 

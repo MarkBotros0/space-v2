@@ -193,7 +193,8 @@ describe("DashboardScreen — ALUMNI", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Welcome back, Nour")).toBeTruthy();
-    expect(screen.getByText("JPCS Alumnus · Class of 2024")).toBeTruthy();
+    // The eyebrow takes the info tone, 4.5:1+ on the surface in both themes (teal-700 was 3.3:1).
+    expect(screen.getByText("JPCS Alumnus · Class of 2024").props.className).toContain("text-info");
     fireEvent.press(screen.getByText("View my history"));
     expect(mockPush).toHaveBeenCalledWith("/history");
     expect(await screen.findByText("Open day")).toBeTruthy();

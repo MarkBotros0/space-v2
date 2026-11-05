@@ -30,8 +30,9 @@ export function AlumniDashboard() {
       <View className="flex-col gap-4">
         <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
           <View className="flex-row items-center gap-2">
-            <NavIcon name="alumni" size={16} className="text-brand-teal-700 dark:text-brand-teal-300" />
-            <Text className="text-xs font-semibold uppercase tracking-wide text-brand-teal-700 dark:text-brand-teal-300">
+            {/* The info tone: 5.3:1 on the light surface (teal-700 was 3.3:1), 8.7:1 in dark. */}
+            <NavIcon name="alumni" size={16} className="text-info" />
+            <Text className="text-xs font-semibold uppercase tracking-wide text-info">
               {`JPCS Alumnus · Class of ${graduationYear ?? "—"}`}
             </Text>
           </View>

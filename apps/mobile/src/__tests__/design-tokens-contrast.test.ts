@@ -45,6 +45,8 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     ["bad", "bad-soft"],
     ["info", "info-soft"],
     ["neutral-strong", "neutral-soft"],
+    // Info-tone text on a card (the alumni welcome eyebrow).
+    ["info", "surface"],
     // Notification bell: links on the popover, an unread row's text on its tint.
     ["info", "popover"],
     ["info", "surface-raised"],
