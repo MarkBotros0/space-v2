@@ -5,8 +5,9 @@
  * rows navigate through onSelect (v2 routes by `target`, not v1's `link`);
  * hover states → active:; data comes in as props (wired in the app shell).
  * Redesign: the header and footer actions are small info-tone links on 44dp
- * targets, an unread row takes the unread-soft tint (lighter than the popover
- * in dark, not darker), and the count is white on error-600 (4.8:1).
+ * targets, an unread row takes the unread-soft tint (not darker than the
+ * popover in dark) and a dot at 3:1+ on it, and the count is white on
+ * error-600 (4.8:1).
  */
 import { formatDistanceToNow } from "date-fns";
 import { Bell, BellOff } from "lucide-react-native";
@@ -159,7 +160,10 @@ function NotificationRow({ item, first, onPress }: { item: NotificationBellItem;
       className={cn("flex-col gap-1 px-3 py-2.5", !item.readAt && "bg-unread-soft", !first && "border-t border-border")}
     >
       <View className="flex-row items-start gap-2">
-        {!item.readAt ? <View className="mt-1.5 size-1.5 shrink-0 rounded-full bg-info-500" /> : null}
+        {/* The dot is the row's one non-hue marker: 3:1+ on unread-soft (info-300 in dark). */}
+        {!item.readAt ? (
+          <View testID={`unread-dot-${item.id}`} className="mt-1.5 size-1.5 shrink-0 rounded-full bg-info-500 dark:bg-info-300" />
+        ) : null}
         <Text className="flex-1 text-sm font-medium leading-snug text-popover-foreground">{item.title}</Text>
       </View>
       {item.body ? <Text className="text-xs text-muted-foreground">{item.body}</Text> : null}

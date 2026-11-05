@@ -127,3 +127,13 @@ it("dark unread-soft is no darker than the popover it sits on", () => {
   const dark = tokens.dark as Theme;
   expect(luminance(rgbOf(dark["unread-soft"]))).toBeGreaterThanOrEqual(luminance(rgbOf(dark.popover)));
 });
+
+// The unread dot (notification bell) is the row's one non-hue marker: 3:1 on the unread
+// tint in both themes. Light info-500, dark info-300 (info-500 was 2.5:1 on dark unread-soft).
+it.each([
+  ["light", "info-500"],
+  ["dark", "info-300"],
+] as const)("the %s unread dot (%s) is at least 3:1 on unread-soft", (theme, dot) => {
+  const t = themes[theme]!;
+  expect(contrast(rgbOf(t[dot]), rgbOf(t["unread-soft"]))).toBeGreaterThanOrEqual(3);
+});

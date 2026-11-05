@@ -49,6 +49,14 @@ describe("NotificationBell look (super s29-05)", () => {
     expect(classes(screen.getByTestId("notification-row-1")).join(" ")).not.toMatch(/info-950/);
   });
 
+  it("the unread dot is info-500, and info-300 in dark (3:1+ on unread-soft, contrast-tested)", () => {
+    open();
+    expect(classes(screen.getByTestId("unread-dot-1", { includeHiddenElements: true }))).toEqual(
+      expect.arrayContaining(["bg-info-500", "dark:bg-info-300"]),
+    );
+    expect(screen.queryByTestId("unread-dot-2", { includeHiddenElements: true })).toBeNull();
+  });
+
   it("the count badge is white on error-600 (4.8:1), capped at 9+", () => {
     renderWithProviders(
       <NotificationBell items={items} unread={42} onMarkAllRead={jest.fn()} onViewAll={jest.fn()} onSelect={jest.fn()} />,
