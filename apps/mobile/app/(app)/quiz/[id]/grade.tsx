@@ -112,7 +112,7 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
               subtitle={r.notes ?? undefined}
               trailing={
                 <Text variant="body" tabular className="text-foreground">
-                  {r.score == null ? "—" : unbreakable(`${r.score} / ${sheet.maxScore}`)}
+                  {r.score == null ? "Not graded" : unbreakable(`${r.score} / ${sheet.maxScore}`)}
                 </Text>
               }
               trailingLabel={r.score == null ? "Not graded" : `${r.score} of ${sheet.maxScore}`}

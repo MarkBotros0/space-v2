@@ -88,7 +88,7 @@ describe("grading screen — PAPER", () => {
     renderStacked(<QuizGradeScreen />);
 
     expect(await screen.findByText("Test student")).toBeTruthy();
-    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.getByText("Not graded")).toBeTruthy();
     expect(screen.getByText("18 / 20")).toBeTruthy();
     expect(screen.getByText("Good.")).toBeTruthy();
     expect(screen.getByText("Week 1 · Max score: 20 · 1 / 2 graded")).toBeTruthy();
