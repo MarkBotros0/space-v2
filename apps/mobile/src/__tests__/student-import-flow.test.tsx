@@ -152,7 +152,7 @@ describe("ImportScreen — step 2, preview", () => {
 
   it("keeps the paste when the operator goes back, so a fix does not start over", async () => {
     await reachPreview();
-    fireEvent.press(screen.getByText("Back"));
+    fireEvent.press(screen.getByText("Back to your spreadsheet"));
 
     const field = await screen.findByLabelText("Paste your spreadsheet");
     expect(field.props.value).toBe("name\temail\nA\ta@jpc.test");

@@ -75,11 +75,12 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s38-08-import-preview-bottom
-# Back to the paste step, then the alumni mode and its year field.
+# Back to the paste step (the in-content button: "Back" alone is the pinned bar, which leaves
+# the screen and lands on Today), then the alumni mode and its year field.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Back'
+      TARGET: 'Back to your spreadsheet'
 - extendedWaitUntil:
     visible: 'Paste your spreadsheet'
     timeout: 40000

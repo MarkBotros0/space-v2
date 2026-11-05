@@ -152,8 +152,9 @@ export function ImportPreviewStep({
                       existingRows.length > 0 ? `, enrol ${existingRows.length}` : ""
                     }`}
             </Button>
+            {/* Not just "Back": the pinned back bar says that and leaves the screen. */}
             <Button variant="outline" onPress={() => flow.setStep("paste")}>
-              Back
+              Back to your spreadsheet
             </Button>
           </View>
         </CardContent>
