@@ -42,7 +42,7 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
       endDate: true,
       absenceBudgetMinutes: true,
       absenceWeightMinutes: true,
-      _count: { select: { sessions: true, enrollments: true } },
+      _count: { select: { sessions: true, enrollments: { where: { status: { not: "WITHDRAWN" } } } } },
       groups: {
         // Students may only see their own group.
         where: user.role === "STUDENT" ? { students: { some: { studentUserId: user.userId } } } : {},
