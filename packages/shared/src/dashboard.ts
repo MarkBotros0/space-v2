@@ -98,8 +98,9 @@ export type QuizRollup = z.infer<typeof quizRollupSchema>;
 /**
  * The leader's own groups checked in for the next session (read-only). `total`
  * is every ACTIVE student in their groups; `notCheckedIn` is those with no
- * mark yet. Strict, so a leaked email or another group's student fails at the
- * client boundary.
+ * mark yet. Strict, so an unexpected field (another group's student, a stray
+ * property) fails at the client boundary. `name` falls back to the student's
+ * email when their name is blank, so an email can appear there by design.
  */
 export const leaderSessionCheckInSchema = z
   .object({
