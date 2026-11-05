@@ -21,7 +21,7 @@ import { renderWithProviders } from "./helpers/render";
 
 import ReportsScreen from "../../app/(app)/(tabs)/reports";
 
-import { mockEndpoints, sessionFor } from "./helpers/reports-fixtures";
+import { mockEndpoints, sessionFor, summary } from "./helpers/reports-fixtures";
 
 const get = apiClient.get as jest.Mock;
 
@@ -53,6 +53,29 @@ describe("ReportsScreen for admin and super — frame and export", () => {
         }),
       ),
     );
+  });
+
+  it("agrees with the All seasons chip when the caller has one season and the server labels it by title (sweep F6)", async () => {
+    useSessionStore.setState(sessionFor("ADMIN"));
+    mockEndpoints();
+    const one = { id: 7, code: "gbv-2026", title: "GBV 2026" };
+    const base = get.getMockImplementation() as (url: string) => Promise<unknown>;
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/reports/engagement") && !url.includes("/students")
+        ? Promise.resolve({
+            data: {
+              data: {
+                ...summary,
+                scope: { ...summary.scope, seasonIds: [7], seasons: [one], label: "GBV 2026" },
+              },
+            },
+          })
+        : base(url),
+    );
+    renderWithProviders(<ReportsScreen />);
+
+    expect(await screen.findByText("Scoped to All seasons (GBV 2026).")).toBeTruthy();
+    expect(screen.queryByText("Scoped to GBV 2026.")).toBeNull();
   });
 
   it("keeps the mentor's inline export buttons", async () => {

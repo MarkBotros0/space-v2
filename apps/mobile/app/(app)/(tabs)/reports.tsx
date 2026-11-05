@@ -6,6 +6,7 @@ import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState, Text } from "../../../src/design/ui";
 import { EngagementCards } from "../../../src/screens/reports/engagement-cards";
 import { OrganisationSection } from "../../../src/screens/reports/organisation-section";
+import { scopeLine } from "../../../src/screens/reports/scope-line";
 import { SeasonPicker } from "../../../src/screens/reports/season-picker";
 import { useReportsScope } from "../../../src/screens/reports/use-reports-scope";
 import { MentorReports } from "../../../src/screens/mentor/mentor-reports";
@@ -33,7 +34,7 @@ function StaffReports() {
   return (
     <Screen
       title="Reports"
-      subtitle={summary.data ? `Scoped to ${summary.data.scope.label}.` : undefined}
+      subtitle={summary.data ? scopeLine(seasonId, summary.data.scope) : undefined}
       trailing={
         summary.data ? (
           <ExportMenu
