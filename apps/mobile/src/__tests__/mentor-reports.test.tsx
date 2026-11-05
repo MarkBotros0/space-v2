@@ -55,10 +55,20 @@ describe("MentorReports", () => {
       const last = mockExportMenu.mock.calls.at(-1)?.[0] as {
         seasonId: number | null;
         canExportWorkbook: boolean;
+        sheet?: boolean;
       };
       expect(last.seasonId).toBe(season.id);
       expect(last.canExportWorkbook).toBe(false);
+      // The inline form, not the sheet.
+      expect(last.sheet).toBeFalsy();
     });
+  });
+
+  it("an at-risk row opens that student", async () => {
+    mockEndpoints();
+    renderWithProviders(<MentorReports />);
+    fireEvent.press(await screen.findByLabelText(/^Sara Student/));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
   });
 
   it("does not request the organisation roll-up", async () => {
