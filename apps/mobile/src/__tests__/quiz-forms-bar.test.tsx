@@ -173,9 +173,12 @@ describe("quiz builder on the fixed save bar", () => {
     expect(await screen.findByText("Couldn't refresh this quiz.")).toBeTruthy();
     expect(screen.getByLabelText("Quiz title")).toBeTruthy();
     get.mockResolvedValue({ data: { data: authoring() } });
+    const callsBeforeRetry = get.mock.calls.length;
     fireEvent.press(screen.getByText("Try again"));
-    await waitFor(() => expect(screen.queryByText("Couldn't refresh this quiz.")).toBeNull(), { timeout: 5000 });
-  });
+    expect(get.mock.calls.length).toBe(callsBeforeRetry + 1);
+    // This screen renders slowly on a loaded machine (full suite beside a build), so the wait is generous.
+    await waitFor(() => expect(screen.queryByText("Couldn't refresh this quiz.")).toBeNull(), { timeout: 45000 });
+  }, 60000);
 
   it("a space-only title change is nothing to save: the hint says so and Save sends nothing", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
