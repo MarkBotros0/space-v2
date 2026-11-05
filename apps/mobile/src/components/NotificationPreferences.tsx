@@ -1,12 +1,11 @@
 // apps/mobile/src/components/NotificationPreferences.tsx
-import { Bell, Smartphone } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 import type { NotificationPreferences as Prefs } from "@space/shared";
 
-import { cn } from "../design/lib/cn";
 import { Section } from "../design/settings/section";
 import { Button, Skeleton, Switch, Text } from "../design/ui";
+import { GroupedList, ListRow, ListSectionHeader } from "../design/ui/grouped-list";
 import { useNotificationPreferences, useUpdateNotificationPreferences } from "../hooks/use-notifications";
 import { enablePush, type PushStatus } from "../lib/push";
 import { useSessionStore } from "../store/session";
@@ -100,14 +99,8 @@ export function NotificationPreferences() {
 
   return (
     <>
-      <Section icon={Bell} title="Notifications" description="Changes save automatically.">
-        {/* Spec D4: the inbox row is always written; the switch governs the
-            outbound channels. Saying so is the difference between a setting
-            and a surprise. */}
-        <Text className="mb-3 text-xs text-muted-foreground">
-          Turning one off stops the emails and push for that kind of notification. They will still appear in your
-          inbox — that is your history.
-        </Text>
+      <View className="flex-col gap-2">
+        <ListSectionHeader>Notifications</ListSectionHeader>
         {isPending ? (
           <View accessible accessibilityLabel="Loading" className="flex-col gap-3">
             <Skeleton className="h-10" />
@@ -115,7 +108,7 @@ export function NotificationPreferences() {
             <Skeleton className="h-10" />
           </View>
         ) : isError || !data ? (
-          <View className="flex-col items-start gap-2">
+          <View className="flex-col items-start gap-2 rounded-group bg-surface p-4">
             <Text className="text-sm text-error-600 dark:text-error-400">
               Couldn't load your notification settings.
             </Text>
@@ -124,33 +117,34 @@ export function NotificationPreferences() {
             </Button>
           </View>
         ) : (
-          <View className="flex-col">
-            {ORDER.map((key, i) => (
-              <View
+          <GroupedList>
+            {ORDER.map((key) => (
+              <ListRow
                 key={key}
-                className={cn(
-                  "flex-row items-center justify-between gap-4 py-3",
-                  i > 0 && "border-t border-border",
-                  i === 0 && "pt-0",
-                  i === ORDER.length - 1 && "pb-0",
-                )}
-              >
-                <View className="min-w-0 flex-1">
-                  <Text className="text-sm font-medium text-foreground">{LABELS[key].label}</Text>
-                  <Text className="text-xs text-muted-foreground">{LABELS[key].help}</Text>
-                </View>
-                <Switch
-                  accessibilityLabel={LABELS[key].label}
-                  checked={data[key]}
-                  onCheckedChange={(value) => toggle(key, value)}
-                  className={update.isPending ? "opacity-70" : undefined}
-                />
-              </View>
+                title={LABELS[key].label}
+                subtitle={LABELS[key].help}
+                subtitleLines={3}
+                trailing={
+                  <Switch
+                    accessibilityLabel={LABELS[key].label}
+                    checked={data[key]}
+                    onCheckedChange={(value) => toggle(key, value)}
+                    className={update.isPending ? "opacity-70" : undefined}
+                  />
+                }
+              />
             ))}
-          </View>
+          </GroupedList>
         )}
-      </Section>
-      <Section icon={Smartphone} title="Push notifications" description="Alerts on this device.">
+        {/* Spec D4: the inbox row is always written; the switch governs the
+            outbound channels. Saying so is the difference between a setting
+            and a surprise. */}
+        <Text variant="caption" className="px-4 text-muted-foreground">
+          Changes save automatically. Turning one off stops the emails and push for that kind of notification. They will
+          still appear in your inbox — that is your history.
+        </Text>
+      </View>
+      <Section title="Push notifications" description="Alerts on this device.">
         <View className="flex-col items-start gap-3">
           <Text className="text-sm text-muted-foreground">
             {PUSH_COPY[pushStatus ?? (pushToken ? "registered" : "idle")]}

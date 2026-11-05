@@ -120,6 +120,6 @@ describe("NotificationPreferences", () => {
     // surprise.
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByText(/still appear in your inbox/i)).toBeTruthy();
-    expect(screen.getByText("Changes save automatically.")).toBeTruthy();
+    expect(screen.getByText(/Changes save automatically/)).toBeTruthy();
   });
 });

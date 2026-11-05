@@ -89,11 +89,11 @@ describe("SettingsScreen", () => {
     useSessionStore.setState(sessionFor(role, gradYear));
     renderWithProviders(<SettingsScreen />);
 
-    expect(screen.getByText("Profile")).toBeTruthy();
-    // The section heading. The submit button is titled "Update password" so
-    // this exact-text query has exactly one match.
-    expect(screen.getByText("Change password")).toBeTruthy();
-    expect(screen.getByText("Security")).toBeTruthy();
+    // Section headers are the grouped list's uppercase headers.
+    expect(screen.getByText("PROFILE")).toBeTruthy();
+    expect(screen.getByText("CHANGE PASSWORD")).toBeTruthy();
+    expect(screen.getByText("NOTIFICATIONS")).toBeTruthy();
+    expect(screen.getByText("SECURITY")).toBeTruthy();
     expect(screen.getByLabelText("Name")).toBeTruthy();
     // Email is shown, not editable — and the caption is TRUE in v2, unlike
     // v1's "change via the admin console" lie for students (spec 18 R20/D8).
@@ -106,7 +106,7 @@ describe("SettingsScreen", () => {
     s.user.hasPassword = false;
     useSessionStore.setState(s);
     renderWithProviders(<SettingsScreen />);
-    expect(screen.queryByText("Change password")).toBeNull();
+    expect(screen.queryByText("CHANGE PASSWORD")).toBeNull();
   });
 
   it("saves the profile name and reconciles the store from the response", async () => {

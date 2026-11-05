@@ -1,16 +1,14 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Lock, ShieldCheck } from "lucide-react-native";
 import { View } from "react-native";
 import { passwordSchema } from "@space/shared";
 
 import { NotificationPreferences } from "../../src/components/NotificationPreferences";
-import { NAV_ICONS } from "../../src/design/icons/nav-icon";
-import { PageHeader } from "../../src/design/layout/page-header";
-import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { Screen } from "../../src/design/layout/screen";
 import { Section } from "../../src/design/settings/section";
 import { Button, FormField, Input, PasswordInput, toast } from "../../src/design/ui";
 import { ConfirmDialog } from "../../src/design/ui/confirm-dialog";
+import { GroupedList, ListRow } from "../../src/design/ui/grouped-list";
 import { useChangePassword, useLogoutAll, useUpdateProfile } from "../../src/hooks/use-me";
 import { useLogout } from "../../src/hooks/use-session";
 import { apiErrorCode, apiErrorMessage } from "../../src/lib/api-error";
@@ -138,11 +136,9 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ShellFrame>
-      <PageHeader title="Settings" description="Profile, password, and notification preferences." />
-      <View className="flex-col gap-4">
+    <Screen title="Settings" subtitle="Profile, password, and notification preferences.">
+      <View className="flex-col gap-6">
         <Section
-          icon={NAV_ICONS.profile}
           title="Profile"
           description="Your name as it appears across JPC Space."
         >
@@ -165,7 +161,7 @@ export default function SettingsScreen() {
         </Section>
 
         {user.hasPassword ? (
-          <Section icon={Lock} title="Change password" description="Use at least 8 characters.">
+          <Section title="Change password" description="Use at least 8 characters.">
             <View className="flex-col gap-4">
               <FormField
                 label="Current password"
@@ -209,25 +205,18 @@ export default function SettingsScreen() {
 
         <NotificationPreferences />
 
-        <Section
-          icon={ShieldCheck}
-          title="Security"
-          description="Signs this account out on every device — use it if a phone is lost."
-        >
-          <View className="flex-row justify-end gap-2">
-            <Button variant="outline" onPress={() => void signOut()}>
-              Sign out
-            </Button>
-            <Button
-              variant="outline"
-              textClassName="text-error-700 dark:text-error-200"
-              disabled={logoutAll.isPending}
-              onPress={() => setConfirmingLogoutAll(true)}
-            >
-              Sign out everywhere
-            </Button>
-          </View>
-        </Section>
+        <GroupedList header="Security">
+            <ListRow title="Sign out" onPress={() => void signOut()} />
+            <ListRow
+              title="Sign out everywhere"
+              subtitle="Signs this account out on every device — use it if a phone is lost."
+              subtitleLines={3}
+              destructive
+              onPress={() => {
+                if (!logoutAll.isPending) setConfirmingLogoutAll(true);
+              }}
+            />
+          </GroupedList>
         <ConfirmDialog
           open={confirmingLogoutAll}
           onOpenChange={setConfirmingLogoutAll}
@@ -239,6 +228,6 @@ export default function SettingsScreen() {
           onConfirm={signOutEverywhere}
         />
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }
