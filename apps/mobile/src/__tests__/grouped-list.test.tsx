@@ -1,5 +1,5 @@
 import { Text } from "react-native";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, within } from "@testing-library/react-native";
 
 import { GroupedList, ListRow, ListSectionHeader } from "../design/ui/grouped-list";
 import { StatusChip } from "../design/ui/status-chip";
@@ -108,5 +108,22 @@ describe("ListRow line caps", () => {
     render(<ListRow title="Free" subtitle="Free sub" titleLines={null} subtitleLines={null} />);
     expect(screen.getByText("Free").props.numberOfLines).toBeUndefined();
     expect(screen.getByText("Free sub").props.numberOfLines).toBeUndefined();
+  });
+});
+
+describe("ListRow trailingPlacement", () => {
+  // The text column is the nearest View around the subtitle.
+  function columnOf(text: string) {
+    let n = screen.getByText(text).parent;
+    while (n && (n.type as unknown) !== "View") n = n.parent;
+    return n!;
+  }
+  it("below puts the trailing node inside the text column, after the subtitle", () => {
+    render(<ListRow title="Body" subtitle="meta" trailing={<Text>Chip</Text>} trailingPlacement="below" />);
+    expect(within(columnOf("meta")).queryByText("Chip")).not.toBeNull();
+  });
+  it("side keeps it out of the text column", () => {
+    render(<ListRow title="Body" subtitle="meta" trailing={<Text>Chip</Text>} />);
+    expect(within(columnOf("meta")).queryByText("Chip")).toBeNull();
   });
 });

@@ -72,6 +72,12 @@ type ListRowProps = {
   trailing?: ReactNode;
   /** What `trailing` says, for screen readers. Defaults to its `label` prop (StatusChip). */
   trailingLabel?: string;
+  /**
+   * Where `trailing` sits. "side" (default) is a column right of the text; "below"
+   * puts it under the subtitle so a chip never takes width from long metadata
+   * (the Follow up chip on a note row, at font 1.3).
+   */
+  trailingPlacement?: "side" | "below";
   chevron?: boolean;
   /** Draws the title in the error tone, for an action that ends something (Sign out). */
   destructive?: boolean;
@@ -96,7 +102,7 @@ function spokenTrailing(trailing: ReactNode, trailingLabel: string | undefined):
 }
 
 function ListRow({
-  title, subtitle, leading, trailing, trailingLabel, chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
+  title, subtitle, leading, trailing, trailingLabel, trailingPlacement = "side", chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
 }: ListRowProps) {
   const reduced = useReducedMotion();
   const press = usePressScale(0.985);
@@ -112,8 +118,9 @@ function ListRow({
             {subtitle}
           </Text>
         ) : null}
+        {trailing && trailingPlacement === "below" ? <View className="mt-1.5 self-start">{trailing}</View> : null}
       </View>
-      {trailing ? <View className="shrink-0">{trailing}</View> : null}
+      {trailing && trailingPlacement === "side" ? <View className="shrink-0">{trailing}</View> : null}
       {chevron ? <ChevronRight testID="list-row-chevron" size={16} className="text-muted-foreground" /> : null}
     </View>
   );
