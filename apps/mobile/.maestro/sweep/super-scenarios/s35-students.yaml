@@ -92,9 +92,7 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s35-12-student-tab-submissions
 # The sections are wrapping chips: Notes is on screen, no swiping.
-- tapOn:
-    text: 'Notes'
-    above: 'University'
+- tapOn: 'Notes'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-13-student-tab-notes
