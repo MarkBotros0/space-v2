@@ -11,7 +11,7 @@ import { EditSeason } from "../../src/components/season/EditSeason";
 import { StudentSeason } from "../../src/components/season/StudentSeason";
 import { formatDate } from "../../src/lib/format";
 import { joinMeta } from "../../src/lib/join-meta";
-import { EmptyState, GroupedList, ListRow, StatusChip, statusChip } from "../../src/design/ui";
+import { EmptyState, GroupedList, ListRow, StatusChip, statusChip, Text } from "../../src/design/ui";
 import { useSessionStore } from "../../src/store/session";
 
 /**
@@ -53,8 +53,12 @@ function StaffSeason() {
             ])}
             trailing={<StatusChip {...statusChip("season", s.status)} />}
           />
-          {s.description ? <ListRow title={s.description} /> : null}
         </GroupedList>
+        {s.description ? (
+          <Text variant="body" className="px-4 text-foreground">
+            {s.description}
+          </Text>
+        ) : null}
         <GroupedList header="Groups">
           {s.groups.length === 0 ? (
             <ListRow title="No groups yet." />

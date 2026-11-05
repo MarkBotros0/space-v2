@@ -170,6 +170,38 @@ describe("SeasonScreen (workspace)", () => {
   });
 });
 
+describe("SeasonScreen (staff, My Season)", () => {
+  it("wraps a long description in full instead of truncating it to one line", async () => {
+    useSessionStore.setState(superSession);
+    const long = "A long description of the season. ".repeat(12).trim();
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/seasons")
+        return Promise.resolve({
+          data: { data: { seasons: [seasonRow(7, 2026, "ACTIVE", "Spring 2026")] } },
+        });
+      if (url === "/api/v1/seasons/7")
+        return Promise.resolve({
+          data: {
+            data: {
+              ...seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
+              description: long,
+              sessionCount: 2,
+              studentCount: 4,
+              absenceBudgetMinutes: 240,
+              absenceWeightMinutes: 90,
+              canAdminister: true,
+              groups: [],
+            },
+          },
+        });
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+    renderWithProviders(<SeasonScreen />);
+    const text = await screen.findByText(long);
+    expect(text.props.numberOfLines).toBeUndefined();
+  });
+});
+
 describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => {
   beforeEach(() => {
     useSessionStore.setState(superSession);
