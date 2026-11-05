@@ -27,8 +27,15 @@ appId: com.jpc.space
 - openLink: spacev2://design-catalogue
 - waitForAnimationToEnd:
     timeout: 5000
-- runFlow:
-    file: ../_catalogue-section.yaml
-    env:
-      SECTION: leader-today
+# Own scroll, faster than _catalogue-section: this section is near the catalogue's end, too far
+# for the slow scroll on the small phone at font 1.3.
+- scrollUntilVisible:
+    element:
+      id: catalogue-leader-today-title
+    direction: DOWN
+    centerElement: true
+    speed: 100
+    timeout: 180000
+- waitForAnimationToEnd:
+    timeout: 3000
 - takeScreenshot: s10-03-leader-today-catalogue
