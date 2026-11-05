@@ -39,6 +39,8 @@ export function initSentry(
     sendDefaultPii: false,
     // Errors only; no performance tracing quota spent.
     tracesSampleRate: 0,
+    // Its span names the touched element from a row's label: a student's name, a note.
+    enableUserInteractionTracing: false,
     beforeSend: scrubEvent,
     beforeBreadcrumb: scrubBreadcrumb,
   });
