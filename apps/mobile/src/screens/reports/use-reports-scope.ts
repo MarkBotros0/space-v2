@@ -39,8 +39,11 @@ export function useReportsScope(enabled: boolean) {
     permitted,
     summary,
     atRiskRows,
-    /** Pull-to-refresh spinner: the summary or the opened at-risk rows are refetching. */
-    refreshing: summary.isRefetching || more.isRefetching,
+    /**
+     * Pull-to-refresh spinner: the summary or the opened at-risk rows are refetching.
+     * Not while Show more loads a later page, which isRefetching alone would count.
+     */
+    refreshing: summary.isRefetching || (more.isRefetching && !more.isFetchingNextPage),
     showMore: () => {
       setShowAllAtRisk(true);
       // A failed first page leaves hasNextPage false: ask for it again.
