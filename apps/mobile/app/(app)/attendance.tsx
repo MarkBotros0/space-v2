@@ -12,11 +12,20 @@ import {
   StatTile,
   statusChip,
   StatusChip,
+  type ChipSpec,
   Text,
 } from "../../src/design/ui";
 import { useMyAttendance } from "../../src/hooks/use-self-service";
 import { formatWallTime, formatWeekdayDayYear } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
+
+/** The old ring's thresholds (70 warn, 100 error), as a word so it is never colour alone. */
+function budgetWarning(pct: number | undefined): ChipSpec | null {
+  if (pct === undefined) return null;
+  if (pct >= 100) return { tone: "bad", label: "Over budget" };
+  if (pct >= 70) return { tone: "warn", label: "Near limit" };
+  return null;
+}
 
 /** One past session. Cost and lateness are the server's (R95, C4) — nothing is computed here. */
 function SessionRow({ row }: { row: MyAttendanceSession }) {
@@ -69,6 +78,7 @@ export default function AttendanceScreen() {
   } else {
     const { budget, season, sessions } = data;
     const used = budget?.minutesUsed ?? 0;
+    const warning = budgetWarning(budget?.budgetPct);
     const allowed = budget?.budgetMinutes ?? season.absenceBudgetMinutes;
     body = (
       <View className="flex-col gap-5">
@@ -77,6 +87,7 @@ export default function AttendanceScreen() {
             <StatTile value={budget?.budgetPct ?? 0} suffix="%" label="Budget used" />
             <StatTile value={`${used}/${allowed}`} label="Minutes used" />
           </View>
+          {warning ? <StatusChip {...warning} /> : null}
           <Text variant="caption" className="text-muted-foreground">
             {`Absent = ${season.absenceWeightMinutes} min · Late = actual minutes late`}
           </Text>

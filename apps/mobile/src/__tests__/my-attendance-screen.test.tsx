@@ -74,6 +74,46 @@ describe("AttendanceScreen", () => {
     expect(await screen.findByLabelText("Present")).toBeTruthy();
   });
 
+  it.each([
+    [69, null],
+    [70, "Near limit"],
+    [99, "Near limit"],
+    [100, "Over budget"],
+  ])("warns in words at %i%% of the budget", async (budgetPct, word) => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
+    get.mockResolvedValue({
+      data: { data: { ...payload, budget: { ...payload.budget, budgetPct } } },
+    });
+
+    renderWithProviders(<AttendanceScreen />);
+
+    await screen.findByLabelText(`Budget used: ${budgetPct}%`);
+    for (const w of ["Near limit", "Over budget"]) {
+      if (w === word) expect(screen.getByLabelText(w)).toBeTruthy();
+      else expect(screen.queryByLabelText(w)).toBeNull();
+    }
+  });
+
+  it("shows no budget warning when the budget is missing", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
+    get.mockResolvedValue({ data: { data: { ...payload, budget: null } } });
+
+    renderWithProviders(<AttendanceScreen />);
+
+    await screen.findByLabelText("Budget used: 0%");
+    expect(screen.queryByLabelText("Near limit")).toBeNull();
+    expect(screen.queryByLabelText("Over budget")).toBeNull();
+  });
+
+  it("puts late minutes and the budget cost together in the row text", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
+    get.mockResolvedValue({ data: { data: payload } });
+
+    renderWithProviders(<AttendanceScreen />);
+
+    expect(await screen.findByText(/12 min late · −12 min from budget/)).toBeTruthy();
+  });
+
   it("shows the empty state when no session has happened yet", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
     get.mockResolvedValue({ data: { data: { ...payload, sessions: [] } } });
