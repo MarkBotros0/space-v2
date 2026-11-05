@@ -52,4 +52,21 @@ describe("Seasons row (M1)", () => {
     expect(screen.getByText(/Season/, { exact: true }).props.numberOfLines).toBe(2);
     expect(screen.getByText(new RegExp(LONG.trim().slice(0, 20))).props.numberOfLines).toBeUndefined();
   });
+
+  it("keeps the group name in one piece so it cannot orphan its last word", () => {
+    const { GroupedSeasonsTab } = jest.requireActual("../design/students/grouped-tabs");
+    render(
+      <GroupedSeasonsTab
+        enrollments={[
+          {
+            enrollmentId: 1, seasonTitle: "Season", startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-06-01T00:00:00.000Z",
+            groupName: "Group A", dropReason: null, status: "ACTIVE", attendancePct: null,
+          } as never,
+        ]}
+      />,
+    );
+    // getByText collapses whitespace, so read the raw string.
+    const meta = screen.getByText(/Jan 1, 2026/);
+    expect(meta.props.children).toContain("Group\u00a0A");
+  });
 });

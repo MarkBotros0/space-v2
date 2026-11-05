@@ -10,7 +10,7 @@ import { View } from "react-native";
 import { flattenNotePages, useStudentNotes } from "../../hooks/use-notes";
 import { useStudentAttendanceHistory, useStudentSubmissions } from "../../hooks/use-students";
 import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
-import { formatDate, formatDateTime, formatDayKey } from "../../lib/format";
+import { formatDate, formatDateTime, formatDayKey, unbreakable } from "../../lib/format";
 import { VISIBILITY_LABEL } from "../../lib/note-visibility";
 import { NAV_ICONS } from "../icons/nav-icon";
 import { InlineError } from "../layout/route-states";
@@ -69,7 +69,7 @@ export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHist
           index={i}
           title={e.seasonTitle}
           titleLines={2}
-          subtitle={caption(`${formatDate(e.startDate)} – ${formatDate(e.endDate)}`, e.groupName, e.dropReason)}
+          subtitle={caption(`${formatDate(e.startDate)} – ${formatDate(e.endDate)}`, e.groupName && unbreakable(e.groupName), e.dropReason)}
           subtitleLines={null}
           trailing={
             <View className="items-end gap-1">
