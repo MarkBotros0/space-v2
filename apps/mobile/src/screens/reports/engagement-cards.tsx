@@ -61,6 +61,7 @@ function AtRiskGroupedRow({ row }: { row: EngagementReportRow }) {
         row.seasonTitle,
         `${row.attendancePct}% attendance · ${row.submissionPct}% submissions`,
       ])}
+      titleLines={2}
       subtitleLines={3}
       chevron
       onPress={() =>

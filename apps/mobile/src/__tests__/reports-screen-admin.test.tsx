@@ -71,7 +71,7 @@ describe("ReportsScreen for admin — at-risk rows and engagement tiles", () => 
     renderWithProviders(<ReportsScreen />);
 
     expect(await screen.findByText("Students at risk (1 of 34)")).toBeTruthy();
-    expect(screen.getByText("Sara Student")).toBeTruthy();
+    expect(screen.getByText("Sara Student").props.numberOfLines).toBe(2);
     expect(screen.getByText("Spring 2099 · 50% attendance · 30% submissions")).toBeTruthy();
     expect(screen.getByTestId("list-row-chevron", { includeHiddenElements: true })).toBeTruthy();
     fireEvent.press(screen.getByLabelText(/^Sara Student/));
