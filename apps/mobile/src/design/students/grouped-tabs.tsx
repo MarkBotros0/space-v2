@@ -1,8 +1,6 @@
 /**
- * The leader's student-page tab bodies as grouped lists. They read the same
- * hooks as the legacy tabs (student-activity-tabs, student-profile-tabs,
- * student-notes-tab), which mentors and students still use, and keep their
- * empty-state copy.
+ * The student-page tab bodies as grouped lists, for the leader's and mentor's
+ * page (StudentDetailGrouped) and the admin's (AdminStudentDetail).
  */
 import { dateOnlyFromIso, type EnrollmentHistoryItem, type NoteSummary } from "@space/shared";
 import { useRouter } from "expo-router";
@@ -19,7 +17,10 @@ import { EmptyState } from "../ui/empty-state";
 import { GroupedList, ListRow } from "../ui/grouped-list";
 import { StatusChip, statusChip } from "../ui/status-chip";
 import { Text } from "../ui/text";
-import { Loading } from "./student-activity-tabs";
+
+function Loading() {
+  return <Text className="py-4 text-center text-sm text-muted-foreground">Loading…</Text>;
+}
 
 /** Caption parts joined with a separator, skipping the empty ones: no dangling dot. */
 const caption = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ");

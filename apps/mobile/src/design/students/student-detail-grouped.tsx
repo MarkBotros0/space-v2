@@ -1,10 +1,11 @@
 /**
- * The leader's student page body (v1 leader/students/[id], B3-15) in the
- * redesign's grouped lists. A leader's payload carries no phone, date of
- * birth, spiritual background or internal notes (spec 06 D3/C8), so those
- * fields are absent rather than "—"; each tab's data is fetched the first
- * time the tab opens (spec 06 §9). The tab row scrolls sideways (five tabs
- * overflow 360dp). Mentors and students keep the legacy StudentDetail.
+ * The student page body for a leader and a mentor (v1 leader/ and
+ * mentor/students/[id]) in the redesign's grouped lists. Their payload carries
+ * no phone, date of birth, spiritual background or internal notes (spec 06
+ * D3/C8), so those fields are absent rather than "—"; each tab's data is
+ * fetched the first time the tab opens (spec 06 §9). The tab row scrolls
+ * sideways (five tabs overflow 360dp). `staffTabs={false}` is a student reading
+ * their own record: Profile and Seasons only, as the staff endpoints refuse them.
  */
 import { useState, type ReactNode } from "react";
 import { Linking, ScrollView, View } from "react-native";
@@ -58,9 +59,12 @@ function EngagementTiles({ studentId }: { studentId: number }) {
 export function StudentDetailGrouped({
   student,
   canWriteNote,
+  staffTabs = true,
 }: {
   student: StudentDetailData;
   canWriteNote: boolean;
+  /** False for a student viewing their own page: no engagement, attendance, submissions or notes. */
+  staffTabs?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("profile");
   // A tab's queries mount the first time it opens and stay mounted (cache kept).
@@ -103,16 +107,16 @@ export function StudentDetailGrouped({
         ) : null}
       </View>
 
-      <EngagementTiles studentId={student.id} />
+      {staffTabs ? <EngagementTiles studentId={student.id} /> : null}
 
       <Tabs value={tab} onValueChange={open}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="seasons">Seasons</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-            <TabsTrigger value="submissions">Submissions</TabsTrigger>
-            <TabsTrigger value="notes">Notes</TabsTrigger>
+            {staffTabs ? <TabsTrigger value="attendance">Attendance</TabsTrigger> : null}
+            {staffTabs ? <TabsTrigger value="submissions">Submissions</TabsTrigger> : null}
+            {staffTabs ? <TabsTrigger value="notes">Notes</TabsTrigger> : null}
           </TabsList>
         </ScrollView>
         <TabsContent value="profile">
