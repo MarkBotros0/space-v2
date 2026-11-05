@@ -84,6 +84,42 @@ it("shows a student the org-time header and their attendance, and no staff cards
   expect(get).not.toHaveBeenCalledWith("/api/v1/sessions/12/quizzes");
 });
 
+describe("student session detail on the kit (Task 10)", () => {
+  const student = () => useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 }));
+
+  it("puts Check in before the Details group", async () => {
+    student();
+    routeGets({ detail: { ...baseDetail, checkInOpen: true } });
+    renderStacked(<SessionDetailScreen />);
+    await screen.findByText("Check In");
+    const texts = screen.UNSAFE_getAllByType(require("react-native").Text).map((n) =>
+      [n.props.children].flat().join(""),
+    );
+    expect(texts.indexOf("Check In")).toBeGreaterThan(-1);
+    expect(texts.indexOf("Check In")).toBeLessThan(texts.indexOf("DETAILS"));
+  });
+
+  it("shows the attendance word as a chip in the Attendance row", async () => {
+    student();
+    routeGets({
+      detail: { ...baseDetail, myAttendance: { status: "LATE", notes: null, lateMinutes: 10, checkedInAt: null } },
+    });
+    renderStacked(<SessionDetailScreen />);
+    expect(await screen.findByText("Attendance")).toBeTruthy();
+    expect(screen.getByText("Late")).toBeTruthy();
+    expect(screen.getByText("Your attendance: Late (10 min)")).toBeTruthy();
+  });
+
+  it("shows no Location row without a location, and no Attendance row without attendance", async () => {
+    student();
+    routeGets({ detail: { ...baseDetail, location: null } });
+    renderStacked(<SessionDetailScreen />);
+    expect(await screen.findByText("Time")).toBeTruthy();
+    expect(screen.queryByText("Location")).toBeNull();
+    expect(screen.queryByText("Attendance")).toBeNull();
+  });
+});
+
 it("lets a season admin open check-in and shows the QR from the open response", async () => {
   useSessionStore.setState(admin());
   const state: RouteState = { detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: true } };
