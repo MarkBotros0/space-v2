@@ -4,7 +4,6 @@ import { View } from "react-native";
 import { haptic } from "../../design/motion";
 import { Button } from "../../design/ui/button";
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
-import { Text } from "../../design/ui/text";
 import { Textarea } from "../../design/ui/textarea";
 import { toast } from "../../design/ui/toaster";
 import { useReviewSubmission } from "../../hooks/use-submission";
