@@ -8,6 +8,7 @@ jest.mock("../lib/api-client", () => ({
 jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
 
 import { apiClient } from "../lib/api-client";
+import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
 import { NotificationPreferences } from "../components/NotificationPreferences";
@@ -34,6 +35,15 @@ beforeEach(() => {
 });
 
 describe("NotificationPreferences", () => {
+  it("push button labels are short enough to never ellipsize at 1.3x", async () => {
+    renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByRole("button", { name: "Enable push" })).toBeTruthy();
+    useSessionStore.setState({ pushToken: "ExponentPushToken[x]" });
+    renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByRole("button", { name: "Push enabled" })).toBeTruthy();
+    useSessionStore.setState({ pushToken: null });
+  });
+
   it("renders a switch for all nine types — including the one v1 could never set", async () => {
     renderWithProviders(<NotificationPreferences />);
 
