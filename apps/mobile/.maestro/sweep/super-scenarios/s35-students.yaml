@@ -71,15 +71,14 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-09-student-detail-bottom
-# Sections. The tab bar has a Seasons tab too: the student's Seasons chip is the one above the
-# Profile section's first field.
+# Sections. The section chips sit above the Profile fields, so scrolling up to "University"
+# stops with them off screen: scroll up to the Seasons chip itself. A pushed student page has
+# no tab bar, so the Seasons tab can't be confused with the chip.
 - scrollUntilVisible:
-    element: 'University'
+    element: 'Seasons'
     direction: UP
     timeout: 20000
-- tapOn:
-    text: 'Seasons'
-    above: 'University'
+- tapOn: 'Seasons'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-10-student-tab-seasons
