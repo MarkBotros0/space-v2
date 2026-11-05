@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
@@ -147,6 +147,7 @@ describe("/students/new", () => {
       ),
     );
     expect(screen.getByLabelText("Email").props.accessibilityHint).toBe("Must be a valid email.");
+    expect(within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
   });
 

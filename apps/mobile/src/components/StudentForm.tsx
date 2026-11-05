@@ -2,7 +2,7 @@ import { format, isValid, parse } from "date-fns";
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 
-import { FormActions, FormErrorBox } from "../design/forms/form-parts";
+import { FormScreen } from "../design/layout/form-screen";
 import { Combobox, DatePicker, Input, Text, Textarea, type ComboboxOption } from "../design/ui";
 import { FormField } from "../design/ui/form-field";
 import {
@@ -12,6 +12,10 @@ import {
 } from "../lib/student-form";
 
 export interface StudentFormProps {
+  title: string;
+  subtitle?: string;
+  /** Shown above the fields (a failed season lookup, say). */
+  notice?: ReactNode;
   initial: StudentFormValues;
   seasonOptions: readonly { id: number; title: string }[];
   seasonLabel: string;
@@ -21,7 +25,6 @@ export interface StudentFormProps {
   submitting: boolean;
   serverError: string | null;
   onSubmit: (values: StudentFormValues) => void;
-  onCancel?: () => void;
 }
 
 /** v1's `<fieldset className="rounded-lg border border-border bg-card p-4 md:p-6">` with its legend. */
@@ -46,6 +49,9 @@ const dayToDate = (day: string): Date | null => {
  * enrollment and the staff-only notes caption (students never see notes).
  */
 export function StudentForm({
+  title,
+  subtitle,
+  notice,
   initial,
   seasonOptions,
   seasonLabel,
@@ -55,7 +61,6 @@ export function StudentForm({
   submitting,
   serverError,
   onSubmit,
-  onCancel,
 }: StudentFormProps) {
   const [values, setValues] = useState<StudentFormValues>(initial);
   const [errors, setErrors] = useState<StudentFormErrors>({});
@@ -77,121 +82,125 @@ export function StudentForm({
   }));
 
   return (
-    <View className="flex-col gap-6">
-      <Section title="Personal">
-        <FormField label="Full name" required error={errors.name}>
-          <Input
-            accessibilityLabel="Full name"
-            value={values.name}
-            onChangeText={(v) => setField("name", v)}
-          />
-        </FormField>
-        <FormField label="Date of birth" error={errors.dateOfBirth}>
-          <DatePicker
-            accessibilityLabel="Date of birth"
-            value={dayToDate(values.dateOfBirth)}
-            onChange={(d) => setField("dateOfBirth", format(d, "yyyy-MM-dd"))}
-          />
-        </FormField>
-      </Section>
-
-      <Section title="Contact">
-        <FormField label="Email" required error={errors.email}>
-          <Input
-            accessibilityLabel="Email"
-            value={values.email}
-            onChangeText={(v) => setField("email", v)}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-        </FormField>
-        <FormField label="Phone" error={errors.phone}>
-          <Input
-            accessibilityLabel="Phone"
-            value={values.phone}
-            onChangeText={(v) => setField("phone", v)}
-            keyboardType="phone-pad"
-          />
-        </FormField>
-      </Section>
-
-      <Section title="Academic">
-        <FormField label="University" error={errors.university}>
-          <Input
-            accessibilityLabel="University"
-            value={values.university}
-            onChangeText={(v) => setField("university", v)}
-          />
-        </FormField>
-        <FormField label="Year / faculty" error={errors.year}>
-          <Input
-            accessibilityLabel="Year / faculty"
-            value={values.year}
-            onChangeText={(v) => setField("year", v)}
-            placeholder="e.g. 3rd · Engineering"
-          />
-        </FormField>
-      </Section>
-
-      <Section title="Spiritual background">
-        <FormField label="Notes" error={errors.spiritualBackground}>
-          <Textarea
-            accessibilityLabel="Spiritual background"
-            value={values.spiritualBackground}
-            onChangeText={(v) => setField("spiritualBackground", v)}
-            placeholder="Church affiliation, baptism status, faith journey…"
-          />
-        </FormField>
-      </Section>
-
-      <Section title="Community">
-        <FormField label="Gifts / interests" error={errors.gifts}>
-          <Textarea
-            accessibilityLabel="Gifts / interests"
-            value={values.gifts}
-            onChangeText={(v) => setField("gifts", v)}
-            placeholder="e.g. worship, hospitality, mentoring younger students"
-          />
-        </FormField>
-      </Section>
-
-      {showSeason || showNotes ? (
-        <Section title="Admin only">
-          {showSeason ? (
-            <FormField label={seasonLabel}>
-              <Combobox
-                accessibilityLabel={seasonLabel}
-                options={options}
-                value={values.seasonId === null ? null : String(values.seasonId)}
-                onChange={(v) => setField("seasonId", v === null ? null : Number(v))}
-                placeholder="None"
-                clearable
-              />
-            </FormField>
-          ) : null}
-          {showNotes ? (
-            <FormField
-              label="Internal notes"
-              description="Staff only. The student never sees these."
-              error={errors.notes}
-            >
-              <Textarea
-                accessibilityLabel="Internal notes"
-                value={values.notes}
-                onChangeText={(v) => setField("notes", v)}
-              />
-            </FormField>
-          ) : null}
+    <FormScreen
+      title={title}
+      subtitle={subtitle}
+      saveLabel={submitTitle}
+      saving={submitting}
+      saveHint={
+        serverError ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
+      }
+      onSave={submit}
+    >
+      <View className="flex-col gap-6">
+        {notice}
+        <Section title="Personal">
+          <FormField label="Full name" required error={errors.name}>
+            <Input
+              accessibilityLabel="Full name"
+              value={values.name}
+              onChangeText={(v) => setField("name", v)}
+            />
+          </FormField>
+          <FormField label="Date of birth" error={errors.dateOfBirth}>
+            <DatePicker
+              accessibilityLabel="Date of birth"
+              value={dayToDate(values.dateOfBirth)}
+              onChange={(d) => setField("dateOfBirth", format(d, "yyyy-MM-dd"))}
+            />
+          </FormField>
         </Section>
-      ) : null}
 
-      <FormErrorBox message={serverError} />
-      <FormActions
-        submitLabel={submitTitle}
-        pending={submitting}
-        onSubmit={submit}
-        onCancel={onCancel}
-      />
-    </View>
+        <Section title="Contact">
+          <FormField label="Email" required error={errors.email}>
+            <Input
+              accessibilityLabel="Email"
+              value={values.email}
+              onChangeText={(v) => setField("email", v)}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </FormField>
+          <FormField label="Phone" error={errors.phone}>
+            <Input
+              accessibilityLabel="Phone"
+              value={values.phone}
+              onChangeText={(v) => setField("phone", v)}
+              keyboardType="phone-pad"
+            />
+          </FormField>
+        </Section>
+
+        <Section title="Academic">
+          <FormField label="University" error={errors.university}>
+            <Input
+              accessibilityLabel="University"
+              value={values.university}
+              onChangeText={(v) => setField("university", v)}
+            />
+          </FormField>
+          <FormField label="Year / faculty" error={errors.year}>
+            <Input
+              accessibilityLabel="Year / faculty"
+              value={values.year}
+              onChangeText={(v) => setField("year", v)}
+              placeholder="e.g. 3rd · Engineering"
+            />
+          </FormField>
+        </Section>
+
+        <Section title="Spiritual background">
+          <FormField label="Notes" error={errors.spiritualBackground}>
+            <Textarea
+              accessibilityLabel="Spiritual background"
+              value={values.spiritualBackground}
+              onChangeText={(v) => setField("spiritualBackground", v)}
+              placeholder="Church affiliation, baptism status, faith journey…"
+            />
+          </FormField>
+        </Section>
+
+        <Section title="Community">
+          <FormField label="Gifts / interests" error={errors.gifts}>
+            <Textarea
+              accessibilityLabel="Gifts / interests"
+              value={values.gifts}
+              onChangeText={(v) => setField("gifts", v)}
+              placeholder="e.g. worship, hospitality, mentoring younger students"
+            />
+          </FormField>
+        </Section>
+
+        {showSeason || showNotes ? (
+          <Section title="Admin only">
+            {showSeason ? (
+              <FormField label={seasonLabel}>
+                <Combobox
+                  accessibilityLabel={seasonLabel}
+                  options={options}
+                  value={values.seasonId === null ? null : String(values.seasonId)}
+                  onChange={(v) => setField("seasonId", v === null ? null : Number(v))}
+                  placeholder="None"
+                  clearable
+                />
+              </FormField>
+            ) : null}
+            {showNotes ? (
+              <FormField
+                label="Internal notes"
+                description="Staff only. The student never sees these."
+                error={errors.notes}
+              >
+                <Textarea
+                  accessibilityLabel="Internal notes"
+                  value={values.notes}
+                  onChangeText={(v) => setField("notes", v)}
+                />
+              </FormField>
+            ) : null}
+          </Section>
+        ) : null}
+      </View>
+    </FormScreen>
   );
 }
