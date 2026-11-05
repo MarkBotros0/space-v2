@@ -3,7 +3,6 @@ import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 import { seasonWriteRequestSchema, type SeasonStatus } from "@space/shared";
 
-import { FormErrorBox } from "../../design/forms/form-parts";
 import { FormScreen } from "../../design/layout/form-screen";
 import {
   DatePicker,
@@ -130,6 +129,9 @@ export function SeasonForm({
       subtitle={subtitle}
       saveLabel={mode === "create" ? "Create season" : "Save changes"}
       saving={submitting}
+      saveHint={
+        message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
+      }
       onSave={submit}
     >
       <View className="flex-col gap-4">
@@ -250,7 +252,6 @@ export function SeasonForm({
           </View>
         </View>
 
-        <FormErrorBox message={message} />
         {children}
       </View>
     </FormScreen>

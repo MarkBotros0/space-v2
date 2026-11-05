@@ -93,7 +93,9 @@ describe("NewSeasonScreen (/seasons/new)", () => {
     pickToday("Start date");
     pickToday("End date");
     fireEvent.press(screen.getByText("Create season"));
-    expect(await screen.findByText("A season with that code already exists.")).toBeTruthy();
+    expect(
+      await within(screen.getByTestId("save-bar")).findByText("A season with that code already exists."),
+    ).toBeTruthy();
   });
 
   it("validates with the server's schema before posting", () => {
@@ -101,6 +103,9 @@ describe("NewSeasonScreen (/seasons/new)", () => {
     renderWithProviders(<NewSeasonScreen />);
     fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Create season"));
     expect(screen.getByLabelText("Program").props.accessibilityHint).toBeTruthy();
+    expect(
+      within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above."),
+    ).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
   });
 
