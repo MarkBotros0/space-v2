@@ -11,7 +11,6 @@ import {
 import { BandDonut } from "../../components/charts/BandDonut";
 import { RankedBars } from "../../components/charts/RankedBars";
 import { TrendLine } from "../../components/charts/TrendLine";
-import { cn } from "../../design/lib/cn";
 import {
   Card,
   CardContent,
@@ -24,34 +23,13 @@ import {
 } from "../../design/ui";
 import { formatDayKey } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
-import { bandColor } from "../../lib/report-colors";
 
-/** v1 reports-view.tsx at-risk row: name over season, the two percentages on the right. */
-function AtRiskRow({ row, last }: { row: EngagementReportRow; last: boolean }) {
-  const router = useRouter();
-
-  return (
-    <Pressable
-      accessibilityRole="link"
-      onPress={() =>
-        router.push({ pathname: "/student/[id]", params: { id: String(row.studentUserId) } })
-      }
-      className={cn("py-2 active:opacity-70", !last && "border-b border-border")}
-    >
-      {/* User.name is NOT NULL in the schema, so v1's name-or-email fallback
-          (reports-view.tsx:91) has no case to cover and is not ported. */}
-      <Text className="text-sm font-medium">{row.name}</Text>
-      <Text className="text-xs text-muted-foreground">{row.seasonTitle}</Text>
-      {/* Server-derived, every one of them (ruling C4). The client renders what
-          it is given and computes no threshold of its own. */}
-      <Text className="text-xs" style={{ color: bandColor(row.band) }}>
-        {`${row.attendancePct}% attendance · ${row.submissionPct}% submissions`}
-      </Text>
-    </Pressable>
-  );
-}
-
-/** The same row as a ListRow, season and both percentages in its meta line. */
+/**
+ * An at-risk student as a row: season and both percentages in its meta line.
+ * Server-derived, every one of them (ruling C4): the client renders what it is
+ * given and computes no threshold of its own. User.name is NOT NULL in the
+ * schema, so v1's name-or-email fallback has no case to cover.
+ */
 function AtRiskGroupedRow({ row }: { row: EngagementReportRow }) {
   const router = useRouter();
   return (
@@ -74,81 +52,71 @@ function AtRiskGroupedRow({ row }: { row: EngagementReportRow }) {
 /**
  * The engagement summary's cards, at-risk list first. `atRiskRows` is the
  * summary's own list, or every flagged student once "Show more" has loaded them.
+ * Every role with a Reports surface sees this layout.
  */
 export function EngagementCards({
   summary,
   atRiskRows,
   onShowMore,
-  grouped = false,
 }: {
   summary: EngagementSummary;
   atRiskRows: EngagementReportRow[];
   onShowMore: () => void;
-  /**
-   * At-risk as grouped rows and the engagement figures as
-   * tiles. Default false is the mentor's look (plan 05 owns that frame).
-   */
-  grouped?: boolean;
 }) {
-  if (grouped) {
-    return <GroupedCards summary={summary} atRiskRows={atRiskRows} onShowMore={onShowMore} />;
-  }
   return (
     <>
-      {/* The at-risk list comes FIRST on mobile. v1 puts it in the
-        fourth card of a two-by-two grid (reports-view.tsx:64-108);
-        stacked, that is four screens of scrolling before the only
-        actionable element on the page (spec §9). */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {`Students at risk (${atRiskRows.length} of ${summary.atRiskTotal})`}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {atRiskRows.length === 0 ? (
-            <Text className="text-sm italic text-muted-foreground">
-              Nobody flagged in this scope.
-            </Text>
-          ) : (
-            atRiskRows.map((row, i) => (
-              <AtRiskRow
-                key={`${row.studentUserId}-${row.seasonId}`}
-                row={row}
-                last={i === atRiskRows.length - 1}
-              />
-            ))
-          )}
-          {summary.atRiskTotal > atRiskRows.length ? (
-            <Pressable accessibilityRole="button" className="mt-2 self-start" onPress={onShowMore}>
-              <Text className="text-sm font-medium text-brand-teal-800 dark:text-brand-teal-300">
-                Show more
-              </Text>
-            </Pressable>
-          ) : null}
-        </CardContent>
-      </Card>
+      {/* The at-risk list comes FIRST on mobile. v1 puts it in the fourth card
+          of a two-by-two grid (reports-view.tsx:64-108); stacked, that is four
+          screens of scrolling before the only actionable element (spec §9). */}
+      <View className="flex-col gap-2">
+        <Text variant="headline" accessibilityRole="header">
+          {`Students at risk (${atRiskRows.length} of ${summary.atRiskTotal})`}
+        </Text>
+        {atRiskRows.length === 0 ? (
+          <Text variant="subhead" className="text-muted-foreground">
+            Nobody flagged in this scope.
+          </Text>
+        ) : (
+          <GroupedList>
+            {atRiskRows.map((row) => (
+              <AtRiskGroupedRow key={`${row.studentUserId}-${row.seasonId}`} row={row} />
+            ))}
+          </GroupedList>
+        )}
+      </View>
+      {summary.atRiskTotal > atRiskRows.length ? (
+        <Pressable
+          accessibilityRole="button"
+          className="min-h-[44px] justify-center self-start"
+          onPress={onShowMore}
+        >
+          <Text variant="subhead" className="font-medium text-brand-teal-800 dark:text-brand-teal-300">
+            Show more
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {/* Bucket counts count ENROLMENTS, so a student in two in-scope seasons is
+          counted twice and the total exceeds the headcount (R27, R32): both
+          numbers sit side by side as tiles. */}
+      <View testID="engagement-tiles" className="flex-row flex-wrap gap-3">
+        <StatTile label="Enrolments" value={summary.enrollmentCount} />
+        <StatTile label="Students" value={summary.cohortSize} />
+        {BAND_ORDER.map((band) => (
+          <StatTile
+            key={band}
+            label={BAND_LABEL[band]}
+            value={summary.bands.find((b) => b.band === band)?.count ?? 0}
+          />
+        ))}
+      </View>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Engagement</CardTitle>
-          {/* Bucket counts count ENROLMENTS, so a student in two in-scope
-            seasons is counted twice and the total exceeds the headcount
-            (R27, R32). Both numbers, side by side. */}
-          <Text className="text-xs text-muted-foreground">
-            {`${summary.enrollmentCount} enrolments · ${summary.cohortSize} students`}
-          </Text>
         </CardHeader>
-        <CardContent className="flex-col gap-1">
+        <CardContent>
           <BandDonut bands={summary.bands} />
-          {BAND_ORDER.map((band) => {
-            const entry = summary.bands.find((b) => b.band === band);
-            return (
-              <Text key={band} className="text-sm" style={{ color: bandColor(band) }}>
-                {`${BAND_LABEL[band]}: ${entry?.count ?? 0}`}
-              </Text>
-            );
-          })}
         </CardContent>
       </Card>
 
@@ -230,75 +198,6 @@ function TrendCompletionNotes({ summary }: { summary: EngagementSummary }) {
         ))}
       </CardContent>
     </Card>
-    </>
-  );
-}
-
-/** Admin and super: at-risk as a GroupedList, engagement figures as a wrapping row of tiles. */
-function GroupedCards({
-  summary,
-  atRiskRows,
-  onShowMore,
-}: {
-  summary: EngagementSummary;
-  atRiskRows: EngagementReportRow[];
-  onShowMore: () => void;
-}) {
-  return (
-    <>
-      <View className="flex-col gap-2">
-        <Text variant="headline" accessibilityRole="header">
-          {`Students at risk (${atRiskRows.length} of ${summary.atRiskTotal})`}
-        </Text>
-        {atRiskRows.length === 0 ? (
-          <Text variant="subhead" className="text-muted-foreground">
-            Nobody flagged in this scope.
-          </Text>
-        ) : (
-          <GroupedList>
-            {atRiskRows.map((row) => (
-              <AtRiskGroupedRow key={`${row.studentUserId}-${row.seasonId}`} row={row} />
-            ))}
-          </GroupedList>
-        )}
-      </View>
-      {summary.atRiskTotal > atRiskRows.length ? (
-        <Pressable
-          accessibilityRole="button"
-          className="min-h-[44px] justify-center self-start"
-          onPress={onShowMore}
-        >
-          <Text variant="subhead" className="font-medium text-brand-teal-800 dark:text-brand-teal-300">
-            Show more
-          </Text>
-        </Pressable>
-      ) : null}
-
-      {/* Bucket counts count ENROLMENTS, so a student in two in-scope seasons is
-          counted twice and the total exceeds the headcount (R27, R32): both
-          numbers sit side by side as tiles. */}
-      <View testID="engagement-tiles" className="flex-row flex-wrap gap-3">
-        <StatTile label="Enrolments" value={summary.enrollmentCount} />
-        <StatTile label="Students" value={summary.cohortSize} />
-        {BAND_ORDER.map((band) => (
-          <StatTile
-            key={band}
-            label={BAND_LABEL[band]}
-            value={summary.bands.find((b) => b.band === band)?.count ?? 0}
-          />
-        ))}
-      </View>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Engagement</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BandDonut bands={summary.bands} />
-        </CardContent>
-      </Card>
-
-      <TrendCompletionNotes summary={summary} />
     </>
   );
 }
