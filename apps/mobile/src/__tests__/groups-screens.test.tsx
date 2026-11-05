@@ -90,6 +90,17 @@ it("lists my groups as grouped rows: members, past seasons apart, group and stud
   expect(screen.queryByText("Calendar →")).toBeNull();
 });
 
+it("a group's subtitle counts the students listed under it, not the list's active-only count", async () => {
+  serveLeaderGroups();
+
+  renderWithProviders(<GroupsScreen />);
+
+  // The row says 8 (active enrolments); two are listed (active and completed members).
+  expect(await screen.findByText("Sara Student")).toBeTruthy();
+  expect(screen.getByText("2 students")).toBeTruthy();
+  expect(screen.queryByText("8 students")).toBeNull();
+});
+
 it("a leader who leads nothing gets v1's empty page and no request (R87)", () => {
   useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [] }));
 

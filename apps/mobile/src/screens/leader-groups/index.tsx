@@ -11,6 +11,7 @@ import { useGroupDetails, useMyGroups } from "../../hooks/use-groups";
 import { useSeasons } from "../../hooks/use-seasons";
 import { useSessionStore } from "../../store/session";
 
+const GroupIcon = NAV_ICONS.groups;
 const byName = (a: GroupListItem, b: GroupListItem) => a.name.localeCompare(b.name);
 const NONE_DESCRIPTION = "An admin will add you to a group when you're ready.";
 
@@ -24,11 +25,15 @@ function GroupBlock({
 }) {
   const router = useRouter();
   const students = detail.data?.students ?? null;
+  // The list's count is ACTIVE enrolments; the members listed are ACTIVE and COMPLETED.
+  // Say what is listed once it has loaded, so the subtitle never disagrees with the rows.
+  const count = students ? students.length : group.studentCount;
   return (
     <GroupedList header={group.seasonTitle}>
       <ListRow
         title={group.name}
-        subtitle={`${group.studentCount} ${group.studentCount === 1 ? "student" : "students"}`}
+        subtitle={`${count} ${count === 1 ? "student" : "students"}`}
+        leading={<GroupIcon size={20} className="text-primary" />}
         chevron
         onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(group.id) } })}
       />
@@ -42,6 +47,7 @@ function GroupBlock({
             key={st.id}
             title={st.name ?? st.email ?? "Student"}
             titleLines={2}
+            className="pl-12"
             chevron
             onPress={() => router.push({ pathname: "/student/[id]", params: { id: String(st.id) } })}
           />
