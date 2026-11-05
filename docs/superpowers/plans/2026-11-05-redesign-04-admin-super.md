@@ -268,3 +268,45 @@ All root at `FormScreen`. Series scope choice on session edit stays (a `Segmente
 - [ ] **Step 5: Final review, one fix wave, scoped re-review (SDD).**
 - [ ] **Step 6: Push per the brief** once `git merge-base --is-ancestor 55d5c52 origin/main` succeeds: rebase on `origin/main`, move `FormScreen` onto `Screen`'s `footer` (drop `SaveBar`'s `onLayout` and the spacer), merge `ListRow`'s `leading` with plan 01's trailing label, grep `router.replace`, re-run Step 4, then `gh auth switch --hostname github.com --user MarkBotros0 && git push origin HEAD:main`; retry on a sibling's push. Re-check every ~30 min until plan 01 lands.
 - [ ] **Step 7: Write `pending-04.md`, tell the owner the pending list and rulings; delete `.superpowers/sdd/<plan>/`.**
+
+## Owner decisions, 2026-11-05 (BRIEF-common "Owner updates")
+
+Tasks 16 to 18 run before Task 15 Step 3 (all 16 cells): the corner sweep's fixes and these tasks ship in the same APK. They supersede the ruling "no Past chip on JPC events" and the brief's "season-admin assignment UI is an open decision".
+
+### Task 16: "Hi, <name>" on admin and super Today; "Alumni only" on events
+
+**Files:**
+- Modify: `apps/mobile/src/screens/staff-today/admin-today.tsx`, `apps/mobile/src/screens/staff-today/super-today.tsx`, `apps/mobile/src/components/EventForm.tsx`, `apps/mobile/src/screens/events/event-row.tsx`
+- Test: the existing admin and super Today tests; `apps/mobile/src/__tests__/events-screen.test.tsx`
+
+- [ ] **Step 1: Failing tests.** Admin and super Today render `Hi, <first name>` (first name via `firstName` from `lib/format`) and fall back to `Today` when the name is blank; the list chip, event detail chip and form option read exactly `Alumni only`, and `Alumni & staff` appears nowhere under `apps/mobile/src` or `.maestro`.
+- [ ] **Step 2: Implement.** Both Today screens read `useSessionStore((s) => s.user?.name ?? null)` and pass `title={named ? \`Hi, ${firstName(name)}\` : "Today"}` and `compactTitle="Today"` with `home`, as `leader-today/index.tsx:137` does, on every branch including no-season. `VISIBILITY_LABELS.ALUMNI_ONLY` becomes `"Alumni only"`. Keep the code comment that the audience is alumni and staff (D-15.2). Fix the `event-row.tsx` doc comment.
+- [ ] **Step 3: Verify and commit.** `pnpm --filter @space/mobile test:unit` on the touched tests, typecheck, lint. One commit per concern.
+
+### Task 17: Events Past chip from a server-side `isPast`
+
+**Files:**
+- Modify: `packages/shared/src/event.ts`, `apps/backend/src/routes/events.ts`, `apps/backend/src/docs/components/video-events-forum.ts`, `apps/mobile/src/screens/events/event-row.tsx`, `apps/mobile/app/(app)/event/[id].tsx`, event fixtures in mobile tests
+- Test: a backend unit test beside `events-paging-unit.test.ts`; `apps/backend/src/__tests__/integration/events-detail-writes-routes.test.ts`; `apps/mobile/src/__tests__/events-screen.test.tsx`
+
+**Interfaces:**
+- Produces: `jpcEventListItemSchema.isPast: z.boolean()`, required, inherited by `jpcEventDetailSchema`.
+
+- [ ] **Step 1: Failing backend tests.** `isPast` is `(endDayKey ?? dayKey) < orgDayKey(now)`, the exact complement of the `upcoming` filter: an event starting yesterday with no end is past; one starting yesterday and ending today is not; a timed event earlier today is not (day granularity); the org-timezone midnight boundary is pinned with an instant that falls on different days in UTC and in `config.orgTimezone`.
+- [ ] **Step 2: Backend.** Compute it in `toListItem` in `routes/events.ts`, so list, paged list, detail, create and update all carry it. `toListItem` is passed directly to `.map`, so do not add a second parameter (it would receive the index). `openapi` component and the shared schema change in the same commit. No migration.
+- [ ] **Step 3: Mobile.** `eventChip` returns `{ tone: "neutral", label: "Past" }` first: a row keeps at most one chip and Past wins, the audience stays on the detail. Event detail shows Past beside the visibility chip in a `flex-row flex-wrap gap-2` row. Never compare dates on the device (D23/R75). Update fixtures.
+- [ ] **Step 4: Verify and commit.** Backend and mobile `test:unit`, typecheck, lint. Integration: only the touched events file, `--runInBand`, on staging (owner allows it, serially).
+
+### Task 18: Season-admin assignment: close the gaps in what exists
+
+The feature already exists: `routes/seasons/admins.ts` (4ce95ca2, SUPER only, audited, additive, refresh tokens revoked), `docs/paths/season-admins.ts`, `packages/shared/src/season-admins.ts`, `hooks/use-season-admins.ts`, and `components/season/SeasonAdmins.tsx` on the SUPER season overview. Do not rebuild it. Its gaps are coverage.
+
+**Files:**
+- Modify: `apps/mobile/src/components/season/SeasonAdmins.tsx` only as the tests require; `apps/backend/src/__tests__/season-admins-unit.test.ts`; `apps/mobile/.maestro/sweep/super-scenarios/s30-seasons.yaml`
+- Create: `apps/mobile/src/__tests__/season-admins.test.tsx`, `apps/backend/src/__tests__/integration/season-admins-routes.test.ts`
+
+- [ ] **Step 1: Backend unit gap.** Add the missing case: POST for a user whose role is not ADMIN answers 400 `not_an_admin` with no write, revoke or audit.
+- [ ] **Step 2: Integration test.** Non-SUPER gets 403 on all three routes; add, idempotent add and remove against a real row, and the assigned admin's `canAdminister`. Follow the setup and cleanup of the neighbouring integration tests, delete every row it creates. Run this file only, `--runInBand`, on staging.
+- [ ] **Step 3: Mobile tests.** SUPER season overview shows Admins and ADMIN's does not; the picker excludes current admins and deactivated users; add calls POST and toasts; remove goes through the confirm dialog; load error offers Try again.
+- [ ] **Step 4: Sweep flow.** `s30` shoots the Admins section and the opened picker without saving, using the seeded season.
+- [ ] **Step 5: Verify and commit.**
