@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
@@ -83,6 +83,17 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     expect(screen.getByText(/Mar 9, 2004/)).toBeTruthy();
     fireEvent.press(screen.getByText("Seasons"));
     expect(screen.getAllByText("Drop")).toHaveLength(2);
+  });
+
+  it("keeps Delete student out of the primary action group, in its own block at the bottom (sweep F8)", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(<StudentDetailScreen />);
+
+    await screen.findByText("Edit profile");
+    const primary = screen.getByTestId("student-actions");
+    expect(within(primary).getByText("Edit profile")).toBeTruthy();
+    expect(within(primary).queryByText("Delete student")).toBeNull();
+    expect(within(screen.getByTestId("student-danger-zone")).getByText("Delete student")).toBeTruthy();
   });
 
   it("gives an ADMIN of season 7 Edit and ONE Drop — no Graduate, no Delete", async () => {

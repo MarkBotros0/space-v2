@@ -121,7 +121,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
           {p.activeSeasonTitle ? <StatusChip tone="info" label={p.activeSeasonTitle} /> : null}
           {data.currentGroup ? <StatusChip tone="neutral" label={data.currentGroup.name} /> : null}
         </View>
-        <View className="flex-row flex-wrap gap-2">
+        <View testID="student-actions" className="flex-row flex-wrap gap-2">
           <Button variant="secondary" onPress={() => void Linking.openURL(`mailto:${data.email}`)}>
             Email
           </Button>
@@ -142,15 +142,6 @@ export function AdminStudentDetail({ id }: { id: number }) {
           {actions.canGraduate ? (
             <Button variant="secondary" onPress={() => setGraduateOpen(true)}>
               Graduate
-            </Button>
-          ) : null}
-          {actions.canDelete ? (
-            <Button
-              variant="destructive"
-              disabled={deleteStudent.isPending}
-              onPress={() => confirmDelete(data.id, data.name)}
-            >
-              Delete student
             </Button>
           ) : null}
         </View>
@@ -190,6 +181,19 @@ export function AdminStudentDetail({ id }: { id: number }) {
             <GroupedNotesTab studentId={data.id} canWriteNote onWrite={() => setNoteOpen(true)} />,
           )}
         </View>
+
+        {/* Destructive action: apart from the primary actions, at the bottom. */}
+        {actions.canDelete ? (
+          <View testID="student-danger-zone" className="mt-4 border-t border-border pt-4">
+            <Button
+              variant="destructive"
+              disabled={deleteStudent.isPending}
+              onPress={() => confirmDelete(data.id, data.name)}
+            >
+              Delete student
+            </Button>
+          </View>
+        ) : null}
       </View>
 
       <NoteSheet open={noteOpen} onClose={() => setNoteOpen(false)} studentUserId={data.id} />
