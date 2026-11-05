@@ -47,6 +47,13 @@ it("Switch toggles", () => {
   expect(onCheckedChange).toHaveBeenCalledWith(true);
 });
 
+it("Switch tracks carry a 3:1 outline (off) and a teal 700 fill (on)", () => {
+  const { rerender } = render(<Switch accessibilityLabel="Email me" checked={false} />);
+  expect(screen.getByRole("switch").props.className).toContain("border-control-border");
+  rerender(<Switch accessibilityLabel="Email me" checked />);
+  expect(screen.getByRole("switch").props.className).toContain("bg-brand-teal-700");
+});
+
 it("Select (v1 compound API) shows the placeholder, opens and reports a choice", () => {
   const onValueChange = jest.fn();
   render(

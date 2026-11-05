@@ -11,6 +11,7 @@ import { Screen } from "../../src/design/layout/screen";
 import { isSweepBuild } from "../../src/lib/app-config";
 import { LeaderSection } from "../../src/screens/design-catalogue/leader-section";
 import { ChipsSection } from "../../src/screens/design-catalogue/chips-section";
+import { SwitchSection } from "../../src/screens/design-catalogue/switch-section";
 import {
   ControlsSection,
   HeroStatsSections,
@@ -46,6 +47,7 @@ export default function DesignCatalogue() {
       <TypeSection />
       <ButtonsSection />
       <ChipsSection />
+      <SwitchSection />
       <ListSection />
       <HeroStatsSections />
       <ControlsSection />
