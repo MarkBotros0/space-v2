@@ -63,6 +63,8 @@ function SegmentedControl({
             <Text
               variant="subhead"
               numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
               maxFontSizeMultiplier={1.3}
               className={cn("font-medium", selected ? "text-foreground" : "text-muted-foreground")}
             >
