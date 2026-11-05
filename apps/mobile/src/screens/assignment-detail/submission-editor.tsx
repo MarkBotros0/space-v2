@@ -140,7 +140,8 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   }
   // A section of the page, so a card-sized skeleton, not the route's.
   if (query.isPending) return { body: <SkeletonCard />, footer: undefined };
-  if (query.isError) {
+  // A failed pull keeps what's on screen: the editor, and what is typed in it.
+  if (query.data === undefined) {
     return { body: <RouteError onRetry={() => void query.refetch()} />, footer: undefined };
   }
 

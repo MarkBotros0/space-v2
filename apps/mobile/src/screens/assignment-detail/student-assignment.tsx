@@ -9,6 +9,7 @@ import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { RichTextView, StatusChip, Text, dueChip, statusChip, type ChipSpec } from "../../design/ui";
 import { useStudentDashboard } from "../../hooks/use-dashboard";
+import { useSubmissionDetail } from "../../hooks/use-submission";
 import { deviceTodayKey } from "../../lib/calendar-grid";
 import { formatOrgDue } from "../../lib/format";
 import { storedTextToHtml } from "../../lib/stored-text";
@@ -61,13 +62,21 @@ function StudentAssignment({
   const forum = detail.type === "FORUM";
   const dash = useStudentDashboard(detail.seasonId);
   const { body, footer } = useSubmissionEditor(detail);
+  // The chip comes from the assignment and the feedback from the submission: a pull
+  // reads both, or the chip can say Returned over a body with no feedback in it.
+  const publicId = detail.mySubmission?.publicId ?? null;
+  const submission = useSubmissionDetail(publicId);
   const subtitle = [detail.seasonTitle, detail.sessionTitle].filter(Boolean).join(" · ");
   return (
     <Screen
       title={detail.title}
       subtitle={subtitle || undefined}
-      onRefresh={onRefresh}
-      refreshing={refreshing}
+      onRefresh={() => {
+        onRefresh();
+        // `enabled` gates only the automatic run.
+        if (publicId !== null) void submission.refetch();
+      }}
+      refreshing={refreshing || submission.isRefetching}
       footer={forum ? undefined : footer}
     >
       <View className="gap-4">
@@ -89,7 +98,8 @@ function StudentAssignment({
 
 /** The student's route body: loading and error states, then the detail. */
 export function StudentAssignmentView({ query }: { query: UseQueryResult<AssignmentDetail> }) {
-  if (query.isPending || query.isError) {
+  // A failed pull keeps the screen: swapping it out would drop what is being typed.
+  if (query.data === undefined) {
     return (
       <Screen title="Assignment">
         {query.isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void query.refetch()} />}

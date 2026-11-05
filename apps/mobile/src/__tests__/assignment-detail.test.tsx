@@ -1,7 +1,12 @@
-import { screen } from "@testing-library/react-native";
+import { act, fireEvent, screen } from "@testing-library/react-native";
+import { ScrollView } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn() },
+}));
+jest.mock("../design/ui/toaster", () => ({
+  toast: { success: jest.fn(), error: jest.fn() },
+  Toaster: () => null,
 }));
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41" }),
@@ -16,6 +21,7 @@ import { makeSession } from "./helpers/session";
 import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
 
 const get = apiClient.get as jest.Mock;
+const patch = apiClient.patch as jest.Mock;
 
 const detail = {
   id: 41,
@@ -235,6 +241,73 @@ describe("AssignmentDetailScreen", () => {
       expect(screen.queryByText("Overdue")).toBeNull();
       expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
       expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+    });
+  });
+
+  describe("pull to refresh", () => {
+    const pull = () =>
+      act(async () => {
+        screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
+      });
+    const summary = (status: "SUBMITTED" | "REVIEWED") => ({
+      publicId: "abc123defg", status, submittedAt: "2099-03-30T10:00:00.000Z",
+      reviewedAt: null, feedback: null, isLate: false,
+    });
+    const reads = (url: string) => get.mock.calls.filter(([u]) => u === url).length;
+
+    it("reads the submission too, so the chip and the feedback move together", async () => {
+      let reviewed = false;
+      get.mockImplementation((url: string) =>
+        Promise.resolve({
+          data: {
+            data:
+              url === "/api/v1/assignments/41"
+                ? { ...detail, mySubmission: summary(reviewed ? "REVIEWED" : "SUBMITTED") }
+                : reviewed
+                  ? submissionFor("REVIEWED", false, "Well argued.")
+                  : submissionFor("SUBMITTED", false, null),
+          },
+        }),
+      );
+      renderStacked(<AssignmentDetailScreen />);
+      expect(await screen.findByText("the work")).toBeTruthy();
+
+      reviewed = true;
+      await pull();
+      expect(await screen.findByText("Well argued.")).toBeTruthy();
+      expect(screen.getByText("Reviewed")).toBeTruthy();
+    });
+
+    it("with no submission yet, reads only the assignment", async () => {
+      get.mockResolvedValue({ data: { data: detail } });
+      renderStacked(<AssignmentDetailScreen />);
+      await screen.findByText("Start working");
+      const before = reads("/api/v1/assignments/41");
+      await pull();
+      expect(reads("/api/v1/assignments/41")).toBe(before + 1);
+      expect(get).not.toHaveBeenCalledWith("/api/v1/submissions/null");
+    });
+
+    it("a failed pull keeps the editor and what is typed in it", async () => {
+      get.mockImplementation((url: string) =>
+        Promise.resolve({
+          data: {
+            data:
+              url === "/api/v1/assignments/41"
+                ? { ...detail, mySubmission: { ...summary("SUBMITTED"), status: "DRAFT" } }
+                : { ...submissionFor("SUBMITTED", false, null), status: "DRAFT" },
+          },
+        }),
+      );
+      renderStacked(<AssignmentDetailScreen />);
+      fireEvent.changeText(await screen.findByLabelText("Your response"), "typed here");
+
+      patch.mockResolvedValue({ data: { data: { saved: true, submitted: false } } });
+      get.mockImplementation(() => Promise.reject(new Error("blip")));
+      await pull();
+      await act(() => new Promise<void>((resolve) => setTimeout(resolve, 10)));
+      expect(screen.getByDisplayValue("typed here")).toBeTruthy();
+      expect(screen.queryByText("Something went wrong")).toBeNull();
     });
   });
 });
