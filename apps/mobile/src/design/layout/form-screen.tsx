@@ -17,6 +17,9 @@ export type FormScreenProps = {
   onSave: () => void;
   saving?: boolean;
   saveHint?: string;
+  /** Adds pull-to-refresh, as `Screen`'s. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
   children: ReactNode;
 };
 
@@ -28,6 +31,8 @@ export function FormScreen({
   onSave,
   saving = false,
   saveHint,
+  onRefresh,
+  refreshing,
   children,
 }: FormScreenProps) {
   return (
@@ -35,6 +40,8 @@ export function FormScreen({
       title={title}
       subtitle={subtitle}
       back={back}
+      onRefresh={onRefresh}
+      refreshing={refreshing}
       footer={<SaveBar label={saveLabel} onPress={onSave} loading={saving} hint={saveHint} />}
     >
       {children}
