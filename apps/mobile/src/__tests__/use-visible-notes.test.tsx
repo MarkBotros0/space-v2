@@ -1,16 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
-jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
+jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), post: jest.fn() } }));
 
-import { useVisibleNotes } from "../hooks/use-notes";
+import { useCreateNote, useVisibleNotes } from "../hooks/use-notes";
 import { apiClient } from "../lib/api-client";
 
 const get = apiClient.get as jest.Mock;
 
+let client: QueryClient;
 function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client ??= new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
@@ -31,7 +32,10 @@ const note = {
   student: { id: 9, name: "Sam", email: "sam@example.com" },
 };
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+});
 
 describe("useVisibleNotes", () => {
   it("GETs the feed with the limit and returns the parsed notes", async () => {
@@ -52,5 +56,26 @@ describe("useVisibleNotes", () => {
   it("does not fetch while disabled", () => {
     renderHook(() => useVisibleNotes(5, false), { wrapper });
     expect(get).not.toHaveBeenCalled();
+  });
+
+  it("refetches after a note is created, so Recent notes shows it", async () => {
+    get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
+    (apiClient.post as jest.Mock).mockResolvedValue({
+      data: { data: { note: { ...note, id: 2 } } },
+    });
+    const { result } = renderHook(
+      () => ({ feed: useVisibleNotes(5, true), create: useCreateNote(9) }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.feed.isSuccess).toBe(true));
+    get.mockClear();
+    await act(async () => {
+      await result.current.create.mutateAsync({
+        body: "New",
+        visibility: "MENTORS",
+        followUpFlagged: true,
+      });
+    });
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/me/visible-notes?limit=5"));
   });
 });
