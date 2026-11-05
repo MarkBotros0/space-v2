@@ -11,6 +11,7 @@
  * device css-interop merges them with the animated style and Reanimated drops
  * them (no-classname-on-animated.test.ts). No haptic here: haptics are for
  * selection and success moments.
+ * `onHero` is the action on a brand HeroCard (tokens on-hero / on-hero-foreground).
  * Disabled is a neutral fill with a muted label and icons, never opacity (see DISABLED_FILL).
  * Native note: a React Native column stretches a button, so a call site that
  * is a block in v1 adds `self-start`.
@@ -26,7 +27,7 @@ import { cn } from "../lib/cn";
 import { withTextRuns } from "../lib/text-runs";
 import { Text } from "./text";
 
-type Variant = "primary" | "secondary" | "destructive" | "plain";
+type Variant = "primary" | "secondary" | "destructive" | "plain" | "onHero";
 type Size = "md" | "sm";
 type LegacyVariant = "default" | "outline" | "ghost" | "link";
 type LegacySize = "default" | "xs" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg";
@@ -38,6 +39,7 @@ const VARIANT_ALIAS: Record<VariantInput, Variant> = {
   secondary: "secondary",
   destructive: "destructive",
   plain: "plain",
+  onHero: "onHero",
   default: "primary",
   outline: "secondary",
   ghost: "plain",
@@ -65,6 +67,7 @@ const base = cva(
         secondary: "border-control-border bg-surface",
         destructive: "bg-bad-soft",
         plain: "bg-transparent",
+        onHero: "bg-on-hero",
       },
       size: { md: "min-h-[46px]", sm: "min-h-[44px]" },
     },
@@ -79,6 +82,7 @@ const baseText = cva("", {
       secondary: "text-foreground",
       destructive: "text-bad",
       plain: "text-foreground",
+      onHero: "text-on-hero-foreground",
     },
     link: { true: "underline", false: "" },
   },
@@ -171,7 +175,9 @@ function Button({
       ? colors["primary-foreground"]
       : resolved === "destructive"
         ? colors["bad"]
-        : colors["foreground"];
+        : resolved === "onHero"
+          ? colors["on-hero-foreground"]
+          : colors["foreground"];
   return (
     <Pressable
       accessibilityRole="button"

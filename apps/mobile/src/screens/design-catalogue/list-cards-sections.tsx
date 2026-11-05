@@ -17,13 +17,14 @@ const LONG_TITLE =
 export function ListSection() {
   return (
     <CatalogueSection id="list" title="Grouped list">
-      <GroupedList header="Sessions">
+      <GroupedList header="Sessions" headerAction={{ label: "See all", onPress: () => {} }}>
         <ListRow title="Plain row" />
         <ListRow title="With subtitle" subtitle="Tuesday, 6:30 PM" />
         <ListRow title={LONG_TITLE} subtitle="A long title next to a trailing value and a chevron" trailing={<Text variant="body" tabular>12 / 20</Text>} chevron onPress={() => {}} />
         <ListRow title="With chip" subtitle="Group A" trailing={<StatusChip tone="ok" label="Present" />} chevron onPress={() => {}} />
         <ListRow title="Chevron only" chevron onPress={() => {}} />
         <ListRow title="Trailing value" trailing={<Text variant="body" tabular>92%</Text>} />
+        <ListRow title={LONG_TITLE} titleLines={2} subtitle="Two title lines, three subtitle lines" subtitleLines={3} trailing={<StatusChip tone="warn" label="Due soon" />} />
       </GroupedList>
     </CatalogueSection>
   );
@@ -39,12 +40,21 @@ export function HeroStatsSections() {
           meta="Tuesday, 6:30 PM, Room 2"
           action={<Button size="sm" onPress={() => {}}>Check in</Button>}
         />
+        <HeroCard
+          tone="brand"
+          className="mt-3"
+          eyebrow="Next session"
+          title="Week 6: Reading and discussion for the whole group"
+          meta="Tuesday, 6:30 PM, Room 2"
+          action={<Button variant="onHero" size="sm" onPress={() => {}}>Check in</Button>}
+        />
       </CatalogueSection>
       <CatalogueSection id="stats" title="Stat tiles">
         <View testID="catalogue-stat-row" className="flex-row flex-wrap gap-3">
           <StatTile value={92} suffix="%" label="Attendance" />
           <StatTile value={7} label="Open assignments to finish" />
           <StatTile value="3 / 10" label="Quizzes" />
+          <StatTile value={4} label="Tappable tile" onPress={() => {}} />
         </View>
       </CatalogueSection>
     </>

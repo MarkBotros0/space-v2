@@ -15,9 +15,18 @@ import { Button } from "../ui/button";
 import { Text } from "../ui/text";
 import { ScreenFooterContext, useShellBottomPadding } from "./shell-context";
 
-type SaveBarProps = { label: string; onPress: () => void; loading?: boolean; hint?: string };
+type SaveBarProps = {
+  label: string;
+  onPress: () => void;
+  loading?: boolean;
+  hint?: string;
+  /** Blocks the primary action only. */
+  disabled?: boolean;
+  /** A second, quieter action beside the primary (Save draft beside Submit). */
+  secondary?: { label: string; onPress: () => void; disabled?: boolean };
+};
 
-function SaveBarBody({ label, onPress, loading, hint }: SaveBarProps) {
+function SaveBarBody({ label, onPress, loading, hint, disabled, secondary }: SaveBarProps) {
   return (
     <View className="gap-2 border-t border-separator bg-surface px-4 pt-3">
       {hint ? (
@@ -25,7 +34,12 @@ function SaveBarBody({ label, onPress, loading, hint }: SaveBarProps) {
           {hint}
         </Text>
       ) : null}
-      <Button onPress={onPress} loading={loading} className="w-full">
+      {secondary ? (
+        <Button variant="secondary" onPress={secondary.onPress} disabled={secondary.disabled} className="w-full">
+          {secondary.label}
+        </Button>
+      ) : null}
+      <Button onPress={onPress} loading={loading} disabled={disabled} className="w-full">
         {label}
       </Button>
     </View>

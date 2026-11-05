@@ -71,6 +71,8 @@ export type ScreenProps = {
   children: ReactNode;
   title?: string;
   subtitle?: string;
+  /** Overrides the title in the collapsed header. Unset: the title, or "Today" on Home without one. */
+  compactTitle?: string;
   /**
    * The pinned back bar. Unset: a screen on the stack (no tab bar) gets
    * `BACK_TO_PREVIOUS` (ruling R23), a tab gets none. `null` opts out.
@@ -136,6 +138,7 @@ export function Screen({
   children,
   title,
   subtitle,
+  compactTitle: compactTitleProp,
   back: backProp,
   trailing,
   home = false,
@@ -245,7 +248,7 @@ export function Screen({
 
   // Home has no large title; once its actions row scrolls away the compact
   // header names it "Today" and carries the bell and user menu (R31).
-  const compactTitle = title ?? (home ? "Today" : undefined);
+  const compactTitle = compactTitleProp ?? title ?? (home ? "Today" : undefined);
   const actions =
     trailing || home ? (
       <>
