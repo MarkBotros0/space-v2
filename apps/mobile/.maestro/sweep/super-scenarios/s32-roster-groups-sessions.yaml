@@ -9,7 +9,7 @@ appId: com.jpc.space
 - evalScript: ${output.year = new Date().getFullYear()}
 - openLink: spacev2://seasons/gbv-${output.year}/roster
 - extendedWaitUntil:
-    visible: 'Assign to groups'
+    visible: 'Search students'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

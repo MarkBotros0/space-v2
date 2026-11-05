@@ -54,7 +54,7 @@ appId: com.jpc.space
 - takeScreenshot: s21-06-season-detail-bottom
 - openLink: spacev2://seasons/gbv-${output.year}/roster
 - extendedWaitUntil:
-    visible: 'Assign to groups'
+    visible: 'Search students'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
