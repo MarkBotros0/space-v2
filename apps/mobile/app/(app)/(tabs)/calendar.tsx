@@ -1,9 +1,7 @@
 import { isAlumnus } from "@space/shared";
 import { Calendar as CalendarIcon } from "lucide-react-native";
-import { View } from "react-native";
 
-import { PageTitle } from "../../../src/design/layout/page-title";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState } from "../../../src/design/ui";
 import { AlumniCalendar } from "../../../src/screens/calendar/alumni-calendar";
 import {
@@ -34,27 +32,24 @@ export default function CalendarScreen() {
 
   if (role === "MENTOR") {
     return (
-      <ShellFrame>
+      <Screen title="Calendar">
         <EmptyState
           icon={CalendarIcon}
           title="Calendar"
           description="The calendar isn't available for your role."
         />
-      </ShellFrame>
+      </Screen>
     );
   }
   if (leadsNothing) {
     return (
-      <ShellFrame>
-        <View className="flex-col gap-4">
-          <PageTitle title="Calendar" subtitle="You don't lead any groups yet." />
-          <EmptyState
-            icon={CalendarIcon}
-            title="No calendar"
-            description="An admin will add you to a group when you're ready."
-          />
-        </View>
-      </ShellFrame>
+      <Screen title="Calendar" subtitle="You don't lead any groups yet.">
+        <EmptyState
+          icon={CalendarIcon}
+          title="No calendar"
+          description="An admin will add you to a group when you're ready."
+        />
+      </Screen>
     );
   }
   if (role === "LEADER") return <LeaderCalendar />;

@@ -10,13 +10,14 @@
  */
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { rangeLabel, stepAnchor, type CalendarView } from "../../lib/calendar-grid";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
 import { Button } from "../ui/button";
+import { SegmentedControl } from "../ui/segmented-control";
 import { Text } from "../ui/text";
 import { AgendaView } from "./season-calendar-agenda";
 import { CalendarGrid } from "./season-calendar-grid";
@@ -48,45 +49,6 @@ function SeasonLegend({ colors }: { colors: SeasonColors }) {
   );
 }
 
-/** v1's hand-rolled segmented control (not ui/tabs). */
-function ViewSwitch({
-  value,
-  onChange,
-}: {
-  value: CalendarView;
-  onChange: (v: CalendarView) => void;
-}) {
-  return (
-    <View
-      accessibilityRole="tablist"
-      accessibilityLabel="Calendar view"
-      className="flex-row self-start rounded-control bg-neutral-soft p-0.5"
-    >
-      {VIEWS.map((v) => {
-        const selected = v.value === value;
-        return (
-          <Pressable
-            key={v.value}
-            accessibilityRole="tab"
-            accessibilityLabel={v.label}
-            accessibilityState={{ selected }}
-            onPress={() => onChange(v.value)}
-            className={cn("min-h-[40px] justify-center rounded-lg px-3", selected && "bg-surface-raised")}
-          >
-            <Text
-              className={cn(
-                "text-sm font-medium",
-                selected ? "text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {v.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
 export function SeasonCalendar({
   sessions,
   events,
@@ -108,7 +70,12 @@ export function SeasonCalendar({
   return (
     <View className="flex-col gap-4">
       <View className="flex-row flex-wrap items-center justify-between gap-3">
-        <ViewSwitch value={view} onChange={setView} />
+        <SegmentedControl
+          className="self-start"
+          options={VIEWS}
+          value={view}
+          onChange={(v) => setView(v as CalendarView)}
+        />
         {view !== "upcoming" ? (
           <View className="flex-row items-center gap-1">
             <Button

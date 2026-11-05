@@ -85,6 +85,8 @@ export function CalendarGrid({
                   )}
                 >
                   <Text
+                    maxFontSizeMultiplier={1.3}
+                    tabular
                     className={cn(
                       "text-xs font-medium",
                       isToday

@@ -1,128 +1,86 @@
-/** season-calendar's Upcoming view: day-grouped rows with v1's time rail. */
-import {
-  Calendar as CalendarIcon,
-  ChevronRight,
-  ExternalLink,
-  Lock,
-  MapPin,
-} from "lucide-react-native";
-import { Pressable, View } from "react-native";
+/**
+ * season-calendar's Upcoming view: one grouped list per day, headed by the day
+ * (the server's org day), a row per session or event. A session's chip is
+ * `sessionChip`, so "in 6 days" reads the same here as on Today.
+ */
+import { Calendar as CalendarIcon, ExternalLink } from "lucide-react-native";
+import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
-import { dayCue } from "../../lib/calendar-grid";
 import { groupCalendarByDay } from "../../lib/day-groups";
-import { formatLongDay, splitWallTime } from "../../lib/format";
-import { Eyebrow } from "../layout/page-title";
+import { formatLongDay, formatWallTime } from "../../lib/format";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
 import { EmptyState } from "../ui/empty-state";
+import { GroupedList, ListRow } from "../ui/grouped-list";
+import { StatusChip } from "../ui/status-chip";
 import { Text } from "../ui/text";
 import { FALLBACK_SEASON, type Handlers, type SeasonColors } from "./season-colors";
+import { sessionChip } from "./session-chip";
 
-iconWithClassName(CalendarIcon, ChevronRight, ExternalLink, Lock, MapPin);
+iconWithClassName(CalendarIcon, ExternalLink);
 
-function TimeRail({ time }: { time: string | null }) {
-  const { clock, meridiem } = splitWallTime(time);
+/** SUPER's all-seasons mode: the season code in its own colour, left of the title. */
+function SeasonTag({ code, colors }: { code: string; colors: SeasonColors }) {
+  const c = colors[code] ?? FALLBACK_SEASON;
   return (
-    <View className="w-12 shrink-0 flex-col items-center justify-center">
-      <Text className="text-sm font-bold leading-none text-foreground">{clock}</Text>
-      <Text className="mt-0.5 text-caption uppercase text-muted-foreground">{meridiem}</Text>
+    <View className={cn("rounded-control px-2 py-1", c.box)}>
+      <Text variant="caption" className={cn("font-medium", c.text)}>
+        {code}
+      </Text>
     </View>
   );
 }
 
-const ROW =
-  "flex-row items-center gap-3 rounded-group bg-surface dark:border dark:border-separator p-3 active:bg-accent";
-
 function AgendaSession({
   s,
+  today,
+  index,
   onOpenSession,
   seasonColors,
 }: {
   s: SessionListItem;
+  today: string;
+  index: number;
   onOpenSession: (id: number) => void;
   seasonColors?: SeasonColors;
 }) {
+  const chip = sessionChip(s, today, false);
+  const where = s.location ? ` · ${s.location}` : "";
   return (
-    <Pressable
-      accessibilityRole="link"
+    <ListRow
+      index={index}
+      title={s.title}
+      titleLines={2}
+      subtitle={`${formatWallTime(s.startTime)} · ${s.durationMinutes} min${where}`}
+      leading={seasonColors ? <SeasonTag code={s.seasonCode} colors={seasonColors} /> : undefined}
+      trailing={chip ? <StatusChip {...chip} /> : undefined}
+      chevron
       onPress={() => onOpenSession(s.id)}
-      className={ROW}
-    >
-      <TimeRail time={s.startTime} />
-      <View className="h-10 w-px shrink-0 bg-border" />
-      <View className="min-w-0 flex-1">
-        <Text
-          numberOfLines={1}
-          className="text-sm font-semibold text-brand-navy-900 dark:text-foreground"
-        >
-          {s.title}
-        </Text>
-        <View className="flex-row flex-wrap items-center gap-x-2">
-          <Text className="text-xs text-muted-foreground">{`${s.durationMinutes} min`}</Text>
-          {s.location ? (
-            <View className="flex-row items-center gap-1">
-              <MapPin size={12} className="shrink-0 text-muted-foreground" />
-              <Text className="text-xs text-muted-foreground">{s.location}</Text>
-            </View>
-          ) : null}
-          {seasonColors ? (
-            <View
-              className={cn(
-                "rounded px-1.5 py-0.5",
-                (seasonColors[s.seasonCode] ?? FALLBACK_SEASON).box,
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-caption font-medium",
-                  (seasonColors[s.seasonCode] ?? FALLBACK_SEASON).text,
-                )}
-              >
-                {s.seasonCode}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
-      <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
-    </Pressable>
+    />
   );
 }
 
 function AgendaEvent({
   e,
+  index,
   onOpenEvent,
 }: {
   e: JpcEventListItem;
+  index: number;
   onOpenEvent: (e: JpcEventListItem) => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole={e.url ? "link" : "button"}
+    <ListRow
+      index={index}
+      title={e.title}
+      titleLines={2}
+      subtitle={e.visibility === "ALUMNI_ONLY" ? "JPC event · Alumni only" : "JPC event"}
+      leading={<CalendarIcon size={18} className="text-muted-foreground" />}
+      trailing={e.url ? <ExternalLink size={16} className="text-muted-foreground" /> : undefined}
+      trailingLabel={e.url ? "Opens a link" : undefined}
       onPress={() => onOpenEvent(e)}
-      className={ROW}
-    >
-      <View className="w-12 shrink-0 items-center justify-center">
-        <CalendarIcon size={16} className="text-muted-foreground" />
-      </View>
-      <View className="h-10 w-px shrink-0 bg-border" />
-      <View className="min-w-0 flex-1">
-        <View className="flex-row items-center gap-1.5">
-          {e.visibility === "ALUMNI_ONLY" ? (
-            <Lock size={12} className="shrink-0 text-brand-navy-900 dark:text-foreground" />
-          ) : null}
-          <Text
-            numberOfLines={1}
-            className="shrink text-sm font-semibold text-brand-navy-900 dark:text-foreground"
-          >
-            {e.title}
-          </Text>
-        </View>
-        <Text className="text-xs text-muted-foreground">JPC event</Text>
-      </View>
-      {e.url ? <ExternalLink size={16} className="shrink-0 text-muted-foreground" /> : null}
-    </Pressable>
+    />
   );
 }
 
@@ -147,37 +105,29 @@ export function AgendaView({
   }
   return (
     <View className="flex-col gap-5">
-      {groups.map((group) => {
-        const cue = dayCue(group.dayKey, today);
-        return (
-          <View key={group.dayKey} className="flex-col gap-2">
-            <View className="flex-row items-baseline justify-between gap-2">
-              <Eyebrow>{formatLongDay(group.dayKey)}</Eyebrow>
-              {cue ? (
-                <Text className="text-caption font-medium text-brand-teal-800 dark:text-brand-teal-300">
-                  {cue}
-                </Text>
-              ) : null}
-            </View>
-            {group.entries.map((entry) =>
-              entry.kind === "session" ? (
-                <AgendaSession
-                  key={`s${entry.session.id}`}
-                  s={entry.session}
-                  onOpenSession={handlers.onOpenSession}
-                  seasonColors={handlers.seasonColors}
-                />
-              ) : (
-                <AgendaEvent
-                  key={`e${entry.event.id}`}
-                  e={entry.event}
-                  onOpenEvent={handlers.onOpenEvent}
-                />
-              ),
-            )}
-          </View>
-        );
-      })}
+      {groups.map((group) => (
+        <GroupedList key={group.dayKey} header={formatLongDay(group.dayKey)}>
+          {group.entries.map((entry, i) =>
+            entry.kind === "session" ? (
+              <AgendaSession
+                key={`s${entry.session.id}`}
+                s={entry.session}
+                today={today}
+                index={i}
+                onOpenSession={handlers.onOpenSession}
+                seasonColors={handlers.seasonColors}
+              />
+            ) : (
+              <AgendaEvent
+                key={`e${entry.event.id}`}
+                e={entry.event}
+                index={i}
+                onOpenEvent={handlers.onOpenEvent}
+              />
+            ),
+          )}
+        </GroupedList>
+      ))}
     </View>
   );
 }

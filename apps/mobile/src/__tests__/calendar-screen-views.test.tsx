@@ -45,7 +45,7 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
     // One day header, both entries under it, event first (09:00Z before 18:00Z).
     expect(await screen.findByText("Summer retreat")).toBeTruthy();
     expect(screen.getByText("Kickoff")).toBeTruthy();
-    expect(screen.getAllByText("Sunday, March 1")).toHaveLength(1);
+    expect(screen.getAllByText("SUNDAY, MARCH 1")).toHaveLength(1);
     const titles = screen.getAllByText(/^(Summer retreat|Kickoff)$/).map((n) => n.props.children);
     expect(titles).toEqual(["Summer retreat", "Kickoff"]);
 
@@ -147,15 +147,13 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     );
   }
 
-  it("cues upcoming days with in-N-days wording and v1's time rail", async () => {
+  it("cues upcoming days with in-N-days chips and the wall time", async () => {
     serveStudent();
     renderWithProviders(<CalendarScreen />);
     expect(await screen.findByText("Kickoff")).toBeTruthy();
     expect(screen.getAllByText(/^in \d+ days$/).length).toBe(2);
-    // v1's time rail: the org wall time split into "8:00" and "PM" (X13).
-    expect(screen.getAllByText("8:00").length).toBe(2);
-    expect(screen.getAllByText("PM").length).toBe(2);
-    expect(screen.getAllByText("60 min").length).toBe(2);
+    // The org wall time and duration under the title (X13).
+    expect(screen.getAllByText("8:00 PM · 60 min").length).toBe(2);
     expect(screen.queryByLabelText("Calendar legend")).toBeNull();
   });
 
