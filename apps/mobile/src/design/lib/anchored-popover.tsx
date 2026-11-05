@@ -4,10 +4,10 @@
  * as the trigger when asked (min-w/w-[var(--anchor-width)]), flips above
  * when there is no room below, and closes on an outside press.
  */
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import { type ReactNode, useCallback, useContext, useRef, useState } from "react";
 import { Modal, Platform, Pressable, StatusBar, useWindowDimensions, View, type ViewInstance } from "react-native";
 
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { cn } from "./cn";
 import { shadowStyle } from "./shadow";
@@ -78,7 +78,8 @@ export function AnchoredPopover({
   children: ReactNode;
 }) {
   const win = useWindowDimensions();
-  const insets = useSafeAreaInsets();
+  // The context, not useSafeAreaInsets(): that throws without a provider (bare unit renders).
+  const insets = useContext(SafeAreaInsetsContext) ?? { top: 0, bottom: 0 };
   const [popupHeight, setPopupHeight] = useState(0);
   const [popupWidth, setPopupWidth] = useState(0);
 
