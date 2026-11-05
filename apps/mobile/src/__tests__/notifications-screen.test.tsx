@@ -1,5 +1,5 @@
 // apps/mobile/src/__tests__/notifications-screen.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -44,6 +44,18 @@ beforeEach(() => {
 });
 
 describe("NotificationsScreen", () => {
+  it("keeps Mark all read out of the large title's row so the title fits whole at 1.3x", async () => {
+    get.mockResolvedValue({
+      data: { data: { items: [unread], nextCursor: null, unreadCount: 1 } },
+    });
+
+    renderWithProviders(<NotificationsScreen />);
+    await screen.findByText("Mark all read");
+
+    // A squeezed title broke "Notificati/ons" mid-word on a 360dp phone.
+    expect(within(screen.getByTestId("large-title")).queryByText("Mark all read")).toBeNull();
+  });
+
   it("lists the caller's notifications", async () => {
     get.mockResolvedValue({
       data: { data: { items: [unread], nextCursor: null, unreadCount: 1 } },
