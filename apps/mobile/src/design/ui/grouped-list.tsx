@@ -70,6 +70,12 @@ type ListRowProps = {
   /** Left of the title (an avatar or icon). */
   leading?: ReactNode;
   trailing?: ReactNode;
+  /**
+   * Under the subtitle, inside the text column: chips that would squeeze the title
+   * if they sat beside it. They wrap rather than eat the width. Add them to the
+   * spoken label with `trailingLabel`.
+   */
+  footer?: ReactNode;
   /** What `trailing` says, for screen readers. Defaults to its `label` prop (StatusChip). */
   trailingLabel?: string;
   /**
@@ -102,7 +108,7 @@ function spokenTrailing(trailing: ReactNode, trailingLabel: string | undefined):
 }
 
 function ListRow({
-  title, subtitle, leading, trailing, trailingLabel, trailingPlacement = "side", chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
+  title, subtitle, leading, trailing, footer, trailingLabel, trailingPlacement = "side", chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
 }: ListRowProps) {
   const reduced = useReducedMotion();
   const press = usePressScale(0.985);
@@ -119,6 +125,11 @@ function ListRow({
           </Text>
         ) : null}
         {trailing && trailingPlacement === "below" ? <View className="mt-1.5 self-start">{trailing}</View> : null}
+        {footer ? (
+          <View testID="list-row-footer" className="mt-1 flex-row flex-wrap items-center gap-1.5">
+            {footer}
+          </View>
+        ) : null}
       </View>
       {trailing && trailingPlacement === "side" ? <View className="shrink-0">{trailing}</View> : null}
       {chevron ? <ChevronRight testID="list-row-chevron" size={16} className="text-muted-foreground" /> : null}

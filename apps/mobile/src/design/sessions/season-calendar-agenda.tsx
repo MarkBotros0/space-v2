@@ -8,7 +8,7 @@ import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { groupCalendarByDay } from "../../lib/day-groups";
-import { formatLongDay, formatWallTime } from "../../lib/format";
+import { formatLongDay, formatWallTime, formatMinutes } from "../../lib/format";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
 import { EmptyState } from "../ui/empty-state";
@@ -52,9 +52,17 @@ function AgendaSession({
       index={index}
       title={s.title}
       titleLines={2}
-      subtitle={`${formatWallTime(s.startTime)} · ${s.durationMinutes} min${where}`}
-      leading={seasonColors ? <SeasonTag code={s.seasonCode} colors={seasonColors} /> : undefined}
-      trailing={chip ? <StatusChip {...chip} /> : undefined}
+      subtitle={`${formatWallTime(s.startTime)} · ${formatMinutes(s.durationMinutes)}${where}`}
+      // The chips sit under the text and wrap: beside it they left the title "Week 2: Cal…" (sweep R5).
+      footer={
+        seasonColors || chip ? (
+          <>
+            {seasonColors ? <SeasonTag code={s.seasonCode} colors={seasonColors} /> : null}
+            {chip ? <StatusChip {...chip} /> : null}
+          </>
+        ) : undefined
+      }
+      trailingLabel={chip?.label}
       chevron
       onPress={() => onOpenSession(s.id)}
     />

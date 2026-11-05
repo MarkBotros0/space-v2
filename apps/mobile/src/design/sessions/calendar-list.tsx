@@ -10,7 +10,7 @@ import type { SessionListItem } from "@space/shared";
 import { Calendar as CalendarIcon, MapPin } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
-import { formatWallTime, formatWeekdayDayYear } from "../../lib/format";
+import { formatWallTime, formatWeekdayDayYear, formatMinutes } from "../../lib/format";
 import { iconWithClassName } from "../lib/icon";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -76,7 +76,7 @@ export function CalendarList({
               ) : null}
             </View>
             <Text className="text-sm text-muted-foreground">
-              {`${formatWeekdayDayYear(s.dayKey)} · ${formatWallTime(s.startTime)} · ${s.durationMinutes} min`}
+              {`${formatWeekdayDayYear(s.dayKey)} · ${formatWallTime(s.startTime)} · ${formatMinutes(s.durationMinutes)}`}
             </Text>
             {s.location ? (
               <View className="flex-row items-center gap-1.5">
