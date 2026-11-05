@@ -81,7 +81,7 @@ export default function NewSessionScreen() {
       <View className="flex-col gap-4">
         <SessionFields values={values} onChange={setValues} errors={errors} />
         <FormField
-          label="Repeat weekly for…"
+          label="Repeat weekly for (weeks)"
           description="Creates one occurrence per week, sharing a recurrence group."
           error={errors.repeatWeeks}
         >

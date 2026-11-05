@@ -103,6 +103,11 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
     });
   });
 
+  it("shows the unit next to the repeat count: the label says weeks (sweep F3)", async () => {
+    renderWithProviders(<NewSessionScreen />);
+    expect(await screen.findByText("Repeat weekly for (weeks)")).toBeTruthy();
+  });
+
   it("names the season and sends org wall-clock fields — never a device-composed instant (X13, D-16.6)", async () => {
     post.mockResolvedValue({ data: { data: { id: 55, recurrenceGroupId: "rgX" } } });
     renderWithProviders(<NewSessionScreen />);
