@@ -34,8 +34,23 @@ function strokeColor(className: string, scheme: "light" | "dark"): string | unde
   return typeof ramp === "object" ? ramp[m[2]!] : undefined;
 }
 
-/** Space between the stroke and the labels inside the ring. */
+/** Clear space between the stroke's inner edge and the labels inside the ring. */
 const CONTENT_INSET = 6;
+
+/**
+ * Width of the box the labels sit in: the widest box whose corners stay
+ * CONTENT_INSET inside the stroke's inner edge, for a stack of labels about
+ * as tall as the inner radius (the figure and its caption). The labels used
+ * to span the whole inner diameter at its middle, so "100%" and "ATTENDANCE"
+ * touched the stroke at the corners (device sweep, leader s10-01, admin s20-01).
+ * 104/9 (the default ring): inner radius 43 → 60dp across.
+ */
+export function ringContentWidth(size: number, strokeWidth: number): number {
+  const inner = size / 2 - strokeWidth;
+  const reach = inner - CONTENT_INSET;
+  const halfHeight = inner / 2;
+  return Math.floor(2 * Math.sqrt(Math.max(0, reach * reach - halfHeight * halfHeight)));
+}
 
 /**
  * One line that shrinks to fit the ring's inside rather than wrapping: a
@@ -50,13 +65,13 @@ const FIT = {
   maxFontSizeMultiplier: 1.15,
 } as const;
 
-/** The figure in the middle of a ring ("100%"). */
+/** The figure in the middle of a ring ("100%"): 20/24, so figure and caption fit the box. */
 export function RingValue({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <Text
       {...FIT}
       className={cn(
-        "self-stretch text-center text-2xl font-black text-brand-navy-900 dark:text-foreground",
+        "self-stretch text-center text-xl leading-6 font-black text-brand-navy-900 dark:text-foreground",
         className,
       )}
     >
@@ -143,11 +158,16 @@ export function ProgressRing({
       </Svg>
       {children != null ? (
         <View
-          testID="ring-content"
-          className="absolute inset-0 flex-col items-center justify-center"
-          style={{ paddingHorizontal: strokeWidth + CONTENT_INSET }}
+          pointerEvents="none"
+          className="absolute inset-0 items-center justify-center"
         >
-          {children}
+          <View
+            testID="ring-content"
+            className="flex-col items-center"
+            style={{ width: ringContentWidth(size, strokeWidth) }}
+          >
+            {children}
+          </View>
         </View>
       ) : null}
     </View>

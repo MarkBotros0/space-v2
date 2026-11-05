@@ -7,7 +7,7 @@ import { Eyebrow } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { cn } from "../../src/design/lib/cn";
-import { Badge, EmptyState, ProgressRing, Text } from "../../src/design/ui";
+import { Badge, EmptyState, ProgressRing, RingCaption, RingValue, Text } from "../../src/design/ui";
 import { useMyAttendance } from "../../src/hooks/use-self-service";
 import { formatWallTime, formatWeekdayDayYear } from "../../src/lib/format";
 import { useSessionStore } from "../../src/store/session";
@@ -81,8 +81,8 @@ export default function AttendanceScreen() {
         <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
           <View className="flex-row items-center gap-5">
             <ProgressRing value={pct} label={`Absence budget ${pct}% used`} indicatorClassName={tone}>
-              <Text className="text-2xl font-black text-brand-navy-900 dark:text-foreground">{`${pct}%`}</Text>
-              <Eyebrow className="mt-1">used</Eyebrow>
+              <RingValue>{`${pct}%`}</RingValue>
+              <RingCaption>used</RingCaption>
             </ProgressRing>
             <View className="min-w-0 flex-1">
               <Eyebrow tone="teal">Absence budget</Eyebrow>
