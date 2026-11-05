@@ -47,7 +47,7 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
   const row = sheet?.rows.find((r) => r.studentUserId === shown);
   const graded = sheet ? sheet.rows.filter((r) => r.score != null).length : 0;
   const subtitle = sheet
-    ? `${sheet.sessionTitle ? `${sheet.sessionTitle} · ` : ""}${unbreakable(`Max score: ${sheet.maxScore}`)} · ${unbreakable(`${graded} / ${sheet.rows.length} graded`)}`
+    ? `${sheet.sessionTitle ? `${sheet.sessionTitle} · ` : ""}Max score: ${sheet.maxScore} · ${unbreakable(`${graded} / ${sheet.rows.length} graded`)}`
     : undefined;
 
   const draftOf = (r: NonNullable<typeof row>): PaperDraft => drafts[r.studentUserId] ?? seedDraft(r);
@@ -179,7 +179,7 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
                 index={i}
                 title={a.studentName ?? "Student"}
                 titleLines={2}
-                subtitle={`${unbreakable(`Attempt ${a.attemptNumber}`)} · ${a.status === "GRADED" ? `${a.totalScore ?? 0}/${first.maxScore}` : unbreakable("Awaiting grading")} · ${unbreakable(formatDate(a.submittedAt))}`}
+                subtitle={`Attempt ${a.attemptNumber} · ${a.status === "GRADED" ? `${a.totalScore ?? 0}/${first.maxScore}` : "Awaiting grading"} · ${unbreakable(formatDate(a.submittedAt))}`}
                 trailing={<StatusChip {...statusChip("quizAttempt", a.status)} />}
                 chevron
                 onPress={() => {

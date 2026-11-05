@@ -16,9 +16,9 @@ import { keyboardBottomOffset, keyboardTopInWindow } from "./keyboard-offset";
  * the padding (offset + 16) provides.
  */
 const FIELD_GAP = 96;
-/** Retries after the keyboard opens: the padding below lands a layout pass or two later. */
 /** Breathing room kept between a clamped field's top and the scroll view's top. */
 const VIEWPORT_MARGIN = 12;
+/** Retries after the keyboard opens: the padding below lands a layout pass or two later. */
 const RETRY_MS = [0, 150, 400];
 
 type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: number) => void) => void };
