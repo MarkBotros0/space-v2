@@ -48,7 +48,11 @@ export type Table = Record<string, unknown>;
 export function staffRoutes(over: Table = {}): Table {
   return {
     "/api/v1/seasons": { seasons: [seasonFixture(7)] },
-    "/api/v1/me/dashboard?seasonId=7": staffDashboard("season"),
+    // sessionRow's dayKey is the real day, so the org's today is too (else live rows read as past).
+    "/api/v1/me/dashboard?seasonId=7": {
+      ...staffDashboard("season"),
+      todayOrgDay: new Date().toISOString().slice(0, 10),
+    },
     "/api/v1/seasons/7/sessions": { sessions: [sessionRow(1, 7, 600), sessionRow(2, 7, 700, true)] },
     [EVENTS]: events,
     [UNREAD]: { unreadCount: 0 },

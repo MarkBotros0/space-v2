@@ -38,6 +38,41 @@ describe("unmarkedSessions", () => {
   });
 });
 
+describe("the org's today, when the device disagrees", () => {
+  // The device says 2026-11-05 12:00Z. The sessions are placed by their dayKey.
+  const past = session(1, "2026-11-09T10:00:00.000Z", 60); // device: future
+  const future = session(2, "2026-11-01T10:00:00.000Z", 60); // device: over
+  const sameDay = session(3, "2026-11-05T11:00:00.000Z", 60); // over by the instants
+  const sameDayRunning = session(4, "2026-11-05T11:30:00.000Z", 60);
+
+  it("unmarked: a day before the org's today is over whatever the device says", () => {
+    expect(unmarkedSessions([past], NOW, "2026-11-10")).toEqual([past]);
+  });
+  it("unmarked: a day after the org's today never counts", () => {
+    expect(unmarkedSessions([future], NOW, "2026-10-30")).toEqual([]);
+  });
+  it("unmarked: the org's own day falls back to the instants", () => {
+    expect(unmarkedSessions([sameDay, sameDayRunning], NOW, "2026-11-05")).toEqual([sameDay]);
+  });
+  it("live: only the org's own day can be live, by the instants", () => {
+    expect(liveSessions([past, future, sameDayRunning], NOW, "2026-11-05").map((s) => s.id)).toEqual([4]);
+    expect(liveSessions([sameDayRunning], NOW, "2026-11-06")).toEqual([]);
+    expect(liveSessions([sameDayRunning], NOW, "2026-11-04")).toEqual([]);
+  });
+  it("next: a day after the org's today can be next even if the device thinks it started", () => {
+    expect(nextSession([future], NOW, "2026-10-30")?.id).toBe(2);
+  });
+  it("next: a day before the org's today is never next, however future the device thinks it", () => {
+    expect(nextSession([past], NOW, "2026-11-10")).toBeNull();
+  });
+  it("next: the org's own day falls back to the instants", () => {
+    expect(nextSession([sameDay, sameDayRunning], NOW, "2026-11-05")).toBeNull();
+  });
+  it("without today the device decides, as before", () => {
+    expect(unmarkedSessions([past, future], NOW).map((s) => s.id)).toEqual([2]);
+  });
+});
+
 describe("liveSessions", () => {
   it("returns every overlapping live session, including one starting exactly now", () => {
     const a = session(1, "2026-11-05T11:30:00.000Z", 60);

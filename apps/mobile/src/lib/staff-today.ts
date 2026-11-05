@@ -22,28 +22,45 @@ function endMs(s: SessionListItem): number {
   return startMs(s) + s.durationMinutes * MINUTE_MS;
 }
 
-/** Over (ends at or before `now`) and attendance not marked; newest first. */
-export function unmarkedSessions(sessions: SessionListItem[], now: Date): SessionListItem[] {
+/*
+ * Past, live and upcoming are compared on the org's calendar day when `today` (the
+ * server's todayOrgDay) is given: a session's dayKey before it has started and is over,
+ * after it has not started. Within today the instants still come from the device, so
+ * the device's clock and a session that crosses org midnight, which reads as over once
+ * the org's day moves on, are the remaining approximations. Without `today`, only the
+ * device's instants decide.
+ */
+
+/** Over (ends at or before `now`, or on an earlier org day) and attendance not marked; newest first. */
+export function unmarkedSessions(
+  sessions: SessionListItem[],
+  now: Date,
+  today?: string,
+): SessionListItem[] {
   const t = now.getTime();
+  const over = (s: SessionListItem) =>
+    today === undefined || s.dayKey === today ? endMs(s) <= t : s.dayKey < today;
   return sessions
-    .filter((s) => endMs(s) <= t && !s.attendanceMarked)
+    .filter((s) => over(s) && !s.attendanceMarked)
     .sort((a, b) => startMs(b) - startMs(a) || b.id - a.id);
 }
 
-/** Started and not yet over: startsAt <= now < end. Overlapping sessions all count. */
-export function liveSessions(sessions: SessionListItem[], now: Date): SessionListItem[] {
+/** Started and not yet over: startsAt <= now < end, on the org's today. Overlapping sessions all count. */
+export function liveSessions(sessions: SessionListItem[], now: Date, today?: string): SessionListItem[] {
   const t = now.getTime();
   return sessions
-    .filter((s) => startMs(s) <= t && t < endMs(s))
+    .filter((s) => (today === undefined || s.dayKey === today) && startMs(s) <= t && t < endMs(s))
     .sort((a, b) => startMs(a) - startMs(b) || a.id - b.id);
 }
 
-/** The earliest session that starts after `now`. */
-export function nextSession(sessions: SessionListItem[], now: Date): SessionListItem | null {
+/** The earliest session that starts after `now` (or on a later org day than `today`). */
+export function nextSession(sessions: SessionListItem[], now: Date, today?: string): SessionListItem | null {
   const t = now.getTime();
+  const later = (s: SessionListItem) =>
+    today === undefined || s.dayKey === today ? startMs(s) > t : s.dayKey > today;
   let best: SessionListItem | null = null;
   for (const s of sessions) {
-    if (startMs(s) <= t) continue;
+    if (!later(s)) continue;
     if (best === null || startMs(s) < startMs(best)) best = s;
   }
   return best;

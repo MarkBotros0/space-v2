@@ -41,8 +41,8 @@ export function SuperToday() {
   };
 
   const now = new Date();
-  const live = liveSessions(today.sessions, now);
-  const hero = live[0] ?? nextSession(today.sessions, now);
+  const live = liveSessions(today.sessions, now, today.orgToday);
+  const hero = live[0] ?? nextSession(today.sessions, now, today.orgToday);
 
   const named = (name ?? "").trim() !== "";
   return (

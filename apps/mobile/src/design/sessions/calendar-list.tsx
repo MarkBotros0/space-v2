@@ -24,9 +24,13 @@ function todayKey(now: Date): string {
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
 }
 
-function StatusBadge({ session, now }: { session: SessionListItem; now: Date }) {
-  if (session.dayKey === todayKey(now)) return <Badge variant="info">Today</Badge>;
-  if (new Date(session.startsAt).getTime() < now.getTime()) {
+function StatusBadge({ session, now, today }: { session: SessionListItem; now: Date; today?: string }) {
+  const orgToday = today ?? todayKey(now);
+  if (session.dayKey === orgToday) return <Badge variant="info">Today</Badge>;
+  // On another day than the org's today, the day decides; the instant is for today only.
+  const past =
+    today !== undefined ? session.dayKey < today : new Date(session.startsAt).getTime() < now.getTime();
+  if (past) {
     return session.attendanceMarked ? (
       <Badge variant="success">Attendance marked</Badge>
     ) : (
@@ -42,12 +46,15 @@ export function CalendarList({
   onMarkAttendance,
   onCreate,
   now = new Date(),
+  today,
 }: {
   sessions: SessionListItem[];
   onOpen: (id: number) => void;
   onMarkAttendance?: (id: number) => void;
   onCreate?: () => void;
   now?: Date;
+  /** The org's today, from the server. Without it, the device's day. */
+  today?: string;
 }) {
   if (sessions.length === 0) {
     return (
@@ -68,7 +75,7 @@ export function CalendarList({
               <Pressable accessibilityRole="link" onPress={() => onOpen(s.id)}>
                 <Text className="text-base font-semibold text-foreground">{s.title}</Text>
               </Pressable>
-              <StatusBadge session={s} now={now} />
+              <StatusBadge session={s} now={now} today={today} />
               {s.recurrenceGroupId ? (
                 <Badge variant="outline" textClassName="text-xs">
                   Series

@@ -38,7 +38,7 @@ export function SessionsWithoutAttendance({ role, seasonId }: { role: "ADMIN" | 
   const scoped = seasonId !== undefined;
   const isPending = scoped ? led.isPending : today.isPending;
   const isError = scoped ? led.isError : !today.isPending && today.needs.unmarkedSessions === null;
-  const unmarked = unmarkedSessions(scoped ? led.sessions : today.sessions, new Date());
+  const unmarked = unmarkedSessions(scoped ? led.sessions : today.sessions, new Date(), today.orgToday);
   const groups = bySeason(unmarked);
   const refetch = scoped ? led.refetch : today.refetch;
 

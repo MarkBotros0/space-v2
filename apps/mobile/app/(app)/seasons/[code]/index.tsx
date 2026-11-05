@@ -9,6 +9,7 @@ import { Screen } from "../../../../src/design/layout/screen";
 import { SeasonDetailView, type ManageItem } from "../../../../src/design/seasons/season-detail";
 import { CalendarList } from "../../../../src/design/sessions/calendar-list";
 import { Button, EmptyState } from "../../../../src/design/ui";
+import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useSeasonSessions } from "../../../../src/hooks/use-sessions";
 import { useSessionStore } from "../../../../src/store/session";
@@ -30,6 +31,8 @@ export default function SeasonDetailScreen() {
   const [duplicating, setDuplicating] = useState(false);
   const detail = useSeasonByCode(code);
   const sessions = useSeasonSessions(detail.data?.id ?? null);
+  // The org's day for the status badges; never waited on, and a failure leaves the device's.
+  const orgToday = useStaffOrgToday(detail.data?.id ?? null).today;
 
   const refresh = () => {
     if (code !== null) void detail.refetch();
@@ -54,6 +57,7 @@ export default function SeasonDetailScreen() {
       sessionsTab = (
         <CalendarList
           sessions={sessions.data}
+          today={orgToday}
           onOpen={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
           onMarkAttendance={
             manage

@@ -50,6 +50,19 @@ export function useSeasonStaffDashboard(seasonId: number | null): UseQueryResult
   });
 }
 
+/**
+ * The org's today for a staff screen, from the season dashboard (it carries
+ * `todayOrgDay`). Shares the dashboard's query key, so a screen that already reads
+ * that dashboard adds no request. `isPending` is true only while an enabled query
+ * is loading; a failed dashboard gives `today: undefined, isPending: false` and
+ * callers fall back to the device's day.
+ */
+export function useStaffOrgToday(seasonId: number | null): { today: string | undefined; isPending: boolean } {
+  const dash = useSeasonStaffDashboard(seasonId);
+  // A disabled query reports pending forever.
+  return { today: dash.data?.todayOrgDay, isPending: seasonId !== null && dash.isPending };
+}
+
 export function useMentorDashboard(): UseQueryResult<MentorDashboard> {
   return useQuery({
     queryKey: queryKeys.dashboard.me(null),

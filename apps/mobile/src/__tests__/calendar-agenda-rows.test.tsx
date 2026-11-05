@@ -8,9 +8,10 @@ import CalendarScreen from "../../app/(app)/(tabs)/calendar";
 import { sessionChip } from "../design/sessions/session-chip";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { session, studentSession } from "./helpers/calendar-fixtures";
-import { studentDashboard } from "./helpers/dashboard-fixtures";
+import { seasonRow, session, studentSession } from "./helpers/calendar-fixtures";
+import { staffDashboard, studentDashboard } from "./helpers/dashboard-fixtures";
 import { renderWithProviders } from "./helpers/render";
+import { makeSession } from "./helpers/session";
 
 const get = apiClient.get as jest.Mock;
 
@@ -95,6 +96,62 @@ describe("the student's calendar counts from the server's day, not the device's"
     serve(null);
     renderWithProviders(<CalendarScreen />);
     expect(await screen.findByText("in 6 days")).toBeTruthy();
+  });
+});
+
+describe("the staff calendars count from the server's day, not the device's", () => {
+  const near = session(1, "Kickoff", "2099-03-07T18:00:00.000Z", "2099-03-07");
+  const earlier = session(2, "Week zero", "2099-03-02T18:00:00.000Z", "2099-03-02");
+  const roles = [
+    ["ADMIN", makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 2 })],
+    ["SUPER", makeSession("SUPER")],
+    ["LEADER", makeSession("LEADER", { groupLeaderIds: [3] })],
+  ] as const;
+
+  function serve(role: (typeof roles)[number], todayOrgDay: string | null, sessions = [near]) {
+    useSessionStore.setState(role[1]);
+    get.mockImplementation((url: string) => {
+      if (url.startsWith("/api/v1/me/dashboard")) {
+        return todayOrgDay === null
+          ? Promise.reject(new Error("down"))
+          : Promise.resolve({ data: { data: { ...staffDashboard("season"), todayOrgDay } } });
+      }
+      if (url === "/api/v1/seasons")
+        return Promise.resolve({ data: { data: { seasons: [seasonRow(7, 2099, "ACTIVE")] } } });
+      if (url === "/api/v1/groups") {
+        const group = {
+          id: 3, name: "G", description: null, studentCount: 3, leaderNames: [],
+          seasonId: 7, seasonCode: "S7", seasonTitle: "Season 7",
+        };
+        return Promise.resolve({ data: { data: { groups: [group] } } });
+      }
+      if (url.includes("/sessions")) return Promise.resolve({ data: { data: { sessions } } });
+      return Promise.resolve({ data: { data: { events: [], total: 0 } } });
+    });
+  }
+
+  describe.each(roles)("%s", (...role) => {
+    const r = roles.find((x) => x[0] === role[0])!;
+
+    it("a device behind the org: the row's cue follows the server's day", async () => {
+      serve(r, "2099-03-05"); // the device says Mar 1
+      renderWithProviders(<CalendarScreen />);
+      expect(await screen.findByText("in 2 days")).toBeTruthy();
+      expect(screen.queryByText("in 6 days")).toBeNull();
+    });
+
+    it("a device behind the org: a session already past for the org isn't Upcoming", async () => {
+      serve(r, "2099-03-05", [earlier, near]);
+      renderWithProviders(<CalendarScreen />);
+      expect(await screen.findByText("Kickoff")).toBeTruthy();
+      expect(screen.queryByText("Week zero")).toBeNull();
+    });
+
+    it("the dashboard failing falls back to the device's day, with no error screen", async () => {
+      serve(r, null);
+      renderWithProviders(<CalendarScreen />);
+      expect(await screen.findByText("in 6 days")).toBeTruthy();
+    });
   });
 });
 

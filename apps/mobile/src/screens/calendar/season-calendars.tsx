@@ -13,7 +13,7 @@ import {
   type SeasonColors,
 } from "../../design/sessions/season-calendar";
 import { Button, EmptyState } from "../../design/ui";
-import { useStudentDashboard } from "../../hooks/use-dashboard";
+import { useStaffOrgToday, useStudentDashboard } from "../../hooks/use-dashboard";
 import { useEvents } from "../../hooks/use-events";
 import { useMyGroups } from "../../hooks/use-groups";
 import { useCurrentSeasonId, useSeasons } from "../../hooks/use-seasons";
@@ -144,11 +144,14 @@ export function LeaderCalendar() {
   const seasonIds = [...new Set((groups.data ?? []).map((g) => g.seasonId))];
   const led = useLedSeasonSessions(seasonIds);
   const events = useEvents();
+  // The org's day for the highlight, Upcoming and the anchor (any led season gives the same
+  // one); waited for because the anchor is read once. A failure falls back to the device's.
+  const orgToday = useStaffOrgToday(seasonIds[0] ?? null);
   const eventRows = events.data ?? [];
   const n = led.sessions.length;
 
   let body: ReactNode;
-  if (groups.isPending || led.isPending) body = <RouteSkeleton />;
+  if (groups.isPending || led.isPending || orgToday.isPending) body = <RouteSkeleton />;
   else if (groups.isError || led.isError)
     body = (
       <RouteError
@@ -159,7 +162,7 @@ export function LeaderCalendar() {
       />
     );
   else if (n === 0 && eventRows.length === 0) body = <NothingScheduled />;
-  else body = <RoutedSeasonCalendar sessions={led.sessions} events={eventRows} />;
+  else body = <RoutedSeasonCalendar sessions={led.sessions} events={eventRows} today={orgToday.today} />;
 
   return (
     <Screen
@@ -189,10 +192,13 @@ export function SuperCalendar() {
   const activeIds = (seasons.data ?? []).filter((s) => s.status === "ACTIVE").map((s) => s.id);
   const all = useLedSeasonSessions(activeIds);
   const events = useEvents();
+  // The org's day, from the first active season's dashboard; see LeaderCalendar.
+  const orgToday = useStaffOrgToday(activeIds[0] ?? null);
   const eventRows = events.data ?? [];
 
   let body: ReactNode;
-  if (seasons.isPending || (activeIds.length > 0 && all.isPending)) body = <RouteSkeleton />;
+  if (seasons.isPending || (activeIds.length > 0 && all.isPending) || orgToday.isPending)
+    body = <RouteSkeleton />;
   else if (seasons.isError || all.isError)
     body = (
       <RouteError
@@ -209,6 +215,7 @@ export function SuperCalendar() {
         sessions={all.sessions}
         events={eventRows}
         seasonColors={buildSeasonColors(all.sessions)}
+        today={orgToday.today}
       />
     );
 
@@ -240,11 +247,13 @@ export function AdminCalendar() {
   const selection = useStaffSeasonSelection(true);
   const sessions = useSeasonSessions(selection.seasonId);
   const events = useEvents();
+  // The org's day; see LeaderCalendar.
+  const orgToday = useStaffOrgToday(selection.seasonId);
   const eventRows = events.data ?? [];
   const rows = sessions.data ?? [];
 
   let body: ReactNode;
-  if (selection.isPending || (selection.seasonId !== null && sessions.isPending))
+  if (selection.isPending || (selection.seasonId !== null && sessions.isPending) || orgToday.isPending)
     body = <RouteSkeleton />;
   else if (selection.isError) body = <RouteError onRetry={selection.refetch} />;
   else if (selection.seasonId === null)
@@ -259,7 +268,12 @@ export function AdminCalendar() {
   else
     body = (
       // key: switching season starts again from that season's anchor month.
-      <RoutedSeasonCalendar key={selection.seasonId} sessions={rows} events={eventRows} />
+      <RoutedSeasonCalendar
+        key={selection.seasonId}
+        sessions={rows}
+        events={eventRows}
+        today={orgToday.today}
+      />
     );
 
   return (

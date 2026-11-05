@@ -7,6 +7,7 @@ jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 import { apiClient } from "../lib/api-client";
 import { useStaffToday } from "../hooks/use-staff-today";
 import { useSessionStore } from "../store/session";
+import { staffDashboard } from "./helpers/dashboard-fixtures";
 import { makeSession } from "./helpers/session";
 
 const get = apiClient.get as jest.Mock;
@@ -115,5 +116,45 @@ describe("useStaffToday", () => {
     expect(result.current.sessions).toEqual([]);
     expect(result.current.needs.unmarkedSessions).toBe(0);
     expect(urls().some((u) => u.includes("/sessions"))).toBe(false);
+  });
+
+  describe("counts from the server's day", () => {
+    // Both seasons' sessions sit on 2020-01-01, long past by the device.
+    function serveDashboard(todayOrgDay: string | Error) {
+      get.mockImplementation((url: string) =>
+        url.startsWith("/api/v1/me/dashboard")
+          ? todayOrgDay instanceof Error
+            ? Promise.reject(todayOrgDay)
+            : ok({ ...staffDashboard("season"), todayOrgDay })
+          : route(url));
+    }
+
+    it("a server day before the sessions' day: nothing is over yet, whatever the device says", async () => {
+      serveDashboard("2019-12-31");
+      useSessionStore.setState(makeSession("ADMIN"));
+      const { result } = renderHook(() => useStaffToday("ADMIN"), { wrapper });
+      await waitFor(() => expect(result.current.orgToday).toBe("2019-12-31"));
+      expect(result.current.needs.unmarkedSessions).toBe(0);
+      expect(urls()).toContain("/api/v1/me/dashboard?seasonId=3");
+    });
+
+    it("SUPER reads the first active season's dashboard for it", async () => {
+      serveDashboard("2019-12-31");
+      useSessionStore.setState(makeSession("SUPER"));
+      const { result } = renderHook(() => useStaffToday("SUPER"), { wrapper });
+      await waitFor(() => expect(result.current.orgToday).toBe("2019-12-31"));
+      expect(result.current.needs.unmarkedSessions).toBe(0);
+      expect(urls().filter((u) => u.startsWith("/api/v1/me/dashboard"))).toHaveLength(1);
+    });
+
+    it("a failing dashboard falls back to the device's day, and Today still settles", async () => {
+      serveDashboard(new Error("down"));
+      useSessionStore.setState(makeSession("ADMIN"));
+      const { result } = renderHook(() => useStaffToday("ADMIN"), { wrapper });
+      await waitFor(() => expect(result.current.isPending).toBe(false));
+      await waitFor(() => expect(urls()).toContain("/api/v1/me/dashboard?seasonId=3"));
+      expect(result.current.orgToday).toBeUndefined();
+      expect(result.current.needs.unmarkedSessions).toBe(1);
+    });
   });
 });

@@ -1,6 +1,7 @@
 import type { SessionListItem } from "@space/shared";
 
 import { unmarkedSessions, type NeedsAction } from "../lib/staff-today";
+import { useStaffOrgToday } from "./use-dashboard";
 import { useCurrentSeasonId, useSeasons } from "./use-seasons";
 import { useEngagementStudents } from "./use-reports";
 import { useLedSeasonSessions } from "./use-sessions";
@@ -13,6 +14,8 @@ export interface StaffToday {
   /** ADMIN: the current season; SUPER: null. The season param every list Today opens uses. */
   scopeSeasonId: number | null;
   sessions: SessionListItem[];
+  /** The org's today from the server; undefined until it answers or if it fails (the device's day then stands in). */
+  orgToday: string | undefined;
   needs: NeedsAction;
   isPending: boolean;
   refetch: () => void;
@@ -46,6 +49,9 @@ export function useStaffToday(role: "ADMIN" | "SUPER"): StaffToday {
       : [];
 
   const led = useLedSeasonSessions(seasonIds);
+  // Never joins isPending / refetch: Today does not wait on it, and a failure changes nothing
+  // visible. For ADMIN this is the query AdminToday already reads.
+  const { today: orgToday } = useStaffOrgToday(isSuper ? (seasonIds[0] ?? null) : current.seasonId);
 
   // ADMIN with no season has nothing to count; SUPER's queue has no season.
   const scoped = isSuper || current.seasonId !== null;
@@ -65,7 +71,7 @@ export function useStaffToday(role: "ADMIN" | "SUPER"): StaffToday {
 
   const needs: NeedsAction = {
     pendingReview: scoped ? count(queueQ, queue.data?.pages[0]?.counts?.pending) : seasonsUnknown ? null : 0,
-    unmarkedSessions: sessionsUnknown ? null : unmarkedSessions(led.sessions, new Date()).length,
+    unmarkedSessions: sessionsUnknown ? null : unmarkedSessions(led.sessions, new Date(), orgToday).length,
     atRisk: scoped ? count(riskQ, risk.data?.pages[0]?.total) : seasonsUnknown ? null : 0,
     pendingInvites: isSuper ? count(invites, invites.data) : undefined,
   };
@@ -81,6 +87,7 @@ export function useStaffToday(role: "ADMIN" | "SUPER"): StaffToday {
     seasonIds,
     scopeSeasonId,
     sessions: led.sessions,
+    orgToday,
     needs,
     isPending,
     isRefetching: led.isRefetching || queue.isRefetching || risk.isRefetching || invites.isRefetching,
