@@ -1,10 +1,9 @@
 import { useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import type { GroupListItem } from "@space/shared";
 
 import { SEASON_GROUPS_ROLES } from "../../../src/hooks/use-group-admin";
 import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
-import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import {
