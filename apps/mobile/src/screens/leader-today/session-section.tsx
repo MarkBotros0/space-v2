@@ -48,13 +48,16 @@ export function LeaderSessionSection({
   return (
     <View className="gap-4">
       <HeroCard
+        tone="brand"
         eyebrow={session.isInProgress ? "Happening now" : "Next session"}
         title={session.title}
         meta={meta}
         action={
           onTheDay ? (
             <>
-              <Button onPress={() => router.push(attendance)}>Take attendance</Button>
+              <Button variant="onHero" onPress={() => router.push(attendance)}>
+                Take attendance
+              </Button>
               <Button variant="secondary" onPress={openSession}>
                 Open session
               </Button>
@@ -66,7 +69,9 @@ export function LeaderSessionSection({
               ) : null}
             </>
           ) : (
-            <Button onPress={openSession}>Open session</Button>
+            <Button variant="onHero" onPress={openSession}>
+              Open session
+            </Button>
           )
         }
       />
