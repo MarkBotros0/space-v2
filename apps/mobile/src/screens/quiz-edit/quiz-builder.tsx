@@ -48,7 +48,8 @@ function QuizForm({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const isPaper = data.kind === "PAPER";
-  const titleChanged = title !== data.title;
+  // The server trims, so a space-only edit changes nothing.
+  const titleChanged = title.trim() !== data.title;
   const scoreLocked = data.gradeCount > 0;
   const scoreChanged = isPaper && !scoreLocked && maxScore !== String(data.maxScore);
   const dirty = titleChanged || scoreChanged;
@@ -58,7 +59,7 @@ function QuizForm({
   const save = () => {
     if (!dirty || questionOpen) return;
     const body: { title?: string; maxScore?: number } = {};
-    if (titleChanged) body.title = title;
+    if (titleChanged) body.title = title.trim();
     if (scoreChanged) body.maxScore = maxScore.trim() === "" ? Number.NaN : Number(maxScore);
     const parsed = updateQuizRequestSchema.safeParse(body);
     if (!parsed.success) {

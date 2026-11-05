@@ -176,4 +176,13 @@ describe("quiz builder on the fixed save bar", () => {
     fireEvent.press(screen.getByText("Try again"));
     await waitFor(() => expect(screen.queryByText("Couldn't refresh this quiz.")).toBeNull());
   });
+
+  it("a space-only title change is nothing to save: the hint says so and Save sends nothing", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    renderStacked(<QuizEditScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Week 1 quiz  ");
+    expect(bar().getByText("Nothing to save yet.")).toBeTruthy();
+    fireEvent.press(bar().getByText("Save changes"));
+    expect(patch).not.toHaveBeenCalled();
+  });
 });
