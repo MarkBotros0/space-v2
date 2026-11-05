@@ -76,15 +76,15 @@ describe("formatDayKey", () => {
 
 describe("formatWallTime / formatOrgDue (server org-clock values, no zone conversion — X13)", () => {
   it("renders an HH:mm wall-clock time as 12-hour text", () => {
-    expect(formatWallTime("23:59")).toBe("11:59 PM");
-    expect(formatWallTime("00:05")).toBe("12:05 AM");
-    expect(formatWallTime("12:00")).toBe("12:00 PM");
+    expect(formatWallTime("23:59")).toBe("11:59\u00A0PM");
+    expect(formatWallTime("00:05")).toBe("12:05\u00A0AM");
+    expect(formatWallTime("12:00")).toBe("12:00\u00A0PM");
     expect(formatWallTime(null)).toBe("—");
     expect(formatWallTime("7pm")).toBe("—");
   });
 
   it("labels a deadline from the server's org day and time", () => {
-    expect(formatOrgDue("2099-04-01", "23:59")).toBe("Apr 1, 2099, 11:59 PM");
+    expect(formatOrgDue("2099-04-01", "23:59")).toBe("Apr 1, 2099, 11:59\u00A0PM");
     expect(formatOrgDue("2099-04-01", null)).toBe("Apr 1, 2099");
     expect(formatOrgDue(null, null)).toBe("No due date");
   });
@@ -102,7 +102,7 @@ describe("firstName (spec 19 D21 — one formatter for STUDENT and ALUMNI)", () 
 
 describe("formatEventWhen (spec 19 R11, X13 — server day keys and wall time only)", () => {
   it("shows the day and the org wall time", () => {
-    expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe("Mar 5, 2099 · 6:30 PM");
+    expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe("Mar 5, 2099 · 6:30\u00A0PM");
   });
   it("omits the time for an all-day event and collapses a same-day range", () => {
     expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: "2099-03-05", time: null })).toBe("Mar 5, 2099");
@@ -134,7 +134,7 @@ describe("batch-2 formatters", () => {
   });
 
   it("formats v1's short event label", () => {
-    expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe("Mar 5 · 6:30 PM");
+    expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe("Mar 5 · 6:30\u00A0PM");
     expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: "2099-03-07", time: null })).toBe("Mar 5 – Mar 7");
     expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: "2099-03-05", time: null })).toBe("Mar 5");
   });
@@ -156,7 +156,7 @@ describe("batch-2 formatters", () => {
 
 describe("formatShortDateTime (v1 submissions 'MMM d, h:mm a', device zone)", () => {
   it("formats an instant without the year", () => {
-    expect(formatShortDateTime(new Date(2026, 6, 1, 18, 13).toISOString())).toBe("Jul 1, 6:13 PM");
+    expect(formatShortDateTime(new Date(2026, 6, 1, 18, 13).toISOString())).toBe("Jul 1, 6:13\u00A0PM");
     expect(formatShortDateTime(null)).toBe("—");
   });
 });
@@ -165,5 +165,18 @@ describe("unbreakable", () => {
   it("turns every space into U+00A0 so a unit cannot wrap", () => {
     expect(unbreakable("Max 100 pts")).toBe(["Max", "100", "pts"].join(NBSP));
     expect(unbreakable("9:00 PM")).not.toContain(" ");
+  });
+});
+
+describe("times never break across lines", () => {
+  it("joins every clock and meridiem with U+00A0, no ordinary or narrow space", () => {
+    const outs = [
+      formatWallTime("21:05"),
+      formatSessionTime("2099-03-01T21:05:00"),
+      formatShortDateTime("2099-03-01T09:05:00"),
+      formatStampAgo("2099-03-01T09:05:00"),
+    ];
+    for (const out of outs) expect(out).toMatch(/\d:\d{2}\u00A0(AM|PM)/);
+    expect(splitWallTime("21:05")).toEqual({ clock: "9:05", meridiem: "PM" });
   });
 });

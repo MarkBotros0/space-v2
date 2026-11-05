@@ -19,7 +19,7 @@ function formatIso(iso: string | null, pattern: string): string {
 
 /** e.g. "6:00 PM" — the time a session starts. */
 export function formatSessionTime(iso: string | null): string {
-  return formatIso(iso, "h:mm a");
+  return formatIso(iso, "h:mm\u00A0a");
 }
 
 /** e.g. "Apr 1, 2026" — a generic date display. */
@@ -29,7 +29,7 @@ export function formatDate(iso: string | null): string {
 
 /** e.g. "Wed, Apr 1, 2026 · 6:00 PM" — when a marked session started. */
 export function formatDateTime(iso: string | null): string {
-  return formatIso(iso, "EEE, MMM d, yyyy · h:mm a");
+  return formatIso(iso, "EEE, MMM d, yyyy · h:mm\u00A0a");
 }
 
 /** e.g. "Apr 1, 2026" — an assignment's due date, rendered as a calendar day (no time). */
@@ -71,7 +71,7 @@ export function formatWallTime(time: string | null): string {
   if (!m) return PLACEHOLDER;
   const hour = Number(m[1]);
   const twelve = hour % 12 === 0 ? 12 : hour % 12;
-  return `${twelve}:${m[2] ?? "00"} ${hour < 12 ? "AM" : "PM"}`;
+  return `${twelve}:${m[2] ?? "00"}\u00A0${hour < 12 ? "AM" : "PM"}`;
 }
 
 /** e.g. "Apr 1, 2099, 11:59 PM" — a deadline from the server's `dueOrgDay`/`dueOrgTime`. */
@@ -150,7 +150,7 @@ export function formatWeekdayDayYear(dayKey: string | null): string {
 export function splitWallTime(time: string | null): { clock: string; meridiem: string } {
   const whole = formatWallTime(time);
   if (whole === PLACEHOLDER) return { clock: PLACEHOLDER, meridiem: "" };
-  const [clock = PLACEHOLDER, meridiem = ""] = whole.split(" ");
+  const [clock = PLACEHOLDER, meridiem = ""] = whole.split("\u00A0");
   return { clock, meridiem };
 }
 
@@ -184,7 +184,7 @@ export function formatStampAgo(iso: string | null): string {
   if (iso == null) return PLACEHOLDER;
   const date = parseISO(iso);
   if (!isValid(date)) return PLACEHOLDER;
-  return `${format(date, "MMM d, yyyy · h:mm a")} · ${formatDistanceToNowStrict(date, { addSuffix: true })}`;
+  return `${format(date, "MMM d, yyyy · h:mm\u00A0a")} · ${formatDistanceToNowStrict(date, { addSuffix: true })}`;
 }
 
 /** e.g. "Apr 1" — v1's short badge date for an instant with no org day key (device zone, gap note). */
@@ -194,7 +194,7 @@ export function formatShortDate(iso: string | null): string {
 
 /** e.g. "Jul 1, 6:13 PM" — v1's submissions stamp for an instant (device zone; no org fields on those payloads). */
 export function formatShortDateTime(iso: string | null): string {
-  return formatIso(iso, "MMM d, h:mm a");
+  return formatIso(iso, "MMM d, h:mm\u00A0a");
 }
 
 /**
