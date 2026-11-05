@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
@@ -100,6 +100,48 @@ describe("Admins card on the SUPER season detail", () => {
     const menu = screen.getAllByRole("menuitem");
     expect(menu).toHaveLength(1);
     expect(within(menu[0]!).getByText("Rana Admin")).toBeTruthy();
+  });
+
+  it("a pick that disappears during a refetch does not leave the Add dialog armed for the next pick (final review M10)", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    const base = get.getMockImplementation() as (url: string) => Promise<unknown>;
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/users?role=ADMIN"
+        ? Promise.resolve({
+            data: {
+              data: {
+                users: [userRow(21, "Pat Admin"), userRow(22, "Rana Admin"), userRow(24, "Sam Admin")],
+                nextCursor: null,
+                total: 3,
+              },
+            },
+          })
+        : base(url),
+    );
+    let client: QueryClient | undefined;
+    const mount = QueryClient.prototype.mount;
+    jest.spyOn(QueryClient.prototype, "mount").mockImplementation(function (this: QueryClient) {
+      client = this;
+      return mount.call(this);
+    });
+    renderWithProviders(<SeasonDetailScreen />);
+    await screen.findByText("Pat Admin");
+    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
+    fireEvent.press(screen.getByLabelText("Choose an admin"));
+    fireEvent.press(screen.getByText("Rana Admin"));
+    fireEvent.press(screen.getByText("Add admin"));
+    expect(screen.getByText("Add admin?")).toBeTruthy();
+
+    // Someone else makes Rana an admin: she leaves the options while her dialog is open.
+    const rana = { ...pat, userId: 22, name: "Rana Admin", email: "rana@jpc.test" };
+    act(() => client!.setQueryData(queryKeys.seasons.admins(7), [pat, rana]));
+    await waitFor(() => expect(screen.queryByText("Add admin?")).toBeNull());
+
+    fireEvent.press(screen.getByLabelText("Choose an admin"));
+    fireEvent.press(screen.getByText("Sam Admin"));
+    expect(screen.queryByText("Add admin?")).toBeNull();
+    fireEvent.press(screen.getByText("Add admin"));
+    expect(screen.getByText("Add admin?")).toBeTruthy();
   });
 
   it("adds the picked admin, toasts, and refreshes the season, users and dashboard", async () => {

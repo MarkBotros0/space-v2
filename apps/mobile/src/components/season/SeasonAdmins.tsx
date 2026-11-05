@@ -1,5 +1,5 @@
 import { Trash2, UserPlus } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 
 import { iconWithClassName } from "../../design/lib/icon";
@@ -46,6 +46,11 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
   }, [candidates.data, current]);
 
   const pickedOption = options.find((o) => o.value === picked);
+  // The pick can leave the options mid-confirm (someone else added them); the dialog
+  // then hides, and the next pick must not open it without Add being pressed (final review M10).
+  useEffect(() => {
+    if (pickedOption === undefined) setConfirmingAdd(false);
+  }, [pickedOption]);
 
   const submitAdd = () => {
     if (picked === null) return;
