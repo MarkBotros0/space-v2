@@ -1,6 +1,7 @@
 # UI sweep s22 — Calendar and sessions as a season admin. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
+# Only Home has the user menu (R13): each screen is waited on by its own text.
 ---
 - runFlow:
     file: ../_sign-in.yaml
@@ -8,7 +9,7 @@ appId: com.jpc.space
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://calendar
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Add session'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -39,7 +40,7 @@ appId: com.jpc.space
 # The past session is not in the Upcoming agenda, so it is opened by id (seed order: Opening night is session 1).
 - openLink: spacev2://session/1
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Opening night'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -54,7 +55,7 @@ appId: com.jpc.space
 # Attendance sheet: rows are never tapped and Save is never pressed.
 - openLink: spacev2://session/1/attendance
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Quick mark all as'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -68,7 +69,7 @@ appId: com.jpc.space
 - takeScreenshot: s22-08-session-attendance-bottom
 - openLink: spacev2://session/1/edit
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Edit session'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

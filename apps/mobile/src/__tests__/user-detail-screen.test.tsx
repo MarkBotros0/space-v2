@@ -1,15 +1,18 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
 }));
 const mockBack = jest.fn();
+const mockDismissTo = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: mockBack }),
+  useRouter: () => ({ back: mockBack, dismissTo: mockDismissTo }),
   useLocalSearchParams: () => ({ id: "7" }),
 }));
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -46,7 +49,15 @@ const detail = {
     usedAt: null,
     invitedByName: "Super",
   },
+  adminSeasons: [] as { id: number; code: string; title: string }[],
 };
+
+function apiFailure(status: number, code: string, message: string) {
+  return Object.assign(new Error(message), {
+    isAxiosError: true,
+    response: { status, data: { error: { code, message } } },
+  });
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -80,6 +91,89 @@ describe("UserDetailScreen", () => {
         graduationYear: null,
       }),
     );
+    // v1 user-form.tsx:117: a save lands back on the users list, with a word.
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/users"));
+    expect(toast.success).toHaveBeenCalledWith("Changes saved.");
+  });
+
+  it("names the seasons an ADMIN loses before a role change, and saves only on confirm", async () => {
+    get.mockResolvedValue({
+      data: {
+        data: {
+          ...detail,
+          role: "ADMIN",
+          graduationYear: 2015,
+          status: "active",
+          invite: null,
+          adminSeasons: [
+            { id: 1, code: "gbv-2026", title: "GBV 2026" },
+            { id: 2, code: "gbv-2025", title: "GBV 2025" },
+          ],
+        },
+      },
+    });
+    let confirm: (() => void) | undefined;
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
+      confirm = buttons?.find((b) => b.style !== "cancel")?.onPress as () => void;
+    });
+    patch.mockResolvedValue({ data: { data: { ...detail, role: "MENTOR", graduationYear: 2015 } } });
+    renderWithProviders(<UserDetailScreen />);
+    await screen.findByText("Edit Detail Dan");
+
+    fireEvent.press(screen.getByLabelText("Role"));
+    fireEvent.press(await screen.findByText("Mentor"));
+    fireEvent.press(screen.getByText("Save changes"));
+
+    await waitFor(() =>
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Remove season admin rights?",
+        expect.stringContaining("GBV 2026, GBV 2025"),
+        expect.any(Array),
+      ),
+    );
+    expect(patch).not.toHaveBeenCalled();
+    confirm?.();
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/api/v1/users/7", {
+        name: "Detail Dan",
+        role: "MENTOR",
+        graduationYear: 2015,
+      }),
+    );
+    alertSpy.mockRestore();
+  });
+
+  it("disables the form for a deactivated account and says why", async () => {
+    get.mockResolvedValue({
+      data: { data: { ...detail, status: "inactive", deletedAt: "2026-08-30T00:00:00.000Z" } },
+    });
+    renderWithProviders(<UserDetailScreen />);
+    expect(await screen.findByText(/can't be edited — reactivate it first/)).toBeTruthy();
+    expect(screen.getByLabelText("Name").props.editable).toBe(false);
+    // The pinned bar can't be disabled: it says why, and pressing it saves nothing.
+    expect(within(screen.getByTestId("save-bar")).getByText("Reactivate this account to edit it.")).toBeTruthy();
+    fireEvent.press(screen.getByText("Save changes"));
+    expect(patch).not.toHaveBeenCalled();
+    expect(screen.getByText("Reactivate")).toBeTruthy();
+  });
+
+  it.each([
+    ["already_activated", 409, /already activated/],
+    ["user_deleted", 409, /deactivated/],
+    ["email_not_configured", 503, /Email isn't set up/],
+    ["email_send_failed", 502, /earlier invite still works/],
+  ])("shows why a resend failed (%s)", async (code, status, text) => {
+    (apiClient.post as jest.Mock).mockRejectedValue(apiFailure(status, code, "server says no"));
+    renderWithProviders(<UserDetailScreen />);
+    fireEvent.press(await screen.findByText("Resend invite"));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(text)));
+  });
+
+  it("confirms a resend that went out", async () => {
+    (apiClient.post as jest.Mock).mockResolvedValue({ data: { data: detail.invite } });
+    renderWithProviders(<UserDetailScreen />);
+    fireEvent.press(await screen.findByText("Resend invite"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Invite sent to dan@jpc.test."));
   });
 
   it("gates a SUPER grant behind an explicit confirmation (D7 rec 3)", async () => {

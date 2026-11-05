@@ -15,6 +15,9 @@ import type { NotificationTarget } from "@space/shared";
  * (/admin|leader/students/:id), so entityId is never null for it. The switch
  * still falls back to the roster rather than asserting, so a future null
  * cannot crash the inbox.
+ *
+ * The `submission` arm (SUBMISSION_RECEIVED) carries the submission's
+ * publicId, which is the review screen's own route param.
  */
 export type NotificationRoute =
   | { pathname: "/assignment/[id]"; params: { id: string } }
@@ -22,7 +25,8 @@ export type NotificationRoute =
   | { pathname: "/quizzes" }
   | { pathname: "/calendar" }
   | { pathname: "/student/[id]"; params: { id: string } }
-  | { pathname: "/students" };
+  | { pathname: "/students" }
+  | { pathname: "/submission/[publicId]"; params: { publicId: string } };
 
 export function routeForTarget(target: NotificationTarget | null): NotificationRoute | null {
   if (!target) return null;
@@ -40,5 +44,7 @@ export function routeForTarget(target: NotificationTarget | null): NotificationR
       return target.entityId === null
         ? { pathname: "/students" }
         : { pathname: "/student/[id]", params: { id: String(target.entityId) } };
+    case "submission":
+      return { pathname: "/submission/[publicId]", params: { publicId: target.entityId } };
   }
 }

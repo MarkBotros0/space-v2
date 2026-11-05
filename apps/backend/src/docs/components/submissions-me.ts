@@ -72,9 +72,9 @@ export const submissionsMeSchemas = {
     properties: {
       items: { type: "array", items: { $ref: "#/components/schemas/SubmissionQueueItem" } },
       counts: {
-        type: "object",
+        type: ["object", "null"],
         description:
-          "v1's header numbers over everything the caller's scope (and `seasonId`) reaches, ignoring `pendingOnly` and paging. DRAFTs never count.",
+          "v1's header numbers over everything the caller's scope (and `seasonId`) reaches, ignoring `pendingOnly` and paging. DRAFTs never count. Sent on the first page only; null on a page requested with `cursor`, since the header reads the first page's.",
         properties: {
           pending: { type: "integer", description: "Status SUBMITTED." },
           total: { type: "integer", description: "Every non-DRAFT submission in scope." },

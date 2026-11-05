@@ -67,7 +67,7 @@ export const forumEventsPaths = {
       tags: ["Forum"],
       summary: "Comment on a post",
       description:
-        "Allowed for a student in the post author's group who has posted their own response first (403 `post_first` otherwise), for the LEADER of that group and for the season ADMIN / SUPER without posting anything. A MENTOR stays read-only. The post must belong to the assignment in the path (404 otherwise). No notification is sent (no forum `NotificationType`; a cutover task). **No moderation beyond comment deletion exists** — there is no way to hide a post or report one (plan 14, D-14.4).",
+        "Allowed for a student in the post author's group who has posted their own response first (403 `post_first` otherwise), for the LEADER of that group and for the season ADMIN / SUPER without posting anything. A MENTOR stays read-only. The post must belong to the assignment in the path (404 otherwise). No notification is sent (`NotificationType` has no forum member). **No moderation beyond comment deletion exists** — there is no way to hide a post or report one (plan 14, D-14.4).",
       parameters: [idParam, publicIdParam],
       requestBody: {
         required: true,
@@ -109,12 +109,25 @@ export const forumEventsPaths = {
       tags: ["Events"],
       summary: "List events",
       description:
-        "**Visibility is derived from the token and cannot be widened by a parameter.** ALL: everyone. ALUMNI_ONLY: alumni (a STUDENT with a graduation year) and every non-student role. SEASON: the seasons the caller holds (a student's active season, an admin's seasons, a leader's groups' seasons); a MENTOR holds none, as in v1. SUPER sees everything, orphans included; no other role sees events on a soft-deleted season. The window is on `(endDate ?? date)`; when `from`/`to` are omitted it defaults to `[now - 30d, now + 365d]`. `upcoming=true` starts the window at today's organisation midnight (not combinable with `from`), `limit` (1-20) caps `events`, and `total` is counted before the cap. `allDay`, `dayKey` and `time` are server-derived against the organisation timezone. Event photo endpoints are deliberately absent while uploads are disabled.",
+        "**Visibility is derived from the token and cannot be widened by a parameter.** ALL: everyone. ALUMNI_ONLY: alumni (a STUDENT with a graduation year) and every non-student role. SEASON: the seasons the caller holds (a student's active season, an admin's seasons, a leader's groups' seasons); a MENTOR holds none, as in v1. SUPER sees everything, orphans included; no other role sees events on a soft-deleted season. The window is on `(endDate ?? date)`; an omitted `from` or `to` leaves that side open, so with neither every visible event is returned (v1 parity). `upcoming=true` starts the window at today's organisation midnight (not combinable with `from`), `limit` (1-20) caps `events`, and `total` is counted before the cap. `allDay`, `dayKey` and `time` are server-derived against the organisation timezone.\n\n**Paging (opt-in).** `paged=true` switches to cursor paging, newest first (date desc, then id desc): `pageSize` rows (1-100, default 25) and `nextCursor`, null on the last page — pass it back as `cursor`. `total` is still the whole window's count. `from`/`to`/`upcoming` combine with it; `limit` does not (400), nor do `cursor`/`pageSize` without `paged=true`. The unpaged form, which the calendars read, is unchanged and carries no `nextCursor`. Event photo endpoints are deliberately absent while uploads are disabled.",
       parameters: [
         { name: "from", in: "query", schema: { type: "string", format: "date-time" } },
         { name: "to", in: "query", schema: { type: "string", format: "date-time" } },
         { name: "upcoming", in: "query", schema: { type: "boolean" } },
-        { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 20 } },
+        { name: "limit", in: "query", description: "Unpaged only.", schema: { type: "integer", minimum: 1, maximum: 20 } },
+        { name: "paged", in: "query", schema: { type: "boolean" } },
+        {
+          name: "pageSize",
+          in: "query",
+          description: "With `paged=true`; default 25.",
+          schema: { type: "integer", minimum: 1, maximum: 100 },
+        },
+        {
+          name: "cursor",
+          in: "query",
+          description: "With `paged=true`: the previous page's `nextCursor`, verbatim (opaque).",
+          schema: { type: "string", pattern: "^\\d{1,15}_\\d{1,10}$" },
+        },
       ],
       responses: {
         200: ok(
@@ -124,9 +137,13 @@ export const forumEventsPaths = {
             properties: {
               events: { type: "array", items: { $ref: "#/components/schemas/JpcEventListItem" } },
               total: { type: "integer", minimum: 0 },
+              nextCursor: {
+                type: ["string", "null"],
+                description: "Present only with `paged=true`; null on the last page.",
+              },
             },
           },
-          "Events ordered by date, then id.",
+          "Unpaged: events ordered by date, then id. Paged: newest first.",
         ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),

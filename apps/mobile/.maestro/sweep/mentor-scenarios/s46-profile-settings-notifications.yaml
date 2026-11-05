@@ -1,0 +1,58 @@
+# UI sweep s46 — Profile, Settings and notifications as a mentor. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${MENTOR_EMAIL}
+# A mentor has no More tab: Profile is the way to Settings and Sign out.
+- openLink: spacev2://profile
+- extendedWaitUntil:
+    visible: 'Sign out'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s46-01-profile
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Settings'
+- extendedWaitUntil:
+    visible: 'Profile, password, and notification preferences\.'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s46-02-settings
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Name'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s46-03-settings-name-kbd
+- hideKeyboard
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s46-04-settings-bottom
+# Rows are never tapped: opening one marks it read.
+- openLink: spacev2://notifications
+- extendedWaitUntil:
+    visible: '\d+ unread'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s46-05-notifications
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s46-06-notifications-bottom

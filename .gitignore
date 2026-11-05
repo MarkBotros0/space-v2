@@ -10,3 +10,7 @@ coverage/
 uploads/
 
 tools/ui-reference/node_modules/
+.claude/worktrees/
+
+# Local-only credentials (e.g. the FCM service-account key for eas credentials)
+.secrets/

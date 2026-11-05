@@ -6,6 +6,7 @@ appId: com.jpc.space
     file: ../_sign-in.yaml
     env:
       EMAIL: ${LEADER_EMAIL}
+# Wait on the subtitle, not the title: a tab label also reads "My notes".
 - openLink: spacev2://notes
 - extendedWaitUntil:
     visible: '.*notes? you.ve authored'

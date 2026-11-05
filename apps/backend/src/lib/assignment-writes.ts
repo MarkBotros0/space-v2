@@ -70,8 +70,8 @@ export function assignmentColumns(body: AssignmentWriteBody) {
 /**
  * Who an assignment is given to: ACTIVE enrolments in the season, narrowed to
  * the targeted groups. v1 read GroupStudent for the targeted branch
- * (`assignment-actions.ts:177`) — ruling C9 forbids that, because GroupStudent
- * is one row per student database-wide. This is the same population
+ * (`assignment-actions.ts:177`) — ruling C9 forbids that: the enrolment is the
+ * authority, GroupStudent only its per-season mirror. This is the same population
  * `loadAssignmentTracker` lists, so "who was notified" and "who the tracker
  * expects" are one answer.
  */

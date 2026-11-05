@@ -68,6 +68,8 @@ export const studentAssignmentListItemSchema = z.object({
   id: z.number(),
   title: z.string(),
   dueAt: z.string().nullable(),
+  /** Org-calendar day of `dueAt` (X13); label and compare with this, not the device zone. */
+  dueOrgDay: isoDaySchema.nullable(),
   isOverdue: z.boolean(),
   status: assignmentStudentStatusSchema,
   reviewedAt: z.string().nullable(),

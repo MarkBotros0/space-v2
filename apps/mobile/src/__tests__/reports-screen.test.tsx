@@ -18,7 +18,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import ReportsScreen from "../../app/(app)/reports";
+import ReportsScreen from "../../app/(app)/(tabs)/reports";
 
 import { mockEndpoints, sessionFor } from "./helpers/reports-fixtures";
 
@@ -37,6 +37,7 @@ describe("ReportsScreen — role branches", () => {
     renderWithProviders(<ReportsScreen />);
 
     expect(await screen.findByText("Reports")).toBeTruthy();
+    expect(screen.getByText("This screen is for mentors and season admins.")).toBeTruthy();
     // The API refuses leaders explicitly. A query that fires only to be refused
     // surfaces as an error state on a screen that should simply say the surface
     // is not theirs.
@@ -76,7 +77,8 @@ describe("ReportsScreen — role branches", () => {
     // them exactly that data (R45).
     expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText("Student accounts")).toBeTruthy();
-    expect(screen.getByText("40")).toBeTruthy();
+    // Tiles count up to their figure; the number is on screen once they settle.
+    expect((await screen.findAllByText("40")).length).toBeGreaterThan(0);
   });
 });
 
@@ -91,7 +93,8 @@ describe("ReportsScreen — SUPER's organisation roll-up (v1 super/reports)", ()
     expect(screen.getByText("Active seasons")).toBeTruthy();
     expect(screen.getByText("2098: 12")).toBeTruthy();
     expect(screen.getAllByText("20 active").length).toBeGreaterThan(0);
-    fireEvent.press(screen.getByLabelText("Open Spring 2099"));
+    // The season is a grouped row: its label is the title, then the counts it carries.
+    fireEvent.press(screen.getByLabelText(/^Spring 2099, 2 leaders/));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/seasons/[code]",
       params: { code: "spring-2099" },

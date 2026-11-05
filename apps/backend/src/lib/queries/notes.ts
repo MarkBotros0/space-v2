@@ -40,7 +40,7 @@ type NoteRow = {
 /**
  * `@updatedAt` fires on create as well as update, so the two timestamps are
  * within a few milliseconds of each other on an unedited row. A second of
- * tolerance separates "written" from "amended" without a new column (C1).
+ * tolerance separates "written" from "amended" without a separate edited-at column.
  * v1 wrote updatedAt and never read it (R24, R26); D4 #3 says surface it.
  */
 function wasEdited(row: { createdAt: Date; updatedAt: Date }): boolean {
@@ -117,6 +117,36 @@ export async function listNotesForStudent(
   };
 }
 
+const AUTHORED_SELECT = {
+  ...NOTE_SELECT,
+  studentUserId: true,
+  studentUser: { select: { name: true, email: true } },
+} as const;
+
+type AuthoredRow = NoteRow & {
+  studentUserId: number;
+  studentUser: { name: string; email: string };
+};
+
+/**
+ * The one projection of an over-fetched (limit + 1) authored-note page, shared
+ * by `/me/notes` and `/me/visible-notes` so the two cannot drift.
+ */
+function toAuthoredPage(
+  rows: AuthoredRow[],
+  limit: number,
+  user: SessionUser,
+): NotePage<AuthoredNote> {
+  const page = rows.slice(0, limit);
+  return {
+    notes: page.map((r) => ({
+      ...toNoteSummary(r, user),
+      student: { id: r.studentUserId, name: r.studentUser.name, email: r.studentUser.email },
+    })),
+    nextCursor: rows.length > limit ? String(page[page.length - 1]?.id ?? "") || null : null,
+  };
+}
+
 /**
  * Notes THIS caller wrote, across students.
  *
@@ -132,24 +162,40 @@ export async function listAuthoredNotes(
   const rows = await db.engagementNote.findMany({
     where: {
       authorUserId: user.userId,
+      // A soft-deleted student's notes leave the list with them, as their
+      // own notes page already 404s.
+      studentUser: { deletedAt: null },
       ...(query.studentId ? { studentUserId: query.studentId } : {}),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: query.limit + 1,
     ...cursorClause(query.cursor),
-    select: {
-      ...NOTE_SELECT,
-      studentUserId: true,
-      studentUser: { select: { name: true, email: true } },
-    },
+    select: AUTHORED_SELECT,
   });
+  return toAuthoredPage(rows, query.limit, user);
+}
 
-  const page = rows.slice(0, query.limit);
-  return {
-    notes: page.map((r) => ({
-      ...toNoteSummary(r, user),
-      student: { id: r.studentUserId, name: r.studentUser.name, email: r.studentUser.email },
-    })),
-    nextCursor: rows.length > query.limit ? String(page[page.length - 1]?.id ?? "") || null : null,
-  };
+/**
+ * The newest notes THIS viewer may read, across every student.
+ *
+ * Gate two only (`noteVisibilityWhere`), in the query. Gate one,
+ * `canViewStudent`, is true for every student for a mentor, so the route needs
+ * no per-row check. Returns null when the caller may read no notes at all; the
+ * route turns that into a 403.
+ */
+export async function listVisibleNotes(
+  user: SessionUser,
+  query: NoteListQuery,
+): Promise<NotePage<AuthoredNote> | null> {
+  const scope = noteVisibilityWhere(user);
+  if (scope === null) return null;
+
+  const rows = await db.engagementNote.findMany({
+    where: { AND: [scope, { studentUser: { deletedAt: null } }] },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: query.limit + 1,
+    ...cursorClause(query.cursor),
+    select: AUTHORED_SELECT,
+  });
+  return toAuthoredPage(rows, query.limit, user);
 }

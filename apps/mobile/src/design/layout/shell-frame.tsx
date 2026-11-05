@@ -1,50 +1,41 @@
 import type { ReactNode } from "react";
-import { RefreshControl, ScrollView, View } from "react-native";
 
-import { useKeyboardInset } from "../lib/keyboard-inset";
-import { useShellBottomPadding } from "./shell-context";
+import type { BackTarget } from "./large-title";
+import { Screen } from "./screen";
 
 /**
- * v1 shell-frame.tsx `<main className="mx-auto w-full max-w-7xl flex-1 px-4
- * pb-24 pt-4">`. `pb-24` keeps the last row clear of the floating tab bar;
- * natively the padding grows with the bottom inset, as the bar does
- * (useShellBottomPadding), and with the keyboard while it is open, so a
- * form's fields and buttons scroll above it (useKeyboardInset).
- * The top bar (rendered above this) owns the top safe-area inset.
- * Background: every v1 role layout wraps its pages in `bg-brand-navy-50
- * dark:bg-transparent … pb-24` (app/<role>/layout.tsx); the tint ends 96px
- * below the content, so a short page shows the plain background under it.
- * `onRefresh` adds pull-to-refresh (v2-only; v1 pages are server-rendered).
+ * The frame of every screen not yet moved to `Screen` (plan 01 Task 10; to be
+ * deleted in plan 05). It is `Screen` without a title: the top inset and the
+ * offline strip, the bottom padding that clears the pill (or the inset on a
+ * detail screen), the keyboard inset, pull-to-refresh, and the scroll
+ * direction the pill follows. The screen keeps its own `PageTitle` in the
+ * content until its batch.
+ * Background: the Screen's `bg-background`, like every redesigned screen.
+ * v1's navy-50 page tint is gone (R32): it covered only the
+ * content, so a short page showed a two-tone seam where it ended. Cards stay
+ * apart from the page as `bg-card`/`bg-surface`.
+ * `home` (the dashboard route only) puts the bell and the user menu at the
+ * top of the content, ruling R13. `back` is Screen's pinned back bar
+ * (ruling R16); left unset it is `BACK_TO_PREVIOUS` on the stack (R23), `null` opts out.
  */
 export function ShellFrame({
   children,
   scroll = true,
   refreshing = false,
   onRefresh,
+  home = false,
+  back,
 }: {
   children: ReactNode;
   scroll?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
+  home?: boolean;
+  back?: BackTarget | null;
 }) {
-  const bottom = useShellBottomPadding();
-  const keyboard = useKeyboardInset();
-  if (!scroll) {
-    return (
-      <View className="flex-1 bg-brand-navy-50 px-4 pt-4 dark:bg-background" style={{ paddingBottom: bottom }}>
-        {children}
-      </View>
-    );
-  }
   return (
-    <ScrollView
-      {...keyboard.scrollProps}
-      className="flex-1 bg-background"
-      contentContainerClassName="bg-brand-navy-50 px-4 pt-4 dark:bg-background"
-      contentContainerStyle={{ paddingBottom: Math.max(bottom, keyboard.inset + 16) }}
-      refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined}
-    >
+    <Screen scroll={scroll} refreshing={refreshing} onRefresh={onRefresh} home={home} back={back}>
       {children}
-    </ScrollView>
+    </Screen>
   );
 }

@@ -55,7 +55,7 @@ appId: com.jpc.space
 # Left-margin swipes, as in _tap.yaml: a swipe starting on a field may not scroll.
 - repeat:
     while:
-      notVisible: 'Security'
+      notVisible: 'SECURITY'
     times: 10
     commands:
       - swipe:
@@ -63,7 +63,7 @@ appId: com.jpc.space
           end: 4%, 35%
           duration: 500
 - scrollUntilVisible:
-    element: 'Security'
+    element: 'SECURITY'
     direction: DOWN
     timeout: 20000
 - scroll

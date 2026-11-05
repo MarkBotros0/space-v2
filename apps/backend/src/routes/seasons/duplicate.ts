@@ -83,13 +83,30 @@ export async function duplicateSeason(req: Request, res: Response) {
         select: { id: true, code: true },
       });
 
+      // Batching: a clone whose new id nothing needs goes in ONE createMany;
+      // only groups an assignment targets and sessions an assignment points
+      // at are created row by row, because their new ids must be mapped back
+      // and createManyAndReturn's row order is not part of its contract (see
+      // lib/queries/students/writes.ts). Assignment targets go in one
+      // createMany at the end.
+      const targetedGroupIds = new Set(
+        source.assignments.filter((a) => !a.isAllGroups).flatMap((a) => a.targets.map((t) => t.groupId)),
+      );
+      const linkedSessionIds = new Set(
+        source.assignments.map((a) => a.sessionId).filter((id): id is number => id !== null),
+      );
+
       // R57/R61: name and description only — no GroupLeader, no GroupStudent.
       const groupIdMap = new Map<number, number>();
-      for (const g of source.groups) {
-        const clone = await tx.group.create({
-          data: { seasonId: season.id, name: g.name, description: g.description },
-          select: { id: true },
-        });
+      const groupData = (g: (typeof source.groups)[number]) => ({
+        seasonId: season.id, name: g.name, description: g.description,
+      });
+      const unmappedGroups = source.groups.filter((g) => !targetedGroupIds.has(g.id));
+      if (unmappedGroups.length > 0) {
+        await tx.group.createMany({ data: unmappedGroups.map(groupData) });
+      }
+      for (const g of source.groups.filter((g) => targetedGroupIds.has(g.id))) {
+        const clone = await tx.group.create({ data: groupData(g), select: { id: true } });
         groupIdMap.set(g.id, clone.id);
       }
 
@@ -103,23 +120,27 @@ export async function duplicateSeason(req: Request, res: Response) {
         return minted;
       };
 
+      const sessionData = (s: (typeof source.sessions)[number]) => ({
+        seasonId: season.id,
+        title: s.title,
+        startsAt: shift(s.startsAt),
+        durationMinutes: s.durationMinutes,
+        location: s.location,
+        youtubeUrl: s.youtubeUrl,
+        description: s.description,
+        recurrenceGroupId: s.recurrenceGroupId ? freshRecurrenceId(s.recurrenceGroupId) : null,
+      });
       const sessionIdMap = new Map<number, number>();
-      for (const s of source.sessions) {
-        const clone = await tx.session.create({
-          data: {
-            seasonId: season.id,
-            title: s.title,
-            startsAt: shift(s.startsAt),
-            durationMinutes: s.durationMinutes,
-            location: s.location,
-            youtubeUrl: s.youtubeUrl,
-            description: s.description,
-            recurrenceGroupId: s.recurrenceGroupId ? freshRecurrenceId(s.recurrenceGroupId) : null,
-          },
-          select: { id: true },
-        });
+      const unmappedSessions = source.sessions.filter((s) => !linkedSessionIds.has(s.id));
+      if (unmappedSessions.length > 0) {
+        await tx.session.createMany({ data: unmappedSessions.map(sessionData) });
+      }
+      for (const s of source.sessions.filter((s) => linkedSessionIds.has(s.id))) {
+        const clone = await tx.session.create({ data: sessionData(s), select: { id: true } });
         sessionIdMap.set(s.id, clone.id);
       }
+
+      const targetRows: { assignmentId: number; groupId: number }[] = [];
 
       for (const a of source.assignments) {
         const clone = await tx.assignment.create({
@@ -143,19 +164,19 @@ export async function duplicateSeason(req: Request, res: Response) {
         });
         if (!a.isAllGroups) {
           // R60: only remappable targets; an unmappable one is dropped.
-          const groupIds = a.targets
-            .map((t) => groupIdMap.get(t.groupId))
-            .filter((gid): gid is number => gid !== undefined);
-          if (groupIds.length > 0) {
-            await tx.assignmentTarget.createMany({
-              data: groupIds.map((groupId) => ({ assignmentId: clone.id, groupId })),
-            });
+          for (const t of a.targets) {
+            const groupId = groupIdMap.get(t.groupId);
+            if (groupId !== undefined) targetRows.push({ assignmentId: clone.id, groupId });
           }
         }
       }
+      if (targetRows.length > 0) await tx.assignmentTarget.createMany({ data: targetRows });
 
       return season;
-    });
+      // A season with a full term of sessions is hundreds of inserts — well
+      // past the 5 s interactive-transaction default (roster and imports
+      // raise it the same way).
+    }, { timeout: 30_000 });
     return apiOk(res, created, 201);
   } catch (err) {
     if (isUniqueViolation(err)) return codeTaken(res);

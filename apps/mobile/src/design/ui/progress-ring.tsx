@@ -12,6 +12,7 @@ import { View } from "react-native";
 import Svg, { Circle, G } from "react-native-svg";
 
 import { cn } from "../lib/cn";
+import { Text } from "./text";
 
 const { colors, semantic } = require("../theme/tailwind-theme.js") as {
   colors: Record<string, Record<string, string> | string>;
@@ -31,6 +32,68 @@ function strokeColor(className: string, scheme: "light" | "dark"): string | unde
   if (!m) return undefined;
   const ramp = colors[m[1]!];
   return typeof ramp === "object" ? ramp[m[2]!] : undefined;
+}
+
+/** Clear space between the stroke's inner edge and the labels inside the ring. */
+const CONTENT_INSET = 6;
+
+/**
+ * Width of the box the labels sit in: the widest box whose corners stay
+ * CONTENT_INSET inside the stroke's inner edge, for a stack of labels about
+ * as tall as the inner radius (the figure and its caption). The labels used
+ * to span the whole inner diameter at its middle, so "100%" and "ATTENDANCE"
+ * touched the stroke at the corners (device sweep, leader s10-01, admin s20-01).
+ * 104/9 (the default ring): inner radius 43 → 60dp across.
+ */
+export function ringContentWidth(size: number, strokeWidth: number): number {
+  const inner = size / 2 - strokeWidth;
+  const reach = inner - CONTENT_INSET;
+  const halfHeight = inner / 2;
+  return Math.floor(2 * Math.sqrt(Math.max(0, reach * reach - halfHeight * halfHeight)));
+}
+
+/**
+ * One line that shrinks to fit the ring's inside rather than wrapping: a
+ * word never breaks mid-word, and font scaling stops at 1.15x since the ring
+ * is a fixed size (rule "cap font scaling where a fixed-size container holds
+ * the text").
+ */
+const FIT = {
+  numberOfLines: 1,
+  adjustsFontSizeToFit: true,
+  minimumFontScale: 0.6,
+  maxFontSizeMultiplier: 1.15,
+} as const;
+
+/** The figure in the middle of a ring ("100%"): 20/24, so figure and caption fit the box. */
+export function RingValue({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <Text
+      {...FIT}
+      className={cn(
+        "self-stretch text-center text-xl leading-6 font-black text-brand-navy-900 dark:text-foreground",
+        className,
+      )}
+    >
+      {children}
+    </Text>
+  );
+}
+
+/** The caption under a ring's figure ("ATTENDANCE"). */
+export function RingCaption({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <Text
+      {...FIT}
+      variant="caption"
+      className={cn(
+        "mt-1 self-stretch text-center font-medium uppercase tracking-wide text-muted-foreground",
+        className,
+      )}
+    >
+      {children}
+    </Text>
+  );
 }
 
 export function ProgressRing({
@@ -55,8 +118,12 @@ export function ProgressRing({
   const circumference = 2 * Math.PI * radius;
   const dash = (clamped / 100) * circumference;
   const scheme = useColorScheme().colorScheme === "dark" ? "dark" : "light";
-  const lastStroke = (indicatorClassName ?? "").split(/\s+/).filter((c) => c.startsWith("stroke-")).pop();
-  const indicator = (lastStroke && strokeColor(lastStroke, scheme)) ?? strokeColor("stroke-brand-teal-500", scheme);
+  const lastStroke = (indicatorClassName ?? "")
+    .split(/\s+/)
+    .filter((c) => c.startsWith("stroke-"))
+    .pop();
+  const indicator =
+    (lastStroke && strokeColor(lastStroke, scheme)) ?? strokeColor("stroke-brand-teal-500", scheme);
   const track = strokeColor("stroke-border", scheme);
 
   return (
@@ -69,7 +136,14 @@ export function ProgressRing({
     >
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
-          <Circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={strokeWidth} stroke={track} />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            strokeWidth={strokeWidth}
+            stroke={track}
+          />
           <Circle
             cx={size / 2}
             cy={size / 2}
@@ -83,7 +157,18 @@ export function ProgressRing({
         </G>
       </Svg>
       {children != null ? (
-        <View className="absolute inset-0 flex-col items-center justify-center">{children}</View>
+        <View
+          pointerEvents="none"
+          className="absolute inset-0 items-center justify-center"
+        >
+          <View
+            testID="ring-content"
+            className="flex-col items-center"
+            style={{ width: ringContentWidth(size, strokeWidth) }}
+          >
+            {children}
+          </View>
+        </View>
       ) : null}
     </View>
   );

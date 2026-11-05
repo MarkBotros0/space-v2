@@ -1,90 +1,70 @@
-import { Check, Clock, X } from "lucide-react-native";
 import { View } from "react-native";
-import type { StudentQuizDetail } from "@space/shared";
+import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
-import { Eyebrow } from "../../design/layout/page-title";
-import { ShellFrame } from "../../design/layout/shell-frame";
-import { iconWithClassName } from "../../design/lib/icon";
-import { shadowStyle } from "../../design/lib/shadow";
-import { Badge, Text as TextV1 } from "../../design/ui";
-import { QCARD, QuizHeader } from "./quiz-header";
+import { Screen } from "../../design/layout/screen";
+import { StatTile, StatusChip, Text, statusChip, type ChipSpec } from "../../design/ui";
+import { QCARD, quizTitleProps } from "./quiz-header";
 
-iconWithClassName(Check, Clock, X);
+/**
+ * Correctness as a word on every question (the chip is never colour alone). The
+ * student is told which MCQ was wrong, never what was right (R34).
+ */
+function questionChip(q: QuizQuestionStudent): ChipSpec {
+  if (q.type === "MCQ") {
+    if (q.isCorrect === null) return { tone: "neutral", label: "Not graded yet" };
+    return q.isCorrect ? { tone: "ok", label: "Correct" } : { tone: "bad", label: "Incorrect" };
+  }
+  return q.pointsAwarded !== null
+    ? { tone: "ok", label: "Graded" }
+    : { tone: "warn", label: "Awaiting grading" };
+}
 
 /** v1 Result: SUBMITTED and GRADED both list the answers (B2-15). */
 export function ResultView({ detail }: { detail: StudentQuizDetail }) {
   const graded = detail.status === "GRADED";
   return (
-    <ShellFrame>
+    <Screen {...quizTitleProps(detail)}>
       <View className="flex-col gap-3">
-        <QuizHeader detail={detail} />
-        <View
-          className="flex-row items-center justify-between rounded-2xl border border-border bg-card p-5"
-          style={shadowStyle("soft")}
-        >
-          <View className="min-w-0 flex-1">
-            <TextV1 className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
-              {graded ? "Graded" : "Submitted"}
-            </TextV1>
-            <TextV1 className="text-xs text-muted-foreground">
-              {graded ? "Your quiz has been graded." : "Awaiting grading for the written answers."}
-            </TextV1>
+        <View className="flex-col gap-3 rounded-group bg-surface p-5">
+          <View className="flex-row flex-wrap items-center gap-1.5">
+            <StatusChip {...statusChip("quizAttempt", graded ? "GRADED" : "SUBMITTED")} />
+            {graded ? null : <StatusChip tone="warn" label="Pending" />}
           </View>
+          <Text variant="subhead" className="text-muted-foreground">
+            {graded ? "Your quiz has been graded." : "Awaiting grading for the written answers."}
+          </Text>
           {graded ? (
-            <View className="items-end">
-              <TextV1 className="text-2xl font-black text-brand-teal-700 dark:text-brand-teal-300">
-                {String(detail.totalScore ?? 0)}
-                <TextV1 className="text-sm font-semibold text-muted-foreground">{`/${detail.maxScore}`}</TextV1>
-              </TextV1>
-              <Eyebrow>Score</Eyebrow>
+            <View className="flex-row">
+              <StatTile value={detail.totalScore ?? 0} suffix={`/${detail.maxScore}`} label="Score" />
             </View>
-          ) : (
-            <Badge variant="warning">
-              <Clock size={12} className="text-warning-800 dark:text-warning-200" />
-              Pending
-            </Badge>
-          )}
+          ) : null}
         </View>
         {detail.questions.map((q, index) => (
-          <View key={q.id} className={QCARD} style={shadowStyle("soft")}>
-            <View className="flex-row items-center justify-between gap-2">
-              <TextV1 className="text-xs font-bold text-muted-foreground">{`Q${index + 1}`}</TextV1>
-              {/* The student is told which MCQ was wrong, never what was right (R34). */}
-              {q.type === "MCQ" && q.isCorrect !== null ? (
-                q.isCorrect ? (
-                  <Badge variant="success">
-                    <Check size={12} className="text-success-800 dark:text-success-200" />
-                    Correct
-                  </Badge>
-                ) : (
-                  <Badge variant="error">
-                    <X size={12} className="text-error-800 dark:text-error-200" />
-                    Incorrect
-                  </Badge>
-                )
-              ) : (
-                <TextV1 className="text-xs text-muted-foreground">
-                  {q.pointsAwarded !== null
-                    ? `${q.pointsAwarded}/${q.points} pts`
-                    : `${q.points} pts`}
-                </TextV1>
-              )}
+          <View key={q.id} className={QCARD}>
+            <View className="flex-row flex-wrap items-center justify-between gap-2">
+              <Text variant="caption" className="font-bold text-muted-foreground">{`Q${index + 1}`}</Text>
+              <View className="flex-row flex-wrap items-center gap-2">
+                <Text variant="caption" tabular className="text-muted-foreground">
+                  {q.pointsAwarded !== null ? `${q.pointsAwarded}/${q.points} pts` : `${q.points} pts`}
+                </Text>
+                <StatusChip {...questionChip(q)} />
+              </View>
             </View>
-            <TextV1 className="mt-1 text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+            <Text variant="headline" className="mt-1">
               {q.prompt}
-            </TextV1>
+            </Text>
             {q.type === "MCQ" ? (
-              <TextV1 className="mt-1 text-sm text-muted-foreground">
+              <Text variant="subhead" className="mt-1 text-muted-foreground">
                 {`Your answer: ${q.selectedIndex !== null ? (q.options[q.selectedIndex] ?? "—") : "—"}`}
-              </TextV1>
+              </Text>
             ) : (
-              <TextV1 className="mt-1 rounded-lg bg-muted/40 px-3 py-2 text-sm text-foreground">
+              <Text variant="subhead" className="mt-1 rounded-control bg-muted/40 px-3 py-2 text-foreground">
                 {q.text || "—"}
-              </TextV1>
+              </Text>
             )}
           </View>
         ))}
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }

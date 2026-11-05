@@ -1,4 +1,4 @@
-import tokens from "../../../../docs/superpowers/ui-rebuild/v1-tokens.json";
+import tokens from "../design/theme/tokens.json";
 const theme = require("../design/theme/tailwind-theme.js");
 const config = require("../../tailwind.config.js");
 import { readFileSync } from "node:fs";
@@ -12,7 +12,7 @@ describe("generated design tokens", () => {
     expect(theme.colors.sidebar).toBe("rgb(var(--sidebar) / <alpha-value>)");
   });
 
-  it("light and dark values come from v1-tokens.json", () => {
+  it("light and dark values come from tokens.json", () => {
     const hexToTriplet = (hex: string) =>
       [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(" ");
     expect(css).toContain(`--card: ${hexToTriplet(tokens.light.card)};`);
@@ -45,10 +45,19 @@ describe("generated design tokens", () => {
     expect(theme.colors.role.leader).toBe(tokens.light["role-leader"]);
   });
 
+  it("type scale reaches tailwind as text-* sizes with line heights", () => {
+    expect(config.theme.extend.fontSize["large-title"]).toEqual(["30px", { lineHeight: "34px" }]);
+    expect(config.theme.extend.fontSize.caption).toEqual(["12px", { lineHeight: "16px" }]);
+  });
+
   it("radius scale is v1's, in px", () => {
     expect(theme.borderRadius.lg).toBe(`${tokens.radius.lg}px`);
     expect(theme.borderRadius["2xl"]).toBe(`${tokens.radius["2xl"]}px`);
     expect(theme.borderRadius.DEFAULT).toBe("4px");
+    // Named shapes (spec: groups 16, buttons and fields 14; sheets 24).
+    expect(theme.borderRadius.group).toBe("16px");
+    expect(theme.borderRadius.control).toBe("14px");
+    expect(theme.borderRadius.sheet).toBe("24px");
   });
 
   it("v1 shadow tokens exist as named shadows", () => {

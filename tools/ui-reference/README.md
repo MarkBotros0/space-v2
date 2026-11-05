@@ -95,6 +95,11 @@ Output: `~/projects/JPC/.v2-captures/ui-sweep/<timestamp>/` — one folder per c
 `<sNN>-zz-FAILED.png`. Same privacy as the rest of `.v2-captures/`: real users, never commit or publish.
 Android only; iOS is not covered.
 
+**Design catalogue (flow `s90`):** `spacev2://design-catalogue` is a hidden route showing every redesign
+component in every state. It renders only in a dev bundle (Metro) or a build made with
+`EXPO_PUBLIC_SWEEP_BUILD=1`, which the CI workflow sets for the release APK; a local release build needs
+`EXPO_PUBLIC_SWEEP_BUILD=1` in its environment. Otherwise it shows "Not available".
+
 **Without the devbox:** `.github/workflows/ui-sweep.yml` runs the sweep on a GitHub-hosted emulator
 (Actions → "UI sweep" → Run workflow; pick the module, cells and flows) against a release APK. A full run
 splits the 16 cells over four parallel jobs and joins them with `build-sheet.mjs` into one self-contained

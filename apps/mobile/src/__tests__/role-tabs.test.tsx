@@ -1,12 +1,19 @@
 import type * as NodeFs from "node:fs";
 import type * as NodePath from "node:path";
 
-import { ALL_NAV_HREFS, hrefUnion, navByRole, navFor } from "@space/shared";
+import { screen } from "@testing-library/react-native";
+import { ALL_NAV_HREFS, ALL_TAB_HREFS, hrefUnion, navByRole, navFor } from "@space/shared";
 import type { RoleNav } from "@space/shared";
 
-import { routeNameForHref } from "../../app/(app)/_layout";
+import { routeNameForHref } from "../../app/(app)/(tabs)/_layout";
+import { PillTabBar } from "../design/layout/floating-tab-bar";
+import { NavLink } from "../design/layout/nav-link";
 import { useSessionStore } from "../store/session";
-import { ambiguousRouteSiblings } from "./helpers/routes";
+import { renderWithProviders } from "./helpers/render";
+import { APP_GROUP_DIR, TABS_GROUP_DIR, ambiguousRouteSiblings, duplicateRouteUrls } from "./helpers/routes";
+
+/** The folder a nav href's route file lives in: (tabs)/ if it is a tab for some role, else the stack's (R19). */
+const dirForHref = (href: string) => (ALL_TAB_HREFS.includes(href) ? TABS_GROUP_DIR : APP_GROUP_DIR);
 
 const scopes = {
   seasonAdminIds: [],
@@ -37,7 +44,24 @@ describe("role tabs", () => {
     expect(admin).not.toEqual(student);
   });
 
-  it("every tab href has a route file", () => {
+  it.each([
+    ["SUPER", navByRole.SUPER, ["Today", "Seasons", "Calendar", "Students", "More"]],
+    ["ADMIN", navByRole.ADMIN, ["Today", "Calendar", "Groups", "Students", "More"]],
+    ["LEADER", navByRole.LEADER, ["Today", "Groups", "Calendar", "Submissions", "More"]],
+    ["MENTOR", navByRole.MENTOR, ["Today", "Students", "Reports", "Notes", "Profile"]],
+    ["STUDENT", navByRole.STUDENT, ["Today", "Calendar", "Work", "More"]],
+    ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024 }), ["Today", "Events", "History", "Profile", "More"]],
+  ])("the pill draws %s's tabs Today first, none featured (R22)", (_role, nav, labels) => {
+    const state = { index: 0, routes: nav.tabs.map((t) => ({ key: t.href, name: routeNameForHref(t.href) })) };
+    renderWithProviders(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      <PillTabBar items={nav.tabs} state={state as any} navigateToTab={() => {}} emitter={{} as any} descriptors={{} as any} insets={{ top: 0, left: 0, right: 0, bottom: 34 }} />,
+    );
+    expect(screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel)).toEqual(labels);
+    expect(screen.UNSAFE_getAllByType(NavLink).map((link) => "featured" in link.props)).toEqual(labels.map(() => false));
+  });
+
+  it("every nav href has a route file: a tab for some role in (tabs)/, any other on the stack", () => {
     // Guards Decision D1: the tab bar is data-driven, so a nav item pointing
     // at a route nobody created is a runtime crash, not a type error.
     // Sourced from ALL_NAV_HREFS (packages/shared/src/navigation.ts) — the
@@ -46,11 +70,10 @@ describe("role tabs", () => {
     // let ALUMNI-only routes go unguarded (see the "ALUMNI" describe below).
     const fs = require("node:fs") as typeof NodeFs;
     const path = require("node:path") as typeof NodePath;
-    const appDir = path.resolve(__dirname, "../../app/(app)");
 
     const missing = ALL_NAV_HREFS.filter(
-      (href) => !fs.existsSync(path.join(appDir, `${href.slice(1)}.tsx`)) &&
-        !fs.existsSync(path.join(appDir, href.slice(1), "index.tsx")),
+      (href) => !fs.existsSync(path.join(dirForHref(href), `${href.slice(1)}.tsx`)) &&
+        !fs.existsSync(path.join(dirForHref(href), href.slice(1), "index.tsx")),
     );
     expect(missing).toEqual([]);
   });
@@ -64,11 +87,10 @@ describe("role tabs", () => {
     // just this test catching it first.
     const fs = require("node:fs") as typeof NodeFs;
     const path = require("node:path") as typeof NodePath;
-    const appDir = path.resolve(__dirname, "../../app/(app)");
 
     for (const href of ALL_NAV_HREFS) {
       const name = routeNameForHref(href);
-      expect(fs.existsSync(path.join(appDir, `${name}.tsx`))).toBe(true);
+      expect([href, fs.existsSync(path.join(dirForHref(href), `${name}.tsx`))]).toEqual([href, true]);
     }
   });
 });
@@ -76,7 +98,7 @@ describe("role tabs", () => {
 describe("route file layout (P13)", () => {
   const fs = require("node:fs") as typeof NodeFs;
   const path = require("node:path") as typeof NodePath;
-  const appDir = path.resolve(__dirname, "../../app/(app)");
+  const appDir = TABS_GROUP_DIR;
 
   function walk(dir: string): string[] {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -91,9 +113,10 @@ describe("route file layout (P13)", () => {
     // only thing that would catch it.
     for (const href of ALL_NAV_HREFS) {
       const base = href.slice(1);
+      const dir = dirForHref(href);
       const bothExist =
-        fs.existsSync(path.join(appDir, `${base}.tsx`)) &&
-        fs.existsSync(path.join(appDir, base, "index.tsx"));
+        fs.existsSync(path.join(dir, `${base}.tsx`)) &&
+        fs.existsSync(path.join(dir, base, "index.tsx"));
       expect(bothExist).toBe(false);
     }
   });
@@ -105,15 +128,21 @@ describe("route file layout (P13)", () => {
     expect(ambiguousRouteSiblings()).toEqual([]);
   });
 
-  it("no route directory has its own _layout.tsx", () => {
+  it("no two route files answer the same URL", () => {
+    // Groups add no URL segment, so `(tabs)/students/index.tsx` beside
+    // `students/new.tsx` is fine, but a `seasons.tsx` beside
+    // `(tabs)/seasons/index.tsx` would be two files for /seasons.
+    expect(duplicateRouteUrls()).toEqual([]);
+  });
+
+  it("only the stack and the tabs have a _layout.tsx", () => {
     // A nested _layout.tsx stops expo-router from flattening that
-    // directory's routes into this group's Tabs navigator — the routes
-    // inside would silently stop being tabs at all.
-    const rootLayout = path.join(appDir, "_layout.tsx");
-    const nestedLayouts = walk(appDir).filter(
-      (file) => file.endsWith("_layout.tsx") && file !== rootLayout,
+    // directory's routes into the Stack or the Tabs navigator — the routes
+    // inside would silently stop being tabs or pushed screens at all.
+    const layouts = walk(APP_GROUP_DIR).filter((file) => file.endsWith("_layout.tsx"));
+    expect(new Set(layouts)).toEqual(
+      new Set([path.join(APP_GROUP_DIR, "_layout.tsx"), path.join(appDir, "_layout.tsx")]),
     );
-    expect(nestedLayouts).toEqual([]);
   });
 });
 

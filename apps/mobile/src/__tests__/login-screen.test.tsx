@@ -20,6 +20,14 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockSearchParams,
 }));
 
+/** An axios-shaped error, as authErrorMessage reads it; no status = no response. */
+function axiosFailure(status?: number) {
+  return Object.assign(new Error(status ? String(status) : "Network Error"), {
+    isAxiosError: true,
+    response: status ? { status, data: { error: { code: "invalid_credentials", message: "no" } } } : undefined,
+  });
+}
+
 describe("LoginScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -43,7 +51,7 @@ describe("LoginScreen", () => {
   });
 
   it("shows an error message when login fails", async () => {
-    mockLogin.mockRejectedValue(new Error("nope"));
+    mockLogin.mockRejectedValue(axiosFailure(401));
 
     renderWithProviders(<LoginScreen />);
     fireEvent.changeText(screen.getByLabelText("Email"), "sara@jpc.test");
@@ -60,6 +68,22 @@ describe("LoginScreen", () => {
     // user typed, so a wrong password is a one-tap retry, not a re-fill.
     expect(screen.getByLabelText("Email").props.value).toBe("sara@jpc.test");
     expect(screen.getByLabelText("Password").props.value).toBe("wrong");
+  });
+
+  it("says it can't reach the server on a network error, not that the password is wrong", async () => {
+    mockLogin.mockRejectedValue(axiosFailure());
+
+    renderWithProviders(<LoginScreen />);
+    fireEvent.changeText(screen.getByLabelText("Email"), "sara@jpc.test");
+    fireEvent.changeText(screen.getByLabelText("Password"), "right-one");
+    fireEvent.press(screen.getByText("Sign in"));
+
+    await waitFor(() =>
+      expect(screen.getByText("Can't reach JPC Space. Check your connection and try again.")).toBeTruthy(),
+    );
+    expect(screen.queryByText("Invalid email or password.")).toBeNull();
+    expect(screen.getByLabelText("Email").props.value).toBe("sara@jpc.test");
+    expect(screen.getByLabelText("Password").props.value).toBe("right-one");
   });
 
   it("links to the accept-invite screen", () => {

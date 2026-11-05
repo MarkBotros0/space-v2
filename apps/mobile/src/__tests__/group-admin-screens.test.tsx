@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: {
@@ -11,10 +11,11 @@ jest.mock("../lib/api-client", () => ({
 }));
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
-  useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, dismissTo: mockDismissTo, back: jest.fn() }),
 }));
 
 jest.mock("../design/ui/toaster", () => ({
@@ -28,28 +29,18 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import GroupDetailScreen from "../../app/(app)/group/[id]/index";
-import GroupsScreen from "../../app/(app)/groups";
-import NewGroupScreen from "../../app/(app)/group/new";
-import EditGroupScreen from "../../app/(app)/group/[id]/edit";
+import GroupsScreen from "../../app/(app)/(tabs)/groups";
 import SeasonRosterScreen from "../../app/(app)/seasons/[code]/roster/index";
 
 const get = apiClient.get as jest.Mock;
-const post = apiClient.post as jest.Mock;
-const patch = apiClient.patch as jest.Mock;
 const put = apiClient.put as jest.Mock;
-const del = apiClient.delete as jest.Mock;
 
-/** Open a v1 MultiSelect by its label and tick an option by its visible label. */
-async function pickOption(select: string, option: string) {
-  fireEvent.press(await screen.findByLabelText(select));
-  fireEvent.press(await screen.findByText(option));
-}
-
-/** Open a student's group Select and pick a group by its label. */
+/** Open a student's group sheet from the roster and stage a group by its title. */
 async function choose(student: string, group: string) {
-  fireEvent.press(await screen.findByLabelText(`Group for ${student}`));
-  fireEvent.press(screen.getByRole("menuitem", { name: group }));
+  fireEvent.press(await screen.findByText(student));
+  fireEvent.press(await screen.findByText(group));
 }
+const saveBar = (label: string) => fireEvent.press(within(screen.getByTestId("save-bar")).getByText(label));
 
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
 const seasonRow = (id: number, status: "DRAFT" | "ACTIVE", startDate: string) => ({
@@ -79,7 +70,6 @@ const roster = [
     email: "sara@jpc.test",
     groupId: 3,
     groupName: "Group A",
-    otherSeasonGroup: null,
   },
   {
     userId: 22,
@@ -87,7 +77,6 @@ const roster = [
     email: "omar@jpc.test",
     groupId: null,
     groupName: null,
-    otherSeasonGroup: { groupName: "Old", seasonCode: "s1" },
   },
 ];
 const seasonDetail = {
@@ -166,6 +155,9 @@ describe("/groups — ADMIN/SUPER season branch (G6, D-16.16)", () => {
 
     expect(await screen.findByText("Group A")).toBeTruthy();
     expect(screen.getByText("2 groups in Season 7")).toBeTruthy();
+    // Rows say what the figure counts, and name the leaders (no bare "1").
+    expect(screen.getAllByText("1 student · Lina").length).toBe(2);
+    expect(screen.getByRole("header", { name: "Groups" })).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/groups");
     expect(get).not.toHaveBeenCalledWith("/api/v1/groups");
 
@@ -198,115 +190,6 @@ describe("/groups — ADMIN/SUPER season branch (G6, D-16.16)", () => {
   });
 });
 
-describe("/group/new", () => {
-  it("creates a group with picked leaders and students and opens it", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { seasonId: "7" };
-    routeGets();
-    post.mockResolvedValue({ data: { data: { id: 30 } } });
-    renderWithProviders(<NewGroupScreen />);
-
-    expect(await screen.findByText("Add a group to Season 7.")).toBeTruthy();
-    fireEvent.changeText(await screen.findByLabelText("Name"), "Group C");
-    await pickOption("Leaders", "Karim");
-    await pickOption("Students", "Omar");
-    // Omar is currently in another season's group — the form says so before saving.
-    fireEvent.press(screen.getByLabelText("Students"));
-    expect(screen.getByText("omar@jpc.test · In Old (s1) — saving moves them here.")).toBeTruthy();
-    fireEvent.press(screen.getByText("Create group"));
-
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/groups", {
-        name: "Group C",
-        description: null,
-        leaderIds: [6],
-        studentIds: [22],
-      }),
-    );
-    expect(mockReplace).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "30" } });
-  });
-
-  it("validates the name with the server's schema", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { seasonId: "7" };
-    routeGets();
-    renderWithProviders(<NewGroupScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Name"), "C");
-    fireEvent.press(screen.getByText("Create group"));
-    expect(screen.getByLabelText("Name").props.accessibilityHint).toMatch(/at least 2/);
-    expect(post).not.toHaveBeenCalled();
-  });
-});
-
-describe("/group/[id]/edit", () => {
-  it("pre-selects members from the ROSTER (SeasonEnrollment, C9) and saves the full lists", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { id: "3" };
-    routeGets();
-    patch.mockResolvedValue({ data: { data: { id: 3 } } });
-    renderWithProviders(<EditGroupScreen />);
-
-    expect((await screen.findByLabelText("Name")).props.value).toBe("Group A");
-    await pickOption("Students", "Omar");
-    fireEvent.press(screen.getByText("Save changes"));
-    await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/api/v1/groups/3", {
-        name: "Group A",
-        description: null,
-        leaderIds: [5],
-        studentIds: [21, 22],
-      }),
-    );
-  });
-
-  it("shows the delete impact, and the server's refusal while an assignment targets only this group", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { id: "3" };
-    routeGets();
-    del.mockRejectedValueOnce(
-      Object.assign(new Error("409"), {
-        isAxiosError: true,
-        response: {
-          status: 409,
-          data: {
-            error: {
-              code: "group_has_sole_targets",
-              message: "1 assignment(s) target only this group. Retarget them before deleting it.",
-            },
-          },
-        },
-      }),
-    );
-    renderWithProviders(<EditGroupScreen />);
-
-    expect(
-      await screen.findByText("Deleting unassigns 1 student and removes 1 leader."),
-    ).toBeTruthy();
-    expect(screen.getByText("Only A")).toBeTruthy();
-    fireEvent.press(screen.getByText("Delete group"));
-    expect(del).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByText("Really delete?"));
-    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/groups/3"));
-    expect(
-      await screen.findByText(
-        "1 assignment(s) target only this group. Retarget them before deleting it.",
-      ),
-    ).toBeTruthy();
-  });
-
-  it("deletes and returns to /groups", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { id: "3" };
-    routeGets({
-      "/api/v1/groups/3/impact": { studentCount: 1, leaderCount: 1, soleTargetAssignments: [] },
-    });
-    del.mockResolvedValue({ data: { data: { deleted: true, orphanedStudentIds: [21] } } });
-    renderWithProviders(<EditGroupScreen />);
-    fireEvent.press(await screen.findByText("Delete group"));
-    fireEvent.press(screen.getByText("Really delete?"));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/groups"));
-  });
-});
 
 describe("/seasons/[code]/roster (G7)", () => {
   it("sends only the rows that changed and reports what was WRITTEN", async () => {
@@ -318,21 +201,27 @@ describe("/seasons/[code]/roster (G7)", () => {
     });
     renderWithProviders(<SeasonRosterScreen />);
 
-    expect(await screen.findByText("Also in Old (s1) — assigning here moves them.")).toBeTruthy();
     expect(
-      screen.getByText("2 students in Season 7. Set each student's group and save."),
+      await screen.findByText("2 students in Season 7. Tap a student to set their group."),
     ).toBeTruthy();
-    expect(screen.getByText("No unsaved changes")).toBeTruthy();
+    expect(screen.getByText("sara@jpc.test · Group A")).toBeTruthy();
+    expect(screen.getByText("omar@jpc.test · Unassigned")).toBeTruthy();
     await choose("Sara", "Unassigned");
     await choose("Omar", "Group B");
-    // Pressing a row back to its original group drops it from the batch.
+    expect(screen.getAllByText("Not saved")).toHaveLength(2);
+    expect(screen.getByText("omar@jpc.test · Group B")).toBeTruthy();
+    // Picking a student's own group again unstages them.
     await choose("Omar", "Unassigned");
-    expect(screen.getByText("1 unsaved change")).toBeTruthy();
-    fireEvent.press(screen.getByText("Save changes"));
+    expect(screen.getAllByText("Not saved")).toHaveLength(1);
+    await choose("Omar", "Group B");
+    saveBar("Save 2 changes");
 
     await waitFor(() =>
       expect(put).toHaveBeenCalledWith("/api/v1/seasons/7/group-assignments", {
-        assignments: [{ studentUserId: 21, groupId: null }],
+        assignments: [
+          { studentUserId: 21, groupId: null },
+          { studentUserId: 22, groupId: 4 },
+        ],
       }),
     );
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Assigned 1, unassigned 1."));

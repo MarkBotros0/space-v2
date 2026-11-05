@@ -1,6 +1,7 @@
 # UI sweep s27 — Notes, reports and events as a season admin. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
+# Only Home has the user menu (R13): each screen is waited on by its own text.
 ---
 - runFlow:
     file: ../_sign-in.yaml
@@ -8,7 +9,7 @@ appId: com.jpc.space
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://notes
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: '\d+\+? notes? you.ve authored'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -22,10 +23,13 @@ appId: com.jpc.space
 - takeScreenshot: s27-02-notes-bottom
 - openLink: spacev2://reports
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Scoped to .+\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
+- extendedWaitUntil:
+    visible: 'Students at risk.*|No data in this scope'
+    timeout: 40000
 - takeScreenshot: s27-03-reports
 - scroll
 - waitForAnimationToEnd:
@@ -40,7 +44,7 @@ appId: com.jpc.space
 - takeScreenshot: s27-05-reports-bottom
 - openLink: spacev2://events
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Organisation-wide events visible on all members. calendars\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

@@ -8,6 +8,7 @@ jest.mock("../lib/api-client", () => ({
 jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
 
 import { apiClient } from "../lib/api-client";
+import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
 import { NotificationPreferences } from "../components/NotificationPreferences";
@@ -22,6 +23,9 @@ const allTrue = {
   lowAttendanceFlag: true,
   mentorFollowup: true,
   quizGraded: true,
+  quizPublished: true,
+  submissionReceived: true,
+  sessionCancelled: true,
 };
 
 beforeEach(() => {
@@ -31,7 +35,16 @@ beforeEach(() => {
 });
 
 describe("NotificationPreferences", () => {
-  it("renders a switch for all six types — including the one v1 could never set", async () => {
+  it("push button labels are short enough to never ellipsize at 1.3x", async () => {
+    renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByRole("button", { name: "Enable push" })).toBeTruthy();
+    useSessionStore.setState({ pushToken: "ExponentPushToken[x]" });
+    renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByRole("button", { name: "Push enabled" })).toBeTruthy();
+    useSessionStore.setState({ pushToken: null });
+  });
+
+  it("renders a switch for all nine types — including the one v1 could never set", async () => {
     renderWithProviders(<NotificationPreferences />);
 
     expect(await screen.findByLabelText("New assignments")).toBeTruthy();
@@ -42,6 +55,32 @@ describe("NotificationPreferences", () => {
     // R56/R57: v1's form rendered five toggles and its action spread a
     // five-field object, so this column kept its default forever.
     expect(screen.getByLabelText("Quiz graded")).toBeTruthy();
+    expect(screen.getByLabelText("New quizzes")).toBeTruthy();
+    expect(screen.getByLabelText("Submissions received")).toBeTruthy();
+    expect(screen.getByLabelText("Session cancelled")).toBeTruthy();
+    // One switch per preference key: a key added to the contract but left out
+    // of ORDER would have no row.
+    expect(screen.getAllByRole("switch")).toHaveLength(Object.keys(allTrue).length);
+  });
+
+  it("explains each new type in its help text", async () => {
+    renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByText("When an online quiz opens in your season.")).toBeTruthy();
+    expect(screen.getByText("When a student in a group you lead submits their work.")).toBeTruthy();
+    expect(screen.getByText("When an upcoming session in your season is cancelled.")).toBeTruthy();
+  });
+
+  it("PUTs every key when a new one is toggled off", async () => {
+    renderWithProviders(<NotificationPreferences />);
+
+    fireEvent.press(await screen.findByLabelText("Session cancelled"));
+
+    await waitFor(() =>
+      expect(put).toHaveBeenCalledWith("/api/v1/me/notification-preferences", {
+        ...allTrue,
+        sessionCancelled: false,
+      }),
+    );
   });
 
   it("states the real low-attendance threshold — two, not three (spec D12)", async () => {
@@ -51,7 +90,7 @@ describe("NotificationPreferences", () => {
     expect(await screen.findByText(/two in a row/i)).toBeTruthy();
   });
 
-  it("PUTs all six keys when one is toggled off", async () => {
+  it("PUTs every key when one is toggled off", async () => {
     renderWithProviders(<NotificationPreferences />);
 
     fireEvent.press(await screen.findByLabelText("Quiz graded"));
@@ -91,6 +130,6 @@ describe("NotificationPreferences", () => {
     // surprise.
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByText(/still appear in your inbox/i)).toBeTruthy();
-    expect(screen.getByText("Changes save automatically.")).toBeTruthy();
+    expect(screen.getByText(/Changes save automatically/)).toBeTruthy();
   });
 });

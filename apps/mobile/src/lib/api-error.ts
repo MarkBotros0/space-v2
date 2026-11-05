@@ -20,3 +20,8 @@ export function apiErrorCode(err: unknown): string | null {
   const parsed = apiErrorBodySchema.safeParse(err.response?.data);
   return parsed.success ? parsed.data.error.code : null;
 }
+
+/** The API's `404 not_found` — "this does not exist for you", which no retry can change. */
+export function isNotFoundError(err: unknown): boolean {
+  return axios.isAxiosError(err) && err.response?.status === 404 && apiErrorCode(err) === "not_found";
+}

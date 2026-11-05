@@ -47,6 +47,7 @@ export const liveSession = {
 
 export const studentDashboard = {
   variant: "STUDENT",
+  todayOrgDay: "2099-03-01",
   season: { id: 7, code: "spring-2099", title: "Spring 2099", status: "ACTIVE" },
   progress: { sessionsHeld: 3, sessionsTotal: 4, pct: 75 },
   nextSession: liveSession,
@@ -74,7 +75,75 @@ export const studentDashboard = {
         reviewedAt: null,
       },
     ],
+    open: [
+      {
+        id: 41,
+        title: "Old essay",
+        dueAt: "2020-01-05T10:00:00.000Z",
+        dueOrgDay: "2020-01-05",
+        isOverdue: true,
+        status: "PENDING",
+        reviewedAt: null,
+      },
+      {
+        id: 42,
+        title: "New essay",
+        dueAt: "2099-06-01T10:00:00.000Z",
+        dueOrgDay: "2099-06-01",
+        isOverdue: false,
+        status: "DRAFT",
+        reviewedAt: null,
+      },
+      {
+        id: 43,
+        title: "Redo essay",
+        dueAt: "2099-07-01T10:00:00.000Z",
+        dueOrgDay: "2099-07-01",
+        isOverdue: false,
+        status: "RETURNED",
+        reviewedAt: "2099-02-20T10:00:00.000Z",
+      },
+    ],
   },
+};
+
+/** The student's quiz list on Today (season 7, the fixture's). */
+export const STUDENT_QUIZZES = "/api/v1/quizzes?seasonId=7";
+export const NEXT_SESSION_DETAIL = `/api/v1/sessions/${liveSession.id}`;
+
+export const quizResult = {
+  quizId: 31,
+  title: "Week 6 quiz",
+  kind: "ONLINE",
+  maxScore: 10,
+  score: null,
+  notes: null,
+  gradedAt: null,
+  sessionTitle: null,
+  sessionDate: null,
+  attemptStatus: null,
+};
+export const quizPage = { items: [quizResult], nextCursor: null };
+
+/** `useSessionDetail` for `liveSession`, check-in open. */
+export const sessionDetail = {
+  id: liveSession.id,
+  title: liveSession.title,
+  description: null,
+  startsAt: liveSession.startsAt,
+  dayKey: liveSession.dayKey,
+  startTime: liveSession.time,
+  durationMinutes: liveSession.durationMinutes,
+  location: liveSession.location,
+  youtubeUrl: liveSession.youtubeUrl,
+  recurrenceGroupId: null,
+  seasonId: 7,
+  seasonCode: "spring-2099",
+  seasonTitle: "Spring 2099",
+  checkInOpen: true,
+  myAttendance: null,
+  canMarkAttendance: false,
+  canManageCheckIn: false,
 };
 
 export const myAttendance = {

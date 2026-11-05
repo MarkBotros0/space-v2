@@ -44,13 +44,13 @@ describe("Text", () => {
 });
 
 describe("Button", () => {
-  it("keeps v1's variant classes", () => {
+  it("maps v1's variant names onto the redesign classes", () => {
     expect(buttonVariants({ variant: "default" })).toContain("bg-primary");
-    expect(buttonVariants({ variant: "outline" })).toContain("border-border");
-    expect(buttonVariants({ variant: "destructive" })).toContain("bg-destructive/10");
-    expect(buttonVariants({ size: "default" })).toContain("h-8");
-    expect(buttonVariants({ size: "lg" })).toContain("h-9");
-    expect(buttonVariants({ size: "icon" })).toContain("size-8");
+    expect(buttonVariants({ variant: "outline" })).toContain("border-control-border");
+    expect(buttonVariants({ variant: "destructive" })).toContain("bg-bad-soft");
+    expect(buttonVariants({ size: "default" })).toContain("min-h-[46px]");
+    expect(buttonVariants({ size: "lg" })).toContain("min-h-[46px]");
+    expect(buttonVariants({ size: "icon" })).toContain("min-h-[44px]");
   });
 
   it("drops web-only classes", () => {

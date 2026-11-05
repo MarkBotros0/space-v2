@@ -48,7 +48,7 @@ function FileUpload({
         <UploadCloud size={32} className="text-muted-foreground" />
         <View className="flex-col items-center gap-0.5">
           <Text className="text-center text-sm font-medium text-foreground">
-            <Text className="font-medium text-brand-teal-600 dark:text-brand-teal-400">Click to upload</Text> or drag and drop
+            <Text className="font-medium text-brand-teal-800 dark:text-brand-teal-400">Click to upload</Text> or drag and drop
           </Text>
           {maxSizeMb ? (
             <Text className="text-xs text-muted-foreground">
@@ -61,7 +61,7 @@ function FileUpload({
       {files.length > 0 ? (
         <View className="flex-col gap-1.5">
           {files.map((f, i) => (
-            <View key={`${f.name}-${i}`} className="flex-row items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+            <View key={`${f.name}-${i}`} className="flex-row items-center justify-between gap-2 rounded-control border border-separator bg-surface px-3 py-2">
               <Text numberOfLines={1} className="shrink text-sm text-foreground">
                 {f.name}
               </Text>

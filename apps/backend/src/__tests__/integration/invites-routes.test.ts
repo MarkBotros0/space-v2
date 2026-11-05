@@ -9,6 +9,9 @@ const mockSendInviteEmail = jest.fn().mockResolvedValue(undefined);
 jest.mock("../../lib/email", () => ({
   ...jest.requireActual("../../lib/email"),
   sendInviteEmail: (...args: unknown[]) => mockSendInviteEmail(...args),
+  // The invite routes refuse (503) or withdraw the invite with no transport;
+  // this suite exercises the delivered path whatever the staging .env says.
+  isEmailConfigured: () => true,
 }));
 
 import { createApp } from "../../app";

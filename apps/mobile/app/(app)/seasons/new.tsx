@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { NEW_SEASON_VALUES, SeasonForm } from "../../../src/components/season/SeasonForm";
-import { PageTitle } from "../../../src/design/layout/page-title";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { Card, CardContent, EmptyState } from "../../../src/design/ui";
+import { Screen } from "../../../src/design/layout/screen";
+import { EmptyState } from "../../../src/design/ui";
 import { useCreateSeason } from "../../../src/hooks/use-season-writes";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { useSessionStore } from "../../../src/store/session";
@@ -19,36 +17,28 @@ export default function NewSeasonScreen() {
 
   if (!isSuper) {
     return (
-      <ShellFrame>
+      <Screen title="New season">
         <EmptyState title="Not available" description="Only a super admin can create a season." />
-      </ShellFrame>
+      </Screen>
     );
   }
 
   return (
-    <ShellFrame>
-      <View className="flex-col gap-4">
-        <PageTitle title="New season" subtitle="Set up a new program season." />
-        <Card>
-          <CardContent className="pt-6">
-            <SeasonForm
-              mode="create"
-              initial={NEW_SEASON_VALUES}
-              submitting={create.isPending}
-              message={message}
-              onCancel={() => router.back()}
-              onSubmit={(body) => {
-                setMessage(null);
-                create.mutate(body, {
-                  onSuccess: (ref) =>
-                    router.replace({ pathname: "/seasons/[code]", params: { code: ref.code } }),
-                  onError: (err) => setMessage(apiErrorMessage(err, "Couldn't create the season.")),
-                });
-              }}
-            />
-          </CardContent>
-        </Card>
-      </View>
-    </ShellFrame>
+    <SeasonForm
+      mode="create"
+      title="New season"
+      subtitle="Set up a new program season."
+      initial={NEW_SEASON_VALUES}
+      submitting={create.isPending}
+      message={message}
+      onSubmit={(body) => {
+        setMessage(null);
+        create.mutate(body, {
+          onSuccess: (ref) =>
+            router.replace({ pathname: "/seasons/[code]", params: { code: ref.code } }),
+          onError: (err) => setMessage(apiErrorMessage(err, "Couldn't create the season.")),
+        });
+      }}
+    />
   );
 }

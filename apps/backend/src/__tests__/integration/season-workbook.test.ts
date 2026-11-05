@@ -168,8 +168,8 @@ describe("buildSeasonWorkbook", () => {
     expect(alice[3]).toBe("P");
     // v1 printed 12 here — minutes measured from when an admin pressed the
     // check-in button, not from the session start, exported to a spreadsheet
-    // where a reader treats it as minutes late (R69, R70). Withheld until the
-    // cutover backfill.
+    // where a reader treats it as minutes late (R69, R70). Withheld, since no
+    // column tells v1-era rows from v2-era ones.
     expect(alice[4]).toBe("L");
     expect(alice[4]).not.toBe(12);
   });
@@ -247,6 +247,10 @@ describe("buildSeasonWorkbook", () => {
     const bob = rows.find((r) => r[0] === "Test wb-bob")!;
     // alice: 2 assigned, 1 turned in (the other is a DRAFT) → 50.
     expect(alice[5]).toBe(50);
+    // Her draft reads as nothing submitted: staff never see that a draft
+    // exists (owner decision 2026-11-04), here as on the queue.
+    expect(alice[3]).toBe("Submitted");
+    expect(alice[4]).toBe("");
     // bob: 1 assigned, 0 turned in → 0. v1 divided by 2 for both.
     expect(bob[5]).toBe(0);
   });

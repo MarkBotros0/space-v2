@@ -58,7 +58,7 @@ export async function seedQuizFixtures(app: Express): Promise<QuizFixtures> {
   });
 
   // Ruling C9: membership for a season is the enrolment's groupId, not
-  // GroupStudent (which is unique on studentUserId across the whole database).
+  // its GroupStudent mirror.
   await db.seasonEnrollment.createMany({
     data: [
       { seasonId, studentUserId: student.id, groupId: groupA.id, status: "ACTIVE" },

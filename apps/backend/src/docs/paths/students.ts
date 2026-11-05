@@ -12,7 +12,7 @@ export const studentPaths = {
       parameters: [
         { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
         { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
-        { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`, the GroupStudent pointer) is this group; `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
+        { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`: their most recent GroupStudent membership, any season) is this group; `none` is v1's \"Unassigned\". ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
         { name: "sort", in: "query", description: "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)", schema: { type: "string", enum: ["name", "university", "season", "group"] } },
         { name: "dir", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "asc" } },
         { name: "q", in: "query", schema: { type: "string", maxLength: 120 } },
@@ -40,7 +40,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Create a student",
       description:
-        "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported. The account is created with no password and an invite is minted in the same transaction and emailed after commit (best-effort — a mail failure never fails the create; the code never appears in any response). The student sets a password by accepting the invite. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment and points `activeSeasonId` at the same season, so the two definitions of \"in this season\" agree (D1). Empty strings are stored as null.",
+        "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported. The account is created with no password and an invite is minted in the same transaction and emailed after commit, as `POST /users` does it. A mail failure (or no mail transport) never rolls back the student: the undelivered invite is expired again so the account reads `pending`, and the response says `inviteSent: false` (re-send from `POST /users/{id}/invite`). The code never appears in any response. The student sets a password by accepting the invite. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment and points `activeSeasonId` at the same season, so the two definitions of \"in this season\" agree (D1). Empty strings are stored as null.",
       requestBody: {
         required: true,
         content: {
@@ -65,7 +65,18 @@ export const studentPaths = {
         },
       },
       responses: {
-        201: ok({ type: "object", properties: { id: { type: "integer" }, email: { type: "string" } } }, "Created."),
+        201: ok(
+          {
+            type: "object",
+            required: ["id", "email", "inviteSent"],
+            properties: {
+              id: { type: "integer" },
+              email: { type: "string" },
+              inviteSent: { type: "boolean", description: "False when the invite email could not be delivered." },
+            },
+          },
+          "Created.",
+        ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),

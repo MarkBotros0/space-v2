@@ -15,10 +15,8 @@ export async function canAccessGroup(user: SessionUser, groupId: number): Promis
   if (isAdminOfSeason(user, group.seasonId)) return true;
 
   if (user.role === "STUDENT") {
-    // The student's group *in this group's season*, from the enrolment.
-    // GroupStudent is keyed by studentUserId alone, so it holds one row per
-    // student across every season — asking it here denies a student their own
-    // group in any season but the current one (ruling C9).
+    // The student's group *in this group's season*, from the enrolment, the
+    // authority (ruling C9).
     return (await groupIdInSeason(user.userId, group.seasonId)) === groupId;
   }
 

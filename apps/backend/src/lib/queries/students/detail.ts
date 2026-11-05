@@ -7,6 +7,7 @@ import type {
 
 import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
+import { currentMembershipSelect } from "./current-group";
 import { attendancePctByEnrollment, canReadEnrollmentHistory } from "./history";
 
 export type StudentDetailView = "public" | "private" | "internal";
@@ -48,7 +49,7 @@ export async function loadStudentDetail(
           activeSeason: { select: { title: true, code: true } },
         },
       },
-      groupStudentMembership: { select: { group: { select: { id: true, name: true } } } },
+      groupStudentMemberships: currentMembershipSelect({ id: true, name: true }),
     },
   });
   if (!row) return null;
@@ -127,9 +128,7 @@ export async function loadStudentDetail(
     email: row.email,
     avatarPath: row.avatarPath,
     graduationYear: row.graduationYear,
-    currentGroup: row.groupStudentMembership?.group
-      ? { id: row.groupStudentMembership.group.id, name: row.groupStudentMembership.group.name }
-      : null,
+    currentGroup: row.groupStudentMemberships[0]?.group ?? null,
     enrollments: history,
   };
   const publicProfile = {

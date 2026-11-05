@@ -78,6 +78,11 @@ studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => 
   // The newest enrolment the caller is scoped to. With ?seasonId there is one
   // candidate, so a season outside the caller's scope is a 403, never a
   // silently different season.
+  //
+  // Without ?seasonId, no in-scope candidate is no_season, not 403: a leader
+  // opening a former student who is now ACTIVE in someone else's group has
+  // nothing of theirs to score, and the card hides on no_season — a 403 made
+  // it show an error whose retry could never succeed.
   let enrollment: { seasonId: number; groupId: number | null } | null = null;
   for (const candidate of candidates) {
     if (await mayScoreInSeason(user, studentUserId, candidate.seasonId, candidate.groupId)) {
@@ -85,7 +90,10 @@ studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => 
       break;
     }
   }
-  if (!enrollment) return forbidden(res);
+  if (!enrollment) {
+    if (requestedSeasonId !== null) return forbidden(res);
+    return apiError(res, "no_season", "This student has no season to score.", 404);
+  }
 
   const rows = await computeEngagementForSeason(enrollment.seasonId, {
     studentUserIds: [studentUserId],

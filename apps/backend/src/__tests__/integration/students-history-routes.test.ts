@@ -54,7 +54,7 @@ beforeAll(async () => {
   await db.studentProfile.create({ data: { userId: s1, university: "Zeta U", activeSeasonId: seasonAId } });
   await db.studentProfile.create({ data: { userId: s2, university: "Alpha U" } });
   await db.studentProfile.create({ data: { userId: s3 } });
-  await db.groupStudent.create({ data: { groupId: groupAId, studentUserId: s1 } });
+  await db.groupStudent.create({ data: { groupId: groupAId, seasonId: seasonAId, studentUserId: s1 } });
 
   const old = at("1999-01-01T00:00:00.000Z");
   await db.seasonEnrollment.createMany({

@@ -23,7 +23,7 @@ The harness exists. Read these before starting:
 
 Before touching a flow, write down every state a user can see, for each role that reaches it
 (`navFor(user)` decides — a student and a leader often land on the same route file):
-- loading, empty, filled and error states (`LoadingState`, `EmptyState`, `ErrorState`/`RouteError`);
+- loading, empty, filled and error states (`RouteSkeleton`, `EmptyState`, `RouteError`/`InlineError`);
 - each step of a multi-step flow and where it lands afterwards;
 - with the keyboard open, for every input: the focused field *and* its submit button;
 - scrolled to the end, for anything taller than 360×640 — the last item must clear the floating

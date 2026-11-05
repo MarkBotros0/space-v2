@@ -2,29 +2,50 @@ import { useState } from "react";
 import { View } from "react-native";
 import type { SeasonDetail } from "@space/shared";
 
-import { Card, CardContent, CardHeader, CardTitle } from "../../design/ui/card";
 import { Button, FormField, Input, Text, Textarea } from "../../design/ui";
 import { useUpdateSeason, type UpdateSeasonInput } from "../../hooks/use-season-writes";
 import { apiErrorMessage } from "../../lib/api-error";
 
 /**
+ * A whole number of minutes, at least 1 — the server's rule
+ * (seasonAdminPatchSchema: int, min 1). `Number("")` is 0 and `Number("1.5")`
+ * is not an integer, so a digits-only test comes first.
+ */
+export function parseMinutes(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const n = Number(trimmed);
+  return Number.isSafeInteger(n) && n >= 1 ? n : null;
+}
+
+/**
  * An ADMIN's allowlisted season edit (description and absence budget) — shared
  * by /season and /seasons/[code]. V2-ONLY: v1's admin season page is read-only
- * (`canEdit={false}`), so this is a v1 Card with v1 form fields.
+ * (`canEdit={false}`), so this is a plain section of v1 form fields. The budget
+ * fields start from the season's stored values, which the detail carries.
  */
 export function EditSeason({ season }: { season: SeasonDetail }) {
   const update = useUpdateSeason(season.id);
   const [description, setDescription] = useState(season.description ?? "");
-  // The detail contract does not carry the two budget fields, so blank means
-  // "leave unchanged" and only typed values are sent.
-  const [budget, setBudget] = useState("");
-  const [weight, setWeight] = useState("");
+  const [budget, setBudget] = useState(String(season.absenceBudgetMinutes));
+  const [weight, setWeight] = useState(String(season.absenceWeightMinutes));
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
   const save = () => {
-    const body: UpdateSeasonInput = { description: description.trim() === "" ? null : description };
-    if (budget.trim() !== "") body.absenceBudgetMinutes = Number(budget);
-    if (weight.trim() !== "") body.absenceWeightMinutes = Number(weight);
+    const budgetMinutes = parseMinutes(budget);
+    const weightMinutes = parseMinutes(weight);
+    if (budgetMinutes === null || weightMinutes === null) {
+      setMessage({
+        text: "Absence budget and weight must be whole numbers of minutes, at least 1.",
+        error: true,
+      });
+      return;
+    }
+    const body: UpdateSeasonInput = {
+      description: description.trim() === "" ? null : description,
+      absenceBudgetMinutes: budgetMinutes,
+      absenceWeightMinutes: weightMinutes,
+    };
     setMessage(null);
     update.mutate(body, {
       onSuccess: () => setMessage({ text: "Saved.", error: false }),
@@ -34,11 +55,10 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Season settings</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-col gap-4">
+    <View className="flex-col gap-4">
+      <Text variant="headline" accessibilityRole="header">
+        Season settings
+      </Text>
         <FormField label="Description">
           <Textarea
             accessibilityLabel="Description"
@@ -65,9 +85,8 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
         {message ? (
           <View accessibilityRole={message.error ? "alert" : undefined}>
             <Text
-              className={
-                message.error ? "text-sm text-destructive" : "text-sm text-muted-foreground"
-              }
+              variant="subhead"
+              className={message.error ? "text-bad" : "text-muted-foreground"}
             >
               {message.text}
             </Text>
@@ -76,7 +95,6 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
         <Button className="self-start" disabled={update.isPending} onPress={save}>
           {update.isPending ? "Saving…" : "Save changes"}
         </Button>
-      </CardContent>
-    </Card>
+    </View>
   );
 }

@@ -1,5 +1,6 @@
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
-import { createQueryClient } from "../lib/query-client";
+import { clearCacheOnUserChange, createQueryClient } from "../lib/query-client";
+import { useSessionStore } from "../store/session";
 import { queryKeys } from "../lib/query-keys";
 
 describe("createQueryClient", () => {
@@ -33,5 +34,31 @@ describe("dashboard invalidation (spec 19 §7, D24)", () => {
       .build(client, { mutationFn: async () => "ok", meta: DASHBOARD_META })
       .execute(undefined);
     expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  });
+});
+
+describe("clearCacheOnUserChange", () => {
+  const user = (id: number) => ({ id }) as never;
+  const scopes = {} as never;
+  afterEach(() => useSessionStore.getState().clear());
+
+  it("drops cached data on sign-out and when another user signs in, not on first sign-in", () => {
+    const client = createQueryClient();
+    useSessionStore.getState().clear();
+    const stop = clearCacheOnUserChange(client);
+    const key = queryKeys.notifications.lists();
+
+    client.setQueryData(key, ["boot"]);
+    useSessionStore.getState().setSession(user(1), scopes);
+    expect(client.getQueryData(key)).toEqual(["boot"]);
+
+    client.setQueryData(key, ["user 1"]);
+    useSessionStore.getState().setSession(user(2), scopes);
+    expect(client.getQueryData(key)).toBeUndefined();
+
+    client.setQueryData(key, ["user 2"]);
+    useSessionStore.getState().clear();
+    expect(client.getQueryData(key)).toBeUndefined();
+    stop();
   });
 });

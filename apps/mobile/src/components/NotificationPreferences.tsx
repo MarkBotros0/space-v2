@@ -1,23 +1,23 @@
 // apps/mobile/src/components/NotificationPreferences.tsx
-import { Bell, Smartphone } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 import type { NotificationPreferences as Prefs } from "@space/shared";
 
-import { cn } from "../design/lib/cn";
 import { Section } from "../design/settings/section";
 import { Button, Skeleton, Switch, Text } from "../design/ui";
+import { GroupedList, ListRow, ListSectionHeader } from "../design/ui/grouped-list";
 import { useNotificationPreferences, useUpdateNotificationPreferences } from "../hooks/use-notifications";
 import { enablePush, type PushStatus } from "../lib/push";
 import { useSessionStore } from "../store/session";
 
 /**
- * v1 settings-form.tsx's Notifications section — six rows, not v1's five.
+ * v1 settings-form.tsx's Notifications section — nine rows, not v1's five.
  *
  * The labels are keyed off the preference column names so a key that exists in
  * the contract but not here is a compile error (`Record<keyof Prefs, ...>`),
  * which is the UI half of the fix for R56/R57. Copy is v1's except the
- * low-attendance count (spec D12) and the sixth row v1 never had.
+ * low-attendance count (spec D12) and the four rows v1 never had (quiz graded,
+ * quiz published, submission received, session cancelled).
  */
 const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
   assignmentCreated: {
@@ -36,6 +36,18 @@ const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
     label: "Quiz graded",
     help: "When a quiz you took has been graded.",
   },
+  quizPublished: {
+    label: "New quizzes",
+    help: "When an online quiz opens in your season.",
+  },
+  sessionCancelled: {
+    label: "Session cancelled",
+    help: "When an upcoming session in your season is cancelled.",
+  },
+  submissionReceived: {
+    label: "Submissions received",
+    help: "When a student in a group you lead submits their work.",
+  },
   lowAttendanceFlag: {
     label: "Low-attendance flags",
     // Spec D12: v1's copy said three. The rule is two.
@@ -47,21 +59,24 @@ const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
   },
 };
 
+// Student-facing first, then the staff ones.
 const ORDER: (keyof Prefs)[] = [
   "assignmentCreated",
   "submissionReviewed",
-  "sessionRescheduled",
+  "quizPublished",
   "quizGraded",
+  "sessionRescheduled",
+  "sessionCancelled",
+  "submissionReceived",
   "lowAttendanceFlag",
   "mentorFollowup",
 ];
 
-/** One honest sentence per push state. Names the three types that would push
- *  (PUSH_NOTIFICATION_TYPES) rather than promising all six. */
+/** One honest sentence per push state. */
 const PUSH_COPY: Record<PushStatus | "idle", string> = {
-  idle: "Get alerted when a session moves, or when your work or a quiz is graded.",
+  idle: "Get alerted on this phone for anything you get notified about. The switches below choose which.",
   registered: "Push is on for this device.",
-  unavailable: "This device is ready for push. Delivery switches on when the server migration lands.",
+  unavailable: "Push isn't available on the server right now. Try again later.",
   denied: "Notifications are off for JPC Space in your phone's settings.",
   not_configured: "Push isn't set up for this build of the app yet.",
   failed: "Couldn't set up push. Try again.",
@@ -76,7 +91,7 @@ export function NotificationPreferences() {
 
   const toggle = (key: keyof Prefs, value: boolean) => {
     if (!data) return;
-    // PUT replaces all six: there is no partial form of this contract, which
+    // PUT replaces every key: there is no partial form of this contract, which
     // is exactly what stops a client from leaving a key at its default without
     // saying so.
     update.mutate({ ...data, [key]: value });
@@ -84,22 +99,16 @@ export function NotificationPreferences() {
 
   return (
     <>
-      <Section icon={Bell} title="Notifications" description="Changes save automatically.">
-        {/* Spec D4: the inbox row is always written; the switch governs the
-            outbound channels. Saying so is the difference between a setting
-            and a surprise. */}
-        <Text className="mb-3 text-xs text-muted-foreground">
-          Turning one off stops the emails and push for that kind of notification. They will still appear in your
-          inbox — that is your history.
-        </Text>
+      <View className="flex-col gap-2">
+        <ListSectionHeader>Notifications</ListSectionHeader>
         {isPending ? (
           <View accessible accessibilityLabel="Loading" className="flex-col gap-3">
-            <Skeleton className="h-10 rounded-lg" />
-            <Skeleton className="h-10 rounded-lg" />
-            <Skeleton className="h-10 rounded-lg" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
           </View>
         ) : isError || !data ? (
-          <View className="flex-col items-start gap-2">
+          <View className="flex-col items-start gap-2 rounded-group bg-surface p-4">
             <Text className="text-sm text-error-600 dark:text-error-400">
               Couldn't load your notification settings.
             </Text>
@@ -108,36 +117,37 @@ export function NotificationPreferences() {
             </Button>
           </View>
         ) : (
-          <View className="flex-col">
-            {ORDER.map((key, i) => (
-              <View
+          <GroupedList>
+            {ORDER.map((key) => (
+              <ListRow
                 key={key}
-                className={cn(
-                  "flex-row items-center justify-between gap-4 py-3",
-                  i > 0 && "border-t border-border",
-                  i === 0 && "pt-0",
-                  i === ORDER.length - 1 && "pb-0",
-                )}
-              >
-                <View className="min-w-0 flex-1">
-                  <Text className="text-sm font-medium text-foreground">{LABELS[key].label}</Text>
-                  <Text className="text-xs text-muted-foreground">{LABELS[key].help}</Text>
-                </View>
-                <Switch
-                  accessibilityLabel={LABELS[key].label}
-                  checked={data[key]}
-                  onCheckedChange={(value) => toggle(key, value)}
-                  className={update.isPending ? "opacity-70" : undefined}
-                />
-              </View>
+                title={LABELS[key].label}
+                subtitle={LABELS[key].help}
+                subtitleLines={3}
+                trailing={
+                  <Switch
+                    accessibilityLabel={LABELS[key].label}
+                    checked={data[key]}
+                    onCheckedChange={(value) => toggle(key, value)}
+                    className={update.isPending ? "opacity-70" : undefined}
+                  />
+                }
+              />
             ))}
-          </View>
+          </GroupedList>
         )}
-      </Section>
-      <Section icon={Smartphone} title="Push notifications" description="Alerts on this device.">
+        {/* Spec D4: the inbox row is always written; the switch governs the
+            outbound channels. Saying so is the difference between a setting
+            and a surprise. */}
+        <Text variant="caption" className="px-4 text-muted-foreground">
+          Changes save automatically. Turning one off stops the emails and push for that kind of notification. They will
+          still appear in your inbox — that is your history.
+        </Text>
+      </View>
+      <Section title="Push notifications" description="Alerts on this device.">
         <View className="flex-col items-start gap-3">
           <Text className="text-sm text-muted-foreground">
-            {PUSH_COPY[pushStatus ?? (pushToken ? "unavailable" : "idle")]}
+            {PUSH_COPY[pushStatus ?? (pushToken ? "registered" : "idle")]}
           </Text>
           <Button
             variant="outline"
@@ -149,7 +159,8 @@ export function NotificationPreferences() {
                 .finally(() => setEnabling(false));
             }}
           >
-            {pushToken ? "Push enabled on this device" : "Enable push notifications"}
+            {/* Button labels are one line: the long forms ended in an ellipsis at 1.3x on a 360dp phone. */}
+            {pushToken ? "Push enabled" : "Enable push"}
           </Button>
         </View>
       </Section>

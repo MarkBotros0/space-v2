@@ -1,5 +1,5 @@
 import { format, isValid, parse } from "date-fns";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import {
   createJpcEventRequestSchema,
@@ -7,7 +7,7 @@ import {
   type JpcVisibility,
 } from "@space/shared";
 
-import { FormActions, FormErrorBox } from "../design/forms/form-parts";
+import { FormErrorBox } from "../design/forms/form-parts";
 import {
   Button,
   DatePicker,
@@ -21,6 +21,7 @@ import {
   Textarea,
 } from "../design/ui";
 import { FormField } from "../design/ui/form-field";
+import { Sheet, SheetSaveBar } from "../design/ui/sheet";
 import { useSeasons } from "../hooks/use-seasons";
 import { firstErrorByField } from "../lib/form-errors";
 
@@ -76,34 +77,49 @@ export function eventFormBody(values: EventFormValues): unknown {
 }
 
 export interface EventFormProps {
+  /** The form lives in a bottom sheet; closed, nothing renders and the fields reset on the next open. */
+  open: boolean;
+  title: string;
   initial: EventFormValues;
   submitLabel: string;
   submitting: boolean;
   /** Called only with a body that already passed `createJpcEventRequestSchema`. */
   onSubmit: (body: CreateJpcEventBody) => void;
-  onCancel?: () => void;
+  /** Closes the sheet (backdrop, drag, Android back). Ignored while saving. */
+  onClose: () => void;
   message?: string | null;
 }
 
 /**
  * v1 super/events/jpc-event-form.tsx: Title, Description, Date / Time / End
  * date, Link, Visibility, then Season when the event is for one season.
- * Shared by the SUPER "New event" form and the event detail's edit section.
+ * Shared by the SUPER "New event" sheet and the event detail's edit sheet; the
+ * save bar is the sheet's pinned `SheetSaveBar`, which rides the keyboard.
  * Date and End date are pickers; Time stays a typed HH:mm (empty = all-day)
  * because the design time picker has no empty state. No Photo or End time
  * field: uploads are off and the event contract carries neither (gap note).
  */
 export function EventForm({
+  open,
+  title,
   initial,
   submitLabel,
   submitting,
   onSubmit,
-  onCancel,
+  onClose,
   message,
 }: EventFormProps) {
   const [values, setValues] = useState<EventFormValues>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const seasons = useSeasons(values.visibility === "SEASON");
+  const seasons = useSeasons(open && values.visibility === "SEASON");
+
+  useEffect(() => {
+    if (!open) return;
+    setValues(initial);
+    setErrors({});
+    // Reset only when the sheet opens, not when the caller rebuilds `initial`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const set =
     <K extends keyof EventFormValues>(key: K) =>
@@ -123,120 +139,132 @@ export function EventForm({
   };
 
   return (
-    <View className="flex-col gap-4">
-      <FormField label="Title" required error={errors.title}>
-        <Input
-          accessibilityLabel="Title"
-          value={values.title}
-          onChangeText={set("title")}
-          placeholder="Spring Retreat"
+    <Sheet
+      open={open}
+      onClose={() => {
+        if (!submitting) onClose();
+      }}
+      title={title}
+      footer={
+        <SheetSaveBar
+          label={submitLabel}
+          loading={submitting}
+          onPress={submit}
+          hint={
+            message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
+          }
         />
-      </FormField>
-      <FormField label="Description" error={errors.description}>
-        <Textarea
-          accessibilityLabel="Description"
-          value={values.description}
-          onChangeText={set("description")}
-          placeholder="What's this event about?"
-        />
-      </FormField>
-      <FormField label="Date" required error={errors.day}>
-        <DatePicker
-          accessibilityLabel="Date"
-          value={dayToDate(values.day)}
-          onChange={(d) => set("day")(format(d, "yyyy-MM-dd"))}
-          ariaInvalid={Boolean(errors.day)}
-        />
-      </FormField>
-      <FormField label="Time" error={errors.time}>
-        <Input
-          accessibilityLabel="Time"
-          value={values.time}
-          onChangeText={set("time")}
-          autoCapitalize="none"
-          placeholder="HH:mm, empty for all-day"
-        />
-      </FormField>
-      <FormField label="End date" error={errors.endDay}>
-        <DatePicker
-          accessibilityLabel="End date"
-          value={dayToDate(values.endDay)}
-          onChange={(d) => set("endDay")(format(d, "yyyy-MM-dd"))}
-          ariaInvalid={Boolean(errors.endDay)}
-        />
-        {values.endDay !== "" ? (
-          // V2-only: v1's native date input could be cleared; the picker cannot.
-          <Button
-            variant="ghost"
-            size="sm"
-            className="self-start"
-            onPress={() => set("endDay")("")}
-          >
-            Remove end date
-          </Button>
-        ) : null}
-      </FormField>
-      <FormField label="Link" error={errors.url}>
-        <Input
-          accessibilityLabel="Link"
-          value={values.url}
-          onChangeText={set("url")}
-          autoCapitalize="none"
-          keyboardType="url"
-          placeholder="https://..."
-        />
-      </FormField>
-      <FormField label="Visible to" required>
-        <Select
-          items={VISIBILITY_LABELS}
-          value={values.visibility}
-          onValueChange={(v) => set("visibility")(v as JpcVisibility)}
-        >
-          <SelectTrigger accessibilityLabel="Visible to">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(VISIBILITY_LABELS) as JpcVisibility[]).map((v) => (
-              <SelectItem key={v} value={v}>
-                {VISIBILITY_LABELS[v]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </FormField>
-      {values.visibility === "SEASON" ? (
-        seasons.data ? (
-          <FormField label="Season" required error={errors.seasonId}>
-            <Select
-              items={Object.fromEntries(seasons.data.map((s) => [String(s.id), s.title]))}
-              value={values.seasonId === null ? null : String(values.seasonId)}
-              onValueChange={(v) => set("seasonId")(Number(v))}
+      }
+    >
+      <View className="flex-col gap-4 pb-4">
+        <FormField label="Title" required error={errors.title}>
+          <Input
+            accessibilityLabel="Title"
+            value={values.title}
+            onChangeText={set("title")}
+            placeholder="Spring Retreat"
+          />
+        </FormField>
+        <FormField label="Description" error={errors.description}>
+          <Textarea
+            accessibilityLabel="Description"
+            value={values.description}
+            onChangeText={set("description")}
+            placeholder="What's this event about?"
+          />
+        </FormField>
+        <FormField label="Date" required error={errors.day}>
+          <DatePicker
+            accessibilityLabel="Date"
+            value={dayToDate(values.day)}
+            onChange={(d) => set("day")(format(d, "yyyy-MM-dd"))}
+            ariaInvalid={Boolean(errors.day)}
+          />
+        </FormField>
+        <FormField label="Time" error={errors.time}>
+          <Input
+            accessibilityLabel="Time"
+            value={values.time}
+            onChangeText={set("time")}
+            autoCapitalize="none"
+            placeholder="HH:mm, empty for all-day"
+          />
+        </FormField>
+        <FormField label="End date" error={errors.endDay}>
+          <DatePicker
+            accessibilityLabel="End date"
+            value={dayToDate(values.endDay)}
+            onChange={(d) => set("endDay")(format(d, "yyyy-MM-dd"))}
+            ariaInvalid={Boolean(errors.endDay)}
+          />
+          {values.endDay !== "" ? (
+            // V2-only: v1's native date input could be cleared; the picker cannot.
+            <Button
+              variant="ghost"
+              size="sm"
+              className="self-start"
+              onPress={() => set("endDay")("")}
             >
-              <SelectTrigger accessibilityLabel="Season">
-                <SelectValue placeholder="Choose a season" />
-              </SelectTrigger>
-              <SelectContent>
-                {seasons.data.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-        ) : (
-          <Text className="text-sm text-muted-foreground">
-            {seasons.isError ? "Couldn't load seasons." : "Loading seasons…"}
-          </Text>
-        )
-      ) : null}
-      <FormErrorBox message={message} />
-      <FormActions
-        submitLabel={submitLabel}
-        pending={submitting}
-        onSubmit={submit}
-        onCancel={onCancel}
-      />
-    </View>
+              Remove end date
+            </Button>
+          ) : null}
+        </FormField>
+        <FormField label="Link" error={errors.url}>
+          <Input
+            accessibilityLabel="Link"
+            value={values.url}
+            onChangeText={set("url")}
+            autoCapitalize="none"
+            keyboardType="url"
+            placeholder="https://..."
+          />
+        </FormField>
+        <FormField label="Visible to" required>
+          <Select
+            items={VISIBILITY_LABELS}
+            value={values.visibility}
+            onValueChange={(v) => set("visibility")(v as JpcVisibility)}
+          >
+            <SelectTrigger accessibilityLabel="Visible to">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(VISIBILITY_LABELS) as JpcVisibility[]).map((v) => (
+                <SelectItem key={v} value={v}>
+                  {VISIBILITY_LABELS[v]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
+        {values.visibility === "SEASON" ? (
+          seasons.data ? (
+            <FormField label="Season" required error={errors.seasonId}>
+              <Select
+                items={Object.fromEntries(seasons.data.map((s) => [String(s.id), s.title]))}
+                value={values.seasonId === null ? null : String(values.seasonId)}
+                onValueChange={(v) => set("seasonId")(Number(v))}
+              >
+                <SelectTrigger accessibilityLabel="Season">
+                  <SelectValue placeholder="Choose a season" />
+                </SelectTrigger>
+                <SelectContent>
+                  {seasons.data.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          ) : (
+            <Text className="text-sm text-muted-foreground">
+              {seasons.isError ? "Couldn't load seasons." : "Loading seasons…"}
+            </Text>
+          )
+        ) : null}
+        <FormErrorBox message={message} />
+      </View>
+    </Sheet>
   );
 }

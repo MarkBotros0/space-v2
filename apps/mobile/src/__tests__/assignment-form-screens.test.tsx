@@ -5,9 +5,14 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
 }));
 const mockReplace = jest.fn();
+const mockBack = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: jest.fn() }),
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: mockReplace,
+    back: mockBack,
+  }),
   useLocalSearchParams: () => mockParams,
 }));
 import { apiClient } from "../lib/api-client";
@@ -296,6 +301,18 @@ describe("EditAssignmentScreen", () => {
     mockParams = { id: "55" };
   });
 
+  it("goes back to the detail it was opened from instead of stacking a second copy", async () => {
+    serve({ "/api/v1/assignments/55": detail, "/api/v1/assignments/55/tracker": tracker });
+    patch.mockResolvedValue({ data: { data: { ...detail, title: "Essay two" } } });
+    renderWithProviders(<EditAssignmentScreen />);
+
+    fireEvent.changeText(await screen.findByDisplayValue("Essay one"), "Essay two");
+    fireEvent.press(screen.getByText("Save changes"));
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
   it("pre-fills from the server's org fields and PATCHes the whole assignment (R67)", async () => {
     serve({ "/api/v1/assignments/55": detail, "/api/v1/assignments/55/tracker": tracker });
     patch.mockResolvedValue({ data: { data: { ...detail, title: "Essay two" } } });
@@ -320,12 +337,7 @@ describe("EditAssignmentScreen", () => {
         groupIds: [3],
       }),
     );
-    await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({
-        pathname: "/assignment/[id]",
-        params: { id: "55" },
-      }),
-    );
+    await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
   });
 
   it("warns when narrowing the targets would hide work students already started (§10 item 5)", async () => {

@@ -56,6 +56,9 @@ export async function computeEngagementForSeasons(
     where: {
       seasonId: { in: seasonIds },
       status: "ACTIVE",
+      // A soft-deleted student is gone from every roster; scoring them
+      // would put a deleted person back on the reports and dashboards.
+      studentUser: { deletedAt: null },
       ...(opts.studentUserIds ? { studentUserId: { in: opts.studentUserIds } } : {}),
       ...(opts.groupId ? { groupId: opts.groupId } : {}),
     },

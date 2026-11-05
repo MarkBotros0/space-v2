@@ -12,6 +12,7 @@ import {
   reorderQuestionsRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
+import { notifyQuizPublished } from "./notify";
 
 /** The authoring view of a question — the answer key included. */
 const AUTHORING_QUESTION_SELECT = {
@@ -44,8 +45,8 @@ async function recomputeMaxScore(tx: Prisma.TransactionClient, quizId: number): 
  * graded attempts (R22), rebasing maxScore retroactively (R13) and
  * cascade-deleting QuizAnswer rows out of GRADED attempts whose scores kept the
  * points those answers earned (R23, schema.prisma:739). Nothing records what a
- * quiz looked like when it was taken; answer snapshots would be a schema change
- * and are therefore blocked (C1). So the cheap correct version is: freeze.
+ * quiz looked like when it was taken (there are no answer snapshots). So the
+ * cheap correct version is: freeze.
  */
 async function hasAttempts(quizId: number): Promise<boolean> {
   return (await db.quizAttempt.count({ where: { quizId } })) > 0;
@@ -276,11 +277,24 @@ export async function publishQuiz(req: Request, res: Response) {
     }
   }
 
-  const updated = await db.quiz.update({
-    where: { id },
-    data: { publishedAt: parsed.data.publish ? new Date() : null },
-    select: { publishedAt: true },
-  });
+  // Draft → published is a conditional write, so only the request that
+  // actually flips it notifies: a republish (which only moves the timestamp)
+  // and the loser of two racing publishes stay silent.
+  const firstPublish =
+    parsed.data.publish &&
+    (await db.quiz.updateMany({ where: { id, publishedAt: null }, data: { publishedAt: new Date() } }))
+      .count === 1;
+
+  const select = { publishedAt: true, seasonId: true, title: true } as const;
+  const updated = firstPublish
+    ? await db.quiz.findUniqueOrThrow({ where: { id }, select })
+    : await db.quiz.update({
+        where: { id },
+        data: { publishedAt: parsed.data.publish ? new Date() : null },
+        select,
+      });
+
+  if (firstPublish) await notifyQuizPublished(updated);
 
   return apiOk(res, { publishedAt: updated.publishedAt });
 }

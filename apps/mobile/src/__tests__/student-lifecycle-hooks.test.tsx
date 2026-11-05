@@ -49,7 +49,7 @@ describe("student lifecycle mutations (ruling X10 — parsed, never cast)", () =
     del.mockResolvedValue({ data: { data: { id: 21, deletedAt: "2099-01-01T00:00:00.000Z" } } });
     patch.mockResolvedValueOnce({ data: { data: { id: 507, status: "WITHDRAWN" } } });
     patch.mockResolvedValueOnce({ data: { data: { id: 21 } } });
-    post.mockResolvedValue({ data: { data: { id: 22, email: "n@jpc.test" } } });
+    post.mockResolvedValue({ data: { data: { id: 22, email: "n@jpc.test", inviteSent: true } } });
 
     const remove = renderHook(() => useDeleteStudent(), { wrapper }).result;
     await act(() => remove.current.mutateAsync({ id: 21 }));

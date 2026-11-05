@@ -25,7 +25,7 @@ const CHIP_TONE: Record<SessionTone, { box: string; text: string; bar: string }>
   upcoming: {
     box: "bg-brand-teal-100 dark:bg-brand-teal-950",
     bar: "bg-brand-teal-600 dark:bg-brand-teal-400",
-    text: "text-brand-teal-800 dark:text-brand-teal-200",
+    text: "text-brand-teal-900 dark:text-brand-teal-200",
   },
 };
 
@@ -51,7 +51,10 @@ export function CalendarGrid({
   for (let i = 0; i < keys.length; i += 7) weeks.push(keys.slice(i, i + 7));
   return (
     // v1: grid gap-px over bg-border draws the 1px lines.
-    <View className="overflow-hidden rounded-xl border border-border bg-border" style={{ gap: 1 }}>
+    <View
+      className="overflow-hidden rounded-group border border-separator bg-separator"
+      style={{ gap: 1 }}
+    >
       <View className="flex-row" style={{ gap: 1 }}>
         {WEEKDAYS.map((d) => (
           <View key={d} className="flex-1 bg-card py-2">
@@ -72,9 +75,9 @@ export function CalendarGrid({
                   "min-w-0 flex-1 flex-col gap-0.5 bg-card p-0.5",
                   view === "week" ? "min-h-32" : "min-h-[72px]",
                 )}
-                // v1 dims out-of-month days to opacity-40; 40% leaves their date at under 3:1, so 60%.
-                style={outside ? { opacity: 0.6 } : undefined}
               >
+                {/* Out-of-month dates take the muted foreground (4.5:1 on the cell) rather than
+                    v1's dimming, which left them under 3:1. */}
                 <View
                   className={cn(
                     "size-6 items-center justify-center self-start rounded-full",
@@ -82,9 +85,15 @@ export function CalendarGrid({
                   )}
                 >
                   <Text
+                    maxFontSizeMultiplier={1.3}
+                    tabular
                     className={cn(
                       "text-xs font-medium",
-                      isToday ? "text-brand-navy-950" : "text-foreground",
+                      isToday
+                        ? "text-brand-navy-950"
+                        : outside
+                          ? "text-muted-foreground"
+                          : "text-foreground",
                     )}
                   >
                     {String(Number(key.slice(8)))}

@@ -3,7 +3,7 @@ import axios from "axios";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
-import { apiClient } from "./api-client";
+import { apiClient, forgetDevice } from "./api-client";
 import { easProjectId } from "./app-config";
 import { savePushToken } from "./token-storage";
 import { useSessionStore } from "../store/session";
@@ -51,10 +51,9 @@ export async function requestPushToken(): Promise<PushTokenResult> {
 /**
  * Hand the token to the API.
  *
- * `503 push_unavailable` is the expected answer until the cutover migration
- * adds the DeviceToken table (see
- * docs/superpowers/cutover/2026-08-24-notifications-push.md). It is a state,
- * not an error: the caller keeps the token and stops retrying.
+ * The server stores it in DeviceToken. A `503` (`push_unavailable`, from a
+ * server that can't take push tokens) is a state, not an error: the caller
+ * keeps the token and stops retrying.
  */
 export async function registerPushToken(token: string): Promise<"registered" | "unavailable" | "failed"> {
   try {
@@ -79,4 +78,29 @@ export async function enablePush(): Promise<{ token: string | null; status: Push
 
   const status = await registerPushToken(result.token);
   return { token: result.token, status };
+}
+
+/**
+ * Re-register silently after sign-in and on app start, so the server's row
+ * follows whoever is signed in on this phone and `lastSeenAt` stays fresh.
+ * Never prompts: it only runs when permission was already granted (the prompt
+ * belongs to the explicit settings control). Never throws.
+ */
+export async function syncPushRegistration(): Promise<void> {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    const projectId = easProjectId();
+    if (status !== "granted" || projectId === null) return;
+    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    useSessionStore.getState().setPushToken(token);
+    await savePushToken(token);
+    await registerPushToken(token);
+  } catch {
+    // Push is an extra; a failure here must never disturb sign-in.
+  }
+}
+
+/** Stop pushes to this phone at sign-out (see `forgetDevice`). */
+export async function unregisterPushToken(): Promise<void> {
+  await forgetDevice();
 }

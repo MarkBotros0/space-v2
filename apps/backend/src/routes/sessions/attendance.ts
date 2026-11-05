@@ -46,23 +46,46 @@ export async function saveAttendance(req: Request, res: Response) {
 
   // Narrowing the roster on the read only hides the other students; without
   // this, a leader who knows a studentUserId can still write that student's
-  // attendance. Membership resolves through SeasonEnrollment.groupId, not
-  // GroupStudent — the latter is unique on studentUserId across all seasons,
-  // so it cannot answer a season-scoped question.
+  // attendance. Membership resolves through SeasonEnrollment.groupId, the
+  // authority (ruling C9), not its GroupStudent mirror.
+  //
+  // The season scope (admin, SUPER) is checked too: without it an admin's
+  // save accepted any user id at all — a student of another season, a
+  // leader — and wrote an attendance row for them.
+  let seasonId: number;
   if (scope.kind === "groups") {
-    const submittedIds = [...new Set(parsed.data.entries.map((e) => e.studentUserId))];
-    const inScope = await db.seasonEnrollment.findMany({
-      where: {
-        seasonId: scope.seasonId,
-        groupId: { in: scope.groupIds },
-        studentUserId: { in: submittedIds },
-      },
-      select: { studentUserId: true },
+    seasonId = scope.seasonId;
+  } else {
+    const session = await db.session.findUnique({
+      where: { id: sessionId },
+      select: { seasonId: true },
     });
-    if (inScope.length !== submittedIds.length) {
-      return apiError(res, "forbidden", "You don't lead all of those students.", 403);
-    }
+    if (!session) return apiError(res, "not_found", "Session not found.", 404);
+    seasonId = session.seasonId;
   }
+  const submittedIds = [...new Set(parsed.data.entries.map((e) => e.studentUserId))];
+  const inScope = await db.seasonEnrollment.findMany({
+    where: {
+      seasonId,
+      studentUserId: { in: submittedIds },
+      ...(scope.kind === "groups" ? { groupId: { in: scope.groupIds } } : {}),
+    },
+    select: { studentUserId: true },
+  });
+  if (inScope.length !== submittedIds.length) {
+    return scope.kind === "groups"
+      ? apiError(res, "forbidden", "You don't lead all of those students.", 403)
+      : apiError(res, "not_enrolled", "Every student must be enrolled in this session's season.", 400);
+  }
+
+  // What each row said before this save, so the low-attendance alert fires
+  // only on a change TO absent — re-saving an unchanged roster must not
+  // notify everyone again.
+  const before = await db.attendance.findMany({
+    where: { sessionId, studentUserId: { in: submittedIds } },
+    select: { studentUserId: true, status: true },
+  });
+  const previousStatus = new Map(before.map((a) => [a.studentUserId, a.status]));
 
   // One transaction so a partially-saved roster is impossible: either every
   // student in this batch is marked, or none is.
@@ -93,9 +116,16 @@ export async function saveAttendance(req: Request, res: Response) {
 
   // The attendance rows are committed. A notification failure after that point
   // must not tell the leader their marking failed (spec D6).
-  await bestEffort("notify:LOW_ATTENDANCE_FLAG", () =>
-    flagLowAttendance(sessionId, parsed.data.entries),
+  const newlyAbsent = parsed.data.entries.filter(
+    (e) =>
+      e.status === AttendanceStatus.ABSENT &&
+      previousStatus.get(e.studentUserId) !== AttendanceStatus.ABSENT,
   );
+  if (newlyAbsent.length > 0) {
+    await bestEffort("notify:LOW_ATTENDANCE_FLAG", () =>
+      flagLowAttendance(sessionId, newlyAbsent),
+    );
+  }
 
   return apiOk(res, { saved: parsed.data.entries.length });
 }

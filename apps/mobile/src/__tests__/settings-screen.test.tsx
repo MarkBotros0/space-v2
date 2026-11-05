@@ -11,8 +11,9 @@ jest.mock("../lib/token-storage", () => ({
   saveSession: jest.fn(),
 }));
 const mockReplace = jest.fn();
+const mockBack = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace, back: mockBack }),
 }));
 
 jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
@@ -21,6 +22,7 @@ jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: j
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { toast } from "../design/ui/toaster";
+import { TabBarPresenceContext } from "../design/layout/shell-context";
 import { renderWithProviders } from "./helpers/render";
 
 import SettingsScreen from "../../app/(app)/settings";
@@ -47,12 +49,30 @@ beforeEach(() => {
           lowAttendanceFlag: true,
           mentorFollowup: true,
           quizGraded: true,
+          quizPublished: true,
+          submissionReceived: true,
+          sessionCancelled: true,
         },
       },
     },
   });
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   mockLoadRefreshToken.mockResolvedValue("stored-refresh");
+});
+
+describe("SettingsScreen back bar (Task 12 fix round 1)", () => {
+  it("pins a Back link that returns to wherever Settings was opened from", () => {
+    const { user, scopes } = sessionFor("STUDENT");
+    useSessionStore.getState().setSession(user, scopes);
+    renderWithProviders(
+      <TabBarPresenceContext.Provider value={false}>
+        <SettingsScreen />
+      </TabBarPresenceContext.Provider>,
+    );
+    expect(screen.getByTestId("back-bar")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Back"));
+    expect(mockBack).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("SettingsScreen", () => {
@@ -69,11 +89,11 @@ describe("SettingsScreen", () => {
     useSessionStore.setState(sessionFor(role, gradYear));
     renderWithProviders(<SettingsScreen />);
 
-    expect(screen.getByText("Profile")).toBeTruthy();
-    // The section heading. The submit button is titled "Update password" so
-    // this exact-text query has exactly one match.
-    expect(screen.getByText("Change password")).toBeTruthy();
-    expect(screen.getByText("Security")).toBeTruthy();
+    // Section headers are the grouped list's uppercase headers.
+    expect(screen.getByText("PROFILE")).toBeTruthy();
+    expect(screen.getByText("CHANGE PASSWORD")).toBeTruthy();
+    expect(screen.getByText("NOTIFICATIONS")).toBeTruthy();
+    expect(screen.getByText("SECURITY")).toBeTruthy();
     expect(screen.getByLabelText("Name")).toBeTruthy();
     // Email is shown, not editable — and the caption is TRUE in v2, unlike
     // v1's "change via the admin console" lie for students (spec 18 R20/D8).
@@ -81,12 +101,30 @@ describe("SettingsScreen", () => {
     expect(screen.getByText("Profile, password, and notification preferences.")).toBeTruthy();
   });
 
+  it("shows the read-only Email in the muted text token, not a half-faded control (4.5:1)", () => {
+    useSessionStore.setState(sessionFor("STUDENT", null));
+    renderWithProviders(<SettingsScreen />);
+    const email = screen.getByDisplayValue("sp@jpc.test");
+    expect(email.props.editable).toBe(false);
+    // opacity-50 measured 3.26:1 (light) and 4.38:1 (dark); the token is 7.08:1 / 7.81:1.
+    expect(email.props.className).toContain("text-muted-foreground");
+    expect(email.props.className).not.toContain("opacity-50");
+  });
+
+  it("keeps section titles as headers for screen readers", () => {
+    useSessionStore.setState(sessionFor("STUDENT"));
+    renderWithProviders(<SettingsScreen />);
+    for (const title of ["PROFILE", "CHANGE PASSWORD", "SECURITY"]) {
+      expect(screen.getByRole("header", { name: title })).toBeTruthy();
+    }
+  });
+
   it("hides the password section for an invited-never-activated account (hasPassword false)", () => {
     const s = sessionFor("STUDENT");
     s.user.hasPassword = false;
     useSessionStore.setState(s);
     renderWithProviders(<SettingsScreen />);
-    expect(screen.queryByText("Change password")).toBeNull();
+    expect(screen.queryByText("CHANGE PASSWORD")).toBeNull();
   });
 
   it("saves the profile name and reconciles the store from the response", async () => {
@@ -139,6 +177,55 @@ describe("SettingsScreen", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Password updated. Signed out of 2 other devices."));
   });
 
+  describe("password-change failures say what actually went wrong", () => {
+    function apiFailure(status: number, code: string, message: string) {
+      return Object.assign(new Error(message), {
+        isAxiosError: true,
+        response: { status, data: { error: { code, message } } },
+      });
+    }
+
+    async function submit() {
+      fireEvent.changeText(screen.getByLabelText("Current password"), "old-password");
+      fireEvent.changeText(screen.getByLabelText("New password"), "new-password-1");
+      fireEvent.changeText(screen.getByLabelText("Confirm new password"), "new-password-1");
+      fireEvent.press(screen.getByText("Update password"));
+      await waitFor(() => expect(post).toHaveBeenCalled());
+    }
+
+    beforeEach(() => useSessionStore.setState(sessionFor("STUDENT")));
+
+    it("a wrong current password is flagged on that field", async () => {
+      post.mockRejectedValue(apiFailure(400, "incorrect_password", "Current password is incorrect."));
+      renderWithProviders(<SettingsScreen />);
+      await submit();
+      await waitFor(() =>
+        expect(screen.getByLabelText("Current password").props.accessibilityHint).toBe(
+          "Current password is incorrect.",
+        ),
+      );
+      expect(toast.error).toHaveBeenCalledWith("Your current password is incorrect.");
+    });
+
+    it("a 429 says to wait, not to check the password", async () => {
+      post.mockRejectedValue(apiFailure(429, "too_many_requests", "Too many requests. Please try again later."));
+      renderWithProviders(<SettingsScreen />);
+      await submit();
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith("Too many attempts. Wait a few minutes, then try again."),
+      );
+    });
+
+    it("a password-rule refusal lands on the new-password field with the server's message", async () => {
+      post.mockRejectedValue(apiFailure(400, "bad_request", "At most 72 bytes."));
+      renderWithProviders(<SettingsScreen />);
+      await submit();
+      await waitFor(() =>
+        expect(screen.getByLabelText("New password").props.accessibilityHint).toBe("At most 72 bytes."),
+      );
+    });
+  });
+
   it("keeps the mismatch check client-side — no request leaves the device", async () => {
     useSessionStore.setState(sessionFor("STUDENT"));
     renderWithProviders(<SettingsScreen />);
@@ -157,12 +244,18 @@ describe("SettingsScreen", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it("logs out everywhere: posts, clears the session, lands on login", async () => {
+  it("logs out everywhere only after a confirmation: posts, clears the session, lands on login", async () => {
     useSessionStore.setState(sessionFor("STUDENT"));
     post.mockResolvedValue({ data: { data: { revoked: 3 } } });
     renderWithProviders(<SettingsScreen />);
 
     fireEvent.press(screen.getByText("Sign out everywhere"));
+    // The first press only opens the dialog — nothing is revoked yet.
+    expect(await screen.findByText("Sign out everywhere?")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+
+    const buttons = screen.getAllByText("Sign out everywhere");
+    fireEvent.press(buttons[buttons.length - 1]!);
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/auth/logout-all"));
     await waitFor(() => expect(useSessionStore.getState().status).toBe("anonymous"));

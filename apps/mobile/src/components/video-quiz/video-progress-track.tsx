@@ -75,13 +75,13 @@ export function VideoProgressTrack({
         </View>
       </Pressable>
       <View className="flex-row items-center justify-between">
-        <Text className="font-mono text-[11px] font-medium text-white/70">
+        <Text className="font-mono text-caption font-medium text-white/70">
           {`${formatTimestamp(current)} / ${formatTimestamp(total)}`}
         </Text>
         {Number.isFinite(barrier) && barrier < total ? (
           <View className="flex-row items-center gap-1">
             <Lock size={12} className="text-white/70" />
-            <Text className="text-[11px] font-medium text-white/70">Answer to unlock</Text>
+            <Text className="text-caption font-medium text-white/70">Answer to unlock</Text>
           </View>
         ) : null}
       </View>

@@ -1,6 +1,7 @@
 # UI sweep s28 — Notifications, More and Settings as a season admin. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
+# Only Home has the user menu (R13): each screen is waited on by its own text.
 ---
 - runFlow:
     file: ../_sign-in.yaml
@@ -8,7 +9,7 @@ appId: com.jpc.space
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://notifications
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: '\d+ unread'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -23,7 +24,7 @@ appId: com.jpc.space
 # Rows are never tapped: opening one marks it read.
 - openLink: spacev2://more
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Account, settings, and more places to go\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -37,7 +38,7 @@ appId: com.jpc.space
 - takeScreenshot: s28-04-more-bottom
 - openLink: spacev2://settings
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Profile, password, and notification preferences\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

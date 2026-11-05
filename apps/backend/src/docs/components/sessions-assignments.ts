@@ -121,7 +121,7 @@ export const sessionsAssignmentsSchemas = {
       expectedCount: {
         type: "integer",
         description:
-          "ACTIVE season enrolments in the targeted groups — not GroupStudent rows, which are unique per student across all seasons and so cannot answer a per-season question.",
+          "ACTIVE season enrolments in the targeted groups (SeasonEnrollment is the authority, ruling C9).",
       },
       seasonCode: { type: "string" },
     },
@@ -133,6 +133,11 @@ export const sessionsAssignmentsSchemas = {
       id: { type: "integer" },
       title: { type: "string" },
       dueAt: { type: ["string", "null"], format: "date-time" },
+      dueOrgDay: {
+        type: ["string", "null"],
+        format: "date",
+        description: "Organisation-calendar day of `dueAt` (ORG_TIMEZONE), derived server-side. Label and compare deadlines with this (and the dashboard's `todayOrgDay`), never by formatting `dueAt` on the device.",
+      },
       status: {
         oneOf: [
           { $ref: "#/components/schemas/SubmissionStatus" },

@@ -1,83 +1,141 @@
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarProps } from "expo-router/js-tabs";
 import type { NavItem } from "@space/shared";
-import { BlurView } from "expo-blur";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { routeNameForHref } from "../../lib/route-names";
+import { useScreenReaderEnabled } from "../lib/screen-reader";
 import { shadowStyle } from "../lib/shadow";
+import { DURATION, useReducedMotion } from "../motion";
 import { NavLink } from "./nav-link";
+import { PillHighlight } from "./pill-highlight";
+import { resetTabBarScroll, useTabBarVisible } from "./tab-bar-scroll";
 
 /**
- * v1 shell-frame.tsx mobile nav:
- *   fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto
- *   flex h-16 max-w-md items-center rounded-full bg-sidebar/75 px-2
- *   text-sidebar-foreground shadow-[var(--shadow-lift)] ring-1 ring-white/10
- *   backdrop-blur-xl backdrop-saturate-150
- * Native differences: ring → border; backdrop-blur-xl → BlurView, but
- * Android's blur darkens the backdrop (bar measured #364771 vs v1 #536187),
- * so a bg-background/85 layer restores the light, blurred backdrop v1 sees
- * before its 75% navy; backdrop-saturate has no native equivalent.
+ * The floating pill: solid on iOS and Android (owner ruling R38, 2026-11-05),
+ * one opaque navy `bg-pill` fill, no blur and no per-platform fill. It keeps
+ * its floating shape, shadow, hide-on-scroll motion and sliding highlight.
+ * (R5/R30/R37's frosted and near-opaque variants are superseded.)
  */
-/**
- * v2's singular detail routes and the list tab whose v1 URL they sit under
- * (v1: /student/assignments/[id] keeps "Assignments" lit).
- */
-const DETAIL_PARENT: Record<string, string> = {
-  assignment: "assignments",
-  group: "groups",
-  quiz: "quizzes",
-  submission: "submissions",
-  student: "students",
-  user: "users",
-  event: "events",
-};
+const PILL_HEIGHT = 64;
 
 /**
- * The tab route to highlight for the current route, following v1's
- * nav-link.tsx rule `pathname === href || pathname.startsWith(href + "/")`:
- * exact match, then same first segment (students/alumni → students/index),
- * then a singular detail route's list tab; null when v1 lights nothing.
+ * The tab route to highlight: the focused route when it is in the bar, else
+ * null (the highlight fades out). Only tab routes live in the Tabs navigator
+ * (detail and pushed routes are on the (app) stack above it, Tasks 9 and
+ * 12), so v1's "same first segment / a detail's list tab" fallbacks can no
+ * longer fire and are gone (final review M3).
  */
 export function activeTabRoute(current: string | undefined, tabRoutes: string[]): string | null {
-  if (!current) return null;
-  if (tabRoutes.includes(current)) return current;
-  const first = current.split("/")[0]!;
-  const parent = DETAIL_PARENT[first] ?? first;
-  return tabRoutes.find((t) => t.split("/")[0] === parent) ?? null;
+  return current !== undefined && tabRoutes.includes(current) ? current : null;
 }
 
-export function FloatingTabBar({ items, state, navigation }: BottomTabBarProps & { items: NavItem[] }) {
+/**
+ * Expo Router 58's tab bar gets `navigateToTab(routeKey)` instead of a
+ * navigation object, so a tab's route name is looked up in the navigator
+ * state for its key.
+ */
+export function PillTabBar({
+  items,
+  state,
+  navigateToTab,
+}: BottomTabBarProps & { items: NavItem[] }) {
   const insets = useSafeAreaInsets();
+  const reduced = useReducedMotion();
+  // A screen reader keeps the pill up (M7): VoiceOver could otherwise focus a
+  // tab moved off-screen, and activating it through `pointerEvents="none"` is
+  // unreliable on iOS.
+  const screenReader = useScreenReaderEnabled();
+  const visible = useTabBarVisible() || screenReader;
   const shown = items.slice(0, 5);
-  const active = activeTabRoute(state.routes[state.index]?.name, shown.map((i) => routeNameForHref(i.href)));
+  const routeActive = activeTabRoute(
+    state.routes[state.index]?.name,
+    shown.map((i) => routeNameForHref(i.href)),
+  );
+  // The route the user just pressed, highlighted at once: the highlight must not wait
+  // for the navigator, and a second press before the first settles retargets it.
+  const [pending, setPending] = useState<string[]>([]);
+  const active = pending[pending.length - 1] ?? routeActive;
+  const [layouts, setLayouts] = useState<Record<string, { x: number; width: number }>>({});
+
+  // Presses wait in order for the navigator. When it reports a pressed route, that press and
+  // the earlier ones are done (later ones stay pending, so B then C with B reported holds C);
+  // a route nobody pressed (a link, a notification) clears them and the highlight follows it.
+  useEffect(() => {
+    setPending((q) => {
+      const i = routeActive ? q.indexOf(routeActive) : -1;
+      return i >= 0 ? q.slice(i + 1) : q.length ? [] : q;
+    });
+  }, [routeActive]);
+  // A tab change always brings the pill back, however the last screen left it.
+  const focusedKey = state.routes[state.index]?.key;
+  useEffect(() => resetTabBarScroll(), [focusedKey]);
+
+  const offset = Math.max(16, insets.bottom);
+  const hideBy = PILL_HEIGHT + offset + 8;
+  const shownValue = useSharedValue(visible ? 1 : 0);
+  useEffect(() => {
+    shownValue.value = withTiming(visible ? 1 : 0, { duration: DURATION.base });
+  }, [visible, shownValue]);
+  const slide = useAnimatedStyle(() =>
+    reduced
+      ? { opacity: shownValue.value }
+      : { transform: [{ translateY: (1 - shownValue.value) * hideBy }] },
+  );
+
   return (
+    // The placement lives on a plain View and the Animated.View carries only the slide:
+    // classes on an Animated.View are dropped on device (no-classname-on-animated.test.ts).
     <View
-      pointerEvents="box-none"
-      className="absolute inset-x-4 items-center"
-      style={{ bottom: Math.max(16, insets.bottom) }}
+      testID="pill-root"
+      // Hidden: never block the touches of the screen the pill used to cover, and leave
+      // the accessibility tree too (only possible with no screen reader on, above).
+      pointerEvents={visible ? "box-none" : "none"}
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? "auto" : "no-hide-descendants"}
+      className="absolute inset-x-4"
+      style={{ bottom: offset }}
     >
-      <View
-        className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
-        style={shadowStyle("lift")}
-      >
-        <BlurView intensity={40} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
-        <View className="absolute inset-0 bg-background/85" />
-        <View className="absolute inset-0 bg-sidebar/75" />
-        {shown.map((item) => {
-          const name = routeNameForHref(item.href);
-          return (
-            <NavLink
-              key={item.href}
-              label={item.label}
-              icon={item.icon}
-              featured={item.icon === "home"}
-              active={active === name}
-              onPress={() => navigation.navigate(name as never)}
-            />
-          );
-        })}
-      </View>
+      <Animated.View testID="pill-slide" pointerEvents="box-none" style={[styles.center, slide]}>
+        <View
+          // The row is the tablist, so iOS announces "tab, n of m" (M8).
+          testID="pill-row"
+          accessibilityRole="tablist"
+          className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
+          style={shadowStyle("lift")}
+        >
+          <View testID="pill-fill" className="absolute inset-0 bg-pill" />
+          <PillHighlight target={active ? (layouts[active] ?? null) : null} />
+          {shown.map((item) => {
+            const name = routeNameForHref(item.href);
+            return (
+              <NavLink
+                key={item.href}
+                label={item.label}
+                icon={item.icon}
+                active={active === name}
+                onLayout={(e) => {
+                  const { x, width } = e.nativeEvent.layout;
+                  setLayouts((prev) =>
+                    prev[name]?.x === x && prev[name]?.width === width
+                      ? prev
+                      : { ...prev, [name]: { x, width } },
+                  );
+                }}
+                onPress={() => {
+                  setPending((q) => [...q, name]);
+                  const key = state.routes.find((r) => r.name === name)?.key;
+                  if (key) navigateToTab(key);
+                }}
+              />
+            );
+          })}
+        </View>
+      </Animated.View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({ center: { alignItems: "center" } });

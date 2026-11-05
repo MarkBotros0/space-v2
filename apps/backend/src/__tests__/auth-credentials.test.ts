@@ -1,9 +1,16 @@
 import bcrypt from "bcryptjs";
 
 const mockFindUnique = jest.fn();
+const mockFindMany = jest.fn();
 const mockUpdate = jest.fn();
 jest.mock("../db/client", () => ({
-  db: { user: { findUnique: (...a: unknown[]) => mockFindUnique(...a), update: (...a: unknown[]) => mockUpdate(...a) } },
+  db: {
+    user: {
+      findUnique: (...a: unknown[]) => mockFindUnique(...a),
+      findMany: (...a: unknown[]) => mockFindMany(...a),
+      update: (...a: unknown[]) => mockUpdate(...a),
+    },
+  },
 }));
 
 import { verifyCredentials } from "../lib/auth/credentials";
@@ -14,6 +21,7 @@ const row = { id: 9, email: "a@jpc.test", name: "Ann", role: "LEADER", deletedAt
 beforeEach(() => {
   jest.clearAllMocks();
   mockUpdate.mockResolvedValue({});
+  mockFindMany.mockResolvedValue([]);
 });
 
 describe("verifyCredentials", () => {
@@ -48,5 +56,23 @@ describe("verifyCredentials", () => {
     mockFindUnique.mockResolvedValue(row);
     await expect(verifyCredentials("a@jpc.test", "wrong")).resolves.toBeNull();
     expect(mockUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("verifyCredentials email matching", () => {
+  it("falls back to a unique case-insensitive match when there is no exact one", async () => {
+    const hash = await bcrypt.hash("pw-123456", 4);
+    mockFindUnique.mockResolvedValueOnce(null);
+    mockFindMany.mockResolvedValueOnce([
+      { id: 3, email: "foo@x.com", name: "Foo", role: "STUDENT", deletedAt: null, passwordHash: hash },
+    ]);
+    const user = await verifyCredentials("Foo@x.com", "pw-123456");
+    expect(user?.email).toBe("foo@x.com");
+  });
+
+  it("refuses an ambiguous case-insensitive match", async () => {
+    mockFindUnique.mockResolvedValueOnce(null);
+    mockFindMany.mockResolvedValueOnce([{ id: 3 }, { id: 4 }]);
+    await expect(verifyCredentials("Foo@x.com", "pw")).resolves.toBeNull();
   });
 });

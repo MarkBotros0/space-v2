@@ -4,6 +4,7 @@ import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
 import type { SessionUser } from "../../auth/tokens";
 import { canReadAllStudents, isMentor, isSuper } from "../../rbac";
+import { currentMembershipSelect, studentIdsWithCurrentGroup } from "./current-group";
 
 export interface StudentListResult {
   students: StudentListItem[];
@@ -21,8 +22,9 @@ type StudentScope = { kind: "all" } | { kind: "ids"; ids: number[] };
  * v1's semantics (R30/R31), kept: the list answers "ever mine", not
  * "currently mine". LEADER gets the distinct students whose ENROLLMENT names
  * one of their groups — ruling C9; v1's (unreachable — no leader list page
- * ever existed, R28) branch read GroupStudent instead, which forgets a
- * leader's students the moment a later season reassigns them.
+ * ever existed, R28) branch read GroupStudent instead, which (while that table
+ * was global) forgot a leader's students the moment a later season
+ * reassigned them.
  *
  * null = this caller has no student-list surface at all (STUDENT) → 403.
  */
@@ -76,7 +78,7 @@ const LIST_SELECT = {
     },
   },
   // Advisory current group — the one question GroupStudent may answer (C9).
-  groupStudentMembership: { select: { group: { select: { name: true } } } },
+  groupStudentMemberships: currentMembershipSelect({ name: true }),
 } as const;
 
 type ListRow = Prisma.UserGetPayload<{ select: typeof LIST_SELECT }>;
@@ -91,7 +93,7 @@ function toListItem(u: ListRow): StudentListItem {
     year: u.studentProfile?.year ?? null,
     graduationYear: u.graduationYear,
     activeSeasonTitle: u.studentProfile?.activeSeason?.title ?? null,
-    currentGroupName: u.groupStudentMembership?.group.name ?? null,
+    currentGroupName: u.groupStudentMemberships[0]?.group.name ?? null,
     droppedEnrollment: null,
   };
 }
@@ -117,7 +119,7 @@ const SORT_KEY_SELECT = {
   id: true,
   name: true,
   studentProfile: { select: { university: true, activeSeason: { select: { title: true } } } },
-  groupStudentMembership: { select: { group: { select: { name: true } } } },
+  groupStudentMemberships: currentMembershipSelect({ name: true }),
 } as const;
 
 /** Every matching id in v1's order for a related-row sort key, then paged by id. */
@@ -133,7 +135,7 @@ async function listByRelatedSort(
       ? u.studentProfile?.university
       : sort === "season"
         ? u.studentProfile?.activeSeason?.title
-        : u.groupStudentMembership?.group.name
+        : u.groupStudentMemberships[0]?.group.name
     )?.toLowerCase() ?? "";
   const sign = dir === "asc" ? 1 : -1;
   keyed.sort(
@@ -190,12 +192,12 @@ export async function listStudents(
       // scope's "ever enrolled" meaning).
       ...(query.seasonId ? [{ seasonEnrollments: { some: { seasonId: query.seasonId } } }] : []),
       // REG-82: v1's group select filtered on the group the row displays, i.e.
-      // the advisory GroupStudent pointer; "none" is its "Unassigned".
+      // the advisory current group; "none" is its "Unassigned".
       ...(query.groupId === undefined
         ? []
         : query.groupId === "none"
-          ? [{ groupStudentMembership: { is: null } }]
-          : [{ groupStudentMembership: { groupId: query.groupId } }]),
+          ? [{ groupStudentMemberships: { none: {} } }]
+          : [{ id: { in: await studentIdsWithCurrentGroup(query.groupId) } }]),
       searchFilter(query.q),
     ],
   };

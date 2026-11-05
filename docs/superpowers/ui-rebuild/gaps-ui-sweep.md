@@ -33,7 +33,7 @@ never measured these.
 - **Tap targets under 44dp:** "Take quiz", "Start quiz", "Mark all read", "Open settings", "← Dashboard",
   Save/Cancel on Profile, the user-menu rows.
 - **History empty state** ("No past seasons") has no action.
-- **The Home tab keeps its teal bubble on every page** (`featured`), as in v1's `nav-link.tsx`.
+- **The Ruling R22: no tab is featured; the Home tab has no teal disc (the highlight marks the active one).
 - **The page tint ends partway down short pages** in light mode, as in v1's role layouts.
 
 ## Not covered by the sweep

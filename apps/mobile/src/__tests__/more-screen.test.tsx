@@ -16,7 +16,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import MoreScreen from "../../app/(app)/more";
+import MoreScreen from "../../app/(app)/(tabs)/more";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -33,6 +33,7 @@ describe("MoreScreen", () => {
       expect(screen.getByText(label)).toBeTruthy();
     }
     // Already tabs: never duplicated in More.
+    expect(screen.queryByText("Work")).toBeNull();
     expect(screen.queryByText("Assignments")).toBeNull();
     expect(screen.queryByText("Quizzes")).toBeNull();
   });

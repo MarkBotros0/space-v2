@@ -69,6 +69,14 @@ also deletes any leftover rows matching that email pattern in `beforeAll`, so
 an interrupted previous run (CI timeout, Ctrl-C) can't leave a known-password
 account behind or collide with the next run.
 
+`npx expo-doctor` (from `apps/mobile`) passes 19 of 20 checks. The one it
+fails, **duplicate react-dom**, is known and harmless; leave it. The rich-text
+editor (`@10play/tentap-editor`) pins react-dom 18 while Expo brings 19. The
+check guards against two copies of a *native* module, and react-dom has no
+native code: the editor runs as a prebuilt web page inside a WebView. Forcing
+one version with a pnpm override would change the editor's dependency tree for
+no build benefit (owner decision 2026-11-04).
+
 ## Conventions
 
 - **Imports are relative, not aliased.** Neither app uses a `@/` path alias.

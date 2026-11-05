@@ -8,6 +8,8 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "12" }),
   useRouter: () => ({ push: mockPush }),
+  // The staff cards poll while focused; focused for the whole test.
+  useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
 }));
 
 import type { SessionDetail } from "@space/shared";
@@ -160,7 +162,7 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     serve({ ...detail, checkInOpen: false });
     renderWithProviders(<SessionDetailScreen />);
 
-    expect(await screen.findByText("Check-in hasn't opened yet")).toBeTruthy();
+    expect(await screen.findByText("Check-in isn't open right now")).toBeTruthy();
     // v1 keeps the button visible but disabled.
     expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
   });
@@ -173,7 +175,46 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     renderWithProviders(<SessionDetailScreen />);
 
     expect(await screen.findByText(/You checked in at/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
+    expect(screen.queryByText("Check In")).toBeNull();
+  });
+
+  it("a student the leader already marked gets no button and no not-open line", async () => {
+    serve({
+      ...detail,
+      checkInOpen: true,
+      myAttendance: { status: "PRESENT", notes: null, lateMinutes: null, checkedInAt: null },
+    });
+    renderWithProviders(<SessionDetailScreen />);
+    expect(await screen.findByText("ATTENDANCE", { exact: false })).toBeTruthy();
+    expect(screen.queryByText("Check In")).toBeNull();
+    expect(screen.queryByText(/You checked in at/)).toBeNull();
+    expect(screen.queryByText("Check-in isn't open right now")).toBeNull();
+  });
+
+  it("the sheet's title names the state it is in", async () => {
+    serve();
+    post.mockRejectedValueOnce(refusal(400, "invalid_token"));
+    post.mockResolvedValue({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
+    renderWithProviders(<SessionDetailScreen />);
+
+    fireEvent.press(await screen.findByText("Check In"));
+    expect(screen.getByText("Scan check-in code")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Enter code instead"));
+    expect(screen.getByText("Enter check-in code")).toBeTruthy();
+    expect(screen.queryByText("Scan check-in code")).toBeNull();
+
+    fireEvent.changeText(screen.getByLabelText("Check-in code"), "AbC123XyZ0");
+    fireEvent.press(screen.getByText("Check in"));
+    expect(await screen.findByText("This check-in code is not valid.")).toBeTruthy();
+    expect(screen.getByText("Check-in")).toBeTruthy();
+    fireEvent.press(screen.getByText("Done"));
+
+    fireEvent.press(screen.getByText("Check In"));
+    expect(screen.getByText("Scan check-in code")).toBeTruthy();
+    scanMockBarcode("AbC123XyZ0");
+    expect(await screen.findByText("You're checked in!")).toBeTruthy();
+    expect(screen.getByText("Checked in")).toBeTruthy();
   });
 
   it("refreshes the session after a successful check-in", async () => {
@@ -188,6 +229,51 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     await waitFor(() =>
       expect(get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12").length).toBeGreaterThanOrEqual(2),
     );
+  });
+
+  it("opens the kit Sheet with the scanner first, then the code fallback", async () => {
+    serve();
+    renderWithProviders(<SessionDetailScreen />);
+    expect(screen.queryByTestId("sheet")).toBeNull();
+
+    fireEvent.press(await screen.findByText("Check In"));
+    expect(screen.getByTestId("sheet")).toBeTruthy();
+    expect(screen.getByText("Scan check-in code")).toBeTruthy();
+    expect(screen.getByTestId("mock-camera")).toBeTruthy();
+    expect(screen.getByText("Enter code instead")).toBeTruthy();
+  });
+
+  it("blocks a second submit while the first is pending", async () => {
+    serve();
+    let resolve!: (v: unknown) => void;
+    post.mockReturnValue(new Promise((r) => (resolve = r)));
+    renderWithProviders(<SessionDetailScreen />);
+
+    fireEvent.press(await screen.findByText("Check In"));
+    fireEvent.press(screen.getByText("Enter code instead"));
+    fireEvent.changeText(screen.getByLabelText("Check-in code"), "AbC123XyZ0");
+    fireEvent.press(screen.getByText("Check in"));
+    expect(await screen.findByText("Checking you in…")).toBeTruthy();
+    expect(screen.queryByLabelText("Check-in code")).toBeNull();
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    resolve({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
+    expect(await screen.findByText("You're checked in!")).toBeTruthy();
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the season tally on the success moment", async () => {
+    const attended = { sessionId: 1, title: "A", startsAt: "2099-01-01T10:00:00.000Z", dayKey: "2099-01-01", startTime: "10:00", status: "PRESENT", checkedInAt: null, lateMinutes: null, costMinutes: null };
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/sessions/12") return Promise.resolve({ data: { data: detail } });
+      if (url === "/api/v1/me/attendance")
+        return Promise.resolve({ data: { data: { season: null, budget: null, streak: 1, sessions: [attended, { ...attended, sessionId: 2, status: "ABSENT" }] } } });
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+    post.mockResolvedValue({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
+    renderWithProviders(<SessionDetailScreen />);
+    fireEvent.press(await screen.findByText("Check In"));
+    scanMockBarcode("AbC123XyZ0");
+    expect(await screen.findByText("Season attendance · 1 of 2 sessions")).toBeTruthy();
   });
 
   it("is not shown to staff", async () => {

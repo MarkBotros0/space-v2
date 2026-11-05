@@ -1,0 +1,17 @@
+# Design catalogue: scrolls section ${SECTION}'s title (catalogue-<id>-title)
+# fully into view and centres it. A section the previous shot already showed
+# whole is not scrolled again, so two short sections can share a picture; that
+# loses no coverage. (An earlier version swiped the title up under the pinned
+# header and back, which landed it under the header on small gesture-nav
+# phones and failed the flow.)
+appId: com.jpc.space
+---
+- scrollUntilVisible:
+    element:
+      id: catalogue-${SECTION}-title
+    direction: DOWN
+    centerElement: true
+    visibilityPercentage: 100
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000

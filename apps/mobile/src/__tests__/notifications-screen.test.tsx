@@ -1,5 +1,5 @@
 // apps/mobile/src/__tests__/notifications-screen.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -44,6 +44,18 @@ beforeEach(() => {
 });
 
 describe("NotificationsScreen", () => {
+  it("keeps Mark all read out of the large title's row so the title fits whole at 1.3x", async () => {
+    get.mockResolvedValue({
+      data: { data: { items: [unread], nextCursor: null, unreadCount: 1 } },
+    });
+
+    renderWithProviders(<NotificationsScreen />);
+    await screen.findByText("Mark all read");
+
+    // A squeezed title broke "Notificati/ons" mid-word on a 360dp phone.
+    expect(within(screen.getByTestId("large-title")).queryByText("Mark all read")).toBeNull();
+  });
+
   it("lists the caller's notifications", async () => {
     get.mockResolvedValue({
       data: { data: { items: [unread], nextCursor: null, unreadCount: 1 } },
@@ -53,8 +65,9 @@ describe("NotificationsScreen", () => {
 
     expect(await screen.findByText("Essay one was reviewed")).toBeTruthy();
     expect(screen.getByText("1 unread")).toBeTruthy();
-    expect(screen.getByText("SUBMISSION REVIEWED")).toBeTruthy();
-    expect(screen.getByText("New")).toBeTruthy();
+    expect(screen.getByText(/SUBMISSION REVIEWED/)).toBeTruthy();
+    // The unread dot is colour only: the row says so to a screen reader.
+    expect(screen.getByLabelText(/Essay one was reviewed.*Unread/)).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/notifications?limit=20");
   });
 
@@ -88,6 +101,47 @@ describe("NotificationsScreen", () => {
       pathname: "/assignment/[id]",
       params: { id: "41" },
     });
+  });
+
+  it("drops the unread count and the Unread label once the tap has marked it read", async () => {
+    get.mockResolvedValueOnce({
+      data: { data: { items: [unread], nextCursor: null, unreadCount: 1 } },
+    });
+    get.mockResolvedValue({
+      data: {
+        data: {
+          items: [{ ...unread, readAt: "2026-08-24T11:00:00.000Z" }],
+          nextCursor: null,
+          unreadCount: 0,
+        },
+      },
+    });
+    post.mockResolvedValue({ data: { data: { marked: 1 } } });
+
+    renderWithProviders(<NotificationsScreen />);
+    expect(await screen.findByText("1 unread")).toBeTruthy();
+    fireEvent.press(screen.getByText("Essay one was reviewed"));
+
+    expect(await screen.findByText("0 unread")).toBeTruthy();
+    expect(screen.queryByLabelText(/Unread/)).toBeNull();
+  });
+
+  it("does not call a read row Unread", async () => {
+    get.mockResolvedValue({
+      data: {
+        data: {
+          items: [{ ...unread, readAt: "2026-08-24T11:00:00.000Z" }],
+          nextCursor: null,
+          unreadCount: 0,
+        },
+      },
+    });
+
+    renderWithProviders(<NotificationsScreen />);
+
+    expect(await screen.findByLabelText(/Essay one was reviewed/)).toBeTruthy();
+    expect(screen.queryByLabelText(/Unread/)).toBeNull();
+    expect(screen.getByText("0 unread")).toBeTruthy();
   });
 
   it("does not re-mark a notification that is already read", async () => {

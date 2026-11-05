@@ -103,7 +103,7 @@ export const notesNotificationsPaths = {
       tags: ["Notes"],
       summary: "Delete a note (not available)",
       description:
-        "Always `501 delete_unavailable`; nothing is deleted. v1's delete was a hard delete with no UI caller; soft delete needs a `deletedAt` column, which needs a migration the shared database cannot take while v1 writes to it. Correct a note by editing it.",
+        "Always `501 delete_unavailable`; nothing is deleted. v1's delete was a hard delete with no UI caller; soft delete needs a `deletedAt` column, which Note does not have. Correct a note by editing it.",
       parameters: [idParam],
       responses: {
         401: errRef("Unauthorized"),
@@ -197,9 +197,9 @@ export const notesNotificationsPaths = {
   "/api/v1/me/notification-preferences": {
     get: {
       tags: ["Me"],
-      summary: "Your notification preferences (all six)",
+      summary: "Your notification preferences (all nine)",
       description:
-        "Always returns all six keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email now, push at cutover); the in-app inbox row is always written.",
+        "Always returns all nine keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email and push); the in-app inbox row is always written.",
       responses: {
         200: ok(
           { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
@@ -212,7 +212,7 @@ export const notesNotificationsPaths = {
       tags: ["Me"],
       summary: "Replace your notification preferences",
       description:
-        "PUT, not PATCH: the body must carry all six keys, so a partial body is `400 bad_request`. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
+        "PUT, not PATCH: the body must carry all nine keys, so a partial body is `400 bad_request`. The row written is always the caller's (from the token); a `userId` in the body is ignored. Creates the row on first write.",
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/NotificationPreferences" } } },
@@ -230,17 +230,43 @@ export const notesNotificationsPaths = {
   "/api/v1/me/devices": {
     post: {
       tags: ["Me"],
-      summary: "Register this device for push (blocked on cutover)",
+      summary: "Register this device for push",
       description:
-        "The request body is validated, then the endpoint answers `503 push_unavailable`: Expo push needs a device-token table, the database schema is frozen while v1 runs against it, and the table lands at cutover (see docs/superpowers/cutover/2026-08-24-notifications-push.md). The contract is fixed now so the client is built once; the client keeps the token locally and stops retrying this session.",
+        "Upserts the Expo push token and points it at the caller, so a phone handed to another user moves with the sign-in. Calling it again only refreshes `lastSeenAt`. The token is a credential: it is never logged or returned.",
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/DeviceRegistration" } } },
       },
       responses: {
+        200: ok({ type: "object", required: ["registered"], properties: { registered: { type: "boolean", enum: [true] } } }, "Registered."),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
-        503: conflict("`push_unavailable` — push registration is not available until the cutover migration lands."),
+      },
+    },
+  },
+  "/api/v1/devices/unregister": {
+    post: {
+      tags: ["Me"],
+      summary: "Unregister a device (no sign-in needed)",
+      description:
+        "Deletes the registration for this Expo push token. Needs no sign-in: the token is the proof, and the app must be able to stop pushes after a forced sign-out, when its session is already dead. The token travels in the body because paths reach access logs. Idempotent and opaque: an unknown token answers the same 200. Rate-limited.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["token"],
+              additionalProperties: false,
+              properties: { token: { type: "string", minLength: 1, maxLength: 200 } },
+            },
+          },
+        },
+      },
+      responses: {
+        200: ok({ type: "object", required: ["unregistered"], properties: { unregistered: { type: "boolean", enum: [true] } } }, "Unregistered (or never registered)."),
+        400: errRef("BadRequest"),
+        429: errRef("TooManyRequests"),
       },
     },
   },
@@ -266,6 +292,36 @@ export const notesNotificationsPaths = {
             },
           },
           "A page of the caller's own notes.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        429: errRef("TooManyRequests"),
+      },
+    },
+  },
+
+  "/api/v1/me/visible-notes": {
+    get: {
+      tags: ["Notes"],
+      summary: "Newest notes a mentor may read, across students",
+      description:
+        "MENTOR only; every other role receives `403 forbidden`. Narrowed in the query by the note visibility rule (the mentor's own notes plus those visible to mentors); notes of soft-deleted students are omitted. Rows are `AuthoredNote` (carry `student`). `body` is plain text. Cursor-paged, newest first. Read-only. Rate-limited; each read is audit-logged with ids and a count only.",
+      parameters: [
+        { name: "cursor", in: "query", schema: { type: "string" } },
+        { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+      ],
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            required: ["notes", "nextCursor"],
+            properties: {
+              notes: { type: "array", items: { $ref: "#/components/schemas/AuthoredNote" } },
+              nextCursor: { type: ["string", "null"] },
+            },
+          },
+          "A page of visible notes.",
         ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),

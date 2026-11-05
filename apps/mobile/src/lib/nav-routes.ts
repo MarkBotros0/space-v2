@@ -30,6 +30,7 @@ const NAV_ROUTES: Readonly<Record<string, Href>> = {
   "/students/dropped": "/students/dropped",
   "/submissions": "/submissions",
   "/users": "/users",
+  "/work": "/work",
 };
 
 export function navHref(href: string): Href | null {

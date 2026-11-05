@@ -6,15 +6,13 @@ import type { GroupImportPreview, GroupImportResult } from "@space/shared";
 import { IMPORT_MAX_PASTE_CHARS } from "@space/shared";
 
 import { FormErrorBox } from "../../../../../src/design/forms/form-parts";
-import { PageTitle } from "../../../../../src/design/layout/page-title";
+import { FormScreen } from "../../../../../src/design/layout/form-screen";
 import { RouteError, RouteSkeleton } from "../../../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../../../src/design/layout/shell-frame";
+import { Screen } from "../../../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../../../src/design/lib/icon";
 import {
   Badge,
   Button,
-  Card,
-  CardContent,
   DataTable,
   EmptyState,
   FormField,
@@ -28,6 +26,8 @@ import { importErrorMessage } from "../../../../../src/lib/import-error";
 import { useSessionStore } from "../../../../../src/store/session";
 
 iconWithClassName(CheckCircle2);
+
+const TITLE = "Import group assignments";
 
 type GroupImportPreviewRow = GroupImportPreview["rows"][number];
 
@@ -83,26 +83,26 @@ export default function GroupImportScreen() {
 
   if (seasons.isPending) {
     return (
-      <ShellFrame>
+      <Screen title={TITLE}>
         <RouteSkeleton />
-      </ShellFrame>
+      </Screen>
     );
   }
   if (seasons.isError) {
     return (
-      <ShellFrame>
+      <Screen title={TITLE}>
         <RouteError onRetry={() => void seasons.refetch()} />
-      </ShellFrame>
+      </Screen>
     );
   }
   if (!season || !allowed) {
     return (
-      <ShellFrame>
+      <Screen title={TITLE}>
         <EmptyState
           title="Import groups"
           description="This screen isn't available for this season."
         />
-      </ShellFrame>
+      </Screen>
     );
   }
 
@@ -136,12 +136,7 @@ export default function GroupImportScreen() {
     }
   }
 
-  const header = (
-    <PageTitle
-      title="Import group assignments"
-      subtitle={`${season.title}. Paste rows with email and group columns. Students in this season are matched by email and moved into the named group; a blank group cell is left alone.`}
-    />
-  );
+  const subtitle = `${season.title}. Paste rows with email and group columns. Students in this season are matched by email and moved into the named group; a blank group cell is left alone.`;
 
   if (result && preview) {
     const skipped = new Set(result.skippedStudentIds);
@@ -149,10 +144,9 @@ export default function GroupImportScreen() {
       (r) => r.studentUserId !== null && skipped.has(r.studentUserId),
     );
     return (
-      <ShellFrame>
+      <Screen title={TITLE} subtitle={subtitle}>
         <View className="flex-col gap-4">
-          {header}
-          <View className="flex-row items-start gap-3 rounded-lg bg-success-50 px-4 py-3 dark:bg-success-950">
+          <View className="flex-row items-start gap-3 rounded-control bg-ok-soft px-4 py-3">
             <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-success-600" />
             <View className="min-w-0 flex-1">
               <Text className="text-sm font-semibold text-success-800 dark:text-success-200">
@@ -165,7 +159,10 @@ export default function GroupImportScreen() {
             </View>
           </View>
           {skippedRows.map((r) => (
-            <View key={r.rowNumber} className="rounded-lg border border-border bg-card p-3">
+            <View
+              key={r.rowNumber}
+              className="rounded-group bg-surface p-3 dark:border dark:border-separator"
+            >
               <Text className="text-sm font-medium">{`Row ${r.rowNumber} · ${r.email}`}</Text>
               <Text className="text-xs text-muted-foreground">
                 Not placed — no active enrolment in this season.
@@ -184,7 +181,7 @@ export default function GroupImportScreen() {
             Import another file
           </Button>
         </View>
-      </ShellFrame>
+      </Screen>
     );
   }
 
@@ -215,59 +212,56 @@ export default function GroupImportScreen() {
   ];
 
   const c = preview?.counts;
+  const applyLabel = commitMutation.isPending
+    ? "Applying…"
+    : toAssign.length === 0
+      ? "Nothing to assign"
+      : `Apply ${toAssign.length} assignment${toAssign.length === 1 ? "" : "s"}`;
   return (
-    <ShellFrame>
+    <FormScreen
+      title={TITLE}
+      subtitle={subtitle}
+      saveLabel={preview ? applyLabel : previewMutation.isPending ? "Reading…" : "Preview"}
+      saving={preview ? commitMutation.isPending : previewMutation.isPending}
+      saveHint={
+        preview && toAssign.length === 0
+          ? "No row can be assigned. Fix the sheet and preview again."
+          : undefined
+      }
+      onSave={preview ? runCommit : runPreview}
+    >
       <View className="flex-col gap-4">
-        {header}
-        <Card>
-          <CardContent className="pt-6">
-            <View className="flex-col gap-4">
-              <FormField label="Paste your spreadsheet">
-                <Textarea
-                  accessibilityLabel="Paste your spreadsheet"
-                  className="min-h-40"
-                  value={text}
-                  onChangeText={(t) => {
-                    setText(t);
-                    setPreview(null);
-                  }}
-                  placeholder={"email\tgroup"}
-                  autoCapitalize="none"
-                />
-              </FormField>
-              <FormErrorBox message={error} />
-              <Button
-                variant="outline"
-                className="self-end"
-                disabled={previewMutation.isPending}
-                onPress={runPreview}
-              >
-                {previewMutation.isPending ? "Reading…" : "Preview"}
-              </Button>
-
-              {preview && c ? (
-                <View className="flex-col gap-3">
-                  <Text className="text-sm text-muted-foreground">
-                    {`${c.total} rows · ${c.assign} to assign · ${c.unchanged} unchanged · ${c.no_student} no match · ${c.no_group} no group · ${c.invalid} invalid`}
-                  </Text>
-                  <DataTable columns={columns} rows={preview.rows} rowKey={(r) => r.rowNumber} />
-                  <Button
-                    className="self-end"
-                    disabled={commitMutation.isPending || toAssign.length === 0}
-                    onPress={runCommit}
-                  >
-                    {commitMutation.isPending
-                      ? "Applying…"
-                      : toAssign.length === 0
-                        ? "Nothing to assign"
-                        : `Apply ${toAssign.length} assignment${toAssign.length === 1 ? "" : "s"}`}
-                  </Button>
-                </View>
-              ) : null}
-            </View>
-          </CardContent>
-        </Card>
+        <FormField label="Paste your spreadsheet">
+          <Textarea
+            accessibilityLabel="Paste your spreadsheet"
+            className="min-h-40"
+            value={text}
+            onChangeText={(t) => {
+              setText(t);
+              setPreview(null);
+            }}
+            placeholder={"email\tgroup"}
+            autoCapitalize="none"
+          />
+        </FormField>
+        <FormErrorBox message={error} />
+        {preview && c ? (
+          <View className="flex-col gap-3">
+            <Text className="text-sm text-muted-foreground">
+              {`${c.total} rows · ${c.assign} to assign · ${c.unchanged} unchanged · ${c.no_student} no match · ${c.no_group} no group · ${c.invalid} invalid`}
+            </Text>
+            <DataTable columns={columns} rows={preview.rows} rowKey={(r) => r.rowNumber} />
+            <Button
+              variant="secondary"
+              className="self-start"
+              disabled={previewMutation.isPending}
+              onPress={runPreview}
+            >
+              Preview again
+            </Button>
+          </View>
+        ) : null}
       </View>
-    </ShellFrame>
+    </FormScreen>
   );
 }

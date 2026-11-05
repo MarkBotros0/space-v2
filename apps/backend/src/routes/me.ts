@@ -1,12 +1,10 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 // Relative, not "@space/shared" — the rootDir emit trap (see routes/auth.ts).
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   OWN_PROFILE_FIELDS,
   changePasswordRequestSchema,
-  deviceRegistrationSchema,
   notificationPreferencesSchema,
   updateOwnProfileInputSchema,
   updateProfileRequestSchema,
@@ -15,6 +13,7 @@ import {
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { expireLiveResetTokens } from "../lib/auth/password-reset";
+import { invalidateSessions } from "../lib/auth/session-validity";
 import { hashToken, revokeAllRefreshTokensForUser } from "../lib/auth/tokens";
 import { parseId } from "../lib/parse-id";
 import { staffScopeForSeason } from "../lib/permissions";
@@ -25,16 +24,22 @@ import {
 } from "../lib/queries/dashboard";
 import { loadMyAttendance, loadMyProfile, loadMySeason, loadSeasonHistory } from "../lib/queries/me";
 // The one 429 handler (ruling X4) — never a local copy.
-import { rateLimitHandler } from "../lib/rate-limit";
+import { makeLimiter } from "../lib/rate-limit";
 import { isAlumnus } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { meDevicesRouter } from "./me-devices";
 import { forbidden } from "./respond";
 
 // Closes spec 18 R31: v1's current-password check was an unthrottled online
 // oracle for anyone already holding a session.
-const passwordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, handler: rateLimitHandler });
+const passwordLimiter = makeLimiter({
+  name: "password-change",
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+});
 
 export const meRouter = Router();
+meRouter.use(meDevicesRouter);
 
 const ME_SELECT = {
   id: true, name: true, email: true, role: true, avatarPath: true,
@@ -133,11 +138,17 @@ meRouter.post("/password", requireAuth, passwordLimiter, async (req, res) => {
 
   // Spec 18 D1: the change and the eviction are one transaction. Every other
   // session dies; the presented refresh token (this device) survives.
+  //
+  // Plan 18 M13: every access token issued before now dies too, this
+  // device's included — access tokens carry no session id to spare one by.
+  // This device's next request gets a 401 and its client refreshes with the
+  // surviving refresh token, as it does after an expiry.
   const sessionsRevoked = await db.$transaction(async (tx) => {
     await tx.user.update({ where: { id: user.userId }, data: { passwordHash: newHash } });
     // Spec 18 R29 / spec 11 D6: an outstanding reset link must not outlive
     // the password it was meant to replace.
     await expireLiveResetTokens(tx, user.userId);
+    await invalidateSessions(tx, user.userId);
     return revokeAllRefreshTokensForUser(tx, user.userId, exceptHash);
   });
 
@@ -240,15 +251,18 @@ const PREFERENCE_SELECT = {
   lowAttendanceFlag: true,
   mentorFollowup: true,
   quizGraded: true,
+  quizPublished: true,
+  submissionReceived: true,
+  sessionCancelled: true,
 } as const;
 
 /**
- * The caller's own notification preferences — all six keys.
+ * The caller's own notification preferences — every key.
  *
  * v1 read the sixth column from the database and dropped it on the floor while
  * projecting to a five-field type (§5, R56), which is why `quizGraded` could
  * never be turned off. The contract is derived from the enum
- * (packages/shared/src/notification.ts), so a seventh type would be a compile
+ * (packages/shared/src/notification.ts), so a new type without a key is a compile
  * error rather than a silently unreachable toggle.
  *
  * No row means opted in to everything (R6) — the row is created lazily, on
@@ -264,7 +278,7 @@ meRouter.get("/notification-preferences", requireAuth, async (req, res) => {
 });
 
 /**
- * Replace them. PUT, not PATCH: the body carries all six keys, so there is no
+ * Replace them. PUT, not PATCH: the body carries every key, so there is no
  * way for a client that has not been updated to leave a new key at its default
  * without saying so.
  *
@@ -277,7 +291,7 @@ meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
 
   const parsed = notificationPreferencesSchema.safeParse(req.body);
   if (!parsed.success) {
-    return apiError(res, "bad_request", "All six notification preferences are required.", 400);
+    return apiError(res, "bad_request", "Every notification preference is required.", 400);
   }
 
   const preferences = await db.notificationPreference.upsert({
@@ -288,38 +302,6 @@ meRouter.put("/notification-preferences", requireAuth, async (req, res) => {
   });
 
   return apiOk(res, { preferences });
-});
-
-/**
- * Register this device for push.
- *
- * BLOCKED ON CUTOVER. Expo push needs a device token per user, which is a new
- * table (`DeviceToken`: userId, token @unique, platform, lastSeenAt) — and the
- * schema is frozen while v1 runs against the same database (ruling C1). There
- * is no existing column that legitimately holds an Expo push token, and C1
- * forbids overloading one that means something else.
- *
- * So the contract ships and the write does not. The body is validated first,
- * so a client integration error surfaces as a 400 today rather than at
- * cutover; a well-formed registration gets 503 and the client keeps the token
- * locally.
- *
- * To finish this at cutover: apply the migration in
- * docs/superpowers/cutover/2026-08-24-notifications-push.md, then replace the
- * 503 below with the upsert described there (it maps the lowercase wire
- * platform to the DevicePlatform enum with DEVICE_PLATFORM_TO_DB). Nothing
- * else changes — not the route, not the request contract, not the client.
- */
-meRouter.post("/devices", requireAuth, async (req, res) => {
-  const parsed = deviceRegistrationSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid device registration.", 400);
-
-  return apiError(
-    res,
-    "push_unavailable",
-    "Push notifications aren't available yet.",
-    503,
-  );
 });
 
 /**

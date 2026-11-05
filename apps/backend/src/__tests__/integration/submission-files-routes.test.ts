@@ -171,8 +171,9 @@ describe("POST /api/v1/submissions/:publicId/files", () => {
       .set("authorization", `Bearer ${peerToken}`)
       .attach("file", Buffer.from("x"), { filename: "a.txt", contentType: "text/plain" });
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("forbidden");
+    // The owner's submission is a DRAFT, which exists only for its author.
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
   });
 
   it("returns 404 for an unknown submission", async () => {
@@ -230,8 +231,9 @@ describe("DELETE /api/v1/submissions/:publicId/files", () => {
       .delete(`/api/v1/submissions/${publicId}/files?fileId=${fileId}`)
       .set("authorization", `Bearer ${peerToken}`);
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("forbidden");
+    // A file on someone else's DRAFT is as absent as the draft itself.
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
     // The row must survive a refused delete.
     expect(await db.submissionFile.count({ where: { id: fileId } })).toBe(1);
   });
@@ -315,8 +317,9 @@ describe("GET /api/v1/submissions/:publicId/files/:fileId", () => {
       .get(`/api/v1/submissions/${publicId}/files/${fileId}`)
       .set("authorization", `Bearer ${peerToken}`);
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("forbidden");
+    // A file on someone else's DRAFT is as absent as the draft itself.
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("not_found");
   });
 
   it("refuses a fileId that belongs to a different submission", async () => {

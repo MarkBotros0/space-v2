@@ -22,36 +22,50 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s15-02-queue-bottom
-# Order is SUBMITTED then REVIEWED, so the first Salma row is the late submission.
+# Waiting rows come before Reviewed ones, so the first Salma row is the late submission.
+# A row's label is "title, subtitle", so match the name as a prefix.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Salma Student'
+      TARGET: 'Salma Student.*'
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
-    visible: 'Assignment prompt'
+    visible: 'ASSIGNMENT PROMPT'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s15-03-submission
+# The feedback form is a sheet behind the pinned bar. Never tap its save button.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Add feedback'
+- extendedWaitUntil:
+    visible: 'What did the student do well.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s15-04-feedback-sheet
 - runFlow:
     file: ../_tap.yaml
     env:
       TARGET: 'What did the student do well.*'
 - waitForAnimationToEnd:
     timeout: 5000
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s15-04-feedback-kbd
+- takeScreenshot: s15-04b-feedback-kbd
 - inputText: 'Sweep feedback, never saved'
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s15-05-feedback-typed
-# Last item has to clear the floating tab bar and the system bar.
+# Dismiss the sheet without saving.
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+# Last item has to clear the pinned bar and the system bar.
 - scroll
 - scroll
 - scroll
@@ -63,7 +77,7 @@ appId: com.jpc.space
 # The queue keeps its scroll position, so its heading may be off-screen: wait
 # on a row, then swipe back to the top (left margin, like _tap.yaml).
 - extendedWaitUntil:
-    visible: 'Salma Student'
+    visible: 'Salma Student.*'
     timeout: 40000
 - repeat:
     times: 4
@@ -74,10 +88,10 @@ appId: com.jpc.space
           duration: 500
 - waitForAnimationToEnd:
     timeout: 5000
-# The reviewed row, found by its assignment title: the form reads Update feedback.
-# Only the student's name is a link, so tap the second Salma row.
+# The reviewed row, found by its assignment title: the bar reads Update feedback.
+# The whole row is one button; tap the second Salma row.
 - tapOn:
-    text: 'Salma Student'
+    text: 'Salma Student.*'
     index: 1
 - waitForAnimationToEnd:
     timeout: 5000

@@ -65,6 +65,22 @@ describe("summarizeStudentAssignments (C5, D15, D16, R73)", () => {
     expect(s.lateSubmittedCount).toBe(2);
   });
 
+  it("open holds every PENDING | DRAFT | RETURNED row, uncapped, dueAt asc nulls last then id", () => {
+    const many = [
+      ...rows,
+      row({ id: 8, status: "RETURNED", dueAt: new Date("2099-01-01T10:00:00.000Z"), dueOrgDay: "2099-01-01" }),
+      row({ id: 9, status: "PENDING" }),
+    ];
+    const s = summarizeStudentAssignments(many, 3);
+    expect(s.open.length).toBeGreaterThan(3);
+    // 4 (2020-01-01), 2 (2020-01-05), 8, 7, 1, then undated by id: 3, 9
+    expect(s.open.map((r) => r.id)).toEqual([4, 2, 8, 7, 1, 3, 9]);
+    expect(s.open.some((r) => r.status === "SUBMITTED" || r.status === "REVIEWED")).toBe(false);
+    expect(s.open.every((r) => !("isLate" in r))).toBe(true);
+    expect(s.outstandingCount).toBe(5);
+    expect(s.dueSoon).toHaveLength(3);
+  });
+
   it("lists outstanding rows by dueAt ascending, nulls last, overdue included, capped", () => {
     const s = summarizeStudentAssignments(rows, 3);
     expect(s.dueSoon.map((r) => r.id)).toEqual([2, 7, 1]);

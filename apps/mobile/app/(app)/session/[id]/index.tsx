@@ -4,6 +4,7 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
 import { EmptyState } from "../../../../src/design/ui";
 import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
+import { isNotFoundError } from "../../../../src/lib/api-error";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import {
   AdminSessionBody,
@@ -17,7 +18,7 @@ export { LIVE_ROSTER_REFRESH_MS } from "../../../../src/screens/session-detail/c
 function SessionDetailBody({ id }: { id: number }) {
   const role = useSessionStore((s) => s.user?.role ?? null);
   const seasonAdminIds = useSessionStore((s) => s.scopes?.seasonAdminIds);
-  const { data, isPending, isError, refetch, isRefetching } = useSessionDetail(id);
+  const { data, isPending, isError, error, refetch, isRefetching } = useSessionDetail(id);
 
   if (isPending) {
     return (
@@ -26,7 +27,21 @@ function SessionDetailBody({ id }: { id: number }) {
       </ShellFrame>
     );
   }
-  if (isError) {
+  // A 404 is an answer, not a failure: a student whose enrolment is no
+  // longer ACTIVE still sees the season's sessions on the calendar, but the
+  // API refuses them the detail (REG-77). A retry could never succeed.
+  if (isError && isNotFoundError(error)) {
+    return (
+      <ShellFrame>
+        <EmptyState
+          title="Not available"
+          description="This session isn't available to you."
+        />
+      </ShellFrame>
+    );
+  }
+  // A failed background read keeps the session on screen: this query polls.
+  if (data === undefined) {
     return (
       <ShellFrame>
         <RouteError onRetry={() => void refetch()} />
@@ -35,7 +50,7 @@ function SessionDetailBody({ id }: { id: number }) {
   }
 
   const body = { data, refetch: () => void refetch(), isRefetching };
-  if (role === "STUDENT") return <StudentSessionBody {...body} />;
+  if (role === "STUDENT") return <StudentSessionBody data={data} refetch={refetch} />;
   if (role === "LEADER") return <LeaderSessionBody {...body} />;
 
   // v1 showed the console only to an admin OF the season; the API also lets any

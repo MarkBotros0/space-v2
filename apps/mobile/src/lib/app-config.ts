@@ -13,9 +13,30 @@ export function easProjectId(): string | null {
 }
 
 /**
- * Hidden developer routes (the design-system showcase) are compiled in only
- * when the build sets EXPO_PUBLIC_SHOW_DEV_ROUTES=1.
+ * True in a build made with EXPO_PUBLIC_SWEEP_BUILD=1 (the UI sweep's APK):
+ * it unlocks the hidden design catalogue in a release bundle.
  */
-export function showDevRoutes(): boolean {
-  return process.env.EXPO_PUBLIC_SHOW_DEV_ROUTES === "1";
+export function isSweepBuild(): boolean {
+  return process.env.EXPO_PUBLIC_SWEEP_BUILD === "1";
+}
+
+/**
+ * Sentry DSN for crash and error reporting (src/lib/sentry.ts), or null when
+ * the build sets none — then Sentry stays completely off. Read as a literal
+ * `process.env.EXPO_PUBLIC_*` so Expo inlines it at bundle time.
+ */
+export function sentryDsn(): string | null {
+  const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+  return dsn ? dsn : null;
+}
+
+/**
+ * Environment tag for Sentry events: EXPO_PUBLIC_SENTRY_ENVIRONMENT when the
+ * build sets it, otherwise "development" in a dev bundle and "production" in
+ * a release one.
+ */
+export function sentryEnvironment(): string {
+  const env = process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT;
+  if (env) return env;
+  return __DEV__ ? "development" : "production";
 }

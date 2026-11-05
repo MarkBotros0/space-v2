@@ -1,0 +1,179 @@
+# UI sweep 90 - the hidden design catalogue (spacev2://design-catalogue), as a
+# student: every redesign component in every state, each section's title
+# scrolled into view (_catalogue-section.yaml), the
+# collapsed header, the toast, a sheet with its keyboard, and a full-screen
+# save bar (Screen's footer) with its keyboard. Needs a dev bundle or a build made with EXPO_PUBLIC_SWEEP_BUILD=1.
+# Nothing is saved: the sheet's and the save bar's Save only close them and the flow never taps either.
+appId: com.jpc.space
+---
+- runFlow:
+    file: _sign-in.yaml
+    env:
+      EMAIL: ${STUDENT_EMAIL}
+- openLink: spacev2://design-catalogue
+- extendedWaitUntil:
+    visible: 'Every component in every state\.'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s90-00-top
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: type
+- takeScreenshot: s90-01-type
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: buttons
+- takeScreenshot: s90-02-buttons
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: chips
+- takeScreenshot: s90-03-chips
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: list
+- takeScreenshot: s90-04-list
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: hero
+- takeScreenshot: s90-05-hero
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: stats
+- takeScreenshot: s90-06-stats
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: controls
+- takeScreenshot: s90-07-controls
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: states
+- takeScreenshot: s90-08-states
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: checkin
+- takeScreenshot: s90-08b-checkin-success
+
+- scrollUntilVisible:
+    element:
+      id: catalogue-toast
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+# The toast lives ~4.3s (sonner-native's 4000ms + its 300ms entrance). A
+# plain tapOn waits for the hierarchy to settle first, which on the CI
+# emulator took ~5.8s, so the shot used to land after the toast had gone.
+# Tap without the settle/retry and shoot as soon as the toast's text shows.
+# A tap that lands while the page is still settling can be swallowed, so tap
+# again (up to three times) until the toast's text is on screen, then shoot.
+- repeat:
+    times: 3
+    while:
+      notVisible: 'Nothing was written\.'
+    commands:
+      - tapOn:
+          id: catalogue-toast-button
+          retryTapIfNoChange: false
+          waitToSettleTimeoutMs: 500
+      - extendedWaitUntil:
+          visible: 'Nothing was written\.'
+          timeout: 2500
+          optional: true
+# Best effort: Maestro on Android often misses sonner-native's toast window
+# (seen rendered in a passing cell, 2026-11-05). A miss must not stop the flow
+# before the sheet states below, so the shot is taken either way.
+- takeScreenshot: s90-09-toast
+
+# Scrolled to the end, the title is collapsed into the pinned bar and the last
+# section must clear the system bar.
+- scrollUntilVisible:
+    element:
+      id: catalogue-open-sheet
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s90-10-collapsed-bottom
+
+# Later sections sit below the sheet section, so the end of the page is past it.
+- scrollUntilVisible:
+    element:
+      id: catalogue-open-sheet
+    direction: UP
+    centerElement: true
+    timeout: 20000
+- runFlow:
+    file: _tap-id.yaml
+    env:
+      TARGET_ID: catalogue-open-sheet
+- extendedWaitUntil:
+    visible: 'Add a note'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s90-11-sheet
+
+- tapOn:
+    id: catalogue-sheet-input
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s90-12-sheet-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Close the sheet with the system Back (the sheet's onRequestClose), never Save.
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: 'Add a note'
+- takeScreenshot: s90-13-sheet-closed
+
+# Full-screen save bar (final review I4): "Show save bar" puts a SaveBar in
+# the catalogue Screen's footer. Scrolled to the end, the last field must
+# clear the bar; with the keyboard up, the bar rides on it and the focused
+# field sits above both.
+- runFlow:
+    file: _tap-id.yaml
+    env:
+      TARGET_ID: catalogue-toggle-save-bar
+- extendedWaitUntil:
+    visible: 'Save changes'
+    timeout: 10000
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s90-14-save-bar
+
+- tapOn:
+    id: catalogue-save-bar-input
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s90-15-save-bar-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000

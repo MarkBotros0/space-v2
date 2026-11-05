@@ -3,12 +3,14 @@ import { render } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { TabBarPresenceContext } from "../../design/layout/shell-context";
+
 // A bare `<SafeAreaProvider>` waits for an `onLayout` that never fires under
 // the test renderer, so it renders none of its children — `render()` still
 // returns a truthy `toJSON()`, so a loose assertion passes against an empty
 // tree. Passing `initialMetrics` makes children render synchronously, which
-// is the whole point of this helper: every test that renders `Screen` (or
-// anything else that calls `useSafeAreaInsets()`) must go through this, not
+// is the whole point of this helper: every test that renders the shell (`ShellFrame`,
+// the tab bar, or anything else that calls `useSafeAreaInsets()`) must go through this, not
 // a bare `render()`.
 const initialMetrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -20,13 +22,15 @@ const initialMetrics = {
  * `createQueryClient()` (one retry with backoff), a test asserting an error
  * state should not sit through a real retry delay to get there. Every screen
  * that calls `useQuery`/`useMutation` needs a `QueryClientProvider` ancestor
- * the same way every screen that renders `Screen` needs a `SafeAreaProvider`
+ * the same way every screen that renders the shell needs a `SafeAreaProvider`
  * one — wrapping both here means one helper covers both needs instead of
  * every screen test hand-rolling its own client.
  */
 export function renderWithProviders(ui: ReactElement) {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    // gcTime Infinity: the default 5-minute garbage-collection timer outlives
+    // the test and keeps Jest's worker from exiting (TanStack's testing guide).
+    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { gcTime: Infinity } },
   });
 
   return render(
@@ -34,4 +38,12 @@ export function renderWithProviders(ui: ReactElement) {
       <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
     </SafeAreaProvider>,
   );
+}
+
+/**
+ * `renderWithProviders` for a screen the `(app)` Stack shows: no tab bar under
+ * it, so the frame pins its back bar by default (ruling R23).
+ */
+export function renderStacked(ui: ReactElement) {
+  return renderWithProviders(<TabBarPresenceContext.Provider value={false}>{ui}</TabBarPresenceContext.Provider>);
 }

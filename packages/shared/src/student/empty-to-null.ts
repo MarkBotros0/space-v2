@@ -11,5 +11,8 @@ export const emptyToNull = (max: number) =>
   z
     .string()
     .max(max)
-    .nullish()
-    .transform((v) => (v === "" ? null : v));
+    .transform((v): string | null => (v === "" ? null : v))
+    // nullish outside the transform: zod 4 keeps an object key optional only
+    // when its outermost schema is optional, so the key stays optional in
+    // the output type too (runtime is the same either way).
+    .nullish();

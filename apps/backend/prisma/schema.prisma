@@ -60,6 +60,11 @@ enum NoteVisibility {
   ADMINS
 }
 
+enum DevicePlatform {
+  IOS
+  ANDROID
+}
+
 enum NotificationType {
   ASSIGNMENT_CREATED
   SUBMISSION_REVIEWED
@@ -67,6 +72,9 @@ enum NotificationType {
   LOW_ATTENDANCE_FLAG
   MENTOR_FOLLOWUP
   QUIZ_GRADED
+  QUIZ_PUBLISHED
+  SUBMISSION_RECEIVED
+  SESSION_CANCELLED
 }
 
 enum JpcVisibility {
@@ -111,6 +119,10 @@ model User {
   graduationYear Int?
   avatarPath   String?
   lastLoginAt  DateTime?
+  // Access tokens issued before this instant are refused by requireAuth (Plan
+  // 18 M13). Written by logout-all, password change and reset, deactivation
+  // and role change. Null: nothing has been invalidated.
+  sessionsValidFrom DateTime?
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -120,7 +132,7 @@ model User {
   seasonAdminAssignments     SeasonAdmin[] @relation("SeasonAdminUser")
   seasonAdminAssignmentsMade SeasonAdmin[] @relation("SeasonAdminAssignedBy")
   groupLeaderAssignments     GroupLeader[]
-  groupStudentMembership     GroupStudent?
+  groupStudentMemberships    GroupStudent[]
 
   invitesReceived     InviteToken[]        @relation("InviteUser")
   invitesIssued       InviteToken[]        @relation("InviteIssuedBy")
@@ -142,6 +154,7 @@ model User {
 
   notifications            Notification[]
   notificationPreference   NotificationPreference?
+  deviceTokens             DeviceToken[]
   studentDocuments         StudentDocument[]       @relation("StudentDocumentStudent")
   studentDocumentsUploaded StudentDocument[]       @relation("StudentDocumentUploader")
   jpcEventsCreated         JpcEvent[]              @relation("JpcEventCreator")
@@ -308,6 +321,8 @@ model Group {
   seasonEnrollments SeasonEnrollment[]
   assignmentTargets AssignmentTarget[]
 
+  // Target of GroupStudent's composite foreign key (Plan 18 M1).
+  @@unique([id, seasonId])
   @@index([seasonId])
 }
 
@@ -322,16 +337,21 @@ model GroupLeader {
   @@index([userId])
 }
 
-// Current group membership only. Past memberships live in SeasonEnrollment.
-// `studentUserId` is unique standalone — a student belongs to at most one current group.
+// Group membership, one row per student per season (Plan 18 M1). Mirrors
+// SeasonEnrollment.groupId, which stays the authority (ruling C9).
+// `seasonId` is denormalised from Group.seasonId to carry the per-season
+// unique; the composite foreign key to Group(id, seasonId) means it can never
+// disagree with its group's season.
 model GroupStudent {
   groupId       Int
-  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  studentUserId Int      @unique
+  seasonId      Int
+  group         Group    @relation(fields: [groupId, seasonId], references: [id, seasonId], onDelete: Cascade)
+  studentUserId Int
   studentUser   User     @relation(fields: [studentUserId], references: [id], onDelete: Restrict)
   enrolledAt    DateTime @default(now())
 
   @@id([groupId, studentUserId])
+  @@unique([seasonId, studentUserId])
   @@index([groupId])
 }
 
@@ -617,6 +637,9 @@ model NotificationPreference {
   lowAttendanceFlag  Boolean @default(true)
   mentorFollowup     Boolean @default(true)
   quizGraded         Boolean @default(true)
+  quizPublished      Boolean @default(true)
+  submissionReceived Boolean @default(true)
+  sessionCancelled   Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -770,4 +793,33 @@ model JpcEvent {
   season    Season? @relation("JpcEventSeason", fields: [seasonId], references: [id], onDelete: SetNull)
 
   @@index([date])
+}
+
+// Expo push tokens, one row per device (v2-only; 2026-11-04). `token` is
+// unique, not (userId, token): a phone handed to another user moves with the
+// sign-in rather than notifying both. The token is a credential — never log it.
+model DeviceToken {
+  id         Int            @id @default(autoincrement())
+  userId     Int
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String         @unique
+  platform   DevicePlatform
+  lastSeenAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+
+  @@index([userId])
+  @@index([lastSeenAt])
+}
+
+// express-rate-limit hit counters shared by every serverless instance
+// (lib/rate-limit/postgres-store.ts; v2-only, 2026-11-05). One row per
+// limiter-prefixed client key, e.g. "auth:203.0.113.7". A row whose window has
+// passed is restarted in place by the next hit; rows idle for an hour past
+// their window are swept by the store itself, so the table stays small.
+model RateLimitHit {
+  key     String   @id
+  hits    Int
+  resetAt DateTime @db.Timestamptz(3)
+
+  @@index([resetAt])
 }

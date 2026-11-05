@@ -116,4 +116,56 @@ describe("ExportMenu", () => {
 
     expect(await screen.findByText("Couldn't export. You don't have access to this.")).toBeTruthy();
   });
+
+  it("sheet mode: one Export button opens a sheet with the same two endpoints", async () => {
+    renderWithProviders(
+      <ExportMenu
+        sheet
+        seasonId={7}
+        scopeLabel="GBV 2026"
+        canExportWorkbook
+        exportDay="2026-08-24"
+      />,
+    );
+    expect(screen.queryByText("Export engagement")).toBeNull();
+    fireEvent.press(screen.getByLabelText("Export"));
+
+    fireEvent.press(await screen.findByText("Export engagement"));
+    await waitFor(() =>
+      expect(mockDownloadAndShare).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: "/api/v1/reports/engagement/export?seasonId=7",
+          filename: "engagement-gbv-2026-2026-08-24.xlsx",
+        }),
+      ),
+    );
+
+    fireEvent.press(await screen.findByText("Export season workbook (~40 KB)"));
+    await waitFor(() =>
+      expect(mockDownloadAndShare).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: "/api/v1/seasons/7/exports/workbook",
+          filename: manifest.filename,
+          estimatedBytes: 40960,
+        }),
+      ),
+    );
+  });
+
+  it("sheet mode: no workbook row when the caller may not take one; failures read in the sheet", async () => {
+    mockDownloadAndShare.mockRejectedValue(Object.assign(new Error("nope"), { code: "forbidden" }));
+    renderWithProviders(
+      <ExportMenu
+        sheet
+        seasonId={null}
+        scopeLabel="All seasons"
+        canExportWorkbook={false}
+        exportDay="2026-08-24"
+      />,
+    );
+    fireEvent.press(screen.getByLabelText("Export"));
+    fireEvent.press(await screen.findByText("Export engagement"));
+    expect(await screen.findByText("Couldn't export. You don't have access to this.")).toBeTruthy();
+    expect(screen.queryByText(/Export season workbook/)).toBeNull();
+  });
 });

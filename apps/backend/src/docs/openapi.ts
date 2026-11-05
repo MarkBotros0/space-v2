@@ -20,6 +20,7 @@ import { submissionsMeSchemas } from "./components/submissions-me";
 import { authPaths } from "./paths/auth";
 import { mePaths } from "./paths/me";
 import { seasonPaths } from "./paths/seasons";
+import { seasonAdminPaths, seasonAdminSchemas } from "./paths/season-admins";
 import { groupPaths } from "./paths/groups";
 import { userPaths } from "./paths/users";
 import { studentPaths } from "./paths/students";
@@ -121,6 +122,7 @@ export const openApiDocument = {
       ...peopleSchemas,
       ...sessionsAssignmentsSchemas,
       ...submissionsMeSchemas,
+      ...seasonAdminSchemas,
     },
   },
 
@@ -128,6 +130,7 @@ export const openApiDocument = {
     ...authPaths,
     ...mePaths,
     ...seasonPaths,
+    ...seasonAdminPaths,
     ...groupPaths,
     ...userPaths,
     ...studentPaths,

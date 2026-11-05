@@ -13,6 +13,8 @@ const mockBack = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "12" }),
   useRouter: () => ({ push: jest.fn(), back: mockBack }),
+  // StudentCheckInCard polls while focused; focused for the whole test.
+  useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
 }));
 // The session screen statically imports Plan 11's StudentCheckInCard → QrScanner
 // → expo-camera (a native module). Plan 11's stand-in, as every suite that

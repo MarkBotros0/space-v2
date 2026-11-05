@@ -1,9 +1,8 @@
-import { PenLine } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
 
+import { NavIcon } from "../../design/icons/nav-icon";
 import { InlineError } from "../../design/layout/route-states";
-import { iconWithClassName } from "../../design/lib/icon";
 import {
   Badge,
   Button as ButtonV1,
@@ -13,9 +12,8 @@ import {
   CardTitle,
   Text as TextV1,
 } from "../../design/ui";
+import { GroupedList, ListRow, ListSectionHeader } from "../../design/ui/grouped-list";
 import { useSessionQuizzes } from "../../hooks/use-session-quizzes";
-
-iconWithClassName(PenLine);
 
 const QUIZZES_ERROR = "Couldn't load this session's quizzes.";
 
@@ -24,59 +22,49 @@ function rowClass(i: number, count: number): string {
   return `flex-row items-center justify-between gap-3 py-2 ${i === 0 ? "pt-0" : "border-t border-border"} ${i === count - 1 ? "pb-0" : ""}`;
 }
 
-/** v1 leader page: the session's quizzes, each with a "Grade →" link (shown only when there are any). */
+/** v1 leader page: the session's quizzes as rows into grading (shown only when there are any). */
 export function LeaderQuizzesCard({ sessionId }: { sessionId: number }) {
   const router = useRouter();
   const quizzes = useSessionQuizzes(sessionId, true);
   if (!quizzes.isError && (quizzes.isPending || quizzes.data.length === 0)) return null;
+  if (quizzes.isError) {
+    return (
+      <View className="flex-col gap-1">
+        <ListSectionHeader>Quizzes</ListSectionHeader>
+        <InlineError message={QUIZZES_ERROR} onRetry={() => void quizzes.refetch()} />
+      </View>
+    );
+  }
   return (
-    <CardV1>
-      <CardHeader>
-        <View className="flex-row items-center gap-2">
-          <PenLine size={16} className="text-brand-teal-600" />
-          <CardTitle className="text-base">Quizzes</CardTitle>
-        </View>
-      </CardHeader>
-      <CardContent>
-        {quizzes.isError ? (
-          <InlineError message={QUIZZES_ERROR} onRetry={() => void quizzes.refetch()} />
-        ) : (
-          (quizzes.data ?? []).map((q, i, all) => (
-            <View key={q.id} className={rowClass(i, all.length)}>
-              <View className="min-w-0 flex-1">
-                <TextV1 className="text-sm font-semibold text-brand-navy-900 dark:text-foreground">
-                  {q.title}
-                </TextV1>
-                <TextV1 className="text-xs text-muted-foreground">
-                  {/* "· Draft" is v2's: an unpublished online quiz has nothing to grade yet. */}
-                  {q.kind === "ONLINE" && q.publishedAt === null
-                    ? `Max score: ${q.maxScore} · Draft`
-                    : `Max score: ${q.maxScore}`}
-                </TextV1>
-              </View>
-              <Pressable
-                accessibilityRole="link"
-                onPress={() =>
-                  router.push({ pathname: "/quiz/[id]/grade", params: { id: String(q.id) } })
-                }
-              >
-                {/* v1 has no dark: variant on this link. */}
-                <TextV1 className="text-xs font-semibold text-brand-teal-700">Grade →</TextV1>
-              </Pressable>
-            </View>
-          ))
-        )}
-      </CardContent>
-    </CardV1>
+    <GroupedList header="Quizzes">
+      {quizzes.data.map((q, i) => (
+        <ListRow
+          key={q.id}
+          index={i}
+          title={q.title}
+          titleLines={2}
+          // "· Draft" is v2's: an unpublished online quiz has nothing to grade yet.
+          subtitle={
+            q.kind === "ONLINE" && q.publishedAt === null
+              ? `Max score: ${q.maxScore} · Draft`
+              : `Max score: ${q.maxScore}`
+          }
+          chevron
+          onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(q.id) } })}
+        />
+      ))}
+    </GroupedList>
   );
 }
 
 /** The session's quizzes on the admin page: title, kind and state badges, Edit and Grade links (v1). */
 export function AdminQuizzesCard({
   sessionId,
+  seasonId,
   canAuthor,
 }: {
   sessionId: number;
+  seasonId: number;
   canAuthor: boolean;
 }) {
   const router = useRouter();
@@ -85,12 +73,23 @@ export function AdminQuizzesCard({
     <CardV1>
       <CardHeader className="flex-row items-center justify-between gap-3">
         <View className="flex-row items-center gap-2">
-          <PenLine size={16} className="text-brand-teal-600" />
+          <NavIcon name="quizzes" size={16} className="text-brand-teal-700 dark:text-brand-teal-400" />
           <CardTitle className="text-base">Quizzes</CardTitle>
         </View>
         {/* V2-ONLY: v1's inline "+ Add quiz" form; v2 opens the new-quiz screen. */}
         {canAuthor ? (
-          <ButtonV1 variant="outline" size="sm" onPress={() => router.push("/quiz/new")}>
+          <ButtonV1
+            variant="outline"
+            size="sm"
+            onPress={() =>
+              // v1 always created the quiz on this session, in this session's
+              // season — never the caller's current one.
+              router.push({
+                pathname: "/quiz/new",
+                params: { sessionId: String(sessionId), seasonId: String(seasonId) },
+              })
+            }
+          >
             + Add quiz
           </ButtonV1>
         ) : null}

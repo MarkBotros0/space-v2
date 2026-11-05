@@ -36,10 +36,7 @@ async function scopeForSeason(user: SessionUser, seasonId: number): Promise<Grou
     return groups.length === 0 ? null : { kind: "ids", groupIds: groups.map((g) => g.id) };
   }
   if (user.role === "STUDENT") {
-    // The student's group *in this season*, from the enrolment. Asking
-    // GroupStudent instead answers "what group are they in now" — so a student
-    // browsing a past season would be shown their current group if it happened
-    // to belong to that season, and nothing otherwise (ruling C9).
+    // The student's group *in this season*, from the enrolment (ruling C9).
     const groupId = await groupIdInSeason(user.userId, seasonId);
     return groupId === null ? null : { kind: "ids", groupIds: [groupId] };
   }
@@ -59,9 +56,8 @@ async function toListRows(
   if (groups.length === 0) return [];
 
   // One grouped count for the whole page rather than a count per group. The
-  // population is ACTIVE season enrolments, not GroupStudent rows: the latter
-  // hold one row per student across the entire database, so a past season's
-  // group would be counted against this season's roster (ruling C9).
+  // population is ACTIVE season enrolments (ruling C9): a COMPLETED or
+  // WITHDRAWN student is not counted.
   const counts = await db.seasonEnrollment.groupBy({
     by: ["groupId"],
     where: { groupId: { in: groups.map((g) => g.id) }, status: "ACTIVE" },
@@ -148,7 +144,6 @@ export interface SeasonRosterRow {
   email: string;
   groupId: number | null;
   groupName: string | null;
-  otherSeasonGroup: { groupName: string; seasonCode: string } | null;
 }
 
 /**
@@ -157,10 +152,8 @@ export interface SeasonRosterRow {
  * Population: ACTIVE enrolments of live STUDENT users (ruling C9). v1 used
  * `StudentProfile.activeSeasonId` (spec 05 R81), which hides an enrolled
  * student whose pointer has moved on. The group shown is this season's, from
- * `SeasonEnrollment.groupId`; `otherSeasonGroup` is the student's GroupStudent
- * row in a DIFFERENT season's group — the membership an assignment here will
- * remove (GroupStudent.studentUserId is globally unique, spec 05 R1). v1
- * reported such a student as plain "unassigned" (R82).
+ * `SeasonEnrollment.groupId`. A group in another season is not reported:
+ * memberships are per season (Plan 18 M1), so assigning here leaves it alone.
  */
 export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRow[]> {
   const enrolments = await db.seasonEnrollment.findMany({
@@ -173,26 +166,12 @@ export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRo
     },
     orderBy: { studentUser: { name: "asc" } },
   });
-  if (enrolments.length === 0) return [];
-
-  const elsewhere = await db.groupStudent.findMany({
-    where: {
-      studentUserId: { in: enrolments.map((e) => e.studentUserId) },
-      group: { seasonId: { not: seasonId } },
-    },
-    select: { studentUserId: true, group: { select: { name: true, season: { select: { code: true } } } } },
-  });
-  const elsewhereBy = new Map(
-    elsewhere.map((g) => [g.studentUserId, { groupName: g.group.name, seasonCode: g.group.season.code }]),
-  );
-
   return enrolments.map((e) => ({
     userId: e.studentUserId,
     name: e.studentUser.name,
     email: e.studentUser.email,
     groupId: e.groupId,
     groupName: e.group?.name ?? null,
-    otherSeasonGroup: elsewhereBy.get(e.studentUserId) ?? null,
   }));
 }
 

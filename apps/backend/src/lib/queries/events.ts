@@ -79,11 +79,33 @@ export async function eventVisibilityFilter(
  * every surface. Prisma cannot express COALESCE in a filter, so the null case
  * is spelled out.
  */
-export function eventWindowFilter(from: Date, to: Date): Prisma.JpcEventWhereInput {
+export function eventWindowFilter(from: Date | null, to: Date | null): Prisma.JpcEventWhereInput {
+  // A missing bound is open (v1-parity R57: with neither, every event).
   return {
     AND: [
-      { date: { lte: to } },
-      { OR: [{ endDate: { gte: from } }, { endDate: null, date: { gte: from } }] },
+      ...(to ? [{ date: { lte: to } }] : []),
+      ...(from ? [{ OR: [{ endDate: { gte: from } }, { endDate: null, date: { gte: from } }] }] : []),
     ],
   };
+}
+
+/** The paged list's order: newest first, id as the tie-break. */
+export const EVENT_PAGE_ORDER: Prisma.JpcEventOrderByWithRelationInput[] = [
+  { date: "desc" },
+  { id: "desc" },
+];
+
+/** `<date epoch ms>_<id>` — see `eventCursorSchema` in packages/shared. */
+export function encodeEventCursor(row: { date: Date; id: number }): string {
+  return `${row.date.getTime()}_${row.id}`;
+}
+
+/**
+ * Everything strictly after the cursor in {@link EVENT_PAGE_ORDER}. The input
+ * has already passed `eventCursorSchema`, so both halves are digit runs.
+ */
+export function eventCursorFilter(cursor: string): Prisma.JpcEventWhereInput {
+  const [ms, id] = cursor.split("_").map(Number) as [number, number];
+  const date = new Date(ms);
+  return { OR: [{ date: { lt: date } }, { date, id: { lt: id } }] };
 }

@@ -1,68 +1,70 @@
 /**
- * Port of v1 src/components/ui/empty-state.tsx.
- * Native differences: bg-gradient-to-br → expo-linear-gradient with the same
- * stops (light teal-100→teal-200, dark teal-900→navy-900); v1's blur-xl glow
- * behind the icon is blurred to near-invisibility and React Native has no
- * blur filter, so it is omitted; ring-inset → border; md:py-16 dropped.
+ * Redesign empty state: a quiet centred block on the surface (no dashed box,
+ * no gradient), a tinted icon disc, title and description, and an optional
+ * action. `action` is either `{ label, onPress }` (rendered as a secondary
+ * Button) or, for existing call sites, a ready-made node. `tone` tints the
+ * disc: `info` (teal) for empty, `bad` for a failure, so an error reads as one.
  */
-import { LinearGradient } from "expo-linear-gradient";
 import type { LucideIcon } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 import { View } from "react-native";
 
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";
+import { Button } from "./button";
 import { Text } from "./text";
 
-const { colors } = require("../theme/tailwind-theme.js") as {
-  colors: Record<"brand-teal" | "brand-navy", Record<string, string>>;
-};
-const LIGHT_STOPS: [string, string] = [colors["brand-teal"]["100"]!, colors["brand-teal"]["200"]!];
-const DARK_STOPS: [string, string] = [colors["brand-teal"]["900"]!, colors["brand-navy"]["900"]!];
+type EmptyAction = { label: string; onPress: () => void };
+
+const TONES = {
+  info: { disc: "bg-info-soft", icon: "text-info" },
+  bad: { disc: "bg-bad-soft", icon: "text-bad" },
+} as const;
+
+function isEmptyAction(a: unknown): a is EmptyAction {
+  return !!a && typeof a === "object" && !isValidElement(a) && "label" in a && "onPress" in a;
+}
 
 function EmptyState({
   icon: Icon,
   title,
   description,
   action,
+  tone = "info",
   className,
 }: {
   icon?: LucideIcon;
+  tone?: keyof typeof TONES;
   title: string;
   description?: string;
-  action?: ReactNode;
+  action?: EmptyAction | ReactNode;
   className?: string;
 }) {
-  const { colorScheme } = useColorScheme();
-  const dark = colorScheme === "dark";
   if (Icon) iconWithClassName(Icon);
-  const stops = dark ? DARK_STOPS : LIGHT_STOPS;
   return (
-    <View
-      className={cn(
-        "flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-card/40 px-6 py-12",
-        className,
-      )}
-    >
+    <View className={cn("flex-col items-center justify-center gap-4 rounded-group bg-surface px-6 py-12", className)}>
       {Icon ? (
-        <View className="relative items-center justify-center">
-          <LinearGradient
-            colors={stops}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ width: 56, height: 56, borderRadius: 9999, alignItems: "center", justifyContent: "center" }}
-          >
-            <View className="absolute inset-0 rounded-full border border-brand-teal-300/60 dark:border-brand-teal-800/60" />
-            <Icon size={24} className="text-brand-navy-900 dark:text-brand-teal-200" />
-          </LinearGradient>
+        <View testID="empty-state-disc" className={cn("h-14 w-14 items-center justify-center rounded-full", TONES[tone].disc)}>
+          <Icon size={24} className={TONES[tone].icon} />
         </View>
       ) : null}
       <View className="max-w-md flex-col items-center gap-1.5">
-        <Text className="text-center text-lg font-semibold tracking-tight text-foreground">{title}</Text>
-        {description ? <Text className="text-center text-sm text-muted-foreground">{description}</Text> : null}
+        <Text variant="headline" className="text-center text-foreground">
+          {title}
+        </Text>
+        {description ? <Text variant="subhead" className="text-center text-muted-foreground">{description}</Text> : null}
       </View>
-      {action ? <View className="mt-1">{action}</View> : null}
+      {action ? (
+        <View className="mt-1">
+          {isEmptyAction(action) ? (
+            <Button variant="secondary" onPress={action.onPress}>
+              {action.label}
+            </Button>
+          ) : (
+            (action as ReactNode)
+          )}
+        </View>
+      ) : null}
     </View>
   );
 }

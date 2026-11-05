@@ -1,5 +1,5 @@
 // apps/mobile/src/__tests__/group-import.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -99,17 +99,27 @@ describe("GroupImportScreen", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
+  it("blocks an empty paste from the save bar without calling the import API", async () => {
+    useSessionStore.setState(adminOf7);
+    renderWithProviders(<GroupImportScreen />);
+    await screen.findByLabelText("Paste your spreadsheet");
+    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Preview"));
+    expect(
+      await screen.findByText("Paste a header row and at least one data row first."),
+    ).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it("previews against the season resolved from the route's code", async () => {
     useSessionStore.setState(adminOf7);
     post.mockResolvedValue({ data: { data: preview } });
     renderWithProviders(<GroupImportScreen />);
 
-    expect(await screen.findByText("Import group assignments")).toBeTruthy();
     fireEvent.changeText(
-      screen.getByLabelText("Paste your spreadsheet"),
+      await screen.findByLabelText("Paste your spreadsheet"),
       "email\tgroup\nann@jpc.test\tGroup A",
     );
-    fireEvent.press(screen.getByText("Preview"));
+    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Preview"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/imports/groups/preview", {
@@ -126,6 +136,20 @@ describe("GroupImportScreen", () => {
     expect(screen.getByText("No group")).toBeTruthy();
   });
 
+  it("says why the bar does nothing when no row can be assigned", async () => {
+    useSessionStore.setState(adminOf7);
+    post.mockResolvedValue({
+      data: { data: { ...preview, rows: preview.rows.slice(1, 3), counts: { ...preview.counts, assign: 0 } } },
+    });
+    renderWithProviders(<GroupImportScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "email\tgroup\nx");
+    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Preview"));
+    const bar = within(screen.getByTestId("save-bar"));
+    fireEvent.press(await bar.findByText("Nothing to assign"));
+    expect(bar.getByText(/No row can be assigned/)).toBeTruthy();
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
   it("commits only the assign rows, as resolved id pairs, and reports what was APPLIED", async () => {
     useSessionStore.setState(adminOf7);
     post
@@ -139,8 +163,8 @@ describe("GroupImportScreen", () => {
       await screen.findByLabelText("Paste your spreadsheet"),
       "email\tgroup\nann@jpc.test\tGroup A",
     );
-    fireEvent.press(screen.getByText("Preview"));
-    fireEvent.press(await screen.findByText("Apply 1 assignment"));
+    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Preview"));
+    fireEvent.press(await within(screen.getByTestId("save-bar")).findByText("Apply 1 assignment"));
 
     await waitFor(() =>
       expect(post).toHaveBeenLastCalledWith("/api/v1/seasons/7/imports/groups/commit", {

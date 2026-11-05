@@ -33,6 +33,9 @@ export const notificationTypeSchema = z.enum([
   "LOW_ATTENDANCE_FLAG",
   "MENTOR_FOLLOWUP",
   "QUIZ_GRADED",
+  "QUIZ_PUBLISHED",
+  "SUBMISSION_RECEIVED",
+  "SESSION_CANCELLED",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 

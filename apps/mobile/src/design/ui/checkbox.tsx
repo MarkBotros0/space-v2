@@ -31,7 +31,7 @@ export function Checkbox({
       hitSlop={8}
       className={cn(
         "size-4 items-center justify-center rounded-[3px] border",
-        checked ? "border-primary bg-primary" : "border-input bg-background",
+        checked ? "border-primary bg-primary" : "border-control-border bg-background",
         disabled && "opacity-50",
       )}
     >

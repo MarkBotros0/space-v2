@@ -20,6 +20,9 @@ All paths below are relative to the server root. Everything except
 | GET | `/api/v1/seasons/:id/groups` | |
 | GET | `/api/v1/seasons/:id/sessions` | |
 | GET | `/api/v1/seasons/:id/assignments` | |
+| GET | `/api/v1/seasons/:id/admins` | SUPER only. Not a port — v1 had no way to create `SeasonAdmin` rows. |
+| POST | `/api/v1/seasons/:id/admins` | SUPER only. `{ userId }`; ADMIN-role, active users only; idempotent. |
+| DELETE | `/api/v1/seasons/:id/admins/:userId` | SUPER only. Idempotent. Add and remove revoke the user's refresh tokens. |
 | GET | `/api/v1/groups/:id` | |
 | GET | `/api/v1/sessions/:id` | |
 | GET | `/api/v1/sessions/:id/attendance` | |
@@ -63,6 +66,11 @@ read outside that file). See `.env.example` for the full list.
 | `IMPORT_BODY_LIMIT` | No | `2mb` | JSON body limit for the import routes only; every other route keeps the 100 KB default. |
 | `IMPORT_PREVIEW_RATE_LIMIT` | No | `30` | Import preview requests per 15 minutes per IP. |
 | `IMPORT_COMMIT_RATE_LIMIT` | No | `10` | Import commit requests per 15 minutes per IP. |
+| `RATE_LIMIT_STORE` | No | `postgres` (`memory` when `NODE_ENV=test`) | Where every rate limiter keeps its counters. `postgres` shares them across instances through the `RateLimitHit` table (migration `20261105130000_rate_limit_store` must be applied); `memory` is per process, which on serverless means per instance. |
+| `SENTRY_DSN` | No | unset | Turns on Sentry error reporting. Unset means Sentry is never initialised. See "Turning on Sentry" below. |
+| `SENTRY_ENVIRONMENT` | No | `NODE_ENV` | Environment tag on each event. |
+| `SENTRY_TRACES_SAMPLE_RATE` | No | `0` | Share of requests traced for performance, `0`–`1`. `0` reports errors only. |
+| `SENTRY_RELEASE` | No | `VERCEL_GIT_COMMIT_SHA` | Release tag on each event; on Vercel it defaults to the deployed commit. |
 
 **When `GMAIL_USER`/`GMAIL_APP_PASSWORD` are unset:** `sendNotificationEmail`
 becomes a no-op (it logs a one-time warning and returns) — in-app
@@ -175,23 +183,99 @@ sidesteps it: type checking happened during `turbo build` with the correct
 tsconfig, and there is no TypeScript left for Vercel to re-check with the wrong
 one. **Do not convert this file to TypeScript.**
 
+### Setting up a new database
+
+A new, empty database (production has none yet) needs two steps from
+`apps/backend`, with `DATABASE_URL` pointing at it:
+
+1. `pnpm db:migrate:deploy` builds the whole schema from every migration.
+2. `pnpm create:super-admin` creates the first SUPER account. It asks for the
+   email, name and password in the terminal (so the password stays out of
+   shell history), shows the database host and asks before writing, and
+   refuses an email that already exists in any letter case.
+
+Everyone else is then created or invited from the app. Don't use
+`pnpm seed:sweep` here: its users share one password written in the repo, and
+it refuses non-local databases for that reason.
+
+Then set the deployment's environment (see Environment above). On Vercel that
+includes `TRUST_PROXY=1`, or the rate limiters bucket every client together.
+
 ### Known limits on serverless
 
-Two things do not survive a serverless runtime, and neither is fixed by the
+One thing does not survive a serverless runtime and is not fixed by the
 entrypoint above:
 
-- **Rate limiting is per-instance.** `express-rate-limit` uses its default
-  in-memory store, so each cold start gets its own counter and the
-  20-attempts-per-15-minutes login protection weakens to "20 per instance".
-  Needs a shared store (Redis, or Vercel KV) to mean anything.
 - **Prisma needs a pooled connection.** Point `DATABASE_URL` at Neon's *pooled*
   endpoint, or concurrent cold starts exhaust the connection limit.
+
+Rate limiting used to be a second: `express-rate-limit`'s default in-memory
+store gave every instance its own counter. Every limiter is now built by
+`makeLimiter` (`src/lib/rate-limit/`), which by default keeps the counters in
+the `RateLimitHit` table (`RATE_LIMIT_STORE=postgres`), one atomic upsert per
+request, so all instances share one bucket per client. If the database is
+unreachable the limiter logs the error and lets the request through
+(`passOnStoreError`) rather than failing every login. Expired rows are swept by
+the store itself on ~1% of hits; there is no cron.
 
 Local file storage is a third — but uploads are switched off (see above), so it
 is moot until the CMS driver lands.
 
 A container host (Railway, Render, Fly, a VM) has none of these problems and
 runs `dist/apps/backend/src/server.js` as-is.
+
+## Error reporting (Sentry)
+
+Off by default, in both the backend and the mobile app. Nothing initialises
+and nothing is sent until a DSN is configured.
+
+**Backend.** `src/instrument.ts` is the first import of both entrypoints
+(`src/server.ts` and `api/index.js`) and calls `initSentry()` in
+`src/lib/sentry.ts`, which returns at once without `SENTRY_DSN`. When on:
+
+- The terminal error handler (`src/middleware/error-handler.ts`) reports every
+  500. The response is unchanged: `internal_error`, no stack. 4xx responses are
+  never reported. The SDK's own automatic Express capture is off, because it
+  runs before our handler and would report a thrown `ForbiddenError` as a 500.
+- `runInBackground` (`src/lib/background.ts`) reports failed push and mail work.
+- Each report registers `Sentry.flush(2000)` with Vercel's `waitUntil`, so an
+  event is not lost when the function freezes after responding.
+- No user info, cookies or request bodies are collected. `beforeSend` and
+  `beforeBreadcrumb` also strip the `Authorization` and `Cookie` headers, drop
+  the bodies of auth, password and invite routes, and redact any
+  password/token field.
+
+**Mobile.** `EXPO_PUBLIC_SENTRY_DSN` is read in `src/lib/app-config.ts`.
+`src/lib/sentry.ts` initialises with `sendDefaultPii: false`, wraps the root
+layout only when on, and reports render errors caught by the route
+`ErrorBoundary`. The Sentry user is the numeric user id and a `role` tag. They
+are set on sign-in and cleared on sign-out. No email or name is ever sent.
+Release and dist come from the native build, which is what the source-map
+upload uses. `app.config.js` adds the `@sentry/react-native/expo` plugin with
+the upload step **disabled unless `SENTRY_AUTH_TOKEN` is set**, so a build
+without Sentry credentials still succeeds.
+
+### Turning on Sentry
+
+1. Create a free account at [sentry.io](https://sentry.io) and two projects:
+   one **React Native** (the app) and one **Node.js / Express** (this API).
+   Each project shows its DSN under *Settings → Client Keys (DSN)*.
+2. **Backend:** in the Vercel project, add `SENTRY_DSN` (the Node project's
+   DSN) under *Settings → Environment Variables*. Optionally add
+   `SENTRY_ENVIRONMENT` (e.g. `production` / `preview`). Redeploy, because an
+   env change only applies on a new deployment.
+3. **Mobile:** add the React Native project's DSN to EAS as
+   `EXPO_PUBLIC_SENTRY_DSN`. You can do this with
+   `eas env:create --name EXPO_PUBLIC_SENTRY_DSN --value <dsn> --environment production --visibility plaintext`
+   (repeat for `preview`), or by adding it under `build.<profile>.env` in
+   `apps/mobile/eas.json`. A DSN is not a secret, since it ships in the app
+   bundle. Then build again. It takes effect in the next build, and in an EAS
+   Update published after it is set.
+4. *Optional, for readable stack traces:* add `SENTRY_AUTH_TOKEN` (an org
+   auth token from *Settings → Auth Tokens*, visibility **secret**),
+   `SENTRY_ORG` and `SENTRY_PROJECT` (the slugs) to EAS. The next build
+   uploads source maps and native debug files. Without the token the upload
+   is skipped and the build still passes.
 
 ## API documentation
 

@@ -38,8 +38,8 @@ import { useSessionStore } from "../store/session";
 iconWithClassName(Send, Trash2);
 
 const NOTICE = {
-  error: "rounded-md bg-error-50 px-3 py-2 text-sm text-error-800 dark:bg-error-950 dark:text-error-200",
-  success: "rounded-md bg-success-50 px-3 py-2 text-sm text-success-800 dark:bg-success-950 dark:text-success-200",
+  error: "rounded-control bg-bad-soft px-3 py-2 text-sm text-bad",
+  success: "rounded-control bg-ok-soft px-3 py-2 text-sm text-ok",
 };
 
 /** v1 forum-view.tsx PersonAvatar: initials only (no avatar URL in the contract). */
@@ -131,11 +131,11 @@ function CommentRow({ comment, assignmentId }: { comment: ForumComment; assignme
   return (
     <View className="flex-row items-start gap-2.5">
       <PersonAvatar name={comment.authorDisplayName} />
-      <View className="flex-1 flex-col rounded-lg bg-muted/50 px-3 py-2">
+      <View className="flex-1 flex-col rounded-control bg-muted/50 px-3 py-2">
         <View className="flex-row items-center justify-between gap-2">
           <Text className="shrink text-xs font-semibold text-foreground">{comment.authorDisplayName}</Text>
           <View className="flex-row items-center gap-2">
-            <Text className="text-[10px] text-muted-foreground">{formatTimeAgo(comment.createdAt)}</Text>
+            <Text className="text-caption text-muted-foreground">{formatTimeAgo(comment.createdAt)}</Text>
             {/* canDelete is the server's answer; the client never re-derives it. */}
             {comment.canDelete ? (
               <Button
@@ -224,7 +224,7 @@ function PostCard({ assignmentId, post, allowComments }: { assignmentId: number;
                 </Button>
               </View>
             ) : null}
-            {expanded && comments.isPending ? <Skeleton className="h-10 rounded-lg" /> : null}
+            {expanded && comments.isPending ? <Skeleton className="h-10" /> : null}
             {expanded && comments.hasNextPage ? (
               <Button
                 variant="outline"
@@ -270,7 +270,7 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
   const role = useSessionStore((s) => s.user?.role ?? null);
   const query = useForumThread(assignmentId, true);
 
-  if (query.isPending) return <Skeleton className="h-40 rounded-2xl" />;
+  if (query.isPending) return <Skeleton className="h-40 rounded-group" />;
   if (query.isError) {
     return (
       <InlineError message="Couldn't load the discussion." onRetry={() => void query.refetch()} />

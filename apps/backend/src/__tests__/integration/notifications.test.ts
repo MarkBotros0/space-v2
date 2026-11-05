@@ -112,7 +112,7 @@ it("writes the in-app row even for an opted-out recipient, and suppresses only t
   // BEHAVIOUR CHANGE, spec D4: v1 filtered opted-out recipients out before the
   // insert (R8), so "off" meant "no record" and the user lost their history to
   // stop the emails. The row is now always written; the preference governs
-  // email (and push at cutover). This test is the old one, inverted on
+  // email and push. This test is the old one, inverted on
   // purpose — see the plan header.
   await db.notification.deleteMany({ where: { userId: { in: [leaderId, adminId] } } });
   await db.notificationPreference.upsert({

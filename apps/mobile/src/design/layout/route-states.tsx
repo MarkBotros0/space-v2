@@ -15,11 +15,11 @@ import { Text } from "../ui/text";
 export function RouteSkeleton() {
   return (
     <View accessible accessibilityLabel="Loading" className="flex-col gap-3">
-      <Skeleton className="h-32 rounded-2xl" />
+      <Skeleton height={128} radius={16} />
       <View className="flex-row gap-3">
-        <Skeleton className="h-24 flex-1 rounded-2xl" />
-        <Skeleton className="h-24 flex-1 rounded-2xl" />
-        <Skeleton className="h-24 flex-1 rounded-2xl" />
+        <Skeleton height={96} radius={16} className="flex-1" />
+        <Skeleton height={96} radius={16} className="flex-1" />
+        <Skeleton height={96} radius={16} className="flex-1" />
       </View>
       <SkeletonCard />
       <SkeletonCard />
@@ -33,9 +33,10 @@ export function RouteError({ onRetry }: { onRetry: () => void }) {
   return (
     <EmptyState
       icon={AlertTriangle}
+      tone="bad"
       title="Something went wrong"
       description={`We couldn't load this page. Please try again — if it keeps happening, let ${contact} know.`}
-      action={<Button onPress={onRetry}>Try again</Button>}
+      action={{ label: "Try again", onPress: onRetry }}
     />
   );
 }
@@ -55,8 +56,8 @@ export function InlineError({
 }) {
   return (
     <View className={className ? `flex-col items-start gap-2 ${className}` : "flex-col items-start gap-2"}>
-      <Text className="text-sm text-error-600 dark:text-error-400">{message}</Text>
-      <Button variant="outline" size="sm" onPress={onRetry}>
+      <Text variant="subhead" className="text-bad">{message}</Text>
+      <Button variant="secondary" size="sm" onPress={onRetry}>
         Try again
       </Button>
     </View>

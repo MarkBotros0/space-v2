@@ -75,6 +75,14 @@ These are operations on the live database, not code:
 4. Audit columns for role grants (who granted SUPER, when). Also a migration.
 5. A per-invite attempts column, which would allow a short numeric invite code
    (spec 11 D10). Also a migration. Not needed unless you want short codes.
+6. A `SUBMISSION_SUBMITTED` value on `NotificationType` (with a matching
+   preference column), so group leaders can be told when a student submits.
+   Owner decision 2026-11-03: wait for the cutover migration rather than
+   reuse an existing type. v1 never sent this notification, and the shared
+   database has no such value, so it needs a migration. After it lands, the
+   submit path in `routes/submissions/writes.ts` notifies the leaders of the
+   student's group (not season admins) on every submit, including resubmits
+   after a return, best-effort, linking to the submission.
 
 ## 5. Known gaps to be aware of
 

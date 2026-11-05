@@ -8,7 +8,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import CalendarScreen from "../../app/(app)/calendar";
+import CalendarScreen from "../../app/(app)/(tabs)/calendar";
 import { seasonRow, session, studentSession } from "./helpers/calendar-fixtures";
 
 const get = apiClient.get as jest.Mock;
@@ -39,11 +39,11 @@ it("renders a student's calendar from their pinned season, grouped by the server
   renderWithProviders(<CalendarScreen />);
 
   expect(await screen.findByText("Kickoff")).toBeTruthy();
-  // v1 agenda headings ("EEEE, MMMM d"), from the server's dayKey: the
+  // Agenda day headings ("EEEE, MMMM d", capitalised by the list header), from the server's dayKey: the
   // 23:30Z session files under Monday the 2nd (X13).
-  expect(screen.getByText("Sunday, March 1")).toBeTruthy();
-  expect(screen.getByText("Monday, March 2")).toBeTruthy();
-  expect(screen.getByText("Sunday, March 8")).toBeTruthy();
+  expect(screen.getByText("SUNDAY, MARCH 1")).toBeTruthy();
+  expect(screen.getByText("MONDAY, MARCH 2")).toBeTruthy();
+  expect(screen.getByText("SUNDAY, MARCH 8")).toBeTruthy();
   // The student never fetched the seasons list — their season is pinned.
   expect(get).not.toHaveBeenCalledWith("/api/v1/seasons");
   expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/sessions");
@@ -222,7 +222,7 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
     expect(await screen.findByText("Kickoff")).toBeTruthy();
     expect(await screen.findByText("Other season")).toBeTruthy();
     expect(screen.getByText("2 sessions")).toBeTruthy();
-    expect(screen.getAllByText("8:00").length).toBe(2);
+    expect(screen.getAllByText("8:00 PM · 60 min").length).toBe(2);
     expect(get).not.toHaveBeenCalledWith("/api/v1/sessions", expect.anything());
     fireEvent.press(screen.getByText("Kickoff"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "1" } });

@@ -204,7 +204,7 @@ describe("PATCH /api/v1/notes/:id", () => {
 });
 
 describe("DELETE /api/v1/notes/:id", () => {
-  it("answers 501 — delete needs a deletedAt column, which C1 forbids (spec D4 #2)", async () => {
+  it("answers 501 — Note has no deletedAt column to soft-delete with (spec D4 #2)", async () => {
     const res = await request(app)
       .delete(`/api/v1/notes/${leadersNoteId}`)
       .set("authorization", `Bearer ${superToken}`);

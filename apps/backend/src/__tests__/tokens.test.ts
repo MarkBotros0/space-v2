@@ -28,7 +28,11 @@ describe("access tokens", () => {
 
   it("round-trips through verifyAccessToken", async () => {
     const { token } = await signAccessToken(user);
-    await expect(verifyAccessToken(token)).resolves.toEqual(user);
+    const verified = await verifyAccessToken(token);
+    // Plus the token's iat (Plan 18 M13), which requireAuth compares with
+    // User.sessionsValidFrom.
+    expect(verified).toEqual({ ...user, issuedAt: expect.any(Number) });
+    expect(Math.abs(verified!.issuedAt - Math.floor(Date.now() / 1000))).toBeLessThanOrEqual(1);
   });
 
   it("returns null for a token signed with a different secret", async () => {

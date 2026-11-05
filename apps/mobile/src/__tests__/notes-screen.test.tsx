@@ -12,7 +12,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import NotesScreen from "../../app/(app)/notes";
+import NotesScreen from "../../app/(app)/(tabs)/notes";
 
 const get = apiClient.get as jest.Mock;
 
@@ -107,6 +107,28 @@ describe("NotesScreen", () => {
       pathname: "/student/[id]",
       params: { id: "21" },
     });
+  });
+
+  it("never renders a standalone separator node, and joins date and season in one string", async () => {
+    useSessionStore.setState(mentorSession);
+    get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
+
+    renderWithProviders(<NotesScreen />);
+
+    expect(await screen.findByText("Mar 1, 2099 · Spring 2099")).toBeTruthy();
+    expect(screen.queryByText("·")).toBeNull();
+  });
+
+  it("has no trailing separator when the note has no season", async () => {
+    useSessionStore.setState(mentorSession);
+    get.mockResolvedValue({
+      data: { data: { notes: [{ ...note, seasonId: null, seasonTitle: null }], nextCursor: null } },
+    });
+
+    renderWithProviders(<NotesScreen />);
+
+    expect(await screen.findByText("Mar 1, 2099")).toBeTruthy();
+    expect(screen.queryByText(/·/)).toBeNull();
   });
 
   it("shows a student their own empty branch without calling the API", async () => {

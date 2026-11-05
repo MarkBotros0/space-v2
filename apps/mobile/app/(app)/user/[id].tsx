@@ -1,13 +1,12 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, View } from "react-native";
-import type { UserDetail } from "@space/shared";
+import { Alert } from "react-native";
+import type { UserDetail, UserRole } from "@space/shared";
 
 import { UserForm } from "../../../src/components/UserForm";
-import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { Button, Card, CardContent, EmptyState, Text } from "../../../src/design/ui";
+import { Screen } from "../../../src/design/layout/screen";
+import { EmptyState, GroupedList, ListRow, Text, toast } from "../../../src/design/ui";
 import {
   useSendInvite,
   useSetActivation,
@@ -16,8 +15,18 @@ import {
 } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { formatDate } from "../../../src/lib/format";
+import { inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
 import { parsePositiveInt } from "../../../src/lib/params";
 import { useSessionStore } from "../../../src/store/session";
+
+/**
+ * The seasons a save would take admin rights away from: updateUser deletes
+ * an ADMIN's SeasonAdmin rows whenever the role changes.
+ */
+function adminSeasonsLostBy(data: UserDetail, nextRole: UserRole): string[] {
+  if (data.role !== "ADMIN" || nextRole === "ADMIN") return [];
+  return data.adminSeasons.map((s) => s.title);
+}
 
 /**
  * v1 super/users/[id]/edit (B5-4): "Edit {name}", the email under it, the
@@ -52,28 +61,111 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
     );
   };
 
+  const invite = () =>
+    sendInvite.mutate(
+      { userId: data.id },
+      {
+        onSuccess: () => toast.success(inviteSentMessage(data.email)),
+        onError: (err) => toast.error(inviteErrorMessage(err)),
+      },
+    );
+  const rows = [
+    canInvite ? (
+      <ListRow
+        key="invite"
+        title={
+          sendInvite.isPending
+            ? "Sending…"
+            : data.status === "invited"
+              ? "Resend invite"
+              : "Send invite"
+        }
+        onPress={sendInvite.isPending ? undefined : invite}
+      />
+    ) : null,
+    selfId === data.id ? null : (
+      <ListRow
+        key="activation"
+        title={inactive ? "Reactivate" : "Deactivate"}
+        subtitle={
+          inactive ? "They will be able to sign in again." : "They will be signed out everywhere."
+        }
+        onPress={setActivation.isPending ? undefined : toggleActivation}
+      />
+    ),
+  ];
+
   return (
-    <View className="flex-col gap-4">
-      <View className="flex-row items-start justify-between gap-4">
-        <PageTitle
-          className="min-w-0 flex-1"
-          title={`Edit ${data.name || data.email}`}
-          subtitle={data.email}
-        />
-        {canInvite ? (
-          <Button
-            variant="outline"
-            disabled={sendInvite.isPending}
-            onPress={() => sendInvite.mutate({ userId: data.id })}
-          >
-            {sendInvite.isPending
-              ? "Sending…"
-              : data.status === "invited"
-                ? "Resend invite"
-                : "Send invite"}
-          </Button>
-        ) : null}
-      </View>
+    <UserForm
+      key={data.id}
+      mode="edit"
+      title={`Edit ${data.name || data.email}`}
+      subtitle={data.email}
+      initial={{
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        graduationYear: data.graduationYear === null ? "" : String(data.graduationYear),
+      }}
+      submitting={updateUser.isPending}
+      readOnly={inactive}
+      message={message}
+      onSubmit={(submit) => {
+        if (submit.mode !== "edit") return;
+        setMessage(null);
+        const doSave = (confirmSuper: boolean) =>
+          updateUser.mutate(
+            {
+              userId: data.id,
+              body: confirmSuper ? { ...submit.body, confirmSuper: true } : submit.body,
+            },
+            {
+              // v1 user-form.tsx:117 goes back to the users list on save.
+              onSuccess: () => {
+                toast.success("Changes saved.");
+                // Back to the list this was opened from (or the list in this
+                // detail's place, if it was opened elsewhere): never a second list.
+                router.dismissTo("/users");
+              },
+              onError: (err) =>
+                setMessage(
+                  apiErrorMessage(err, "The change was refused. Check the fields and try again."),
+                ),
+            },
+          );
+        const confirmSuperThenSave = () => {
+          if (submit.body.role === "SUPER" && data.role !== "SUPER") {
+            // D7 rec 3, surfaced in the UI the same way the API enforces it.
+            Alert.alert(
+              "Grant SUPER?",
+              "SUPER can manage every user and season. This cannot be limited by scope.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Grant SUPER", onPress: () => doSave(true) },
+              ],
+            );
+            return;
+          }
+          doSave(false);
+        };
+        const lost = adminSeasonsLostBy(data, submit.body.role);
+        if (lost.length > 0) {
+          // The server deletes their SeasonAdmin rows on this change and
+          // nothing in the app can put them back — say so, by name.
+          Alert.alert(
+            "Remove season admin rights?",
+            `${data.name || data.email} will stop being an admin of ${lost.join(", ")}. ` +
+              "Changing the role back later will not restore these assignments.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Change role", style: "destructive", onPress: confirmSuperThenSave },
+            ],
+          );
+          return;
+        }
+        confirmSuperThenSave();
+      }}
+    >
       {data.invite ? (
         <Text className="text-sm text-muted-foreground">
           {data.invite.usedAt
@@ -84,70 +176,16 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
       ) : null}
       {inactive ? (
         <Text className="text-sm text-muted-foreground">
-          {`Deactivated ${formatDate(data.deletedAt)}.`}
+          {`Deactivated ${formatDate(data.deletedAt)}. A deactivated account can't be edited — reactivate it first.`}
         </Text>
       ) : null}
-      <Card>
-        <CardContent className="pt-6">
-          <UserForm
-            key={data.id}
-            mode="edit"
-            initial={{
-              name: data.name,
-              email: data.email,
-              role: data.role,
-              graduationYear: data.graduationYear === null ? "" : String(data.graduationYear),
-            }}
-            submitting={updateUser.isPending}
-            message={message}
-            deactivation={
-              selfId === data.id
-                ? undefined
-                : { inactive, pending: setActivation.isPending, onToggle: toggleActivation }
-            }
-            onCancel={() => router.back()}
-            onSubmit={(submit) => {
-              if (submit.mode !== "edit") return;
-              setMessage(null);
-              const doSave = (confirmSuper: boolean) =>
-                updateUser.mutate(
-                  {
-                    userId: data.id,
-                    body: confirmSuper ? { ...submit.body, confirmSuper: true } : submit.body,
-                  },
-                  {
-                    onError: (err) =>
-                      setMessage(
-                        apiErrorMessage(
-                          err,
-                          "The change was refused. Check the fields and try again.",
-                        ),
-                      ),
-                  },
-                );
-              if (submit.body.role === "SUPER" && data.role !== "SUPER") {
-                // D7 rec 3, surfaced in the UI the same way the API enforces it.
-                Alert.alert(
-                  "Grant SUPER?",
-                  "SUPER can manage every user and season. This cannot be limited by scope.",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Grant SUPER", onPress: () => doSave(true) },
-                  ],
-                );
-                return;
-              }
-              doSave(false);
-            }}
-          />
-        </CardContent>
-      </Card>
+      {rows.some(Boolean) ? <GroupedList>{rows}</GroupedList> : null}
       {setActivation.isError ? (
         <Text className="text-sm text-error-600">
           {apiErrorMessage(setActivation.error, "Couldn't change the account.")}
         </Text>
       ) : null}
-    </View>
+    </UserForm>
   );
 }
 
@@ -161,28 +199,32 @@ export default function UserDetailScreen() {
 
   if (me?.role !== "SUPER") {
     return (
-      <ShellFrame>
-        <EmptyState title="Users" description="Only SUPER accounts can manage users." />
-      </ShellFrame>
+      <Screen title="Users">
+        <EmptyState title="Not available" description="Only SUPER accounts can manage users." />
+      </Screen>
     );
   }
   if (id === null) {
     return (
-      <ShellFrame>
-        <EmptyState title="User" description="Invalid user id." />
-      </ShellFrame>
+      <Screen title="User">
+        <EmptyState title="Not available" description="Invalid user id." />
+      </Screen>
     );
   }
 
-  return (
-    <ShellFrame>
-      {isPending ? (
+  if (isPending) {
+    return (
+      <Screen title="User">
         <RouteSkeleton />
-      ) : isError || !data ? (
+      </Screen>
+    );
+  }
+  if (isError || !data) {
+    return (
+      <Screen title="User">
         <RouteError onRetry={() => void refetch()} />
-      ) : (
-        <UserEdit data={data} selfId={me.id} />
-      )}
-    </ShellFrame>
-  );
+      </Screen>
+    );
+  }
+  return <UserEdit data={data} selfId={me.id} />;
 }

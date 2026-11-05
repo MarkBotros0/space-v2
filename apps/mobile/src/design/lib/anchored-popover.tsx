@@ -5,7 +5,7 @@
  * when there is no room below, and closes on an outside press.
  */
 import { type ReactNode, useCallback, useRef, useState } from "react";
-import { Modal, Platform, Pressable, StatusBar, useWindowDimensions, View, type View as ViewType } from "react-native";
+import { Modal, Platform, Pressable, StatusBar, useWindowDimensions, View, type ViewInstance } from "react-native";
 
 import { cn } from "./cn";
 import { shadowStyle } from "./shadow";
@@ -17,7 +17,7 @@ const EDGE = 8; // keep popups off the screen edge, like Base UI's collision pad
 
 /** Ref for the trigger plus a measure() that records its window position. */
 export function useAnchor() {
-  const ref = useRef<ViewType>(null);
+  const ref = useRef<ViewInstance>(null);
   const [rect, setRect] = useState<Rect | null>(null);
   const measure = useCallback(() => {
     // On Android, measureInWindow reports y below the status bar while the

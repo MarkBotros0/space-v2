@@ -3,6 +3,7 @@ import { MulterError } from "multer";
 
 import { apiError } from "../lib/api-response";
 import { ForbiddenError, UnauthorizedError } from "../lib/auth/errors";
+import { reportError } from "../lib/sentry";
 
 /** body-parser (express.json()) rejects malformed bodies with a SyntaxError
  * carrying this `type`. Detecting it here lets us return the envelope shape
@@ -20,7 +21,7 @@ function isBodyTooLargeError(err: unknown): boolean {
  * recognizes it as an error handler by its four-argument arity). Never
  * includes err.stack or err.message in the response body, regardless of
  * NODE_ENV, so a bug doesn't leak internals to the client. */
-export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
+export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (res.headersSent) {
     next(err);
     return;
@@ -63,7 +64,9 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   }
 
   // Server-side log for an otherwise-unhandled error; the client only ever
-  // gets the generic message below.
+  // gets the generic message below. Every 500 also goes to Sentry when it is
+  // configured (a no-op otherwise); 4xx above never does.
   console.error(err);
+  reportError(err, { route: `${req.method} ${req.baseUrl}${req.route?.path ?? ""}` });
   apiError(res, "internal_error", "An unexpected error occurred.", 500);
 };

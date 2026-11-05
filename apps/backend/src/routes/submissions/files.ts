@@ -6,11 +6,12 @@ import { apiOk, apiError } from "../../lib/api-response";
 import { ForbiddenError } from "../../lib/auth/errors";
 import { config } from "../../lib/config";
 import { parseId } from "../../lib/parse-id";
-import { canViewSubmission } from "../../lib/permissions";
+import { canViewSubmission, isHiddenDraft } from "../../lib/permissions";
 import { newPublicId } from "../../lib/public-id";
 import { FileNotFoundError, buildStorageKey, getStorage } from "../../lib/storage";
 import { requireUser } from "../../middleware/require-auth";
 import { forbidden } from "../respond";
+import { studentWriteRefusal, submissionLocked } from "./editable";
 
 // memoryStorage: the per-assignment size and MIME rules live in the database,
 // so the file has to be in hand before they can be applied. limits.fileSize is
@@ -73,12 +74,22 @@ export async function uploadSubmissionFile(req: Request, res: Response) {
     where: { publicId: publicId ?? "" },
     select: {
       id: true,
+      status: true,
       studentUserId: true,
-      assignment: { select: { maxFileSizeMb: true, allowedMimeCategories: true } },
+      assignment: {
+        select: { seasonId: true, maxFileSizeMb: true, allowedMimeCategories: true },
+      },
     },
   });
-  if (!sub) return apiError(res, "not_found", "Submission not found.", 404);
+  // A draft is its author's alone: anyone else is told it does not exist.
+  if (!sub || isHiddenDraft(user, sub)) {
+    return apiError(res, "not_found", "Submission not found.", 404);
+  }
   if (sub.studentUserId !== user.userId) throw new ForbiddenError();
+  // Attaching a file changes the work as much as editing its text does.
+  const refusal = await studentWriteRefusal(user, sub.assignment.seasonId, sub.status);
+  if (refusal === "forbidden") return forbidden(res);
+  if (refusal === "not_editable") return submissionLocked(res);
 
   const file = req.file;
   if (!file) return apiError(res, "bad_request", "No file provided.", 400);
@@ -129,14 +140,37 @@ export async function deleteSubmissionFile(req: Request<{ publicId: string }>, r
 
   const file = await db.submissionFile.findUnique({
     where: { id: fileId },
-    select: { storagePath: true, submission: { select: { publicId: true, studentUserId: true } } },
+    select: {
+      storagePath: true,
+      submission: {
+        select: {
+          publicId: true,
+          studentUserId: true,
+          status: true,
+          assignment: { select: { seasonId: true } },
+        },
+      },
+    },
   });
   // The publicId in the path must match the file's own submission, or a
   // fileId alone would let a caller probe files across submissions.
-  if (!file || file.submission.publicId !== publicId) {
+  // A file on someone else's draft is as absent as the draft itself.
+  if (
+    !file ||
+    file.submission.publicId !== publicId ||
+    isHiddenDraft(user, file.submission)
+  ) {
     return apiError(res, "not_found", "File not found.", 404);
   }
   if (file.submission.studentUserId !== user.userId) throw new ForbiddenError();
+  // Removing a file from submitted or reviewed work rewrites it after the fact.
+  const refusal = await studentWriteRefusal(
+    user,
+    file.submission.assignment.seasonId,
+    file.submission.status,
+  );
+  if (refusal === "forbidden") return forbidden(res);
+  if (refusal === "not_editable") return submissionLocked(res);
 
   // Storage first, then the row. A failed unlink must not leave a database row
   // pointing at a file the user believes is gone, so the delete is swallowed —
@@ -189,12 +223,16 @@ export async function downloadSubmissionFile(
       originalName: true,
       mimeType: true,
       sizeBytes: true,
-      submission: { select: { id: true, publicId: true } },
+      submission: { select: { id: true, publicId: true, status: true, studentUserId: true } },
     },
   });
   // Same cross-check as DELETE: a bare fileId must never reach a file that
-  // belongs to a different submission.
-  if (!file || file.submission.publicId !== publicId) {
+  // belongs to a different submission, nor one on someone else's draft.
+  if (
+    !file ||
+    file.submission.publicId !== publicId ||
+    isHiddenDraft(user, file.submission)
+  ) {
     return apiError(res, "not_found", "File not found.", 404);
   }
 

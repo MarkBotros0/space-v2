@@ -1,3 +1,4 @@
+import axios from "axios";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
@@ -6,6 +7,9 @@ import { passwordSchema } from "@space/shared";
 import { AuthCard, AuthField, AuthLink, AuthNotice } from "../src/design/layout/auth-card";
 import { Button, Input, PasswordInput } from "../src/design/ui";
 import { useAcceptInvite } from "../src/hooks/use-accept-invite";
+import { authErrorMessage } from "../src/lib/auth-error";
+
+const INVALID_INVITE = "That invite is invalid or has expired. Ask for a new one.";
 
 /**
  * The route v1 never built (spec 11 D1 — every invite it ever sent landed on
@@ -44,16 +48,25 @@ export default function AcceptInviteScreen() {
       { token: code.trim(), password },
       {
         onSuccess: () => setDone(true),
-        // One message for every failure — the API deliberately tells us no
-        // more (invalid_invite covers unknown/used/expired/ineligible alike).
-        onError: () => setFailure("That invite is invalid or has expired. Ask for a new one."),
+        // The API deliberately tells us no more than one refusal for an
+        // unknown/used/expired/ineligible invite (invalid_invite), so any
+        // answer in the 4xx range except the rate limiter gets our copy;
+        // no answer or a 5xx is a connection or server problem instead.
+        onError: (err) => {
+          const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+          const refused = status !== undefined && status >= 400 && status < 500 && status !== 429;
+          setFailure(refused ? INVALID_INVITE : authErrorMessage(err, INVALID_INVITE));
+        },
       },
     );
   };
 
   if (done) {
     return (
-      <AuthCard title="Your account is ready" description="Sign in with your email and the password you just chose.">
+      <AuthCard
+        title="Your account is ready"
+        description="Sign in with your email and the password you just chose."
+      >
         <Button size="lg" className="w-full" onPress={() => router.replace("/login")}>
           Go to sign in
         </Button>
@@ -62,7 +75,10 @@ export default function AcceptInviteScreen() {
   }
 
   return (
-    <AuthCard title="Activate your account" description="Enter the invite code from your email and choose a password.">
+    <AuthCard
+      title="Activate your account"
+      description="Enter the invite code from your email and choose a password."
+    >
       <View className="flex-col gap-4">
         {failure ? <AuthNotice tone="error">{failure}</AuthNotice> : null}
         <AuthField label="Invite code">
@@ -76,10 +92,20 @@ export default function AcceptInviteScreen() {
           />
         </AuthField>
         <AuthField label="Choose a password" error={passwordError ?? undefined}>
-          <PasswordInput size="lg" accessibilityLabel="Choose a password" value={password} onChangeText={setPassword} />
+          <PasswordInput
+            size="lg"
+            accessibilityLabel="Choose a password"
+            value={password}
+            onChangeText={setPassword}
+          />
         </AuthField>
         <AuthField label="Confirm password" error={confirmError ?? undefined}>
-          <PasswordInput size="lg" accessibilityLabel="Confirm password" value={confirm} onChangeText={setConfirm} />
+          <PasswordInput
+            size="lg"
+            accessibilityLabel="Confirm password"
+            value={confirm}
+            onChangeText={setConfirm}
+          />
         </AuthField>
         <Button
           size="lg"

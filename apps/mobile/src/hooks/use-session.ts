@@ -2,9 +2,10 @@ import { useCallback, useEffect } from "react";
 import axios from "axios";
 import { meResponseSchema } from "@space/shared";
 
-import { apiClient, login as loginRequest, logout as logoutRequest } from "../lib/api-client";
+import { apiClient, forgetDevice, login as loginRequest, logout as logoutRequest } from "../lib/api-client";
 import { clearSession, loadAccessToken } from "../lib/token-storage";
 import { useSessionStore } from "../store/session";
+import { syncPushRegistration, unregisterPushToken } from "../lib/push";
 
 /**
  * Boot gate: decides, once per app launch, whether there is a session worth
@@ -52,12 +53,14 @@ export function useBootSession(): void {
         if (!me.user) {
           // The row was deleted inside the access token's window: the token
           // still verifies, but there is no one to sign in as.
+          await forgetDevice();
           await clearSession();
           clear();
           return;
         }
 
         setSession(me.user, me.scopes);
+        void syncPushRegistration();
       } catch (err) {
         // Mirror api-client's ROTATE_INDETERMINATE distinction: only a
         // definitive rejection from the server (a 4xx response) proves the
@@ -72,6 +75,7 @@ export function useBootSession(): void {
           err.response.status >= 400 &&
           err.response.status < 500
         ) {
+          await forgetDevice();
           await clearSession();
         }
         clear();
@@ -103,6 +107,7 @@ export function useLogin(): (email: string, password: string) => Promise<void> {
         if (!me.user) throw new Error("me returned no user after login");
 
         setSession(me.user, me.scopes);
+        void syncPushRegistration();
       } catch (err) {
         // A half-finished login (tokens saved, session unpopulated) is worse
         // than no login at all — don't leave stored tokens behind.
@@ -127,6 +132,8 @@ export function useLogout(): () => Promise<void> {
     // was down, so the local clear below is unconditional. The failure is
     // not swallowed silently: it's caught here, at the one call site that
     // can observe it, rather than inside `logout()` itself.
+    // While the access token still works: stop pushes to this phone.
+    await unregisterPushToken();
     try {
       await logoutRequest();
     } catch {

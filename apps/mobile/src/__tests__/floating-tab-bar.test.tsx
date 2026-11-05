@@ -1,8 +1,41 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
-import type { NavItem } from "@space/shared";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import type { BottomTabBarProps } from "expo-router/js-tabs";
+import { Platform } from "react-native";
+import { navByRole, type NavItem } from "@space/shared";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { FloatingTabBar } from "../design/layout/floating-tab-bar";
+import { PillTabBar } from "../design/layout/floating-tab-bar";
+import { PillHighlight } from "../design/layout/pill-highlight";
+import { resetTabBarScroll, useTabBarScroll } from "../design/layout/tab-bar-scroll";
+import { setReducedMotionForTests } from "../design/motion";
+import { routeNameForHref } from "../lib/route-names";
+
+const mockWithSpring = jest.fn();
+const mockWithTiming = jest.fn();
+jest.mock("react-native-reanimated", () => {
+  const actual = jest.requireActual("react-native-reanimated");
+  // A Proxy keeps `default` and the ES-module flag that a spread would drop.
+  return new Proxy(actual, {
+    get: (target, key) =>
+      key === "withSpring"
+        ? (...a: unknown[]) => (mockWithSpring(...a), target.withSpring(...a))
+        : key === "withTiming"
+          ? (...a: unknown[]) => (mockWithTiming(...a), target.withTiming(...a))
+          : target[key],
+  });
+});
+jest.mock("expo-haptics");
+let mockScreenReader = false;
+jest.mock("../design/lib/screen-reader", () => ({ useScreenReaderEnabled: () => mockScreenReader }));
+
+afterEach(() => {
+  mockScreenReader = false;
+  setReducedMotionForTests(null);
+  resetTabBarScroll();
+  mockWithSpring.mockClear();
+  mockWithTiming.mockClear();
+  jest.restoreAllMocks();
+});
 
 const items: NavItem[] = [
   { href: "/calendar", label: "Calendar", icon: "calendar" },
@@ -13,19 +46,46 @@ const items: NavItem[] = [
   { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
-function renderBar(activeRoute = "dashboard", navigate = jest.fn()) {
+const TAB_ROUTES = ["calendar", "assignments", "dashboard", "history", "profile", "settings"];
+
+function barTree(activeRoute: string, navigateToTab = jest.fn()) {
+  // Every tab is a route in the navigator state, keyed `<name>-key`; the
+  // focused one is `activeRoute` (a detail route when it is not a tab).
+  const names = TAB_ROUTES.includes(activeRoute) ? TAB_ROUTES : [...TAB_ROUTES, activeRoute];
   const state = {
-    index: 0,
-    routes: [{ key: activeRoute, name: activeRoute }],
+    index: names.indexOf(activeRoute),
+    routes: names.map((name) => ({ key: `${name}-key`, name })),
   };
-  render(
-    <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 375, height: 812 }, insets: { top: 0, left: 0, right: 0, bottom: 34 } }}>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <FloatingTabBar items={items} state={state as any} navigation={{ navigate } as any} descriptors={{} as any} insets={{ top: 0, left: 0, right: 0, bottom: 34 }} />
-    </SafeAreaProvider>,
+  return (
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 375, height: 812 },
+        insets: { top: 0, left: 0, right: 0, bottom: 34 },
+      }}
+    >
+      <PillTabBar
+        items={items}
+        state={state}
+        navigateToTab={navigateToTab}
+        emitter={{} as unknown as BottomTabBarProps["emitter"]}
+        descriptors={{} as unknown as BottomTabBarProps["descriptors"]}
+        insets={{ top: 0, left: 0, right: 0, bottom: 34 }}
+      />
+    </SafeAreaProvider>
   );
-  return navigate;
 }
+
+function renderBar(activeRoute = "dashboard", navigateToTab = jest.fn()) {
+  render(barTree(activeRoute, navigateToTab));
+  return navigateToTab;
+}
+
+function layoutTab(label: string, x: number, width = 70) {
+  fireEvent(screen.getByLabelText(label), "layout", {
+    nativeEvent: { layout: { x, y: 0, width, height: 62 } },
+  });
+}
+const highlightTarget = () => screen.UNSAFE_getByType(PillHighlight).props.target;
 
 it("shows at most five tabs, like v1 tabItems.slice(0, 5)", () => {
   renderBar();
@@ -33,16 +93,23 @@ it("shows at most five tabs, like v1 tabItems.slice(0, 5)", () => {
   expect(screen.queryByLabelText("Settings")).toBeNull();
 });
 
+it("groups the tabs in a tablist, so iOS reads 'tab, n of m' (M8)", () => {
+  renderBar();
+  expect(screen.getByTestId("pill-row").props.accessibilityRole).toBe("tablist");
+});
+
 it("marks the current route as selected", () => {
   renderBar("history");
-  expect(screen.getByLabelText("History").props.accessibilityState).toMatchObject({ selected: true });
+  expect(screen.getByLabelText("History").props.accessibilityState).toMatchObject({
+    selected: true,
+  });
   expect(screen.getByLabelText("Home").props.accessibilityState).toMatchObject({ selected: false });
 });
 
-it("navigates to the tab's route name on press", () => {
-  const navigate = renderBar();
+it("navigates to the tab's route on press", () => {
+  const navigateToTab = renderBar();
   fireEvent.press(screen.getByLabelText("Calendar"));
-  expect(navigate).toHaveBeenCalledWith("calendar");
+  expect(navigateToTab).toHaveBeenCalledWith("calendar-key");
 });
 
 it("labels stay one line however long they are", () => {
@@ -51,22 +118,211 @@ it("labels stay one line however long they are", () => {
   expect(label.props.numberOfLines).toBe(1);
 });
 
-describe("active tab on detail screens (v1: pathname.startsWith(href + '/'))", () => {
-  it("keeps the list tab lit on its singular detail route", () => {
-    renderBar("assignment/[id]/index");
-    expect(screen.getByLabelText("Assignments").props.accessibilityState).toMatchObject({ selected: true });
+// Sweep at font 1.3: "Assignme…", "Submissi…". A long label shrinks (down to 0.8) to fit
+// its tab before it would ever ellipsize; the font scale still stops at 1.15.
+it("a long label shrinks to fit its tab instead of truncating", () => {
+  renderBar();
+  expect(screen.getByText("Assignments").props).toMatchObject({
+    numberOfLines: 1,
+    adjustsFontSizeToFit: true,
+    minimumFontScale: 0.8,
+    maxFontSizeMultiplier: 1.15,
+  });
+  expect(screen.getByText("Assignments").props.className.split(" ")).toEqual(
+    expect.arrayContaining(["self-stretch", "text-center"]),
+  );
+});
+
+describe("activeTabRoute", () => {
+  // Only tab routes are ever focused in the Tabs navigator (details push on the
+  // (app) stack), so the highlight follows an exact match or nothing (M3).
+  it("is the focused route when it is in the bar, else null", () => {
+    const { activeTabRoute } = jest.requireActual("../design/layout/floating-tab-bar");
+    expect(activeTabRoute("students/index", ["students/index", "dashboard"])).toBe("students/index");
+    expect(activeTabRoute("notes", ["calendar", "dashboard"])).toBeNull();
+    expect(activeTabRoute(undefined, ["dashboard"])).toBeNull();
+  });
+});
+
+describe("sliding highlight", () => {
+  it("targets the active tab's measured layout", () => {
+    renderBar("history");
+    layoutTab("Calendar", 0);
+    layoutTab("History", 210, 72);
+    expect(highlightTarget()).toEqual({ x: 210, width: 72 });
   });
 
-  it("keeps a directory tab lit on its child routes", () => {
-    const { activeTabRoute } = jest.requireActual("../design/layout/floating-tab-bar");
-    expect(activeTabRoute("students/alumni", ["students/index", "dashboard"])).toBe("students/index");
-    expect(activeTabRoute("seasons/[code]/roster/index", ["seasons/index"])).toBe("seasons/index");
-    expect(activeTabRoute("student/[id]/index", ["students/index"])).toBe("students/index");
+  it("follows the latest of two quick presses and navigates to it last", () => {
+    const navigateToTab = renderBar("dashboard");
+    layoutTab("Calendar", 0);
+    layoutTab("Assignments", 70);
+    layoutTab("History", 210);
+    fireEvent.press(screen.getByLabelText("Assignments"));
+    fireEvent.press(screen.getByLabelText("History"));
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    expect(navigateToTab).toHaveBeenLastCalledWith("history-key");
   });
 
-  it("lights nothing where v1's URL sits under no tab", () => {
-    const { activeTabRoute } = jest.requireActual("../design/layout/floating-tab-bar");
-    expect(activeTabRoute("session/[id]/index", ["calendar", "dashboard"])).toBeNull();
-    expect(activeTabRoute("notifications", ["calendar", "dashboard"])).toBeNull();
+  it("places the highlight at the active tab on first measure without a spring", () => {
+    renderBar("history");
+    layoutTab("History", 210);
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    expect(mockWithSpring).not.toHaveBeenCalledWith(210, expect.anything());
+  });
+
+  it("springs the highlight to the pressed tab's x, and jumps under reduced motion", () => {
+    renderBar("dashboard");
+    layoutTab("Home", 140);
+    layoutTab("History", 210);
+    fireEvent.press(screen.getByLabelText("History"));
+    expect(mockWithSpring).toHaveBeenCalledWith(210, expect.anything());
+    setReducedMotionForTests(true);
+    mockWithSpring.mockClear();
+    fireEvent.press(screen.getByLabelText("Home"));
+    expect(mockWithSpring).not.toHaveBeenCalledWith(140, expect.anything());
+  });
+
+  it("keeps the latest press when the navigator reports an earlier one, then settles", () => {
+    const nav = jest.fn();
+    const view = render(barTree("dashboard", nav));
+    layoutTab("Assignments", 70);
+    layoutTab("History", 210);
+    fireEvent.press(screen.getByLabelText("Assignments"));
+    fireEvent.press(screen.getByLabelText("History"));
+    view.rerender(barTree("assignments", nav));
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    view.rerender(barTree("history", nav));
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    // pressed was cleared: the highlight now follows the navigator again.
+    view.rerender(barTree("assignments", nav));
+    expect(highlightTarget()).toEqual({ x: 70, width: 70 });
+  });
+});
+
+describe("no active tab (M1)", () => {
+  it("fades the highlight out when the focused tab is not in this role's bar", () => {
+    const view = render(barTree("history"));
+    layoutTab("History", 210);
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+    mockWithTiming.mockClear();
+    // More → My notes: a tab route for another role, not in this bar.
+    view.rerender(barTree("notes"));
+    expect(highlightTarget()).toBeNull();
+    expect(mockWithTiming).toHaveBeenCalledWith(0, { duration: 150 });
+    expect(screen.getByLabelText("History").props.accessibilityState).toMatchObject({ selected: false });
+  });
+});
+
+describe("a student's four tabs", () => {
+  it("draws four, and the highlight lands under the tapped tab", () => {
+    const tabs = navByRole.STUDENT.tabs;
+    const navigateToTab = jest.fn();
+    const state = {
+      index: 0,
+      routes: tabs.map((t) => ({ key: `${routeNameForHref(t.href)}-key`, name: routeNameForHref(t.href) })),
+    } as unknown as BottomTabBarProps["state"];
+    render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 360, height: 640 },
+          insets: { top: 0, left: 0, right: 0, bottom: 34 },
+        }}
+      >
+        <PillTabBar
+          items={tabs}
+          state={state}
+          navigateToTab={navigateToTab}
+          emitter={{} as unknown as BottomTabBarProps["emitter"]}
+          descriptors={{} as unknown as BottomTabBarProps["descriptors"]}
+          insets={{ top: 0, left: 0, right: 0, bottom: 34 }}
+        />
+      </SafeAreaProvider>,
+    );
+    expect(screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel)).toEqual([
+      "Today",
+      "Calendar",
+      "Work",
+      "More",
+    ]);
+    ["Today", "Calendar", "Work", "More"].forEach((label, i) => layoutTab(label, i * 85, 85));
+
+    fireEvent.press(screen.getByLabelText("Work"));
+    expect(highlightTarget()).toEqual({ x: 170, width: 85 });
+    expect(navigateToTab).toHaveBeenCalledWith("work-key");
+
+    fireEvent.press(screen.getByLabelText("More"));
+    expect(highlightTarget()).toEqual({ x: 255, width: 85 });
+  });
+});
+
+describe("navigation the pill did not start", () => {
+  it("follows the navigator to a route nobody pressed", () => {
+    const nav = jest.fn();
+    const view = render(barTree("dashboard", nav));
+    layoutTab("Assignments", 70);
+    layoutTab("History", 210);
+    fireEvent.press(screen.getByLabelText("Assignments"));
+    view.rerender(barTree("history", nav));
+    expect(highlightTarget()).toEqual({ x: 210, width: 70 });
+  });
+});
+
+describe("solid fill (owner ruling R38)", () => {
+  it.each(["ios", "android"] as const)("is one opaque bg-pill on %s, with no blur", (os) => {
+    jest.replaceProperty(Platform, "OS", os);
+    renderBar();
+    const fill = screen.getByTestId("pill-fill").props.className as string;
+    expect(fill.split(" ")).toContain("bg-pill");
+    expect(fill).not.toContain("pill-solid");
+    const name = (type: unknown) =>
+      typeof type === "string" ? type : ((type as { name?: string } | null)?.name ?? "");
+    expect(screen.UNSAFE_root.findAll((n) => name(n.type).includes("Blur"))).toHaveLength(0);
+  });
+});
+
+describe("hide on scroll", () => {
+  const touches = () =>
+    screen.getByTestId("pill-root", { includeHiddenElements: true }).props.pointerEvents;
+  const scroll = (dir: "up" | "down", atEnd = false) =>
+    act(() => useTabBarScroll().onScrollDirection(dir, atEnd));
+
+  it("stops intercepting touches while hidden, and returns on scroll up", () => {
+    renderBar();
+    expect(touches()).toBe("box-none");
+    scroll("down");
+    expect(touches()).toBe("none");
+    scroll("up");
+    expect(touches()).toBe("box-none");
+  });
+
+  it("leaves the accessibility tree while hidden (M7)", () => {
+    renderBar();
+    scroll("down");
+    expect(screen.queryAllByRole("tab")).toHaveLength(0);
+    scroll("up");
+    expect(screen.getAllByRole("tab")).toHaveLength(5);
+  });
+
+  it("stays shown while a screen reader is on (M7)", () => {
+    mockScreenReader = true;
+    renderBar();
+    scroll("down");
+    expect(touches()).toBe("box-none");
+    expect(screen.getAllByRole("tab")).toHaveLength(5);
+  });
+
+  it("shows again at the end of the content", () => {
+    renderBar();
+    scroll("down");
+    scroll("down", true);
+    expect(touches()).toBe("box-none");
+  });
+
+  it("is visible again after a tab change, however it was left", () => {
+    const view = render(barTree("dashboard"));
+    scroll("down");
+    expect(touches()).toBe("none");
+    view.rerender(barTree("history"));
+    expect(touches()).toBe("box-none");
   });
 });

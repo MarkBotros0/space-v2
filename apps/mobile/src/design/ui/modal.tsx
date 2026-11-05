@@ -1,13 +1,14 @@
 /**
- * Port of v1 src/components/ui/modal.tsx at phone width, where v1 renders a
- * bottom sheet (its md: centred-dialog classes are dropped).
- * Native differences: Base UI Dialog → RN Modal; the backdrop fades and the
- * sheet slides up (300ms, v1's duration); backdrop-blur-sm → BlurView
- * intensity 15; the sheet adds the bottom safe-area inset under p-4 (v1 web
- * has no home indicator); ModalTrigger/ModalClose take one child and add
- * onPress to it (Base UI's render-prop trigger).
+ * Legacy Modal (v1's phone-width bottom sheet), kept so its call sites compile,
+ * drawn like the redesign's Sheet: `surface`, top radius 24, a `separator`
+ * grabber, the Sheet's black/40 scrim, no shadow; title `headline`, description
+ * `subhead`. It slides up over DURATION.slow; under reduced motion it appears
+ * in place (the RN Modal's own fade remains). RN Modal + core Animated (not
+ * Reanimated), so the class rules for Animated.* do not apply here. The sheet
+ * adds the bottom safe-area inset under p-4; ModalTrigger/ModalClose take one
+ * child and add onPress to it (Base UI's render-prop trigger).
+ * Plans 02–05 move the call sites to Sheet and delete this file.
  */
-import { BlurView } from "expo-blur";
 import { X } from "lucide-react-native";
 import {
   Children,
@@ -24,9 +25,9 @@ import {
 import { Animated, KeyboardAvoidingView, Modal as RNModal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
+import { DURATION, useReducedMotion } from "../motion";
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";
-import { shadowStyle } from "../lib/shadow";
 import { Text } from "./text";
 
 iconWithClassName(X);
@@ -94,13 +95,17 @@ function ModalContent({
   // Context, not the hook: a sheet rendered outside SafeAreaProvider (tests,
   // early boot) gets 0 insets instead of throwing.
   const bottomInset = useContext(SafeAreaInsetsContext)?.bottom ?? 0;
+  const reduced = useReducedMotion();
   const slide = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    if (open) {
-      slide.setValue(1);
-      Animated.timing(slide, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+    if (!open) return;
+    if (reduced) {
+      slide.setValue(0);
+      return;
     }
-  }, [open, slide]);
+    slide.setValue(1);
+    Animated.timing(slide, { toValue: 0, duration: DURATION.slow, useNativeDriver: true }).start();
+  }, [open, reduced, slide]);
   return (
     <RNModal transparent visible={open} animationType="fade" statusBarTranslucent onRequestClose={() => setOpen(false)}>
       <Pressable
@@ -111,28 +116,22 @@ function ModalContent({
           if (dismissible) setOpen(false);
         }}
       >
-        <BlurView intensity={15} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
-        <View className="absolute inset-0 bg-background/70" />
+        <View className="absolute inset-0 bg-black/40" />
       </Pressable>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 justify-end" pointerEvents="box-none">
-        <Animated.View
-          style={[
-            { transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [0, 600] }) }] },
-            shadowStyle("lift"),
-          ]}
-        >
+        <Animated.View style={{ transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [0, 600] }) }] }}>
           <View
-            className={cn("max-h-[90vh] flex-col gap-4 rounded-t-2xl border-t border-border bg-card p-4", className)}
+            className={cn("max-h-[90vh] flex-col gap-4 rounded-t-sheet bg-surface p-4 pt-6", className)}
             style={{ paddingBottom: Math.max(16, bottomInset) }}
           >
-            <View className="absolute left-1/2 top-2 -ml-5 h-1 w-10 rounded-full bg-muted-foreground/30" />
+            <View className="absolute left-1/2 top-3 -ml-5 h-1 w-10 rounded-full bg-separator" />
             {children}
-{dismissible ? (
+            {dismissible ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close"
               onPress={() => setOpen(false)}
-              className="absolute right-3 top-3 size-8 items-center justify-center rounded-md active:bg-muted"
+              className="absolute right-2 top-2 size-11 items-center justify-center rounded-full active:bg-muted"
             >
               <X size={16} className="text-muted-foreground" />
             </Pressable>
@@ -145,19 +144,23 @@ function ModalContent({
 }
 
 function ModalHeader({ className, children }: { className?: string; children?: ReactNode }) {
-  return <View className={cn("flex-col gap-1 pr-8", className)}>{children}</View>;
+  return <View className={cn("flex-col gap-1 pr-10", className)}>{children}</View>;
 }
 
 function ModalTitle({ className, children }: { className?: string; children?: ReactNode }) {
   return (
-    <Text accessibilityRole="header" className={cn("text-lg font-semibold leading-tight tracking-tight", className)}>
+    <Text variant="headline" accessibilityRole="header" className={className}>
       {children}
     </Text>
   );
 }
 
 function ModalDescription({ className, children }: { className?: string; children?: ReactNode }) {
-  return <Text className={cn("text-sm text-muted-foreground", className)}>{children}</Text>;
+  return (
+    <Text variant="subhead" className={cn("text-muted-foreground", className)}>
+      {children}
+    </Text>
+  );
 }
 
 function ModalFooter({ className, children }: { className?: string; children?: ReactNode }) {

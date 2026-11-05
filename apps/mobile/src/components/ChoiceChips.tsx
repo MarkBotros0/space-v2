@@ -1,7 +1,9 @@
 import { Pressable, View } from "react-native";
 
-import { useTheme } from "../theme";
-import { Text } from "../ui";
+import { cn } from "../design/lib/cn";
+import { FieldError } from "../design/ui/field";
+import { Label } from "../design/ui/label";
+import { Text } from "../design/ui/text";
 
 export interface ChoiceOption<T> {
   value: T;
@@ -17,10 +19,12 @@ export interface ChoiceChipsProps<T> {
 }
 
 /**
- * A single-choice row of chips — the season picker on the student forms and
- * the role picker on /users/new. Each chip is a radio with its selected state
+ * A single-choice row of chips — the alumni calendar's view switch and the
+ * video-question type picker. Each chip is a radio with its selected state
  * in accessibilityState, so a screen reader hears the choice and tests can
- * query it by role.
+ * query it by role. Styled as v1's toggle buttons (form-parts ToggleButtons:
+ * teal border and tint when selected), but wrapping, since the options can
+ * outnumber a phone's width.
  */
 export function ChoiceChips<T extends string | number | null>({
   label,
@@ -29,13 +33,10 @@ export function ChoiceChips<T extends string | number | null>({
   onChange,
   error,
 }: ChoiceChipsProps<T>) {
-  const theme = useTheme();
   return (
-    <View style={{ gap: theme.spacing.xs }} accessibilityRole="radiogroup" accessibilityLabel={label}>
-      <Text variant="label" color={theme.colors.neutral[700]}>
-        {label}
-      </Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs }}>
+    <View className="flex-col gap-1.5" accessibilityRole="radiogroup" accessibilityLabel={label}>
+      <Label>{label}</Label>
+      <View className="flex-row flex-wrap gap-2">
         {options.map((option) => {
           const selected = option.value === value;
           return (
@@ -45,26 +46,26 @@ export function ChoiceChips<T extends string | number | null>({
               accessibilityLabel={option.label}
               accessibilityState={{ selected }}
               onPress={() => onChange(option.value)}
-              style={{
-                paddingVertical: theme.spacing.xs,
-                paddingHorizontal: theme.spacing.sm,
-                borderRadius: theme.radii.sm,
-                borderWidth: theme.borderWidths.thin,
-                borderColor: selected ? theme.colors.brand.navy[900] : theme.colors.neutral[300],
-              }}
+              className={cn(
+                "rounded-full border px-3 py-1.5",
+                selected
+                  ? "border-ring bg-accent"
+                  : "border-control-border bg-surface active:border-ring",
+              )}
             >
-              <Text variant="label" color={selected ? theme.colors.brand.navy[900] : theme.colors.neutral[700]}>
+              <Text
+                className={cn(
+                  "text-sm font-medium",
+                  selected ? "text-brand-teal-800 dark:text-brand-teal-200" : "text-muted-foreground",
+                )}
+              >
                 {option.label}
               </Text>
             </Pressable>
           );
         })}
       </View>
-      {error ? (
-        <Text variant="caption" color={theme.colors.error[600]}>
-          {error}
-        </Text>
-      ) : null}
+      <FieldError>{error}</FieldError>
     </View>
   );
 }

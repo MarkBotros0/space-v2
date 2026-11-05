@@ -5,7 +5,9 @@ import {
   RECENT_ACTIVITY_LIMIT,
   UPCOMING_EVENTS_LIMIT,
   dashboardSchema,
+  leaderSessionCheckInSchema,
   meanAttendancePct,
+  staffSeasonDashboardSchema,
   studentDashboardSchema,
 } from "../index";
 
@@ -30,11 +32,17 @@ describe("limits (spec 19 §8)", () => {
   });
 });
 
-const notEnrolled = { variant: "STUDENT", season: null, progress: null, nextSession: null, assignments: null };
+const notEnrolled = { variant: "STUDENT", todayOrgDay: "2099-03-01", season: null, progress: null, nextSession: null, assignments: null };
 
 describe("studentDashboardSchema (ruling C8 #2)", () => {
   it("accepts the not-enrolled shape (R63)", () => {
     expect(studentDashboardSchema.parse(notEnrolled)).toEqual(notEnrolled);
+  });
+
+  it("requires todayOrgDay, an org day key, also when not enrolled", () => {
+    const { todayOrgDay: _day, ...without } = notEnrolled;
+    expect(studentDashboardSchema.safeParse(without).success).toBe(false);
+    expect(studentDashboardSchema.safeParse({ ...notEnrolled, todayOrgDay: "tomorrow" }).success).toBe(false);
   });
 
   it("refuses any extra field, so a leaked cohort figure fails at the client", () => {
@@ -61,5 +69,39 @@ describe("dashboardSchema", () => {
     };
     const nine = Array.from({ length: 9 }, (_, i) => ({ ...item, key: `att:${i}` }));
     expect(dashboardSchema.safeParse({ variant: "MENTOR", recentActivity: nine }).success).toBe(false);
+  });
+});
+
+describe("leaderSession on the staff dashboard", () => {
+  const leaderSession = {
+    sessionId: 7,
+    total: 4,
+    present: 1,
+    late: 1,
+    absent: 1,
+    notCheckedIn: [{ id: 3, name: "Sara" }],
+  };
+  const staff = {
+    variant: "SEASON_STAFF",
+    scope: "groups",
+    season: { id: 1, code: "S1", title: "Season", status: "ACTIVE" },
+    groups: [{ id: 2, name: "A" }],
+    progress: { sessionsHeld: 0, sessionsTotal: 0, pct: null },
+    nextSession: null,
+    cohort: { studentCount: 0, meanAttendancePct: null, atRiskTotal: 0, atRisk: [] },
+    submissions: { pendingReview: 0, reviewed: 0 },
+    quizzes: { total: 0, pending: 0, fullyGraded: 0, drafts: 0 },
+  };
+
+  it("parses a dashboard without the field, with null, and with a value", () => {
+    expect(staffSeasonDashboardSchema.safeParse(staff).success).toBe(true);
+    expect(staffSeasonDashboardSchema.safeParse({ ...staff, leaderSession: null }).success).toBe(true);
+    expect(staffSeasonDashboardSchema.parse({ ...staff, leaderSession }).leaderSession).toEqual(leaderSession);
+  });
+
+  it("is strict: an extra field on a not-checked-in student fails", () => {
+    const leaked = { ...leaderSession, notCheckedIn: [{ id: 3, name: "Sara", email: "x" }] };
+    expect(leaderSessionCheckInSchema.safeParse(leaked).success).toBe(false);
+    expect(leaderSessionCheckInSchema.safeParse({ ...leaderSession, extra: 1 }).success).toBe(false);
   });
 });

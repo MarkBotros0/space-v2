@@ -17,6 +17,16 @@ import { forbidden } from "./respond";
 
 export const groupsRouter = Router();
 
+/**
+ * Who a group's detail lists as its members.
+ *
+ * ACTIVE and COMPLETED, not WITHDRAWN. During a live season this is the set
+ * the roster and the list count use (nobody is COMPLETED yet); once a season
+ * finishes every member is COMPLETED, and a past group card listing ACTIVE
+ * only would show nobody. A WITHDRAWN student left, so is not listed.
+ */
+const GROUP_MEMBER_STATUSES: ("ACTIVE" | "COMPLETED")[] = ["ACTIVE", "COMPLETED"];
+
 groupsRouter.use(requireAuth);
 
 /**
@@ -112,8 +122,15 @@ groupsRouter.get("/:id", async (req, res) => {
         select: { user: { select: { id: true, name: true, email: true } } },
         orderBy: { user: { name: "asc" } },
       },
-      students: {
-        select: { studentUser: { select: { id: true, name: true, email: true } } },
+      // Members per SeasonEnrollment.groupId (ruling C9), never GroupStudent:
+      // while that table was global (before Plan 18 M1), a past season's
+      // group lost its members the moment they moved on.
+      seasonEnrollments: {
+        where: { status: { in: GROUP_MEMBER_STATUSES }, studentUser: { deletedAt: null } },
+        select: {
+          seasonId: true,
+          studentUser: { select: { id: true, name: true, email: true } },
+        },
         orderBy: { studentUser: { name: "asc" } },
       },
     },
@@ -137,7 +154,11 @@ groupsRouter.get("/:id", async (req, res) => {
     seasonCode: group.season.code,
     seasonTitle: group.season.title,
     leaders: group.leaders.map((l) => member(l.user)),
-    students: group.students.map((s) => member(s.studentUser)),
+    students: group.seasonEnrollments
+      // A group belongs to one season; an enrolment of another season that
+      // points at it is not a member of it.
+      .filter((e) => e.seasonId === group.seasonId)
+      .map((e) => member(e.studentUser)),
     canManage: isAdminOfSeason(user, group.seasonId),
   });
 });

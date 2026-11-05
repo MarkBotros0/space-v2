@@ -1,5 +1,5 @@
 const mockDb = {
-  user: { findUnique: jest.fn(), update: jest.fn() },
+  user: { findUnique: jest.fn(), findMany: jest.fn(async () => []), update: jest.fn() },
   passwordResetToken: { findUnique: jest.fn(), findFirst: jest.fn(), updateMany: jest.fn(), create: jest.fn() },
   inviteToken: { updateMany: jest.fn() },
   refreshToken: { updateMany: jest.fn() },
@@ -27,6 +27,7 @@ import { hashToken } from "../lib/auth/tokens";
 beforeEach(() => {
   jest.resetAllMocks();
   mockDb.$transaction.mockImplementation((fn: (tx: typeof mockDb) => unknown) => fn(mockDb));
+  mockDb.user.findMany.mockResolvedValue([]);
   mockDb.passwordResetToken.updateMany.mockResolvedValue({ count: 1 });
   mockDb.passwordResetToken.create.mockResolvedValue({});
   mockDb.inviteToken.updateMany.mockResolvedValue({ count: 0 });
@@ -143,5 +144,8 @@ describe("completePasswordReset", () => {
     expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: 7, revokedAt: null } }),
     );
+    // Plan 18 M13: live access tokens end too, stamped with the reset's instant.
+    const stamp = mockDb.user.update.mock.calls.find(([a]) => "sessionsValidFrom" in a.data);
+    expect(stamp?.[0]).toEqual({ where: { id: 7 }, data: { sessionsValidFrom: expect.any(Date) }, select: { id: true } });
   });
 });

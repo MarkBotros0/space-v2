@@ -190,7 +190,7 @@ export const sessionPaths = {
       tags: ["Sessions"],
       summary: "Delete a session, optionally its series",
       description:
-        "Season-admin power. Body `{ scope?: 'one'|'future'|'all' (default 'one'), force?: boolean }`; series fenced to this season (C10). Refused with 409 `has_student_records` when any target has attendance or video progress, unless `force: true`, which deletes those rows too. Also removed by cascade: the sessions' video questions. Kept with `sessionId` set to null: assignments and quizzes linked to them.",
+        "Season-admin power. Body `{ scope?: 'one'|'future'|'all' (default 'one'), force?: boolean }`; series fenced to this season (C10). Refused with 409 `has_student_records` when any target has attendance or video progress, unless `force: true`, which deletes those rows too. Also removed by cascade: the sessions' video questions. Kept with `sessionId` set to null: assignments and quizzes linked to them.\n\nAfter the delete commits, one `SESSION_CANCELLED` notification per delete (not per session; link `/student/calendar`) goes to every ACTIVE enrolment in the season and every leader of a group in it, titled \"Cancelled: <title> on <org-time start>\" (plus \"and N more\" with the dates in the body for a series). Only sessions that had not started count; deleting only past sessions notifies nobody. Best-effort.",
       parameters: [idParam],
       requestBody: {
         required: false,

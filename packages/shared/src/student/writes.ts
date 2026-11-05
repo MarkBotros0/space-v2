@@ -9,7 +9,10 @@ import { emptyToNull } from "./empty-to-null";
 /** The student fields create and PATCH share — one definition, two schemas. */
 const studentWriteFields = {
   name: z.string().trim().min(2).max(120),
-  email: z.string().email(),
+  // Trimmed and lowercased, as the CSV importer normalises it
+  // (normaliseEmail). User.email is a plain unique column, so "A@x" typed
+  // here and "a@x" imported would otherwise be two accounts.
+  email: z.string().trim().toLowerCase().email(),
   university: emptyToNull(160),
   year: emptyToNull(40),
   phone: emptyToNull(60),

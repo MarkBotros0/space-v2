@@ -6,9 +6,10 @@ jest.mock("../lib/api-client", () => ({
 }));
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+const mockDismissTo = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "21" }),
-  useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, dismissTo: mockDismissTo, back: jest.fn() }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -127,7 +128,11 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/students/21/graduate", { graduationYear: year }),
     );
-    await waitFor(() => expect(screen.queryByText("Graduate Sara Student?")).toBeNull());
+    // Asked to close: gone, or on its way out and no longer taking touches (jest never ends the slide).
+    await waitFor(() => {
+      const backdrop = screen.queryByTestId("sheet-backdrop");
+      if (backdrop) expect(backdrop.parent?.props.pointerEvents).toBe("none");
+    });
   });
 
   it("refuses an out-of-range year in the sheet without calling the API (R58's bound, one schema)", async () => {
@@ -154,7 +159,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     fireEvent.press(await screen.findByText("Seasons"));
     fireEvent.press((await screen.findAllByText("Drop"))[0]!);
     expect(screen.getByText("Drop from Spring 2099?")).toBeTruthy();
-    fireEvent.changeText(screen.getByLabelText("Reason (optional)"), "Moved away");
+    fireEvent.changeText(screen.getByLabelText("Reason"), "Moved away");
     fireEvent.press(screen.getByText("Drop student"));
 
     await waitFor(() =>
@@ -175,7 +180,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
 
     fireEvent.press(await screen.findByText("Delete student"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/students/21"));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/students"));
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/students"));
     alert.mockRestore();
   });
 });

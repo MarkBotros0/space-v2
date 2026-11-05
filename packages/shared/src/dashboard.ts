@@ -95,6 +95,24 @@ export const quizRollupSchema = z
   .strict();
 export type QuizRollup = z.infer<typeof quizRollupSchema>;
 
+/**
+ * The leader's own groups checked in for the next session (read-only). `total`
+ * is every ACTIVE student in their groups; `notCheckedIn` is those with no
+ * mark yet. Strict, so a leaked email or another group's student fails at the
+ * client boundary.
+ */
+export const leaderSessionCheckInSchema = z
+  .object({
+    sessionId: z.number().int(),
+    total: count,
+    present: count,
+    late: count,
+    absent: count,
+    notCheckedIn: z.array(z.object({ id: z.number().int(), name: z.string() }).strict()),
+  })
+  .strict();
+export type LeaderSessionCheckIn = z.infer<typeof leaderSessionCheckInSchema>;
+
 export const staffSeasonDashboardSchema = z
   .object({
     variant: z.literal("SEASON_STAFF"),
@@ -107,18 +125,17 @@ export const staffSeasonDashboardSchema = z
     cohort: staffCohortSummarySchema,
     submissions: reviewCountsSchema,
     quizzes: quizRollupSchema,
+    /** Leader scope only: absent for admin/super, null when there is no next session. */
+    leaderSession: leaderSessionCheckInSchema.nullable().optional(),
   })
   .strict();
 export type StaffSeasonDashboard = z.infer<typeof staffSeasonDashboardSchema>;
 
 /**
- * A due-soon row: the student list row plus its org-calendar due day, so the
- * label never formats `dueAt` in the device zone (X13). The student list
- * endpoint itself is unchanged (Plan 5 note 7).
+ * A due-soon / open row: the student list row, which carries its org-calendar
+ * due day so the label never formats `dueAt` in the device zone (X13).
  */
-export const dashboardDueItemSchema = studentAssignmentListItemSchema.extend({
-  dueOrgDay: isoDaySchema.nullable(),
-});
+export const dashboardDueItemSchema = studentAssignmentListItemSchema;
 export type DashboardDueItem = z.infer<typeof dashboardDueItemSchema>;
 
 export const studentAssignmentSummarySchema = z
@@ -131,6 +148,8 @@ export const studentAssignmentSummarySchema = z
     lateSubmittedCount: count,
     /** Outstanding only, `dueAt` asc nulls last, overdue included (R73). */
     dueSoon: z.array(dashboardDueItemSchema).max(DUE_SOON_LIMIT),
+    /** PENDING | DRAFT | RETURNED, uncapped, `dueAt` asc nulls last then id. */
+    open: z.array(dashboardDueItemSchema),
   })
   .strict();
 export type StudentAssignmentSummary = z.infer<typeof studentAssignmentSummarySchema>;
@@ -144,6 +163,8 @@ export type StudentAssignmentSummary = z.infer<typeof studentAssignmentSummarySc
 export const studentDashboardSchema = z
   .object({
     variant: z.literal("STUDENT"),
+    /** Today's org-calendar day; present also when not enrolled. Chips compare `dueOrgDay` to this. */
+    todayOrgDay: isoDaySchema,
     season: dashboardSeasonSchema.nullable(),
     progress: seasonProgressSchema.nullable(),
     nextSession: dashboardSessionSchema.nullable(),
