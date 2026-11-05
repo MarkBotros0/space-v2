@@ -30,7 +30,7 @@ export function LeaderQuizzesCard({ sessionId }: { sessionId: number }) {
     <CardV1>
       <CardHeader>
         <View className="flex-row items-center gap-2">
-          <NavIcon name="quizzes" size={16} className="text-brand-teal-600" />
+          <NavIcon name="quizzes" size={16} className="text-brand-teal-700 dark:text-brand-teal-400" />
           <CardTitle className="text-base">Quizzes</CardTitle>
         </View>
       </CardHeader>
@@ -58,7 +58,7 @@ export function LeaderQuizzesCard({ sessionId }: { sessionId: number }) {
                 }
               >
                 {/* v1 has no dark: variant on this link. */}
-                <TextV1 className="text-xs font-semibold text-brand-teal-700">Grade →</TextV1>
+                <TextV1 className="text-xs font-semibold text-brand-teal-800 dark:text-brand-teal-300">Grade →</TextV1>
               </Pressable>
             </View>
           ))
@@ -84,7 +84,7 @@ export function AdminQuizzesCard({
     <CardV1>
       <CardHeader className="flex-row items-center justify-between gap-3">
         <View className="flex-row items-center gap-2">
-          <NavIcon name="quizzes" size={16} className="text-brand-teal-600" />
+          <NavIcon name="quizzes" size={16} className="text-brand-teal-700 dark:text-brand-teal-400" />
           <CardTitle className="text-base">Quizzes</CardTitle>
         </View>
         {/* V2-ONLY: v1's inline "+ Add quiz" form; v2 opens the new-quiz screen. */}

@@ -70,20 +70,20 @@ export function StudentSessionBody({
           <Eyebrow>Details</Eyebrow>
           <View className="mt-2 flex-col gap-2">
             <View className="flex-row items-center gap-2">
-              <Clock size={16} className="shrink-0 text-brand-teal-600" />
+              <Clock size={16} className="shrink-0 text-brand-teal-700 dark:text-brand-teal-400" />
               <TextV1 className="text-sm text-muted-foreground">
                 {`${formatWallTime(data.startTime)} – ${formatWallTime(end)} · ${data.durationMinutes} min`}
               </TextV1>
             </View>
             {data.location ? (
               <View className="flex-row items-center gap-2">
-                <MapPin size={16} className="shrink-0 text-brand-teal-600" />
+                <MapPin size={16} className="shrink-0 text-brand-teal-700 dark:text-brand-teal-400" />
                 <TextV1 className="text-sm text-muted-foreground">{data.location}</TextV1>
               </View>
             ) : null}
             {data.myAttendance ? (
               <View className="flex-row items-center gap-2">
-                <NavIcon name="attendance" size={16} className="shrink-0 text-brand-teal-600" />
+                <NavIcon name="attendance" size={16} className="shrink-0 text-brand-teal-700 dark:text-brand-teal-400" />
                 <TextV1 className="text-sm text-muted-foreground">
                   {attendanceLine(data.myAttendance)}
                 </TextV1>

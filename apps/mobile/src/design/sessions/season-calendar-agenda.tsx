@@ -154,7 +154,7 @@ export function AgendaView({
             <View className="flex-row items-baseline justify-between gap-2">
               <Eyebrow>{formatLongDay(group.dayKey)}</Eyebrow>
               {cue ? (
-                <Text className="text-caption font-medium text-brand-teal-700 dark:text-brand-teal-300">
+                <Text className="text-caption font-medium text-brand-teal-800 dark:text-brand-teal-300">
                   {cue}
                 </Text>
               ) : null}

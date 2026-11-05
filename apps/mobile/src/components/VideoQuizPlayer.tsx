@@ -301,7 +301,7 @@ export function VideoQuizPlayer({
           <Text className="text-xs text-muted-foreground">{`${quiz.answeredCount} of ${quiz.questions.length} answered`}</Text>
         </View>
         <View className="items-end">
-          <Text className="text-lg font-black text-brand-teal-700 dark:text-brand-teal-300">
+          <Text className="text-lg font-black text-brand-teal-800 dark:text-brand-teal-300">
             {String(quiz.earnedPoints)}
             <Text className="text-sm font-semibold text-muted-foreground">{`/${quiz.totalPoints}`}</Text>
           </Text>

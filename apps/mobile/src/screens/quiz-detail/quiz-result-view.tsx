@@ -30,7 +30,7 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
           </View>
           {graded ? (
             <View className="items-end">
-              <TextV1 className="text-2xl font-black text-brand-teal-700 dark:text-brand-teal-300">
+              <TextV1 className="text-2xl font-black text-brand-teal-800 dark:text-brand-teal-300">
                 {String(detail.totalScore ?? 0)}
                 <TextV1 className="text-sm font-semibold text-muted-foreground">{`/${detail.maxScore}`}</TextV1>
               </TextV1>

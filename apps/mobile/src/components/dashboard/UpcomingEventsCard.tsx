@@ -58,7 +58,7 @@ export function UpcomingEventsCard({ query }: { query: UseQueryResult<JpcEventLi
                   else router.push({ pathname: "/event/[id]", params: { id: String(e.id) } });
                 }}
               >
-                <NavIcon name="events" size={16} className="mt-0.5 shrink-0 text-brand-teal-500" />
+                <NavIcon name="events" size={16} className="mt-0.5 shrink-0 text-brand-teal-700 dark:text-brand-teal-400" />
                 <View className="min-w-0 flex-1">
                   <Text
                     numberOfLines={1}

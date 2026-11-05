@@ -58,8 +58,8 @@ function EventRow({
             className="flex-row items-center gap-1 self-start"
             onPress={() => void Linking.openURL(event.url ?? "")}
           >
-            <ExternalLink size={12} className="text-brand-teal-500" />
-            <Text numberOfLines={1} className="shrink text-xs text-brand-teal-500">
+            <ExternalLink size={12} className="text-brand-teal-700 dark:text-brand-teal-400" />
+            <Text numberOfLines={1} className="shrink text-xs text-brand-teal-800 dark:text-brand-teal-300">
               {event.url}
             </Text>
           </Pressable>

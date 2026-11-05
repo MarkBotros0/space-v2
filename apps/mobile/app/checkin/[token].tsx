@@ -60,7 +60,7 @@ export default function CheckInLinkScreen() {
         </>
       )}
       <Pressable accessibilityRole="link" className="mt-2" onPress={() => router.replace("/dashboard")}>
-        <Text className="text-sm text-brand-teal-600 dark:text-brand-teal-400">Go to dashboard</Text>
+        <Text className="text-sm text-brand-teal-800 dark:text-brand-teal-400">Go to dashboard</Text>
       </Pressable>
     </View>
   );

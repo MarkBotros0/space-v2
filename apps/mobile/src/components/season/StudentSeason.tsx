@@ -135,7 +135,7 @@ function UpcomingCard({ upcoming }: { upcoming: MySeason["upcoming"] }) {
         <Button
           variant="ghost"
           size="sm"
-          textClassName="text-xs text-brand-teal-700 dark:text-brand-teal-300"
+          textClassName="text-xs text-brand-teal-800 dark:text-brand-teal-300"
           onPress={() => router.push("/calendar")}
         >
           See calendar

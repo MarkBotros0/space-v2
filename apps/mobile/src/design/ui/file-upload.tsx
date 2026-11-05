@@ -48,7 +48,7 @@ function FileUpload({
         <UploadCloud size={32} className="text-muted-foreground" />
         <View className="flex-col items-center gap-0.5">
           <Text className="text-center text-sm font-medium text-foreground">
-            <Text className="font-medium text-brand-teal-600 dark:text-brand-teal-400">Click to upload</Text> or drag and drop
+            <Text className="font-medium text-brand-teal-800 dark:text-brand-teal-400">Click to upload</Text> or drag and drop
           </Text>
           {maxSizeMb ? (
             <Text className="text-xs text-muted-foreground">

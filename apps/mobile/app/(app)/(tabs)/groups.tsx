@@ -64,7 +64,7 @@ function LeaderGroupCard({
         </View>
         <Pressable accessibilityRole="link" onPress={() => router.push("/calendar")}>
           {/* v1 has no dark: variant on this link. */}
-          <Text className="text-sm font-medium text-brand-teal-700">Calendar →</Text>
+          <Text className="text-sm font-medium text-brand-teal-800 dark:text-brand-teal-300">Calendar →</Text>
         </Pressable>
       </CardHeader>
       <CardContent>

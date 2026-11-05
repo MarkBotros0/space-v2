@@ -228,7 +228,7 @@ function EnrolledBody({
           <View className="flex-row items-center justify-between">
             <Eyebrow>Due soon</Eyebrow>
             <Pressable accessibilityRole="link" onPress={() => router.push("/assignments")}>
-              <Text className="text-xs font-semibold text-brand-teal-700 dark:text-brand-teal-300">
+              <Text className="text-xs font-semibold text-brand-teal-800 dark:text-brand-teal-300">
                 See all
               </Text>
             </Pressable>

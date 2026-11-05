@@ -22,7 +22,7 @@ const CIRCLE: Record<Tone, string> = {
 const ICON: Record<Tone, string> = {
   success: "text-success-700 dark:text-success-200",
   error: "text-error-700 dark:text-error-200",
-  neutral: "text-brand-teal-700 dark:text-brand-teal-300",
+  neutral: "text-brand-teal-800 dark:text-brand-teal-300",
 };
 
 /** v1's `span.inline-flex size-16 … rounded-full` + 32px icon. */

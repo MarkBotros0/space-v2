@@ -82,7 +82,7 @@ export function EngagementCards({
           )}
           {summary.atRiskTotal > atRiskRows.length ? (
             <Pressable accessibilityRole="button" className="mt-2 self-start" onPress={onShowMore}>
-              <Text className="text-sm font-medium text-brand-teal-700 dark:text-brand-teal-300">
+              <Text className="text-sm font-medium text-brand-teal-800 dark:text-brand-teal-300">
                 Show more
               </Text>
             </Pressable>
