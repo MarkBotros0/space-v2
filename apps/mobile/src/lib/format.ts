@@ -179,6 +179,12 @@ export function formatEventWhenShort(event: { dayKey: string; endDayKey: string 
   return start;
 }
 
+/** e.g. "Quiz graded" for QUIZ_GRADED: v1 showed the enum in a capitals badge. */
+export function notificationTypeLabel(type: string): string {
+  const words = type.replace(/_/g, " ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /** v1's notification stamp: "Jul 8, 2026 · 1:57 PM · 3 months ago". */
 export function formatStampAgo(iso: string | null): string {
   if (iso == null) return PLACEHOLDER;

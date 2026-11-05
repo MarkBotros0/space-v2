@@ -65,7 +65,7 @@ describe("NotificationsScreen", () => {
 
     expect(await screen.findByText("Essay one was reviewed")).toBeTruthy();
     expect(screen.getByText("1 unread")).toBeTruthy();
-    expect(screen.getByText(/SUBMISSION REVIEWED/)).toBeTruthy();
+    expect(screen.getByText(/Submission reviewed/)).toBeTruthy();
     // The unread dot is colour only: the row says so to a screen reader.
     expect(screen.getByLabelText(/Essay one was reviewed.*Unread/)).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/notifications?limit=20");

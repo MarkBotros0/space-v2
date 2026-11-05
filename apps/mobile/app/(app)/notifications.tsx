@@ -13,7 +13,7 @@ import {
   useMarkRead,
   useNotifications,
 } from "../../src/hooks/use-notifications";
-import { formatStampAgo } from "../../src/lib/format";
+import { formatStampAgo, notificationTypeLabel } from "../../src/lib/format";
 import { joinMeta } from "../../src/lib/join-meta";
 import { routeForTarget } from "../../src/lib/notification-route";
 
@@ -51,7 +51,7 @@ function NotificationRow({
         titleLines={2}
         subtitle={joinMeta([
           item.body,
-          item.type.replace(/_/g, " "),
+          notificationTypeLabel(item.type),
           formatStampAgo(item.createdAt),
         ])}
         subtitleLines={4}

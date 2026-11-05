@@ -10,6 +10,7 @@ import {
   formatLongDayYear,
   formatShortDay,
   formatStampAgo,
+  notificationTypeLabel,
   formatWeekdayDayYear,
   splitWallTime,
   firstName,
@@ -178,5 +179,11 @@ describe("times never break across lines", () => {
     ];
     for (const out of outs) expect(out).toMatch(/\d:\d{2}\u00A0(AM|PM)/);
     expect(splitWallTime("21:05")).toEqual({ clock: "9:05", meridiem: "PM" });
+  });
+});
+
+describe("notificationTypeLabel", () => {
+  it("reads as words, not the enum", () => {
+    expect(notificationTypeLabel("QUIZ_GRADED")).toBe("Quiz graded");
   });
 });
