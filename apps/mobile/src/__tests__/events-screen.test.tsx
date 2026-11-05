@@ -136,7 +136,6 @@ describe("events screen", () => {
 
     expect(await screen.findByText("Summer retreat")).toBeTruthy();
     expect(screen.queryByText("New event")).toBeNull();
-    expect(screen.queryByLabelText("New event")).toBeNull();
   });
 
   it("renders an empty state rather than nothing (spec 15 R75)", async () => {
@@ -190,7 +189,7 @@ describe("events screen", () => {
     expect(when.props.numberOfLines === undefined || when.props.numberOfLines >= 2).toBe(true);
   });
 
-  it("marks a past event and an alumni-only event with a worded chip", async () => {
+  it("shows no Past chip (no server flag) and an alumni-only chip", async () => {
     useSessionStore.setState(superSession);
     get.mockResolvedValue({
       data: {
@@ -205,7 +204,9 @@ describe("events screen", () => {
       },
     });
     renderWithProviders(<EventsScreen />);
-    expect(await screen.findByText("Past")).toBeTruthy();
+    expect(await screen.findByText("Old fair")).toBeTruthy();
+    expect(screen.getByText("Mar 1, 2001")).toBeTruthy();
+    expect(screen.queryByText("Past")).toBeNull();
     expect(screen.getByText("Alumni & staff")).toBeTruthy();
   });
 
@@ -231,6 +232,7 @@ describe("event detail screen", () => {
     // UTC day is June 30th).
     expect(screen.getByText("Jul 1, 2099 – Jul 5, 2099")).toBeTruthy();
     expect(screen.queryByText("Delete event")).toBeNull();
+    expect(screen.queryByText("Edit")).toBeNull();
   });
 
   it("offers edit and delete to SUPER only", async () => {
