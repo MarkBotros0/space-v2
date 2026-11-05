@@ -13,7 +13,17 @@ import { Input } from "../../design/ui/input";
 import { Text } from "../../design/ui/text";
 import { CatalogueSection } from "./section";
 
-export function SaveBarSection({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+export function SaveBarSection({
+  shown,
+  onToggle,
+  disabledShown,
+  onToggleDisabled,
+}: {
+  shown: boolean;
+  onToggle: () => void;
+  disabledShown: boolean;
+  onToggleDisabled: () => void;
+}) {
   const [value, setValue] = useState("");
   return (
     <CatalogueSection id="save-bar" title="Save bar">
@@ -24,7 +34,13 @@ export function SaveBarSection({ shown, onToggle }: { shown: boolean; onToggle: 
         <Button testID="catalogue-toggle-save-bar" variant="secondary" onPress={onToggle}>
           {shown ? "Hide save bar" : "Show save bar"}
         </Button>
+        <Button testID="catalogue-toggle-save-bar-disabled" variant="secondary" onPress={onToggleDisabled}>
+          {disabledShown ? "Hide disabled bar" : "Show disabled bar"}
+        </Button>
       </View>
+      <Text variant="caption" className="text-muted-foreground">
+        The disabled bar is `FormScreen disabled`: nothing to save, with the hint saying why.
+      </Text>
       <Input
         testID="catalogue-save-bar-input"
         accessibilityLabel="Save bar field"
@@ -38,7 +54,8 @@ export function SaveBarSection({ shown, onToggle }: { shown: boolean; onToggle: 
 }
 
 /** The catalogue screen's footer while the example is on. */
-export function CatalogueSaveBar({ onDone }: { onDone: () => void }) {
+export function CatalogueSaveBar({ onDone, disabled = false }: { onDone: () => void; disabled?: boolean }) {
+  if (disabled) return <SaveBar label="Save changes" hint="Nothing to save yet." disabled onPress={onDone} />;
   return (
     <SaveBar
       label="Save changes"

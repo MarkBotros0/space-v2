@@ -25,6 +25,13 @@ export function ListSection() {
         <ListRow title={LONG_TITLE} subtitle="A long title next to a trailing value and a chevron" trailing={<Text variant="body" tabular>12 / 20</Text>} chevron onPress={() => {}} />
         <ListRow title="With chip" subtitle="Group A" trailing={<StatusChip tone="ok" label="Present" />} chevron onPress={() => {}} />
         <ListRow title="With leading" subtitle="Cairo University · 3" leading={<Avatar size="sm"><AvatarFallback>SA</AvatarFallback></Avatar>} chevron onPress={() => {}} />
+        <ListRow
+          title="With footer chips"
+          subtitle="Tuesday, 6:30 PM"
+          footer={<><StatusChip tone="info" label="Spring 26" /><StatusChip tone="warn" label="Not marked" /></>}
+          chevron
+          onPress={() => {}}
+        />
         <ListRow title="Chevron only" chevron onPress={() => {}} />
         <ListRow title="Trailing value" trailing={<Text variant="body" tabular>92%</Text>} />
         <ListRow title={LONG_TITLE} titleLines={2} subtitle="Two title lines, three subtitle lines" subtitleLines={3} trailing={<StatusChip tone="warn" label="Due soon" />} />

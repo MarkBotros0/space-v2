@@ -30,7 +30,7 @@ import {
 import { ButtonsSection, TypeSection } from "../../src/screens/design-catalogue/type-buttons-sections";
 
 export default function DesignCatalogue() {
-  const [saveBar, setSaveBar] = useState(false);
+  const [saveBar, setSaveBar] = useState<"off" | "on" | "disabled">("off");
   if (!__DEV__ && !isSweepBuild()) {
     return (
       <Screen title="Design catalogue">
@@ -42,7 +42,7 @@ export default function DesignCatalogue() {
     <Screen
       title="Design catalogue"
       subtitle="Every component in every state."
-      footer={saveBar ? <CatalogueSaveBar onDone={() => setSaveBar(false)} /> : undefined}
+      footer={saveBar !== "off" ? <CatalogueSaveBar disabled={saveBar === "disabled"} onDone={() => setSaveBar("off")} /> : undefined}
     >
       <TypeSection />
       <ButtonsSection />
@@ -55,7 +55,12 @@ export default function DesignCatalogue() {
       <CheckInSuccessSection />
       <ToastSection />
       <SheetSection />
-      <SaveBarSection shown={saveBar} onToggle={() => setSaveBar((on) => !on)} />
+      <SaveBarSection
+        shown={saveBar === "on"}
+        onToggle={() => setSaveBar((on) => (on === "on" ? "off" : "on"))}
+        disabledShown={saveBar === "disabled"}
+        onToggleDisabled={() => setSaveBar((on) => (on === "disabled" ? "off" : "disabled"))}
+      />
       <LeaderSection />
     </Screen>
   );

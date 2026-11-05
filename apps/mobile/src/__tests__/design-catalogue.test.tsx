@@ -52,3 +52,13 @@ it("shows a full-screen SaveBar in the screen's footer, outside the scroll view,
   fireEvent.press(screen.getByText("Save changes"));
   expect(screen.queryByTestId("save-bar")).toBeNull();
 });
+
+it("shows ListRow footer chips and the disabled save bar (final review M8)", () => {
+  mockSweep = true;
+  renderWithProviders(<DesignCatalogue />);
+  expect(within(screen.getByTestId("list-row-footer")).getByText("Not marked")).toBeTruthy();
+  fireEvent.press(screen.getByTestId("catalogue-toggle-save-bar-disabled"));
+  const bar = within(screen.getByTestId("save-bar"));
+  expect(bar.getByText("Nothing to save yet.")).toBeTruthy();
+  expect(bar.getByRole("button", { name: "Save changes" })).toBeDisabled();
+});
