@@ -181,6 +181,26 @@ export const mePaths = {
                       drafts: { type: "integer" },
                     },
                   },
+                  leaderSession: {
+                    type: ["object", "null"],
+                    description:
+                      "Present only for `scope: \"groups\"` (a LEADER): the check-in counts of the leader's groups for `nextSession` (read-only). Null when there is no next session; the key is absent for ADMIN/SUPER.",
+                    properties: {
+                      sessionId: { type: "integer", description: "Equals `nextSession.id`." },
+                      total: { type: "integer", description: "ACTIVE students in the leader's groups." },
+                      present: { type: "integer" },
+                      late: { type: "integer" },
+                      absent: { type: "integer" },
+                      notCheckedIn: {
+                        type: "array",
+                        description: "Students with no attendance mark yet; name falls back to the email when blank.",
+                        items: {
+                          type: "object",
+                          properties: { id: { type: "integer" }, name: { type: "string" } },
+                        },
+                      },
+                    },
+                  },
                 },
               },
               {

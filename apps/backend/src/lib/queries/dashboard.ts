@@ -14,12 +14,18 @@ import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../quiz-scope";
 import { listAssignmentStatesForStudent } from "./assignments";
 import { computeEngagementForSeasons } from "./engagement";
 import { byScoreThenId } from "./reports";
-import { loadCurrentOrNextSession, loadSeasonProgress, type CurrentOrNextSession } from "./sessions";
+import {
+  loadAttendanceRoster,
+  loadCurrentOrNextSession,
+  loadSeasonProgress,
+  type CurrentOrNextSession,
+} from "./sessions";
 import {
   DASHBOARD_AT_RISK_PREVIEW,
   DUE_SOON_LIMIT,
   RECENT_ACTIVITY_LIMIT,
   meanAttendancePct,
+  type LeaderSessionCheckIn,
 } from "../../../../../packages/shared/src/index";
 
 /*
@@ -79,6 +85,29 @@ export async function loadStudentDashboard(user: SessionUser, now: Date) {
     progress,
     nextSession: next ? toDashboardSession(next) : null,
     assignments: summarizeStudentAssignments(rows, DUE_SOON_LIMIT),
+  };
+}
+
+/**
+ * The leader's groups checked in for the session on the card: one read of the
+ * attendance screen's own roster, reduced. A student with no mark yet is
+ * "not checked in"; a blank name falls back to the email.
+ */
+async function loadLeaderSessionCheckIn(
+  sessionId: number,
+  groupIds: number[],
+): Promise<LeaderSessionCheckIn | null> {
+  const roster = await loadAttendanceRoster(sessionId, groupIds);
+  if (!roster) return null;
+  return {
+    sessionId,
+    total: roster.length,
+    present: roster.filter((r) => r.status === "PRESENT").length,
+    late: roster.filter((r) => r.status === "LATE").length,
+    absent: roster.filter((r) => r.status === "ABSENT").length,
+    notCheckedIn: roster
+      .filter((r) => r.status === null)
+      .map((r) => ({ id: r.studentUserId, name: r.name?.trim() || r.email })),
   };
 }
 
@@ -143,6 +172,12 @@ export async function loadSeasonStaffDashboard(
   // order (Plan 15's byScoreThenId). No 70 % rule, no colour tiers (D2).
   const atRiskAll = rows.filter((r) => r.atRisk).sort(byScoreThenId);
 
+  // Leader scope only; the key is omitted for the season scope.
+  const leaderSession =
+    scope.kind === "groups"
+      ? { leaderSession: next ? await loadLeaderSessionCheckIn(next.id, scope.groupIds) : null }
+      : {};
+
   return {
     variant: "SEASON_STAFF" as const,
     scope: scope.kind,
@@ -158,6 +193,7 @@ export async function loadSeasonStaffDashboard(
     },
     submissions: { pendingReview, reviewed },
     quizzes: quizRollupFrom(quizzes, gradedBy, visible.length),
+    ...leaderSession,
   };
 }
 
