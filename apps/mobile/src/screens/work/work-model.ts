@@ -28,8 +28,12 @@ export type WorkRow = {
   href: Href | null;
 };
 
-/** A deadline chip that names the date itself ("Due Nov 14"), not "Overdue", "Due Fri" or "Due in 2 days". */
 const DATE_CHIP = /^Due [A-Z][a-z]{2} \d{1,2}$/;
+
+/** A deadline chip that names the date itself ("Due Nov 14"), not "Overdue", "Due Fri" or "Due in 2 days". */
+export function chipNamesDate(chip: ChipSpec): boolean {
+  return DATE_CHIP.test(chip.label);
+}
 
 /**
  * The note, then the date it was due: a status chip or a relative deadline chip
@@ -43,7 +47,7 @@ function assignmentSubtitle(
   chip: ChipSpec,
   todayOrgDay: string,
 ): { subtitle?: string } {
-  const chipHasDate = DATE_CHIP.test(chip.label);
+  const chipHasDate = chipNamesDate(chip);
   const sameYear = dueOrgDay !== null && dueOrgDay.slice(0, 4) === todayOrgDay.slice(0, 4);
   const due =
     dueOrgDay !== null && !(chipHasDate && sameYear) ? `Due ${formatDayKey(dueOrgDay)}` : null;

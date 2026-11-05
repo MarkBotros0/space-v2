@@ -13,31 +13,34 @@ import { useSubmissionDetail } from "../../hooks/use-submission";
 import { deviceTodayKey } from "../../lib/calendar-grid";
 import { formatOrgDue } from "../../lib/format";
 import { storedTextToHtml } from "../../lib/stored-text";
+import { chipNamesDate } from "../work/work-model";
 import { useSubmissionEditor } from "./submission-editor";
 
 /**
- * `isOverdue` only compares the due instant with now, whatever was handed in,
- * so it says nothing once work is in the leader's hands: the date stays, plainly.
+ * The line under the chips gives the date, so a chip is here only for what the line
+ * can't say. Once work is handed in there is none: `isOverdue` only compares the due
+ * instant with now, whatever was handed in, and the status chip says where it stands.
  * RETURNED agrees with its Work row, where "Returned" stands in for "Overdue"; the
- * deadline still applies to it, and DueBanner says so.
+ * deadline still applies to it, and DueBanner says so. Otherwise only a relative chip
+ * ("Overdue", "Due in 2 days", "Due Friday") or "No due date", never a repeat of the date.
  */
-function dateChip(detail: AssignmentDetail, todayOrgDay: string): ChipSpec {
+function dateChip(detail: AssignmentDetail, todayOrgDay: string): ChipSpec | null {
   const status = detail.mySubmission?.status;
-  if (detail.dueOrgDay !== null && (status === "SUBMITTED" || status === "REVIEWED" || status === "RETURNED")) {
-    return { tone: "neutral", label: `Due ${formatOrgDue(detail.dueOrgDay, null)}` };
-  }
-  return dueChip({ isOverdue: detail.isOverdue, dueOrgDay: detail.dueOrgDay, todayOrgDay });
+  if (status === "SUBMITTED" || status === "REVIEWED" || status === "RETURNED") return null;
+  const chip = dueChip({ isOverdue: detail.isOverdue, dueOrgDay: detail.dueOrgDay, todayOrgDay });
+  return chipNamesDate(chip) ? null : chip;
 }
 
 function ChipRow({ detail, todayOrgDay }: { detail: AssignmentDetail; todayOrgDay: string }) {
   const forum = detail.type === "FORUM";
   const sub = detail.mySubmission;
+  const date = dateChip(detail, todayOrgDay);
   return (
     <View className="gap-1.5">
       <View className="flex-row flex-wrap gap-1.5">
         {forum ? <StatusChip tone="info" label="Forum" /> : null}
         {/* The forum keeps v2's due chip (spec 14 D10) and shows none without a date. */}
-        {!forum || detail.dueOrgDay !== null ? <StatusChip {...dateChip(detail, todayOrgDay)} /> : null}
+        {date && (!forum || detail.dueOrgDay !== null) ? <StatusChip {...date} /> : null}
         {sub ? <StatusChip {...statusChip("submission", sub.status)} /> : null}
         {sub?.isLate ? <StatusChip tone="warn" label="Late" /> : null}
       </View>

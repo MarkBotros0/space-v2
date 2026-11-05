@@ -15,6 +15,7 @@ jest.mock("expo-router", () => ({
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
+import { studentDashboard } from "./helpers/dashboard-fixtures";
 import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
@@ -165,14 +166,15 @@ describe("AssignmentDetailScreen", () => {
     };
 
     it.each(["SUBMITTED", "REVIEWED"] as const)(
-      "%s on time, past the date: a plain date, no Overdue and no Past due",
+      "%s on time, past the date: the date once, no Overdue and no Past due",
       async (status) => {
         serveStatus(status);
         renderStacked(<AssignmentDetailScreen />);
         expect(await screen.findByText("the work")).toBeTruthy();
         expect(screen.queryByText("Overdue")).toBeNull();
         expect(screen.queryByText(/Past due/)).toBeNull();
-        expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
+        expect(screen.queryByText("Due Apr 1, 2099")).toBeNull();
+        expect(screen.getAllByText(/^Due /)).toHaveLength(1);
         expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
       },
     );
@@ -204,10 +206,35 @@ describe("AssignmentDetailScreen", () => {
       expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
     });
 
-    it("no submission yet shows the date too", async () => {
+    it("due 7+ days out: the date once, with no chip repeating it", async () => {
       get.mockResolvedValue({ data: { data: detail } });
       renderStacked(<AssignmentDetailScreen />);
       expect(await screen.findByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+      expect(screen.queryByText("Due Apr 1")).toBeNull();
+    });
+
+    it("a draft due 7+ days out: the date once too", async () => {
+      serveStatus("DRAFT", { isOverdue: false });
+      renderStacked(<AssignmentDetailScreen />);
+      expect(await screen.findByLabelText("Your response")).toBeTruthy();
+      expect(screen.queryByText("Due Apr 1")).toBeNull();
+      expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
+    });
+
+    it("due soon keeps the relative chip beside the date, by the server's day", async () => {
+      get.mockImplementation((url: string) =>
+        Promise.resolve({
+          data: {
+            data:
+              url === "/api/v1/me/dashboard"
+                ? { ...studentDashboard, todayOrgDay: "2099-03-30" }
+                : detail,
+          },
+        }),
+      );
+      renderStacked(<AssignmentDetailScreen />);
+      expect(await screen.findByText("Due in 2 days")).toBeTruthy();
+      expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
     });
 
     it("no due date names none", async () => {
@@ -239,7 +266,7 @@ describe("AssignmentDetailScreen", () => {
       renderStacked(<AssignmentDetailScreen />);
       expect(await screen.findByText("Submitted")).toBeTruthy();
       expect(screen.queryByText("Overdue")).toBeNull();
-      expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
+      expect(screen.getAllByText(/^Due /)).toHaveLength(1);
       expect(screen.getByText("Due Apr 1, 2099, 11:59 PM")).toBeTruthy();
     });
   });

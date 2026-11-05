@@ -133,8 +133,9 @@ describe("forum branch of the assignment screen", () => {
     // A deliberate product mechanic, not an error — it gets a real empty state.
     expect(screen.getByText("Post to unlock the discussion")).toBeTruthy();
     expect(screen.getByText("0 words · minimum 5")).toBeTruthy();
-    // v1's FORUM branch shows no due date at all (spec 14 R33).
-    expect(screen.getByText("Due Apr 1")).toBeTruthy();
+    // v1's FORUM branch shows no due date at all (spec 14 R33); v2 keeps it, once.
+    expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
+    expect(screen.queryByText("Due Apr 1")).toBeNull();
     // Nothing was created by opening the screen (ruling C6).
     expect(put).not.toHaveBeenCalled();
   });
