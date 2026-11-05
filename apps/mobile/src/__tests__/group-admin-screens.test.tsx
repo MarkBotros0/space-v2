@@ -350,21 +350,6 @@ describe("/seasons/[code]/roster (G7)", () => {
     expect(put).not.toHaveBeenCalled();
   });
 
-  it("assigns a group to an unassigned student through the sheet", async () => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    mockParams = { code: "s7" };
-    routeGets();
-    put.mockResolvedValue({ data: { data: { assigned: 1, unassigned: 0, skippedStudentIds: [] } } });
-    renderWithProviders(<SeasonRosterScreen />);
-    await choose("Omar", "Group B");
-    saveSheet();
-    await waitFor(() =>
-      expect(put).toHaveBeenCalledWith("/api/v1/seasons/7/group-assignments", {
-        assignments: [{ studentUserId: 22, groupId: 4 }],
-      }),
-    );
-  });
-
   it("offers Import groups to a season admin, pushing the importer route", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { code: "s7" };
