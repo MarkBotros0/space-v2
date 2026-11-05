@@ -308,6 +308,7 @@ describe("a failed dashboard read", () => {
     expect(reads(DASHBOARD)).toBe(before + 1);
 
     expect(screen.queryByText("Something went wrong")).toBeNull();
+    expect(screen.getByText("Couldn't refresh. This may be out of date.")).toBeTruthy();
     expect(screen.getByText("Week 6")).toBeTruthy();
     expect(screen.getByText("Scan check-in code")).toBeTruthy();
     expect(screen.getByTestId("mock-camera")).toBeTruthy();

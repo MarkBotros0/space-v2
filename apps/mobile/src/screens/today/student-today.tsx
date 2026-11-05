@@ -5,7 +5,7 @@ import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
-import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
 import { EmptyState, GroupedList, ListRow, Text } from "../../design/ui";
@@ -89,6 +89,11 @@ export function StudentToday() {
 
   const late = data?.assignments?.lateSubmittedCount ?? 0;
 
+  // A failed read keeps what's on screen, but says so: a pull that changes nothing must explain why.
+  const stale = dash.isError ? (
+    <InlineError message="Couldn't refresh. This may be out of date." onRetry={() => void dash.refetch()} />
+  ) : null;
+
   return (
     <Screen
       home
@@ -105,6 +110,7 @@ export function StudentToday() {
         <RouteError onRetry={() => void dash.refetch()} />
       ) : data.season ? (
         <View className="flex-col gap-4">
+          {stale}
           <NextSessionHero
             session={data.nextSession}
             todayOrgDay={data.todayOrgDay}
@@ -121,6 +127,7 @@ export function StudentToday() {
         </View>
       ) : (
         <View className="flex-col gap-4">
+          {stale}
           <EmptyState
             icon={NAV_ICONS.season}
             title="Not enrolled yet"
