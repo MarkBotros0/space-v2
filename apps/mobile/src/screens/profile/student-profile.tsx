@@ -1,90 +1,102 @@
 import { useRouter } from "expo-router";
 import { View } from "react-native";
 
-import { Eyebrow } from "../../design/layout/page-title";
+import { FormScreen } from "../../design/layout/form-screen";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
-import { ShellFrame } from "../../design/layout/shell-frame";
-import { StatCard } from "../../design/students/stat-card";
-import { Button as ButtonV1, Text as TextV1 } from "../../design/ui";
+import { Screen } from "../../design/layout/screen";
+import { GroupedList, ListRow, ListSectionHeader } from "../../design/ui/grouped-list";
+import { StatTile } from "../../design/ui/stat-tile";
 import { useMyEngagement } from "../../hooks/use-engagement";
 import { useMyAttendance, useMyProfile } from "../../hooks/use-self-service";
 import { useSessionStore } from "../../store/session";
 import { IdentityCard } from "./identity-card";
-import { ProfileForm } from "./profile-form";
+import { useProfileForm } from "./profile-form";
 
 /** v1 /student/profile — the six own columns editable, nothing else (Decision 1). */
 export function StudentProfile() {
-  const router = useRouter();
-  const userId = useSessionStore((s) => s.user?.id ?? null);
-  const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const profile = useMyProfile(true);
-  const attendance = useMyAttendance(activeSeasonId);
-  const engagement = useMyEngagement(userId, activeSeasonId !== null);
 
   if (profile.isPending || profile.isError) {
     return (
-      <ShellFrame>
+      <Screen title="Profile">
         {profile.isPending ? (
           <RouteSkeleton />
         ) : (
           <RouteError onRetry={() => void profile.refetch()} />
         )}
-      </ShellFrame>
+      </Screen>
     );
   }
+  return <LoadedProfile profile={profile.data} refetch={() => void profile.refetch()} refreshing={profile.isRefetching} />;
+}
 
-  const p = profile.data;
+function LoadedProfile({
+  profile: p,
+  refetch,
+  refreshing,
+}: {
+  profile: NonNullable<ReturnType<typeof useMyProfile>["data"]>;
+  refetch: () => void;
+  refreshing: boolean;
+}) {
+  const router = useRouter();
+  const userId = useSessionStore((s) => s.user?.id ?? null);
+  const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
+  const attendance = useMyAttendance(activeSeasonId);
+  const engagement = useMyEngagement(userId, activeSeasonId !== null);
+  const form = useProfileForm(p);
+
   const budget = attendance.data?.budget ?? null;
   const streak = attendance.data?.streak ?? null;
   const eng = engagement.data;
 
   return (
-    <ShellFrame
+    <FormScreen
+      title="Profile"
+      saveLabel="Save changes"
+      onSave={form.save}
+      saving={form.saving}
       onRefresh={() => {
-        void profile.refetch();
+        refetch();
         if (activeSeasonId !== null) {
           void attendance.refetch();
           void engagement.refetch();
         }
       }}
-      refreshing={profile.isRefetching}
+      refreshing={refreshing}
     >
-      <View className="flex-col gap-3">
+      <View className="flex-col gap-6">
         <IdentityCard name={p.name} email={p.email} badge="Student" />
         {activeSeasonId !== null ? (
-          <View className="flex-row gap-3">
+          <View className="flex-row flex-wrap gap-3">
             {/* v1 labelled this "Attendance" (spec 09 R68); it is the budget LEFT (spec 19 D14). */}
-            <StatCard
+            <StatTile
               label="Absence budget left"
-              value={budget ? `${budget.remainingPct}%` : "—"}
+              value={budget ? budget.remainingPct : "—"}
+              suffix={budget ? "%" : undefined}
             />
-            <StatCard
+            <StatTile
               label="Assignments"
               value={eng ? `${eng.submissionsCompleted}/${eng.submissionsExpected}` : "—"}
             />
-            <StatCard
-              label="Streak"
-              value={streak === null ? "—" : String(streak)}
-              icon={streak !== null && streak > 0 ? "flame" : undefined}
-            />
+            <StatTile label="Streak" value={streak === null ? "—" : streak} />
           </View>
         ) : null}
-        <View className="rounded-group bg-surface dark:border dark:border-separator p-4">
-          <Eyebrow className="mb-4">Your details</Eyebrow>
-          <ProfileForm profile={p} />
+        <View>
+          <ListSectionHeader>Your details</ListSectionHeader>
+          <View className="rounded-group bg-surface p-4">{form.fields}</View>
         </View>
         {/* Decision 1: name and email are not edited here (PATCH /me owns User.name). */}
-        <View
-          className="flex-col items-start gap-3 rounded-group bg-surface dark:border dark:border-separator p-4"
-        >
-          <TextV1 className="text-sm text-muted-foreground">
-            Change your name in Settings. To change your email, contact the JPC team.
-          </TextV1>
-          <ButtonV1 variant="outline" size="sm" onPress={() => router.push("/settings")}>
-            Open settings
-          </ButtonV1>
-        </View>
+        <GroupedList>
+          <ListRow
+            title="Open settings"
+            subtitle="Change your name in Settings. To change your email, contact the JPC team."
+            subtitleLines={3}
+            chevron
+            onPress={() => router.push("/settings")}
+          />
+        </GroupedList>
       </View>
-    </ShellFrame>
+    </FormScreen>
   );
 }

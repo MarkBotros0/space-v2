@@ -1,5 +1,4 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 import {
   OWN_PROFILE_FIELDS,
@@ -13,7 +12,6 @@ import { format, isValid, parse } from "date-fns";
 
 import { Fieldset } from "../../design/forms/fieldset";
 import {
-  Button as ButtonV1,
   DatePicker,
   FormField,
   Input as InputV1,
@@ -48,9 +46,16 @@ function dobToDate(value: string): Date | null {
   return isValid(date) ? date : null;
 }
 
-/** v1 student-form.tsx in its isSelf mode — the six own columns (Decision 1). */
-export function ProfileForm({ profile }: { profile: MyProfile }) {
-  const router = useRouter();
+/**
+ * v1 student-form.tsx in its isSelf mode — the six own columns (Decision 1).
+ * The fields and the save action are returned apart, so the screen can pin
+ * Save in `FormScreen`'s footer instead of leaving it below the long form.
+ */
+export function useProfileForm(profile: MyProfile): {
+  fields: ReactNode;
+  save: () => void;
+  saving: boolean;
+} {
   const update = useUpdateStudentProfile();
   const [values, setValues] = useState<FormValues>(() => toFormValues(profile));
   const [errors, setErrors] = useState<Partial<Record<OwnProfileField, string>>>({});
@@ -82,7 +87,7 @@ export function ProfileForm({ profile }: { profile: MyProfile }) {
     });
   };
 
-  return (
+  const fields = (
     <View className="flex-col gap-6">
       <Fieldset legend="Personal">
         <FormField label="Date of birth" error={errors.dateOfBirth}>
@@ -150,14 +155,7 @@ export function ProfileForm({ profile }: { profile: MyProfile }) {
           {submitError}
         </TextV1>
       ) : null}
-      <View className="flex-col-reverse gap-2">
-        <ButtonV1 variant="outline" onPress={() => router.back()}>
-          Cancel
-        </ButtonV1>
-        <ButtonV1 disabled={update.isPending} onPress={save}>
-          {update.isPending ? "Saving…" : "Save changes"}
-        </ButtonV1>
-      </View>
     </View>
   );
+  return { fields, save, saving: update.isPending };
 }
