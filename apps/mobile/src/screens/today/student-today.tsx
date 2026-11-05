@@ -12,6 +12,7 @@ import { EmptyState, GroupedList, ListRow, Text } from "../../design/ui";
 import { DASHBOARD_STALE_TIME, useStudentDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useStudentQuizList } from "../../hooks/use-quizzes";
+import { usePullRefresh } from "../../hooks/use-pull-refresh";
 import { useRefreshOnResume } from "../../hooks/use-refresh-on-resume";
 import { useMyAttendance } from "../../hooks/use-self-service";
 import { useSessionDetail } from "../../hooks/use-session-detail";
@@ -57,14 +58,16 @@ export function StudentToday() {
   const detail = useSessionDetail(nextId);
   const quizzes = useStudentQuizList(seasonId);
 
-  const refresh = () => {
-    void dash.refetch();
-    void events.refetch();
-    // `enabled` gates only the automatic run: guard the manual ones too.
-    if (activeSeasonId !== null) void attendance.refetch();
-    if (nextId !== null) void detail.refetch();
-    if (seasonId !== null) void quizzes.refetch();
-  };
+  const pull = usePullRefresh(() =>
+    Promise.all([
+      dash.refetch(),
+      events.refetch(),
+      // `enabled` gates only the automatic run: guard the manual ones too.
+      activeSeasonId !== null ? attendance.refetch() : null,
+      nextId !== null ? detail.refetch() : null,
+      seasonId !== null ? quizzes.refetch() : null,
+    ]),
+  );
 
   // This tab stays mounted, so nothing else re-reads it: back on it, or back in
   // the app the next morning, whatever is past its freshness is read again. By
@@ -92,14 +95,8 @@ export function StudentToday() {
       title={`Hi, ${firstName(name)}`}
       subtitle={data ? formatLongDay(data.todayOrgDay) : undefined}
       compactTitle="Today"
-      onRefresh={refresh}
-      refreshing={
-        dash.isRefetching ||
-        attendance.isRefetching ||
-        events.isRefetching ||
-        detail.isRefetching ||
-        quizzes.isRefetching
-      }
+      onRefresh={pull.onRefresh}
+      refreshing={pull.refreshing}
     >
       {dash.isPending ? (
         <RouteSkeleton />

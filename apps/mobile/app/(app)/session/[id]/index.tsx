@@ -50,7 +50,7 @@ function SessionDetailBody({ id }: { id: number }) {
   }
 
   const body = { data, refetch: () => void refetch(), isRefetching };
-  if (role === "STUDENT") return <StudentSessionBody {...body} />;
+  if (role === "STUDENT") return <StudentSessionBody data={data} refetch={refetch} />;
   if (role === "LEADER") return <LeaderSessionBody {...body} />;
 
   // v1 showed the console only to an admin OF the season; the API also lets any

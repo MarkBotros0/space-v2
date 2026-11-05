@@ -1,5 +1,6 @@
 import { act, screen, waitFor } from "@testing-library/react-native";
-import { AppState, type AppStateStatus } from "react-native";
+import { onlineManager } from "@tanstack/react-query";
+import { AppState, ScrollView, type AppStateStatus } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("expo-camera", () => require("./helpers/expo-camera"));
@@ -204,5 +205,80 @@ describe("Today refreshes what has gone stale when it comes back", () => {
     setFocused(false);
     await appState("active");
     expect(reads(DASHBOARD)).toBe(dashboards);
+  });
+});
+
+describe("the pull's spinner belongs to the pull", () => {
+  const control = () => screen.UNSAFE_getByType(ScrollView).props.refreshControl.props;
+  const pull = () => act(async () => { control().onRefresh(); });
+
+  /** Serves the routes, except that one URL waits until told. */
+  function hold(held: string) {
+    const release: ((v: unknown) => void)[] = [];
+    const routed = routes() as Record<string, unknown>;
+    get.mockImplementation((url: string) =>
+      url === held
+        ? new Promise((resolve) => release.push(() => resolve({ data: { data: routed[url] } })))
+        : url in routed
+          ? Promise.resolve({ data: { data: routed[url] } })
+          : Promise.reject(new Error(`not served: ${url}`)),
+    );
+    return () => { for (const r of release.splice(0)) r(undefined); };
+  }
+
+  it("a poll in flight doesn't raise it", async () => {
+    serve(routes());
+    renderWithProviders(<StudentToday />);
+    await screen.findByText("Check In");
+    const release = hold(NEXT_SESSION_DETAIL);
+    const before = reads(NEXT_SESSION_DETAIL);
+    await tick(LIVE_ROSTER_REFRESH_MS);
+    expect(reads(NEXT_SESSION_DETAIL)).toBe(before + 1);
+    // The read is out and still unanswered: let its state reach the screen.
+    await tick(50);
+    expect(control().refreshing).toBe(false);
+    await act(async () => { release(); await jest.advanceTimersByTimeAsync(0); });
+  });
+
+  it("a background read on resume doesn't raise it", async () => {
+    const appState = captureAppState();
+    serve(routes());
+    renderWithProviders(<StudentToday />);
+    await screen.findByText("Check In");
+    await tick(31_000);
+    // Events: past their freshness, and unlike session detail not polled meanwhile.
+    const release = hold(EVENTS);
+    const before = reads(EVENTS);
+    await appState("active");
+    await tick(50);
+    expect(reads(EVENTS)).toBe(before + 1);
+    expect(control().refreshing).toBe(false);
+    await act(async () => { release(); await jest.advanceTimersByTimeAsync(0); });
+  });
+
+  it("a pull raises it until every read has answered", async () => {
+    serve(routes());
+    renderWithProviders(<StudentToday />);
+    await screen.findByText("Check In");
+    const release = hold(NEXT_SESSION_DETAIL);
+    await pull();
+    expect(control().refreshing).toBe(true);
+    await act(async () => { release(); await jest.advanceTimersByTimeAsync(0); });
+    expect(control().refreshing).toBe(false);
+  });
+
+  it("offline, a pull doesn't leave it up over a paused read", async () => {
+    serve(routes());
+    renderWithProviders(<StudentToday />);
+    await screen.findByText("Check In");
+    act(() => onlineManager.setOnline(false));
+    try {
+      await pull();
+      expect(control().refreshing).toBe(false);
+    } finally {
+      act(() => onlineManager.setOnline(true));
+    }
+    await tick(0);
+    expect(control().refreshing).toBe(false);
   });
 });
