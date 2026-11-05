@@ -35,8 +35,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-04-students-search-typed
-# A search is a read: Search shows the no-match state.
-- tapOn: 'Search'
+# A search is a read: it runs 300ms after typing stops and shows the no-match state.
 - extendedWaitUntil:
     visible: 'No students match your search\.'
     timeout: 40000
@@ -46,10 +45,10 @@ appId: com.jpc.space
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Sort by'
+      TARGET: 'Filter'
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s35-06-students-sort-open
+- takeScreenshot: s35-06-students-filter-open
 - pressKey: back
 - waitForAnimationToEnd:
     timeout: 3000

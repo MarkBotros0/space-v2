@@ -35,7 +35,6 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s42-04-students-search-typed
-- tapOn: 'Search'
 - extendedWaitUntil:
     visible: 'No students match your search\.'
     timeout: 40000

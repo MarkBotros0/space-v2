@@ -14,8 +14,17 @@ iconWithClassName(Search);
  * the wrapping View, so focus is tracked in state rather than with `focus:`.
  */
 function SearchField({
-  value, onChangeText, placeholder, className,
-}: { value: string; onChangeText: (text: string) => void; placeholder: string; className?: string }) {
+  value, onChangeText, placeholder, className, onSubmitEditing, accessibilityLabel,
+}: {
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder: string;
+  className?: string;
+  /** Keyboard search pressed. */
+  onSubmitEditing?: () => void;
+  /** Defaults to the placeholder. */
+  accessibilityLabel?: string;
+}) {
   const colors = useThemeColors();
   const [focused, setFocused] = useState(false);
   return (
@@ -29,7 +38,8 @@ function SearchField({
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors["muted-foreground"]}
-        accessibilityLabel={placeholder}
+        accessibilityLabel={accessibilityLabel ?? placeholder}
+        onSubmitEditing={onSubmitEditing}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         returnKeyType="search"
