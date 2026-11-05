@@ -10,6 +10,7 @@ jest.mock("../lib/api-client", () => ({
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: (...args: unknown[]) => mockPush(...args) }),
+  useFocusEffect: () => {},
 }));
 
 jest.mock("../design/layout/home-actions", () => {

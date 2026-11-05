@@ -16,7 +16,8 @@ import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { firstName } from "../../lib/format";
 import { useSessionStore } from "../../store/session";
 import { atRiskReason } from "./at-risk-reason";
-import { LeaderSessionSection } from "./session-section";
+import { LeaderSessionSection, isOnTheDay } from "./session-section";
+import { useLiveTodayRefresh } from "./use-live-refresh";
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 const count = (n: number) => (
@@ -109,6 +110,11 @@ export function LeaderToday() {
   const current = useCurrentSeasonId();
   const dash = useSeasonStaffDashboard(current.seasonId);
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
+  useLiveTodayRefresh({
+    refetch: dash.refetch,
+    isStale: dash.isStale,
+    live: current.seasonId !== null && isOnTheDay(dash.data?.nextSession ?? null),
+  });
 
   const refresh = () => {
     current.refetch();

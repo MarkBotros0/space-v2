@@ -11,6 +11,11 @@ import { formatWallTime, formatWeekdayDay, unbreakable } from "../../lib/format"
 /** Names shown before "See all N". */
 const NAMED = 5;
 
+/** The session is on its day or running: the leader needs who is still missing. */
+export function isOnTheDay(session: DashboardSession | null, now?: Date): boolean {
+  return !!session && (session.isInProgress || session.dayKey === deviceTodayKey(now));
+}
+
 /**
  * The session to run and, on its day, who is still unmarked. A session that is
  * not today shows only its day cue; `checkIn` is the leader's own groups and
@@ -30,7 +35,7 @@ export function LeaderSessionSection({
 
   const id = String(session.id);
   const today = deviceTodayKey(now);
-  const onTheDay = session.isInProgress || session.dayKey === today;
+  const onTheDay = isOnTheDay(session, now);
   const missing = onTheDay ? (checkIn?.notCheckedIn ?? []) : [];
   const attendance = { pathname: "/session/[id]/attendance", params: { id } } as const;
   const openSession = () => router.push({ pathname: "/session/[id]", params: { id } });
