@@ -133,6 +133,11 @@ export const sessionsAssignmentsSchemas = {
       id: { type: "integer" },
       title: { type: "string" },
       dueAt: { type: ["string", "null"], format: "date-time" },
+      dueOrgDay: {
+        type: ["string", "null"],
+        format: "date",
+        description: "Organisation-calendar day of `dueAt` (ORG_TIMEZONE), derived server-side. Label and compare deadlines with this (and the dashboard's `todayOrgDay`), never by formatting `dueAt` on the device.",
+      },
       status: {
         oneOf: [
           { $ref: "#/components/schemas/SubmissionStatus" },

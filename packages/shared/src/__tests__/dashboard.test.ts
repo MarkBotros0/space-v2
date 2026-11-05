@@ -30,11 +30,17 @@ describe("limits (spec 19 §8)", () => {
   });
 });
 
-const notEnrolled = { variant: "STUDENT", season: null, progress: null, nextSession: null, assignments: null };
+const notEnrolled = { variant: "STUDENT", todayOrgDay: "2099-03-01", season: null, progress: null, nextSession: null, assignments: null };
 
 describe("studentDashboardSchema (ruling C8 #2)", () => {
   it("accepts the not-enrolled shape (R63)", () => {
     expect(studentDashboardSchema.parse(notEnrolled)).toEqual(notEnrolled);
+  });
+
+  it("requires todayOrgDay, an org day key, also when not enrolled", () => {
+    const { todayOrgDay: _day, ...without } = notEnrolled;
+    expect(studentDashboardSchema.safeParse(without).success).toBe(false);
+    expect(studentDashboardSchema.safeParse({ ...notEnrolled, todayOrgDay: "tomorrow" }).success).toBe(false);
   });
 
   it("refuses any extra field, so a leaked cohort figure fails at the client", () => {

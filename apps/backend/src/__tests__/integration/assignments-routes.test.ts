@@ -164,6 +164,7 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
         id: allGroupsAssignmentId,
         title: "Open To All",
         dueAt: expect.any(String),
+        dueOrgDay: "2099-04-01",
         isOverdue: false,
         status: "PENDING",
         reviewedAt: null,

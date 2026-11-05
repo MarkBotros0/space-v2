@@ -38,6 +38,8 @@ export interface StudentAssignmentSummaryFigures {
   overdueCount: number;
   lateSubmittedCount: number;
   dueSoon: StudentAssignmentSummaryRow[];
+  /** PENDING | DRAFT | RETURNED, uncapped, `dueAt` asc nulls last then id. */
+  open: StudentAssignmentSummaryRow[];
 }
 
 /**
@@ -54,16 +56,18 @@ export function summarizeStudentAssignments(
 ): StudentAssignmentSummaryFigures {
   const outstanding = rows.filter((r) => isAssignmentOutstanding(r.status));
   const dueKey = (r: StudentAssignmentStateRow) => (r.dueAt === null ? Number.POSITIVE_INFINITY : r.dueAt.getTime());
-  const dueSoon = [...outstanding]
-    .sort((a, b) => dueKey(a) - dueKey(b) || a.id - b.id)
-    .slice(0, limit)
-    .map(({ isLate: _isLate, ...wire }) => wire);
+  const byDue = (a: StudentAssignmentStateRow, b: StudentAssignmentStateRow) => dueKey(a) - dueKey(b) || a.id - b.id;
+  const toWire = ({ isLate: _isLate, ...wire }: StudentAssignmentStateRow) => wire;
+  const dueSoon = [...outstanding].sort(byDue).slice(0, limit).map(toWire);
+  // P2-4: work the student still has to do, RETURNED (sent back for rework) included.
+  const open = rows.filter((r) => isAssignmentOutstanding(r.status) || r.status === "RETURNED").sort(byDue).map(toWire);
 
   return {
     outstandingCount: outstanding.length,
     overdueCount: outstanding.filter((r) => r.isOverdue).length,
     lateSubmittedCount: rows.filter((r) => !isAssignmentOutstanding(r.status) && r.isLate).length,
     dueSoon,
+    open,
   };
 }
 

@@ -54,6 +54,7 @@ const SEASON_SELECT = { id: true, code: true, title: true, status: true } as con
 export async function loadStudentDashboard(user: SessionUser, now: Date) {
   const notEnrolled = {
     variant: "STUDENT" as const,
+    todayOrgDay: orgDayKey(now),
     season: null,
     progress: null,
     nextSession: null,
@@ -73,6 +74,7 @@ export async function loadStudentDashboard(user: SessionUser, now: Date) {
 
   return {
     variant: "STUDENT" as const,
+    todayOrgDay: orgDayKey(now),
     season,
     progress,
     nextSession: next ? toDashboardSession(next) : null,

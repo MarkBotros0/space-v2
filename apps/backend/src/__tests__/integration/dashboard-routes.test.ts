@@ -71,6 +71,7 @@ beforeAll(async () => {
   await db.groupLeader.create({ data: { groupId: groupAId, userId: leader.id } });
   await db.groupLeader.create({ data: { groupId: otherGroupId, userId: leaderNone.id } });
   await db.studentProfile.create({ data: { userId: s1, activeSeasonId: seasonId } });
+  await db.studentProfile.create({ data: { userId: s3, activeSeasonId: seasonId } });
 
   const enrolledAt = at("2019-12-01T00:00:00.000Z");
   await db.seasonEnrollment.createMany({
@@ -221,6 +222,7 @@ beforeAll(async () => {
   tokens.alumnus = await login(app, alumnus.email);
   tokens.student = await login(app, student.email);
   tokens.studentNone = await login(app, studentNone.email);
+  tokens.student3 = await login(app, (await db.user.findUniqueOrThrow({ where: { id: s3 }, select: { email: true } })).email);
 });
 
 afterAll(async () => {
@@ -319,9 +321,10 @@ describe("STUDENT", () => {
   it("carries only the caller's own figures and ignores ?seasonId= (C8 #2, D22)", async () => {
     const res = await get(`/api/v1/me/dashboard?seasonId=${otherSeasonId}`, tokens.student);
     expect(res.status).toBe(200);
-    expect(Object.keys(res.body.data).sort()).toEqual(["assignments", "nextSession", "progress", "season", "variant"]);
+    expect(Object.keys(res.body.data).sort()).toEqual(["assignments", "nextSession", "progress", "season", "todayOrgDay", "variant"]);
     const d = studentDashboardSchema.parse(res.body.data);
 
+    expect(d.todayOrgDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(d.season?.id).toBe(seasonId);
     expect(d.progress).toEqual({ sessionsHeld: 3, sessionsTotal: 4, pct: 75 });
     expect(d.nextSession).toMatchObject({ id: liveSessionId, isInProgress: true });
@@ -333,6 +336,18 @@ describe("STUDENT", () => {
       [aOldId, "PENDING", true, "2020-01-05"],
       [aAId, "DRAFT", false, "2099-06-01"],
     ]);
+    // Nothing returned for s1, so open is the same two rows (no SUBMITTED).
+    expect(d.assignments?.open.map((a) => a.id)).toEqual([aOldId, aAId]);
+  });
+
+  it("lists a RETURNED row in assignments.open, though it is not outstanding (P2-4, C5)", async () => {
+    const res = await get("/api/v1/me/dashboard", tokens.student3);
+    expect(res.status).toBe(200);
+    const d = studentDashboardSchema.parse(res.body.data);
+    expect(d.assignments?.outstandingCount).toBe(0);
+    expect(d.assignments?.overdueCount).toBe(0);
+    expect(d.assignments?.dueSoon).toEqual([]);
+    expect(d.assignments?.open.map((a) => [a.status, a.dueOrgDay])).toEqual([["RETURNED", "2020-01-10"]]);
   });
 
   it("states 'not enrolled' itself: season null and everything else null (R63)", async () => {
@@ -340,6 +355,7 @@ describe("STUDENT", () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({
       variant: "STUDENT",
+      todayOrgDay: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       season: null,
       progress: null,
       nextSession: null,

@@ -47,6 +47,7 @@ export const liveSession = {
 
 export const studentDashboard = {
   variant: "STUDENT",
+  todayOrgDay: "2099-03-01",
   season: { id: 7, code: "spring-2099", title: "Spring 2099", status: "ACTIVE" },
   progress: { sessionsHeld: 3, sessionsTotal: 4, pct: 75 },
   nextSession: liveSession,
@@ -72,6 +73,35 @@ export const studentDashboard = {
         isOverdue: false,
         status: "DRAFT",
         reviewedAt: null,
+      },
+    ],
+    open: [
+      {
+        id: 41,
+        title: "Old essay",
+        dueAt: "2020-01-05T10:00:00.000Z",
+        dueOrgDay: "2020-01-05",
+        isOverdue: true,
+        status: "PENDING",
+        reviewedAt: null,
+      },
+      {
+        id: 42,
+        title: "New essay",
+        dueAt: "2099-06-01T10:00:00.000Z",
+        dueOrgDay: "2099-06-01",
+        isOverdue: false,
+        status: "DRAFT",
+        reviewedAt: null,
+      },
+      {
+        id: 43,
+        title: "Redo essay",
+        dueAt: "2099-07-01T10:00:00.000Z",
+        dueOrgDay: "2099-07-01",
+        isOverdue: false,
+        status: "RETURNED",
+        reviewedAt: "2099-02-20T10:00:00.000Z",
       },
     ],
   },

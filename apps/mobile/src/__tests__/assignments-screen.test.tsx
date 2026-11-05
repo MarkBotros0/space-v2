@@ -27,6 +27,7 @@ const row = {
   id: 41,
   title: "Essay one",
   dueAt: "2099-04-01T21:59:00.000Z",
+  dueOrgDay: "2099-04-01",
   isOverdue: false,
   status: "PENDING" as const,
   reviewedAt: null,

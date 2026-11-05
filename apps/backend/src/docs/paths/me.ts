@@ -118,6 +118,11 @@ export const mePaths = {
                 description: "variant STUDENT",
                 properties: {
                   variant: { const: "STUDENT" },
+                  todayOrgDay: {
+                    type: "string",
+                    format: "date",
+                    description: "Today's organisation-calendar day (ORG_TIMEZONE). Always present, also when the student is not enrolled.",
+                  },
                   season: { type: ["object", "null"] },
                   progress: {
                     type: ["object", "null"],
@@ -134,7 +139,12 @@ export const mePaths = {
                       outstandingCount: { type: "integer", description: "PENDING or DRAFT, targeted assignments only." },
                       overdueCount: { type: "integer" },
                       lateSubmittedCount: { type: "integer" },
-                      dueSoon: { type: "array", maxItems: 3, items: { type: "object" } },
+                      dueSoon: { type: "array", maxItems: 3, items: { $ref: "#/components/schemas/StudentAssignmentListItem" } },
+                      open: {
+                        type: "array",
+                        description: "Every PENDING, DRAFT or RETURNED assignment, uncapped, `dueAt` ascending with undated last, then id. RETURNED rows are open work but not in `outstandingCount`.",
+                        items: { $ref: "#/components/schemas/StudentAssignmentListItem" },
+                      },
                     },
                   },
                 },

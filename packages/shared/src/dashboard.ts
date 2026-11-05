@@ -112,13 +112,10 @@ export const staffSeasonDashboardSchema = z
 export type StaffSeasonDashboard = z.infer<typeof staffSeasonDashboardSchema>;
 
 /**
- * A due-soon row: the student list row plus its org-calendar due day, so the
- * label never formats `dueAt` in the device zone (X13). The student list
- * endpoint itself is unchanged (Plan 5 note 7).
+ * A due-soon / open row: the student list row, which carries its org-calendar
+ * due day so the label never formats `dueAt` in the device zone (X13).
  */
-export const dashboardDueItemSchema = studentAssignmentListItemSchema.extend({
-  dueOrgDay: isoDaySchema.nullable(),
-});
+export const dashboardDueItemSchema = studentAssignmentListItemSchema;
 export type DashboardDueItem = z.infer<typeof dashboardDueItemSchema>;
 
 export const studentAssignmentSummarySchema = z
@@ -131,6 +128,8 @@ export const studentAssignmentSummarySchema = z
     lateSubmittedCount: count,
     /** Outstanding only, `dueAt` asc nulls last, overdue included (R73). */
     dueSoon: z.array(dashboardDueItemSchema).max(DUE_SOON_LIMIT),
+    /** PENDING | DRAFT | RETURNED, uncapped, `dueAt` asc nulls last then id. */
+    open: z.array(dashboardDueItemSchema),
   })
   .strict();
 export type StudentAssignmentSummary = z.infer<typeof studentAssignmentSummarySchema>;
@@ -144,6 +143,8 @@ export type StudentAssignmentSummary = z.infer<typeof studentAssignmentSummarySc
 export const studentDashboardSchema = z
   .object({
     variant: z.literal("STUDENT"),
+    /** Today's org-calendar day; present also when not enrolled. Chips compare `dueOrgDay` to this. */
+    todayOrgDay: isoDaySchema,
     season: dashboardSeasonSchema.nullable(),
     progress: seasonProgressSchema.nullable(),
     nextSession: dashboardSessionSchema.nullable(),

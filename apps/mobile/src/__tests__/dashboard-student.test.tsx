@@ -98,6 +98,7 @@ describe("DashboardScreen — STUDENT", () => {
     serve({
       "/api/v1/me/dashboard": {
         variant: "STUDENT",
+        todayOrgDay: "2099-03-01",
         season: null,
         progress: null,
         nextSession: null,
