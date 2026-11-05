@@ -24,9 +24,11 @@ type SaveBarProps = {
   disabled?: boolean;
   /** A second, quieter action beside the primary (Save draft beside Submit). */
   secondary?: { label: string; onPress: () => void; disabled?: boolean };
+  /** The button look; a bar that confirms a destructive action passes "destructive". Default "primary". */
+  variant?: "primary" | "destructive";
 };
 
-function SaveBarBody({ label, onPress, loading, hint, disabled, secondary }: SaveBarProps) {
+function SaveBarBody({ label, onPress, loading, hint, disabled, secondary, variant = "primary" }: SaveBarProps) {
   return (
     <View className="gap-2 border-t border-separator bg-surface px-4 pt-3">
       {hint ? (
@@ -39,7 +41,7 @@ function SaveBarBody({ label, onPress, loading, hint, disabled, secondary }: Sav
           {secondary.label}
         </Button>
       ) : null}
-      <Button onPress={onPress} loading={loading} disabled={disabled} className="w-full">
+      <Button variant={variant} onPress={onPress} loading={loading} disabled={disabled} className="w-full">
         {label}
       </Button>
     </View>

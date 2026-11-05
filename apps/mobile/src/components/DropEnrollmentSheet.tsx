@@ -58,6 +58,7 @@ export function DropEnrollmentSheet({ studentId, enrollment, onClose }: DropEnro
       footer={
         <SheetSaveBar
           label="Drop student"
+          variant="destructive"
           loading={drop.isPending}
           onPress={submit}
           hint={error ?? fieldError ?? undefined}

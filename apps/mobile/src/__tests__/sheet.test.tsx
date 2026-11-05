@@ -142,6 +142,25 @@ describe("save bars", () => {
     expect(screen.getByText("Saved to all")).toBeTruthy();
   });
 
+  it("SheetSaveBar takes a destructive variant and stays primary by default", () => {
+    renderWithProviders(
+      <Sheet
+        open
+        onClose={() => {}}
+        footer={<SheetSaveBar label="Drop" variant="destructive" onPress={() => {}} />}
+      >
+        <Text>x</Text>
+      </Sheet>,
+    );
+    expect(screen.getByTestId("button-look").props.className).toContain("bg-bad-soft");
+    expect(screen.getByTestId("button-look").props.className).not.toContain("bg-primary");
+  });
+
+  it("SheetSaveBar is primary without a variant", () => {
+    renderWithProviders(<Sheet open onClose={() => {}} footer={bar}><Text>x</Text></Sheet>);
+    expect(screen.getByTestId("button-look").props.className).not.toContain("bg-bad-soft");
+  });
+
   it("SaveBar sits above the shell padding when the keyboard is closed", () => {
     renderWithProviders(<SaveBar label="Save" onPress={() => {}} />);
     expect(screen.getByTestId("save-bar").props.style.bottom).toBe(114);

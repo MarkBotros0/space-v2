@@ -49,7 +49,11 @@ export function ToastSection() {
   return (
     <CatalogueSection id="toast" title="Toast">
       <View className="flex-row flex-wrap gap-2">
-        <Button testID="catalogue-toast-button" variant="secondary" onPress={() => toast.success("Saved", { description: "Nothing was written." })}>
+        <Button
+          testID="catalogue-toast-button"
+          variant="secondary"
+          onPress={() => toast.success("Saved", { description: "Nothing was written." })}
+        >
           Show toast
         </Button>
       </View>
@@ -61,18 +65,42 @@ export function ToastSection() {
 export function SheetSection() {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
+  const [destructive, setDestructive] = useState(false);
   return (
     <CatalogueSection id="sheet" title="Sheet">
       <View className="flex-row flex-wrap gap-2">
-        <Button testID="catalogue-open-sheet" variant="secondary" onPress={() => setOpen(true)}>
+        <Button
+          testID="catalogue-open-sheet"
+          variant="secondary"
+          onPress={() => {
+            setDestructive(false);
+            setOpen(true);
+          }}
+        >
           Open sheet
+        </Button>
+        <Button
+          testID="catalogue-open-sheet-destructive"
+          variant="secondary"
+          onPress={() => {
+            setDestructive(true);
+            setOpen(true);
+          }}
+        >
+          Open destructive sheet
         </Button>
       </View>
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
         title="Add a note"
-        footer={<SheetSaveBar label="Save note" onPress={() => setOpen(false)} />}
+        footer={
+          <SheetSaveBar
+            label={destructive ? "Drop note" : "Save note"}
+            variant={destructive ? "destructive" : "primary"}
+            onPress={() => setOpen(false)}
+          />
+        }
       >
         <View className="gap-2 pb-4">
           <Text variant="subhead" className="text-muted-foreground">
