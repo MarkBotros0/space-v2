@@ -246,6 +246,28 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     expect(screen.getByTestId("organisation-tiles").props.className).toContain("flex-wrap");
   });
 
+  it("puts the org-wide Organisation above the season chips, so the chips sit over what they scope", async () => {
+    useSessionStore.setState(sessionFor("SUPER"));
+    mockEndpoints({ withOrg: true });
+    renderWithProviders(<ReportsScreen />);
+
+    await screen.findByLabelText("Student accounts: 40");
+    // Document order of the accessibility labels.
+    const labels: string[] = [];
+    const walk = (n: unknown): void => {
+      if (!n || typeof n !== "object") return;
+      if (Array.isArray(n)) return n.forEach(walk);
+      const node = n as { props?: { accessibilityLabel?: string }; children?: unknown };
+      if (node.props?.accessibilityLabel) labels.push(node.props.accessibilityLabel);
+      walk(node.children);
+    };
+    walk(screen.toJSON());
+    const org = labels.indexOf("Student accounts: 40");
+    const chips = labels.indexOf("Season filter: Spring 2099");
+    expect(org).toBeGreaterThan(-1);
+    expect(chips).toBeGreaterThan(org);
+  });
+
   it("says 1 Active season, not 1 Active seasons", async () => {
     useSessionStore.setState(sessionFor("SUPER"));
     mockEndpoints({ withOrg: true });

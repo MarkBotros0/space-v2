@@ -50,6 +50,9 @@ function StaffReports() {
       refreshing={refreshing}
     >
       <View className="flex-col gap-4">
+        {/* Org-wide, so it sits above the chips: the chips sit right over what they scope. */}
+        {isSuper ? <OrganisationSection /> : null}
+
         {/* Outside the loading/error branches: a season that keeps failing must not
             strand the caller, who can always pick a different one. */}
         {permitted.length > 0 ? (
@@ -62,8 +65,6 @@ function StaffReports() {
           <RouteError onRetry={() => void summary.refetch()} />
         ) : (
           <>
-            {isSuper ? <OrganisationSection /> : null}
-
             {summary.data.scope.truncated ? (
               <Text className="text-xs text-warning-700 dark:text-warning-300">
                 Some seasons you asked for aren&apos;t in your scope.
