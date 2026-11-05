@@ -1,221 +1,113 @@
 import { useRouter } from "expo-router";
-import { AlertCircle, Users } from "lucide-react-native";
-import { Pressable, View } from "react-native";
-import { AT_RISK_PCT, UPCOMING_EVENTS_LIMIT, type ActivityItem } from "@space/shared";
+import { View } from "react-native";
+import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
-import { NAV_ICONS } from "../../design/icons/nav-icon";
-import { PageTitle } from "../../design/layout/page-title";
 import { InlineError } from "../../design/layout/route-states";
-import { ShellFrame } from "../../design/layout/shell-frame";
-import { iconWithClassName } from "../../design/lib/icon";
-import { Badge, Button, EmptyState, Skeleton, Text } from "../../design/ui";
+import { Screen } from "../../design/layout/screen";
+import { GroupedList, ListRow, Skeleton } from "../../design/ui";
 import { useMentorDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
+import { useVisibleNotes } from "../../hooks/use-notes";
 import { useEngagementReport } from "../../hooks/use-reports";
-import { formatTimeAgo } from "../../lib/format";
+import { AtRiskGroup } from "../../screens/mentor/at-risk-group";
+import { RecentActivityGroup } from "../../screens/mentor/recent-activity-group";
+import { RecentNotesGroup } from "../../screens/mentor/recent-notes-group";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
 
-iconWithClassName(AlertCircle);
-iconWithClassName(Users);
+const NOTES_LIMIT = 5;
 
-function activityParts(i: ActivityItem): { name: string; rest: string } {
-  if (i.kind === "attendance") {
-    return {
-      name: i.studentName,
-      rest: ` was ${(i.attendanceStatus ?? "marked").toLowerCase()} at ${i.subjectTitle}`,
-    };
-  }
-  if (i.kind === "submitted") return { name: i.studentName, rest: ` submitted ${i.subjectTitle}` };
-  return { name: i.studentName, rest: ` received feedback on ${i.subjectTitle}` };
-}
-
-/** v1's `CardHeader` + `CardTitle` row: a coloured icon beside the title (and an optional ghost link). */
-function CardTitleRow({
-  icon,
-  title,
-  action,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  action?: React.ReactNode;
-}) {
+function GroupLoading({ header }: { header: string }) {
   return (
-    <View className="flex-row items-center justify-between gap-2 p-4">
-      <View className="flex-row items-center gap-2">
-        {icon}
-        <Text accessibilityRole="header" className="text-base font-semibold">
-          {title}
-        </Text>
+    <GroupedList header={header}>
+      <View accessible accessibilityLabel="Loading" className="flex-col gap-2.5 p-4">
+        <Skeleton className="h-9" />
+        <Skeleton className="h-9" />
       </View>
-      {action}
-    </View>
+    </GroupedList>
   );
 }
 
-function CardLoading() {
+function GroupError({ header, message, onRetry }: { header: string; message: string; onRetry: () => void }) {
   return (
-    <View accessible accessibilityLabel="Loading" className="flex-col gap-2.5 px-4 pb-4">
-      <Skeleton className="h-9" />
-      <Skeleton className="h-9" />
-    </View>
+    <GroupedList header={header}>
+      <InlineError className="p-4" message={message} onRetry={onRetry} />
+    </GroupedList>
   );
 }
 
 /**
- * v1 app/mentor/dashboard/page.tsx: title and subtitle, the upcoming-events
- * card, then "Flagged for follow-up" and "Recent activity". v2 keeps its
- * decisions (B6-1): "At risk" is the label (R48), the list shares Reports'
- * cache (D17), and the quick-link tiles are tabs here (spec 19 §9).
+ * The mentor's Today: who is at risk, the newest notes, recent activity, then
+ * the upcoming-events card every Today keeps. v2 decisions kept (B6-1): the
+ * at-risk list shares Reports' cache (D17) and the quick links are tabs.
  */
 export function MentorDashboard() {
   const router = useRouter();
   // D17: the SAME query key as the mentor's Reports tab, so Home and Reports
   // cannot show different at-risk sets. No seasonId = the mentor's whole scope.
   const engagement = useEngagementReport(null, true);
+  const notes = useVisibleNotes(NOTES_LIMIT, true);
   const feed = useMentorDashboard();
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
 
   const refresh = () => {
     void engagement.refetch();
+    void notes.refetch();
     void feed.refetch();
     void events.refetch();
   };
 
-  const open = (i: ActivityItem) => {
-    // D18 / R55: v2 has no role prefix to forbid these links.
-    if (i.submissionPublicId !== null) {
-      router.push({
-        pathname: "/submission/[publicId]",
-        params: { publicId: i.submissionPublicId },
-      });
-    } else {
-      router.push({ pathname: "/student/[id]", params: { id: String(i.studentUserId) } });
-    }
-  };
-
   return (
-    <ShellFrame
+    <Screen
       home
+      title="Today"
       onRefresh={refresh}
-      refreshing={engagement.isRefetching || feed.isRefetching || events.isRefetching}
+      refreshing={
+        engagement.isRefetching || notes.isRefetching || feed.isRefetching || events.isRefetching
+      }
     >
-      <View className="flex-col gap-4">
-        <PageTitle
-          title="Mentor dashboard"
-          subtitle="Cross-season pastoral view. You can read everything; writes are limited to your notes."
-        />
+      <View className="flex-col gap-6">
+        {engagement.isPending ? (
+          <GroupLoading header="At risk" />
+        ) : engagement.isError ? (
+          <GroupError
+            header="At risk"
+            message="Couldn't load the at-risk list."
+            onRetry={() => void engagement.refetch()}
+          />
+        ) : (
+          <AtRiskGroup
+            rows={engagement.data.atRisk}
+            total={engagement.data.atRiskTotal}
+            footer={<ListRow title="All students" chevron onPress={() => router.push("/students")} />}
+          />
+        )}
+
+        {notes.isPending ? (
+          <GroupLoading header="Recent notes" />
+        ) : notes.isError ? (
+          <GroupError
+            header="Recent notes"
+            message="Couldn't load recent notes."
+            onRetry={() => void notes.refetch()}
+          />
+        ) : (
+          <RecentNotesGroup notes={notes.data} />
+        )}
+
+        {feed.isPending ? (
+          <GroupLoading header="Recent activity" />
+        ) : feed.isError ? (
+          <GroupError
+            header="Recent activity"
+            message="Couldn't load recent activity."
+            onRetry={() => void feed.refetch()}
+          />
+        ) : (
+          <RecentActivityGroup items={feed.data.recentActivity} />
+        )}
 
         <UpcomingEventsCard query={events} />
-
-        <View className="rounded-group bg-surface dark:border dark:border-separator">
-          <CardTitleRow
-            icon={<AlertCircle size={16} className="text-warning-600" />}
-            title="At risk"
-            action={
-              <Button variant="ghost" size="sm" onPress={() => router.push("/students")}>
-                All students
-              </Button>
-            }
-          />
-          {engagement.isPending ? (
-            <CardLoading />
-          ) : engagement.isError ? (
-            <InlineError
-              className="px-4 pb-4"
-              message="Couldn't load the at-risk list."
-              onRetry={() => void engagement.refetch()}
-            />
-          ) : engagement.data.atRisk.length === 0 ? (
-            <View className="px-4 pb-4">
-              <EmptyState
-                icon={NAV_ICONS.students}
-                title="Nobody at risk"
-                description={`No student has attendance or submissions below ${AT_RISK_PCT}%.`}
-              />
-            </View>
-          ) : (
-            <View className="px-4 pb-4">
-              <Text className="mb-1 text-xs text-muted-foreground">
-                {`${engagement.data.atRisk.length} of ${engagement.data.atRiskTotal}`}
-              </Text>
-              {engagement.data.atRisk.map((r, idx) => (
-                <Pressable
-                  key={`${r.studentUserId}:${r.seasonId}`}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${r.name}, ${r.seasonTitle}, ${r.attendancePct}% attendance, ${r.submissionPct}% submissions`}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/student/[id]",
-                      params: { id: String(r.studentUserId) },
-                    })
-                  }
-                  className={`flex-row items-center justify-between gap-2 py-2 active:opacity-80 ${
-                    idx > 0 ? "border-t border-neutral-100 dark:border-border" : "pt-0"
-                  }`}
-                >
-                  <View className="min-w-0 flex-1">
-                    <Text numberOfLines={1} className="text-sm font-medium">
-                      {r.name}
-                    </Text>
-                    <Text numberOfLines={1} className="text-xs text-muted-foreground">
-                      {r.seasonTitle}
-                    </Text>
-                  </View>
-                  <View className="shrink-0 flex-row gap-1">
-                    <Badge variant="warning">{`${r.attendancePct}% att.`}</Badge>
-                    <Badge variant="error">{`${r.submissionPct}% sub.`}</Badge>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          )}
-        </View>
-
-        <View className="rounded-group bg-surface dark:border dark:border-separator">
-          <CardTitleRow
-            icon={<Users size={16} className="text-info-600" />}
-            title="Recent activity"
-          />
-          {feed.isPending ? (
-            <CardLoading />
-          ) : feed.isError ? (
-            <InlineError
-              className="px-4 pb-4"
-              message="Couldn't load recent activity."
-              onRetry={() => void feed.refetch()}
-            />
-          ) : feed.data.recentActivity.length === 0 ? (
-            <Text className="px-4 pb-4 pt-0 text-center text-sm italic text-muted-foreground">
-              No recent activity.
-            </Text>
-          ) : (
-            <View className="px-4 pb-4">
-              {feed.data.recentActivity.map((i, idx) => {
-                const { name, rest } = activityParts(i);
-                return (
-                  <Pressable
-                    key={i.key}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${name}${rest}`}
-                    onPress={() => open(i)}
-                    className={`flex-row items-start justify-between gap-3 py-2 active:opacity-80 ${
-                      idx > 0 ? "border-t border-neutral-100 dark:border-border" : "pt-0"
-                    }`}
-                  >
-                    <Text className="min-w-0 flex-1 text-sm">
-                      <Text className="text-sm font-medium">{name}</Text>
-                      <Text className="text-sm text-muted-foreground">{rest}</Text>
-                    </Text>
-                    <Text className="shrink-0 text-xs text-muted-foreground">
-                      {formatTimeAgo(i.at)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </View>
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }

@@ -59,6 +59,8 @@ type ListRowProps = {
   chevron?: boolean;
   onPress?: () => void;
   index?: number;
+  /** Lines the title may take before it ellipsizes; default 1. */
+  titleLines?: number;
   className?: string;
 };
 
@@ -71,13 +73,13 @@ function spokenTrailing(trailing: ReactNode, trailingLabel: string | undefined):
   return undefined;
 }
 
-function ListRow({ title, subtitle, trailing, trailingLabel, chevron, onPress, index = 0, className }: ListRowProps) {
+function ListRow({ title, subtitle, trailing, trailingLabel, chevron, onPress, index = 0, titleLines = 1, className }: ListRowProps) {
   const reduced = useReducedMotion();
   const press = usePressScale(0.985);
   const content = (
     <View className={cn("min-h-[52px] flex-row items-center gap-3 px-4 py-2", className)}>
       <View className="min-w-0 flex-1">
-        <Text variant="body" numberOfLines={1} ellipsizeMode="tail">
+        <Text variant="body" numberOfLines={titleLines} ellipsizeMode="tail">
           {title}
         </Text>
         {subtitle ? (

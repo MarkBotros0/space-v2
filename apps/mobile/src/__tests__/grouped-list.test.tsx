@@ -63,3 +63,10 @@ describe("GroupedList / ListRow", () => {
     expect(screen.getByText("PAST")).toBeTruthy();
   });
 });
+
+describe("ListRow titleLines", () => {
+  it("lets the title take two lines when asked", () => {
+    render(<ListRow title="A name that may need a second line" titleLines={2} />);
+    expect(screen.getByText(/A name that may/).props.numberOfLines).toBe(2);
+  });
+});

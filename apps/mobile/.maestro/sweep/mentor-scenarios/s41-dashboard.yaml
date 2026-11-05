@@ -8,7 +8,7 @@ appId: com.jpc.space
       EMAIL: ${MENTOR_EMAIL}
 - openLink: spacev2://dashboard
 - extendedWaitUntil:
-    visible: 'Cross-season pastoral view.*'
+    visible: 'At risk'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

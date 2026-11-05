@@ -160,25 +160,24 @@ describe("DashboardScreen — MENTOR", () => {
     serve({
       "/api/v1/reports/engagement": engagementSummary,
       "/api/v1/me/dashboard": mentorDashboard,
+      "/api/v1/me/visible-notes?limit=5": { notes: [], nextCursor: null },
       [EVENTS]: events,
       [UNREAD]: { unreadCount: 0 },
     });
 
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("At risk")).toBeTruthy();
+    expect(await screen.findByText("AT RISK · 1 OF 34")).toBeTruthy();
     expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
-    expect(screen.getByText("Mentor dashboard")).toBeTruthy();
-    expect(screen.getByText("Recent activity")).toBeTruthy();
-    expect(await screen.findByText("1 of 34")).toBeTruthy();
+    expect(screen.getByText("RECENT ACTIVITY")).toBeTruthy();
     expect(screen.queryByText("Flagged for follow-up")).toBeNull();
 
-    fireEvent.press(await screen.findByLabelText("Omar received feedback on Feed essay"));
+    fireEvent.press(await screen.findByLabelText(/^Omar, received feedback on Feed essay/));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/submission/[publicId]",
       params: { publicId: "pub0000009" },
     });
-    fireEvent.press(screen.getByLabelText("Mona was present at Week 6"));
+    fireEvent.press(screen.getByLabelText(/^Mona, was present at Week 6/));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "23" } });
 
     expect(requested()).not.toContain("/api/v1/seasons");
@@ -189,6 +188,7 @@ describe("DashboardScreen — MENTOR", () => {
     serve({
       "/api/v1/reports/engagement": { ...engagementSummary, atRisk: [], atRiskTotal: 0 },
       "/api/v1/me/dashboard": { variant: "MENTOR", recentActivity: [] },
+      "/api/v1/me/visible-notes?limit=5": { notes: [], nextCursor: null },
       [EVENTS]: events,
       [UNREAD]: { unreadCount: 0 },
     });
