@@ -10,9 +10,10 @@ import { Screen } from "./screen";
  * detail screen), the keyboard inset, pull-to-refresh, and the scroll
  * direction the pill follows. The screen keeps its own `PageTitle` in the
  * content until its batch.
- * Background: every v1 role layout wraps its pages in `bg-brand-navy-50
- * dark:bg-transparent … pb-24` (app/<role>/layout.tsx); the tint ends 96px
- * below the content, so a short page shows the plain background under it.
+ * Background: the Screen's `bg-background`, like every redesigned screen.
+ * v1's navy-50 page tint is gone (R32): it covered only the
+ * content, so a short page showed a two-tone seam where it ended. Cards stay
+ * apart from the page as `bg-card`/`bg-surface`.
  * `home` (the dashboard route only) puts the bell and the user menu at the
  * top of the content, ruling R13. `back` is Screen's pinned back bar
  * (ruling R16); left unset it is `BACK_TO_PREVIOUS` on the stack (R23), `null` opts out.
@@ -39,7 +40,6 @@ export function ShellFrame({
       onRefresh={onRefresh}
       home={home}
       back={back}
-      contentClassName="bg-brand-navy-50 dark:bg-background"
     >
       {children}
     </Screen>

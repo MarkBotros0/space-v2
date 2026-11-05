@@ -104,7 +104,7 @@ export default function NotificationsScreen() {
     <ScreenChrome>
       <FlatList
         className="flex-1 bg-background"
-        contentContainerClassName="gap-2 bg-brand-navy-50 px-4 pt-4 dark:bg-background"
+        contentContainerClassName="gap-2 px-4 pt-4"
         contentContainerStyle={{ paddingBottom: bottomPadding }}
         data={items}
         keyExtractor={(item) => String(item.id)}

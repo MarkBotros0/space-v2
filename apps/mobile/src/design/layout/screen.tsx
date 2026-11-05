@@ -68,7 +68,7 @@ export type ScreenProps = {
   onRefresh?: () => void;
   /** `false` for a screen that lays out its own list or fills the space. */
   scroll?: boolean;
-  /** Extra classes on the content container (ShellFrame's v1 page tint). */
+  /** Extra classes on the content container. */
   contentClassName?: string;
 };
 
@@ -200,6 +200,7 @@ export function Screen({
       {back ? <CompactHeader title={title} back={back} progress={progress} /> : null}
       <View className="flex-1">
         <Animated.ScrollView
+          testID="screen-scroll"
           ref={keyboard.scrollProps.ref}
           onScroll={onScroll}
           scrollEventThrottle={keyboard.scrollProps.scrollEventThrottle}

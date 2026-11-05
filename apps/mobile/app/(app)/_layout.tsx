@@ -129,7 +129,7 @@ export default function AppLayout() {
 /**
  * Edge-to-edge Android draws the translucent system bar over the page, so
  * page text showed through behind it (3-button nav, seen in the leader sweep).
- * A solid strip the height of the bottom inset, in the shell's page tint,
+ * A solid strip the height of the bottom inset, in the page background,
  * under the floating tab bar (whose bottom is that same inset) on a tab, and
  * under the last content of a detail screen.
  */
@@ -140,7 +140,7 @@ function SystemBarScrim() {
     <View
       pointerEvents="none"
       testID="system-bar-scrim"
-      className="bg-brand-navy-50 dark:bg-background"
+      className="bg-background"
       style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: bottom, zIndex: 5 }}
     />
   );
