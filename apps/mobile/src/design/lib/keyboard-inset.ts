@@ -17,6 +17,8 @@ import { keyboardBottomOffset, keyboardTopInWindow } from "./keyboard-offset";
  */
 const FIELD_GAP = 96;
 /** Retries after the keyboard opens: the padding below lands a layout pass or two later. */
+/** Breathing room kept between a clamped field's top and the scroll view's top. */
+const VIEWPORT_MARGIN = 12;
 const RETRY_MS = [0, 150, 400];
 
 type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: number) => void) => void };
@@ -49,6 +51,13 @@ export function useKeyboardInset(options?: {
   getOffset?: () => number;
   /** Height of a bar riding on the keyboard (a screen's footer) the focused field must also clear. */
   getBarHeight?: () => number;
+  /**
+   * Never scroll the focused field's top above the scroll view's own top.
+   * For a scroll view that reaches under the keyboard but whose top is covered
+   * by a header (a sheet's title): the field's gap above the keyboard is
+   * wasted there, and scrolling by it puts the field under the title.
+   */
+  clampToViewport?: boolean;
 }): {
   inset: number;
   offset: number;
@@ -71,6 +80,8 @@ export function useKeyboardInset(options?: {
   getOffset.current = options?.getOffset;
   const getBarHeight = useRef(options?.getBarHeight);
   getBarHeight.current = options?.getBarHeight;
+  const clamp = useRef(options?.clampToViewport);
+  clamp.current = options?.clampToViewport;
 
   const ensureVisible = useCallback(() => {
     const top = keyboardTop.current;
@@ -79,7 +90,16 @@ export function useKeyboardInset(options?: {
     input?.measureInWindow?.((_x, y, _w, h) => {
       const overlap = y + h + FIELD_GAP + (getBarHeight.current?.() ?? 0) - top;
       const from = getOffset.current ? getOffset.current() : offset.current;
-      if (overlap > 1) ref.current?.scrollTo({ y: from + overlap, animated: false });
+      if (overlap <= 1) return;
+      const scroller = ref.current as unknown as Measurable | null;
+      if (clamp.current && scroller?.measureInWindow) {
+        scroller.measureInWindow((_sx, sy) => {
+          const by = Math.min(overlap, y - sy - VIEWPORT_MARGIN);
+          if (by > 1) ref.current?.scrollTo({ y: from + by, animated: false });
+        });
+        return;
+      }
+      ref.current?.scrollTo({ y: from + overlap, animated: false });
     });
   }, []);
 

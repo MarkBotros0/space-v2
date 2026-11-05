@@ -50,7 +50,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   const [mounted, setMounted] = useState(open);
   const [height, setHeight] = useState(0);
   const [barHeight, setBarHeight] = useState(0);
-  const { inset, scrollProps } = useKeyboardInset();
+  const { inset, scrollProps } = useKeyboardInset({ clampToViewport: true });
   const insets = useSafeAreaInsets();
   const bottom = keyboardBottomOffset({ os: Platform.OS, keyboard: inset, insetBottom: insets.bottom });
   const openRef = useRef(open);
