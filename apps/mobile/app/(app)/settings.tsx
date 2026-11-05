@@ -206,17 +206,17 @@ export default function SettingsScreen() {
         <NotificationPreferences />
 
         <GroupedList header="Security">
-            <ListRow title="Sign out" onPress={() => void signOut()} />
-            <ListRow
-              title="Sign out everywhere"
-              subtitle="Signs this account out on every device — use it if a phone is lost."
-              subtitleLines={3}
-              destructive
-              onPress={() => {
-                if (!logoutAll.isPending) setConfirmingLogoutAll(true);
-              }}
-            />
-          </GroupedList>
+          <ListRow title="Sign out" onPress={() => void signOut()} />
+          <ListRow
+            title="Sign out everywhere"
+            subtitle="Signs this account out on every device — use it if a phone is lost."
+            subtitleLines={3}
+            destructive
+            onPress={() => {
+              if (!logoutAll.isPending) setConfirmingLogoutAll(true);
+            }}
+          />
+        </GroupedList>
         <ConfirmDialog
           open={confirmingLogoutAll}
           onOpenChange={setConfirmingLogoutAll}
