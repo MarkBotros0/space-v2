@@ -26,6 +26,18 @@ describe("grouped tabs read free text in full (I1, M2)", () => {
     expect(screen.getByText(LONG).props.numberOfLines).toBeUndefined();
   });
 
+  it("a note's byline names the author's role in words, not the enum", () => {
+    mockNotes.current = [
+      {
+        id: 1, body: "Body", visibility: "MENTORS", followUpFlagged: false,
+        createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", edited: false,
+        authorId: 2, authorName: "Mina", authorRole: "MENTOR", seasonId: null, seasonTitle: null, canEdit: false,
+      },
+    ];
+    render(<GroupedNotesTab studentId={1} canWriteNote={false} onWrite={() => {}} />);
+    expect(screen.getByText(/Mina · Mentor ·/)).toBeTruthy();
+  });
+
   it("a long profile value has no line cap", () => {
     render(
       <GroupedProfileTab

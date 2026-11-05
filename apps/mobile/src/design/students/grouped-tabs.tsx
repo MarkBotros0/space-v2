@@ -19,6 +19,7 @@ import { EmptyState } from "../ui/empty-state";
 import { GroupedList, ListRow } from "../ui/grouped-list";
 import { StatusChip, statusChip } from "../ui/status-chip";
 import { Text } from "../ui/text";
+import { USER_ROLE_LABELS } from "../../lib/user-role-labels";
 
 function Loading() {
   return (
@@ -195,7 +196,7 @@ export function GroupedNotesTab({
                 titleLines={null}
                 subtitle={caption(
                   n.authorName,
-                  n.authorRole,
+                  USER_ROLE_LABELS[n.authorRole],
                   formatDate(n.createdAt),
                   n.seasonTitle,
                   n.edited && "Edited",
