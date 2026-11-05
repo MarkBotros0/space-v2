@@ -27,6 +27,8 @@ const put = apiClient.put as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
+const SUBMIT_FAILED = "Couldn't submit the quiz. Check your connection and try again.";
+
 const mcq = {
   id: 100, order: 0, type: "MCQ" as const, prompt: "Capital of France?", points: 2,
   options: ["London", "Paris"], selectedIndex: null, text: null,
@@ -184,12 +186,26 @@ describe("quiz runner saves", () => {
       fireEvent.press(await screen.findByText("Submit quiz"));
       fireEvent.press(await screen.findByText("Submit"));
 
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't submit the quiz."));
-      expect(announce).toHaveBeenCalledWith("Couldn't submit the quiz.");
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith(SUBMIT_FAILED));
+      expect(announce).toHaveBeenCalledWith(SUBMIT_FAILED);
       expect(toast.success).not.toHaveBeenCalled();
       expect(screen.getByRole("button", { name: "Submit quiz" }).props.accessibilityState?.disabled).toBeFalsy();
       // The bar's hint stays a status line; the error isn't dressed as one.
       expect(screen.getByText("2 of 2 answered")).toBeTruthy();
+    });
+
+    it("a refusal from the server is shown as the server's message", async () => {
+      get.mockResolvedValue({ data: { data: answered() } });
+      post.mockRejectedValue(
+        Object.assign(new Error("409"), {
+          isAxiosError: true,
+          response: { status: 409, data: { error: { code: "attempt_incomplete", message: "Answer every question." } } },
+        }),
+      );
+      renderWithProviders(<QuizDetailScreen />);
+      fireEvent.press(await screen.findByText("Submit quiz"));
+      fireEvent.press(await screen.findByText("Submit"));
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Answer every question."));
     });
 
     it("answers that won't save stop the submit, and say why", async () => {
@@ -244,7 +260,7 @@ describe("quiz runner saves", () => {
         attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
         questions: [{ ...mcq, selectedIndex: 1 }, { ...essay, text: "An answer." }],
       });
-    const OFFLINE = "Couldn't submit the quiz. Check your connection and try again.";
+    const OFFLINE = SUBMIT_FAILED;
     const noNetwork = () =>
       Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined });
     const setOnline = (online: boolean) => act(() => onlineManager.setOnline(online));
@@ -264,7 +280,7 @@ describe("quiz runner saves", () => {
       setOnline(false);
 
       await submitQuiz();
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't submit the quiz."));
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith(OFFLINE));
       expect(post).toHaveBeenCalledTimes(1);
 
       setOnline(true);

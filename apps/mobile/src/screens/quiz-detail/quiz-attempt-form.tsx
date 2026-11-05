@@ -16,6 +16,8 @@ import { useQuizAnswers, type Answer } from "./use-quiz-answers";
 
 iconWithClassName(Check);
 
+const SUBMIT_FAILED = "Couldn't submit the quiz. Check your connection and try again.";
+
 /** One question of the attempt: MCQ options as radios, an essay as a textarea. */
 function AttemptQuestion({
   q,
@@ -101,7 +103,7 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
     // button is the courtesy, this is the rule.
     if (!isComplete) return;
     if (hasUnsentOffline()) {
-      reportOutcome("error", "Couldn't submit the quiz. Check your connection and try again.");
+      reportOutcome("error", SUBMIT_FAILED);
       return;
     }
     if (!(await flush())) {
@@ -112,7 +114,7 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
       // The screen swaps to the result as the cache updates, so the toast (global) is
       // what confirms it while the bar is still in view.
       onSuccess: () => reportOutcome("success", "Quiz submitted."),
-      onError: (err) => reportOutcome("error", apiErrorMessage(err, "Couldn't submit the quiz.")),
+      onError: (err) => reportOutcome("error", apiErrorMessage(err, SUBMIT_FAILED)),
     });
   };
 
