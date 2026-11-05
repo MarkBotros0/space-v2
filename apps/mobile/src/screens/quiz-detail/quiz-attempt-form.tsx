@@ -10,6 +10,7 @@ import { iconWithClassName } from "../../design/lib/icon";
 import { Badge, ConfirmDialog, Text, Textarea } from "../../design/ui";
 import { useSubmitAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
+import { useIsOnline } from "../../lib/online";
 import { reportOutcome } from "../../lib/outcome";
 import { QCARD, quizTitleProps } from "./quiz-header";
 import { useQuizAnswers, type Answer } from "./use-quiz-answers";
@@ -96,6 +97,7 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
   const { answers, setAnswer, flush, hasUnsentOffline, saveState, isComplete, savePending } =
     useQuizAnswers(detail, id);
   const submit = useSubmitAttempt(id);
+  const online = useIsOnline();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const onSubmit = async () => {
@@ -125,7 +127,7 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
     return q.type === "MCQ" ? a?.selectedIndex != null : (a?.text ?? "").trim().length > 0;
   }).length;
   const saveLabel =
-    saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Not saved" : null;
+    saveState === "saving" ? (online ? "Saving…" : "Waiting for connection") : saveState === "saved" ? "Saved" : saveState === "error" ? "Not saved" : null;
   const progress = `${answered} of ${detail.questions.length} answered`;
   const hint = [progress, saveLabel].filter(Boolean).join(" · ");
 

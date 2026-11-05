@@ -272,6 +272,18 @@ describe("quiz runner saves", () => {
 
     afterEach(() => setOnline(true));
 
+    it("an edit waiting offline says it is waiting for the connection, not saving", async () => {
+      get.mockResolvedValue({ data: { data: answered() } });
+      renderWithProviders(<QuizDetailScreen />);
+      const box = await screen.findByLabelText("Answer 2");
+      setOnline(false);
+      fireEvent.changeText(box, "A better answer.");
+      expect(screen.getByText(/Waiting for connection/)).toBeTruthy();
+      expect(screen.queryByText(/Saving…/)).toBeNull();
+      setOnline(true);
+      expect(screen.getByText(/Saving…/)).toBeTruthy();
+    });
+
     it("nothing unsent: the submit goes out and fails at once, and doesn't resend on reconnect", async () => {
       get.mockResolvedValue({ data: { data: answered() } });
       post.mockRejectedValue(noNetwork());
