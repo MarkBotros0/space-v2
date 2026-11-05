@@ -31,6 +31,11 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
   const [weight, setWeight] = useState(String(season.absenceWeightMinutes));
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
+  const dirty =
+    description !== (season.description ?? "") ||
+    budget !== String(season.absenceBudgetMinutes) ||
+    weight !== String(season.absenceWeightMinutes);
+
   const save = () => {
     const budgetMinutes = parseMinutes(budget);
     const weightMinutes = parseMinutes(weight);
@@ -92,7 +97,7 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
             </Text>
           </View>
         ) : null}
-        <Button className="self-start" disabled={update.isPending} onPress={save}>
+        <Button className="self-start" disabled={update.isPending || !dirty} onPress={save}>
           {update.isPending ? "Saving…" : "Save changes"}
         </Button>
     </View>

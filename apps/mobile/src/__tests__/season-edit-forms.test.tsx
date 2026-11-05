@@ -76,11 +76,15 @@ describe("EditSeason (admin season settings)", () => {
     expect(screen.getByLabelText("Absence budget (minutes)").props.value).toBe("240");
     expect(screen.getByLabelText("Absence weight (minutes)").props.value).toBe("60");
 
+    // Nothing edited yet: Save is drawn disabled.
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    fireEvent.changeText(screen.getByLabelText("Absence budget (minutes)"), "300");
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
     fireEvent.press(screen.getByText("Save changes"));
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/seasons/7", {
         description: "A season",
-        absenceBudgetMinutes: 240,
+        absenceBudgetMinutes: 300,
         absenceWeightMinutes: 60,
       }),
     );
