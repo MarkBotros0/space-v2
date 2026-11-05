@@ -147,7 +147,7 @@ export default function SettingsScreen() {
               <Input accessibilityLabel="Name" value={name} onChangeText={setName} />
             </FormField>
             <FormField label="Email" description="Change via the admin console.">
-              <Input accessibilityLabel="Email" value={user.email} editable={false} disabled />
+              <Input accessibilityLabel="Email" value={user.email} readOnly />
             </FormField>
             <View className="flex-row justify-end">
               <Button
