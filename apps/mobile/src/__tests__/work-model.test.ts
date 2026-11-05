@@ -79,12 +79,44 @@ describe("assignmentRow", () => {
     expect(row.subtitle).toBe("Due Feb 20, 2099");
   });
 
-  it("the date comes from the org day, never dueAt: the two can name different days", () => {
+  it("a chip that already names the date does not repeat it in the subtitle", () => {
     const row = assignmentRow(
-      assignment({ id: 1, dueOrgDay: "2099-04-01", dueAt: "2099-03-31T22:30:00.000Z" }),
+      assignment({ id: 1, dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }),
       TODAY,
     );
-    expect(row.subtitle).toBe("Due Apr 1, 2099");
+    expect(row.chip?.label).toBe("Due Mar 20");
+    expect(row.subtitle).toBeUndefined();
+    const draft = assignmentRow(
+      assignment({ id: 2, status: "DRAFT", dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }),
+      TODAY,
+    );
+    expect(draft.subtitle).toBe("Draft saved");
+  });
+
+  it("a date chip across a year boundary keeps the year in the subtitle", () => {
+    const row = assignmentRow(
+      assignment({ id: 1, dueOrgDay: "2100-01-20", dueAt: "2100-01-20T10:00:00.000Z" }),
+      TODAY,
+    );
+    expect(row.chip?.label).toBe("Due Jan 20");
+    expect(row.subtitle).toBe("Due Jan 20, 2100");
+  });
+
+  it("a weekday chip is relative wording, so the date stays", () => {
+    const row = assignmentRow(
+      assignment({ id: 1, dueOrgDay: "2099-03-06", dueAt: "2099-03-06T10:00:00.000Z" }),
+      TODAY,
+    );
+    expect(row.chip?.label).toBe("Due Friday");
+    expect(row.subtitle).toBe("Due Mar 6, 2099");
+  });
+
+  it("the date comes from the org day, never dueAt: the two can name different days", () => {
+    const row = assignmentRow(
+      assignment({ id: 1, isOverdue: true, dueOrgDay: "2099-02-01", dueAt: "2099-01-31T22:30:00.000Z" }),
+      TODAY,
+    );
+    expect(row.subtitle).toBe("Due Feb 1, 2099");
   });
 
   it.each([
