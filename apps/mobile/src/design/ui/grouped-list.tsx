@@ -73,6 +73,8 @@ type ListRowProps = {
   /** What `trailing` says, for screen readers. Defaults to its `label` prop (StatusChip). */
   trailingLabel?: string;
   chevron?: boolean;
+  /** Draws the title in the error tone, for an action that ends something (Sign out). */
+  destructive?: boolean;
   onPress?: () => void;
   /** Fires when a touch lands, alongside the press scale (a screen warms a screen it is about to open). */
   onPressIn?: () => void;
@@ -94,7 +96,7 @@ function spokenTrailing(trailing: ReactNode, trailingLabel: string | undefined):
 }
 
 function ListRow({
-  title, subtitle, leading, trailing, trailingLabel, chevron, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
+  title, subtitle, leading, trailing, trailingLabel, chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
 }: ListRowProps) {
   const reduced = useReducedMotion();
   const press = usePressScale(0.985);
@@ -102,7 +104,7 @@ function ListRow({
     <View className={cn("min-h-[52px] flex-row items-center gap-3 px-4 py-2", className)}>
       {leading ? <View className="shrink-0">{leading}</View> : null}
       <View className="min-w-0 flex-1">
-        <Text variant="body" numberOfLines={titleLines} ellipsizeMode="tail">
+        <Text variant="body" numberOfLines={titleLines} ellipsizeMode="tail" className={destructive ? "text-bad" : undefined}>
           {title}
         </Text>
         {subtitle ? (

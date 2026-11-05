@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 
 import { MoreMenu } from "../../../src/design/layout/more-menu";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
+import { Screen } from "../../../src/design/layout/screen";
 import { useLogout } from "../../../src/hooks/use-session";
 import { navHref } from "../../../src/lib/nav-routes";
 import { useSessionStore } from "../../../src/store/session";
@@ -14,21 +14,19 @@ export default function MoreScreen() {
   const nav = useSessionStore((s) => s.nav());
   const logout = useLogout();
 
-  if (!user || !nav) return <ShellFrame>{null}</ShellFrame>;
+  if (!user || !nav) return <Screen title="More">{null}</Screen>;
 
   return (
-    <ShellFrame>
-      <MoreMenu
-        role={user.role}
-        graduationYear={graduationYear}
-        userName={user.name}
-        nav={nav}
-        onNavigate={(href) => {
-          const target = navHref(href);
-          if (target) router.push(target);
-        }}
-        onSignOut={() => void logout()}
-      />
-    </ShellFrame>
+    <MoreMenu
+      role={user.role}
+      graduationYear={graduationYear}
+      userName={user.name}
+      nav={nav}
+      onNavigate={(href) => {
+        const target = navHref(href);
+        if (target) router.push(target);
+      }}
+      onSignOut={() => void logout()}
+    />
   );
 }

@@ -1,26 +1,25 @@
 /**
- * Port of v1 src/components/layout/more-menu.tsx — the /more page: header,
- * identity card (initials, name, role badge), the sidebar destinations that
- * are not tabs, Appearance with the theme toggle, and Sign out.
- * Native differences: rows navigate through onNavigate; hover → active:;
- * md: padding dropped. Row icons come from the tab bar's map (NavIcon), so a
- * destination looks the same in the bar and here (v1 kept a second map).
+ * The /more page (v1 src/components/layout/more-menu.tsx) on grouped rows: an
+ * identity row (initials, name, role badge), the sidebar destinations that
+ * are not tabs, Appearance with the theme toggle, and Sign out as a
+ * destructive row. Rows navigate through onNavigate. Row icons come from the
+ * tab bar's map (NavIcon), so a destination looks the same in the bar and here.
  */
 import type { RoleNav, UserRole } from "@space/shared";
-import { ChevronRight, LogOut } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { LogOut } from "lucide-react-native";
+import { View } from "react-native";
 
 import { moreItemsFor } from "../../lib/nav-routes";
 import { NavIcon } from "../icons/nav-icon";
 import { iconWithClassName } from "../lib/icon";
-import { cn } from "../lib/cn";
+import { GroupedList, ListRow } from "../ui/grouped-list";
 import { Badge } from "../ui/badge";
 import { Text } from "../ui/text";
 import { ThemeToggle } from "../ui/theme-toggle";
-import { PageHeader } from "./page-header";
+import { Screen } from "./screen";
 import { roleBadge } from "./user-menu";
 
-iconWithClassName(ChevronRight, LogOut);
+iconWithClassName(LogOut);
 
 /** v1: first letters of the first two name parts, else the role's initial. */
 function initialsFor(name: string | null, role: UserRole): string {
@@ -51,59 +50,51 @@ export function MoreMenu({
   const name = userName?.trim() || null;
   const badge = roleBadge(role, graduationYear);
   return (
-    <View className="flex-col gap-6">
-      <PageHeader title="More" description="Account, settings, and more places to go." />
-      <View className="flex-row items-center gap-3 rounded-group bg-surface dark:border dark:border-separator p-4">
-        <View className="size-12 items-center justify-center rounded-full bg-muted">
-          <Text className="text-base font-semibold text-foreground">{initialsFor(name, role)}</Text>
-        </View>
-        <View className="flex-1 flex-col gap-1">
-          {name ? <Text className="text-sm font-semibold text-foreground">{name}</Text> : null}
-          <Badge role={badge.color} className="self-start">
-            {badge.label}
-          </Badge>
-        </View>
-      </View>
-      {items.length > 0 ? (
-        <View className="overflow-hidden rounded-group bg-surface dark:border dark:border-separator">
-          {items.map((item, i) => {
-            return (
-              <Pressable
+    <Screen title="More" subtitle="Account, settings, and more places to go.">
+      <View className="flex-col gap-6">
+        <GroupedList>
+          <ListRow
+            title={name ?? badge.label}
+            titleLines={2}
+            leading={
+              <View className="size-10 items-center justify-center rounded-full bg-muted">
+                <Text variant="headline">{initialsFor(name, role)}</Text>
+              </View>
+            }
+            trailing={name ? <Badge role={badge.color}>{badge.label}</Badge> : undefined}
+          />
+        </GroupedList>
+        {items.length > 0 ? (
+          <GroupedList>
+            {items.map((item, i) => (
+              <ListRow
                 key={item.href}
-                accessibilityRole="link"
+                index={i}
+                title={item.label}
+                leading={<NavIcon name={item.icon} size={20} className="text-foreground" />}
+                chevron
                 onPress={() => onNavigate(item.href)}
-                className={cn(
-                  "flex-row items-center gap-3 px-4 py-3 active:bg-accent",
-                  i > 0 && "border-t border-border",
-                )}
-              >
-                <View className="size-9 items-center justify-center rounded-lg bg-muted">
-                  <NavIcon name={item.icon} size={16} className="text-foreground" />
-                </View>
-                <Text numberOfLines={1} className="flex-1 text-sm font-medium text-foreground">
-                  {item.label}
-                </Text>
-                <ChevronRight size={16} className="text-muted-foreground" />
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
-      <View className="flex-row items-center justify-between rounded-group bg-surface dark:border dark:border-separator p-4">
-        <View className="flex-col gap-0.5">
-          <Text className="text-sm font-medium text-foreground">Appearance</Text>
-          <Text className="text-xs text-muted-foreground">Switch between light and dark.</Text>
-        </View>
-        <ThemeToggle size="icon" />
+              />
+            ))}
+          </GroupedList>
+        ) : null}
+        <GroupedList>
+          <ListRow
+            title="Appearance"
+            subtitle="Switch between light and dark."
+            subtitleLines={2}
+            trailing={<ThemeToggle size="icon" />}
+          />
+        </GroupedList>
+        <GroupedList>
+          <ListRow
+            title="Sign out"
+            destructive
+            leading={<LogOut size={20} className="text-bad" />}
+            onPress={onSignOut}
+          />
+        </GroupedList>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onSignOut}
-        className="w-full flex-row items-center justify-center gap-2 rounded-group bg-surface dark:border dark:border-separator p-4 active:bg-error-50 dark:active:bg-error-950"
-      >
-        <LogOut size={16} className="text-error-700 dark:text-error-200" />
-        <Text className="text-sm font-medium text-error-700 dark:text-error-200">Sign out</Text>
-      </Pressable>
-    </View>
+    </Screen>
   );
 }
