@@ -4,7 +4,7 @@
  * as the trigger when asked (min-w/w-[var(--anchor-width)]), flips above
  * when there is no room below, and closes on an outside press.
  */
-import { type ReactNode, useCallback, useContext, useRef, useState } from "react";
+import { type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Modal, Platform, Pressable, StatusBar, useWindowDimensions, View, type ViewInstance } from "react-native";
 
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
@@ -43,16 +43,42 @@ export function popoverVertical(args: {
   return { top: Math.max(topLimit, bottomLimit - popupHeight), maxHeight };
 }
 
-/** Ref for the trigger plus a measure() that records its window position. */
+/** How long the keyboard and the scroll take to settle after the popup steals focus. */
+const SETTLE_MS = 400;
+
+/**
+ * Ref for the trigger plus a measure() that records its window position.
+ * Opening the popup dismisses the keyboard, which collapses the form's keyboard
+ * padding and scrolls the trigger; the first measure is of the old layout, so
+ * measure() measures once now and once more after the layout has settled.
+ */
 export function useAnchor() {
   const ref = useRef<ViewInstance>(null);
   const [rect, setRect] = useState<Rect | null>(null);
-  const measure = useCallback(() => {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const once = useCallback(() => {
     // On Android, measureInWindow reports y below the status bar while the
     // popover's modal (edge-to-edge) draws from the top of the screen.
     const statusBar = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
-    ref.current?.measureInWindow((x, y, width, height) => setRect({ x, y: y + statusBar, width, height }));
+    ref.current?.measureInWindow((x, y, width, height) => {
+      setRect((prev) =>
+        prev && prev.x === x && prev.y === y + statusBar && prev.width === width && prev.height === height
+          ? prev
+          : { x, y: y + statusBar, width, height },
+      );
+    });
   }, []);
+  const measure = useCallback(() => {
+    once();
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(once, SETTLE_MS);
+  }, [once]);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
   return { ref, rect, measure };
 }
 
