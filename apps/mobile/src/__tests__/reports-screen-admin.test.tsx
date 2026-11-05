@@ -1,6 +1,5 @@
 // Reports for ADMIN and SUPER: Screen frame, tiles and grouped rows. The
-// mentor keeps today's look (plan 05 owns its frame), pinned by the two suites
-// beside this one.
+// mentor's own page is pinned by mentor-reports.test.tsx.
 import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 const mockDownloadAndShare = jest.fn();

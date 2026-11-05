@@ -84,7 +84,7 @@ function StaffReports() {
   );
 }
 
-// Mentors get their own frame (plan 05); every other role keeps the staff screen.
+// Mentors get their own grouped page; every other role keeps the staff screen.
 export default function ReportsScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
   return role === "MENTOR" ? <MentorReports /> : <StaffReports />;

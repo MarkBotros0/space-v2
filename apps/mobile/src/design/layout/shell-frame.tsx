@@ -4,8 +4,8 @@ import type { BackTarget } from "./large-title";
 import { Screen } from "./screen";
 
 /**
- * The frame of every screen not yet moved to `Screen` (plan 01 Task 10; to be
- * deleted in plan 05). It is `Screen` without a title: the top inset and the
+ * The frame of every screen not yet moved to `Screen` (plan 01 Task 10); delete
+ * it with its last user. It is `Screen` without a title: the top inset and the
  * offline strip, the bottom padding that clears the pill (or the inset on a
  * detail screen), the keyboard inset, pull-to-refresh, and the scroll
  * direction the pill follows. The screen keeps its own `PageTitle` in the
