@@ -26,6 +26,7 @@ import {
 import { apiErrorMessage } from "../../lib/api-error";
 import { formatDistanceOnly } from "../../lib/format";
 import { reportOutcome } from "../../lib/outcome";
+import { useDraftFlush } from "./use-draft-flush";
 
 iconWithClassName(FileIcon);
 
@@ -105,6 +106,16 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   const [text, setText] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const keyboardOpen = useKeyboardHeight() > 0;
+  const send = useDraftFlush(
+    save.mutateAsync,
+    query.data
+      ? {
+          text,
+          serverText: query.data.text ?? "",
+          editable: query.data.status === "DRAFT" || query.data.status === "RETURNED",
+        }
+      : null,
+  );
 
   if (summary === null) {
     return {
@@ -141,9 +152,9 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   // v1 student-submission-form.tsx:158 — and the server's 400 empty_submission rule.
   const nothingToSubmit = value.trim() === "" && sub.files.length === 0;
   const run = (submit: boolean) => {
-    save.mutate(submit ? { text: value, submit: true } : { text: value }, {
-      onSuccess: () => reportOutcome("success", submit ? "Submitted!" : "Draft saved."),
-      onError: (err) =>
+    send(submit ? { text: value, submit: true } : { text: value })
+      .then(() => reportOutcome("success", submit ? "Submitted!" : "Draft saved."))
+      .catch((err: unknown) =>
         reportOutcome(
           "error",
           apiErrorMessage(
@@ -151,8 +162,8 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
             `Couldn't ${submit ? "submit" : "save"}. Check your connection and try again.`,
           ),
         ),
-      onSettled: () => setConfirming(false),
-    });
+      )
+      .finally(() => setConfirming(false));
   };
 
   const body = (
