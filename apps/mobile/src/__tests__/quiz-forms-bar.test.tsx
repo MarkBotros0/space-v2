@@ -161,4 +161,19 @@ describe("quiz builder on the fixed save bar", () => {
     fireEvent.press(bar().getByText("Save changes"));
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
   });
+
+  it("a failed refetch over cached data shows an inline error with retry above the form", async () => {
+    get.mockResolvedValueOnce({ data: { data: authoring() } });
+    renderStacked(<QuizEditScreen />);
+    await screen.findByLabelText("Quiz title");
+    get.mockRejectedValue(new Error("offline"));
+    await act(async () => {
+      await screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
+    });
+    expect(await screen.findByText("Couldn't refresh this quiz.")).toBeTruthy();
+    expect(screen.getByLabelText("Quiz title")).toBeTruthy();
+    get.mockResolvedValue({ data: { data: authoring() } });
+    fireEvent.press(screen.getByText("Try again"));
+    await waitFor(() => expect(screen.queryByText("Couldn't refresh this quiz.")).toBeNull());
+  });
 });

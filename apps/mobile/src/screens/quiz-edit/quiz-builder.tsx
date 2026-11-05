@@ -7,7 +7,7 @@ import { updateQuizRequestSchema, type QuizAuthoringDetail } from "@space/shared
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { FormErrorBox } from "../../design/forms/form-parts";
 import { FormScreen } from "../../design/layout/form-screen";
-import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, EmptyState, StatusChip, Text } from "../../design/ui";
@@ -26,8 +26,10 @@ function QuizForm({
   data,
   onRefresh,
   refreshing,
+  refreshFailed,
 }: {
   data: QuizAuthoringDetail;
+  refreshFailed: boolean;
   onRefresh: () => void;
   refreshing: boolean;
 }) {
@@ -99,6 +101,9 @@ function QuizForm({
       refreshing={refreshing}
     >
       <View className="flex-col gap-4">
+        {refreshFailed ? (
+          <InlineError message="Couldn't refresh this quiz." onRetry={onRefresh} />
+        ) : null}
         <QuizSettings
           kind={data.kind}
           title={title}
@@ -219,7 +224,14 @@ export function QuizBuilder({ id }: { id: number }) {
   const { data, isPending, isError, refetch, isRefetching } = useQuizAuthoringDetail(id, true);
 
   if (data?.canManage) {
-    return <QuizForm data={data} onRefresh={() => void refetch()} refreshing={isRefetching} />;
+    return (
+      <QuizForm
+        data={data}
+        onRefresh={() => void refetch()}
+        refreshing={isRefetching}
+        refreshFailed={isError}
+      />
+    );
   }
   let body;
   if (isPending) body = <RouteSkeleton />;
