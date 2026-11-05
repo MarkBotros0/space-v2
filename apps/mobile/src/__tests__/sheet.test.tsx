@@ -107,6 +107,26 @@ describe("Sheet lifecycle", () => {
   });
 });
 
+describe("footer-less sheet clearance (final review C1)", () => {
+  const pad = () => screen.getByTestId("sheet-scroll").props.contentContainerStyle.paddingBottom;
+
+  it("pads the content by the inset when the keyboard is closed", () => {
+    renderWithProviders(<Sheet open onClose={() => {}}><Text>x</Text></Sheet>);
+    expect(pad()).toBe(34 + 16);
+  });
+
+  it("pads the content by the keyboard when it is open, so the field can scroll above it", () => {
+    mockKeyboard = 300;
+    renderWithProviders(<Sheet open onClose={() => {}}><Text>x</Text></Sheet>);
+    expect(pad()).toBe(300 + 16);
+  });
+
+  it("a footered sheet keeps the bar-height padding and not the inset", () => {
+    renderWithProviders(<Sheet open onClose={() => {}} footer={<SheetSaveBar label="Save" onPress={() => {}} />}><Text>x</Text></Sheet>);
+    expect(pad()).toBe(16);
+  });
+});
+
 describe("save bars", () => {
   it("SaveBar and SheetSaveBar draw an error above the button as an announced alert", () => {
     renderWithProviders(<Sheet open onClose={() => {}} footer={<SheetSaveBar label="Save" onPress={() => {}} error="Nope." />}><Text>x</Text></Sheet>);

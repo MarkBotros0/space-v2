@@ -10,7 +10,9 @@
  * safe-area inset, or while the keyboard is open the keyboard's top (on
  * Android that is the reported height plus the nav-bar inset, since the
  * edge-to-edge dialog window is not resized; see lib/keyboard-offset.ts).
- * `SheetSaveBar` is pinned to the sheet's bottom and lifted by the same offset.
+ * `SheetSaveBar` is pinned to the sheet's bottom and pads itself by the same offset;
+ * a sheet with a footer pads its content by the bar's height, one without pads it
+ * by the offset itself (final review C1), so the keyboard never covers its fields.
  * The Animated.Views take only styles; their classes sit on plain Views inside
  * them (classes on an Animated.View are dropped on device). The panel keeps
  * `maxHeight: 90%` on the Animated.View (a percentage of the screen-filling
@@ -50,6 +52,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   const [height, setHeight] = useState(0);
   const [barHeight, setBarHeight] = useState(0);
   const { scrollProps } = useKeyboardInset({ clampToViewport: true });
+  const offset = useKeyboardBottomOffset();
   const openRef = useRef(open);
   openRef.current = open;
   const translateY = useSharedValue(OFFSCREEN);
@@ -141,8 +144,9 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
               </GestureDetector>
               <BarHeightContext.Provider value={setBarHeight}>
                 <ScrollView
+                  testID="sheet-scroll"
                   {...scrollProps}
-                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: barHeight + 16 }}
+                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: footer ? barHeight + 16 : offset + 16 }}
                 >
                   {children}
                 </ScrollView>
