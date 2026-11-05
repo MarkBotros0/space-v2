@@ -1,4 +1,6 @@
 import {
+  NBSP,
+  unbreakable,
   formatShortDateTime,
   addMinutesToWallTime,
   formatShortDate,
@@ -156,5 +158,12 @@ describe("formatShortDateTime (v1 submissions 'MMM d, h:mm a', device zone)", ()
   it("formats an instant without the year", () => {
     expect(formatShortDateTime(new Date(2026, 6, 1, 18, 13).toISOString())).toBe("Jul 1, 6:13 PM");
     expect(formatShortDateTime(null)).toBe("—");
+  });
+});
+
+describe("unbreakable", () => {
+  it("turns every space into U+00A0 so a unit cannot wrap", () => {
+    expect(unbreakable("Max 100 pts")).toBe(["Max", "100", "pts"].join(NBSP));
+    expect(unbreakable("9:00 PM")).not.toContain(" ");
   });
 });

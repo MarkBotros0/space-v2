@@ -230,3 +230,13 @@ it("keeps the pre-batch pending queue for an admin until batch 4 (plan: other ro
   expect(await screen.findByText("All caught up")).toBeTruthy();
   expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
 });
+
+it("shows the hand-in time in the app's one short date-time format, unbreakable", async () => {
+  get.mockResolvedValue({
+    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 1, total: 1, late: 0 }, nextCursor: null } },
+  });
+  renderWithProviders(<SubmissionsScreen />);
+  expect(await screen.findByText("Test student")).toBeTruthy();
+  // Same "MMM d, h:mm a" as the other short date-times; its no-break spaces are collapsed by the matcher.
+  expect(screen.getByText(/ · [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2} [AP]M$/)).toBeTruthy();
+});

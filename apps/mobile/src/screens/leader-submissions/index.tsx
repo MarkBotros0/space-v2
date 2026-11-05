@@ -12,7 +12,7 @@ import { StatusChip, statusChip } from "../../design/ui/status-chip";
 import { Text } from "../../design/ui/text";
 import { usePrefetchSubmission } from "../../hooks/use-submission";
 import { useSubmissionQueue } from "../../hooks/use-submission-queue";
-import { formatQueueWhen } from "../../lib/format";
+import { formatShortDateTime, unbreakable } from "../../lib/format";
 import { queueSections } from "./queue-sections";
 
 // v1 lists every SUBMITTED, REVIEWED and RETURNED row, in that order (B3-8).
@@ -29,7 +29,7 @@ function subtitleOf(item: SubmissionQueueItem): string {
     item.assignmentTitle,
     item.groupName,
     item.isLate ? "Late" : null,
-    item.submittedAt ? formatQueueWhen(item.submittedAt) : null,
+    item.submittedAt ? unbreakable(formatShortDateTime(item.submittedAt)) : null,
   ]
     .filter((part): part is string => !!part)
     .join(" · ");
@@ -59,6 +59,7 @@ export function LeaderQueue() {
       title={item.studentName ?? "Student"}
       titleLines={2}
       subtitle={subtitleOf(item)}
+      subtitleLines={3}
       trailing={<StatusChip {...statusChip("submission", item.status)} />}
       chevron
       onPress={() => open(item.publicId)}

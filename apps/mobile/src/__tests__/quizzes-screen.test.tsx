@@ -11,6 +11,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked, renderWithProviders } from "./helpers/render";
 import QuizzesScreen from "../../app/(app)/quizzes";
+import { unbreakable } from "../lib/format";
 
 const get = apiClient.get as jest.Mock;
 
@@ -91,7 +92,7 @@ describe("QuizzesScreen — staff", () => {
     expect(await screen.findByText("Week 1 quiz")).toBeTruthy();
     // One number from the server (ruling C4). v1 computed "graded" three
     // different ways and got three different answers.
-    expect(screen.getByText("Week 1 · Mar 1, 2099 · Max 20 pts · 3/8 graded")).toBeTruthy();
+    expect(screen.getByText(`Week 1 · ${unbreakable("Mar 1, 2099")} · ${unbreakable("Max 20 pts")} · ${unbreakable("3/8 graded")}`)).toBeTruthy();
     expect(screen.getByText("Partial")).toBeTruthy();
     expect(screen.getByText("Quizzes")).toBeTruthy();
     expect(screen.getByText("Grade paper quizzes for your group")).toBeTruthy();
@@ -114,7 +115,7 @@ describe("QuizzesScreen — staff", () => {
     renderWithProviders(<QuizzesScreen />);
 
     expect(await screen.findByText("Online quiz")).toBeTruthy();
-    expect(screen.getByText("Week 1 · Mar 1, 2099 · Max 7 pts · 0/8 graded")).toBeTruthy();
+    expect(screen.getByText(`Week 1 · ${unbreakable("Mar 1, 2099")} · ${unbreakable("Max 7 pts")} · ${unbreakable("0/8 graded")}`)).toBeTruthy();
     expect(screen.getByText("Pending")).toBeTruthy();
   });
 
@@ -136,7 +137,7 @@ describe("QuizzesScreen — staff", () => {
     expect(order.indexOf("Newer quiz")).toBeLessThan(order.indexOf("Older quiz"));
     expect(order.indexOf("Older quiz")).toBeLessThan(order.indexOf("Loose quiz"));
     expect(screen.getByText("Done")).toBeTruthy();
-    expect(screen.getByText("No session · Max 20 pts · 0/8 graded")).toBeTruthy();
+    expect(screen.getByText(`No session · ${unbreakable("Max 20 pts")} · ${unbreakable("0/8 graded")}`)).toBeTruthy();
   });
 
   it("takes a staff season from the seasons list, never from scopes.activeSeasonId (X8)", async () => {

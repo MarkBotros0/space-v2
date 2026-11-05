@@ -206,7 +206,10 @@ export function formatSeasonDay(iso: string): string {
   return formatDayKey(iso.slice(0, 10));
 }
 
-/** e.g. "Mon 3 Nov, 10:00" — when a hand-in arrived, in a queue row. */
-export function formatQueueWhen(iso: string | null): string {
-  return formatIso(iso, "EEE d MMM, HH:mm");
+/** U+00A0. Joins the words of a unit ("9:00 PM", "in 6 days") so a line break cannot split it. */
+export const NBSP = "\u00A0";
+
+/** Every space in `text` becomes a no-break space: one unbreakable unit of a composed string. */
+export function unbreakable(text: string): string {
+  return text.replace(/ /g, NBSP);
 }

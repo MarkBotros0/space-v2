@@ -10,7 +10,7 @@ import { GroupedList, ListRow } from "../design/ui/grouped-list";
 import { StatusChip, type ChipSpec } from "../design/ui/status-chip";
 import { useQuizList } from "../hooks/use-quizzes";
 import { useCurrentSeasonId } from "../hooks/use-seasons";
-import { formatDate } from "../lib/format";
+import { formatDate, unbreakable } from "../lib/format";
 import { bySessionDate } from "../lib/quiz-order";
 
 /** v1's three-way graded state over the server's counts (C4, D10). */
@@ -21,8 +21,12 @@ function gradedChip(row: QuizSummary): ChipSpec {
 }
 
 function subtitleOf(row: QuizSummary): string {
-  const session = row.sessionTitle !== null ? `${row.sessionTitle} · ${formatDate(row.sessionDate)}` : "No session";
-  return `${session} · Max ${row.maxScore} pts · ${row.gradedCount}/${row.studentCount} graded`;
+  const session =
+    row.sessionTitle !== null ? `${row.sessionTitle} · ${unbreakable(formatDate(row.sessionDate))}` : "No session";
+  // Each short unit is one unbreakable run, so the line breaks between them, never inside.
+  const max = unbreakable(`Max ${row.maxScore} pts`);
+  const graded = unbreakable(`${row.gradedCount}/${row.studentCount} graded`);
+  return `${session} · ${max} · ${graded}`;
 }
 
 /**
@@ -60,6 +64,7 @@ export function LeaderQuizzes() {
               title={row.title}
               titleLines={2}
               subtitle={subtitleOf(row)}
+              subtitleLines={3}
               trailing={<StatusChip {...gradedChip(row)} />}
               chevron
               onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(row.id) } })}
