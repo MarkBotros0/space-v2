@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import { AccessibilityInfo, AppState, type AppStateStatus } from "react-native";
@@ -235,6 +235,90 @@ describe("quiz runner saves", () => {
       });
       expect(await screen.findByText(/· Saved/)).toBeTruthy();
       expect(screen.queryByText("Retry save")).toBeNull();
+    });
+  });
+
+  describe("offline", () => {
+    const answered = () =>
+      detail({
+        attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
+        questions: [{ ...mcq, selectedIndex: 1 }, { ...essay, text: "An answer." }],
+      });
+    const OFFLINE = "Couldn't submit the quiz. Check your connection and try again.";
+    const noNetwork = () =>
+      Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined });
+    const setOnline = (online: boolean) => act(() => onlineManager.setOnline(online));
+    const submitQuiz = async () => {
+      fireEvent.press(screen.getByText("Submit quiz"));
+      fireEvent.press(await screen.findByText("Submit"));
+    };
+    const tick = (ms = 0) => act(async () => { await jest.advanceTimersByTimeAsync(ms); });
+
+    afterEach(() => setOnline(true));
+
+    it("nothing unsent: the submit goes out and fails at once, and doesn't resend on reconnect", async () => {
+      get.mockResolvedValue({ data: { data: answered() } });
+      post.mockRejectedValue(noNetwork());
+      renderWithProviders(<QuizDetailScreen />);
+      await screen.findByText("Submit quiz");
+      setOnline(false);
+
+      await submitQuiz();
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't submit the quiz."));
+      expect(post).toHaveBeenCalledTimes(1);
+
+      setOnline(true);
+      await tick(10);
+      expect(post).toHaveBeenCalledTimes(1);
+    });
+
+    it("an edit still in the debounce: fails at once, keeps it, saves on reconnect and never hands in", async () => {
+      get.mockResolvedValue({ data: { data: answered() } });
+      patch.mockResolvedValue({ data: { data: { saved: 1 } } });
+      renderWithProviders(<QuizDetailScreen />);
+      const input = await screen.findByLabelText("Answer 2");
+      setOnline(false);
+      fireEvent.changeText(input, "Offline answer.");
+
+      await submitQuiz();
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith(OFFLINE));
+      expect(patch).not.toHaveBeenCalled();
+
+      await tick(1000);
+      expect(patch).not.toHaveBeenCalled();
+      setOnline(true);
+      await tick(10);
+      expect(patch).toHaveBeenCalledTimes(1);
+      expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt", {
+        answers: [{ questionId: 101, selectedIndex: null, text: "Offline answer." }],
+      });
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it("an autosave already waiting doesn't lock Submit: it says why, and a later submit sends answers first", async () => {
+      get.mockResolvedValue({ data: { data: answered() } });
+      patch.mockResolvedValue({ data: { data: { saved: 1 } } });
+      post.mockResolvedValue({ data: { data: answered() } });
+      renderWithProviders(<QuizDetailScreen />);
+      const input = await screen.findByLabelText("Answer 2");
+      setOnline(false);
+      fireEvent.changeText(input, "Offline answer.");
+      await tick(1000);
+      expect(screen.getByRole("button", { name: "Submit quiz" }).props.accessibilityState?.disabled).toBeFalsy();
+
+      await submitQuiz();
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith(OFFLINE));
+      expect(post).not.toHaveBeenCalled();
+
+      setOnline(true);
+      await tick(10);
+      expect(patch).toHaveBeenCalledTimes(1);
+      expect(post).not.toHaveBeenCalled();
+
+      await submitQuiz();
+      await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+      expect(patch.mock.invocationCallOrder[0]).toBeLessThan(post.mock.invocationCallOrder[0]!);
+      expect(patch).toHaveBeenCalledTimes(1);
     });
   });
 });

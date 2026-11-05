@@ -1,5 +1,6 @@
 // apps/mobile/src/__tests__/forum-screen.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { onlineManager } from "@tanstack/react-query";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
@@ -309,5 +310,30 @@ describe("forum branch of the assignment screen", () => {
     renderWithProviders(<AssignmentDetailScreen />);
     await screen.findByText("Week three discussion");
     expect(get).not.toHaveBeenCalledWith("/api/v1/assignments/41/forum");
+  });
+
+  it("offline, posting fails at once into the form's error and isn't sent on reconnect", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/assignments/41"
+        ? Promise.resolve({ data: { data: forumAssignment } })
+        : Promise.resolve({ data: { data: lockedView } }),
+    );
+    put.mockRejectedValue(
+      Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined }),
+    );
+    renderWithProviders(<AssignmentDetailScreen />);
+    fireEvent.changeText(await screen.findByLabelText("Your response"), "one two three four five six");
+    act(() => onlineManager.setOnline(false));
+    try {
+      fireEvent.press(screen.getByText("Post response"));
+      expect(await screen.findByText("Couldn't post your response. Try again.")).toBeTruthy();
+      expect(screen.queryByText("Posting…")).toBeNull();
+      expect(put).toHaveBeenCalledTimes(1);
+      expect(screen.getByDisplayValue("one two three four five six")).toBeTruthy();
+    } finally {
+      act(() => onlineManager.setOnline(true));
+    }
+    await act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
+    expect(put).toHaveBeenCalledTimes(1);
   });
 });

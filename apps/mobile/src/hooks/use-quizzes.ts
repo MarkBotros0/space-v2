@@ -184,6 +184,9 @@ export function useSubmitAttempt(id: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
+    // Offline, fail now with the runner's message rather than hang and hand the
+    // quiz in on reconnect. Unlike useSaveAnswers, whose autosave may wait.
+    networkMode: "always",
     mutationFn: async () => {
       const res = await apiClient.post(`/api/v1/quizzes/${id}/attempt/submit`);
       return studentQuizDetailSchema.parse(res.data.data);

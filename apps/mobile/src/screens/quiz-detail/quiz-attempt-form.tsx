@@ -91,10 +91,8 @@ function AttemptQuestion({
 }
 
 export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: number }) {
-  const { answers, setAnswer, flush, saveState, isComplete, savePending } = useQuizAnswers(
-    detail,
-    id,
-  );
+  const { answers, setAnswer, flush, hasUnsentOffline, saveState, isComplete, savePending } =
+    useQuizAnswers(detail, id);
   const submit = useSubmitAttempt(id);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -102,6 +100,10 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
     // The server checks completeness too (409 attempt_incomplete); the disabled
     // button is the courtesy, this is the rule.
     if (!isComplete) return;
+    if (hasUnsentOffline()) {
+      reportOutcome("error", "Couldn't submit the quiz. Check your connection and try again.");
+      return;
+    }
     if (!(await flush())) {
       reportOutcome("error", "Couldn't save your answers, so the quiz wasn't submitted.");
       return;

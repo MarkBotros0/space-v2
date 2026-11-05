@@ -89,6 +89,8 @@ export function useSubmitForumResponse(assignmentId: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
+    // Offline, fail now into the form's error rather than sit on "Posting…".
+    networkMode: "always",
     mutationFn: async (text: string) => {
       const res = await apiClient.put(`/api/v1/assignments/${assignmentId}/forum/response`, {
         text,

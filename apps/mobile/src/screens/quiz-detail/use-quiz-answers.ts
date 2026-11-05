@@ -1,3 +1,4 @@
+import { onlineManager } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
@@ -135,5 +136,23 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
     return a !== undefined && isAnswered(q, a);
   });
 
-  return { answers, setAnswer, flush, saveState, isComplete, savePending: save.isPending };
+  /**
+   * Offline with answers still to go, `flush` would wait for the connection,
+   * because autosave is paused rather than failed. A submit awaiting it would hang,
+   * then hand the quiz in on reconnect, so it asks this first.
+   */
+  const hasUnsentOffline = () =>
+    !onlineManager.isOnline() &&
+    (pendingRef.current.size > 0 || timerRef.current !== null || save.isPending);
+
+  return {
+    answers,
+    setAnswer,
+    flush,
+    hasUnsentOffline,
+    saveState,
+    isComplete,
+    // A paused autosave isn't a save under way: Submit stays pressable, and says why it can't go.
+    savePending: save.isPending && !save.isPaused,
+  };
 }
