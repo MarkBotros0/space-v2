@@ -109,29 +109,55 @@ export function compactHeaderFade(to: 0 | 1, animate: boolean): number {
  * always there, in the layout above the scroll view, so the back link stays
  * reachable after the title collapses (ruling R16); only the title and the
  * hairline fade in beside it.
+ *
+ * `trailing` (Home's bell and user menu, ruling R31) sits at the bar's right
+ * so they stay reachable once the in-content copy has scrolled away. They are
+ * live only while `interactive` (the bar is shown): until then the whole bar
+ * takes no touches and is out of the accessibility tree, so nothing finds a
+ * second, invisible copy of them.
  */
 export function CompactHeader({
   title,
   back,
   progress,
+  trailing,
+  interactive = false,
 }: {
   title?: string;
   back?: BackTarget;
   progress: SharedValue<number>;
+  trailing?: ReactNode;
+  interactive?: boolean;
 }) {
   const fade = useAnimatedStyle(() => ({ opacity: progress.value }));
   if (!back) {
+    const live = interactive && !!trailing;
     return (
       <Animated.View
         testID="compact-header"
-        pointerEvents="none"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
+        pointerEvents={live ? "box-none" : "none"}
+        accessibilityElementsHidden={!live}
+        importantForAccessibility={live ? "auto" : "no-hide-descendants"}
         style={[styles.pinned, fade]}
       >
-        <View className="min-h-[44px] justify-center bg-background px-12 py-2">
-          <CompactTitle title={title} />
-        </View>
+        {trailing ? (
+          <View pointerEvents="box-none" className="min-h-[44px] flex-row items-center justify-end bg-background px-4 py-1">
+            <View
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              className="justify-center px-24"
+              style={StyleSheet.absoluteFill}
+            >
+              <CompactTitle title={title} />
+            </View>
+            <View className="shrink-0 flex-row items-center">{trailing}</View>
+          </View>
+        ) : (
+          <View className="min-h-[44px] justify-center bg-background px-12 py-2">
+            <CompactTitle title={title} />
+          </View>
+        )}
         <View className="bg-separator" style={styles.hairline} />
       </Animated.View>
     );

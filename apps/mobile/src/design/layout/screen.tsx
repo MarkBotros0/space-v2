@@ -3,18 +3,19 @@
  * bar). It owns the top safe-area inset and the offline strip under it, a
  * large title in the scroll content that collapses into a pinned
  * `CompactHeader` once scrolled past, Home's bell and user menu (`home`,
- * ruling R13), the bottom padding that clears the pill (or, on a detail
+ * ruling R13; once they scroll away the compact header, titled "Today",
+ * carries them, R31), the bottom padding that clears the pill (or, on a detail
  * screen, just the inset: `useShellBottomPadding`), the keyboard inset, and
  * the scroll direction the pill hides and returns on (`useTabBarScroll`).
  * With `back` the compact header is a bar pinned above the scroll view that
  * always shows the back link; only its title fades in (ruling R16).
  *
- * Without a `title` there is no large title and no compact header: the
- * screens still on `ShellFrame` render their own `PageTitle` in the content
- * until their batch moves them here.
+ * Without a `title` there is no large title and no compact header (Home
+ * excepted, above): the screens still on `ShellFrame` render their own
+ * `PageTitle` in the content until their batch moves them here.
  */
 import { cssInterop } from "nativewind";
-import { type ReactNode, useContext } from "react";
+import { type ReactNode, useContext, useState } from "react";
 import { type LayoutChangeEvent, RefreshControl, View } from "react-native";
 import Animated, {
   useAnimatedReaction,
@@ -147,12 +148,15 @@ export function Screen({
     },
   });
 
+  // Home's compact header carries live controls, so JS must know when it shows.
+  const [collapsed, setCollapsed] = useState(false);
   useAnimatedReaction(
     () => scrollY.value > titleBottom.value,
-    (collapsed, was) => {
-      if (collapsed === was) return;
+    (now, was) => {
+      if (now === was) return;
       // The first run (was === null) places the header without a fade.
-      progress.value = compactHeaderFade(collapsed ? 1 : 0, !reduced && was !== null);
+      progress.value = compactHeaderFade(now ? 1 : 0, !reduced && was !== null);
+      if (home) scheduleOnRN(setCollapsed, now);
     },
   );
 
@@ -161,6 +165,9 @@ export function Screen({
     titleBottom.value = y + height;
   };
 
+  // Home has no large title; once its actions row scrolls away the compact
+  // header names it "Today" and carries the bell and user menu (R31).
+  const compactTitle = title ?? (home ? "Today" : undefined);
   const actions =
     trailing || home ? (
       <>
@@ -208,7 +215,14 @@ export function Screen({
           {heading}
           {children}
         </Animated.ScrollView>
-        {title && !back ? <CompactHeader title={title} progress={progress} /> : null}
+        {compactTitle && !back ? (
+          <CompactHeader
+            title={compactTitle}
+            progress={progress}
+            trailing={home ? <HomeActions /> : undefined}
+            interactive={collapsed}
+          />
+        ) : null}
       </View>
     </ScreenChrome>
   );
