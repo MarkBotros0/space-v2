@@ -75,7 +75,6 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
         </Pressable>
       ),
     },
-    { key: "due", header: "Due", cell: (row) => <StaffDueBadge item={row} /> },
     {
       key: "submissions",
       header: "Submissions",
@@ -83,6 +82,7 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
         <TextV1 className="text-xs tabular-nums text-muted-foreground">{`${row.submissionCount}/${row.expectedCount} submitted`}</TextV1>
       ),
     },
+    { key: "due", header: "Due", cell: (row) => <StaffDueBadge item={row} /> },
     {
       key: "scope",
       header: "Scope",

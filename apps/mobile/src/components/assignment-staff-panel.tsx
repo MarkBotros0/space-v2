@@ -114,14 +114,8 @@ function trackerColumns(
     {
       key: "submitted",
       header: "Submitted",
-      cell: (row) =>
-        row.submittedAt ? (
-          <Text className="text-xs text-muted-foreground">
-            {formatShortDateTime(row.submittedAt)}
-          </Text>
-        ) : (
-          <Text className="text-xs italic text-muted-foreground">—</Text>
-        ),
+      // Plain text, so DataTable joins it; a student who hasn't submitted has nothing to show.
+      cell: (row) => (row.submittedAt ? formatShortDateTime(row.submittedAt) : null),
     },
     {
       key: "actions",
@@ -135,9 +129,7 @@ function trackerColumns(
           >
             Open
           </Button>
-        ) : (
-          <Text className="text-xs text-muted-foreground">—</Text>
-        ),
+        ) : null,
     },
   ];
 }

@@ -37,7 +37,7 @@ const COLUMNS: DataTableColumn<PreviewRow>[] = [
   {
     key: "email",
     header: "Email",
-    cell: (r) => <Text className="text-muted-foreground">{r.email || "—"}</Text>,
+    cell: (r) => r.email || "—",
   },
   { key: "row", header: "Row", cell: (r) => `Row ${r.rowNumber}` },
   {

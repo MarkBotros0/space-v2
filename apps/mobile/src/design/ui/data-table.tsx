@@ -8,6 +8,7 @@
 import { Fragment, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 
+import { joinMeta } from "../../lib/join-meta";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
@@ -24,6 +25,34 @@ function asNode(content: ReactNode, textClassName: string) {
   ) : (
     content
   );
+}
+
+type MetaSegment =
+  | { kind: "text"; key: string; text: string }
+  | { kind: "node"; key: string; node: ReactNode };
+
+/**
+ * Meta cells in order: a run of plain strings/numbers becomes one "·"-joined
+ * Text (joinMeta), an element (a chip, a badge) stands alone. Chips are never
+ * joined with a separator, so no "·" is left dangling before one when it wraps.
+ */
+function metaSegments(cells: ReactNode[]): MetaSegment[] {
+  const out: MetaSegment[] = [];
+  let run: string[] = [];
+  const flush = () => {
+    const text = joinMeta(run);
+    if (text) out.push({ kind: "text", key: `t${out.length}`, text });
+    run = [];
+  };
+  cells.forEach((cell) => {
+    if (typeof cell === "string" || typeof cell === "number") run.push(String(cell));
+    else if (cell !== null && cell !== undefined && cell !== false) {
+      flush();
+      out.push({ kind: "node", key: `n${out.length}`, node: cell });
+    }
+  });
+  flush();
+  return out;
 }
 
 function DataTable<Row>({
@@ -66,14 +95,15 @@ function DataTable<Row>({
               {primary ? asNode(primary.cell(row), "text-foreground") : null}
               {metaColumns.length > 0 ? (
                 <View className="mt-0.5 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                  {/* The "·" rides with the cell before it: v1's inline flow keeps a
-                      separator at the end of the line it ends, never starting the next. */}
-                  {metaColumns.map((col, j) => (
-                    <View key={col.key} className="min-w-0 max-w-full flex-row items-center gap-x-1.5">
-                      {asNode(col.cell(row), "shrink text-xs text-muted-foreground")}
-                      {j < metaColumns.length - 1 ? <Text className="text-xs text-muted-foreground">·</Text> : null}
-                    </View>
-                  ))}
+                  {metaSegments(metaColumns.map((col) => col.cell(row))).map((seg) =>
+                    seg.kind === "text" ? (
+                      <Text key={seg.key} className="min-w-0 max-w-full shrink text-xs text-muted-foreground">
+                        {seg.text}
+                      </Text>
+                    ) : (
+                      <Fragment key={seg.key}>{seg.node}</Fragment>
+                    ),
+                  )}
                 </View>
               ) : null}
             </View>

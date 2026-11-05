@@ -35,6 +35,20 @@ describe("DataTable (v1 phone list)", () => {
     expect(screen.getByText("ACTION")).toBeTruthy();
   });
 
+  it("joins text meta in one run and puts no separator before or after a chip", () => {
+    const cols = [
+      { key: "t", header: "Title", cell: (r: Row) => r.name },
+      { key: "chip", header: "Due", cell: () => <Text>CHIP</Text> },
+      { key: "a", header: "A", cell: (r: Row) => r.pct },
+      { key: "b", header: "B", cell: () => "1/2 submitted" },
+      { key: "blank", header: "C", cell: () => null },
+    ];
+    render(<DataTable columns={cols} rows={[{ id: 1, name: "Mina", pct: "90%" }]} rowKey={(r) => r.id} />);
+    expect(screen.getByText("90% · 1/2 submitted")).toBeTruthy();
+    expect(screen.getByText("CHIP")).toBeTruthy();
+    expect(screen.queryByText("·")).toBeNull();
+  });
+
   it("renders emptyState when there are no rows", () => {
     render(<DataTable columns={columns} rows={[]} rowKey={(r) => r.id} emptyState={<Text>Nothing yet</Text>} />);
     expect(screen.getByText("Nothing yet")).toBeTruthy();
