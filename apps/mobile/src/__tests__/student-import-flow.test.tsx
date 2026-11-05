@@ -60,6 +60,15 @@ describe("ImportScreen — step 2, preview", () => {
     expect(await screen.findByText("Fresh Student")).toBeTruthy();
   });
 
+  it("gives every row's status chip and message the full width, so they stack the same way", async () => {
+    await reachPreview();
+    fireEvent.press(screen.getByText("All"));
+    await screen.findByText("Fresh Student");
+    const statuses = screen.getAllByTestId("import-row-status");
+    expect(statuses.length).toBeGreaterThan(1);
+    for (const s of statuses) expect(s.props.className).toContain("w-full");
+  });
+
   it("warns about a column it did not recognise (D-16.12)", async () => {
     await reachPreview();
     expect(screen.getByText(/Phone No/)).toBeTruthy();
@@ -131,7 +140,7 @@ describe("ImportScreen — step 2, preview", () => {
         },
       },
     });
-    fireEvent.press(screen.getByText("Also enrol existing students"));
+    fireEvent.press(screen.getByText("Enrol existing students"));
 
     // The control alone must not arm it — enrol changes existing records.
     expect(await screen.findByText(/will also enrol/i)).toBeTruthy();

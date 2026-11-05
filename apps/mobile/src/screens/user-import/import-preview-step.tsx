@@ -44,7 +44,8 @@ const COLUMNS: DataTableColumn<PreviewRow>[] = [
     key: "status",
     header: "Status",
     cell: (r) => (
-      <View className="flex-col gap-0.5">
+      // w-full: in the table's wrapping meta row, a shrink-wrapped status sat beside the email on one row and under it on the next.
+      <View testID="import-row-status" className="w-full flex-col gap-0.5">
         <Badge variant={STATUS_BADGE[r.status].variant} className="self-start">
           {STATUS_BADGE[r.status].label}
         </Badge>
@@ -126,7 +127,7 @@ export function ImportPreviewStep({
                   variant={flow.enrolExisting ? "default" : "outline"}
                   onPress={flow.toggleEnrolExisting}
                 >
-                  Also enrol existing students
+                  Enrol existing students
                 </Button>
                 {flow.enrolExisting && !flow.enrolConfirmed ? (
                   <View className="flex-col gap-2">
