@@ -78,10 +78,10 @@ type ListRowProps = {
   onPress?: () => void;
   /** Fires when a touch lands, alongside the press scale (a screen warms a screen it is about to open). */
   onPressIn?: () => void;
-  /** Lines the title may take before it ellipsizes. Default 1. */
-  titleLines?: number;
-  /** Lines the subtitle may take before it ellipsizes. Default 2. */
-  subtitleLines?: number;
+  /** Lines the title may take before it ellipsizes. Default 1; `null` sets no cap (free text read in full). */
+  titleLines?: number | null;
+  /** Lines the subtitle may take before it ellipsizes. Default 2; `null` sets no cap. */
+  subtitleLines?: number | null;
   index?: number;
   className?: string;
 };
@@ -104,11 +104,11 @@ function ListRow({
     <View className={cn("min-h-[52px] flex-row items-center gap-3 px-4 py-2", className)}>
       {leading ? <View className="shrink-0">{leading}</View> : null}
       <View className="min-w-0 flex-1">
-        <Text variant="body" numberOfLines={titleLines} ellipsizeMode="tail" className={destructive ? "text-bad" : undefined}>
+        <Text variant="body" numberOfLines={titleLines ?? undefined} ellipsizeMode="tail" className={destructive ? "text-bad" : undefined}>
           {title}
         </Text>
         {subtitle ? (
-          <Text variant="caption" numberOfLines={subtitleLines} className="text-muted-foreground">
+          <Text variant="caption" numberOfLines={subtitleLines ?? undefined} className="text-muted-foreground">
             {subtitle}
           </Text>
         ) : null}

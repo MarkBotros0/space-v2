@@ -39,7 +39,7 @@ export function GroupedProfileTab({ profile: p }: { profile: StudentDetailData["
   return (
     <GroupedList>
       {rows.map(([label, value]) => (
-        <ListRow key={label} title={value ?? "—"} subtitle={label} titleLines={6} />
+        <ListRow key={label} title={value ?? "—"} subtitle={label} titleLines={null} />
       ))}
     </GroupedList>
   );
@@ -190,7 +190,7 @@ export function GroupedNotesTab({
                 key={n.id}
                 index={i}
                 title={n.body}
-                titleLines={6}
+                titleLines={null}
                 subtitle={caption(
                   n.authorName,
                   n.authorRole,

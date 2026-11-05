@@ -99,3 +99,14 @@ describe("ListRow titleLines", () => {
     expect(screen.getByText(/A name that may/).props.numberOfLines).toBe(2);
   });
 });
+
+describe("ListRow line caps", () => {
+  it("caps by default and accepts null for no cap", () => {
+    render(<ListRow title="Capped" subtitle="Sub" />);
+    expect(screen.getByText("Capped").props.numberOfLines).toBe(1);
+    expect(screen.getByText("Sub").props.numberOfLines).toBe(2);
+    render(<ListRow title="Free" subtitle="Free sub" titleLines={null} subtitleLines={null} />);
+    expect(screen.getByText("Free").props.numberOfLines).toBeUndefined();
+    expect(screen.getByText("Free sub").props.numberOfLines).toBeUndefined();
+  });
+});
