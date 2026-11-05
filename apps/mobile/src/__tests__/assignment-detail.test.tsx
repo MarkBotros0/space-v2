@@ -107,7 +107,7 @@ describe("AssignmentDetailScreen", () => {
     renderStacked(<AssignmentDetailScreen />);
 
     expect(await screen.findByText("Solid work.")).toBeTruthy();
-    expect(screen.getByText("Leader feedback")).toBeTruthy();
+    expect(screen.getByText("LEADER FEEDBACK")).toBeTruthy();
     expect(screen.getByText("Reviewed")).toBeTruthy();
   });
 

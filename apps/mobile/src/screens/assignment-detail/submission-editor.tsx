@@ -10,13 +10,13 @@ import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 import { plainTextToHtml, type AssignmentDetail, type SubmissionDetail } from "@space/shared";
 
-import { Eyebrow } from "../../design/layout/page-title";
 import { RouteError } from "../../design/layout/route-states";
 import { SaveBar } from "../../design/layout/save-bar";
 import { cn } from "../../design/lib/cn";
 import { useKeyboardHeight } from "../../design/lib/keyboard-events";
 import { iconWithClassName } from "../../design/lib/icon";
 import { GroupedList, ListRow, RichTextView, SkeletonCard, Text, Textarea } from "../../design/ui";
+import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { ConfirmDialog } from "../../design/ui/confirm-dialog";
 import {
   useEnsureSubmission,
@@ -78,7 +78,7 @@ function FilesGroup({ detail, sub }: { detail: AssignmentDetail; sub: Submission
           ))}
         </GroupedList>
       ) : (
-        <Eyebrow>{`Files (max ${detail.maxFileSizeMb} MB each)`}</Eyebrow>
+        <ListSectionHeader>{`Files (max ${detail.maxFileSizeMb} MB each)`}</ListSectionHeader>
       )}
       {!sub.canUploadFiles ? (
         <Text variant="caption" className="text-muted-foreground">
@@ -139,7 +139,7 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
     <View className="gap-4">
       <DueBanner detail={detail} status={sub.status} />
       <View className="gap-2">
-        <Eyebrow>Your submission</Eyebrow>
+        <ListSectionHeader>Your submission</ListSectionHeader>
         <View className="gap-3 rounded-group bg-surface p-4">
           {/* Plain text in and out: the API returns submissions as plain text, so a
               rich editor would lose its formatting on reload (gap note). */}
@@ -168,7 +168,7 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
       {info && !save.isPending ? <Callout tone="ok">{info}</Callout> : null}
       {sub.feedback ? (
         <View className="gap-2">
-          <Eyebrow>Leader feedback</Eyebrow>
+          <ListSectionHeader>Leader feedback</ListSectionHeader>
           <View className="rounded-group bg-surface p-4">
             <RichTextView html={plainTextToHtml(sub.feedback)} />
           </View>

@@ -303,4 +303,21 @@ describe("submission editor: the fixed save bar", () => {
     expect(draft).toBeTruthy();
     spy.mockRestore();
   });
+
+  it("every section label on the screen is the kit header, at the same indent", async () => {
+    get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: {
+          data:
+            url === "/api/v1/assignments/41"
+              ? { ...detailNoSubmission, description: "Do the thing.", mySubmission: draftSummary }
+              : { ...submissionDetail, feedback: "Nice work." },
+        },
+      }),
+    );
+    renderWithProviders(<AssignmentDetailScreen />);
+    await screen.findByLabelText("Your response");
+    const names = screen.getAllByRole("header").map((h) => String(h.props.children));
+    expect(names).toEqual(expect.arrayContaining(["BRIEF", "YOUR SUBMISSION", "LEADER FEEDBACK"]));
+  });
 });
