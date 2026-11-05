@@ -100,9 +100,10 @@ export function StudentToday() {
     >
       {dash.isPending ? (
         <RouteSkeleton />
-      ) : dash.isError ? (
+      ) : data === undefined ? (
+        // Only with nothing to show: a failed background read keeps the hero and an open sheet.
         <RouteError onRetry={() => void dash.refetch()} />
-      ) : data?.season ? (
+      ) : data.season ? (
         <View className="flex-col gap-4">
           <NextSessionHero
             session={data.nextSession}

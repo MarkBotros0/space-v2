@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { onlineManager } from "@tanstack/react-query";
 import { AppState, ScrollView, type AppStateStatus } from "react-native";
 
@@ -30,6 +30,7 @@ import {
   sessionDetail,
   studentDashboard,
 } from "./helpers/dashboard-fixtures";
+import { resetMockCamera } from "./helpers/expo-camera";
 import { resetFocus, setFocused } from "./helpers/focus-effect";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -280,5 +281,42 @@ describe("the pull's spinner belongs to the pull", () => {
     }
     await tick(0);
     expect(control().refreshing).toBe(false);
+  });
+});
+
+describe("a failed dashboard read", () => {
+  const withoutDashboard = () => {
+    const routed = routes({ ...sessionDetail, checkInOpen: true }) as Record<string, unknown>;
+    delete routed[DASHBOARD];
+    return routed;
+  };
+
+  it("with data on screen keeps the hero and an open check-in sheet", async () => {
+    const appState = captureAppState();
+    resetMockCamera();
+    serve(routes({ ...sessionDetail, checkInOpen: true }));
+    renderWithProviders(<StudentToday />);
+    fireEvent.press(await screen.findByText("Check In"));
+    expect(screen.getByText("Scan check-in code")).toBeTruthy();
+    expect(screen.getByTestId("mock-camera")).toBeTruthy();
+
+    serve(withoutDashboard());
+    const before = reads(DASHBOARD);
+    await tick(61_000);
+    await appState("active");
+    await tick(50);
+    expect(reads(DASHBOARD)).toBe(before + 1);
+
+    expect(screen.queryByText("Something went wrong")).toBeNull();
+    expect(screen.getByText("Week 6")).toBeTruthy();
+    expect(screen.getByText("Scan check-in code")).toBeTruthy();
+    expect(screen.getByTestId("mock-camera")).toBeTruthy();
+  });
+
+  it("with no data shows the error screen", async () => {
+    serve(withoutDashboard());
+    renderWithProviders(<StudentToday />);
+    expect(await screen.findByText("Something went wrong")).toBeTruthy();
+    expect(screen.queryByText("Week 6")).toBeNull();
   });
 });
