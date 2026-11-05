@@ -72,9 +72,9 @@ export function CalendarGrid({
                   "min-w-0 flex-1 flex-col gap-0.5 bg-card p-0.5",
                   view === "week" ? "min-h-32" : "min-h-[72px]",
                 )}
-                // v1 dims out-of-month days to opacity-40; 40% leaves their date at under 3:1, so 60%.
-                style={outside ? { opacity: 0.6 } : undefined}
               >
+                {/* Out-of-month dates take the muted foreground (4.5:1 on the cell) rather than
+                    v1's dimming, which left them under 3:1. */}
                 <View
                   className={cn(
                     "size-6 items-center justify-center self-start rounded-full",
@@ -84,7 +84,7 @@ export function CalendarGrid({
                   <Text
                     className={cn(
                       "text-xs font-medium",
-                      isToday ? "text-brand-navy-950" : "text-foreground",
+                      isToday ? "text-brand-navy-950" : outside ? "text-muted-foreground" : "text-foreground",
                     )}
                   >
                     {String(Number(key.slice(8)))}

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react-native";
+import { fireEvent, screen, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
@@ -159,16 +159,16 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     expect(screen.queryByLabelText("Calendar legend")).toBeNull();
   });
 
-  it("shows a Monday-first month grid anchored on the next session, dimming days outside the month", async () => {
+  it("shows a Monday-first month grid anchored on the next session, muting days outside the month", async () => {
     serveStudent();
     renderWithProviders(<CalendarScreen />);
     await screen.findByText("Kickoff");
 
     fireEvent.press(screen.getByLabelText("Month"));
     expect(screen.getByText("March 2099")).toBeTruthy();
-    // 1 Mar 2099 is a Sunday: the grid opens on Monday 23 Feb, dimmed as out-of-month.
+    // 1 Mar 2099 is a Sunday: the grid opens on Monday 23 Feb, its date muted as out-of-month.
     const feb = screen.getByLabelText("Feb 23, 2099");
-    expect(feb.props.style.opacity ?? feb.props.style?.[0]?.opacity).toBe(0.6);
+    expect(within(feb).getByText("23").props.className).toContain("text-muted-foreground");
     // v1's grid shows each session's title chip in its day cell; no tap-a-day list.
     expect(screen.getByLabelText("Kickoff")).toBeTruthy();
     expect(screen.getByLabelText("Week two")).toBeTruthy();

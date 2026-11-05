@@ -109,6 +109,7 @@ function MonthGrid({
             ];
             const isToday = key === ctx.today;
             const isSelected = key === selected;
+            const outside = !isSameMonth(key, anchor);
             return (
               <Pressable
                 key={key}
@@ -116,20 +117,24 @@ function MonthGrid({
                 accessibilityLabel={`${formatDayKey(key)}, ${count === 0 ? "nothing scheduled" : `${count} scheduled`}`}
                 accessibilityState={{ selected: isSelected }}
                 onPress={() => setPicked(key)}
-                className={cn(
-                  "min-h-14 flex-1 items-center rounded-control py-1",
-                  isSelected && "bg-brand-teal-100 dark:bg-brand-teal-950",
-                  // v1 dims days outside the anchor month.
-                  !isSameMonth(key, anchor) && "opacity-40",
-                )}
+                className="min-h-14 flex-1 items-center py-1"
               >
+                {/* Today is the filled circle, the selected day the same circle tinted (a tinted
+                    cell read as a tall rectangle beside it). Days outside the month take the
+                    muted foreground, 4.5:1 on the page; v1's opacity-40 left them at ~2.3:1. */}
                 <View
+                  testID={`day-circle-${key}`}
                   className={cn(
                     "size-[26px] items-center justify-center rounded-full",
-                    isToday && "bg-brand-teal-500",
+                    isToday ? "bg-brand-teal-500" : isSelected && "bg-brand-teal-100 dark:bg-brand-teal-950",
                   )}
                 >
-                  <Text className={cn("text-sm font-medium", isToday && "text-brand-navy-950")}>
+                  <Text
+                    className={cn(
+                      "text-sm font-medium",
+                      isToday ? "text-brand-navy-950" : outside && "text-muted-foreground",
+                    )}
+                  >
                     {String(Number(key.slice(8, 10)))}
                   </Text>
                 </View>
