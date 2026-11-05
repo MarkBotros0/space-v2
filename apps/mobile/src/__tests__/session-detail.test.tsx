@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("react-native-qrcode-svg", () => "QRCode");
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
@@ -13,6 +14,7 @@ jest.mock("expo-router", () => ({
 
 import type { SessionDetail } from "@space/shared";
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
@@ -355,6 +357,8 @@ it("lets a leader override one student's attendance, keeping stored notes (v1 mo
     const backdrop = screen.queryByTestId("sheet-backdrop");
     expect(backdrop === null || backdrop.parent?.props.pointerEvents === "none").toBe(true);
   });
+  // Like every other leader write: a confirmation, not just a closed sheet (M3).
+  expect(toast.success).toHaveBeenCalledWith("Attendance updated.");
 });
 
 it("shows a leader the video quiz results, and nothing for a video with no questions (spec 13 D10)", async () => {

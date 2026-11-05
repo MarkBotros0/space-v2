@@ -6,6 +6,7 @@ import QRCode from "react-native-qrcode-svg";
 import type { SessionDetail } from "@space/shared";
 
 import { FormErrorBox } from "../../design/forms/form-parts";
+import { haptic } from "../../design/motion";
 import { InlineError } from "../../design/layout/route-states";
 import { iconWithClassName } from "../../design/lib/icon";
 import { CheckInAttendanceList } from "../../design/sessions/check-in-attendance-list";
@@ -18,6 +19,7 @@ import {
   Text as TextV1,
 } from "../../design/ui";
 import { StatusChip } from "../../design/ui/status-chip";
+import { toast } from "../../design/ui/toaster";
 import { useAttendanceRoster, useSaveAttendance } from "../../hooks/use-attendance";
 import {
   LIVE_ROSTER_REFRESH_MS,
@@ -83,6 +85,8 @@ function CheckInRoster({ detail }: { detail: SessionDetail }) {
           ],
           {
             onSuccess: () => {
+              haptic("light");
+              toast.success("Attendance updated.");
               save.reset();
               done();
             },
