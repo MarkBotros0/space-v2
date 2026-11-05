@@ -17,7 +17,7 @@ import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
 import { DURATION, useReducedMotion } from "../../design/motion";
 import { EmptyState, GroupedList, StatusChip, Text } from "../../design/ui";
-import { formatDate, formatDayKey } from "../../lib/format";
+import { formatDayKey, formatSeasonDay } from "../../lib/format";
 
 iconWithClassName(ChevronRight);
 
@@ -61,7 +61,7 @@ export function SeasonGroup({ row }: { row: SeasonHistoryRow }) {
       <View>
         <Text variant="headline">{row.title}</Text>
         <Text variant="caption" className="text-muted-foreground">
-          {`${formatDate(row.startDate)} – ${formatDate(row.endDate)}${row.groupName ? ` · ${row.groupName}` : ""}`}
+          {`${formatSeasonDay(row.startDate)} – ${formatSeasonDay(row.endDate)}${row.groupName ? ` · ${row.groupName}` : ""}`}
         </Text>
       </View>
       {/* R40: v1 badges every row "Participated"; the enrollment status is not read. */}

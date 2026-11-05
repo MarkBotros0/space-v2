@@ -1,6 +1,18 @@
 import { fireEvent, screen } from "@testing-library/react-native";
 import type { SeasonHistoryRow } from "@space/shared";
 
+const mockFormatSeasonDay = jest.fn();
+jest.mock("../lib/format", () => {
+  const actual = jest.requireActual("../lib/format");
+  return {
+    ...actual,
+    formatSeasonDay: (iso: string) => {
+      mockFormatSeasonDay(iso);
+      return actual.formatSeasonDay(iso);
+    },
+  };
+});
+
 import { AlumniHistory } from "../screens/alumni/alumni-history";
 import { renderWithProviders } from "./helpers/render";
 
@@ -41,6 +53,15 @@ describe("AlumniHistory", () => {
     expect(screen.getByText(/Feb 1, 2025 – Jun 30, 2025 · Group A1/)).toBeTruthy();
     expect(screen.getByText("85% attended")).toBeTruthy();
     expect(screen.getByText("Participated")).toBeTruthy();
+  });
+
+  it("formats both season dates as calendar days, like Today (not as instants)", () => {
+    // Season dates are UTC-midnight calendar days: formatDate would print the
+    // previous day west of UTC. The TZ cannot be switched inside Jest, so pin
+    // which formatter the screen calls.
+    renderWithProviders(<AlumniHistory query={query()} />);
+    expect(mockFormatSeasonDay).toHaveBeenCalledWith("2025-02-01T00:00:00.000Z");
+    expect(mockFormatSeasonDay).toHaveBeenCalledWith("2025-06-30T00:00:00.000Z");
   });
 
   it("omits the group separator when there is no group", () => {
