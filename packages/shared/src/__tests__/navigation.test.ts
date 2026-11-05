@@ -94,7 +94,6 @@ describe("navFor", () => {
         "/students",
       ],
       STUDENT: [
-        "/assignments",
         "/attendance",
         "/calendar",
         "/dashboard",
@@ -102,9 +101,9 @@ describe("navFor", () => {
         "/more",
         "/notifications",
         "/profile",
-        "/quizzes",
         "/season",
         "/settings",
+        "/work",
       ],
       ALUMNI: [
         "/calendar",
@@ -220,8 +219,7 @@ describe("navFor", () => {
         ["/dashboard", "Dashboard", "dashboard"],
         ["/season", "Current Season", "season"],
         ["/calendar", "Calendar", "calendar"],
-        ["/assignments", "Assignments", "assignments"],
-        ["/quizzes", "Quizzes", "quizzes"],
+        ["/work", "Work", "assignments"],
         ["/attendance", "Attendance", "attendance"],
         ["/history", "History", "history"],
         ["/profile", "Profile", "profile"],
@@ -231,8 +229,7 @@ describe("navFor", () => {
       tabs: [
         ["/dashboard", "Today", "home"],
         ["/calendar", "Calendar", "calendar"],
-        ["/assignments", "Assignments", "assignments"],
-        ["/quizzes", "Quizzes", "quizzes"],
+        ["/work", "Work", "assignments"],
         ["/more", "More", "more"],
       ],
     });

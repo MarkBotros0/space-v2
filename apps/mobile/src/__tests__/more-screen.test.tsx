@@ -33,6 +33,7 @@ describe("MoreScreen", () => {
       expect(screen.getByText(label)).toBeTruthy();
     }
     // Already tabs: never duplicated in More.
+    expect(screen.queryByText("Work")).toBeNull();
     expect(screen.queryByText("Assignments")).toBeNull();
     expect(screen.queryByText("Quizzes")).toBeNull();
   });

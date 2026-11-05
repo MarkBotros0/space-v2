@@ -145,8 +145,8 @@ describe("tab switches and Back (Android back between tabs)", () => {
 
   it("a cold link to a tab goes Back to Home, not out of the app (R11)", async () => {
     signIn("STUDENT");
-    const result = await renderRouter(appContext(), { initialUrl: "/quizzes" });
-    expect(await screen.findByText("screen:/quizzes")).toBeTruthy();
+    const result = await renderRouter(appContext(), { initialUrl: "/work" });
+    expect(await screen.findByText("screen:/work")).toBeTruthy();
     expect(router.canGoBack()).toBe(true);
 
     await act(() => router.back());
@@ -157,13 +157,13 @@ describe("tab switches and Back (Android back between tabs)", () => {
 
   it("a tab reached from a detail goes Back through the tabs, not to the popped detail", async () => {
     signIn("STUDENT");
-    const result = await renderRouter(appContext(), { initialUrl: "/quizzes" });
-    expect(await screen.findByText("screen:/quizzes")).toBeTruthy();
+    const result = await renderRouter(appContext(), { initialUrl: "/work" });
+    expect(await screen.findByText("screen:/work")).toBeTruthy();
     await act(() => router.push("/student/1"));
     await act(() => router.push("/history"));
     expect(result.getPathname()).toBe("/history");
 
     await act(() => router.back());
-    expect(result.getPathname()).toBe("/quizzes");
+    expect(result.getPathname()).toBe("/work");
   });
 });

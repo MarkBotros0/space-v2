@@ -64,7 +64,7 @@ const scopes = makeScopes();
 // computed with the same (possibly mutated) function the layout uses, or a
 // mutation to routeNameForHref would break both sides identically and the
 // test would keep passing.
-const STUDENT_VISIBLE_NAMES = ["dashboard", "calendar", "assignments", "quizzes", "more"];
+const STUDENT_VISIBLE_NAMES = ["dashboard", "calendar", "work", "more"];
 const ADMIN_VISIBLE_NAMES = ["dashboard", "calendar", "groups", "students/index", "more"];
 const TOTAL_TAB_ROUTES = ALL_ROUTE_NAMES.length;
 
@@ -186,9 +186,11 @@ describe("AppLayout stack", () => {
     // Settings, Notifications, Events, …: opened from More (or Profile), so
     // Back must return there — a screen in the Tabs would go Home instead.
     expect([...PUSHED_NAV_ROUTE_NAMES].sort()).toEqual([
+      "assignments",
       "attendance",
       "events",
       "notifications",
+      "quizzes",
       "season",
       "settings",
       "students/alumni",
@@ -223,7 +225,9 @@ describe("AppLayout stack", () => {
   });
 
   it.each([
-    [["(app)", "(tabs)", "assignments"]],
+    [["(app)", "(tabs)", "work"]],
+    [["(app)", "assignments"]],
+    [["(app)", "quizzes"]],
     [["(app)", "assignment", "[id]"]],
     // Task 12 moved these out of (tabs): their segments lost the group.
     [["(app)", "season"]],

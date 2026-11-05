@@ -127,8 +127,7 @@ const STUDENT: RoleNav = {
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/season", label: "Current Season", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/assignments", label: "Assignments", icon: "assignments" },
-    { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
+    { href: "/work", label: "Work", icon: "assignments" },
     // Spec 04 D14: v1 reached /student/attendance only from the dashboard's
     // budget tile; the budget it explains must have a home of its own. STUDENT
     // sidebar only — it surfaces in More. Not ALUMNI (no active season).
@@ -141,8 +140,7 @@ const STUDENT: RoleNav = {
   tabs: [
     { href: "/dashboard", label: "Today", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/assignments", label: "Assignments", icon: "assignments" },
-    { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
+    { href: "/work", label: "Work", icon: "assignments" },
     { href: "/more", label: "More", icon: "more" },
   ],
 };

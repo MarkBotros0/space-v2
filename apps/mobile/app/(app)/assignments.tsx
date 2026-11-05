@@ -3,12 +3,12 @@ import { useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import type { StaffAssignmentListItem, StudentAssignmentListItem } from "@space/shared";
 
-import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
-import { PageTitle } from "../../../src/design/layout/page-title";
-import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import { cn } from "../../../src/design/lib/cn";
-import { StatCard } from "../../../src/design/students/stat-card";
+import { NAV_ICONS } from "../../src/design/icons/nav-icon";
+import { PageTitle } from "../../src/design/layout/page-title";
+import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { ShellFrame } from "../../src/design/layout/shell-frame";
+import { cn } from "../../src/design/lib/cn";
+import { StatCard } from "../../src/design/students/stat-card";
 import {
   Badge,
   Button,
@@ -16,18 +16,18 @@ import {
   EmptyState as EmptyStateV1,
   Text as TextV1,
   type DataTableColumn,
-} from "../../../src/design/ui";
-import { useStaffAssignments, useStudentAssignments } from "../../../src/hooks/use-assignments";
-import { useSeasonGroups } from "../../../src/hooks/use-groups";
-import { useCurrentSeasonId } from "../../../src/hooks/use-seasons";
-import { targetLabel } from "../../../src/lib/assignment-labels";
+} from "../../src/design/ui";
+import { useStaffAssignments, useStudentAssignments } from "../../src/hooks/use-assignments";
+import { useSeasonGroups } from "../../src/hooks/use-groups";
+import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
+import { targetLabel } from "../../src/lib/assignment-labels";
 import {
   formatDayKey,
   formatDistanceOnly,
   formatDueDate,
   formatShortDate,
-} from "../../../src/lib/format";
-import { useSessionStore } from "../../../src/store/session";
+} from "../../src/lib/format";
+import { useSessionStore } from "../../src/store/session";
 
 /** v1 student assignments dot + badge. RETURNED is v2's (v1 had no case): warning tone (B2-16). */
 function rowTone(item: StudentAssignmentListItem): { dot: string; badge: ReactNode } {

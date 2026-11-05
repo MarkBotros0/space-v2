@@ -1,7 +1,11 @@
 import { navFor, type NavItem } from "@space/shared";
 
-/** Detail routes that belong to a student-only destination (not themselves in any nav). */
-const STUDENT_ONLY_DETAIL_SEGMENTS: readonly string[] = ["assignment", "quiz"];
+/**
+ * Student-only routes the student's nav no longer names: the detail routes, and
+ * /assignments and /quizzes, which a student opens through Work (P2-1) but which
+ * stay in the staff navs, so the derivation below cannot see them.
+ */
+const STUDENT_ONLY_SEGMENTS: readonly string[] = ["assignment", "assignments", "quiz", "quizzes"];
 
 const hrefsOf = (items: NavItem[]) => items.map((item) => item.href);
 
@@ -19,12 +23,12 @@ function studentOnlySegments(): ReadonlySet<string> {
   const only = [...hrefsOf(student.tabs), ...hrefsOf(student.sidebar)]
     .filter((href) => !alumniHrefs.has(href))
     .map((href) => href.slice(1).split("/")[0] ?? "");
-  return new Set([...only, ...STUDENT_ONLY_DETAIL_SEGMENTS]);
+  return new Set([...only, ...STUDENT_ONLY_SEGMENTS]);
 }
 
 const BLOCKED = studentOnlySegments();
 
-/** `segments` as expo-router's useSegments() returns them, e.g. ["(app)", "(tabs)", "assignments"] or ["(app)", "quiz", "[id]"]. */
+/** `segments` as expo-router's useSegments() returns them, e.g. ["(app)", "(tabs)", "work"] or ["(app)", "quiz", "[id]"]. */
 export function isBlockedForAlumni(segments: readonly string[]): boolean {
   const first = segments.find((s) => !(s.startsWith("(") && s.endsWith(")")));
   return first !== undefined && BLOCKED.has(first);

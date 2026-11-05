@@ -68,17 +68,30 @@ describe("detail screens push on a stack above the tabs", () => {
   });
 
   it("back from a detail screen returns to the tab it was pushed from, not the first tab", async () => {
-    // Quizzes is neither the first tab nor the tabs' anchor, so only the
+    // Work is neither the first tab nor the tabs' anchor, so only the
     // stack can bring Back here.
-    const result = await renderRouter(appContext(), { initialUrl: "/quizzes" });
-    expect(await screen.findByText("screen:/quizzes")).toBeTruthy();
+    const result = await renderRouter(appContext(), { initialUrl: "/work" });
+    expect(await screen.findByText("screen:/work")).toBeTruthy();
 
     await act(() => router.push("/student/1"));
     expect(result.getPathname()).toBe("/student/1");
     expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "student/[id]/index"]);
 
     await act(() => router.back());
-    expect(result.getPathname()).toBe("/quizzes");
+    expect(result.getPathname()).toBe("/work");
+  });
+
+  // P2-2: a tab for no role now, so an old link (a notification) pushes above Home.
+  it.each([
+    ["/assignments", "assignments"],
+    ["/quizzes", "quizzes"],
+  ])("a student's cold link to %s stays on the stack, and Back goes Home", async (url, route) => {
+    const result = await renderRouter(appContext(), { initialUrl: url });
+    expect(await screen.findByText(`screen:${url}`)).toBeTruthy();
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", route]);
+
+    await act(() => router.back());
+    expect(result.getPathname()).toBe("/dashboard");
   });
 });
 
@@ -108,13 +121,13 @@ describe("the tabs are one navigator, however a tab route is reached", () => {
     expect(result.getPathname()).toBe("/student/1");
   });
 
-  it("pushing /assignments from a detail pushed off /quizzes lands in the same Tabs", async () => {
-    const result = await renderRouter(appContext(), { initialUrl: "/quizzes" });
-    expect(await screen.findByText("screen:/quizzes")).toBeTruthy();
+  it("pushing /calendar from a detail pushed off /work lands in the same Tabs", async () => {
+    const result = await renderRouter(appContext(), { initialUrl: "/work" });
+    expect(await screen.findByText("screen:/work")).toBeTruthy();
     await act(() => router.push("/student/1"));
 
-    await act(() => router.push("/assignments"));
-    expect(result.getPathname()).toBe("/assignments");
+    await act(() => router.push("/calendar"));
+    expect(result.getPathname()).toBe("/calendar");
     expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)"]);
   });
 
@@ -160,7 +173,7 @@ describe("guards on the stack layout cover tabs and detail routes", () => {
     expect(result.getPathname()).toBe("/login");
   });
 
-  it.each(["/assignments", "/assignment/1", "/season", "/attendance"])("sends an alumnus from %s to the dashboard (REG-81)", async (url) => {
+  it.each(["/work", "/assignments", "/quizzes", "/assignment/1", "/season", "/attendance"])("sends an alumnus from %s to the dashboard (REG-81)", async (url) => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ graduationYear: 2024 }));
     const result = await renderRouter(appContext(), { initialUrl: url });
     expect(await screen.findByText("screen:/dashboard")).toBeTruthy();

@@ -13,7 +13,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import AssignmentsScreen from "../../app/(app)/(tabs)/assignments";
+import AssignmentsScreen from "../../app/(app)/assignments";
 
 const get = apiClient.get as jest.Mock;
 
