@@ -93,14 +93,20 @@ export function StudentDetailGrouped({
   const tabX = useRef<Partial<Record<Tab, { x: number; w: number }>>>({});
   const tabOffset = useRef(0);
   const tabViewport = useRef(0);
+  // Where the last animated scroll is heading, until the user drags: a tap in
+  // mid-flight measures from here, not from the intermediate onScroll offset.
+  const tabHeading = useRef<number | null>(null);
   const trackTab = (t: Tab) => (e: LayoutChangeEvent) => {
     const { x, width } = e.nativeEvent.layout;
     tabX.current[t] = { x, w: width };
   };
   const open = (t: string) => {
     const at = tabX.current[t as Tab];
-    const to = at ? tabScrollTarget(at.x, at.w, tabOffset.current, tabViewport.current) : null;
-    if (to !== null) tabScroll.current?.scrollTo({ x: to, animated: true });
+    const to = at ? tabScrollTarget(at.x, at.w, tabHeading.current ?? tabOffset.current, tabViewport.current) : null;
+    if (to !== null) {
+      tabHeading.current = to;
+      tabScroll.current?.scrollTo({ x: to, animated: true });
+    }
     setTab(t as Tab);
     setOpened((prev) => new Set(prev).add(t as Tab));
   };
@@ -144,6 +150,9 @@ export function StudentDetailGrouped({
           horizontal
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
+          onScrollBeginDrag={() => {
+            tabHeading.current = null;
+          }}
           onScroll={(e) => {
             tabOffset.current = e.nativeEvent.contentOffset.x;
           }}
