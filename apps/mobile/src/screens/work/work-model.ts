@@ -107,7 +107,7 @@ export function quizRow(q: StudentQuizResult): WorkRow {
     : null;
   const parts = [
     session,
-    scored && q.gradedAt ? `Graded ${formatDate(q.gradedAt)}` : null,
+    scored && q.gradedAt ? `Graded\u00A0${formatDate(q.gradedAt).replace(/ /g, "\u00A0")}` : null,
     q.notes,
   ].filter((part) => part !== null && part !== "");
   const chip = quizChip(q);

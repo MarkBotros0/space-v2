@@ -162,7 +162,7 @@ describe("quizRow", () => {
     );
     expect(row.score).toBe("8/10");
     expect(row.chip).toBeUndefined();
-    expect(row.subtitle).toBe("Graded Mar 2, 2099 · Nice");
+    expect(row.subtitle).toBe("Graded\u00A0Mar\u00A02,\u00A02099 · Nice");
   });
 
   it("a scored paper quiz stays a plain row; a zero-point quiz does not divide by zero", () => {
