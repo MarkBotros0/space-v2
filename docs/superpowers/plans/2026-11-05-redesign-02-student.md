@@ -13,11 +13,12 @@
 ## Decisions this plan makes (rulings P2-*)
 
 - **P2-1 Work tab: merge.** Student tabs become Today, Calendar, Work, More (the approved mockup). New route `/work`. Spec's Today says "See all to the Work list"; it also removes the truncated "Assignme…" tab label — cost if wrong: restore two nav entries, the model splits by kind.
-- **P2-2 Assignments and quizzes move to the stack.** `/assignments` and `/quizzes` become a tab for no role, so the derived route rule (`route-names.ts`) puts them in `app/(app)/`. Done as pure-rename commits so sibling branches' edits follow the rename on rebase. A student opening either (deep link, notification) is redirected to `/work`.
+- **P2-2 Assignments and quizzes move to the stack.** `/assignments` and `/quizzes` become a tab for no role, so the derived route rule (`route-names.ts`) puts them in `app/(app)/`. Done as pure-rename commits so sibling branches' edits follow the rename on rebase. A student opening either (deep link, notification) gets the Work screen rendered in place on the stack, with its Back bar: never a `Redirect`/`replace` to a tab from a stacked screen (plan 01 final wave).
 - **P2-3 Check in on Today uses `useSessionDetail(next.id)`**, no new backend field: same `checkInOpen`/`myAttendance` as the session screen, shared cache. Failure degrades to the card without the action.
 - **P2-4 "Open work"** = assignments PENDING, DRAFT or RETURNED, plus ONLINE quizzes with no score and attempt null or IN_PROGRESS. `outstandingCount` (C5/D15) keeps its definition (PENDING | DRAFT).
 - **P2-5 Today's list** = overdue, then returned, then due within 7 org days, then open quizzes. Later or undated work is behind "See all".
 - **P2-6 Figures below the action:** a 2×2 tile grid (Absence budget left, Streak, Assignments pending, Sessions done `held/total`) so the tiles never leave an orphan full-width third; season title + "N sessions to go" is a row to `/season`.
+- **P2-10 Plan 01's final wave is adopted, not rebuilt.** `Screen` `footer` (for `SaveBar`), `ListRow` trailing-status a11y label, Android nav inset in `Screen` keyboard padding and the removal of `app/dev/design-system` all come from plan 01. Navigation rule: after save `router.back()`, after delete `router.dismissTo(<list>)`, never `router.replace` to a tab from a stacked screen. Tasks 8 and 9 need `footer`, so they run **after Task 13** and after this branch is rebased onto the commit that adds it — cost if wrong: they wait on plan 01's wave.
 - **P2-7 Brand hero.** `HeroCard` gains `tone="brand"` (navy in light, navy-700 in dark, per the mockup) with its own tokens and a Button `onHero` variant. Default look unchanged.
 
 ## Global Constraints
@@ -87,10 +88,10 @@
 - `ListRow` `leading?: ReactNode`, `titleLines?: number` (default 1), `subtitleLines?: number` (default 2).
 - `GroupedList` `headerAction?: { label: string; onPress: () => void }` (a 44pt `link` on the header line, label ≥4.5:1).
 - `StatTile` `onPress?: () => void` (role button, press scale; no `onPress` = today's plain view).
-- `Screen` `compactTitle?: string` (overrides the collapsed title; Home's stays "Today" when unset) and `footer?: ReactNode` (renders pinned over the bottom; its measured height is added to the scroll content's bottom padding).
+- `Screen` `compactTitle?: string` (overrides the collapsed title; Home's stays "Today" when unset). `footer` is plan 01's, not built here.
 - `SaveBar`/`SaveBarBody` `secondary?: { label: string; onPress: () => void; disabled?: boolean }` and `disabled?: boolean`; `SheetSaveBar` inherits.
 
-- [ ] **Step 1: Failing tests.** Contrast: `hero-foreground`, `hero-eyebrow`, `hero-muted` on `hero` ≥4.5, `on-hero-foreground` on `on-hero` ≥4.5, `on-hero` on `hero` ≥3, both themes. `ListRow title titleLines={2}` → title `numberOfLines` 2; default still 1. `GroupedList headerAction` fires `onPress`. `StatTile onPress` is a button with the label in its a11y label; without it, no button role. `Screen footer`: footer rendered, content padding grows after a layout event with height 80. `SaveBar secondary` renders both, each fires its handler; `disabled` blocks the primary.
+- [ ] **Step 1: Failing tests.** Contrast: `hero-foreground`, `hero-eyebrow`, `hero-muted` on `hero` ≥4.5, `on-hero-foreground` on `on-hero` ≥4.5, `on-hero` on `hero` ≥3, both themes. `ListRow title titleLines={2}` → title `numberOfLines` 2; default still 1. `GroupedList headerAction` fires `onPress`. `StatTile onPress` is a button with the label in its a11y label; without it, no button role. `SaveBar secondary` renders both, each fires its handler; `disabled` blocks the primary.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement**, add `tone="brand"` and the new row props to the catalogue. **Step 4: Run** → PASS; `typecheck`, `lint`.
 - [ ] **Step 5: Commit** one per component group (`feat(mobile): …`), each green.
 
@@ -113,7 +114,7 @@
 
 **Files:**
 - Create: `apps/mobile/src/components/check-in/check-in-success.tsx`
-- Modify: `src/components/check-in/StudentCheckInCard.tsx`, `src/components/check-in/CheckInResult.tsx` (status tones), `app/checkin/[token].tsx` (renders `Screen` with `back={null}`, `Go to Today` as plain Button), `src/screens/design-catalogue/states-sheet-sections.tsx`, `.maestro/sweep/s90-design-catalogue.yaml` if the section needs its own shot
+- Modify: `src/components/check-in/StudentCheckInCard.tsx`, `src/components/check-in/CheckInResult.tsx` (status tones), `app/checkin/[token].tsx` (renders `Screen` with `back={null}`, `Go to Today` as plain Button using `router.dismissTo("/dashboard")`, not `replace`), `src/screens/design-catalogue/states-sheet-sections.tsx`, `.maestro/sweep/s90-design-catalogue.yaml` if the section needs its own shot
 - Test: `apps/mobile/src/__tests__/check-in-success.test.tsx`, existing check-in tests
 
 **Interfaces:**
@@ -150,7 +151,7 @@ Layout, top to bottom: `Screen home title="Hi, <first name>" subtitle=<long org 
 **Files:**
 - Rename (pure, own commit): `app/(app)/(tabs)/assignments.tsx` → `app/(app)/assignments.tsx`; `app/(app)/(tabs)/quizzes.tsx` → `app/(app)/quizzes.tsx`
 - Create: `app/(app)/(tabs)/work.tsx`, `src/screens/work/work-screen.tsx`
-- Modify: `packages/shared/src/navigation.ts` (STUDENT only: tabs Today, Calendar, Work `{href:"/work",label:"Work",icon:"assignments"}`, More; sidebar replaces the Assignments and Quizzes entries with Work), `src/lib/nav-routes.ts`, the two moved files (student branch → `<Redirect href="/work" />`, remove student-only code; staff branch untouched), `app/(app)/_layout.tsx` only if its lists need it, `.maestro/sweep/student-scenarios/s05-assignments.yaml`, `s06-quizzes.yaml`
+- Modify: `packages/shared/src/navigation.ts` (STUDENT only: tabs Today, Calendar, Work `{href:"/work",label:"Work",icon:"assignments"}`, More; sidebar replaces the Assignments and Quizzes entries with Work), `src/lib/nav-routes.ts`, the two moved files (student branch renders `WorkScreen` from `src/screens/work/work-screen.tsx`, remove student-only code; staff branch untouched), `app/(app)/_layout.tsx` only if its lists need it, `.maestro/sweep/student-scenarios/s05-assignments.yaml`, `s06-quizzes.yaml`
 - Test: `apps/mobile/src/__tests__/work-screen.test.tsx`; update `role-tabs`, `floating-tab-bar`, `more-back`, `more-screen`, `deep-links`, `app-layout-routes`, `assignments-screen`, `quizzes-screen`, `packages/shared` navigation tests
 
 **Interfaces:**
@@ -160,7 +161,7 @@ Layout, top to bottom: `Screen home title="Hi, <first name>" subtitle=<long org 
 Layout: `Screen title="Work" subtitle="Your current season"` with pull-to-refresh; `SegmentedControl` `To do n` / `Done n`; To do: one `GroupedList`, ordered as `todayWork` then later and undated work; Done: "Assignments" and "Quizzes" groups; tiles (Submitted, Pending, Reviewed, Quiz average) under the list. `todayOrgDay` from `useStudentDashboard(...).data?.todayOrgDay ?? deviceTodayKey()`.
 
 - [ ] **Step 1: Commit the renames alone**, fixing only what the route lists need to compile: `refactor(mobile): assignments and quizzes push on the stack (no role has them as a tab)`. This commit also moves the nav, since the derived test needs both; keep file contents otherwise identical.
-- [ ] **Step 2: Failing tests.** `work-screen`: `activeSeasonId` null → "No active season", no list or quiz request; empty both → "No assignments yet"-style state; To do empty, Done populated → "You're all caught up" and the Done segment still reachable; quiz query error → assignments still render + `InlineError` with retry; PAPER row has no button role, its notes are visible; a `DRAFT` overdue row chips "Overdue"; rows push `/assignment/[id]` and `/quiz/[id]`. Route: a student at `/assignments` and `/quizzes` lands on `/work`; an ADMIN at `/assignments` sees the staff screen. `navFor(student).tabs` hrefs equal `["/dashboard","/calendar","/work","/more"]`; other roles' tab sets unchanged; `moreItemsFor(student)` lists no `/work`, no `/assignments`.
+- [ ] **Step 2: Failing tests.** `work-screen`: `activeSeasonId` null → "No active season", no list or quiz request; empty both → "No assignments yet"-style state; To do empty, Done populated → "You're all caught up" and the Done segment still reachable; quiz query error → assignments still render + `InlineError` with retry; PAPER row has no button role, its notes are visible; a `DRAFT` overdue row chips "Overdue"; rows push `/assignment/[id]` and `/quiz/[id]`. Route: a student at `/assignments` and `/quizzes` sees the Work screen with the Back bar and no replace call; an ADMIN at `/assignments` sees the staff screen. `navFor(student).tabs` hrefs equal `["/dashboard","/calendar","/work","/more"]`; other roles' tab sets unchanged; `moreItemsFor(student)` lists no `/work`, no `/assignments`.
 - [ ] **Step 3: Run** → FAIL. **Step 4: Implement**, rewrite s05/s06 (`openLink: spacev2://work`, wait on 'Your current season'; open a row; keep the response-keyboard steps).
 - [ ] **Step 5: Run** targeted + shared tests, `typecheck`, `lint`, check-syntax. Confirm the pill's 4-tab layout: highlight test still lands under the tapped tab.
 - [ ] **Step 6: Commit** `feat(mobile): student Assignments and Quizzes merge into a Work tab (P2-1)`.
