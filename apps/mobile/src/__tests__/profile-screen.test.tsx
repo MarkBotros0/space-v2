@@ -86,6 +86,18 @@ describe("ProfileScreen — STUDENT", () => {
     expect(screen.queryByLabelText("Email")).toBeNull();
   });
 
+  it("lays the figures out as a pair, then Streak at half width: never an orphan full-width tile", async () => {
+    renderWithProviders(<ProfileScreen />);
+
+    const pair = await screen.findByTestId("profile-figures-pair");
+    expect(within(pair).getByLabelText(/^Absence budget left/)).toBeTruthy();
+    expect(within(pair).getByLabelText(/^Assignments/)).toBeTruthy();
+    const last = screen.getByTestId("profile-figures-last");
+    expect(within(last).getByLabelText(/^Streak/)).toBeTruthy();
+    // The empty half keeps Streak the width of one column.
+    expect(within(last).getByTestId("profile-figures-spacer")).toBeTruthy();
+  });
+
   it("pins Save changes in the screen footer, not among the fields", async () => {
     renderWithProviders(<ProfileScreen />);
 

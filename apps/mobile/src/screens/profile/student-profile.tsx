@@ -68,18 +68,24 @@ function LoadedProfile({
       <View className="flex-col gap-6">
         <IdentityCard name={p.name} email={p.email} badge="Student" />
         {activeSeasonId !== null ? (
-          <View className="flex-row flex-wrap gap-3">
-            {/* v1 labelled this "Attendance" (spec 09 R68); it is the budget LEFT (spec 19 D14). */}
-            <StatTile
-              label="Absence budget left"
-              value={budget ? budget.remainingPct : "—"}
-              suffix={budget ? "%" : undefined}
-            />
-            <StatTile
-              label="Assignments"
-              value={eng ? `${eng.submissionsCompleted}/${eng.submissionsExpected}` : "—"}
-            />
-            <StatTile label="Streak" value={streak === null ? "—" : streak} />
+          <View className="gap-3">
+            <View testID="profile-figures-pair" className="flex-row flex-wrap gap-3">
+              {/* v1 labelled this "Attendance" (spec 09 R68); it is the budget LEFT (spec 19 D14). */}
+              <StatTile
+                label="Absence budget left"
+                value={budget ? budget.remainingPct : "—"}
+                suffix={budget ? "%" : undefined}
+              />
+              <StatTile
+                label="Assignments"
+                value={eng ? `${eng.submissionsCompleted}/${eng.submissionsExpected}` : "—"}
+              />
+            </View>
+            {/* Streak is one column wide: the spacer holds the other half so it never stretches. */}
+            <View testID="profile-figures-last" className="flex-row gap-3">
+              <StatTile label="Streak" value={streak === null ? "—" : streak} />
+              <View testID="profile-figures-spacer" className="min-w-[136px] flex-1" />
+            </View>
           </View>
         ) : null}
         <View>
