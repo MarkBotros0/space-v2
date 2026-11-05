@@ -102,6 +102,7 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
                   {r.score == null ? "—" : unbreakable(`${r.score} / ${sheet.maxScore}`)}
                 </Text>
               }
+              trailingLabel={r.score == null ? "Not graded" : undefined}
               chevron
               onPress={() => {
                 setError(null);

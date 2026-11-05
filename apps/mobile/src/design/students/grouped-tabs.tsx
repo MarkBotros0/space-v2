@@ -11,6 +11,7 @@ import { flattenNotePages, useStudentNotes } from "../../hooks/use-notes";
 import { useStudentAttendanceHistory, useStudentSubmissions } from "../../hooks/use-students";
 import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
 import { formatDate, formatDateTime, formatDayKey } from "../../lib/format";
+import { NAV_ICONS } from "../icons/nav-icon";
 import { InlineError } from "../layout/route-states";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
@@ -119,7 +120,7 @@ export function GroupedSubmissionsTab({ studentId }: { studentId: number }) {
   if (q.data.submissions.length === 0) {
     return (
       <EmptyState
-        icon={Calendar}
+        icon={NAV_ICONS.submissions}
         title="No submissions"
         description="Submissions visible to you will appear here."
       />

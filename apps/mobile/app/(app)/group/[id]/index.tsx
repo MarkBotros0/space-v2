@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { View } from "react-native";
 import type { GroupMember } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
@@ -96,13 +97,15 @@ export default function GroupDetailScreen() {
         ) : undefined
       }
     >
-      <MemberList title="Leaders" members={data.leaders} empty="No leaders assigned." />
-      <MemberList
-        title="Students"
-        members={data.students}
-        empty="No students enrolled."
-        onOpen={openStudent}
-      />
+      <View className="flex-col gap-6">
+        <MemberList title="Leaders" members={data.leaders} empty="No leaders assigned." />
+        <MemberList
+          title="Students"
+          members={data.students}
+          empty="No students enrolled."
+          onOpen={openStudent}
+        />
+      </View>
     </Screen>
   );
 }

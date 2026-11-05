@@ -105,6 +105,7 @@ export function LeaderCheckInCard({ detail }: { detail: SessionDetail }) {
         <StatusChip
           tone={detail.checkInOpen ? "ok" : "neutral"}
           label={detail.checkInOpen ? "Open" : "Closed"}
+          className="self-center"
         />
       </View>
       <CheckInRoster detail={detail} />

@@ -67,9 +67,9 @@ export function CheckInAttendanceList({
             </View>
             <View className="shrink-0 flex-row items-center gap-2">
               {r.status !== null ? (
-                <StatusChip {...statusChip("attendance", r.status)} />
+                <StatusChip {...statusChip("attendance", r.status)} className="self-center" />
               ) : (
-                <StatusChip tone="neutral" label="Not recorded" />
+                <StatusChip tone="neutral" label="Not recorded" className="self-center" />
               )}
               <Button
                 variant="secondary"
