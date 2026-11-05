@@ -5,8 +5,10 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
 }));
 const mockPush = jest.fn();
+let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
+  useLocalSearchParams: () => mockParams,
 }));
 jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
@@ -57,6 +59,7 @@ const rows = [
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = {};
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
@@ -68,8 +71,9 @@ describe("UsersScreen", () => {
     renderWithProviders(<UsersScreen />);
 
     expect(await screen.findByText("Active Ann")).toBeTruthy();
-    expect(screen.getByText("Active")).toBeTruthy();
-    expect(screen.getByText("No invite")).toBeTruthy();
+    // Each label appears on its filter chip and on the row's status chip.
+    expect(screen.getAllByText("Active")).toHaveLength(2);
+    expect(screen.getAllByText("No invite")).toHaveLength(2);
   });
 
   it("shows a row-level invite action only for uninvited/invited accounts, and sends it", async () => {
@@ -199,5 +203,81 @@ describe("UsersScreen — Plan 10 entry points", () => {
       ),
     );
     alert.mockRestore();
+  });
+});
+
+const chip = (label: string) =>
+  screen.getAllByLabelText(label).find((e) => e.props.accessibilityState?.selected !== undefined)!;
+
+describe("UsersScreen — status filter and rows", () => {
+  const usersUrls = () =>
+    get.mock.calls.map((c) => c[0] as string).filter((u) => u.startsWith("/api/v1/users?") || u === "/api/v1/users");
+
+  beforeEach(() => {
+    useSessionStore.setState(superSession);
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/users/invites/pending"
+        ? Promise.resolve({ data: { data: { pending: 0 } } })
+        : Promise.resolve({ data: { data: { users: rows, nextCursor: null, total: 2 } } }),
+    );
+  });
+
+  it("opens on 'No invite' and asks for status=pending when Today links with ?status=pending", async () => {
+    mockParams = { status: "pending" };
+    renderWithProviders(<UsersScreen />);
+    await screen.findByText("Active Ann");
+    expect(chip("No invite").props.accessibilityState.selected).toBe(true);
+    expect(chip("All").props.accessibilityState.selected).toBe(false);
+    expect(usersUrls()).toEqual(["/api/v1/users?status=pending"]);
+  });
+
+  it("ignores an unknown status param", async () => {
+    mockParams = { status: "bogus" };
+    renderWithProviders(<UsersScreen />);
+    await screen.findByText("Active Ann");
+    expect(usersUrls()).toEqual(["/api/v1/users"]);
+  });
+
+  it("clearing to All refetches without a status", async () => {
+    mockParams = { status: "pending" };
+    renderWithProviders(<UsersScreen />);
+    await screen.findByText("Active Ann");
+    fireEvent.press(chip("All"));
+    await waitFor(() => expect(usersUrls()).toContain("/api/v1/users"));
+    fireEvent.press(chip("Inactive"));
+    await waitFor(() => expect(usersUrls()).toContain("/api/v1/users?status=inactive"));
+  });
+
+  it("draws a row as avatar, name over email, role and last login, with a status chip and chevron", async () => {
+    renderWithProviders(<UsersScreen />);
+    const ann = await screen.findByLabelText(/^Active Ann, ann@jpc.test · Admin · Last login/);
+    expect(ann).toBeTruthy();
+    expect(screen.getByLabelText(/^Pending Pete, pete@jpc.test · Student · Never signed in, No invite$/)).toBeTruthy();
+    expect(screen.getAllByTestId("list-row-chevron", { includeHiddenElements: true }).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows the email once, as the title, for a user with no name", async () => {
+    const nameless = { ...rows[1]!, id: 7, name: "", email: "nobody@jpc.test", lastLoginAt: null };
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/users/invites/pending"
+        ? Promise.resolve({ data: { data: { pending: 0 } } })
+        : Promise.resolve({ data: { data: { users: [nameless], nextCursor: null, total: 1 } } }),
+    );
+    renderWithProviders(<UsersScreen />);
+    await screen.findByText("nobody@jpc.test");
+    expect(screen.getAllByText(/nobody@jpc.test/)).toHaveLength(1);
+    expect(screen.getByText("Student · Never signed in")).toBeTruthy();
+  });
+
+  it("puts Send N invites and Import profiles above the list as chevron rows", async () => {
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/users/invites/pending"
+        ? Promise.resolve({ data: { data: { pending: 1 } } })
+        : Promise.resolve({ data: { data: { users: rows, nextCursor: null, total: 2 } } }),
+    );
+    renderWithProviders(<UsersScreen />);
+    expect(await screen.findByText("Send 1 invite")).toBeTruthy();
+    expect(screen.getByText("Import profiles")).toBeTruthy();
+    expect(screen.getAllByTestId("list-row-chevron", { includeHiddenElements: true }).length).toBeGreaterThanOrEqual(2);
   });
 });

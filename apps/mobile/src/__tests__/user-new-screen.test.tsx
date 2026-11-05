@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { post: jest.fn() } }));
@@ -108,6 +108,16 @@ describe("/users/new (spec 11 §9)", () => {
       ),
     );
     alert.mockRestore();
+  });
+
+  it("says in the save bar when a field above has an error", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(<NewUserScreen />);
+    fireEvent.press(screen.getByText("Create and send invite"));
+    await waitFor(() =>
+      expect(within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above.")).toBeTruthy(),
+    );
+    expect(post).not.toHaveBeenCalled();
   });
 
   it("guards itself for a non-SUPER", () => {

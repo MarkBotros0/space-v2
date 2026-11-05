@@ -42,6 +42,14 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s37-05-users-search-empty
+# Today's "not invited yet" link: the list opens on the No invite chip. A filter is a read.
+- openLink: spacev2://users?status=pending
+- extendedWaitUntil:
+    visible: '\d+ total'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s37-05b-users-no-invite
 # Rows open by their label; Send invite and the bulk invite button are never tapped.
 # Seed order: Adam Admin 2, Ivy Invited 10 (live invite), Omar Offboarded 11 (deactivated),
 # Peter Pending 9 (never invited).

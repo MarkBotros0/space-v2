@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
@@ -150,9 +150,10 @@ describe("UserDetailScreen", () => {
     renderWithProviders(<UserDetailScreen />);
     expect(await screen.findByText(/can't be edited — reactivate it first/)).toBeTruthy();
     expect(screen.getByLabelText("Name").props.editable).toBe(false);
-    expect(
-      screen.getByRole("button", { name: "Save changes" }).props.accessibilityState?.disabled,
-    ).toBe(true);
+    // The pinned bar can't be disabled: it says why, and pressing it saves nothing.
+    expect(within(screen.getByTestId("save-bar")).getByText("Reactivate this account to edit it.")).toBeTruthy();
+    fireEvent.press(screen.getByText("Save changes"));
+    expect(patch).not.toHaveBeenCalled();
     expect(screen.getByText("Reactivate")).toBeTruthy();
   });
 

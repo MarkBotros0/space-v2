@@ -1,41 +1,40 @@
 /**
- * Port of v1 src/components/users/users-list.tsx: a DataTable of User (avatar
- * with name over email, linking to the edit page), Role badge, Status badge
- * and Last login. The phone DataTable leads with the user and joins the rest
- * under it. `renderActions` is v2-only: the row-level invite button.
+ * Port of v1 src/components/users/users-list.tsx as grouped rows: avatar,
+ * name (or the email when there is no name) over email, role and last login,
+ * the derived status as a chip, and a chevron to the edit page. `renderActions`
+ * is v2-only: the row-level invite button, under the row.
  */
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
-import type { UserListItem, UserStatus } from "@space/shared";
+import { View } from "react-native";
+import { userStatusSchema, type UserListItem, type UserStatus } from "@space/shared";
 
 import { formatDate } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
-import { NAV_ICONS } from "../icons/nav-icon";
+import { joinMeta } from "../../lib/join-meta";
+import { USER_ROLE_LABELS } from "../../lib/user-role-labels";
 import { Avatar, AvatarFallback } from "../ui/avatar";
-import { Badge } from "../ui/badge";
-import { DataTable, type DataTableColumn } from "../ui/data-table";
-import { EmptyState } from "../ui/empty-state";
-import { Text } from "../ui/text";
+import { GroupedList, ListRow } from "../ui/grouped-list";
+import { StatusChip, statusChip } from "../ui/status-chip";
 
-type RoleBadge = "super" | "admin" | "leader" | "mentor" | "student";
-const ROLE_BADGE: Record<UserListItem["role"], RoleBadge> = {
-  SUPER: "super",
-  ADMIN: "admin",
-  LEADER: "leader",
-  MENTOR: "mentor",
-  STUDENT: "student",
-};
+/** "No invite" is what users see for `pending`; the shared table says "Pending". Call site only. */
+export function userStatusChip(status: UserStatus) {
+  const spec = statusChip("user", status);
+  return status === "pending" ? { ...spec, label: "No invite" } : spec;
+}
 
-/** v1's four states (R82); the server derives which one applies (R81). */
-const STATUS: Record<
-  UserStatus,
-  { label: string; variant: "success" | "info" | "outline" | "warning" }
-> = {
-  active: { label: "Active", variant: "success" },
-  invited: { label: "Invited", variant: "info" },
-  pending: { label: "No invite", variant: "outline" },
-  inactive: { label: "Inactive", variant: "warning" },
-};
+/** A `status` route param, or undefined when it names nothing we filter by. */
+export function parseUserStatus(value: unknown): UserStatus | undefined {
+  const parsed = userStatusSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function rowSubtitle(row: UserListItem): string {
+  return joinMeta([
+    row.name ? row.email : null,
+    USER_ROLE_LABELS[row.role],
+    row.lastLoginAt ? `Last login ${formatDate(row.lastLoginAt)}` : "Never signed in",
+  ]);
+}
 
 export function UsersList({
   rows,
@@ -46,76 +45,31 @@ export function UsersList({
   onOpen: (row: UserListItem) => void;
   renderActions?: (row: UserListItem) => ReactNode;
 }) {
-  const columns: DataTableColumn<UserListItem>[] = [
-    {
-      key: "user",
-      header: "User",
-      cell: (row) => (
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={`Open ${row.name || row.email}`}
-          className="flex-row items-center gap-2"
-          onPress={() => onOpen(row)}
-        >
-          <Avatar size="sm">
-            <AvatarFallback>
-              {initialsOf(row.name, row.email[0]?.toUpperCase() ?? "?")}
-            </AvatarFallback>
-          </Avatar>
-          <View className="min-w-0 flex-1">
-            <Text className="font-medium">{row.name || row.email}</Text>
-            <Text className="text-xs text-muted-foreground">{row.email}</Text>
-          </View>
-        </Pressable>
-      ),
-    },
-    {
-      key: "role",
-      header: "Role",
-      cell: (row) => (
-        <Badge role={ROLE_BADGE[row.role]} textClassName="uppercase">
-          {row.role}
-        </Badge>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      cell: (row) => <Badge variant={STATUS[row.status].variant}>{STATUS[row.status].label}</Badge>,
-    },
-    {
-      key: "lastLogin",
-      header: "Last login",
-      cell: (row) =>
-        row.lastLoginAt ? (
-          <Text className="text-xs text-muted-foreground">{formatDate(row.lastLoginAt)}</Text>
-        ) : (
-          <Text className="text-xs italic text-muted-foreground">never</Text>
-        ),
-    },
-    ...(renderActions
-      ? [
-          {
-            key: "actions",
-            header: "",
-            cell: (row: UserListItem) => renderActions(row),
-          } satisfies DataTableColumn<UserListItem>,
-        ]
-      : []),
-  ];
-
   return (
-    <DataTable
-      columns={columns}
-      rows={rows}
-      rowKey={(r) => r.id}
-      emptyState={
-        <EmptyState
-          icon={NAV_ICONS.users}
-          title="No users yet"
-          description="Add the first user to get started."
-        />
-      }
-    />
+    <GroupedList>
+      {rows.map((row, i) => {
+        const actions = renderActions?.(row);
+        return (
+          <View key={row.id}>
+            <ListRow
+              index={i}
+              title={row.name || row.email}
+              subtitle={rowSubtitle(row)}
+              leading={
+                <Avatar size="sm">
+                  <AvatarFallback>
+                    {initialsOf(row.name, row.email[0]?.toUpperCase() ?? "?")}
+                  </AvatarFallback>
+                </Avatar>
+              }
+              trailing={<StatusChip {...userStatusChip(row.status)} />}
+              chevron
+              onPress={() => onOpen(row)}
+            />
+            {actions ? <View className="items-start px-4 pb-3">{actions}</View> : null}
+          </View>
+        );
+      })}
+    </GroupedList>
   );
 }
