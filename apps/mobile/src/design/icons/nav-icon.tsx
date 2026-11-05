@@ -1,21 +1,22 @@
 import type { NavIconName } from "@space/shared";
 import {
+  Backpack,
   Bell,
+  BookOpen,
   Calendar,
-  CalendarDays,
-  CheckCheck,
+  ChartColumn,
+  CircleUserRound,
   ClipboardList,
-  FileText,
+  Ellipsis,
   GraduationCap,
   History,
   Home,
+  Inbox,
   LayoutDashboard,
-  MoreHorizontal,
-  Notebook,
-  PenLine,
+  ListChecks,
+  NotebookPen,
   Settings,
-  Sparkles,
-  User,
+  Ticket,
   UserCheck,
   UserCog,
   UserMinus,
@@ -25,33 +26,37 @@ import {
 import { cssInterop } from "nativewind";
 
 /**
- * The one icon map for navigation destinations: the tab bar (NavLink) and the
- * More page rows both draw from it. Started from v1's nav-link iconMap; the
- * v1 match is lifted (owner, 2026-11-04), so groups are people (UsersRound,
- * not v1's Folders) and admin user management is a person with a cog
- * (UserCog), so the two people icons never sit side by side looking alike.
+ * The one icon map for navigation destinations. The tab bar (NavLink), the
+ * More page rows and every other place that stands for a destination (card
+ * headers, empty states, quick links) draw from it, so a concept looks the
+ * same wherever it appears. Revised by the owner (2026-11-05; the v1 match is
+ * lifted): each destination gets its own icon that says what it opens (v1
+ * used FileText for both reports and submissions, Folders for groups,
+ * Sparkles for seasons, PenLine for quizzes); GraduationCap is alumni, a
+ * Backpack is students; groups are people (UsersRound) and admin user
+ * management a person with a cog (UserCog), so the two never look alike.
  */
 export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   home: Home,
   dashboard: LayoutDashboard,
   users: UserCog,
   calendar: Calendar,
-  events: CalendarDays,
+  events: Ticket,
   assignments: ClipboardList,
-  attendance: CheckCheck,
-  submissions: FileText,
+  attendance: UserCheck,
+  submissions: Inbox,
   history: History,
-  profile: User,
-  reports: FileText,
+  profile: CircleUserRound,
+  reports: ChartColumn,
   groups: UsersRound,
-  season: Sparkles,
-  students: GraduationCap,
-  alumni: UserCheck,
+  season: BookOpen,
+  students: Backpack,
+  alumni: GraduationCap,
   dropped: UserMinus,
-  notes: Notebook,
+  notes: NotebookPen,
   notifications: Bell,
-  quizzes: PenLine,
-  more: MoreHorizontal,
+  quizzes: ListChecks,
+  more: Ellipsis,
   settings: Settings,
 };
 
