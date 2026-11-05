@@ -1,93 +1,49 @@
-import { fireEvent, screen } from "@testing-library/react-native";
+import { screen } from "@testing-library/react-native";
 
-jest.mock("../lib/api-client", () => ({
-  apiClient: { get: jest.fn() },
-}));
-const mockPush = jest.fn();
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush }),
-}));
+jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
+const mockReplace = jest.fn();
+jest.mock("expo-router", () => {
+  const { Text } = jest.requireActual("react-native");
+  return {
+    useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: jest.fn(), canGoBack: () => true }),
+    Redirect: ({ href }: { href: string }) => <Text>{`redirect:${href}`}</Text>,
+  };
+});
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { renderWithProviders } from "./helpers/render";
+import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
 import AssignmentsScreen from "../../app/(app)/assignments";
 
 const get = apiClient.get as jest.Mock;
 
-const studentSession = makeSession(
-  "STUDENT",
-  { activeSeasonId: 7 },
-  { id: 9, name: "Test student", email: "s@jpc.test" },
-);
-
-const row = {
-  id: 41,
-  title: "Essay one",
-  dueAt: "2099-04-01T21:59:00.000Z",
-  dueOrgDay: "2099-04-01",
-  isOverdue: false,
-  status: "PENDING" as const,
-  reviewedAt: null,
-};
-
 beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
+  get.mockRejectedValue(new Error("not served"));
 });
 
-describe("AssignmentsScreen (student)", () => {
-  it("lists assignments with their server-derived status", async () => {
-    useSessionStore.setState(studentSession);
-    get.mockResolvedValue({ data: { data: { assignments: [row] } } });
-
-    renderWithProviders(<AssignmentsScreen />);
-
-    expect(await screen.findByText("Essay one")).toBeTruthy();
-    expect(screen.getByText("Not started")).toBeTruthy();
-    expect(screen.getByText("Assignments")).toBeTruthy();
-    expect(screen.getByText("Your current season")).toBeTruthy();
-    expect(screen.getByLabelText("Submitted: 0")).toBeTruthy();
-    expect(screen.getByLabelText("Pending: 1")).toBeTruthy();
-    expect(screen.getByLabelText("Reviewed: 0")).toBeTruthy();
-    expect(screen.getByText(/^Due Apr \d, 2099 · in /)).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/assignments");
-  });
-
-  it("marks an overdue assignment from the contract flag, not a local date compare", async () => {
-    useSessionStore.setState(studentSession);
-    // dueAt in the FUTURE but isOverdue true: only the server flag may decide.
-    get.mockResolvedValue({
-      data: { data: { assignments: [{ ...row, dueAt: "2099-04-01T00:00:00.000Z", isOverdue: true }] } },
-    });
-
-    renderWithProviders(<AssignmentsScreen />);
-
-    // v1's past-due badge: "Due {MMM d}" in the error tone.
-    expect(await screen.findByText("Due Apr 1")).toBeTruthy();
-  });
-
-  it("navigates to the detail route on press", async () => {
-    useSessionStore.setState(studentSession);
-    get.mockResolvedValue({ data: { data: { assignments: [row] } } });
-
-    renderWithProviders(<AssignmentsScreen />);
-    fireEvent.press(await screen.findByText("Essay one"));
-
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/assignment/[id]",
-      params: { id: "41" },
-    });
-  });
-
-  it("shows its own empty state with no active season, without calling the API", async () => {
+// The student's list itself is pinned in work-screen.test.tsx, the staff's in
+// assignments-staff-screen.test.tsx.
+describe("/assignments on the stack", () => {
+  it("a student gets Work in place, with the Back bar: no replace, no redirect (P2-11)", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null }));
-
-    renderWithProviders(<AssignmentsScreen />);
-
+    renderStacked(<AssignmentsScreen />);
     expect(await screen.findByText("No active season")).toBeTruthy();
-    expect(get).not.toHaveBeenCalled();
+    expect(screen.getByText("Work")).toBeTruthy();
+    expect(screen.getByText("Your current season")).toBeTruthy();
+    expect(screen.getByLabelText("Back")).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(screen.queryByText(/^redirect:/)).toBeNull();
+  });
+
+  it("an admin keeps the staff screen", async () => {
+    useSessionStore.setState(makeSession("ADMIN"));
+    renderStacked(<AssignmentsScreen />);
+    expect(await screen.findByText("Assignments")).toBeTruthy();
+    expect(screen.queryByText("Your current season")).toBeNull();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 });

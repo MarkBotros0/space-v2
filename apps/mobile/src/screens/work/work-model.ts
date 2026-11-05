@@ -11,7 +11,7 @@ import { daysBetween } from "../../lib/calendar-grid";
 import { formatDate } from "../../lib/format";
 
 /** Where "See all" and the Assignments tile go. */
-export const WORK_HREF = "/assignments" as const;
+export const WORK_HREF = "/work" as const;
 
 /** P2-5: Today lists work due within this many org days; the rest is behind "See all". */
 const TODAY_WINDOW_DAYS = 7;
@@ -60,7 +60,13 @@ function quizChip(q: StudentQuizResult): ChipSpec | undefined {
 export function quizRow(q: StudentQuizResult): WorkRow {
   const scored = q.score !== null;
   const pct = scored && q.maxScore > 0 ? Math.round(((q.score as number) / q.maxScore) * 100) : 0;
+  const session = q.sessionTitle
+    ? q.sessionDate
+      ? `${q.sessionTitle} · ${formatDate(q.sessionDate)}`
+      : q.sessionTitle
+    : null;
   const parts = [
+    session,
     scored ? `${pct}%` : null,
     scored && q.gradedAt ? `Graded ${formatDate(q.gradedAt)}` : null,
     q.notes,
@@ -112,4 +118,51 @@ export function todayWork(
     ...[...overdue, ...returned, ...dueSoon].map((a) => assignmentRow(a, todayOrgDay)),
     ...quizzes.filter(isOpenQuiz).map(quizRow),
   ];
+}
+
+export type WorkSections = {
+  todo: WorkRow[];
+  doneAssignments: WorkRow[];
+  doneQuizzes: WorkRow[];
+  stats: { submitted: number; pending: number; reviewed: number; quizAverage: number | null };
+};
+
+/** Scored rows only, so an unattempted quiz cannot drag the average down. */
+function quizAverage(quizzes: StudentQuizResult[]): number | null {
+  const scored = quizzes.filter((q) => q.score !== null && q.maxScore > 0);
+  if (scored.length === 0) return null;
+  const total = scored.reduce((sum, q) => sum + (q.score as number) / q.maxScore, 0);
+  return Math.round((total / scored.length) * 100);
+}
+
+/**
+ * The Work tab. To do opens with Today's list (P2-5), then the open assignments
+ * Today leaves behind "See all", later and undated, in the server's order (due
+ * date, undated last). RETURNED counts in none of the three figures, as in v1.
+ */
+export function workSections(
+  assignments: StudentAssignmentListItem[],
+  quizzes: StudentQuizResult[],
+  todayOrgDay: string,
+): WorkSections {
+  const open = assignments.filter(
+    (a) => a.status === "PENDING" || a.status === "DRAFT" || a.status === "RETURNED",
+  );
+  const handedIn = assignments.filter((a) => a.status === "SUBMITTED" || a.status === "REVIEWED");
+  const first = todayWork(open, quizzes, todayOrgDay);
+  const listed = new Set(first.map((row) => row.key));
+  return {
+    todo: [
+      ...first,
+      ...open.map((a) => assignmentRow(a, todayOrgDay)).filter((row) => !listed.has(row.key)),
+    ],
+    doneAssignments: handedIn.map((a) => assignmentRow(a, todayOrgDay)),
+    doneQuizzes: quizzes.filter((q) => !isOpenQuiz(q)).map(quizRow),
+    stats: {
+      submitted: handedIn.length,
+      pending: assignments.filter((a) => a.status === "PENDING" || a.status === "DRAFT").length,
+      reviewed: assignments.filter((a) => a.status === "REVIEWED").length,
+      quizAverage: quizAverage(quizzes),
+    },
+  };
 }

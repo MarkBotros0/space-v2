@@ -1,6 +1,13 @@
 import type { DashboardDueItem, StudentQuizResult } from "@space/shared";
 
-import { assignmentRow, isOpenQuiz, quizRow, todayWork } from "../screens/work/work-model";
+import {
+  WORK_HREF,
+  assignmentRow,
+  isOpenQuiz,
+  quizRow,
+  todayWork,
+  workSections,
+} from "../screens/work/work-model";
 
 const TODAY = "2099-03-01";
 
@@ -105,6 +112,20 @@ describe("quizRow", () => {
     expect(row.subtitle).toBe("0%");
   });
 
+  it("names the session the quiz belongs to, first", () => {
+    const row = quizRow(
+      quiz({
+        quizId: 5,
+        score: 15,
+        maxScore: 20,
+        sessionTitle: "Week 1",
+        sessionDate: "2099-03-01T18:00:00.000Z",
+      }),
+    );
+    expect(row.subtitle).toBe("Week 1 · Mar 1, 2099 · 75%");
+    expect(quizRow(quiz({ quizId: 6, sessionTitle: "Week 2" })).subtitle).toBe("Week 2");
+  });
+
   it("notes reach the subtitle of an unscored row too", () => {
     expect(quizRow(quiz({ quizId: 5, kind: "PAPER", notes: "Bring a pen" })).subtitle).toBe("Bring a pen");
   });
@@ -170,5 +191,94 @@ describe("todayWork (P2-5)", () => {
   it("leaves out quizzes that are not open", () => {
     const rows = todayWork([], [quiz({ quizId: 1, kind: "PAPER" }), quiz({ quizId: 2, score: 5 })], TODAY);
     expect(rows).toEqual([]);
+  });
+});
+
+describe("workSections", () => {
+  const keys = (rows: { key: string }[]) => rows.map((r) => r.key);
+
+  it("the tab is where Today's See all goes", () => {
+    expect(WORK_HREF).toBe("/work");
+  });
+
+  it("To do is todayWork's order, then later and undated assignments", () => {
+    const later = assignment({ id: 1, dueOrgDay: "2099-04-01" });
+    const undated = assignment({ id: 2, dueOrgDay: null, dueAt: null });
+    const soon = assignment({ id: 3 });
+    const returned = assignment({ id: 4, status: "RETURNED" });
+    const overdue = assignment({ id: 5, isOverdue: true, status: "DRAFT" });
+    const open = quiz({ quizId: 9 });
+    const { todo } = workSections([later, undated, soon, returned, overdue], [open], TODAY);
+    expect(keys(todo)).toEqual([
+      ...keys(todayWork([later, undated, soon, returned, overdue], [open], TODAY)),
+      "assignment-1",
+      "assignment-2",
+    ]);
+    expect(keys(todo)).toEqual([
+      "assignment-5",
+      "assignment-4",
+      "assignment-3",
+      "quiz-ONLINE-9",
+      "assignment-1",
+      "assignment-2",
+    ]);
+  });
+
+  it("Done holds handed-in assignments and every quiz that is not open", () => {
+    const { todo, doneAssignments, doneQuizzes } = workSections(
+      [assignment({ id: 1, status: "SUBMITTED" }), assignment({ id: 2, status: "REVIEWED" })],
+      [
+        quiz({ quizId: 1, score: 5 }),
+        quiz({ quizId: 2, kind: "PAPER" }),
+        quiz({ quizId: 3, attemptStatus: "SUBMITTED" }),
+      ],
+      TODAY,
+    );
+    expect(todo).toEqual([]);
+    expect(keys(doneAssignments)).toEqual(["assignment-1", "assignment-2"]);
+    expect(keys(doneQuizzes)).toEqual(["quiz-ONLINE-1", "quiz-PAPER-2", "quiz-ONLINE-3"]);
+  });
+
+  it("no row is listed twice", () => {
+    const { todo, doneAssignments, doneQuizzes } = workSections(
+      (["PENDING", "DRAFT", "RETURNED", "SUBMITTED", "REVIEWED"] as const).map((status, i) =>
+        assignment({ id: i, status }),
+      ),
+      [quiz({ quizId: 1 }), quiz({ quizId: 2, score: 1 })],
+      TODAY,
+    );
+    const all = keys([...todo, ...doneAssignments, ...doneQuizzes]);
+    expect(new Set(all).size).toBe(all.length);
+    expect(all).toHaveLength(7);
+  });
+
+  it("counts as the old screens did: RETURNED in none of the three", () => {
+    const { stats } = workSections(
+      [
+        assignment({ id: 1, status: "PENDING" }),
+        assignment({ id: 2, status: "DRAFT" }),
+        assignment({ id: 3, status: "SUBMITTED" }),
+        assignment({ id: 4, status: "REVIEWED" }),
+        assignment({ id: 5, status: "RETURNED" }),
+      ],
+      [],
+      TODAY,
+    );
+    expect(stats).toEqual({ submitted: 2, pending: 2, reviewed: 1, quizAverage: null });
+  });
+
+  it("averages scored rows only: an unattempted or zero-point quiz does not drag it down", () => {
+    const { stats } = workSections(
+      [],
+      [
+        quiz({ quizId: 1, score: 15, maxScore: 20 }),
+        quiz({ quizId: 2, score: 5, maxScore: 10 }),
+        quiz({ quizId: 3 }),
+        quiz({ quizId: 4, score: 0, maxScore: 0 }),
+      ],
+      TODAY,
+    );
+    // (15/20 + 5/10) / 2 = 62.5% rounds to 63%.
+    expect(stats.quizAverage).toBe(63);
   });
 });

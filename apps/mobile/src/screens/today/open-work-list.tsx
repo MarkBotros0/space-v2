@@ -4,20 +4,9 @@ import { View } from "react-native";
 import type { DashboardDueItem, StudentQuizResult } from "@space/shared";
 
 import { InlineError } from "../../design/layout/route-states";
-import { GroupedList, ListRow, Skeleton, StatusChip, Text } from "../../design/ui";
-import { WORK_HREF, todayWork, type WorkRow } from "../work/work-model";
-
-function trailing(row: WorkRow) {
-  if (row.chip) return <StatusChip {...row.chip} />;
-  if (row.score) {
-    return (
-      <Text variant="headline" tabular>
-        {row.score}
-      </Text>
-    );
-  }
-  return undefined;
-}
+import { GroupedList, ListRow } from "../../design/ui";
+import { WORK_HREF, todayWork } from "../work/work-model";
+import { WorkListRow, WorkLoadingRow } from "../work/work-row";
 
 /**
  * "What do I do now": overdue, returned, due this week, open quizzes (P2-5),
@@ -39,11 +28,7 @@ export function OpenWorkList({
   let empty = null;
   if (rows.length === 0) {
     if (quizzes.isPending) {
-      empty = (
-        <View accessible accessibilityLabel="Loading" className="p-4">
-          <Skeleton className="h-5" />
-        </View>
-      );
+      empty = <WorkLoadingRow />;
     } else if (open.length > 0 || quizzes.isError) {
       empty = <ListRow title="Nothing due this week." />;
     } else {
@@ -57,22 +42,7 @@ export function OpenWorkList({
         header="To do"
         headerAction={{ label: "See all", onPress: () => router.push(WORK_HREF) }}
       >
-        {empty ??
-          rows.map((row, i) => {
-            const href = row.href;
-            return (
-              <ListRow
-                key={row.key}
-                index={i}
-                title={row.title}
-                subtitle={row.subtitle}
-                titleLines={2}
-                trailing={trailing(row)}
-                chevron={href !== null}
-                onPress={href !== null ? () => router.push(href) : undefined}
-              />
-            );
-          })}
+        {empty ?? rows.map((row, i) => <WorkListRow key={row.key} row={row} index={i} />)}
       </GroupedList>
       {quizzes.isError ? (
         <InlineError message="Couldn't load your quizzes." onRetry={() => void quizzes.refetch()} />

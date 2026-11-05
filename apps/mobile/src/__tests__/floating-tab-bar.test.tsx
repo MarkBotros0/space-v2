@@ -1,13 +1,14 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import type { BottomTabBarProps } from "expo-router/js-tabs";
 import { Platform } from "react-native";
-import type { NavItem } from "@space/shared";
+import { navByRole, type NavItem } from "@space/shared";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { PillTabBar } from "../design/layout/floating-tab-bar";
 import { PillHighlight } from "../design/layout/pill-highlight";
 import { resetTabBarScroll, useTabBarScroll } from "../design/layout/tab-bar-scroll";
 import { setReducedMotionForTests } from "../design/motion";
+import { routeNameForHref } from "../lib/route-names";
 
 const mockWithSpring = jest.fn();
 const mockWithTiming = jest.fn();
@@ -209,6 +210,48 @@ describe("no active tab (M1)", () => {
     expect(highlightTarget()).toBeNull();
     expect(mockWithTiming).toHaveBeenCalledWith(0, { duration: 150 });
     expect(screen.getByLabelText("History").props.accessibilityState).toMatchObject({ selected: false });
+  });
+});
+
+describe("a student's four tabs", () => {
+  it("draws four, and the highlight lands under the tapped tab", () => {
+    const tabs = navByRole.STUDENT.tabs;
+    const navigateToTab = jest.fn();
+    const state = {
+      index: 0,
+      routes: tabs.map((t) => ({ key: `${routeNameForHref(t.href)}-key`, name: routeNameForHref(t.href) })),
+    } as unknown as BottomTabBarProps["state"];
+    render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 360, height: 640 },
+          insets: { top: 0, left: 0, right: 0, bottom: 34 },
+        }}
+      >
+        <PillTabBar
+          items={tabs}
+          state={state}
+          navigateToTab={navigateToTab}
+          emitter={{} as unknown as BottomTabBarProps["emitter"]}
+          descriptors={{} as unknown as BottomTabBarProps["descriptors"]}
+          insets={{ top: 0, left: 0, right: 0, bottom: 34 }}
+        />
+      </SafeAreaProvider>,
+    );
+    expect(screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel)).toEqual([
+      "Today",
+      "Calendar",
+      "Work",
+      "More",
+    ]);
+    ["Today", "Calendar", "Work", "More"].forEach((label, i) => layoutTab(label, i * 85, 85));
+
+    fireEvent.press(screen.getByLabelText("Work"));
+    expect(highlightTarget()).toEqual({ x: 170, width: 85 });
+    expect(navigateToTab).toHaveBeenCalledWith("work-key");
+
+    fireEvent.press(screen.getByLabelText("More"));
+    expect(highlightTarget()).toEqual({ x: 255, width: 85 });
   });
 });
 

@@ -2,11 +2,14 @@ import { fireEvent, screen } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
+const mockReplace = jest.fn();
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn(), canGoBack: () => true }),
+}));
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { renderWithProviders } from "./helpers/render";
+import { renderStacked, renderWithProviders } from "./helpers/render";
 import QuizzesScreen from "../../app/(app)/quizzes";
 
 const get = apiClient.get as jest.Mock;
@@ -45,15 +48,6 @@ function staffGets(quizPage: unknown, ...more: { cursor: number; page: unknown }
   });
 }
 
-function studentRow(over: Partial<Record<string, unknown>> = {}) {
-  return {
-    quizId: 41, title: "Week 1 quiz", kind: "PAPER", maxScore: 20, score: 15,
-    notes: "Nice work.", gradedAt: "2099-03-02T10:00:00.000Z",
-    sessionTitle: "Week 1", sessionDate: "2099-03-01T18:00:00.000Z",
-    attemptStatus: null, ...over,
-  };
-}
-
 function staffRow(over: Partial<Record<string, unknown>> = {}) {
   return {
     id: 41, title: "Week 1 quiz", kind: "PAPER", publishedAt: null, questionCount: 0,
@@ -68,85 +62,22 @@ beforeEach(() => {
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
+// The student's rows are pinned in work-screen.test.tsx and work-model.test.ts.
 describe("QuizzesScreen — student", () => {
-  it("lists results with the score and the average hero", async () => {
-    useSessionStore.setState(studentSession);
-    get.mockResolvedValue({
-      data: {
-        data: {
-          items: [studentRow(), studentRow({ quizId: 42, title: "Week 2 quiz", score: 5, maxScore: 10 })],
-          nextCursor: null,
-        },
-      },
-    });
-
-    renderWithProviders(<QuizzesScreen />);
-
-    expect(await screen.findByText("Week 1 quiz")).toBeTruthy();
-    // v1 row: session line, then the score as "15" + "/20" over "75%".
-    expect(screen.getAllByText("Week 1 · Mar 1, 2099").length).toBeGreaterThan(0);
-    expect(screen.getByText("15/20")).toBeTruthy(); // "/20" is a nested span
-    expect(screen.getByText("/20")).toBeTruthy();
-    expect(screen.getByText("75%")).toBeTruthy();
-    expect(screen.getAllByText("Nice work.")).toHaveLength(2);
-    expect(screen.getAllByText("Graded Mar 2, 2099").length).toBe(2);
-    // (15/20 + 5/10) / 2 = 62.5% → 63%. Presentation arithmetic over
-    // server-supplied scores, not a business rule re-derived on the device.
-    expect(screen.getByText("63%")).toBeTruthy();
-    expect(screen.getByText("Average score")).toBeTruthy();
-    expect(screen.getByText("2 graded · 0 pending")).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/quizzes?seasonId=7");
-  });
-
-  it("labels an online quiz by its attempt status and opens the runner", async () => {
-    useSessionStore.setState(studentSession);
-    get.mockResolvedValue({
-      data: {
-        data: {
-          items: [
-            studentRow({ quizId: 51, title: "Online quiz", kind: "ONLINE", score: null,
-              notes: null, gradedAt: null, attemptStatus: null }),
-            studentRow({ quizId: 52, title: "Waiting quiz", kind: "ONLINE", score: null,
-              notes: null, gradedAt: null, attemptStatus: "SUBMITTED" }),
-          ],
-          nextCursor: null,
-        },
-      },
-    });
-
-    renderWithProviders(<QuizzesScreen />);
-
-    expect(await screen.findByText("Take quiz")).toBeTruthy();
-    expect(screen.getByText("Awaiting grading")).toBeTruthy();
-
-    fireEvent.press(screen.getByText("Online quiz"));
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/quiz/[id]",
-      params: { id: "51" },
-    });
-  });
-
-  it("shows an empty state with no active season and never calls the API", async () => {
+  it("gets Work in place, with the Back bar: no replace, no redirect (P2-11)", async () => {
     useSessionStore.setState({
       ...studentSession,
       scopes: { ...studentSession.scopes, activeSeasonId: null },
     });
 
-    renderWithProviders(<QuizzesScreen />);
+    renderStacked(<QuizzesScreen />);
 
-    // v1: the hero still renders ("—") over an empty list.
-    expect(await screen.findByText("No quizzes yet")).toBeTruthy();
-    expect(screen.getByText("—")).toBeTruthy();
+    expect(await screen.findByText("No active season")).toBeTruthy();
+    expect(screen.getByText("Work")).toBeTruthy();
+    expect(screen.getByText("Your current season")).toBeTruthy();
+    expect(screen.getByLabelText("Back")).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalled();
     expect(get).not.toHaveBeenCalled();
-  });
-
-  it("does not open a paper quiz — v1 rows for PAPER are not links", async () => {
-    useSessionStore.setState(studentSession);
-    get.mockResolvedValue({ data: { data: { items: [studentRow()], nextCursor: null } } });
-
-    renderWithProviders(<QuizzesScreen />);
-    fireEvent.press(await screen.findByText("Week 1 quiz"));
-    expect(mockPush).not.toHaveBeenCalled();
   });
 });
 

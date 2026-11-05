@@ -1,175 +1,27 @@
 import { useRouter } from "expo-router";
-import { ChevronRight } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
-import type { QuizSummary, StudentQuizResult } from "@space/shared";
+import type { QuizSummary } from "@space/shared";
 
 import { NAV_ICONS } from "../../src/design/icons/nav-icon";
-import { Eyebrow, PageTitle } from "../../src/design/layout/page-title";
+import { PageTitle } from "../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { ShellFrame } from "../../src/design/layout/shell-frame";
-import { cn } from "../../src/design/lib/cn";
-import { iconWithClassName } from "../../src/design/lib/icon";
-import {
-  Badge,
-  Button,
-  EmptyState,
-  ProgressRing,
-  RingCaption,
-  RingValue,
-  Text,
-} from "../../src/design/ui";
-import { useQuizList, useStudentQuizList } from "../../src/hooks/use-quizzes";
+import { Badge, Button, EmptyState, Text } from "../../src/design/ui";
+import { useQuizList } from "../../src/hooks/use-quizzes";
 import { useCurrentSeasonId, useSeasonDetail } from "../../src/hooks/use-seasons";
 import { formatDate } from "../../src/lib/format";
+import { WorkScreen } from "../../src/screens/work/work-screen";
 import { useSessionStore } from "../../src/store/session";
 
 /**
  * Three v1 pages collapse into this one: /student/quizzes, /leader/quizzes and
  * /admin/quizzes (Decision D1 — one route per destination, role branches
  * inside). The branch is on role, and each branch calls its own hook, because
- * GET /quizzes returns a different row shape per role.
+ * GET /quizzes returns a different row shape per role. A student's quizzes are
+ * in the Work tab; an old link shows it here on the stack, with its Back bar,
+ * never a replace to a tab (P2-11).
  */
-iconWithClassName(ChevronRight);
-
-/** v1 QuizStatus: the score, or the attempt's badge. */
-function StudentQuizStatus({ row }: { row: StudentQuizResult }) {
-  if (row.score !== null) {
-    const pct = row.maxScore > 0 ? Math.round((row.score / row.maxScore) * 100) : 0;
-    return (
-      <View className="items-end">
-        <Text className="text-lg font-black text-brand-navy-900 dark:text-foreground">
-          {String(row.score)}
-          <Text className="text-sm font-normal text-muted-foreground">{`/${row.maxScore}`}</Text>
-        </Text>
-        <Text className="text-xs text-muted-foreground">{`${pct}%`}</Text>
-      </View>
-    );
-  }
-  if (row.kind === "PAPER") return <Badge variant="outline">Pending</Badge>;
-  if (row.attemptStatus === null) return <Badge variant="teal">Take quiz</Badge>;
-  if (row.attemptStatus === "IN_PROGRESS") return <Badge variant="warning">Resume</Badge>;
-  return <Badge variant="outline">Awaiting grading</Badge>;
-}
-
-function StudentQuizRow({ row }: { row: StudentQuizResult }) {
-  const router = useRouter();
-  const online = row.kind === "ONLINE";
-  const body = (
-    <>
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1">
-          <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
-            {row.title}
-          </Text>
-          {row.sessionTitle ? (
-            <Text className="mt-0.5 text-xs text-muted-foreground">
-              {row.sessionDate
-                ? `${row.sessionTitle} · ${formatDate(row.sessionDate)}`
-                : row.sessionTitle}
-            </Text>
-          ) : null}
-        </View>
-        <View className="shrink-0 flex-row items-center gap-1">
-          <StudentQuizStatus row={row} />
-          {online ? <ChevronRight size={16} className="text-muted-foreground" /> : null}
-        </View>
-      </View>
-      {row.notes ? (
-        <Text className="mt-2 rounded-control bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          {row.notes}
-        </Text>
-      ) : null}
-      {row.gradedAt ? (
-        <Text className="mt-2 text-caption text-muted-foreground">{`Graded ${formatDate(row.gradedAt)}`}</Text>
-      ) : null}
-    </>
-  );
-  const box = "rounded-group bg-surface dark:border dark:border-separator px-4 py-4";
-  // v1: a PAPER row is a plain card, not a link.
-  if (!online) {
-    return <View className={box}>{body}</View>;
-  }
-  return (
-    <Pressable
-      accessibilityRole="link"
-      onPress={() => router.push({ pathname: "/quiz/[id]", params: { id: String(row.quizId) } })}
-      className={cn(box, "active:border-brand-teal-500")}
-    >
-      {body}
-    </Pressable>
-  );
-}
-
-/** v1 app/student/quizzes/page.tsx: hero always, then the rows (B2-15). */
-function StudentQuizzes({ seasonId }: { seasonId: number | null }) {
-  const { data, isPending, isError, refetch, isRefetching } = useStudentQuizList(seasonId);
-
-  const handleRefresh = () => {
-    if (seasonId !== null) void refetch();
-  };
-
-  // v1 shows the hero over an empty list when there is no season; v2 never
-  // asks the API without one (the hook is gated).
-  const rows: StudentQuizResult[] = seasonId === null ? [] : (data ?? []);
-  // Scored rows only, so an unattempted quiz cannot drag the average down.
-  const scored = rows.filter((r) => r.score !== null && r.maxScore > 0);
-  const average =
-    scored.length === 0
-      ? null
-      : Math.round(
-          (scored.reduce((sum, r) => sum + (r.score as number) / r.maxScore, 0) / scored.length) *
-            100,
-        );
-
-  let list: ReactNode;
-  if (seasonId !== null && isPending) list = <RouteSkeleton />;
-  else if (seasonId !== null && isError) list = <RouteError onRetry={() => void refetch()} />;
-  else if (rows.length === 0)
-    list = (
-      <EmptyState
-        icon={NAV_ICONS.quizzes}
-        title="No quizzes yet"
-        description="Your quiz results will appear here once graded."
-      />
-    );
-  else
-    list = (
-      <View className="flex-col gap-3">
-        {rows.map((row) => (
-          <StudentQuizRow key={`${row.kind}-${row.quizId}`} row={row} />
-        ))}
-      </View>
-    );
-
-  return (
-    <ShellFrame onRefresh={handleRefresh} refreshing={isRefetching}>
-      <View className="flex-col gap-3">
-        <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
-          <View className="flex-row items-center gap-5">
-            <ProgressRing
-              value={average ?? 0}
-              label={average !== null ? `Average quiz score ${average}%` : "No graded quizzes yet"}
-            >
-              <RingValue>{average !== null ? `${average}%` : "—"}</RingValue>
-              <RingCaption>avg</RingCaption>
-            </ProgressRing>
-            <View className="min-w-0 flex-1">
-              <Eyebrow tone="teal">Quiz performance</Eyebrow>
-              <Text className="mt-1 text-lg font-black text-brand-navy-900 dark:text-foreground">
-                Average score
-              </Text>
-              <Text className="text-xs text-muted-foreground">
-                {`${scored.length} graded · ${rows.length - scored.length} pending`}
-              </Text>
-            </View>
-          </View>
-        </View>
-        {list}
-      </View>
-    </ShellFrame>
-  );
-}
 
 /** v1's three-way badge over the server's counts (C4, D10). */
 function GradedBadge({ row }: { row: QuizSummary }) {
@@ -360,10 +212,8 @@ function StaffQuizzes() {
 
 export default function QuizzesScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
-  // A student's season IS the pinned profile pointer.
-  const studentSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
 
-  if (role === "STUDENT") return <StudentQuizzes seasonId={studentSeasonId} />;
+  if (role === "STUDENT") return <WorkScreen />;
   if (role === "LEADER") return <LeaderQuizzes />;
   if (role === "ADMIN" || role === "SUPER") {
     return <StaffQuizzes />;
