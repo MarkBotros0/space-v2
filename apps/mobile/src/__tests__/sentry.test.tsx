@@ -152,6 +152,18 @@ describe("scrubbing", () => {
     expect(JSON.stringify(crumb)).not.toMatch(/Sam|Confidential/);
   });
 
+  it("keeps a rage tap's label and node out of the event", () => {
+    const crumb = sentry.scrubBreadcrumb({
+      category: "ui.multiClick",
+      message: "Sam Student, Confidential body",
+      data: { node: "Sam Student, Confidential body", path: [{ label: "Confidential body" }] },
+    });
+    expect(crumb.category).toBe("ui.multiClick");
+    expect(crumb.message).toBe("Touch event");
+    expect(crumb.data).toBeUndefined();
+    expect(JSON.stringify(crumb)).not.toMatch(/Sam|Confidential/);
+  });
+
   it("still scrubs token text in a non-touch breadcrumb's message", () => {
     const crumb = sentry.scrubBreadcrumb({
       category: "navigation",

@@ -138,8 +138,9 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
 export function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
   // A touch breadcrumb names the touched element from its accessibility label
   // or text (a ListRow's title, subtitle and chip: a student's name, a note
-  // body). Keep that a touch happened and nothing about what was touched.
-  if (breadcrumb.category === "touch") {
+  // body); so does a rage tap's "ui.multiClick". Keep that a touch happened
+  // and nothing about what was touched.
+  if (breadcrumb.category === "touch" || breadcrumb.category === "ui.multiClick") {
     const { data: _data, ...rest } = breadcrumb;
     return { ...rest, message: TOUCH_MESSAGE };
   }
