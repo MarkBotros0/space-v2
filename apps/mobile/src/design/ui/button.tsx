@@ -11,12 +11,12 @@
  * device css-interop merges them with the animated style and Reanimated drops
  * them (no-classname-on-animated.test.ts). No haptic here: haptics are for
  * selection and success moments.
- * Disabled is a neutral fill and a muted label, never opacity (see DISABLED_FILL).
+ * Disabled is a neutral fill with a muted label and icons, never opacity (see DISABLED_FILL).
  * Native note: a React Native column stretches a button, so a call site that
  * is a block in v1 adds `self-start`.
  */
 import { cva } from "class-variance-authority";
-import type { ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, type PressableProps, View } from "react-native";
 import Animated from "react-native-reanimated";
 
@@ -95,6 +95,23 @@ function buttonTextVariants({ variant }: Pick<Opts, "variant"> = {}) {
 const DISABLED_FILL = "border-transparent bg-neutral-soft";
 const DISABLED_TEXT = "text-muted-foreground";
 
+/**
+ * A disabled button's icon children take the muted label colour too (3:1+ on
+ * neutral-soft): callers colour icons for the enabled fill
+ * (text-primary-foreground), which nearly vanishes on the neutral one. Every
+ * direct element child with a className gets the muted text colour last
+ * (tailwind-merge drops the caller's); on a non-text, non-icon child a text
+ * colour does nothing. (NativeWind's JSX swaps an icon's type for its interop
+ * wrapper, so the icon cannot be recognised by type.)
+ */
+function muteIcons(children: ReactNode): ReactNode {
+  return Children.map(children, (child) => {
+    if (!isValidElement<{ className?: unknown }>(child) || typeof child.props.className !== "string") return child;
+    const el = child as ReactElement<{ className: string }>;
+    return cloneElement(el, { className: cn(el.props.className, DISABLED_TEXT) });
+  });
+}
+
 /** Icon size for children icons (v1 forced these through [&_svg]). */
 const BUTTON_ICON_SIZE: Record<SizeInput, number> = {
   md: 16, sm: 16, default: 16, xs: 12, lg: 16, icon: 16, "icon-xs": 12, "icon-sm": 16, "icon-lg": 16,
@@ -133,7 +150,7 @@ function Button({
           className={cn(buttonVariants({ variant, size }), dimmed && (resolved === "plain" ? null : DISABLED_FILL))}
         >
           {loading ? <ActivityIndicator testID="button-spinner" size="small" color={spinner} /> : null}
-          {withTextRuns(children, (text, key) => (
+          {withTextRuns(dimmed ? muteIcons(children) : children, (text, key) => (
             <Text
               key={key}
               variant="headline"

@@ -1,6 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
+import { QrCode, UserPlus } from "lucide-react-native";
+
+import { iconWithClassName } from "../design/lib/icon";
 import { Button, buttonTextVariants, buttonVariants } from "../design/ui/button";
+
+iconWithClassName(QrCode, UserPlus);
 
 describe("Button redesign", () => {
   it("each variant carries its token classes", () => {
@@ -86,5 +91,36 @@ describe("Button redesign", () => {
     const classes = screen.getByText("Go").props.className.split(" ");
     expect(classes).toContain("text-muted-foreground");
     expect(classes).not.toContain("text-primary");
+  });
+
+  /** The icon element as written (NativeWind's JSX wraps its type, so find it by its size). */
+  const iconClasses = (): string[] =>
+    screen.UNSAFE_root.findAll((n) => n.props.size === 16 && typeof n.props.className === "string")[0]!.props.className.split(" ");
+
+  // Review r2 Important 1: the Check In button (StudentCheckInCard, QrCode) and Add admin
+  // (SeasonAdmins, UserPlus) passed text-primary-foreground icons, ~1.2:1 on the neutral fill.
+  it.each([
+    ["Check In", QrCode],
+    ["Add admin", UserPlus],
+  ] as const)("a disabled %s button mutes its icon with its label", (label, Icon) => {
+    render(
+      <Button disabled>
+        <Icon size={16} className="text-primary-foreground" />
+        {label}
+      </Button>,
+    );
+    const icon = iconClasses();
+    expect(icon).toContain("text-muted-foreground");
+    expect(icon).not.toContain("text-primary-foreground");
+  });
+
+  it("an enabled button leaves its icon's colour alone", () => {
+    render(
+      <Button>
+        <QrCode size={16} className="text-primary-foreground" />
+        Check In
+      </Button>,
+    );
+    expect(iconClasses()).toEqual(["text-primary-foreground"]);
   });
 });
