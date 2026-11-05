@@ -33,6 +33,20 @@ beforeEach(() => {
 });
 
 describe("Super Today", () => {
+  it("greets the super by first name, and falls back to Today when the name is blank", async () => {
+    useSessionStore.setState(makeSession("SUPER", {}, { name: "Sam Super" }));
+    serveStaff(get, { table: base() });
+    const first = renderWithProviders(<DashboardScreen />);
+    expect((await screen.findAllByText("Hi, Sam")).length).toBeGreaterThan(0);
+    first.unmount();
+
+    useSessionStore.setState(makeSession("SUPER", {}, { name: "" }));
+    serveStaff(get, { table: base() });
+    renderWithProviders(<DashboardScreen />);
+    expect((await screen.findAllByText("Today")).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^Hi,/)).toBeNull();
+  });
+
   it("shows the action rows with no season on the review, sessions or at-risk destinations", async () => {
     serveStaff(get, { table: base() });
     renderWithProviders(<DashboardScreen />);

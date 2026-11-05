@@ -37,6 +37,20 @@ const order = (...wanted: string[]) => {
 };
 
 describe("Admin Today", () => {
+  it("greets the admin by first name, and falls back to Today when the name is blank", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { name: "Ada Admin" }));
+    serveStaff(get);
+    const first = renderWithProviders(<DashboardScreen />);
+    expect((await screen.findAllByText("Hi, Ada")).length).toBeGreaterThan(0);
+    first.unmount();
+
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { name: "  " }));
+    serveStaff(get);
+    renderWithProviders(<DashboardScreen />);
+    expect((await screen.findAllByText("Today")).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^Hi,/)).toBeNull();
+  });
+
   it("orders the live session, then what needs action, then the figures", async () => {
     serveStaff(get);
     renderWithProviders(<DashboardScreen />);

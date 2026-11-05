@@ -10,7 +10,9 @@ import { useSeasonStaffDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { useStaffToday } from "../../hooks/use-staff-today";
+import { firstName } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
+import { useSessionStore } from "../../store/session";
 import { fromDashboardSession, LiveSessionHero } from "./live-session-hero";
 import { NeedsActionList } from "./needs-action-list";
 
@@ -84,6 +86,7 @@ function Figures({ data }: { data: StaffSeasonDashboard }) {
  * share query keys with every list they open, so nothing is fetched twice.
  */
 export function AdminToday() {
+  const name = useSessionStore((s) => s.user?.name ?? null);
   const current = useCurrentSeasonId();
   const today = useStaffToday("ADMIN");
   const dash = useSeasonStaffDashboard(today.scopeSeasonId);
@@ -128,8 +131,15 @@ export function AdminToday() {
     );
   }
 
+  const named = (name ?? "").trim() !== "";
   return (
-    <Screen title="Today" home refreshing={today.isRefetching || dash.isRefetching || events.isRefetching} onRefresh={refresh}>
+    <Screen
+      title={named ? `Hi, ${firstName(name)}` : "Today"}
+      compactTitle="Today"
+      home
+      refreshing={today.isRefetching || dash.isRefetching || events.isRefetching}
+      onRefresh={refresh}
+    >
       <View className="flex-col gap-4">{body}</View>
     </Screen>
   );

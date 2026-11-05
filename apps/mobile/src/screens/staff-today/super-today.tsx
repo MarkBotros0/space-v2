@@ -9,7 +9,9 @@ import { GroupedList, ListRow, Text } from "../../design/ui";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useOrganisationReport } from "../../hooks/use-reports";
 import { useStaffToday } from "../../hooks/use-staff-today";
+import { firstName } from "../../lib/format";
 import { liveSessions, nextSession } from "../../lib/staff-today";
+import { useSessionStore } from "../../store/session";
 import { fromListItem, LiveSessionHero } from "./live-session-hero";
 import { NeedsActionList } from "./needs-action-list";
 
@@ -27,6 +29,7 @@ const Count = ({ value }: { value: string }) => (
  */
 export function SuperToday() {
   const router = useRouter();
+  const name = useSessionStore((s) => s.user?.name ?? null);
   const today = useStaffToday("SUPER");
   const org = useOrganisationReport(true);
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
@@ -41,9 +44,11 @@ export function SuperToday() {
   const live = liveSessions(today.sessions, now);
   const hero = live[0] ?? nextSession(today.sessions, now);
 
+  const named = (name ?? "").trim() !== "";
   return (
     <Screen
-      title="Today"
+      title={named ? `Hi, ${firstName(name)}` : "Today"}
+      compactTitle="Today"
       home
       refreshing={today.isRefetching || org.isRefetching || events.isRefetching}
       onRefresh={refresh}
