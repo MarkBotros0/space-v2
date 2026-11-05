@@ -19,6 +19,8 @@ import { queryKeys } from "../lib/query-keys";
 export function useEnsureSubmission(assignmentId: number) {
   const queryClient = useQueryClient();
   return useMutation({
+    // Today's rows come from the dashboard, and they read this new row's status too.
+    meta: DASHBOARD_META,
     // Offline, fail now into the screen's own copy rather than pause with the
     // button spinning; see useSaveSubmission.
     networkMode: "always",
@@ -27,8 +29,9 @@ export function useEnsureSubmission(assignmentId: number) {
       return ensureSubmissionResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {
-      // The detail's mySubmission went from null to a row.
+      // The detail's mySubmission went from null to a row, and the lists' PENDING to DRAFT.
       void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.detail(assignmentId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.lists() });
     },
   });
 }

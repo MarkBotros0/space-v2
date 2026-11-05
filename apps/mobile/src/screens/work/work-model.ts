@@ -75,7 +75,9 @@ export function assignmentRow(a: StudentAssignmentListItem, todayOrgDay: string)
     }
     case "DRAFT": {
       const chip = dueChip({ ...a, todayOrgDay });
-      return { ...row, chip, ...assignmentSubtitle("Draft saved", a.dueOrgDay, chip, todayOrgDay) };
+      // Not "Draft saved": Start working makes a DRAFT with nothing in it, and the
+      // list row can't tell that one from a saved draft.
+      return { ...row, chip, ...assignmentSubtitle("In progress", a.dueOrgDay, chip, todayOrgDay) };
     }
     case "PENDING": {
       const chip = dueChip({ ...a, todayOrgDay });

@@ -49,10 +49,10 @@ describe("assignmentRow", () => {
     });
   });
 
-  it("a draft keeps the due chip and says it is saved", () => {
+  it("a draft keeps the due chip and says it is in progress", () => {
     const row = assignmentRow(assignment({ id: 1, status: "DRAFT" }), TODAY);
     expect(row.chip?.label).toBe("Due in 2 days");
-    expect(row.subtitle).toBe("Draft saved · Due Mar 3, 2099");
+    expect(row.subtitle).toBe("In progress · Due Mar 3, 2099");
   });
 
   it("a returned row says so, even past its due date", () => {
@@ -90,7 +90,7 @@ describe("assignmentRow", () => {
       assignment({ id: 2, status: "DRAFT", dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }),
       TODAY,
     );
-    expect(draft.subtitle).toBe("Draft saved");
+    expect(draft.subtitle).toBe("In progress");
   });
 
   it("a date chip across a year boundary keeps the year in the subtitle", () => {
@@ -123,7 +123,7 @@ describe("assignmentRow", () => {
     ["PENDING", undefined],
     ["SUBMITTED", undefined],
     ["REVIEWED", undefined],
-    ["DRAFT", "Draft saved"],
+    ["DRAFT", "In progress"],
     ["RETURNED", "Returned with comments"],
   ] as const)("an undated %s row names no date", (status, subtitle) => {
     const row = assignmentRow(assignment({ id: 1, status, dueOrgDay: null, dueAt: null }), TODAY);
