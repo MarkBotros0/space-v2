@@ -23,7 +23,7 @@ appId: com.jpc.space
 - takeScreenshot: s27-02-notes-bottom
 - openLink: spacev2://reports
 - extendedWaitUntil:
-    visible: 'Scoped to .+\.'
+    visible: '(Scoped to|Showing) .+\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
