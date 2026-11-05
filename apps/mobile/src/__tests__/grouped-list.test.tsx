@@ -3,7 +3,6 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { GroupedList, ListRow, ListSectionHeader } from "../design/ui/grouped-list";
 import { StatusChip } from "../design/ui/status-chip";
-import { Text } from "../design/ui/text";
 
 describe("GroupedList / ListRow", () => {
   it("renders title, subtitle, trailing and a chevron", () => {
