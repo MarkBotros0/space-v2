@@ -225,8 +225,9 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
       disabled={save.isPending || nothingToSubmit}
       disabledReason={nothingToSubmit ? NOTHING_TO_SUBMIT : undefined}
       hint={nothingToSubmit ? `${NOTHING_TO_SUBMIT}. ${HINT}` : HINT}
-      // Hint and two stacked buttons left ~90dp for the field with the keyboard up.
+      // The hint left too little for the field with the keyboard up.
       compact={keyboardOpen}
+      beside
       secondary={{
         label: save.isPending ? "Saving…" : "Save draft",
         onPress: () => run(false),

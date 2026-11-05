@@ -35,6 +35,8 @@ type SaveBarProps = {
   compact?: boolean;
   /** A failed save's message, drawn just above the button so it stays on screen with the pinned action. */
   error?: string | null;
+  /** The secondary sits beside the primary with the hint kept: two stacked buttons are tall on a small phone. */
+  beside?: boolean;
 };
 
 function SaveBarBody({
@@ -48,8 +50,9 @@ function SaveBarBody({
   variant = "primary",
   compact,
   error,
+  beside,
 }: SaveBarProps) {
-  const sideBySide = compact && secondary;
+  const sideBySide = (compact || beside) && secondary;
   return (
     <View className="gap-2 border-t border-separator bg-surface px-4 pt-3">
       {hint && !compact ? (
