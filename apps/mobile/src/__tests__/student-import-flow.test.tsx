@@ -131,7 +131,7 @@ describe("ImportScreen — step 2, preview", () => {
         },
       },
     });
-    fireEvent.press(screen.getByText("Also enrol people already in the system"));
+    fireEvent.press(screen.getByText("Also enrol existing students"));
 
     // The control alone must not arm it — enrol changes existing records.
     expect(await screen.findByText(/will also enrol/i)).toBeTruthy();

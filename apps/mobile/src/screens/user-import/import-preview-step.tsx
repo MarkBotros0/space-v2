@@ -126,7 +126,7 @@ export function ImportPreviewStep({
                   variant={flow.enrolExisting ? "default" : "outline"}
                   onPress={flow.toggleEnrolExisting}
                 >
-                  Also enrol people already in the system
+                  Also enrol existing students
                 </Button>
                 {flow.enrolExisting && !flow.enrolConfirmed ? (
                   <View className="flex-col gap-2">
@@ -145,7 +145,7 @@ export function ImportPreviewStep({
               onPress={flow.runCommit}
             >
               {needsSeason
-                ? "Choose a season before importing"
+                ? "Pick a season first"
                 : importable.length === 0
                   ? "Nothing to import"
                   : `Import ${newRows.length} student${newRows.length === 1 ? "" : "s"}${

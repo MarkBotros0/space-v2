@@ -109,8 +109,8 @@ describe("ImportScreen — step 1, the season picker", () => {
 
     // No season chosen: the commit is refused client-side (it would 400), and
     // the screen says why instead of sending `seasonId: null`.
-    expect(screen.getByText("Choose a season before importing")).toBeTruthy();
-    fireEvent.press(screen.getByText("Choose a season before importing"));
+    expect(screen.getByText("Pick a season first")).toBeTruthy();
+    fireEvent.press(screen.getByText("Pick a season first"));
     expect(post).toHaveBeenCalledTimes(1);
   });
 });
