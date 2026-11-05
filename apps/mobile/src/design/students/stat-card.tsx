@@ -5,8 +5,12 @@
  * `surface`, `navy` the primary fill, `teal` the info tone; each text colour is
  * the token that reads on its fill in both themes. Pressable cards take the
  * spring press scale (the Animated.View carries only the scale; the look is on
- * the plain View inside it). Tiles in a row share it equally (flex-1 basis-0,
- * whatever their content).
+ * the plain View inside it). Tiles in a row share it equally whatever their
+ * content: every tile, pressable or not, is the same outer cell (TILE: flex 1,
+ * basis 0, min width 0, no padding) with the look inside it. On device the
+ * padded plain tile and the Pressable ones still came out unequal with the
+ * classes on different elements (Yoga keeps a padded item's basis at its
+ * padding); one unpadded cell for all of them leaves nothing to differ.
  * The label and its sublabel are one text in one style, laid out as at most
  * two balanced lines broken at spaces ("Absence budget / left this season").
  * numberOfLines is exactly that line count, so a line that would wrap (or
@@ -15,7 +19,7 @@
  * Plans 02–05 move the call sites to StatTile and delete this file.
  */
 import { Flame } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { usePressScale } from "../motion";
@@ -26,6 +30,9 @@ import { Text } from "../ui/text";
 iconWithClassName(Flame);
 
 type Variant = "white" | "navy" | "teal";
+
+/** The cell every tile is: an equal share of the row, never sized by its content. */
+const styles = StyleSheet.create({ tile: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 } });
 
 const BOX: Record<Variant, string> = {
   white: "bg-surface dark:border dark:border-separator",
@@ -117,25 +124,26 @@ export function StatCard({
       </Text>
     </>
   );
-  if (onPress) {
-    return (
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={a11y}
-        onPress={onPress}
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        className={cn("flex-1 basis-0", className)}
-      >
-        <Animated.View style={[{ flexGrow: 1 }, press.animatedStyle]}>
-          <View className={look}>{body}</View>
-        </Animated.View>
-      </Pressable>
-    );
-  }
   return (
-    <View accessible accessibilityLabel={a11y} className={cn(look, "basis-0", className)}>
-      {body}
+    <View testID="stat-card" style={styles.tile} className={className}>
+      {onPress ? (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={a11y}
+          onPress={onPress}
+          onPressIn={press.onPressIn}
+          onPressOut={press.onPressOut}
+          className="flex-1"
+        >
+          <Animated.View style={[{ flexGrow: 1 }, press.animatedStyle]}>
+            <View className={look}>{body}</View>
+          </Animated.View>
+        </Pressable>
+      ) : (
+        <View accessible accessibilityLabel={a11y} className={look}>
+          {body}
+        </View>
+      )}
     </View>
   );
 }
