@@ -1,4 +1,4 @@
-import type { NavAudience, UserRole } from "@space/shared";
+import { isAlumnus, type NavAudience, type UserRole } from "@space/shared";
 
 export type DashboardBranch = UserRole | "ALUMNI";
 
@@ -7,6 +7,6 @@ export type DashboardBranch = UserRole | "ALUMNI";
  * STUDENT with a graduationYear). One route, six branches (spec 19 §9).
  */
 export function dashboardBranchFor(audience: NavAudience): DashboardBranch {
-  if (audience.role === "STUDENT" && audience.graduationYear != null) return "ALUMNI";
+  if (isAlumnus(audience)) return "ALUMNI";
   return audience.role;
 }

@@ -1,3 +1,4 @@
+import { isAlumnus } from "@space/shared";
 import { Redirect, Stack, useSegments } from "expo-router";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -86,8 +87,10 @@ const TABS_SCREEN_OPTIONS = { headerShown: false } as const;
  */
 export default function AppLayout() {
   const status = useSessionStore((s) => s.status);
-  const isAlumnus = useSessionStore(
-    (s) => s.user?.role === "STUDENT" && s.scopes?.graduationYear != null,
+  const alumnus = useSessionStore(
+    (s) =>
+      s.user != null &&
+      isAlumnus({ role: s.user.role, graduationYear: s.scopes?.graduationYear ?? null }),
   );
   const segments = useSegments();
 
@@ -100,7 +103,7 @@ export default function AppLayout() {
   // to the read-only portal (here: Home). Reaching a student-only destination by
   // deep link or stale navigation state lands here (REG-81). A tab's segments
   // carry the "(tabs)" group; isBlockedForAlumni skips groups.
-  if (isAlumnus && isBlockedForAlumni(segments)) return <Redirect href="/dashboard" />;
+  if (alumnus && isBlockedForAlumni(segments)) return <Redirect href="/dashboard" />;
 
   // The tabs are one navigator (singularTabsRouter): a push to a tab route
   // from a detail (a link to a list, Home's bell and user menu) returns to

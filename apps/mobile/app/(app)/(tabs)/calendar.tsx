@@ -1,3 +1,4 @@
+import { isAlumnus } from "@space/shared";
 import { Calendar as CalendarIcon } from "lucide-react-native";
 import { View } from "react-native";
 
@@ -21,7 +22,12 @@ import { useSessionStore } from "../../../src/store/session";
  */
 export default function CalendarScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
-  const isAlumnus = useSessionStore((s) => (s.scopes?.graduationYear ?? null) !== null);
+  // navFor's rule (shared): a graduated student.
+  const alumnus = useSessionStore(
+    (s) =>
+      s.user != null &&
+      isAlumnus({ role: s.user.role, graduationYear: s.scopes?.graduationYear ?? null }),
+  );
   const leadsNothing = useSessionStore(
     (s) => s.user?.role === "LEADER" && (s.scopes?.groupLeaderIds.length ?? 0) === 0,
   );
@@ -54,6 +60,6 @@ export default function CalendarScreen() {
   if (role === "LEADER") return <LeaderCalendar />;
   if (role === "SUPER") return <SuperCalendar />;
   if (role === "ADMIN") return <AdminCalendar />;
-  if (isAlumnus) return <AlumniCalendar />;
+  if (alumnus) return <AlumniCalendar />;
   return <StudentCalendar />;
 }
