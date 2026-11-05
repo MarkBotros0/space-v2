@@ -45,6 +45,11 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     ["bad", "bad-soft"],
     ["info", "info-soft"],
     ["neutral-strong", "neutral-soft"],
+    // Notification bell: links on the popover, an unread row's text on its tint.
+    ["info", "popover"],
+    ["info", "surface-raised"],
+    ["popover-foreground", "unread-soft"],
+    ["muted-foreground", "unread-soft"],
     // A disabled button: the muted label on the neutral fill.
     ["muted-foreground", "neutral-soft"],
     ["foreground", "surface-raised"],
@@ -72,6 +77,11 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     const ring = contrast(rgbOf(t.ring), rgbOf(t[bg]));
     expect(ring).toBeGreaterThanOrEqual(3);
     expect(ring).toBeGreaterThanOrEqual(contrast(rgbOf(t["control-border"]), rgbOf(t[bg])));
+  });
+
+  // The bell's count: white on error-600 (error-500 was 3.8:1).
+  it("the bell count is at least 4.5:1", () => {
+    expect(contrast(rgbOf("#FFFFFF"), rgbOf(t["error-600"]))).toBeGreaterThanOrEqual(4.5);
   });
 
   // SegmentedControl: the selected thumb must read as raised (lighter than its track).
@@ -106,4 +116,11 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     expect(contrast(active, lit)).toBeGreaterThanOrEqual(3);
     expect(contrast(rgbOf(t["pill-foreground"]), pill)).toBeGreaterThanOrEqual(4.5);
   });
+});
+
+// An unread row in dark reads as tinted and lifted, never darker than a read one (sweep
+// s29-05); in light the tint is the pale info-50 on white.
+it("dark unread-soft is no darker than the popover it sits on", () => {
+  const dark = tokens.dark as Theme;
+  expect(luminance(rgbOf(dark["unread-soft"]))).toBeGreaterThanOrEqual(luminance(rgbOf(dark.popover)));
 });

@@ -53,6 +53,7 @@ const colors = {
   "neutral-strong": "rgb(var(--neutral-strong) / <alpha-value>)",
   "surface-raised": "rgb(var(--surface-raised) / <alpha-value>)",
   "control-border": "rgb(var(--control-border) / <alpha-value>)",
+  "unread-soft": "rgb(var(--unread-soft) / <alpha-value>)",
   "pill": ({ opacityValue }) =>
     opacityValue === undefined
       ? "rgb(var(--pill) / var(--pill-alpha))"
@@ -187,6 +188,7 @@ const semantic = {
     "neutral-strong": "#4B5878",
     "surface-raised": "#FFFFFF",
     "control-border": "#7486B4",
+    "unread-soft": "#EFF6FF",
     "pill": "rgba(20, 32, 72, 0.78)",
     "pill-solid": "rgba(20, 32, 72, 0.92)",
     "pill-foreground": "#D4DAEA",
@@ -234,6 +236,7 @@ const semantic = {
     "neutral-strong": "#ABB7D4",
     "surface-raised": "#344676",
     "control-border": "#6E84BA",
+    "unread-soft": "#24409C",
     "pill": "rgba(36, 52, 110, 0.86)",
     "pill-solid": "rgba(36, 52, 110, 0.94)",
     "pill-foreground": "#D4DAEA",

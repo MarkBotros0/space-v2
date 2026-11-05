@@ -484,6 +484,8 @@
   --surface-raised-alpha: 1;
   --control-border: 116 134 180;
   --control-border-alpha: 1;
+  --unread-soft: 239 246 255;
+  --unread-soft-alpha: 1;
   --pill: 20 32 72;
   --pill-alpha: 0.78;
   --pill-alpha-1: 0.0078;
@@ -1177,6 +1179,8 @@
   --surface-raised-alpha: 1;
   --control-border: 110 132 186;
   --control-border-alpha: 1;
+  --unread-soft: 36 64 156;
+  --unread-soft-alpha: 1;
   --pill: 36 52 110;
   --pill-alpha: 0.86;
   --pill-alpha-1: 0.0086;
