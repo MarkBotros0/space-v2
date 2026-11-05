@@ -222,6 +222,19 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
       expect(screen.queryByText(label)).toBeNull();
   });
 
+  it("shows an ADMIN who does not administer the season no Manage list, settings or Admins", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [99] }));
+    routeGets(detail({ canAdminister: false }));
+    renderWithProviders(<SeasonDetailScreen />);
+    await screen.findByText("TEST 2099");
+    expect(screen.queryByText("MANAGE")).toBeNull();
+    expect(screen.queryByText("Roster")).toBeNull();
+    expect(screen.queryByText("Season settings")).toBeNull();
+    expect(screen.queryByText("Save changes")).toBeNull();
+    expect(screen.queryByText("ADMINS")).toBeNull();
+    expect(screen.queryByText("Admins")).toBeNull();
+  });
+
   it("says so when the code param is missing", async () => {
     mockParams = {};
     useSessionStore.setState(makeSession("SUPER"));
@@ -274,6 +287,20 @@ describe("Duplicate season (SUPER, on the detail)", () => {
         params: { code: "test-2028" },
       }),
     );
+  });
+
+  it("starts from the defaults again after the sheet is closed and reopened", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    routeGets(detail({ year: 2026 }));
+    renderWithProviders(<SeasonDetailScreen />);
+    fireEvent.press(await screen.findByText("Duplicate season"));
+    fireEvent.changeText(await screen.findByLabelText("Year"), "2030");
+    fireEvent.changeText(screen.getByLabelText("Code"), "custom");
+    fireEvent.press(screen.getByTestId("sheet-backdrop"));
+    // The close reset the fields; reopening shows the defaults.
+    fireEvent.press(screen.getByText("Duplicate season"));
+    expect((await screen.findByLabelText("Year")).props.value).toBe("2027");
+    expect(screen.getByLabelText("Code").props.value).toBe("test-2027");
   });
 
   it("is not offered to an ADMIN", async () => {
