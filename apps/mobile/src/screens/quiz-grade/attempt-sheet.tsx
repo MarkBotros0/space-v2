@@ -93,7 +93,7 @@ export function AttemptSheet({
       open={open}
       onClose={onClose}
       title={attempt.studentName ?? "Student"}
-      footer={hasEssayAnswers ? <SheetSaveBar label="Save marks" onPress={save} loading={gradeEssays.isPending} /> : undefined}
+      footer={hasEssayAnswers ? <SheetSaveBar label="Save marks" onPress={save} loading={gradeEssays.isPending} error={error} /> : undefined}
     >
       <View className="flex-col gap-4 pb-4">
         <Text variant="caption" className="text-muted-foreground">
@@ -104,7 +104,7 @@ export function AttemptSheet({
           awards={awards}
           onAward={(questionId, value) => setAwards((prev) => ({ ...prev, [questionId]: value }))}
         />
-        {error ? <Text variant="subhead" className="text-bad">{error}</Text> : null}
+        {error && !hasEssayAnswers ? <Text variant="subhead" className="text-bad">{error}</Text> : null}
         {attempt.status !== "IN_PROGRESS" ? (
           <ReopenButton onPress={onReopen} disabled={reopen.isPending} />
         ) : null}

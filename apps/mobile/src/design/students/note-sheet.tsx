@@ -76,7 +76,7 @@ export function NoteSheet({
       open={open}
       onClose={onClose}
       title="Write a note"
-      footer={<SheetSaveBar label="Add note" onPress={submit} loading={create.isPending} />}
+      footer={<SheetSaveBar label="Add note" onPress={submit} loading={create.isPending} error={error} />}
     >
       <View className="flex-col gap-4 pb-4">
         <Textarea
@@ -106,11 +106,6 @@ export function NoteSheet({
           </Text>
           <Switch checked={followUp} onCheckedChange={setFollowUp} accessibilityLabel="Flag for admin follow-up" />
         </View>
-        {error ? (
-          <Text variant="subhead" className="rounded-control bg-bad-soft px-3 py-2 text-bad">
-            {error}
-          </Text>
-        ) : null}
       </View>
     </Sheet>
   );

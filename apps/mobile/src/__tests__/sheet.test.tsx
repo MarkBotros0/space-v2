@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from "@testing-library/react-native";
+import { act, fireEvent, screen, within } from "@testing-library/react-native";
 import { Platform, Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -108,6 +108,18 @@ describe("Sheet lifecycle", () => {
 });
 
 describe("save bars", () => {
+  it("SaveBar and SheetSaveBar draw an error above the button as an announced alert", () => {
+    renderWithProviders(<Sheet open onClose={() => {}} footer={<SheetSaveBar label="Save" onPress={() => {}} error="Nope." />}><Text>x</Text></Sheet>);
+    const alert = within(screen.getByTestId("sheet-save-bar")).getByRole("alert");
+    expect(within(alert).getByText("Nope.")).toBeTruthy();
+    expect(alert.props.accessibilityLiveRegion).toBe("polite");
+  });
+
+  it("a bar with no error draws no alert", () => {
+    renderWithProviders(<Sheet open onClose={() => {}} footer={<SheetSaveBar label="Save" onPress={() => {}} error={null} />}><Text>x</Text></Sheet>);
+    expect(within(screen.getByTestId("sheet-save-bar")).queryByRole("alert")).toBeNull();
+  });
+
   const bar = <SheetSaveBar label="Save" onPress={() => {}} />;
 
   it("SheetSaveBar sits on the bottom safe-area inset when the keyboard is closed", () => {

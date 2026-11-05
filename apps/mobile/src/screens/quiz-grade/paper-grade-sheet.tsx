@@ -43,7 +43,7 @@ export function PaperGradeSheet({
       open={open}
       onClose={onClose}
       title={`Grade ${name}`}
-      footer={<SheetSaveBar label="Save" onPress={onSave} loading={saving} />}
+      footer={<SheetSaveBar label="Save" onPress={onSave} loading={saving} error={error} />}
     >
       <QuizGradeFields
         name={name}
@@ -52,7 +52,6 @@ export function PaperGradeSheet({
         notes={draft.notes}
         onScore={(score) => onDraft({ score })}
         onNotes={(notes) => onDraft({ notes })}
-        error={error}
       />
     </Sheet>
   );

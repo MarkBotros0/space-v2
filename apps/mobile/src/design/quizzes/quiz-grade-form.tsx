@@ -17,7 +17,6 @@ export function QuizGradeFields({
   notes,
   onScore,
   onNotes,
-  error,
 }: {
   name: string;
   maxScore: number;
@@ -25,7 +24,6 @@ export function QuizGradeFields({
   notes: string;
   onScore: (value: string) => void;
   onNotes: (value: string) => void;
-  error: string | null;
 }) {
   return (
     <View className="flex-col gap-3 pb-4">
@@ -43,7 +41,6 @@ export function QuizGradeFields({
         value={notes}
         onChangeText={onNotes}
       />
-      {error ? <Text variant="subhead" className="text-bad">{error}</Text> : null}
     </View>
   );
 }

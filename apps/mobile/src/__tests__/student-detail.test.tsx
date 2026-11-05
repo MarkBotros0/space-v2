@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -274,7 +274,7 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     fireEvent.press(screen.getByText("Write a note"));
     fireEvent.changeText(await screen.findByLabelText("Note"), "x");
     fireEvent.press(screen.getByText("Add note"));
-    expect(await screen.findByText("Note can't be empty.")).toBeTruthy();
+    expect(await within(await screen.findByTestId("sheet-save-bar")).findByText("Note can't be empty.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
 
     fireEvent.changeText(screen.getByLabelText("Note"), "Prayed together after the session.");

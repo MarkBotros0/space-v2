@@ -67,6 +67,7 @@ export function FeedbackSheet({
           label={alreadyReviewed ? "Update review" : "Mark as reviewed"}
           onPress={() => submit(false)}
           loading={review.isPending}
+          error={error}
         />
       }
     >
@@ -78,11 +79,6 @@ export function FeedbackSheet({
           onChangeText={onFeedback}
           className="min-h-32"
         />
-        {error ? (
-          <Text variant="subhead" className="rounded-control bg-bad-soft px-3 py-2 text-bad">
-            {error}
-          </Text>
-        ) : null}
         <Button variant="secondary" disabled={review.isPending} onPress={() => submit(true)}>
           Return for revision
         </Button>

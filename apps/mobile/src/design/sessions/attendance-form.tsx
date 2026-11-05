@@ -34,7 +34,6 @@ export function AttendanceRosterForm({
   statusOf,
   lateTextOf,
   pending,
-  error,
   onMark,
   onMarkAll,
   onLateText,
@@ -43,7 +42,6 @@ export function AttendanceRosterForm({
   statusOf: (row: AttendanceRosterRow) => AttendanceStatus | null;
   lateTextOf: (row: AttendanceRosterRow) => string;
   pending: boolean;
-  error: string | null;
   onMark: (row: AttendanceRosterRow, status: AttendanceStatus) => void;
   onMarkAll: (status: AttendanceStatus) => void;
   onLateText: (row: AttendanceRosterRow, text: string) => void;
@@ -142,12 +140,6 @@ export function AttendanceRosterForm({
           );
         })}
       </GroupedList>
-
-      {error ? (
-        <Text variant="subhead" className="rounded-control bg-bad-soft px-3 py-2 text-bad">
-          {error}
-        </Text>
-      ) : null}
     </View>
   );
 }

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { useState } from "react";
 
 jest.mock("../lib/api-client", () => ({
@@ -44,7 +44,7 @@ describe("NoteSheet", () => {
     renderWithProviders(<Harness />);
     fireEvent.changeText(await screen.findByLabelText("Note"), " x ");
     fireEvent.press(screen.getByText("Add note"));
-    expect(await screen.findByText("Note can't be empty.")).toBeTruthy();
+    expect(await within(await screen.findByTestId("sheet-save-bar")).findByText("Note can't be empty.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -84,7 +84,9 @@ describe("NoteSheet", () => {
     fireEvent.changeText(await screen.findByLabelText("Note"), "A real note");
     fireEvent.press(screen.getByText("Add note"));
     expect(
-      await screen.findByText("Couldn't save that note. Check your connection and try again."),
+      await within(await screen.findByTestId("sheet-save-bar")).findByText(
+        "Couldn't save that note. Check your connection and try again.",
+      ),
     ).toBeTruthy();
     expect(screen.getByLabelText("Note").props.value).toBe("A real note");
   });

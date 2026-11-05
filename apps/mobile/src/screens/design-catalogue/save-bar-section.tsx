@@ -39,5 +39,12 @@ export function SaveBarSection({ shown, onToggle }: { shown: boolean; onToggle: 
 
 /** The catalogue screen's footer while the example is on. */
 export function CatalogueSaveBar({ onDone }: { onDone: () => void }) {
-  return <SaveBar label="Save changes" hint="Example only: Save hides this bar." onPress={onDone} />;
+  return (
+    <SaveBar
+      label="Save changes"
+      hint="Example only: Save hides this bar."
+      error="Couldn't save. Check your connection and try again."
+      onPress={onDone}
+    />
+  );
 }

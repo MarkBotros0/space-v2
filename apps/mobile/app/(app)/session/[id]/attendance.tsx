@@ -101,6 +101,7 @@ export default function AttendanceScreen() {
             onPress={onSave}
             loading={save.isPending}
             hint={changed > 0 ? `${changed} changed` : undefined}
+            error={error}
           />
         ) : undefined
       }
@@ -117,7 +118,6 @@ export default function AttendanceScreen() {
             lateText[row.studentUserId] ?? (row.lateMinutes !== null ? String(row.lateMinutes) : "")
           }
           pending={save.isPending}
-          error={error}
           onMark={(row, status: AttendanceStatus) =>
             setMarks((prev) => ({ ...prev, [row.studentUserId]: status }))
           }

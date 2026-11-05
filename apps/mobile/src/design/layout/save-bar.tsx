@@ -33,6 +33,8 @@ type SaveBarProps = {
    * sits beside the primary instead of above it. Default off.
    */
   compact?: boolean;
+  /** A failed save's message, drawn just above the button so it stays on screen with the pinned action. */
+  error?: string | null;
 };
 
 function SaveBarBody({
@@ -45,6 +47,7 @@ function SaveBarBody({
   secondary,
   variant = "primary",
   compact,
+  error,
 }: SaveBarProps) {
   const sideBySide = compact && secondary;
   return (
@@ -53,6 +56,13 @@ function SaveBarBody({
         <Text variant="caption" className="text-muted-foreground">
           {hint}
         </Text>
+      ) : null}
+      {error ? (
+        <View accessible accessibilityRole="alert" accessibilityLiveRegion="polite" className="rounded-control bg-bad-soft px-3 py-2">
+          <Text variant="subhead" className="text-bad">
+            {error}
+          </Text>
+        </View>
       ) : null}
       <View className={sideBySide ? "flex-row gap-2" : "gap-2"}>
         {secondary ? (

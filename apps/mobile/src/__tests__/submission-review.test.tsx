@@ -136,7 +136,7 @@ it("stays on the screen and says why when the server refuses (403 forbidden)", a
   fireEvent.press(await screen.findByText("Add feedback"));
   fireEvent.press(screen.getByText("Mark as reviewed"));
 
-  expect(await screen.findByText(/Couldn't record the review/)).toBeTruthy();
+  expect(await within(await screen.findByTestId("sheet-save-bar")).findByText(/Couldn't record the review/)).toBeTruthy();
   expect(screen.getByLabelText("Feedback")).toBeTruthy();
   expect(Haptics.impactAsync).not.toHaveBeenCalled();
   expect(mockBack).not.toHaveBeenCalled();

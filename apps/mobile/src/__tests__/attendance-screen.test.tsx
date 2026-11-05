@@ -185,7 +185,9 @@ it("refuses to save with nothing marked, without a request (v1)", async () => {
   renderStacked(<AttendanceScreen />);
   fireEvent.press(await screen.findByText("Save attendance"));
 
-  expect(await screen.findByText("Mark at least one student before saving.")).toBeTruthy();
+  expect(
+    await within(await screen.findByTestId("save-bar")).findByText("Mark at least one student before saving."),
+  ).toBeTruthy();
   expect(post).not.toHaveBeenCalled();
 });
 
