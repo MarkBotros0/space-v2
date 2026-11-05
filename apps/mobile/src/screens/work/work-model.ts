@@ -99,10 +99,8 @@ export function quizRow(q: StudentQuizResult): WorkRow {
       ? `${q.sessionTitle} · ${formatDate(q.sessionDate)}`
       : q.sessionTitle
     : null;
-  const pct = scored && q.maxScore > 0 ? Math.round(((q.score as number) / q.maxScore) * 100) : 0;
   const parts = [
     session,
-    scored ? `${pct}%` : null,
     scored && q.gradedAt ? `Graded ${formatDate(q.gradedAt)}` : null,
     q.notes,
   ].filter((part) => part !== null && part !== "");

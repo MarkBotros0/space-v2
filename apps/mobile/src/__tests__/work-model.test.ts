@@ -156,20 +156,20 @@ describe("quizRow", () => {
     expect(row.key).toBe("quiz-PAPER-5");
   });
 
-  it("scored: score, percent and graded date, no chip, notes appended", () => {
+  it("scored: score in the trailing, graded date in the subtitle without repeating the percent, no chip", () => {
     const row = quizRow(
       quiz({ quizId: 5, score: 8, gradedAt: "2099-03-02T12:00:00.000Z", attemptStatus: "GRADED", notes: "Nice" }),
     );
     expect(row.score).toBe("8/10");
     expect(row.chip).toBeUndefined();
-    expect(row.subtitle).toBe("80% · Graded Mar 2, 2099 · Nice");
+    expect(row.subtitle).toBe("Graded Mar 2, 2099 · Nice");
   });
 
   it("a scored paper quiz stays a plain row; a zero-point quiz does not divide by zero", () => {
     const row = quizRow(quiz({ quizId: 5, kind: "PAPER", score: 0, maxScore: 0 }));
     expect(row.href).toBeNull();
     expect(row.score).toBe("0/0");
-    expect(row.subtitle).toBe("0%");
+    expect(row.subtitle).toBeUndefined();
   });
 
   it("names the session the quiz belongs to, first", () => {
@@ -182,7 +182,7 @@ describe("quizRow", () => {
         sessionDate: "2099-03-01T18:00:00.000Z",
       }),
     );
-    expect(row.subtitle).toBe("Week 1 · Mar 1, 2099 · 75%");
+    expect(row.subtitle).toBe("Week 1 · Mar 1, 2099");
     expect(quizRow(quiz({ quizId: 6, sessionTitle: "Week 2" })).subtitle).toBe("Week 2");
   });
 
