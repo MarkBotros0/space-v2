@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { RefreshControl } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
@@ -76,6 +77,30 @@ describe("MentorReports", () => {
         get.mock.calls.some((c) => String(c[0]).includes("/reports/engagement/students")),
       ).toBe(true);
     });
+  });
+
+  it("pull-to-refresh refreshes the summary, and the Show-more rows once they're open", async () => {
+    mockEndpoints();
+    const view = renderWithProviders(<MentorReports />);
+    await screen.findByText("Sara Student");
+    const urls = () => get.mock.calls.map((c) => String(c[0]));
+    const rows = () => urls().filter((u) => u.includes("/reports/engagement/students")).length;
+    const summaries = () => urls().filter((u) => /\/reports\/engagement(\?|$)/.test(u)).length;
+    const pull = () =>
+      act(async () => {
+        view.UNSAFE_getByType(RefreshControl).props.onRefresh();
+      });
+
+    const before = summaries();
+    await pull();
+    await waitFor(() => expect(summaries()).toBe(before + 1));
+    // Rows not open yet: the disabled query stays disabled.
+    expect(rows()).toBe(0);
+
+    fireEvent.press(screen.getByText("Show more"));
+    await waitFor(() => expect(rows()).toBe(1));
+    await pull();
+    await waitFor(() => expect(rows()).toBe(2));
   });
 
   it("says so when the scope has no data", async () => {

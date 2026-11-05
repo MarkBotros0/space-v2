@@ -37,6 +37,7 @@ describe("ReportsScreen — role branches", () => {
     renderWithProviders(<ReportsScreen />);
 
     expect(await screen.findByText("Reports")).toBeTruthy();
+    expect(screen.getByText("This screen is for mentors and season admins.")).toBeTruthy();
     // The API refuses leaders explicitly. A query that fires only to be refused
     // surfaces as an error state on a screen that should simply say the surface
     // is not theirs.

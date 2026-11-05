@@ -1,42 +1,26 @@
-import { useEffect, useState } from "react";
 import { View } from "react-native";
 
 import { ExportMenu } from "../../components/ExportMenu";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { EmptyState, Text } from "../../design/ui";
-import { useEngagementReport, useEngagementStudents } from "../../hooks/use-reports";
 import { EngagementCards } from "../reports/engagement-cards";
 import { SeasonPicker } from "../reports/season-picker";
+import { useReportsScope } from "../reports/use-reports-scope";
 
 /**
  * The mentor's Reports: the engagement view only. Never the organisation
  * roll-up and never the workbook export (those are admin/super, plan 04).
  */
 export function MentorReports() {
-  const [seasonId, setSeasonId] = useState<number | null>(null);
-  const [showAllAtRisk, setShowAllAtRisk] = useState(false);
-
-  const summary = useEngagementReport(seasonId, true);
-  const more = useEngagementStudents(seasonId, "AT_RISK", showAllAtRisk);
-
-  // Picker options come from the first unscoped response's scope.
-  const [permitted, setPermitted] = useState<Array<{ id: number; title: string }>>([]);
-  useEffect(() => {
-    if (seasonId === null && summary.data) {
-      setPermitted(summary.data.scope.seasons.map((s) => ({ id: s.id, title: s.title })));
-    }
-  }, [seasonId, summary.data]);
-
-  const extraRows = more.data?.pages.flatMap((p) => p.rows) ?? [];
-  const atRiskRows =
-    showAllAtRisk && extraRows.length > 0 ? extraRows : (summary.data?.atRisk ?? []);
+  const { seasonId, setSeasonId, permitted, summary, atRiskRows, showMore, refresh } =
+    useReportsScope(true);
 
   return (
     <Screen
       title="Reports"
       subtitle={summary.data ? `Scoped to ${summary.data.scope.label}.` : undefined}
-      onRefresh={() => void summary.refetch()}
+      onRefresh={refresh}
       refreshing={summary.isRefetching}
     >
       <View className="flex-col gap-4">
@@ -70,10 +54,7 @@ export function MentorReports() {
               <EngagementCards
                 summary={summary.data}
                 atRiskRows={atRiskRows}
-                onShowMore={() => {
-                  setShowAllAtRisk(true);
-                  if (more.hasNextPage) void more.fetchNextPage();
-                }}
+                onShowMore={showMore}
               />
             )}
           </>

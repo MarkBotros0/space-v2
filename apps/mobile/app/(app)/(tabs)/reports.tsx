@@ -1,16 +1,13 @@
-import { useEffect, useState } from "react";
 import { View } from "react-native";
 
 import { ExportMenu } from "../../../src/components/ExportMenu";
-import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
-import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { EmptyState, Text } from "../../../src/design/ui";
-import { useEngagementReport, useEngagementStudents } from "../../../src/hooks/use-reports";
 import { EngagementCards } from "../../../src/screens/reports/engagement-cards";
 import { OrganisationSection } from "../../../src/screens/reports/organisation-section";
 import { SeasonPicker } from "../../../src/screens/reports/season-picker";
+import { useReportsScope } from "../../../src/screens/reports/use-reports-scope";
 import { MentorReports } from "../../../src/screens/mentor/mentor-reports";
 import { useSessionStore } from "../../../src/store/session";
 
@@ -18,128 +15,73 @@ function StaffReports() {
   const role = useSessionStore((s) => s.user?.role ?? null);
 
   // LEADER and STUDENT have no surface in this domain (R109, R110) and the API
-  // refuses them explicitly. The screen does not ask.
-  const canView = role === "SUPER" || role === "ADMIN" || role === "MENTOR";
+  // refuses them explicitly. The screen does not ask. MENTOR is routed away below.
+  const canView = role === "SUPER" || role === "ADMIN";
   const isSuper = role === "SUPER";
-  // Admin and super are on Screen; the mentor's frame is plan 05's.
-  const staff = role === "SUPER" || role === "ADMIN";
 
-  const [seasonId, setSeasonId] = useState<number | null>(null);
-  const [showAllAtRisk, setShowAllAtRisk] = useState(false);
-
-  const summary = useEngagementReport(seasonId, canView);
-  const more = useEngagementStudents(seasonId, "AT_RISK", canView && showAllAtRisk);
-
-  // The picker's options come from the FIRST unscoped response's scope, which
-  // already lists exactly the seasons this caller is permitted. A separate
-  // GET /api/v1/seasons would be a second round trip for data in hand.
-  const [permitted, setPermitted] = useState<Array<{ id: number; title: string }>>([]);
-  // useEffect, not useMemo: this sets state. A useMemo that calls a setter
-  // renders-during-render and React 19 will warn (and in StrictMode run it
-  // twice). The guard on `seasonId === null` is what keeps the option list from
-  // collapsing to one entry after the user picks a season.
-  useEffect(() => {
-    if (seasonId === null && summary.data) {
-      setPermitted(summary.data.scope.seasons.map((s) => ({ id: s.id, title: s.title })));
-    }
-  }, [seasonId, summary.data]);
+  const { seasonId, setSeasonId, permitted, summary, atRiskRows, showMore, refresh } =
+    useReportsScope(canView);
 
   if (!canView) {
     return (
-      <ShellFrame>
+      <Screen>
         <EmptyState title="Reports" description="This screen is for mentors and season admins." />
-      </ShellFrame>
-    );
-  }
-
-  const handleRefresh = () => {
-    void summary.refetch();
-  };
-
-  const extraRows = more.data?.pages.flatMap((p) => p.rows) ?? [];
-  const atRiskRows =
-    showAllAtRisk && extraRows.length > 0 ? extraRows : (summary.data?.atRisk ?? []);
-
-  const body = summary.isPending ? (
-    <RouteSkeleton />
-  ) : summary.isError ? (
-    <RouteError onRetry={() => void summary.refetch()} />
-  ) : (
-    <>
-      {isSuper ? <OrganisationSection /> : null}
-
-      <SeasonPicker seasons={permitted} selected={seasonId} onSelect={setSeasonId} chips={staff} />
-
-      {summary.data.scope.truncated ? (
-        <Text className="text-xs text-warning-700 dark:text-warning-300">
-          Some seasons you asked for aren&apos;t in your scope.
-        </Text>
-      ) : null}
-
-      {/* Admin and super get the Export button in the title row; the mentor's
-          frame (plan 05) keeps the inline buttons. */}
-      {staff ? null : (
-        <ExportMenu
-          seasonId={seasonId}
-          scopeLabel={summary.data.scope.label}
-          canExportWorkbook={false}
-          exportDay={summary.data.exportDay}
-        />
-      )}
-
-      {summary.data.enrollmentCount === 0 && summary.data.attendanceTrend.length === 0 ? (
-        <EmptyState
-          title="No data in this scope"
-          description="Pick a season with activity, or wait until the first session has run."
-        />
-      ) : (
-        <EngagementCards
-          summary={summary.data}
-          atRiskRows={atRiskRows}
-          grouped={staff}
-          onShowMore={() => {
-            setShowAllAtRisk(true);
-            if (more.hasNextPage) void more.fetchNextPage();
-          }}
-        />
-      )}
-    </>
-  );
-
-  if (staff) {
-    return (
-      <Screen
-        title="Reports"
-        subtitle={summary.data ? `Scoped to ${summary.data.scope.label}.` : undefined}
-        trailing={
-          summary.data ? (
-            <ExportMenu
-              sheet
-              seasonId={seasonId}
-              scopeLabel={summary.data.scope.label}
-              canExportWorkbook={seasonId !== null}
-              exportDay={summary.data.exportDay}
-            />
-          ) : undefined
-        }
-        onRefresh={handleRefresh}
-        refreshing={summary.isRefetching}
-      >
-        <View className="flex-col gap-4">{body}</View>
       </Screen>
     );
   }
 
   return (
-    <ShellFrame onRefresh={handleRefresh} refreshing={summary.isRefetching}>
+    <Screen
+      title="Reports"
+      subtitle={summary.data ? `Scoped to ${summary.data.scope.label}.` : undefined}
+      trailing={
+        summary.data ? (
+          <ExportMenu
+            sheet
+            seasonId={seasonId}
+            scopeLabel={summary.data.scope.label}
+            canExportWorkbook={seasonId !== null}
+            exportDay={summary.data.exportDay}
+          />
+        ) : undefined
+      }
+      onRefresh={refresh}
+      refreshing={summary.isRefetching}
+    >
       <View className="flex-col gap-4">
-        <PageTitle
-          title="Reports"
-          subtitle={summary.data ? `Scoped to ${summary.data.scope.label}.` : undefined}
-        />
-        {body}
+        {summary.isPending ? (
+          <RouteSkeleton />
+        ) : summary.isError ? (
+          <RouteError onRetry={() => void summary.refetch()} />
+        ) : (
+          <>
+            {isSuper ? <OrganisationSection /> : null}
+
+            <SeasonPicker seasons={permitted} selected={seasonId} onSelect={setSeasonId} chips />
+
+            {summary.data.scope.truncated ? (
+              <Text className="text-xs text-warning-700 dark:text-warning-300">
+                Some seasons you asked for aren&apos;t in your scope.
+              </Text>
+            ) : null}
+
+            {summary.data.enrollmentCount === 0 && summary.data.attendanceTrend.length === 0 ? (
+              <EmptyState
+                title="No data in this scope"
+                description="Pick a season with activity, or wait until the first session has run."
+              />
+            ) : (
+              <EngagementCards
+                summary={summary.data}
+                atRiskRows={atRiskRows}
+                grouped
+                onShowMore={showMore}
+              />
+            )}
+          </>
+        )}
       </View>
-    </ShellFrame>
+    </Screen>
   );
 }
 
