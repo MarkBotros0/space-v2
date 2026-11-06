@@ -315,14 +315,16 @@ describe("Duplicate season (SUPER, on the detail)", () => {
 describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
   it("saves identity AND status through the full-body PATCH, keeping the stored budgets, and follows a code change", async () => {
     useSessionStore.setState(makeSession("SUPER"));
-    routeGets(detail());
+    // A finished season is the one whose status the form can still move (COMPLETED to ARCHIVED):
+    // a draft starts through Start, and Draft is its only choice here.
+    routeGets(detail({ status: "COMPLETED" }));
     patch.mockResolvedValue({ data: { data: { id: 7, code: "gbv-2099" } } });
     renderWithProviders(<SeasonEditScreen />);
 
     await screen.findByLabelText("Code");
     fireEvent.changeText(screen.getByLabelText("Code"), "GBV 2099");
     fireEvent.press(screen.getByLabelText("Status"));
-    fireEvent.press(await screen.findByText("Active"));
+    fireEvent.press(await screen.findByText("Archived"));
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
@@ -333,7 +335,7 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
         description: "Spring.",
         startDate: "2099-01-01T00:00:00.000Z",
         endDate: "2099-12-31T00:00:00.000Z",
-        status: "ACTIVE",
+        status: "ARCHIVED",
         absenceBudgetMinutes: 240,
         absenceWeightMinutes: 90,
       }),

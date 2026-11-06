@@ -67,6 +67,7 @@ describe("NewSeasonScreen (/seasons/new)", () => {
         program: "GBV",
         year: 2028,
         description: null,
+        requiredProgram: null,
         startDate: `${day}T00:00:00.000Z`,
         endDate: `${day}T00:00:00.000Z`,
         status: "DRAFT",

@@ -94,6 +94,22 @@ export default function SeasonDetailScreen() {
         },
       );
     }
+    // Setup entry points. Only a season that is still running or about to: a finished one takes no one.
+    const open = s.status === "DRAFT" || s.status === "ACTIVE";
+    if (open && manage) {
+      manageItems.push({
+        label: "Add people",
+        onPress: () =>
+          router.push({ pathname: "/seasons/[code]/people", params: { code: s.code } }),
+      });
+    }
+    if (isSuper && s.status === "DRAFT") {
+      manageItems.push({
+        label: "Start season",
+        onPress: () =>
+          router.push({ pathname: "/seasons/[code]/start", params: { code: s.code } }),
+      });
+    }
     if (s.status === "ACTIVE" && manage) {
       manageItems.push({
         label: "End season",

@@ -51,3 +51,22 @@ export function useAddSeasonPeople(
     },
   });
 }
+
+/**
+ * DELETE /seasons/:id/enrollments/:userId — takes someone off a draft's roster
+ * (409 `has_work` once they have work or attendance). Refreshes the roster,
+ * the candidates and the season's student count.
+ */
+export function useRemoveSeasonPerson(seasonId: number): UseMutationResult<void, Error, { userId: number }> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId }: { userId: number }) => {
+      await apiClient.delete(`/api/v1/seasons/${seasonId}/enrollments/${userId}`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.groups.roster(seasonId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.peopleCandidates(seasonId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
+    },
+  });
+}

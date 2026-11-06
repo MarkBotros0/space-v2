@@ -19,6 +19,7 @@ export default function SeasonRosterScreen() {
       <RosterList
         seasonId={season.data.id}
         seasonTitle={season.data.title}
+        seasonIsDraft={season.data.status === "DRAFT"}
         // Spec 16 §9 / v1 roster/page.tsx:42: the server's own canAdminister,
         // not a client re-derivation.
         trailing={

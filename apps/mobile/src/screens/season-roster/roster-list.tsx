@@ -12,6 +12,7 @@ import {
   AvatarFallback,
   Button,
   EmptyState,
+  ConfirmDialog,
   GroupedList,
   ListRow,
   SearchField,
@@ -20,6 +21,7 @@ import {
 } from "../../design/ui";
 import { useSaveGroupAssignments, useSeasonRoster } from "../../hooks/use-group-admin";
 import { useSeasonGroups } from "../../hooks/use-groups";
+import { useRemoveSeasonPerson } from "../../hooks/use-season-people";
 import { apiErrorMessage } from "../../lib/api-error";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
@@ -37,10 +39,13 @@ export function RosterList({
   seasonId,
   seasonTitle,
   trailing,
+  seasonIsDraft = false,
   onNewGroup,
 }: {
   seasonId: number;
   seasonTitle: string;
+  /** The season has not started: a row can be removed from it. */
+  seasonIsDraft?: boolean;
   trailing?: ReactNode;
   onNewGroup: () => void;
 }) {
@@ -50,6 +55,8 @@ export function RosterList({
   const [draft, setDraft] = useState<Record<number, number | null>>({});
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<SeasonRosterRow | null>(null);
+  const [removing, setRemoving] = useState<SeasonRosterRow | null>(null);
+  const removePerson = useRemoveSeasonPerson(seasonId);
 
   const frame = (children: ReactNode, subtitle?: string, footer?: ReactNode) => (
     <Screen title="Roster" subtitle={subtitle} trailing={trailing} footer={footer}>
@@ -161,6 +168,50 @@ export function RosterList({
         groups={groups.data}
         onClose={() => setEditing(null)}
         onPick={(groupId) => editing && pick(editing, groupId)}
+        onRemove={
+          seasonIsDraft && editing
+            ? () => {
+                setRemoving(editing);
+                setEditing(null);
+              }
+            : undefined
+        }
+      />
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoving(null);
+        }}
+        title="Remove from season?"
+        description={
+          removing
+            ? `${removing.name ?? removing.email} will come off ${seasonTitle}. You can add them again until it starts.`
+            : undefined
+        }
+        confirmLabel="Remove"
+        destructive
+        pending={removePerson.isPending}
+        onConfirm={() => {
+          if (removing === null) return;
+          const who = removing.name ?? removing.email;
+          removePerson.mutate(
+            { userId: removing.userId },
+            {
+              onSuccess: () => {
+                setRemoving(null);
+                setDraft((d) => {
+                  const { [removing.userId]: _gone, ...rest } = d;
+                  return rest;
+                });
+                toast.success(`${who} was removed from ${seasonTitle}.`);
+              },
+              onError: (err) => {
+                setRemoving(null);
+                toast.error(apiErrorMessage(err, "Couldn't remove them."));
+              },
+            },
+          );
+        }}
       />
     </View>,
     subtitle,

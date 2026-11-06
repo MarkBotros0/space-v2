@@ -16,6 +16,7 @@ import {
   Textarea,
 } from "../../design/ui";
 import { FormField } from "../../design/ui/form-field";
+import { useSeasons } from "../../hooks/use-seasons";
 import { firstErrorByField } from "../../lib/form-errors";
 import { autoSeasonCode } from "../../lib/season-defaults";
 import type { SeasonIdentityInput } from "../../hooks/use-season-writes";
@@ -23,6 +24,8 @@ import type { SeasonIdentityInput } from "../../hooks/use-season-writes";
 export interface SeasonFormValues {
   code: string;
   program: string;
+  /** The program someone must have finished to join; "" for none. */
+  requiredProgram: string;
   year: string;
   description: string;
   /** Calendar days "YYYY-MM-DD" (spec 02 D12: stored as UTC midnight). */
@@ -36,6 +39,7 @@ export interface SeasonFormValues {
 export const NEW_SEASON_VALUES: SeasonFormValues = {
   code: "",
   program: "",
+  requiredProgram: "",
   year: String(new Date().getFullYear()),
   description: "",
   startDay: "",
@@ -71,17 +75,38 @@ export function allowedSeasonStatuses(current: SeasonStatus): SeasonStatus[] {
   }
 }
 
+const NO_REQUIRED = "__none__";
+
+/**
+ * The programs a season can require: every distinct program on the seasons the
+ * super already reads, except the season's own, plus the one already set (so it
+ * stays visible even when no listed season carries it). Alphabetical.
+ */
+export function requiredProgramChoices(
+  seasons: { program: string }[],
+  ownProgram: string,
+  current: string,
+): string[] {
+  const own = ownProgram.trim();
+  const set = new Set(seasons.map((s) => s.program.trim()).filter((p) => p !== ""));
+  if (current !== "") set.add(current);
+  set.delete(own);
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
 export const dayToDate = (day: string): Date | null => {
   const d = parse(day, "yyyy-MM-dd", new Date());
   return isValid(d) ? d : null;
 };
 
-function toBody(v: SeasonFormValues): SeasonIdentityInput {
+function toBody(v: SeasonFormValues, canSetRequired: boolean): SeasonIdentityInput {
   return {
     code: v.code,
     program: v.program,
     year: Number(v.year),
     description: v.description.trim() === "" ? null : v.description,
+    // Settled before the season starts: left out once it has, so the server has nothing to refuse.
+    ...(canSetRequired ? { requiredProgram: v.requiredProgram === "" ? null : v.requiredProgram } : {}),
     startDate: `${v.startDay}T00:00:00.000Z`,
     endDate: `${v.endDay}T00:00:00.000Z`,
     status: v.status,
@@ -123,9 +148,12 @@ export function SeasonForm({
   // v1: an edit never auto-fills the code.
   const [codeTouched, setCodeTouched] = useState(mode === "edit" || initial.code !== "");
 
-  // A new season may start in any status, as before; an existing one only moves where the server allows.
-  const statusChoices =
-    mode === "create" ? (Object.keys(STATUS_LABELS) as SeasonStatus[]) : allowedSeasonStatuses(initial.status);
+  // A new season is a draft: no season skips Start. An existing one only moves where the server allows.
+  const statusChoices = allowedSeasonStatuses(mode === "create" ? "DRAFT" : initial.status);
+  // Who may join is settled before the season starts.
+  const canSetRequired = mode === "create" || initial.status === "DRAFT";
+  const seasons = useSeasons(canSetRequired);
+  const requiredChoices = requiredProgramChoices(seasons.data ?? [], v.program, initial.requiredProgram);
 
   const patch = (next: Partial<SeasonFormValues>) => {
     setV((cur) => {
@@ -138,7 +166,7 @@ export function SeasonForm({
   };
 
   const submit = () => {
-    const body = toBody(v);
+    const body = toBody(v, canSetRequired);
     const parsed = seasonWriteRequestSchema.safeParse(body);
     if (!parsed.success) {
       setErrors(firstErrorByField(parsed.error));
@@ -177,6 +205,41 @@ export function SeasonForm({
             placeholder="GBV"
           />
         </FormField>
+        {canSetRequired ? (
+          <FormField
+            label="Required program"
+            description="Someone must have finished this program to join. Leave as None if anyone can."
+            error={errors.requiredProgram}
+          >
+            <Select
+              items={{ [NO_REQUIRED]: "None", ...Object.fromEntries(requiredChoices.map((p) => [p, p])) }}
+              value={v.requiredProgram === "" ? NO_REQUIRED : v.requiredProgram}
+              onValueChange={(p) => patch({ requiredProgram: p === NO_REQUIRED ? "" : p })}
+            >
+              <SelectTrigger accessibilityLabel="Required program">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_REQUIRED}>None</SelectItem>
+                {requiredChoices.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+        ) : (
+          <View className="flex-col gap-1">
+            <Text className="text-sm font-semibold text-foreground">Required program</Text>
+            <Text variant="body" className="text-foreground">
+              {initial.requiredProgram === "" ? "None" : initial.requiredProgram}
+            </Text>
+            <Text variant="subhead" className="text-muted-foreground">
+              It can only change while the season is a draft.
+            </Text>
+          </View>
+        )}
         <FormField label="Year" required error={errors.year}>
           <Input
             accessibilityLabel="Year"

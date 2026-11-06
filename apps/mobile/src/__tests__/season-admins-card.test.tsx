@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
@@ -78,49 +78,14 @@ describe("Admins card on the SUPER season detail", () => {
 
     expect(await screen.findByText("Pat Admin")).toBeTruthy();
     expect(screen.getByText("pat@jpc.test")).toBeTruthy();
-    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
 
-    fireEvent.press(screen.getByLabelText("Choose an admin"));
-    const menu = screen.getAllByRole("menuitem");
-    expect(menu).toHaveLength(1);
-    expect(within(menu[0]!).getByText("Rana Admin")).toBeTruthy();
+    fireEvent.press(screen.getByText("Add admin"));
+    expect(await screen.findByText("Rana Admin")).toBeTruthy();
+    // Pat is one already: only in the card.
+    expect(screen.getAllByText("Pat Admin")).toHaveLength(1);
   });
 
-  it("a pick that disappears during a refetch does not leave the Add dialog armed for the next pick (final review M10)", async () => {
-    useSessionStore.setState(makeSession("SUPER"));
-    const base = get.getMockImplementation() as (url: string) => Promise<unknown>;
-    get.mockImplementation((url: string) =>
-      url === "/api/v1/seasons/7/staff-candidates"
-        ? candidates(person(21, "Pat Admin"), person(22, "Rana Admin"), person(24, "Sam Admin"))
-        : base(url),
-    );
-    let client: QueryClient | undefined;
-    const mount = QueryClient.prototype.mount;
-    jest.spyOn(QueryClient.prototype, "mount").mockImplementation(function (this: QueryClient) {
-      client = this;
-      return mount.call(this);
-    });
-    renderWithProviders(<SeasonDetailScreen />);
-    await screen.findByText("Pat Admin");
-    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
-    fireEvent.press(screen.getByLabelText("Choose an admin"));
-    fireEvent.press(screen.getByText("Rana Admin"));
-    fireEvent.press(screen.getByText("Add admin"));
-    expect(screen.getByText("Add admin?")).toBeTruthy();
-
-    // Someone else makes Rana an admin: she leaves the options while her dialog is open.
-    const rana = { ...pat, userId: 22, name: "Rana Admin", email: "rana@jpc.test" };
-    act(() => client!.setQueryData(queryKeys.seasons.admins(7), [pat, rana]));
-    await waitFor(() => expect(screen.queryByText("Add admin?")).toBeNull());
-
-    fireEvent.press(screen.getByLabelText("Choose an admin"));
-    fireEvent.press(screen.getByText("Sam Admin"));
-    expect(screen.queryByText("Add admin?")).toBeNull();
-    fireEvent.press(screen.getByText("Add admin"));
-    expect(screen.getByText("Add admin?")).toBeTruthy();
-  });
-
-  it("adds the picked admin, toasts, and refreshes the season, users and dashboard", async () => {
+  it("adds the tapped admin, toasts, and refreshes the season, users and dashboard", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     const invalidate = jest.spyOn(QueryClient.prototype, "invalidateQueries");
     const rana = { ...pat, userId: 22, name: "Rana Admin", email: "rana@jpc.test" };
@@ -132,11 +97,8 @@ describe("Admins card on the SUPER season detail", () => {
     renderWithProviders(<SeasonDetailScreen />);
 
     await screen.findByText("Pat Admin");
-    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
-    fireEvent.press(screen.getByLabelText("Choose an admin"));
-    fireEvent.press(screen.getByText("Rana Admin"));
     fireEvent.press(screen.getByText("Add admin"));
-    fireEvent.press(screen.getByText("Add"));
+    fireEvent.press(await screen.findByText("Rana Admin"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }),
@@ -151,7 +113,7 @@ describe("Admins card on the SUPER season detail", () => {
     invalidate.mockRestore();
   });
 
-  it("shows the server's refusal as an error toast", async () => {
+  it("shows the server's refusal in the sheet", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     const { AxiosError } = jest.requireActual("axios");
     post.mockRejectedValue(
@@ -163,15 +125,10 @@ describe("Admins card on the SUPER season detail", () => {
     renderWithProviders(<SeasonDetailScreen />);
 
     await screen.findByText("Pat Admin");
-    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
-    fireEvent.press(screen.getByLabelText("Choose an admin"));
-    fireEvent.press(screen.getByText("Rana Admin"));
     fireEvent.press(screen.getByText("Add admin"));
-    fireEvent.press(screen.getByText("Add"));
+    fireEvent.press(await screen.findByText("Rana Admin"));
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Only a user with the ADMIN role can administer a season."),
-    );
+    expect(await screen.findByText("Only a user with the ADMIN role can administer a season.")).toBeTruthy();
   });
 
   it("removes an admin only after the confirm dialog", async () => {

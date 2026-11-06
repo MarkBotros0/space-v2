@@ -20,6 +20,7 @@ iconWithClassName(Trash2);
 const fromDetail = (s: SeasonDetail): SeasonFormValues => ({
   code: s.code,
   program: s.program,
+  requiredProgram: s.requiredProgram ?? "",
   year: String(s.year),
   description: s.description ?? "",
   // Season dates are calendar days stored as UTC midnight (spec 02 D12).

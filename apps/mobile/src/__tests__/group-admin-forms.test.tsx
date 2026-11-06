@@ -158,7 +158,8 @@ describe("/group/new", () => {
 
     expect(await screen.findByText("Add a group to Season 7.")).toBeTruthy();
     fireEvent.changeText(await screen.findByLabelText("Name"), "Group C");
-    await pickOption("Leaders", "Karim");
+    fireEvent.press(await screen.findByText("Add leader"));
+    fireEvent.press(await screen.findByText("Karim"));
     await pickOption("Students", "Omar");
     // Omar has no group in this season, so no "moves them" hint. A group in
     // another season is not mentioned: memberships are per season (Plan 18
@@ -236,7 +237,7 @@ describe("/group/[id]/edit", () => {
     );
   });
 
-  it("offers the group's current leaders next to the candidates, so one can be unticked", async () => {
+  it("lists the group's current leaders, removes one, and offers them again in the sheet", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { id: "3" };
     routeGets();
@@ -244,14 +245,14 @@ describe("/group/[id]/edit", () => {
     renderWithProviders(<EditGroupScreen />);
 
     await screen.findByDisplayValue("Group A");
-    fireEvent.press(await screen.findByLabelText("Leaders"));
-    // Lina leads the group but is no candidate (she has a role); she is still listed, last season in words.
-    // (once as the ticked chip, once as the option)
-    expect((await screen.findAllByText("Lina")).length).toBe(2);
+    // Lina leads the group but is no candidate (she has a role); she is still a row.
+    expect(await screen.findByText("Lina")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Remove Lina"));
+    fireEvent.press(screen.getByText("Add leader"));
+    // Back in the sheet, with the reason she is listed, in words; last season for Karim.
+    expect(await screen.findByText("Leads this group")).toBeTruthy();
     expect(screen.getByText("GBV 2025")).toBeTruthy();
-    fireEvent.press(screen.getAllByText("Lina")[1]!);
     fireEvent.press(screen.getByText("Karim"));
-    fireEvent.press(screen.getByLabelText("Leaders"));
     saveBar("Save changes");
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith(
@@ -267,7 +268,7 @@ describe("/group/[id]/edit", () => {
     routeGets();
     const own = renderWithProviders(<EditGroupScreen />);
     await screen.findByDisplayValue("Group A");
-    fireEvent.press(await screen.findByLabelText("Leaders"));
+    fireEvent.press(await screen.findByText("Add leader"));
     expect(await screen.findByText("Ada Admin")).toBeTruthy();
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/admins");
     own.unmount();
@@ -282,7 +283,7 @@ describe("/group/[id]/edit", () => {
     });
     renderWithProviders(<EditGroupScreen />);
     await screen.findByDisplayValue("Group A");
-    fireEvent.press(await screen.findByLabelText("Leaders"));
+    fireEvent.press(await screen.findByText("Add leader"));
     expect(await screen.findByText("Bo Admin")).toBeTruthy();
   });
 

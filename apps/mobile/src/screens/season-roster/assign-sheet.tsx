@@ -2,7 +2,7 @@ import { Check } from "lucide-react-native";
 import type { SeasonRosterRow } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
-import { GroupedList, ListRow, Sheet } from "../../design/ui";
+import { Button, GroupedList, ListRow, Sheet } from "../../design/ui";
 
 iconWithClassName(Check);
 
@@ -13,7 +13,7 @@ type Group = { id: number; name: string };
 /**
  * One student's group, as a bottom sheet: the season's groups as rows.
  * Picking one stages it on the roster (nothing is sent until the page's
- * Save) and closes the sheet. `current` is the staged group, else the saved one.
+ * Save) and closes the sheet. On a draft it also offers "Remove from season". `current` is the staged group, else the saved one.
  */
 export function AssignSheet({
   student,
@@ -21,12 +21,15 @@ export function AssignSheet({
   groups,
   onClose,
   onPick,
+  onRemove,
 }: {
   student: SeasonRosterRow | null;
   current: number | null;
   groups: Group[];
   onClose: () => void;
   onPick: (groupId: number | null) => void;
+  /** Only a draft season's roster offers it; the caller asks to confirm. */
+  onRemove?: () => void;
 }) {
   const options: { id: number | null; name: string }[] = [
     { id: null, name: ROSTER_UNASSIGNED_LABEL },
@@ -49,6 +52,11 @@ export function AssignSheet({
           />
         ))}
       </GroupedList>
+      {onRemove ? (
+        <Button variant="destructive" className="mt-4 self-start" onPress={onRemove}>
+          Remove from season
+        </Button>
+      ) : null}
     </Sheet>
   );
 }

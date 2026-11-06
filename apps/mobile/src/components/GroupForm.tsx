@@ -1,13 +1,18 @@
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
+import { Trash2, UserPlus } from "lucide-react-native";
 import { groupWriteRequestSchema, type GroupDetail } from "@space/shared";
 
 import { FormScreen } from "../design/layout/form-screen";
-import { FormField, Input, MultiSelect, Textarea } from "../design/ui";
+import { iconWithClassName } from "../design/lib/icon";
+import { Button, FormField, GroupedList, Input, ListRow, MultiSelect, Text, Textarea } from "../design/ui";
 import { useSeasonRoster, type GroupWriteInput } from "../hooks/use-group-admin";
 import { useSeasonAdmins, useStaffCandidates } from "../hooks/use-season-admins";
 import { firstErrorByField } from "../lib/form-errors";
+import { StaffPickerSheet } from "../screens/season-people/staff-picker-sheet";
 import { useSessionStore } from "../store/session";
+
+iconWithClassName(Trash2, UserPlus);
 
 export interface GroupFormValues {
   name: string;
@@ -26,10 +31,12 @@ export interface GroupFormValues {
  * REPLACES the group's leader and student lists (spec 05 R30) — the form says
  * so (V2-ONLY hints on students who are in another group).
  *
- * Leaders come from the season's staff candidates (alumni with no active
- * role), plus the group's current leaders so one can be unticked, plus the
- * season's own admins, who may lead (a SUPER reads the admins list; a season
- * admin offers themselves, the one admin they can see).
+ * Leaders are rows with a Remove button; "Add leader" opens the staff picker
+ * sheet over the season's staff candidates (alumni with no active role), plus
+ * the group's former leaders so one can be put back, plus the season's own
+ * admins, who may lead (a SUPER reads the admins list; a season admin offers
+ * themselves, the one admin they can see). The picks are written with Save, so
+ * the server's reason for a refusal shows in the save bar.
  */
 export function GroupForm({
   title,
@@ -59,6 +66,7 @@ export function GroupForm({
   onSubmit: (body: GroupWriteInput) => void;
 }) {
   const leaders = useStaffCandidates(seasonId, { enabled: true });
+  const [pickingLeader, setPickingLeader] = useState(false);
   const me = useSessionStore((st) => st.user);
   const scopes = useSessionStore((st) => st.scopes);
   const seasonAdmins = useSeasonAdmins(seasonId, { enabled: me?.role === "SUPER" });
@@ -94,6 +102,10 @@ export function GroupForm({
         ? [{ id: me.id, name: me.name }]
         : [],
   );
+  const leaderName = new Map(leaderOptions.map((o) => [Number(o.value), o.label]));
+  const pickable = leaderOptions
+    .filter((o) => !values.leaderIds.includes(Number(o.value)))
+    .map((o) => ({ id: Number(o.value), name: o.label, description: o.description }));
   const studentOptions = (roster.data ?? []).map((r) => {
     const hint =
       r.groupId !== null && r.groupId !== groupId
@@ -141,26 +153,56 @@ export function GroupForm({
           />
         </FormField>
 
-        <FormField
-          label="Leaders"
-          description="Choose one or more leaders for this group."
-          error={errors.leaderIds}
-        >
-          <MultiSelect
-            accessibilityLabel="Leaders"
-            options={leaderOptions}
-            value={values.leaderIds.map(String)}
-            onChange={(ids) => setValues({ ...values, leaderIds: ids.map(Number) })}
-            placeholder={
-              leaders.isPending
-                ? "Loading…"
-                : leaders.isError
-                  ? "Couldn't load leaders."
-                  : "Pick leaders…"
-            }
-            emptyMessage="No leaders found."
-          />
+        <FormField label="Leaders" description="Who leads this group." error={errors.leaderIds}>
+          <View className="flex-col gap-2">
+            {values.leaderIds.length === 0 ? (
+              <Text variant="subhead" className="text-foreground">
+                {leaders.isPending ? "Loading…" : "No leaders yet."}
+              </Text>
+            ) : (
+              <GroupedList>
+                {values.leaderIds.map((id, i) => {
+                  const name = leaderName.get(id) ?? "Unnamed";
+                  return (
+                    <ListRow
+                      key={id}
+                      index={i}
+                      title={name}
+                      trailing={
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          accessibilityLabel={`Remove ${name}`}
+                          onPress={() => setValues({ ...values, leaderIds: values.leaderIds.filter((x) => x !== id) })}
+                        >
+                          <Trash2 size={14} className="text-bad" />
+                        </Button>
+                      }
+                    />
+                  );
+                })}
+              </GroupedList>
+            )}
+            {leaders.isError ? (
+              <Text variant="subhead" className="text-bad">
+                Couldn't load the people who can lead.
+              </Text>
+            ) : null}
+            <Button variant="secondary" size="sm" className="self-start" onPress={() => setPickingLeader(true)}>
+              <UserPlus size={14} className="text-foreground" />
+              Add leader
+            </Button>
+          </View>
         </FormField>
+        <StaffPickerSheet
+          open={pickingLeader}
+          onClose={() => setPickingLeader(false)}
+          seasonId={seasonId}
+          title="Add leader"
+          excludeIds={values.leaderIds}
+          extra={pickable}
+          onPick={(person) => setValues({ ...values, leaderIds: [...values.leaderIds, person.id] })}
+        />
 
         <FormField
           label="Students"

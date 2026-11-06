@@ -92,61 +92,36 @@ describe("Admins section", () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<SeasonDetailScreen />);
     await screen.findByText("Pat Admin");
-    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
-    fireEvent.press(screen.getByLabelText("Choose an admin"));
-    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
-    expect(screen.getByText("Rana Admin")).toBeTruthy();
+    fireEvent.press(screen.getByText("Add admin"));
+    expect(await screen.findByText("Rana Admin")).toBeTruthy();
     expect(screen.getByText("GBV 2025")).toBeTruthy();
     expect(screen.getByText("New Person")).toBeTruthy();
+    // Pat is already an admin: listed once, in the card, not in the sheet.
+    expect(screen.getAllByText("Pat Admin")).toHaveLength(1);
   });
 
-  it("adding asks first, then POSTs and toasts", async () => {
+  it("tapping a person POSTs and toasts", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     post.mockResolvedValue({
       data: { data: { admins: [pat, { ...pat, userId: 22, name: "Rana Admin", email: "rana@jpc.test" }] } },
     });
     renderWithProviders(<SeasonDetailScreen />);
     await screen.findByText("Pat Admin");
-    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
-    fireEvent.press(screen.getByLabelText("Choose an admin"));
-    fireEvent.press(screen.getByText("Rana Admin"));
     fireEvent.press(screen.getByText("Add admin"));
-
-    expect(screen.getByText("Add admin?")).toBeTruthy();
-    expect(screen.getByText(`Rana Admin will be able to administer TEST 2099.`)).toBeTruthy();
-    expect(post).not.toHaveBeenCalled();
-
-    fireEvent.press(screen.getByText("Add"));
+    fireEvent.press(await screen.findByText("Rana Admin"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Rana Admin can now administer TEST 2099."));
   });
 
-  it("an already_in_role refusal shows the server's message", async () => {
+  it("an already_in_role refusal shows the server's message in the sheet", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     post.mockRejectedValue(refusal("Rana is already leading a group in GBV 2026"));
     renderWithProviders(<SeasonDetailScreen />);
     await screen.findByText("Pat Admin");
-    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
-    fireEvent.press(screen.getByLabelText("Choose an admin"));
-    fireEvent.press(screen.getByText("Rana Admin"));
     fireEvent.press(screen.getByText("Add admin"));
-    fireEvent.press(screen.getByText("Add"));
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Rana is already leading a group in GBV 2026"),
-    );
-  });
-
-  it("cancelling the add dialog sends nothing", async () => {
-    useSessionStore.setState(makeSession("SUPER"));
-    renderWithProviders(<SeasonDetailScreen />);
-    await screen.findByText("Pat Admin");
-    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
-    fireEvent.press(screen.getByLabelText("Choose an admin"));
-    fireEvent.press(screen.getByText("Rana Admin"));
-    fireEvent.press(screen.getByText("Add admin"));
-    fireEvent.press(screen.getByText("Cancel"));
-    expect(post).not.toHaveBeenCalled();
-    await waitFor(() => expect(screen.queryByText("Add admin?")).toBeNull());
+    fireEvent.press(await screen.findByText("Rana Admin"));
+    expect(await screen.findByText("Rana is already leading a group in GBV 2026")).toBeTruthy();
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it("removing goes through the confirm dialog", async () => {
