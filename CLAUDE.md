@@ -372,8 +372,11 @@ Build 1 exists.
   roles and hold no season role. A DRAFT season's roles don't count until it starts. **Build 1 does
   not enforce this on writes** and still gates staff on the global `role`; it only *checks* it, in
   `pnpm preflight:community` (read-only by default; prints the host and every violation: a leader
-  with two groups, an admin of two ACTIVE seasons, a Mentor with a `SeasonAdmin` row; `--apply`
-  refuses while any exist, else backfills results in one transaction). Run it against the real
+  with two groups or in two seasons, an admin of two ACTIVE seasons, admin in one season and leader
+  in another (the same season is allowed), a student in two ACTIVE seasons, a Super or Mentor with
+  season rows, staff who also hold an ACTIVE enrolment; `--apply` refuses while any exist, or once
+  any enrolment has a `result` so it can't run twice, else backfills results in one transaction).
+  Run it against the real
   database before anything depends on the rule; the backfill is not part of a migration because
   `migrate deploy` also reaches Neon, which v1 writes. Enforcement, roles from season rows and the
   pickers are Build 2.

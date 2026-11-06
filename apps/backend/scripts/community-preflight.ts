@@ -1,7 +1,8 @@
 /**
  * Community-model preflight. Run from apps/backend:
  *   pnpm preflight:community            read-only: prints host, violations, what would change
- *   pnpm preflight:community --apply    refuses if violations exist, else backfills in one transaction
+ *   pnpm preflight:community --apply    refuses if violations exist or any enrolment already has a result,
+ *                                       else backfills in one transaction
  *
  * The backfill is deliberately NOT in the migration: `migrate deploy` also
  * reaches Neon, which v1 still writes.
@@ -9,49 +10,124 @@
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
 
+/** Every way the data breaks "zero or one active role". Each list is one rule. */
 export interface Violations {
   /** A leader with more than one group in one ACTIVE season. */
   leadersWithManyGroups: { userId: number; seasonId: number; groups: number }[];
-  /** An ADMIN who administers more than one ACTIVE season. */
+  /** A leader with groups in more than one ACTIVE season. */
+  leadersInManySeasons: { userId: number; seasons: number }[];
+  /** Someone who administers more than one ACTIVE season. */
   adminsInManySeasons: { userId: number; seasons: number }[];
+  /** An admin of one ACTIVE season who leads a group in another. The same season is allowed. */
+  adminAndLeaderAcrossSeasons: { userId: number; adminSeasonId: number; leaderSeasonId: number }[];
+  /** A student with an ACTIVE enrolment in more than one ACTIVE season. */
+  studentsInManySeasons: { userId: number; seasons: number }[];
   /** A MENTOR holding a SeasonAdmin row in an ACTIVE season. */
   mentorsWithSeasonAdmin: { userId: number; seasonId: number }[];
+  /** A MENTOR holding a GroupLeader row in an ACTIVE season. */
+  mentorsWithGroupLeader: { userId: number; seasonId: number }[];
+  /** A SUPER holding a SeasonAdmin or GroupLeader row in an ACTIVE season. */
+  supersWithSeasonRoles: { userId: number; seasonId: number; row: "admin" | "leader" }[];
+  /** A non-student, or anyone serving in an ACTIVE season, who also holds an ACTIVE enrolment in one. */
+  staffWithActiveEnrollment: { userId: number; seasonId: number }[];
 }
 
+/** "Active" means a role in a season whose status is ACTIVE. Draft, finished and deleted seasons don't count. */
+const ACTIVE_SEASON = { status: "ACTIVE" as const, deletedAt: null };
+/** A soft-deleted account holds no role. */
+const LIVE_USER = { deletedAt: null };
+
+const groupBy = <T>(rows: T[], key: (row: T) => number) => {
+  const out = new Map<number, T[]>();
+  for (const row of rows) out.set(key(row), [...(out.get(key(row)) ?? []), row]);
+  return out;
+};
+/** Users with more than one distinct season among their rows. */
+const inManySeasons = (rows: { userId: number; seasonId: number }[]) =>
+  [...groupBy(rows, (r) => r.userId)]
+    .map(([userId, own]) => ({ userId, seasons: new Set(own.map((r) => r.seasonId)).size }))
+    .filter((v) => v.seasons > 1);
+
 export async function findRoleRuleViolations(): Promise<Violations> {
-  const leaderRows = await db.groupLeader.findMany({
-    where: { group: { season: { status: "ACTIVE" } } },
-    select: { userId: true, group: { select: { seasonId: true } } },
-  });
+  const [leaderRows, adminRows, enrolmentRows] = await Promise.all([
+    db.groupLeader.findMany({
+      where: { group: { season: ACTIVE_SEASON }, user: LIVE_USER },
+      select: { userId: true, user: { select: { role: true } }, group: { select: { seasonId: true } } },
+    }),
+    db.seasonAdmin.findMany({
+      where: { season: ACTIVE_SEASON, user: LIVE_USER },
+      select: { userId: true, seasonId: true, user: { select: { role: true } } },
+    }),
+    db.seasonEnrollment.findMany({
+      where: { status: "ACTIVE", season: ACTIVE_SEASON, studentUser: LIVE_USER },
+      select: { studentUserId: true, seasonId: true, studentUser: { select: { role: true } } },
+    }),
+  ]);
+  const leaders = leaderRows.map((r) => ({ userId: r.userId, seasonId: r.group.seasonId, role: r.user.role }));
+  const admins = adminRows.map((r) => ({ userId: r.userId, seasonId: r.seasonId, role: r.user.role }));
+  const enrolments = enrolmentRows.map((r) => ({
+    userId: r.studentUserId,
+    seasonId: r.seasonId,
+    role: r.studentUser.role,
+  }));
+  // Super and Mentor are permanent roles, reported by their own rules below.
+  const seasonal = (r: { role: string }) => r.role !== "SUPER" && r.role !== "MENTOR";
+
   const perLeaderSeason = new Map<string, { userId: number; seasonId: number; groups: number }>();
-  for (const r of leaderRows) {
-    const key = `${r.userId}:${r.group.seasonId}`;
-    const cur = perLeaderSeason.get(key) ?? { userId: r.userId, seasonId: r.group.seasonId, groups: 0 };
+  for (const r of leaders) {
+    const key = `${r.userId}:${r.seasonId}`;
+    const cur = perLeaderSeason.get(key) ?? { userId: r.userId, seasonId: r.seasonId, groups: 0 };
     cur.groups += 1;
     perLeaderSeason.set(key, cur);
   }
 
-  const adminRows = await db.seasonAdmin.findMany({
-    where: { season: { status: "ACTIVE" }, user: { role: "ADMIN" } },
-    select: { userId: true },
-  });
-  const perAdmin = new Map<number, number>();
-  for (const r of adminRows) perAdmin.set(r.userId, (perAdmin.get(r.userId) ?? 0) + 1);
+  const adminAndLeaderAcrossSeasons: Violations["adminAndLeaderAcrossSeasons"] = [];
+  const leadsBy = groupBy(leaders.filter(seasonal), (r) => r.userId);
+  for (const [userId, own] of groupBy(admins.filter(seasonal), (r) => r.userId)) {
+    const pairs = own.flatMap((a) =>
+      (leadsBy.get(userId) ?? [])
+        .filter((l) => l.seasonId !== a.seasonId)
+        .map((l) => ({ userId, adminSeasonId: a.seasonId, leaderSeasonId: l.seasonId })),
+    );
+    if (pairs[0]) adminAndLeaderAcrossSeasons.push(pairs[0]);
+  }
 
-  const mentorRows = await db.seasonAdmin.findMany({
-    where: { season: { status: "ACTIVE" }, user: { role: "MENTOR" } },
-    select: { userId: true, seasonId: true },
-  });
+  const serving = new Set([...leaders, ...admins].map((r) => r.userId));
+  const onlyRole = (rows: typeof leaders, role: string) => rows.filter((r) => r.role === role);
+  const asRow = ({ userId, seasonId }: { userId: number; seasonId: number }) => ({ userId, seasonId });
 
   return {
     leadersWithManyGroups: [...perLeaderSeason.values()].filter((v) => v.groups > 1),
-    adminsInManySeasons: [...perAdmin].filter(([, n]) => n > 1).map(([userId, seasons]) => ({ userId, seasons })),
-    mentorsWithSeasonAdmin: mentorRows,
+    leadersInManySeasons: inManySeasons(leaders),
+    adminsInManySeasons: inManySeasons(admins.filter(seasonal)),
+    adminAndLeaderAcrossSeasons,
+    studentsInManySeasons: inManySeasons(enrolments),
+    mentorsWithSeasonAdmin: onlyRole(admins, "MENTOR").map(asRow),
+    mentorsWithGroupLeader: onlyRole(leaders, "MENTOR").map(asRow),
+    supersWithSeasonRoles: [
+      ...onlyRole(admins, "SUPER").map((r) => ({ ...asRow(r), row: "admin" as const })),
+      ...onlyRole(leaders, "SUPER").map((r) => ({ ...asRow(r), row: "leader" as const })),
+    ],
+    staffWithActiveEnrollment: enrolments.filter((e) => e.role !== "STUDENT" || serving.has(e.userId)).map(asRow),
   };
 }
 
 export function countViolations(v: Violations): number {
-  return v.leadersWithManyGroups.length + v.adminsInManySeasons.length + v.mentorsWithSeasonAdmin.length;
+  return Object.values(v).reduce((sum: number, rows: unknown[]) => sum + rows.length, 0);
+}
+
+/**
+ * Why `--apply` must not run, or null when it may. Only reads. The backfill turns
+ * a null result into PASSED, which is right exactly once: before go-live every
+ * null means "finished before results existed"; after it, a null is a legitimate
+ * outcome (a deleted account at End), so a second run would invent passes. A fresh
+ * copy of the old database has no results at all.
+ */
+export async function applyRefusal(violations: Violations): Promise<string | null> {
+  if (countViolations(violations) > 0) return "fix the role-rule violations above first.";
+  const withResult = await db.seasonEnrollment.count({ where: { result: { not: null } } });
+  if (withResult > 0) return `${withResult} enrolment(s) already has a result, so the backfill has already run.`;
+  return null;
 }
 
 interface BackfillOptions {
@@ -61,14 +137,20 @@ interface BackfillOptions {
   dryRun?: boolean;
 }
 
+/** Several minutes' worth of seasons is still one all-or-nothing run. */
+const BACKFILL_TIMEOUT_MS = 120_000;
+
 export async function backfillResults(
   opts: BackfillOptions = {},
 ): Promise<{ markedPassed: number; completedStale: number }> {
   const inSeasons = opts.seasonIds ? { seasonId: { in: opts.seasonIds } } : {};
+  const finished = { status: { in: ["COMPLETED" as const, "ARCHIVED" as const] } };
   const now = new Date();
 
-  const completedWhere = { ...inSeasons, status: "COMPLETED" as const, result: null };
-  const staleWhere = { ...inSeasons, status: "ACTIVE" as const, season: { status: "COMPLETED" as const } };
+  // In a finished season only: a COMPLETED student in a season still running
+  // graduated part-way, and has no result to give yet.
+  const completedWhere = { ...inSeasons, status: "COMPLETED" as const, result: null, season: finished };
+  const staleWhere = { ...inSeasons, status: "ACTIVE" as const, season: finished };
 
   if (opts.dryRun) {
     return {
@@ -77,23 +159,33 @@ export async function backfillResults(
     };
   }
 
-  return db.$transaction(async (tx) => {
-    const passed = await tx.seasonEnrollment.updateMany({
-      where: completedWhere,
-      data: { result: "PASSED", resultSetAt: now },
-    });
-    const stale = await tx.seasonEnrollment.findMany({
-      where: staleWhere,
-      select: { id: true, season: { select: { endDate: true } } },
-    });
-    for (const e of stale) {
-      await tx.seasonEnrollment.update({
-        where: { id: e.id },
-        data: { status: "COMPLETED", completedAt: e.season.endDate, result: "PASSED", resultSetAt: now },
+  return db.$transaction(
+    async (tx) => {
+      const passed = await tx.seasonEnrollment.updateMany({
+        where: completedWhere,
+        data: { result: "PASSED", resultSetAt: now },
       });
-    }
-    return { markedPassed: passed.count, completedStale: stale.length };
-  });
+      // One write per season, however many students it stranded.
+      const staleSeasons = await tx.season.findMany({
+        where: {
+          ...finished,
+          ...(opts.seasonIds ? { id: { in: opts.seasonIds } } : {}),
+          enrollments: { some: { status: "ACTIVE" } },
+        },
+        select: { id: true, endDate: true },
+      });
+      let completedStale = 0;
+      for (const season of staleSeasons) {
+        const closed = await tx.seasonEnrollment.updateMany({
+          where: { seasonId: season.id, status: "ACTIVE" },
+          data: { status: "COMPLETED", completedAt: season.endDate, result: "PASSED", resultSetAt: now },
+        });
+        completedStale += closed.count;
+      }
+      return { markedPassed: passed.count, completedStale };
+    },
+    { timeout: BACKFILL_TIMEOUT_MS },
+  );
 }
 
 async function main(): Promise<void> {
@@ -105,12 +197,12 @@ async function main(): Promise<void> {
 
   if (!apply) {
     console.log("Would change:", await backfillResults({ dryRun: true }));
+    console.log("--apply would be:", (await applyRefusal(violations)) ?? "allowed");
     console.log("Read-only run. Pass --apply to backfill.");
     return;
   }
-  if (countViolations(violations) > 0) {
-    throw new Error("Refusing to --apply: fix the role-rule violations above first.");
-  }
+  const refusal = await applyRefusal(violations);
+  if (refusal) throw new Error(`Refusing to --apply: ${refusal}`);
   console.log("Backfilled:", await backfillResults());
 }
 
