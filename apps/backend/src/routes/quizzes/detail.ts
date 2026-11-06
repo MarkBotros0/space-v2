@@ -83,10 +83,10 @@ export async function getQuiz(req: Request, res: Response) {
       // quiz that does not exist are indistinguishable from the response.
       return apiError(res, "not_found", "Quiz not found.", 404);
     }
-    const detail = await loadStudentQuizDetail(id, user.userId);
-    if (!detail) return apiError(res, "not_found", "Quiz not found.", 404);
     const readOnly = !(await hasActiveEnrollment(user, quiz.seasonId));
-    return apiOk(res, { ...detail, readOnly });
+    const detail = await loadStudentQuizDetail(id, user.userId, readOnly);
+    if (!detail) return apiError(res, "not_found", "Quiz not found.", 404);
+    return apiOk(res, detail);
   }
 
   // Staff: grading needs the answer key (R103), and canGradeQuiz is the

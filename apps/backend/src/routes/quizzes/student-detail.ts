@@ -22,7 +22,7 @@ import { db } from "../../db/client";
  * The loader's return type is `StudentQuizDetailRow`: the shared wire type
  * with its two timestamps as `Date` (the backend hands Dates to res.json()).
  */
-type StudentQuizDetailRow = Omit<StudentQuizDetail, "submittedAt" | "gradedAt" | "readOnly"> & {
+type StudentQuizDetailRow = Omit<StudentQuizDetail, "submittedAt" | "gradedAt"> & {
   submittedAt: Date | null;
   gradedAt: Date | null;
 };
@@ -64,6 +64,7 @@ function toStudentQuestion(
 export async function loadStudentQuizDetail(
   quizId: number,
   studentUserId: number,
+  readOnly: boolean,
 ): Promise<StudentQuizDetailRow | null> {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
@@ -132,5 +133,6 @@ export async function loadStudentQuizDetail(
     submittedAt: attempt?.submittedAt ?? null,
     gradedAt: attempt?.gradedAt ?? null,
     questions: quiz.questions.map((q) => toStudentQuestion(q, answerByQuestion.get(q.id))),
+    readOnly,
   };
 }

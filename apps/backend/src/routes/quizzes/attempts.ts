@@ -112,7 +112,7 @@ export async function startAttempt(req: Request, res: Response) {
     });
   }
 
-  const detail = await loadStudentQuizDetail(id, user.userId);
+  const detail = await loadStudentQuizDetail(id, user.userId, false);
   if (!detail) return apiError(res, "not_found", "Quiz not found.", 404);
   return apiOk(res, detail);
 }
@@ -324,7 +324,7 @@ export async function submitAttempt(req: Request, res: Response) {
     );
   }
 
-  const detail = await loadStudentQuizDetail(id, user.userId);
+  const detail = await loadStudentQuizDetail(id, user.userId, false);
   if (!detail) return apiError(res, "not_found", "Quiz not found.", 404);
   return apiOk(res, detail);
 }

@@ -50,6 +50,9 @@ export async function canCommentOnForumSubmission(
 
   if (user.role === "LEADER") return isLeaderOfGroup(user, authorGroupId);
   if (user.role === "STUDENT") {
+    // A finished season is locked: group membership survives End and
+    // withdrawal, so the place in the season must still be live.
+    if (!(await hasActiveEnrollment(user, sub.assignment.seasonId))) return false;
     const mine = await groupIdInSeason(user.userId, sub.assignment.seasonId);
     return mine !== null && mine === authorGroupId;
   }
@@ -80,10 +83,15 @@ export async function canDeleteForumComment(
     },
   });
   if (!comment) return false;
-  if (comment.authorUserId === user.userId) return true;
   if (isSuper(user)) return true;
 
   const seasonId = comment.submission.assignment.seasonId;
+  // No write path accepts changes in a finished season: a student deletes
+  // their own comment only while their place in the season is live.
+  if (user.role === "STUDENT") {
+    return comment.authorUserId === user.userId && (await hasActiveEnrollment(user, seasonId));
+  }
+  if (comment.authorUserId === user.userId && isAdminOfSeason(user, seasonId)) return true;
   if (isAdminOfSeason(user, seasonId)) return true;
 
   if (user.role === "LEADER") {
