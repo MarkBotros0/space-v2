@@ -375,7 +375,8 @@ Build 1 exists.
   with two groups or in two seasons, an admin of two ACTIVE seasons, admin in one season and leader
   in another (the same season is allowed), a student in two ACTIVE seasons, a Super or Mentor with
   season rows, staff who also hold an ACTIVE enrolment; `--apply` refuses while any exist, or once
-  any enrolment has a `result` so it can't run twice, else backfills results in one transaction).
+  any enrolment has a `result` so it can't run twice, else backfills results in one transaction; on
+  a database not migrated yet it prints the violations and says what is unknown).
   Run it against the real
   database before anything depends on the rule; the backfill is not part of a migration because
   `migrate deploy` also reaches Neon, which v1 writes. Enforcement, roles from season rows and the
@@ -399,6 +400,13 @@ Build 1 exists.
   (`lib/queries/season-participants.ts`): ACTIVE in a live season, ACTIVE and COMPLETED in a finished
   one, never WITHDRAWN. "Is this student live?" (`hasActiveEnrollment`, the token, check-in), who to
   notify and who holds End open stay on ACTIVE in an ACTIVE season, and must not match COMPLETED.
+  What the group form and roster grid list, and all they may write, is `seasonRosterMember` (those
+  participants who are live STUDENT users): a former student who now serves or a deleted account
+  keeps their group. On `PATCH /groups/:id` an absent `leaderIds` or `studentIds` leaves it alone.
+- **A rate limit never signs anyone out.** Only 400, 401 or 403 from refresh ends a session. When
+  `/me` answers 429, or 401 with a refresh that couldn't answer, boot keeps the tokens and shows
+  `BootRetry` (status `retry`) instead of sign-in. Other indeterminate failures (offline, 5xx) still
+  land on sign-in with the tokens kept.
 - **`activeSeasonId` is a derived claim.** `lib/auth/scopes.ts` computes it on every token from the
   newest ACTIVE enrolment in an ACTIVE, non-deleted season; `seasonAdminIds` / `groupLeaderIds`
   likewise cover DRAFT or ACTIVE seasons only. The claim keeps its name, so the mobile app and

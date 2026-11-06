@@ -5,9 +5,10 @@ import { navFor, type MeScopes, type MeUser, type RoleNav } from "@space/shared"
  * `idle` means the app has not yet looked for a stored session; `anonymous`
  * means it looked and there was none. The boot gate needs to tell those apart
  * — treating idle as anonymous flashes the login screen at a signed-in user
- * on every cold start.
+ * on every cold start. `retry` means there is a stored session that the server
+ * couldn't confirm or refuse (rate limited, say): keep it and offer to try again.
  */
-export type BootStatus = "idle" | "restoring" | "authenticated" | "anonymous";
+export type BootStatus = "idle" | "restoring" | "authenticated" | "anonymous" | "retry";
 
 interface SessionState {
   status: BootStatus;

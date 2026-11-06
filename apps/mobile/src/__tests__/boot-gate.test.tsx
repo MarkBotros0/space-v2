@@ -81,6 +81,14 @@ describe("RootLayout boot gate", () => {
     expect(screen.queryByText("STACK")).toBeNull();
   });
 
+  it("offers a retry instead of the Stack (and so sign-in) while status is retry", async () => {
+    useSessionStore.setState({ status: "retry" });
+    render(<RootLayout />);
+
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(screen.queryByText("STACK")).toBeNull();
+  });
+
   it("renders the Stack once status is authenticated", async () => {
     useSessionStore.setState({ status: "authenticated" });
     render(<RootLayout />);

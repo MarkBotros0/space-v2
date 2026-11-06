@@ -1,6 +1,17 @@
 import axios from "axios";
 import { apiErrorBodySchema } from "@space/shared";
 
+const REFRESH_INDETERMINATE = Symbol("refresh-indeterminate");
+
+/** Tag a 401 whose refresh neither worked nor was refused: the session may be fine. */
+export function markRefreshIndeterminate<T extends object>(err: T): T {
+  return Object.assign(err, { [REFRESH_INDETERMINATE]: true });
+}
+
+export function isRefreshIndeterminate(err: unknown): boolean {
+  return typeof err === "object" && err !== null && REFRESH_INDETERMINATE in err;
+}
+
 /**
  * The server's own message for a failed request, or `fallback`.
  *

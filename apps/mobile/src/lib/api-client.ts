@@ -8,6 +8,7 @@ import {
   type Session,
 } from "@space/shared";
 
+import { markRefreshIndeterminate } from "./api-error";
 import { clearSession, loadAccessToken, loadPushToken, loadRefreshToken, saveSession } from "./token-storage";
 // Only referenced lazily (via `useSessionStore.getState()` inside functions,
 // never destructured at module scope) so a real import cycle would still
@@ -46,7 +47,7 @@ export type RotateFn = (
   refreshToken: string,
 ) => Promise<Session | null | typeof ROTATE_INDETERMINATE>;
 
-let inFlight: Promise<string | null> | null = null;
+let inFlight: Promise<string | null | typeof ROTATE_INDETERMINATE> | null = null;
 
 /** Test seam — clears the shared in-flight refresh promise between cases. */
 export function __resetRefreshState(): void {
@@ -122,6 +123,12 @@ async function syncSessionFromMe(): Promise<void> {
  * simultaneous call would always fail.
  */
 export async function refreshAccessToken(rotate: RotateFn = rotateViaApi): Promise<string | null> {
+  const outcome = await rotateShared(rotate);
+  return outcome === ROTATE_INDETERMINATE ? null : outcome;
+}
+
+/** The rotation behind `refreshAccessToken`, for a caller that must tell "dead" from "unknown". */
+async function rotateShared(rotate: RotateFn): Promise<string | null | typeof ROTATE_INDETERMINATE> {
   if (inFlight) return inFlight;
 
   inFlight = (async () => {
@@ -132,7 +139,7 @@ export async function refreshAccessToken(rotate: RotateFn = rotateViaApi): Promi
     if (session === ROTATE_INDETERMINATE) {
       // A blip (network/timeout/5xx) — do not clear stored tokens, the
       // refresh token itself may still be good.
-      return null;
+      return ROTATE_INDETERMINATE;
     }
     if (!session) {
       // A definitive rejection: the server actually answered and said the
@@ -190,7 +197,8 @@ export async function __handleResponseError(error: unknown): Promise<unknown> {
   if (original._retried) return Promise.reject(error);
   original._retried = true;
 
-  const token = await refreshAccessToken();
+  const token = await rotateShared(rotateViaApi);
+  if (token === ROTATE_INDETERMINATE) return Promise.reject(markRefreshIndeterminate(error));
   if (!token) return Promise.reject(error);
 
   original.headers?.set("Authorization", `Bearer ${token}`);

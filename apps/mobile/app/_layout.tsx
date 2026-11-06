@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useBootSession } from "../src/hooks/use-session";
+import { BootRetry } from "../src/screens/boot-retry";
 import { GEIST_FONTS } from "../src/design/theme/fonts";
 import { applyStoredThemeMode } from "../src/design/theme/theme-mode";
 import { useThemeColors } from "../src/design/theme/use-theme-colors";
@@ -87,6 +88,7 @@ function Gate() {
   if (status === "idle" || status === "restoring") {
     return <BootLoading />;
   }
+  if (status === "retry") return <BootRetry />;
 
   return (
     <>
