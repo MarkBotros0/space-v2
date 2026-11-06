@@ -18,6 +18,7 @@ import {
   updateSeason,
 } from "./crud";
 import { duplicateSeason } from "./duplicate";
+import { getSeasonEndCheck } from "./end";
 import { getSeasonRoster, saveGroupAssignments } from "./roster";
 
 /**
@@ -52,5 +53,6 @@ seasonsRouter.get("/:id/admins", requireAuth, listSeasonAdmins);
 seasonsRouter.post("/:id/admins", requireAuth, addSeasonAdmin);
 seasonsRouter.delete("/:id/admins/:userId", requireAuth, removeSeasonAdmin);
 
+seasonsRouter.get("/:id/end-check", requireAuth, getSeasonEndCheck);
 seasonsRouter.get("/:id/roster", requireAuth, getSeasonRoster);
 seasonsRouter.put("/:id/group-assignments", requireAuth, saveGroupAssignments);

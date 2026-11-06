@@ -4,6 +4,7 @@ import type { SeasonWriteBody } from "@space/shared";
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { apiOk, apiError } from "../../lib/api-response";
+import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { loadSeasonDetail } from "../../lib/queries/seasons";
@@ -138,12 +139,48 @@ export async function createSeason(req: Request, res: Response) {
   }
 }
 
+type SeasonStatusValue = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
+
+/**
+ * A season only finishes through End season (it records results and notifies),
+ * and a finished season never reopens.
+ */
+function statusChangeError(from: SeasonStatusValue, to: SeasonStatusValue) {
+  if (from === to) return null;
+  if (from === "ACTIVE" && (to === "COMPLETED" || to === "ARCHIVED")) {
+    return { code: "use_end_season", message: "End the season instead of changing its status." };
+  }
+  if ((from === "COMPLETED" || from === "ARCHIVED") && (to === "ACTIVE" || to === "DRAFT")) {
+    return { code: "season_finished", message: "A finished season cannot be reopened." };
+  }
+  return null;
+}
+
+/** Everyone whose derived current season depends on this one: enrolled students, admins, leaders. */
+async function seasonPeopleIds(tx: Prisma.TransactionClient, seasonId: number): Promise<number[]> {
+  const [students, admins, leaders] = await Promise.all([
+    tx.seasonEnrollment.findMany({ where: { seasonId }, select: { studentUserId: true } }),
+    tx.seasonAdmin.findMany({ where: { seasonId }, select: { userId: true } }),
+    tx.groupLeader.findMany({ where: { group: { seasonId } }, select: { userId: true } }),
+  ]);
+  return [
+    ...new Set([
+      ...students.map((s) => s.studentUserId),
+      ...admins.map((a) => a.userId),
+      ...leaders.map((l) => l.userId),
+    ]),
+  ];
+}
+
 export async function updateSeason(req: Request, res: Response) {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
-  const existing = await db.season.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
+  const existing = await db.season.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true, status: true },
+  });
   if (!existing) return apiError(res, "not_found", "Season not found.", 404);
 
   if (isSuper(user)) {
@@ -153,11 +190,20 @@ export async function updateSeason(req: Request, res: Response) {
     const body = parsed.data;
     const clash = await db.season.findFirst({ where: { code: body.code, NOT: { id } }, select: { id: true } });
     if (clash) return codeTaken(res);
+    const blocked = statusChangeError(existing.status, body.status);
+    if (blocked) return apiError(res, blocked.code, blocked.message, 409);
     try {
-      const season = await db.season.update({
-        where: { id },
-        data: { ...seasonColumns(body), updatedById: user.userId },
-        select: { id: true, code: true },
+      const season = await db.$transaction(async (tx) => {
+        const row = await tx.season.update({
+          where: { id },
+          data: { ...seasonColumns(body), updatedById: user.userId },
+          select: { id: true, code: true },
+        });
+        // A season going live changes the derived current season for its people.
+        if (existing.status === "DRAFT" && body.status === "ACTIVE") {
+          await markSessionsStale(tx, await seasonPeopleIds(tx, id));
+        }
+        return row;
       });
       return apiOk(res, season);
     } catch (err) {

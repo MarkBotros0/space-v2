@@ -5,6 +5,7 @@ import { costMinutesFor, streakFrom, type AttendanceBudget } from "../attendance
 import { orgDayKey, orgWallTime } from "../org-time";
 import { isAlumnus } from "../rbac";
 import { currentSeasonEnrollmentSelect } from "./students/current-season";
+import { attendancePct } from "./attendance-pct";
 import { computeAttendanceBudget } from "./attendance-budget";
 import { loadSeasonProgress } from "./sessions";
 
@@ -97,7 +98,7 @@ export async function loadSeasonHistory(user: SessionUser): Promise<SeasonHistor
       groupName: e.group?.name ?? null,
       // R36/R37: PRESENT+LATE over every session the season has now, rounded;
       // 0 with no sessions. Retroactive by design (spec 02 D14 — accepted).
-      attendancePct: curriculum.length > 0 ? Math.round((present / curriculum.length) * 100) : 0,
+      attendancePct: attendancePct(present, curriculum.length),
       curriculum,
     };
   });

@@ -54,7 +54,7 @@ export const seasonPaths = {
       tags: ["Seasons"],
       summary: "Update a season",
       description:
-        "Asymmetric by role (spec 02 D3). SUPER sends the full SeasonWriteRequest (v1's whole-body update; title re-derived). A season ADMIN sends a partial body containing only `description`, `absenceBudgetMinutes`, `absenceWeightMinutes`; any other key is refused with 403 `forbidden_field` rather than stripped.",
+        "Asymmetric by role (spec 02 D3). SUPER sends the full SeasonWriteRequest (v1's whole-body update; title re-derived). A season ADMIN sends a partial body containing only `description`, `absenceBudgetMinutes`, `absenceWeightMinutes`; any other key is refused with 403 `forbidden_field` rather than stripped. Status moves (SUPER): ACTIVE to COMPLETED or ARCHIVED is 409 `use_end_season`; COMPLETED or ARCHIVED back to ACTIVE or DRAFT is 409 `season_finished`; DRAFT to ACTIVE marks the season's students, admins and leaders' sessions stale.",
       parameters: [idParam],
       requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } } },
       responses: {
@@ -63,7 +63,7 @@ export const seasonPaths = {
         401: errRef("Unauthorized"),
         403: conflict("`forbidden` (not SUPER, not this season's ADMIN) or `forbidden_field` (ADMIN sent an identity field)."),
         404: errRef("NotFound"),
-        409: conflict("`code_taken`."),
+        409: conflict("`code_taken`, `use_end_season` or `season_finished`."),
       },
     },
     delete: {
@@ -129,6 +129,39 @@ export const seasonPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
+      },
+    },
+  },
+  "/api/v1/seasons/{id}/end-check": {
+    get: {
+      tags: ["Seasons"],
+      summary: "What blocks a season from ending",
+      description:
+        "Season-admin only (SUPER passes). Blockers: SUBMITTED submissions and quiz attempts awaiting a grade, and finished sessions (`startsAt + durationMinutes` before now) with ACTIVE students unmarked (`missing`). Drafts, returned work, in-progress attempts, soft-deleted assignments and students never block. `students` lists the ACTIVE, non-deleted students with their group and attendance percent (PRESENT + LATE over every session, 0 with none). 409 `season_not_active` unless the season is ACTIVE.",
+      parameters: [idParam],
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            properties: {
+              blockers: {
+                type: "object",
+                properties: {
+                  submissions: { type: "array", items: { type: "object", properties: { publicId: { type: "string" }, assignmentTitle: { type: "string" }, studentName: { type: "string" } } } },
+                  quizAttempts: { type: "array", items: { type: "object", properties: { quizId: { type: "integer" }, attemptId: { type: "integer" }, quizTitle: { type: "string" }, studentName: { type: "string" } } } },
+                  attendance: { type: "array", items: { type: "object", properties: { sessionId: { type: "integer" }, title: { type: "string" }, startsAt: { type: "string", format: "date-time" }, missing: { type: "integer" } } } },
+                },
+              },
+              students: { type: "array", items: { type: "object", properties: { userId: { type: "integer" }, name: { type: "string" }, groupName: { type: "string", nullable: true }, attendancePct: { type: "integer" } } } },
+            },
+          },
+          "The end check.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`season_not_active`."),
       },
     },
   },

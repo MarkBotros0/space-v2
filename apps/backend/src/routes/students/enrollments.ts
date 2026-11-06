@@ -37,9 +37,12 @@ export async function createEnrollment(req: Request, res: Response) {
 
   const season = await db.season.findFirst({
     where: { id: seasonId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, status: true },
   });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  if (season.status === "COMPLETED" || season.status === "ARCHIVED") {
+    return apiError(res, "season_finished", "This season has finished.", 409);
+  }
 
   const student = await db.user.findFirst({
     where: { id, role: "STUDENT", deletedAt: null },
