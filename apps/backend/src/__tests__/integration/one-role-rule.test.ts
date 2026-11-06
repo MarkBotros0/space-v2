@@ -28,6 +28,8 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
+const PERSON_FIELDS = { id: true, name: true, role: true, graduationYear: true, deletedAt: true } as const;
+
 const makePerson = async (
   label: string,
   opts: { role?: TestRole; graduationYear?: number | null; name?: string; deleted?: boolean } = {},
@@ -40,7 +42,7 @@ const makePerson = async (
       graduationYear: opts.graduationYear === undefined ? 2020 : opts.graduationYear,
       deletedAt: opts.deleted ? new Date() : null,
     },
-    select: { id: true, name: true, role: true, graduationYear: true, deletedAt: true },
+    select: PERSON_FIELDS,
   });
 };
 type Person = Awaited<ReturnType<typeof makePerson>>;
@@ -59,7 +61,7 @@ const makeLeader = async (userId: number, seasonId: number, name = "Group A") =>
 const enrol = (studentUserId: number, seasonId: number, status: "ACTIVE" | "WITHDRAWN" = "ACTIVE") =>
   db.seasonEnrollment.create({ data: { studentUserId, seasonId, status } });
 
-/** What a write path does: read the person's active role, then ask the rule. */
+/** Asks the rule without locking, since nothing here writes. A write follows `takeAdminSeat`. */
 const refusalFor = (person: Person, seat: Seat) =>
   db.$transaction(async (tx) => {
     const active = (await activeRolesFor(tx, [person.id])).get(person.id);
@@ -165,6 +167,16 @@ describe("seatRefusal", () => {
     expect(await refusalFor(person, seatIn("leader", season))).toEqual({
       code: "already_in_role",
       message: "Mina is already a student in GBV 2026",
+    });
+  });
+
+  it("refuses a student seat to an admin of the same season", async () => {
+    const season = await makeSeason("ACTIVE", "GBV 2026");
+    const person = await makePerson("orr-admin-here", { graduationYear: null });
+    await makeAdmin(person.id, season.id);
+    expect(await refusalFor(person, seatIn("student", season))).toEqual({
+      code: "already_in_role",
+      message: "Mina is already an admin of GBV 2026",
     });
   });
 
@@ -331,9 +343,13 @@ describe("two concurrent seats", () => {
   // the lock, both checks then see an empty person and both writes land.
   const CHECK_TO_WRITE_MS = 750;
 
-  /** Lock, check, write: the shape every staff write takes from Task 3 on. */
-  const takeAdminSeat = async (tx: Prisma.TransactionClient, person: Person, seat: Seat) => {
-    await lockPeople(tx, [person.id]);
+  /**
+   * Lock, read the person, check, write: the shape every seat write takes from
+   * Task 3 on. The person row is read after the lock, so it can't be stale.
+   */
+  const takeAdminSeat = async (tx: Prisma.TransactionClient, userId: number, seat: Seat) => {
+    await lockPeople(tx, [userId]);
+    const person = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: PERSON_FIELDS });
     const active = (await activeRolesFor(tx, [person.id])).get(person.id);
     const refusal = await seatRefusal(tx, person, seat, active);
     if (refusal) return refusal;
@@ -358,7 +374,7 @@ describe("two concurrent seats", () => {
         // Neither touches the person until both transactions are really open.
         if (++open === 2) bothOpen();
         await within(15_000, "both transactions open", allOpen);
-        return takeAdminSeat(tx, person, seatIn("admin", season));
+        return takeAdminSeat(tx, person.id, seatIn("admin", season));
       }, TX_OPTIONS);
 
     const outcomes = await within(45_000, "both seats settled", Promise.all([attempt(first), attempt(second)]));

@@ -25,22 +25,29 @@ const PERMANENT_ROLES: Partial<Record<UserRole, string>> = {
 
 /**
  * Whether a regular season refuses this person a student seat. Every season is
- * regular until Build 3 adds community-wide seasons, which change only this.
+ * regular until Build 3 adds community-wide seasons, which change only this:
+ * `clashesWithActiveRole` already refuses an alumnus serving in the same season.
  */
 function isBarredFromStudentSeat(person: SeatPerson): boolean {
   return person.graduationYear !== null;
 }
 
-/** Only an ACTIVE seat can clash: a draft's roles don't count until it starts. */
+/**
+ * Only an ACTIVE seat can clash: a draft's roles don't count until it starts.
+ * In one season, serving and studying clash in either direction, while admin
+ * and leader together are one serving role. Goes beyond the plan's table, which
+ * only named a staff seat for a student; the spec refuses both.
+ */
 function clashesWithActiveRole(seat: Seat, active: ActiveRole | undefined): active is ActiveRole {
   if (seat.season.status !== "ACTIVE" || !active) return false;
   if (active.seasonId !== seat.season.id) return true;
-  return active.kind === "student" && seat.kind !== "student";
+  return (active.kind === "student") !== (seat.kind === "student");
 }
 
 /**
  * Why this person can't take this seat, or null if they can. The first match
- * wins. Pass `active` from `activeRolesFor`, read after `lockPeople`.
+ * wins. Read both `person` and `active` (from `activeRolesFor`) after
+ * `lockPeople`, in the same transaction: a row read earlier can be stale.
  *
  * Call it only for someone being newly seated: a seat has no group, so any
  * group the person already leads in the season counts as a second one.
