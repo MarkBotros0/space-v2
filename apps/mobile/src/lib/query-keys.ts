@@ -141,6 +141,8 @@ export const queryKeys = {
       [...queryKeys.seasons.all, "peopleCandidates", { id }] as const,
     /** GET /seasons/:id/end-check, /results, and /overdue: under `all`, so ending a season refreshes them. */
     endCheck: (id: number | null) => [...queryKeys.seasons.all, "end-check", { id }] as const,
+    /** GET /seasons/:id/start-check: under `all`, so a roster or staff write refreshes it. */
+    startCheck: (id: number | null) => [...queryKeys.seasons.all, "start-check", { id }] as const,
     results: (id: number | null) => [...queryKeys.seasons.all, "results", { id }] as const,
     overdue: () => [...queryKeys.seasons.all, "overdue"] as const,
   },
