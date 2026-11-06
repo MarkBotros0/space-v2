@@ -171,6 +171,8 @@ appId: com.jpc.space
     timeout: 20000
     speed: 40
     visibilityPercentage: 100
+    # The footer covers the bottom of the screen: a field found just above the edge is under it.
+    centerElement: true
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: s90-14-save-bar
