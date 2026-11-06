@@ -32,6 +32,7 @@ import { studentActionsFor } from "../../lib/student-actions";
 import { useSessionStore } from "../../store/session";
 import { AdminEngagement } from "./admin-engagement";
 import { AdminProfileSection } from "./admin-profile-section";
+import { BringBackDialogs } from "./bring-back-dialogs";
 import { AdminSeasonsSection } from "./admin-seasons-section";
 
 type Section = "profile" | "seasons" | "attendance" | "submissions" | "notes";
@@ -58,6 +59,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [graduateOpen, setGraduateOpen] = useState(false);
   const [dropTarget, setDropTarget] = useState<EnrollmentHistoryItem | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<EnrollmentHistoryItem | null>(null);
 
   const refresh = () => {
     void refetch();
@@ -167,6 +169,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
           <AdminSeasonsSection
             enrollments={data.enrollments}
             dropFor={(e) => (actions.canDrop(e) ? () => setDropTarget(e) : null)}
+            restoreFor={(e) => (actions.canRestore(e) ? () => setRestoreTarget(e) : null)}
           />
         </View>
         <View className={section === "attendance" ? undefined : "hidden"}>
@@ -205,6 +208,12 @@ export function AdminStudentDetail({ id }: { id: number }) {
           onClose={() => setGraduateOpen(false)}
         />
       ) : null}
+      <BringBackDialogs
+        studentId={data.id}
+        studentName={data.name}
+        enrollment={restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+      />
       <DropEnrollmentSheet
         studentId={data.id}
         enrollment={dropTarget}

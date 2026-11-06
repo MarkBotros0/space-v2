@@ -24,6 +24,8 @@ export interface StudentActions {
   canDelete: boolean;
   /** R64 per row — fixes R68's Drop buttons for seasons the viewer doesn't run. */
   canDrop: (enrollment: EnrollmentHistoryItem) => boolean;
+  /** SUPER, on a dropped row of a season that has not finished (the server's `season_finished` gate). */
+  canRestore: (enrollment: EnrollmentHistoryItem) => boolean;
 }
 
 /**
@@ -46,5 +48,7 @@ export function studentActionsFor(
     canGraduate: isSuper && student.graduationYear === null,
     canDelete: isSuper,
     canDrop: (e) => e.status === "ACTIVE" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
+    canRestore: (e) =>
+      isSuper && e.status === "WITHDRAWN" && (e.seasonStatus === "DRAFT" || e.seasonStatus === "ACTIVE"),
   };
 }

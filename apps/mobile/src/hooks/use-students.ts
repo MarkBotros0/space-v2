@@ -247,3 +247,29 @@ export function useDropEnrollment(): UseMutationResult<
     },
   });
 }
+
+/**
+ * POST /students/:id/enrollments/:seasonId/restore (SUPER): a dropped seat comes back.
+ * `override` adds the person past a program block the server named in its 409 `not_eligible`.
+ */
+export function useRestoreEnrollment(): UseMutationResult<
+  unknown,
+  Error,
+  { studentId: number; seasonId: number; override?: boolean }
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
+    mutationFn: async ({ studentId, seasonId, override }) => {
+      const res = await apiClient.post(
+        `/api/v1/students/${studentId}/enrollments/${seasonId}/restore`,
+        override ? { override: true } : {},
+      );
+      return res.data.data as unknown;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+    },
+  });
+}

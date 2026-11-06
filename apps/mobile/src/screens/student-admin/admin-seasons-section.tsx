@@ -14,10 +14,13 @@ import { Text } from "../../design/ui/text";
 export function AdminSeasonsSection({
   enrollments,
   dropFor,
+  restoreFor,
 }: {
   enrollments: EnrollmentHistoryItem[];
   /** A season's Drop handler, or null when the viewer may not drop it. */
   dropFor: (enrollment: EnrollmentHistoryItem) => (() => void) | null;
+  /** A dropped season's Bring back handler, or null when the viewer may not restore it. */
+  restoreFor: (enrollment: EnrollmentHistoryItem) => (() => void) | null;
 }) {
   if (enrollments.length === 0) {
     return (
@@ -33,6 +36,7 @@ export function AdminSeasonsSection({
       {enrollments.map((e, i) => {
         const chip = statusChip("enrollment", e.status);
         const drop = dropFor(e);
+        const restore = restoreFor(e);
         return (
           <ListRow
             key={e.enrollmentId}
@@ -55,6 +59,11 @@ export function AdminSeasonsSection({
                 {drop ? (
                   <Button variant="destructive" size="sm" onPress={drop}>
                     Drop
+                  </Button>
+                ) : null}
+                {restore ? (
+                  <Button variant="secondary" size="sm" accessibilityLabel={`Bring back into ${e.seasonTitle}`} onPress={restore}>
+                    Bring back
                   </Button>
                 ) : null}
               </View>
