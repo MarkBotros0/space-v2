@@ -405,7 +405,8 @@ Build 1 exists.
   keeps their group. On `PATCH /groups/:id` an absent `leaderIds` or `studentIds` leaves it alone.
 - **A rate limit never signs anyone out.** Only 400, 401 or 403 from refresh ends a session. When
   `/me` answers 429, or 401 with a refresh that couldn't answer, boot keeps the tokens and shows
-  `BootRetry` (status `retry`) instead of sign-in. Other indeterminate failures (offline, 5xx) still
+  `BootRetry` (status `retry`) instead of sign-in, with Try again and a Sign out that works with no
+  network (it clears the tokens on the phone; the refresh token isn't revoked server-side). Other indeterminate failures (offline, 5xx) still
   land on sign-in with the tokens kept.
 - **`activeSeasonId` is a derived claim.** `lib/auth/scopes.ts` computes it on every token from the
   newest ACTIVE enrolment in an ACTIVE, non-deleted season; `seasonAdminIds` / `groupLeaderIds`
