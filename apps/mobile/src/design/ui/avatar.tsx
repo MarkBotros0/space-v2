@@ -88,7 +88,7 @@ function AvatarFallback({ className, children }: { className?: string; children?
   if (loaded) return null;
   return (
     <View className="items-center justify-center">
-      <Text numberOfLines={1} className={cn(avatarTextVariants({ size }), className)}>
+      <Text numberOfLines={1} maxFontSizeMultiplier={1.15} className={cn(avatarTextVariants({ size }), className)}>
         {children}
       </Text>
     </View>
