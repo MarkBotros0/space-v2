@@ -11,6 +11,7 @@ export { studentImportTemplate } from "./template";
 export {
   commitStudentImport,
   ImportRowsInvalidError,
+  ImportSeasonGoneError,
   type StudentImportCommitRow,
   type StudentImportTarget,
 } from "./commit";

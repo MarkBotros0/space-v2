@@ -83,3 +83,21 @@ export const peopleCandidatesResponseSchema = z.object({
   people: z.array(peopleCandidateSchema),
 });
 export type PeopleCandidatesResponse = z.infer<typeof peopleCandidatesResponseSchema>;
+
+const seatUserIds = z.array(z.number().int().positive());
+
+/**
+ * `POST /seasons/:id/enrollments`: all or nothing. `overrideUserIds` is who a
+ * SUPER lets in past a block, so each must be among those being added.
+ */
+export const addSeasonEnrollmentsRequestSchema = z
+  .object({
+    userIds: seatUserIds.min(1).max(500),
+    overrideUserIds: seatUserIds.max(500).optional(),
+  })
+  .refine((b) => new Set(b.userIds).size === b.userIds.length, { path: ["userIds"], message: "Repeated person." })
+  .refine((b) => (b.overrideUserIds ?? []).every((id) => b.userIds.includes(id)), {
+    path: ["overrideUserIds"],
+    message: "An override must name someone being added.",
+  });
+export type AddSeasonEnrollmentsBody = z.infer<typeof addSeasonEnrollmentsRequestSchema>;

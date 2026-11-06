@@ -8,6 +8,7 @@ import { canEditStudent } from "../../lib/permissions";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { createStudentRows } from "../../lib/queries/students";
 import { isSuper } from "../../lib/rbac";
+import { newPersonRefusal, readSeatSeason, refusalStatus, type SeatRefusal } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import {
   createStudentRequestSchema,
@@ -70,7 +71,14 @@ export async function createStudent(req: Request, res: Response) {
   let created: { id: number; email: string };
   let invite: IssuedInvite;
   try {
-    const result = await db.$transaction(async (tx) => {
+    type Created = { student: { id: number; email: string }; issued: IssuedInvite };
+    const result = await db.$transaction(async (tx): Promise<{ refusal: SeatRefusal } | Created> => {
+      if (body.seasonId != null) {
+        const season = await readSeatSeason(tx, body.seasonId);
+        if (!season) return { refusal: { code: "not_found", message: "Season not found." } };
+        const refusal = await newPersonRefusal(tx, body.name, season);
+        if (refusal) return { refusal };
+      }
       // One writer for these rows (D-16.8): the bulk importer calls exactly
       // this function, so the two paths cannot drift apart the way v1's did.
       // Plan 10's invite stays below, in the route — the importer never mints one.
@@ -102,6 +110,10 @@ export async function createStudent(req: Request, res: Response) {
       const issued = await mintInvite(tx, student.id, user.userId);
       return { student, issued };
     });
+    if ("refusal" in result) {
+      const { code, message } = result.refusal;
+      return apiError(res, code, message, refusalStatus(result.refusal));
+    }
     created = result.student;
     invite = result.issued;
   } catch (err) {

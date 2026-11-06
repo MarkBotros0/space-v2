@@ -80,7 +80,7 @@ export const studentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`season_finished` when `seasonId` names a COMPLETED or ARCHIVED season, or `email_taken` — also for a soft-deleted student's address, which stays reserved."),
+        409: conflict("`season_finished` when `seasonId` names a COMPLETED or ARCHIVED season, `not_eligible` when that season's required program blocks a new person (nothing is created), or `email_taken` — also for a soft-deleted student's address, which stays reserved."),
       },
     },
   },
@@ -237,7 +237,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Enroll a student in a season",
       description:
-        "Season-admin of the **target** season (SUPER passes); gated before any lookup. Creates an ACTIVE enrollment and marks the student's sessions stale; the current season is derived from live enrolments, never stored. One enrollment per student per season, ever: a second attempt \u2014 even over a WITHDRAWN row \u2014 is 409 `already_enrolled`. A COMPLETED or ARCHIVED season takes no enrollments: 409 `season_finished`, even for SUPER.\n\nBoundary: this endpoint owns enrollment existence and status only. `groupId` is written exclusively by `PATCH /api/v1/groups/{id}` \u2014 group membership is written only there. Enrollment rows are never deleted.",
+        "Season-admin of the **target** season (SUPER passes); gated before any lookup. Creates an ACTIVE enrollment and marks the student's sessions stale; the current season is derived from live enrolments, never stored. One enrollment per student per season, ever: a second attempt \u2014 even over a WITHDRAWN row \u2014 is 409 `already_enrolled`. A COMPLETED or ARCHIVED season takes no enrollments: 409 `season_finished`, even for SUPER. Runs the same check as `POST /seasons/{id}/enrollments` under the person's row lock, with the reason in the message: `already_in_role` (an active role, on an active season), `is_alumnus`, or `not_eligible` (blocked by the season's required program; overriding needs that endpoint).\n\nBoundary: this endpoint owns enrollment existence and status only. `groupId` is written exclusively by `PATCH /api/v1/groups/{id}` \u2014 group membership is written only there. Enrollment rows are deleted only by `DELETE /seasons/{id}/enrollments/{userId}`, from a draft.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -256,7 +256,7 @@ export const studentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`already_enrolled` or `season_finished`."),
+        409: conflict("`already_enrolled`, `season_finished`, `already_in_role`, `is_alumnus` or `not_eligible`."),
       },
     },
   },

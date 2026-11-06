@@ -13,6 +13,7 @@ import {
   buildStudentImportPreview,
   commitStudentImport,
   ImportRowsInvalidError,
+  ImportSeasonGoneError,
   studentImportTemplate,
   type StudentImportTarget,
 } from "../lib/imports/students";
@@ -165,6 +166,9 @@ importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (r
   try {
     return apiOk(res, await commitStudentImport(body.rows, target, body.onExisting));
   } catch (err) {
+    if (err instanceof ImportSeasonGoneError) {
+      return apiError(res, "not_found", "That season no longer exists.", 404);
+    }
     if (err instanceof ImportRowsInvalidError) {
       const shown = err.rowNumbers.slice(0, 10).join(", ");
       const more = err.rowNumbers.length > 10 ? ` and ${err.rowNumbers.length - 10} more` : "";

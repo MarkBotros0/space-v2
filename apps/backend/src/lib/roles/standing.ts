@@ -64,6 +64,13 @@ export async function loadHistory(
   return byUser;
 }
 
+/** Why a blocked person is blocked, to follow their name: "did not pass GBV 2026". */
+export function describeBlock(standing: Standing, requiredProgram: string | null): string {
+  return standing.reason === "did_not_pass"
+    ? `did not pass ${standing.programSeasonTitle}`
+    : `hasn't finished ${requiredProgram} yet`;
+}
+
 export type StandingSeason = { id: number; program: string; requiredProgram: string | null };
 
 /** Each person's standing for joining `season`. Everyone in `userIds` gets an entry. */

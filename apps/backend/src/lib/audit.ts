@@ -15,6 +15,11 @@ export type AuditOperation =
   | "student.delete"
   | "enrollment.drop"
   | "enrollment.complete"
+  // Adding to a season, taking off a draft, overriding a block. The season rides
+  // along as a scope id.
+  | "enrollment.add"
+  | "enrollment.remove"
+  | "enrollment.override"
   // Account changes (users admin). A role change names neither role: the
   // subject id plus the user row is enough to reconstruct it, and the line
   // stays ids-only like the rest.

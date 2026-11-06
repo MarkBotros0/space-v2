@@ -7,7 +7,8 @@ import type {
 } from "@space/shared";
 
 import { db } from "../../../db/client";
-import { createStudentRows, enrollStudentInSeason, type NewStudentInput } from "../../queries/students";
+import { createStudentRows, type NewStudentInput } from "../../queries/students";
+import { newPersonRefusal, readSeatSeason, seatStudents } from "../../roles";
 import {
   findExistingByEmail,
   normaliseEmail,
@@ -33,6 +34,14 @@ export class ImportRowsInvalidError extends Error {
   constructor(readonly rowNumbers: number[]) {
     super("Some import rows are not valid.");
     this.name = "ImportRowsInvalidError";
+  }
+}
+
+/** The target season went away between the route's check and the transaction. */
+export class ImportSeasonGoneError extends Error {
+  constructor() {
+    super("The import's season no longer exists.");
+    this.name = "ImportSeasonGoneError";
   }
 }
 
@@ -109,6 +118,9 @@ export async function commitStudentImport(
 
   await db.$transaction(
     async (tx) => {
+      const season = target.kind === "season" ? await readSeatSeason(tx, target.seasonId) : null;
+      if (target.kind === "season" && !season) throw new ImportSeasonGoneError();
+
       const existing = await findExistingByEmail(tx, unique.map((u) => u.row.email));
 
       const toCreate: typeof unique = [];
@@ -134,6 +146,20 @@ export async function commitStudentImport(
           continue;
         }
         // ── END IDEMPOTENCE BRANCH ────────────────────────────────────────
+        // A season with a required program refuses someone with no history,
+        // and a refused row writes nothing: no account, no enrolment.
+        const refusal = season ? await newPersonRefusal(tx, item.row.name, season) : null;
+        if (refusal) {
+          outcomes.set(item.rowNumber, {
+            rowNumber: item.rowNumber,
+            name: item.row.name,
+            email: item.row.email,
+            outcome: "skipped",
+            message: refusal.message,
+            userId: null,
+          });
+          continue;
+        }
         toCreate.push(item);
       }
 
@@ -156,27 +182,27 @@ export async function commitStudentImport(
         }
       }
 
-      if (target.kind === "season") {
-        for (const e of toEnroll) {
-          // D-16.7, on Plan 7's rules (one writer — enrollStudentInSeason):
-          //  - one enrolment per student per season, ever. An existing row —
-          //    ACTIVE, WITHDRAWN or COMPLETED — is left entirely alone and the
-          //    row is reported `skipped`, the bulk form of Plan 7's 409
-          //    already_enrolled. A spreadsheet can never resurrect a WITHDRAWN
-          //    enrolment or erase why somebody left;
-          //  - the profile pointer is set only when it is UNSET; a pointer
-          //    another season already holds is never stolen;
-          //  - nothing else on the profile is written.
-          const result = await enrollStudentInSeason(tx, e.userId, target.seasonId);
-          if (result === "already_enrolled") {
-            const prior = outcomes.get(e.rowNumber);
-            if (prior) {
-              outcomes.set(e.rowNumber, {
-                ...prior,
-                outcome: "skipped",
-                message: "Already enrolled in this season — left unchanged.",
-              });
-            }
+      if (season) {
+        // D-16.7, on Plan 7's rules (one writer — enrollStudentInSeason):
+        //  - one enrolment per student per season, ever. An existing row —
+        //    ACTIVE, WITHDRAWN or COMPLETED — is left entirely alone and the
+        //    row is reported `skipped`, the bulk form of Plan 7's 409
+        //    already_enrolled. A spreadsheet can never resurrect a WITHDRAWN
+        //    enrolment or erase why somebody left;
+        //  - nothing else on the profile is written.
+        // One person refused doesn't stop the others: their row says why.
+        const rowOf = new Map(toEnroll.map((e) => [e.userId, e.rowNumber]));
+        const { refused } = await seatStudents(tx, season, toEnroll.map((e) => e.userId), { partial: true });
+        for (const { userId, refusal } of refused) {
+          const rowNumber = rowOf.get(userId)!;
+          const prior = outcomes.get(rowNumber);
+          if (prior) {
+            outcomes.set(rowNumber, {
+              ...prior,
+              outcome: "skipped",
+              message:
+                refusal.code === "in_season" ? "Already enrolled in this season — left unchanged." : refusal.message,
+            });
           }
         }
       }
@@ -244,9 +270,9 @@ function existingOutcome(
     };
   }
   if (onExisting === "enroll" && target.kind === "season") {
-    // Provisional: the enrol loop below may downgrade this to `skipped` when
+    // Provisional: `seatStudents` below may downgrade this to `skipped`, when
     // the student already holds an enrolment in the target season (Plan 7's
-    // already_enrolled rule, applied per row).
+    // already_enrolled rule, applied per row) or can't take the seat.
     return { ...base, outcome: "enrolled", message: "Already in the system — enrolled in this season." };
   }
   return { ...base, outcome: "skipped", message: "Already in the system." };

@@ -7,7 +7,14 @@ import { apiOk, apiError } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { attendancePctForEnrollments } from "../../lib/queries/students/history";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
-import { activeRolesFor, describeActiveRole, loadHistory, standingsFrom, type HistoryEntry } from "../../lib/roles";
+import {
+  activeRolesFor,
+  describeActiveRole,
+  describeBlock,
+  loadHistory,
+  standingsFrom,
+  type HistoryEntry,
+} from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import { forbidden } from "../respond";
 
@@ -111,9 +118,8 @@ export async function listPeopleCandidates(req: Request, res: Response) {
     const standing = standings.get(p.id)!;
     if (standing.kind === "blocked") {
       const didNotPass = standing.reason === "did_not_pass";
-      const block = didNotPass
-        ? `Did not pass ${standing.programSeasonTitle}`
-        : `Hasn't finished ${season.requiredProgram} yet`;
+      const phrase = describeBlock(standing, season.requiredProgram);
+      const block = phrase.charAt(0).toUpperCase() + phrase.slice(1);
       return {
         ...base,
         availability: didNotPass ? "did_not_pass" : "never_finished",

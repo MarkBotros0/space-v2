@@ -19,6 +19,7 @@ import {
 } from "./crud";
 import { duplicateSeason } from "./duplicate";
 import { endSeason, getSeasonEndCheck } from "./end";
+import { addSeasonEnrollments, overrideSeasonEnrollment, removeSeasonEnrollment } from "./enrollments";
 import { getSeasonResults, listOverdueSeasons, updateSeasonResult } from "./results";
 import { listPeopleCandidates } from "./people-candidates";
 import { getSeasonRoster, saveGroupAssignments } from "./roster";
@@ -60,6 +61,10 @@ seasonsRouter.delete("/:id/admins/:userId", requireAuth, removeSeasonAdmin);
 
 seasonsRouter.get("/:id/staff-candidates", requireAuth, listStaffCandidates);
 seasonsRouter.get("/:id/people-candidates", requireAuth, listPeopleCandidates);
+
+seasonsRouter.post("/:id/enrollments", requireAuth, addSeasonEnrollments);
+seasonsRouter.post("/:id/enrollments/:userId/override", requireAuth, overrideSeasonEnrollment);
+seasonsRouter.delete("/:id/enrollments/:userId", requireAuth, removeSeasonEnrollment);
 
 seasonsRouter.get("/:id/end-check", requireAuth, getSeasonEndCheck);
 seasonsRouter.post("/:id/end", requireAuth, endSeason);

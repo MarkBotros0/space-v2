@@ -117,6 +117,10 @@ export async function createStudentRows(
  *  - the student's sessions go stale in the same transaction, so their
  *    derived current-season claim is re-read on the next refresh.
  *
+ * It decides nothing about who may join: its callers run `lib/roles`'s check in
+ * their transaction first (`seatStudents`). `override` records a super letting
+ * this person in past a block.
+ *
  * A concurrent caller can still lose the unique-index race (P2002); the
  * caller's existing P2002 handling answers it (409 already_enrolled on the
  * route, 409 import_conflict on the importer, whose transaction rolls back).
@@ -125,6 +129,7 @@ export async function enrollStudentInSeason(
   tx: Prisma.TransactionClient,
   studentUserId: number,
   seasonId: number,
+  override?: { byId: number; at: Date },
 ): Promise<"enrolled" | "already_enrolled"> {
   const existing = await tx.seasonEnrollment.findUnique({
     where: { studentUserId_seasonId: { studentUserId, seasonId } },
@@ -133,7 +138,13 @@ export async function enrollStudentInSeason(
   if (existing) return "already_enrolled";
 
   await tx.seasonEnrollment.create({
-    data: { studentUserId, seasonId, status: "ACTIVE" },
+    data: {
+      studentUserId,
+      seasonId,
+      status: "ACTIVE",
+      overrideById: override?.byId ?? null,
+      overrideAt: override?.at ?? null,
+    },
   });
   await markSessionsStale(tx, [studentUserId]);
   return "enrolled";

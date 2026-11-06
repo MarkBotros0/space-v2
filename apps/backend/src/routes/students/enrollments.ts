@@ -1,13 +1,20 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
+import type { Prisma } from "../../generated/prisma/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
-import { enrollStudentInSeason } from "../../lib/queries/students";
 import { isAdminOfSeason } from "../../lib/rbac";
+import {
+  isSeasonFinished,
+  readSeatSeason,
+  refusalStatus,
+  seatStudents,
+  type SeatRefusal,
+} from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import {
   createEnrollmentRequestSchema,
@@ -35,41 +42,50 @@ export async function createEnrollment(req: Request, res: Response) {
   // predicate. Gate before any lookup — a refused caller learns nothing.
   if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
-  const season = await db.season.findFirst({
-    where: { id: seasonId, deletedAt: null },
-    select: { id: true, status: true },
-  });
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
-  if (season.status === "COMPLETED" || season.status === "ARCHIVED") {
-    return apiError(res, "season_finished", "This season has finished.", 409);
-  }
-
-  const student = await db.user.findFirst({
-    where: { id, role: "STUDENT", deletedAt: null },
-    select: { id: true },
-  });
-  if (!student) return apiError(res, "not_found", "Student not found.", 404);
-
   try {
-    // R2 / R47 / D1 live in enrollStudentInSeason, which the bulk importer
-    // calls too (Plan 17 D-16.8): one enrolment per student per season, EVER
-    // (a WITHDRAWN row is history, not an obstacle); entry always ACTIVE; the
-    // student's sessions go stale so the derived current season is re-read.
-    const outcome = await db.$transaction((tx) => enrollStudentInSeason(tx, id, seasonId));
-    if (outcome === "already_enrolled") {
-      return apiError(res, "already_enrolled", "This student already has an enrollment in that season.", 409);
-    }
+    const refusal = await db.$transaction((tx) => enrollOne(tx, id, seasonId));
+    if (refusal) return apiError(res, refusal.code, refusal.message, refusalStatus(refusal));
     const enrollment = await db.seasonEnrollment.findUniqueOrThrow({
       where: { studentUserId_seasonId: { studentUserId: id, seasonId } },
       select: { id: true, seasonId: true, status: true },
     });
     return apiOk(res, enrollment, 201);
   } catch (err) {
-    if (isUniqueViolation(err)) {
-      return apiError(res, "already_enrolled", "This student already has an enrollment in that season.", 409);
-    }
+    if (isUniqueViolation(err)) return alreadyEnrolled(res);
     throw err;
   }
+}
+
+const ALREADY_ENROLLED = "This student already has an enrollment in that season.";
+
+function alreadyEnrolled(res: Response) {
+  return apiError(res, "already_enrolled", ALREADY_ENROLLED, 409);
+}
+
+/**
+ * R2 / R47 / D1 live in enrollStudentInSeason, which the bulk importer calls too
+ * (Plan 17 D-16.8): one enrolment per student per season, EVER (a WITHDRAWN row
+ * is history, not an obstacle); entry always ACTIVE; the student's sessions go
+ * stale so the derived current season is re-read. Who may join is `seatStudents`.
+ */
+async function enrollOne(
+  tx: Prisma.TransactionClient,
+  id: number,
+  seasonId: number,
+): Promise<SeatRefusal | null> {
+  const season = await readSeatSeason(tx, seasonId);
+  if (!season) return { code: "not_found", message: "Season not found." };
+  if (isSeasonFinished(season)) return { code: "season_finished", message: "This season has finished." };
+
+  const student = await tx.user.findFirst({
+    where: { id, role: "STUDENT", deletedAt: null },
+    select: { id: true },
+  });
+  if (!student) return { code: "not_found", message: "Student not found." };
+
+  const { refused } = await seatStudents(tx, season, [id]);
+  const refusal = refused[0]?.refusal ?? null;
+  return refusal?.code === "in_season" ? { code: "already_enrolled", message: ALREADY_ENROLLED } : refusal;
 }
 
 /**
