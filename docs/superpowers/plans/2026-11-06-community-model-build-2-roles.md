@@ -305,16 +305,38 @@ Copy: title `Start {season}`. Ready: `Everyone's clear. Starting makes this seas
 
 ---
 
-### Task 12: Bring back and bulk graduation screens
+### Task 12: Bring back screen
 
 **Files:**
-- Modify: `apps/mobile/src/screens/student-admin/*`, `src/lib/student-actions.ts`, `app/(app)/seasons/[code]/results.tsx`, `src/screens/season-end/*`
-- Create: `src/hooks/use-season-graduate.ts`
-- Test: `src/__tests__/bring-back.test.tsx`, `season-graduate.test.tsx`
+- Modify: `apps/mobile/src/screens/student-admin/*`, `src/lib/student-actions.ts`
+- Test: `src/__tests__/bring-back.test.tsx`
 
-- [ ] **Step 1: Write failing tests:** `Bring back` only for a super on a WITHDRAWN row of a live season, confirms, shows the server's reason on refusal, refreshes; a finished season's results screen, for a super, has `Graduate people`: multi-select with a graduation year field, excludes people already graduated, `SaveBar` `Graduate 12 people`, a `ConfirmDialog` that says it can't be undone.
+- [ ] **Step 1: Write failing tests:** `Bring back` only for a super on a WITHDRAWN row of a live season, confirms, shows the server's reason on refusal, refreshes.
 - [ ] **Step 2: Run; expect failure.**
 - [ ] **Step 3: Implement; run; commit.**
+
+---
+
+### Task 14: Graduating seasons (owner, 2026-11-07)
+
+Runs before Task 13. Spec section "Graduation".
+
+**Files:**
+- Modify: `apps/backend/prisma/schema.prisma` (`Season.graduatesOnPass Boolean @default(false)`), new migration; `packages/shared/src/season.ts`, `season-lifecycle.ts`; `routes/seasons/crud.ts`, `routes/seasons/end.ts`, `routes/seasons/results.ts`, `routes/students/lifecycle.ts`, `lib/queries/seasons.ts`, `lib/queries/season-end.ts`, `src/docs/`; mobile `components/SeasonForm.tsx`, `src/screens/season-end/*`, `app/(app)/seasons/[code]/end.tsx`, `src/screens/student-admin/*`
+- Remove: `routes/seasons/graduate.ts`, its registration, docs and `season-graduate.test.ts`; keep `graduatePerson`
+- Test: `src/__tests__/integration/graduating-seasons.test.ts`, mobile tests beside each changed screen
+
+**Interfaces:**
+- Produces:
+  - `graduationYearFor(seasonEndDate: Date, now: Date): number`: the smaller of the two years, in org time.
+  - `POST /seasons/:id/end` response gains `graduated: number`. `GET .../end-check` gains `graduatesOnPass: boolean`.
+  - `POST /students/:id/graduate` body gains `override?: boolean`. Not qualified and no override → 409 `not_qualified` `"{name} hasn't passed a graduating season."` Qualified means a COMPLETED, PASSED enrolment in a finished season with `graduatesOnPass`. Override is recorded in the `student.graduate` audit line.
+  - `graduatesOnPass` is SUPER-only to write, 409 `season_finished` to change on a finished season, returned where `requiredProgram` is, copied by duplicate.
+
+- [ ] **Step 1: Write failing tests.** End of a graduating season: passed student gets `graduationYear`, the not-passed and dropped don't, an existing alumnus keeps their year, `graduated` is right, session goes stale and the next refresh reads alumni. End of an ordinary season graduates nobody. `graduationYearFor` for a past, current and future end date. Result corrected to PASSED on a graduating season graduates; to NOT_PASSED keeps alumni status; on an ordinary season does neither. Admin can't write the flag; finished can't change. Exception: not qualified refused, override works for super, audited; qualified needs no override; a non-super is refused. Backfill graduates nobody. Mobile: form's `Graduating season` switch for super only; End review shows `Passing this season graduates them`, the confirm says `12 people will graduate`, and success says so; the result sheet says a Did not pass correction doesn't remove alumni status; the graduate action's second confirm appears on `not_qualified`, re-posting with `override: true`.
+- [ ] **Step 2: Run; expect failure.**
+- [ ] **Step 3: Implement; apply the migration to Neon only, and say so in the commit.**
+- [ ] **Step 4: Run; docs; update `CLAUDE.md`; commit.**
 
 ---
 

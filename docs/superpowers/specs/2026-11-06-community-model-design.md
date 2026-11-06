@@ -13,7 +13,7 @@ People move through the community over years, and their role changes as they do:
    May and the next starts in September.
 3. Some students don't pass a season, and can't move on to the season that
    requires it.
-4. After a set of seasons a student graduates and is an alumnus for good.
+4. A student who passes a graduating season graduates, and is an alumnus for good.
 5. Alumni serve new students as leaders or admins. Sometimes a season is held for
    the whole community, alumni included.
 
@@ -39,7 +39,7 @@ Today also tells a student who just finished to "Contact your leader or admin".
 ## Non-goals
 
 - Self-enrolment or opt-in. People are always placed by staff.
-- Automatic graduation or automatic pass/fail.
+- Automatic pass/fail.
 - A serving/learning switcher. The one-role rule makes it unnecessary.
 - Anti-goal: nobody may ever hold two active roles, however they got there.
 
@@ -90,7 +90,8 @@ season don't count until it starts. In a COMPLETED or ARCHIVED season, the role 
 | Change a result afterwards | Yes | No |
 | Override a "did not pass" block | Yes | No |
 | Correct anything in a finished season | Yes | No |
-| Graduate a person | Yes | No |
+| Mark a season as graduating | Yes | No |
+| Graduate someone by exception | Yes | No |
 
 ### What people can see of earlier seasons
 
@@ -189,8 +190,7 @@ write gate depends on season status today.
 - A super admin can **override** a block for one person with one confirmation. A season admin can't.
 - Staff writing a reason should know the student never sees it. **Students see the result in plain
   words** ("Passed", "Did not pass") on Today and History, not the reason.
-- Graduation doesn't depend on a result. Not passing a community-wide season never removes alumni
-  status. (Claude's call.)
+- Not passing a community-wide season never removes alumni status. (Claude's call.)
 
 ### Dropping and bringing back
 
@@ -204,9 +204,13 @@ while the season runs and afterwards. The drop reason stays private to staff.
 
 ### Graduation
 
-By hand, by a super admin, as now, plus graduating several people at once from a finished season's
-list. Graduating someone mid-season still completes their active enrolment as it does today, with no
-pass result recorded. (Claude's call.)
+**Owner, 2026-11-07:** students graduate by passing a specific season. A super admin ticks **Graduating season** on a season, and can change it until the season has finished.
+
+- **Automatic at End.** When a graduating season ends, in the same transaction, every student whose result is Passed and who isn't already an alumnus becomes one. The year is the season's end year, or the current year if that's later than now. The End review warns "Passing this season graduates them", and the confirm gives the count. Staff of any kind may end the season, so a season admin's End graduates people too.
+- **Exception.** A super admin can graduate someone who hasn't passed a graduating season, with one extra confirmation, recorded in the audit log. Graduating someone mid-season still completes their active enrolment, with no pass result recorded. (Claude's call.)
+- **Corrections.** Changing a result to Passed on a graduating season graduates the student then. Changing one to Did not pass doesn't remove alumni status, and the screen says so. (Claude's call.)
+- Filling in old results never graduates anyone. Alumni who graduated before this rule stay alumni. (Claude's call.)
+- Duplicating a season copies the flag. (Claude's call.)
 
 ## Selection: the people picker
 
@@ -323,7 +327,7 @@ result and required-program fields, and season-setup entry points on the season 
    Fixes the live bugs first. Former staff keep their global role and tabs until build 2, so their season
    lists can look empty for one TestFlight cycle. (Claude's call.)
 2. **Roles.** One-role enforcement, roles from season rows, alumni serving, the pickers, Start checklist,
-   required program, overrides, bring back, bulk graduation, cutting staff access to earlier seasons.
+   required program, overrides, bring back, graduating seasons, cutting staff access to earlier seasons.
 3. **Community-wide seasons.** The flag, the start rule, Select all, alumni as students.
 
 ## Left to the builder
