@@ -63,7 +63,7 @@ function ManageEvent({ event }: { event: JpcEventDetail }) {
             setConfirming(true);
           }}
         >
-          <Trash2 size={14} className="text-white" />
+          <Trash2 size={14} className="text-bad" />
           Delete event
         </Button>
       </View>

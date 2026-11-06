@@ -66,7 +66,7 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
       }}
     >
       <Button variant="destructive" className="self-start" onPress={() => setConfirming(true)}>
-        <Trash2 size={14} className="text-white" />
+        <Trash2 size={14} className="text-bad" />
         Delete season
       </Button>
       <ConfirmDialog
