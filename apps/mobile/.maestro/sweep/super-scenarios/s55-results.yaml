@@ -38,8 +38,12 @@ appId: com.jpc.space
 - hideKeyboard
 - openLink: spacev2://dashboard
 - extendedWaitUntil:
-    visible: '(?i)needs action'
+    visible: 'User menu'
     timeout: 40000
+- scrollUntilVisible:
+    element: '.* has ended'
+    direction: UP
+    optional: true
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s55-05-today-overdue-callout

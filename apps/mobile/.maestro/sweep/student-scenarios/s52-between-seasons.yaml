@@ -8,7 +8,7 @@ appId: com.jpc.space
       EMAIL: ${DROPPED_EMAIL}
 - openLink: spacev2://dashboard
 - extendedWaitUntil:
-    visible: 'not in a season right now'
+    visible: '.*not in a season right now.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
