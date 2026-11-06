@@ -91,6 +91,17 @@ beforeAll(async () => {
   await db.quizAttempt.create({ data: { quizId: quiz.id, studentUserId: s1, status: "SUBMITTED" } });
   await db.quizAttempt.create({ data: { quizId: quiz.id, studentUserId: s2, status: "IN_PROGRESS" } });
   await db.quizAttempt.create({ data: { quizId: quiz.id, studentUserId: sDeleted, status: "SUBMITTED" } });
+  // Pending work from a WITHDRAWN and a COMPLETED enrolment must not block.
+  const done = await createTestUser("done", "STUDENT");
+  await enroll(done.id, "ACTIVE");
+  await db.seasonEnrollment.update({
+    where: { studentUserId_seasonId: { studentUserId: done.id, seasonId } },
+    data: { status: "COMPLETED" },
+  });
+  for (const [who, uid] of [["wd", sWithdrawn], ["done", done.id]] as const) {
+    await sub(assignment.id, uid, "SUBMITTED", `endchk-${who}`);
+    await db.quizAttempt.create({ data: { quizId: quiz.id, studentUserId: uid, status: "SUBMITTED" } });
+  }
 
   superToken = await login(app, sup.email);
   adminToken = await login(app, admin.email);
@@ -133,7 +144,7 @@ describe("GET /seasons/:id/end-check", () => {
     expect(blockers.submissions).toEqual([
       { publicId: "endchk-submitted", assignmentTitle: "Essay", studentName: "Test s1" },
     ]);
-    expect(blockers.quizAttempts).toHaveLength(1);
+    expect(blockers.quizAttempts).toHaveLength(1); // not the withdrawn / completed students' attempts
     expect(blockers.quizAttempts[0]).toMatchObject({ quizTitle: "Quiz 1", studentName: "Test s1" });
     // s2 and `student` have no row; the withdrawn row and the deleted student are ignored;
     // the session still running is not a blocker.

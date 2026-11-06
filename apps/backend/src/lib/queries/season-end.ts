@@ -9,6 +9,11 @@ import { attendancePct } from "./attendance-pct";
  * students and assignments never block.
  */
 export async function loadSeasonEndCheck(seasonId: number, now: Date): Promise<SeasonEndCheck> {
+  // Only students still ACTIVE in this season hold the season open.
+  const activeStudentInSeason = {
+    deletedAt: null,
+    seasonEnrollments: { some: { seasonId, status: "ACTIVE" as const } },
+  };
   const [enrollments, sessions, submissions, attempts] = await Promise.all([
     db.seasonEnrollment.findMany({
       where: { seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
@@ -24,7 +29,7 @@ export async function loadSeasonEndCheck(seasonId: number, now: Date): Promise<S
       where: {
         status: "SUBMITTED",
         assignment: { seasonId, deletedAt: null },
-        studentUser: { deletedAt: null },
+        studentUser: activeStudentInSeason,
       },
       orderBy: { id: "asc" },
       select: {
@@ -34,7 +39,7 @@ export async function loadSeasonEndCheck(seasonId: number, now: Date): Promise<S
       },
     }),
     db.quizAttempt.findMany({
-      where: { status: "SUBMITTED", quiz: { seasonId }, studentUser: { deletedAt: null } },
+      where: { status: "SUBMITTED", quiz: { seasonId }, studentUser: activeStudentInSeason },
       orderBy: { id: "asc" },
       select: {
         id: true,
