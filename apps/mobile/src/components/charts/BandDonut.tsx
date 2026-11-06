@@ -4,6 +4,7 @@ import Svg, { Circle } from "react-native-svg";
 import type { EngagementBand } from "@space/shared";
 import { BAND_LABEL } from "@space/shared";
 
+import { Text } from "../../design/ui/text";
 import { bandColor, useChartColors } from "../../lib/report-colors";
 
 export interface BandDonutProps {
@@ -33,7 +34,12 @@ export function BandDonut({ bands, size = 160 }: BandDonutProps) {
       : `Engagement bands: ${bands.map((b) => `${BAND_LABEL[b.band]} ${b.count}`).join(", ")}`;
 
   return (
-    <View accessible accessibilityRole="image" accessibilityLabel={label}>
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={label}
+      className="flex-row flex-wrap items-center gap-4"
+    >
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <Circle
           cx={size / 2}
@@ -66,6 +72,17 @@ export function BandDonut({ bands, size = 160 }: BandDonutProps) {
             })
           : null}
       </Svg>
+      {/* Colour alone can't say which band is which. */}
+      <View testID="band-legend" className="gap-2">
+        {bands.map((b) => (
+          <View key={b.band} className="flex-row items-center gap-2">
+            <View className="size-2.5 rounded-full" style={{ backgroundColor: bandColor(b.band) }} />
+            <Text variant="subhead" className="text-muted-foreground">
+              {`${BAND_LABEL[b.band]} ${b.count}`}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
