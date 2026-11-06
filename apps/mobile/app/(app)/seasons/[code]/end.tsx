@@ -113,6 +113,7 @@ export default function EndSeasonScreen() {
           label="End season"
           variant="destructive"
           loading={end.isPending}
+          disabled={end.isSuccess}
           onPress={() => setConfirming(true)}
           hint={
             notPassed.length > 0

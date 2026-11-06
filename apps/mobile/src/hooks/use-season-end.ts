@@ -47,7 +47,13 @@ export function useEndSeason(id: number) {
         .parse(res.data.data);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
+      // Not the end-check: it is mounted on the screen that ends the season, and
+      // refetching it now would answer season_not_active and flash an error
+      // before the screen navigates away.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.seasons.all,
+        predicate: (q) => q.queryKey[1] !== "end-check",
+      });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
