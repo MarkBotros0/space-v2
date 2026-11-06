@@ -39,6 +39,31 @@ describe("refreshAccessToken", () => {
     jest.clearAllMocks();
   });
 
+  describe("what the refresh endpoint's answer means", () => {
+    const answer = (status: number) =>
+      Object.assign(new Error(`status ${status}`), { isAxiosError: true, response: { status } });
+    let axiosPost: jest.SpyInstance;
+    beforeEach(() => {
+      axiosPost = jest.spyOn(axios, "post");
+      useSessionStore.getState().setSession(user, scopes);
+    });
+    afterEach(() => axiosPost.mockRestore());
+
+    it.each([400, 401, 403])("%i means the token is dead: the session ends", async (status) => {
+      axiosPost.mockRejectedValue(answer(status));
+      await expect(refreshAccessToken()).resolves.toBeNull();
+      expect(clearSession).toHaveBeenCalled();
+      expect(useSessionStore.getState().status).toBe("anonymous");
+    });
+
+    it.each([429, 404, 500])("%i says nothing about the token: the session stays", async (status) => {
+      axiosPost.mockRejectedValue(answer(status));
+      await expect(refreshAccessToken()).resolves.toBeNull();
+      expect(clearSession).not.toHaveBeenCalled();
+      expect(useSessionStore.getState().status).toBe("authenticated");
+    });
+  });
+
   it("issues only one refresh for concurrent callers", async () => {
     let calls = 0;
     const rotate = jest.fn(async () => {

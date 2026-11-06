@@ -65,12 +65,15 @@ async function rotateViaApi(
     // below (caught, not thrown further).
     return sessionSchema.parse(res.data.data);
   } catch (err) {
-    if (axios.isAxiosError(err) && err.response && err.response.status >= 400 && err.response.status < 500) {
+    const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+    if (status === 400 || status === 401 || status === 403) {
       // The server actually answered and rejected the token: it's revoked.
       return null;
     }
-    // Network error, timeout, 5xx, or a schema parse failure — we don't know
-    // whether the token is still good, so don't treat this as revocation.
+    // Network error, timeout, 5xx, 429 (a rate limit: End and Start mark a whole
+    // season stale at once, and they may share one Wi-Fi network), or a schema
+    // parse failure — we don't know whether the token is still good, so don't
+    // treat this as revocation.
     return ROTATE_INDETERMINATE;
   }
 }
