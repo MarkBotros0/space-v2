@@ -9,6 +9,8 @@ export interface SeasonDetailRow {
   code: string;
   title: string;
   program: string;
+  /** Only for super and this season's staff; left out for everyone else. */
+  requiredProgram?: string | null;
   year: number;
   description: string | null;
   status: SeasonStatus;
@@ -35,6 +37,7 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
       code: true,
       title: true,
       program: true,
+      requiredProgram: true,
       year: true,
       description: true,
       status: true,
@@ -65,11 +68,17 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
   });
   if (!season) return null;
 
+  const staff =
+    user.role === "SUPER" ||
+    isAdminOfSeason(user, season.id) ||
+    (user.role === "LEADER" && season.groups.some((g) => user.groupLeaderIds.includes(g.id)));
+
   return {
     id: season.id,
     code: season.code,
     title: season.title,
     program: season.program,
+    ...(staff ? { requiredProgram: season.requiredProgram } : {}),
     year: season.year,
     description: season.description,
     status: season.status,

@@ -26,7 +26,7 @@ export const seasonPaths = {
       tags: ["Seasons"],
       summary: "Create a season",
       description:
-        "SUPER only (spec 02 D3). Title is derived as '<program> <year>'. Unlike v1, the absence budget fields are persisted on create (D1). A soft-deleted season still reserves its code.",
+        "SUPER only (spec 02 D3). Title is derived as '<program> <year>'. Unlike v1, the absence budget fields are persisted on create (D1). A soft-deleted season still reserves its code. `status` must be `DRAFT` (400 otherwise): no season skips Start.",
       requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } } },
       responses: {
         201: ok({ type: "object", properties: { id: { type: "integer" }, code: { type: "string" } } }, "Created."),
@@ -87,7 +87,7 @@ export const seasonPaths = {
       tags: ["Seasons"],
       summary: "Duplicate a season's structure",
       description:
-        "SUPER only. Creates a DRAFT season copying program, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is 404.",
+        "SUPER only. Creates a DRAFT season copying program, `requiredProgram`, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is 404.",
       parameters: [idParam],
       requestBody: {
         required: true,

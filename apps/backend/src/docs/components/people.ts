@@ -41,6 +41,7 @@ export const peopleSchemas = {
       code: { type: "string" },
       title: { type: "string" },
       program: { type: "string" },
+      requiredProgram: { type: ["string", "null"], description: "The program someone must have finished to join. Sent to SUPER and this season's admins and leaders; left out for everyone else." },
       year: { type: "integer" },
       description: { type: ["string", "null"] },
       status: { $ref: "#/components/schemas/SeasonStatus" },

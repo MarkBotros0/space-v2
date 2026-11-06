@@ -25,6 +25,8 @@ export const seasonDetailGroupSchema = z.object({
 export type SeasonDetailGroup = z.infer<typeof seasonDetailGroupSchema>;
 
 export const seasonDetailSchema = seasonListItemSchema.extend({
+  /** Only super and this season's staff are sent it; absent for everyone else, null when none is set. */
+  requiredProgram: z.string().nullable().optional(),
   description: z.string().nullable(),
   sessionCount: z.number(),
   studentCount: z.number(),

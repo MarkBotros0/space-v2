@@ -128,6 +128,8 @@ export async function createSeason(req: Request, res: Response) {
   const parsed = seasonWriteRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid season body.", 400);
   const body = parsed.data;
+  // No season skips Start: it runs the checks and moves the people.
+  if (body.status !== "DRAFT") return apiError(res, "bad_request", "A new season is created as a draft.", 400);
 
   // v1 R7: the check has no deletedAt filter — a soft-deleted season keeps its code.
   const clash = await db.season.findUnique({ where: { code: body.code }, select: { id: true } });
