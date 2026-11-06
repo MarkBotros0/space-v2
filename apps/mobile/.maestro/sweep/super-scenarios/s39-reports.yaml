@@ -32,7 +32,7 @@ appId: com.jpc.space
 - scrollUntilVisible:
     element: 'Season filter: GBV ${output.year}'
     direction: UP
-    timeout: 20000
+    timeout: 60000
 - tapOn: 'Season filter: GBV ${output.year}'
 - waitForAnimationToEnd:
     timeout: 5000

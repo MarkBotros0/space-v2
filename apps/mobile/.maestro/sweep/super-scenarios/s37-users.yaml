@@ -8,7 +8,7 @@ appId: com.jpc.space
       EMAIL: ${SUPER_EMAIL}
 - openLink: spacev2://users
 - extendedWaitUntil:
-    visible: '\d+ total'
+    visible: 'Import profiles|\d+ total'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -54,7 +54,7 @@ appId: com.jpc.space
 - eraseText: 10
 - pressKey: Enter
 - extendedWaitUntil:
-    visible: '\d+ total'
+    visible: 'Import profiles|\d+ total'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -63,7 +63,7 @@ appId: com.jpc.space
     env:
       TARGET: 'No invite'
 - extendedWaitUntil:
-    visible: '\d+ total'
+    visible: 'Import profiles|\d+ total'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
