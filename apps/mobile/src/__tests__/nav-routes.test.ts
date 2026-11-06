@@ -23,7 +23,7 @@ describe("moreItemsFor", () => {
     expect(moreItemsFor(navByRole.ADMIN).map((i) => i.label)).toEqual([
       "My Season", "My notes", "Assignments", "Quizzes", "Reports", "Notifications", "Settings",
     ]);
-    expect(moreItemsFor(navFor({ role: "STUDENT", graduationYear: 2024 })).map((i) => i.label)).toEqual([
+    expect(moreItemsFor(navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null })).map((i) => i.label)).toEqual([
       "Notifications", "Settings",
     ]);
   });

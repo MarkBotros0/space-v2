@@ -1,4 +1,4 @@
-import { navByRole } from "@space/shared";
+import { STUDENT_BETWEEN, navByRole } from "@space/shared";
 
 import { useSessionStore } from "../store/session";
 
@@ -6,7 +6,7 @@ const user = { id: 1, name: "A", email: "a@b.test", role: "STUDENT" as const, av
 const scopes = {
   seasonAdminIds: [],
   groupLeaderIds: [],
-  activeSeasonId: null,
+  activeSeasonId: 1,
   graduationYear: null as number | null,
 };
 
@@ -50,6 +50,11 @@ describe("session store", () => {
   it("resolves the nav for the signed-in user", () => {
     useSessionStore.getState().setSession(user, scopes);
     expect(useSessionStore.getState().nav()).toBe(navByRole.STUDENT);
+  });
+
+  it("resolves the between-seasons nav for a student in no season", () => {
+    useSessionStore.getState().setSession(user, { ...scopes, activeSeasonId: null });
+    expect(useSessionStore.getState().nav()).toBe(STUDENT_BETWEEN);
   });
 
   it("resolves the alumni nav for a graduated student", () => {

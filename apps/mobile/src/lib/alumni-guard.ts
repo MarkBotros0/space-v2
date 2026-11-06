@@ -1,11 +1,13 @@
 import { navFor, type NavItem } from "@space/shared";
 
 /**
- * Student-only routes the student's nav no longer names: the detail routes, and
- * /assignments and /quizzes, which a student opens through Work (P2-1) but which
- * stay in the staff navs, so the derivation below cannot see them.
+ * Student-only routes the student's nav no longer names: /assignments and
+ * /quizzes, which a student opens through Work (P2-1) but which stay in the
+ * staff navs, so the derivation below cannot see them. The
+ * detail routes (assignment, quiz) are not listed: alumni may read them, and
+ * the server refuses their writes.
  */
-const STUDENT_ONLY_SEGMENTS: readonly string[] = ["assignment", "assignments", "quiz", "quizzes"];
+const STUDENT_ONLY_SEGMENTS: readonly string[] = ["assignments", "quizzes"];
 
 const hrefsOf = (items: NavItem[]) => items.map((item) => item.href);
 
@@ -17,8 +19,8 @@ const hrefsOf = (items: NavItem[]) => items.map((item) => item.href);
  * routes those navs cannot show are listed by hand, in STUDENT_ONLY_SEGMENTS.
  */
 function studentOnlySegments(): ReadonlySet<string> {
-  const student = navFor({ role: "STUDENT", graduationYear: null });
-  const alumni = navFor({ role: "STUDENT", graduationYear: 2000 });
+  const student = navFor({ role: "STUDENT", graduationYear: null, activeSeasonId: 1 });
+  const alumni = navFor({ role: "STUDENT", graduationYear: 2000, activeSeasonId: null });
   const alumniHrefs = new Set([...hrefsOf(alumni.tabs), ...hrefsOf(alumni.sidebar)]);
   const only = [...hrefsOf(student.tabs), ...hrefsOf(student.sidebar)]
     .filter((href) => !alumniHrefs.has(href))

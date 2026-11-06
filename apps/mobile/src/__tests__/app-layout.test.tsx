@@ -228,7 +228,6 @@ describe("AppLayout stack", () => {
     [["(app)", "(tabs)", "work"]],
     [["(app)", "assignments"]],
     [["(app)", "quizzes"]],
-    [["(app)", "assignment", "[id]"]],
     // Task 12 moved these out of (tabs): their segments lost the group.
     [["(app)", "season"]],
     [["(app)", "attendance"]],

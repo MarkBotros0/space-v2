@@ -1,11 +1,11 @@
-import { ALL_NAV_HREFS, ALL_TAB_HREFS, isAlumnus, navByRole, navFor } from "../navigation";
+import { ALL_NAV_HREFS, ALL_TAB_HREFS, STUDENT_BETWEEN, isAlumnus, navByRole, navFor } from "../navigation";
 import type { RoleNav } from "../navigation";
 
-const base = { role: "STUDENT" as const, graduationYear: null as number | null };
+const base = { role: "STUDENT" as const, graduationYear: null as number | null, activeSeasonId: 1 as number | null };
 
 describe("navFor", () => {
   it("returns the alumni nav for a graduated student", () => {
-    const nav = navFor({ role: "STUDENT", graduationYear: 2024 });
+    const nav = navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null });
     expect(nav.tabs.map((t) => t.label)).toEqual(["Today", "Events", "History", "Profile", "More"]);
   });
 
@@ -17,10 +17,10 @@ describe("navFor", () => {
   it("ignores graduationYear for non-students", () => {
     // Only a STUDENT can be an alumnus. A LEADER with a graduation year is a
     // graduate who now leads — they get the leader app.
-    expect(navFor({ role: "LEADER", graduationYear: 2024 })).toBe(navByRole.LEADER);
+    expect(navFor({ role: "LEADER", graduationYear: 2024, activeSeasonId: null })).toBe(navByRole.LEADER);
   });
 
-  const ALUMNI = navFor({ role: "STUDENT", graduationYear: 2024 });
+  const ALUMNI = navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null });
   const ALL_NAVS: Record<string, RoleNav> = { ...navByRole, ALUMNI };
 
   it("puts Today first for every role, at most five tabs (redesign plan 01 Task 12)", () => {
@@ -254,7 +254,7 @@ describe("navFor", () => {
       ],
     });
 
-    const alumni = navFor({ role: "STUDENT", graduationYear: 2024 });
+    const alumni = navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null });
     expect(shape(alumni)).toEqual({
       sidebar: [
         ["/dashboard", "Home", "dashboard"],
@@ -272,6 +272,26 @@ describe("navFor", () => {
         ["/more", "More", "more"],
       ],
     });
+  });
+});
+
+describe("navFor between seasons", () => {
+  const hrefs = (a: Parameters<typeof navFor>[0]) => navFor(a).tabs.map((t) => t.href);
+  it("follows whether the student is in a season", () => {
+    expect(hrefs({ role: "STUDENT", graduationYear: null, activeSeasonId: 1 })).toEqual([
+      "/dashboard", "/calendar", "/work", "/submitted", "/more",
+    ]);
+    expect(hrefs({ role: "STUDENT", graduationYear: null, activeSeasonId: null })).toEqual([
+      "/dashboard", "/calendar", "/history", "/more",
+    ]);
+    expect(hrefs({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null })).toEqual([
+      "/dashboard", "/calendar", "/history", "/profile", "/more",
+    ]);
+  });
+  it("STUDENT_BETWEEN sidebar has no season, work or attendance", () => {
+    expect(STUDENT_BETWEEN.sidebar.map((i) => i.label)).toEqual([
+      "Dashboard", "Calendar", "History", "Profile", "Notifications", "Settings",
+    ]);
   });
 });
 

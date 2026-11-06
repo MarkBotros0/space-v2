@@ -187,6 +187,27 @@ const ALUMNI: RoleNav = {
   ],
 };
 
+/**
+ * A student who is not in a season right now (between seasons, or never in
+ * one): no season, work or attendance, just Today, Calendar and History.
+ */
+export const STUDENT_BETWEEN: RoleNav = {
+  sidebar: [
+    { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/calendar", label: "Calendar", icon: "calendar" },
+    { href: "/history", label: "History", icon: "history" },
+    { href: "/profile", label: "Profile", icon: "profile" },
+    { href: "/notifications", label: "Notifications", icon: "notifications" },
+    { href: "/settings", label: "Settings", icon: "settings" },
+  ],
+  tabs: [
+    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/calendar", label: "Calendar", icon: "calendar" },
+    { href: "/history", label: "History", icon: "history" },
+    { href: "/more", label: "More", icon: "more" },
+  ],
+};
+
 export const navByRole: Record<UserRole, RoleNav> = {
   SUPER,
   ADMIN,
@@ -198,16 +219,19 @@ export const navByRole: Record<UserRole, RoleNav> = {
 export interface NavAudience {
   role: UserRole;
   graduationYear: number | null;
+  /** The server-derived current season; null means the user is in none. */
+  activeSeasonId: number | null;
 }
 
 /** An alumnus is a graduated student — role stays STUDENT, graduationYear is set. */
-export function isAlumnus(user: NavAudience): boolean {
+export function isAlumnus(user: Pick<NavAudience, "role" | "graduationYear">): boolean {
   return user.role === "STUDENT" && user.graduationYear != null;
 }
 
 /** Alumni get their own nav (isAlumnus); everyone else their role's. */
 export function navFor(user: NavAudience): RoleNav {
   if (isAlumnus(user)) return ALUMNI;
+  if (user.role === "STUDENT" && user.activeSeasonId == null) return STUDENT_BETWEEN;
   return navByRole[user.role];
 }
 
@@ -222,11 +246,11 @@ export function hrefUnion(navs: readonly RoleNav[]): string[] {
   );
 }
 
-/** All six navs: navByRole plus ALUMNI, which only navFor reaches. */
-const ALL_NAVS: readonly RoleNav[] = [SUPER, ADMIN, LEADER, MENTOR, STUDENT, ALUMNI];
+/** All seven navs: navByRole plus ALUMNI and STUDENT_BETWEEN, which only navFor reaches. */
+const ALL_NAVS: readonly RoleNav[] = [SUPER, ADMIN, LEADER, MENTOR, STUDENT, ALUMNI, STUDENT_BETWEEN];
 
 /**
- * The complete href union across all six navs, ALUMNI included.
+ * The complete href union across all seven navs, ALUMNI included.
  * `Object.values(navByRole)` alone omits ALUMNI — it's reachable only
  * through `navFor`, not through `navByRole` — so anything that needs the
  * full route universe (the mobile app's tab-bar shell derives its route
@@ -237,7 +261,7 @@ export const ALL_NAV_HREFS: readonly string[] = hrefUnion(ALL_NAVS);
 
 /**
  * Every href that is a tab for at least one nav, ALUMNI included — built
- * from the same six navs as `ALL_NAV_HREFS`. The mobile app keeps these
+ * from the same seven navs as `ALL_NAV_HREFS`. The mobile app keeps these
  * routes in its `Tabs` group; every other nav href (Settings, Notifications,
  * Events, …: a More entry for every role that has it, a Profile link for
  * MENTOR) pushes on the stack above the tabs, so Back from it returns to the

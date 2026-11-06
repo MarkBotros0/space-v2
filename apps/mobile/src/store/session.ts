@@ -39,6 +39,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   nav: () => {
     const { user, scopes } = get();
     if (!user || !scopes) return null;
-    return navFor({ role: user.role, graduationYear: scopes.graduationYear });
+    return navFor({ role: user.role, graduationYear: scopes.graduationYear,
+      activeSeasonId: scopes.activeSeasonId,
+    });
   },
 }));

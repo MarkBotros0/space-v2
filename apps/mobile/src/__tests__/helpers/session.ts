@@ -22,7 +22,7 @@ export function makeScopes(overrides: Partial<MeScopes> = {}): MeScopes {
   return {
     seasonAdminIds: [],
     groupLeaderIds: [],
-    activeSeasonId: null,
+    activeSeasonId: 1,
     graduationYear: null,
     ...overrides,
   };

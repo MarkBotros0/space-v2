@@ -31,7 +31,7 @@ type Role = "SUPER" | "ADMIN" | "LEADER" | "STUDENT" | "MENTOR";
 
 function signIn(role: Role | "ALUMNI") {
   if (role === "ALUMNI") {
-    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ graduationYear: 2024 }));
+    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ graduationYear: 2024, activeSeasonId: null }));
   } else {
     useSessionStore.getState().setSession(makeUser(role), makeScopes());
   }
@@ -57,7 +57,7 @@ describe("Back from a More destination returns to More (R19)", () => {
     ["ADMIN", navByRole.ADMIN],
     ["LEADER", navByRole.LEADER],
     ["STUDENT", navByRole.STUDENT],
-    ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024 })],
+    ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null })],
   ])("%s: every entry More lists", async (role, nav) => {
     signIn(role);
     const result = await renderRouter(appContext(), { initialUrl: "/dashboard" });

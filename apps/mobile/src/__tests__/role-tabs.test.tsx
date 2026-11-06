@@ -18,7 +18,7 @@ const dirForHref = (href: string) => (ALL_TAB_HREFS.includes(href) ? TABS_GROUP_
 const scopes = {
   seasonAdminIds: [],
   groupLeaderIds: [],
-  activeSeasonId: null,
+  activeSeasonId: 1,
   graduationYear: null as number | null,
 };
 const user = (role: "STUDENT" | "ADMIN" | "LEADER") => ({
@@ -50,7 +50,7 @@ describe("role tabs", () => {
     ["LEADER", navByRole.LEADER, ["Today", "Groups", "Calendar", "Submissions", "More"]],
     ["MENTOR", navByRole.MENTOR, ["Today", "Students", "Reports", "Notes", "Profile"]],
     ["STUDENT", navByRole.STUDENT, ["Today", "Calendar", "To do", "Submitted", "More"]],
-    ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024 }), ["Today", "Events", "History", "Profile", "More"]],
+    ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null }), ["Today", "Events", "History", "Profile", "More"]],
   ])("the pill draws %s's tabs Today first, none featured (R22)", (_role, nav, labels) => {
     const state = { index: 0, routes: nav.tabs.map((t) => ({ key: t.href, name: routeNameForHref(t.href) })) };
     renderWithProviders(
@@ -173,8 +173,8 @@ describe("ALL_NAV_HREFS (Fix 2)", () => {
     expect(new Set(ALL_NAV_HREFS)).toEqual(
       new Set([
         ...fromNavByRoleOnly,
-        ...navFor({ role: "STUDENT", graduationYear: 2024 }).tabs.map((i) => i.href),
-        ...navFor({ role: "STUDENT", graduationYear: 2024 }).sidebar.map((i) => i.href),
+        ...navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null }).tabs.map((i) => i.href),
+        ...navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null }).sidebar.map((i) => i.href),
       ]),
     );
   });
