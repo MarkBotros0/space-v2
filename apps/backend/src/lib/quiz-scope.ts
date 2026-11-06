@@ -3,6 +3,7 @@ import type { QuizKind } from "../generated/prisma/enums";
 
 import type { SessionUser } from "./auth/tokens";
 import { staffScopeForSeason } from "./permissions";
+import { seasonParticipant } from "./queries/season-participants";
 
 /**
  * Which students this caller may grade in this season.
@@ -32,7 +33,7 @@ export async function visibleStudentIdsForQuiz(
   const enrollments = await db.seasonEnrollment.findMany({
     where: {
       seasonId,
-      status: "ACTIVE",
+      ...seasonParticipant,
       ...(scope.kind === "groups" ? { groupId: { in: scope.groupIds } } : {}),
     },
     select: { studentUserId: true },

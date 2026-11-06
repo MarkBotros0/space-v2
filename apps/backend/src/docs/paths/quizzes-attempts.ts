@@ -177,7 +177,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "The PAPER grade sheet",
       description:
-        "Staff with a scope in the quiz's season. One row per live student in the caller's server-derived student set (a leader: their own groups' ACTIVE enrolments; admin/SUPER: the whole season), name-ordered, with `score`/`notes` null for ungraded students and `gradedByName` as the audit trail.",
+        "Staff with a scope in the quiz's season. One row per live student in the caller's server-derived student set (a leader: their own groups' enrolments; everyone means the season's participants (ACTIVE; in a finished season also COMPLETED; never WITHDRAWN); admin/SUPER: the whole season), name-ordered, with `score`/`notes` null for ungraded students and `gradedByName` as the audit trail.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/QuizGradeSheet" }, "The sheet."),

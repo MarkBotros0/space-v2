@@ -1,5 +1,6 @@
 import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
+import { seasonParticipant } from "../season-participants";
 
 export interface GroupWriteInput {
   name: string;
@@ -107,14 +108,14 @@ export async function setGroupStudents(
   // enrolment and lose only the group pointer. Removing the enrolment would
   // discard the fact that they were ever in the season.
   //
-  // ACTIVE enrolments only. The form's list is built from the season roster,
-  // which holds ACTIVE enrolments and nothing else, so a COMPLETED or
-  // WITHDRAWN member is never in it — "not in the list" says nothing about
-  // them. Without this, renaming a group in a finished season stripped every
-  // COMPLETED student's group. v1's form only removed the rows it diffed out
-  // of its own list (group-actions.ts:118-131), which never touched them.
+  // The season's participants only: the form's list is built from the same
+  // population (listSeasonRoster), so "not in the list" says something about
+  // them and nothing about a WITHDRAWN member. In a finished season that includes
+  // COMPLETED students, whom the roster now lists, so a Super's rename keeps them
+  // and unticking one takes them out. v1's form only removed the rows it diffed
+  // out of its own list (group-actions.ts:118-131).
   const removed = await tx.seasonEnrollment.findMany({
-    where: { seasonId, groupId, status: "ACTIVE", studentUserId: { notIn: studentIds } },
+    where: { seasonId, groupId, ...seasonParticipant, studentUserId: { notIn: studentIds } },
     select: { studentUserId: true },
   });
   const removedIds = removed.map((r) => r.studentUserId);
@@ -145,7 +146,7 @@ export class GroupOutsideSeasonError extends Error {
   }
 }
 
-/** ACTIVE enrolments of live STUDENT users among `studentIds` — the one eligibility rule (C9). */
+/** The season's participants who are live STUDENT users, among `studentIds` — the one eligibility rule (C9). */
 async function eligibleStudentIds(
   tx: Prisma.TransactionClient,
   seasonId: number,
@@ -155,7 +156,7 @@ async function eligibleStudentIds(
   const rows = await tx.seasonEnrollment.findMany({
     where: {
       seasonId,
-      status: "ACTIVE",
+      ...seasonParticipant,
       studentUserId: { in: studentIds },
       studentUser: { role: "STUDENT", deletedAt: null },
     },
@@ -177,12 +178,12 @@ async function eligibleStudentIds(
  * Two divergences from v1's `assignStudentsToGroupsAction`
  * (`jpc-space/src/lib/group-actions.ts:192-248`), both required:
  *
- * 1. Eligibility is an ACTIVE `SeasonEnrollment` in this season held by a
+ * 1. Eligibility is a participant's `SeasonEnrollment` in this season held by a
  *    live STUDENT, not `StudentProfile.activeSeasonId` (ruling C9; v1 at
  *    :215-223). v1 gated on the pointer in both its roster query and this
  *    write, which is what produces spec 05/16's silent skips; and v1 upserted
  *    an enrolment for anyone it accepted, resurrecting WITHDRAWN students.
- *    Here a non-ACTIVE or unknown student is skipped and reported.
+ *    Here anyone else, or an unknown student, is skipped and reported.
  * 2. It returns what it APPLIED. v1 returned nothing and its callers reported
  *    the requested length (spec 05 R57, spec 16 R80/D5).
  */

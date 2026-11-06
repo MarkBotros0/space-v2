@@ -10,22 +10,13 @@ import {
   setGroupStudents,
   validateGroupWrite,
 } from "../lib/queries/groups";
+import { seasonParticipant } from "../lib/queries/season-participants";
 import { isAdminOfAnySeason, isAdminOfSeason } from "../lib/rbac";
 import { groupWriteRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";
 
 export const groupsRouter = Router();
-
-/**
- * Who a group's detail lists as its members.
- *
- * ACTIVE and COMPLETED, not WITHDRAWN. During a live season this is the set
- * the roster and the list count use (nobody is COMPLETED yet); once a season
- * finishes every member is COMPLETED, and a past group card listing ACTIVE
- * only would show nobody. A WITHDRAWN student left, so is not listed.
- */
-const GROUP_MEMBER_STATUSES: ("ACTIVE" | "COMPLETED")[] = ["ACTIVE", "COMPLETED"];
 
 groupsRouter.use(requireAuth);
 
@@ -126,7 +117,7 @@ groupsRouter.get("/:id", async (req, res) => {
       // while that table was global (before Plan 18 M1), a past season's
       // group lost its members the moment they moved on.
       seasonEnrollments: {
-        where: { status: { in: GROUP_MEMBER_STATUSES }, studentUser: { deletedAt: null } },
+        where: { ...seasonParticipant, studentUser: { deletedAt: null } },
         select: {
           seasonId: true,
           studentUser: { select: { id: true, name: true, email: true } },

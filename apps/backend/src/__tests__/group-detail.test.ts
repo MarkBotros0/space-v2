@@ -17,6 +17,7 @@ jest.mock("../lib/auth/tokens", () => ({ verifyAccessToken: (t: string) => mockV
 import express from "express";
 import request from "supertest";
 
+import { seasonParticipant } from "../lib/queries/season-participants";
 import { groupsRouter } from "../routes/groups";
 
 const app = express().use(express.json()).use("/groups", groupsRouter);
@@ -50,7 +51,7 @@ it("selects members from enrolments with the member statuses and live students",
   const select = mockDb.group.findUnique.mock.calls[0][0].select;
   expect(select.students).toBeUndefined();
   expect(select.seasonEnrollments.where).toEqual({
-    status: { in: ["ACTIVE", "COMPLETED"] },
+    ...seasonParticipant,
     studentUser: { deletedAt: null },
   });
 });

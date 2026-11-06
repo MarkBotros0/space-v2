@@ -1,6 +1,7 @@
 import { db } from "../../../db/client";
 import type { SubmissionStatus } from "../../../generated/prisma/enums";
 import { orgDayKey } from "../../org-time";
+import { seasonParticipant } from "../season-participants";
 import { isLate, isOverdue } from "./rules";
 
 export interface AssignmentListRow {
@@ -44,7 +45,7 @@ export async function listAssignmentsForSeason(seasonId: number): Promise<Assign
       const expected = await db.seasonEnrollment.count({
         where: {
           seasonId: a.season.id,
-          status: "ACTIVE",
+          ...seasonParticipant,
           ...(a.isAllGroups ? {} : { groupId: { in: targetGroupIds } }),
         },
       });
@@ -133,7 +134,7 @@ export async function loadAssignmentTracker(
         };
 
   const enrollments = await db.seasonEnrollment.findMany({
-    where: { seasonId: assignment.seasonId, status: "ACTIVE", ...(groupId ? { groupId } : {}) },
+    where: { seasonId: assignment.seasonId, ...seasonParticipant, ...(groupId ? { groupId } : {}) },
     select: {
       studentUserId: true,
       groupId: true,

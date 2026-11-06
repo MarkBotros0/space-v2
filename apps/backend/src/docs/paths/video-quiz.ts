@@ -168,7 +168,7 @@ export const videoQuizPaths = {
       tags: ["Video quiz"],
       summary: "Every student's video-quiz result",
       description:
-        "Staff with a scope in the session's season (SUPER and season ADMIN: every ACTIVE student; a LEADER: their own groups' ACTIVE students — the same roster as attendance; a MENTOR is refused). One row per ACTIVE enrolment, including students who have answered nothing. New capability: v1 shows no student's video-quiz result to anybody.",
+        "Staff with a scope in the session's season (SUPER and season ADMIN: the season's participants (ACTIVE; in a finished season also COMPLETED; never WITHDRAWN); a LEADER: those of their own groups — the same roster as attendance; a MENTOR is refused). One row per such enrolment, including students who have answered nothing. New capability: v1 shows no student's video-quiz result to anybody.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/VideoQuizResults" }, "The results."),

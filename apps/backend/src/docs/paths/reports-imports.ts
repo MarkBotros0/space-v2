@@ -46,7 +46,7 @@ export const reportsImportsPaths = {
         "SEPARATELY GATED from the summary (same roles: SUPER, MENTOR, ADMIN; LEADER " +
         "and STUDENT refused) and absent from the summary's payload on purpose — v1 " +
         "shipped every student's name, email and scores to every screen (R34).\n\n" +
-        "One row per ACTIVE ENROLMENT, so a student in two in-scope seasons appears " +
+        "One row per participant's ENROLMENT (ACTIVE; in a finished season also COMPLETED), so a student in two in-scope seasons appears " +
         "twice. Ordered by score ascending, then studentUserId, then seasonId. " +
         "`cursor` is opaque; a malformed cursor restarts the list. `band` filters to " +
         "one engagement band. Scope intersection is identical to the summary's.",
@@ -215,7 +215,7 @@ export const reportsImportsPaths = {
       description:
         "Gate is `isAdminOfSeason` on the **path** id (SUPER short-circuits), so preview and commit cannot target different seasons. Body `{ text, delimiter? }`, pasted text. Needs `email` and `group` columns; `name` is display only. " +
         "Statuses: `assign`, `unchanged`, `no_student`, `no_group`, `invalid`. A **blank** group cell is `no_group`, not an unassign - there is no bulk unassign. " +
-        "The roster is resolved through an ACTIVE `SeasonEnrollment` (ruling C9), not a stored pointer, which is why a previewed `assign` is always written. " +
+        "The roster is resolved through a participant's `SeasonEnrollment` (ACTIVE; in a finished season also COMPLETED; ruling C9), not a stored pointer, which is why a previewed `assign` is always written. " +
         "The file is **refused** (`400 bad_request`) when two groups in the season share a case-insensitive name, rather than one silently winning.",
       parameters: [idParam],
       requestBody: { required: true, content: { "application/json": { schema: pastedSheetBodyDoc } } },

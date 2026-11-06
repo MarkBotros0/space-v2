@@ -1,12 +1,13 @@
 // setGroupStudents with the database mocked: the group form's student list
-// comes from the ACTIVE-only season roster, so removal must be limited to
-// ACTIVE enrolments or a rename strips every COMPLETED member's group.
+// comes from the season roster, so removal looks at that same population and
+// never at someone the form could not have listed (a WITHDRAWN member).
 
 const mockDb = {};
 jest.mock("../db/client", () => ({ db: mockDb }));
 
 import type { Prisma } from "../generated/prisma/client";
 import { assignStudentsToGroups, setGroupStudents, unassignStudentsFromGroups } from "../lib/queries/groups";
+import { seasonParticipant } from "../lib/queries/season-participants";
 
 const tx = {
   seasonEnrollment: { findMany: jest.fn(), updateMany: jest.fn(), update: jest.fn() },
@@ -21,23 +22,21 @@ beforeEach(() => {
 });
 
 describe("setGroupStudents", () => {
-  it("looks for removals among ACTIVE enrolments only", async () => {
+  it("looks for removals among the season's participants only", async () => {
     await setGroupStudents(asTx, 7, 3, [1, 2]);
     expect(tx.seasonEnrollment.findMany).toHaveBeenCalledWith({
-      where: { seasonId: 7, groupId: 3, status: "ACTIVE", studentUserId: { notIn: [1, 2] } },
+      where: { seasonId: 7, groupId: 3, ...seasonParticipant, studentUserId: { notIn: [1, 2] } },
       select: { studentUserId: true },
     });
   });
 
-  it("leaves COMPLETED members alone when the list is empty (a rename in a finished season)", async () => {
-    // Nothing ACTIVE is in the group, so nothing is unassigned — the
-    // COMPLETED members the query never returned keep their group.
+  it("touches nobody when the query finds no participant to remove", async () => {
     await setGroupStudents(asTx, 7, 3, []);
     expect(tx.seasonEnrollment.updateMany).not.toHaveBeenCalled();
     expect(tx.groupStudent.deleteMany).not.toHaveBeenCalled();
   });
 
-  it("unassigns exactly the ACTIVE members dropped from the list", async () => {
+  it("unassigns exactly the participants dropped from the list", async () => {
     tx.seasonEnrollment.findMany.mockResolvedValue([{ studentUserId: 4 }]);
     await setGroupStudents(asTx, 7, 3, [1]);
     expect(tx.seasonEnrollment.updateMany).toHaveBeenCalledWith({

@@ -3,6 +3,7 @@ import type { Prisma } from "../../generated/prisma/client";
 import { isSessionInProgress, progressFrom, type ProgressFigures } from "../dashboard-figures";
 import { orgDayKey, orgWallTime } from "../org-time";
 import type { CalendarScope } from "../permissions";
+import { seasonParticipant } from "./season-participants";
 
 export interface SessionListRow {
   id: number;
@@ -125,7 +126,7 @@ export async function loadAttendanceRoster(
   const enrollments = await db.seasonEnrollment.findMany({
     where: {
       seasonId: session.seasonId,
-      status: "ACTIVE",
+      ...seasonParticipant,
       ...(groupIds ? { groupId: { in: groupIds } } : {}),
     },
     select: {

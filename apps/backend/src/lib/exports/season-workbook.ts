@@ -5,6 +5,7 @@ import type { SubmissionStatus } from "../../generated/prisma/enums";
 import { db } from "../../db/client";
 import { formatDayInOrgTime } from "../org-time";
 import { computeEngagementForSeasons } from "../queries/engagement";
+import { seasonParticipant } from "../queries/season-participants";
 import {
   COLLATOR,
   addKeySheet,
@@ -233,7 +234,7 @@ export async function summariseSeasonWorkbook(
 
   const now = new Date();
   const [rowCount, sessionCount, quizCount, assignmentCount] = await Promise.all([
-    db.seasonEnrollment.count({ where: { seasonId, status: "ACTIVE" } }),
+    db.seasonEnrollment.count({ where: { seasonId, ...seasonParticipant } }),
     db.session.count({ where: { seasonId, startsAt: { lte: now } } }),
     db.quiz.count({ where: quizWhere(seasonId) }),
     db.assignment.count({ where: { seasonId, deletedAt: null } }),
@@ -298,7 +299,7 @@ async function loadSeasonExportData(seasonId: number) {
   // 2 — the roster. groupId comes from the ENROLMENT (R66, ruling C9); the
   // group NAME comes with it so the sheet needs no second lookup.
   const enrollments = await db.seasonEnrollment.findMany({
-    where: { seasonId, status: "ACTIVE" },
+    where: { seasonId, ...seasonParticipant },
     select: {
       studentUserId: true,
       groupId: true,

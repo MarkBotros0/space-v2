@@ -8,6 +8,7 @@ import type { EngagementRow } from "@space/shared";
 import { isAtRisk } from "../../../../../packages/shared/src/index";
 
 import { db } from "../../db/client";
+import { seasonParticipant } from "./season-participants";
 
 export interface EngagementCohortOptions {
   /** Restrict to these students (a leader's roster, or a single detail view). */
@@ -55,7 +56,7 @@ export async function computeEngagementForSeasons(
   const enrollments = await db.seasonEnrollment.findMany({
     where: {
       seasonId: { in: seasonIds },
-      status: "ACTIVE",
+      ...seasonParticipant,
       // A soft-deleted student is gone from every roster; scoring them
       // would put a deleted person back on the reports and dashboards.
       studentUser: { deletedAt: null },

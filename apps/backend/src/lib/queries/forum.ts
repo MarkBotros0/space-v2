@@ -4,6 +4,7 @@ import type { SubmissionStatus } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { canDeleteForumComment, type ForumAudience } from "../permissions";
 import { groupIdInSeason } from "./assignments";
+import { seasonParticipant } from "./season-participants";
 
 /**
  * The one place a forum author's name is produced.
@@ -155,7 +156,9 @@ export async function loadForumView(
   const enrolments = await db.seasonEnrollment.findMany({
     where: {
       seasonId: assignment.seasonId,
-      status: "ACTIVE",
+      // A student only reaches this while live (forumAudienceFor), so in a
+      // finished season this is staff reading the posts.
+      ...seasonParticipant,
       ...groupFilter,
       ...(audience.kind === "student" ? { studentUserId: { not: user.userId } } : {}),
     },

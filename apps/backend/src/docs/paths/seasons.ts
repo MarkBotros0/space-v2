@@ -170,7 +170,7 @@ export const seasonPaths = {
       tags: ["Groups"],
       summary: "Season roster for bulk group assignment",
       description:
-        "Season-admin only. ACTIVE enrolments of live students (C9 — v1 used StudentProfile.activeSeasonId), name-ordered, unpaginated (a season is hundreds of rows; the group form needs full membership).",
+        "Season-admin only. The season's participants (ACTIVE; in a finished season also COMPLETED; never WITHDRAWN), live students only (C9 — v1 used StudentProfile.activeSeasonId), name-ordered, unpaginated (a season is hundreds of rows; the group form needs full membership).",
       parameters: [idParam],
       responses: {
         200: ok(
@@ -189,7 +189,7 @@ export const seasonPaths = {
       tags: ["Groups"],
       summary: "Bulk-assign students to this season's groups",
       description:
-        "Season-admin only; at most 500 rows, each student once. Eligibility is an ACTIVE enrolment of a live student in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
+        "Season-admin only; at most 500 rows, each student once. Eligibility is a live student among the season's participants (ACTIVE; in a finished season also COMPLETED; never WITHDRAWN) in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
       parameters: [idParam],
       requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GroupAssignmentsRequest" } } } },
       responses: {

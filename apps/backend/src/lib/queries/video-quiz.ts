@@ -1,5 +1,6 @@
 import { parseYouTubeId } from "../../../../../packages/shared/src/index";
 import { db } from "../../db/client";
+import { seasonParticipant } from "./season-participants";
 
 export interface VideoQuizQuestionRow {
   id: number;
@@ -157,7 +158,7 @@ export async function loadVideoQuizResults(
   const enrollments = await db.seasonEnrollment.findMany({
     where: {
       seasonId: session.seasonId,
-      status: "ACTIVE",
+      ...seasonParticipant,
       ...(restrictToGroupIds ? { groupId: { in: restrictToGroupIds } } : {}),
     },
     select: {

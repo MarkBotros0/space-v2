@@ -2,6 +2,7 @@ import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
 import { isMentor, isSuper } from "../../rbac";
 import { groupIdInSeason } from "../enrollment";
+import { seasonParticipant } from "../season-participants";
 
 export interface GroupListRow {
   id: number;
@@ -56,11 +57,10 @@ async function toListRows(
   if (groups.length === 0) return [];
 
   // One grouped count for the whole page rather than a count per group. The
-  // population is ACTIVE season enrolments (ruling C9): a COMPLETED or
-  // WITHDRAWN student is not counted.
+  // population is the season's participants, from enrolments (ruling C9).
   const counts = await db.seasonEnrollment.groupBy({
     by: ["groupId"],
-    where: { groupId: { in: groups.map((g) => g.id) }, status: "ACTIVE" },
+    where: { groupId: { in: groups.map((g) => g.id) }, ...seasonParticipant },
     _count: { _all: true },
   });
   const countBy = new Map(counts.map((c) => [c.groupId, c._count._all]));
@@ -149,7 +149,7 @@ export interface SeasonRosterRow {
 /**
  * The season's roster for the bulk-assign grid and the group form (D-16.11).
  *
- * Population: ACTIVE enrolments of live STUDENT users (ruling C9). v1 used
+ * Population: the season's participants who are live STUDENT users (ruling C9). v1 used
  * `StudentProfile.activeSeasonId` (spec 05 R81), which hides an enrolled
  * student whose pointer has moved on. The group shown is this season's, from
  * `SeasonEnrollment.groupId`. A group in another season is not reported:
@@ -157,7 +157,7 @@ export interface SeasonRosterRow {
  */
 export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRow[]> {
   const enrolments = await db.seasonEnrollment.findMany({
-    where: { seasonId, status: "ACTIVE", studentUser: { role: "STUDENT", deletedAt: null } },
+    where: { seasonId, ...seasonParticipant, studentUser: { role: "STUDENT", deletedAt: null } },
     select: {
       studentUserId: true,
       groupId: true,
@@ -187,7 +187,7 @@ export async function loadGroupImpact(groupId: number): Promise<{
   soleTargetAssignments: { id: number; title: string }[];
 }> {
   const [studentCount, leaderCount, targeted] = await Promise.all([
-    db.seasonEnrollment.count({ where: { groupId, status: "ACTIVE" } }),
+    db.seasonEnrollment.count({ where: { groupId, ...seasonParticipant } }),
     db.groupLeader.count({ where: { groupId } }),
     db.assignment.findMany({
       where: { deletedAt: null, isAllGroups: false, targets: { some: { groupId } } },

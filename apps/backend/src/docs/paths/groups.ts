@@ -59,7 +59,7 @@ export const groupPaths = {
       tags: ["Groups"],
       summary: "What deleting a group would do",
       description:
-        "Season-admin only. studentCount (ACTIVE enrolments that would lose their group), leaderCount, and soleTargetAssignments: live assignments targeted at this group ONLY, which make DELETE refuse (spec 05 R44).",
+        "Season-admin only. studentCount (the season's participants who would lose their group: ACTIVE, in a finished season also COMPLETED), leaderCount, and soleTargetAssignments: live assignments targeted at this group ONLY, which make DELETE refuse (spec 05 R44).",
       parameters: [idParam],
       responses: {
         200: ok(

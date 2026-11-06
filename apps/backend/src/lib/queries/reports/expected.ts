@@ -21,6 +21,9 @@ export interface ExpectedAssignment {
  * graduates, and those students were set the assignment like everyone else.
  * Counting ACTIVE alone made a finished season's every bar read 0 expected and
  * no rate at all, exactly when the season is worth reporting on.
+ *
+ * Rosters filter in the query with `seasonParticipant` instead. This one counts
+ * a live season's graduate too, on purpose: the assignment was set to them.
  */
 export function expectedStudentIds(
   enrollments: readonly ExpectedEnrollment[],

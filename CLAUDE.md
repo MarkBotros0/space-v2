@@ -387,6 +387,11 @@ Build 1 exists.
   stale. Only Super reads and corrects results (`/seasons/:id/results`). `GET /seasons/overdue`
   feeds the Today callout for ACTIVE seasons past their end date. **Finished seasons are locked and
   never reopen**; their students still read their own work, read-only (responses carry `readOnly`).
+- **Who a roster lists.** After End every enrolment is COMPLETED, so a staff roster, count, report or
+  export filtering on `status: "ACTIVE"` blanks out every finished season. Use `seasonParticipant`
+  (`lib/queries/season-participants.ts`): ACTIVE in a live season, ACTIVE and COMPLETED in a finished
+  one, never WITHDRAWN. "Is this student live?" (`hasActiveEnrollment`, the token, check-in), who to
+  notify and who holds End open stay on ACTIVE in an ACTIVE season, and must not match COMPLETED.
 - **`activeSeasonId` is a derived claim.** `lib/auth/scopes.ts` computes it on every token from the
   newest ACTIVE enrolment in an ACTIVE, non-deleted season; `seasonAdminIds` / `groupLeaderIds`
   likewise cover DRAFT or ACTIVE seasons only. The claim keeps its name, so the mobile app and

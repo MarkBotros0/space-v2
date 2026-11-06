@@ -9,6 +9,7 @@ import type { GroupImportPreview } from "@space/shared";
 import { z } from "zod";
 
 import { db } from "../../db/client";
+import { seasonParticipant } from "../queries/season-participants";
 import { ImportParseError, type ParsedSheet } from "./delimited";
 import { normaliseEmail } from "./students";
 
@@ -68,11 +69,11 @@ export async function buildGroupImportPreview(
     // (groups-query.ts:143-148), so a student with an ACTIVE enrolment whose
     // pointer names another season is invisible here — and the write gates on
     // the same pointer and silently drops them (spec R61/R76).
-    // ACTIVE only — the same population the commit (Plan 6's
+    // The season's participants — the same population the commit (Plan 6's
     // assignStudentsToGroups) accepts, so a row that previews `assign` is a
-    // row that gets written. A WITHDRAWN/COMPLETED enrolment is `no_student`.
+    // row that gets written. A WITHDRAWN enrolment is `no_student`.
     db.seasonEnrollment.findMany({
-      where: { seasonId, status: "ACTIVE", studentUser: { role: "STUDENT", deletedAt: null } },
+      where: { seasonId, ...seasonParticipant, studentUser: { role: "STUDENT", deletedAt: null } },
       select: { studentUserId: true, groupId: true, studentUser: { select: { email: true } } },
     }),
     db.group.findMany({ where: { seasonId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
