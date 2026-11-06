@@ -40,7 +40,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Create a student",
       description:
-        "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported. The account is created with no password and an invite is minted in the same transaction and emailed after commit, as `POST /users` does it. A mail failure (or no mail transport) never rolls back the student: the undelivered invite is expired again so the account reads `pending`, and the response says `inviteSent: false` (re-send from `POST /users/{id}/invite`). The code never appears in any response. The student sets a password by accepting the invite. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment and points `activeSeasonId` at the same season, so the two definitions of \"in this season\" agree (D1). Empty strings are stored as null.",
+        "SUPER only (v1 admitted any ADMIN with no season scoping). **There is no password field, by design (D7):** v1's hard-coded `ChangeMe123!` is not ported. The account is created with no password and an invite is minted in the same transaction and emailed after commit, as `POST /users` does it. A mail failure (or no mail transport) never rolls back the student: the undelivered invite is expired again so the account reads `pending`, and the response says `inviteSent: false` (re-send from `POST /users/{id}/invite`). The code never appears in any response. The student sets a password by accepting the invite. When `seasonId` is given, one transaction creates the user, the profile, an ACTIVE enrollment; the student's current season is derived from that enrolment, never stored (D1). Empty strings are stored as null.",
       requestBody: {
         required: true,
         content: {
@@ -170,7 +170,7 @@ export const studentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`email_taken` or `not_enrolled`."),
+        409: conflict("`email_taken`."),
       },
     },
     delete: {

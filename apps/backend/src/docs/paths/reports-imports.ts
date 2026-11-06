@@ -191,7 +191,7 @@ export const reportsImportsPaths = {
         "SUPER only. The body carries cell **values and a row number, never a status**: the server re-validates every row and re-runs the existence lookup inside the transaction, so a client cannot commit a row the server would have refused. " +
         "**All-or-nothing**: any unimportable row answers `422 import_rows_invalid` naming the row numbers and nothing is written (deliberate divergence from v1, which committed row-by-row and left partial imports behind). " +
         "**Idempotent by email**, matched case-insensitively and stored exactly as sent: a re-run creates nothing. In-paste repeats are skipped. " +
-        "`onExisting` is required. `skip` reproduces v1. `enroll` (season mode only) enrols an existing live STUDENT using the same rules as `POST /students/{id}/enrollments` (an existing enrolment of any status is left alone and reported `skipped`; `activeSeasonId` is set only when unset) and writes no other field. A soft-deleted or staff address is always skipped. " +
+        "`onExisting` is required. `skip` reproduces v1. `enroll` (season mode only) enrols an existing live STUDENT using the same rules as `POST /students/{id}/enrollments` (an existing enrolment of any status is left alone and reported `skipped`; the current season is derived from the enrolment) and writes no other field. A soft-deleted or staff address is always skipped. " +
         "Created accounts have no credential and no invite is sent. Outcomes are `created` / `skipped` / `enrolled`; there is no `failed`. " +
         "404 `not_found` for a soft-deleted season; 409 `import_conflict` for a concurrent create (nothing was written; re-running is safe); 429.",
       requestBody: { required: true, content: { "application/json": { schema: studentImportCommitBodyDoc } } },
@@ -215,7 +215,7 @@ export const reportsImportsPaths = {
       description:
         "Gate is `isAdminOfSeason` on the **path** id (SUPER short-circuits), so preview and commit cannot target different seasons. Body `{ text, delimiter? }`, pasted text. Needs `email` and `group` columns; `name` is display only. " +
         "Statuses: `assign`, `unchanged`, `no_student`, `no_group`, `invalid`. A **blank** group cell is `no_group`, not an unassign - there is no bulk unassign. " +
-        "The roster is resolved through an ACTIVE `SeasonEnrollment` (ruling C9), not `StudentProfile.activeSeasonId`, which is why a previewed `assign` is always written. " +
+        "The roster is resolved through an ACTIVE `SeasonEnrollment` (ruling C9), not a stored pointer, which is why a previewed `assign` is always written. " +
         "The file is **refused** (`400 bad_request`) when two groups in the season share a case-insensitive name, rather than one silently winning.",
       parameters: [idParam],
       requestBody: { required: true, content: { "application/json": { schema: pastedSheetBodyDoc } } },
