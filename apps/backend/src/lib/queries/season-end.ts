@@ -1,4 +1,5 @@
 import { db } from "../../db/client";
+import type { Prisma } from "../../generated/prisma/client";
 import type { SeasonEndCheck } from "../../../../../packages/shared/src/index";
 import { attendancePct } from "./attendance-pct";
 
@@ -8,24 +9,28 @@ import { attendancePct } from "./attendance-pct";
  * sessions that have finished with an ACTIVE student unmarked. Soft-deleted
  * students and assignments never block.
  */
-export async function loadSeasonEndCheck(seasonId: number, now: Date): Promise<SeasonEndCheck> {
+export async function loadSeasonEndCheck(
+  seasonId: number,
+  now: Date,
+  client: Prisma.TransactionClient = db,
+): Promise<SeasonEndCheck> {
   // Only students still ACTIVE in this season hold the season open.
   const activeStudentInSeason = {
     deletedAt: null,
     seasonEnrollments: { some: { seasonId, status: "ACTIVE" as const } },
   };
   const [enrollments, sessions, submissions, attempts] = await Promise.all([
-    db.seasonEnrollment.findMany({
+    client.seasonEnrollment.findMany({
       where: { seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
       orderBy: { studentUser: { name: "asc" } },
       select: { studentUserId: true, studentUser: { select: { name: true } }, group: { select: { name: true } } },
     }),
-    db.session.findMany({
+    client.session.findMany({
       where: { seasonId },
       orderBy: { startsAt: "asc" },
       select: { id: true, title: true, startsAt: true, durationMinutes: true },
     }),
-    db.submission.findMany({
+    client.submission.findMany({
       where: {
         status: "SUBMITTED",
         assignment: { seasonId, deletedAt: null },
@@ -38,7 +43,7 @@ export async function loadSeasonEndCheck(seasonId: number, now: Date): Promise<S
         studentUser: { select: { name: true } },
       },
     }),
-    db.quizAttempt.findMany({
+    client.quizAttempt.findMany({
       where: { status: "SUBMITTED", quiz: { seasonId }, studentUser: activeStudentInSeason },
       orderBy: { id: "asc" },
       select: {
@@ -51,7 +56,7 @@ export async function loadSeasonEndCheck(seasonId: number, now: Date): Promise<S
   ]);
 
   const activeIds = enrollments.map((e) => e.studentUserId);
-  const marks = await db.attendance.findMany({
+  const marks = await client.attendance.findMany({
     where: { session: { seasonId }, studentUserId: { in: activeIds } },
     select: { sessionId: true, studentUserId: true, status: true },
   });

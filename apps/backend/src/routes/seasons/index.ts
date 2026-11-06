@@ -18,7 +18,8 @@ import {
   updateSeason,
 } from "./crud";
 import { duplicateSeason } from "./duplicate";
-import { getSeasonEndCheck } from "./end";
+import { endSeason, getSeasonEndCheck } from "./end";
+import { getSeasonResults, listOverdueSeasons, updateSeasonResult } from "./results";
 import { getSeasonRoster, saveGroupAssignments } from "./roster";
 
 /**
@@ -36,6 +37,8 @@ export const seasonsRouter = Router();
 seasonsRouter.get("/", requireAuth, listSeasons);
 // Before every /:id/* route, or /by-code/roster would match /:id/roster with id "by-code".
 seasonsRouter.get("/by-code/:code", requireAuth, getSeasonByCode);
+// Before /:id, or "overdue" would be read as a season id.
+seasonsRouter.get("/overdue", requireAuth, listOverdueSeasons);
 seasonsRouter.get("/:id", requireAuth, getSeason);
 seasonsRouter.post("/", requireAuth, createSeason);
 seasonsRouter.patch("/:id", requireAuth, updateSeason);
@@ -54,5 +57,8 @@ seasonsRouter.post("/:id/admins", requireAuth, addSeasonAdmin);
 seasonsRouter.delete("/:id/admins/:userId", requireAuth, removeSeasonAdmin);
 
 seasonsRouter.get("/:id/end-check", requireAuth, getSeasonEndCheck);
+seasonsRouter.post("/:id/end", requireAuth, endSeason);
+seasonsRouter.get("/:id/results", requireAuth, getSeasonResults);
+seasonsRouter.patch("/:id/results/:studentUserId", requireAuth, updateSeasonResult);
 seasonsRouter.get("/:id/roster", requireAuth, getSeasonRoster);
 seasonsRouter.put("/:id/group-assignments", requireAuth, saveGroupAssignments);

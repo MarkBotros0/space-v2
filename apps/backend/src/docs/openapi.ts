@@ -19,6 +19,7 @@ import { sessionsAssignmentsSchemas } from "./components/sessions-assignments";
 import { submissionsMeSchemas } from "./components/submissions-me";
 import { authPaths } from "./paths/auth";
 import { mePaths } from "./paths/me";
+import { seasonEndPaths } from "./paths/season-end";
 import { seasonPaths } from "./paths/seasons";
 import { seasonAdminPaths, seasonAdminSchemas } from "./paths/season-admins";
 import { groupPaths } from "./paths/groups";
@@ -130,6 +131,7 @@ export const openApiDocument = {
     ...authPaths,
     ...mePaths,
     ...seasonPaths,
+    ...seasonEndPaths,
     ...seasonAdminPaths,
     ...groupPaths,
     ...userPaths,

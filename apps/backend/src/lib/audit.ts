@@ -27,7 +27,10 @@ export type AuditOperation =
   // Season admin grants (SUPER-only). The subject is the user; the season
   // rides along as a scope id.
   | "season.admin_add"
-  | "season.admin_remove";
+  | "season.admin_remove"
+  // Ending a season, and a later correction of one student's result.
+  | "season.end"
+  | "season.result_correct";
 
 /** Extra ids that locate a change — ids only, like the rest of the line. */
 export type AuditScope = { season?: number };
