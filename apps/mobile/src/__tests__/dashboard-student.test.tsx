@@ -129,13 +129,14 @@ describe("DashboardScreen — STUDENT", () => {
       },
       [EVENTS]: events,
       [UNREAD]: { unreadCount: 0 },
+      "/api/v1/me/season-history": { seasons: [] },
     });
 
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("Not enrolled yet")).toBeTruthy();
+    expect(await screen.findByText("Welcome to JPC Space")).toBeTruthy();
     expect(
-      screen.getByText("Contact your leader or admin to be enrolled in a season."),
+      screen.getByText("You'll see your first season here when you're added."),
     ).toBeTruthy();
     expect(screen.getByText("Sunday, March 1")).toBeTruthy();
     fireEvent.press(screen.getByText("Complete your profile"));

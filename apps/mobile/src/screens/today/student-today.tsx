@@ -1,24 +1,23 @@
-import { useRouter } from "expo-router";
 import { AlertTriangle } from "lucide-react-native";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
-import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
-import { EmptyState, GroupedList, ListRow, Text } from "../../design/ui";
+import { Text } from "../../design/ui";
 import { DASHBOARD_STALE_TIME, useStudentDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useStudentQuizList } from "../../hooks/use-quizzes";
 import { usePullRefresh } from "../../hooks/use-pull-refresh";
 import { useRefreshOnResume } from "../../hooks/use-refresh-on-resume";
-import { useMyAttendance } from "../../hooks/use-self-service";
+import { useMyAttendance, useSeasonHistory } from "../../hooks/use-self-service";
 import { useSessionDetail } from "../../hooks/use-session-detail";
 import { firstName, formatLongDay } from "../../lib/format";
 import { DEFAULT_STALE_TIME } from "../../lib/query-client";
 import { useSessionStore } from "../../store/session";
+import { BetweenSeasons } from "./between-seasons";
 import { NextSessionHero } from "./next-session-hero";
 import { OpenWorkList } from "./open-work-list";
 import { TodayFigures } from "./today-figures";
@@ -44,7 +43,6 @@ function LateCallout({ count }: { count: number }) {
  * on what the server says, so a student who isn't enrolled sends none of them.
  */
 export function StudentToday() {
-  const router = useRouter();
   const name = useSessionStore((s) => s.user?.name ?? null);
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
 
@@ -57,6 +55,9 @@ export function StudentToday() {
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
   const detail = useSessionDetail(nextId);
   const quizzes = useStudentQuizList(seasonId);
+  // Between seasons: no season in the token, or the dashboard says there isn't one.
+  const between = activeSeasonId === null || (data !== undefined && data.season === null);
+  const history = useSeasonHistory(activeSeasonId, between);
 
   const pull = usePullRefresh(() =>
     Promise.all([
@@ -66,6 +67,7 @@ export function StudentToday() {
       activeSeasonId !== null ? attendance.refetch() : null,
       nextId !== null ? detail.refetch() : null,
       seasonId !== null ? quizzes.refetch() : null,
+      between ? history.refetch() : null,
     ]),
   );
 
@@ -79,6 +81,7 @@ export function StudentToday() {
       ...(activeSeasonId !== null ? [{ q: attendance, freshFor: DEFAULT_STALE_TIME }] : []),
       ...(nextId !== null ? [{ q: detail, freshFor: DEFAULT_STALE_TIME }] : []),
       ...(seasonId !== null ? [{ q: quizzes, freshFor: DEFAULT_STALE_TIME }] : []),
+      ...(between ? [{ q: history, freshFor: DEFAULT_STALE_TIME }] : []),
     ];
     for (const { q, freshFor } of queries) {
       if (q.dataUpdatedAt > 0 && Date.now() - q.dataUpdatedAt >= freshFor) {
@@ -128,14 +131,7 @@ export function StudentToday() {
       ) : (
         <View className="flex-col gap-4">
           {stale}
-          <EmptyState
-            icon={NAV_ICONS.season}
-            title="Not enrolled yet"
-            description="Contact your leader or admin to be enrolled in a season."
-          />
-          <GroupedList header="While you wait">
-            <ListRow title="Complete your profile" chevron onPress={() => router.push("/profile")} />
-          </GroupedList>
+          <BetweenSeasons history={history} />
           <UpcomingEventsCard query={events} />
         </View>
       )}

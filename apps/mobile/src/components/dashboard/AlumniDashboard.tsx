@@ -8,6 +8,7 @@ import { Button, GroupedList, HeroCard, ListRow, Skeleton, StatusChip } from "..
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useSeasonHistory } from "../../hooks/use-self-service";
 import { firstName, formatEventWhenShort, formatSeasonDay } from "../../lib/format";
+import { FinishedSeasonCard } from "../../screens/today/finished-season-card";
 import { UpcomingEventsGroup } from "../../screens/events/upcoming-events-group";
 import { useSessionStore } from "../../store/session";
 
@@ -49,6 +50,7 @@ export function AlumniDashboard() {
     void events.refetch();
     void history.refetch();
   };
+  const latest = history.data?.[0];
   const [next, ...others] = events.data?.events ?? [];
 
   return (
@@ -61,6 +63,7 @@ export function AlumniDashboard() {
       refreshing={events.isRefetching || history.isRefetching}
     >
       <View className="flex-col gap-6">
+        {latest && latest.outcome !== "DROPPED" ? <FinishedSeasonCard row={latest} /> : null}
         {events.isPending ? (
           <Loading />
         ) : events.isError ? (

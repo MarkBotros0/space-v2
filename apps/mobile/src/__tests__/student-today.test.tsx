@@ -38,6 +38,7 @@ import {
 
 const ATTENDANCE = "/api/v1/me/attendance";
 const DASHBOARD = "/api/v1/me/dashboard";
+const HISTORY = "/api/v1/me/season-history";
 
 const routes = (over: Record<string, unknown> = {}) => ({
   [DASHBOARD]: studentDashboard,
@@ -45,6 +46,7 @@ const routes = (over: Record<string, unknown> = {}) => ({
   [EVENTS]: events,
   [NEXT_SESSION_DETAIL]: sessionDetail,
   [STUDENT_QUIZZES]: quizPage,
+  [HISTORY]: { seasons: [] },
   ...over,
 });
 
@@ -319,7 +321,7 @@ describe("StudentToday: not enrolled and failures", () => {
     // A token can still name a season the dashboard does not enrol them in.
     serve(routes({ [DASHBOARD]: notEnrolled }));
     renderWithProviders(<StudentToday />);
-    expect(await screen.findByText("Not enrolled yet")).toBeTruthy();
+    expect(await screen.findByText("Welcome to JPC Space")).toBeTruthy();
     expect(await screen.findByText("Open day")).toBeTruthy();
     expect(screen.getByText("Hi, Sara")).toBeTruthy();
     fireEvent.press(screen.getByText("Complete your profile"));
@@ -333,7 +335,7 @@ describe("StudentToday: not enrolled and failures", () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null }, { name: "Sara" }));
     serve(routes({ [DASHBOARD]: notEnrolled }));
     renderWithProviders(<StudentToday />);
-    expect(await screen.findByText("Not enrolled yet")).toBeTruthy();
+    expect(await screen.findByText("Welcome to JPC Space")).toBeTruthy();
     expect(requested()).not.toContain(ATTENDANCE);
   });
 
@@ -370,7 +372,7 @@ describe("StudentToday: not enrolled and failures", () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null }, { name: "Sara" }));
     serve(routes({ [DASHBOARD]: notEnrolled }));
     renderWithProviders(<StudentToday />);
-    await screen.findByText("Not enrolled yet");
+    await screen.findByText("Welcome to JPC Space");
     get.mockClear();
 
     await act(async () => {

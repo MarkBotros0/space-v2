@@ -133,4 +133,21 @@ describe("AlumniDashboard", () => {
     expect(await screen.findByText("Next event")).toBeTruthy();
     expect(await screen.findByText("Couldn't load your history.")).toBeTruthy();
   });
+
+  it("shows the finished-season card above the rest, without the next-season line", async () => {
+    serve({ [EVENTS]: { events: [event], total: 1 }, [HISTORY]: { seasons: [{ ...row(3, "GBV 2025"), outcome: "PASSED" }] } });
+    renderWithProviders(<AlumniDashboard />);
+    expect(await screen.findByText("GBV 2025 finished")).toBeTruthy();
+    expect(screen.getByText("Passed - 85% attendance")).toBeTruthy();
+    expect(screen.queryByText(/next season here/)).toBeNull();
+    fireEvent.press(screen.getByText("View your season"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/past-season/[seasonId]", params: { seasonId: "3" } });
+  });
+
+  it("shows no finished card when the latest enrolment was a drop", async () => {
+    serve({ [EVENTS]: { events: [event], total: 1 }, [HISTORY]: { seasons: [{ ...row(3, "GBV 2025"), outcome: "DROPPED" }] } });
+    renderWithProviders(<AlumniDashboard />);
+    await screen.findByText("Next event");
+    expect(screen.queryByText("GBV 2025 finished")).toBeNull();
+  });
 });
