@@ -54,7 +54,7 @@ export const seasonPaths = {
       tags: ["Seasons"],
       summary: "Update a season",
       description:
-        "Asymmetric by role (spec 02 D3). SUPER sends the full SeasonWriteRequest (v1's whole-body update; title re-derived). A season ADMIN sends a partial body containing only `description`, `absenceBudgetMinutes`, `absenceWeightMinutes`; any other key is refused with 403 `forbidden_field` rather than stripped. Status moves (SUPER): only an unchanged status, DRAFT to ACTIVE, and COMPLETED to or from ARCHIVED are allowed. Anything else from ACTIVE is 409 `use_end_season`; anything else from DRAFT is 409 `invalid_status_change`; COMPLETED or ARCHIVED back to ACTIVE or DRAFT is 409 `season_finished`; DRAFT to ACTIVE marks the season's students, admins and leaders' sessions stale.",
+        "Asymmetric by role (spec 02 D3). SUPER sends the full SeasonWriteRequest (v1's whole-body update; title re-derived). A season ADMIN sends a partial body containing only `description`, `absenceBudgetMinutes`, `absenceWeightMinutes`; any other key is refused with 403 `forbidden_field` rather than stripped. Status moves (SUPER): only an unchanged status and COMPLETED to or from ARCHIVED are allowed. DRAFT to ACTIVE is 409 `use_start_season` (see `POST /seasons/{id}/start`); anything else from DRAFT is 409 `invalid_status_change`; anything else from ACTIVE is 409 `use_end_season`; COMPLETED or ARCHIVED back to ACTIVE or DRAFT is 409 `season_finished`; a status that changed while the request ran (a Start landing first) is 409 `season_changed`, and nothing is written.",
       parameters: [idParam],
       requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } } },
       responses: {
@@ -63,7 +63,7 @@ export const seasonPaths = {
         401: errRef("Unauthorized"),
         403: conflict("`forbidden` (not SUPER, not this season's ADMIN) or `forbidden_field` (ADMIN sent an identity field)."),
         404: errRef("NotFound"),
-        409: conflict("`code_taken`, `use_end_season`, `invalid_status_change` or `season_finished`."),
+        409: conflict("`code_taken`, `use_start_season`, `use_end_season`, `invalid_status_change`, `season_finished` or `season_changed`."),
       },
     },
     delete: {

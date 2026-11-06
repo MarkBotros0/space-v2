@@ -4,8 +4,6 @@ import type { SeasonWriteBody } from "@space/shared";
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { apiOk, apiError } from "../../lib/api-response";
-import { markSessionsStale } from "../../lib/auth/session-validity";
-import { seasonPeopleIds } from "../../lib/auth/season-people";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { loadSeasonDetail } from "../../lib/queries/seasons";
@@ -151,15 +149,16 @@ export async function createSeason(req: Request, res: Response) {
 type SeasonStatusValue = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
 
 /**
- * The only moves are an unchanged status, DRAFT to ACTIVE and COMPLETED to or
- * from ARCHIVED. A season only finishes through End season, which completes its
- * enrolments: any other way (ACTIVE back to DRAFT, then COMPLETED) strands them
- * ACTIVE in a finished season. A finished season never reopens.
+ * The only moves are an unchanged status and COMPLETED to or from ARCHIVED. A
+ * season only starts through Start, which runs the checks, and only finishes
+ * through End season, which completes its enrolments: any other way (ACTIVE back
+ * to DRAFT, then COMPLETED) strands them ACTIVE in a finished season. A finished
+ * season never reopens.
  */
 function statusChangeError(from: SeasonStatusValue, to: SeasonStatusValue) {
   if (from === to) return null;
   if (from === "DRAFT") {
-    if (to === "ACTIVE") return null;
+    if (to === "ACTIVE") return { code: "use_start_season", message: "Start the season from its Start button." };
     return { code: "invalid_status_change", message: "A draft season can only be started." };
   }
   if (from === "ACTIVE") {
@@ -199,19 +198,16 @@ export async function updateSeason(req: Request, res: Response) {
     const blocked = statusChangeError(existing.status, body.status);
     if (blocked) return apiError(res, blocked.code, blocked.message, 409);
     try {
-      const season = await db.$transaction(async (tx) => {
-        const row = await tx.season.update({
-          where: { id },
-          data: { ...seasonColumns(body), updatedById: user.userId },
-          select: { id: true, code: true },
-        });
-        // A season going live changes the derived current season for its people.
-        if (existing.status === "DRAFT" && body.status === "ACTIVE") {
-          await markSessionsStale(tx, await seasonPeopleIds(tx, id));
-        }
-        return row;
+      // Only if the status is still the one checked above: this body carries a
+      // status, so a Start landing in between would otherwise be undone.
+      const { count } = await db.season.updateMany({
+        where: { id, status: existing.status, deletedAt: null },
+        data: { ...seasonColumns(body), updatedById: user.userId },
       });
-      return apiOk(res, season);
+      if (count === 0) {
+        return apiError(res, "season_changed", "This season just changed. Reload it and try again.", 409);
+      }
+      return apiOk(res, { id, code: body.code });
     } catch (err) {
       if (isUniqueViolation(err)) return codeTaken(res);
       throw err;

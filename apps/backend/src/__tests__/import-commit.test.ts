@@ -7,9 +7,10 @@
 // top-level spies below fire.
 
 const mockTx = {
-  user: { createManyAndReturn: jest.fn() },
+  season: { findFirst: jest.fn() },
+  user: { createManyAndReturn: jest.fn(), findMany: jest.fn(), updateMany: jest.fn() },
   studentProfile: { createMany: jest.fn(), upsert: jest.fn() },
-  seasonEnrollment: { createMany: jest.fn(), upsert: jest.fn() },
+  seasonEnrollment: { createMany: jest.fn(), upsert: jest.fn(), findMany: jest.fn() },
   $queryRaw: jest.fn(),
 };
 const mockDb = {
@@ -34,6 +35,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockTx));
   mockTx.$queryRaw.mockResolvedValue([]); // nobody exists yet
+  mockTx.season.findFirst.mockResolvedValue({ id: 7, status: "DRAFT", program: "TEST", requiredProgram: null });
+  mockTx.user.findMany.mockResolvedValue([]);
+  mockTx.seasonEnrollment.findMany.mockResolvedValue([]);
   mockTx.user.createManyAndReturn.mockImplementation(async ({ data }: { data: { email: string }[] }) =>
     data.map((d, i) => ({ id: 100 + i, email: d.email })),
   );

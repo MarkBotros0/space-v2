@@ -15,7 +15,7 @@ import {
 } from "../lib/queries/groups";
 import { seasonParticipant } from "../lib/queries/season-participants";
 import { isAdminOfAnySeason, isAdminOfSeason } from "../lib/rbac";
-import { freeAlumni, refusalStatus } from "../lib/roles";
+import { freeAlumni, lockPeople, lockSeason, refusalStatus } from "../lib/roles";
 import { groupUpdateRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";
@@ -209,6 +209,8 @@ groupsRouter.delete("/:id", async (req, res) => {
 
   try {
     const orphanedStudentIds = await db.$transaction(async (tx) => {
+      const { seasonId } = await tx.group.findUniqueOrThrow({ where: { id }, select: { seasonId: true } });
+      await lockSeason(tx, seasonId, "share");
       const sole = await tx.assignment.findMany({
         where: { deletedAt: null, isAllGroups: false, targets: { some: { groupId: id } } },
         select: { _count: { select: { targets: true } } },
@@ -217,9 +219,12 @@ groupsRouter.delete("/:id", async (req, res) => {
       if (soleCount > 0) throw new GroupHasSoleTargetsError(soleCount);
 
       const orphaned = await tx.seasonEnrollment.findMany({ where: { groupId: id }, select: { studentUserId: true } });
-      const leaders = await tx.groupLeader.findMany({ where: { groupId: id }, select: { userId: true } });
+      const leaders = (await tx.groupLeader.findMany({ where: { groupId: id }, select: { userId: true } })).map(
+        (l) => l.userId,
+      );
+      await lockPeople(tx, leaders);
       await tx.groupLeader.deleteMany({ where: { groupId: id } });
-      await markSessionsStale(tx, leaders.map((l) => l.userId));
+      await markSessionsStale(tx, leaders);
       await tx.groupStudent.deleteMany({ where: { groupId: id } });
       await tx.seasonEnrollment.updateMany({ where: { groupId: id }, data: { groupId: null } });
       await tx.assignmentTarget.deleteMany({ where: { groupId: id } });

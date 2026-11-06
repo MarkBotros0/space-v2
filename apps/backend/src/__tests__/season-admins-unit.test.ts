@@ -18,6 +18,7 @@ jest.mock("../lib/auth/session-validity", () => ({
 const mockRefuseNewSeats = jest.fn();
 jest.mock("../lib/roles", () => ({
   lockPeople: async () => undefined,
+  readSeatSeason: () => mockDb.season.findFirst(),
   refusalStatus: (r: { code: string }) => (r.code === "not_found" ? 404 : 409),
   refuseNewSeats: (...a: unknown[]) => mockRefuseNewSeats(...a),
 }));

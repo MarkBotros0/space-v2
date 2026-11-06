@@ -34,6 +34,7 @@ export type AuditOperation =
   | "season.admin_add"
   | "season.admin_remove"
   // Ending a season, and a later correction of one student's result.
+  | "season.start"
   | "season.end"
   | "season.result_correct";
 

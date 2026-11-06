@@ -24,6 +24,7 @@ import { getSeasonResults, listOverdueSeasons, updateSeasonResult } from "./resu
 import { listPeopleCandidates } from "./people-candidates";
 import { getSeasonRoster, saveGroupAssignments } from "./roster";
 import { listStaffCandidates } from "./staff-candidates";
+import { getSeasonStartCheck, startSeason } from "./start";
 
 /**
  * Seasons: the season rows themselves, duplication, the child collections
@@ -66,6 +67,8 @@ seasonsRouter.post("/:id/enrollments", requireAuth, addSeasonEnrollments);
 seasonsRouter.post("/:id/enrollments/:userId/override", requireAuth, overrideSeasonEnrollment);
 seasonsRouter.delete("/:id/enrollments/:userId", requireAuth, removeSeasonEnrollment);
 
+seasonsRouter.get("/:id/start-check", requireAuth, getSeasonStartCheck);
+seasonsRouter.post("/:id/start", requireAuth, startSeason);
 seasonsRouter.get("/:id/end-check", requireAuth, getSeasonEndCheck);
 seasonsRouter.post("/:id/end", requireAuth, endSeason);
 seasonsRouter.get("/:id/results", requireAuth, getSeasonResults);

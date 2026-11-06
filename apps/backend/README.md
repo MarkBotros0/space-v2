@@ -24,6 +24,8 @@ All paths below are relative to the server root. Everything except
 | POST | `/api/v1/seasons/:id/admins` | SUPER only. `{ userId }`; ADMIN-role, active users only; idempotent. |
 | DELETE | `/api/v1/seasons/:id/admins/:userId` | SUPER only. Idempotent. Add and remove revoke the user's refresh tokens. |
 | GET | `/api/v1/seasons/overdue` | ACTIVE seasons past their end date: all for SUPER, own for ADMIN, else empty. |
+| GET | `/api/v1/seasons/:id/start-check` | SUPER. `{ ready, items }`: who stops a draft from starting, and why. 409 `not_draft`. |
+| POST | `/api/v1/seasons/:id/start` | SUPER. Re-runs the check under locks, then ACTIVE and everyone's sessions stale. 409 `start_blocked`, `not_draft`. |
 | GET | `/api/v1/seasons/:id/end-check` | What blocks ending the season, and the students it ends for. |
 | POST | `/api/v1/seasons/:id/end` | Season admin or SUPER. `{ notPassed }`; 409 `season_unfinished` while blockers stand, `season_not_active` if already ended. |
 | GET | `/api/v1/seasons/:id/results` | SUPER only. Pass results of a finished season. |

@@ -1,7 +1,7 @@
 import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
 import { markSessionsStale } from "../../auth/session-validity";
-import { lockPeople, refuseNewSeats, type SeatRefusal } from "../../roles";
+import { lockPeople, readSeatSeason, refuseNewSeats, type SeatRefusal } from "../../roles";
 import { seasonRosterMember } from "../season-participants";
 
 export interface GroupWriteInput {
@@ -59,7 +59,8 @@ export type LeaderChange = { added: number[]; removed: number[] };
  * Check a group's new leader list, before writing anything. `groupId` is null
  * for a group not created yet. Only people being added are checked, so saving a
  * group whose leader is unchanged never re-checks them and an old row can't
- * block the form. Call inside the transaction that then applies the change.
+ * block the form. Call first in the transaction that then applies the change, as
+ * it takes the season's lock before the people's.
  */
 export async function planLeaderChange(
   tx: Prisma.TransactionClient,
@@ -67,6 +68,9 @@ export async function planLeaderChange(
   groupId: number | null,
   leaderIds: number[],
 ): Promise<{ refusal: SeatRefusal } | { refusal: null; change: LeaderChange }> {
+  const season = await readSeatSeason(tx, seasonId);
+  if (!season) return { refusal: { code: "not_found", message: "Season not found." } };
+
   const current =
     groupId === null
       ? []
@@ -75,10 +79,6 @@ export async function planLeaderChange(
   const removed = current.filter((id) => !leaderIds.includes(id));
 
   await lockPeople(tx, [...added, ...removed]);
-  const season = await tx.season.findUniqueOrThrow({
-    where: { id: seasonId },
-    select: { id: true, status: true },
-  });
   const refusal = await refuseNewSeats(tx, added, { kind: "leader", season });
   return refusal ? { refusal } : { refusal: null, change: { added, removed } };
 }

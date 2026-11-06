@@ -20,6 +20,7 @@ import { submissionsMeSchemas } from "./components/submissions-me";
 import { authPaths } from "./paths/auth";
 import { mePaths } from "./paths/me";
 import { seasonEndPaths } from "./paths/season-end";
+import { seasonStartPaths } from "./paths/season-start";
 import { seasonPaths } from "./paths/seasons";
 import { peopleCandidatePaths } from "./paths/people-candidates";
 import { seasonEnrollmentPaths } from "./paths/season-enrollments";
@@ -133,6 +134,7 @@ export const openApiDocument = {
     ...authPaths,
     ...mePaths,
     ...seasonPaths,
+    ...seasonStartPaths,
     ...seasonEndPaths,
     ...seasonAdminPaths,
     ...peopleCandidatePaths,

@@ -8,6 +8,7 @@ import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
 import { loadSeasonEndCheck } from "../../lib/queries/season-end";
 import { isAdminOfSeason } from "../../lib/rbac";
+import { lockPeople, lockSeason } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import { endSeasonRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
@@ -41,9 +42,10 @@ class EndRefused extends Error {
 /**
  * End a season in one transaction: complete it, give every ACTIVE student a
  * PASSED / NOT_PASSED result and mark everyone's sessions stale so the finished
- * season drops out of their scopes. The season is claimed with a conditional
- * update first, so of two concurrent Ends exactly one proceeds, and the blocker
- * check runs after the claim, on the data the claim protects.
+ * season drops out of their scopes. The season's row is locked first, so a seat
+ * write goes in wholly before this or sees the season finished. It is claimed
+ * with a conditional update, so of two concurrent Ends exactly one proceeds, and
+ * the blocker check runs after the claim, on the data the claim protects.
  */
 export async function endSeason(req: Request, res: Response) {
   const user = requireUser(req);
@@ -64,6 +66,7 @@ export async function endSeason(req: Request, res: Response) {
   const now = new Date();
   try {
     const ended = await db.$transaction(async (tx) => {
+      await lockSeason(tx, id, "update");
       const claimed = await tx.season.updateMany({
         where: { id, status: "ACTIVE", deletedAt: null },
         data: { status: "COMPLETED", updatedById: user.userId },
@@ -107,7 +110,9 @@ export async function endSeason(req: Request, res: Response) {
       }
       // Stamped now, not at the transaction's start: a token refreshed after that
       // start still carries the old grants and must fall before the cut-off.
-      await markSessionsStale(tx, await seasonPeopleIds(tx, id), new Date());
+      const people = await seasonPeopleIds(tx, id);
+      await lockPeople(tx, people);
+      await markSessionsStale(tx, people, new Date());
       return tx.season.findUniqueOrThrow({ where: { id }, select: { id: true, code: true, status: true } });
     }, { timeout: 30_000 });
     auditLog("season.end", user.userId, user.userId, { season: id });

@@ -22,6 +22,34 @@ export function seasonOutcomeLabel(outcome: SeasonOutcome): string {
 
 export const enrollmentResultSchema = z.enum(["PASSED", "NOT_PASSED"]);
 
+/** One reason a season can't start yet. A person can have several, or one per seat. */
+export const startIssueSchema = z.object({
+  userId: z.number(),
+  name: z.string(),
+  seat: z.enum(["admin", "leader", "student"]),
+  reason: z.enum([
+    "already_in_role",
+    "not_alumnus",
+    "is_alumnus",
+    "permanent_role",
+    "user_inactive",
+    "leader_has_group",
+    "did_not_pass",
+    "never_finished",
+  ]),
+  message: z.string(),
+  /** already_in_role: the season they hold that role in. Otherwise null. */
+  otherSeasonCode: z.string().nullable(),
+});
+export type StartIssue = z.infer<typeof startIssueSchema>;
+
+/** `GET /seasons/:id/start-check` */
+export const seasonStartCheckSchema = z.object({
+  ready: z.boolean(),
+  items: z.array(startIssueSchema),
+});
+export type SeasonStartCheck = z.infer<typeof seasonStartCheckSchema>;
+
 /** What stops a season from ending, and the students it would end for. */
 export const seasonEndCheckSchema = z.object({
   blockers: z.object({

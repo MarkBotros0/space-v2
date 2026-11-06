@@ -53,14 +53,15 @@ const STATUS_LABELS: Record<SeasonStatus, string> = {
 };
 
 /**
- * The statuses the form may offer for a season now at `current`. The end of a
- * season is its own flow (End season), so Active never leads to Completed here,
- * and nothing returns to Draft. A finished season can be archived and restored.
+ * The statuses the form may offer for a season now at `current`. Starting and
+ * ending a season are their own flows, so Draft never leads to Active here and
+ * Active never to Completed, and nothing returns to Draft. A finished season can
+ * be archived and restored.
  */
 export function allowedSeasonStatuses(current: SeasonStatus): SeasonStatus[] {
   switch (current) {
     case "DRAFT":
-      return ["DRAFT", "ACTIVE"];
+      return ["DRAFT"];
     case "ACTIVE":
       return ["ACTIVE"];
     case "COMPLETED":

@@ -47,7 +47,6 @@ describe("PATCH /seasons/:id status moves", () => {
     ["ACTIVE", "ACTIVE"],
     ["COMPLETED", "COMPLETED"],
     ["ARCHIVED", "ARCHIVED"],
-    ["DRAFT", "ACTIVE"],
     ["COMPLETED", "ARCHIVED"],
     ["ARCHIVED", "COMPLETED"],
   ])("allows %s -> %s", async (from, to) => {
@@ -58,6 +57,7 @@ describe("PATCH /seasons/:id status moves", () => {
     ["ACTIVE", "DRAFT", "use_end_season"],
     ["ACTIVE", "COMPLETED", "use_end_season"],
     ["ACTIVE", "ARCHIVED", "use_end_season"],
+    ["DRAFT", "ACTIVE", "use_start_season"],
     ["DRAFT", "COMPLETED", "invalid_status_change"],
     ["DRAFT", "ARCHIVED", "invalid_status_change"],
     ["COMPLETED", "ACTIVE", "season_finished"],

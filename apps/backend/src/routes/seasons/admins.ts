@@ -6,7 +6,7 @@ import { auditLog } from "../../lib/audit";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
-import { lockPeople, refuseNewSeats, refusalStatus, type SeatRefusal } from "../../lib/roles";
+import { lockPeople, readSeatSeason, refuseNewSeats, refusalStatus, type SeatRefusal } from "../../lib/roles";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import { addSeasonAdminRequestSchema } from "../../../../../packages/shared/src/index";
 import { requireSuper } from "../users/super-only";
@@ -67,12 +67,11 @@ export async function addSeasonAdmin(req: Request, res: Response) {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid body: userId is required.", 400);
   const { userId } = parsed.data;
 
-  const season = await liveSeason(seasonId);
-  if (!season) return seasonNotFound(res);
-
   let outcome: "created" | "exists" | SeatRefusal;
   try {
     outcome = await db.$transaction(async (tx) => {
+      const season = await readSeatSeason(tx, seasonId);
+      if (!season) return { code: "not_found", message: "Season not found." };
       await lockPeople(tx, [userId]);
       const existing = await tx.seasonAdmin.findUnique({
         where: { seasonId_userId: { seasonId, userId } },

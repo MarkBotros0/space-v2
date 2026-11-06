@@ -78,11 +78,31 @@ export async function activeRolesFor(
  * Serialises seat writes per person, so two admins seating someone at the same
  * moment take turns and the second sees the first's row. Hold it for the whole
  * transaction: lock, `activeRolesFor`, `seatRefusal`, write. Ascending id order
- * means two writes over the same people can't deadlock.
+ * means two writes over the same people can't deadlock. If the write also locks
+ * a season (`lockSeason`), the season comes first.
  */
 export async function lockPeople(tx: Prisma.TransactionClient, userIds: number[]): Promise<void> {
   if (userIds.length === 0) return;
   await tx.$queryRaw`SELECT id FROM "User" WHERE id = ANY(${userIds}::int[]) ORDER BY id FOR UPDATE`;
+}
+
+export type SeasonLockMode = "update" | "share";
+
+/**
+ * Serialises a season's lifecycle against its seat writes. Start and End take
+ * "update"; every seat write takes "share" (`readSeatSeason` does), so a seat
+ * goes in wholly before Start's check or wholly after it, and writes on one
+ * season don't queue behind each other. A status read before this can be stale.
+ *
+ * The order is always the season, then the people.
+ */
+export async function lockSeason(
+  tx: Prisma.TransactionClient,
+  seasonId: number,
+  mode: SeasonLockMode,
+): Promise<void> {
+  if (mode === "update") await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR UPDATE`;
+  else await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR SHARE`;
 }
 
 export function describeActiveRole(name: string, role: ActiveRole): string {

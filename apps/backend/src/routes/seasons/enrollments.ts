@@ -21,8 +21,8 @@ import { requireUser } from "../../middleware/require-auth";
 import { addSeasonEnrollmentsRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
 
-const SEASON_NOT_FOUND: SeatRefusal = { code: "not_found", message: "Season not found." };
-const NOT_DRAFT: SeatRefusal = { code: "not_draft", message: "This season has already started." };
+export const SEASON_NOT_FOUND: SeatRefusal = { code: "not_found", message: "Season not found." };
+export const NOT_DRAFT: SeatRefusal = { code: "not_draft", message: "This season has already started." };
 const ONLY_SUPER_OVERRIDES = "Only a super admin can override a block.";
 
 function refuse(res: Response, refusal: SeatRefusal) {

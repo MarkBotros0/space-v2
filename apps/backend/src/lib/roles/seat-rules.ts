@@ -44,6 +44,44 @@ function clashesWithActiveRole(seat: Seat, active: ActiveRole | undefined): acti
   return (active.kind === "student") !== (seat.kind === "student");
 }
 
+/** Why this account can't hold this kind of seat in any season. Start asks this of seats already held. */
+export function eligibilityRefusal(
+  person: SeatPerson,
+  kind: Seat["kind"],
+): (SeatRefusal & { code: "user_inactive" | "permanent_role" | "not_alumnus" | "is_alumnus" }) | null {
+  if (person.deletedAt) {
+    return { code: "user_inactive", message: "That account is deactivated." };
+  }
+
+  const permanentRole = PERMANENT_ROLES[person.role];
+  if (permanentRole) {
+    return {
+      code: "permanent_role",
+      message: `${person.name} is ${permanentRole} and can't take a season role.`,
+    };
+  }
+
+  if (kind !== "student" && person.graduationYear === null) {
+    return { code: "not_alumnus", message: `Only alumni can serve. ${person.name} hasn't graduated.` };
+  }
+
+  if (kind === "student" && isBarredFromStudentSeat(person)) {
+    return { code: "is_alumnus", message: `${person.name} is an alumnus and can't join as a student.` };
+  }
+
+  return null;
+}
+
+/** Their other active role, if it clashes with this seat. Start asks it as though the season were already ACTIVE. */
+export function inRoleRefusal(
+  person: SeatPerson,
+  seat: Seat,
+  active: ActiveRole | undefined,
+): (SeatRefusal & { code: "already_in_role" }) | null {
+  if (!clashesWithActiveRole(seat, active)) return null;
+  return { code: "already_in_role", message: describeActiveRole(person.name, active) };
+}
+
 /**
  * Why this person can't take this seat, or null if they can. The first match
  * wins. Read both `person` and `active` (from `activeRolesFor`) after
@@ -58,33 +96,15 @@ export async function seatRefusal(
   seat: Seat,
   active: ActiveRole | undefined,
 ): Promise<SeatRefusal | null> {
-  if (person.deletedAt) {
-    return { code: "user_inactive", message: "That account is deactivated." };
-  }
-
-  const permanentRole = PERMANENT_ROLES[person.role];
-  if (permanentRole) {
-    return {
-      code: "permanent_role",
-      message: `${person.name} is ${permanentRole} and can't take a season role.`,
-    };
-  }
-
-  if (seat.kind !== "student" && person.graduationYear === null) {
-    return { code: "not_alumnus", message: `Only alumni can serve. ${person.name} hasn't graduated.` };
-  }
-
-  if (seat.kind === "student" && isBarredFromStudentSeat(person)) {
-    return { code: "is_alumnus", message: `${person.name} is an alumnus and can't join as a student.` };
-  }
+  const ineligible = eligibilityRefusal(person, seat.kind);
+  if (ineligible) return ineligible;
 
   if (seat.season.status === "COMPLETED" || seat.season.status === "ARCHIVED") {
     return { code: "season_finished", message: "This season has finished." };
   }
 
-  if (clashesWithActiveRole(seat, active)) {
-    return { code: "already_in_role", message: describeActiveRole(person.name, active) };
-  }
+  const inRole = inRoleRefusal(person, seat, active);
+  if (inRole) return inRole;
 
   if (seat.kind === "leader") {
     const leadsGroup = await tx.groupLeader.findFirst({

@@ -2,7 +2,7 @@ import type { Standing } from "../../../../../packages/shared/src/index";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SeasonStatus } from "../../generated/prisma/enums";
 import { enrollStudentsInSeason, type NewEnrollment } from "../queries/students/writes";
-import { activeRolesFor, lockPeople, type ActiveRole } from "./active-role";
+import { activeRolesFor, lockPeople, lockSeason, type ActiveRole, type SeasonLockMode } from "./active-role";
 import { seatRefusal, type SeatPerson, type SeatRefusal } from "./seat-rules";
 import { describeBlock, loadStandings, standingsFrom, type StandingSeason } from "./standing";
 
@@ -13,14 +13,16 @@ export type StudentSeatOptions = { overridden: boolean; actorIsSuper: boolean };
 const NOT_OVERRIDDEN: StudentSeatOptions = { overridden: false, actorIsSuper: false };
 
 /**
- * The season a student seat is being written against. Every such write reads it
- * through here, first thing in its transaction, so a lock on the season's row
- * has one place to go.
+ * The season a seat is being written against, locked and then read. Every such
+ * write reads it through here, first thing in its transaction, so the status it
+ * goes on is the one it holds the lock over. Only Start asks for "update".
  */
 export async function readSeatSeason(
   tx: Prisma.TransactionClient,
   seasonId: number,
+  mode: SeasonLockMode = "share",
 ): Promise<StudentSeatSeason | null> {
+  await lockSeason(tx, seasonId, mode);
   return tx.season.findFirst({
     where: { id: seasonId, deletedAt: null },
     select: { id: true, status: true, program: true, requiredProgram: true },

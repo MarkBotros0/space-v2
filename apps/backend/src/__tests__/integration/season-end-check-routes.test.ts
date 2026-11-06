@@ -213,27 +213,11 @@ describe("season status rules", () => {
     expect((await db.season.findUnique({ where: { id: s.id } }))?.status).toBe(to);
   });
 
-  it("DRAFT -> ACTIVE succeeds and marks the enrolled students' and staff's sessions stale", async () => {
-    const s = await createTestSeason({ status: "DRAFT" });
-    const student = await createTestUser("stale-student", "STUDENT");
-    const admin = await createTestUser("stale-admin", "ADMIN");
-    const leader = await createTestUser("stale-leader", "LEADER");
-    const bystander = await createTestUser("stale-bystander", "STUDENT");
-    await db.seasonEnrollment.create({ data: { seasonId: s.id, studentUserId: student.id, status: "ACTIVE" } });
-    await db.seasonAdmin.create({ data: { seasonId: s.id, userId: admin.id } });
-    await db.group.create({ data: { seasonId: s.id, name: "G", leaders: { create: { userId: leader.id } } } });
-
-    const res = await request(app)
-      .patch(`/api/v1/seasons/${s.id}`)
-      .set("authorization", `Bearer ${superToken}`)
-      .send(body(s.code, "ACTIVE"));
-    expect(res.status).toBe(200);
-
-    const stamp = (id: number) => db.user.findUnique({ where: { id }, select: { sessionsValidFrom: true } });
-    expect((await stamp(student.id))?.sessionsValidFrom).not.toBeNull();
-    expect((await stamp(admin.id))?.sessionsValidFrom).not.toBeNull();
-    expect((await stamp(leader.id))?.sessionsValidFrom).not.toBeNull();
-    expect((await stamp(bystander.id))?.sessionsValidFrom).toBeNull();
+  it("DRAFT -> ACTIVE is refused: a season starts from its Start button", async () => {
+    const { s, res } = await patch("DRAFT", "ACTIVE");
+    expect(res.status).toBe(409);
+    expect(res.body.error).toEqual({ code: "use_start_season", message: "Start the season from its Start button." });
+    expect((await db.season.findUnique({ where: { id: s.id } }))?.status).toBe("DRAFT");
   });
 });
 
