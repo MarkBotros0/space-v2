@@ -16,6 +16,7 @@
     "db:migrate:local": "bash scripts/apply-migrations.sh",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
+    "preflight:community": "ts-node --transpile-only scripts/community-preflight.ts",
     "seed:sweep": "ts-node --transpile-only scripts/seed-sweep.ts",
     "create:super-admin": "ts-node --transpile-only scripts/create-super-admin.ts"
   },

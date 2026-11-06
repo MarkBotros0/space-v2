@@ -143,7 +143,7 @@ export const seasonHistoryCurriculumItemSchema = z.object({
 
 /**
  * One past enrollment (spec 02 R33–R41). `.strict()` on purpose: R34 is a
- * privacy rule — history carries attendance % and curriculum ONLY. A
+ * privacy rule — history carries attendance %, curriculum and outcome ONLY. A
  * submissions/feedback/notes field arriving here fails the parse instead of
  * being silently stripped.
  */

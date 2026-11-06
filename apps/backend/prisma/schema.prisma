@@ -41,6 +41,11 @@ enum EnrollmentStatus {
   WITHDRAWN
 }
 
+enum EnrollmentResult {
+  PASSED
+  NOT_PASSED
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -382,6 +387,10 @@ model SeasonEnrollment {
   completedAt   DateTime?
   droppedAt     DateTime? // set when status transitions to WITHDRAWN
   dropReason    String?
+  // Set when the season ends (or a SUPER/ADMIN corrects it later); null until then.
+  result        EnrollmentResult?
+  resultReason  String?
+  resultSetAt   DateTime?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
