@@ -20,6 +20,9 @@ export const mePaths = {
                   email: { type: "string", format: "email" },
                   role: { $ref: "#/components/schemas/UserRole" },
                   avatarPath: { type: ["string", "null"] },
+                  phone: { type: ["string", "null"] },
+                  dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "A calendar date." },
+                  address: { type: ["string", "null"] },
                   hasPassword: { type: "boolean", description: "False for an invited account that has never set a password." },
                 },
               },
@@ -44,18 +47,23 @@ export const mePaths = {
     },
     patch: {
       tags: ["Me"],
-      summary: "Update your own display name",
+      summary: "Update your own name and contact details (any role)",
       description:
-        "Self-scoped: the subject is the token, never the body. A body carrying `userId` (or any unknown key) is a 400. The name is trimmed, 2-120 characters. Returns the updated user.",
+        "Self-scoped: the subject is the token, never the body. Partial: send any subset of `name`, `phone`, `dateOfBirth`, `address`, at least one (an empty body is a 400). Absent = untouched; for phone, dateOfBirth and address `\"\"` or null clears, and name cannot be cleared. Strings are trimmed: name 2-120 characters, phone at most 60, address at most 300; dateOfBirth is a real calendar day `YYYY-MM-DD`. A body carrying `userId` (or any unknown key) is a 400. Returns the updated user.",
       requestBody: {
         required: true,
         content: {
           "application/json": {
             schema: {
               type: "object",
-              required: ["name"],
+              minProperties: 1,
               additionalProperties: false,
-              properties: { name: { type: "string", minLength: 2, maxLength: 120 } },
+              properties: {
+                name: { type: "string", minLength: 2, maxLength: 120 },
+                phone: { type: ["string", "null"], maxLength: 60 },
+                dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+                address: { type: ["string", "null"], maxLength: 300 },
+              },
             },
           },
         },
@@ -73,6 +81,9 @@ export const mePaths = {
                   email: { type: "string", format: "email" },
                   role: { $ref: "#/components/schemas/UserRole" },
                   avatarPath: { type: ["string", "null"] },
+                  phone: { type: ["string", "null"] },
+                  dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "A calendar date." },
+                  address: { type: ["string", "null"] },
                   hasPassword: { type: "boolean" },
                 },
               },
@@ -278,8 +289,8 @@ export const mePaths = {
     },
     patch: {
       tags: ["Me"],
-      summary: "Edit the caller's own StudentProfile columns (students; alumni are read-only)",
-      description: "PATCH: absent = untouched, '' or null = cleared. Any key outside university/year/phone/dateOfBirth/spiritualBackground/gifts is refused 403 forbidden_field — name is PATCH /me, email is staff-only.",
+      summary: "Edit the caller's own student profile (students; alumni are read-only)",
+      description: "PATCH: absent = untouched, '' or null = cleared. Any key outside university/faculty/universityGraduationYear/phone/dateOfBirth is refused 403 forbidden_field — name and address are PATCH /me, email is staff-only. phone and dateOfBirth are account-level (User) fields, the same ones PATCH /me writes.",
       requestBody: {
         required: true,
         content: {
@@ -289,11 +300,10 @@ export const mePaths = {
               additionalProperties: false,
               properties: {
                 university: { type: ["string", "null"], maxLength: 160 },
-                year: { type: ["string", "null"], maxLength: 40 },
+                faculty: { type: ["string", "null"], maxLength: 160 },
+                universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
                 phone: { type: ["string", "null"], maxLength: 60 },
                 dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-                spiritualBackground: { type: ["string", "null"], maxLength: 4000 },
-                gifts: { type: ["string", "null"], maxLength: 2000 },
               },
             },
           },

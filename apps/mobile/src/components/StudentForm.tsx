@@ -139,34 +139,26 @@ export function StudentForm({
               onChangeText={(v) => setField("university", v)}
             />
           </FormField>
-          <FormField label="Year / faculty" error={errors.year}>
+          <FormField label="Faculty" error={errors.faculty}>
             <Input
-              accessibilityLabel="Year / faculty"
-              value={values.year}
-              onChangeText={(v) => setField("year", v)}
-              placeholder="e.g. 3rd · Engineering"
+              accessibilityLabel="Faculty"
+              value={values.faculty}
+              onChangeText={(v) => setField("faculty", v)}
+              placeholder="e.g. Engineering"
             />
           </FormField>
-        </Section>
-
-        <Section title="Spiritual background">
-          <FormField label="Notes" error={errors.spiritualBackground}>
-            <Textarea
-              accessibilityLabel="Spiritual background"
-              value={values.spiritualBackground}
-              onChangeText={(v) => setField("spiritualBackground", v)}
-              placeholder="Church affiliation, baptism status, faith journey…"
-            />
-          </FormField>
-        </Section>
-
-        <Section title="Community">
-          <FormField label="Gifts / interests" error={errors.gifts}>
-            <Textarea
-              accessibilityLabel="Gifts / interests"
-              value={values.gifts}
-              onChangeText={(v) => setField("gifts", v)}
-              placeholder="e.g. worship, hospitality, mentoring younger students"
+          <FormField
+            label="Graduation year"
+            description="The university graduation year — it can be in the future."
+            error={errors.universityGraduationYear}
+          >
+            <Input
+              accessibilityLabel="Graduation year"
+              value={values.universityGraduationYear}
+              onChangeText={(v) => setField("universityGraduationYear", v)}
+              keyboardType="number-pad"
+              maxLength={4}
+              placeholder="e.g. 2027"
             />
           </FormField>
         </Section>

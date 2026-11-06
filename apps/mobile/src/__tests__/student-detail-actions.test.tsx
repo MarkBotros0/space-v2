@@ -51,7 +51,7 @@ const base = {
   enrollments: [enrollment(7, "Spring 2099"), enrollment(8, "Autumn 2099")],
 };
 const publicProfile = {
-  university: null, year: null, gifts: null,
+  university: null, faculty: null, universityGraduationYear: null,
   activeSeasonId: 7, activeSeasonTitle: "Spring 2099", activeSeasonCode: "S7",
 };
 const internalDetail = {
@@ -61,7 +61,6 @@ const internalDetail = {
     phone: null,
     // v1's browser-local midnight for 9 March (Cairo, UTC+2) — Decision 8.
     dateOfBirth: "2004-03-08T22:00:00.000Z",
-    spiritualBackground: null,
     notes: null,
   },
 };

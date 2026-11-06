@@ -43,13 +43,27 @@ meRouter.use(meDevicesRouter);
 
 const ME_SELECT = {
   id: true, name: true, email: true, role: true, avatarPath: true,
+  phone: true, dateOfBirth: true, address: true,
   passwordHash: true, deletedAt: true,
 } as const;
 
 type MeRow = {
   id: number; name: string; email: string; role: string;
-  avatarPath: string | null; passwordHash: string | null; deletedAt: Date | null;
+  avatarPath: string | null;
+  phone: string | null; dateOfBirth: Date | null; address: string | null;
+  passwordHash: string | null; deletedAt: Date | null;
 };
+
+/** A calendar day stored at UTC midnight (Plan 11 Decision 11) → "YYYY-MM-DD". */
+function dayFromDate(d: Date | null): string | null {
+  return d ? d.toISOString().slice(0, 10) : null;
+}
+
+/** "YYYY-MM-DD" → its UTC midnight; `undefined` (absent) passes through. */
+function dateFromDay(day: string | null | undefined): Date | null | undefined {
+  if (day === undefined) return undefined;
+  return day === null ? null : new Date(`${day}T00:00:00.000Z`);
+}
 
 /** The hash is reduced to a boolean before anything leaves this function. */
 function toMeUser(row: MeRow) {
@@ -59,6 +73,9 @@ function toMeUser(row: MeRow) {
     email: row.email,
     role: row.role,
     avatarPath: row.avatarPath,
+    phone: row.phone,
+    dateOfBirth: dayFromDate(row.dateOfBirth),
+    address: row.address,
     hasPassword: row.passwordHash !== null,
   };
 }
@@ -99,9 +116,16 @@ meRouter.patch("/", requireAuth, async (req, res) => {
     return apiError(res, "bad_request", parsed.error.issues[0]?.message ?? "Invalid profile.", 400);
   }
 
+  // Partial: Prisma reads `undefined` as "leave the column alone".
+  const body = parsed.data;
   const updated = await db.user.update({
     where: { id: user.userId },
-    data: { name: parsed.data.name },
+    data: {
+      name: body.name,
+      phone: body.phone,
+      dateOfBirth: dateFromDay(body.dateOfBirth),
+      address: body.address,
+    },
     select: ME_SELECT,
   });
   // Returning the row closes v1's write-then-double-refresh (spec 18 R23).
@@ -191,10 +215,14 @@ meRouter.get("/profile", requireAuth, async (req, res) => {
 });
 
 /*
- * The student's own StudentProfile columns — and nothing else (Plan 11
- * Decision 1, spec 18 D2/D8). Name is PATCH /me; email is staff-only; notes
+ * The student's own profile fields — and nothing else (Plan 11 Decision 1,
+ * spec 18 D2/D8). Name and address are PATCH /me; email is staff-only; notes
  * and activeSeasonId never (R23). Keys are checked RAW, before the schema,
  * so the refusal names the field instead of v1's silent drop (R24).
+ *
+ * phone and dateOfBirth are User columns since 2026-11-06 and PATCH /me
+ * writes them too; they are still accepted here so the student form saves
+ * in one call.
  */
 meRouter.patch("/profile", requireAuth, async (req, res) => {
   const user = requireUser(req);
@@ -220,23 +248,21 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
   // Prisma reads `undefined` as "leave the column alone" — exactly PATCH.
   const data = {
     university: body.university,
-    year: body.year,
-    phone: body.phone,
-    dateOfBirth:
-      body.dateOfBirth === undefined
-        ? undefined
-        : body.dateOfBirth === null
-          ? null
-          : new Date(`${body.dateOfBirth}T00:00:00.000Z`),
-    spiritualBackground: body.spiritualBackground,
-    gifts: body.gifts,
+    faculty: body.faculty,
+    universityGraduationYear: body.universityGraduationYear,
   };
-  // Upsert, as Plan 7 does: v1's unconditional update threw for a STUDENT
-  // with no profile row (spec 06 §2).
-  await db.studentProfile.upsert({
-    where: { userId: user.userId },
-    create: { userId: user.userId, ...data },
-    update: data,
+  await db.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.userId },
+      data: { phone: body.phone, dateOfBirth: dateFromDay(body.dateOfBirth) },
+    });
+    // Upsert, as Plan 7 does: v1's unconditional update threw for a STUDENT
+    // with no profile row (spec 06 §2).
+    await tx.studentProfile.upsert({
+      where: { userId: user.userId },
+      create: { userId: user.userId, ...data },
+      update: data,
+    });
   });
 
   const profile = await loadMyProfile(user.userId);

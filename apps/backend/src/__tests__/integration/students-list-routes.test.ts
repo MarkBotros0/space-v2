@@ -206,8 +206,9 @@ describe("GET /api/v1/students/:id", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.profile).toMatchObject({
       university: "Test University",
+      faculty: "Engineering",
+      universityGraduationYear: 2027,
       phone: "+20 100 000 0000",
-      spiritualBackground: "Test background",
       notes: "Internal staff note",
     });
     // Both enrollments, newest first (R72); the historic group comes from the
@@ -235,7 +236,7 @@ describe("GET /api/v1/students/:id", () => {
     expect(res.status).toBe(403);
   });
 
-  it("withholds phone, DOB, spiritual background and notes from MENTOR — absence, not null (D3)", async () => {
+  it("withholds phone, DOB and notes from MENTOR — absence, not null (D3)", async () => {
     const res = await request(app)
       .get(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${mentorToken}`);
@@ -246,7 +247,6 @@ describe("GET /api/v1/students/:id", () => {
     // the field exists and still round-trip through generic clients.
     expect(res.body.data.profile).not.toHaveProperty("phone");
     expect(res.body.data.profile).not.toHaveProperty("dateOfBirth");
-    expect(res.body.data.profile).not.toHaveProperty("spiritualBackground");
     expect(res.body.data.profile).not.toHaveProperty("notes");
   });
 

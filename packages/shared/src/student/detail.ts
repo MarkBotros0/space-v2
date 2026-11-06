@@ -20,8 +20,9 @@ import {
 export const studentProfilePublicSchema = z
   .object({
     university: z.string().nullable(),
-    year: z.string().nullable(),
-    gifts: z.string().nullable(),
+    faculty: z.string().nullable(),
+    /** The university graduation year — not the JPCS `graduationYear`. */
+    universityGraduationYear: z.number().int().nullable(),
     activeSeasonId: z.number().nullable(),
     activeSeasonTitle: z.string().nullable(),
     activeSeasonCode: z.string().nullable(),
@@ -32,7 +33,6 @@ export const studentProfilePublicSchema = z
 export const studentProfilePrivateSchema = studentProfilePublicSchema.extend({
   phone: z.string().nullable(),
   dateOfBirth: z.string().nullable(),
-  spiritualBackground: z.string().nullable(),
 });
 
 /** + staff-only internal notes. Never sent to the subject (R23). */

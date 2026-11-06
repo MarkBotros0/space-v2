@@ -122,11 +122,10 @@ describe("ImportScreen — step 2, preview", () => {
         name: "Returning Student",
         email: "back@jpc.test",
         university: null,
-        year: null,
+        faculty: null,
+        universityGraduationYear: null,
         phone: null,
         dateOfBirth: null,
-        spiritualBackground: null,
-        gifts: null,
         notes: null,
       },
     };

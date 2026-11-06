@@ -73,7 +73,8 @@ const LIST_SELECT = {
   studentProfile: {
     select: {
       university: true,
-      year: true,
+      faculty: true,
+      universityGraduationYear: true,
       activeSeason: { select: { title: true } },
     },
   },
@@ -90,7 +91,8 @@ function toListItem(u: ListRow): StudentListItem {
     email: u.email,
     avatarPath: u.avatarPath,
     university: u.studentProfile?.university ?? null,
-    year: u.studentProfile?.year ?? null,
+    faculty: u.studentProfile?.faculty ?? null,
+    universityGraduationYear: u.studentProfile?.universityGraduationYear ?? null,
     graduationYear: u.graduationYear,
     activeSeasonTitle: u.studentProfile?.activeSeason?.title ?? null,
     currentGroupName: u.groupStudentMemberships[0]?.group.name ?? null,

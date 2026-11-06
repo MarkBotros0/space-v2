@@ -24,7 +24,8 @@ export const studentListItemSchema = z.object({
   email: z.string(),
   avatarPath: z.string().nullable(),
   university: z.string().nullable(),
-  year: z.string().nullable(),
+  faculty: z.string().nullable(),
+  universityGraduationYear: z.number().int().nullable(),
   graduationYear: z.number().nullable(),
   activeSeasonTitle: z.string().nullable(),
   /**

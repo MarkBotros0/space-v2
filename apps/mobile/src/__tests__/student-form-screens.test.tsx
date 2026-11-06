@@ -62,14 +62,13 @@ const detail = {
   enrollments: [enrollment(7, "Spring 2099"), enrollment(8, "Autumn 2099")],
   profile: {
     university: "Cairo University",
-    year: null,
-    gifts: null,
+    faculty: null,
+    universityGraduationYear: null,
     activeSeasonId: 7,
     activeSeasonTitle: "Spring 2099",
     activeSeasonCode: "S7",
     phone: null,
     dateOfBirth: null,
-    spiritualBackground: null,
     notes: "Watch attendance",
   },
 };

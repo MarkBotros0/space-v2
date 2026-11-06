@@ -5,7 +5,6 @@ import { Avatar, AvatarFallback, ListRow } from "../../design/ui";
 import { formatDate, keepTogether } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
-import { yearLabel } from "../../lib/year-label";
 
 type RowProps = { item: StudentListItem; index?: number };
 
@@ -23,10 +22,10 @@ function StudentAvatar({ item }: { item: StudentListItem }) {
   );
 }
 
-/** An active student: name over university, year, season and group; the email when none of those is known. */
+/** An active student: name over university, faculty, season and group; the email when none of those is known. */
 export function ActiveStudentRow({ item, index }: RowProps) {
   const open = useOpenStudent(item);
-  const meta = joinMeta([item.university, yearLabel(item.year), item.activeSeasonTitle, item.currentGroupName]);
+  const meta = joinMeta([item.university, item.faculty, item.activeSeasonTitle, item.currentGroupName]);
   return (
     <ListRow
       index={index}

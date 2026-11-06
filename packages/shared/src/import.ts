@@ -42,18 +42,20 @@ export const IMPORT_NAME_HEADERS = ["name", "student"] as const;
 export const IMPORT_EMAIL_HEADERS = ["email", "e-mail"] as const;
 export const IMPORT_GROUP_HEADERS = ["group"] as const;
 
+// `year`, `spiritualBackground` and `gifts` were dropped from the product
+// (owner 2026-11-06): a sheet still carrying those headers lists them as
+// unrecognised columns instead of importing them.
 export const IMPORT_PROFILE_FIELDS = [
   "phone",
   "university",
-  "year",
+  "faculty",
+  "universityGraduationYear",
   "dateOfBirth",
-  "spiritualBackground",
-  "gifts",
   "notes",
 ] as const;
 export type ImportProfileFieldKey = (typeof IMPORT_PROFILE_FIELDS)[number];
 
-/** v1's table verbatim (`jpc-space/src/lib/student-import.ts:24-42`). */
+/** v1's table (`jpc-space/src/lib/student-import.ts:24-42`), less the dropped columns, plus faculty and graduation year. */
 export const IMPORT_PROFILE_ALIASES: Readonly<Record<string, ImportProfileFieldKey>> = {
   phone: "phone",
   mobile: "phone",
@@ -63,14 +65,14 @@ export const IMPORT_PROFILE_ALIASES: Readonly<Record<string, ImportProfileFieldK
   "phone number": "phone",
   university: "university",
   college: "university",
-  year: "year",
+  faculty: "faculty",
+  "graduation year": "universityGraduationYear",
+  "university graduation year": "universityGraduationYear",
+  "grad year": "universityGraduationYear",
   "date of birth": "dateOfBirth",
   dob: "dateOfBirth",
   birthdate: "dateOfBirth",
   "birth date": "dateOfBirth",
-  "spiritual background": "spiritualBackground",
-  gifts: "gifts",
-  "spiritual gifts": "gifts",
   notes: "notes",
 };
 
@@ -78,10 +80,9 @@ export const IMPORT_PROFILE_ALIASES: Readonly<Record<string, ImportProfileFieldK
 export const IMPORT_FIELD_LABELS: Readonly<Record<ImportProfileFieldKey, string>> = {
   phone: "Mobile No",
   university: "University",
-  year: "Year",
+  faculty: "Faculty",
+  universityGraduationYear: "Graduation year",
   dateOfBirth: "Date of birth",
-  spiritualBackground: "Spiritual background",
-  gifts: "Gifts",
   notes: "Notes",
 };
 
@@ -121,12 +122,12 @@ export const importCellValuesSchema = z.object({
   name: cell,
   email: cell,
   university: cell.nullable(),
-  year: cell.nullable(),
+  faculty: cell.nullable(),
+  /** Raw text as typed; a whole year (1950–2100) is the only accepted form. */
+  universityGraduationYear: cell.nullable(),
   phone: cell.nullable(),
   /** Raw text as typed; `YYYY-MM-DD` is the only accepted form (D-16.11). */
   dateOfBirth: cell.nullable(),
-  spiritualBackground: cell.nullable(),
-  gifts: cell.nullable(),
   notes: cell.nullable(),
 });
 export type ImportCellValues = z.infer<typeof importCellValuesSchema>;

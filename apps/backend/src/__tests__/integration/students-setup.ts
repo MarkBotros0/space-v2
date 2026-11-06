@@ -44,15 +44,15 @@ export async function seedStudentFixtures(app: Express): Promise<StudentFixtures
 
   const student1 = await createTestUser("student-one", "STUDENT");
   const student1Id = student1.id;
+  // Phone is account-level (User) since 2026-11-06.
+  await db.user.update({ where: { id: student1Id }, data: { phone: "+20 100 000 0000" } });
   await db.studentProfile.create({
     data: {
       userId: student1Id,
       activeSeasonId: seasonAId,
       university: "Test University",
-      year: "3rd",
-      phone: "+20 100 000 0000",
-      spiritualBackground: "Test background",
-      gifts: "Teaching",
+      faculty: "Engineering",
+      universityGraduationYear: 2027,
       notes: "Internal staff note",
     },
   });

@@ -41,23 +41,33 @@ describe("grouped tabs read free text in full (I1, M2)", () => {
   it("a long profile value has no line cap", () => {
     render(
       <GroupedProfileTab
-        profile={{ university: "AUC", year: "3", gifts: LONG } as never}
+        profile={{ university: "AUC", faculty: LONG, universityGraduationYear: null } as never}
       />,
     );
     expect(screen.getByText(LONG).props.numberOfLines).toBeUndefined();
   });
 });
 
-describe("Year value (corner sweep 9)", () => {
-  it("a bare number reads 'Year 3' on the profile tab, as the list row does; text stays as typed", () => {
-    render(<GroupedProfileTab profile={{ university: "AUC", year: "3", gifts: "x" } as never} />);
-    expect(screen.getByText("Year 3")).toBeTruthy();
-    expect(screen.queryByText("3")).toBeNull();
+describe("Academic rows", () => {
+  it("shows faculty and the university graduation year; an unknown year reads as a dash", () => {
+    render(
+      <GroupedProfileTab
+        profile={{ university: "AUC", faculty: "Engineering", universityGraduationYear: 2031 } as never}
+      />,
+    );
+    expect(screen.getByText("Engineering")).toBeTruthy();
+    expect(screen.getByText("2031")).toBeTruthy();
+    expect(screen.getByText("Graduation year")).toBeTruthy();
   });
 
-  it("leaves '3rd' as typed", () => {
-    render(<GroupedProfileTab profile={{ university: "AUC", year: "3rd", gifts: "x" } as never} />);
-    expect(screen.getByText("3rd")).toBeTruthy();
+  it("no longer renders the dropped gifts or spiritual background rows", () => {
+    render(
+      <GroupedProfileTab
+        profile={{ university: "AUC", faculty: null, universityGraduationYear: null } as never}
+      />,
+    );
+    expect(screen.queryByText("Gifts / interests")).toBeNull();
+    expect(screen.queryByText("Spiritual background")).toBeNull();
   });
 });
 

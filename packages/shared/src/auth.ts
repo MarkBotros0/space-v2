@@ -46,6 +46,15 @@ export type MeScopes = z.infer<typeof meScopesSchema>;
 export const meUserSchema = authUserSchema.extend({
   avatarPath: z.string().nullable(),
   /**
+   * Account-level contact fields, every role (2026-11-06). Optional so a
+   * payload from a backend that predates them still parses; read a missing
+   * one as null.
+   */
+  phone: z.string().nullable().optional(),
+  /** A calendar day, "YYYY-MM-DD". */
+  dateOfBirth: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
+  /**
    * False when passwordHash is null (invited, never activated). Drives the
    * settings screen's password-section branch (spec 18 section 9) so the user
    * learns before typing, not after submitting (R27). Defaults true: a backend

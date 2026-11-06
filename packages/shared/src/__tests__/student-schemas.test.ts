@@ -32,10 +32,18 @@ describe("createStudentRequestSchema", () => {
 
 describe("updateStudentRequestSchema (PATCH semantics)", () => {
   it("distinguishes 'clear this field' (null) from 'leave it alone' (absent)", () => {
-    const cleared = updateStudentRequestSchema.parse({ gifts: null });
-    expect(cleared.gifts).toBeNull();
+    const cleared = updateStudentRequestSchema.parse({ faculty: null });
+    expect(cleared.faculty).toBeNull();
     const untouched = updateStudentRequestSchema.parse({});
-    expect(untouched.gifts).toBeUndefined();
+    expect(untouched.faculty).toBeUndefined();
+  });
+
+  it("takes the university graduation year as a whole year in 1950-2100, future included", () => {
+    expect(updateStudentRequestSchema.parse({ universityGraduationYear: 2031 }).universityGraduationYear).toBe(2031);
+    expect(updateStudentRequestSchema.parse({ universityGraduationYear: null }).universityGraduationYear).toBeNull();
+    for (const bad of [1949, 2101, 2027.5, "2027"]) {
+      expect(updateStudentRequestSchema.safeParse({ universityGraduationYear: bad }).success).toBe(false);
+    }
   });
 
   it("trims and lowercases an edited email", () => {
@@ -53,7 +61,7 @@ describe("studentDetailPublicSchema", () => {
     currentGroup: null, enrollments: [],
   };
   const publicProfile = {
-    university: null, year: null, gifts: null,
+    university: null, faculty: null, universityGraduationYear: null,
     activeSeasonId: null, activeSeasonTitle: null, activeSeasonCode: null,
   };
 

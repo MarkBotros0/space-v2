@@ -61,14 +61,14 @@ describe("student page free text is read in full", () => {
     expect(screen.getByText("Follow up")).toBeTruthy();
   });
 
-  it("a long Gifts / interests value has no line cap", () => {
+  it("a long Faculty value has no line cap", () => {
     renderWithProviders(
       <GroupedProfileTab
         profile={
           {
             university: "Cairo",
-            year: "3rd",
-            gifts: LONG,
+            faculty: LONG,
+            universityGraduationYear: 2027,
             activeSeasonId: 7,
             activeSeasonTitle: "S",
             activeSeasonCode: "S",

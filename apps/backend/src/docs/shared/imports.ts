@@ -7,11 +7,10 @@ export const importCellValuesDoc = {
     name: { type: "string" },
     email: { type: "string" },
     university: { type: "string", nullable: true },
-    year: { type: "string", nullable: true },
+    faculty: { type: "string", nullable: true },
+    universityGraduationYear: { type: "string", nullable: true, description: "Raw text as typed; a whole year 1950-2100 is the only accepted form." },
     phone: { type: "string", nullable: true },
     dateOfBirth: { type: "string", nullable: true, description: "Raw text as typed; YYYY-MM-DD is the only accepted form." },
-    spiritualBackground: { type: "string", nullable: true },
-    gifts: { type: "string", nullable: true },
     notes: { type: "string", nullable: true },
   },
 } as const;

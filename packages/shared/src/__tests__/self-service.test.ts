@@ -40,10 +40,32 @@ describe("parseCheckInCode (Decision 8)", () => {
 
 describe("updateOwnProfileInputSchema (Decision 1)", () => {
   it("turns a cleared field into null and leaves absent ones absent (PATCH, v1 R26)", () => {
-    expect(updateOwnProfileInputSchema.parse({ phone: "", gifts: "Music" })).toEqual({
+    expect(updateOwnProfileInputSchema.parse({ phone: "", faculty: "Medicine" })).toEqual({
       phone: null,
-      gifts: "Music",
+      faculty: "Medicine",
     });
+  });
+
+  it("takes the university graduation year as a whole year 1950-2100, the future included", () => {
+    expect(updateOwnProfileInputSchema.parse({ universityGraduationYear: 2031 })).toEqual({
+      universityGraduationYear: 2031,
+    });
+    expect(updateOwnProfileInputSchema.parse({ universityGraduationYear: null })).toEqual({
+      universityGraduationYear: null,
+    });
+    for (const bad of [1949, 2101, 2030.5, "2030"]) {
+      const result = updateOwnProfileInputSchema.safeParse({ universityGraduationYear: bad });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe("Use a year between 1950 and 2100.");
+      }
+    }
+  });
+
+  it("refuses the dropped year, spiritual background and gifts fields", () => {
+    for (const body of [{ year: "3rd" }, { spiritualBackground: "x" }, { gifts: "x" }]) {
+      expect(updateOwnProfileInputSchema.safeParse(body).success).toBe(false);
+    }
   });
 
   it("takes a calendar date and refuses anything that is not a real one", () => {
@@ -71,7 +93,7 @@ describe("updateOwnProfileInputSchema (Decision 1)", () => {
   it("keeps v1's server-side bounds (R20)", () => {
     expect(updateOwnProfileInputSchema.safeParse({ phone: "1".repeat(60) }).success).toBe(true);
     expect(updateOwnProfileInputSchema.safeParse({ phone: "1".repeat(61) }).success).toBe(false);
-    expect(updateOwnProfileInputSchema.safeParse({ gifts: "g".repeat(2001) }).success).toBe(false);
+    expect(updateOwnProfileInputSchema.safeParse({ faculty: "f".repeat(161) }).success).toBe(false);
   });
 });
 
@@ -83,11 +105,10 @@ describe("privacy-strict read contracts", () => {
     graduationYear: null,
     activeSeasonTitle: "GBV 2026",
     university: null,
-    year: null,
+    faculty: null,
+    universityGraduationYear: null,
     phone: null,
     dateOfBirth: "2001-04-05",
-    spiritualBackground: null,
-    gifts: null,
   };
 
   it("myProfileSchema fails loudly if staff-only notes ever reach the subject (R23)", () => {

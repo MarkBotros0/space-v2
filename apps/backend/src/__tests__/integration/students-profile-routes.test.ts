@@ -112,11 +112,8 @@ describe("PATCH /api/v1/students/:id", () => {
       .send({ phone: "+20 111 111 1111" });
 
     expect(res.status).toBe(200);
-    const profile = await db.studentProfile.findUnique({
-      where: { userId: student1Id },
-      select: { phone: true, notes: true },
-    });
-    expect(profile?.phone).toBe("+20 111 111 1111");
+    const row = await db.user.findUnique({ where: { id: student1Id }, select: { phone: true } });
+    expect(row?.phone).toBe("+20 111 111 1111");
   });
 
   it("refuses the subject's own write of notes with forbidden_field (R23 — loudly, not v1's silent drop, R24)", async () => {
@@ -214,13 +211,13 @@ describe("PATCH /api/v1/students/:id", () => {
     const res = await request(app)
       .patch(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ gifts: null });
+      .send({ faculty: null });
     expect(res.status).toBe(200);
     const profile = await db.studentProfile.findUnique({
       where: { userId: student1Id },
-      select: { gifts: true, university: true },
+      select: { faculty: true, university: true },
     });
-    expect(profile?.gifts).toBeNull();
+    expect(profile?.faculty).toBeNull();
     expect(profile?.university).toBe("Test University");
   });
 });
