@@ -205,3 +205,95 @@ export function workSections(
     },
   };
 }
+
+/** A labelled group of rows; an empty group is not shown. */
+export type WorkGroup = { key: string; header: string; rows: WorkRow[] };
+
+/**
+ * The To do tab, grouped so a student reads it top to bottom as "what first"
+ * (owner, 2026-11-06): overdue, returned for changes, due this week, later,
+ * then quizzes to take. Same filing rules as Today (P2-5).
+ */
+export function todoGroups(
+  assignments: StudentAssignmentListItem[],
+  quizzes: StudentQuizResult[],
+  todayOrgDay: string,
+): WorkGroup[] {
+  const open = assignments.filter((a) => a.status === "PENDING" || a.status === "DRAFT");
+  const returned = assignments.filter((a) => a.status === "RETURNED");
+  const overdue = open.filter((a) => a.isOverdue);
+  const thisWeek = open.filter(
+    (a) =>
+      !a.isOverdue &&
+      a.dueOrgDay !== null &&
+      daysBetween(todayOrgDay, a.dueOrgDay) <= TODAY_WINDOW_DAYS,
+  );
+  const shown = new Set([...overdue, ...thisWeek].map((a) => a.id));
+  const later = open.filter((a) => !shown.has(a.id));
+  const row = (a: StudentAssignmentListItem) => assignmentRow(a, todayOrgDay);
+  return [
+    { key: "overdue", header: "Overdue", rows: overdue.map(row) },
+    { key: "returned", header: "Returned — needs changes", rows: returned.map(row) },
+    { key: "week", header: "Due this week", rows: thisWeek.map(row) },
+    { key: "later", header: "Later", rows: later.map(row) },
+    { key: "quizzes", header: "Quizzes to take", rows: quizzes.filter(isOpenQuiz).map(quizRow) },
+  ].filter((g) => g.rows.length > 0);
+}
+
+/**
+ * A handed-in assignment on the Submitted tab: the chip says in words where
+ * the grading stands — never colour alone.
+ */
+export function submittedAssignmentRow(a: StudentAssignmentListItem): WorkRow {
+  const reviewed = a.status === "REVIEWED";
+  return {
+    key: `assignment-${a.id}`,
+    kind: "assignment",
+    id: a.id,
+    title: a.title,
+    subtitle: reviewed
+      ? a.reviewedAt
+        ? unbreakable(`Reviewed ${formatDate(a.reviewedAt)}`) + " · Open to read the feedback"
+        : "Open to read the feedback"
+      : "Your leader hasn't reviewed it yet",
+    chip: reviewed
+      ? { tone: "ok", label: "Reviewed" }
+      : { tone: "info", label: "Waiting for review" },
+    href: { pathname: "/assignment/[id]" as const, params: { id: String(a.id) } },
+  };
+}
+
+/** A taken or paper quiz on the Submitted tab: its score, or that it isn't graded yet. */
+export function submittedQuizRow(q: StudentQuizResult): WorkRow {
+  const base = quizRow(q);
+  if (q.score !== null) return base;
+  return { ...base, chip: { tone: "neutral", label: "Not graded yet" } };
+}
+
+export type SubmittedSections = {
+  assignments: WorkRow[];
+  quizzes: WorkRow[];
+  stats: { submitted: number; waiting: number; reviewed: number; quizAverage: number | null };
+};
+
+export function submittedSections(
+  assignments: StudentAssignmentListItem[],
+  quizzes: StudentQuizResult[],
+): SubmittedSections {
+  const handedIn = assignments.filter((a) => a.status === "SUBMITTED" || a.status === "REVIEWED");
+  // Waiting first: that's the one a student comes back to check on.
+  const ordered = [
+    ...handedIn.filter((a) => a.status === "SUBMITTED"),
+    ...handedIn.filter((a) => a.status === "REVIEWED"),
+  ];
+  return {
+    assignments: ordered.map(submittedAssignmentRow),
+    quizzes: quizzes.filter((q) => !isOpenQuiz(q)).map(submittedQuizRow),
+    stats: {
+      submitted: handedIn.length,
+      waiting: handedIn.filter((a) => a.status === "SUBMITTED").length,
+      reviewed: handedIn.filter((a) => a.status === "REVIEWED").length,
+      quizAverage: quizAverage(quizzes),
+    },
+  };
+}

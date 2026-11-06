@@ -65,7 +65,7 @@ beforeEach(() => {
 
 // The student's rows are pinned in work-screen.test.tsx and work-model.test.ts.
 describe("QuizzesScreen — student", () => {
-  it("gets Work in place, with the Back bar: no replace, no redirect (P2-11)", async () => {
+  it("gets To do in place, with the Back bar: no replace, no redirect (P2-11)", async () => {
     useSessionStore.setState({
       ...studentSession,
       scopes: { ...studentSession.scopes, activeSeasonId: null },
@@ -74,8 +74,8 @@ describe("QuizzesScreen — student", () => {
     renderStacked(<QuizzesScreen />);
 
     expect(await screen.findByText("No active season")).toBeTruthy();
-    expect(screen.getByText("Work")).toBeTruthy();
-    expect(screen.getByText("Your current season")).toBeTruthy();
+    expect(screen.getByText("To do")).toBeTruthy();
+    expect(screen.getByText("Assignments and quizzes still to finish")).toBeTruthy();
     expect(screen.getByLabelText("Back")).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
     expect(get).not.toHaveBeenCalled();

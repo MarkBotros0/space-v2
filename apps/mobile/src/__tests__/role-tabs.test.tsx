@@ -49,7 +49,7 @@ describe("role tabs", () => {
     ["ADMIN", navByRole.ADMIN, ["Today", "Calendar", "Groups", "Students", "More"]],
     ["LEADER", navByRole.LEADER, ["Today", "Groups", "Calendar", "Submissions", "More"]],
     ["MENTOR", navByRole.MENTOR, ["Today", "Students", "Reports", "Notes", "Profile"]],
-    ["STUDENT", navByRole.STUDENT, ["Today", "Calendar", "Work", "More"]],
+    ["STUDENT", navByRole.STUDENT, ["Today", "Calendar", "To do", "Submitted", "More"]],
     ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024 }), ["Today", "Events", "History", "Profile", "More"]],
   ])("the pill draws %s's tabs Today first, none featured (R22)", (_role, nav, labels) => {
     const state = { index: 0, routes: nav.tabs.map((t) => ({ key: t.href, name: routeNameForHref(t.href) })) };

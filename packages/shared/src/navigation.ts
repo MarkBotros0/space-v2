@@ -37,7 +37,9 @@ export type NavIconName =
   | "notifications"
   | "quizzes"
   | "more"
-  | "settings";
+  | "settings"
+  | "todo"
+  | "submitted";
 
 export interface NavItem {
   href: string;
@@ -127,7 +129,10 @@ const STUDENT: RoleNav = {
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/season", label: "Current Season", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/work", label: "Work", icon: "assignments" },
+    // Owner, 2026-11-06: the student's work is two tabs — what to do, and
+    // what was handed in with its grading.
+    { href: "/work", label: "To do", icon: "todo" },
+    { href: "/submitted", label: "Submitted", icon: "submitted" },
     // Spec 04 D14: v1 reached /student/attendance only from the dashboard's
     // budget tile; the budget it explains must have a home of its own. STUDENT
     // sidebar only — it surfaces in More. Not ALUMNI (no active season).
@@ -140,7 +145,8 @@ const STUDENT: RoleNav = {
   tabs: [
     { href: "/dashboard", label: "Today", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/work", label: "Work", icon: "assignments" },
+    { href: "/work", label: "To do", icon: "todo" },
+    { href: "/submitted", label: "Submitted", icon: "submitted" },
     { href: "/more", label: "More", icon: "more" },
   ],
 };

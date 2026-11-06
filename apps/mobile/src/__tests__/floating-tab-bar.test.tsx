@@ -26,7 +26,9 @@ jest.mock("react-native-reanimated", () => {
 });
 jest.mock("expo-haptics");
 let mockScreenReader = false;
-jest.mock("../design/lib/screen-reader", () => ({ useScreenReaderEnabled: () => mockScreenReader }));
+jest.mock("../design/lib/screen-reader", () => ({
+  useScreenReaderEnabled: () => mockScreenReader,
+}));
 
 afterEach(() => {
   mockScreenReader = false;
@@ -138,7 +140,9 @@ describe("activeTabRoute", () => {
   // (app) stack), so the highlight follows an exact match or nothing (M3).
   it("is the focused route when it is in the bar, else null", () => {
     const { activeTabRoute } = jest.requireActual("../design/layout/floating-tab-bar");
-    expect(activeTabRoute("students/index", ["students/index", "dashboard"])).toBe("students/index");
+    expect(activeTabRoute("students/index", ["students/index", "dashboard"])).toBe(
+      "students/index",
+    );
     expect(activeTabRoute("notes", ["calendar", "dashboard"])).toBeNull();
     expect(activeTabRoute(undefined, ["dashboard"])).toBeNull();
   });
@@ -210,17 +214,22 @@ describe("no active tab (M1)", () => {
     view.rerender(barTree("notes"));
     expect(highlightTarget()).toBeNull();
     expect(mockWithTiming).toHaveBeenCalledWith(0, { duration: 150 });
-    expect(screen.getByLabelText("History").props.accessibilityState).toMatchObject({ selected: false });
+    expect(screen.getByLabelText("History").props.accessibilityState).toMatchObject({
+      selected: false,
+    });
   });
 });
 
-describe("a student's four tabs", () => {
-  it("draws four, and the highlight lands under the tapped tab", () => {
+describe("a student's five tabs", () => {
+  it("draws five, and the highlight lands under the tapped tab", () => {
     const tabs = navByRole.STUDENT.tabs;
     const navigateToTab = jest.fn();
     const state = {
       index: 0,
-      routes: tabs.map((t) => ({ key: `${routeNameForHref(t.href)}-key`, name: routeNameForHref(t.href) })),
+      routes: tabs.map((t) => ({
+        key: `${routeNameForHref(t.href)}-key`,
+        name: routeNameForHref(t.href),
+      })),
     } as unknown as BottomTabBarProps["state"];
     render(
       <SafeAreaProvider
@@ -242,17 +251,24 @@ describe("a student's four tabs", () => {
     expect(screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel)).toEqual([
       "Today",
       "Calendar",
-      "Work",
+      "To do",
+      "Submitted",
       "More",
     ]);
-    ["Today", "Calendar", "Work", "More"].forEach((label, i) => layoutTab(label, i * 85, 85));
+    ["Today", "Calendar", "To do", "Submitted", "More"].forEach((label, i) =>
+      layoutTab(label, i * 68, 68),
+    );
 
-    fireEvent.press(screen.getByLabelText("Work"));
-    expect(highlightTarget()).toEqual({ x: 170, width: 85 });
+    fireEvent.press(screen.getByLabelText("To do"));
+    expect(highlightTarget()).toEqual({ x: 136, width: 68 });
     expect(navigateToTab).toHaveBeenCalledWith("work-key");
 
+    fireEvent.press(screen.getByLabelText("Submitted"));
+    expect(highlightTarget()).toEqual({ x: 204, width: 68 });
+    expect(navigateToTab).toHaveBeenCalledWith("submitted-key");
+
     fireEvent.press(screen.getByLabelText("More"));
-    expect(highlightTarget()).toEqual({ x: 255, width: 85 });
+    expect(highlightTarget()).toEqual({ x: 272, width: 68 });
   });
 });
 

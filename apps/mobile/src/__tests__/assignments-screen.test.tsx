@@ -28,12 +28,12 @@ beforeEach(() => {
 // The student's list itself is pinned in work-screen.test.tsx, the staff's in
 // assignments-staff-screen.test.tsx.
 describe("/assignments on the stack", () => {
-  it("a student gets Work in place, with the Back bar: no replace, no redirect (P2-11)", async () => {
+  it("a student gets To do in place, with the Back bar: no replace, no redirect (P2-11)", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null }));
     renderStacked(<AssignmentsScreen />);
     expect(await screen.findByText("No active season")).toBeTruthy();
-    expect(screen.getByText("Work")).toBeTruthy();
-    expect(screen.getByText("Your current season")).toBeTruthy();
+    expect(screen.getByText("To do")).toBeTruthy();
+    expect(screen.getByText("Assignments and quizzes still to finish")).toBeTruthy();
     expect(screen.getByLabelText("Back")).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
     expect(screen.queryByText(/^redirect:/)).toBeNull();

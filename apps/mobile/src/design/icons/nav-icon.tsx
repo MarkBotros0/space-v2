@@ -6,6 +6,7 @@ import {
   Calendar,
   ChartColumn,
   CircleUserRound,
+  ClipboardCheck,
   ClipboardList,
   Ellipsis,
   GraduationCap,
@@ -13,6 +14,7 @@ import {
   Home,
   Inbox,
   LayoutDashboard,
+  ListTodo,
   ListChecks,
   NotebookPen,
   Settings,
@@ -58,6 +60,8 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   quizzes: ListChecks,
   more: Ellipsis,
   settings: Settings,
+  todo: ListTodo,
+  submitted: ClipboardCheck,
 };
 
 // Lets `className="text-white/55"` colour the icon, as v1's classes do.

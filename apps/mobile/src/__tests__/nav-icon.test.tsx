@@ -6,6 +6,7 @@ import {
   Calendar,
   ChartColumn,
   CircleUserRound,
+  ClipboardCheck,
   ClipboardList,
   Ellipsis,
   GraduationCap,
@@ -13,6 +14,7 @@ import {
   Home,
   Inbox,
   LayoutDashboard,
+  ListTodo,
   ListChecks,
   NotebookPen,
   Settings,
@@ -56,6 +58,8 @@ it("each destination says what it opens (owner revision R35, 2026-11-05)", () =>
     quizzes: ListChecks,
     more: Ellipsis,
     settings: Settings,
+    todo: ListTodo,
+    submitted: ClipboardCheck,
   });
 });
 

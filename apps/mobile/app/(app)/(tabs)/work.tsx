@@ -5,7 +5,7 @@ import { WorkScreen } from "../../../src/screens/work/work-screen";
 import { useSessionStore } from "../../../src/store/session";
 
 /**
- * /work — the student's merged assignments and quizzes (P2-1). A tab for no other
+ * /work — the student's To do tab: open assignments and quizzes (P2-1, split 2026-11-06). A tab for no other
  * role, so a staff deep link gets what every shared route says, not a student's
  * reads. An alumnus has the STUDENT role and never reaches this far: (app)'s
  * layout sends them to /dashboard first (isBlockedForAlumni).
@@ -14,10 +14,10 @@ export default function WorkTab() {
   const role = useSessionStore((s) => s.user?.role ?? null);
   if (role !== "STUDENT") {
     return (
-      <Screen title="Work">
+      <Screen title="To do">
         <EmptyState
-          icon={NAV_ICONS.assignments}
-          title="Work"
+          icon={NAV_ICONS.todo}
+          title="To do"
           description="This screen isn't available for your role."
         />
       </Screen>

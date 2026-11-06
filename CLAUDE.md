@@ -315,6 +315,14 @@ sonner-native toasts, so flows shoot toasts best-effort.
   graduation year (`StudentProfile.universityGraduationYear`, may be in the
   future — not `User.graduationYear`, which marks a JPCS alumnus).
 
+### Student work: two tabs (owner, 2026-11-06)
+
+A student's bar is Today · Calendar · To do (`/work`) · Submitted
+(`/submitted`) · More. To do groups open work as Overdue, Returned — needs
+changes, Due this week, Later, Quizzes to take. Submitted lists handed-in
+assignments (Waiting for review / Reviewed, said in words, never colour
+alone) and taken quizzes (score, or Not graded yet). Keep it that clear.
+
 ### Motion: keep it restrained (owner, 2026-11-06)
 
 The owner found the tab bar over-animated (springing highlight + bouncing icon).
