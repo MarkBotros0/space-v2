@@ -42,6 +42,21 @@ export const mePaths = {
         401: errRef("Unauthorized"),
       },
     },
+    delete: {
+      tags: ["Me"],
+      summary: "Delete your own account",
+      description:
+        "Self-scoped soft delete, the same as a SUPER deactivating the account: sets `deletedAt` on the user (and student profile), removes this account's push devices, revokes every refresh token and ends live access tokens. Sign-in, refresh and password reset refuse the account afterwards. 409 `last_super` when the caller is the only active SUPER.",
+      responses: {
+        200: ok(
+          { type: "object", required: ["deletedAt"], properties: { deletedAt: { type: "string", format: "date-time" } } },
+          "The account is deleted.",
+        ),
+        401: errRef("Unauthorized"),
+        404: errRef("NotFound"),
+        409: conflict("The caller is the only active SUPER account."),
+      },
+    },
     patch: {
       tags: ["Me"],
       summary: "Update your own display name",

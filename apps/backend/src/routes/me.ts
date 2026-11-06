@@ -12,6 +12,7 @@ import {
 
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
+import { auditLog } from "../lib/audit";
 import { expireLiveResetTokens } from "../lib/auth/password-reset";
 import { invalidateSessions } from "../lib/auth/session-validity";
 import { hashToken, revokeAllRefreshTokensForUser } from "../lib/auth/tokens";
@@ -26,6 +27,7 @@ import { loadMyAttendance, loadMyProfile, loadMySeason, loadSeasonHistory } from
 // The one 429 handler (ruling X4) — never a local copy.
 import { makeLimiter } from "../lib/rate-limit";
 import { isAlumnus } from "../lib/rbac";
+import { isLastActiveSuper, lockActiveSuperIds } from "../lib/super-guard";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { meDevicesRouter } from "./me-devices";
 import { forbidden } from "./respond";
@@ -153,6 +155,45 @@ meRouter.post("/password", requireAuth, passwordLimiter, async (req, res) => {
   });
 
   return apiOk(res, { ok: true, sessionsRevoked });
+});
+
+/**
+ * The account holder deletes their own account (App Store guideline 5.1.1(v)).
+ * Same soft delete as a SUPER's deactivation — deletedAt on the user and on a
+ * student profile, every session revoked — plus this account's push devices,
+ * so nothing reaches the phone afterwards. The rows that record what the
+ * person did (submissions, attendance) stay: other people's history points at
+ * them. The last active SUPER can't delete themselves (409 last_super), the
+ * same guard deactivation has.
+ */
+meRouter.delete("/", requireAuth, async (req, res) => {
+  const user = requireUser(req);
+  const deletedAt = new Date();
+
+  const outcome = await db.$transaction(async (tx) => {
+    const row = await tx.user.findUnique({
+      where: { id: user.userId },
+      select: { role: true, deletedAt: true },
+    });
+    if (!row || row.deletedAt) return "gone" as const;
+    if (row.role === "SUPER") {
+      const activeSuperIds = await lockActiveSuperIds(tx);
+      if (isLastActiveSuper(activeSuperIds, user.userId)) return "last_super" as const;
+    }
+    await tx.user.update({ where: { id: user.userId }, data: { deletedAt } });
+    await tx.studentProfile.updateMany({ where: { userId: user.userId }, data: { deletedAt } });
+    await tx.deviceToken.deleteMany({ where: { userId: user.userId } });
+    await revokeAllRefreshTokensForUser(tx, user.userId);
+    await invalidateSessions(tx, user.userId);
+    return "ok" as const;
+  });
+
+  if (outcome === "gone") return apiError(res, "not_found", "Account not found.", 404);
+  if (outcome === "last_super") {
+    return apiError(res, "last_super", "You're the only active SUPER account, so it can't be deleted.", 409);
+  }
+  auditLog("user.self_delete", user.userId, user.userId);
+  return apiOk(res, { deletedAt: deletedAt.toISOString() });
 });
 
 const STUDENTS_ONLY = "This is only available to students and alumni.";

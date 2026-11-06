@@ -22,6 +22,8 @@ export type AuditOperation =
   | "user.role_change"
   | "user.deactivate"
   | "user.reactivate"
+  // The account holder deleting their own account (DELETE /me).
+  | "user.self_delete"
   // Season admin grants (SUPER-only). The subject is the user; the season
   // rides along as a scope id.
   | "season.admin_add"

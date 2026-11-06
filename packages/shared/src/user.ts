@@ -187,6 +187,12 @@ export const logoutAllResponseSchema = z.object({
   revoked: z.number().int().nonnegative(),
 });
 export type LogoutAllResponse = z.infer<typeof logoutAllResponseSchema>;
+
+/** DELETE /me — the account holder deletes their own account. */
+export const deleteAccountResponseSchema = z.object({
+  deletedAt: z.string(),
+});
+export type DeleteAccountResponse = z.infer<typeof deleteAccountResponseSchema>;
 /**
  * POST /users — Plan 9's response, given a schema so `/users/new` parses it.
  * `inviteSent` is false when the account was created but its invite email
@@ -224,3 +230,21 @@ export const bulkInviteResponseSchema = z.object({
   remaining: z.number().int().nonnegative(),
 });
 export type BulkInviteResponse = z.infer<typeof bulkInviteResponseSchema>;
+
+/** Dev user switcher (DEV_USER_SWITCHER=1 backends only). */
+export const devSwitchRequestSchema = z.object({
+  userId: z.number().int().positive(),
+});
+export type DevSwitchRequest = z.infer<typeof devSwitchRequestSchema>;
+
+export const devSwitchUserSchema = z.object({
+  id: z.number().int(),
+  email: z.string(),
+  name: z.string(),
+  role: userRoleSchema,
+});
+export type DevSwitchUser = z.infer<typeof devSwitchUserSchema>;
+
+export const devUsersResponseSchema = z.object({
+  users: z.array(devSwitchUserSchema),
+});

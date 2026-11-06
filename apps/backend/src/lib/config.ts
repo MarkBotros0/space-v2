@@ -112,6 +112,11 @@ const envSchema = z.object({
   // injects (VERCEL_GIT_COMMIT_SHA), so each deploy groups its own errors.
   SENTRY_RELEASE: z.string().optional(),
   VERCEL_GIT_COMMIT_SHA: z.string().optional(),
+  // Dev user switcher (v1 parity: jpc-space's DEV_USER_SWITCHER). "1" turns on
+  // /api/v1/dev/*, which signs the caller in as ANY active user with no
+  // password. Testing aid only — never set it on a backend with real people's
+  // data. Off (404 on every /dev route) unless exactly "1".
+  DEV_USER_SWITCHER: z.string().optional(),
 });
 
 /**
@@ -156,6 +161,7 @@ export const config = {
   enableApiDocs: parsed.data.ENABLE_API_DOCS,
   readOnly: parsed.data.READ_ONLY,
   mobileAppScheme: parsed.data.MOBILE_APP_SCHEME,
+  devUserSwitcher: parsed.data.DEV_USER_SWITCHER === "1",
   importBodyLimit: parsed.data.IMPORT_BODY_LIMIT,
   importPreviewRateLimit: parsed.data.IMPORT_PREVIEW_RATE_LIMIT,
   importCommitRateLimit: parsed.data.IMPORT_COMMIT_RATE_LIMIT,

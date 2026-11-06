@@ -22,6 +22,7 @@ import { notificationsRouter } from "./routes/notifications";
 import { eventsRouter } from "./routes/events";
 import { forumRouter } from "./routes/forum";
 import { videoQuizRouter } from "./routes/video-quiz";
+import { devRouter } from "./routes/dev";
 import { docsRouter } from "./routes/docs";
 import { reportsRouter } from "./routes/reports";
 import { importsRouter, seasonImportsRouter } from "./routes/imports";
@@ -77,6 +78,7 @@ export function createApp(): Express {
   }
 
   app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/dev", devRouter);
   app.use("/api/v1/me", meRouter);
   app.use("/api/v1/devices", devicesRouter);
   app.use("/api/v1/notifications", notificationsRouter);
