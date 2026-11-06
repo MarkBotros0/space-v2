@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { FlatList, Keyboard, StyleSheet } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
@@ -334,5 +335,42 @@ describe("states", () => {
     );
     renderStacked(<SeasonPeopleScreen />);
     expect(await screen.findByText("Not available")).toBeTruthy();
+  });
+});
+
+describe("keyboard", () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  // The list is laid out by a no-scroll Screen, so the room the keyboard takes
+  // must come off the list's own box: the last row has to scroll above both.
+  function listBottomPadding(): number {
+    let node = screen.UNSAFE_getByType(FlatList).parent;
+    while (node) {
+      const padding = StyleSheet.flatten(node.props?.style)?.paddingBottom;
+      if (typeof padding === "number") return padding;
+      node = node.parent;
+    }
+    throw new Error("no padded ancestor");
+  }
+
+  it("shrinks the list by the keyboard, so the last row scrolls above it and the pinned bar", async () => {
+    // Several parts of the screen subscribe; every one hears the event.
+    const listeners: Record<string, ((e: unknown) => void)[]> = {};
+    jest.spyOn(Keyboard, "addListener").mockImplementation(((event: string, cb: never) => {
+      (listeners[event] ??= []).push(cb);
+      return { remove: jest.fn() };
+    }) as unknown as typeof Keyboard.addListener);
+    await open();
+    const closed = listBottomPadding();
+    act(() => {
+      for (const cb of listeners.keyboardWillShow ?? listeners.keyboardDidShow ?? [])
+        cb({ endCoordinates: { height: 300, screenY: 544 } });
+    });
+    expect(listBottomPadding()).toBeGreaterThanOrEqual(closed + 250);
+    expect(screen.UNSAFE_getByType(FlatList).props.keyboardShouldPersistTaps).toBe("handled");
+    // Let the keyboard hook's retry timers run out before the environment goes.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 450));
+    });
   });
 });
