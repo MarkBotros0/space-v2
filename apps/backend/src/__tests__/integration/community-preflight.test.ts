@@ -190,6 +190,6 @@ describe("applyRefusal", () => {
     await db.seasonEnrollment.create({
       data: { seasonId: season.id, studentUserId: student.id, status: "COMPLETED", result: "NOT_PASSED" },
     });
-    expect(await applyRefusal(await clean())).toMatch(/already has a result/);
+    expect(await applyRefusal(await clean())).toMatch(/\d+ enrolment\(s\) already have a result/);
   });
 });

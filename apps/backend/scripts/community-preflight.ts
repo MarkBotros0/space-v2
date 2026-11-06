@@ -125,9 +125,39 @@ export function countViolations(v: Violations): number {
  */
 export async function applyRefusal(violations: Violations): Promise<string | null> {
   if (countViolations(violations) > 0) return "fix the role-rule violations above first.";
-  const withResult = await db.seasonEnrollment.count({ where: { result: { not: null } } });
-  if (withResult > 0) return `${withResult} enrolment(s) already has a result, so the backfill has already run.`;
+  try {
+    const withResult = await db.seasonEnrollment.count({ where: { result: { not: null } } });
+    if (withResult > 0) {
+      return `${withResult} enrolment(s) already have a result; --apply only runs on a database with none.`;
+    }
+  } catch (err) {
+    if (!isMissingResultColumn(err)) throw err;
+    return "the database isn't migrated yet (no `result` column): run the migrations first.";
+  }
   return null;
+}
+
+/** Prisma's "column does not exist": the community-model migration hasn't reached this database. */
+function isMissingResultColumn(err: unknown): boolean {
+  return typeof err === "object" && err !== null && "code" in err && err.code === "P2022";
+}
+
+/**
+ * The read-only run. Violations come first and read no new column, so they print
+ * on a database the migration hasn't reached, which is when they are most useful.
+ */
+export async function readOnlyReport(log: (...args: unknown[]) => void): Promise<void> {
+  const violations = await findRoleRuleViolations();
+  log("Role-rule violations:", JSON.stringify(violations, null, 2));
+  try {
+    log("Would change:", await backfillResults({ dryRun: true }));
+  } catch (err) {
+    if (!isMissingResultColumn(err)) throw err;
+    log("The `result` column is missing: this database isn't migrated yet.");
+    log("Unknown until it is: what the backfill would change, and whether --apply is allowed.");
+    return;
+  }
+  log("--apply would be:", (await applyRefusal(violations)) ?? "allowed");
 }
 
 interface BackfillOptions {
@@ -192,15 +222,13 @@ async function main(): Promise<void> {
   const apply = process.argv.includes("--apply");
   console.log(`Database host: ${new URL(config.databaseUrl).hostname}`);
 
-  const violations = await findRoleRuleViolations();
-  console.log("Role-rule violations:", JSON.stringify(violations, null, 2));
-
   if (!apply) {
-    console.log("Would change:", await backfillResults({ dryRun: true }));
-    console.log("--apply would be:", (await applyRefusal(violations)) ?? "allowed");
+    await readOnlyReport(console.log);
     console.log("Read-only run. Pass --apply to backfill.");
     return;
   }
+  const violations = await findRoleRuleViolations();
+  console.log("Role-rule violations:", JSON.stringify(violations, null, 2));
   const refusal = await applyRefusal(violations);
   if (refusal) throw new Error(`Refusing to --apply: ${refusal}`);
   console.log("Backfilled:", await backfillResults());
