@@ -136,6 +136,9 @@ export const queryKeys = {
     /** GET /seasons/:id/staff-candidates — alumni with no active role. */
     staffCandidates: (id: number | null) =>
       [...queryKeys.seasons.all, "staffCandidates", { id }] as const,
+    /** GET /seasons/:id/people-candidates — the people picker's rows. */
+    peopleCandidates: (id: number | null) =>
+      [...queryKeys.seasons.all, "peopleCandidates", { id }] as const,
     /** GET /seasons/:id/end-check, /results, and /overdue: under `all`, so ending a season refreshes them. */
     endCheck: (id: number | null) => [...queryKeys.seasons.all, "end-check", { id }] as const,
     results: (id: number | null) => [...queryKeys.seasons.all, "results", { id }] as const,

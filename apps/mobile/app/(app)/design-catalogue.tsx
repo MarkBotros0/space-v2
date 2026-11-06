@@ -11,6 +11,7 @@ import { Screen } from "../../src/design/layout/screen";
 import { isSweepBuild } from "../../src/lib/app-config";
 import { LeaderSection } from "../../src/screens/design-catalogue/leader-section";
 import { ChipsSection } from "../../src/screens/design-catalogue/chips-section";
+import { PeopleSection } from "../../src/screens/design-catalogue/people-section";
 import { SwitchSection } from "../../src/screens/design-catalogue/switch-section";
 import {
   ControlsSection,
@@ -61,6 +62,7 @@ export default function DesignCatalogue() {
         disabledShown={saveBar === "disabled"}
         onToggleDisabled={() => setSaveBar((on) => (on === "disabled" ? "off" : "disabled"))}
       />
+      <PeopleSection />
       <LeaderSection />
     </Screen>
   );
