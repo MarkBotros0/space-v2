@@ -14,7 +14,7 @@ export interface GroupFixtures {
   leaderToken: string;
   studentToken: string;
   outsiderToken: string;
-  strayGrantToken: string;
+  seasonRowsToken: string;
 }
 
 /** The original suite's beforeAll body, verbatim, returning what it set. */
@@ -51,20 +51,17 @@ export async function seedGroupFixtures(app: Express): Promise<GroupFixtures> {
     data: { seasonId, studentUserId: student.id, groupId: groupAId, status: "ACTIVE" },
   });
 
-  // A STUDENT carrying grant rows they should never have. v1 writes both join
-  // tables from unvalidated request input, so this row is reachable in the
-  // shared database; loadScopes reads the tables with no role filter, so the
-  // claims land in the token. Created before login because claims are baked in
-  // at issue time.
-  const strayGrant = await createTestUser("stray-grant", "STUDENT");
-  await db.groupLeader.create({ data: { groupId: groupBId, userId: strayGrant.id } });
-  await db.seasonAdmin.create({ data: { seasonId, userId: strayGrant.id } });
+  // A stored STUDENT with season rows, who derives ADMIN from them. Created
+  // before login because claims are baked in at issue time.
+  const seasonRows = await createTestUser("season-rows", "STUDENT");
+  await db.groupLeader.create({ data: { groupId: groupBId, userId: seasonRows.id } });
+  await db.seasonAdmin.create({ data: { seasonId, userId: seasonRows.id } });
 
   const superToken = await login(app, superUser.email);
   const leaderToken = await login(app, leader.email);
   const studentToken = await login(app, student.email);
   const outsiderToken = await login(app, outsider.email);
-  const strayGrantToken = await login(app, strayGrant.email);
+  const seasonRowsToken = await login(app, seasonRows.email);
 
   return {
     seasonId,
@@ -74,6 +71,6 @@ export async function seedGroupFixtures(app: Express): Promise<GroupFixtures> {
     leaderToken,
     studentToken,
     outsiderToken,
-    strayGrantToken,
+    seasonRowsToken,
   };
 }

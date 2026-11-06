@@ -1,6 +1,7 @@
 import type { UserDetail, UserRole, UserStatus } from "@space/shared";
 
 import { db } from "../../db/client";
+import { deriveRoles } from "../../lib/auth/scopes";
 
 interface StatusRow {
   passwordHash: string | null;
@@ -31,12 +32,13 @@ type ListRow = {
   deletedAt: Date | null; passwordHash: string | null;
 };
 
-export function toListItem(row: ListRow, hasLiveInvite: boolean) {
+/** `role` is the derived one (`deriveRoles`), never the stored column. */
+export function toListItem(row: ListRow, hasLiveInvite: boolean, role: UserRole) {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
-    role: row.role,
+    role,
     graduationYear: row.graduationYear,
     lastLoginAt: row.lastLoginAt?.toISOString() ?? null,
     deletedAt: row.deletedAt?.toISOString() ?? null,
@@ -78,7 +80,7 @@ export async function loadUserDetail(id: number): Promise<UserDetail | null> {
     invite !== null && invite.usedAt === null && invite.expiresAt > now;
 
   return {
-    ...toListItem(row, hasLiveInvite),
+    ...toListItem(row, hasLiveInvite, (await deriveRoles([row])).get(row.id) ?? row.role),
     invite: invite
       ? {
           issuedAt: invite.createdAt.toISOString(),

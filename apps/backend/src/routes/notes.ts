@@ -13,6 +13,7 @@ import {
   NOTE_SELECT,
   toNoteSummary,
 } from "../lib/queries/notes";
+import type { SessionUser } from "../lib/auth/tokens";
 import { makeLimiter } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import {
@@ -35,6 +36,11 @@ import { forbidden } from "./respond";
  * a unit. Express falls through an unmatched path to the next router on the
  * same prefix, so mounting after studentsRouter shadows nothing.
  */
+/** The caller wrote this row, so the token already holds the author's derived role. */
+function authoredByCaller<T extends { authorUser: { name: string } }>(row: T, user: SessionUser) {
+  return { ...row, authorUser: { ...row.authorUser, role: user.role } };
+}
+
 export const notesRouter = Router();
 export const studentNotesRouter = Router();
 export const myNotesRouter = Router();
@@ -252,7 +258,7 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
     }
   }
 
-  return apiOk(res, { note: toNoteSummary(created, user) }, 201);
+  return apiOk(res, { note: toNoteSummary(authoredByCaller(created, user), user) }, 201);
 });
 
 notesRouter.patch("/:id", requireAuth, async (req, res) => {
@@ -281,7 +287,7 @@ notesRouter.patch("/:id", requireAuth, async (req, res) => {
     select: NOTE_SELECT,
   });
 
-  return apiOk(res, { note: toNoteSummary(updated, user) });
+  return apiOk(res, { note: toNoteSummary(authoredByCaller(updated, user), user) });
 });
 
 /**

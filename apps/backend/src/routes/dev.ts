@@ -4,6 +4,7 @@ import { devSwitchRequestSchema } from "../../../../packages/shared/src/index";
 
 import { db } from "../db/client";
 import { apiError, apiOk } from "../lib/api-response";
+import { deriveRoles, usersWithRole } from "../lib/auth/scopes";
 import { issueSession } from "../lib/auth/tokens";
 import { config } from "../lib/config";
 import { makeLimiter } from "../lib/rate-limit";
@@ -31,7 +32,11 @@ devRouter.use(switcherOn);
 const ROLE_ORDER = ["SUPER", "ADMIN", "LEADER", "MENTOR", "STUDENT"] as const;
 const PER_ROLE = 25;
 
-/** Active users, up to 25 per role, optionally filtered by name or email. */
+/**
+ * Active users, up to 25 per derived role, optionally filtered by name or email.
+ * Someone who matches two lists (admin and leader) appears once, under the role
+ * they'd sign in as.
+ */
 devRouter.get("/users", devLimiter, async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 100) : "";
   const search = q
@@ -43,14 +48,16 @@ devRouter.get("/users", devLimiter, async (req, res) => {
       }
     : {};
   const perRole = await Promise.all(
-    ROLE_ORDER.map((role) =>
-      db.user.findMany({
-        where: { deletedAt: null, role, ...search },
+    ROLE_ORDER.map(async (role) => {
+      const rows = await db.user.findMany({
+        where: { deletedAt: null, ...usersWithRole(role), ...search },
         select: { id: true, email: true, name: true, role: true },
         orderBy: { email: "asc" },
         take: PER_ROLE,
-      }),
-    ),
+      });
+      const derived = await deriveRoles(rows);
+      return rows.filter((r) => derived.get(r.id) === role).map((r) => ({ ...r, role }));
+    }),
   );
   return apiOk(res, { users: perRole.flat() });
 });
@@ -62,7 +69,7 @@ devRouter.post("/switch", devLimiter, async (req, res) => {
 
   const target = await db.user.findUnique({
     where: { id: parsed.data.userId },
-    select: { id: true, name: true, email: true, role: true, deletedAt: true },
+    select: { id: true, name: true, email: true, deletedAt: true },
   });
   if (!target || target.deletedAt) return apiError(res, "not_found", "User not found.", 404);
 
@@ -72,6 +79,6 @@ devRouter.post("/switch", devLimiter, async (req, res) => {
 
   return apiOk(res, {
     ...issued.session,
-    user: { id: target.id, name: target.name, email: target.email, role: target.role },
+    user: { id: target.id, name: target.name, email: target.email, role: issued.user.role },
   });
 });

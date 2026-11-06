@@ -1,5 +1,10 @@
 /** /dev/* — the v1-parity dev user switcher, gated by DEV_USER_SWITCHER=1. */
-const mockDb = { user: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() } };
+const mockDb = {
+  user: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  seasonAdmin: { findMany: jest.fn() },
+  groupLeader: { findMany: jest.fn() },
+  seasonEnrollment: { findMany: jest.fn() },
+};
 jest.mock("../db/client", () => ({ db: mockDb }));
 const mockConfig = { devUserSwitcher: false };
 jest.mock("../lib/config", () => {
@@ -21,6 +26,9 @@ const app = createApp();
 beforeEach(() => {
   jest.clearAllMocks();
   mockConfig.devUserSwitcher = false;
+  mockDb.seasonAdmin.findMany.mockResolvedValue([]);
+  mockDb.groupLeader.findMany.mockResolvedValue([]);
+  mockDb.seasonEnrollment.findMany.mockResolvedValue([]);
 });
 
 describe("dev switcher off", () => {
@@ -46,11 +54,23 @@ describe("dev switcher on", () => {
     expect(mockDb.user.findMany.mock.calls[0][0].where.OR).toHaveLength(2);
   });
 
+  it("lists someone by the role they'd sign in as, once", async () => {
+    const both = { id: 3, email: "b@x.test", name: "Both", role: "STUDENT" };
+    mockDb.user.findMany.mockImplementation(({ where }) =>
+      Promise.resolve(where.seasonAdminAssignments?.some || where.groupLeaderAssignments?.some ? [both] : []),
+    );
+    const season = { status: "ACTIVE" };
+    mockDb.seasonAdmin.findMany.mockResolvedValue([{ userId: 3, seasonId: 1, season }]);
+    mockDb.groupLeader.findMany.mockResolvedValue([{ userId: 3, groupId: 2, group: { season } }]);
+    const res = await request(app).get("/api/v1/dev/users");
+    expect(res.body.data.users).toEqual([{ ...both, role: "ADMIN" }]);
+  });
+
   it("signs in as the chosen user with no password", async () => {
-    mockDb.user.findUnique.mockResolvedValue({ id: 2, name: "Ann", email: "a@x.test", role: "LEADER", deletedAt: null });
+    mockDb.user.findUnique.mockResolvedValue({ id: 2, name: "Ann", email: "a@x.test", deletedAt: null });
     (issueSession as jest.Mock).mockResolvedValue({
       session: { accessToken: "a", expiresIn: 900, refreshToken: "r" },
-      user: {},
+      user: { role: "LEADER" },
     });
     const res = await request(app).post("/api/v1/dev/switch").send({ userId: 2 });
     expect(res.status).toBe(200);

@@ -66,7 +66,7 @@ authRouter.post("/login", authLimiter, async (req, res) => {
       id: verified.id,
       name: verified.name,
       email: verified.email,
-      role: verified.role,
+      role: issued.user.role,
     },
   });
 });

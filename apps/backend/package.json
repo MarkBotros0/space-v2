@@ -17,6 +17,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
     "preflight:community": "ts-node --transpile-only scripts/community-preflight.ts",
+    "roles:convert": "ts-node --transpile-only scripts/convert-stored-roles.ts",
     "seed:sweep": "ts-node --transpile-only scripts/seed-sweep.ts",
     "create:super-admin": "ts-node --transpile-only scripts/create-super-admin.ts"
   },

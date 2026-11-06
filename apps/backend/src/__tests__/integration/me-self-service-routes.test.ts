@@ -126,6 +126,7 @@ beforeAll(async () => {
   studentToken = await login(app, student.email);
   alumnusToken = await login(app, alumnus.email);
   leaderToken = await login(app, leader.email);
+  await db.seasonAdmin.create({ data: { seasonId: (await createTestSeason()).id, userId: admin.id } });
   adminToken = await login(app, admin.email);
 });
 

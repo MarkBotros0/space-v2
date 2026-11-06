@@ -3,6 +3,7 @@ import type { UserRole, UserStatus } from "@space/shared";
 
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
+import { deriveRoles, usersWithRole } from "../../lib/auth/scopes";
 import { liveInviteWhere } from "../../lib/invites";
 import { parseId } from "../../lib/parse-id";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
@@ -15,8 +16,6 @@ export async function listUsers(req: Request, res: Response) {
   if (!user) return;
 
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
-  // The shared UserRole is the same literal union as Prisma's generated enum
-  // type, so this needs no cast where it reaches the where-clause.
   let roleFilter: UserRole | null = null;
   if (typeof req.query.role === "string") {
     const parsed = userRoleSchema.safeParse(req.query.role);
@@ -66,7 +65,7 @@ export async function listUsers(req: Request, res: Response) {
             ],
           }
         : {},
-      roleFilter ? { role: roleFilter } : {},
+      roleFilter ? usersWithRole(roleFilter) : {},
       statusFilter ? statusWhere[statusFilter] : {},
     ],
   };
@@ -90,9 +89,10 @@ export async function listUsers(req: Request, res: Response) {
     select: { userId: true },
   });
   const invitedIds = new Set(liveInvites.map((i) => i.userId));
+  const roles = await deriveRoles(page);
 
   return apiOk(res, {
-    users: page.map((row) => toListItem(row, invitedIds.has(row.id))),
+    users: page.map((row) => toListItem(row, invitedIds.has(row.id), roles.get(row.id) ?? row.role)),
     nextCursor,
     total,
   });

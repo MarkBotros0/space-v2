@@ -64,28 +64,30 @@ describe("isAdminOfSeason", () => {
     expect(isAdminOfSeason(user({ role: "ADMIN", seasonAdminIds: [9] }), 7)).toBe(false);
   });
 
-  it("ignores a season grant held by a role that cannot hold one", () => {
-    // loadScopes reads SeasonAdmin with no role filter and v1 writes that table
-    // from unvalidated input, so a row naming a student is reachable in the
-    // shared database. The claim alone must not confer admin over a season.
-    expect(isAdminOfSeason(user({ role: "STUDENT", seasonAdminIds: [7] }), 7)).toBe(false);
-    expect(isAdminOfSeason(user({ role: "LEADER", seasonAdminIds: [7] }), 7)).toBe(false);
+  it("reads the claim list, not a role paired with it", () => {
+    // loadScopes derives the role from these same rows, so the list is the
+    // identity. A LEADER's list can only be empty; this pins the predicate.
+    expect(isAdminOfSeason(user({ role: "LEADER", seasonAdminIds: [7] }), 7)).toBe(true);
+    expect(isAdminOfSeason(user({ role: "STUDENT", seasonAdminIds: [7] }), 7)).toBe(true);
+  });
+
+  it("is false for a MENTOR, whatever the claim says", () => {
     expect(isAdminOfSeason(user({ role: "MENTOR", seasonAdminIds: [7] }), 7)).toBe(false);
   });
 });
 
 describe("isLeaderOfGroup", () => {
-  it("requires both the LEADER role and the group scope", () => {
+  it("requires the group scope", () => {
     expect(isLeaderOfGroup(user({ role: "LEADER", groupLeaderIds: [3] }), 3)).toBe(true);
     expect(isLeaderOfGroup(user({ role: "LEADER", groupLeaderIds: [3] }), 4)).toBe(false);
   });
 
-  it("ignores a group grant held by a role that cannot hold one", () => {
-    // Same reachability as the season case above — v1's group form takes
-    // `leaderIds` straight off the request body, constrained only by which
-    // options the picker rendered.
-    expect(isLeaderOfGroup(user({ role: "STUDENT", groupLeaderIds: [3] }), 3)).toBe(false);
-    expect(isLeaderOfGroup(user({ role: "ADMIN", groupLeaderIds: [3] }), 3)).toBe(false);
+  it("is true for an ADMIN who also leads that group (Review Focus 3)", () => {
+    expect(isLeaderOfGroup(user({ role: "ADMIN", seasonAdminIds: [7], groupLeaderIds: [3] }), 3)).toBe(true);
+  });
+
+  it("is false for a MENTOR, whatever the claim says", () => {
+    expect(isLeaderOfGroup(user({ role: "MENTOR", groupLeaderIds: [3] }), 3)).toBe(false);
   });
 
   it("is false for SUPER without an explicit group scope", () => {
@@ -116,8 +118,8 @@ describe("isAdminOfAnySeason (Plan 6 D-16.14)", () => {
     expect(isAdminOfAnySeason(user({ role: "SUPER" }))).toBe(true);
     expect(isAdminOfAnySeason(user({ role: "ADMIN", seasonAdminIds: [3] }))).toBe(true);
   });
-  it("is false for an ADMIN with no season and for a stray grant on another role (C7)", () => {
+  it("is false for an empty claim list and for a MENTOR", () => {
     expect(isAdminOfAnySeason(user({ role: "ADMIN" }))).toBe(false);
-    expect(isAdminOfAnySeason(user({ role: "STUDENT", seasonAdminIds: [3] }))).toBe(false);
+    expect(isAdminOfAnySeason(user({ role: "MENTOR", seasonAdminIds: [3] }))).toBe(false);
   });
 });

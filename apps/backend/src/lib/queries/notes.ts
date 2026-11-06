@@ -4,6 +4,7 @@ import type { AuthoredNote, NoteListQuery, NoteSummary } from "@space/shared";
 import { htmlToPlainText } from "../../../../../packages/shared/src/index";
 
 import { db } from "../../db/client";
+import { deriveRoles } from "../auth/scopes";
 import type { SessionUser } from "../auth/tokens";
 import { noteVisibilityWhere } from "../permissions";
 
@@ -45,6 +46,22 @@ type NoteRow = {
  */
 function wasEdited(row: { createdAt: Date; updatedAt: Date }): boolean {
   return row.updatedAt.getTime() - row.createdAt.getTime() > 1000;
+}
+
+/**
+ * Swap each author's stored role for the derived one before `toNoteSummary`.
+ * It's their role today, not when they wrote the note: a leader whose season
+ * has ended reads as a student. No table records the role at the time.
+ */
+export async function withDerivedAuthorRoles<T extends { authorUserId: number; authorUser: NoteRow["authorUser"] }>(
+  rows: T[],
+): Promise<T[]> {
+  const authors = rows.map((r) => ({ id: r.authorUserId, role: r.authorUser.role }));
+  const roles = await deriveRoles(authors);
+  return rows.map((r) => ({
+    ...r,
+    authorUser: { ...r.authorUser, role: roles.get(r.authorUserId) ?? r.authorUser.role },
+  }));
 }
 
 export function toNoteSummary(row: NoteRow, user: SessionUser): NoteSummary {
@@ -112,7 +129,7 @@ export async function listNotesForStudent(
 
   const page = rows.slice(0, query.limit);
   return {
-    notes: page.map((r) => toNoteSummary(r, user)),
+    notes: (await withDerivedAuthorRoles(page)).map((r) => toNoteSummary(r, user)),
     nextCursor: rows.length > query.limit ? String(page[page.length - 1]?.id ?? "") || null : null,
   };
 }
@@ -132,14 +149,14 @@ type AuthoredRow = NoteRow & {
  * The one projection of an over-fetched (limit + 1) authored-note page, shared
  * by `/me/notes` and `/me/visible-notes` so the two cannot drift.
  */
-function toAuthoredPage(
+async function toAuthoredPage(
   rows: AuthoredRow[],
   limit: number,
   user: SessionUser,
-): NotePage<AuthoredNote> {
+): Promise<NotePage<AuthoredNote>> {
   const page = rows.slice(0, limit);
   return {
-    notes: page.map((r) => ({
+    notes: (await withDerivedAuthorRoles(page)).map((r) => ({
       ...toNoteSummary(r, user),
       student: { id: r.studentUserId, name: r.studentUser.name, email: r.studentUser.email },
     })),

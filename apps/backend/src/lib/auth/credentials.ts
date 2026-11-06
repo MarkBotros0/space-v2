@@ -1,6 +1,4 @@
 import bcrypt from "bcryptjs";
-import type { UserRole } from "@space/shared";
-
 import { db } from "../../db/client";
 import { findUserByEmail } from "./find-user-by-email";
 
@@ -8,7 +6,6 @@ export interface VerifiedUser {
   id: number;
   email: string;
   name: string;
-  role: UserRole;
 }
 
 export async function verifyCredentials(
@@ -19,7 +16,6 @@ export async function verifyCredentials(
     id: true,
     email: true,
     name: true,
-    role: true,
     deletedAt: true,
     passwordHash: true,
   });
@@ -36,6 +32,5 @@ export async function verifyCredentials(
     id: user.id,
     email: user.email,
     name: user.name,
-    role: user.role as UserRole,
   };
 }

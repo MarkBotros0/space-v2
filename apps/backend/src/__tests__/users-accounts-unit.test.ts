@@ -7,7 +7,8 @@ const mockDb = {
   user: { findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
   inviteToken: { create: jest.fn(), updateMany: jest.fn(), findFirst: jest.fn() },
   seasonAdmin: { findMany: jest.fn(), deleteMany: jest.fn() },
-  groupLeader: { deleteMany: jest.fn() },
+  groupLeader: { findMany: jest.fn(), deleteMany: jest.fn() },
+  seasonEnrollment: { findMany: jest.fn() },
   studentProfile: { upsert: jest.fn(), updateMany: jest.fn() },
   refreshToken: { updateMany: jest.fn() },
   $transaction: jest.fn(),
@@ -54,6 +55,9 @@ let error: jest.SpyInstance;
 
 beforeEach(() => {
   jest.resetAllMocks();
+  mockDb.seasonAdmin.findMany.mockResolvedValue([]);
+  mockDb.groupLeader.findMany.mockResolvedValue([]);
+  mockDb.seasonEnrollment.findMany.mockResolvedValue([]);
   info = jest.spyOn(console, "info").mockImplementation(() => undefined);
   error = jest.spyOn(console, "error").mockImplementation(() => undefined);
   mockDb.$transaction.mockImplementation((arg: unknown) =>

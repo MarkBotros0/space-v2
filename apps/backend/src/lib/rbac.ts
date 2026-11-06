@@ -17,25 +17,22 @@ export function isMentor(u: SessionUser): boolean {
 }
 
 /**
- * `seasonAdminIds` and `groupLeaderIds` are grants, not identity. `loadScopes`
- * reads them straight from the SeasonAdmin and GroupLeader tables with no role
- * filter, and v1 writes both join tables from unvalidated request input — its
- * group form takes `leaderIds` off the raw body, constrained only by which
- * options the picker happened to render. So a SeasonAdmin or GroupLeader row
- * naming a STUDENT is reachable, and without the role test below it would hand
- * that student staff powers over a season or a group.
- *
- * Pairing each claim with the role that can legitimately hold it means a stray
- * row grants nothing on its own. SUPER short-circuits because it is scoped to
- * nothing in particular; every other role must match its grant.
+ * `seasonAdminIds` and `groupLeaderIds` are the identity now: `loadScopes`
+ * derives the role from these same rows, so there's no role left to pair a
+ * claim with, and an admin who also leads a group in their season holds both
+ * lists (Review Focus 3). This replaces ruling C7's "a stray row grants
+ * nothing": the rows themselves are guarded where they're written (lib/roles,
+ * Task 2). MENTOR's lists are always empty; the test is the backstop for a
+ * token minted otherwise. SUPER short-circuits because it is scoped to nothing
+ * in particular.
  */
 export function isAdminOfSeason(u: SessionUser, seasonId: number): boolean {
   if (u.role === "SUPER") return true;
-  return u.role === "ADMIN" && u.seasonAdminIds.includes(seasonId);
+  return u.role !== "MENTOR" && u.seasonAdminIds.includes(seasonId);
 }
 
 export function isLeaderOfGroup(u: SessionUser, groupId: number): boolean {
-  return u.role === "LEADER" && u.groupLeaderIds.includes(groupId);
+  return u.role !== "MENTOR" && u.groupLeaderIds.includes(groupId);
 }
 
 export function canReadAllStudents(u: SessionUser): boolean {
@@ -46,12 +43,8 @@ export function canManageUsers(u: SessionUser): boolean {
   return u.role === "SUPER";
 }
 
-/**
- * May act as a season admin somewhere — e.g. read the leader picker for a
- * group form. The role is tested with the claim (C7): a stray SeasonAdmin row
- * on a STUDENT grants nothing.
- */
+/** May act as a season admin somewhere, e.g. read the leader picker for a group form. */
 export function isAdminOfAnySeason(u: SessionUser): boolean {
   if (u.role === "SUPER") return true;
-  return u.role === "ADMIN" && u.seasonAdminIds.length > 0;
+  return u.role !== "MENTOR" && u.seasonAdminIds.length > 0;
 }

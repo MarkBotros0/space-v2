@@ -19,10 +19,10 @@ let superToken: string;
 let leaderToken: string;
 let studentToken: string;
 let outsiderToken: string;
-let strayGrantToken: string;
+let seasonRowsToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, groupAId, groupBId, superToken, leaderToken, studentToken, outsiderToken, strayGrantToken } = await seedGroupFixtures(app));
+  ({ seasonId, groupAId, groupBId, superToken, leaderToken, studentToken, outsiderToken, seasonRowsToken } = await seedGroupFixtures(app));
 });
 
 afterAll(async () => {
@@ -131,23 +131,20 @@ describe("GET /api/v1/groups/:id", () => {
     expect(JSON.stringify(res.body)).not.toContain("@jpc.test");
   });
 
-  it("does not honour grant rows carried by a STUDENT", async () => {
-    // Group B has a GroupLeader row naming this student, and the season has a
-    // SeasonAdmin row naming them. Both are in the token's claims. Neither may
-    // confer access, or a single bad row in the shared database becomes an
-    // escalation.
+  it("honours season rows on a stored STUDENT: the rows are the role", async () => {
+    // Group B has a GroupLeader row naming this alumnus, and the season has a
+    // SeasonAdmin row. Community model: they derive ADMIN, and lib/roles guards
+    // who may be written into those rows.
     const group = await request(app)
       .get(`/api/v1/groups/${groupBId}`)
-      .set("authorization", `Bearer ${strayGrantToken}`);
-    expect(group.status).toBe(403);
+      .set("authorization", `Bearer ${seasonRowsToken}`);
+    expect(group.status).toBe(200);
 
     const roster = await request(app)
       .get(`/api/v1/seasons/${seasonId}/groups`)
-      .set("authorization", `Bearer ${strayGrantToken}`);
-    // The season read is allowed only because a student may see their own
-    // enrolment; what matters is that it does not return the season's groups
-    // the way a real season admin's would.
-    expect(roster.status === 403 || roster.body.data.groups.length === 0).toBe(true);
+      .set("authorization", `Bearer ${seasonRowsToken}`);
+    expect(roster.status).toBe(200);
+    expect(roster.body.data.groups.length).toBeGreaterThan(0);
   });
 
   it("returns 400 for a non-numeric id and 403 for a missing one", async () => {

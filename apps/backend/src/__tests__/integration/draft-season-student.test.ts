@@ -14,9 +14,8 @@ jest.setTimeout(120000);
 const app = createApp();
 
 async function mint(userId: number) {
-  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true } });
   const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, role: user.role, ...scopes })).token;
+  return (await signAccessToken({ userId, ...scopes })).token;
 }
 const call = (m: "get" | "post" | "put" | "delete", path: string, t: string) =>
   request(app)[m](`/api/v1${path}`).set("authorization", `Bearer ${t}`);

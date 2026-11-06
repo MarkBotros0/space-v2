@@ -14,9 +14,8 @@ jest.setTimeout(120000);
 const app = createApp();
 
 async function mint(userId: number) {
-  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true } });
   const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, role: user.role, ...scopes })).token;
+  return (await signAccessToken({ userId, ...scopes })).token;
 }
 
 beforeAll(cleanupTestData);

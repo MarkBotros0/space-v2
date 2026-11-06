@@ -9,7 +9,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { config } from "../../lib/config";
-import { cleanupTestData, createTestUser, createUnactivatedTestUser, PASSWORD } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, createUnactivatedTestUser, PASSWORD } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -54,6 +54,8 @@ describe("login", () => {
 
   it("stamps lastLoginAt and never returns the password hash", async () => {
     const u = await createTestUser("auth-edge-stamp", "LEADER");
+    const group = await db.group.create({ data: { seasonId: (await createTestSeason()).id, name: "G" } });
+    await db.groupLeader.create({ data: { groupId: group.id, userId: u.id } });
     const res = await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD });
     expect(res.status).toBe(200);
     expect(res.body.data.user).toEqual({ id: u.id, name: "Test auth-edge-stamp", email: u.email, role: "LEADER" });

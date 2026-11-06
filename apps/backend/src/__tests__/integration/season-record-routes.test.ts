@@ -24,9 +24,8 @@ const seasons = {} as Record<"passed" | "notPassed" | "completed" | "dropped" | 
 let quizIds: { notTaken: number; progress: number; graded: number; submitted: number };
 
 async function mint(userId: number) {
-  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true } });
   const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, role: user.role, ...scopes })).token;
+  return (await signAccessToken({ userId, ...scopes })).token;
 }
 const get = (path: string, token: string) =>
   request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${token}`);

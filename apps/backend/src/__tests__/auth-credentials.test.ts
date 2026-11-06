@@ -16,7 +16,7 @@ jest.mock("../db/client", () => ({
 import { verifyCredentials } from "../lib/auth/credentials";
 
 const hash = bcrypt.hashSync("correct horse", 4);
-const row = { id: 9, email: "a@jpc.test", name: "Ann", role: "LEADER", deletedAt: null, passwordHash: hash };
+const row = { id: 9, email: "a@jpc.test", name: "Ann", deletedAt: null, passwordHash: hash };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -28,7 +28,7 @@ describe("verifyCredentials", () => {
   it("returns the public user fields and stamps lastLoginAt on success", async () => {
     mockFindUnique.mockResolvedValue(row);
     await expect(verifyCredentials("a@jpc.test", "correct horse")).resolves.toEqual({
-      id: 9, email: "a@jpc.test", name: "Ann", role: "LEADER",
+      id: 9, email: "a@jpc.test", name: "Ann",
     });
     expect(mockUpdate).toHaveBeenCalledWith({
       where: { id: 9 },

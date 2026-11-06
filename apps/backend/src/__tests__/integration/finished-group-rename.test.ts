@@ -17,9 +17,8 @@ const app = createApp();
 let superT: string;
 
 async function mint(userId: number) {
-  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true } });
   const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, role: user.role, ...scopes })).token;
+  return (await signAccessToken({ userId, ...scopes })).token;
 }
 const patch = (groupId: number, body: object) =>
   request(app).patch(`/api/v1/groups/${groupId}`).set("authorization", `Bearer ${superT}`).send(body);

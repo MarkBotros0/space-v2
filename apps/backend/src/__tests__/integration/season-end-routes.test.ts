@@ -21,9 +21,9 @@ let otherAdminId: number;
  * An access token from the user's current scopes, minted directly: the login
  * limiter would throttle a fixture that signs in once per season.
  */
-async function mint(userId: number, role: "ADMIN" | "LEADER" | "STUDENT"): Promise<Tok> {
+async function mint(userId: number): Promise<Tok> {
   const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, role, ...scopes })).token;
+  return (await signAccessToken({ userId, ...scopes })).token;
 }
 const auth = (t: Tok) => ({ authorization: `Bearer ${t}` });
 const post = (path: string, t: Tok, body: unknown) =>
@@ -55,8 +55,8 @@ async function setupSeason() {
   await enroll(peter.id, "ACTIVE");
   await enroll(sara.id, "ACTIVE");
   await enroll(wd.id, "WITHDRAWN");
-  const adminToken = await mint(admin.id, "ADMIN");
-  const leaderToken = await mint(leader.id, "LEADER");
+  const adminToken = await mint(admin.id);
+  const leaderToken = await mint(leader.id);
   return {
     season, adminToken, leaderToken, adminId: admin.id, leaderId: leader.id,
     peter: peter.id, sara: sara.id, wd: wd.id, extra: extra.id,
@@ -242,8 +242,8 @@ describe("season results", () => {
   it("GET lists each finished student's result, super only", async () => {
     const { season, peter, sara, wd, adminId, leaderId } = await ended();
     // Ending stamped the staff's sessions stale: sign in again (they now hold no grant).
-    const adminToken = await mint(adminId, "ADMIN");
-    const leaderToken = await mint(leaderId, "LEADER");
+    const adminToken = await mint(adminId);
+    const leaderToken = await mint(leaderId);
     const res = await get(`/seasons/${season.id}/results`, superToken);
     expect(res.status).toBe(200);
     const rows: { userId: number; result: string | null; reason: string | null; groupName: string | null }[] =
@@ -269,7 +269,7 @@ describe("season results", () => {
 
   it("PATCH is 403 for the season's admin, 409 not_finished on an active season, 409 no_result on a withdrawn enrolment", async () => {
     const { season, sara, wd, adminId } = await ended();
-    const adminToken = await mint(adminId, "ADMIN");
+    const adminToken = await mint(adminId);
     expect((await patch(`/seasons/${season.id}/results/${sara}`, adminToken, { result: "PASSED", reason: null })).status).toBe(403);
     const wdRes = await patch(`/seasons/${season.id}/results/${wd}`, superToken, { result: "PASSED", reason: null });
     expect(wdRes.status).toBe(409);
@@ -296,9 +296,9 @@ describe("GET /seasons/overdue", () => {
     await db.seasonAdmin.create({ data: { seasonId: future.id, userId: adminId } });
     await db.seasonAdmin.create({ data: { seasonId: notMine.id, userId: otherAdminId } });
     // Scopes are claims: re-login so the admin token carries the new grants.
-    const fresh = await mint(adminId, "ADMIN");
+    const fresh = await mint(adminId);
 
-    const leaderToken = await mint((await createTestUser("ovleader", "LEADER")).id, "LEADER");
+    const leaderToken = await mint((await createTestUser("ovleader", "LEADER")).id);
     const ids = async (t: Tok) =>
       ((await get("/seasons/overdue", t)).body.data.seasons as { id: number }[]).map((s) => s.id);
     const all = await ids(superToken);

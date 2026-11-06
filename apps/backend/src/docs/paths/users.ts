@@ -11,7 +11,7 @@ export const userPaths = {
         "Cursor-paginated and filtered in the database. `status` is derived server-side (inactive, active, invited, pending); the password hash never leaves the server. `q` matches name or email, case-insensitive. `cursor` is the last row's id; `total` is the whole population under the current filters.",
       parameters: [
         { name: "q", in: "query", schema: { type: "string" } },
-        { name: "role", in: "query", schema: { $ref: "#/components/schemas/UserRole" } },
+        { name: "role", in: "query", description: "ADMIN: holds a SeasonAdmin row in a DRAFT or ACTIVE season. LEADER: likewise a GroupLeader row. STUDENT: neither. SUPER and MENTOR are stored. Someone who administers and leads matches both ADMIN and LEADER. Each row's `role` is the derived one.", schema: { $ref: "#/components/schemas/UserRole" } },
         { name: "status", in: "query", schema: { type: "string", enum: ["active", "invited", "pending", "inactive"] } },
         { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } },

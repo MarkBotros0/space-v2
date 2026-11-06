@@ -2,12 +2,12 @@ const mockDb = {
   user: { findUnique: jest.fn() },
   seasonAdmin: { findMany: jest.fn() },
   groupLeader: { findMany: jest.fn() },
-  seasonEnrollment: { findFirst: jest.fn() },
+  seasonEnrollment: { findMany: jest.fn() },
   refreshToken: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
 
-import { loadScopes } from "../lib/auth/scopes";
+import { deriveRole, loadScopes } from "../lib/auth/scopes";
 import {
   hashToken,
   issueSession,
@@ -18,9 +18,13 @@ import {
 } from "../lib/auth/tokens";
 
 function stubScopes() {
-  mockDb.seasonAdmin.findMany.mockResolvedValue([{ seasonId: 3 }, { seasonId: 4 }]);
-  mockDb.groupLeader.findMany.mockResolvedValue([{ groupId: 8 }]);
-  mockDb.seasonEnrollment.findFirst.mockResolvedValue({ seasonId: 3 });
+  const season = { status: "ACTIVE" };
+  mockDb.seasonAdmin.findMany.mockResolvedValue([
+    { userId: 5, seasonId: 3, season },
+    { userId: 5, seasonId: 4, season },
+  ]);
+  mockDb.groupLeader.findMany.mockResolvedValue([{ userId: 5, groupId: 8, group: { season } }]);
+  mockDb.seasonEnrollment.findMany.mockResolvedValue([{ studentUserId: 5, seasonId: 3 }]);
 }
 
 beforeEach(() => {
@@ -30,23 +34,45 @@ beforeEach(() => {
   mockDb.refreshToken.updateMany.mockResolvedValue({ count: 2 });
 });
 
+describe("deriveRole", () => {
+  const none = { adminIds: [], leaderIds: [] };
+  it.each([
+    ["SUPER", { adminIds: [1], leaderIds: [2] }, "SUPER"],
+    ["MENTOR", { adminIds: [1], leaderIds: [2] }, "MENTOR"],
+    ["STUDENT", { adminIds: [1], leaderIds: [2] }, "ADMIN"],
+    ["LEADER", { adminIds: [1], leaderIds: [] }, "ADMIN"],
+    ["ADMIN", { adminIds: [], leaderIds: [2] }, "LEADER"],
+    ["ADMIN", none, "STUDENT"],
+    ["LEADER", none, "STUDENT"],
+    ["STUDENT", none, "STUDENT"],
+  ] as const)("stored %s with %j is %s", (stored, grants, expected) => {
+    expect(deriveRole(stored, { adminIds: [...grants.adminIds], leaderIds: [...grants.leaderIds] })).toBe(expected);
+  });
+});
+
 describe("loadScopes", () => {
-  it("flattens admin/leader rows and reads the profile and graduation year", async () => {
+  it("flattens admin/leader rows and reads the current season and graduation year", async () => {
     stubScopes();
-    mockDb.user.findUnique.mockResolvedValue({ graduationYear: 2030 });
-    await expect(loadScopes(1)).resolves.toEqual({
-      seasonAdminIds: [3, 4], groupLeaderIds: [8], activeSeasonId: 3, graduationYear: 2030,
+    mockDb.user.findUnique.mockResolvedValue({ role: "STUDENT", graduationYear: 2030 });
+    await expect(loadScopes(5)).resolves.toEqual({
+      role: "ADMIN", seasonAdminIds: [3, 4], groupLeaderIds: [8], activeSeasonId: 3, graduationYear: 2030,
     });
   });
 
-  it("falls back to null when the profile or account row is missing", async () => {
+  it("falls back to STUDENT and nulls when the account row is missing", async () => {
     mockDb.seasonAdmin.findMany.mockResolvedValue([]);
     mockDb.groupLeader.findMany.mockResolvedValue([]);
-    mockDb.seasonEnrollment.findFirst.mockResolvedValue(null);
+    mockDb.seasonEnrollment.findMany.mockResolvedValue([]);
     mockDb.user.findUnique.mockResolvedValue(null);
     await expect(loadScopes(1)).resolves.toEqual({
-      seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null,
+      role: "STUDENT", seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null,
     });
+  });
+
+  it("reads no season rows for a SUPER or MENTOR", async () => {
+    mockDb.user.findUnique.mockResolvedValue({ role: "MENTOR", graduationYear: null });
+    await expect(loadScopes(1)).resolves.toMatchObject({ role: "MENTOR", seasonAdminIds: [] });
+    expect(mockDb.seasonAdmin.findMany).not.toHaveBeenCalled();
   });
 });
 
@@ -70,11 +96,11 @@ describe("issueSession", () => {
   it("issues a verifiable access token and stores only the refresh token's hash", async () => {
     stubScopes();
     mockDb.user.findUnique
-      .mockResolvedValueOnce({ id: 5, role: "LEADER", deletedAt: null })
-      .mockResolvedValueOnce({ graduationYear: null });
+      .mockResolvedValueOnce({ id: 5, deletedAt: null })
+      .mockResolvedValueOnce({ role: "STUDENT", graduationYear: null });
     const issued = await issueSession(5, "jest-agent");
     expect(issued).not.toBeNull();
-    expect(issued!.user).toMatchObject({ userId: 5, role: "LEADER", groupLeaderIds: [8] });
+    expect(issued!.user).toMatchObject({ userId: 5, role: "ADMIN", groupLeaderIds: [8] });
     await expect(verifyAccessToken(issued!.session.accessToken)).resolves.toMatchObject({ userId: 5 });
 
     const data = mockDb.refreshToken.create.mock.calls[0][0].data;
@@ -87,8 +113,8 @@ describe("issueSession", () => {
   it("stores a null user agent when none is given", async () => {
     stubScopes();
     mockDb.user.findUnique
-      .mockResolvedValueOnce({ id: 5, role: "STUDENT", deletedAt: null })
-      .mockResolvedValueOnce({ graduationYear: null });
+      .mockResolvedValueOnce({ id: 5, deletedAt: null })
+      .mockResolvedValueOnce({ role: "STUDENT", graduationYear: null });
     await issueSession(5);
     expect(mockDb.refreshToken.create.mock.calls[0][0].data.userAgent).toBeNull();
   });
@@ -119,8 +145,8 @@ describe("rotateRefreshToken", () => {
     mockDb.refreshToken.updateMany.mockResolvedValue({ count: 1 });
     mockDb.refreshToken.findUnique.mockResolvedValue({ id: 1, userId: 5, revokedAt: null, expiresAt: future });
     mockDb.user.findUnique
-      .mockResolvedValueOnce({ id: 5, role: "STUDENT", deletedAt: null })
-      .mockResolvedValueOnce({ graduationYear: null });
+      .mockResolvedValueOnce({ id: 5, deletedAt: null })
+      .mockResolvedValueOnce({ role: "STUDENT", graduationYear: null });
     const session = await rotateRefreshToken("raw");
     expect(mockDb.refreshToken.findUnique).toHaveBeenCalledWith({ where: { tokenHash: hashToken("raw") } });
     expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith({

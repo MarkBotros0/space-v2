@@ -50,7 +50,7 @@ describe("loadScopes derives from live data", () => {
     expect((await loadScopes(s.id)).activeSeasonId).toBe(newer.id);
   });
 
-  it("drops finished seasons from staff grants, keeps draft ones", async () => {
+  it("drops finished seasons from staff grants, keeps a draft with no active role", async () => {
     const active = await createTestSeason({ status: "ACTIVE" });
     const draft = await createTestSeason({ status: "DRAFT" });
     const done = await createTestSeason({ status: "COMPLETED" });
@@ -65,8 +65,10 @@ describe("loadScopes derives from live data", () => {
     await db.groupLeader.create({ data: { groupId: activeGroup.id, userId: leader.id } });
     await db.groupLeader.create({ data: { groupId: doneGroup.id, userId: leader.id } });
 
-    const scopes = await loadScopes(admin.id);
-    expect([...scopes.seasonAdminIds].sort()).toEqual([active.id, draft.id].sort());
+    // An ACTIVE role hides draft grants (derived-role.test.ts); the draft shows once it's gone.
+    expect((await loadScopes(admin.id)).seasonAdminIds).toEqual([active.id]);
+    await db.seasonAdmin.delete({ where: { seasonId_userId: { seasonId: active.id, userId: admin.id } } });
+    expect((await loadScopes(admin.id)).seasonAdminIds).toEqual([draft.id]);
     expect((await loadScopes(leader.id)).groupLeaderIds).toEqual([activeGroup.id]);
   });
 });

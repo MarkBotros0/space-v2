@@ -98,12 +98,11 @@ export async function issueSession(
 ): Promise<{ session: IssuedSession; user: SessionUser } | null> {
   const dbUser = await db.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, deletedAt: true },
+    select: { id: true, deletedAt: true },
   });
   if (!dbUser || dbUser.deletedAt) return null;
 
-  const scopes = await loadScopes(dbUser.id);
-  const user: SessionUser = { userId: dbUser.id, role: dbUser.role as UserRole, ...scopes };
+  const user: SessionUser = { userId: dbUser.id, ...(await loadScopes(dbUser.id)) };
   const access = await signAccessToken(user);
   const refresh = await issueRefreshToken(user.userId, userAgent);
   return {

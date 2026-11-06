@@ -1,5 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import type { UserRole } from "@space/shared";
 // Relative, not "@space/shared" — the rootDir emit trap (see routes/auth.ts).
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
@@ -46,13 +47,13 @@ meRouter.use(meDevicesRouter);
 meRouter.use(meSeasonReadsRouter);
 
 const ME_SELECT = {
-  id: true, name: true, email: true, role: true, avatarPath: true,
+  id: true, name: true, email: true, avatarPath: true,
   phone: true, dateOfBirth: true, address: true,
   passwordHash: true, deletedAt: true,
 } as const;
 
 type MeRow = {
-  id: number; name: string; email: string; role: string;
+  id: number; name: string; email: string;
   avatarPath: string | null;
   phone: string | null; dateOfBirth: Date | null; address: string | null;
   passwordHash: string | null; deletedAt: Date | null;
@@ -70,12 +71,12 @@ function dateFromDay(day: string | null | undefined): Date | null | undefined {
 }
 
 /** The hash is reduced to a boolean before anything leaves this function. */
-function toMeUser(row: MeRow) {
+function toMeUser(row: MeRow, role: UserRole) {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
-    role: row.role,
+    role,
     avatarPath: row.avatarPath,
     phone: row.phone,
     dateOfBirth: dayFromDate(row.dateOfBirth),
@@ -93,10 +94,10 @@ meRouter.get("/", requireAuth, async (req, res) => {
     // Soft-deleted now yields null, which is what packages/shared/src/auth.ts
     // documented all along (spec 11 §7 / D6: "one of the two is lying" — the
     // code was).
-    user: record && record.deletedAt === null ? toMeUser(record) : null,
-    // Scopes come from the token, not the database: they are what this token
-    // was minted with, which is what the client's permission checks must agree
-    // with until the next refresh.
+    // The role and scopes come from the token, not the database: they are what
+    // this token was minted with (loadScopes derived both, together), which is
+    // what the client's permission checks must agree with until the next refresh.
+    user: record && record.deletedAt === null ? toMeUser(record, user.role) : null,
     scopes: {
       seasonAdminIds: user.seasonAdminIds,
       groupLeaderIds: user.groupLeaderIds,
@@ -133,7 +134,7 @@ meRouter.patch("/", requireAuth, async (req, res) => {
     select: ME_SELECT,
   });
   // Returning the row closes v1's write-then-double-refresh (spec 18 R23).
-  return apiOk(res, { user: toMeUser(updated) });
+  return apiOk(res, { user: toMeUser(updated, user.role) });
 });
 
 meRouter.post("/password", requireAuth, passwordLimiter, async (req, res) => {

@@ -19,9 +19,8 @@ const t = {} as Record<Who, string>;
 
 /** Tokens minted from real post-End scopes (login is rate limited in tests). */
 async function mint(userId: number) {
-  const user = await db.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true } });
   const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, role: user.role, ...scopes })).token;
+  return (await signAccessToken({ userId, ...scopes })).token;
 }
 
 type Method = "get" | "post" | "patch" | "put" | "delete";
