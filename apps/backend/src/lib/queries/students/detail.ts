@@ -113,8 +113,9 @@ export async function loadStudentDetail(
     enrolledAt: e.enrolledAt.toISOString(),
     completedAt: e.completedAt?.toISOString() ?? null,
     droppedAt: e.droppedAt?.toISOString() ?? null,
-    // Private to staff: not even the student reads why they were dropped.
-    dropReason: view === "internal" ? e.dropReason : null,
+    // Private to staff: not even the student reads why they were dropped. Once
+    // brought back the row isn't dropped, though the old reason stays on it.
+    dropReason: view === "internal" && e.status === "WITHDRAWN" ? e.dropReason : null,
     attendancePct: pctByEnrollment.get(e.id) ?? null,
   }));
 

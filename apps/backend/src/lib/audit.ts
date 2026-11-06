@@ -9,10 +9,6 @@
  * Never a field value: a graduation year, a drop reason or a name is personal
  * data and stays out of logs (the spec's "without logging any field value").
  * The signature makes that structural — it accepts ids only.
- *
- * One exception, by ruling: `enrollment.restore` carries the drop reason it
- * clears from the row, since nothing else would keep it. Nothing but a restore
- * passes `dropReason`, and it goes out JSON-encoded so it stays on one line.
  */
 export type AuditOperation =
   | "student.graduate"
@@ -42,8 +38,8 @@ export type AuditOperation =
   | "season.end"
   | "season.result_correct";
 
-/** Extra ids that locate a change — ids only, but for a restore's `dropReason` (see above). */
-export type AuditScope = { season?: number; dropReason?: string | null };
+/** Extra ids that locate a change — ids only, like the rest of the line. */
+export type AuditScope = { season?: number };
 
 export function formatAuditLine(
   operation: AuditOperation,
@@ -51,9 +47,8 @@ export function formatAuditLine(
   subjectId: number,
   scope: AuditScope = {},
 ): string {
-  const season = scope.season !== undefined ? ` season=${scope.season}` : "";
-  const reason = scope.dropReason ? ` dropReason=${JSON.stringify(scope.dropReason)}` : "";
-  return `[audit] ${operation} actor=${actorId} subject=${subjectId}${season}${reason}`;
+  const extra = scope.season !== undefined ? ` season=${scope.season}` : "";
+  return `[audit] ${operation} actor=${actorId} subject=${subjectId}${extra}`;
 }
 
 export function auditLog(

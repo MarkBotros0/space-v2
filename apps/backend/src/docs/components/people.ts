@@ -287,7 +287,7 @@ export const peopleSchemas = {
       enrolledAt: { type: "string", format: "date-time" },
       completedAt: { type: ["string", "null"], format: "date-time" },
       droppedAt: { type: ["string", "null"], format: "date-time" },
-      dropReason: { type: ["string", "null"], description: "Always null for MENTOR and LEADER." },
+      dropReason: { type: ["string", "null"], description: "Null unless the row is WITHDRAWN. Always null for MENTOR and LEADER." },
       attendancePct: {
         type: ["integer", "null"],
         description:

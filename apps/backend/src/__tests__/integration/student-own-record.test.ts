@@ -75,24 +75,38 @@ describe("a draft season in a student's past (I6)", () => {
 });
 
 describe("a former leader's seasons (I1)", () => {
-  it("lists only DRAFT and ACTIVE seasons they lead", async () => {
-    const leader = await createTestUser("own-former-leader", "LEADER");
-    const seasons = {
-      draft: await createTestSeason({ status: "DRAFT" }),
-      active: await createTestSeason({ status: "ACTIVE" }),
-      completed: await createTestSeason({ status: "COMPLETED" }),
-      archived: await createTestSeason({ status: "ARCHIVED" }),
-    };
-    for (const s of Object.values(seasons)) {
-      await db.group.create({
-        data: { seasonId: s.id, name: `own-g-${s.id}`, leaders: { create: { userId: leader.id } } },
-      });
-    }
-    const res = await get("/seasons", await mint(leader.id));
+  const leadIn = async (userId: number, seasonId: number) => {
+    await db.group.create({
+      data: { seasonId, name: `own-g-${seasonId}`, leaders: { create: { userId } } },
+    });
+  };
+  const seasonIdsSeenBy = async (userId: number) => {
+    const res = await get("/seasons", await mint(userId));
     expect(res.status).toBe(200);
-    expect(res.body.data.seasons.map((s: { id: number }) => s.id).sort((a: number, b: number) => a - b)).toEqual(
-      [seasons.draft.id, seasons.active.id].sort((a, b) => a - b),
-    );
+    return res.body.data.seasons.map((s: { id: number }) => s.id);
+  };
+
+  it("lists a draft they lead and no finished season", async () => {
+    const leader = await createTestUser("own-draft-leader", "LEADER");
+    const draft = await createTestSeason({ status: "DRAFT" });
+    for (const s of [draft, await createTestSeason({ status: "COMPLETED" }), await createTestSeason({ status: "ARCHIVED" })]) {
+      await leadIn(leader.id, s.id);
+    }
+    expect(await seasonIdsSeenBy(leader.id)).toEqual([draft.id]);
+  });
+
+  it("lists only the ACTIVE season while they serve in one: a draft waits until that ends", async () => {
+    const leader = await createTestUser("own-former-leader", "LEADER");
+    const active = await createTestSeason({ status: "ACTIVE" });
+    for (const s of [
+      await createTestSeason({ status: "DRAFT" }),
+      active,
+      await createTestSeason({ status: "COMPLETED" }),
+      await createTestSeason({ status: "ARCHIVED" }),
+    ]) {
+      await leadIn(leader.id, s.id);
+    }
+    expect(await seasonIdsSeenBy(leader.id)).toEqual([active.id]);
   });
 
   it("a leader of only a finished season has an empty list, not a season to 403 on", async () => {

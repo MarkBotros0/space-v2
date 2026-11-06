@@ -174,11 +174,13 @@ async function refusalFor(
   return decide(tx, person, season, active, standing, options);
 }
 
-export type RestoredSeat = { id: number; status: "ACTIVE"; previousDropReason: string | null };
+export type RestoredSeat = { id: number; status: "ACTIVE" };
 
 /**
- * A dropped student back into the row they already have: WITHDRAWN to ACTIVE, the
- * drop cleared, their group kept. The rule is checked again as if adding. As with
+ * A dropped student back into the row they already have: WITHDRAWN to ACTIVE,
+ * `droppedAt` cleared, their group kept. `dropReason` stays on the row, as staff's
+ * record, and reads return it only while the row is WITHDRAWN; a later drop
+ * overwrites it. The rule is checked again as if adding. As with
  * a new seat, an override is recorded only on someone actually blocked, and one
  * from before the drop doesn't count: it says nothing about who they are now.
  * `season` comes from `readSeatSeason`; a finished one is `seatRefusal`'s refusal.
@@ -192,7 +194,7 @@ export async function restoreStudentSeat(
   await lockPeople(tx, [userId]);
   const row = await tx.seasonEnrollment.findUnique({
     where: { studentUserId_seasonId: { studentUserId: userId, seasonId: season.id } },
-    select: { id: true, status: true, dropReason: true },
+    select: { id: true, status: true },
   });
   if (!row) return { code: "not_found", message: "Enrollment not found." };
   if (row.status !== "WITHDRAWN") {
@@ -217,11 +219,10 @@ export async function restoreStudentSeat(
     data: {
       status: "ACTIVE",
       droppedAt: null,
-      dropReason: null,
       overrideById: overridden ? actor.id : null,
       overrideAt: overridden ? new Date() : null,
     },
   });
   await markSessionsStale(tx, [userId]);
-  return { id: row.id, status: "ACTIVE", previousDropReason: row.dropReason };
+  return { id: row.id, status: "ACTIVE" };
 }

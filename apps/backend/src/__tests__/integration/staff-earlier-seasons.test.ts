@@ -164,6 +164,76 @@ describe.each([
   });
 });
 
+describe.each([
+  ["an admin", () => adminT],
+  ["a leader", () => leaderT],
+] as const)("%s filtering the student list", (_who, token) => {
+  const ids = async (query: string, t = token()) => {
+    const res = await get(`/students?status=active&${query}`, t);
+    expect(res.status).toBe(200);
+    return (res.body.data.students as { id: number }[]).map((s) => s.id);
+  };
+
+  it("finds an unplaced returning student under Unassigned, despite an earlier group", async () => {
+    expect(await ids("groupId=none")).toContain(studentId);
+  });
+
+  it("learns nothing from an earlier group's id", async () => {
+    expect(await ids(`groupId=${groupA}`)).toEqual([]);
+  });
+
+  it("learns nothing from an earlier season's id, and finds the live one", async () => {
+    expect(await ids(`seasonId=${seasonA}`)).toEqual([]);
+    expect(await ids(`seasonId=${seasonB}`)).toContain(studentId);
+  });
+
+  it("finds them under their own group even with a newer group in a season they don't see", async () => {
+    const other = await season("DRAFT", "Elsewhere");
+    const elsewhere = await db.group.create({ data: { seasonId: other, name: "Elsewhere group" } });
+    await db.groupStudent.createMany({
+      data: [
+        { seasonId: seasonB, groupId: groupB, studentUserId: studentId, enrolledAt: new Date(Date.UTC(2021, 0, 1)) },
+        { seasonId: other, groupId: elsewhere.id, studentUserId: studentId, enrolledAt: new Date(Date.UTC(2022, 0, 1)) },
+      ],
+    });
+    try {
+      expect(await ids(`groupId=${groupB}`)).toContain(studentId);
+      expect(await ids(`groupId=${elsewhere.id}`)).toEqual([]);
+      expect(await ids("groupId=none")).not.toContain(studentId);
+    } finally {
+      await db.groupStudent.deleteMany({ where: { studentUserId: studentId, seasonId: { in: [seasonB, other] } } });
+    }
+  });
+});
+
+describe("the student list's filters for those who see every season", () => {
+  it("still go by the newest membership anywhere", async () => {
+    const res = await get(`/students?status=active&groupId=${groupA}`, ctx.superToken);
+    expect((res.body.data.students as { id: number }[]).map((s) => s.id)).toEqual([studentId]);
+    const none = await get("/students?status=active&groupId=none&limit=100", mentorT);
+    expect((none.body.data.students as { id: number }[]).map((s) => s.id)).not.toContain(studentId);
+    const earlier = await get(`/students?status=active&seasonId=${seasonA}`, mentorT);
+    expect((earlier.body.data.students as { id: number }[]).map((s) => s.id)).toEqual([studentId]);
+  });
+});
+
+describe("an admin of two live seasons", () => {
+  it("filters to the one season named, not every season they run", async () => {
+    const first = await season("ACTIVE", "First");
+    const second = await season("ACTIVE", "Second");
+    const [inFirst, inSecond, admin] = [await person("In first"), await person("In second"), await person("Two seasons", 2020)];
+    await db.seasonAdmin.createMany({ data: [first, second].map((seasonId) => ({ seasonId, userId: admin.id })) });
+    await db.seasonEnrollment.createMany({
+      data: [
+        { seasonId: first, studentUserId: inFirst.id },
+        { seasonId: second, studentUserId: inSecond.id },
+      ],
+    });
+    const res = await get(`/students?status=active&seasonId=${first}`, await login(app, admin.email));
+    expect((res.body.data.students as { id: number }[]).map((s) => s.id)).toEqual([inFirst.id]);
+  });
+});
+
 describe("notes an admin wrote in the earlier season", () => {
   it("leave their own notes list", async () => {
     const res = await get("/me/notes", adminT);

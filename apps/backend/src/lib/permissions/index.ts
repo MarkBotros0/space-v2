@@ -24,7 +24,7 @@ export {
   isHiddenDraft,
   submissionQueueScopeFor,
 } from "./submission";
-export { canEditStudent, canViewStudent, staffRosterWhere } from "./student";
+export { canEditStudent, canViewStudent, staffRosterWhere, type StaffRoster } from "./student";
 export { canEditNote, canViewNote, canWriteNote, noteSeasonWhere, noteVisibilityWhere } from "./note";
 export {
   canCommentOnForumSubmission,

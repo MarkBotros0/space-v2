@@ -165,6 +165,6 @@ export async function restoreEnrollment(req: Request, res: Response) {
   });
   if ("code" in outcome) return apiError(res, outcome.code, outcome.message, refusalStatus(outcome));
 
-  auditLog("enrollment.restore", user.userId, id, { season: seasonId, dropReason: outcome.previousDropReason });
+  auditLog("enrollment.restore", user.userId, id, { season: seasonId });
   return apiOk(res, { id: outcome.id, status: outcome.status });
 }

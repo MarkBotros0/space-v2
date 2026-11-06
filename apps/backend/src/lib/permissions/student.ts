@@ -2,15 +2,15 @@ import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
 import { isMentor, isSuper } from "../rbac";
 
+export type StaffRoster = { seasonId: { in: number[] } } | { groupId: { in: number[] } };
+
 /**
  * The rows of a live season the caller serves in, as a `where` that fits both
  * SeasonEnrollment and GroupStudent: an ADMIN's seasons, a LEADER's groups. The
  * claims hold only DRAFT and ACTIVE seasons, so a finished one has already gone.
  * Null for SUPER, MENTOR and STUDENT, who have no staff roster.
  */
-export function staffRosterWhere(
-  user: SessionUser,
-): { seasonId: { in: number[] } } | { groupId: { in: number[] } } | null {
+export function staffRosterWhere(user: SessionUser): StaffRoster | null {
   if (user.role === "ADMIN") return { seasonId: { in: user.seasonAdminIds } };
   if (user.role === "LEADER") return { groupId: { in: user.groupLeaderIds } };
   return null;

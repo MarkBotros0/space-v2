@@ -201,6 +201,8 @@ export async function listStudents(
   if (scope === null) return null;
   if (scope.kind === "ids" && scope.ids.length === 0) return emptyList();
 
+  const roster = staffRosterWhere(user);
+
   // AND-composed so the scope clause can never be overwritten by a filter —
   // the same discipline as the submissions queue (a disappearing scope clause
   // is a data leak, not a lost filter).
@@ -211,16 +213,20 @@ export async function listStudents(
       // are the same table filtered on the same column.
       { graduationYear: query.status === "alumni" ? { not: null } : null },
       ...(scope.kind === "ids" ? [{ id: { in: scope.ids } }] : []),
-      // Season filter through enrollments, any status (C9; matches the ADMIN
-      // scope's "ever enrolled" meaning).
-      ...(query.seasonId ? [{ seasonEnrollments: { some: { seasonId: query.seasonId } } }] : []),
+      // Season filter through enrollments, any status (C9). For staff, only on
+      // their roster: a season they don't serve in finds nobody, rather than
+      // telling them who was in it. AND, since a roster can itself name seasonId.
+      ...(query.seasonId
+        ? [{ seasonEnrollments: { some: { AND: [{ seasonId: query.seasonId }, roster ?? {}] } } }]
+        : []),
       // REG-82: v1's group select filtered on the group the row displays, i.e.
-      // the advisory current group; "none" is its "Unassigned".
+      // the advisory current group; "none" is its "Unassigned". Both follow what
+      // the row displays to this caller: staff's come from their roster alone.
       ...(query.groupId === undefined
         ? []
         : query.groupId === "none"
-          ? [{ groupStudentMemberships: { none: {} } }]
-          : [{ id: { in: await studentIdsWithCurrentGroup(query.groupId) } }]),
+          ? [{ groupStudentMemberships: { none: roster ?? {} } }]
+          : [{ id: { in: await studentIdsWithCurrentGroup(query.groupId, roster) } }]),
       searchFilter(query.q),
     ],
   };

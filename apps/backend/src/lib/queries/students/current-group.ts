@@ -1,5 +1,6 @@
 import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
+import type { StaffRoster } from "../../permissions";
 
 /**
  * A student's advisory "current group": what the student list and detail
@@ -30,14 +31,23 @@ export function currentMembershipSelect<S extends Prisma.GroupSelect>(groupSelec
 /**
  * Students whose current group (above) is `groupId`. Membership of `groupId`
  * alone is not enough: a student who was in it last season and has since been
- * put in another group no longer counts.
+ * put in another group no longer counts. A `roster` asks the same within the
+ * seasons a member of staff may read, as the list displays it to them, so a group
+ * outside it finds nobody.
  */
-export async function studentIdsWithCurrentGroup(groupId: number): Promise<number[]> {
-  const members = await db.groupStudent.findMany({ where: { groupId }, select: { studentUserId: true } });
+export async function studentIdsWithCurrentGroup(
+  groupId: number,
+  roster: StaffRoster | null = null,
+): Promise<number[]> {
+  const members = await db.groupStudent.findMany({
+    // AND, since a leader's roster names groupId too.
+    where: { AND: [{ groupId }, roster ?? {}] },
+    select: { studentUserId: true },
+  });
   if (members.length === 0) return [];
 
   const memberships = await db.groupStudent.findMany({
-    where: { studentUserId: { in: members.map((m) => m.studentUserId) } },
+    where: { studentUserId: { in: members.map((m) => m.studentUserId) }, ...roster },
     orderBy: CURRENT_MEMBERSHIP_ORDER,
     select: { studentUserId: true, groupId: true },
   });

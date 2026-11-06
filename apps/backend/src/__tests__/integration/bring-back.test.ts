@@ -50,7 +50,7 @@ describe("POST /students/:id/enrollments/:seasonId/restore", () => {
     expect(await rowOf(target, student.id)).toMatchObject({ status: "WITHDRAWN", dropReason: REASON });
   });
 
-  it.each<Status>(["DRAFT", "ACTIVE"])("brings them back in a %s season, the row no longer reading as dropped", async (status) => {
+  it.each<Status>(["DRAFT", "ACTIVE"])("brings them back in a %s season, their group kept", async (status) => {
     const target = await season(status);
     const group = await db.group.create({ data: { seasonId: target, name: `Group ${nextN()}` } });
     const student = await dropped(target);
@@ -67,30 +67,66 @@ describe("POST /students/:id/enrollments/:seasonId/restore", () => {
     expect(await rowOf(target, student.id)).toMatchObject({
       status: "ACTIVE",
       droppedAt: null,
-      dropReason: null,
       groupId: group.id,
       overrideById: null,
     });
     expect((await stamp(student.id))?.getTime()).not.toBe(before?.getTime());
   });
 
-  it("keeps the old reason in the audit line, in one line whatever it holds", async () => {
-    const target = await season("ACTIVE");
-    const student = await dropped(target);
-    await db.seasonEnrollment.update({
-      where: { studentUserId_seasonId: { studentUserId: student.id, seasonId: target } },
-      data: { dropReason: 'Left\n[audit] forged "line"' },
+  describe("the old drop reason after a restore", () => {
+    const enrolment = (seasonId: number, studentUserId: number) => ({
+      where: { studentUserId_seasonId: { studentUserId, seasonId } },
     });
-    const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
+    const reasons = async (id: number, seasonId: number, token: string) => {
+      const detail = await request(app).get(`/api/v1/students/${id}`).set(as(token));
+      expect(detail.status).toBe(200);
+      return (detail.body.data.enrollments as { seasonId: number; dropReason: string | null }[]).find(
+        (e) => e.seasonId === seasonId,
+      )?.dropReason;
+    };
 
-    expect((await restore(target, student.id)).status).toBe(200);
+    it("stays on the row, and no read or audit line gives it out", async () => {
+      const target = await season("ACTIVE");
+      const student = await dropped(target);
+      const admin = await adminTokenOf(target);
+      expect(await reasons(student.id, target, admin)).toBe(REASON);
+      const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
 
-    const lines = info.mock.calls.map((c) => String(c[0]));
-    info.mockRestore();
-    const line = lines.find((l) => l.startsWith("[audit] enrollment.restore"));
-    expect(line).toBe(
-      `[audit] enrollment.restore actor=${ctx.superId} subject=${student.id} season=${target} dropReason="Left\\n[audit] forged \\"line\\""`,
-    );
+      expect((await restore(target, student.id)).status).toBe(200);
+
+      const lines = info.mock.calls.map((c) => String(c[0]));
+      info.mockRestore();
+      expect(lines).toContain(`[audit] enrollment.restore actor=${ctx.superId} subject=${student.id} season=${target}`);
+      expect(lines.join("\n")).not.toContain(REASON);
+
+      expect(await rowOf(target, student.id)).toMatchObject({ status: "ACTIVE", droppedAt: null, dropReason: REASON });
+      expect(await reasons(student.id, target, ctx.superToken)).toBeNull();
+      expect(await reasons(student.id, target, admin)).toBeNull();
+      const list = await request(app).get(`/api/v1/students?status=dropped&seasonId=${target}`).set(as(ctx.superToken));
+      expect(list.status).toBe(200);
+      expect(JSON.stringify(list.body.data)).not.toContain(REASON);
+    });
+
+    it("stays hidden once the row completes", async () => {
+      const target = await season("ACTIVE");
+      const student = await dropped(target);
+      expect((await restore(target, student.id)).status).toBe(200);
+      await db.seasonEnrollment.update({ ...enrolment(target, student.id), data: { status: "COMPLETED", completedAt: new Date() } });
+      expect(await reasons(student.id, target, ctx.superToken)).toBeNull();
+    });
+
+    it("is replaced by a later drop, even one with no reason", async () => {
+      const target = await season("ACTIVE");
+      const student = await dropped(target);
+      expect((await restore(target, student.id)).status).toBe(200);
+      const dropAgain = await request(app)
+        .patch(`/api/v1/students/${student.id}/enrollments/${target}`)
+        .set(as(ctx.superToken))
+        .send({ status: "WITHDRAWN" });
+      expect(dropAgain.status).toBe(200);
+      expect(await rowOf(target, student.id)).toMatchObject({ status: "WITHDRAWN", dropReason: null });
+      expect(await reasons(student.id, target, ctx.superToken)).toBeNull();
+    });
   });
 
   it("is refused, with the reason, to someone now in a role", async () => {
