@@ -94,6 +94,12 @@ export type SeasonLockMode = "update" | "share";
  * goes in wholly before Start's check or wholly after it, and writes on one
  * season don't queue behind each other. A status read before this can be stale.
  *
+ * "update" is `FOR NO KEY UPDATE`, not `FOR UPDATE`. It conflicts with `FOR SHARE`
+ * just the same, but not with the `FOR KEY SHARE` every foreign key check takes.
+ * `FOR UPDATE` would queue every insert pointing at the season behind Start and
+ * End, and deadlock: a note's insert holds the student's row and waits on the
+ * season, while End holds the season and reaches `lockPeople` on that student.
+ *
  * The order is always the season, then the people.
  */
 export async function lockSeason(
@@ -101,7 +107,7 @@ export async function lockSeason(
   seasonId: number,
   mode: SeasonLockMode,
 ): Promise<void> {
-  if (mode === "update") await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR UPDATE`;
+  if (mode === "update") await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR NO KEY UPDATE`;
   else await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR SHARE`;
 }
 

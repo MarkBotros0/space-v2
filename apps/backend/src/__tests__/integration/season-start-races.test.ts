@@ -6,6 +6,7 @@ import request from "supertest";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
+import { lockSeason, type SeasonLockMode } from "../../lib/roles";
 import { createTestUser, login } from "./fixtures";
 import {
   app,
@@ -24,21 +25,18 @@ afterAll(teardownEnrollmentFixtures);
 
 const HOLD_MS = 25_000;
 
-type Mode = "FOR UPDATE" | "FOR SHARE";
-
 /**
  * Opens a transaction holding the season's row and whatever `work` does, and
  * keeps it open until `release`. The transaction's own timeout bounds a failure.
  */
-async function hold(seasonId: number, mode: Mode, work: (tx: Prisma.TransactionClient) => Promise<unknown>) {
+async function hold(seasonId: number, mode: SeasonLockMode, work: (tx: Prisma.TransactionClient) => Promise<unknown>) {
   let release = () => {};
   const gate = new Promise<void>((resolve) => (release = resolve));
   let ready = (_pid: number) => {};
   const held = new Promise<number>((resolve) => (ready = resolve));
   const done = db.$transaction(
     async (tx) => {
-      if (mode === "FOR UPDATE") await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR UPDATE`;
-      else await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR SHARE`;
+      await lockSeason(tx, seasonId, mode);
       await work(tx);
       const rows = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
       ready(rows[0]!.pid);
@@ -64,7 +62,7 @@ async function untilBlockedBehind(pid: number) {
 
 /** A season "being started" by another request: locked and ACTIVE, uncommitted. */
 const startingNow = (seasonId: number) =>
-  hold(seasonId, "FOR UPDATE", (tx) => tx.season.update({ where: { id: seasonId }, data: { status: "ACTIVE" } }));
+  hold(seasonId, "update", (tx) => tx.season.update({ where: { id: seasonId }, data: { status: "ACTIVE" } }));
 
 /** One held side, one route behind it: returns the route's answer once the hold commits. */
 async function behind<T>(
@@ -211,7 +209,7 @@ describe("a Start or End while a seat write is open", () => {
   it("Start waits for the write, then sees the new row and refuses", async () => {
     const draft = await season("DRAFT");
     const q = await busyStudent("Slipping In");
-    const held = await hold(draft, "FOR SHARE", (tx) =>
+    const held = await hold(draft, "share", (tx) =>
       tx.seasonEnrollment.create({ data: { seasonId: draft, studentUserId: q.id, status: "ACTIVE" } }),
     );
     const res = await behind(held, () =>
@@ -225,7 +223,7 @@ describe("a Start or End while a seat write is open", () => {
   it("End waits for the write, then closes the new row too", async () => {
     const live = await season("ACTIVE");
     const q = await person("Late Student");
-    const held = await hold(live, "FOR SHARE", (tx) =>
+    const held = await hold(live, "share", (tx) =>
       tx.seasonEnrollment.create({ data: { seasonId: live, studentUserId: q.id, status: "ACTIVE" } }),
     );
     const res = await behind(held, () =>
@@ -239,7 +237,7 @@ describe("a Start or End while a seat write is open", () => {
   it("a seat write behind an End reads the season finished, and refuses", async () => {
     const live = await season("ACTIVE");
     const q = await person("After The End");
-    const held = await hold(live, "FOR UPDATE", (tx) =>
+    const held = await hold(live, "update", (tx) =>
       tx.season.update({ where: { id: live }, data: { status: "COMPLETED" } }),
     );
     const res = await behind(held, () =>
@@ -264,5 +262,25 @@ describe("Start and a group delete", () => {
     );
     expect(res.status).toBe(200);
     expect(await db.group.findUnique({ where: { id: group.id } })).toBeNull();
+  });
+});
+
+describe("a Start or End and the season's other inserts", () => {
+  // A foreign key check takes FOR KEY SHARE on the season while the inserter may
+  // already hold a person's row, so waiting here is half of a deadlock with End.
+  it("a row pointing at the season goes in while the season is held for update", async () => {
+    const live = await season("ACTIVE");
+    const held = await hold(live, "update", async () => undefined);
+    try {
+      const insert = db.session.create({
+        data: { seasonId: live, title: "Inserted", startsAt: new Date("2099-06-01T10:00:00.000Z") },
+        select: { id: true },
+      });
+      const waited = new Promise<"waited">((resolve) => setTimeout(() => resolve("waited"), 8_000));
+      expect(await Promise.race([insert.then(() => "inserted" as const), waited])).toBe("inserted");
+    } finally {
+      held.release();
+      await held.done;
+    }
   });
 });
