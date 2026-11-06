@@ -105,7 +105,7 @@ export const quizSchemas = {
   StudentQuizDetail: {
     type: "object",
     description: "A student's view of an ONLINE quiz and their own attempt. `autoScore`/`manualScore` are deliberately absent; `totalScore` is the only score shown.",
-    required: ["id", "title", "kind", "seasonId", "maxScore", "sessionTitle", "attemptId", "attemptNumber", "status", "totalScore", "submittedAt", "gradedAt", "questions"],
+    required: ["id", "title", "kind", "seasonId", "maxScore", "sessionTitle", "attemptId", "attemptNumber", "status", "totalScore", "submittedAt", "gradedAt", "questions", "readOnly"],
     properties: {
       id: { type: "integer" },
       title: { type: "string" },
@@ -120,6 +120,7 @@ export const quizSchemas = {
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedAt: { type: ["string", "null"], format: "date-time" },
       questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionStudent" } },
+      readOnly: { type: "boolean", description: "True when the student's enrolment is no longer ACTIVE: they can read the quiz and their attempt, not take it." },
     },
   },
   QuizGradingAnswer: {

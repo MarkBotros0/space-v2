@@ -46,7 +46,7 @@ const assignment = {
   sessionTitle: null, title: "Essay one", description: null, dueAt: null, dueOrgDay: null,
   dueOrgTime: null, isOverdue: false, isAllGroups: true, type: "STANDARD" as const,
   forumMinWords: null, forumAllowComments: false, maxFileSizeMb: null, allowedMimeCategories: [],
-  groupIds: null, mySubmission: null, canManage: false,
+  groupIds: null, mySubmission: null, canManage: false, readOnly: false,
 };
 const draft = {
   publicId: "abc123defg", status: "DRAFT" as const, submittedAt: null, reviewedAt: null,

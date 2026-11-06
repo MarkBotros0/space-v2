@@ -25,7 +25,7 @@ const detail = {
   dueOrgDay: "2099-04-01", dueOrgTime: "23:59", isOverdue: false, isAllGroups: false,
   type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false,
   maxFileSizeMb: 10, allowedMimeCategories: ["pdf" as const], groupIds: [3],
-  mySubmission: null, canManage: true,
+  mySubmission: null, canManage: true, readOnly: false,
 };
 
 const tracker = {

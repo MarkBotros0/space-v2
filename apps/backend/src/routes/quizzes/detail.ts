@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
-import { canAccessSeason, canGradeQuiz, canManageQuiz } from "../../lib/permissions";
+import { canAccessSeason, canGradeQuiz, canManageQuiz, hasActiveEnrollment } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
 import { forbidden } from "../respond";
 import { loadStudentQuizDetail } from "./student-detail";
@@ -85,7 +85,8 @@ export async function getQuiz(req: Request, res: Response) {
     }
     const detail = await loadStudentQuizDetail(id, user.userId);
     if (!detail) return apiError(res, "not_found", "Quiz not found.", 404);
-    return apiOk(res, detail);
+    const readOnly = !(await hasActiveEnrollment(user, quiz.seasonId));
+    return apiOk(res, { ...detail, readOnly });
   }
 
   // Staff: grading needs the answer key (R103), and canGradeQuiz is the

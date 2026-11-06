@@ -83,7 +83,13 @@ export interface MySubmissionData {
  */
 export function assignmentDetailPayload(
   detail: AssignmentDetailData,
-  opts: { isStudent: boolean; canManage: boolean; mySubmission: MySubmissionData | null },
+  opts: {
+    isStudent: boolean;
+    canManage: boolean;
+    mySubmission: MySubmissionData | null;
+    /** A student whose place in the season has ended: they read, they cannot write. */
+    readOnly?: boolean;
+  },
 ) {
   return {
     ...detail,
@@ -93,5 +99,6 @@ export function assignmentDetailPayload(
     dueOrgTime: detail.dueAt ? orgWallTime(detail.dueAt) : null,
     mySubmission: opts.mySubmission,
     canManage: opts.canManage,
+    readOnly: opts.readOnly ?? false,
   };
 }

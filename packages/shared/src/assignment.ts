@@ -134,6 +134,8 @@ export const assignmentDetailSchema = z.object({
   mySubmission: mySubmissionSummarySchema.nullable(),
   /** Whether this caller may edit or delete the assignment. Drives the UI, never the gate. */
   canManage: z.boolean(),
+  /** True for a student whose enrolment is no longer ACTIVE: they can read this, not change it. */
+  readOnly: z.boolean(),
 });
 export type AssignmentDetail = z.infer<typeof assignmentDetailSchema>;
 

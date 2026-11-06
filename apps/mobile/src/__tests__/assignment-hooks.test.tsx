@@ -33,7 +33,7 @@ const detail = {
   dueAt: null, dueOrgDay: null, dueOrgTime: null, isOverdue: false,
   isAllGroups: true, type: "STANDARD" as const, forumMinWords: null,
   forumAllowComments: false, maxFileSizeMb: null, allowedMimeCategories: [],
-  groupIds: [], mySubmission: null, canManage: true,
+  groupIds: [], mySubmission: null, canManage: true, readOnly: false,
 };
 
 const staffRow = {

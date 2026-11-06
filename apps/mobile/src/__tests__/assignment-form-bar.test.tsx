@@ -34,7 +34,7 @@ const detail = {
   title: "Essay one", description: "Write about the thing.", dueAt: "2099-04-01T21:59:00.000Z",
   dueOrgDay: "2099-04-01", dueOrgTime: "23:59", isOverdue: false, isAllGroups: false, type: "STANDARD" as const,
   forumMinWords: null, forumAllowComments: false, maxFileSizeMb: 10, allowedMimeCategories: ["pdf" as const],
-  groupIds: [3], mySubmission: null, canManage: true,
+  groupIds: [3], mySubmission: null, canManage: true, readOnly: false,
 };
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
 function serve(extra: Record<string, unknown> = {}) {

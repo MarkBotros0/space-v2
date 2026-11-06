@@ -45,7 +45,7 @@ const detail = {
   allowedMimeCategories: ["pdf" as const],
   groupIds: null,
   mySubmission: null,
-  canManage: false,
+  canManage: false, readOnly: false,
 };
 
 const submissionFor = (status: "REVIEWED" | "SUBMITTED", isLate: boolean, feedback: string | null) => ({

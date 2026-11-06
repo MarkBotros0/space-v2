@@ -1,5 +1,5 @@
 // GET /assignments/:id for a student, with the database mocked: the read gate
-// accepts the token's current season or an ACTIVE enrolment, and nothing else.
+// needs an enrolment of any status; the token's season is not consulted.
 
 const mockDb = {
   assignment: { findFirst: jest.fn() },
@@ -45,31 +45,26 @@ async function get(token: string) {
 }
 
 describe("GET /assignments/:id — the student read gate", () => {
-  it("lets a student in their current season through without an enrolment lookup", async () => {
-    const res = await get(await tokenFor({ activeSeasonId: 7 }));
-    expect(res.status).toBe(404);
-    expect(mockDb.seasonEnrollment.findUnique).not.toHaveBeenCalled();
-  });
-
-  it("lets a student with an ACTIVE enrolment in that season through", async () => {
+  it("lets a student with an ACTIVE enrolment through", async () => {
     mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE" });
     const res = await get(await tokenFor({ activeSeasonId: 8 }));
     expect(res.status).toBe(404);
   });
 
   it.each(["WITHDRAWN", "COMPLETED"])(
-    "refuses a %s student a past season's assignment",
+    "lets a %s student read their past season's assignment (it comes back readOnly)",
     async (status) => {
       mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status });
       const res = await get(await tokenFor({ activeSeasonId: 8, graduationYear: 2098 }));
-      expect(res.status).toBe(403);
-      expect(mockLoad).not.toHaveBeenCalled();
+      expect(res.status).toBe(404); // past the gate; the loader answers null
+      expect(mockLoad).toHaveBeenCalled();
     },
   );
 
-  it("refuses a student with no enrolment in the season", async () => {
+  it("refuses a student with no enrolment, even in the token's season", async () => {
     mockDb.seasonEnrollment.findUnique.mockResolvedValue(null);
-    const res = await get(await tokenFor({ activeSeasonId: null }));
+    const res = await get(await tokenFor({ activeSeasonId: 7 }));
     expect(res.status).toBe(403);
+    expect(mockLoad).not.toHaveBeenCalled();
   });
 });

@@ -43,7 +43,7 @@ const forumAssignment = {
   allowedMimeCategories: [],
   groupIds: null,
   mySubmission: null,
-  canManage: false,
+  canManage: false, readOnly: false,
 };
 
 const lockedView = {

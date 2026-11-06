@@ -192,6 +192,11 @@ export const sessionsAssignmentsSchemas = {
         description:
           "Whether this caller may edit or delete the assignment. Drives what the UI offers; never the gate itself.",
       },
+      readOnly: {
+        type: "boolean",
+        description:
+          "True for a student whose enrolment is no longer ACTIVE (finished, dropped, alumnus): they can read the assignment and their own work, not change it. False for everyone else.",
+      },
       mySubmission: {
         type: ["object", "null"],
         description: "Populated only for a STUDENT.",

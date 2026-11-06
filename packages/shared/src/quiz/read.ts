@@ -117,6 +117,8 @@ export const studentQuizDetailSchema = z.object({
   submittedAt: z.string().nullable(),
   gradedAt: z.string().nullable(),
   questions: z.array(quizQuestionStudentSchema),
+  /** True when the student's enrolment is no longer ACTIVE: they can read the quiz, not take it. */
+  readOnly: z.boolean(),
 });
 export type StudentQuizDetail = z.infer<typeof studentQuizDetailSchema>;
 

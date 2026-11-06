@@ -85,7 +85,7 @@ const detail = {
   allowedMimeCategories: ["pdf" as const],
   groupIds: [3],
   mySubmission: null,
-  canManage: true,
+  canManage: true, readOnly: false,
 };
 const tracker = {
   assignmentId: 55,

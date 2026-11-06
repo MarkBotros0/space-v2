@@ -34,7 +34,7 @@ const assignment = {
   sessionTitle: null, title: "Essay one", description: null, dueAt: null, dueOrgDay: null,
   dueOrgTime: null, isOverdue: false, isAllGroups: true, type: "STANDARD" as const,
   forumMinWords: null, forumAllowComments: false, maxFileSizeMb: null, allowedMimeCategories: [],
-  groupIds: null, canManage: false,
+  groupIds: null, canManage: false, readOnly: false,
 };
 const submission = {
   id: 900, publicId: "abc123defg", text: "first draft", feedback: null, submittedAt: null,

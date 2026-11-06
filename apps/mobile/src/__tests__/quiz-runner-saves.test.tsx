@@ -43,7 +43,7 @@ const essay = {
 function detail(over: Partial<Record<string, unknown>> = {}) {
   return {
     id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, maxScore: 7,
-    sessionTitle: "Week 1", attemptId: null, attemptNumber: 0, status: null,
+    sessionTitle: "Week 1", attemptId: null, attemptNumber: 0, readOnly: false, status: null,
     totalScore: null, submittedAt: null, gradedAt: null,
     questions: [mcq, essay], ...over,
   };

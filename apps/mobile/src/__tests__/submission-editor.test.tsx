@@ -33,7 +33,7 @@ const detailNoSubmission = {
   description: null, dueAt: null, dueOrgDay: null, dueOrgTime: null, isOverdue: false, isAllGroups: true,
   type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false,
   maxFileSizeMb: 10, allowedMimeCategories: [], groupIds: null,
-  mySubmission: null, canManage: false,
+  mySubmission: null, canManage: false, readOnly: false,
 };
 
 const draftSummary = {

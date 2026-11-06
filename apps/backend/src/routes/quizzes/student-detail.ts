@@ -22,7 +22,7 @@ import { db } from "../../db/client";
  * The loader's return type is `StudentQuizDetailRow`: the shared wire type
  * with its two timestamps as `Date` (the backend hands Dates to res.json()).
  */
-type StudentQuizDetailRow = Omit<StudentQuizDetail, "submittedAt" | "gradedAt"> & {
+type StudentQuizDetailRow = Omit<StudentQuizDetail, "submittedAt" | "gradedAt" | "readOnly"> & {
   submittedAt: Date | null;
   gradedAt: Date | null;
 };
