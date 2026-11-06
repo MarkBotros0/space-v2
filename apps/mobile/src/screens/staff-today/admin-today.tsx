@@ -12,6 +12,7 @@ import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { useStaffToday } from "../../hooks/use-staff-today";
 import { firstName } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
+import { OverdueCallout } from "../season-end/overdue-callout";
 import { useSessionStore } from "../../store/session";
 import { fromDashboardSession, LiveSessionHero } from "./live-session-hero";
 import { NeedsActionList } from "./needs-action-list";
@@ -114,6 +115,7 @@ export function AdminToday() {
     body = (
       <>
         {dash.data && next ? <LiveSessionHero session={fromDashboardSession(next, dash.data.season.title)} /> : null}
+        <OverdueCallout />
         {today.isPending ? (
           <RouteSkeleton />
         ) : (

@@ -94,6 +94,20 @@ export default function SeasonDetailScreen() {
         },
       );
     }
+    if (s.status === "ACTIVE" && manage) {
+      manageItems.push({
+        label: "End season",
+        onPress: () =>
+          router.push({ pathname: "/seasons/[code]/end", params: { code: s.code } }),
+      });
+    }
+    if (isSuper && (s.status === "COMPLETED" || s.status === "ARCHIVED")) {
+      manageItems.push({
+        label: "Results",
+        onPress: () =>
+          router.push({ pathname: "/seasons/[code]/results", params: { code: s.code } }),
+      });
+    }
     if (isSuper) {
       manageItems.push(
         {

@@ -10,6 +10,7 @@ import { useUpcomingEvents } from "../../hooks/use-events";
 import { useOrganisationReport } from "../../hooks/use-reports";
 import { useStaffToday } from "../../hooks/use-staff-today";
 import { firstName } from "../../lib/format";
+import { OverdueCallout } from "../season-end/overdue-callout";
 import { liveSessions, nextSession } from "../../lib/staff-today";
 import { useSessionStore } from "../../store/session";
 import { fromListItem, LiveSessionHero } from "./live-session-hero";
@@ -72,6 +73,7 @@ export function SuperToday() {
             })}
           </GroupedList>
         ) : null}
+        <OverdueCallout />
         {today.isPending ? (
           <RouteSkeleton />
         ) : (

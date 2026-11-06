@@ -52,6 +52,24 @@ const STATUS_LABELS: Record<SeasonStatus, string> = {
   ARCHIVED: "Archived",
 };
 
+/**
+ * The statuses the form may offer for a season now at `current`. The end of a
+ * season is its own flow (End season), so Active never leads to Completed here,
+ * and nothing returns to Draft. A finished season can be archived and restored.
+ */
+export function allowedSeasonStatuses(current: SeasonStatus): SeasonStatus[] {
+  switch (current) {
+    case "DRAFT":
+      return ["DRAFT", "ACTIVE"];
+    case "ACTIVE":
+      return ["ACTIVE"];
+    case "COMPLETED":
+      return ["COMPLETED", "ARCHIVED"];
+    case "ARCHIVED":
+      return ["ARCHIVED", "COMPLETED"];
+  }
+}
+
 export const dayToDate = (day: string): Date | null => {
   const d = parse(day, "yyyy-MM-dd", new Date());
   return isValid(d) ? d : null;
@@ -103,6 +121,10 @@ export function SeasonForm({
   const [failedValues, setFailedValues] = useState<typeof initial | null>(null);
   // v1: an edit never auto-fills the code.
   const [codeTouched, setCodeTouched] = useState(mode === "edit" || initial.code !== "");
+
+  // A new season may start in any status, as before; an existing one only moves where the server allows.
+  const statusChoices =
+    mode === "create" ? (Object.keys(STATUS_LABELS) as SeasonStatus[]) : allowedSeasonStatuses(initial.status);
 
   const patch = (next: Partial<SeasonFormValues>) => {
     setV((cur) => {
@@ -217,7 +239,7 @@ export function SeasonForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(Object.keys(STATUS_LABELS) as SeasonStatus[]).map((s) => (
+              {statusChoices.map((s) => (
                 <SelectItem key={s} value={s}>
                   {STATUS_LABELS[s]}
                 </SelectItem>

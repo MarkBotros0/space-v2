@@ -133,6 +133,10 @@ export const queryKeys = {
     byCode: (code: string | null) => [...queryKeys.seasons.all, "byCode", { code }] as const,
     /** GET /seasons/:id/admins (SUPER) — under `all`, so a season write refreshes it too. */
     admins: (id: number | null) => [...queryKeys.seasons.all, "admins", { id }] as const,
+    /** GET /seasons/:id/end-check, /results, and /overdue: under `all`, so ending a season refreshes them. */
+    endCheck: (id: number | null) => [...queryKeys.seasons.all, "end-check", { id }] as const,
+    results: (id: number | null) => [...queryKeys.seasons.all, "results", { id }] as const,
+    overdue: () => [...queryKeys.seasons.all, "overdue"] as const,
   },
   assignments: {
     all: ["assignments"] as const,
