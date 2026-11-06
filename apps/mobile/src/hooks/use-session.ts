@@ -70,6 +70,31 @@ export async function bootSession(): Promise<void> {
   }
 }
 
+/** Longest the way out of `BootRetry` waits on anything (forgetDevice's own timeout is 5s). */
+const SIGN_OUT_STEP_CAP_MS = 6000;
+
+async function capped(step: Promise<unknown>): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const giveUp = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, SIGN_OUT_STEP_CAP_MS);
+  });
+  await Promise.race([step.catch(() => undefined), giveUp]);
+  clearTimeout(timer);
+}
+
+/**
+ * Sign out when the server can't be reached or can't answer: the way out of
+ * `BootRetry`. Not `useLogout`: that goes through `apiClient`, whose 401 would
+ * start the failing refresh again, and its revoke call has no timeout. Always
+ * ends on "anonymous", whatever the network or the keychain does. The refresh
+ * token isn't revoked on the server; it expires on its own, as on a forced sign-out.
+ */
+export async function signOutOfBoot(): Promise<void> {
+  await capped(forgetDevice());
+  await capped(clearSession());
+  useSessionStore.getState().clear();
+}
+
 /**
  * Boot gate: decides, once per app launch, whether there is a session worth
  * restoring before anything else renders. `app/_layout.tsx` must hold the
