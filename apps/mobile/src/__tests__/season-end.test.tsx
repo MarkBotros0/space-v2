@@ -218,6 +218,35 @@ describe("End season screen", () => {
   });
 });
 
+describe("End season screen, losing the race to another admin", () => {
+  it("says someone else already ended it on a 403", async () => {
+    // The winner's commit marks this admin's sessions stale: the retry after the
+    // refresh carries scopes without this season, so End answers 403.
+    useSessionStore.setState(makeSession("ADMIN"));
+    serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 1) });
+    post.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 403, data: { error: { code: "forbidden", message: "You can't do that." } } },
+    });
+    renderStacked(<EndSeasonScreen />);
+    await screen.findByText("Student 1");
+    fireEvent.press(screen.getByRole("button", { name: "End season" }));
+    await screen.findByText(/This finishes/);
+    confirmEnd();
+    expect(await screen.findByText("Someone else already ended this season.")).toBeTruthy();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("Result sheet", () => {
+  it("caps the reason at the length the server accepts", async () => {
+    serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 1) });
+    renderStacked(<EndSeasonScreen />);
+    fireEvent.press(await screen.findByText("Student 1"));
+    expect(screen.getByLabelText("Reason").props.maxLength).toBe(1000);
+  });
+});
+
 describe("Results screen", () => {
   it("lists results and saves a correction", async () => {
     serve({

@@ -105,9 +105,11 @@ export async function endSeason(req: Request, res: Response) {
       if (unreviewed > 0) {
         throw new EndRefused("season_unfinished", 409, "The roster changed; check the season again.");
       }
-      await markSessionsStale(tx, await seasonPeopleIds(tx, id), now);
+      // Stamped now, not at the transaction's start: a token refreshed after that
+      // start still carries the old grants and must fall before the cut-off.
+      await markSessionsStale(tx, await seasonPeopleIds(tx, id), new Date());
       return tx.season.findUniqueOrThrow({ where: { id }, select: { id: true, code: true, status: true } });
-    });
+    }, { timeout: 30_000 });
     auditLog("season.end", user.userId, user.userId, { season: id });
     return apiOk(res, { season: ended });
   } catch (err) {

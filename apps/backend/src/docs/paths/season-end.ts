@@ -39,7 +39,7 @@ export const seasonEndPaths = {
       tags: ["Seasons"],
       summary: "End a season with pass results",
       description:
-        "Season-admin only (SUPER passes). One transaction: the season is claimed with a conditional update on `status: ACTIVE` (of two concurrent calls exactly one wins; the other is 409 `season_not_active`), the end check re-runs, then the season becomes COMPLETED, each ACTIVE student is COMPLETED with `result` PASSED (or NOT_PASSED with the reason when listed in `notPassed`) and `resultSetAt`, and the sessions of the season's students, admins and leaders are marked stale. WITHDRAWN enrolments are untouched. 409 `season_unfinished` while any blocker exists; 400 when `notPassed` names someone without an ACTIVE enrolment. Nothing changes on any refusal.",
+        "Season-admin only (SUPER passes). One transaction: the season is claimed with a conditional update on `status: ACTIVE` (of two concurrent calls exactly one wins; the other is 409 `season_not_active`), the end check re-runs, then the season becomes COMPLETED, each ACTIVE student is COMPLETED with `result` PASSED (or NOT_PASSED with the reason when listed in `notPassed`) and `resultSetAt`, and the sessions of the season's students, admins and leaders are marked stale. WITHDRAWN enrolments are untouched. 409 `season_unfinished` while any blocker exists; 400 when `notPassed` names someone without an ACTIVE enrolment, names a student twice, or carries a reason over 1000 characters. Nothing changes on any refusal.",
       parameters: [idParam],
       requestBody: {
         required: true,

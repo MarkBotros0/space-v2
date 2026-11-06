@@ -57,7 +57,9 @@ export default function EndSeasonScreen() {
         onError: (err) => {
           setConfirming(false);
           const errCode = apiErrorCode(err);
-          if (errCode === "season_not_active") {
+          // A loser arriving after the winner's commit has lost this season from
+          // its token by the retry, so it is refused rather than told "not active".
+          if (errCode === "season_not_active" || errCode === "forbidden") {
             setAlreadyEnded(true);
           } else if (errCode === "season_unfinished") {
             toast.error(apiErrorMessage(err, "Something changed. Check the list again."));

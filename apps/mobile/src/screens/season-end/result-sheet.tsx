@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
+import { SEASON_RESULT_REASON_MAX } from "@space/shared";
 
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { SegmentedControl } from "../../design/ui/segmented-control";
@@ -44,6 +45,7 @@ function ResultSheetBody({ student, initial, saveLabel, saving, error, onClose, 
             accessibilityLabel="Reason"
             placeholder="Reason (optional)"
             value={draft.reason}
+            maxLength={SEASON_RESULT_REASON_MAX}
             onChangeText={(reason) => setDraft((d) => ({ ...d, reason }))}
           />
           <Text variant="caption" className="text-muted-foreground">

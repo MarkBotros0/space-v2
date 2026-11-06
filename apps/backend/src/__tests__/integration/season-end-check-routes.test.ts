@@ -56,7 +56,10 @@ beforeAll(async () => {
     data: { seasonId, name: "Group A", leaders: { create: { userId: leader.id } } },
   });
   const enroll = (studentUserId: number, status: "ACTIVE" | "WITHDRAWN", groupId?: number) =>
-    db.seasonEnrollment.create({ data: { seasonId, studentUserId, status, groupId } });
+    db.seasonEnrollment.create({
+      // Enrolled before any session here, so each one counts against them (M2).
+      data: { seasonId, studentUserId, status, groupId, enrolledAt: new Date(Date.now() - 100 * HOUR) },
+    });
   await enroll(s1, "ACTIVE", group.id);
   await enroll(s2, "ACTIVE");
   await enroll(sDeleted, "ACTIVE");

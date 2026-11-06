@@ -56,9 +56,17 @@ export const seasonEndCheckSchema = z.object({
 });
 export type SeasonEndCheck = z.infer<typeof seasonEndCheckSchema>;
 
+/** A staff-only reason a student did not pass. */
+export const SEASON_RESULT_REASON_MAX = 1000;
+const resultReasonSchema = z.string().max(SEASON_RESULT_REASON_MAX).nullable();
+
 export const endSeasonRequestSchema = z
   .object({
-    notPassed: z.array(z.object({ userId: z.number().int(), reason: z.string().nullable() })),
+    notPassed: z
+      .array(z.object({ userId: z.number().int(), reason: resultReasonSchema }))
+      .refine((rows) => new Set(rows.map((r) => r.userId)).size === rows.length, {
+        message: "A student is listed twice.",
+      }),
   })
   .strict();
 export type EndSeasonRequest = z.infer<typeof endSeasonRequestSchema>;
@@ -74,7 +82,7 @@ export const seasonResultRowSchema = z.object({
 export type SeasonResultRow = z.infer<typeof seasonResultRowSchema>;
 
 export const updateSeasonResultRequestSchema = z
-  .object({ result: enrollmentResultSchema, reason: z.string().nullable() })
+  .object({ result: enrollmentResultSchema, reason: resultReasonSchema })
   .strict();
 export type UpdateSeasonResultRequest = z.infer<typeof updateSeasonResultRequestSchema>;
 

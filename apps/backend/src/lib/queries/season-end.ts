@@ -23,7 +23,12 @@ export async function loadSeasonEndCheck(
     client.seasonEnrollment.findMany({
       where: { seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
       orderBy: { studentUser: { name: "asc" } },
-      select: { studentUserId: true, studentUser: { select: { name: true } }, group: { select: { name: true } } },
+      select: {
+        studentUserId: true,
+        enrolledAt: true,
+        studentUser: { select: { name: true } },
+        group: { select: { name: true } },
+      },
     }),
     client.session.findMany({
       where: { seasonId },
@@ -60,10 +65,9 @@ export async function loadSeasonEndCheck(
     where: { session: { seasonId }, studentUserId: { in: activeIds } },
     select: { sessionId: true, studentUserId: true, status: true },
   });
-  const markedBySession = new Map<number, number>();
+  const marked = new Set(marks.map((m) => `${m.sessionId}:${m.studentUserId}`));
   const attendedByStudent = new Map<number, number>();
   for (const m of marks) {
-    markedBySession.set(m.sessionId, (markedBySession.get(m.sessionId) ?? 0) + 1);
     if (m.status === "PRESENT" || m.status === "LATE") {
       attendedByStudent.set(m.studentUserId, (attendedByStudent.get(m.studentUserId) ?? 0) + 1);
     }
@@ -75,7 +79,12 @@ export async function loadSeasonEndCheck(
       sessionId: s.id,
       title: s.title,
       startsAt: s.startsAt.toISOString(),
-      missing: activeIds.length - (markedBySession.get(s.id) ?? 0),
+      // Only from the session that started on or after they joined: staff can't
+      // truthfully mark a late joiner for a session held before they arrived.
+      missing: enrollments.filter(
+        (e) =>
+          e.enrolledAt.getTime() <= s.startsAt.getTime() && !marked.has(`${s.id}:${e.studentUserId}`),
+      ).length,
     }))
     .filter((s) => s.missing > 0);
 

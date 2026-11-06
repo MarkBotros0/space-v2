@@ -380,7 +380,7 @@ Build 1 exists.
 - **Season lifecycle.** DRAFT -> ACTIVE -> COMPLETED (-> ARCHIVED). **End season** (`POST
   /seasons/:id/end`; that season's admin, or Super) is refused with `season_unfinished` while any
   blocker stands: a SUBMITTED submission or quiz attempt not graded, a finished session with an
-  ACTIVE student unmarked. `GET /seasons/:id/end-check` lists them with the students; the app shows
+  ACTIVE student unmarked (only students enrolled by the time it started). `GET /seasons/:id/end-check` lists them with the students; the app shows
   blockers, else the review list where everyone **passes unless marked** (the POST carries only
   `notPassed`, with an optional staff-only reason). One transaction completes every ACTIVE
   enrolment with its `result`, WITHDRAWN ones are untouched, and the season's people's sessions go
