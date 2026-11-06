@@ -322,7 +322,7 @@ Copy: title `Start {season}`. Ready: `Everyone's clear. Starting makes this seas
 - Modify: `apps/backend/scripts/community-preflight.ts`, `CLAUDE.md`, `apps/backend/README.md`, `packages/shared/src/user.ts` comments
 - Test: existing preflight tests extended
 
-- [ ] **Step 1:** Extend the preflight's report: stored ADMIN or LEADER lacking `graduationYear`; staff who aren't alumni; DRAFT rows are reported separately and don't count as violations.
+- [ ] **Step 1:** Extend the preflight's report: stored ADMIN or LEADER lacking `graduationYear`; staff who aren't alumni; DRAFT rows are reported separately and don't count as violations. Add a read-only list of stored STUDENTs holding live `SeasonAdmin` or `GroupLeader` rows, split by whether they have a `graduationYear`, for the owner to review before any deploy.
 - [ ] **Step 2:** `CLAUDE.md`: add a "Roles" section (derived claim, stored role means SUPER, MENTOR or STUDENT only, `lib/roles` on every seat write, no signing people out on role changes, `roles:convert`), and remove statements Build 2 made false.
 - [ ] **Step 3:** The controller runs `pnpm lint`, `pnpm typecheck`, `pnpm build` and `pnpm test` in tmux, and fixes what breaks. Existing tests that set a stored `ADMIN` or `LEADER` with no rows are expected to need rows.
 - [ ] **Step 4:** Commit. Release stays with the owner: on their word, run preflight read-only, migrate, `preflight:community --apply`, `roles:convert --apply`, push both remotes, verify `/health`, build TestFlight. The sweep waits for Build 3.
