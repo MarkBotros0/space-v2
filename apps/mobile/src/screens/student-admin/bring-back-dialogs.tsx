@@ -30,7 +30,7 @@ export function BringBackDialogs({
   }, [enrollment]);
 
   const run = (override: boolean) => {
-    if (!enrollment) return;
+    if (!enrollment || restore.isPending) return;
     restore.mutate(
       { studentId, seasonId: enrollment.seasonId, override },
       {
@@ -50,29 +50,25 @@ export function BringBackDialogs({
     );
   };
 
+  // One dialog that changes its words: a second Modal opening as the first dismisses can be dropped on iOS.
+  const notEligible = blocked !== null;
   return (
-    <>
-      <ConfirmDialog
-        open={enrollment !== null && blocked === null}
-        onOpenChange={(open) => {
-          if (!open && !restore.isPending) onClose();
-        }}
-        title={enrollment ? `Bring ${studentName} back into ${enrollment.seasonTitle}?` : "Bring back?"}
-        confirmLabel="Bring back"
-        pending={restore.isPending}
-        onConfirm={() => run(false)}
-      />
-      <ConfirmDialog
-        open={enrollment !== null && blocked !== null}
-        onOpenChange={(open) => {
-          if (!open && !restore.isPending) onClose();
-        }}
-        title="Not eligible"
-        description={blocked ?? undefined}
-        confirmLabel="Add anyway"
-        pending={restore.isPending}
-        onConfirm={() => run(true)}
-      />
-    </>
+    <ConfirmDialog
+      open={enrollment !== null}
+      onOpenChange={(open) => {
+        if (!open && !restore.isPending) onClose();
+      }}
+      title={
+        notEligible
+          ? "Not eligible"
+          : enrollment
+            ? `Bring ${studentName} back into ${enrollment.seasonTitle}?`
+            : "Bring back?"
+      }
+      description={blocked ?? undefined}
+      confirmLabel={notEligible ? "Add anyway" : "Bring back"}
+      pending={restore.isPending}
+      onConfirm={() => run(notEligible)}
+    />
   );
 }

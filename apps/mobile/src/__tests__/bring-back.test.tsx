@@ -142,4 +142,24 @@ describe("Bring back", () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Sara is already in a season at the same time"));
     expect(screen.queryByText("Add anyway")).toBeNull();
   });
+
+  it("Cancel in the not-eligible state clears it, so the next row starts fresh", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    get.mockResolvedValue({
+      data: { data: detail([enrollment(7, "Spring 2099", "WITHDRAWN"), enrollment(10, "Winter 2099", "WITHDRAWN", "DRAFT")]) },
+    });
+    post.mockRejectedValueOnce(refusal("not_eligible", "Sara hasn't passed GBV"));
+    renderWithProviders(<StudentDetailScreen />);
+    await openSeasons();
+    fireEvent.press(screen.getAllByText("Bring back")[0]!);
+    fireEvent.press(screen.getAllByText("Bring back")[2]!);
+    expect(await screen.findByText("Add anyway")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Cancel"));
+    await waitFor(() => expect(screen.queryByText("Add anyway")).toBeNull());
+
+    fireEvent.press(screen.getAllByText("Bring back")[1]!);
+    expect(screen.getByText("Bring Sara Student back into Winter 2099?")).toBeTruthy();
+    expect(screen.queryByText("Add anyway")).toBeNull();
+  });
 });
