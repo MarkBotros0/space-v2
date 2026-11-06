@@ -1,6 +1,7 @@
 import type { Standing } from "../../../../../packages/shared/src/index";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SeasonStatus } from "../../generated/prisma/enums";
+import { markSessionsStale } from "../auth/session-validity";
 import { enrollStudentsInSeason, type NewEnrollment } from "../queries/students/writes";
 import { activeRolesFor, lockPeople, lockSeason, type ActiveRole, type SeasonLockMode } from "./active-role";
 import { seatRefusal, type SeatPerson, type SeatRefusal } from "./seat-rules";
@@ -35,7 +36,8 @@ export function isSeasonFinished(season: { status: SeasonStatus }): boolean {
 
 /**
  * `seatRefusal` plus standing. Blocked and in a role reads as the picker does,
- * block first; an override lifts only the block, so the role still refuses.
+ * block first; an override lifts only the block, so the role still refuses. A
+ * stored ADMIN or LEADER isn't in the picker's pool either.
  */
 async function decide(
   tx: Prisma.TransactionClient,
@@ -51,7 +53,11 @@ async function decide(
     const block = `${person.name} ${describeBlock(standing, season.requiredProgram)}`;
     return { code: "not_eligible", message: refusal ? `${block}. ${refusal.message}` : block };
   }
-  return refusal;
+  if (refusal) return refusal;
+  if (person.role !== "STUDENT") {
+    return { code: "not_student", message: `${person.name} can't join as a student.` };
+  }
+  return null;
 }
 
 /**
@@ -148,7 +154,7 @@ export async function seatStudents(
   return { seated: toSeat, overridden, refused };
 }
 
-/** A row here comes first, as in the picker. A stored ADMIN or LEADER isn't in the picker's pool either. */
+/** A row here comes first, as in the picker. */
 async function refusalFor(
   tx: Prisma.TransactionClient,
   person: SeatPerson,
@@ -165,10 +171,57 @@ async function refusalFor(
     };
   }
   if (hereStatus) return { code: "in_season", message: `${person.name} is already in this season` };
-  const refusal = await decide(tx, person, season, active, standing, options);
-  if (refusal) return refusal;
-  if (person.role !== "STUDENT") {
-    return { code: "not_student", message: `${person.name} can't join as a student.` };
+  return decide(tx, person, season, active, standing, options);
+}
+
+export type RestoredSeat = { id: number; status: "ACTIVE"; previousDropReason: string | null };
+
+/**
+ * A dropped student back into the row they already have: WITHDRAWN to ACTIVE, the
+ * drop cleared, their group kept. The rule is checked again as if adding. As with
+ * a new seat, an override is recorded only on someone actually blocked, and one
+ * from before the drop doesn't count: it says nothing about who they are now.
+ * `season` comes from `readSeatSeason`; a finished one is `seatRefusal`'s refusal.
+ */
+export async function restoreStudentSeat(
+  tx: Prisma.TransactionClient,
+  season: StudentSeatSeason,
+  userId: number,
+  actor: { id: number; override: boolean },
+): Promise<SeatRefusal | RestoredSeat> {
+  await lockPeople(tx, [userId]);
+  const row = await tx.seasonEnrollment.findUnique({
+    where: { studentUserId_seasonId: { studentUserId: userId, seasonId: season.id } },
+    select: { id: true, status: true, dropReason: true },
+  });
+  if (!row) return { code: "not_found", message: "Enrollment not found." };
+  if (row.status !== "WITHDRAWN") {
+    return { code: "not_dropped", message: "Only a dropped student can be brought back." };
   }
-  return null;
+
+  const person = await tx.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { id: true, name: true, role: true, graduationYear: true, deletedAt: true },
+  });
+  const active = await activeRolesFor(tx, [userId]);
+  const standing = (await loadStandings(tx, [userId], season)).get(userId)!;
+  const refusal = await decide(tx, person, season, active.get(userId), standing, {
+    overridden: actor.override,
+    actorIsSuper: true,
+  });
+  if (refusal) return refusal;
+
+  const overridden = standing.kind === "blocked";
+  await tx.seasonEnrollment.update({
+    where: { id: row.id },
+    data: {
+      status: "ACTIVE",
+      droppedAt: null,
+      dropReason: null,
+      overrideById: overridden ? actor.id : null,
+      overrideAt: overridden ? new Date() : null,
+    },
+  });
+  await markSessionsStale(tx, [userId]);
+  return { id: row.id, status: "ACTIVE", previousDropReason: row.dropReason };
 }

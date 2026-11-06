@@ -56,7 +56,7 @@ describe("POST /api/v1/students/:id/enrollments", () => {
     expect(user?.sessionsValidFrom).not.toBeNull();
   });
 
-  it("drop and complete stale the student's sessions and clear the derived season", async () => {
+  it("a drop stales the student's sessions and clears the derived season", async () => {
     const s = await createTestUser("enrollee-b", "STUDENT");
     await db.studentProfile.create({ data: { userId: s.id } });
     await db.seasonEnrollment.create({ data: { studentUserId: s.id, seasonId: seasonAId, status: "ACTIVE" } });
@@ -65,7 +65,7 @@ describe("POST /api/v1/students/:id/enrollments", () => {
     const res = await request(app)
       .patch(`/api/v1/students/${s.id}/enrollments/${seasonAId}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ status: "COMPLETED" });
+      .send({ status: "WITHDRAWN" });
 
     expect(res.status).toBe(200);
     expect((await loadScopes(s.id)).activeSeasonId).toBeNull();
@@ -126,23 +126,23 @@ describe("PATCH /api/v1/students/:id/enrollments/:seasonId", () => {
     expect(rows[0]?.droppedAt).not.toBeNull();
   });
 
-  it("completes an ACTIVE enrollment with completedAt (R48's write, made per-enrollment)", async () => {
+  it("refuses to complete one enrollment: End season does that (use_end_season)", async () => {
     const sid = await makeActiveEnrollee("to-complete");
     const res = await request(app)
       .patch(`/api/v1/students/${sid}/enrollments/${seasonAId}`)
       .set("authorization", `Bearer ${adminToken}`)
       .send({ status: "COMPLETED" });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("use_end_season");
     const row = await db.seasonEnrollment.findFirst({
       where: { studentUserId: sid, seasonId: seasonAId },
-      select: { status: true, completedAt: true, dropReason: true },
+      select: { status: true, completedAt: true },
     });
-    expect(row).toMatchObject({ status: "COMPLETED", dropReason: null });
-    expect(row?.completedAt).not.toBeNull();
+    expect(row).toEqual({ status: "ACTIVE", completedAt: null });
   });
 
-  it("refuses a second transition out of a terminal state — no un-drop (R49/R50)", async () => {
+  it("refuses a second drop — this body can't undo one (R49/R50)", async () => {
     const sid = await makeActiveEnrollee("terminal");
     await request(app)
       .patch(`/api/v1/students/${sid}/enrollments/${seasonAId}`)
@@ -152,7 +152,7 @@ describe("PATCH /api/v1/students/:id/enrollments/:seasonId", () => {
     const res = await request(app)
       .patch(`/api/v1/students/${sid}/enrollments/${seasonAId}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ status: "COMPLETED" });
+      .send({ status: "WITHDRAWN" });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("not_active");
   });

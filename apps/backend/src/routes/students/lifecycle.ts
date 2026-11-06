@@ -3,26 +3,28 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-import { invalidateSessions, markSessionsStale } from "../../lib/auth/session-validity";
+import { invalidateSessions } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { parseId } from "../../lib/parse-id";
+import { graduatePerson } from "../../lib/queries/students/writes";
 import { isSuper } from "../../lib/rbac";
+import { lockPeople } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import { graduateStudentRequestSchema } from "../../../../../packages/shared/src/index";
 
 /**
- * Graduation (Plan 10 Decision 2). SUPER-only — the one action in this domain
- * gated on isSuper alone (R55). One transaction:
- *   - set graduationYear (the alumnus marker; role stays STUDENT, R57),
- *   - complete EVERY ACTIVE enrollment — v1 completed only the one matching
+ * Graduation (Plan 10 Decision 2). SUPER-only — gated on isSuper alone (R55).
+ * `graduatePerson` is the transaction's work:
+ *   - it completes EVERY ACTIVE enrollment — v1 completed only the one matching
  *     activeSeasonId and left the rest ACTIVE forever (R48/R60), keeping an
  *     alumnus on rosters, in at-risk counts and (R53) in season access,
- *   - end live access tokens (Plan 18 M13): they carry graduationYear, and
+ *   - it ends live access tokens (Plan 18 M13): they carry graduationYear, and
  *     isAlumni() reads it from the token, so without this the graduate is
  *     treated as a current student for up to 15 minutes. Refresh tokens are
  *     kept, so the app silently picks up a token with the new claims.
- * Terminal enrollments are history and are not touched. Irreversible (R61):
- * a second graduation is refused rather than silently overwriting the year.
+ * Irreversible (R61): a second graduation is refused rather than silently
+ * overwriting the year. Takes the person's lock, since a seat write reads
+ * graduationYear under it.
  */
 export async function graduateStudent(req: Request, res: Response) {
   const user = requireUser(req);
@@ -39,24 +41,8 @@ export async function graduateStudent(req: Request, res: Response) {
   const { graduationYear } = parsed.data;
 
   const outcome = await db.$transaction(async (tx) => {
-    const student = await tx.user.findFirst({
-      where: { id, role: "STUDENT", deletedAt: null },
-      select: { graduationYear: true },
-    });
-    if (!student) return "not_found" as const;
-    // Guarded write: of two concurrent graduations exactly one matches
-    // `graduationYear: null`; the other sees count 0 and is refused.
-    const marked = await tx.user.updateMany({
-      where: { id, graduationYear: null },
-      data: { graduationYear },
-    });
-    if (marked.count === 0) return "already_graduated" as const;
-    const completed = await tx.seasonEnrollment.updateMany({
-      where: { studentUserId: id, status: "ACTIVE" },
-      data: { status: "COMPLETED", completedAt: new Date() },
-    });
-    await markSessionsStale(tx, [id]);
-    return { enrollmentsCompleted: completed.count };
+    await lockPeople(tx, [id]);
+    return graduatePerson(tx, id, graduationYear);
   });
 
   if (outcome === "not_found") return apiError(res, "not_found", "Student not found.", 404);

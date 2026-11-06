@@ -13,6 +13,7 @@ jest.mock("../lib/permissions", () => ({
   canEditNote: jest.fn(),
   canViewStudent: jest.fn().mockResolvedValue(true),
   canWriteNote: jest.fn().mockResolvedValue(true),
+  staffRosterWhere: jest.requireActual("../lib/permissions/student").staffRosterWhere,
 }));
 jest.mock("../lib/notifications", () => ({ createNotificationsBulk: jest.fn() }));
 

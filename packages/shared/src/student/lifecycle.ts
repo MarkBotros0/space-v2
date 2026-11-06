@@ -12,20 +12,45 @@ import { enrollmentStatusSchema } from "../enums";
  * evaluated per call — v1 captured CURRENT_YEAR at module load and refused
  * January graduates until the process restarted (R58).
  */
+const graduationYearField = z.number().int("Enter a whole year.");
+
+function checkGraduationYear(v: { graduationYear: number }, ctx: z.RefinementCtx): void {
+  const currentYear = new Date().getFullYear();
+  if (v.graduationYear < 1990 || v.graduationYear > currentYear) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["graduationYear"],
+      message: `Enter a year between 1990 and ${currentYear}.`,
+    });
+  }
+}
+
 export const graduateStudentRequestSchema = z
-  .object({ graduationYear: z.number().int("Enter a whole year.") })
+  .object({ graduationYear: graduationYearField })
   .strict()
-  .superRefine((v, ctx) => {
-    const currentYear = new Date().getFullYear();
-    if (v.graduationYear < 1990 || v.graduationYear > currentYear) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["graduationYear"],
-        message: `Enter a year between 1990 and ${currentYear}.`,
-      });
-    }
-  });
+  .superRefine(checkGraduationYear);
 export type GraduateStudentBody = z.infer<typeof graduateStudentRequestSchema>;
+
+/**
+ * `POST /seasons/:id/graduate`. The cap is a season's list, about 200 people:
+ * each person is several statements inside one transaction.
+ */
+export const graduateSeasonRequestSchema = z
+  .object({
+    userIds: z.array(z.number().int().positive()).min(1).max(250),
+    graduationYear: graduationYearField,
+  })
+  .strict()
+  .refine((b) => new Set(b.userIds).size === b.userIds.length, { path: ["userIds"], message: "Repeated person." })
+  .superRefine(checkGraduationYear);
+export type GraduateSeasonBody = z.infer<typeof graduateSeasonRequestSchema>;
+
+export const graduateSeasonResponseSchema = z.object({
+  /** Everyone graduated, in the order asked for. */
+  graduated: z.array(z.number().int()),
+  graduationYear: z.number().int(),
+});
+export type GraduateSeasonResponse = z.infer<typeof graduateSeasonResponseSchema>;
 
 export const graduateStudentResponseSchema = z.object({
   id: z.number().int(),

@@ -6,7 +6,7 @@
  * Import from this index.
  */
 export { listStudents, type StudentListResult } from "./list";
-export { loadStudentAttendanceHistory, loadStudentSubmissions } from "./history";
+export { canReadEnrollmentHistory, loadStudentAttendanceHistory, loadStudentSubmissions } from "./history";
 export { loadStudentDetail, type StudentDetail, type StudentDetailView } from "./detail";
 export {
   createStudentRows,

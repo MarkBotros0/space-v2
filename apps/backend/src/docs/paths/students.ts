@@ -8,7 +8,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Student list (active, alumni or dropped)",
       description:
-        "One endpoint serves all three list surfaces, selected by `status` (default `active`).\n\nScope is per role: SUPER and MENTOR read every student; ADMIN gets the students ever enrolled in their seasons; LEADER gets the students whose **enrollment** names one of their groups (C9 — never GroupStudent). `alumni` (graduationYear set) is refused with 403 `forbidden` to LEADER. `dropped` lists WITHDRAWN enrollments, not students (a student dropped from three seasons appears three times; rows carry `droppedEnrollment`) and is SUPER/ADMIN only — it hands out drop reasons, so MENTOR and LEADER get 403. STUDENT is refused on every surface.\n\nPagination is cursor-based: pass the last row's id (the enrollment id when `status=dropped`) as `cursor`; `nextCursor` is null on the last page. `total` is the whole population under the current filters, not the page size (D14). `q` matches name, email or university, case-insensitive.",
+        "One endpoint serves all three list surfaces, selected by `status` (default `active`).\n\nScope is per role: SUPER and MENTOR read every student; ADMIN gets the students enrolled in their live seasons, and their `activeSeasonTitle` and `currentGroupName` come only from those seasons; LEADER likewise through the students whose **enrollment** names one of their groups (C9 — never GroupStudent). `alumni` (graduationYear set) is refused with 403 `forbidden` to LEADER. `dropped` lists WITHDRAWN enrollments, not students (a student dropped from three seasons appears three times; rows carry `droppedEnrollment`) and is SUPER/ADMIN only — it hands out drop reasons, so MENTOR and LEADER get 403. STUDENT is refused on every surface.\n\nPagination is cursor-based: pass the last row's id (the enrollment id when `status=dropped`) as `cursor`; `nextCursor` is null on the last page. `total` is the whole population under the current filters, not the page size (D14). `q` matches name, email or university, case-insensitive.",
       parameters: [
         { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
         { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status).", schema: { type: "integer", minimum: 1 } },
@@ -90,7 +90,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "A student's attendance history (staff only)",
       description:
-        "v1's student record listed the 100 most recent attendance marks across seasons (REG-83). Staff only — STUDENT, the subject included, gets 403. Row scope follows the underlying gates: SUPER and MENTOR every season; ADMIN only seasons they administer; LEADER only seasons whose enrolment names one of their groups (C9). Newest session first. 403 before 404.",
+        "v1's student record listed the 100 most recent attendance marks across seasons (REG-83). Staff only — STUDENT, the subject included, gets 403. Row scope follows the underlying gates: SUPER and MENTOR every season; ADMIN only live seasons they administer; LEADER only live seasons whose enrolment names one of their groups (C9). Newest session first. 403 before 404.",
       parameters: [idParam],
       responses: {
         200: ok(
@@ -128,7 +128,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Student detail, shaped by the caller's role",
       description:
-        "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9). Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nThe payload is narrowed per role, not just the access (C8): see `StudentDetail` for which profile fields exist on the wire for MENTOR/LEADER (phone, dateOfBirth, notes are absent) and why the subject never receives `notes`. Per-row `dropReason` is staff-only: null for MENTOR, LEADER and the student themselves.",
+        "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9), counting only DRAFT and ACTIVE seasons. Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nAn ADMIN or LEADER sees only those seasons: `enrollments`, `currentGroup` and the profile's `activeSeason*` say nothing of any other, even one they once ran. SUPER and MENTOR see every season, and a person sees all of their own.\n\nThe payload is narrowed per role, not just the access (C8): see `StudentDetail` for which profile fields exist on the wire for MENTOR/LEADER (phone, dateOfBirth, notes are absent) and why the subject never receives `notes`. Per-row `dropReason` is staff-only: null for MENTOR, LEADER and the student themselves.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentDetail" }, "The student."),
@@ -264,9 +264,9 @@ export const studentPaths = {
   "/api/v1/students/{id}/enrollments/{seasonId}": {
     patch: {
       tags: ["Students"],
-      summary: "Complete or drop an enrollment",
+      summary: "Drop an enrollment",
       description:
-        "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The only transitions are ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`) and ACTIVE \u2192 COMPLETED (sets completedAt). ACTIVE is not accepted in the body: there is no re-activation. A non-ACTIVE row is 409 `not_active`. The row is transitioned in place and never deleted. Writes a server-side audit line (actor and subject ids only).",
+        "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The one transition is ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`). `COMPLETED` is 409 `use_end_season` for everyone, SUPER included, before anything else is checked: finishing one student alone would skip pass/fail, so only ending the season or graduating completes a row. ACTIVE is not accepted in the body; `POST .../restore` is the way back. A non-ACTIVE row is 409 `not_active`. The row is transitioned in place and never deleted. Writes a server-side audit line (actor and subject ids only).",
       parameters: [
         idParam,
         { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
@@ -293,6 +293,42 @@ export const studentPaths = {
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
         409: conflict("`not_active`."),
+      },
+    },
+  },
+
+  "/api/v1/students/{id}/enrollments/{seasonId}/restore": {
+    post: {
+      tags: ["Students"],
+      summary: "Bring a dropped student back (SUPER only)",
+      description:
+        "WITHDRAWN \u2192 ACTIVE on the row the student already has, keeping their group. Clears `droppedAt` and `dropReason`, so the record no longer reads as dropped; the old reason survives only in the server-side audit line, the one audit line that carries a field value. The season must be DRAFT or ACTIVE. The rule is checked again as if adding, under the season's share lock and the person's row lock, with the reason in the message: `already_in_role`, `is_alumnus`, `user_inactive`, `permanent_role`, `not_student`, or `not_eligible` when the required program blocks them. `override: true` lets a blocked person back and records `overrideById` and `overrideAt`; it lifts the block and nothing else. An override from before the drop no longer counts, and the row keeps none unless they're blocked now. Marks sessions stale.",
+      parameters: [
+        idParam,
+        { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+      ],
+      requestBody: {
+        required: false,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: { override: { type: "boolean" } },
+            },
+          },
+        },
+      },
+      responses: {
+        200: ok(
+          { type: "object", required: ["id", "status"], properties: { id: { type: "integer" }, status: { type: "string", enum: ["ACTIVE"] } } },
+          "Brought back.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`season_finished`, `not_dropped`, or why they can't hold the seat (see above)."),
       },
     },
   },

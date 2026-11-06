@@ -3,6 +3,7 @@ import type { StudentListItem, StudentListQuery } from "@space/shared";
 import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
 import type { SessionUser } from "../../auth/tokens";
+import { staffRosterWhere } from "../../permissions";
 import { canReadAllStudents, isMentor, isSuper } from "../../rbac";
 import { currentSeasonEnrollmentSelect } from "./current-season";
 import { currentMembershipSelect, studentIdsWithCurrentGroup } from "./current-group";
@@ -65,25 +66,41 @@ function searchFilter(q: string | undefined): Prisma.UserWhereInput {
   };
 }
 
-const LIST_SELECT = {
-  id: true,
-  name: true,
-  email: true,
-  avatarPath: true,
-  graduationYear: true,
-  studentProfile: {
-    select: {
-      university: true,
-      faculty: true,
-      universityGraduationYear: true,
+/**
+ * The two per-row season facts, limited to the seasons this caller may read:
+ * staff never see a group or a season they don't serve in, as with the detail.
+ */
+function currentFactsSelect(user: SessionUser) {
+  const roster = staffRosterWhere(user) ?? {};
+  return {
+    seasonEnrollments: {
+      ...currentSeasonEnrollmentSelect,
+      where: { ...currentSeasonEnrollmentSelect.where, ...roster },
     },
-  },
-  seasonEnrollments: currentSeasonEnrollmentSelect,
-  // Advisory current group — the one question GroupStudent may answer (C9).
-  groupStudentMemberships: currentMembershipSelect({ name: true }),
-} as const;
+    // Advisory current group — the one question GroupStudent may answer (C9).
+    groupStudentMemberships: { ...currentMembershipSelect({ name: true }), where: roster },
+  };
+}
 
-type ListRow = Prisma.UserGetPayload<{ select: typeof LIST_SELECT }>;
+function listSelect(user: SessionUser) {
+  return {
+    id: true,
+    name: true,
+    email: true,
+    avatarPath: true,
+    graduationYear: true,
+    studentProfile: {
+      select: {
+        university: true,
+        faculty: true,
+        universityGraduationYear: true,
+      },
+    },
+    ...currentFactsSelect(user),
+  } as const;
+}
+
+type ListRow = Prisma.UserGetPayload<{ select: ReturnType<typeof listSelect> }>;
 
 function toListItem(u: ListRow): StudentListItem {
   return {
@@ -118,13 +135,14 @@ function columnOrderBy(query: StudentListQuery): Prisma.UserOrderByWithRelationI
 
 type RelatedSort = "university" | "season" | "group";
 
-const SORT_KEY_SELECT = {
-  id: true,
-  name: true,
-  studentProfile: { select: { university: true } },
-  seasonEnrollments: currentSeasonEnrollmentSelect,
-  groupStudentMemberships: currentMembershipSelect({ name: true }),
-} as const;
+function sortKeySelect(user: SessionUser) {
+  return {
+    id: true,
+    name: true,
+    studentProfile: { select: { university: true } },
+    ...currentFactsSelect(user),
+  } as const;
+}
 
 /** Every matching id in v1's order for a related-row sort key, then paged by id. */
 async function listByRelatedSort(
@@ -132,8 +150,9 @@ async function listByRelatedSort(
   sort: RelatedSort,
   dir: "asc" | "desc",
   query: StudentListQuery,
+  user: SessionUser,
 ): Promise<StudentListResult> {
-  const keyed = await db.user.findMany({ where, select: SORT_KEY_SELECT });
+  const keyed = await db.user.findMany({ where, select: sortKeySelect(user) });
   const keyOf = (u: (typeof keyed)[number]): string =>
     (sort === "university"
       ? u.studentProfile?.university
@@ -151,7 +170,7 @@ async function listByRelatedSort(
 
   const start = query.cursor === undefined ? 0 : keyed.findIndex((u) => u.id === query.cursor) + 1;
   const pageIds = keyed.slice(start, start + query.limit).map((u) => u.id);
-  const rows = await db.user.findMany({ where: { id: { in: pageIds } }, select: LIST_SELECT });
+  const rows = await db.user.findMany({ where: { id: { in: pageIds } }, select: listSelect(user) });
   const byId = new Map(rows.map((r) => [r.id, r] as const));
   const page = pageIds.flatMap((id) => {
     const row = byId.get(id);
@@ -207,7 +226,7 @@ export async function listStudents(
   };
 
   if (query.sort !== undefined && query.sort !== "name") {
-    return listByRelatedSort(where, query.sort, query.dir, query);
+    return listByRelatedSort(where, query.sort, query.dir, query, user);
   }
   const orderBy = columnOrderBy(query);
 
@@ -217,7 +236,7 @@ export async function listStudents(
       orderBy,
       take: query.limit + 1, // one extra row answers "is there another page"
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-      select: LIST_SELECT,
+      select: listSelect(user),
     }),
     db.user.count({ where }),
   ]);
@@ -268,7 +287,7 @@ async function listDroppedEnrollments(
         droppedAt: true,
         dropReason: true,
         season: { select: { title: true } },
-        studentUser: { select: LIST_SELECT },
+        studentUser: { select: listSelect(user) },
       },
     }),
     db.seasonEnrollment.count({ where }),

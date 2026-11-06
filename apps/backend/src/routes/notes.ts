@@ -5,7 +5,7 @@ import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import { createNotificationsBulk } from "../lib/notifications";
 import { bestEffort } from "../lib/best-effort";
-import { canEditNote, canViewStudent, canWriteNote } from "../lib/permissions";
+import { canEditNote, canViewStudent, canWriteNote, staffRosterWhere } from "../lib/permissions";
 import {
   listAuthoredNotes,
   listNotesForStudent,
@@ -13,6 +13,7 @@ import {
   NOTE_SELECT,
   toNoteSummary,
 } from "../lib/queries/notes";
+import { canReadEnrollmentHistory } from "../lib/queries/students";
 import type { SessionUser } from "../lib/auth/tokens";
 import { makeLimiter } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
@@ -172,13 +173,14 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   // actually enrolled in, or the note files itself under a season nobody can
   // reach it from.
   //
-  // An ADMIN files notes only under seasons they run, explicit or defaulted:
-  // a follow-up flag notifies the note's season's admins, so a note filed
-  // under a season the author doesn't run alerts people who never saw it.
-  // canWriteNote already admits an admin only through an enrolment in one of
-  // their seasons, so there is always one to default to. LEADER, MENTOR and
-  // SUPER keep v1's rule (canWriteNote, permissions.ts:405-427).
+  // An ADMIN or LEADER files notes only under seasons they may read, explicit or
+  // defaulted: they couldn't read a note filed anywhere else, and a follow-up flag
+  // notifies the note's season's admins, so it would alert people who never saw
+  // it. canWriteNote already admits them only through such an enrolment, so there
+  // is always one to default to. MENTOR and SUPER keep v1's rule (canWriteNote,
+  // permissions.ts:405-427).
   const adminSeasons = user.role === "ADMIN" ? user.seasonAdminIds : null;
+  const roster = staffRosterWhere(user);
   let seasonId: number | null = null;
   if (parsed.data.seasonId !== undefined) {
     if (adminSeasons && !adminSeasons.includes(parsed.data.seasonId)) return forbidden(res);
@@ -186,16 +188,17 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
       where: {
         studentUserId_seasonId: { studentUserId, seasonId: parsed.data.seasonId },
       },
-      select: { seasonId: true },
+      select: { seasonId: true, groupId: true },
     });
     if (!enrollment) {
       return apiError(res, "season_not_enrolled", "That student is not enrolled in that season.", 400);
     }
+    if (!canReadEnrollmentHistory(user, enrollment)) return forbidden(res);
     seasonId = enrollment.seasonId;
-  } else if (adminSeasons) {
-    // Newest enrolment in a season this admin runs, an ACTIVE one first.
+  } else if (roster) {
+    // Newest enrolment on this caller's roster, an ACTIVE one first.
     const enrolments = await db.seasonEnrollment.findMany({
-      where: { studentUserId, seasonId: { in: adminSeasons } },
+      where: { studentUserId, ...roster },
       orderBy: { enrolledAt: "desc" },
       select: { seasonId: true, status: true },
     });

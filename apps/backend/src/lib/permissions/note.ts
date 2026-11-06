@@ -2,6 +2,7 @@ import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { isMentor, isSuper } from "../rbac";
+import { readableSeasonIds } from "../queries/students/history";
 import { canViewStudent, staffRosterIncludes } from "./student";
 
 /**
@@ -53,11 +54,35 @@ export function noteVisibilityWhere(user: SessionUser): Prisma.EngagementNoteWhe
 }
 
 /**
+ * The season rule on one student's notes, beside `noteVisibilityWhere`. Staff read
+ * nothing filed under a season they don't serve in now, not even what they wrote
+ * themselves. A note with no season keeps today's rules, and SUPER and MENTOR read
+ * every season.
+ */
+export async function noteSeasonWhere(
+  user: SessionUser,
+  studentUserId: number,
+): Promise<Prisma.EngagementNoteWhereInput> {
+  if (isSuper(user) || isMentor(user)) return {};
+  return {
+    OR: [{ seasonId: null }, { seasonId: { in: await readableSeasonIds(user, studentUserId) } }],
+  };
+}
+
+async function noteSeasonReadable(
+  user: SessionUser,
+  note: { studentUserId: number; seasonId: number | null },
+): Promise<boolean> {
+  if (note.seasonId === null || isSuper(user) || isMentor(user)) return true;
+  return (await readableSeasonIds(user, note.studentUserId)).includes(note.seasonId);
+}
+
+/**
  * May this caller read this specific note?
  *
- * Both gates, in order: the visibility rule on the note, then canViewStudent on
- * its subject. v1 had these as two independent implicit checks neither of which
- * knew about the other (R39), each called by hand in a page.
+ * Every gate, in order: the visibility rule on the note, then canViewStudent on
+ * its subject, then the season rule. v1 had the first two as independent implicit
+ * checks neither of which knew about the other (R39), each called by hand in a page.
  */
 export async function canViewNote(user: SessionUser, noteId: number): Promise<boolean> {
   const scope = noteVisibilityWhere(user);
@@ -65,28 +90,31 @@ export async function canViewNote(user: SessionUser, noteId: number): Promise<bo
 
   const note = await db.engagementNote.findFirst({
     where: { AND: [{ id: noteId }, scope] },
-    select: { studentUserId: true },
+    select: { studentUserId: true, seasonId: true },
   });
   if (!note) return false;
-  return canViewStudent(user, note.studentUserId);
+  if (!(await canViewStudent(user, note.studentUserId))) return false;
+  return noteSeasonReadable(user, note);
 }
 
 /**
- * May this caller edit this note? Author equality, and nothing else.
+ * May this caller edit this note? Author equality, in a season they can still read.
  *
  * SUPER is deliberately NOT exempt (spec R23, R28, §4 item 5). For a pastoral
  * record written by a named member of staff, "only the person who wrote it may
  * change what it says" is a defensible property and it is what v1 implements.
  * Note that this makes edit strictly narrower than view — do not derive one
- * from the other.
+ * from the other. It stays narrower through the season rule: a season the author
+ * no longer serves in hides the note from them, so they can't rewrite it either.
  */
 export async function canEditNote(user: SessionUser, noteId: number): Promise<boolean> {
   const note = await db.engagementNote.findUnique({
     where: { id: noteId },
-    select: { authorUserId: true },
+    select: { authorUserId: true, studentUserId: true, seasonId: true },
   });
   if (!note) return false;
-  return note.authorUserId === user.userId;
+  if (note.authorUserId !== user.userId) return false;
+  return noteSeasonReadable(user, note);
 }
 
 /**

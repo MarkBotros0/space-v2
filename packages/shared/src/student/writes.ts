@@ -61,11 +61,10 @@ export type CreateEnrollmentBody = z.output<typeof createEnrollmentRequestSchema
 export const updateEnrollmentRequestSchema = z
   .object({
     /**
-     * The only two transitions that exist, both out of ACTIVE (R48–R50).
-     * ACTIVE is deliberately not accepted: no un-drop, no re-activate — the
-     * only v1 path that ever resurrected a WITHDRAWN enrollment was the group
-     * form's delete-and-recreate, the most damaging defect in the domain
-     * (D2), and v2's group writes already refuse to touch status.
+     * Both out of ACTIVE (R48–R50). The server answers COMPLETED with 409
+     * `use_end_season`: finishing one student alone skips pass/fail. ACTIVE is
+     * deliberately not accepted: a drop is undone only by the super-only restore
+     * below, never through this body or the group writes (D2).
      */
     status: z.enum(["WITHDRAWN", "COMPLETED"]),
     dropReason: emptyToNull(500),
@@ -75,3 +74,7 @@ export const updateEnrollmentRequestSchema = z
     message: "A drop reason only accompanies a withdrawal.",
   });
 export type UpdateEnrollmentBody = z.output<typeof updateEnrollmentRequestSchema>;
+
+/** `POST /students/:id/enrollments/:seasonId/restore`: `override` lets a blocked person back. */
+export const restoreEnrollmentRequestSchema = z.object({ override: z.boolean().optional() }).strict();
+export type RestoreEnrollmentBody = z.infer<typeof restoreEnrollmentRequestSchema>;

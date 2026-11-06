@@ -7,7 +7,8 @@ import type {
 
 import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
-import { currentMembershipSelect } from "./current-group";
+import { canReadAllStudents } from "../../rbac";
+import { CURRENT_MEMBERSHIP_ORDER, currentMembershipSelect } from "./current-group";
 import { attendancePctByEnrollment, canReadEnrollmentHistory } from "./history";
 
 export type StudentDetailView = "public" | "private" | "internal";
@@ -84,15 +85,13 @@ export async function loadStudentDetail(
     },
   });
 
-  // LEADER sees only the rows naming one of their groups (§7's "scoped
-  // season rows"); every other admitted role sees the full history.
-  const scoped =
-    user.role === "LEADER"
-      ? enrollments.filter((e) => e.groupId !== null && user.groupLeaderIds.includes(e.groupId))
-      : enrollments;
+  // Staff see only the seasons they serve in now (§7's "scoped season rows", and
+  // the spec's "What people can see of earlier seasons"). A person's own view and
+  // SUPER's and MENTOR's hold every season.
+  const seesAll = user.userId === studentUserId || canReadAllStudents(user);
+  const scoped = seesAll ? enrollments : enrollments.filter((e) => canReadEnrollmentHistory(user, e));
 
-  // REG-83: the percentage is a staff figure. The subject's own view carries
-  // null, and so does any season outside the caller's attendance scope.
+  // REG-83: the percentage is a staff figure, so the subject's own view carries null.
   const pctByEnrollment =
     view === "private"
       ? new Map<number, number>()
@@ -119,18 +118,30 @@ export async function loadStudentDetail(
     attendancePct: pctByEnrollment.get(e.id) ?? null,
   }));
 
+  // The advisory current group has the same limit: staff get the newest one in
+  // a season they may read, never a group from another season.
+  const currentGroup = seesAll
+    ? (row.groupStudentMemberships[0]?.group ?? null)
+    : ((
+        await db.groupStudent.findFirst({
+          where: { studentUserId, seasonId: { in: scoped.map((e) => e.seasonId) } },
+          orderBy: CURRENT_MEMBERSHIP_ORDER,
+          select: { group: { select: { id: true, name: true } } },
+        })
+      )?.group ?? null);
+
   const p = row.studentProfile;
   // Derived, never stored: the newest ACTIVE enrolment in a live ACTIVE season
-  // (the same rule as loadScopes).
+  // (the same rule as loadScopes), among the rows this caller may read.
   const current =
-    enrollments.find((e) => e.status === "ACTIVE" && e.season.status === "ACTIVE" && !e.season.deletedAt) ?? null;
+    scoped.find((e) => e.status === "ACTIVE" && e.season.status === "ACTIVE" && !e.season.deletedAt) ?? null;
   const base = {
     id: row.id,
     name: row.name,
     email: row.email,
     avatarPath: row.avatarPath,
     graduationYear: row.graduationYear,
-    currentGroup: row.groupStudentMemberships[0]?.group ?? null,
+    currentGroup,
     enrollments: history,
   };
   const publicProfile = {

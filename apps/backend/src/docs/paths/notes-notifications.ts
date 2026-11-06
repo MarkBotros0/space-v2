@@ -8,7 +8,7 @@ export const notesNotificationsPaths = {
       tags: ["Notes"],
       summary: "Notes about one student, narrowed to what the caller may read",
       description:
-        "Pastoral records \u2014 sensitive. Two gates, in order: the caller must be able to view the student (`canViewStudent`), then the visibility rule is applied **in the query**, so a hidden note never leaves the database. Visibility is **equality**, not a ladder: a LEADER reads LEADERS notes, a MENTOR MENTORS, an ADMIN ADMINS, SUPER reads all, and every author reads their own regardless of visibility. An ADMIN therefore does not read a LEADERS note. A STUDENT receives `403 forbidden` \u2014 never an empty list, even for their own notes. `body` is plain text, not the HTML the column holds. Newest first, cursor-paged (`nextCursor` is opaque; pass it back as `cursor`). Rate-limited; each read writes a server-side audit line (viewer id, student id, count \u2014 never a body).",
+        "Pastoral records \u2014 sensitive. Two gates, in order: the caller must be able to view the student (`canViewStudent`), then the visibility rule is applied **in the query**, so a hidden note never leaves the database. Visibility is **equality**, not a ladder: a LEADER reads LEADERS notes, a MENTOR MENTORS, an ADMIN ADMINS, SUPER reads all, and every author reads their own regardless of visibility. An ADMIN therefore does not read a LEADERS note. An ADMIN or LEADER also reads nothing filed under a season they don't serve in now, their own notes included; a note with no season keeps these rules, and SUPER and MENTOR read every season. A STUDENT receives `403 forbidden` \u2014 never an empty list, even for their own notes. `body` is plain text, not the HTML the column holds. Newest first, cursor-paged (`nextCursor` is opaque; pass it back as `cursor`). Rate-limited; each read writes a server-side audit line (viewer id, student id, count \u2014 never a body).",
       parameters: [
         idParam,
         { name: "cursor", in: "query", schema: { type: "string" } },
@@ -37,7 +37,7 @@ export const notesNotificationsPaths = {
       tags: ["Notes"],
       summary: "Write a note about a student",
       description:
-        "Writer gate, independent of the read path: SUPER and MENTOR for any student; ADMIN if the student is enrolled in a season they administer; LEADER if the student's `SeasonEnrollment.groupId` is a group they lead; STUDENT never (including about themselves). `body` is **plain text in both directions**: the API escapes and paragraph-wraps it for storage (the column is still rendered raw by v1) and strips tags on read, so no live markup is ever stored or returned. `visibility` and `followUpFlagged` are immutable after creation. `authorUserId` always comes from the session. `seasonId` is optional; omitted, it defaults to the student's most recent ACTIVE enrollment, and when given it must be a season the student is enrolled in (`400 season_not_enrolled`). A flagged note notifies that season's admins (`MENTOR_FOLLOWUP`), only while the season is DRAFT or ACTIVE: former staff are never told about a student of a finished season; the notification **deliberately carries no excerpt of the note** (title and link only), and a notification failure never fails the write.",
+        "Writer gate, independent of the read path: SUPER and MENTOR for any student; ADMIN if the student is enrolled in a season they administer; LEADER if the student's `SeasonEnrollment.groupId` is a group they lead; STUDENT never (including about themselves). `body` is **plain text in both directions**: the API escapes and paragraph-wraps it for storage (the column is still rendered raw by v1) and strips tags on read, so no live markup is ever stored or returned. `visibility` and `followUpFlagged` are immutable after creation. `authorUserId` always comes from the session. `seasonId` is optional; omitted, it defaults to the student's most recent ACTIVE enrollment, and when given it must be a season the student is enrolled in (`400 season_not_enrolled`). An ADMIN or LEADER files only under a season they serve in now: a named season outside that is 403, and the default is their newest enrollment of the student there, an ACTIVE one first. A flagged note notifies that season's admins (`MENTOR_FOLLOWUP`), only while the season is DRAFT or ACTIVE: former staff are never told about a student of a finished season; the notification **deliberately carries no excerpt of the note** (title and link only), and a notification failure never fails the write.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -74,7 +74,7 @@ export const notesNotificationsPaths = {
       tags: ["Notes"],
       summary: "Correct a note's body (author only)",
       description:
-        "Author equality and nothing else: **SUPER is not exempt**. Body only \u2014 `visibility`, `followUpFlagged` and `seasonId` are immutable, and extra fields are ignored. The body has the same 2\u201320000 bound as create (v1 validated nothing). `body` is plain text in both directions. The response's `edited` becomes true.",
+        "Author equality: **SUPER is not exempt**. An ADMIN or LEADER can't edit a note filed under a season they no longer serve in (403), as they can't read it. Body only \u2014 `visibility`, `followUpFlagged` and `seasonId` are immutable, and extra fields are ignored. The body has the same 2\u201320000 bound as create (v1 validated nothing). `body` is plain text in both directions. The response's `edited` becomes true.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -275,7 +275,7 @@ export const notesNotificationsPaths = {
       tags: ["Notes"],
       summary: "Notes the caller wrote",
       description:
-        "Open to every authoring role (SUPER, ADMIN, LEADER, MENTOR); a STUDENT receives `403 forbidden`. Narrowed by author equality in the query. Optional `studentId` filters to one student. `body` is plain text. Cursor-paged, newest first. Rate-limited.",
+        "Open to every authoring role (SUPER, ADMIN, LEADER, MENTOR); a STUDENT receives `403 forbidden`. Narrowed by author equality in the query, and for an ADMIN or LEADER to notes with no season or in a season they serve in now. Optional `studentId` filters to one student. `body` is plain text. Cursor-paged, newest first. Rate-limited.",
       parameters: [
         { name: "studentId", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "cursor", in: "query", schema: { type: "string" } },

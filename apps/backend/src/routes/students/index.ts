@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { requireAuth } from "../../middleware/require-auth";
-import { createEnrollment, updateEnrollment } from "./enrollments";
+import { createEnrollment, restoreEnrollment, updateEnrollment } from "./enrollments";
 import { deleteStudent, graduateStudent } from "./lifecycle";
 import { createStudent, updateStudent } from "./profile";
 import {
@@ -28,5 +28,6 @@ studentsRouter.post("/", createStudent);
 studentsRouter.patch("/:id", updateStudent);
 studentsRouter.post("/:id/enrollments", createEnrollment);
 studentsRouter.patch("/:id/enrollments/:seasonId", updateEnrollment);
+studentsRouter.post("/:id/enrollments/:seasonId/restore", restoreEnrollment);
 studentsRouter.post("/:id/graduate", graduateStudent);
 studentsRouter.delete("/:id", deleteStudent);

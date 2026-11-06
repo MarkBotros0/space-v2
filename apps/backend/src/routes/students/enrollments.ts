@@ -7,17 +7,19 @@ import { markSessionsStale } from "../../lib/auth/session-validity";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
-import { isAdminOfSeason } from "../../lib/rbac";
+import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import {
   isSeasonFinished,
   readSeatSeason,
   refusalStatus,
+  restoreStudentSeat,
   seatStudents,
   type SeatRefusal,
 } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import {
   createEnrollmentRequestSchema,
+  restoreEnrollmentRequestSchema,
   updateEnrollmentRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
@@ -89,12 +91,13 @@ async function enrollOne(
 }
 
 /**
- * The enrollment state machine's only two transitions, both out of ACTIVE
- * (R48–R50): → WITHDRAWN (drop, with optional reason) and → COMPLETED.
+ * Dropping: ACTIVE to WITHDRAWN (R48–R50), with an optional reason.
  * Addressed by (student, season) — the natural unique key — rather than a
  * bare enrollment id: the bare-id shape is exactly what let v1's document
  * delete lose its row-scoped gate unnoticed (D5's lesson, applied here).
- * The row is transitioned in place, never deleted, never resurrected.
+ * The row is transitioned in place, never deleted. COMPLETED is refused for
+ * everyone, before anything is read: finishing one student alone would skip
+ * pass/fail, so End season and graduation are the only ways to complete a row.
  */
 export async function updateEnrollment(req: Request, res: Response) {
   const user = requireUser(req);
@@ -106,6 +109,9 @@ export async function updateEnrollment(req: Request, res: Response) {
 
   const parsed = updateEnrollmentRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid enrollment body.", 400);
+  if (parsed.data.status === "COMPLETED") {
+    return apiError(res, "use_end_season", "Students finish a season when it ends. End the season to set results.", 409);
+  }
 
   // R64's gate, moved BEFORE the lookup: v1 fetched the enrollment first and
   // gated second, so a refused caller still learned whether an arbitrary id
@@ -118,28 +124,47 @@ export async function updateEnrollment(req: Request, res: Response) {
   });
   if (!enrollment) return apiError(res, "not_found", "Enrollment not found.", 404);
   if (enrollment.status !== "ACTIVE") {
-    // R49 (drop refuses non-ACTIVE) generalised to both transitions; there
-    // is no path out of a terminal state (R50).
-    return apiError(res, "not_active", "Only an active enrollment can be completed or dropped.", 409);
+    // R49: only an active row can be dropped; a restore is the one way back (R50).
+    return apiError(res, "not_active", "Only an active enrollment can be dropped.", 409);
   }
 
   const updated = await db.$transaction(async (tx) => {
     const row = await tx.seasonEnrollment.update({
       where: { id: enrollment.id },
-      data:
-        parsed.data.status === "WITHDRAWN"
-          ? { status: "WITHDRAWN", droppedAt: new Date(), dropReason: parsed.data.dropReason ?? null }
-          : { status: "COMPLETED", completedAt: new Date() },
+      data: { status: "WITHDRAWN", droppedAt: new Date(), dropReason: parsed.data.dropReason ?? null },
       select: { id: true, status: true },
     });
     // The student's derived current season may have just changed.
     await markSessionsStale(tx, [id]);
     return row;
   });
-  auditLog(
-    parsed.data.status === "WITHDRAWN" ? "enrollment.drop" : "enrollment.complete",
-    user.userId,
-    id,
-  );
+  auditLog("enrollment.drop", user.userId, id);
   return apiOk(res, updated);
+}
+
+/**
+ * `POST /students/:id/enrollments/:seasonId/restore`: SUPER only. A seat write,
+ * so it holds the season's share lock, then the person's, as adding does.
+ */
+export async function restoreEnrollment(req: Request, res: Response) {
+  const user = requireUser(req);
+  if (!isSuper(user)) return apiError(res, "forbidden", "Only a super admin can bring a student back.", 403);
+  const id = parseId(req.params.id);
+  const seasonId = parseId(req.params.seasonId);
+  if (id === null || seasonId === null) {
+    return apiError(res, "bad_request", "Invalid student or season id.", 400);
+  }
+  const parsed = restoreEnrollmentRequestSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return apiError(res, "bad_request", "Invalid restore body.", 400);
+
+  const outcome = await db.$transaction(async (tx) => {
+    const season = await readSeatSeason(tx, seasonId);
+    if (!season) return { code: "not_found", message: "Season not found." };
+    if (isSeasonFinished(season)) return { code: "season_finished", message: "This season has finished." };
+    return restoreStudentSeat(tx, season, id, { id: user.userId, override: parsed.data.override ?? false });
+  });
+  if ("code" in outcome) return apiError(res, outcome.code, outcome.message, refusalStatus(outcome));
+
+  auditLog("enrollment.restore", user.userId, id, { season: seasonId, dropReason: outcome.previousDropReason });
+  return apiOk(res, { id: outcome.id, status: outcome.status });
 }

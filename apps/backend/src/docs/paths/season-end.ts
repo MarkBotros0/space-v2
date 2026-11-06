@@ -165,4 +165,48 @@ export const seasonEndPaths = {
       },
     },
   },
+
+  "/api/v1/seasons/{id}/graduate": {
+    post: {
+      tags: ["Seasons"],
+      summary: "Graduate several people from a finished season (SUPER only)",
+      description:
+        "All or nothing, in one transaction, under each person's row lock. The season must be COMPLETED or ARCHIVED, else 409 `season_not_finished`. Each person must be an active student account, not yet graduated, and have an enrolment in this season that isn't a drop; one refusal graduates nobody: 409 `people_unavailable`, whose message names the first and counts the rest (`Mina wasn't in this season, and 2 others can't graduate`). Each person graduates exactly as `POST /students/{id}/graduate` does: no pass result needed, any live enrolment elsewhere is completed with no result, and sessions are marked stale. This season's rows don't change. Writes one server-side audit line per person (ids only).",
+      parameters: [idParam],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              required: ["userIds", "graduationYear"],
+              properties: {
+                userIds: { type: "array", items: { type: "integer", minimum: 1 }, minItems: 1, maxItems: 250, uniqueItems: true },
+                graduationYear: { type: "integer", minimum: 1990, description: "Up to the current year, evaluated per request." },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            required: ["graduated", "graduationYear"],
+            properties: {
+              graduated: { type: "array", items: { type: "integer" } },
+              graduationYear: { type: "integer" },
+            },
+          },
+          "Everyone graduated.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`season_not_finished` or `people_unavailable`."),
+      },
+    },
+  },
 };

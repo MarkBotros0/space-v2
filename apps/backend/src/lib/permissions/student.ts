@@ -1,31 +1,38 @@
 import { db } from "../../db/client";
-import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { isMentor, isSuper } from "../rbac";
 
 /**
- * Is this student on the caller's staff roster, ever?
+ * The rows of a live season the caller serves in, as a `where` that fits both
+ * SeasonEnrollment and GroupStudent: an ADMIN's seasons, a LEADER's groups. The
+ * claims hold only DRAFT and ACTIVE seasons, so a finished one has already gone.
+ * Null for SUPER, MENTOR and STUDENT, who have no staff roster.
+ */
+export function staffRosterWhere(
+  user: SessionUser,
+): { seasonId: { in: number[] } } | { groupId: { in: number[] } } | null {
+  if (user.role === "ADMIN") return { seasonId: { in: user.seasonAdminIds } };
+  if (user.role === "LEADER") return { groupId: { in: user.groupLeaderIds } };
+  return null;
+}
+
+/**
+ * Is this student on the caller's staff roster in a season they serve in now?
  *
  * ADMIN: enrolled (any status) in a season they administer — SeasonEnrollment,
  * not StudentProfile.activeSeasonId (spec D12, R47/R48). LEADER: an enrolment
  * names a group they lead — SeasonEnrollment.groupId, not GroupStudent (ruling
  * C9, R49/R50). Every other role: false. canViewStudent and canWriteNote both
- * answer through this, so "can see" and "can write about" cannot disagree.
+ * answer through this, so "can see" and "can write about" cannot disagree. What
+ * they then see of the student is narrowed to that season: see
+ * canReadEnrollmentHistory.
  */
 export async function staffRosterIncludes(
   user: SessionUser,
   studentUserId: number,
 ): Promise<boolean> {
-  let roster: Prisma.SeasonEnrollmentWhereInput;
-  if (user.role === "ADMIN") {
-    if (user.seasonAdminIds.length === 0) return false;
-    roster = { seasonId: { in: user.seasonAdminIds } };
-  } else if (user.role === "LEADER") {
-    if (user.groupLeaderIds.length === 0) return false;
-    roster = { groupId: { in: user.groupLeaderIds } };
-  } else {
-    return false;
-  }
+  const roster = staffRosterWhere(user);
+  if (!roster) return false;
   const enrollment = await db.seasonEnrollment.findFirst({
     where: { studentUserId, ...roster },
     select: { id: true },

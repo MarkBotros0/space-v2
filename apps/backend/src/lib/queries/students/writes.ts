@@ -140,3 +140,37 @@ export async function enrollStudentsInSeason(
   });
   await markSessionsStale(tx, rows.map((r) => r.studentUserId));
 }
+
+export type GraduationOutcome = "not_found" | "already_graduated" | { enrollmentsCompleted: number };
+
+/**
+ * One person's graduation, as `POST /students/:id/graduate` and a season's bulk
+ * graduation both do it: sets graduationYear (the alumnus marker; role stays
+ * STUDENT, R57), completes EVERY ACTIVE enrolment with no result (R48/R60), and
+ * ends live access tokens so the new claims are picked up. Terminal enrolments
+ * are history and aren't touched. Call it after `lockPeople`.
+ */
+export async function graduatePerson(
+  tx: Prisma.TransactionClient,
+  id: number,
+  graduationYear: number,
+): Promise<GraduationOutcome> {
+  const student = await tx.user.findFirst({
+    where: { id, role: "STUDENT", deletedAt: null },
+    select: { graduationYear: true },
+  });
+  if (!student) return "not_found";
+  // Guarded write: of two concurrent graduations exactly one matches
+  // `graduationYear: null`; the other sees count 0 and is refused.
+  const marked = await tx.user.updateMany({
+    where: { id, graduationYear: null },
+    data: { graduationYear },
+  });
+  if (marked.count === 0) return "already_graduated";
+  const completed = await tx.seasonEnrollment.updateMany({
+    where: { studentUserId: id, status: "ACTIVE" },
+    data: { status: "COMPLETED", completedAt: new Date() },
+  });
+  await markSessionsStale(tx, [id]);
+  return { enrollmentsCompleted: completed.count };
+}

@@ -180,9 +180,9 @@ describe("GET /api/v1/students/:id — per-enrolment attendance percentage (REG-
     }
   });
 
-  it("scopes the percentage like the rows: admin only for their season, leader only their group's", async () => {
+  it("scopes the percentage with the rows: admin only their season, leader only their group's", async () => {
     const admin = await get(`/api/v1/students/${s1}`, adminToken);
-    expect(pctBySeason(admin)).toEqual({ [seasonAId]: 50, [seasonBId]: null });
+    expect(pctBySeason(admin)).toEqual({ [seasonAId]: 50 });
     const leader = await get(`/api/v1/students/${s1}`, leaderToken);
     expect(pctBySeason(leader)).toEqual({ [seasonAId]: 50 });
   });

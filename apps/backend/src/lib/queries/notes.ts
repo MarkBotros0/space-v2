@@ -5,8 +5,10 @@ import { htmlToPlainText } from "../../../../../packages/shared/src/index";
 
 import { db } from "../../db/client";
 import { deriveRoles } from "../auth/scopes";
+import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
-import { noteVisibilityWhere } from "../permissions";
+import { noteSeasonWhere, noteVisibilityWhere } from "../permissions";
+import { isMentor, isSuper } from "../rbac";
 
 /**
  * The row shape both list functions select. Kept in one place so the two
@@ -118,7 +120,7 @@ export async function listNotesForStudent(
   if (scope === null) return null;
 
   const rows = await db.engagementNote.findMany({
-    where: { AND: [{ studentUserId }, scope] },
+    where: { AND: [{ studentUserId }, scope, await noteSeasonWhere(user, studentUserId)] },
     // createdAt is the domain's ordering key (R39) and the head of the
     // [studentUserId, createdAt] index; id breaks ties so the cursor is stable.
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -164,6 +166,18 @@ async function toAuthoredPage(
   };
 }
 
+/** `noteSeasonWhere` across students: a season the author serves in now, or none. */
+function authoredSeasonWhere(user: SessionUser): Prisma.EngagementNoteWhereInput {
+  if (isSuper(user) || isMentor(user)) return {};
+  return {
+    OR: [
+      { seasonId: null },
+      { seasonId: { in: user.seasonAdminIds } },
+      { season: { groups: { some: { id: { in: user.groupLeaderIds } } } } },
+    ],
+  };
+}
+
 /**
  * Notes THIS caller wrote, across students.
  *
@@ -183,6 +197,7 @@ export async function listAuthoredNotes(
       // own notes page already 404s.
       studentUser: { deletedAt: null },
       ...(query.studentId ? { studentUserId: query.studentId } : {}),
+      ...authoredSeasonWhere(user),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: query.limit + 1,

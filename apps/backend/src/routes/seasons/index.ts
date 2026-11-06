@@ -20,6 +20,7 @@ import {
 import { duplicateSeason } from "./duplicate";
 import { endSeason, getSeasonEndCheck } from "./end";
 import { addSeasonEnrollments, overrideSeasonEnrollment, removeSeasonEnrollment } from "./enrollments";
+import { graduateSeasonPeople } from "./graduate";
 import { getSeasonResults, listOverdueSeasons, updateSeasonResult } from "./results";
 import { listPeopleCandidates } from "./people-candidates";
 import { getSeasonRoster, saveGroupAssignments } from "./roster";
@@ -71,6 +72,7 @@ seasonsRouter.get("/:id/start-check", requireAuth, getSeasonStartCheck);
 seasonsRouter.post("/:id/start", requireAuth, startSeason);
 seasonsRouter.get("/:id/end-check", requireAuth, getSeasonEndCheck);
 seasonsRouter.post("/:id/end", requireAuth, endSeason);
+seasonsRouter.post("/:id/graduate", requireAuth, graduateSeasonPeople);
 seasonsRouter.get("/:id/results", requireAuth, getSeasonResults);
 seasonsRouter.patch("/:id/results/:studentUserId", requireAuth, updateSeasonResult);
 seasonsRouter.get("/:id/roster", requireAuth, getSeasonRoster);

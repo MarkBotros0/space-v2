@@ -6,13 +6,15 @@ import { isAdminOfSeason, isMentor, isSuper } from "../../rbac";
 import { isLate } from "../assignments";
 
 /**
- * Which of a student's enrolments a caller may read attendance and submissions
- * for (REG-83). The same rows each underlying gate admits: SUPER and MENTOR
- * read every season; an ADMIN the seasons they administer (canViewSubmission,
- * attendanceScopeFor); a LEADER the seasons whose ENROLLMENT names one of their
- * groups (ruling C9). Narrower than the detail's enrolment list on purpose — an
- * ADMIN may see that a student attended another season, not what they handed in.
- * A STUDENT has no such surface, themselves included.
+ * Which of a student's enrolments a caller may read anything about (REG-83, and
+ * the spec's "What people can see of earlier seasons"). The same rows each
+ * underlying gate admits: SUPER and MENTOR read every season; an ADMIN the seasons
+ * they administer (canViewSubmission, attendanceScopeFor); a LEADER the seasons
+ * whose ENROLLMENT names one of their groups (ruling C9). Those claims hold only
+ * live seasons, so staff see nothing of a season they don't serve in now, even one
+ * they once ran. The detail's enrolment list and season-scoped notes follow this
+ * too; the people picker is the one exception and reads on its own. A STUDENT has
+ * no such surface here; the detail gives a person their own rows itself.
  */
 export function canReadEnrollmentHistory(
   user: SessionUser,
@@ -25,7 +27,7 @@ export function canReadEnrollmentHistory(
 }
 
 /** The season ids of this student's enrolments the caller may read history for. */
-async function readableSeasonIds(user: SessionUser, studentUserId: number): Promise<number[]> {
+export async function readableSeasonIds(user: SessionUser, studentUserId: number): Promise<number[]> {
   const enrollments = await db.seasonEnrollment.findMany({
     where: { studentUserId },
     select: { seasonId: true, groupId: true },
