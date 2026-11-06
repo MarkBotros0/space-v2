@@ -109,7 +109,7 @@ export const groupPaths = {
       tags: ["Groups"],
       summary: "Edit a group's name, description, leaders and roster",
       description:
-        "Season-admin power. A group's own leader is deliberately refused: leading a group does not confer the right to change who else leads it, and a GroupLeader row is a claim in the token.\n\nThe roster write preserves enrolment history. v1's group form deleted and recreated the SeasonEnrollment, resetting status, enrolledAt, droppedAt and dropReason — a WITHDRAWN student silently returned as ACTIVE with their reason for leaving erased, on a model the schema itself calls append-only. A student removed from the list keeps their enrolment and loses only the group pointer.",
+        "Season-admin power. A group's own leader is deliberately refused: leading a group does not confer the right to change who else leads it, and a GroupLeader row is a claim in the token.\n\nThe roster write preserves enrolment history. v1's group form deleted and recreated the SeasonEnrollment, resetting status, enrolledAt, droppedAt and dropReason — a WITHDRAWN student silently returned as ACTIVE with their reason for leaving erased, on a model the schema itself calls append-only. A student removed from the list keeps their enrolment and loses only the group pointer.\n\nAn absent `leaderIds` or `studentIds` leaves that list alone, so `{ name }` is a rename. A sent `studentIds` replaces the group's live students only: a member who is no longer a live STUDENT (now serving, or a deleted account) can't be listed, so is never removed.",
       parameters: [idParam],
       requestBody: {
         required: true,

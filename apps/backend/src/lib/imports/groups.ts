@@ -9,7 +9,7 @@ import type { GroupImportPreview } from "@space/shared";
 import { z } from "zod";
 
 import { db } from "../../db/client";
-import { seasonParticipant } from "../queries/season-participants";
+import { seasonRosterMember } from "../queries/season-participants";
 import { ImportParseError, type ParsedSheet } from "./delimited";
 import { normaliseEmail } from "./students";
 
@@ -73,7 +73,7 @@ export async function buildGroupImportPreview(
     // assignStudentsToGroups) accepts, so a row that previews `assign` is a
     // row that gets written. A WITHDRAWN enrolment is `no_student`.
     db.seasonEnrollment.findMany({
-      where: { seasonId, ...seasonParticipant, studentUser: { role: "STUDENT", deletedAt: null } },
+      where: { seasonId, ...seasonRosterMember },
       select: { studentUserId: true, groupId: true, studentUser: { select: { email: true } } },
     }),
     db.group.findMany({ where: { seasonId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),

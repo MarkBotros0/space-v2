@@ -170,7 +170,7 @@ export const seasonPaths = {
       tags: ["Groups"],
       summary: "Season roster for bulk group assignment",
       description:
-        "Season-admin only. The season's participants (ACTIVE; in a finished season also COMPLETED; never WITHDRAWN), live students only (C9 — v1 used StudentProfile.activeSeasonId), name-ordered, unpaginated (a season is hundreds of rows; the group form needs full membership).",
+        "Season-admin only. The season's participants (ACTIVE; in a finished season also COMPLETED; never WITHDRAWN) who are live STUDENT users (C9 — v1 used StudentProfile.activeSeasonId), name-ordered, unpaginated (a season is hundreds of rows; the group form needs full membership).",
       parameters: [idParam],
       responses: {
         200: ok(

@@ -1,6 +1,6 @@
 import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
-import { seasonParticipant } from "../season-participants";
+import { seasonRosterMember } from "../season-participants";
 
 export interface GroupWriteInput {
   name: string;
@@ -108,14 +108,14 @@ export async function setGroupStudents(
   // enrolment and lose only the group pointer. Removing the enrolment would
   // discard the fact that they were ever in the season.
   //
-  // The season's participants only: the form's list is built from the same
-  // population (listSeasonRoster), so "not in the list" says something about
-  // them and nothing about a WITHDRAWN member. In a finished season that includes
-  // COMPLETED students, whom the roster now lists, so a Super's rename keeps them
-  // and unticking one takes them out. v1's form only removed the rows it diffed
-  // out of its own list (group-actions.ts:118-131).
+  // Only people the list could have shown (seasonRosterMember, the population
+  // of listSeasonRoster). "Not in the list" says nothing about a WITHDRAWN member,
+  // a former student who now serves or a deleted account, so a rename in a
+  // finished season must leave their group alone: it is their History, their
+  // workbook row and their targeted assignments. v1's form only removed the rows
+  // it diffed out of its own list (group-actions.ts:118-131).
   const removed = await tx.seasonEnrollment.findMany({
-    where: { seasonId, groupId, ...seasonParticipant, studentUserId: { notIn: studentIds } },
+    where: { seasonId, groupId, ...seasonRosterMember, studentUserId: { notIn: studentIds } },
     select: { studentUserId: true },
   });
   const removedIds = removed.map((r) => r.studentUserId);
@@ -156,9 +156,8 @@ async function eligibleStudentIds(
   const rows = await tx.seasonEnrollment.findMany({
     where: {
       seasonId,
-      ...seasonParticipant,
+      ...seasonRosterMember,
       studentUserId: { in: studentIds },
-      studentUser: { role: "STUDENT", deletedAt: null },
     },
     select: { studentUserId: true },
   });

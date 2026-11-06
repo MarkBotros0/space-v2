@@ -12,7 +12,7 @@ import {
 } from "../lib/queries/groups";
 import { seasonParticipant } from "../lib/queries/season-participants";
 import { isAdminOfAnySeason, isAdminOfSeason } from "../lib/rbac";
-import { groupWriteRequestSchema } from "../../../../packages/shared/src/index";
+import { groupUpdateRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";
 
@@ -52,10 +52,15 @@ groupsRouter.patch("/:id", async (req, res) => {
 
   if (!isAdminOfSeason(user, group.seasonId)) return forbidden(res);
 
-  const parsed = groupWriteRequestSchema.safeParse(req.body);
+  const parsed = groupUpdateRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid group body.", 400);
 
-  const refusal = await validateGroupWrite(group.seasonId, parsed.data, id);
+  const { leaderIds, studentIds } = parsed.data;
+  const refusal = await validateGroupWrite(
+    group.seasonId,
+    { ...parsed.data, leaderIds: leaderIds ?? [], studentIds: studentIds ?? [] },
+    id,
+  );
   if (refusal) return apiError(res, refusal.code, refusal.message, 409);
 
   await db.$transaction(async (tx) => {
@@ -63,16 +68,16 @@ groupsRouter.patch("/:id", async (req, res) => {
       where: { id },
       data: { name: parsed.data.name, description: parsed.data.description ?? null },
     });
-    await tx.groupLeader.deleteMany({
-      where: { groupId: id, userId: { notIn: parsed.data.leaderIds } },
-    });
-    if (parsed.data.leaderIds.length > 0) {
-      await tx.groupLeader.createMany({
-        data: parsed.data.leaderIds.map((userId) => ({ groupId: id, userId })),
-        skipDuplicates: true,
-      });
+    if (leaderIds !== undefined) {
+      await tx.groupLeader.deleteMany({ where: { groupId: id, userId: { notIn: leaderIds } } });
+      if (leaderIds.length > 0) {
+        await tx.groupLeader.createMany({
+          data: leaderIds.map((userId) => ({ groupId: id, userId })),
+          skipDuplicates: true,
+        });
+      }
     }
-    await setGroupStudents(tx, group.seasonId, id, parsed.data.studentIds);
+    if (studentIds !== undefined) await setGroupStudents(tx, group.seasonId, id, studentIds);
   });
 
   return apiOk(res, { id });

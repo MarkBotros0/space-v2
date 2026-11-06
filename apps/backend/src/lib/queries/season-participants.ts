@@ -23,3 +23,15 @@ export const seasonParticipant: Prisma.SeasonEnrollmentWhereInput = {
     { status: "COMPLETED", season: { status: { in: ["COMPLETED", "ARCHIVED"] } } },
   ],
 };
+
+/**
+ * Who the group form and the roster grid can list: the participants who are
+ * still live STUDENT users. A former student who now serves, or a deleted
+ * account, keeps their place in a past group's history but can't be picked, so
+ * nothing written from those lists may touch them: "not in the list" says
+ * nothing about someone the list could never show.
+ */
+export const seasonRosterMember: Prisma.SeasonEnrollmentWhereInput = {
+  ...seasonParticipant,
+  studentUser: { role: "STUDENT", deletedAt: null },
+};

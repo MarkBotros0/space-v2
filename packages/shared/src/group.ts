@@ -42,6 +42,16 @@ export const groupWriteRequestSchema = z.object({
 });
 export type GroupWriteRequest = z.infer<typeof groupWriteRequestSchema>;
 
+/**
+ * Editing a group. An absent list means "leave it alone", so `PATCH { name }` is
+ * a rename; only a list that is sent replaces who is in the group.
+ */
+export const groupUpdateRequestSchema = groupWriteRequestSchema.extend({
+  leaderIds: z.array(z.number().int().positive()).max(20).optional(),
+  studentIds: z.array(z.number().int().positive()).max(500).optional(),
+});
+export type GroupUpdateRequest = z.infer<typeof groupUpdateRequestSchema>;
+
 export const groupMemberSchema = z.object({
   id: z.number(),
   name: z.string().nullable(),

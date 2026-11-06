@@ -2,7 +2,7 @@ import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
 import { isMentor, isSuper } from "../../rbac";
 import { groupIdInSeason } from "../enrollment";
-import { seasonParticipant } from "../season-participants";
+import { seasonParticipant, seasonRosterMember } from "../season-participants";
 
 export interface GroupListRow {
   id: number;
@@ -157,7 +157,7 @@ export interface SeasonRosterRow {
  */
 export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRow[]> {
   const enrolments = await db.seasonEnrollment.findMany({
-    where: { seasonId, ...seasonParticipant, studentUser: { role: "STUDENT", deletedAt: null } },
+    where: { seasonId, ...seasonRosterMember },
     select: {
       studentUserId: true,
       groupId: true,
