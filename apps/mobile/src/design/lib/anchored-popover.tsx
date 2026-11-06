@@ -5,7 +5,7 @@
  * when there is no room below, and closes on an outside press.
  */
 import { type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Modal, Platform, Pressable, StatusBar, useWindowDimensions, View, type ViewInstance } from "react-native";
+import { Modal, Pressable, useWindowDimensions, View, type ViewInstance } from "react-native";
 
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
@@ -57,14 +57,14 @@ export function useAnchor() {
   const [rect, setRect] = useState<Rect | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const once = useCallback(() => {
-    // On Android, measureInWindow reports y below the status bar while the
-    // popover's modal (edge-to-edge) draws from the top of the screen.
-    const statusBar = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
+    // The app is edge-to-edge, so a window position is already a position in the popover's
+    // modal, which draws from the top of the screen. Adding the status bar here put every
+    // popup one status bar below its trigger.
     ref.current?.measureInWindow((x, y, width, height) => {
       setRect((prev) =>
-        prev && prev.x === x && prev.y === y + statusBar && prev.width === width && prev.height === height
+        prev && prev.x === x && prev.y === y && prev.width === width && prev.height === height
           ? prev
-          : { x, y: y + statusBar, width, height },
+          : { x, y, width, height },
       );
     });
   }, []);
