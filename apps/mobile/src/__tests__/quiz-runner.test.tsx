@@ -313,3 +313,33 @@ describe("quiz runner", () => {
     });
   });
 });
+
+
+describe("quiz runner, read-only (a finished season)", () => {
+  it("says You didn't take this quiz. with no Start on an untaken quiz", async () => {
+    get.mockResolvedValue({ data: { data: detail({ readOnly: true }) } });
+    renderWithProviders(<QuizDetailScreen />);
+    expect(await screen.findByText("You didn't take this quiz.")).toBeTruthy();
+    expect(screen.queryByText("Start quiz")).toBeNull();
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it("does not offer to continue an attempt left in progress", async () => {
+    get.mockResolvedValue({
+      data: { data: detail({ readOnly: true, attemptId: 9, attemptNumber: 1, status: "IN_PROGRESS" }) },
+    });
+    renderWithProviders(<QuizDetailScreen />);
+    expect(await screen.findByText("You didn't finish this quiz.")).toBeTruthy();
+    expect(screen.queryByText("Submit")).toBeNull();
+    expect(screen.queryByText("Start quiz")).toBeNull();
+  });
+
+  it("still shows the result of a graded quiz", async () => {
+    get.mockResolvedValue({
+      data: { data: detail({ readOnly: true, attemptId: 9, attemptNumber: 1, status: "GRADED", totalScore: 6 }) },
+    });
+    renderWithProviders(<QuizDetailScreen />);
+    expect(await screen.findByText("Your quiz has been graded.")).toBeTruthy();
+    expect(screen.getByText("Score")).toBeTruthy();
+  });
+});

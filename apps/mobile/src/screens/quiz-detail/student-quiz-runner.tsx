@@ -24,6 +24,16 @@ export function StudentRunner({ id }: { id: number }) {
     );
   }
 
+  if (data.readOnly && data.status !== "GRADED" && data.status !== "SUBMITTED") {
+    // A finished season: nothing to start, and an attempt left open can't be resumed.
+    return (
+      <Screen {...quizTitleProps(data)}>
+        <Text variant="subhead" className="rounded-group bg-surface p-5 text-muted-foreground">
+          {data.status === "IN_PROGRESS" ? "You didn't finish this quiz." : "You didn't take this quiz."}
+        </Text>
+      </Screen>
+    );
+  }
   if (data.status === "IN_PROGRESS") return <AttemptForm detail={data} id={id} />;
   if (data.status === "GRADED" || data.status === "SUBMITTED") return <ResultView detail={data} />;
 

@@ -43,7 +43,7 @@ describe("HistoryScreen", () => {
     expect(screen.getByText("History")).toBeTruthy();
     // Status chips, each a spoken word; the percentage is neutral, never a warning.
     expect(screen.getByLabelText("50% attended")).toBeTruthy();
-    expect(screen.getByLabelText("Participated")).toBeTruthy();
+    expect(screen.getByLabelText("Completed")).toBeTruthy();
     expect(screen.getByText("Seasons you've participated in")).toBeTruthy();
     expect(screen.getByText(/Group A1/)).toBeTruthy();
     expect(screen.queryByText("Opening night")).toBeNull();

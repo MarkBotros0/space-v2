@@ -197,6 +197,8 @@ export const queryKeys = {
     seasonHistory: (activeSeasonId: number | null) =>
       [...queryKeys.me.all, "season-history", { activeSeasonId }] as const,
     season: (seasonId: number | null) => [...queryKeys.me.all, "season", { seasonId }] as const,
+    /** One finished season in full (GET /me/seasons/:seasonId). */
+    seasonRecord: (seasonId: number) => [...queryKeys.me.all, "season-record", { seasonId }] as const,
     attendance: (seasonId: number | null) =>
       [...queryKeys.me.all, "attendance", { seasonId }] as const,
     profile: () => [...queryKeys.me.all, "profile"] as const,

@@ -13,6 +13,9 @@ jest.mock("../lib/format", () => {
   };
 });
 
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
+
 import { AlumniHistory } from "../screens/alumni/alumni-history";
 import { renderWithProviders } from "./helpers/render";
 
@@ -49,12 +52,28 @@ describe("AlumniHistory", () => {
     expect(screen.getByText("The seasons you journeyed through")).toBeTruthy();
   });
 
-  it("shows title, date range, group, attendance and Participated", () => {
+  it("shows title, date range, group, attendance and the outcome in words", () => {
     renderWithProviders(<AlumniHistory query={query()} />);
     expect(screen.getByText("GBV 2025")).toBeTruthy();
     expect(screen.getByText(/Feb 1, 2025 – Jun 30, 2025 · Group A1/)).toBeTruthy();
     expect(screen.getByText("85% attended")).toBeTruthy();
-    expect(screen.getByText("Participated")).toBeTruthy();
+    expect(screen.getByText("Completed")).toBeTruthy();
+    expect(screen.queryByText("Participated")).toBeNull();
+  });
+
+  it.each([
+    ["PASSED", "Passed"],
+    ["NOT_PASSED", "Did not pass"],
+    ["DROPPED", "Did not finish"],
+  ])("says %s as %s", (outcome, label) => {
+    renderWithProviders(<AlumniHistory query={query({ data: [{ ...row, outcome }] })} />);
+    expect(screen.getByText(label)).toBeTruthy();
+  });
+
+  it("opens the finished season page from View your season", () => {
+    renderWithProviders(<AlumniHistory query={query()} />);
+    fireEvent.press(screen.getByText("View your season"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/past-season/[seasonId]", params: { seasonId: "3" } });
   });
 
   it("formats both season dates as calendar days, like Today (not as instants)", () => {

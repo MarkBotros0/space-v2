@@ -55,7 +55,7 @@ function Callout({ tone, children }: { tone: Tone; children: string }) {
  * editable again, so it keeps it. The overdue flag is the server's.
  */
 function DueBanner({ detail, status }: { detail: AssignmentDetail; status: string | null }) {
-  if (detail.dueAt === null || status === "REVIEWED" || status === "SUBMITTED") return null;
+  if (detail.readOnly || detail.dueAt === null || status === "REVIEWED" || status === "SUBMITTED") return null;
   if (detail.isOverdue) {
     return <Callout tone="bad">Past due — submitted work will be marked late.</Callout>;
   }
@@ -65,6 +65,8 @@ function DueBanner({ detail, status }: { detail: AssignmentDetail; status: strin
 
 function FilesGroup({ detail, sub }: { detail: AssignmentDetail; sub: SubmissionDetail }) {
   if (detail.maxFileSizeMb === null) return null;
+  // A finished season can't attach anything, so the upload note would only mislead.
+  const note = !sub.canUploadFiles && !detail.readOnly;
   return (
     <View className="gap-2">
       {sub.files.length > 0 ? (
@@ -87,7 +89,7 @@ function FilesGroup({ detail, sub }: { detail: AssignmentDetail; sub: Submission
       ) : (
         <ListSectionHeader>{`Files (max ${detail.maxFileSizeMb} MB each)`}</ListSectionHeader>
       )}
-      {!sub.canUploadFiles ? (
+      {note ? (
         <Text variant="caption" className="text-muted-foreground">
           This assignment expects a file, but attachments aren't available in the app yet.
         </Text>
@@ -113,11 +115,21 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
       ? {
           text,
           serverText: query.data.text ?? "",
-          editable: query.data.status === "DRAFT" || query.data.status === "RETURNED",
+          editable: !detail.readOnly && (query.data.status === "DRAFT" || query.data.status === "RETURNED"),
         }
       : null,
   );
 
+  if (summary === null && detail.readOnly) {
+    return {
+      body: (
+        <Text variant="subhead" className="rounded-group bg-surface p-4 text-muted-foreground">
+          You didn't submit this.
+        </Text>
+      ),
+      footer: undefined,
+    };
+  }
   if (summary === null) {
     return {
       body: (
@@ -150,7 +162,8 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   // Local edits win once typing starts; before that, the server's text shows.
   const value = text ?? sub.text ?? "";
   // v2 keeps DRAFT/RETURNED as the editable states (B2-16).
-  const editable = sub.status === "DRAFT" || sub.status === "RETURNED";
+  // A finished season never edits: the text shows as it was left.
+  const editable = !detail.readOnly && (sub.status === "DRAFT" || sub.status === "RETURNED");
   // v1 student-submission-form.tsx:158 — and the server's 400 empty_submission rule.
   const nothingToSubmit = value.trim() === "" && sub.files.length === 0;
   const run = (submit: boolean) => {

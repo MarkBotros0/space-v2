@@ -1,10 +1,13 @@
 /**
  * Alumni History on grouped rows, and the `SeasonGroup` that
- * design/students/season-history.tsx reuses: v1 always says "sessions", every row
- * is "Participated" (R40), and only attendance % and curriculum are shown (R34,
- * the contract is strict, so nothing else reaches this screen).
+ * design/students/season-history.tsx reuses: v1 always says "sessions"; each row
+ * says how the season ended, in words (the outcome, not v1's blanket
+ * "Participated"), and shows attendance % and curriculum. The rest of a season
+ * is one row away, on the finished season page (the history contract is strict,
+ * so nothing else reaches this list).
  */
 import { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { ChevronRight } from "lucide-react-native";
@@ -16,8 +19,9 @@ import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
 import { DURATION, useReducedMotion } from "../../design/motion";
-import { EmptyState, GroupedList, StatusChip, Text } from "../../design/ui";
+import { EmptyState, GroupedList, ListRow, StatusChip, Text } from "../../design/ui";
 import { formatDayKey, formatSeasonDay } from "../../lib/format";
+import { outcomeChip } from "../past-season/season-overview";
 
 iconWithClassName(ChevronRight);
 
@@ -54,6 +58,7 @@ function CurriculumToggle({ count, open, onPress }: { count: number; open: boole
 }
 
 export function SeasonGroup({ row }: { row: SeasonHistoryRow }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const count = row.curriculum.length;
   const rows = [
@@ -64,12 +69,19 @@ export function SeasonGroup({ row }: { row: SeasonHistoryRow }) {
           {`${formatSeasonDay(row.startDate)} – ${formatSeasonDay(row.endDate)}${row.groupName ? ` · ${row.groupName}` : ""}`}
         </Text>
       </View>
-      {/* R40: v1 badges every row "Participated"; the enrollment status is not read. */}
       <View className="flex-row flex-wrap gap-1.5">
         <StatusChip tone="neutral" label={`${row.attendancePct}% attended`} />
-        <StatusChip tone="ok" label="Participated" />
+        <StatusChip {...outcomeChip(row.outcome)} />
       </View>
     </View>,
+    <ListRow
+      key="season"
+      title="View your season"
+      chevron
+      onPress={() =>
+        router.push({ pathname: "/past-season/[seasonId]", params: { seasonId: String(row.seasonId) } })
+      }
+    />,
   ];
   if (count > 0) {
     rows.push(<CurriculumToggle key="toggle" count={count} open={open} onPress={() => setOpen((o) => !o)} />);

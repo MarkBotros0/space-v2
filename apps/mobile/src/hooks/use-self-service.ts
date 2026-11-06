@@ -10,9 +10,11 @@ import {
   myProfileResponseSchema,
   mySeasonResponseSchema,
   seasonHistoryResponseSchema,
+  seasonRecordSchema,
   type MyAttendanceResponse,
   type MyProfile,
   type MySeason,
+  type SeasonRecord,
   type SeasonHistoryRow,
   type UpdateOwnProfileInput,
 } from "@space/shared";
@@ -38,6 +40,17 @@ export function useSeasonHistory(
       return seasonHistoryResponseSchema.parse(res.data.data).seasons;
     },
     enabled,
+  });
+}
+
+/** One finished season, read-only. A 404 means the caller has no finished enrolment there. */
+export function useSeasonRecord(seasonId: number): UseQueryResult<SeasonRecord> {
+  return useQuery({
+    queryKey: queryKeys.me.seasonRecord(seasonId),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/me/seasons/${seasonId}`);
+      return seasonRecordSchema.parse(res.data.data.record);
+    },
   });
 }
 

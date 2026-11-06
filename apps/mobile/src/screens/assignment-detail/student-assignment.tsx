@@ -35,7 +35,8 @@ function dateChip(detail: AssignmentDetail, todayOrgDay: string): ChipSpec | nul
 function ChipRow({ detail, todayOrgDay }: { detail: AssignmentDetail; todayOrgDay: string }) {
   const forum = detail.type === "FORUM";
   const sub = detail.mySubmission;
-  const date = dateChip(detail, todayOrgDay);
+  // A finished season has no deadline left to count down to.
+  const date = detail.readOnly ? null : dateChip(detail, todayOrgDay);
   return (
     <View className="gap-1.5">
       <View className="flex-row flex-wrap gap-1.5">
@@ -80,7 +81,7 @@ function StudentAssignment({
       subtitle={subtitle || undefined}
       onRefresh={pull.onRefresh}
       refreshing={pull.refreshing}
-      footer={forum ? undefined : footer}
+      footer={forum && !detail.readOnly ? undefined : footer}
     >
       <View className="gap-4">
         <ChipRow detail={detail} todayOrgDay={dash.data?.todayOrgDay ?? deviceTodayKey()} />
@@ -92,8 +93,10 @@ function StudentAssignment({
             </View>
           </View>
         ) : null}
-        {/* A forum response IS the submission; it can never carry files. */}
-        {forum ? <ForumThread assignmentId={detail.id} /> : body}
+        {/* A forum response IS the submission; it can never carry files. A former
+            student's feed stays closed (the server answers 403), so they get their
+            own response only and the feed is neither read nor drawn. */}
+        {forum && !detail.readOnly ? <ForumThread assignmentId={detail.id} /> : body}
       </View>
     </Screen>
   );

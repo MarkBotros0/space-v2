@@ -29,6 +29,8 @@ describe("deep links land on their own screen (URLs unchanged)", () => {
     ["/season", "screen:/season"],
     ["/calendar", "screen:/calendar"],
     ["/student/1", "screen:/student/[id]"],
+    ["/past-season/5", "screen:/past-season/[seasonId]"],
+    ["/past-season/5/quizzes", "screen:/past-season/[seasonId]/quizzes"],
     ["/students/new", "screen:/students/new"],
     ["/seasons", "screen:/seasons"],
     // Task 12 moved these out of (tabs) onto the stack; their URLs stay.
