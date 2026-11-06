@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+import { Keyboard } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
@@ -116,6 +117,32 @@ it("keeps both verdicts in the pinned bar, so the keyboard can't push Return for
   const bar = within(await screen.findByTestId("sheet-save-bar"));
   expect(bar.getByText("Return for revision")).toBeTruthy();
   expect(bar.getByText("Mark as reviewed")).toBeTruthy();
+});
+
+it("shortens the verdicts beside each other with the keyboard up, so neither truncates at font 1.3", async () => {
+  const listeners: Record<string, ((e: unknown) => void)[]> = {};
+  const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((event: string, cb: never) => {
+    (listeners[event] ??= []).push(cb);
+    return { remove: jest.fn() };
+  }) as unknown as typeof Keyboard.addListener);
+  get.mockResolvedValue({ data: { data: detail } });
+
+  renderStacked(<SubmissionReviewScreen />);
+  fireEvent.press(await screen.findByText("Add feedback"));
+  const bar = within(await screen.findByTestId("sheet-save-bar"));
+  // The keyboard arms Screen's scroll-into-view retries; on real timers one fires
+  // after the environment is gone and fails whichever suite runs next.
+  jest.useFakeTimers();
+  act(() => {
+    for (const cb of listeners.keyboardWillShow ?? listeners.keyboardDidShow ?? []) {
+      cb({ endCoordinates: { height: 300, screenY: 400 } });
+    }
+  });
+  expect(bar.getByText("Return")).toBeTruthy();
+  expect(bar.getByText("Reviewed")).toBeTruthy();
+  screen.unmount();
+  jest.useRealTimers();
+  spy.mockRestore();
 });
 
 it("has exactly one back link: the frame's pinned bar, not an in-content one (R23)", async () => {

@@ -64,12 +64,21 @@ export function FeedbackSheet({
       title={alreadyReviewed ? "Update feedback" : "Add feedback"}
       footer={
         <SheetSaveBar
-          label={alreadyReviewed ? "Update review" : "Mark as reviewed"}
+          label={
+            keyboardOpen
+              ? alreadyReviewed
+                ? "Update"
+                : "Reviewed"
+              : alreadyReviewed
+                ? "Update review"
+                : "Mark as reviewed"
+          }
           onPress={() => submit(false)}
           loading={review.isPending}
           error={error}
-          secondary={{ label: "Return for revision", onPress: () => submit(true), disabled: review.isPending }}
-          // Two stacked buttons leave too little of the field on a small phone with the keyboard up.
+          secondary={{ label: keyboardOpen ? "Return" : "Return for revision", onPress: () => submit(true), disabled: review.isPending }}
+          // Two stacked buttons leave too little of the field on a small phone with the keyboard up, and
+          // side by side the full labels truncate at font 1.3, hence the short ones.
           compact={keyboardOpen}
         />
       }
