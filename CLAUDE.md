@@ -41,17 +41,8 @@ Mobile-first rebuild of JPC Space (`D:\Projects\JPC\jpc-space` is v1 and still r
   compile `packages/shared`). The mobile app never had one: an alias that
   Jest resolves but Metro doesn't would pass tests while breaking the running
   app. Both apps use relative imports — keep it that way.
-- **Always `gh auth switch --user MarkBotros0` before pushing.** `origin` is
-  `MarkBotros0/space-v2`, but this machine has five GitHub accounts in the
-  `gh` keyring and the active one drifts on its own between sessions
-  (`mbotros_effv`, `mark-aigorithm`, ... have all been active at various
-  points). Pushing as the wrong account fails with a misleading
-  `Repository not found` — the repo exists, the active token just can't see
-  it. Put the switch in the **same command** as the push so nothing can
-  change the active account in between:
-  ```
-  gh auth switch --user MarkBotros0 && git push -u origin <branch>
-  ```
+- **Commits are authored as `jesusprojectcommunity`, and pushes go to both
+  remotes.** See "Git" below — a commit by any other author never deploys.
 - **`apps/backend/src/routes/auth.ts` imports `@space/shared` by relative
   path, not the package name.** Because of the same `rootDir: "../.."` setup,
   `tsc` emits this file to `dist/apps/backend/src/routes/auth.js` without
@@ -336,10 +327,51 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
 
 ## Git
 
-`origin` is `MarkBotros0/space-v2`, but this machine has five accounts in the
-`gh` keyring and the active one drifts between sessions. **Always**
-`gh auth switch --user MarkBotros0` in the same command as a push or fetch —
-the wrong account fails with a misleading `Repository not found`.
+Since 2026-11-06 the project lives on the **`jesusprojectcommunity`** account.
+
+- **Remotes.** `jpc` = `jesusprojectcommunity/space-v2` — Vercel deploys the
+  backend from its `main`. `origin` = `MarkBotros0/space-v2`, the old home and
+  PR history, kept as a mirror. Push every `main` change to **both**.
+- **Commit author.** Commits are authored as `jesusprojectcommunity
+  <353095907+jesusprojectcommunity@users.noreply.github.com>`, set in this
+  repo's local git config (every worktree shares it). Don't override it:
+  Vercel's Hobby plan **blocks any deployment whose commit author isn't the
+  account owner** ("the commit author doesn't have permission to create
+  deployments for this project"), and commits by `MarkBotros0` were blocked.
+- **Pushing.** `gh` holds several accounts and the active one drifts; a wrong
+  one fails with a misleading `Repository not found`. Pass the token for the
+  one command rather than switching globally, then mirror as `MarkBotros0`:
+  ```
+  GH_TOKEN=$(gh auth token --hostname github.com --user jesusprojectcommunity) git push jpc HEAD:main
+  gh auth switch --hostname github.com --user MarkBotros0 && git push origin HEAD:main
+  ```
+
+## Deployment (backend on Vercel)
+
+- Vercel project `jesusprojectcommunity/jpc-space-be` (Hobby), production URL
+  **https://jpc-space-be.vercel.app**, root directory `apps/backend` (its
+  `vercel.json` builds from the repo root with pnpm + turbo). A push to `main`
+  on `jpc` deploys production.
+- The old project (`markbotros0`'s Vercel, `https://space-v2-be.vercel.app`)
+  is superseded. **The mobile app still has the old URL built in** until it is
+  rebuilt with the new one.
+- **Database:** Prisma Postgres `prisma-postgres-claret-school` (Postgres 17),
+  copied on 2026-11-06 from the shared Neon database (`ep-cold-mode-…`, the
+  one v1 `jpc-space` ran on) with `pg_dump`/`pg_restore` of `public`; all 34
+  tables' row counts, 63 FKs, 100 indexes, 13 enums and 24 migrations matched.
+  v1 is to be retired (it still writes to Neon until it's stopped, so do a
+  final copy at cut-over). The local `.env` still points at Neon —
+  check the host before running anything that writes.
+- **`DATABASE_URL` on Vercel is the pooled URL** (`@pooled.db.prisma.io`), set
+  by hand. The direct database allows ~50 connections and each serverless
+  instance opens its own pool, so a direct URL runs out under load. The
+  integration's own variables were removed so nothing shadows it.
+- Other vars: `AUTH_SECRET` (new random value, Sensitive), `NODE_ENV=production`,
+  `TRUST_PROXY=1`, `ENABLE_UPLOADS=false`, `MOBILE_APP_SCHEME=spacev2`.
+  `GMAIL_USER`/`GMAIL_APP_PASSWORD` are not set yet, so invite and reset emails
+  don't send.
+- Never `vercel deploy` from a working tree: it uploads untracked files such as
+  `.env`. For a manual deploy, deploy a clean `git archive` export.
 
 ## Docs
 
