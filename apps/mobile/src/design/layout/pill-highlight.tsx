@@ -1,15 +1,18 @@
 import { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
-import { DURATION, SPRING, useReducedMotion } from "../motion";
+import { DURATION, useReducedMotion } from "../motion";
+
+const SLIDE = { duration: DURATION.fast, easing: Easing.out(Easing.cubic) };
 
 export type HighlightTarget = { x: number; width: number } | null;
 
 /**
  * The active tab's highlight: one absolutely positioned view whose translateX
- * and width spring to the measured layout of the active tab. A new target
- * replaces the running spring (interruptible: B then C ends at C). The first
+ * and width slide (150ms ease-out, no spring: the owner found the bounce too
+ * much) to the measured layout of the active tab. A new target replaces the
+ * running slide (interruptible: B then C ends at C). The first
  * measurement, and every one under reduced motion, is a jump. With no target
  * (the focused tab is not in this role's bar: More → My notes) it fades out
  * where it is, so a lit capsule never sits under a tab drawn inactive.
@@ -34,8 +37,8 @@ export function PillHighlight({ target }: { target: HighlightTarget }) {
       x.value = tx;
       width.value = tw;
     } else {
-      x.value = withSpring(tx, SPRING.snappy);
-      width.value = withSpring(tw, SPRING.snappy);
+      x.value = withTiming(tx, SLIDE);
+      width.value = withTiming(tw, SLIDE);
     }
     placed.current = true;
     opacity.value = 1;

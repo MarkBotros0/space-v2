@@ -296,6 +296,16 @@ or changing a screen, run the `ui-sweep` skill (`.claude/skills/ui-sweep/`,
 before calling it done. Sweep flows never save anything. Maestro on Android often misses
 sonner-native toasts, so flows shoot toasts best-effort.
 
+### Motion: keep it restrained (owner, 2026-11-06)
+
+The owner found the tab bar over-animated (springing highlight + bouncing icon).
+Motion is for orientation, not decoration:
+- No springs or overshoot on navigation chrome; a short ease-out
+  (`DURATION.fast`, 150ms) at most. No scale/bounce on icons or tabs.
+- One motion per interaction — don't stack a slide, a scale and a fade on the
+  same tap. No looping or attention-seeking animation.
+- Don't add new animations unless the owner asks; always honour reduced motion.
+
 ### Rules from the UI sweep
 
 One line per class of bug the sweep has found, so the next screen doesn't repeat it.

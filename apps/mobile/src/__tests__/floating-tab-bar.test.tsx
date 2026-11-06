@@ -167,19 +167,20 @@ describe("sliding highlight", () => {
     renderBar("history");
     layoutTab("History", 210);
     expect(highlightTarget()).toEqual({ x: 210, width: 70 });
-    expect(mockWithSpring).not.toHaveBeenCalledWith(210, expect.anything());
+    expect(mockWithTiming).not.toHaveBeenCalledWith(210, expect.anything());
   });
 
-  it("springs the highlight to the pressed tab's x, and jumps under reduced motion", () => {
+  it("slides the highlight to the pressed tab's x with a short timing, never a spring, and jumps under reduced motion", () => {
     renderBar("dashboard");
     layoutTab("Home", 140);
     layoutTab("History", 210);
     fireEvent.press(screen.getByLabelText("History"));
-    expect(mockWithSpring).toHaveBeenCalledWith(210, expect.anything());
+    expect(mockWithTiming).toHaveBeenCalledWith(210, expect.objectContaining({ duration: 150 }));
+    expect(mockWithSpring).not.toHaveBeenCalled();
     setReducedMotionForTests(true);
-    mockWithSpring.mockClear();
+    mockWithTiming.mockClear();
     fireEvent.press(screen.getByLabelText("Home"));
-    expect(mockWithSpring).not.toHaveBeenCalledWith(140, expect.anything());
+    expect(mockWithTiming).not.toHaveBeenCalledWith(140, expect.anything());
   });
 
   it("keeps the latest press when the navigator reports an earlier one, then settles", () => {
