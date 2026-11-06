@@ -23,6 +23,13 @@ All paths below are relative to the server root. Everything except
 | GET | `/api/v1/seasons/:id/admins` | SUPER only. Not a port — v1 had no way to create `SeasonAdmin` rows. |
 | POST | `/api/v1/seasons/:id/admins` | SUPER only. `{ userId }`; ADMIN-role, active users only; idempotent. |
 | DELETE | `/api/v1/seasons/:id/admins/:userId` | SUPER only. Idempotent. Add and remove revoke the user's refresh tokens. |
+| GET | `/api/v1/seasons/overdue` | ACTIVE seasons past their end date: all for SUPER, own for ADMIN, else empty. |
+| GET | `/api/v1/seasons/:id/end-check` | What blocks ending the season, and the students it ends for. |
+| POST | `/api/v1/seasons/:id/end` | Season admin or SUPER. `{ notPassed }`; 409 `season_unfinished` while blockers stand, `season_not_active` if already ended. |
+| GET | `/api/v1/seasons/:id/results` | SUPER only. Pass results of a finished season. |
+| PATCH | `/api/v1/seasons/:id/results/:studentUserId` | SUPER only. Correct one result. |
+| GET | `/api/v1/me/season-history` | Past seasons with how each ended. |
+| GET | `/api/v1/me/seasons/:seasonId` | A student's own read-only record of a season. |
 | GET | `/api/v1/groups/:id` | |
 | GET | `/api/v1/sessions/:id` | |
 | GET | `/api/v1/sessions/:id/attendance` | |
@@ -94,6 +101,14 @@ clickable button/link.
   ~2s). Several integration suites carry an explicit `jest.setTimeout` above
   Jest's 5s default for this reason — see the comment beside each
   `jest.setTimeout` call for the suite's specific budget.
+
+## Community preflight
+
+`pnpm preflight:community` checks the one-active-role rule against the database in `.env` and
+prints its host first. Read-only by default (violations, and how many enrolments the backfill would
+touch); `--apply` refuses while any violation exists, else marks COMPLETED enrolments without a
+result as PASSED and completes stale ACTIVE enrolments of finished seasons, in one transaction. Not
+part of a migration, so `migrate deploy` stays safe on Neon.
 
 ## Uploads are switched off
 

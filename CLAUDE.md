@@ -362,6 +362,45 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   Android reports the keyboard height without the nav bar, and an edge-to-edge `Modal` window
   is never resized.
 
+## Community model, Build 1 (owner rulings, 2026-11-06)
+
+Design: `docs/superpowers/specs/2026-11-06-community-model-design.md`. Three TestFlight builds; only
+Build 1 exists.
+
+- **One active role.** Every user has zero or one active role: a student in one ACTIVE season, or
+  serving (admin and/or leader of one group) in one ACTIVE season; Super and Mentor are permanent
+  roles and hold no season role. A DRAFT season's roles don't count until it starts. **Build 1 does
+  not enforce this on writes** and still gates staff on the global `role`; it only *checks* it, in
+  `pnpm preflight:community` (read-only by default; prints the host and every violation: a leader
+  with two groups, an admin of two ACTIVE seasons, a Mentor with a `SeasonAdmin` row; `--apply`
+  refuses while any exist, else backfills results in one transaction). Run it against the real
+  database before anything depends on the rule; the backfill is not part of a migration because
+  `migrate deploy` also reaches Neon, which v1 writes. Enforcement, roles from season rows and the
+  pickers are Build 2.
+- **Season lifecycle.** DRAFT -> ACTIVE -> COMPLETED (-> ARCHIVED). **End season** (`POST
+  /seasons/:id/end`; that season's admin, or Super) is refused with `season_unfinished` while any
+  blocker stands: a SUBMITTED submission or quiz attempt not graded, a finished session with an
+  ACTIVE student unmarked. `GET /seasons/:id/end-check` lists them with the students; the app shows
+  blockers, else the review list where everyone **passes unless marked** (the POST carries only
+  `notPassed`, with an optional staff-only reason). One transaction completes every ACTIVE
+  enrolment with its `result`, WITHDRAWN ones are untouched, and the season's people's sessions go
+  stale. Only Super reads and corrects results (`/seasons/:id/results`). `GET /seasons/overdue`
+  feeds the Today callout for ACTIVE seasons past their end date. **Finished seasons are locked and
+  never reopen**; their students still read their own work, read-only (responses carry `readOnly`).
+- **`activeSeasonId` is a derived claim.** `lib/auth/scopes.ts` computes it on every token from the
+  newest ACTIVE enrolment in an ACTIVE, non-deleted season; `seasonAdminIds` / `groupLeaderIds`
+  likewise cover DRAFT or ACTIVE seasons only. The claim keeps its name, so the mobile app and
+  tests are unchanged. **`StudentProfile.activeSeasonId` stays as an unused column** (migrations
+  stay additive): nothing reads or writes it. Ending a season marks its people's sessions stale
+  (`sessionsValidFrom`), so the change lands on their next refresh, not at the next login.
+- **Former staff are cut off.** Once a season ends, its admins and leaders lose it with their
+  scopes: no access to it and no History entry; only Super (and Mentors) read finished seasons.
+  They keep their global role and tabs until Build 2, so their season lists can look empty for one
+  TestFlight cycle.
+- **Students between seasons** (no `activeSeasonId`) get Today, Calendar, History and More, with
+  Today telling finished, dropped and first-time apart; the finished season has a read-only page
+  with its assignments, quizzes and attendance. Alumni keep their own nav.
+
 ## Git
 
 Since 2026-11-06 the project lives on the **`jesusprojectcommunity`** account.
@@ -414,6 +453,7 @@ Since 2026-11-06 the project lives on the **`jesusprojectcommunity`** account.
 
 ## Docs
 
+- Community model: `docs/superpowers/specs/2026-11-06-community-model-design.md`
 - Design: `docs/superpowers/specs/2026-08-20-space-v2-monorepo-design.md`
 - Plan: `docs/superpowers/plans/2026-08-20-space-v2-scaffold.md`
 - API port plan: `docs/superpowers/plans/2026-08-20-space-v2-api-port.md`
