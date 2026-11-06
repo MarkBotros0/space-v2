@@ -24,7 +24,7 @@ export interface StudentFormValues {
   /** YYYY-MM-DD or "" (Plan 10 Decision 8). */
   dateOfBirth: string;
   notes: string;
-  /** Create: the season to enroll in. Edit: the active-season pointer. */
+  /** Create: the season to enroll in. Unused on edit. */
   seasonId: number | null;
 }
 
@@ -60,7 +60,7 @@ export function studentFormFromDetail(
     phone: "phone" in p ? (p.phone ?? "") : "",
     dateOfBirth: "dateOfBirth" in p ? (dateOnlyFromIso(p.dateOfBirth) ?? "") : "",
     notes: "notes" in p ? (p.notes ?? "") : "",
-    seasonId: p.activeSeasonId,
+    seasonId: null,
   };
 }
 
@@ -131,19 +131,13 @@ export function toCreateStudentBody(v: StudentFormValues): CreateStudentBody {
 }
 
 /**
- * PATCH /students/:id. `activeSeasonId` travels only when the caller may move
- * it (SUPER) AND it changed — re-sending a legacy pointer with no ACTIVE
- * enrollment behind it would 409 not_enrolled (Plan 10 Decision 6).
+ * PATCH /students/:id. Never carries a season: the current season is derived
+ * from enrolments, and the server refuses an `activeSeasonId` key.
  */
-export function toUpdateStudentBody(
-  v: StudentFormValues,
-  initial: StudentFormValues,
-  opts: { includeSeasonPointer: boolean },
-): UpdateStudentBody {
+export function toUpdateStudentBody(v: StudentFormValues): UpdateStudentBody {
   return {
     name: v.name.trim(),
     email: v.email.trim(),
     ...profileFields(v),
-    ...(opts.includeSeasonPointer && v.seasonId !== initial.seasonId ? { activeSeasonId: v.seasonId } : {}),
   };
 }

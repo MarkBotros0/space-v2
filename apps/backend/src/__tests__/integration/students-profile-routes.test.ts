@@ -52,7 +52,7 @@ describe("POST /api/v1/students", () => {
       select: {
         passwordHash: true,
         role: true,
-        studentProfile: { select: { activeSeasonId: true, university: true } },
+        studentProfile: { select: { university: true } },
         seasonEnrollments: { select: { seasonId: true, status: true } },
       },
     });
@@ -61,9 +61,8 @@ describe("POST /api/v1/students", () => {
       // invites — the same no-login-path state v1's CSV import produces.
       passwordHash: null,
       role: "STUDENT",
-      // D1: the profile pointer and the enrollment agree by construction,
-      // and ""→null held (R26).
-      studentProfile: { activeSeasonId: seasonAId, university: null },
+      // ""→null held (R26).
+      studentProfile: { university: null },
       seasonEnrollments: [{ seasonId: seasonAId, status: "ACTIVE" }],
     });
   });
@@ -131,7 +130,7 @@ describe("PATCH /api/v1/students/:id", () => {
     expect(profile?.notes).toBe("Internal staff note");
   });
 
-  it("lets ADMIN write notes but NOT activeSeasonId (the allowlist)", async () => {
+  it("lets ADMIN write notes but refuses activeSeasonId", async () => {
     const ok = await request(app)
       .patch(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${adminToken}`)
@@ -146,56 +145,15 @@ describe("PATCH /api/v1/students/:id", () => {
     expect(refused.body.error.code).toBe("forbidden_field");
   });
 
-  it("lets SUPER move activeSeasonId to a season the student is ACTIVE in", async () => {
-    // student2 has an ACTIVE enrollment in B and a null pointer.
-    const res = await request(app)
-      .patch(`/api/v1/students/${student2Id}`)
-      .set("authorization", `Bearer ${superToken}`)
-      .send({ activeSeasonId: seasonBId });
-    expect(res.status).toBe(200);
-    const profile = await db.studentProfile.findUnique({
-      where: { userId: student2Id },
-      select: { activeSeasonId: true },
-    });
-    expect(profile?.activeSeasonId).toBe(seasonBId);
-    // Restore for any later reader of the fixture.
-    await db.studentProfile.update({
-      where: { userId: student2Id },
-      data: { activeSeasonId: null },
-    });
-  });
-
-  it("refuses a pointer at a season the student has no ACTIVE enrollment in (409, D1)", async () => {
-    // student1's B enrollment is COMPLETED: pointer and enrollment would
-    // disagree, which spec 06 D1 says must never happen.
-    const res = await request(app)
-      .patch(`/api/v1/students/${student1Id}`)
-      .set("authorization", `Bearer ${superToken}`)
-      .send({ activeSeasonId: seasonBId });
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("not_enrolled");
-    const profile = await db.studentProfile.findUnique({
-      where: { userId: student1Id },
-      select: { activeSeasonId: true },
-    });
-    expect(profile?.activeSeasonId).toBe(seasonAId);
-  });
-
-  it("answers 404 for a nonexistent season id instead of a foreign-key 500", async () => {
-    const res = await request(app)
-      .patch(`/api/v1/students/${student1Id}`)
-      .set("authorization", `Bearer ${superToken}`)
-      .send({ activeSeasonId: 2147483000 });
-    expect(res.status).toBe(404);
-    expect(res.body.error.code).toBe("not_found");
-  });
-
-  it("lets SUPER clear the pointer with null (no enrollment check)", async () => {
-    const res = await request(app)
-      .patch(`/api/v1/students/${student2Id}`)
-      .set("authorization", `Bearer ${superToken}`)
-      .send({ activeSeasonId: null });
-    expect(res.status).toBe(200);
+  it("refuses activeSeasonId for everyone, SUPER included: it is derived from enrolments", async () => {
+    for (const body of [{ activeSeasonId: seasonBId }, { activeSeasonId: null }]) {
+      const res = await request(app)
+        .patch(`/api/v1/students/${student2Id}`)
+        .set("authorization", `Bearer ${superToken}`)
+        .send(body);
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("forbidden_field");
+    }
   });
 
   it("refuses ADMIN for a student with no ACTIVE enrollment in their seasons (D4)", async () => {

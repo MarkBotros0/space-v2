@@ -129,8 +129,8 @@ describe("PATCH /api/v1/me/profile", () => {
       phone: "+20 1", dateOfBirth: new Date("2002-07-09T00:00:00.000Z"),
       studentProfile: {
         university: "Cairo", faculty: "Engineering", universityGraduationYear: 2028,
-        activeSeason: null,
       },
+      seasonEnrollments: [],
     });
   });
 

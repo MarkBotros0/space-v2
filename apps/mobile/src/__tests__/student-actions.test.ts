@@ -25,13 +25,13 @@ const student = { graduationYear: null, enrollments: [row(7, "ACTIVE"), row(8, "
 describe("studentActionsFor (Plan 10 Decision 6 — mirrors the server gates)", () => {
   it("gives SUPER everything, and Drop on every ACTIVE row only", () => {
     const a = studentActionsFor(makeUser("SUPER"), makeScopes(), student);
-    expect(a).toMatchObject({ canEdit: true, canEditSeasonPointer: true, canGraduate: true, canDelete: true });
+    expect(a).toMatchObject({ canEdit: true, canGraduate: true, canDelete: true });
     expect(student.enrollments.map(a.canDrop)).toEqual([true, true, false]);
   });
 
   it("gives an ADMIN Edit and Drop for their own season only — never Graduate or Delete (R55, R64/R68)", () => {
     const a = studentActionsFor(makeUser("ADMIN"), makeScopes({ seasonAdminIds: [7] }), student);
-    expect(a).toMatchObject({ canEdit: true, canEditSeasonPointer: false, canGraduate: false, canDelete: false });
+    expect(a).toMatchObject({ canEdit: true, canGraduate: false, canDelete: false });
     expect(student.enrollments.map(a.canDrop)).toEqual([true, false, false]);
   });
 

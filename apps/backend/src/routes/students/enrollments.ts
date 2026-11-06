@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
+import { markSessionsStale } from "../../lib/auth/session-validity";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
@@ -49,8 +50,8 @@ export async function createEnrollment(req: Request, res: Response) {
   try {
     // R2 / R47 / D1 live in enrollStudentInSeason, which the bulk importer
     // calls too (Plan 17 D-16.8): one enrolment per student per season, EVER
-    // (a WITHDRAWN row is history, not an obstacle); entry always ACTIVE; an
-    // UNSET profile pointer is pointed at the season, never stolen.
+    // (a WITHDRAWN row is history, not an obstacle); entry always ACTIVE; the
+    // student's sessions go stale so the derived current season is re-read.
     const outcome = await db.$transaction((tx) => enrollStudentInSeason(tx, id, seasonId));
     if (outcome === "already_enrolled") {
       return apiError(res, "already_enrolled", "This student already has an enrollment in that season.", 409);
@@ -103,13 +104,18 @@ export async function updateEnrollment(req: Request, res: Response) {
     return apiError(res, "not_active", "Only an active enrollment can be completed or dropped.", 409);
   }
 
-  const updated = await db.seasonEnrollment.update({
-    where: { id: enrollment.id },
-    data:
-      parsed.data.status === "WITHDRAWN"
-        ? { status: "WITHDRAWN", droppedAt: new Date(), dropReason: parsed.data.dropReason ?? null }
-        : { status: "COMPLETED", completedAt: new Date() },
-    select: { id: true, status: true },
+  const updated = await db.$transaction(async (tx) => {
+    const row = await tx.seasonEnrollment.update({
+      where: { id: enrollment.id },
+      data:
+        parsed.data.status === "WITHDRAWN"
+          ? { status: "WITHDRAWN", droppedAt: new Date(), dropReason: parsed.data.dropReason ?? null }
+          : { status: "COMPLETED", completedAt: new Date() },
+      select: { id: true, status: true },
+    });
+    // The student's derived current season may have just changed.
+    await markSessionsStale(tx, [id]);
+    return row;
   });
   auditLog(
     parsed.data.status === "WITHDRAWN" ? "enrollment.drop" : "enrollment.complete",

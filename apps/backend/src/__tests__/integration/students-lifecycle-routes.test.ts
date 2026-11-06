@@ -93,10 +93,9 @@ describe("POST /api/v1/students — credentials only via Plan 9's invite (Plan 1
 async function makeGraduand(
   label: string,
   enrollments: { seasonId: number; status: "ACTIVE" | "WITHDRAWN" | "COMPLETED"; dropReason?: string }[],
-  activeSeasonId: number | null,
 ): Promise<number> {
   const s = await createTestUser(label, "STUDENT");
-  await db.studentProfile.create({ data: { userId: s.id, activeSeasonId } });
+  await db.studentProfile.create({ data: { userId: s.id } });
   for (const e of enrollments) {
     await db.seasonEnrollment.create({
       data: {
@@ -112,14 +111,13 @@ async function makeGraduand(
 }
 
 describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
-  it("records the year, completes EVERY active enrollment, clears the pointer — one transaction", async () => {
+  it("records the year, completes EVERY active enrollment — one transaction", async () => {
     const sid = await makeGraduand(
       "graduand",
       [
         { seasonId: seasonAId, status: "ACTIVE" },
         { seasonId: seasonBId, status: "ACTIVE" },
       ],
-      seasonAId,
     );
 
     const res = await request(app)
@@ -135,13 +133,11 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
       select: {
         role: true,
         graduationYear: true,
-        studentProfile: { select: { activeSeasonId: true } },
         seasonEnrollments: { select: { status: true, completedAt: true }, orderBy: { seasonId: "asc" } },
       },
     });
     expect(row?.role).toBe("STUDENT"); // R57: the year is the whole marker
     expect(row?.graduationYear).toBe(2020);
-    expect(row?.studentProfile?.activeSeasonId).toBeNull();
     // v1 completed only the pointed-at season (R48/R60); B would have stayed ACTIVE.
     expect(row?.seasonEnrollments.map((e) => e.status)).toEqual(["COMPLETED", "COMPLETED"]);
     expect(row?.seasonEnrollments.every((e) => e.completedAt !== null)).toBe(true);
@@ -154,7 +150,6 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
         { seasonId: seasonAId, status: "WITHDRAWN", dropReason: "Kept reason" },
         { seasonId: seasonBId, status: "ACTIVE" },
       ],
-      seasonBId,
     );
 
     const res = await request(app)
@@ -171,7 +166,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
   });
 
   it("is SUPER-only (R55) — a season admin of the student's season is refused", async () => {
-    const sid = await makeGraduand("graduand-admin", [{ seasonId: seasonAId, status: "ACTIVE" }], seasonAId);
+    const sid = await makeGraduand("graduand-admin", [{ seasonId: seasonAId, status: "ACTIVE" }]);
     const res = await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
       .set("authorization", `Bearer ${adminToken}`)
@@ -182,7 +177,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
   });
 
   it("bounds the year per request (R58)", async () => {
-    const sid = await makeGraduand("graduand-year", [], null);
+    const sid = await makeGraduand("graduand-year", []);
     for (const graduationYear of [new Date().getFullYear() + 1, 1989]) {
       const res = await request(app)
         .post(`/api/v1/students/${sid}/graduate`)
@@ -194,7 +189,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
   });
 
   it("refuses a second graduation instead of overwriting the year (R61)", async () => {
-    const sid = await makeGraduand("graduand-twice", [], null);
+    const sid = await makeGraduand("graduand-twice", []);
     await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
       .set("authorization", `Bearer ${superToken}`)
@@ -220,7 +215,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
   });
 
   it("writes an audit line with ids only — never the year (spec 06 D15)", async () => {
-    const sid = await makeGraduand("graduand-audit", [], null);
+    const sid = await makeGraduand("graduand-audit", []);
     const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
     await request(app)
       .post(`/api/v1/students/${sid}/graduate`)

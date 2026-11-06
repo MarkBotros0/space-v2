@@ -12,6 +12,7 @@ jest.mock("../../lib/email", () => ({
 import request from "supertest";
 
 import { createApp } from "../../app";
+import { loadScopes } from "../../lib/auth/scopes";
 import { db } from "../../db/client";
 import { cleanupTestData, createTestUser } from "./fixtures";
 import { seedStudentFixtures } from "./students-setup";
@@ -38,9 +39,10 @@ afterAll(async () => {
 });
 
 describe("POST /api/v1/students/:id/enrollments", () => {
-  it("creates an ACTIVE enrollment and points an unset activeSeasonId at it (R47, D1)", async () => {
+  it("creates an ACTIVE enrollment, stales the student's sessions and derives the season (R47, D1)", async () => {
     const s = await createTestUser("enrollee", "STUDENT");
     await db.studentProfile.create({ data: { userId: s.id } });
+    expect((await loadScopes(s.id)).activeSeasonId).toBeNull();
 
     const res = await request(app)
       .post(`/api/v1/students/${s.id}/enrollments`)
@@ -49,28 +51,26 @@ describe("POST /api/v1/students/:id/enrollments", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({ seasonId: seasonAId, status: "ACTIVE" });
-    const profile = await db.studentProfile.findUnique({
-      where: { userId: s.id },
-      select: { activeSeasonId: true },
-    });
-    expect(profile?.activeSeasonId).toBe(seasonAId);
+    expect((await loadScopes(s.id)).activeSeasonId).toBe(seasonAId);
+    const user = await db.user.findUnique({ where: { id: s.id }, select: { sessionsValidFrom: true } });
+    expect(user?.sessionsValidFrom).not.toBeNull();
   });
 
-  it("never overwrites an activeSeasonId that is already set", async () => {
+  it("drop and complete stale the student's sessions and clear the derived season", async () => {
     const s = await createTestUser("enrollee-b", "STUDENT");
-    await db.studentProfile.create({ data: { userId: s.id, activeSeasonId: seasonBId } });
+    await db.studentProfile.create({ data: { userId: s.id } });
+    await db.seasonEnrollment.create({ data: { studentUserId: s.id, seasonId: seasonAId, status: "ACTIVE" } });
+    expect((await loadScopes(s.id)).activeSeasonId).toBe(seasonAId);
 
     const res = await request(app)
-      .post(`/api/v1/students/${s.id}/enrollments`)
+      .patch(`/api/v1/students/${s.id}/enrollments/${seasonAId}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ seasonId: seasonAId });
+      .send({ status: "COMPLETED" });
 
-    expect(res.status).toBe(201);
-    const profile = await db.studentProfile.findUnique({
-      where: { userId: s.id },
-      select: { activeSeasonId: true },
-    });
-    expect(profile?.activeSeasonId).toBe(seasonBId);
+    expect(res.status).toBe(200);
+    expect((await loadScopes(s.id)).activeSeasonId).toBeNull();
+    const user = await db.user.findUnique({ where: { id: s.id }, select: { sessionsValidFrom: true } });
+    expect(user?.sessionsValidFrom).not.toBeNull();
   });
 
   it("refuses an enrollment into a season the caller does not administer (R64's shape)", async () => {

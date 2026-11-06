@@ -73,7 +73,6 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
     });
     expect(row.email).toBe(email); // stored EXACTLY as pasted (D-16.6)
     expect(row.studentProfile).toMatchObject({
-      activeSeasonId: seasonId,
       university: "Test University",
       faculty: "Engineering",
       universityGraduationYear: 2027,
@@ -81,7 +80,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
     });
     // D-16.11: UTC midnight, not local midnight, not a transposed month.
     expect(row.dateOfBirth?.toISOString()).toBe("2003-02-28T00:00:00.000Z");
-    // The profile pointer and the enrolment agree by construction.
+    // The enrolment is what places the student in the season.
     expect(row.seasonEnrollments).toEqual([
       expect.objectContaining({ seasonId, status: "ACTIVE", groupId: null }),
     ]);
@@ -235,7 +234,7 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
   it("enrols an existing student into the target season without touching their profile (D-16.7 / spec D4)", async () => {
     const returning = await createTestUser("returning", "STUDENT");
     await db.studentProfile.create({
-      data: { userId: returning.id, activeSeasonId: otherSeasonId, notes: "A year of pastoral notes", university: "Old University" },
+      data: { userId: returning.id, notes: "A year of pastoral notes", university: "Old University" },
     });
     await db.seasonEnrollment.create({ data: { studentUserId: returning.id, seasonId: otherSeasonId, status: "COMPLETED", completedAt: new Date() } });
 
@@ -255,9 +254,6 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
     const row = await oneUserByEmail(returning.email);
     // The enrolment was created…
     expect(row.seasonEnrollments.map((e) => e.seasonId).sort()).toEqual([otherSeasonId, seasonId].sort());
-    // …but the pointer, already held by another season, was NOT stolen —
-    // Plan 7's rule (POST /students/:id/enrollments), now the same function.
-    expect(row.studentProfile?.activeSeasonId).toBe(otherSeasonId);
     // …and nothing else did. A spreadsheet must never erase pastoral notes.
     expect(row.name).toBe("Test returning");
     expect(row.studentProfile?.notes).toBe("A year of pastoral notes");
@@ -311,7 +307,7 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
     expect(res.body.data).toMatchObject({ created: 0, skipped: 1, enrolled: 1 });
     expect(res.body.data.rows[0]).toMatchObject({ outcome: "skipped", message: expect.stringMatching(/already enrolled/i) });
     const freshRow = await oneUserByEmail(fresh.email);
-    expect(freshRow.studentProfile?.activeSeasonId).toBe(seasonId);
+    expect(freshRow.seasonEnrollments).toEqual([expect.objectContaining({ seasonId, status: "ACTIVE" })]);
   });
 
   it("skips a soft-deleted address even under enroll, with a message that says why", async () => {
@@ -341,7 +337,7 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
 });
 
 describe("POST /api/v1/imports/students/commit — alumni mode", () => {
-  it("sets graduationYear and creates NEITHER an active season NOR an enrolment (spec R48)", async () => {
+  it("sets graduationYear and creates no enrolment (spec R48)", async () => {
     const email = testEmail("alumnus");
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
@@ -351,7 +347,6 @@ describe("POST /api/v1/imports/students/commit — alumni mode", () => {
     expect(res.status).toBe(200);
     const row = await oneUserByEmail(email);
     expect(row).toMatchObject({ graduationYear: 2020, passwordHash: null, role: "STUDENT" });
-    expect(row.studentProfile?.activeSeasonId).toBeNull();
     expect(row.seasonEnrollments).toEqual([]);
   });
 

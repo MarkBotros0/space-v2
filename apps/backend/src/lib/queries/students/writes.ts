@@ -1,4 +1,5 @@
 import type { Prisma } from "../../../generated/prisma/client";
+import { markSessionsStale } from "../../auth/session-validity";
 
 export interface NewStudentInput {
   name: string;
@@ -84,9 +85,6 @@ export async function createStudentRows(
   await tx.studentProfile.createMany({
     data: inputs.map((i) => ({
       userId: idFor(i.email),
-      // The pointer and the enrolment below name the same season by
-      // construction — the two definitions of "in this season" cannot drift.
-      activeSeasonId: target.kind === "season" ? target.seasonId : null,
       university: i.university,
       faculty: i.faculty,
       universityGraduationYear: i.universityGraduationYear,
@@ -116,9 +114,8 @@ export async function createStudentRows(
  *    status is "already_enrolled" and is not touched (a WITHDRAWN row is
  *    history, not an obstacle — re-admission is not invented here);
  *  - entry is always ACTIVE (R47);
- *  - the profile pointer is set only when UNSET — never stolen from a season
- *    that already holds it. updateMany so a student with no profile row is a
- *    no-op rather than a throw, exactly as Plan 7's guarded update behaved.
+ *  - the student's sessions go stale in the same transaction, so their
+ *    derived current-season claim is re-read on the next refresh.
  *
  * A concurrent caller can still lose the unique-index race (P2002); the
  * caller's existing P2002 handling answers it (409 already_enrolled on the
@@ -138,9 +135,6 @@ export async function enrollStudentInSeason(
   await tx.seasonEnrollment.create({
     data: { studentUserId, seasonId, status: "ACTIVE" },
   });
-  await tx.studentProfile.updateMany({
-    where: { userId: studentUserId, activeSeasonId: null },
-    data: { activeSeasonId: seasonId },
-  });
+  await markSessionsStale(tx, [studentUserId]);
   return "enrolled";
 }

@@ -164,21 +164,21 @@ describe("/student/[id]/edit", () => {
     patch.mockResolvedValue({ data: { data: { id: 21 } } });
   });
 
-  it("SUPER edits fields and moves the pointer among ACTIVE enrollments only", async () => {
+  it("SUPER edits fields; the form has no season and never sends one", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<EditStudentScreen />);
 
     const university = await screen.findByLabelText("University");
     expect(university.props.value).toBe("Cairo University");
     fireEvent.changeText(screen.getByLabelText("Phone"), "+20 111");
-    fireEvent.press(screen.getByLabelText("Active season"));
-    fireEvent.press(await screen.findByText("Autumn 2099"));
+    expect(screen.queryByLabelText("Active season")).toBeNull();
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
     const [url, body] = patch.mock.calls[0] as [string, Record<string, unknown>];
     expect(url).toBe("/api/v1/students/21");
-    expect(body).toMatchObject({ phone: "+20 111", notes: "Watch attendance", activeSeasonId: 8 });
+    expect(body).toMatchObject({ phone: "+20 111", notes: "Watch attendance" });
+    expect(body).not.toHaveProperty("activeSeasonId");
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
   });
 

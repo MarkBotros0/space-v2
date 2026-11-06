@@ -24,13 +24,12 @@ import { forbidden } from "../respond";
  *   PATCH /me/profile accepts (Plan 11 Decision 1). `name` belongs to
  *   PATCH /me and `email` is staff-only (spec 18 D2/D8: changing a login
  *   identifier without verification is an account-takeover primitive). Never
- *   `notes` or `activeSeasonId` (R23). v1 silently dropped those from a
+ *   `notes` (R23), and never `activeSeasonId`, which is derived. v1 silently dropped those from a
  *   self-edit (R24); an API that pretends a write worked teaches clients to
  *   trust it, so this refuses with `forbidden_field` instead.
- * - ADMIN adds `name`, `email` and `notes`. NOT `activeSeasonId`: repointing
- *   a student's season is the same unscoped power v1's create leaked to
- *   every admin (§4.3), and it follows creation to SUPER in v2.
- * - SUPER: everything (allowlist `null` = unchecked).
+ * - ADMIN adds `name`, `email` and `notes`. 
+ * - SUPER: everything except `activeSeasonId`, which no role may send
+ *   (derived from enrolments; refused for everyone before this table).
  */
 const SELF_EDITABLE = new Set([
   "university", "faculty", "universityGraduationYear", "phone", "dateOfBirth",
@@ -135,6 +134,11 @@ export async function updateStudent(req: Request, res: Response) {
 
   if (!(await canEditStudent(user, id))) return forbidden(res);
 
+  // The current season is derived from enrolments; no role may set it.
+  if (Object.prototype.hasOwnProperty.call(req.body, "activeSeasonId")) {
+    return apiError(res, "forbidden_field", 'Field "activeSeasonId" is not editable by your role.', 403);
+  }
+
   const allowed = isSuper(user) ? null : user.userId === id ? SELF_EDITABLE : ADMIN_EDITABLE;
   if (allowed) {
     for (const key of Object.keys(req.body as Record<string, unknown>)) {
@@ -152,26 +156,6 @@ export async function updateStudent(req: Request, res: Response) {
     const clash = await db.user.findUnique({ where: { email: body.email }, select: { id: true } });
     if (clash && clash.id !== id) {
       return apiError(res, "email_taken", "A user with that email already exists.", 409);
-    }
-  }
-
-  // The pointer must name a live season the student is ACTIVE in (spec 06
-  // D1: pointer and enrollment agree). Without this a stale id is a P2003
-  // foreign-key 500, and a season the student never joined silently splits
-  // the two definitions of "in this season" again (R13). `null` clears and
-  // needs no check; `undefined` leaves the column alone.
-  if (body.activeSeasonId !== undefined && body.activeSeasonId !== null) {
-    const season = await db.season.findFirst({
-      where: { id: body.activeSeasonId, deletedAt: null },
-      select: { id: true },
-    });
-    if (!season) return apiError(res, "not_found", "Season not found.", 404);
-    const enrollment = await db.seasonEnrollment.findUnique({
-      where: { studentUserId_seasonId: { studentUserId: id, seasonId: body.activeSeasonId } },
-      select: { status: true },
-    });
-    if (enrollment?.status !== "ACTIVE") {
-      return apiError(res, "not_enrolled", "The student has no active enrollment in that season.", 409);
     }
   }
 
@@ -195,7 +179,6 @@ export async function updateStudent(req: Request, res: Response) {
     faculty: body.faculty,
     universityGraduationYear: body.universityGraduationYear,
     notes: body.notes,
-    activeSeasonId: body.activeSeasonId,
   };
 
   try {
@@ -217,7 +200,6 @@ export async function updateStudent(req: Request, res: Response) {
           faculty: body.faculty ?? null,
           universityGraduationYear: body.universityGraduationYear ?? null,
           notes: body.notes ?? null,
-          activeSeasonId: body.activeSeasonId ?? null,
         },
       });
     });

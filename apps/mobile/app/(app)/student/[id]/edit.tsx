@@ -75,19 +75,15 @@ export default function EditStudentScreen() {
   }
 
   const initial = studentFormFromDetail(data);
-  // The pointer may only name a season the student is ACTIVE in (Plan 7 S16).
-  const seasonOptions = data.enrollments
-    .filter((e) => e.status === "ACTIVE")
-    .map((e) => ({ id: e.seasonId, title: e.seasonTitle }));
 
   return (
     <StudentForm
       key={data.id}
       title={`Edit ${data.name}`}
       initial={initial}
-      seasonOptions={seasonOptions}
-      seasonLabel="Active season"
-      showSeason={actions.canEditSeasonPointer}
+      seasonOptions={[]}
+      seasonLabel=""
+      showSeason={false}
       showNotes
       submitTitle="Save changes"
       submitting={update.isPending}
@@ -97,9 +93,7 @@ export default function EditStudentScreen() {
         update.mutate(
           {
             id: data.id,
-            body: toUpdateStudentBody(values, initial, {
-              includeSeasonPointer: actions.canEditSeasonPointer,
-            }),
+            body: toUpdateStudentBody(values),
           },
           {
             onSuccess: () => router.back(),

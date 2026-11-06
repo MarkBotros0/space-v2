@@ -4,6 +4,7 @@ import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
 import type { SessionUser } from "../../auth/tokens";
 import { canReadAllStudents, isMentor, isSuper } from "../../rbac";
+import { currentSeasonEnrollmentSelect } from "./current-season";
 import { currentMembershipSelect, studentIdsWithCurrentGroup } from "./current-group";
 
 export interface StudentListResult {
@@ -75,9 +76,9 @@ const LIST_SELECT = {
       university: true,
       faculty: true,
       universityGraduationYear: true,
-      activeSeason: { select: { title: true } },
     },
   },
+  seasonEnrollments: currentSeasonEnrollmentSelect,
   // Advisory current group — the one question GroupStudent may answer (C9).
   groupStudentMemberships: currentMembershipSelect({ name: true }),
 } as const;
@@ -94,7 +95,7 @@ function toListItem(u: ListRow): StudentListItem {
     faculty: u.studentProfile?.faculty ?? null,
     universityGraduationYear: u.studentProfile?.universityGraduationYear ?? null,
     graduationYear: u.graduationYear,
-    activeSeasonTitle: u.studentProfile?.activeSeason?.title ?? null,
+    activeSeasonTitle: u.seasonEnrollments[0]?.season.title ?? null,
     currentGroupName: u.groupStudentMemberships[0]?.group.name ?? null,
     droppedEnrollment: null,
   };
@@ -120,7 +121,8 @@ type RelatedSort = "university" | "season" | "group";
 const SORT_KEY_SELECT = {
   id: true,
   name: true,
-  studentProfile: { select: { university: true, activeSeason: { select: { title: true } } } },
+  studentProfile: { select: { university: true } },
+  seasonEnrollments: currentSeasonEnrollmentSelect,
   groupStudentMemberships: currentMembershipSelect({ name: true }),
 } as const;
 
@@ -136,7 +138,7 @@ async function listByRelatedSort(
     (sort === "university"
       ? u.studentProfile?.university
       : sort === "season"
-        ? u.studentProfile?.activeSeason?.title
+        ? u.seasonEnrollments[0]?.season.title
         : u.groupStudentMemberships[0]?.group.name
     )?.toLowerCase() ?? "";
   const sign = dir === "asc" ? 1 : -1;

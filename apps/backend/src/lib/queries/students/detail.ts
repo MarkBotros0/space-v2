@@ -45,8 +45,6 @@ export async function loadStudentDetail(
           university: true,
           faculty: true,
           universityGraduationYear: true,
-          activeSeasonId: true,
-          activeSeason: { select: { title: true, code: true } },
         },
       },
       groupStudentMemberships: currentMembershipSelect({ id: true, name: true }),
@@ -80,7 +78,7 @@ export async function loadStudentDetail(
       droppedAt: true,
       dropReason: true,
       season: {
-        select: { title: true, code: true, status: true, startDate: true, endDate: true },
+        select: { title: true, code: true, status: true, deletedAt: true, startDate: true, endDate: true },
       },
       group: { select: { name: true } },
     },
@@ -122,6 +120,10 @@ export async function loadStudentDetail(
   }));
 
   const p = row.studentProfile;
+  // Derived, never stored: the newest ACTIVE enrolment in a live ACTIVE season
+  // (the same rule as loadScopes).
+  const current =
+    enrollments.find((e) => e.status === "ACTIVE" && e.season.status === "ACTIVE" && !e.season.deletedAt) ?? null;
   const base = {
     id: row.id,
     name: row.name,
@@ -135,9 +137,9 @@ export async function loadStudentDetail(
     university: p?.university ?? null,
     faculty: p?.faculty ?? null,
     universityGraduationYear: p?.universityGraduationYear ?? null,
-    activeSeasonId: p?.activeSeasonId ?? null,
-    activeSeasonTitle: p?.activeSeason?.title ?? null,
-    activeSeasonCode: p?.activeSeason?.code ?? null,
+    activeSeasonId: current?.seasonId ?? null,
+    activeSeasonTitle: current?.season.title ?? null,
+    activeSeasonCode: current?.season.code ?? null,
   };
   if (view === "public") return { ...base, profile: publicProfile };
 

@@ -44,10 +44,10 @@ export async function seedEventFixtures(app: Express): Promise<EventFixtures> {
   // into the token's `graduationYear` claim.
   await db.user.update({ where: { id: alumnus.id }, data: { graduationYear: 2098 } });
   await db.studentProfile.create({
-    data: { userId: alumnus.id, activeSeasonId: seasonId },
+    data: { userId: alumnus.id },
   });
   await db.studentProfile.create({
-    data: { userId: student.id, activeSeasonId: seasonId },
+    data: { userId: student.id },
   });
 
   const group = await db.group.create({

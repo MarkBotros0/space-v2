@@ -49,7 +49,6 @@ export async function seedStudentFixtures(app: Express): Promise<StudentFixtures
   await db.studentProfile.create({
     data: {
       userId: student1Id,
-      activeSeasonId: seasonAId,
       university: "Test University",
       faculty: "Engineering",
       universityGraduationYear: 2027,

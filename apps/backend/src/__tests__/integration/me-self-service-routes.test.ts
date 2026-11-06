@@ -80,11 +80,9 @@ beforeAll(async () => {
     where: { id: student.id },
     data: { phone: "+20 100 000 0000", dateOfBirth: new Date("2001-04-05T00:00:00.000Z") },
   });
-  // activeSeasonId is a token claim read at login — set it before logging in.
   await db.studentProfile.create({
     data: {
       userId: student.id,
-      activeSeasonId: current.id,
       university: "Cairo University",
       notes: "STAFF ONLY — never sent to the subject",
     },

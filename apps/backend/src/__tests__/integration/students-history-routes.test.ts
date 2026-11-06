@@ -51,7 +51,7 @@ beforeAll(async () => {
   s1 = u1.id;
   s2 = u2.id;
   s3 = u3.id;
-  await db.studentProfile.create({ data: { userId: s1, university: "Zeta U", activeSeasonId: seasonAId } });
+  await db.studentProfile.create({ data: { userId: s1, university: "Zeta U" } });
   await db.studentProfile.create({ data: { userId: s2, university: "Alpha U" } });
   await db.studentProfile.create({ data: { userId: s3 } });
   await db.groupStudent.create({ data: { groupId: groupAId, seasonId: seasonAId, studentUserId: s1 } });

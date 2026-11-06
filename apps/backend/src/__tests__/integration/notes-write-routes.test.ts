@@ -94,7 +94,7 @@ describe("POST /api/v1/students/:id/notes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("lets an ADMIN write about an enrolled student even with no activeSeasonId (D12)", async () => {
+  it("lets an ADMIN write about an enrolled student with no StudentProfile row (D12)", async () => {
     // v1's gate read StudentProfile.activeSeasonId, so an admin could OPEN a
     // student they could not write about (R47/R48). This student has an
     // enrolment in the admin's season and no StudentProfile row at all.

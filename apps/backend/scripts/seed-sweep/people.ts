@@ -67,7 +67,7 @@ export async function seedPeople() {
       data: { studentUserId: s.id, seasonId: season.id, groupId: group.id, status: "ACTIVE", enrolledAt: fromToday(-30) },
     });
     await db.studentProfile.create({
-      data: { userId: s.id, activeSeasonId: season.id, university: "Cairo University", year: "3" },
+      data: { userId: s.id, university: "Cairo University", year: "3" },
     });
   }
   await db.seasonEnrollment.create({

@@ -4,6 +4,7 @@ import type { SessionUser } from "../auth/tokens";
 import { costMinutesFor, streakFrom, type AttendanceBudget } from "../attendance-budget";
 import { orgDayKey, orgWallTime } from "../org-time";
 import { isAlumnus } from "../rbac";
+import { currentSeasonEnrollmentSelect } from "./students/current-season";
 import { computeAttendanceBudget } from "./attendance-budget";
 import { loadSeasonProgress } from "./sessions";
 
@@ -312,9 +313,9 @@ export async function loadMyProfile(userId: number): Promise<MyProfileRow | null
           university: true,
           faculty: true,
           universityGraduationYear: true,
-          activeSeason: { select: { title: true, deletedAt: true } },
         },
       },
+      seasonEnrollments: currentSeasonEnrollmentSelect,
     },
   });
   if (!row) return null;
@@ -324,7 +325,7 @@ export async function loadMyProfile(userId: number): Promise<MyProfileRow | null
     email: row.email,
     avatarPath: row.avatarPath,
     graduationYear: row.graduationYear,
-    activeSeasonTitle: p?.activeSeason && p.activeSeason.deletedAt === null ? p.activeSeason.title : null,
+    activeSeasonTitle: row.seasonEnrollments[0]?.season.title ?? null,
     university: p?.university ?? null,
     faculty: p?.faculty ?? null,
     universityGraduationYear: p?.universityGraduationYear ?? null,

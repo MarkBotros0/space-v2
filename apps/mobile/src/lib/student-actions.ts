@@ -19,8 +19,6 @@ export function isAdminOfSeasonForUi(
 export interface StudentActions {
   /** Plan 7's canEditStudent: SUPER, or an ADMIN with an ACTIVE enrollment in one of their seasons. */
   canEdit: boolean;
-  /** Only SUPER may move activeSeasonId (Plan 7's ADMIN_EDITABLE excludes it). */
-  canEditSeasonPointer: boolean;
   /** R55 + R63: SUPER, and only while not yet graduated. */
   canGraduate: boolean;
   canDelete: boolean;
@@ -45,7 +43,6 @@ export function studentActionsFor(
 
   return {
     canEdit: isSuper || isAdminWithActiveRow,
-    canEditSeasonPointer: isSuper,
     canGraduate: isSuper && student.graduationYear === null,
     canDelete: isSuper,
     canDrop: (e) => e.status === "ACTIVE" && isAdminOfSeasonForUi(user, scopes, e.seasonId),

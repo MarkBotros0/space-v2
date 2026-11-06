@@ -32,10 +32,8 @@ export const createStudentRequestSchema = z.object({
   ...studentWriteFields,
   /**
    * Optional first enrollment (spec 06 D1): when present, one transaction
-   * creates User + StudentProfile + an ACTIVE SeasonEnrollment AND points
-   * activeSeasonId at the same season — the two definitions of "in this
-   * season" (R9–R13) agree by construction, as v1's CSV import already got
-   * right and its form never did (R15).
+   * creates User + StudentProfile + an ACTIVE SeasonEnrollment. The current
+   * season is derived from that enrolment; nothing stores a pointer.
    */
   seasonId: z.number().int().positive().nullish(),
 });
@@ -49,7 +47,6 @@ export type CreateStudentBody = z.output<typeof createStudentRequestSchema>;
 export const updateStudentRequestSchema = z
   .object({
     ...studentWriteFields,
-    activeSeasonId: z.number().int().positive().nullish(),
   })
   .partial();
 export type UpdateStudentBody = z.output<typeof updateStudentRequestSchema>;

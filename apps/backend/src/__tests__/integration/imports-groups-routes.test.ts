@@ -44,13 +44,13 @@ describe("POST /api/v1/seasons/:id/imports/groups/preview", () => {
     const enrolled = await createTestUser("grp-enrolled", "STUDENT");
     enrolledId = enrolled.id;
     enrolledEmail = enrolled.email;
-    await db.studentProfile.create({ data: { userId: enrolledId, activeSeasonId: seasonId } });
+    await db.studentProfile.create({ data: { userId: enrolledId } });
     await db.seasonEnrollment.create({ data: { studentUserId: enrolledId, seasonId, status: "ACTIVE" } });
 
     const inGroupA = await createTestUser("grp-already", "STUDENT");
     inGroupAId = inGroupA.id;
     inGroupAEmail = inGroupA.email;
-    await db.studentProfile.create({ data: { userId: inGroupAId, activeSeasonId: seasonId } });
+    await db.studentProfile.create({ data: { userId: inGroupAId } });
     await db.seasonEnrollment.create({
       data: { studentUserId: inGroupAId, seasonId, groupId: groupAId, status: "ACTIVE" },
     });
@@ -93,14 +93,14 @@ describe("POST /api/v1/seasons/:id/imports/groups/preview", () => {
     expect(res.body.data.rows[3].message).toMatch(/Group Z/);
   });
 
-  it("resolves the roster through SeasonEnrollment, not the activeSeasonId pointer (ruling C9)", async () => {
+  it("resolves the roster through SeasonEnrollment (ruling C9)", async () => {
     // v1's roster is `StudentProfile.activeSeasonId = seasonId`
     // (groups-query.ts:143-148), so a student holding an ACTIVE enrolment in
     // this season whose pointer happens to name another one is INVISIBLE to
     // the importer (spec R61) — and worse, the write gates on the same
     // pointer and silently skips them (R76/D5).
     const pointerElsewhere = await createTestUser("grp-pointer", "STUDENT");
-    await db.studentProfile.create({ data: { userId: pointerElsewhere.id, activeSeasonId: otherSeasonId } });
+    await db.studentProfile.create({ data: { userId: pointerElsewhere.id } });
     await db.seasonEnrollment.create({ data: { studentUserId: pointerElsewhere.id, seasonId, status: "ACTIVE" } });
 
     const res = await request(app)

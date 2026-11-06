@@ -142,7 +142,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Edit a student's profile",
       description:
-        "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The subject may edit university, faculty, universityGraduationYear, phone and dateOfBirth only (never `name` — that is PATCH /me — nor `email`, `notes` or `activeSeasonId`). phone and dateOfBirth are written to the User row. ADMIN (of a season with an ACTIVE enrollment for the student) adds `name`, `email` and `notes`. SUPER may send everything, including `activeSeasonId`: `404 not_found` for a missing or deleted season, `409 not_enrolled` when the student has no ACTIVE enrollment there, `null` clears. `409 email_taken` on an address clash.",
+        "Absent field = untouched, `null` = cleared. The set of keys a caller may send is allowlisted per role, checked against the raw body before validation; a key outside it is refused with 403 `forbidden_field` (v1 silently dropped it). The subject may edit university, faculty, universityGraduationYear, phone and dateOfBirth only (never `name` — that is PATCH /me — nor `email`, `notes` or `activeSeasonId`). phone and dateOfBirth are written to the User row. ADMIN (of a season with an ACTIVE enrollment for the student) adds `name`, `email` and `notes`. SUPER may send everything except `activeSeasonId`, which no role may send: it is derived from enrolments and is refused with 403 `forbidden_field`. `409 email_taken` on an address clash.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -159,7 +159,6 @@ export const studentPaths = {
                 phone: { type: ["string", "null"] },
                 dateOfBirth: { type: ["string", "null"], format: "date-time" },
                 notes: { type: ["string", "null"] },
-                activeSeasonId: { type: ["integer", "null"] },
               },
             },
           },
@@ -198,7 +197,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Graduate a student (SUPER only)",
       description:
-        "SUPER only (R55). Body `{ graduationYear }`, 1990 through the current year, evaluated per request. In one transaction: sets `graduationYear`, completes **every** ACTIVE enrollment (v1 completed only the one the profile pointed at), and clears `activeSeasonId`. WITHDRAWN and COMPLETED enrollments are untouched; `role` stays STUDENT. Irreversible: a second graduation is 409 `already_graduated`. `not_found` covers a non-student or deleted id. Writes a server-side audit line (ids only).",
+        "SUPER only (R55). Body `{ graduationYear }`, 1990 through the current year, evaluated per request. In one transaction: sets `graduationYear`, completes **every** ACTIVE enrollment (v1 completed only the one the profile pointed at), and marks the student's sessions stale so the current-season claim is re-read. WITHDRAWN and COMPLETED enrollments are untouched; `role` stays STUDENT. Irreversible: a second graduation is 409 `already_graduated`. `not_found` covers a non-student or deleted id. Writes a server-side audit line (ids only).",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -238,7 +237,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Enroll a student in a season",
       description:
-        "Season-admin of the **target** season (SUPER passes); gated before any lookup. Creates an ACTIVE enrollment and, if the student's `activeSeasonId` is unset, points it at the new season (never overwrites a set pointer). One enrollment per student per season, ever: a second attempt \u2014 even over a WITHDRAWN row \u2014 is 409 `already_enrolled`.\n\nBoundary: this endpoint owns enrollment existence and status only. `groupId` is written exclusively by `PATCH /api/v1/groups/{id}` \u2014 group membership is written only there. Enrollment rows are never deleted.",
+        "Season-admin of the **target** season (SUPER passes); gated before any lookup. Creates an ACTIVE enrollment and marks the student's sessions stale; the current season is derived from live enrolments, never stored. One enrollment per student per season, ever: a second attempt \u2014 even over a WITHDRAWN row \u2014 is 409 `already_enrolled`.\n\nBoundary: this endpoint owns enrollment existence and status only. `groupId` is written exclusively by `PATCH /api/v1/groups/{id}` \u2014 group membership is written only there. Enrollment rows are never deleted.",
       parameters: [idParam],
       requestBody: {
         required: true,

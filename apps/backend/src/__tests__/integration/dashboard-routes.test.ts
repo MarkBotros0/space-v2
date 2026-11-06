@@ -71,8 +71,8 @@ beforeAll(async () => {
   await db.seasonAdmin.create({ data: { seasonId: otherSeasonId, userId: adminOther.id } });
   await db.groupLeader.create({ data: { groupId: groupAId, userId: leader.id } });
   await db.groupLeader.create({ data: { groupId: otherGroupId, userId: leaderNone.id } });
-  await db.studentProfile.create({ data: { userId: s1, activeSeasonId: seasonId } });
-  await db.studentProfile.create({ data: { userId: s3, activeSeasonId: seasonId } });
+  await db.studentProfile.create({ data: { userId: s1 } });
+  await db.studentProfile.create({ data: { userId: s3 } });
 
   const enrolledAt = at("2019-12-01T00:00:00.000Z");
   await db.seasonEnrollment.createMany({

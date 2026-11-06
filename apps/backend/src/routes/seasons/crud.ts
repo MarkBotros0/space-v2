@@ -214,10 +214,8 @@ export async function deleteSeason(req: Request, res: Response) {
     );
   }
 
-  // R51: v1 left StudentProfile.activeSeasonId pointing at the deleted row.
-  await db.$transaction([
-    db.studentProfile.updateMany({ where: { activeSeasonId: id }, data: { activeSeasonId: null } }),
-    db.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } }),
-  ]);
+  // The current season is derived from live seasons, so a deleted one drops
+  // out of every scope on its own.
+  await db.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } });
   return apiOk(res, { deleted: true });
 }

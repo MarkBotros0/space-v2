@@ -2,7 +2,7 @@ const mockDb = {
   user: { findUnique: jest.fn() },
   seasonAdmin: { findMany: jest.fn() },
   groupLeader: { findMany: jest.fn() },
-  studentProfile: { findUnique: jest.fn() },
+  seasonEnrollment: { findFirst: jest.fn() },
   refreshToken: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
@@ -20,7 +20,7 @@ import {
 function stubScopes() {
   mockDb.seasonAdmin.findMany.mockResolvedValue([{ seasonId: 3 }, { seasonId: 4 }]);
   mockDb.groupLeader.findMany.mockResolvedValue([{ groupId: 8 }]);
-  mockDb.studentProfile.findUnique.mockResolvedValue({ activeSeasonId: 3 });
+  mockDb.seasonEnrollment.findFirst.mockResolvedValue({ seasonId: 3 });
 }
 
 beforeEach(() => {
@@ -42,7 +42,7 @@ describe("loadScopes", () => {
   it("falls back to null when the profile or account row is missing", async () => {
     mockDb.seasonAdmin.findMany.mockResolvedValue([]);
     mockDb.groupLeader.findMany.mockResolvedValue([]);
-    mockDb.studentProfile.findUnique.mockResolvedValue(null);
+    mockDb.seasonEnrollment.findFirst.mockResolvedValue(null);
     mockDb.user.findUnique.mockResolvedValue(null);
     await expect(loadScopes(1)).resolves.toEqual({
       seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null,

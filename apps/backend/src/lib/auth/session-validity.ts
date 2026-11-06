@@ -1,3 +1,5 @@
+import type { Prisma } from "../../generated/prisma/client";
+
 import { db } from "../../db/client";
 
 /**
@@ -51,4 +53,19 @@ export async function invalidateSessions(
   at: Date = new Date(),
 ): Promise<void> {
   await client.user.update({ where: { id: userId }, data: { sessionsValidFrom: at }, select: { id: true } });
+}
+
+/**
+ * A student's season membership changed (enrolled, dropped, completed,
+ * graduated), so their derived `activeSeasonId` claim is stale: every access
+ * token issued before `now` is refused and the next refresh re-reads scopes.
+ * Pass the caller's transaction so the stamp commits with the change.
+ */
+export async function markSessionsStale(
+  tx: Prisma.TransactionClient,
+  userIds: number[],
+  now: Date = new Date(),
+): Promise<void> {
+  if (userIds.length === 0) return;
+  await tx.user.updateMany({ where: { id: { in: userIds } }, data: { sessionsValidFrom: now } });
 }

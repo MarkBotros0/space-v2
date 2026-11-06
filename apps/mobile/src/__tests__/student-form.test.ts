@@ -52,13 +52,8 @@ describe("request bodies", () => {
     expect(body).not.toHaveProperty("password");
   });
 
-  it("toUpdateStudentBody sends activeSeasonId only when permitted AND changed", () => {
-    const initial = { ...filled, seasonId: 7 };
-    expect(toUpdateStudentBody(initial, initial, { includeSeasonPointer: true })).not.toHaveProperty("activeSeasonId");
-    expect(toUpdateStudentBody({ ...initial, seasonId: 8 }, initial, { includeSeasonPointer: false })).not.toHaveProperty(
-      "activeSeasonId",
-    );
-    expect(toUpdateStudentBody({ ...initial, seasonId: null }, initial, { includeSeasonPointer: true }).activeSeasonId).toBeNull();
+  it("toUpdateStudentBody never carries a season", () => {
+    expect(toUpdateStudentBody({ ...filled, seasonId: 8 })).not.toHaveProperty("activeSeasonId");
   });
 });
 
@@ -80,7 +75,7 @@ describe("studentFormFromDetail", () => {
       },
     });
     expect(values).toMatchObject({
-      dateOfBirth: "2004-03-09", phone: "+20 100", notes: "Watch attendance", seasonId: 7,
+      dateOfBirth: "2004-03-09", phone: "+20 100", notes: "Watch attendance",
       universityGraduationYear: "2027",
     });
   });

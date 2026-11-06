@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-import { invalidateSessions } from "../../lib/auth/session-validity";
+import { invalidateSessions, markSessionsStale } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { parseId } from "../../lib/parse-id";
 import { isSuper } from "../../lib/rbac";
@@ -17,7 +17,6 @@ import { graduateStudentRequestSchema } from "../../../../../packages/shared/src
  *   - complete EVERY ACTIVE enrollment — v1 completed only the one matching
  *     activeSeasonId and left the rest ACTIVE forever (R48/R60), keeping an
  *     alumnus on rosters, in at-risk counts and (R53) in season access,
- *   - clear activeSeasonId (R56),
  *   - end live access tokens (Plan 18 M13): they carry graduationYear, and
  *     isAlumni() reads it from the token, so without this the graduate is
  *     treated as a current student for up to 15 minutes. Refresh tokens are
@@ -56,10 +55,7 @@ export async function graduateStudent(req: Request, res: Response) {
       where: { studentUserId: id, status: "ACTIVE" },
       data: { status: "COMPLETED", completedAt: new Date() },
     });
-    // updateMany, not update: a STUDENT without a profile row (spec 06 §2's
-    // hazard) must not turn a graduation into a 500.
-    await tx.studentProfile.updateMany({ where: { userId: id }, data: { activeSeasonId: null } });
-    await invalidateSessions(tx, id);
+    await markSessionsStale(tx, [id]);
     return { enrollmentsCompleted: completed.count };
   });
 

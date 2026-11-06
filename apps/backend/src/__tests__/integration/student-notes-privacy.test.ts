@@ -40,7 +40,6 @@ beforeAll(async () => {
   await db.studentProfile.create({
     data: {
       userId: studentId,
-      activeSeasonId: seasonId,
       university: "Test University",
       notes: PROFILE_SECRET,
     },

@@ -133,10 +133,8 @@ describe("season writes", () => {
     expect(clash.body.error.code).toBe("code_taken");
   });
 
-  it("soft-deletes an empty season and clears student pointers to it", async () => {
+  it("soft-deletes an empty season", async () => {
     const empty = await createTestSeason();
-    const pointed = await createTestUser("pointed", "STUDENT");
-    await db.studentProfile.create({ data: { userId: pointed.id, activeSeasonId: empty.id } });
 
     const gone = await request(app)
       .delete(`/api/v1/seasons/${empty.id}`)
@@ -144,10 +142,6 @@ describe("season writes", () => {
     expect(gone.status).toBe(200);
     const row = await db.season.findUnique({ where: { id: empty.id }, select: { deletedAt: true } });
     expect(row?.deletedAt).not.toBeNull();
-    const profile = await db.studentProfile.findUnique({
-      where: { userId: pointed.id }, select: { activeSeasonId: true },
-    });
-    expect(profile?.activeSeasonId).toBeNull();
 
     const again = await request(app)
       .delete(`/api/v1/seasons/${empty.id}`)

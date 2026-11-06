@@ -92,7 +92,7 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
     ],
   });
   for (const s of [users.studentA, users.studentB]) {
-    await db.studentProfile.create({ data: { userId: s.id, activeSeasonId: seasonId } });
+    await db.studentProfile.create({ data: { userId: s.id } });
   }
   await db.studentProfile.create({ data: { userId: users.alumnus.id } });
 
