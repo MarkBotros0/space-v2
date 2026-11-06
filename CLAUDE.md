@@ -353,8 +353,10 @@ Since 2026-11-06 the project lives on the **`jesusprojectcommunity`** account.
   `vercel.json` builds from the repo root with pnpm + turbo). A push to `main`
   on `jpc` deploys production.
 - The old project (`markbotros0`'s Vercel, `https://space-v2-be.vercel.app`)
-  is superseded. **The mobile app still has the old URL built in** until it is
-  rebuilt with the new one.
+  is superseded. The mobile app's `apps/mobile/app.json` → `extra.apiBaseUrl`
+  points at `https://jpc-space-be.vercel.app` (overridable with
+  `EXPO_PUBLIC_API_BASE_URL`, e.g. in EAS env vars). Builds made before this
+  change still call the old URL until they're replaced.
 - **Database:** Prisma Postgres `prisma-postgres-claret-school` (Postgres 17),
   copied on 2026-11-06 from the shared Neon database (`ep-cold-mode-…`, the
   one v1 `jpc-space` ran on) with `pg_dump`/`pg_restore` of `public`; all 34

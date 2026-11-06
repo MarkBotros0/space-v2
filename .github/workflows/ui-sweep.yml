@@ -136,7 +136,7 @@ jobs:
           ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
           cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/app.apk"
           "$(ls -d "$ANDROID_HOME"/build-tools/* | tail -n 1)/aapt" dump xmltree "$GITHUB_WORKSPACE/app.apk" AndroidManifest.xml | grep -i cleartext
-          unzip -p "$GITHUB_WORKSPACE/app.apk" assets/index.android.bundle | grep -ao "10\.0\.2\.2:4100\|space-v2-be\.vercel\.app" | sort | uniq -c
+          unzip -p "$GITHUB_WORKSPACE/app.apk" assets/index.android.bundle | grep -ao "10\.0\.2\.2:4100\|jpc-space-be\.vercel\.app" | sort | uniq -c
 
       - name: Install Maestro
         run: |

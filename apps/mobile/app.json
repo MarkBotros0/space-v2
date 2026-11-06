@@ -40,7 +40,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBaseUrl": "https://space-v2-be.vercel.app",
+      "apiBaseUrl": "https://jpc-space-be.vercel.app",
       "eas": {
         "projectId": "633d9f9f-6744-45c9-854e-fa12c1025e52"
       }
