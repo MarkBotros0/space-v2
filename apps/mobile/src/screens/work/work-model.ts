@@ -8,7 +8,7 @@ import type { DashboardDueItem, StudentAssignmentListItem, StudentQuizResult } f
 
 import { dueChip, statusChip, type ChipSpec } from "../../design/ui/status-chip";
 import { daysBetween } from "../../lib/calendar-grid";
-import { formatDate, formatDayKey } from "../../lib/format";
+import { formatDate, formatDayKey, unbreakable } from "../../lib/format";
 
 /** Where "See all" and the Assignments tile go. */
 export const WORK_HREF = "/work" as const;
@@ -107,7 +107,7 @@ export function quizRow(q: StudentQuizResult): WorkRow {
     : null;
   const parts = [
     session,
-    scored && q.gradedAt ? `Graded\u00A0${formatDate(q.gradedAt).replace(/ /g, "\u00A0")}` : null,
+    scored && q.gradedAt ? unbreakable(`Graded ${formatDate(q.gradedAt)}`) : null,
     q.notes,
   ].filter((part) => part !== null && part !== "");
   const chip = quizChip(q);
