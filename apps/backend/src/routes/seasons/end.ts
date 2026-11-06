@@ -93,8 +93,16 @@ export async function endSeason(req: Request, res: Response) {
           data: { ...stamp, result: "NOT_PASSED", resultReason: reason },
         });
       }
-      // A student enrolled between the check and here was never reviewed: refuse.
-      if ((await tx.seasonEnrollment.count({ where: { seasonId: id, status: "ACTIVE" } })) > 0) {
+      // A deleted account is neither passed nor failed: close its enrolment with no result.
+      await tx.seasonEnrollment.updateMany({
+        where: { seasonId: id, status: "ACTIVE", studentUser: { deletedAt: { not: null } } },
+        data: { status: "COMPLETED", completedAt: now },
+      });
+      // A live student enrolled between the check and here was never reviewed: refuse.
+      const unreviewed = await tx.seasonEnrollment.count({
+        where: { seasonId: id, status: "ACTIVE", studentUser: { deletedAt: null } },
+      });
+      if (unreviewed > 0) {
         throw new EndRefused("season_unfinished", 409, "The roster changed; check the season again.");
       }
       await markSessionsStale(tx, await seasonPeopleIds(tx, id), now);

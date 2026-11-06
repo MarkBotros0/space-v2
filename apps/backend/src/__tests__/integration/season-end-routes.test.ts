@@ -185,6 +185,28 @@ describe("POST /seasons/:id/end", () => {
     expect(await enrolment(season.id, sara)).toMatchObject({ status: "ACTIVE", result: null });
   });
 
+  it("a soft-deleted ACTIVE student does not block ending; their enrolment completes with no result", async () => {
+    const { season, peter, extra, adminToken } = await setupSeason();
+    await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: extra, status: "ACTIVE" } });
+    await db.user.update({ where: { id: extra }, data: { deletedAt: new Date() } });
+    const res = await post(`/seasons/${season.id}/end`, adminToken, { notPassed: [] });
+    expect(res.status).toBe(200);
+    const gone = await enrolment(season.id, extra);
+    expect(gone).toMatchObject({ status: "COMPLETED", result: null, resultSetAt: null });
+    expect(gone.completedAt).not.toBeNull();
+    expect(await enrolment(season.id, peter)).toMatchObject({ result: "PASSED" });
+    expect(await db.seasonEnrollment.count({ where: { seasonId: season.id, status: "ACTIVE" } })).toBe(0);
+  });
+
+  it("notPassed naming a soft-deleted student stays 400", async () => {
+    const { season, extra, adminToken } = await setupSeason();
+    await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: extra, status: "ACTIVE" } });
+    await db.user.update({ where: { id: extra }, data: { deletedAt: new Date() } });
+    const res = await post(`/seasons/${season.id}/end`, adminToken, { notPassed: [{ userId: extra, reason: null }] });
+    expect(res.status).toBe(400);
+    expect(await statusOf(season.id)).toBe("ACTIVE");
+  });
+
   it("two concurrent ends: exactly one 200, the other 409, first result kept", async () => {
     const { season, sara, peter, adminToken } = await setupSeason();
     const [a, b] = await Promise.all([
