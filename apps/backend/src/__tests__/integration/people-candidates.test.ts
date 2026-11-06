@@ -48,7 +48,7 @@ const finished = (
   });
 const candidates = (seasonId: number, token = superToken) =>
   request(app).get(`/api/v1/seasons/${seasonId}/people-candidates`).set(as(token));
-type Row = { id: number; name: string; availability: string; reason: string | null; selectable: boolean; overridable: boolean; last: any };
+type Row = { id: number; name: string; availability: string; reason: string | null; selectable: boolean; overridable: boolean; last: { seasonTitle: string; outcome: string; attendancePct: number | null } | null };
 const rowOf = (res: request.Response, id: number) => (res.body.data.people as Row[]).find((p) => p.id === id)!;
 
 beforeAll(async () => {
@@ -244,8 +244,8 @@ describe("GET /seasons/:id/people-candidates", () => {
     sessionSpy.mockRestore();
     attendanceSpy.mockRestore();
 
-    expect(rowOf(res, early.id).last.attendancePct).toBe(75);
-    expect(rowOf(res, late.id).last.attendancePct).toBe(50);
+    expect(rowOf(res, early.id).last?.attendancePct).toBe(75);
+    expect(rowOf(res, late.id).last?.attendancePct).toBe(50);
     expect(res.body.data.people.length).toBeGreaterThan(2);
     expect(calls).toBeLessThanOrEqual(3);
   });
